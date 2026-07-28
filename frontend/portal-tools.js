@@ -229,6 +229,29 @@
     form.appendChild(link);
   }
 
+  function addPortalHomeLink() {
+    const isLoginPage = window.location.pathname === "/portal/login"
+      || window.location.pathname === "/admin/login"
+      || window.location.pathname === "/tech";
+    if (!isLoginPage || document.getElementById("belm-portal-home-link")) return;
+    const form = document.querySelector("form");
+    if (!form) return;
+
+    const link = document.createElement("a");
+    link.id = "belm-portal-home-link";
+    link.href = "/";
+    link.textContent = "← Back to Portal Home";
+    Object.assign(link.style, {
+      display: "block",
+      marginTop: "14px",
+      color: "#008640",
+      font: "700 12px Inter, system-ui, sans-serif",
+      textAlign: "center",
+      textDecoration: "none"
+    });
+    form.appendChild(link);
+  }
+
   function enforceAdminPageAccess() {
     if (!window.location.pathname.startsWith("/admin/") || window.location.pathname === "/admin/login") return;
     let user;
@@ -480,6 +503,7 @@
   clarifyTechnicianAssignment();
   enhanceCustomerLogin();
   addForgotPasswordLink();
+  addPortalHomeLink();
   enforceAdminPageAccess();
   enhanceCustomerAssistants();
   redirectChecklistManager();
@@ -500,6 +524,7 @@
     clarifyTechnicianAssignment();
     enhanceCustomerLogin();
     addForgotPasswordLink();
+    addPortalHomeLink();
     enforceAdminPageAccess();
     enhanceCustomerAssistants();
     redirectChecklistManager();

@@ -1,6 +1,16 @@
 BELM PORTAL - FUNCTIONS ZOTE
 ============================
 
+0. NAVIGATION / BACK BUTTONS
+----------------------------
+- /admin-menu/ is the single Admin Main Menu.
+- All standalone Admin managers have a direct Back to Main Menu link.
+- Main Menu cards are filtered by each user's allowedPages role assignment.
+- Customer pages return to Customer Dashboard.
+- Technician pages return to the Checklist app.
+- Login screens provide a direct Back to Portal Home link.
+
+
 1. PUBLIC UNIFIED REGISTRATION
 ------------------------------
 - Customer, Technician na Staff wote wana-register kupitia /apply/.

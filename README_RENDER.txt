@@ -13,6 +13,15 @@ Hii ZIP ina:
 - public_website_patch/ for belmgeneraltech.co.tz
 
 
+NAVIGATION UPDATE
+-----------------
+- Admin pages now return directly to /admin-menu/.
+- The Main Menu only shows sections assigned to the signed-in user's role.
+- Customer assistant management returns to /portal/dashboard.
+- Technician task management returns to /tech.
+- Admin, Technician and Customer login screens include Back to Portal Home.
+
+
 JINSI YA KUIWEKA RENDER
 -----------------------
 1. Extract ZIP hii kwenye simu au computer.

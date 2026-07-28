@@ -68,7 +68,7 @@ async function testBilling() {
   assert.match(dom.window.document.getElementById("invoiceCustomerInfo").textContent, /TIN-123/);
   assert.equal(dom.window.document.getElementById("invoiceMachine").options.length, 2);
   assert.equal(dom.window.document.documentElement.dataset.theme, "dark");
-  assert.match(dom.window.document.getElementById("mainMenuButton").href, /\/admin\/customers$/);
+  assert.match(dom.window.document.getElementById("mainMenuButton").href, /\/admin-menu\/$/);
 
   dom.window.document.querySelector('#invoiceItems [data-field="description"]').value = "Service";
   dom.window.document.getElementById("invoiceForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
@@ -455,6 +455,60 @@ async function testRoleNavigationIsolation() {
   assert.equal(dom.window.document.getElementById("billing").hidden, false);
 }
 
+async function testAdminMainMenu() {
+  const dom = new JSDOM(
+    fs.readFileSync(path.join(root, "frontend/admin-menu/index.html"), "utf8"),
+    { url: "https://belm-portal.onrender.com/admin-menu/", runScripts: "outside-only" }
+  );
+  dom.window.localStorage.setItem("belm_admin_token", "test-token");
+  dom.window.localStorage.setItem("belm_admin_user", JSON.stringify({
+    id: "user-accounts",
+    name: "Accounts User",
+    role: "Accounts",
+    allowedPages: ["billing", "reports"],
+  }));
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/admin-access.js"), "utf8"));
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/admin-menu/menu.js"), "utf8"));
+
+  const visiblePages = Array.from(dom.window.document.querySelectorAll(".menu-card"))
+    .filter((card) => !card.hidden)
+    .map((card) => card.dataset.page);
+  assert.deepEqual(visiblePages, ["billing", "reports"]);
+  assert.match(dom.window.document.getElementById("signedInUser").textContent, /Accounts User/);
+  assert.ok(dom.window.document.querySelector('.menu-card[href="/billing-manager/"]'));
+  assert.ok(dom.window.document.querySelector('.menu-card[href="/admin/reports"]'));
+}
+
+async function testAllBackLinks() {
+  const adminPages = [
+    "frontend/admin-applications/index.html",
+    "frontend/billing-manager/index.html",
+    "frontend/checklist-manager/index.html",
+    "frontend/customers-manager/index.html",
+    "frontend/roles-manager/index.html",
+    "frontend/service-request-manager/index.html",
+    "frontend/spare-parts-manager/index.html",
+    "frontend/suppliers-manager/index.html",
+  ];
+
+  for (const page of adminPages) {
+    const html = fs.readFileSync(path.join(root, page), "utf8");
+    const dom = new JSDOM(html, {
+      url: `https://belm-portal.onrender.com/${page.replace("frontend/", "").replace("index.html", "")}`,
+    });
+    const backLink = Array.from(dom.window.document.querySelectorAll('a[href="/admin-menu/"]'))
+      .find((link) => /main menu|belm general tech/i.test(link.textContent));
+    assert.ok(backLink, `${page} does not have a working Main Menu link`);
+  }
+
+  const customerUsers = fs.readFileSync(path.join(root, "frontend/customer-users/index.html"), "utf8");
+  assert.match(customerUsers, /href="\/portal\/dashboard">← Customer dashboard/);
+  const technicianTasks = fs.readFileSync(path.join(root, "frontend/technician-tasks/index.html"), "utf8");
+  assert.match(technicianTasks, /href="\/tech">← Checklist app/);
+  const publicApply = fs.readFileSync(path.join(root, "frontend/apply/index.html"), "utf8");
+  assert.match(publicApply, /href="\/">Return to portal home/);
+}
+
 (async () => {
   await testBilling();
   await testSpareParts();
@@ -467,7 +521,9 @@ async function testRoleNavigationIsolation() {
   await testStaffRoleApproval();
   await testForgotPassword();
   await testRoleNavigationIsolation();
-  console.log("BELM UI smoke tests passed: existing managers, unified registration, admin role assignment, self-service recovery, and role isolation.");
+  await testAdminMainMenu();
+  await testAllBackLinks();
+  console.log("BELM UI smoke tests passed: managers, registration, approvals, recovery, role isolation, and all Back/Main Menu navigation.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

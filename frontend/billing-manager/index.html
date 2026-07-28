@@ -16,6 +16,7 @@
         <span>BELM <small>Billing Manager</small></span>
       </a>
       <div class="top-actions">
+        <a id="mainMenuButton" class="ghost menu-link" href="/admin/customers">← Back to Main Menu</a>
         <button id="refreshButton" class="ghost" type="button">Refresh</button>
         <button id="logoutButton" class="ghost" type="button">Log out</button>
       </div>
@@ -65,6 +66,9 @@
           <label>Due date<input id="invoiceDueDate" type="date"></label>
           <label>Tax (TZS)<input id="invoiceTax" type="number" min="0" step="0.01" value="0"></label>
         </div>
+        <div id="invoiceCustomerInfo" class="customer-info empty-info">
+          Choose a customer to auto-fill company information.
+        </div>
         <div class="items-head"><h3>Invoice items</h3><button id="addInvoiceItem" class="link-button" type="button">+ Add item</button></div>
         <div id="invoiceItems" class="item-list"></div>
         <div class="dialog-actions"><button class="ghost" data-close="invoiceDialog" type="button">Cancel</button><button id="saveInvoiceButton" class="primary">Save invoice</button></div>
@@ -107,12 +111,16 @@
           <label>VAT mode<select id="proformaVatMode"><option value="VAT">VAT 18%</option><option value="NO_VAT">No VAT</option></select></label>
           <label>Discount (TZS)<input id="proformaDiscount" type="number" min="0" step="0.01" value="0"></label>
         </div>
+        <div id="proformaCustomerInfo" class="customer-info empty-info">
+          Choose a customer to auto-fill company information.
+        </div>
         <div class="items-head"><h3>Proforma items</h3><button id="addProformaItem" class="link-button" type="button">+ Add item</button></div>
         <div id="proformaItems" class="item-list"></div>
         <div class="dialog-actions"><button class="ghost" data-close="proformaDialog" type="button">Cancel</button><button id="saveProformaButton" class="primary">Save proforma</button></div>
       </form>
     </dialog>
 
+    <script src="/admin-access.js"></script>
     <script src="/billing-manager/manager.js"></script>
   </body>
 </html>

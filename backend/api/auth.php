@@ -4,6 +4,99 @@ require_once __DIR__ . '/../config/helpers.php';
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
+// POST /api/auth/recover
+// Self-service password recovery for staff, customers and customer assistants.
+// The recovery code is issued once with the account credentials and is rotated
+// after every successful reset.
+if ($action === 'recover' && $method === 'POST') {
+    $b = body();
+    $email = strtolower(trim((string)($b['email'] ?? '')));
+    $recoveryCode = strtoupper(trim((string)($b['recoveryCode'] ?? '')));
+    $newPassword = (string)($b['newPassword'] ?? '');
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        json_error('Enter the email address used for your BELM account.');
+    }
+    if ($recoveryCode === '') json_error('Enter your BELM recovery code.');
+    if (strlen($newPassword) < 8) {
+        json_error('New password must contain at least 8 characters.');
+    }
+
+    $account = null;
+    $accountType = null;
+
+    $stmt = db()->prepare(
+        'SELECT id, recovery_code_hash
+         FROM users
+         WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1'
+    );
+    $stmt->execute([$email]);
+    if ($row = $stmt->fetch()) {
+        $account = $row;
+        $accountType = 'staff';
+    }
+
+    if (!$account) {
+        $stmt = db()->prepare(
+            'SELECT id, recovery_code_hash
+             FROM customers
+             WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1'
+        );
+        $stmt->execute([$email]);
+        if ($row = $stmt->fetch()) {
+            $account = $row;
+            $accountType = 'customer';
+        }
+    }
+
+    if (!$account) {
+        $stmt = db()->prepare(
+            'SELECT cu.id, cu.recovery_code_hash
+             FROM customer_users cu
+             JOIN customers c ON c.id = cu.customer_id
+             WHERE LOWER(cu.email) = ? AND cu.is_active = 1
+               AND c.deleted_at IS NULL AND c.is_active = 1'
+        );
+        $stmt->execute([$email]);
+        if ($row = $stmt->fetch()) {
+            $account = $row;
+            $accountType = 'assistant';
+        }
+    }
+
+    if (
+        !$account
+        || !$account['recovery_code_hash']
+        || !password_verify($recoveryCode, $account['recovery_code_hash'])
+    ) {
+        json_error('Email or recovery code is incorrect. Ask the account administrator for a new recovery code.', 401);
+    }
+
+    $nextRecoveryCode = account_recovery_code();
+    $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+    $recoveryHash = password_hash($nextRecoveryCode, PASSWORD_BCRYPT);
+
+    if ($accountType === 'staff') {
+        db()->prepare(
+            'UPDATE users SET password_hash = ?, recovery_code_hash = ? WHERE id = ?'
+        )->execute([$passwordHash, $recoveryHash, $account['id']]);
+    } elseif ($accountType === 'customer') {
+        db()->prepare(
+            'UPDATE customers SET password = ?, recovery_code_hash = ? WHERE id = ?'
+        )->execute([$passwordHash, $recoveryHash, $account['id']]);
+    } else {
+        db()->prepare(
+            'UPDATE customer_users SET password = ?, recovery_code_hash = ? WHERE id = ?'
+        )->execute([$passwordHash, $recoveryHash, $account['id']]);
+    }
+
+    json_out([
+        'ok' => true,
+        'message' => 'Password changed successfully. Save the new recovery code.',
+        'newRecoveryCode' => $nextRecoveryCode,
+    ]);
+}
+
 // POST /api/auth.php?action=login  { email, password }
 if ($action === 'login' && $method === 'POST') {
     $b = body();

@@ -118,10 +118,11 @@ if ($method === 'POST' && !$action) {
     require_page_access($user, 'customers');
     $b = body();
     $details = validate_customer_details($b);
-    $tempPassword = bin2hex(random_bytes(5));
+    $tempPassword = secure_account_secret();
+    $recoveryCode = account_recovery_code();
     $newId = uuid();
     $portalLink = customer_portal_slug($details['name']);
-    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, is_active, created_at) VALUES (?,?,?,?,?,?,?,?,?,1,NOW())')
+    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())')
         ->execute([
             $newId,
             $details['name'],
@@ -132,6 +133,7 @@ if ($method === 'POST' && !$action) {
             trim((string)($b['address'] ?? '')) ?: null,
             $portalLink,
             password_hash($tempPassword, PASSWORD_BCRYPT),
+            password_hash($recoveryCode, PASSWORD_BCRYPT),
         ]);
 
     json_out([
@@ -141,8 +143,30 @@ if ($method === 'POST' && !$action) {
             'portalId' => $portalLink,
             'portalUrl' => customer_portal_url($portalLink),
             'temporaryPassword' => $tempPassword,
+            'recoveryCode' => $recoveryCode,
         ],
     ], 201);
+}
+
+if ($method === 'PUT' && $action === 'reset-password') {
+    require_page_access($user, 'customers');
+    $temporaryPassword = secure_account_secret();
+    $recoveryCode = account_recovery_code();
+    $stmt = db()->prepare(
+        'UPDATE customers
+         SET password = ?, recovery_code_hash = ?
+         WHERE id = ? AND deleted_at IS NULL'
+    );
+    $stmt->execute([
+        password_hash($temporaryPassword, PASSWORD_BCRYPT),
+        password_hash($recoveryCode, PASSWORD_BCRYPT),
+        $id,
+    ]);
+    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
+    json_out([
+        'temporaryPassword' => $temporaryPassword,
+        'recoveryCode' => $recoveryCode,
+    ]);
 }
 
 // ---- Update customer --------------------------------------------------------
@@ -207,11 +231,25 @@ if ($method === 'POST' && $action === 'add-user') {
     );
     $emailCheck->execute([$email, $email, $email]);
     if ($emailCheck->fetch()) json_error('This email is already used by another portal account.', 409);
-    $tempPassword = bin2hex(random_bytes(5));
+    $tempPassword = secure_account_secret();
+    $recoveryCode = account_recovery_code();
     $newId = uuid();
-    db()->prepare('INSERT INTO customer_users (id, customer_id, name, email, password, phone, role, created_at) VALUES (?,?,?,?,?,?,?,NOW())')
-        ->execute([$newId, $id, $name, $email, password_hash($tempPassword, PASSWORD_BCRYPT), $b['phone'] ?? null, $role]);
-    json_out(['id' => $newId, 'temporaryPassword' => $tempPassword], 201);
+    db()->prepare('INSERT INTO customer_users (id, customer_id, name, email, password, recovery_code_hash, phone, role, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())')
+        ->execute([
+            $newId,
+            $id,
+            $name,
+            $email,
+            password_hash($tempPassword, PASSWORD_BCRYPT),
+            password_hash($recoveryCode, PASSWORD_BCRYPT),
+            $b['phone'] ?? null,
+            $role,
+        ]);
+    json_out([
+        'id' => $newId,
+        'temporaryPassword' => $tempPassword,
+        'recoveryCode' => $recoveryCode,
+    ], 201);
 }
 
 if ($method === 'DELETE' && $action === 'remove-user') {

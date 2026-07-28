@@ -1,0 +1,474 @@
+const fs = require("node:fs");
+const path = require("node:path");
+const assert = require("node:assert/strict");
+const { createRequire } = require("node:module");
+
+const toolsRequire = createRequire(path.join(process.env.BELM_JS_TOOLS, "package.json"));
+const { JSDOM } = toolsRequire("jsdom");
+const root = path.resolve(__dirname, "..");
+
+function response(data, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => data === null ? "" : JSON.stringify(data),
+    json: async () => data,
+  };
+}
+
+function setup(pagePath, origin = "https://portal.belmgeneraltech.co.tz") {
+  const html = fs.readFileSync(path.join(root, pagePath), "utf8");
+  const dom = new JSDOM(html, {
+    url: `${origin}/${pagePath.replace("/index.html", "/")}`,
+    runScripts: "outside-only",
+  });
+  dom.window.localStorage.setItem("belm_admin_token", "test-token");
+  dom.window.localStorage.setItem("belm_admin_user", JSON.stringify({
+    id: "user-admin",
+    name: "Admin",
+    role: "Super Admin",
+  }));
+  dom.window.HTMLElement.prototype.scrollIntoView = function () {};
+  dom.window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };
+  dom.window.HTMLDialogElement.prototype.close = function () { this.open = false; };
+  dom.window.confirm = () => true;
+  dom.window.alert = () => {};
+  return dom;
+}
+
+const flush = () => new Promise((resolve) => setTimeout(resolve, 20));
+
+async function testBilling() {
+  const dom = setup("frontend/billing-manager/index.html");
+  const requests = [];
+  const customer = {
+    id: "customer-1",
+    name: "Mteja Company",
+    email: "mteja@example.com",
+    phone: "+255700000000",
+    address: "Dar es Salaam",
+    tinNumber: "TIN-123",
+    vrn: "VRN-456",
+    machines: [{ id: "machine-1", model: "CAT 320", regNumber: "T 123 ABC" }],
+  };
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/customers") return response([customer]);
+    if (url === "/api/settings") return response({ displayTheme: "dark" });
+    if (options.method === "POST") return response({ id: "invoice-1" }, 201);
+    return response([]);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/billing-manager/manager.js"), "utf8"));
+  await flush();
+  dom.window.document.getElementById("newInvoiceButton").click();
+  const select = dom.window.document.getElementById("invoiceCustomer");
+  select.value = customer.id;
+  select.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  assert.match(dom.window.document.getElementById("invoiceCustomerInfo").textContent, /Mteja Company/);
+  assert.match(dom.window.document.getElementById("invoiceCustomerInfo").textContent, /TIN-123/);
+  assert.equal(dom.window.document.getElementById("invoiceMachine").options.length, 2);
+  assert.equal(dom.window.document.documentElement.dataset.theme, "dark");
+  assert.match(dom.window.document.getElementById("mainMenuButton").href, /\/admin\/customers$/);
+
+  dom.window.document.querySelector('#invoiceItems [data-field="description"]').value = "Service";
+  dom.window.document.getElementById("invoiceForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const save = requests.find((request) => request.url === "/api/billing/invoices" && request.options.method === "POST");
+  assert.ok(save, "Invoice POST request was not sent");
+  assert.equal(JSON.parse(save.options.body).customerId, customer.id);
+}
+
+async function testSpareParts() {
+  const dom = setup("frontend/spare-parts-manager/index.html");
+  const requests = [];
+  let stored = [];
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/settings") return response({ displayTheme: "light" });
+    if (url === "/api/spare-parts" && options.method === "POST") {
+      const payload = JSON.parse(options.body);
+      stored = [{ id: "part-1", ...payload }];
+      return response({ id: "part-1" }, 201);
+    }
+    if (url === "/api/spare-parts") return response(stored);
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/spare-parts-manager/manager.js"), "utf8"));
+  await flush();
+  dom.window.document.getElementById("addButton").click();
+  dom.window.document.getElementById("partNumber").value = "cat-001";
+  dom.window.document.getElementById("partName").value = "Oil filter";
+  dom.window.document.getElementById("stockQty").value = "4";
+  dom.window.document.getElementById("purchasePrice").value = "10000";
+  dom.window.document.getElementById("sellingPrice").value = "14000";
+  dom.window.document.getElementById("partForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const save = requests.find((request) => request.url === "/api/spare-parts" && request.options.method === "POST");
+  assert.ok(save, "Spare-part POST request was not sent");
+  assert.equal(JSON.parse(save.options.body).name, "Oil filter");
+  assert.match(dom.window.document.getElementById("partsPanel").textContent, /Oil filter/);
+}
+
+async function testRoleChange() {
+  const dom = setup("frontend/roles-manager/index.html");
+  const requests = [];
+  const roles = [
+    { id: "role-admin", name: "Super Admin", allowedPages: null },
+    { id: "role-tech", name: "Technician", allowedPages: [] },
+  ];
+  const users = [{
+    id: "user-2",
+    name: "Technician One",
+    email: "tech@example.com",
+    phone: "",
+    isActive: 1,
+    role: { id: "role-admin", name: "Super Admin" },
+    assignedCustomer: null,
+  }];
+  const customers = [{ id: "customer-1", name: "Mteja Company" }];
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/users" && !options.method) return response(users);
+    if (url === "/api/users/roles") return response(roles);
+    if (url === "/api/customers") return response(customers);
+    if (url === "/api/settings") return response({ displayTheme: "light" });
+    if (url === "/api/users/user-2" && options.method === "PUT") return response({ ok: true });
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/roles-manager/manager.js"), "utf8"));
+  await flush();
+  dom.window.document.querySelector('[data-edit-user="user-2"]').click();
+  const roleSelect = dom.window.document.getElementById("userRole");
+  roleSelect.value = "role-tech";
+  roleSelect.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  dom.window.document.getElementById("assignedCustomer").value = "customer-1";
+  dom.window.document.getElementById("userForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const save = requests.find((request) => request.url === "/api/users/user-2" && request.options.method === "PUT");
+  assert.ok(save, "User role PUT request was not sent");
+  const body = JSON.parse(save.options.body);
+  assert.equal(body.roleId, "role-tech");
+  assert.equal(body.assignedCustomerId, "customer-1");
+}
+
+async function testThemeSaving() {
+  const dom = new JSDOM("<!doctype html><html><body><button id=\"light\">☀️ Light</button><button id=\"dark\">🌙 Dark</button></body></html>", {
+    url: "https://portal.belmgeneraltech.co.tz/admin/settings",
+    runScripts: "outside-only",
+  });
+  dom.window.localStorage.setItem("belm_admin_token", "test-token");
+  dom.window.localStorage.setItem("belm_admin_user", JSON.stringify({ role: "Super Admin" }));
+  const requests = [];
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/settings" && !options.method) return response({ displayTheme: "light" });
+    if (url === "/api/settings/displayTheme" && options.method === "PUT") return response({ ok: true });
+    if (url.startsWith("/api/applications")) return response({ applications: [] });
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  await flush();
+  dom.window.document.getElementById("dark").click();
+  await flush();
+  assert.equal(dom.window.localStorage.getItem("belm_theme"), "dark");
+  assert.equal(dom.window.document.documentElement.dataset.theme, "dark");
+  assert.ok(dom.window.document.documentElement.classList.contains("dark"));
+  const save = requests.find((request) => request.url === "/api/settings/displayTheme" && request.options.method === "PUT");
+  assert.ok(save, "Theme preference PUT request was not sent");
+  assert.equal(JSON.parse(save.options.body).value, "dark");
+  dom.window.close();
+}
+
+async function testChecklistDropdownValues() {
+  const dom = setup("frontend/checklist-manager/index.html");
+  const requests = [];
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/checklist-templates" && options.method === "POST") {
+      const payload = JSON.parse(options.body);
+      return response({ id: "template-1", name: payload.name, items: payload.items }, 201);
+    }
+    if (url === "/api/checklist-templates") return response([]);
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/checklist-manager/manager.js"), "utf8"));
+  await flush();
+  dom.window.document.getElementById("newButton").click();
+  dom.window.document.getElementById("templateName").value = "Daily inspection";
+  dom.window.document.getElementById("machineType").value = "Reach Stacker";
+  let card = dom.window.document.querySelector("[data-key]");
+  card.querySelector('[data-field="label"]').value = "Hydraulic level";
+  card.querySelector('[data-field="label"]').dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  const type = card.querySelector('[data-field="inputType"]');
+  type.value = "DROPDOWN";
+  type.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  card = dom.window.document.querySelector("[data-key]");
+  card.querySelector('[data-option-field="value"]').value = "OK";
+  card.querySelector('[data-option-field="value"]').dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  card.querySelector("[data-add-option]").click();
+  card = dom.window.document.querySelector("[data-key]");
+  const values = card.querySelectorAll('[data-option-field="value"]');
+  values[1].value = "Critical";
+  values[1].dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+  const safety = card.querySelectorAll('[data-option-field="safetyLevel"]')[1];
+  safety.value = "RED";
+  safety.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  dom.window.document.getElementById("templateForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const save = requests.find((request) => request.url === "/api/checklist-templates" && request.options.method === "POST");
+  assert.ok(save, "Checklist template POST request was not sent");
+  const body = JSON.parse(save.options.body);
+  assert.deepEqual(body.items[0].options, ["OK", "Critical"]);
+  assert.equal(body.items[0].optionSafety.Critical, "RED");
+}
+
+async function testSupplierCards() {
+  const dom = setup("frontend/suppliers-manager/index.html");
+  const requests = [];
+  let stored = [{
+    id: "supplier-1",
+    name: "Trusted Parts Ltd",
+    specialty: "Heavy equipment parts",
+    phone: "+255700111222",
+    whatsapp: "+255700111222",
+    email: "sales@trustedparts.co.tz",
+    website: "https://trustedparts.co.tz",
+    location: "Dar es Salaam",
+    notes: "Verified documents",
+    verified: true,
+    trustScore: 95,
+    trustStatus: "TRUSTED",
+    trustReasons: ["Business-domain email", "Website recorded", "Verified by BELM admin"],
+  }];
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/settings") return response({ displayTheme: "light" });
+    if (url === "/api/suppliers" && options.method === "POST") {
+      const payload = JSON.parse(options.body);
+      stored.push({ id: "supplier-2", ...payload, trustScore: 70, trustStatus: "TRUSTED", trustReasons: ["WhatsApp available"] });
+      return response({ id: "supplier-2", trustScore: 70, trustStatus: "TRUSTED" }, 201);
+    }
+    if (url === "/api/suppliers") return response(stored);
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/suppliers-manager/manager.js"), "utf8"));
+  await flush();
+  assert.match(dom.window.document.getElementById("supplierGrid").textContent, /Trusted Parts Ltd/);
+  assert.match(dom.window.document.querySelector(".whatsapp").href, /wa\.me\/255700111222/);
+  dom.window.document.getElementById("addButton").click();
+  dom.window.document.getElementById("supplierName").value = "New Supplier";
+  dom.window.document.getElementById("whatsapp").value = "0712345678";
+  dom.window.document.getElementById("supplierForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const save = requests.find((request) => request.url === "/api/suppliers" && request.options.method === "POST");
+  assert.ok(save, "Supplier POST request was not sent");
+  assert.equal(JSON.parse(save.options.body).name, "New Supplier");
+}
+
+async function testCustomerCardsAndLinks() {
+  const dom = setup("frontend/customers-manager/index.html", "https://belm-portal.onrender.com");
+  const requests = [];
+  const customer = {
+    id: "customer-1",
+    name: "ECLS ICD",
+    email: "ops@ecls.co.tz",
+    phone: "+255700000000",
+    address: "Kurasini",
+    tinNumber: "TIN-1",
+    vrn: "VRN-1",
+    portalLink: "ecls-icd",
+    isActive: 1,
+    machines: [{
+      id: "machine-1",
+      machineType: "Reach Stacker",
+      brand: "Konecranes",
+      model: "SMV4531TB6",
+      regNumber: "T 123 ABC",
+      serialNumber: "SN-1",
+      status: "RED",
+      serviceKit: "CRITICAL",
+    }],
+  };
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/customers") return response([customer]);
+    if (url === "/api/settings") return response({ displayTheme: "light" });
+    if (url === "/api/customers/customer-1/reset-password" && options.method === "PUT") {
+      return response({
+        temporaryPassword: "TempPassword!2",
+        recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
+      });
+    }
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/customers-manager/manager.js"), "utf8"));
+  await flush();
+  assert.match(dom.window.document.getElementById("customerGrid").textContent, /ECLS ICD/);
+  assert.ok(dom.window.document.querySelector(".machine-card.RED"));
+  const portalLink = dom.window.document.querySelector(".portal-actions a").href;
+  assert.equal(portalLink, "https://belm-portal.onrender.com/portal/login?customer=ecls-icd");
+  assert.match(dom.window.document.querySelector(".machine-status").textContent, /Don't operate/);
+  dom.window.document.querySelector('[data-reset-customer="customer-1"]').click();
+  await flush();
+  assert.ok(requests.some(request =>
+    request.url === "/api/customers/customer-1/reset-password" && request.options.method === "PUT"
+  ));
+  assert.equal(dom.window.document.getElementById("credentialRecovery").value, "BELM-ABCD-EFGH-JKLM-NPQR");
+}
+
+async function testUnifiedRegistration() {
+  const dom = setup("frontend/apply/index.html", "https://belm-portal.onrender.com");
+  const requests = [];
+  dom.window.scrollTo = () => {};
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    return response({
+      ok: true,
+      reference: "BELM-U-12345678",
+      applicationType: "SYSTEM_USER",
+    }, 201);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/apply/app.js"), "utf8"));
+  const type = dom.window.document.getElementById("applicationType");
+  type.value = "SYSTEM_USER";
+  type.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  dom.window.document.querySelector('[name="email"]').value = "tech@example.com";
+  dom.window.document.querySelector('[name="fullName"]').value = "Technician One";
+  dom.window.document.getElementById("userPhone").value = "+255700000001";
+  dom.window.document.querySelector('[name="requestedRole"]').value = "Technician";
+  dom.window.document.querySelector('[name="consent"]').checked = true;
+  dom.window.document.getElementById("applicationForm").dispatchEvent(
+    new dom.window.Event("submit", { bubbles: true, cancelable: true })
+  );
+  await flush();
+  const registration = requests.find(request => request.url === "/api/applications");
+  assert.ok(registration, "Unified registration POST request was not sent");
+  const payload = JSON.parse(registration.options.body);
+  assert.equal(payload.applicationType, "SYSTEM_USER");
+  assert.equal(payload.requestedRole, "Technician");
+  assert.equal(payload.password, undefined);
+  assert.match(dom.window.document.getElementById("referenceNo").textContent, /BELM-U/);
+  assert.ok(!dom.window.document.getElementById("successCard").classList.contains("hidden"));
+}
+
+async function testStaffRoleApproval() {
+  const dom = setup("frontend/admin-applications/index.html");
+  const requests = [];
+  const application = {
+    id: "application-1",
+    applicationType: "SYSTEM_USER",
+    displayName: "Technician One",
+    fullName: "Technician One",
+    email: "tech@example.com",
+    phone: "+255700000001",
+    requestedRole: "Technician",
+    reason: "Machine inspections",
+    referenceNo: "BELM-U-12345678",
+    status: "PENDING",
+    submittedAt: "2026-07-28T10:00:00Z",
+  };
+  dom.window.navigator.clipboard = { writeText: async () => {} };
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url.startsWith("/api/applications?")) return response({ applications: [application] });
+    if (url === "/api/users/roles") return response([
+      { id: "role-tech", name: "Technician", allowedPages: [] },
+    ]);
+    if (url === "/api/customers") return response([
+      { id: "customer-1", name: "ECLS ICD" },
+    ]);
+    if (url === "/api/applications/application-1/approve" && options.method === "PUT") {
+      return response({
+        applicationType: "SYSTEM_USER",
+        displayName: "Technician One",
+        assignedRole: "Technician",
+        assignedCustomerName: "ECLS ICD",
+        loginEmail: "tech@example.com",
+        temporaryPassword: "TempPass!234",
+        recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
+        loginUrl: "https://belm-portal.onrender.com/tech",
+      });
+    }
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/admin-applications/admin.js"), "utf8"));
+  await flush();
+  dom.window.document.querySelector(".approve").click();
+  await flush();
+  assert.ok(dom.window.document.getElementById("assignmentDialog").open);
+  dom.window.document.getElementById("assignmentRole").value = "role-tech";
+  dom.window.document.getElementById("assignmentRole").dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  dom.window.document.getElementById("assignmentCustomer").value = "customer-1";
+  dom.window.document.getElementById("assignmentForm").dispatchEvent(
+    new dom.window.Event("submit", { bubbles: true, cancelable: true })
+  );
+  await flush();
+  const approval = requests.find(request =>
+    request.url === "/api/applications/application-1/approve" && request.options.method === "PUT"
+  );
+  assert.ok(approval, "Staff approval request was not sent");
+  const payload = JSON.parse(approval.options.body);
+  assert.equal(payload.roleId, "role-tech");
+  assert.equal(payload.assignedCustomerId, "customer-1");
+  assert.equal(dom.window.document.getElementById("approvedPassword").textContent, "TempPass!234");
+  assert.match(dom.window.document.getElementById("approvedRecovery").textContent, /^BELM-/);
+}
+
+async function testForgotPassword() {
+  const dom = setup("frontend/forgot-password/index.html");
+  const requests = [];
+  dom.window.navigator.clipboard = { writeText: async () => {} };
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    return response({
+      ok: true,
+      newRecoveryCode: "BELM-NEW1-NEW2-NEW3-NEW4",
+    });
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/forgot-password/app.js"), "utf8"));
+  dom.window.document.getElementById("email").value = "tech@example.com";
+  dom.window.document.getElementById("recoveryCode").value = "BELM-OLD1-OLD2-OLD3-OLD4";
+  dom.window.document.getElementById("newPassword").value = "NewPassword!2";
+  dom.window.document.getElementById("confirmPassword").value = "NewPassword!2";
+  dom.window.document.getElementById("resetForm").dispatchEvent(
+    new dom.window.Event("submit", { bubbles: true, cancelable: true })
+  );
+  await flush();
+  const reset = requests.find(request => request.url === "/api/auth/recover");
+  assert.ok(reset, "Self-service recovery request was not sent");
+  assert.equal(JSON.parse(reset.options.body).newPassword, "NewPassword!2");
+  assert.equal(dom.window.document.getElementById("newRecoveryCode").textContent, "BELM-NEW1-NEW2-NEW3-NEW4");
+}
+
+async function testRoleNavigationIsolation() {
+  const dom = new JSDOM(
+    '<!doctype html><html><body><nav><a id="customers" href="/customers-manager/">Customers</a><a id="billing" href="/billing-manager/">Billing</a></nav></body></html>',
+    { url: "https://belm-portal.onrender.com/billing-manager/", runScripts: "outside-only" }
+  );
+  dom.window.localStorage.setItem("belm_admin_token", "test-token");
+  dom.window.localStorage.setItem("belm_admin_user", JSON.stringify({
+    role: "Accounts",
+    allowedPages: ["billing"],
+  }));
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/admin-access.js"), "utf8"));
+  assert.equal(dom.window.document.getElementById("customers").hidden, true);
+  assert.equal(dom.window.document.getElementById("billing").hidden, false);
+}
+
+(async () => {
+  await testBilling();
+  await testSpareParts();
+  await testRoleChange();
+  await testThemeSaving();
+  await testChecklistDropdownValues();
+  await testSupplierCards();
+  await testCustomerCardsAndLinks();
+  await testUnifiedRegistration();
+  await testStaffRoleApproval();
+  await testForgotPassword();
+  await testRoleNavigationIsolation();
+  console.log("BELM UI smoke tests passed: existing managers, unified registration, admin role assignment, self-service recovery, and role isolation.");
+})().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

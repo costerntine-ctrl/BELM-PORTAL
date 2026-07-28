@@ -3,71 +3,95 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Apply for BELM Portal</title>
+  <title>Register for BELM Portal</title>
   <link rel="stylesheet" href="/apply/app.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/"><span class="mark">B</span><span><b>BELM GENERAL TECH</b><small>Customer Portal Application</small></span></a>
-    <a class="login-link" href="/portal/login">Customer login</a>
+    <a class="brand" href="/"><span class="mark">B</span><span><b>BELM GENERAL TECH</b><small>Portal Access Registration</small></span></a>
+    <a class="login-link" href="/">Sign in</a>
   </header>
 
   <main class="page">
     <section class="intro">
-      <p class="eyebrow">BELM CUSTOMER ONBOARDING</p>
-      <h1>Connect your company and machine to BELM Portal</h1>
-      <p>Submit the details below. BELM administration will verify the request before your portal account, machine record and inspection checklist are activated.</p>
+      <p class="eyebrow">ONE REGISTRATION POINT</p>
+      <h1>Register for the correct BELM Portal role</h1>
+      <p>Customers, Technicians and other staff register here. A request cannot open any dashboard until an administrator approves it and assigns the correct role.</p>
       <ol class="steps">
-        <li><b>1</b><span>Submit company and machine information</span></li>
-        <li><b>2</b><span>BELM administrator approves the request</span></li>
-        <li><b>3</b><span>Log in using your email and chosen password</span></li>
+        <li><b>1</b><span>Choose Customer or Staff / Technician</span></li>
+        <li><b>2</b><span>Administrator verifies and assigns access</span></li>
+        <li><b>3</b><span>Receive link, password and recovery code</span></li>
       </ol>
     </section>
 
     <section class="form-card" id="applicationCard">
       <form id="applicationForm" novalidate>
-        <div class="section-title"><span>1</span><div><b>Company information</b><small>Registered business details</small></div></div>
+        <div class="section-title"><span>1</span><div><b>Access type</b><small>Select the account you are requesting</small></div></div>
         <div class="form-grid">
-          <label class="wide">Company name<input name="companyName" maxlength="255" required autocomplete="organization"></label>
+          <label>Registration type
+            <select name="applicationType" id="applicationType" required>
+              <option value="CUSTOMER">Customer company</option>
+              <option value="SYSTEM_USER">Staff / Technician</option>
+            </select>
+          </label>
           <label>Email address<input name="email" type="email" maxlength="255" required autocomplete="email"></label>
-          <label>Phone number<input name="phone" maxlength="50" required autocomplete="tel"></label>
-          <label class="wide">Company address<textarea name="address" maxlength="500" rows="2" required autocomplete="street-address"></textarea></label>
-          <label>TIN number<input name="tinNumber" maxlength="50" required></label>
-          <label>VRN number<input name="vrn" maxlength="50" required></label>
         </div>
 
-        <div class="section-title"><span>2</span><div><b>Machine information</b><small>Choose the closest available details</small></div></div>
-        <div class="form-grid">
-          <label>Machine type<select name="machineType" id="machineType" required><option value="">Select machine type</option></select></label>
-          <label>Machine / brand<select name="brand" id="brand" required disabled><option value="">Select brand</option></select></label>
-          <label id="customBrandWrap" class="hidden">Enter machine brand<input id="customBrand" maxlength="100"></label>
-          <label>Machine model<select name="model" id="model" required disabled><option value="">Select model</option></select></label>
-          <label id="customModelWrap" class="hidden">Enter machine model<input id="customModel" maxlength="255"></label>
-          <label>Machine registration number<input name="regNumber" maxlength="100" required></label>
+        <div id="customerFields">
+          <div class="section-title"><span>2</span><div><b>Company information</b><small>These details will automatically create the customer record after approval</small></div></div>
+          <div class="form-grid">
+            <label class="wide">Company name<input name="companyName" maxlength="255" data-required autocomplete="organization"></label>
+            <label>Phone number<input name="phone" id="customerPhone" maxlength="50" data-required autocomplete="tel"></label>
+            <label>Company address<input name="address" maxlength="500" data-required autocomplete="street-address"></label>
+            <label>TIN number<input name="tinNumber" maxlength="50" data-required></label>
+            <label>VRN number<input name="vrn" maxlength="50" data-required></label>
+          </div>
+
+          <div class="section-title"><span>3</span><div><b>Machine information</b><small>Choose the closest available details</small></div></div>
+          <div class="form-grid">
+            <label>Machine type<select name="machineType" id="machineType" data-required><option value="">Select machine type</option></select></label>
+            <label>Machine / brand<select name="brand" id="brand" data-required disabled><option value="">Select brand</option></select></label>
+            <label id="customBrandWrap" class="hidden">Enter machine brand<input id="customBrand" maxlength="100"></label>
+            <label>Machine model<select name="model" id="model" data-required disabled><option value="">Select model</option></select></label>
+            <label id="customModelWrap" class="hidden">Enter machine model<input id="customModel" maxlength="255"></label>
+            <label>Machine registration number<input name="regNumber" maxlength="100" data-required></label>
+          </div>
         </div>
 
-        <div class="section-title"><span>3</span><div><b>Create customer login</b><small>This password remains private and is activated after approval</small></div></div>
-        <div class="form-grid">
-          <label>Password<input name="password" id="password" type="password" minlength="8" required autocomplete="new-password"><small class="hint">At least 8 characters</small></label>
-          <label>Confirm password<input name="confirmPassword" type="password" minlength="8" required autocomplete="new-password"></label>
+        <div id="userFields" class="hidden">
+          <div class="section-title"><span>2</span><div><b>User information</b><small>The administrator will verify and assign your actual system role</small></div></div>
+          <div class="form-grid">
+            <label class="wide">Full name<input name="fullName" maxlength="255" data-required autocomplete="name"></label>
+            <label>Phone number<input name="phone" id="userPhone" maxlength="50" data-required autocomplete="tel"></label>
+            <label>Requested role
+              <select name="requestedRole" data-required>
+                <option value="">Select requested role</option>
+                <option value="Technician">Technician</option>
+                <option value="Service Manager">Service Manager</option>
+                <option value="Office / Accounts">Office / Accounts</option>
+                <option value="Other staff role">Other staff role</option>
+              </select>
+            </label>
+            <label class="wide">Reason / work responsibility<textarea name="reason" maxlength="800" rows="3" placeholder="Briefly explain why you need portal access"></textarea></label>
+          </div>
         </div>
 
         <label class="bot-field" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
         <div id="formError" class="alert error hidden" role="alert"></div>
-        <label class="consent"><input type="checkbox" name="consent" required> I confirm that the company and machine information provided is correct.</label>
-        <button id="submitButton" type="submit">Submit portal application</button>
-        <p class="privacy">Your password is encrypted. BELM administrators cannot view it.</p>
+        <label class="consent"><input type="checkbox" name="consent" required> I confirm the information is correct and understand that access remains blocked until administrator approval.</label>
+        <button id="submitButton" type="submit">Submit registration request</button>
+        <p class="privacy">Approval generates a temporary password and recovery code. Save both securely.</p>
       </form>
     </section>
 
     <section class="form-card success hidden" id="successCard">
       <div class="success-icon">✓</div>
       <p class="eyebrow">APPLICATION RECEIVED</p>
-      <h2>Thank you. Your request is awaiting approval.</h2>
+      <h2>Thank you. Registration is awaiting role approval.</h2>
       <p>Keep this reference number:</p>
       <strong id="referenceNo" class="reference"></strong>
-      <p>BELM administration will contact you after review. Once approved, use your email and the password you created to log in.</p>
-      <a class="secondary-button" href="/portal/login">Go to customer login</a>
+      <p>No dashboard is visible yet. After approval, BELM administration will provide your correct login link, temporary password and recovery code.</p>
+      <a class="secondary-button" href="/">Return to portal home</a>
     </section>
   </main>
   <script src="/apply/app.js"></script>

@@ -3,12 +3,22 @@ const list = document.getElementById("applicationList");
 const alertBox = document.getElementById("alertBox");
 const tabs = [...document.querySelectorAll(".tabs button")];
 const dialog = document.getElementById("approvalDialog");
+const assignmentDialog = document.getElementById("assignmentDialog");
 let activeStatus = "PENDING";
 let lastApproval = null;
+let pendingStaffApplication = null;
+let roles = [];
+let customers = [];
 
 function showAlert(message) {
   alertBox.textContent = message;
   alertBox.classList.remove("hidden");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;"
+  })[character]);
 }
 
 function element(tag, className, text) {
@@ -52,32 +62,50 @@ function renderCard(application) {
   const card = element("article", "application");
   const head = element("div", "card-head");
   const title = element("div");
+  const displayName = application.displayName || application.companyName || application.fullName;
+  const applicationType = application.applicationType === "SYSTEM_USER" ? "Staff / Technician" : "Customer";
   title.append(
-    element("h2", "", application.companyName),
-    element("div", "reference", `${application.referenceNo} · Submitted ${formatDate(application.submittedAt)}`)
+    element("h2", "", displayName),
+    element("div", "reference", `${application.referenceNo} · ${applicationType} · Submitted ${formatDate(application.submittedAt)}`)
   );
   head.append(title, element("span", `status ${application.status}`, application.status));
 
   const details = element("div", "details");
-  [
-    ["Email", application.email],
-    ["Phone", application.phone],
-    ["Company address", application.address],
-    ["TIN", application.tinNumber],
-    ["VRN", application.vrn],
-    ["Machine type", application.machineType],
-    ["Machine / brand", application.brand],
-    ["Model", application.model],
-    ["Registration no.", application.regNumber],
-    ["Reviewed by", application.reviewedByName],
-    ["Reviewed at", formatDate(application.reviewedAt)]
-  ].forEach(([label, value]) => details.appendChild(detail(label, value)));
+  const detailRows = application.applicationType === "SYSTEM_USER"
+    ? [
+        ["Email", application.email],
+        ["Phone", application.phone],
+        ["Requested role", application.requestedRole],
+        ["Work responsibility", application.reason],
+        ["Assigned role", application.assignedRoleName],
+        ["Assigned customer", application.assignedCustomerName],
+        ["Reviewed by", application.reviewedByName],
+        ["Reviewed at", formatDate(application.reviewedAt)]
+      ]
+    : [
+        ["Email", application.email],
+        ["Phone", application.phone],
+        ["Company address", application.address],
+        ["TIN", application.tinNumber],
+        ["VRN", application.vrn],
+        ["Machine type", application.machineType],
+        ["Machine / brand", application.brand],
+        ["Model", application.model],
+        ["Registration no.", application.regNumber],
+        ["Reviewed by", application.reviewedByName],
+        ["Reviewed at", formatDate(application.reviewedAt)]
+      ];
+  detailRows.forEach(([label, value]) => details.appendChild(detail(label, value)));
   card.append(head, details);
 
   if (application.status === "PENDING") {
     const actions = element("div", "actions");
     const cancel = element("button", "action cancel", "Cancel request");
-    const approve = element("button", "action approve", "Approve customer");
+    const approve = element(
+      "button",
+      "action approve",
+      application.applicationType === "SYSTEM_USER" ? "Assign role & approve" : "Approve customer"
+    );
     cancel.addEventListener("click", () => cancelApplication(application));
     approve.addEventListener("click", () => approveApplication(application));
     actions.append(cancel, approve);
@@ -114,24 +142,80 @@ async function loadApplications() {
 }
 
 async function approveApplication(application) {
-  if (!confirm(`Approve ${application.companyName} and create its portal account?`)) return;
+  if (application.applicationType === "SYSTEM_USER") {
+    await openAssignment(application);
+    return;
+  }
+  if (!confirm(`Approve ${application.companyName} and generate customer credentials?`)) return;
+  await completeApproval(application, {});
+}
+
+async function completeApproval(application, payload) {
   try {
-    const result = await api(`/api/applications/${application.id}/approve`, { method: "PUT" });
+    const result = await api(`/api/applications/${application.id}/approve`, {
+      method: "PUT",
+      body: JSON.stringify(payload)
+    });
     lastApproval = result;
-    document.getElementById("approvedCustomer").textContent = result.customerName;
+    document.getElementById("approvedCustomer").textContent = result.displayName || result.customerName;
+    document.getElementById("approvedRole").textContent = result.assignedCustomerName
+      ? `${result.assignedRole} — ${result.assignedCustomerName}`
+      : result.assignedRole;
     document.getElementById("approvedEmail").textContent = result.loginEmail;
+    document.getElementById("approvedPassword").textContent = result.temporaryPassword;
+    document.getElementById("approvedRecovery").textContent = result.recoveryCode;
     const link = document.getElementById("approvedLink");
     link.href = result.loginUrl;
     link.textContent = result.loginUrl;
+    if (assignmentDialog.open) assignmentDialog.close();
     dialog.showModal();
     await loadApplications();
+  } catch (error) {
+    if (assignmentDialog.open) {
+      const errorBox = document.getElementById("assignmentError");
+      errorBox.textContent = error.message;
+      errorBox.classList.remove("hidden");
+    } else {
+      showAlert(error.message);
+    }
+  }
+}
+
+async function openAssignment(application) {
+  pendingStaffApplication = application;
+  document.getElementById("assignmentError").classList.add("hidden");
+  document.getElementById("assignmentName").textContent = `Approve ${application.displayName || application.fullName}`;
+  try {
+    [roles, customers] = await Promise.all([
+      api("/api/users/roles"),
+      api("/api/customers")
+    ]);
+    const roleSelect = document.getElementById("assignmentRole");
+    roleSelect.innerHTML = '<option value="">Select exact role…</option>' + roles.map(role =>
+      `<option value="${escapeHtml(role.id)}" ${role.name === application.requestedRole ? "selected" : ""}>${escapeHtml(role.name)}</option>`
+    ).join("");
+    document.getElementById("assignmentCustomer").innerHTML =
+      '<option value="">Select customer…</option>' + customers.map(customer =>
+        `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`
+      ).join("");
+    updateAssignmentCustomer();
+    assignmentDialog.showModal();
   } catch (error) {
     showAlert(error.message);
   }
 }
 
+function updateAssignmentCustomer() {
+  const role = roles.find(item => item.id === document.getElementById("assignmentRole").value);
+  const isTechnician = role?.name === "Technician";
+  document.getElementById("assignmentCustomerWrap").classList.toggle("hidden", !isTechnician);
+  document.getElementById("assignmentCustomer").required = isTechnician;
+  if (!isTechnician) document.getElementById("assignmentCustomer").value = "";
+}
+
 async function cancelApplication(application) {
-  if (!confirm(`Cancel the application from ${application.companyName}?`)) return;
+  const name = application.displayName || application.companyName || application.fullName;
+  if (!confirm(`Cancel the registration from ${name}?`)) return;
   try {
     await api(`/api/applications/${application.id}/cancel`, { method: "PUT" });
     await loadApplications();
@@ -154,18 +238,37 @@ document.getElementById("logoutButton").addEventListener("click", () => {
   location.href = "/admin/login";
 });
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
+document.querySelector(".assignment-close").addEventListener("click", () => assignmentDialog.close());
+document.getElementById("assignmentRole").addEventListener("change", updateAssignmentCustomer);
+document.getElementById("assignmentForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  if (!pendingStaffApplication) return;
+  const button = document.getElementById("confirmAssignmentButton");
+  button.disabled = true;
+  button.textContent = "Approving…";
+  await completeApproval(pendingStaffApplication, {
+    applicationType: "SYSTEM_USER",
+    roleId: document.getElementById("assignmentRole").value,
+    assignedCustomerId: document.getElementById("assignmentCustomer").value || null
+  });
+  button.disabled = false;
+  button.textContent = "Approve and generate credentials";
+});
 document.getElementById("copyMessageButton").addEventListener("click", async () => {
   if (!lastApproval) return;
   const message = [
-    `Hello ${lastApproval.customerName},`,
-    "Your BELM Portal application has been approved.",
+    `Hello ${lastApproval.displayName || lastApproval.customerName},`,
+    "Your BELM Portal registration has been approved.",
+    `Assigned role: ${lastApproval.assignedRole}${lastApproval.assignedCustomerName ? ` — ${lastApproval.assignedCustomerName}` : ""}`,
     `Login: ${lastApproval.loginUrl}`,
     `Email: ${lastApproval.loginEmail}`,
-    "Password: use the password you created during application.",
+    `Temporary password: ${lastApproval.temporaryPassword}`,
+    `Recovery code: ${lastApproval.recoveryCode}`,
+    "Use the recovery code on Forgot Password if you lose your password. Save it securely.",
     "BELM General Tech Service Limited"
   ].join("\n");
   await navigator.clipboard.writeText(message);
-  document.getElementById("copyMessageButton").textContent = "Approval message copied";
+  document.getElementById("copyMessageButton").textContent = "Credentials copied";
 });
 
 loadApplications();

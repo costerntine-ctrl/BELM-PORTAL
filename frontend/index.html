@@ -9,6 +9,14 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (function () {
+        var theme = localStorage.getItem("belm_theme");
+        if (theme !== "dark" && theme !== "light") theme = "light";
+        document.documentElement.classList.toggle("dark", theme === "dark");
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
     <script defer src="/portal-tools.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BHFQaDFg.css">

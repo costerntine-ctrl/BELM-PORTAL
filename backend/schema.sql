@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS customers (
   address VARCHAR(500),
   portal_link VARCHAR(36) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
+  recovery_code_hash VARCHAR(255) NULL,
   is_active SMALLINT NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  recovery_code_hash VARCHAR(255) NULL,
   phone VARCHAR(50),
   is_active SMALLINT NOT NULL DEFAULT 1,
   role_id VARCHAR(36) NOT NULL REFERENCES roles(id),
@@ -55,6 +57,7 @@ CREATE TABLE IF NOT EXISTS customer_users (
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL,
   password VARCHAR(255) NOT NULL,
+  recovery_code_hash VARCHAR(255) NULL,
   phone VARCHAR(50),
   role VARCHAR(20) NOT NULL DEFAULT 'viewer',
   is_active SMALLINT NOT NULL DEFAULT 1,
@@ -62,6 +65,9 @@ CREATE TABLE IF NOT EXISTS customer_users (
 );
 
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_customer_users_customer ON customer_users(customer_id);
 CREATE INDEX IF NOT EXISTS idx_customer_users_email ON customer_users(LOWER(email));
 
@@ -275,11 +281,16 @@ CREATE TABLE IF NOT EXISTS suppliers (
   phone VARCHAR(50),
   whatsapp VARCHAR(50),
   email VARCHAR(255),
+  website VARCHAR(500),
   location VARCHAR(255),
   notes TEXT,
+  verified SMALLINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ NULL
 );
+
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS website VARCHAR(500);
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS verified SMALLINT NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS trash_entries (
   id VARCHAR(36) PRIMARY KEY,
@@ -325,6 +336,23 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   machine_id VARCHAR(36) NULL REFERENCES machines(id)
 );
 
+CREATE TABLE IF NOT EXISTS user_applications (
+  id VARCHAR(36) PRIMARY KEY,
+  reference_no VARCHAR(30) NOT NULL UNIQUE,
+  full_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50) NOT NULL,
+  requested_role VARCHAR(100) NOT NULL,
+  reason TEXT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+  submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at TIMESTAMPTZ NULL,
+  reviewed_by VARCHAR(36) NULL REFERENCES users(id),
+  user_id VARCHAR(36) NULL REFERENCES users(id),
+  assigned_role_id VARCHAR(36) NULL REFERENCES roles(id),
+  assigned_customer_id VARCHAR(36) NULL REFERENCES customers(id)
+);
+
 -- Existing Render databases created by the previous portal version required a
 -- serial number. Applications only collect the registration number, so this
 -- safe migration makes serial number optional for newly approved machines.
@@ -341,6 +369,11 @@ CREATE INDEX IF NOT EXISTS idx_trash_deletedat ON trash_entries(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_application_status ON customer_applications(status, submitted_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_application_pending_email
   ON customer_applications(LOWER(email))
+  WHERE status = 'PENDING';
+CREATE INDEX IF NOT EXISTS idx_user_application_status
+  ON user_applications(status, submitted_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_application_pending_email
+  ON user_applications(LOWER(email))
   WHERE status = 'PENDING';
 
 CREATE OR REPLACE FUNCTION belm_set_updated_at()

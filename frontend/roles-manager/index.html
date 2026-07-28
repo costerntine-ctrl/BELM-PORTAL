@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM Roles & System Users</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin-tools.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/admin/customers">
+        <span class="brand-mark">B</span>
+        <span>BELM General Tech <small>Access Control</small></span>
+      </a>
+      <div class="top-actions">
+        <a class="ghost" href="/admin/customers">← Back to Main Menu</a>
+        <button id="refreshButton" class="ghost" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Security & Access</p>
+          <h1>Roles & System Users</h1>
+          <p>Add system users, change roles and control customer assignment.</p>
+        </div>
+        <div class="actions">
+          <button id="addRoleButton" class="secondary" type="button">+ Add role</button>
+          <button id="addUserButton" class="primary" type="button">+ Add system user</button>
+        </div>
+      </section>
+
+      <section class="metrics">
+        <article class="metric"><span>Roles</span><strong id="roleCount">0</strong></article>
+        <article class="metric"><span>System users</span><strong id="userCount">0</strong></article>
+        <article class="metric"><span>Technicians</span><strong id="technicianCount">0</strong></article>
+        <article class="metric"><span>Active users</span><strong id="activeCount">0</strong></article>
+      </section>
+
+      <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section>
+        <div class="panel-head" style="padding-left:0;padding-right:0;border:0">
+          <h2>Roles & permissions</h2>
+        </div>
+        <div id="rolesPanel" class="role-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <h2>System users</h2>
+          <input id="searchInput" aria-label="Search users" placeholder="Search name, email, role or customer" style="width:min(340px,100%);margin:0">
+        </div>
+        <div id="usersPanel" class="loading">Loading users…</div>
+      </section>
+    </main>
+
+    <dialog id="userDialog">
+      <form id="userForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">System Access</p><h2 id="userDialogTitle">Add system user</h2></div>
+          <button class="icon-close" data-close="userDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="userId" type="hidden">
+        <div id="userFormAlert" class="alert error hidden"></div>
+        <div class="form-grid">
+          <label>Name<input id="userName" required maxlength="255"></label>
+          <label>Phone<input id="userPhone" maxlength="50"></label>
+          <label id="emailField">Email<input id="userEmail" required type="email"></label>
+          <label id="passwordField">Temporary password<input id="userPassword" type="text" minlength="8"><button id="generatePassword" class="ghost" style="width:100%;margin-top:6px;min-height:34px" type="button">Generate secure password</button></label>
+          <label>Role<select id="userRole" required></select></label>
+          <label id="customerField">Assigned customer<select id="assignedCustomer"></select></label>
+          <label class="full"><span class="check-option"><input id="userActive" type="checkbox" checked> User account is active</span></label>
+        </div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="userDialog" type="button">Cancel</button>
+          <button id="saveUserButton" class="primary" type="submit">Save user</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="roleDialog">
+      <form id="roleForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Dashboard Access</p><h2 id="roleDialogTitle">Add role</h2></div>
+          <button class="icon-close" data-close="roleDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="roleId" type="hidden">
+        <div id="roleFormAlert" class="alert error hidden"></div>
+        <label>Role name<input id="roleName" required maxlength="100" placeholder="e.g. Service Manager"></label>
+        <label style="margin-top:15px">Allowed dashboard pages</label>
+        <div id="allowedPages" class="check-grid"></div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="roleDialog" type="button">Cancel</button>
+          <button id="saveRoleButton" class="primary" type="submit">Save role</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/admin-access.js"></script>
+    <script src="/roles-manager/manager.js"></script>
+  </body>
+</html>

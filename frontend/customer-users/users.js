@@ -162,12 +162,17 @@
     saveButton.disabled = true;
     saveButton.textContent = "Saving…";
     try {
-      await api(id ? `/users/${id}` : "/users", {
+      const result = await api(id ? `/users/${id}` : "/users", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
       dialog.close();
       await loadUsers();
+      if (result?.recoveryCode) {
+        alert(
+          `${id ? "New" : "Assistant"} recovery code:\n\n${result.recoveryCode}\n\nCopy it now. It is required for self-service password recovery.`
+        );
+      }
       showAlert(id ? "Assistant account updated successfully." : "Assistant created. They can now log in with the email and password you entered.", false);
     } catch (error) {
       errorBox.textContent = error.message;

@@ -5,6 +5,13 @@
   let expenses = [];
   let proformas = [];
 
+  function applyTheme(theme) {
+    const safeTheme = theme === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = safeTheme;
+    localStorage.setItem("belm_theme", safeTheme);
+  }
+  applyTheme(localStorage.getItem("belm_theme") || "light");
+
   const money = (value) => `TZS ${Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -46,6 +53,29 @@
     return `<option value="">Select customer…</option>${customers.map((customer) =>
       `<option value="${escapeHtml(customer.id)}" ${customer.id === selected ? "selected" : ""}>${escapeHtml(customer.name)}</option>`
     ).join("")}`;
+  }
+
+  function customerInformation(customer) {
+    if (!customer) return "Choose a customer to auto-fill company information.";
+    const cells = [
+      ["Company", customer.name],
+      ["Email", customer.email],
+      ["Phone", customer.phone],
+      ["Address", customer.address],
+      ["TIN", customer.tinNumber],
+      ["VRN", customer.vrn],
+    ];
+    return cells.map(([label, value]) =>
+      `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value || "—")}</strong></div>`
+    ).join("");
+  }
+
+  function fillCustomerInformation(selectId, infoId) {
+    const customer = customers.find((item) => item.id === document.getElementById(selectId).value);
+    const box = document.getElementById(infoId);
+    box.innerHTML = customerInformation(customer);
+    box.classList.toggle("empty-info", !customer);
+    return customer;
   }
 
   function updateMetrics() {
@@ -111,6 +141,12 @@
         api("/proforma-invoices"),
         api("/customers"),
       ]);
+      try {
+        const settings = await api("/settings");
+        if (settings.displayTheme === "dark" || settings.displayTheme === "light") {
+          applyTheme(settings.displayTheme);
+        }
+      } catch (_) {}
       renderInvoices();
       renderExpenses();
       renderProformas();
@@ -143,12 +179,13 @@
     document.getElementById("invoiceItems").replaceChildren();
     document.getElementById("invoiceTax").value = "0";
     document.getElementById("invoiceError").className = "alert error hidden";
+    fillCustomerInformation("invoiceCustomer", "invoiceCustomerInfo");
     addInvoiceItem();
     document.getElementById("invoiceDialog").showModal();
   }
 
   function updateMachineOptions() {
-    const customer = customers.find((item) => item.id === document.getElementById("invoiceCustomer").value);
+    const customer = fillCustomerInformation("invoiceCustomer", "invoiceCustomerInfo");
     document.getElementById("invoiceMachine").innerHTML = '<option value="">No machine / general</option>' + (customer?.machines || []).map((machine) =>
       `<option value="${escapeHtml(machine.id)}">${escapeHtml(machine.model)} · ${escapeHtml(machine.regNumber || machine.serialNumber || "")}</option>`
     ).join("");
@@ -278,6 +315,7 @@
     document.getElementById("proformaDate").disabled = Boolean(proforma);
     document.getElementById("proformaVatMode").value = proforma?.vatMode || "VAT";
     document.getElementById("proformaDiscount").value = proforma?.discount || 0;
+    fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
     document.getElementById("proformaItems").replaceChildren();
     (proforma?.items?.length ? proforma.items : [{}]).forEach(addProformaItem);
     document.getElementById("proformaError").className = "alert error hidden";
@@ -342,6 +380,8 @@
   document.getElementById("addInvoiceItem").addEventListener("click", () => addInvoiceItem());
   document.getElementById("addProformaItem").addEventListener("click", () => addProformaItem());
   document.getElementById("invoiceCustomer").addEventListener("change", updateMachineOptions);
+  document.getElementById("proformaCustomer").addEventListener("change", () =>
+    fillCustomerInformation("proformaCustomer", "proformaCustomerInfo"));
   document.getElementById("invoiceForm").addEventListener("submit", saveInvoice);
   document.getElementById("paymentForm").addEventListener("submit", savePayment);
   document.getElementById("expenseForm").addEventListener("submit", saveExpense);

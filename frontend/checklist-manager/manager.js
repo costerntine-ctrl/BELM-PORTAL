@@ -43,8 +43,7 @@
       label: "",
       inputType: "TEXT",
       safetyLevel: "GREEN",
-      optionsText: "",
-      optionSafety: {},
+      dropdownOptions: [],
       isRequired: true,
     };
   }
@@ -55,8 +54,10 @@
       label: item.label || "",
       inputType: item.inputType || "TEXT",
       safetyLevel: item.safetyLevel || "GREEN",
-      optionsText: Array.isArray(item.options) ? item.options.join(", ") : "",
-      optionSafety: item.optionSafety || {},
+      dropdownOptions: Array.isArray(item.options) ? item.options.map((value) => ({
+        value,
+        safetyLevel: item.optionSafety?.[value] || item.safetyLevel || "GREEN",
+      })) : [],
       isRequired: item.isRequired !== false,
     };
   }
@@ -109,7 +110,22 @@
             ${["GREEN", "YELLOW", "RED"].map((value) => `<option value="${value}" ${item.safetyLevel === value ? "selected" : ""}>${value}</option>`).join("")}
           </select>
         </label>
-        <label class="options-field">Dropdown values<input data-field="optionsText" value="${escapeHtml(item.optionsText)}" placeholder="OK, Low, Critical" ${item.inputType === "DROPDOWN" ? "" : "disabled"}></label>
+        ${item.inputType === "DROPDOWN" ? `
+          <div class="options-field dropdown-editor">
+            <div class="dropdown-title"><span>Dropdown values</span><button type="button" data-add-option="${escapeHtml(item.key)}">+ Add value</button></div>
+            <div class="dropdown-options">
+              ${(item.dropdownOptions || []).map((option, optionIndex) => `
+                <div class="dropdown-option">
+                  <input data-option-index="${optionIndex}" data-option-field="value" required value="${escapeHtml(option.value)}" placeholder="e.g. OK">
+                  <select data-option-index="${optionIndex}" data-option-field="safetyLevel" aria-label="Dropdown value safety">
+                    ${["GREEN", "YELLOW", "RED"].map((level) => `<option value="${level}" ${option.safetyLevel === level ? "selected" : ""}>${level}</option>`).join("")}
+                  </select>
+                  <button type="button" data-remove-option="${optionIndex}" aria-label="Remove dropdown value">×</button>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        ` : '<div class="options-field options-help">Choose DROPDOWN to add selectable values.</div>'}
         <label class="required">Required<input data-field="isRequired" type="checkbox" ${item.isRequired ? "checked" : ""}></label>
         <button class="remove-item" type="button" data-remove="${escapeHtml(item.key)}" aria-label="Remove item">×</button>
       </article>
@@ -165,8 +181,22 @@
   }
 
   function updateItem(key, field, value) {
-    items = items.map((item) => item.key === key ? { ...item, [field]: value } : item);
+    items = items.map((item) => {
+      if (item.key !== key) return item;
+      if (field === "inputType" && value === "DROPDOWN" && item.dropdownOptions.length === 0) {
+        return { ...item, [field]: value, dropdownOptions: [{ value: "", safetyLevel: item.safetyLevel || "GREEN" }] };
+      }
+      return { ...item, [field]: value };
+    });
     if (field === "inputType") renderItems();
+  }
+
+  function updateDropdownOption(key, optionIndex, field, value) {
+    items = items.map((item) => item.key === key ? {
+      ...item,
+      dropdownOptions: item.dropdownOptions.map((option, index) =>
+        index === optionIndex ? { ...option, [field]: value } : option),
+    } : item);
   }
 
   async function saveTemplate(event) {
@@ -182,9 +212,13 @@
         inputType: item.inputType,
         safetyLevel: item.safetyLevel,
         options: item.inputType === "DROPDOWN"
-          ? item.optionsText.split(",").map((value) => value.trim()).filter(Boolean)
+          ? item.dropdownOptions.map((option) => option.value.trim()).filter(Boolean)
           : item.inputType === "YES_NO" ? ["YES", "NO"] : [],
-        optionSafety: item.optionSafety || {},
+        optionSafety: item.inputType === "DROPDOWN"
+          ? Object.fromEntries(item.dropdownOptions
+            .filter((option) => option.value.trim())
+            .map((option) => [option.value.trim(), option.safetyLevel]))
+          : {},
         isRequired: item.isRequired,
       })),
     };
@@ -243,17 +277,46 @@
   });
   document.getElementById("itemList").addEventListener("input", (event) => {
     const card = event.target.closest("[data-key]");
+    const optionField = event.target.dataset.optionField;
+    if (card && optionField) {
+      updateDropdownOption(card.dataset.key, Number(event.target.dataset.optionIndex), optionField, event.target.value);
+      return;
+    }
     const field = event.target.dataset.field;
     if (!card || !field) return;
     updateItem(card.dataset.key, field, event.target.type === "checkbox" ? event.target.checked : event.target.value);
   });
   document.getElementById("itemList").addEventListener("change", (event) => {
     const card = event.target.closest("[data-key]");
+    const optionField = event.target.dataset.optionField;
+    if (card && optionField) {
+      updateDropdownOption(card.dataset.key, Number(event.target.dataset.optionIndex), optionField, event.target.value);
+      return;
+    }
     const field = event.target.dataset.field;
     if (!card || !field) return;
     updateItem(card.dataset.key, field, event.target.type === "checkbox" ? event.target.checked : event.target.value);
   });
   document.getElementById("itemList").addEventListener("click", (event) => {
+    const card = event.target.closest("[data-key]");
+    const addOption = event.target.closest("[data-add-option]");
+    const removeOption = event.target.closest("[data-remove-option]");
+    if (addOption && card) {
+      items = items.map((item) => item.key === card.dataset.key ? {
+        ...item,
+        dropdownOptions: [...item.dropdownOptions, { value: "", safetyLevel: item.safetyLevel || "GREEN" }],
+      } : item);
+      renderItems();
+      return;
+    }
+    if (removeOption && card) {
+      items = items.map((item) => item.key === card.dataset.key ? {
+        ...item,
+        dropdownOptions: item.dropdownOptions.filter((_, index) => index !== Number(removeOption.dataset.removeOption)),
+      } : item);
+      renderItems();
+      return;
+    }
     const remove = event.target.closest("[data-remove]");
     if (!remove) return;
     items = items.filter((item) => item.key !== remove.dataset.remove);

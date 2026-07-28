@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reset BELM Portal Password</title>
+  <link rel="stylesheet" href="/forgot-password/app.css">
+</head>
+<body>
+  <header>
+    <a href="/" class="brand"><span>B</span><div><b>BELM GENERAL TECH</b><small>Secure Account Recovery</small></div></a>
+    <a href="/">Portal home</a>
+  </header>
+  <main>
+    <section class="intro">
+      <p class="eyebrow">SELF-SERVICE PASSWORD RESET</p>
+      <h1>Set a new portal password</h1>
+      <p>This works for customers, customer assistants, Technicians and other system users. Enter the recovery code supplied with your approved account.</p>
+      <div class="notice"><b>Keep your recovery code private.</b><span>After a successful reset, the old code expires and a new code is displayed once.</span></div>
+    </section>
+    <section class="card" id="resetCard">
+      <form id="resetForm">
+        <label>Email address<input id="email" name="email" type="email" required autocomplete="email"></label>
+        <label>BELM recovery code<input id="recoveryCode" name="recoveryCode" required autocomplete="off" placeholder="BELM-XXXX-XXXX-XXXX-XXXX"></label>
+        <div class="grid">
+          <label>New password<input id="newPassword" name="newPassword" type="password" minlength="8" required autocomplete="new-password"></label>
+          <label>Confirm new password<input id="confirmPassword" type="password" minlength="8" required autocomplete="new-password"></label>
+        </div>
+        <div id="formError" class="alert error hidden" role="alert"></div>
+        <button id="resetButton" type="submit">Change password</button>
+      </form>
+    </section>
+    <section class="card success hidden" id="successCard">
+      <div class="check">✓</div>
+      <h2>Password changed</h2>
+      <p>Save this new recovery code. Your previous code can no longer be used.</p>
+      <code id="newRecoveryCode"></code>
+      <button id="copyRecoveryButton" type="button">Copy new recovery code</button>
+      <div class="login-links">
+        <a href="/portal/login">Customer login</a>
+        <a href="/tech">Technician login</a>
+        <a href="/admin/login">Staff / Admin login</a>
+      </div>
+    </section>
+  </main>
+  <script src="/forgot-password/app.js"></script>
+</body>
+</html>

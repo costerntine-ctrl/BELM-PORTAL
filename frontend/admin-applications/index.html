@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Customer Applications — BELM Admin</title>
+  <title>Access Applications — BELM Admin</title>
   <link rel="stylesheet" href="/admin-applications/admin.css">
 </head>
 <body>
   <header>
-    <div class="brand"><span>B</span><div><b>BELM Admin</b><small>Customer Applications</small></div></div>
+    <div class="brand"><span>B</span><div><b>BELM Admin</b><small>Access Applications</small></div></div>
     <nav><a href="/admin/customers">← Admin dashboard</a><button id="logoutButton">Log out</button></nav>
   </header>
 
   <main>
     <div class="heading">
-      <div><p>PORTAL ONBOARDING</p><h1>Customer applications</h1><span>Approve or cancel requests submitted from the BELM company website.</span></div>
+      <div><p>PORTAL ONBOARDING</p><h1>Registration & role approval</h1><span>Customers and users remain blocked until you approve and assign their access.</span></div>
       <button class="refresh" id="refreshButton">Refresh</button>
     </div>
 
@@ -34,16 +34,39 @@
   <dialog id="approvalDialog">
     <button class="dialog-close" aria-label="Close">×</button>
     <div class="check">✓</div>
-    <h2>Customer approved</h2>
-    <p>The customer, machine and checklist access have been created.</p>
+    <h2>Access approved</h2>
+    <p>Copy these credentials now. The password and recovery code are shown only once.</p>
     <div class="login-summary">
-      <label>Customer</label><strong id="approvedCustomer"></strong>
+      <label>Name</label><strong id="approvedCustomer"></strong>
+      <label>Assigned role</label><strong id="approvedRole"></strong>
       <label>Login email</label><strong id="approvedEmail"></strong>
+      <label>Temporary password</label><strong id="approvedPassword"></strong>
+      <label>Recovery code</label><strong id="approvedRecovery"></strong>
       <label>Login link</label><a id="approvedLink" target="_blank" rel="noopener"></a>
     </div>
-    <button id="copyMessageButton" class="primary">Copy approval message</button>
+    <button id="copyMessageButton" class="primary">Copy link + password + recovery</button>
   </dialog>
 
+  <dialog id="assignmentDialog">
+    <button class="dialog-close assignment-close" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">ROLE ASSIGNMENT</p>
+      <h2 id="assignmentName">Approve system user</h2>
+      <p>Choose the exact role before this account is activated. The user will not see pages outside this role.</p>
+    </div>
+    <form id="assignmentForm" class="assignment-form">
+      <label>Assign role
+        <select id="assignmentRole" required></select>
+      </label>
+      <label id="assignmentCustomerWrap" class="hidden">Customer served by Technician
+        <select id="assignmentCustomer"></select>
+      </label>
+      <div id="assignmentError" class="alert hidden"></div>
+      <button id="confirmAssignmentButton" class="primary" type="submit">Approve and generate credentials</button>
+    </form>
+  </dialog>
+
+  <script src="/admin-access.js"></script>
   <script src="/admin-applications/admin.js"></script>
 </body>
 </html>

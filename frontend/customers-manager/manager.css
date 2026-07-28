@@ -1,0 +1,52 @@
+.admin-menu { display: flex; gap: 7px; padding: 10px 4vw; overflow-x: auto; border-bottom: 1px solid var(--line); background: var(--paper); }
+.admin-menu a { flex: 0 0 auto; padding: 8px 11px; color: var(--muted); border-radius: 8px; font-size: 11px; font-weight: 800; text-decoration: none; }
+.admin-menu a:hover,.admin-menu a.active { color: #fff; background: var(--green); }
+.customer-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 230px; gap: 10px; margin: 18px 0 14px; }
+.customer-toolbar input,.customer-toolbar select { margin: 0; }
+.customer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.customer-grid > .empty,.customer-grid > .loading { grid-column: 1 / -1; }
+.customer-card { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); box-shadow: var(--shadow); }
+.customer-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: var(--green); }
+.customer-card.inactive::before { background: #9aa6b5; }
+.customer-card-head { display: flex; align-items: start; justify-content: space-between; gap: 15px; padding: 20px 20px 14px; }
+.customer-card-head h2 { margin: 4px 0 5px; font: 750 21px "Space Grotesk", sans-serif; }
+.customer-card-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.customer-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; padding: 0 20px 16px; }
+.customer-info-grid span { display: block; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+.customer-info-grid strong { display: block; margin-top: 3px; overflow-wrap: anywhere; font-size: 12px; }
+.portal-link-box { margin: 0 20px 16px; padding: 11px; border: 1px solid #b9dfca; border-left: 4px solid var(--green); border-radius: 10px; background: #f0faf4; }
+html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #102a21; }
+.portal-link-box span { display: block; color: var(--muted); font-size: 9px; font-weight: 850; text-transform: uppercase; }
+.portal-link-box code { display: block; margin-top: 4px; overflow: hidden; color: var(--ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.portal-actions { display: flex; gap: 7px; margin-top: 9px; }
+.portal-actions button,.portal-actions a { flex: 1; padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; text-align: center; text-decoration: none; }
+.portal-actions a { color: #fff; border-color: var(--green); background: var(--green); }
+.machine-section { padding: 15px 20px 18px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 84%, var(--canvas)); }
+.machine-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.machine-section-head h3 { margin: 0; font: 750 13px "Space Grotesk", sans-serif; }
+.machine-section-head button { padding: 6px 9px; color: var(--green-dark); border: 1px solid #b9dfca; border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
+.machine-list { display: grid; gap: 8px; }
+.machine-card { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.status-bar { align-self: stretch; border-radius: 999px; background: #9ba8b7; }
+.machine-card.GREEN .status-bar,.machine-card.OK .status-bar { background: var(--green); }
+.machine-card.YELLOW .status-bar,.machine-card.ATTENTION .status-bar { background: var(--yellow); }
+.machine-card.RED .status-bar,.machine-card.CRITICAL .status-bar { background: #d92d20; }
+.machine-card h4 { margin: 0 0 3px; font-size: 12px; }
+.machine-card p { margin: 0; color: var(--muted); font-size: 10px; }
+.machine-card .machine-status { display: inline-block; margin-top: 5px; padding: 3px 6px; border-radius: 999px; color: var(--muted); background: var(--canvas); font-size: 9px; font-weight: 850; }
+.machine-card.GREEN .machine-status,.machine-card.OK .machine-status { color: #087039; background: #e5f8ee; }
+.machine-card.YELLOW .machine-status,.machine-card.ATTENTION .machine-status { color: #896500; background: #fff4c3; }
+.machine-card.RED .machine-status,.machine-card.CRITICAL .machine-status { color: #9b2424; background: #fdeaea; }
+html[data-theme="dark"] .machine-card.GREEN .machine-status,html[data-theme="dark"] .machine-card.OK .machine-status { color: #8fe5b7; background: #153b2b; }
+html[data-theme="dark"] .machine-card.YELLOW .machine-status,html[data-theme="dark"] .machine-card.ATTENTION .machine-status { color: #f6dc72; background: #403511; }
+html[data-theme="dark"] .machine-card.RED .machine-status,html[data-theme="dark"] .machine-card.CRITICAL .machine-status { color: #ffaaaa; background: #401d23; }
+.machine-actions { display: flex; gap: 5px; }
+.machine-actions button { padding: 5px 7px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 9px; font-weight: 800; }
+.machine-actions button.delete { color: var(--red); }
+.customer-card-actions { display: flex; justify-content: flex-end; gap: 7px; padding: 11px 20px; border-top: 1px solid var(--line); }
+.customer-card-actions button { padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
+.customer-card-actions button.delete { color: var(--red); }
+.credentials { display: grid; gap: 12px; }
+.credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+@media (max-width: 880px) { .customer-grid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .customer-toolbar,.customer-info-grid { grid-template-columns: 1fr; } .machine-card { grid-template-columns: 8px 1fr; } .machine-actions { grid-column: 2; } }

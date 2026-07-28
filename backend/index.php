@@ -81,6 +81,9 @@ switch ($resource) {
         if (($segments[1] ?? '') === 'users' && isset($segments[2])) {
             dispatch('customers.php', ['action' => 'remove-user', 'subUserId' => $segments[2]]);
         }
+        if (isset($segments[2]) && $segments[2] === 'reset-password') {
+            dispatch('customers.php', ['action' => 'reset-password', 'id' => $segments[1]]);
+        }
         if (isset($segments[2]) && $segments[2] === 'machines') {
             dispatch('customers.php', ['action' => 'add-machine', 'id' => $segments[1]]);
         }

@@ -9,6 +9,61 @@
         ? "portal"
         : "public";
 
+  function applyTheme(theme) {
+    const safeTheme = theme === "dark" ? "dark" : "light";
+    document.documentElement.classList.toggle("dark", safeTheme === "dark");
+    document.documentElement.dataset.theme = safeTheme;
+    localStorage.setItem("belm_theme", safeTheme);
+  }
+
+  async function syncSavedTheme() {
+    const token = localStorage.getItem("belm_admin_token");
+    if (!token || !window.location.pathname.startsWith("/admin")) return;
+    try {
+      const response = await fetch("/api/settings", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const settings = await response.json();
+      if (settings.displayTheme === "light" || settings.displayTheme === "dark") {
+        applyTheme(settings.displayTheme);
+      }
+    } catch (_) {}
+  }
+
+  function installThemeSaving() {
+    if (document.documentElement.dataset.belmThemeSaving === "ready") return;
+    document.documentElement.dataset.belmThemeSaving = "ready";
+    applyTheme(localStorage.getItem("belm_theme") || "light");
+
+    document.addEventListener("click", async (event) => {
+      if (window.location.pathname !== "/admin/settings") return;
+      const button = event.target.closest("button");
+      if (!button) return;
+      const label = (button.textContent || "").trim().toLowerCase();
+      const theme = label.includes("light") ? "light" : label.includes("dark") ? "dark" : null;
+      if (!theme) return;
+
+      applyTheme(theme);
+      const token = localStorage.getItem("belm_admin_token");
+      if (!token) return;
+      try {
+        const response = await fetch("/api/settings/displayTheme", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ value: theme }),
+        });
+        if (!response.ok) throw new Error("Theme could not be saved.");
+        button.title = "Theme saved";
+      } catch (error) {
+        alert(error.message || "Theme could not be saved.");
+      }
+    }, true);
+  }
+
   function tokenPayload(storageKey) {
     const token = localStorage.getItem(storageKey);
     if (!token) return null;
@@ -48,7 +103,7 @@
     const link = document.createElement("a");
     link.id = buttonId;
     link.href = "/admin-applications/";
-    link.textContent = "Customer Applications";
+    link.textContent = "Access Applications";
     Object.assign(link.style, {
       position: "fixed",
       right: "18px",
@@ -68,8 +123,8 @@
     const count = await pendingCount(token);
     if (count !== null) {
       link.textContent = count > 0
-        ? `Customer Applications (${count})`
-        : "Customer Applications";
+        ? `Access Applications (${count})`
+        : "Access Applications";
       if (count > 0) {
         link.style.background = "#ffd400";
         link.style.color = "#151d31";
@@ -152,6 +207,48 @@
     }
   }
 
+  function addForgotPasswordLink() {
+    const isLoginPage = window.location.pathname === "/portal/login"
+      || window.location.pathname === "/admin/login"
+      || window.location.pathname === "/tech";
+    if (!isLoginPage || document.getElementById("belm-forgot-password")) return;
+    const form = document.querySelector("form");
+    if (!form || !form.querySelector('input[type="password"]')) return;
+    const link = document.createElement("a");
+    link.id = "belm-forgot-password";
+    link.href = "/forgot-password/";
+    link.textContent = "Forgot password? Reset it yourself";
+    Object.assign(link.style, {
+      display: "block",
+      margin: "10px 0 4px",
+      color: "#008640",
+      font: "700 12px Inter, system-ui, sans-serif",
+      textAlign: "right",
+      textDecoration: "none"
+    });
+    form.appendChild(link);
+  }
+
+  function enforceAdminPageAccess() {
+    if (!window.location.pathname.startsWith("/admin/") || window.location.pathname === "/admin/login") return;
+    let user;
+    try {
+      user = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
+    } catch (_) {
+      return;
+    }
+    if (!user || user.role === "Super Admin" || user.allowedPages === null) return;
+    const allowed = Array.isArray(user.allowedPages) ? user.allowedPages : [];
+    const key = window.location.pathname.split("/")[2] || "";
+    if (!key || allowed.includes(key)) return;
+    if (user.role === "Technician") {
+      window.location.replace("/tech");
+      return;
+    }
+    const first = allowed[0];
+    if (first) window.location.replace(`/admin/${first}`);
+  }
+
   function enhanceCustomerAssistants() {
     if (!window.location.pathname.startsWith("/portal/dashboard")) return;
     const payload = tokenPayload("belm_customer_token");
@@ -187,6 +284,30 @@
   function redirectBillingManager() {
     if (window.location.pathname === "/admin/billing") {
       window.location.replace("/billing-manager/");
+    }
+  }
+
+  function redirectCustomersManager() {
+    if (window.location.pathname === "/admin/customers") {
+      window.location.replace("/customers-manager/");
+    }
+  }
+
+  function redirectSparePartsManager() {
+    if (window.location.pathname === "/admin/spare-parts") {
+      window.location.replace("/spare-parts-manager/");
+    }
+  }
+
+  function redirectRolesManager() {
+    if (window.location.pathname === "/admin/roles") {
+      window.location.replace("/roles-manager/");
+    }
+  }
+
+  function redirectSuppliersManager() {
+    if (window.location.pathname === "/admin/suppliers") {
+      window.location.replace("/suppliers-manager/");
     }
   }
 
@@ -351,15 +472,23 @@
   }
 
   installAuthenticatedReportDownloads();
+  installThemeSaving();
+  syncSavedTheme();
   refreshShortcut();
   addTechnicianTasksShortcut();
   syncTechnicianCustomerName();
   clarifyTechnicianAssignment();
   enhanceCustomerLogin();
+  addForgotPasswordLink();
+  enforceAdminPageAccess();
   enhanceCustomerAssistants();
   redirectChecklistManager();
   redirectServiceRequestManager();
   redirectBillingManager();
+  redirectCustomersManager();
+  redirectSparePartsManager();
+  redirectRolesManager();
+  redirectSuppliersManager();
   removeLegacyOwnerRole();
   improvePhotoInputs();
   enforceViewerInterface();
@@ -370,10 +499,16 @@
     syncTechnicianCustomerName();
     clarifyTechnicianAssignment();
     enhanceCustomerLogin();
+    addForgotPasswordLink();
+    enforceAdminPageAccess();
     enhanceCustomerAssistants();
     redirectChecklistManager();
     redirectServiceRequestManager();
     redirectBillingManager();
+    redirectCustomersManager();
+    redirectSparePartsManager();
+    redirectRolesManager();
+    redirectSuppliersManager();
     removeLegacyOwnerRole();
     improvePhotoInputs();
     enforceViewerInterface();

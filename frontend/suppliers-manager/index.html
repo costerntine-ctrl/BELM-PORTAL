@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM Trusted Suppliers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/suppliers-manager/manager.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/admin/customers">
+        <span class="brand-mark">B</span>
+        <span>BELM General Tech <small>Trusted Supplier Directory</small></span>
+      </a>
+      <div class="top-actions">
+        <a class="ghost" href="/admin/customers">← Back to Main Menu</a>
+        <button id="refreshButton" class="ghost" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Smart Supplier Screening</p>
+          <h1>Suppliers Directory</h1>
+          <p>Supplier cards arranged by automated trust score, with fast WhatsApp contact.</p>
+        </div>
+        <button id="addButton" class="secondary" type="button">+ Save supplier</button>
+      </section>
+
+      <section class="metrics">
+        <article class="metric"><span>Saved suppliers</span><strong id="supplierCount">0</strong></article>
+        <article class="metric"><span>Trusted</span><strong id="trustedCount">0</strong></article>
+        <article class="metric"><span>Needs review</span><strong id="reviewCount">0</strong></article>
+        <article class="metric"><span>With WhatsApp</span><strong id="whatsappCount">0</strong></article>
+      </section>
+
+      <div class="trust-note">
+        <strong>Smart Trust Check:</strong> score uses verified contact details, business email, website,
+        location and BELM verification. It is a screening aid—not a payment or authenticity guarantee.
+      </div>
+      <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section class="supplier-toolbar">
+        <input id="searchInput" placeholder="Search name, specialty, location or contact" aria-label="Search suppliers">
+        <select id="trustFilter" aria-label="Filter by trust status">
+          <option value="">All trust levels</option>
+          <option value="TRUSTED">Trusted</option>
+          <option value="REVIEW">Review</option>
+          <option value="VERIFY">Verify first</option>
+        </select>
+      </section>
+      <section id="supplierGrid" class="supplier-grid"><div class="loading">Loading suppliers…</div></section>
+    </main>
+
+    <dialog id="supplierDialog">
+      <form id="supplierForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Supplier Record</p><h2 id="dialogTitle">Save supplier</h2></div>
+          <button class="icon-close" data-close type="button" aria-label="Close">×</button>
+        </div>
+        <input id="supplierId" type="hidden">
+        <div id="formAlert" class="alert error hidden"></div>
+        <div class="form-grid">
+          <label>Supplier name<input id="supplierName" required maxlength="255"></label>
+          <label>Specialty<input id="specialty" maxlength="255" placeholder="e.g. CAT engine parts"></label>
+          <label>Phone<input id="phone" maxlength="50"></label>
+          <label>WhatsApp<input id="whatsapp" maxlength="50" placeholder="+255…"></label>
+          <label>Email<input id="email" type="email" maxlength="255"></label>
+          <label>Website<input id="website" maxlength="500" placeholder="https://supplier.com"></label>
+          <label class="full">Location<input id="location" maxlength="255" placeholder="City, country"></label>
+          <label class="full">Notes<textarea id="notes" rows="3" placeholder="Brands, lead time, payment terms, documents checked…"></textarea></label>
+          <label class="full"><span class="check-option"><input id="verified" type="checkbox"> BELM has verified contact/documents for this supplier</span></label>
+        </div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close type="button">Cancel</button>
+          <button id="saveButton" class="primary" type="submit">Save supplier</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/admin-access.js"></script>
+    <script src="/suppliers-manager/manager.js"></script>
+  </body>
+</html>

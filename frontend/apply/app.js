@@ -82,6 +82,9 @@ const catalog = {
 };
 
 const form = document.getElementById("applicationForm");
+const applicationType = document.getElementById("applicationType");
+const customerFields = document.getElementById("customerFields");
+const userFields = document.getElementById("userFields");
 const machineType = document.getElementById("machineType");
 const brand = document.getElementById("brand");
 const model = document.getElementById("model");
@@ -100,6 +103,27 @@ function option(value, label = value) {
 }
 
 Object.keys(catalog).forEach(type => machineType.appendChild(option(type)));
+
+function setSectionEnabled(section, enabled) {
+  section.classList.toggle("hidden", !enabled);
+  section.querySelectorAll("input, select, textarea").forEach(field => {
+    field.disabled = !enabled;
+    if (field.dataset.required !== undefined) field.required = enabled;
+  });
+}
+
+function updateRegistrationType() {
+  const isCustomer = applicationType.value === "CUSTOMER";
+  setSectionEnabled(customerFields, isCustomer);
+  setSectionEnabled(userFields, !isCustomer);
+  if (isCustomer) {
+    brand.disabled = !machineType.value;
+    model.disabled = !brand.value;
+  }
+}
+
+applicationType.addEventListener("change", updateRegistrationType);
+updateRegistrationType();
 
 function resetSelect(select, label) {
   select.replaceChildren(option("", label));
@@ -149,21 +173,14 @@ form.addEventListener("submit", async event => {
   if (!form.reportValidity()) return;
 
   const data = Object.fromEntries(new FormData(form).entries());
-  if (data.password !== data.confirmPassword) {
-    showError("Password and confirmation do not match.");
-    return;
+  if (data.applicationType === "CUSTOMER") {
+    data.brand = data.brand === "Other" ? customBrand.value.trim() : data.brand.replaceAll("_", " ");
+    data.model = data.model === "Other" ? customModel.value.trim() : data.model;
   }
-  if (data.password.length < 8) {
-    showError("Password must contain at least 8 characters.");
-    return;
-  }
-  data.brand = data.brand === "Other" ? customBrand.value.trim() : data.brand.replaceAll("_", " ");
-  data.model = data.model === "Other" ? customModel.value.trim() : data.model;
-  delete data.confirmPassword;
   delete data.consent;
 
   submitButton.disabled = true;
-  submitButton.textContent = "Submitting application…";
+  submitButton.textContent = "Submitting registration…";
   try {
     const response = await fetch("/api/applications", {
       method: "POST",
@@ -181,6 +198,6 @@ form.addEventListener("submit", async event => {
     showError(error.message || "Could not submit the application. Try again.");
   } finally {
     submitButton.disabled = false;
-    submitButton.textContent = "Submit portal application";
+    submitButton.textContent = "Submit registration request";
   }
 });

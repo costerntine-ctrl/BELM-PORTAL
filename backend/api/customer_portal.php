@@ -109,16 +109,18 @@ if ($sub === 'users' && $method === 'POST') {
     if ($emailCheck->fetch()) json_error('This email address is already used by another portal account.', 409);
 
     $newId = uuid();
+    $recoveryCode = account_recovery_code();
     db()->prepare(
         'INSERT INTO customer_users
-         (id, customer_id, name, email, password, phone, role, is_active, created_at)
-         VALUES (?,?,?,?,?,?,?,?,NOW())'
+         (id, customer_id, name, email, password, recovery_code_hash, phone, role, is_active, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,NOW())'
     )->execute([
         $newId,
         $customer['id'],
         $name,
         $email,
         password_hash($password, PASSWORD_BCRYPT),
+        password_hash($recoveryCode, PASSWORD_BCRYPT),
         $phone !== '' ? $phone : null,
         $role,
         1,
@@ -130,6 +132,7 @@ if ($sub === 'users' && $method === 'POST') {
         'phone' => $phone !== '' ? $phone : null,
         'role' => $role,
         'isActive' => true,
+        'recoveryCode' => $recoveryCode,
     ], 201);
 }
 
@@ -165,9 +168,10 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
     if ($emailCheck->fetch()) json_error('This email address is already used by another portal account.', 409);
 
     if ($newPassword !== '') {
+        $recoveryCode = account_recovery_code();
         db()->prepare(
             'UPDATE customer_users
-             SET name=?, email=?, phone=?, role=?, is_active=?, password=?
+             SET name=?, email=?, phone=?, role=?, is_active=?, password=?, recovery_code_hash=?
              WHERE id=? AND customer_id=?'
         )->execute([
             $name,
@@ -176,6 +180,7 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
             $role,
             $isActive,
             password_hash($newPassword, PASSWORD_BCRYPT),
+            password_hash($recoveryCode, PASSWORD_BCRYPT),
             $sub2,
             $customer['id'],
         ]);
@@ -194,7 +199,10 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
             $customer['id'],
         ]);
     }
-    json_out(['ok' => true]);
+    json_out([
+        'ok' => true,
+        'recoveryCode' => $newPassword !== '' ? $recoveryCode : null,
+    ]);
 }
 
 if ($sub === 'users' && $sub2 && $method === 'DELETE') {

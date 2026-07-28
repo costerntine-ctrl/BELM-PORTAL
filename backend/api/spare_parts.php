@@ -6,6 +6,48 @@ require_page_access($user, 'spare-parts');
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 
+function spare_part_payload(array $body, ?string $excludeId = null): array {
+    $partNumber = strtoupper(trim((string)($body['partNumber'] ?? '')));
+    $name = trim((string)($body['name'] ?? ''));
+    $category = trim((string)($body['category'] ?? ''));
+
+    foreach (['stockQty', 'reorderThreshold', 'purchasePrice', 'sellingPrice'] as $field) {
+        if (!array_key_exists($field, $body) || $body[$field] === '' || !is_numeric($body[$field])) {
+            json_error('Complete every stock and price field with a valid number.');
+        }
+    }
+
+    $stockQty = (float)$body['stockQty'];
+    $reorderThreshold = (float)$body['reorderThreshold'];
+    $purchasePrice = (float)$body['purchasePrice'];
+    $sellingPrice = (float)$body['sellingPrice'];
+    if ($partNumber === '') json_error('Part number is required.');
+    if ($name === '') json_error('Spare-part name is required.');
+    if ($stockQty < 0 || floor($stockQty) !== $stockQty) json_error('Stock quantity must be a non-negative whole number.');
+    if ($reorderThreshold < 0 || floor($reorderThreshold) !== $reorderThreshold) json_error('Reorder level must be a non-negative whole number.');
+    if ($purchasePrice < 0 || $sellingPrice < 0) json_error('Prices cannot be negative.');
+
+    $sql = 'SELECT id FROM spare_parts WHERE UPPER(part_number) = UPPER(?)';
+    $params = [$partNumber];
+    if ($excludeId !== null) {
+        $sql .= ' AND id <> ?';
+        $params[] = $excludeId;
+    }
+    $stmt = db()->prepare($sql . ' LIMIT 1');
+    $stmt->execute($params);
+    if ($stmt->fetch()) json_error('This part number already exists. Open that record and edit it instead.', 409);
+
+    return [
+        'partNumber' => $partNumber,
+        'name' => $name,
+        'category' => $category !== '' ? $category : null,
+        'stockQty' => (int)$stockQty,
+        'reorderThreshold' => (int)$reorderThreshold,
+        'purchasePrice' => $purchasePrice,
+        'sellingPrice' => $sellingPrice,
+    ];
+}
+
 if ($method === 'GET') {
     $stmt = db()->query('SELECT * FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC');
     $parts = $stmt->fetchAll();
@@ -16,39 +58,28 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
-    $b = body();
-    $partNumber = trim((string)($b['partNumber'] ?? ''));
-    $name = trim((string)($b['name'] ?? ''));
-    $stockQty = (float)($b['stockQty'] ?? -1);
-    $reorderThreshold = (float)($b['reorderThreshold'] ?? -1);
-    $purchasePrice = (float)($b['purchasePrice'] ?? -1);
-    $sellingPrice = (float)($b['sellingPrice'] ?? -1);
-    if ($partNumber === '') json_error('Part number is required.');
-    if ($name === '') json_error('Spare-part name is required.');
-    if ($stockQty < 0 || floor($stockQty) !== $stockQty) json_error('Stock quantity must be a non-negative whole number.');
-    if ($reorderThreshold < 0 || floor($reorderThreshold) !== $reorderThreshold) json_error('Reorder level must be a non-negative whole number.');
-    if ($purchasePrice < 0 || $sellingPrice < 0) json_error('Prices cannot be negative.');
+    $part = spare_part_payload(body());
     $newId = uuid();
     db()->prepare('INSERT INTO spare_parts (id, part_number, name, category, stock_qty, reorder_threshold, purchase_price, selling_price, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())')
-        ->execute([$newId, $partNumber, $name, $b['category'] ?? null, (int)$stockQty, (int)$reorderThreshold, $purchasePrice, $sellingPrice]);
-    json_out(['id' => $newId], 201);
+        ->execute([
+            $newId, $part['partNumber'], $part['name'], $part['category'],
+            $part['stockQty'], $part['reorderThreshold'],
+            $part['purchasePrice'], $part['sellingPrice'],
+        ]);
+    json_out(['id' => $newId, 'message' => 'Spare part saved successfully.'], 201);
 }
 
 if ($method === 'PUT') {
-    $b = body();
-    $name = trim((string)($b['name'] ?? ''));
-    $stockQty = (float)($b['stockQty'] ?? -1);
-    $reorderThreshold = (float)($b['reorderThreshold'] ?? -1);
-    $purchasePrice = (float)($b['purchasePrice'] ?? -1);
-    $sellingPrice = (float)($b['sellingPrice'] ?? -1);
-    if ($name === '') json_error('Spare-part name is required.');
-    if ($stockQty < 0 || floor($stockQty) !== $stockQty) json_error('Stock quantity must be a non-negative whole number.');
-    if ($reorderThreshold < 0 || floor($reorderThreshold) !== $reorderThreshold) json_error('Reorder level must be a non-negative whole number.');
-    if ($purchasePrice < 0 || $sellingPrice < 0) json_error('Prices cannot be negative.');
-    $stmt = db()->prepare('UPDATE spare_parts SET name=?, category=?, stock_qty=?, reorder_threshold=?, purchase_price=?, selling_price=? WHERE id=? AND deleted_at IS NULL');
-    $stmt->execute([$name, $b['category'] ?? null, (int)$stockQty, (int)$reorderThreshold, $purchasePrice, $sellingPrice, $id]);
+    if (!$id) json_error('Spare part ID is required.');
+    $part = spare_part_payload(body(), $id);
+    $stmt = db()->prepare('UPDATE spare_parts SET part_number=?, name=?, category=?, stock_qty=?, reorder_threshold=?, purchase_price=?, selling_price=? WHERE id=? AND deleted_at IS NULL');
+    $stmt->execute([
+        $part['partNumber'], $part['name'], $part['category'],
+        $part['stockQty'], $part['reorderThreshold'],
+        $part['purchasePrice'], $part['sellingPrice'], $id,
+    ]);
     if ($stmt->rowCount() === 0) json_error('Spare part not found.', 404);
-    json_out(['ok' => true]);
+    json_out(['ok' => true, 'message' => 'Spare part updated successfully.']);
 }
 
 if ($method === 'DELETE') {

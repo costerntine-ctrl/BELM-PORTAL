@@ -39,7 +39,7 @@ function api_shape($value) {
     $isList = array_is_list($value);
     $out = [];
     foreach ($value as $key => $item) {
-        if (is_string($key) && in_array($key, ['password', 'password_hash'], true)) {
+        if (is_string($key) && in_array($key, ['password', 'password_hash', 'recovery_code_hash'], true)) {
             continue;
         }
 
@@ -81,6 +81,18 @@ function uuid(): string {
 }
 
 function portal_base_url(): string {
+    // Use the host the customer/admin is currently visiting. This keeps every
+    // generated customer link working on both the Render URL and the custom
+    // portal domain while DNS is being configured.
+    $forwardedHost = trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_HOST'] ?? ''))[0]);
+    $host = $forwardedHost !== '' ? $forwardedHost : trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+    if ($host !== '' && preg_match('/^[a-zA-Z0-9.-]+(?::\d+)?$/', $host)) {
+        $forwardedProto = strtolower(trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0]));
+        $scheme = in_array($forwardedProto, ['http', 'https'], true)
+            ? $forwardedProto
+            : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
+        return $scheme . '://' . $host;
+    }
     return rtrim(getenv('PORTAL_URL') ?: 'https://portal.belmgeneraltech.co.tz', '/');
 }
 
@@ -126,6 +138,29 @@ function customer_portal_url(string $portalSlug): string {
 function document_number(string $prefix): string {
     $suffix = strtoupper(substr(str_replace('-', '', uuid()), 0, 6));
     return $prefix . '-' . date('Ymd-His') . '-' . $suffix;
+}
+
+function secure_account_secret(int $length = 14): string {
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
+    $secret = '';
+    $maximum = strlen($alphabet) - 1;
+    for ($index = 0; $index < $length; $index++) {
+        $secret .= $alphabet[random_int(0, $maximum)];
+    }
+    return $secret;
+}
+
+function account_recovery_code(): string {
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    $parts = [];
+    for ($group = 0; $group < 4; $group++) {
+        $part = '';
+        for ($index = 0; $index < 4; $index++) {
+            $part .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+        $parts[] = $part;
+    }
+    return 'BELM-' . implode('-', $parts);
 }
 
 // ---- Staff auth ------------------------------------------------------------

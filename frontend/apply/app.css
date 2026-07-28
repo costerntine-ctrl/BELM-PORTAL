@@ -23,6 +23,7 @@ h1 { color:var(--navy); font-size:clamp(31px,4vw,48px); line-height:1.08; letter
 .section-title>span { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; background:var(--navy); color:var(--yellow); font-weight:900; }
 .section-title b,.section-title small { display:block; }.section-title small { color:#7b8997; margin-top:2px; font-size:11px; }
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
+.application-fields { display:block; }
 label { display:grid; gap:7px; font-size:12px; font-weight:700; color:#33495e; }
 label.wide { grid-column:1/-1; }
 input,select,textarea { width:100%; border:1px solid #c9d5e1; background:#fff; color:#13283c; border-radius:9px; padding:12px 12px; font:500 14px inherit; outline:none; transition:.15s; }

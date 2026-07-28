@@ -1,0 +1,220 @@
+BELM PORTAL - FUNCTIONS ZOTE
+============================
+
+1. PUBLIC CUSTOMER APPLICATION
+------------------------------
+- Company name
+- Email
+- Company address
+- Phone number
+- TIN number
+- VRN number
+- Machine type
+- Machine brand
+- Machine model
+- Machine registration number
+- Customer password
+- Unique application reference number
+- Request status: PENDING
+
+
+2. ADMIN APPLICATION APPROVAL
+-----------------------------
+- Admin anaona Pending, Approved, Cancelled na All requests.
+- Admin anaweza Approve Customer.
+- Admin anaweza Cancel Request.
+- Approval inatengeneza customer database record.
+- Approval inatengeneza machine database record.
+- Checklist ya machine type inaunganishwa automatically.
+- Standard checklist inatengenezwa kama checklist ya machine type haipo.
+- Approval inaonyesha customer email na customer portal link.
+
+
+3. ONE NAMED CUSTOMER LINK
+--------------------------
+- Portal domain ni moja:
+  https://portal.belmgeneraltech.co.tz/
+- Customer akisajiliwa au taarifa zake zikisave, mfumo unatengeneza link
+  yenye jina la kampuni automatically.
+- Mfano:
+  https://portal.belmgeneraltech.co.tz/portal/login?customer=ecls-icd
+- Kama majina yanafanana, mfumo unaongeza number: ecls-icd-2.
+- Main customer na assistants wote wanatumia link hiyo hiyo.
+- Kila mtu anaingia kwa email na password yake.
+
+
+4. LOGIN NA ACCESS ROLES
+------------------------
+- Super Admin login.
+- Other Admin/Staff roles kulingana na allowed pages.
+- Technician login kwa email na password.
+- Main Customer login kwa email/password au customer portal ID.
+- Customer Assistant login kwa email na password.
+- JWT authentication.
+- Inactive/deleted accounts zinakataliwa.
+
+
+5. CUSTOMER ASSISTANTS
+----------------------
+- Main customer anaweza ku-create assistant.
+- Assistant fields: name, email, phone, role na password.
+- Password lazima iwe na characters 8 au zaidi.
+- Operator role: view customer data na request/cancel service.
+- Viewer role: read-only customer access.
+- Main customer anaweza kuona assistant list.
+- Main customer anaweza edit assistant.
+- Main customer anaweza kubadilisha assistant password.
+- Main customer anaweza activate/deactivate assistant.
+- Main customer anaweza delete assistant.
+- Assistant hawezi ku-create, edit au delete assistant mwingine.
+- Email haiwezi kurudiwa kwenye customer, assistant au staff account.
+
+
+6. CUSTOMER DATA ISOLATION
+--------------------------
+- Customer anaona machines za kampuni yake tu.
+- Assistant anaona machines za customer aliyemuumba tu.
+- Assistant hawezi kuona customer mwingine kwa kubadilisha URL/API.
+- Customer/assistant anaona checklist reports za machine yake tu.
+- Deactivated assistant session inakataliwa kwenye kila API request.
+
+
+7. MACHINE MANAGEMENT
+---------------------
+- Admin ana-register customer.
+- Admin ana-add machine kwa customer.
+- Machine fields: type, brand, model, serial number, registration number.
+- Admin ana-edit machine.
+- Admin ana-delete machine kwenda Recycle Bin.
+- Machine ina status ya latest checklist.
+- Machine ina last checked date.
+- Machine ina service interval/history.
+
+
+8. CHECKLIST TEMPLATE MANAGEMENT
+--------------------------------
+- Admin ana-create checklist template.
+- Admin ana-edit template name na machine type.
+- Admin ana-activate/deactivate template.
+- Admin ana-add na remove checklist items.
+- Input types:
+  TEXT
+  NUMBER
+  YES / NO
+  DROPDOWN
+  DATE
+  PHOTO / photo reference
+- Item inaweza kuwa Required au Optional.
+- Safety levels:
+  GREEN
+  YELLOW
+  RED
+- Dropdown values zinahifadhiwa kama JSONB.
+- Template na items zake zinasave kwa database transaction moja.
+- Save ikifeli, data yote inarollback; hakuna half-saved template.
+- Baada ya save, mfumo unarudisha template iliyosave na kuthibitisha item count.
+- Template delete inaenda Recycle Bin.
+
+
+9. TECHNICIAN WORKFLOW
+----------------------
+- Admin anachagua Role: Technician.
+- Admin lazima achague Assigned Customer.
+- Technician login:
+  Login -> Assigned Customer Machines -> Select Machine -> Checklist
+- Technician anaona customer mmoja aliyopangiwa tu.
+- Technician haoni machines za customer mwingine.
+- Technician hawezi submit report ya machine ambayo hajapangiwa.
+- Technician anaweka current hour-meter reading.
+- Technician anakamilisha required checklist items.
+- Technician anatuma inspection report.
+- Technician anaona My Tasks alizopewa na Admin.
+- Anaweza kuweka task kuwa Completed.
+- Task ya Technician inafungwa automatically kwa Assigned Customer wake.
+
+
+10. RELIABLE CHECKLIST REPORT SAVE
+----------------------------------
+- Server inathibitisha machine na checklist template zinamatch.
+- Server inathibitisha required checklist items zimejazwa.
+- Server inathibitisha hour meter ni number halali.
+- Labels na safety rules zinasomwa kutoka database; haziaminiki kutoka browser.
+- Report, answers na machine status zinasave kwa transaction moja.
+- Error ikitokea kila kitu kinarollback.
+- Overall status inahesabiwa GREEN, YELLOW au RED.
+- Machine last checked date ina-update automatically.
+
+
+11. CUSTOMER PORTAL
+-------------------
+- Customer/assistant anaona machine cards.
+- Anaona machine checklist reports.
+- Anaona report date, filled by, hour meter na overall status.
+- Ana-download checklist report data kwa authenticated download.
+- Anaona service status.
+- Anaona machine operation/uptime analysis.
+- Anaona spare-parts list bila confidential pricing.
+
+
+12. SERVICE REQUESTS
+--------------------
+- Main customer au Operator ana-request service.
+- Request lazima itumie machine ya customer huyo.
+- Priority inaweza kuchaguliwa.
+- Customer/Operator anaona request history.
+- Open au Assigned request inaweza ku-cancel.
+- Viewer hawezi create/cancel service request.
+- Admin ana service-request manager yenye status tabs na counts.
+- Admin ana-assign Technician wa customer huyo tu.
+- Admin ana-manage status na service notes.
+
+
+13. ADMIN DASHBOARD
+-------------------
+- Customer registration and machine management.
+- Customers overview/search.
+- Roles and system users.
+- Technician-to-customer assignment.
+- Service requests.
+- Spare-parts inventory.
+- Billing Manager moja kwa invoices, payments, expenses na proformas.
+- Invoice create yenye items, tax, due date na optional machine.
+- Payment history, paid amount na balance.
+- PAID/PARTIALLY PAID status inahesabiwa kwa payments.
+- Proforma create/edit yenye items, VAT na discount.
+- Reporting and analytics.
+- System settings and Admin PIN.
+- Checklist templates.
+- Suppliers.
+- Activity log.
+- Recycle Bin list; restore/permanent delete ni Super Admin-only.
+- Customer application approval shortcut with pending count.
+
+
+14. SECURITY
+------------
+- Passwords zinahifadhiwa kwa BCRYPT hash.
+- JWT secret inatolewa na Render environment.
+- Customer, assistant na technician data isolation iko backend.
+- Duplicate portal emails zinakataliwa.
+- Public application ina honeypot anti-bot field.
+- API errors hazionyeshi database credentials.
+- Soft delete/Recycling kwa business records.
+- Viewer controls zimefichwa kwenye UI na write access imezuiwa pia backend.
+- Customer report download inatuma authentication token.
+- Public plaintext password-reset endpoint imeondolewa.
+- Admin PIN change ni Super Admin-only.
+- Invoice payment haiwezi kuzidi balance.
+
+
+15. RENDER DEPLOYMENT
+---------------------
+- PHP 8.3 + Apache.
+- PostgreSQL.
+- PDO PostgreSQL.
+- Automatic database schema migration wakati service inaanza.
+- Dockerfile.
+- render.yaml Blueprint.
+- /api/health endpoint.
+- Custom domain:
+  https://portal.belmgeneraltech.co.tz/

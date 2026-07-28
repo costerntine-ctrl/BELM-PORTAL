@@ -8,7 +8,7 @@ Hii ZIP ina:
 - Dockerfile
 - render.yaml (Blueprint)
 - Automatic database initialization
-- Customer application and admin approval workflow
+- Unified customer/staff registration and admin role approval workflow
 - Automatic customer, machine and checklist synchronization
 - public_website_patch/ for belmgeneraltech.co.tz
 
@@ -35,6 +35,10 @@ Jibu sahihi la health:
   "database": "connected"
   "adminReady": true
 
+Apache ina API FallbackResource ya /api/index.php, kwa hiyo REST URLs kama
+/api/health, /api/customers na /api/billing/invoices zinafika kwenye router
+hata kama hosting environment haitumii nested .htaccess rewrite.
+
 
 LOGIN YA KWANZA
 ---------------
@@ -50,25 +54,26 @@ Default delete PIN:
 Badilisha password na PIN baada ya kuingia.
 
 
-CUSTOMER APPLICATION WORKFLOW
------------------------------
-Public application:
+UNIFIED REGISTRATION & APPROVAL
+-------------------------------
+Public registration for Customer, Technician and Staff:
   https://portal.belmgeneraltech.co.tz/apply/
 
 Admin applications:
   https://portal.belmgeneraltech.co.tz/admin-applications/
 
 Workflow:
-1. Customer anajaza company, TIN, VRN, contact, machine type, brand,
-   model, registration number, email na password.
-2. Request inakuwa PENDING.
-3. Admin anaingia kwa email/password na kufungua Customer Applications.
-4. Admin anachagua Approve Customer au Cancel Request.
-5. Approval inatengeneza customer account na machine record.
-6. Checklist ya machine type inaunganishwa automatically.
-7. Kama checklist ya machine type haipo, standard inspection checklist
-   inatengenezwa automatically.
-8. Customer anaingia kwa email na password aliyotengeneza kwenye application.
+1. Registration type ni Customer au Staff / Technician.
+2. Customer anajaza company, TIN, VRN, contact na machine details.
+3. Staff/Technician anajaza name, email, phone na requested role.
+4. Request inakuwa PENDING na haiwezi kuona dashboard yoyote.
+5. Kwa Customer, Admin ana-approve; account, machine na checklist
+   vinatengenezwa kutoka details za request.
+6. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
+   apewe Assigned Customer.
+7. Approval inagenerate login link, temporary password na recovery code.
+8. Admin anatumia Copy credentials kumtumia user taarifa zote.
+9. User anaona pages/data za role yake tu.
 
 Admin > Service Requests sasa inafungua manager kamili:
   /service-request-manager/
@@ -83,9 +88,22 @@ Customer na assistants wake wanatumia link hiyo hiyo. Kila mmoja anaingia
 kwa email na password yake.
 
 Portal home ina login choices:
+  Registration: /apply/
   Admin:       /admin/login
   Technician:  /tech
   Customer:    /portal/login
+  Password reset: /forgot-password/
+
+
+SELF-SERVICE FORGOT PASSWORD
+----------------------------
+- Customer, assistant, Technician na staff wote wanaweza kutumia:
+    /forgot-password/
+- User anaweka email, BELM recovery code na password mpya.
+- Recovery code ya zamani ina-expire baada ya reset.
+- Mfumo unaonyesha recovery code mpya mara moja; user lazima aisave.
+- Existing account isiyo na recovery code: Admin afanye Reset Login/Password
+  mara moja ili kupata temporary password na recovery code mpya.
 
 
 BELM UI THEME
@@ -116,6 +134,7 @@ Security:
 - Assistant anaona customer na machines za kampuni yake tu.
 - Deactivated/deleted assistant token inakataliwa automatically.
 - Email ya kila portal account hairuhusiwi kutumika mara mbili.
+- Assistant mpya anapata recovery code kwa self-service password reset.
 - Baada ya ku-deploy version hii, customer users waliokuwa tayari wame-login
   wa-login upya mara moja ili token mpya yenye owner/assistant role itengenezwe.
 
@@ -129,6 +148,8 @@ Admin > Checklist Templates sasa inafungua:
 - Save ikishindikana hakuna half-saved template/report.
 - Mfumo unathibitisha saved item count kabla ya kuonyesha success.
 - Required items, input type, dropdown values na safety levels zinavalidate.
+- Input type ikiwa DROPDOWN, Admin anatumia + Add value kuongeza kila option.
+- Kila dropdown value inaweza kupewa GREEN, YELLOW au RED safety color.
 - Technician report, answers na machine status zinahifadhiwa pamoja.
 
 
@@ -177,11 +198,66 @@ Admin > Accounting & Billing sasa inafungua:
   /billing-manager/
 
 - Create customer invoice yenye items, machine, due date na tax.
+- Customer akichaguliwa, company name, email, phone, address, TIN na VRN
+  zinajazwa/kuonyeshwa automatically kwenye invoice na proforma form.
+- Kitufe cha Back to Main Menu kinarudi Admin > Customers.
 - Record payment; balance na PAID/PARTIALLY PAID status zinahesabiwa automatic.
 - Overpayment na payment ya cancelled invoice zinakataliwa.
 - Record company expenses.
 - Create na edit proforma invoice pamoja na items, VAT na discount.
 - Invoice/proforma na items zake zinasave kwa database transaction moja.
+
+
+SYSTEM SETTINGS, SPARE PARTS NA ROLES
+-------------------------------------
+- Light/Dark theme sasa inabadilisha dashboard nzima.
+- Theme inahifadhiwa kwenye browser na database (displayTheme), kwa hiyo
+  inarudi automatically baada ya refresh/login.
+- Admin > Spare Parts inafungua /spare-parts-manager/ yenye save confirmation,
+  validation, edit, delete, search, low-stock count na inventory value.
+- Part number inahifadhiwa kwa uppercase na duplicate part number inakataliwa
+  kwa ujumbe unaoeleweka.
+- Admin > Roles & System Users inafungua /roles-manager/.
+- Admin anaweza Add Role, Add System User na Change Role ya user aliyepo.
+- Public staff registration haionekani dashboard mpaka Super Admin a-approve
+  na kuchagua exact role.
+- Menus nje ya allowedPages za role zinafichwa, na API inakataa direct URL.
+- Technician role inalazimisha Assigned Customer.
+- User role, active status, phone na assigned customer zinahifadhiwa pamoja.
+- Mfumo unazuia kubadilisha/kufuta Super Admin wa mwisho.
+
+
+CUSTOMER CARDS NA WORKING LINKS
+-------------------------------
+- Admin > Customers inafungua /customers-manager/.
+- Customers Overview imepangwa kwa card style yenye company, email, phone,
+  address, TIN, VRN na account status.
+- Kila customer card ina machine cards zake.
+- Machine status ina color:
+  GREEN = Normal
+  YELLOW = Attention
+  RED = Don't operate
+  GREY = Not checked/unknown
+- Customer link inatumia automatically domain inayofunguliwa wakati huo:
+  Render URL au portal.belmgeneraltech.co.tz.
+- Kila customer card ina Copy Link na Open Customer Login.
+- Customer mpya anaonyesha email, temporary password, recovery code na
+  working portal link.
+- Reset Login inagenerate password/recovery code mpya kwa existing customer.
+
+
+SMART SUPPLIER DIRECTORY
+------------------------
+- Admin > Suppliers inafungua /suppliers-manager/.
+- Suppliers wamepangwa kwa cards na trust score.
+- Smart Trust Check inatumia contact, WhatsApp, business email, website,
+  location na BELM verification.
+- Trust levels: TRUSTED, REVIEW na VERIFY.
+- Supplier card ina phone, email, website, location, specialty na notes.
+- WhatsApp button inafungua message ya BELM kwa supplier.
+- Admin anaweza Save, Edit au Delete supplier.
+- Trust score ni pre-screening aid; verify documents, identity na payment
+  details kabla ya kufanya biashara.
 
 
 MUHIMU KUHUSU FREE PLAN
@@ -215,7 +291,9 @@ USALAMA
 - Usichapishe repository ikiwa baadaye utaongeza siri au taarifa binafsi.
 - Recycle Bin restore/permanent delete na kubadilisha Admin PIN ni Super
   Admin-only.
-- Hakuna public forgot-password endpoint inayotoa password mpya kwenye browser.
+- Forgot Password inahitaji email + recovery code iliyotolewa wakati account
+  ili-approve; haiwezi kutumika kwa email pekee.
+- Recovery code inahifadhiwa kwa BCRYPT hash na inabadilika baada ya kila reset.
 
 
 ORODHA KAMILI YA FUNCTIONS

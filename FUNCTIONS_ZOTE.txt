@@ -1,33 +1,30 @@
 BELM PORTAL - FUNCTIONS ZOTE
 ============================
 
-1. PUBLIC CUSTOMER APPLICATION
+1. PUBLIC UNIFIED REGISTRATION
 ------------------------------
-- Company name
-- Email
-- Company address
-- Phone number
-- TIN number
-- VRN number
-- Machine type
-- Machine brand
-- Machine model
-- Machine registration number
-- Customer password
-- Unique application reference number
-- Request status: PENDING
+- Customer, Technician na Staff wote wana-register kupitia /apply/.
+- Customer fields: company, email, address, phone, TIN, VRN, machine type,
+  brand, model na registration number.
+- Staff fields: full name, email, phone, requested role na responsibility.
+- Unique application reference number.
+- Request status: PENDING.
+- Pending request haina dashboard login wala data access.
 
 
-2. ADMIN APPLICATION APPROVAL
+2. ADMIN ROLE/APPLICATION APPROVAL
 -----------------------------
 - Admin anaona Pending, Approved, Cancelled na All requests.
 - Admin anaweza Approve Customer.
+- Super Admin ana-assign exact role kabla ya ku-approve Staff/Technician.
+- Technician approval inalazimisha Assigned Customer.
 - Admin anaweza Cancel Request.
 - Approval inatengeneza customer database record.
 - Approval inatengeneza machine database record.
 - Checklist ya machine type inaunganishwa automatically.
 - Standard checklist inatengenezwa kama checklist ya machine type haipo.
-- Approval inaonyesha customer email na customer portal link.
+- Approval inaonyesha login link, email, temporary password na recovery code.
+- Copy credentials inakopi taarifa zote kwa ujumbe mmoja.
 
 
 3. ONE NAMED CUSTOMER LINK
@@ -52,6 +49,8 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Customer Assistant login kwa email na password.
 - JWT authentication.
 - Inactive/deleted accounts zinakataliwa.
+- Role menus nje ya allowedPages zinafichwa.
+- Direct API/page access nje ya role inakataliwa.
 
 
 5. CUSTOMER ASSISTANTS
@@ -66,6 +65,7 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Main customer anaweza kubadilisha assistant password.
 - Main customer anaweza activate/deactivate assistant.
 - Main customer anaweza delete assistant.
+- Assistant anapata recovery code ya kujihudumia akipoteza password.
 - Assistant hawezi ku-create, edit au delete assistant mwingine.
 - Email haiwezi kurudiwa kwenye customer, assistant au staff account.
 
@@ -110,6 +110,8 @@ BELM PORTAL - FUNCTIONS ZOTE
   YELLOW
   RED
 - Dropdown values zinahifadhiwa kama JSONB.
+- Input type ikiwa DROPDOWN, + Add value inaongeza options moja moja.
+- Kila dropdown option ina safety color yake: GREEN, YELLOW au RED.
 - Template na items zake zinasave kwa database transaction moja.
 - Save ikifeli, data yote inarollback; hakuna half-saved template.
 - Baada ya save, mfumo unarudisha template iliyosave na kuthibitisha item count.
@@ -189,11 +191,28 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Activity log.
 - Recycle Bin list; restore/permanent delete ni Super Admin-only.
 - Customer application approval shortcut with pending count.
+- Unified customer/staff application approval na role assignment.
+- Light/Dark theme inafanya kazi dashboard nzima.
+- Theme inasave browser + database na inarudi baada ya refresh.
+- Spare Parts manager inathibitisha save, edit, duplicate part number,
+  low-stock count na inventory value.
+- Roles manager ina Add Role, Add System User na Change Role.
+- Change Role ina-update active status na Assigned Customer.
+- Mfumo unalinda Super Admin wa mwisho asibadilishwe au kufutwa.
+- Invoice/Proforma customer selection inaonyesha automatically company name,
+  email, phone, address, TIN na VRN.
+- Billing Manager ina Back to Main Menu inayofanya kazi.
+- Customers Overview ina customer cards zenye full company information.
+- Kila customer card ina machine cards na Green/Yellow/Red/Not Checked status.
+- Customer link ina Copy Link na Open Login, na inafanya kazi kwenye Render
+  URL au custom portal domain inayotumika.
+- Supplier Directory ina cards, Smart Trust Score, trust status, WhatsApp,
+  website, Save/Edit/Delete.
 
 
 14. SECURITY
 ------------
-- Passwords zinahifadhiwa kwa BCRYPT hash.
+- Passwords na recovery codes zinahifadhiwa kwa BCRYPT hash.
 - JWT secret inatolewa na Render environment.
 - Customer, assistant na technician data isolation iko backend.
 - Duplicate portal emails zinakataliwa.
@@ -202,7 +221,9 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Soft delete/Recycling kwa business records.
 - Viewer controls zimefichwa kwenye UI na write access imezuiwa pia backend.
 - Customer report download inatuma authentication token.
-- Public plaintext password-reset endpoint imeondolewa.
+- Self-service Forgot Password inahitaji email + recovery code.
+- Recovery code ya zamani ina-expire na mpya hutolewa baada ya reset.
+- Account ya PENDING haiwezi ku-login mpaka approval na role assignment.
 - Admin PIN change ni Super Admin-only.
 - Invoice payment haiwezi kuzidi balance.
 

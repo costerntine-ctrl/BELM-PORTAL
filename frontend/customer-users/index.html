@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer Assistants — BELM Portal</title>
+  <link rel="stylesheet" href="/customer-users/users.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/portal/dashboard">
+      <span class="mark">B</span>
+      <span><b>BELM Customer Portal</b><small>Assistant User Management</small></span>
+    </a>
+    <nav>
+      <a href="/portal/dashboard">← Customer dashboard</a>
+      <button id="logoutButton" type="button">Log out</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div>
+        <p class="eyebrow">CUSTOMER ACCOUNT SECURITY</p>
+        <h1>Manage assistants</h1>
+        <p class="lead">Create separate email and password logins for your operators or read-only viewers. Every assistant remains limited to your company and machines.</p>
+      </div>
+      <button class="primary compact" id="addButton" type="button">+ Add assistant</button>
+    </section>
+
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+
+    <section class="summary-grid">
+      <article><strong id="totalCount">0</strong><span>Total assistants</span></article>
+      <article><strong id="activeCount">0</strong><span>Active accounts</span></article>
+      <article><strong>2</strong><span>Operator / Viewer roles</span></article>
+    </section>
+
+    <section class="share-link">
+      <div><strong>One customer portal link</strong><span>Share this same link with your assistants. Each person uses their own email and password.</span></div>
+      <code id="customerPortalUrl">Loading link…</code>
+      <button class="secondary" id="copyLinkButton" type="button">Copy link</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Assistant accounts</h2><p>Use Edit to change a role, reset a password or deactivate access.</p></div>
+        <button class="secondary" id="refreshButton" type="button">Refresh</button>
+      </div>
+      <div id="userList" class="user-list"><div class="loading">Loading assistants…</div></div>
+    </section>
+  </main>
+
+  <dialog id="userDialog">
+    <form id="userForm">
+      <div class="dialog-head">
+        <div><p class="eyebrow">CUSTOMER ASSISTANT</p><h2 id="dialogTitle">Add assistant</h2></div>
+        <button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="userId" type="hidden">
+      <div class="form-grid">
+        <label class="wide">Full name<input id="name" maxlength="255" required autocomplete="name"></label>
+        <label>Email address<input id="email" type="email" maxlength="255" required autocomplete="email"></label>
+        <label>Phone number<input id="phone" maxlength="50" autocomplete="tel"></label>
+        <label>Access role
+          <select id="role" required>
+            <option value="operator">Operator — view and request service</option>
+            <option value="viewer">Viewer — read only</option>
+          </select>
+        </label>
+        <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>
+        <label>Password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">At least 8 characters</small></label>
+        <label>Confirm password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
+      </div>
+      <div id="formError" class="alert error hidden" role="alert"></div>
+      <div class="dialog-actions">
+        <button class="secondary" id="cancelButton" type="button">Cancel</button>
+        <button class="primary" id="saveButton" type="submit">Save assistant</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/customer-users/users.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checklist Templates — BELM Admin</title>
+  <link rel="stylesheet" href="/checklist-manager/manager.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/admin/customers"><span class="mark">B</span><span><b>BELM Admin</b><small>Reliable Checklist Manager</small></span></a>
+    <nav><a href="/admin/customers">← Admin dashboard</a><button id="logoutButton" type="button">Log out</button></nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div><p class="eyebrow">MACHINE INSPECTION SETUP</p><h1>Checklist templates</h1><p class="lead">Create or edit a complete checklist and save its items together in one protected transaction.</p></div>
+      <button class="primary compact" id="newButton" type="button">+ New template</button>
+    </section>
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+    <section id="templateList" class="template-list"><div class="loading">Loading templates…</div></section>
+  </main>
+
+  <dialog id="templateDialog">
+    <form id="templateForm">
+      <div class="dialog-head">
+        <div><p class="eyebrow">CHECKLIST TEMPLATE</p><h2 id="dialogTitle">New template</h2></div>
+        <button class="icon-button" id="closeButton" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="templateId" type="hidden">
+      <div class="template-fields">
+        <label>Template name<input id="templateName" maxlength="255" required placeholder="e.g. Daily Reach Stacker Inspection"></label>
+        <label>Machine type<input id="machineType" maxlength="100" required placeholder="e.g. Reach Stacker"></label>
+        <label class="active-row"><span>Template active</span><input id="isActive" type="checkbox" checked></label>
+      </div>
+      <div class="items-head"><div><h3>Checklist items</h3><p>All required items must be completed before a technician can submit a report.</p></div><button class="secondary" id="addItemButton" type="button">+ Add item</button></div>
+      <section id="itemList" class="item-list"></section>
+      <div id="formError" class="alert error hidden" role="alert"></div>
+      <div class="dialog-actions">
+        <button class="secondary" id="cancelButton" type="button">Cancel</button>
+        <button class="primary" id="saveButton" type="submit">Save template</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/checklist-manager/manager.js"></script>
+</body>
+</html>

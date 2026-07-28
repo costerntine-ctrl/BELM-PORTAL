@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BELM Portal</title>
+  <style>
+    :root { color-scheme: light; --navy:#151d31; --navy2:#202b45; --green:#00a651; --green2:#008640; --yellow:#ffd400; --line:#dce6e0; --muted:#617083; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:Inter,system-ui,sans-serif; color:#102235;
+      background:radial-gradient(circle at 10% 8%,rgba(255,212,0,.12) 0,transparent 31rem),radial-gradient(circle at 95% 3%,rgba(0,166,81,.1) 0,transparent 30rem),#f4f7f5; }
+    body::before { content:""; position:fixed; inset:0 0 auto; z-index:100; height:5px; background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); }
+    header { background:linear-gradient(110deg,var(--navy),var(--navy2)); color:#fff; padding:22px clamp(20px,5vw,68px); display:flex; align-items:center; gap:14px; box-shadow:0 8px 24px rgba(21,29,49,.17); }
+    .mark { width:46px; height:46px; border-radius:12px; display:grid; place-items:center; background:var(--green); border:2px solid var(--yellow); font-weight:900; box-shadow:0 7px 18px rgba(0,166,81,.23); }
+    header strong { display:block; font-size:18px; }
+    header span { color:#a9bdd2; font-size:12px; }
+    main { width:min(1040px,calc(100% - 32px)); margin:54px auto; }
+    h1 { font-size:clamp(30px,5vw,50px); margin:0; color:var(--navy); letter-spacing:-1.5px; }
+    .lead { color:var(--muted); font-size:17px; max-width:720px; line-height:1.6; margin:14px 0 34px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:18px; padding:24px; color:inherit; position:relative; overflow:hidden;
+      text-decoration:none; box-shadow:0 8px 26px rgba(21,29,49,.06); transition:.18s ease; }
+    .card::before { content:""; position:absolute; inset:0 0 auto; height:4px; background:var(--green); transform:scaleX(0); transform-origin:left; transition:.18s ease; }
+    .card:hover { transform:translateY(-3px); border-color:#9ccfb4; box-shadow:0 14px 34px rgba(21,29,49,.1); }
+    .card:hover::before { transform:scaleX(1); }
+    .icon { width:42px; height:42px; border-radius:11px; background:#e7f8ee; color:var(--green2); display:grid; place-items:center; font-weight:900; }
+    h2 { font-size:17px; margin:18px 0 8px; }
+    .card p { font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 18px; }
+    .go { color:var(--green2); font-weight:800; font-size:13px; }
+    .apply { border:2px solid var(--green); }
+    .apply .icon { background:var(--yellow); color:var(--navy); }
+    .apply::before { background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); transform:scaleX(1); }
+    footer { color:#6c7c8d; text-align:center; font-size:12px; padding:20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="mark">B</div>
+    <div><strong>BELM GENERAL TECH</strong><span>Service & Maintenance Portal</span></div>
+  </header>
+  <main>
+    <h1>Welcome to BELM Portal</h1>
+    <p class="lead">Use your email and password to access the correct workspace. New companies can apply for portal access below.</p>
+    <section class="grid">
+      <a class="card apply" href="/apply/">
+        <div class="icon">+</div><h2>New Customer Application</h2>
+        <p>Register your company and machine for BELM Portal approval.</p><span class="go">Apply now →</span>
+      </a>
+      <a class="card" href="/portal/login">
+        <div class="icon">C</div><h2>Customer Login</h2>
+        <p>View machines, inspection reports and service requests.</p><span class="go">Customer sign in →</span>
+      </a>
+      <a class="card" href="/tech">
+        <div class="icon">T</div><h2>Technician Login</h2>
+        <p>Complete synchronized checklists and submit field reports.</p><span class="go">Technician sign in →</span>
+      </a>
+      <a class="card" href="/admin/login">
+        <div class="icon">A</div><h2>Administrator Login</h2>
+        <p>Approve applications and manage portal operations.</p><span class="go">Admin sign in →</span>
+      </a>
+    </section>
+  </main>
+  <footer>© BELM General Tech Service Limited · Tanzania</footer>
+</body>
+</html>

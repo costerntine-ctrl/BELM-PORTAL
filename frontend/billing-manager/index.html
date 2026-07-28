@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM Billing Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/billing-manager/manager.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/admin/customers">
+        <span class="brand-mark">B</span>
+        <span>BELM <small>Billing Manager</small></span>
+      </a>
+      <div class="top-actions">
+        <button id="refreshButton" class="ghost" type="button">Refresh</button>
+        <button id="logoutButton" class="ghost" type="button">Log out</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Accounting & Billing</p>
+          <h1>Invoices, payments and expenses</h1>
+          <p>Manage customer balances and business records from one reliable screen.</p>
+        </div>
+        <div class="hero-actions">
+          <button id="newInvoiceButton" class="primary" type="button">+ New invoice</button>
+          <button id="newExpenseButton" class="secondary" type="button">+ Record expense</button>
+          <button id="newProformaButton" class="secondary" type="button">+ New proforma</button>
+        </div>
+      </section>
+
+      <section class="metrics">
+        <article><span>Invoice value</span><strong id="invoiceValue">TZS 0</strong></article>
+        <article><span>Paid</span><strong id="paidValue">TZS 0</strong></article>
+        <article><span>Outstanding</span><strong id="outstandingValue">TZS 0</strong></article>
+        <article><span>Expenses</span><strong id="expenseValue">TZS 0</strong></article>
+      </section>
+
+      <div id="alertBox" class="alert hidden" role="status"></div>
+
+      <nav class="tabs" aria-label="Billing sections">
+        <button class="active" data-tab="invoices" type="button">Invoices</button>
+        <button data-tab="expenses" type="button">Expenses</button>
+        <button data-tab="proformas" type="button">Proformas</button>
+      </nav>
+
+      <section id="invoicesPanel" class="panel"></section>
+      <section id="expensesPanel" class="panel hidden"></section>
+      <section id="proformasPanel" class="panel hidden"></section>
+    </main>
+
+    <dialog id="invoiceDialog">
+      <form id="invoiceForm" class="dialog-card">
+        <div class="dialog-head"><div><p class="eyebrow">Customer billing</p><h2>New invoice</h2></div><button class="icon-close" data-close="invoiceDialog" type="button">×</button></div>
+        <div id="invoiceError" class="alert error hidden"></div>
+        <div class="form-grid">
+          <label>Customer<select id="invoiceCustomer" required></select></label>
+          <label>Machine<select id="invoiceMachine"><option value="">No machine / general</option></select></label>
+          <label>Due date<input id="invoiceDueDate" type="date"></label>
+          <label>Tax (TZS)<input id="invoiceTax" type="number" min="0" step="0.01" value="0"></label>
+        </div>
+        <div class="items-head"><h3>Invoice items</h3><button id="addInvoiceItem" class="link-button" type="button">+ Add item</button></div>
+        <div id="invoiceItems" class="item-list"></div>
+        <div class="dialog-actions"><button class="ghost" data-close="invoiceDialog" type="button">Cancel</button><button id="saveInvoiceButton" class="primary">Save invoice</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="paymentDialog">
+      <form id="paymentForm" class="dialog-card compact">
+        <div class="dialog-head"><div><p class="eyebrow">Customer payment</p><h2 id="paymentTitle">Record payment</h2></div><button class="icon-close" data-close="paymentDialog" type="button">×</button></div>
+        <input id="paymentInvoiceId" type="hidden">
+        <div id="paymentError" class="alert error hidden"></div>
+        <label>Amount (TZS)<input id="paymentAmount" required type="number" min="0.01" step="0.01"></label>
+        <label>Method<select id="paymentMethod"><option>Bank</option><option>Cash</option><option>Mobile Money</option><option>Cheque</option></select></label>
+        <label>Reference<input id="paymentReference" placeholder="Receipt or transfer reference"></label>
+        <div class="dialog-actions"><button class="ghost" data-close="paymentDialog" type="button">Cancel</button><button id="savePaymentButton" class="primary">Record payment</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="expenseDialog">
+      <form id="expenseForm" class="dialog-card compact">
+        <div class="dialog-head"><div><p class="eyebrow">Operating cost</p><h2>Record expense</h2></div><button class="icon-close" data-close="expenseDialog" type="button">×</button></div>
+        <div id="expenseError" class="alert error hidden"></div>
+        <label>Date<input id="expenseDate" required type="date"></label>
+        <label>Category<select id="expenseCategory"><option>SALARIES</option><option>RENT</option><option>FUEL</option><option>UTILITIES</option><option>SUPPLIES</option><option>MAINTENANCE</option><option selected>OTHER</option></select></label>
+        <label>Description<input id="expenseDescription" required></label>
+        <label>Amount (TZS)<input id="expenseAmount" required type="number" min="0.01" step="0.01"></label>
+        <label>Recorded by<input id="expenseRecordedBy"></label>
+        <div class="dialog-actions"><button class="ghost" data-close="expenseDialog" type="button">Cancel</button><button id="saveExpenseButton" class="primary">Save expense</button></div>
+      </form>
+    </dialog>
+
+    <dialog id="proformaDialog">
+      <form id="proformaForm" class="dialog-card">
+        <div class="dialog-head"><div><p class="eyebrow">Quotation</p><h2 id="proformaTitle">New proforma</h2></div><button class="icon-close" data-close="proformaDialog" type="button">×</button></div>
+        <input id="proformaId" type="hidden">
+        <div id="proformaError" class="alert error hidden"></div>
+        <div class="form-grid">
+          <label>Customer<select id="proformaCustomer" required></select></label>
+          <label>Date<input id="proformaDate" required type="date"></label>
+          <label>VAT mode<select id="proformaVatMode"><option value="VAT">VAT 18%</option><option value="NO_VAT">No VAT</option></select></label>
+          <label>Discount (TZS)<input id="proformaDiscount" type="number" min="0" step="0.01" value="0"></label>
+        </div>
+        <div class="items-head"><h3>Proforma items</h3><button id="addProformaItem" class="link-button" type="button">+ Add item</button></div>
+        <div id="proformaItems" class="item-list"></div>
+        <div class="dialog-actions"><button class="ghost" data-close="proformaDialog" type="button">Cancel</button><button id="saveProformaButton" class="primary">Save proforma</button></div>
+      </form>
+    </dialog>
+
+    <script src="/billing-manager/manager.js"></script>
+  </body>
+</html>

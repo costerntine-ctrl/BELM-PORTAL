@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Service Requests — BELM Admin</title>
+  <link rel="stylesheet" href="/service-request-manager/manager.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/admin/customers"><span class="mark">B</span><span><b>BELM Admin</b><small>Service Request Control</small></span></a>
+    <nav><a href="/admin/customers">← Admin dashboard</a><button id="logoutButton" type="button">Log out</button></nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div><p class="eyebrow">CUSTOMER SUPPORT WORKFLOW</p><h1>Service requests</h1><p class="lead">Assign the correct Technician, update job status and keep service notes in one place.</p></div>
+      <button class="secondary" id="refreshButton" type="button">Refresh</button>
+    </section>
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+    <section id="statusTabs" class="tabs"></section>
+    <section id="requestList" class="request-list"><div class="loading">Loading service requests…</div></section>
+  </main>
+
+  <dialog id="noteDialog">
+    <form id="noteForm">
+      <div class="dialog-head"><div><p class="eyebrow">SERVICE UPDATE</p><h2>Add service note</h2></div><button id="closeNoteButton" type="button" aria-label="Close">×</button></div>
+      <input id="noteRequestId" type="hidden">
+      <div id="noteHistory" class="note-history"></div>
+      <label class="note-field">New note<textarea id="noteText" rows="4" maxlength="1000" required placeholder="e.g. Hydraulic seal ordered; expected Friday."></textarea></label>
+      <div id="noteError" class="alert error hidden"></div>
+      <div class="dialog-actions"><button class="secondary" id="cancelNoteButton" type="button">Cancel</button><button class="primary" id="saveNoteButton" type="submit">Save note</button></div>
+    </form>
+  </dialog>
+
+  <script src="/service-request-manager/manager.js"></script>
+</body>
+</html>

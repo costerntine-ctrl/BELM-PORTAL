@@ -1,0 +1,21 @@
+BELM WEBSITE LINK PATCH
+=======================
+
+Upload these PHP files to the document root of:
+  https://belmgeneraltech.co.tz/
+
+Usually the cPanel folder is:
+  public_html/
+
+Files and destinations:
+  client_register.php   -> New Customer Application
+  client_login.php      -> Customer Login
+  login.php             -> Admin Login
+  technician_login.php  -> Technician Login (optional)
+
+The current BELM public website already links to client_register.php,
+client_login.php and login.php. These small redirect files connect those
+buttons to:
+  https://portal.belmgeneraltech.co.tz
+
+No database settings are required in these files.

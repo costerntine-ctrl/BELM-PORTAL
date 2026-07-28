@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apply for BELM Portal</title>
+  <link rel="stylesheet" href="/apply/app.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="mark">B</span><span><b>BELM GENERAL TECH</b><small>Customer Portal Application</small></span></a>
+    <a class="login-link" href="/portal/login">Customer login</a>
+  </header>
+
+  <main class="page">
+    <section class="intro">
+      <p class="eyebrow">BELM CUSTOMER ONBOARDING</p>
+      <h1>Connect your company and machine to BELM Portal</h1>
+      <p>Submit the details below. BELM administration will verify the request before your portal account, machine record and inspection checklist are activated.</p>
+      <ol class="steps">
+        <li><b>1</b><span>Submit company and machine information</span></li>
+        <li><b>2</b><span>BELM administrator approves the request</span></li>
+        <li><b>3</b><span>Log in using your email and chosen password</span></li>
+      </ol>
+    </section>
+
+    <section class="form-card" id="applicationCard">
+      <form id="applicationForm" novalidate>
+        <div class="section-title"><span>1</span><div><b>Company information</b><small>Registered business details</small></div></div>
+        <div class="form-grid">
+          <label class="wide">Company name<input name="companyName" maxlength="255" required autocomplete="organization"></label>
+          <label>Email address<input name="email" type="email" maxlength="255" required autocomplete="email"></label>
+          <label>Phone number<input name="phone" maxlength="50" required autocomplete="tel"></label>
+          <label class="wide">Company address<textarea name="address" maxlength="500" rows="2" required autocomplete="street-address"></textarea></label>
+          <label>TIN number<input name="tinNumber" maxlength="50" required></label>
+          <label>VRN number<input name="vrn" maxlength="50" required></label>
+        </div>
+
+        <div class="section-title"><span>2</span><div><b>Machine information</b><small>Choose the closest available details</small></div></div>
+        <div class="form-grid">
+          <label>Machine type<select name="machineType" id="machineType" required><option value="">Select machine type</option></select></label>
+          <label>Machine / brand<select name="brand" id="brand" required disabled><option value="">Select brand</option></select></label>
+          <label id="customBrandWrap" class="hidden">Enter machine brand<input id="customBrand" maxlength="100"></label>
+          <label>Machine model<select name="model" id="model" required disabled><option value="">Select model</option></select></label>
+          <label id="customModelWrap" class="hidden">Enter machine model<input id="customModel" maxlength="255"></label>
+          <label>Machine registration number<input name="regNumber" maxlength="100" required></label>
+        </div>
+
+        <div class="section-title"><span>3</span><div><b>Create customer login</b><small>This password remains private and is activated after approval</small></div></div>
+        <div class="form-grid">
+          <label>Password<input name="password" id="password" type="password" minlength="8" required autocomplete="new-password"><small class="hint">At least 8 characters</small></label>
+          <label>Confirm password<input name="confirmPassword" type="password" minlength="8" required autocomplete="new-password"></label>
+        </div>
+
+        <label class="bot-field" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+        <div id="formError" class="alert error hidden" role="alert"></div>
+        <label class="consent"><input type="checkbox" name="consent" required> I confirm that the company and machine information provided is correct.</label>
+        <button id="submitButton" type="submit">Submit portal application</button>
+        <p class="privacy">Your password is encrypted. BELM administrators cannot view it.</p>
+      </form>
+    </section>
+
+    <section class="form-card success hidden" id="successCard">
+      <div class="success-icon">✓</div>
+      <p class="eyebrow">APPLICATION RECEIVED</p>
+      <h2>Thank you. Your request is awaiting approval.</h2>
+      <p>Keep this reference number:</p>
+      <strong id="referenceNo" class="reference"></strong>
+      <p>BELM administration will contact you after review. Once approved, use your email and the password you created to log in.</p>
+      <a class="secondary-button" href="/portal/login">Go to customer login</a>
+    </section>
+  </main>
+  <script src="/apply/app.js"></script>
+</body>
+</html>

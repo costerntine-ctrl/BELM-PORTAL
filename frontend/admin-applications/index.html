@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Customer Applications — BELM Admin</title>
+  <link rel="stylesheet" href="/admin-applications/admin.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><span>B</span><div><b>BELM Admin</b><small>Customer Applications</small></div></div>
+    <nav><a href="/admin/customers">← Admin dashboard</a><button id="logoutButton">Log out</button></nav>
+  </header>
+
+  <main>
+    <div class="heading">
+      <div><p>PORTAL ONBOARDING</p><h1>Customer applications</h1><span>Approve or cancel requests submitted from the BELM company website.</span></div>
+      <button class="refresh" id="refreshButton">Refresh</button>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="active" data-status="PENDING">Pending <b id="pendingCount">0</b></button>
+      <button data-status="APPROVED">Approved</button>
+      <button data-status="CANCELLED">Cancelled</button>
+      <button data-status="">All</button>
+    </div>
+
+    <div id="alertBox" class="alert hidden"></div>
+    <section id="applicationList" class="application-list">
+      <div class="loading">Loading applications…</div>
+    </section>
+  </main>
+
+  <dialog id="approvalDialog">
+    <button class="dialog-close" aria-label="Close">×</button>
+    <div class="check">✓</div>
+    <h2>Customer approved</h2>
+    <p>The customer, machine and checklist access have been created.</p>
+    <div class="login-summary">
+      <label>Customer</label><strong id="approvedCustomer"></strong>
+      <label>Login email</label><strong id="approvedEmail"></strong>
+      <label>Login link</label><a id="approvedLink" target="_blank" rel="noopener"></a>
+    </div>
+    <button id="copyMessageButton" class="primary">Copy approval message</button>
+  </dialog>
+
+  <script src="/admin-applications/admin.js"></script>
+</body>
+</html>

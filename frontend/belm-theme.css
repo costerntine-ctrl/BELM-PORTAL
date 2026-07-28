@@ -1,0 +1,152 @@
+:root {
+  color-scheme: light;
+  --belm-navy: #151d31;
+  --belm-navy-soft: #202b45;
+  --belm-green: #00a651;
+  --belm-green-dark: #008640;
+  --belm-yellow: #ffd400;
+  --belm-canvas: #f4f7f5;
+  --belm-line: #dce6e0;
+  --belm-ink: #182235;
+}
+
+html {
+  accent-color: var(--belm-green);
+}
+
+body {
+  color: var(--belm-ink);
+  background:
+    radial-gradient(circle at 8% 2%, rgba(255, 212, 0, .09), transparent 24rem),
+    radial-gradient(circle at 96% 5%, rgba(0, 166, 81, .08), transparent 28rem),
+    var(--belm-canvas) !important;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10000;
+  height: 4px;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--belm-yellow) 0 34%, var(--belm-green) 34% 100%);
+}
+
+::selection {
+  color: #fff;
+  background: var(--belm-green);
+}
+
+.bg-belm-black {
+  background-color: var(--belm-navy) !important;
+}
+
+.bg-belm-blue {
+  background-color: var(--belm-green) !important;
+}
+
+.hover\:bg-belm-blueDark:hover {
+  background-color: var(--belm-green-dark) !important;
+}
+
+.bg-belm-green {
+  background-color: var(--belm-green) !important;
+}
+
+.bg-belm-yellow {
+  background-color: var(--belm-yellow) !important;
+}
+
+.text-belm-black {
+  color: var(--belm-navy) !important;
+}
+
+.text-belm-blue,
+.text-belm-green {
+  color: var(--belm-green-dark) !important;
+}
+
+.text-belm-yellow {
+  color: #d7b400 !important;
+}
+
+.border-belm-blue {
+  border-color: var(--belm-green) !important;
+}
+
+.border-belm-yellow {
+  border-color: var(--belm-yellow) !important;
+}
+
+.border-slate-200 {
+  border-color: var(--belm-line) !important;
+}
+
+.bg-white.rounded-lg,
+.bg-white.rounded-xl {
+  box-shadow: 0 10px 30px rgba(21, 29, 49, .07);
+}
+
+input,
+select,
+textarea {
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--belm-green) !important;
+  box-shadow: 0 0 0 3px rgba(0, 166, 81, .14) !important;
+  outline: none;
+}
+
+button,
+a {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: .16s;
+  transition-timing-function: ease;
+}
+
+button.bg-belm-blue,
+a.bg-belm-blue {
+  box-shadow: 0 7px 18px rgba(0, 166, 81, .22);
+}
+
+button.bg-belm-blue:hover,
+a.bg-belm-blue:hover {
+  box-shadow: 0 9px 22px rgba(0, 134, 64, .28);
+}
+
+body[data-belm-area="admin"] .min-h-screen.bg-belm-black,
+body[data-belm-area="portal"] .min-h-screen.bg-belm-blue,
+body[data-belm-area="tech"] .min-h-screen.bg-belm-blue {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(0, 166, 81, .21), transparent 30rem),
+    radial-gradient(circle at 88% 85%, rgba(255, 212, 0, .12), transparent 28rem),
+    var(--belm-navy) !important;
+}
+
+body[data-belm-area="admin"] aside.bg-belm-black {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .025), transparent 38%),
+    var(--belm-navy) !important;
+  border-right: 1px solid rgba(255, 255, 255, .07);
+}
+
+body[data-belm-area="admin"] aside .border-belm-yellow {
+  background: rgba(255, 255, 255, .075) !important;
+}
+
+body[data-belm-area="admin"] aside .text-belm-yellow {
+  color: var(--belm-yellow) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}

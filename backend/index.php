@@ -36,6 +36,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'service_request_parts',
             'spare_parts',
             'spare_part_requests',
+            'bank_accounts',
+            'bank_withdrawals',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -86,7 +88,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '17-technician-spare-alerts',
+            'schemaVersion' => '18-bank-manager',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'adminReady' => $adminReady,
@@ -223,6 +225,20 @@ switch ($resource) {
 
     case 'company-expenses':
         dispatch('company_expenses.php', ['id' => $segments[1] ?? null]);
+
+    case 'bank-manager':
+        // GET  /bank-manager
+        // POST /bank-manager/accounts
+        // PUT  /bank-manager/accounts/:id
+        // POST /bank-manager/withdrawals
+        // PUT  /bank-manager/withdrawals/:id
+        if (($segments[1] ?? '') === 'accounts') {
+            dispatch('bank_manager.php', ['action' => 'account', 'id' => $segments[2] ?? null]);
+        }
+        if (($segments[1] ?? '') === 'withdrawals') {
+            dispatch('bank_manager.php', ['action' => 'withdrawal', 'id' => $segments[2] ?? null]);
+        }
+        dispatch('bank_manager.php');
 
     case 'proforma-invoices':
         dispatch('proforma_invoices.php', ['id' => $segments[1] ?? null]);

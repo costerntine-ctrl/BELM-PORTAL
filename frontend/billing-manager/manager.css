@@ -49,6 +49,8 @@ main { width: min(1220px, calc(100% - 44px)); margin: 34px auto 60px; }
 .review-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 19px 20px; border-bottom: 1px solid var(--line); background: #fbfcfd; }
 .review-heading h2 { margin: 3px 0 4px; font: 700 22px "Space Grotesk", sans-serif; }
 .review-heading span { color: var(--muted); font-size: 12px; }
+.review-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.review-actions button:disabled { cursor: not-allowed; opacity: .5; }
 .empty, .locked, .loading { padding: 44px; text-align: center; color: var(--muted); }
 .locked a { color: var(--green); }
 .table-wrap { overflow-x: auto; }
@@ -71,6 +73,21 @@ tbody tr:last-child td { border-bottom: 0; }
 .payment-history > strong { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
 .payment-record { display: grid; grid-template-columns: minmax(130px, 1.2fr) 120px 100px minmax(120px, 1fr) auto; gap: 10px; align-items: center; font-size: 12px; }
 .payment-record button { border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.bank-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 16px; background: #f6f8fa; }
+.bank-metrics article { min-width: 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.bank-metrics span { display: block; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.bank-metrics strong { display: block; margin-top: 7px; overflow-wrap: anywhere; font: 700 17px "Space Grotesk", sans-serif; }
+.bank-metrics .profit-card { border-color: #7dcc9f; background: #ecf9f2; }
+.bank-metrics .profit-card strong, .positive { color: #08763f; }
+.bank-metrics .loss-card { border-color: #ebaaaa; background: #fdf0f0; }
+.bank-metrics .loss-card strong, .negative { color: var(--red); }
+.bank-warning { margin: 0 16px 16px; padding: 11px 13px; color: #725600; border: 1px solid #e4c750; border-radius: 10px; background: #fff9d9; font-size: 12px; }
+.bank-section-title { display: flex; align-items: center; justify-content: space-between; padding: 17px 20px 10px; border-top: 1px solid var(--line); }
+.bank-section-title h3 { margin: 3px 0 0; font-size: 15px; }
+.bank-total-row td { color: var(--ink); border-top: 2px solid var(--green); background: #eef9f3; }
+.bank-total-row strong { font-size: 12px; }
+.compact-empty { padding: 24px; }
+.calculation-note { padding: 13px 18px; color: var(--muted); border-top: 1px solid var(--line); background: #fafbfc; font-size: 11px; line-height: 1.5; }
 .status-select { max-width: 150px; border: 1px solid var(--line); border-radius: 7px; padding: 6px; background: #fff; }
 .alert { margin: 14px 0; padding: 11px 13px; border: 1px solid #8bcda9; border-radius: 10px; background: #eaf8f0; color: #075f36; font-size: 13px; }
 .alert.error { color: #8f2020; border-color: #e5a6a6; background: #fdf0f0; }
@@ -110,6 +127,7 @@ html[data-theme="dark"] .metrics article,
 html[data-theme="dark"] .panel,
 html[data-theme="dark"] dialog,
 html[data-theme="dark"] .billing-section-sidebar,
+html[data-theme="dark"] .bank-metrics article,
 html[data-theme="dark"] .tabs button,
 html[data-theme="dark"] .row-actions button {
   color: var(--ink);
@@ -124,9 +142,15 @@ html[data-theme="dark"] th,
 html[data-theme="dark"] .item-row,
 html[data-theme="dark"] .payment-history-row td,
 html[data-theme="dark"] .review-heading,
+html[data-theme="dark"] .bank-metrics,
+html[data-theme="dark"] .calculation-note,
 html[data-theme="dark"] .customer-info.empty-info {
   background: #111b2c;
 }
+html[data-theme="dark"] .bank-metrics .profit-card { background: #102a21; }
+html[data-theme="dark"] .bank-metrics .loss-card { background: #321b22; }
+html[data-theme="dark"] .bank-warning { color: #f6df86; border-color: #766423; background: #2b2716; }
+html[data-theme="dark"] .bank-total-row td { background: #102a21; }
 html[data-theme="dark"] td { border-bottom-color: #2a394f; }
 html[data-theme="dark"] input,
 html[data-theme="dark"] select {
@@ -145,6 +169,7 @@ html[data-theme="dark"] .customer-info {
   .metrics { grid-template-columns: 1fr 1fr; }
   .billing-workspace { grid-template-columns: 1fr; }
   .billing-section-sidebar { position: static; }
+  .bank-metrics { grid-template-columns: 1fr 1fr; }
   .item-row, .proforma-row { grid-template-columns: 1fr 1fr; }
   .remove-item { grid-column: 2; justify-self: end; }
   .payment-record { grid-template-columns: 1fr 1fr; }
@@ -155,6 +180,8 @@ html[data-theme="dark"] .customer-info {
   main { width: 94vw; margin-top: 18px; }
   .hero { padding: 20px; }
   .metrics, .form-grid { grid-template-columns: 1fr; }
+  .bank-metrics { grid-template-columns: 1fr; }
+  .bank-review-heading { align-items: flex-start; flex-direction: column; }
   .customer-info { grid-template-columns: 1fr 1fr; }
   .metrics strong { font-size: 18px; }
   .tabs { grid-template-columns: 1fr; }

@@ -345,9 +345,26 @@ Admin > Accounting & Billing sasa inafungua:
   /billing-manager/
 
 - Billing Review menu iko side bar ya kushoto na ina-list kutoka juu kwenda
-  chini tu: Invoices, Payments, Expenses, Proforma.
+  chini tu: Invoices, Payments, Expenses, Proforma, Bank Manager.
 - Payments ina review panel yake yenye invoice, customer, method, reference,
   amount na Re-edit; haijafichwa tena ndani ya invoice.
+- Bank Manager:
+  - Add/Re-edit bank accounts na opening balance.
+  - Payment inaweza kuchaguliwa bank ilipopokelewa; Expense inaweza kuchaguliwa
+    bank iliyolipa.
+  - Record/Re-edit withdrawals; withdrawal kubwa kuliko available bank balance
+    inakataliwa.
+  - Withdrawal lazima iwe na Cheque/Transaction Number pamoja na
+    Reason/Description.
+  - Kila bank inaonyesha payments in, expenses, withdrawals na current balance.
+  - Bank table ina total row inayoonyesha Bank A + Bank B + ... =
+    All Bank Total.
+  - Summary ina All Bank Balance, Total Payments, Total Expenses,
+    Total Withdrawals, Customer Debt, VAT Debt, Loss na BELM Profit.
+  - Bank balance = opening balance + assigned payments - assigned expenses -
+    withdrawals.
+  - BELM Profit = payments received - expenses - withdrawals - VAT debt.
+  - Unallocated payments/expenses zina warning ili Admin achague bank sahihi.
 - Create customer invoice yenye items, machine, due date na tax.
 - Customer akichaguliwa, company name, email, phone, address, TIN na VRN
   zinajazwa/kuonyeshwa automatically kwenye invoice na proforma form.

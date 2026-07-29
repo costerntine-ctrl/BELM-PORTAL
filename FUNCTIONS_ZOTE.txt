@@ -284,9 +284,19 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Spare-parts inventory.
 - Billing Manager moja kwa invoices, payments, expenses na proformas.
 - Billing Review side bar ni list ya juu kwenda chini tu: Invoices, Payments,
-  Expenses, Proforma; kila moja ina review panel yake.
+  Expenses, Proforma, Bank Manager; kila moja ina review panel yake.
 - Payments Review inaonyesha invoice, customer, tarehe, method, reference,
   amount na Re-edit.
+- Bank Manager inasync payment na expense kwa bank iliyochaguliwa.
+- Add/Re-edit bank accounts, opening balance na Record/Re-edit withdrawal.
+- Withdrawal inahitaji Cheque/Transaction Number na Reason/Description.
+- Bank A + Bank B + ... inaonekana kwenye total row kama All Bank Total.
+- All Bank Balance, Total Payments, Total Expenses, Total Withdrawals,
+  Customer Debt, VAT Debt, Loss na BELM Profit zinahesabiwa automatic.
+- Bank balance = opening + payments - expenses - withdrawals.
+- BELM Profit = payments - expenses - withdrawals - VAT debt.
+- Unallocated finance warning inaonyesha payment/expense ambayo haijachaguliwa
+  bank.
 - Invoice create yenye items, tax, due date na optional machine.
 - Payment history, paid amount na balance.
 - Invoice, payment na company expense zina Re-edit; totals, balance na status

@@ -219,6 +219,21 @@ ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_status ON spare_part_requests(status);
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_machine ON spare_part_requests(machine_id);
 
+CREATE TABLE IF NOT EXISTS bank_accounts (
+  id VARCHAR(36) PRIMARY KEY,
+  bank_name VARCHAR(120) NOT NULL,
+  account_name VARCHAR(180) NOT NULL,
+  account_number VARCHAR(100) NOT NULL,
+  opening_balance NUMERIC(14,2) NOT NULL DEFAULT 0,
+  is_active SMALLINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_bank_accounts_active_number
+  ON bank_accounts (LOWER(bank_name), LOWER(account_number))
+  WHERE deleted_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS invoices (
   id VARCHAR(36) PRIMARY KEY,
   customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
@@ -245,11 +260,16 @@ CREATE TABLE IF NOT EXISTS invoice_items (
 CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(36) PRIMARY KEY,
   invoice_id VARCHAR(36) NOT NULL REFERENCES invoices(id),
+  bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id),
   amount NUMERIC(12,2) NOT NULL,
   method VARCHAR(50),
   reference VARCHAR(100),
   paid_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+ALTER TABLE payments
+  ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
+CREATE INDEX IF NOT EXISTS idx_payments_bank_account ON payments(bank_account_id);
 
 CREATE TABLE IF NOT EXISTS notification_logs (
   id VARCHAR(36) PRIMARY KEY,
@@ -290,6 +310,7 @@ ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_name VARCHAR(255);
 
 CREATE TABLE IF NOT EXISTS company_expenses (
   id VARCHAR(36) PRIMARY KEY,
+  bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id),
   date DATE NOT NULL,
   category VARCHAR(20) NOT NULL DEFAULT 'OTHER',
   description VARCHAR(500) NOT NULL,
@@ -299,6 +320,31 @@ CREATE TABLE IF NOT EXISTS company_expenses (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ NULL
 );
+
+ALTER TABLE company_expenses
+  ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
+CREATE INDEX IF NOT EXISTS idx_company_expenses_bank_account
+  ON company_expenses(bank_account_id);
+
+CREATE TABLE IF NOT EXISTS bank_withdrawals (
+  id VARCHAR(36) PRIMARY KEY,
+  bank_account_id VARCHAR(36) NOT NULL REFERENCES bank_accounts(id),
+  date DATE NOT NULL,
+  cheque_number VARCHAR(120),
+  description VARCHAR(500) NOT NULL,
+  amount NUMERIC(14,2) NOT NULL,
+  withdrawn_by VARCHAR(255),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ NULL
+);
+
+ALTER TABLE bank_withdrawals
+  ADD COLUMN IF NOT EXISTS cheque_number VARCHAR(120);
+
+CREATE INDEX IF NOT EXISTS idx_bank_withdrawals_account
+  ON bank_withdrawals(bank_account_id);
+CREATE INDEX IF NOT EXISTS idx_bank_withdrawals_date
+  ON bank_withdrawals(date);
 
 CREATE TABLE IF NOT EXISTS proforma_invoices (
   id VARCHAR(36) PRIMARY KEY,

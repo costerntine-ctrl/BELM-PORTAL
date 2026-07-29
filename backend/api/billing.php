@@ -69,6 +69,18 @@ function calculated_invoice_status(float $total, float $paid, ?string $dueDate):
     return 'UNPAID';
 }
 
+function validated_payment_bank_id(array $payload): ?string {
+    $bankAccountId = trim((string)($payload['bankAccountId'] ?? ''));
+    if ($bankAccountId === '') return null;
+    $stmt = db()->prepare(
+        'SELECT 1 FROM bank_accounts
+         WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+    );
+    $stmt->execute([$bankAccountId]);
+    if (!$stmt->fetch()) json_error('Selected bank account is not active.', 422);
+    return $bankAccountId;
+}
+
 if ($method === 'GET' && !$action) {
     $customerId = $_GET['customerId'] ?? null;
     $status = $_GET['status'] ?? null;
@@ -86,7 +98,13 @@ if ($method === 'GET' && !$action) {
         $stmt2 = db()->prepare('SELECT * FROM invoice_items WHERE invoice_id = ?');
         $stmt2->execute([$inv['id']]);
         $inv['items'] = $stmt2->fetchAll();
-        $stmt2 = db()->prepare('SELECT * FROM payments WHERE invoice_id = ? ORDER BY paid_at DESC');
+        $stmt2 = db()->prepare(
+            'SELECT p.*, b.bank_name, b.account_name
+             FROM payments p
+             LEFT JOIN bank_accounts b ON b.id = p.bank_account_id
+             WHERE p.invoice_id = ?
+             ORDER BY p.paid_at DESC'
+        );
         $stmt2->execute([$inv['id']]);
         $inv['payments'] = $stmt2->fetchAll();
         $inv['paidAmount'] = array_sum(array_map(
@@ -244,6 +262,7 @@ if ($method === 'PUT' && $action === 'payment') {
     $amount = (float)($b['amount'] ?? 0);
     if ($amount <= 0) json_error('Payment amount must be greater than zero.');
     if (!$paymentId) json_error('Payment not found.', 404);
+    $bankAccountId = validated_payment_bank_id($b);
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -287,9 +306,10 @@ if ($method === 'PUT' && $action === 'payment') {
         }
         $pdo->prepare(
             'UPDATE payments
-             SET amount=?, method=?, reference=?
+             SET bank_account_id=?, amount=?, method=?, reference=?
              WHERE id=? AND invoice_id=?'
         )->execute([
+            $bankAccountId,
             $amount,
             trim((string)($b['method'] ?? '')) ?: null,
             trim((string)($b['reference'] ?? '')) ?: null,
@@ -311,6 +331,7 @@ if ($method === 'POST' && $action === 'payment') {
     $b = body();
     $amount = (float)($b['amount'] ?? 0);
     if ($amount <= 0) json_error('Payment amount must be greater than zero.');
+    $bankAccountId = validated_payment_bank_id($b);
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -335,8 +356,8 @@ if ($method === 'POST' && $action === 'payment') {
             $pdo->rollBack();
             json_error('Payment is greater than the invoice balance.', 422);
         }
-        $pdo->prepare('INSERT INTO payments (id, invoice_id, amount, method, reference, paid_at) VALUES (?,?,?,?,?,NOW())')
-            ->execute([uuid(), $id, $amount, $b['method'] ?? null, $b['reference'] ?? null]);
+        $pdo->prepare('INSERT INTO payments (id, invoice_id, bank_account_id, amount, method, reference, paid_at) VALUES (?,?,?,?,?,?,NOW())')
+            ->execute([uuid(), $id, $bankAccountId, $amount, $b['method'] ?? null, $b['reference'] ?? null]);
         $paid = $alreadyPaid + $amount;
         $status = $paid >= $total ? 'PAID' : 'PARTIALLY_PAID';
         $pdo->prepare('UPDATE invoices SET status=? WHERE id=?')->execute([$status, $id]);

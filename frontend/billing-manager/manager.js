@@ -4,6 +4,7 @@
   let invoices = [];
   let expenses = [];
   let proformas = [];
+  let bankData = { accounts: [], withdrawals: [], summary: {} };
 
   function applyTheme(theme) {
     const safeTheme = theme === "dark" ? "dark" : "light";
@@ -53,6 +54,15 @@
     return `<option value="">Select customer…</option>${customers.map((customer) =>
       `<option value="${escapeHtml(customer.id)}" ${customer.id === selected ? "selected" : ""}>${escapeHtml(customer.name)}</option>`
     ).join("")}`;
+  }
+
+  function bankAccountOptions(selected = "", includeUnallocated = true) {
+    const first = includeUnallocated
+      ? '<option value="">Unallocated / cash account</option>'
+      : '<option value="">Select bank account…</option>';
+    return first + (bankData.accounts || []).map((account) =>
+      `<option value="${escapeHtml(account.id)}" ${account.id === selected ? "selected" : ""}>${escapeHtml(account.bankName)} · ${escapeHtml(account.accountNumber)} · ${money(account.balance)}</option>`
+    ).join("");
   }
 
   function customerInformation(customer) {
@@ -123,12 +133,13 @@
       panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.")}<div class="empty">No customer payments recorded.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody>${payments.map((payment) => `
+    panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Method</th><th>Bank</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody>${payments.map((payment) => `
       <tr>
         <td>${payment.paidAt ? new Date(payment.paidAt).toLocaleString() : "—"}</td>
         <td><strong>${escapeHtml(payment.invoiceNo)}</strong></td>
         <td>${escapeHtml(payment.customerName)}</td>
         <td><span class="badge">${escapeHtml(payment.method || "—")}</span></td>
+        <td>${escapeHtml(payment.bankName || "Unallocated")}</td>
         <td>${escapeHtml(payment.reference || "No reference")}</td>
         <td class="money">${money(payment.amount)}</td>
         <td><div class="row-actions"><button class="edit" data-edit-payment="${escapeHtml(payment.id)}" data-payment-invoice="${escapeHtml(payment.invoiceId)}">Re-edit</button></div></td>
@@ -141,8 +152,8 @@
       panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="empty">No company expenses recorded.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
-      <tr><td>${new Date(`${expense.date}T00:00:00`).toLocaleDateString()}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions"><button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
+    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
+      <tr><td>${new Date(`${expense.date}T00:00:00`).toLocaleDateString()}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions"><button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
 
@@ -157,17 +168,70 @@
     `).join("")}</tbody></table></div>`;
   }
 
+  function renderBankManager() {
+    const panel = document.getElementById("bankPanel");
+    const accounts = bankData.accounts || [];
+    const withdrawals = bankData.withdrawals || [];
+    const summary = bankData.summary || {};
+    const bankEquation = accounts.map((account) =>
+      `${account.bankName} · ${String(account.accountNumber || "").slice(-4)}`
+    ).join(" + ");
+    const bankRows = accounts.length ? `<div class="table-wrap"><table><thead><tr><th>Bank</th><th>Account name</th><th>Account number</th><th>Payments in</th><th>Expenses</th><th>Withdrawals</th><th>Balance</th><th></th></tr></thead><tbody>${accounts.map((account) => `
+      <tr>
+        <td><strong>${escapeHtml(account.bankName)}</strong></td>
+        <td>${escapeHtml(account.accountName)}</td>
+        <td>${escapeHtml(account.accountNumber)}</td>
+        <td class="money positive">${money(account.payments)}</td>
+        <td class="money">${money(account.expenses)}</td>
+        <td class="money">${money(account.withdrawals)}</td>
+        <td class="money ${Number(account.balance) < 0 ? "negative" : "positive"}">${money(account.balance)}</td>
+        <td><div class="row-actions"><button class="edit" data-edit-bank="${escapeHtml(account.id)}">Re-edit</button></div></td>
+      </tr>`).join("")}</tbody><tfoot><tr class="bank-total-row"><td colspan="6"><strong>${escapeHtml(bankEquation)} = All Bank Total</strong></td><td class="money positive">${money(summary.allBankBalance)}</td><td></td></tr></tfoot></table></div>` : '<div class="empty">No bank account yet. Select “Add bank account”.</div>';
+    const withdrawalRows = withdrawals.length ? `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Bank</th><th>Cheque / Txn no.</th><th>Reason / Description</th><th>Withdrawn by</th><th>Amount</th><th></th></tr></thead><tbody>${withdrawals.map((withdrawal) => `
+      <tr>
+        <td>${new Date(`${withdrawal.date}T00:00:00`).toLocaleDateString()}</td>
+        <td>${escapeHtml(withdrawal.bankName)}<div class="muted">${escapeHtml(withdrawal.accountNumber)}</div></td>
+        <td><strong>${escapeHtml(withdrawal.chequeNumber || "—")}</strong></td>
+        <td>${escapeHtml(withdrawal.description)}</td>
+        <td>${escapeHtml(withdrawal.withdrawnBy || "—")}</td>
+        <td class="money negative">${money(withdrawal.amount)}</td>
+        <td><div class="row-actions"><button class="edit" data-edit-withdrawal="${escapeHtml(withdrawal.id)}">Re-edit</button></div></td>
+      </tr>`).join("")}</tbody></table></div>` : '<div class="empty compact-empty">No bank withdrawals recorded.</div>';
+    panel.innerHTML = `
+      <div class="review-heading bank-review-heading">
+        <div><p class="eyebrow">Finance sync</p><h2>Bank Manager</h2><span>Payments and expenses automatically update the selected bank balance.</span></div>
+        <div class="review-actions"><button class="secondary" data-add-bank type="button">+ Add bank account</button><button class="primary" data-add-withdrawal type="button" ${accounts.length ? "" : "disabled"}>+ Record withdrawal</button></div>
+      </div>
+      <div class="bank-metrics">
+        <article><span>All Bank Total (A + B + …)</span><strong>${money(summary.allBankBalance)}</strong></article>
+        <article><span>Total Payments</span><strong>${money(summary.paymentsReceived)}</strong></article>
+        <article><span>Total Expenses</span><strong>${money(summary.companyExpenses)}</strong></article>
+        <article><span>Total Withdrawals</span><strong>${money(summary.totalWithdrawals)}</strong></article>
+        <article><span>Customer Debt</span><strong>${money(summary.customerDebt)}</strong></article>
+        <article><span>VAT Debt</span><strong>${money(summary.vatDebt)}</strong></article>
+        <article class="loss-card"><span>Loss</span><strong>${money(summary.loss)}</strong></article>
+        <article class="profit-card"><span>BELM Profit</span><strong>${money(summary.belmProfit)}</strong></article>
+      </div>
+      ${(Number(summary.unallocatedPayments) > 0 || Number(summary.unallocatedExpenses) > 0) ? `<div class="bank-warning"><strong>Unallocated finance:</strong> Payments ${money(summary.unallocatedPayments)} · Expenses ${money(summary.unallocatedExpenses)}. Re-edit these records and select the correct bank.</div>` : ""}
+      <div class="bank-section-title"><div><p class="eyebrow">All banks</p><h3>Bank balances</h3></div></div>
+      ${bankRows}
+      <div class="bank-section-title"><div><p class="eyebrow">Money out</p><h3>Withdrawal history</h3></div></div>
+      ${withdrawalRows}
+      <div class="calculation-note">Bank balance = Opening balance + assigned payments − assigned expenses − withdrawals. BELM Profit = Payments received − Expenses − Withdrawals − VAT debt. VAT debt is calculated from VAT recorded on non-cancelled invoices. Do not record the same money as both an Expense and a Withdrawal.</div>`;
+  }
+
   async function load() {
     if (!token) {
       document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/admin/login">Go to admin login</a></div>';
       return;
     }
     try {
-      [invoices, expenses, proformas, customers] = await Promise.all([
+      [invoices, expenses, proformas, customers, bankData] = await Promise.all([
         api("/billing/invoices"),
         api("/company-expenses"),
         api("/proforma-invoices"),
         api("/customers"),
+        api("/bank-manager"),
       ]);
       try {
         const settings = await api("/settings");
@@ -179,6 +243,7 @@
       renderPayments();
       renderExpenses();
       renderProformas();
+      renderBankManager();
       updateMetrics();
     } catch (error) {
       document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
@@ -269,6 +334,7 @@
     document.getElementById("paymentAmount").max = Number(invoice.balance || 0) + Number(payment?.amount || 0);
     document.getElementById("paymentAmount").value = payment?.amount || invoice.balance;
     document.getElementById("paymentMethod").value = payment?.method || "Bank";
+    document.getElementById("paymentBankAccount").innerHTML = bankAccountOptions(payment?.bankAccountId || "");
     document.getElementById("paymentReference").value = payment?.reference || "";
     document.getElementById("savePaymentButton").textContent = payment ? "Save changes" : "Record payment";
     document.getElementById("paymentError").className = "alert error hidden";
@@ -287,6 +353,7 @@
         body: JSON.stringify({
           amount: Number(document.getElementById("paymentAmount").value),
           method: document.getElementById("paymentMethod").value,
+          bankAccountId: document.getElementById("paymentBankAccount").value || null,
           reference: document.getElementById("paymentReference").value.trim(),
         }),
       });
@@ -310,6 +377,7 @@
     document.getElementById("expenseCategory").value = expense?.category || "OTHER";
     document.getElementById("expenseDescription").value = expense?.description || "";
     document.getElementById("expenseAmount").value = expense?.amount || "";
+    document.getElementById("expenseBankAccount").innerHTML = bankAccountOptions(expense?.bankAccountId || "");
     document.getElementById("expenseRecordedBy").value = expense?.recordedBy || "";
     document.getElementById("saveExpenseButton").textContent = expense ? "Save changes" : "Save expense";
     document.getElementById("expenseError").className = "alert error hidden";
@@ -329,6 +397,7 @@
           category: document.getElementById("expenseCategory").value,
           description: document.getElementById("expenseDescription").value.trim(),
           amount: Number(document.getElementById("expenseAmount").value),
+          bankAccountId: document.getElementById("expenseBankAccount").value || null,
           recordedBy: document.getElementById("expenseRecordedBy").value.trim(),
           receiptUrl: document.getElementById("expenseReceiptUrl").value || null,
         }),
@@ -338,6 +407,102 @@
       showAlert(id ? "Expense changes saved successfully." : "Expense recorded successfully.");
     } catch (error) {
       formError("expenseError", error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function openBankAccount(id = "") {
+    const account = (bankData.accounts || []).find((item) => item.id === id);
+    document.getElementById("bankAccountForm").reset();
+    document.getElementById("bankAccountId").value = account?.id || "";
+    document.getElementById("bankAccountTitle").textContent = account ? "Re-edit bank account" : "Add bank account";
+    document.getElementById("bankName").value = account?.bankName || "";
+    document.getElementById("bankAccountName").value = account?.accountName || "";
+    document.getElementById("bankAccountNumber").value = account?.accountNumber || "";
+    document.getElementById("bankOpeningBalance").value = account?.openingBalance || 0;
+    document.getElementById("saveBankAccountButton").textContent = account ? "Save changes" : "Save bank";
+    document.getElementById("bankAccountError").className = "alert error hidden";
+    document.getElementById("bankAccountDialog").showModal();
+  }
+
+  async function saveBankAccount(event) {
+    event.preventDefault();
+    const id = document.getElementById("bankAccountId").value;
+    const button = document.getElementById("saveBankAccountButton");
+    button.disabled = true;
+    try {
+      await api(`/bank-manager/accounts${id ? `/${id}` : ""}`, {
+        method: id ? "PUT" : "POST",
+        body: JSON.stringify({
+          bankName: document.getElementById("bankName").value.trim(),
+          accountName: document.getElementById("bankAccountName").value.trim(),
+          accountNumber: document.getElementById("bankAccountNumber").value.trim(),
+          openingBalance: Number(document.getElementById("bankOpeningBalance").value || 0),
+        }),
+      });
+      document.getElementById("bankAccountDialog").close();
+      await load();
+      showAlert(id ? "Bank account changes saved." : "Bank account added to Bank Manager.");
+    } catch (error) {
+      formError("bankAccountError", error.message);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function updateWithdrawalMax(withdrawal = null) {
+    const accountId = document.getElementById("withdrawalBankAccount").value;
+    const account = (bankData.accounts || []).find((item) => item.id === accountId);
+    const existingAmount = withdrawal?.bankAccountId === accountId ? Number(withdrawal.amount || 0) : 0;
+    const max = Math.max(0, Number(account?.balance || 0) + existingAmount);
+    document.getElementById("withdrawalAmount").max = max;
+  }
+
+  function openWithdrawal(id = "") {
+    if (!(bankData.accounts || []).length) {
+      showAlert("Add at least one bank account before recording a withdrawal.", true);
+      openBankAccount();
+      return;
+    }
+    const withdrawal = (bankData.withdrawals || []).find((item) => item.id === id);
+    document.getElementById("withdrawalForm").reset();
+    document.getElementById("withdrawalId").value = withdrawal?.id || "";
+    document.getElementById("withdrawalTitle").textContent = withdrawal ? "Re-edit withdrawal" : "Record withdrawal";
+    document.getElementById("withdrawalBankAccount").innerHTML = bankAccountOptions(withdrawal?.bankAccountId || "", false);
+    document.getElementById("withdrawalDate").value = withdrawal?.date || today();
+    document.getElementById("withdrawalChequeNumber").value = withdrawal?.chequeNumber || "";
+    document.getElementById("withdrawalDescription").value = withdrawal?.description || "";
+    document.getElementById("withdrawalAmount").value = withdrawal?.amount || "";
+    document.getElementById("withdrawalBy").value = withdrawal?.withdrawnBy || "";
+    document.getElementById("saveWithdrawalButton").textContent = withdrawal ? "Save changes" : "Save withdrawal";
+    document.getElementById("withdrawalError").className = "alert error hidden";
+    updateWithdrawalMax(withdrawal);
+    document.getElementById("withdrawalDialog").showModal();
+  }
+
+  async function saveWithdrawal(event) {
+    event.preventDefault();
+    const id = document.getElementById("withdrawalId").value;
+    const button = document.getElementById("saveWithdrawalButton");
+    button.disabled = true;
+    try {
+      await api(`/bank-manager/withdrawals${id ? `/${id}` : ""}`, {
+        method: id ? "PUT" : "POST",
+        body: JSON.stringify({
+          bankAccountId: document.getElementById("withdrawalBankAccount").value,
+          date: document.getElementById("withdrawalDate").value,
+          chequeNumber: document.getElementById("withdrawalChequeNumber").value.trim(),
+          description: document.getElementById("withdrawalDescription").value.trim(),
+          amount: Number(document.getElementById("withdrawalAmount").value),
+          withdrawnBy: document.getElementById("withdrawalBy").value.trim(),
+        }),
+      });
+      document.getElementById("withdrawalDialog").close();
+      await load();
+      showAlert(id ? "Withdrawal changes saved." : "Withdrawal recorded and bank balance updated.");
+    } catch (error) {
+      formError("withdrawalError", error.message);
     } finally {
       button.disabled = false;
     }
@@ -441,7 +606,14 @@
   document.getElementById("invoiceForm").addEventListener("submit", saveInvoice);
   document.getElementById("paymentForm").addEventListener("submit", savePayment);
   document.getElementById("expenseForm").addEventListener("submit", saveExpense);
+  document.getElementById("bankAccountForm").addEventListener("submit", saveBankAccount);
+  document.getElementById("withdrawalForm").addEventListener("submit", saveWithdrawal);
   document.getElementById("proformaForm").addEventListener("submit", saveProforma);
+  document.getElementById("withdrawalBankAccount").addEventListener("change", () => {
+    const withdrawal = (bankData.withdrawals || []).find((item) =>
+      item.id === document.getElementById("withdrawalId").value);
+    updateWithdrawalMax(withdrawal);
+  });
   document.querySelectorAll(".item-list").forEach((list) => list.addEventListener("click", (event) => {
     const removeButton = event.target.closest(".remove-item");
     if (removeButton && list.children.length > 1) removeButton.closest(".item-row").remove();
@@ -484,6 +656,16 @@
     const removeButton = event.target.closest("[data-delete-proforma]");
     if (edit) openProforma(proformas.find((item) => item.id === edit.dataset.editProforma));
     if (removeButton) remove(`/proforma-invoices/${removeButton.dataset.deleteProforma}`, "Delete this proforma? It will move to the Recycle Bin.");
+  });
+  document.getElementById("bankPanel").addEventListener("click", (event) => {
+    const addBank = event.target.closest("[data-add-bank]");
+    const addWithdrawal = event.target.closest("[data-add-withdrawal]");
+    const editBank = event.target.closest("[data-edit-bank]");
+    const editWithdrawal = event.target.closest("[data-edit-withdrawal]");
+    if (addBank) openBankAccount();
+    if (addWithdrawal) openWithdrawal();
+    if (editBank) openBankAccount(editBank.dataset.editBank);
+    if (editWithdrawal) openWithdrawal(editWithdrawal.dataset.editWithdrawal);
   });
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");

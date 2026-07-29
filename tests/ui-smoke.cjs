@@ -74,6 +74,8 @@ async function testBilling() {
     items: [{ description: "Machine service", quantity: 1, unitPrice: 1000 }],
     payments: [{
       id: "payment-1",
+      bankAccountId: "bank-1",
+      bankName: "CRDB",
       amount: 500,
       method: "Bank",
       reference: "TX-001",
@@ -88,9 +90,48 @@ async function testBilling() {
     category: "FUEL",
     description: "Workshop fuel",
     amount: 75000,
+    bankAccountId: "bank-1",
+    bankName: "CRDB",
     recordedBy: "Admin",
     receiptUrl: "/uploads/receipt-1.jpg",
   }];
+  let storedBankData = {
+    accounts: [{
+      id: "bank-1",
+      bankName: "CRDB",
+      accountName: "BELM GENERAL TECH SERVICE LTD",
+      accountNumber: "015000123456",
+      openingBalance: 1000000,
+      payments: 500,
+      expenses: 75000,
+      withdrawals: 100000,
+      balance: 825500,
+    }],
+    withdrawals: [{
+      id: "withdrawal-1",
+      bankAccountId: "bank-1",
+      bankName: "CRDB",
+      accountName: "BELM GENERAL TECH SERVICE LTD",
+      accountNumber: "015000123456",
+      date: "2026-07-29",
+      chequeNumber: "CHQ-0001",
+      description: "Petty cash",
+      amount: 100000,
+      withdrawnBy: "Admin",
+    }],
+    summary: {
+      allBankBalance: 825500,
+      paymentsReceived: 500,
+      companyExpenses: 75000,
+      totalWithdrawals: 100000,
+      customerDebt: 680,
+      vatDebt: 180,
+      loss: 174680,
+      belmProfit: 0,
+      unallocatedPayments: 0,
+      unallocatedExpenses: 0,
+    },
+  };
   dom.window.fetch = async (url, options = {}) => {
     requests.push({ url, options });
     if (url === "/api/customers") return response([customer]);
@@ -98,6 +139,7 @@ async function testBilling() {
     if (url === "/api/billing/invoices" && !options.method) return response(storedInvoices);
     if (url === "/api/company-expenses" && !options.method) return response(storedExpenses);
     if (url === "/api/proforma-invoices" && !options.method) return response([]);
+    if (url === "/api/bank-manager" && !options.method) return response(storedBankData);
     if (url === "/api/billing/invoices/invoice-1" && options.method === "PUT") {
       const payload = JSON.parse(options.body);
       const subtotal = payload.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
@@ -121,6 +163,31 @@ async function testBilling() {
       storedExpenses[0] = { ...storedExpenses[0], ...JSON.parse(options.body) };
       return response({ ok: true });
     }
+    if (url === "/api/bank-manager/accounts" && options.method === "POST") {
+      const payload = JSON.parse(options.body);
+      storedBankData.accounts.push({
+        id: "bank-2",
+        ...payload,
+        payments: 0,
+        expenses: 0,
+        withdrawals: 0,
+        balance: payload.openingBalance,
+      });
+      storedBankData.summary.allBankBalance += payload.openingBalance;
+      return response({ id: "bank-2" }, 201);
+    }
+    if (url === "/api/bank-manager/withdrawals" && options.method === "POST") {
+      const payload = JSON.parse(options.body);
+      storedBankData.withdrawals.unshift({
+        id: "withdrawal-2",
+        ...payload,
+        bankName: "CRDB",
+        accountNumber: "015000123456",
+      });
+      storedBankData.summary.totalWithdrawals += payload.amount;
+      storedBankData.summary.allBankBalance -= payload.amount;
+      return response({ ok: true }, 201);
+    }
     if (url === "/api/billing/invoices" && options.method === "POST") {
       return response({ id: "invoice-2" }, 201);
     }
@@ -132,7 +199,7 @@ async function testBilling() {
   assert.deepEqual(
     [...dom.window.document.querySelectorAll(".tabs [data-tab]")].map((button) =>
       button.textContent.replace(/\d+/g, "").trim()),
-    ["Invoices", "Payments", "Expenses", "Proforma"],
+    ["Invoices", "Payments", "Expenses", "Proforma", "Bank Manager"],
   );
   assert.match(billingCss, /\.tabs\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*1fr/s);
   assert.match(dom.window.document.getElementById("paymentsPanel").textContent, /TX-001/);
@@ -158,6 +225,7 @@ async function testBilling() {
   dom.window.document.querySelector('[data-edit-payment="payment-1"]').click();
   assert.match(dom.window.document.getElementById("paymentTitle").textContent, /Re-edit payment/);
   assert.equal(dom.window.document.getElementById("paymentReference").value, "TX-001");
+  assert.equal(dom.window.document.getElementById("paymentBankAccount").value, "bank-1");
   dom.window.document.getElementById("paymentAmount").value = "600";
   dom.window.document.getElementById("paymentReference").value = "TX-EDITED";
   dom.window.document.getElementById("paymentForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
@@ -167,10 +235,12 @@ async function testBilling() {
     && request.options.method === "PUT");
   assert.ok(paymentEdit, "Payment PUT request was not sent");
   assert.equal(JSON.parse(paymentEdit.options.body).reference, "TX-EDITED");
+  assert.equal(JSON.parse(paymentEdit.options.body).bankAccountId, "bank-1");
 
   dom.window.document.querySelector('[data-edit-expense="expense-1"]').click();
   assert.match(dom.window.document.getElementById("expenseTitle").textContent, /Re-edit/);
   assert.equal(dom.window.document.getElementById("expenseDescription").value, "Workshop fuel");
+  assert.equal(dom.window.document.getElementById("expenseBankAccount").value, "bank-1");
   dom.window.document.getElementById("expenseDescription").value = "Workshop fuel corrected";
   dom.window.document.getElementById("expenseForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
   await flush();
@@ -178,6 +248,49 @@ async function testBilling() {
     request.url === "/api/company-expenses/expense-1" && request.options.method === "PUT");
   assert.ok(expenseEdit, "Expense PUT request was not sent");
   assert.equal(JSON.parse(expenseEdit.options.body).receiptUrl, "/uploads/receipt-1.jpg");
+  assert.equal(JSON.parse(expenseEdit.options.body).bankAccountId, "bank-1");
+
+  dom.window.document.querySelector('[data-tab="bank"]').click();
+  assert.match(dom.window.document.getElementById("bankPanel").textContent, /All Bank Total/);
+  assert.match(dom.window.document.getElementById("bankPanel").textContent, /BELM Profit/);
+  assert.match(dom.window.document.getElementById("bankPanel").textContent, /Customer Debt/);
+  assert.match(dom.window.document.getElementById("bankPanel").textContent, /VAT Debt/);
+  assert.match(dom.window.document.getElementById("bankPanel").textContent, /CRDB/);
+  dom.window.document.querySelector("[data-add-bank]").click();
+  dom.window.document.getElementById("bankName").value = "NMB";
+  dom.window.document.getElementById("bankAccountName").value = "BELM GENERAL TECH SERVICE LTD";
+  dom.window.document.getElementById("bankAccountNumber").value = "20400098765";
+  dom.window.document.getElementById("bankOpeningBalance").value = "250000";
+  dom.window.document.getElementById("bankAccountForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  assert.ok(requests.some((request) =>
+    request.url === "/api/bank-manager/accounts" && request.options.method === "POST"
+  ), "Bank account POST request was not sent");
+  assert.match(dom.window.document.getElementById("bankPanel").textContent, /CRDB · 3456 \+ NMB · 8765 = All Bank Total/);
+  dom.window.document.querySelector("[data-add-withdrawal]").click();
+  dom.window.document.getElementById("withdrawalBankAccount").value = "bank-1";
+  dom.window.document.getElementById("withdrawalDate").value = "2026-07-30";
+  dom.window.document.getElementById("withdrawalChequeNumber").value = "CHQ-0002";
+  dom.window.document.getElementById("withdrawalDescription").value = "Workshop cash";
+  dom.window.document.getElementById("withdrawalAmount").value = "50000";
+  dom.window.document.getElementById("withdrawalBy").value = "Admin";
+  dom.window.document.getElementById("withdrawalForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  assert.ok(requests.some((request) =>
+    request.url === "/api/bank-manager/withdrawals" && request.options.method === "POST"
+  ), "Bank withdrawal POST request was not sent");
+  const withdrawalSave = requests.find((request) =>
+    request.url === "/api/bank-manager/withdrawals" && request.options.method === "POST");
+  assert.equal(JSON.parse(withdrawalSave.options.body).chequeNumber, "CHQ-0002");
+  assert.equal(JSON.parse(withdrawalSave.options.body).description, "Workshop cash");
+
+  const schema = fs.readFileSync(path.join(root, "backend/schema.sql"), "utf8");
+  const bankApi = fs.readFileSync(path.join(root, "backend/api/bank_manager.php"), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS bank_accounts/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS bank_withdrawals/);
+  assert.match(schema, /cheque_number VARCHAR\(120\)/);
+  assert.match(bankApi, /belmProfit/);
+  assert.match(bankApi, /vatDebt/);
 
   dom.window.document.getElementById("newInvoiceButton").click();
   const select = dom.window.document.getElementById("invoiceCustomer");
@@ -1669,7 +1782,7 @@ async function testReportsAndAttendance() {
   await testMachineAwareServiceRequest();
   await testAllOverview();
   await testReportsAndAttendance();
-  console.log("BELM UI smoke tests passed: vertical Billing Review sidebar and separate Payments review, invoice/payment/expense Re-edit, original role login routes, managers, settings, approvals, customer links, Technician Inventory Request history and pending Re-edit, low-MB checklist PHOTO uploader, Add Spare zero-stock Inventory alerts and purchase/addition workflow, Technician Save Checklist auto-opens Checked Report, same-day checklist editing with Tanzania-midnight expiry lock, Technician machine checked-report history, customer checked-report viewer, receipt-backed machine expenses, model-aware service requests, synchronized checklist parts, Google technical supplier search, live inventory overview, role isolation, All Overview navigation, reports, attendance, and arranged left workflow sidebar access.");
+  console.log("BELM UI smoke tests passed: withdrawal cheque/transaction number and reason, Bank A + Bank B All Bank Total row, Bank Manager account/withdrawal flow and finance sync, debt/VAT/loss/profit cards, vertical Billing Review sidebar and separate Payments review, invoice/payment/expense Re-edit, original role login routes, managers, settings, approvals, customer links, Technician Inventory Request history and pending Re-edit, low-MB checklist PHOTO uploader, Add Spare zero-stock Inventory alerts and purchase/addition workflow, Technician Save Checklist auto-opens Checked Report, same-day checklist editing with Tanzania-midnight expiry lock, Technician machine checked-report history, customer checked-report viewer, receipt-backed machine expenses, model-aware service requests, synchronized checklist parts, Google technical supplier search, live inventory overview, role isolation, All Overview navigation, reports, attendance, and arranged left workflow sidebar access.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

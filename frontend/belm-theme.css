@@ -118,6 +118,533 @@ a.bg-belm-blue:hover {
   box-shadow: 0 9px 22px rgba(0, 134, 64, .28);
 }
 
+/* Customer dashboard machine cards: slightly larger with a direct
+   machine-expense action added by portal-tools.js. */
+.belm-customer-machine-card {
+  position: relative !important;
+  min-height: 222px !important;
+  padding: 24px !important;
+  border-radius: 14px !important;
+}
+
+.belm-machine-action-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.belm-machine-expense-link,
+.belm-machine-service-link {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  min-height: 38px;
+  padding: 9px 12px;
+  border: 1px solid var(--belm-green);
+  border-radius: 9px;
+  color: #fff;
+  background: var(--belm-green);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+  box-shadow: 0 7px 18px rgba(0, 166, 81, .18);
+}
+
+.belm-machine-expense-link:hover,
+.belm-machine-expense-link:focus,
+.belm-machine-service-link:hover,
+.belm-machine-service-link:focus {
+  background: var(--belm-green-dark);
+  outline: 3px solid rgba(255, 212, 0, .42);
+}
+
+.belm-machine-service-link {
+  color: var(--belm-navy);
+  border-color: var(--belm-yellow);
+  background: var(--belm-yellow);
+}
+
+.belm-technician-machine-card {
+  position: relative !important;
+  min-height: 142px !important;
+}
+
+.belm-technician-report-link {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  min-height: 36px;
+  margin-top: 14px;
+  padding: 8px 11px;
+  color: var(--belm-navy);
+  border: 1px solid var(--belm-yellow);
+  border-radius: 8px;
+  background: var(--belm-yellow);
+  font-size: 11px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.belm-technician-report-link:hover,
+.belm-technician-report-link:focus {
+  outline: 3px solid rgba(0, 166, 81, .18);
+}
+
+.belm-tech-spare-shortcut {
+  position: fixed;
+  right: 20px;
+  bottom: 136px;
+  z-index: 1000;
+  min-height: 44px;
+  padding: 11px 18px;
+  color: var(--belm-navy);
+  border: 2px solid var(--belm-green);
+  border-radius: 999px;
+  background: var(--belm-yellow);
+  box-shadow: 0 12px 30px rgba(255, 212, 0, .25);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.belm-tech-spare-shortcut:hover,
+.belm-tech-spare-shortcut:focus {
+  outline: 3px solid rgba(0, 166, 81, .24);
+}
+
+.belm-technician-spare-form {
+  padding: 20px 24px 0;
+}
+
+.belm-technician-spare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 13px;
+}
+
+.belm-technician-spare-grid label {
+  display: grid;
+  gap: 6px;
+  color: #36455a;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.belm-technician-spare-grid label.full {
+  grid-column: 1 / -1;
+}
+
+.belm-technician-spare-grid input,
+.belm-technician-spare-grid select,
+.belm-technician-spare-grid textarea {
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 9px 10px;
+  color: var(--belm-ink);
+  border: 1px solid var(--belm-line);
+  border-radius: 8px;
+  background: #fff;
+  font: 500 11px Inter, sans-serif;
+}
+
+.belm-technician-spare-note,
+.belm-technician-spare-success {
+  margin: 15px 0 0;
+  padding: 11px 13px;
+  color: #087039;
+  border: 1px solid #88cba8;
+  border-radius: 9px;
+  background: #eaf8f0;
+  font-size: 10px;
+}
+
+.belm-technician-spare-note strong,
+.belm-technician-spare-note span {
+  display: block;
+}
+
+.belm-technician-spare-note span {
+  margin-top: 3px;
+}
+
+.belm-view-checked-report {
+  min-height: 32px;
+  padding: 6px 9px;
+  color: #fff;
+  border: 1px solid var(--belm-green);
+  border-radius: 7px;
+  background: var(--belm-green);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.belm-view-checked-report:hover {
+  background: var(--belm-green-dark);
+}
+
+.belm-checked-report-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(7, 14, 28, .72);
+  backdrop-filter: blur(3px);
+}
+
+.belm-checked-report-card {
+  width: min(960px, 96vw);
+  max-height: 92vh;
+  overflow-y: auto;
+  color: var(--belm-ink);
+  border: 1px solid var(--belm-line);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(7, 14, 28, .34);
+}
+
+.belm-checked-report-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 24px;
+  color: #fff;
+  border-bottom: 4px solid var(--belm-yellow);
+  background: var(--belm-navy);
+}
+
+.belm-checked-report-head p,
+.belm-checked-report-head h2,
+.belm-checked-report-head span {
+  margin: 0;
+}
+
+.belm-checked-report-head p {
+  color: #75dda9;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.belm-checked-report-head h2 {
+  margin-top: 5px;
+  font: 700 clamp(20px, 3vw, 29px) "Space Grotesk", sans-serif;
+}
+
+.belm-checked-report-head span {
+  display: block;
+  margin-top: 6px;
+  color: #a9b7ca;
+  font-size: 10px;
+}
+
+.belm-checked-report-head button {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .08);
+  font-size: 24px;
+  line-height: 1;
+}
+
+.belm-checked-report-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 18px 24px;
+  background: #f6f8fb;
+}
+
+.belm-checked-report-summary div {
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--belm-line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.belm-checked-report-summary span,
+.belm-checked-report-summary strong {
+  display: block;
+}
+
+.belm-checked-report-summary span {
+  color: #68778d;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.belm-checked-report-summary strong {
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.belm-checked-report-table-wrap {
+  padding: 20px 24px 6px;
+  overflow-x: auto;
+}
+
+.belm-checked-report-table {
+  width: 100%;
+  border: 1px solid var(--belm-line);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 11px;
+  overflow: hidden;
+  font-size: 11px;
+}
+
+.belm-checked-report-table th,
+.belm-checked-report-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--belm-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.belm-checked-report-table th {
+  color: #68778d;
+  background: #f6f8fb;
+  font-size: 8px;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+
+.belm-checked-report-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.belm-report-status {
+  display: inline-flex;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.belm-report-status.status-green,
+.belm-checked-report-summary .status-green {
+  color: #087039;
+  background: #e5f8ee;
+}
+
+.belm-report-status.status-yellow,
+.belm-checked-report-summary .status-yellow {
+  color: #806500;
+  background: #fff4c3;
+}
+
+.belm-report-status.status-red,
+.belm-checked-report-summary .status-red {
+  color: #9a2626;
+  background: #fde8e8;
+}
+
+.belm-report-empty {
+  padding: 28px !important;
+  color: #68778d;
+  text-align: center !important;
+}
+
+.belm-checked-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 15px 24px 20px;
+}
+
+.belm-checked-report-actions button {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--belm-line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.belm-checked-report-actions button.primary {
+  color: #fff;
+  border-color: var(--belm-green);
+  background: var(--belm-green);
+}
+
+.belm-edit-state {
+  padding: 4px 7px;
+  border-radius: 7px;
+}
+
+.belm-edit-state.editable {
+  color: #087039;
+  background: #e5f8ee;
+}
+
+.belm-edit-state.expired {
+  color: #9a2626;
+  background: #fde8e8;
+}
+
+.belm-edit-state.readonly {
+  color: #526176;
+  background: #e8edf4;
+}
+
+.belm-checklist-edit-form {
+  padding: 20px 24px 0;
+}
+
+.belm-checklist-edit-deadline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  color: #6a5200;
+  border: 1px solid #ecd46a;
+  border-radius: 10px;
+  background: #fff8d8;
+  font-size: 10px;
+}
+
+.belm-checklist-edit-deadline strong,
+.belm-checklist-edit-deadline span,
+.belm-checklist-edit-item span,
+.belm-checklist-edit-meter span {
+  display: block;
+}
+
+.belm-checklist-edit-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.belm-checklist-edit-item,
+.belm-checklist-edit-meter {
+  display: grid;
+  gap: 6px;
+  color: #36455a;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.belm-checklist-edit-meter {
+  max-width: 320px;
+}
+
+.belm-checklist-edit-item input,
+.belm-checklist-edit-item select,
+.belm-checklist-edit-meter input {
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px;
+  color: var(--belm-ink);
+  border: 1px solid var(--belm-line);
+  border-radius: 8px;
+  background: #fff;
+  font: 500 11px Inter, sans-serif;
+}
+
+.belm-checklist-edit-item input:focus,
+.belm-checklist-edit-item select:focus,
+.belm-checklist-edit-meter input:focus {
+  border-color: var(--belm-green);
+  outline: 3px solid rgba(0, 166, 81, .14);
+}
+
+.belm-checklist-edit-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  color: #9a2626;
+  border: 1px solid #efb5b5;
+  border-radius: 8px;
+  background: #fde8e8;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.belm-report-history-list {
+  display: grid;
+  gap: 10px;
+  padding: 20px 24px 6px;
+}
+
+.belm-report-history-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid var(--belm-line);
+  border-radius: 11px;
+  background: #f8fafc;
+}
+
+.belm-report-history-item strong,
+.belm-report-history-item span,
+.belm-report-history-item small {
+  display: block;
+}
+
+.belm-report-history-item strong {
+  font-size: 12px;
+}
+
+.belm-report-history-item div > span,
+.belm-report-history-item small {
+  margin-top: 3px;
+  color: #68778d;
+  font-size: 9px;
+}
+
+.belm-report-history-item button {
+  min-height: 34px;
+  padding: 7px 10px;
+  color: #fff;
+  border: 1px solid var(--belm-green);
+  border-radius: 8px;
+  background: var(--belm-green);
+  font-size: 9px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) {
+  .belm-machine-action-row {
+    grid-template-columns: 1fr;
+  }
+  .belm-checked-report-modal { padding: 8px; }
+  .belm-checked-report-summary { grid-template-columns: 1fr 1fr; padding: 14px; }
+  .belm-checked-report-table-wrap { padding: 14px 14px 4px; }
+  .belm-checked-report-head { padding: 18px 16px; }
+  .belm-checked-report-actions { padding: 12px 14px 16px; }
+  .belm-report-history-list { padding: 14px 14px 4px; }
+  .belm-report-history-item { grid-template-columns: 1fr auto; }
+  .belm-report-history-item button { grid-column: 1 / -1; width: 100%; }
+  .belm-checklist-edit-form { padding: 14px 14px 0; }
+  .belm-checklist-edit-deadline { align-items: flex-start; flex-direction: column; }
+  .belm-checklist-edit-items { grid-template-columns: 1fr; }
+  .belm-technician-spare-form { padding: 14px 14px 0; }
+  .belm-technician-spare-grid { grid-template-columns: 1fr; }
+  .belm-technician-spare-grid label.full { grid-column: auto; }
+  .belm-tech-spare-shortcut { right: 12px; bottom: 132px; }
+}
+
 body[data-belm-area="admin"] .min-h-screen.bg-belm-black,
 body[data-belm-area="portal"] .min-h-screen.bg-belm-blue,
 body[data-belm-area="tech"] .min-h-screen.bg-belm-blue {
@@ -224,4 +751,81 @@ html.dark .hover\:bg-slate-100:hover {
 html.dark .shadow-xl,
 html.dark .shadow-lg {
   box-shadow: 0 24px 60px rgba(0, 0, 0, .38) !important;
+}
+
+html.dark .belm-checked-report-card,
+html.dark .belm-checked-report-summary div,
+html.dark .belm-checked-report-actions button,
+html.dark .belm-checklist-edit-item input,
+html.dark .belm-checklist-edit-item select,
+html.dark .belm-checklist-edit-meter input {
+  color: #e5edf7;
+  border-color: #334155;
+  background: #182235;
+}
+
+html.dark .belm-checked-report-summary,
+html.dark .belm-checked-report-table th {
+  background: #0f172a;
+}
+
+html.dark .belm-checked-report-table {
+  color: #e5edf7;
+  border-color: #334155;
+}
+
+html.dark .belm-checked-report-table th,
+html.dark .belm-checked-report-table td {
+  border-bottom-color: #334155;
+}
+
+html.dark .belm-report-history-item {
+  color: #e5edf7;
+  border-color: #334155;
+  background: #0f172a;
+}
+
+html.dark .belm-checklist-edit-deadline {
+  color: #ffe17a;
+  border-color: #6a560c;
+  background: #312b15;
+}
+
+html.dark .belm-checklist-edit-item,
+html.dark .belm-checklist-edit-meter {
+  color: #cbd6e6;
+}
+
+html.dark .belm-technician-spare-grid label {
+  color: #cbd6e6;
+}
+
+html.dark .belm-technician-spare-grid input,
+html.dark .belm-technician-spare-grid select,
+html.dark .belm-technician-spare-grid textarea {
+  color: #e5edf7;
+  border-color: #334155;
+  background: #182235;
+}
+
+@media print {
+  body > *:not(.belm-checked-report-modal) {
+    display: none !important;
+  }
+  .belm-checked-report-modal {
+    position: static;
+    display: block;
+    padding: 0;
+    background: #fff;
+  }
+  .belm-checked-report-card {
+    width: 100%;
+    max-height: none;
+    border: 0;
+    box-shadow: none;
+  }
+  .belm-checked-report-actions,
+  .belm-checked-report-head button {
+    display: none !important;
+  }
 }

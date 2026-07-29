@@ -7,8 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/management-analytics.css">
-  <link rel="stylesheet" href="/admin-sidebar.css">
+  <link rel="stylesheet" href="/management-analytics.css?v=18-sidebar-activity">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=18-sidebar-activity">
 </head>
 <body class="management-page">
   <header class="management-topbar">
@@ -23,7 +23,7 @@
       <div>
         <p class="eyebrow">Business, people and operations</p>
         <h1>All Overview</h1>
-        <p>One card-based view of customers, staff roles, finance, service work, machines, attendance and current activity.</p>
+        <p>One card-based view of customers, staff roles, finance, service work, machines and attendance.</p>
       </div>
       <a class="button secondary" href="/reports-manager/">Open Detailed Reports</a>
     </section>
@@ -46,6 +46,32 @@
     <section id="primaryMetrics" class="metrics-grid" aria-label="Main overview totals"></section>
     <section id="financeMetrics" class="metrics-grid" aria-label="Finance overview"></section>
 
+    <section class="panel inventory-panel">
+      <div class="section-head">
+        <div><h2>Spare Parts Inventory</h2><p>Live stock quantities, values and reorder warnings read directly from inventory.</p></div>
+        <a class="button" href="/spare-parts-manager/">Open Spare Parts Inventory</a>
+      </div>
+      <section id="inventoryMetrics" class="metrics-grid inventory-metrics" aria-label="Spare parts inventory totals"></section>
+      <div class="data-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Spare part</th>
+              <th>Part number</th>
+              <th>Category</th>
+              <th>Stock qty</th>
+              <th>Reorder point</th>
+              <th>Purchase value</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryRows">
+            <tr><td colspan="7" class="empty-state">Loading inventory…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel">
       <div class="section-head">
         <div><h2>Analysis by role</h2><p>Active users, pending work and completed work for each system role.</p></div>
@@ -67,18 +93,10 @@
         <div id="attendanceBars" class="bar-list"></div>
       </article>
     </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <div><h2>Recent employee activity</h2><p>Latest work recorded in the system.</p></div>
-        <a class="button" href="/reports-manager/">Compare activity</a>
-      </div>
-      <div id="activityList" class="activity-list"></div>
-    </section>
   </main>
 
   <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js"></script>
-  <script src="/overview-manager/app.js"></script>
+  <script src="/admin-sidebar.js?v=18-sidebar-activity"></script>
+  <script src="/overview-manager/app.js?v=18-sidebar-activity"></script>
 </body>
 </html>

@@ -8,18 +8,95 @@ Hii ZIP ina:
 - Dockerfile
 - render.yaml (Blueprint)
 - Automatic database initialization
-- Unified customer/staff registration and admin role approval workflow
+- Original role-specific React login structure
 - Automatic customer, machine and checklist synchronization
 - public_website_patch/ for belmgeneraltech.co.tz
 
 
 NAVIGATION UPDATE
 -----------------
-- Admin pages now return directly to /admin-menu/.
-- The Main Menu only shows sections assigned to the signed-in user's role.
+- Admin pages now use the same permanent left sidebar.
+- Sidebar starts with All Overview, followed by Customers, Registration Requests,
+  Checklists, Service Requests, Spare Parts, Billing, Suppliers, Reports,
+  Roles & Users and Settings according to the signed-in role.
+- Admin pages return directly to /overview-manager/.
+- Main Menu has been removed. All Overview is now the Admin landing page.
+- Sidebar only shows sections assigned to the signed-in user's role.
 - Customer assistant management returns to /portal/dashboard.
 - Technician task management returns to /tech.
-- Admin, Technician and Customer login screens include Back to Portal Home.
+- Portal Home shows Administrator Login and Request Registration.
+- New Customers, Staff and Technicians submit /apply/ and remain blocked until
+  Admin approval. Approval generates the correct role-specific login link.
+- New and reset Staff/Technician accounts display one credentials card with
+  the role-specific login link, generated password, recovery code and Copy buttons.
+- The extra static /login/ page and its JavaScript interception were removed.
+- Admin uses /admin/login, Customer uses /portal/login?customer=..., and
+  Technician uses /tech. These are the original React forms and do not redirect
+  before the password can be entered.
+- Database migration repairs the built-in Admin active state and Super Admin
+  role without overwriting a password that the Administrator already changed.
+
+
+ALL OVERVIEW & MANAGEMENT REPORTS
+---------------------------------
+All Overview:
+  /overview-manager/
+
+- Card analysis for customers, machines, employees, registration requests,
+  service requests, tasks and low stock.
+- Finance cards for sales, received revenue, expenses and profit/loss.
+- Spare Parts Inventory reads live database stock and shows part types, total
+  quantity, low/out-of-stock counts, purchase value, sales value and potential
+  margin.
+- Inventory table prioritizes out-of-stock and low-stock parts and links to
+  the full Spare Parts Manager.
+- Every role has a card with staff, active accounts, pending tasks and
+  completed tasks.
+- Service, machine and today's attendance status comparisons.
+- Latest recorded employee activity.
+
+Reports:
+  /reports-manager/
+
+- Today, week, month, year or custom-date reporting.
+- Current vs previous financial comparison.
+- Sales, revenue, expenses, profit/loss and outstanding balances.
+- 12-month visual trend.
+- Attendance, tasks, service requests and employee/role activity.
+- Daily employee attendance saving with status, check-in, check-out and notes.
+- Export CSV and Print / Save PDF.
+
+Settings:
+  /settings-manager/
+
+- Company details, business defaults, light/dark theme and protected PIN save.
+
+
+CUSTOMER MACHINE EXPENSES
+-------------------------
+- Machine cards on Customer Dashboard are larger and include Machine Expenses.
+- Customer records expense date, spare description, part number, quantity,
+  unit and unit cost for the selected machine.
+- Total cost is calculated and saved against that customer and machine only.
+- Customer can take or upload a receipt photo; the browser compresses it and
+  the database stores it with the calculated expense.
+- Analysis cards show total machine expense, total spare quantity, number of
+  records, average cost and attached receipt count.
+- Expense history can be downloaded as authenticated PDF or CSV.
+- Customer Viewer accounts remain read-only.
+
+
+MACHINE-AWARE SERVICE REQUESTS
+------------------------------
+- Every Customer Dashboard machine card has Request Service.
+- The generic request button is replaced so every request starts from a
+  specific machine.
+- The portal detects the selected machine model/type and loads matching active
+  Checklist Template service types.
+- Selecting a service type synchronizes its spare-parts names, part numbers and
+  quantities into the request.
+- Admin sees the service type and synchronized parts on the Service Requests card.
+- Checklist Template now saves Service Type and its own editable parts list.
 
 
 JINSI YA KUIWEKA RENDER
@@ -42,7 +119,12 @@ JINSI YA KUIWEKA RENDER
 Jibu sahihi la health:
   "ok": true
   "database": "connected"
+  "schemaVersion": "16-receipts-service-parts-sync"
+  "schemaReady": true
   "adminReady": true
+
+`adminChecks` zote lazima ziwe true. Zikionyesha false, database ndiyo ina
+tatizo la Admin account badala ya browser/login page.
 
 Apache ina API FallbackResource ya /api/index.php, kwa hiyo REST URLs kama
 /api/health, /api/customers na /api/billing/invoices zinafika kwenye router
@@ -63,26 +145,27 @@ Default delete PIN:
 Badilisha password na PIN baada ya kuingia.
 
 
-UNIFIED REGISTRATION & APPROVAL
--------------------------------
-Public registration for Customer, Technician and Staff:
-  https://portal.belmgeneraltech.co.tz/apply/
+ROLE LOGIN & ADMIN APPROVAL
+---------------------------
+Administrator login:
+  https://portal.belmgeneraltech.co.tz/admin/login
 
 Admin applications:
   https://portal.belmgeneraltech.co.tz/admin-applications/
 
 Workflow:
-1. Registration type ni Customer au Staff / Technician.
-2. Customer anajaza company, TIN, VRN, contact na machine details.
-3. Staff/Technician anajaza name, email, phone na requested role.
-4. Request inakuwa PENDING na haiwezi kuona dashboard yoyote.
-5. Kwa Customer, Admin ana-approve; account, machine na checklist
-   vinatengenezwa kutoka details za request.
-6. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
+1. Customer, Staff au Technician anatuma Request Registration kupitia /apply/.
+2. Request inabaki PENDING na haina dashboard access wala password.
+3. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
    apewe Assigned Customer.
-7. Approval inagenerate login link, temporary password na recovery code.
-8. Admin anatumia Copy credentials kumtumia user taarifa zote.
-9. User anaona pages/data za role yake tu.
+4. Admin approval inagenerate role-specific login link, temporary password
+   na recovery code.
+5. Admin anatumia Copy credentials kumtumia user taarifa zote.
+6. User anaingia kupitia link ya role yake:
+   Admin /admin/login -> /overview-manager/
+   Technician /tech -> Technician workspace
+   Customer /portal/login?customer=... -> /portal/dashboard
+7. User anaona pages na data za role yake tu.
 
 Admin > Service Requests sasa inafungua manager kamili:
   /service-request-manager/
@@ -96,12 +179,10 @@ Customer link inatengenezwa automatically kwa jina la kampuni:
 Customer na assistants wake wanatumia link hiyo hiyo. Kila mmoja anaingia
 kwa email na password yake.
 
-Portal home ina login choices:
-  Registration: /apply/
-  Admin:       /admin/login
-  Technician:  /tech
-  Customer:    /portal/login
-  Password reset: /forgot-password/
+Portal home ina:
+  Administrator Login: /admin/login
+  Request Registration: /apply/
+Baada ya approval, Customer/Staff/Technician anatumia generated login link.
 
 
 SELF-SERVICE FORGOT PASSWORD
@@ -160,6 +241,16 @@ Admin > Checklist Templates sasa inafungua:
 - Input type ikiwa DROPDOWN, Admin anatumia + Add value kuongeza kila option.
 - Kila dropdown value inaweza kupewa GREEN, YELLOW au RED safety color.
 - Technician report, answers na machine status zinahifadhiwa pamoja.
+- Customer akichagua machine (mfano SRS45V) anaona Checklist Reports zake.
+- Kila completed checklist ina button ya View Checked Report yenye answers,
+  safety status, technician, date, hour meter, machine details na photo evidence.
+- Checked Report inaweza kuprintiwa moja kwa moja; authenticated Download
+  button ya report data bado ipo.
+- Technician aliye-save report anaweza kutumia Edit Checklist siku hiyo hiyo.
+- Uhariri unafungwa automatically saa 00:00 kwa timezone ya
+  Africa/Dar_es_Salaam; baada ya hapo report inaonyesha Expired / No Edit.
+- Deadline inatekelezwa na API pia, hivyo haiwezi kupitwa kwa kubadilisha
+  browser au request.
 
 
 TECHNICIAN CUSTOMER ASSIGNMENT
@@ -173,17 +264,52 @@ Admin > Roles/Users:
 Technician akilogin:
   Login -> Assigned Customer Machines -> Select Machine -> Checklist
 
+Kwenye kila machine card ya Technician:
+  Checked Reports -> Machine Checklist Reports -> View Checked Report
+
+Mfano:
+  BELM Technician Login -> SRS45V -> Checked Reports -> View Checked Report
+
+- Button ya mwisho ya inspection inaitwa Save Checklist.
+- Baada ya Save Checklist kufanikiwa, Checked Report iliyosave inafunguka
+  automatically.
+- Save response sasa inarudisha Checked Report kamili; report inafunguka baada
+  ya React kurudisha Customer Machine List, bila kutegemea timing ya request
+  nyingine.
+- Edit Checklist inaruhusu kurekebisha hour meter na checked answers hadi
+  saa 00:00 Tanzania; safety status inahesabiwa upya na server.
+- Technician akifunga Checked Report anakuta Machine List tayari iko nyuma.
+- Technician akitumia Administrator Login kwa credentials zake, session
+  inahamishwa kwenda /tech bila kuomba login ya pili.
+
 Technician ana pia button ya My Tasks:
   /technician-tasks/
 
 Task yoyote ya Technician inaunganishwa automatically na Assigned Customer
 wa Technician huyo.
 
+TECHNICIAN ADD SPARE
+--------------------
+- Technician dashboard ina button ya + Add Spare.
+- Technician anachagua assigned machine; Machine Type inajazwa automatically.
+- Technician anajaza Part Number na Description.
+- Server inathibitisha machine ni ya Assigned Customer wa Technician.
+- Part mpya inaingia Spare Parts Inventory na stock quantity 0.
+- Spare Parts Inventory inaonyesha Technician spare alert yenye machine,
+  customer, fundi, part number na description.
+- Inventory anaweza kuchagua Purchase Required au Add to Inventory.
+- Add to Inventory inalazimisha stock quantity iwe zaidi ya 0, inasave bei na
+  stock, kisha inafunga alert.
+- Part yenye stock inayopatikana haiwezi kuombwa kama zero-stock purchase;
+  Technician anaelekezwa aombe itolewe kutoka stock iliyopo.
+
 Security rules:
 - Technician role lazima iwe na Assigned Customer.
 - Technician hawezi kuona customer list ya kampuni nyingine.
 - Technician hawezi kuona machines za customer mwingine.
 - Technician hawezi kusoma au kutuma checklist report ya machine nyingine.
+- Technician mwingine hawezi ku-edit report ambayo hakuijaza.
+- Report ikifika saa 00:00 Tanzania inakuwa Expired / No Edit.
 - Kubadilisha URL au API hakuvunji restriction hii.
 
 
@@ -209,7 +335,7 @@ Admin > Accounting & Billing sasa inafungua:
 - Create customer invoice yenye items, machine, due date na tax.
 - Customer akichaguliwa, company name, email, phone, address, TIN na VRN
   zinajazwa/kuonyeshwa automatically kwenye invoice na proforma form.
-- Kitufe cha Back to Main Menu kinarudi Admin > Customers.
+- Kitufe cha All Overview kinafungua uchambuzi mkuu wa Admin.
 - Record payment; balance na PAID/PARTIALLY PAID status zinahesabiwa automatic.
 - Overpayment na payment ya cancelled invoice zinakataliwa.
 - Record company expenses.
@@ -252,6 +378,7 @@ CUSTOMER CARDS NA WORKING LINKS
 - Kila customer card ina Copy Link na Open Customer Login.
 - Customer mpya anaonyesha email, temporary password, recovery code na
   working portal link.
+- Credential dialog ina Copy All, Copy Link na Copy Password tofauti.
 - Reset Login inagenerate password/recovery code mpya kwa existing customer.
 
 
@@ -264,6 +391,11 @@ SMART SUPPLIER DIRECTORY
 - Trust levels: TRUSTED, REVIEW na VERIFY.
 - Supplier card ina phone, email, website, location, specialty na notes.
 - WhatsApp button inafungua message ya BELM kwa supplier.
+- Google Technical Search inatafuta kwa brand, model, serial au part number.
+- Search type dropdown ina Spare Parts, Parts Diagrams, Service Manuals,
+  Wiring Diagrams, Hydraulic Diagrams, Technical Specifications, Fault Codes,
+  Suppliers/Distributors na General Google Search.
+- Google results zinafunguka kwenye tab mpya bila kufunga Supplier Directory.
 - Admin anaweza Save, Edit au Delete supplier.
 - Trust score ni pre-screening aid; verify documents, identity na payment
   details kabla ya kufanya biashara.

@@ -7,9 +7,26 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 const SAFETY_RANK = ['GREEN' => 0, 'YELLOW' => 1, 'RED' => 2];
+const CHECKLIST_REPORT_TIMEZONE = 'Africa/Dar_es_Salaam';
+
+function checklist_report_expiry(string $createdAt): DateTimeImmutable {
+    try {
+        $created = new DateTimeImmutable($createdAt);
+    } catch (Throwable $error) {
+        json_error('The checklist report date is invalid.', 500);
+    }
+    $localCreated = $created->setTimezone(new DateTimeZone(CHECKLIST_REPORT_TIMEZONE));
+    return $localCreated->modify('tomorrow')->setTime(0, 0, 0);
+}
+
+function checklist_report_is_expired(string $createdAt): bool {
+    $now = new DateTimeImmutable('now', new DateTimeZone(CHECKLIST_REPORT_TIMEZONE));
+    return $now >= checklist_report_expiry($createdAt);
+}
 
 function require_report_machine_access(array $user, string $machineId, ?string $templateId = null): array {
-    $sql = 'SELECT m.id, m.customer_id, m.machine_type, m.deleted_at,
+    $sql = 'SELECT m.id, m.customer_id, m.machine_type, m.model, m.serial_number,
+                   m.reg_number, m.brand, m.deleted_at, c.name AS customer_name,
                    c.deleted_at AS customer_deleted_at, c.is_active';
     $params = [];
     if ($templateId !== null) {
@@ -52,28 +69,61 @@ function require_report_machine_access(array $user, string $machineId, ?string $
     return $machine;
 }
 
-// POST ?action=submit  { machineId, templateId, filledBy, hourMeterReading, answers[] }
-if ($method === 'POST' && $action === 'submit') {
-    $b = body();
-    if (empty($b['machineId']) || empty($b['templateId'])) {
-        json_error('Machine and checklist template are required.');
-    }
-    require_report_machine_access($user, $b['machineId'], $b['templateId']);
-    if (!isset($b['hourMeterReading']) || $b['hourMeterReading'] === '') {
-        json_error("Enter the machine's current hour meter reading before submitting.");
-    }
-    if (!is_numeric($b['hourMeterReading']) || (float)$b['hourMeterReading'] < 0) {
-        json_error('Hour meter reading must be a valid positive number.');
-    }
+function checklist_report_answer_view(array $answer): array {
+    $answer['reportId'] = $answer['report_id'] ?? null;
+    $answer['templateItemId'] = $answer['template_item_id'] ?? null;
+    $answer['photoUrl'] = $answer['photo_url'] ?? null;
+    $answer['safetyLevel'] = $answer['safety_level'] ?? 'GREEN';
+    $answer['inputType'] = $answer['input_type'] ?? 'TEXT';
+    $answer['options'] = isset($answer['options']) && $answer['options'] !== null
+        ? (json_decode((string)$answer['options'], true) ?: [])
+        : [];
+    $answer['isRequired'] = isset($answer['is_required']) ? (bool)$answer['is_required'] : false;
+    return $answer;
+}
 
+function checklist_report_api_view(array $report, array $machine, array $user): array {
+    $createdAt = (string)($report['created_at'] ?? '');
+    $expiry = checklist_report_expiry($createdAt);
+    $isExpired = checklist_report_is_expired($createdAt);
+    $isOriginalTechnician =
+        ($user['roleName'] ?? '') === 'Technician'
+        && trim((string)($user['name'] ?? '')) !== ''
+        && strcasecmp(trim((string)$report['filled_by']), trim((string)$user['name'])) === 0;
+
+    $report['machineId'] = $report['machine_id'] ?? $machine['id'];
+    $report['templateId'] = $report['template_id'] ?? null;
+    $report['filledBy'] = $report['filled_by'] ?? '';
+    $report['hourMeterReading'] = isset($report['hour_meter_reading'])
+        ? (float)$report['hour_meter_reading']
+        : 0;
+    $report['overallStatus'] = $report['overall_status'] ?? 'GREEN';
+    $report['createdAt'] = $report['created_at'] ?? null;
+    $report['expiresAt'] = $expiry->format(DateTimeInterface::ATOM);
+    $report['isExpired'] = $isExpired;
+    $report['canEdit'] = $isOriginalTechnician && !$isExpired;
+    $report['templateName'] = $report['template_name'] ?? '';
+    $report['customerName'] = $machine['customer_name'] ?? '';
+    $report['machine'] = [
+        'id' => $machine['id'],
+        'model' => $machine['model'] ?? '',
+        'machineType' => $machine['machine_type'] ?? '',
+        'serialNumber' => $machine['serial_number'] ?? '',
+        'regNumber' => $machine['reg_number'] ?? '',
+        'brand' => $machine['brand'] ?? '',
+    ];
+    return $report;
+}
+
+function validate_checklist_report_answers(string $templateId, array $submittedAnswers): array {
     $itemStmt = db()->prepare(
         'SELECT id, label, input_type, safety_level, options, option_safety, is_required
          FROM checklist_template_items WHERE template_id = ? ORDER BY "order" ASC'
     );
-    $itemStmt->execute([$b['templateId']]);
+    $itemStmt->execute([$templateId]);
     $templateItems = $itemStmt->fetchAll();
     $submittedById = [];
-    foreach (($b['answers'] ?? []) as $answer) {
+    foreach ($submittedAnswers as $answer) {
         $answerId = (string)($answer['templateItemId'] ?? '');
         if ($answerId !== '') $submittedById[$answerId] = $answer;
     }
@@ -90,8 +140,22 @@ if ($method === 'POST' && $action === 'submit') {
         }
         if ($answer === null || ($value === '' && $photoUrl === '')) continue;
 
+        $allowedOptions = $item['options']
+            ? (json_decode((string)$item['options'], true) ?: [])
+            : [];
+        if ($item['input_type'] === 'YES_NO' && !$allowedOptions) {
+            $allowedOptions = ['Yes', 'No'];
+        }
+        if (
+            in_array($item['input_type'], ['DROPDOWN', 'YES_NO'], true)
+            && $allowedOptions
+            && !in_array($value, $allowedOptions, true)
+        ) {
+            json_error("Select a valid result for checklist item: {$item['label']}.");
+        }
+
         $level = strtoupper((string)($item['safety_level'] ?: 'GREEN'));
-        if (($item['input_type'] === 'DROPDOWN' || $item['input_type'] === 'YES_NO') && $item['option_safety']) {
+        if (in_array($item['input_type'], ['DROPDOWN', 'YES_NO'], true) && $item['option_safety']) {
             $optionSafety = json_decode($item['option_safety'], true) ?: [];
             $level = strtoupper((string)($optionSafety[$value] ?? $level));
         }
@@ -105,6 +169,30 @@ if ($method === 'POST' && $action === 'submit') {
             'safetyLevel' => $level,
         ];
     }
+
+    return ['answers' => $answers, 'overallStatus' => $worst];
+}
+
+// POST ?action=submit  { machineId, templateId, filledBy, hourMeterReading, answers[] }
+if ($method === 'POST' && $action === 'submit') {
+    $b = body();
+    if (empty($b['machineId']) || empty($b['templateId'])) {
+        json_error('Machine and checklist template are required.');
+    }
+    $machine = require_report_machine_access($user, $b['machineId'], $b['templateId']);
+    if (!isset($b['hourMeterReading']) || $b['hourMeterReading'] === '') {
+        json_error("Enter the machine's current hour meter reading before submitting.");
+    }
+    if (!is_numeric($b['hourMeterReading']) || (float)$b['hourMeterReading'] < 0) {
+        json_error('Hour meter reading must be a valid positive number.');
+    }
+
+    $validated = validate_checklist_report_answers(
+        $b['templateId'],
+        is_array($b['answers'] ?? null) ? $b['answers'] : []
+    );
+    $answers = $validated['answers'];
+    $worst = $validated['overallStatus'];
 
     $reportId = uuid();
     $filledBy = ($user['roleName'] ?? '') === 'Technician'
@@ -141,21 +229,168 @@ if ($method === 'POST' && $action === 'submit') {
         throw $error;
     }
 
-    json_out(['id' => $reportId, 'overallStatus' => $worst], 201);
+    $reportStmt = db()->prepare(
+        'SELECT cr.*, ct.name AS template_name
+         FROM checklist_reports cr
+         LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
+         WHERE cr.id = ?'
+    );
+    $reportStmt->execute([$reportId]);
+    $savedReport = $reportStmt->fetch();
+    if (!$savedReport) {
+        json_error('Checklist was saved, but the Checked Report could not be loaded.', 500);
+    }
+    $answerStmt = db()->prepare(
+        'SELECT ca.id, ? AS report_id, cti.id AS template_item_id,
+                cti.label, COALESCE(ca.value, \'\') AS value,
+                ca.photo_url,
+                COALESCE(ca.safety_level, cti.safety_level, \'GREEN\') AS safety_level,
+                cti.input_type, cti.options, cti.is_required
+         FROM checklist_template_items cti
+         LEFT JOIN checklist_answers ca
+           ON ca.template_item_id = cti.id AND ca.report_id = ?
+         WHERE cti.template_id = ?
+         ORDER BY cti."order" ASC'
+    );
+    $answerStmt->execute([$reportId, $reportId, $b['templateId']]);
+    $savedReport = checklist_report_api_view($savedReport, $machine, $user);
+    $savedReport['answers'] = array_map(
+        'checklist_report_answer_view',
+        $answerStmt->fetchAll()
+    );
+    json_out($savedReport, 201);
 }
 
 // GET ?action=for-machine&machineId=...
 if ($method === 'GET' && $action === 'for-machine') {
-    require_report_machine_access($user, $_GET['machineId']);
-    $stmt = db()->prepare('SELECT * FROM checklist_reports WHERE machine_id = ? ORDER BY created_at DESC');
+    $machine = require_report_machine_access($user, $_GET['machineId']);
+    $stmt = db()->prepare(
+        'SELECT cr.*, ct.name AS template_name
+         FROM checklist_reports cr
+         LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
+         WHERE cr.machine_id = ?
+         ORDER BY cr.created_at DESC'
+    );
     $stmt->execute([$_GET['machineId']]);
     $reports = $stmt->fetchAll();
     foreach ($reports as &$r) {
-        $stmt2 = db()->prepare('SELECT * FROM checklist_answers WHERE report_id = ?');
-        $stmt2->execute([$r['id']]);
-        $r['answers'] = $stmt2->fetchAll();
+        $stmt2 = db()->prepare(
+            'SELECT ca.id, ? AS report_id, cti.id AS template_item_id,
+                    cti.label, COALESCE(ca.value, \'\') AS value,
+                    ca.photo_url,
+                    COALESCE(ca.safety_level, cti.safety_level, \'GREEN\') AS safety_level,
+                    cti.input_type, cti.options, cti.is_required
+             FROM checklist_template_items cti
+             LEFT JOIN checklist_answers ca
+               ON ca.template_item_id = cti.id AND ca.report_id = ?
+             WHERE cti.template_id = ?
+             ORDER BY cti."order" ASC'
+        );
+        $stmt2->execute([$r['id'], $r['id'], $r['template_id']]);
+        $r = checklist_report_api_view($r, $machine, $user);
+        $r['answers'] = array_map('checklist_report_answer_view', $stmt2->fetchAll());
     }
+    unset($r);
     json_out($reports);
+}
+
+// PUT ?action=update&id=...  { hourMeterReading, answers[] }
+if ($method === 'PUT' && $action === 'update') {
+    if (($user['roleName'] ?? '') !== 'Technician') {
+        json_error('Only a BELM Technician can edit a saved checklist.', 403);
+    }
+    $reportId = trim((string)($_GET['id'] ?? ''));
+    if ($reportId === '') json_error('Checklist report is required.');
+
+    $stmt = db()->prepare(
+        'SELECT id, machine_id, template_id, filled_by, created_at
+         FROM checklist_reports WHERE id = ?'
+    );
+    $stmt->execute([$reportId]);
+    $report = $stmt->fetch();
+    if (!$report) json_error('Checklist report not found.', 404);
+
+    require_report_machine_access($user, $report['machine_id'], $report['template_id']);
+    if (strcasecmp(trim((string)$report['filled_by']), trim((string)($user['name'] ?? ''))) !== 0) {
+        json_error('Only the Technician who saved this checklist can edit it.', 403);
+    }
+    $expiry = checklist_report_expiry((string)$report['created_at']);
+    if (checklist_report_is_expired((string)$report['created_at'])) {
+        json_error(
+            'This checklist expired at 00:00 Tanzania time and can no longer be edited.',
+            409
+        );
+    }
+
+    $b = body();
+    if (!isset($b['hourMeterReading']) || $b['hourMeterReading'] === '') {
+        json_error("Enter the machine's current hour meter reading before saving.");
+    }
+    if (!is_numeric($b['hourMeterReading']) || (float)$b['hourMeterReading'] < 0) {
+        json_error('Hour meter reading must be a valid positive number.');
+    }
+    $validated = validate_checklist_report_answers(
+        $report['template_id'],
+        is_array($b['answers'] ?? null) ? $b['answers'] : []
+    );
+    $answers = $validated['answers'];
+    $worst = $validated['overallStatus'];
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare(
+            'UPDATE checklist_reports
+             SET hour_meter_reading = ?, overall_status = ?
+             WHERE id = ?'
+        )->execute([(float)$b['hourMeterReading'], $worst, $reportId]);
+        $pdo->prepare('DELETE FROM checklist_answers WHERE report_id = ?')
+            ->execute([$reportId]);
+
+        $answerStmt = $pdo->prepare(
+            'INSERT INTO checklist_answers
+             (id, report_id, template_item_id, label, value, photo_url, safety_level)
+             VALUES (?,?,?,?,?,?,?)'
+        );
+        foreach ($answers as $answer) {
+            $answerStmt->execute([
+                uuid(),
+                $reportId,
+                $answer['templateItemId'],
+                $answer['label'],
+                $answer['value'],
+                $answer['photoUrl'],
+                $answer['safetyLevel'],
+            ]);
+        }
+
+        $latestStatus = $pdo->prepare(
+            'SELECT overall_status, created_at
+             FROM checklist_reports
+             WHERE machine_id = ?
+             ORDER BY created_at DESC
+             LIMIT 1'
+        );
+        $latestStatus->execute([$report['machine_id']]);
+        $latestReport = $latestStatus->fetch();
+        $pdo->prepare('UPDATE machines SET status = ?, last_checked_at = ? WHERE id = ?')
+            ->execute([
+                $latestReport['overall_status'] ?? $worst,
+                $latestReport['created_at'] ?? $report['created_at'],
+                $report['machine_id'],
+            ]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+
+    json_out([
+        'id' => $reportId,
+        'overallStatus' => $worst,
+        'expiresAt' => $expiry->format(DateTimeInterface::ATOM),
+        'canEdit' => true,
+    ]);
 }
 
 // GET ?action=service-status&machineId=...

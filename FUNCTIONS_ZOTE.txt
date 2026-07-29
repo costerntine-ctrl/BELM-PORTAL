@@ -3,12 +3,19 @@ BELM PORTAL - FUNCTIONS ZOTE
 
 0. NAVIGATION / BACK BUTTONS
 ----------------------------
-- /admin-menu/ is the single Admin Main Menu.
-- All standalone Admin managers have a direct Back to Main Menu link.
-- Main Menu cards are filtered by each user's allowedPages role assignment.
+- /overview-manager/ is the Admin landing page.
+- Left sidebar inaonekana kwenye admin managers zote na React admin routes.
+- Sidebar ina All Overview, Customers, Registration Requests, Checklists,
+  Service Requests, Spare Parts, Billing, Suppliers, Reports, Roles na Settings.
+- Sidebar links zinafichwa kulingana na allowedPages ya role.
+- All standalone Admin managers have a direct All Overview link.
+- Main Menu page/button has been removed; sidebar pages are filtered by each
+  user's allowedPages role assignment.
 - Customer pages return to Customer Dashboard.
 - Technician pages return to the Checklist app.
 - Login screens provide a direct Back to Portal Home link.
+- Customer Login ina Request Registration inayofungua /apply/.
+- Direct React routes zina Apache fallback; hazirudishi Apache 404.
 
 
 1. PUBLIC UNIFIED REGISTRATION
@@ -86,6 +93,9 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Assistant anaona machines za customer aliyemuumba tu.
 - Assistant hawezi kuona customer mwingine kwa kubadilisha URL/API.
 - Customer/assistant anaona checklist reports za machine yake tu.
+- Machine > Checklist Reports ina View Checked Report kwa kila completed report.
+- Checked Report ina machine/customer, technician, tarehe, hour meter, overall
+  status na kila checked item pamoja na GREEN/YELLOW/RED na photo evidence.
 - Deactivated assistant session inakataliwa kwenye kila API request.
 
 
@@ -101,12 +111,46 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Machine ina service interval/history.
 
 
+7A. CUSTOMER MACHINE EXPENSES
+-----------------------------
+- Customer Dashboard machine cards zimeongezwa ukubwa.
+- Kila machine card ina button ya Machine Expenses.
+- Customer ana-fill tarehe, spare description, part number, quantity, unit
+  na unit cost.
+- Mfumo unakokotoa na kuhifadhi total cost ya machine husika.
+- Receipt photo inaweza kupigwa kwa camera au kuchaguliwa gallery; inapunguzwa
+  ukubwa kabla ya kuhifadhi na inaweza kuonekana tena.
+- Analysis cards zina total expense, total quantity, record count, average na
+  receipt count.
+- Expense history ina download ya PDF na CSV.
+- Kila customer anaona expenses za machines zake tu.
+- Viewer assistant anaona report lakini hawezi kuongeza expense.
+
+
+7B. MACHINE-AWARE SERVICE REQUEST
+---------------------------------
+- Kila machine card ya Customer ina Request Service.
+- Mfumo unatambua machine model/type kutoka kwenye machine iliyochaguliwa.
+- Active Checklist Templates zinazolingana zinaonekana kama Service Type.
+- Service Type ikichaguliwa, spare-parts name, part number na quantity
+  zina-sync automatically.
+- Request inahifadhi snapshot ya parts list ili template ikibadilika, request
+  ya zamani ibaki na parts zake.
+- Admin anaona Service Type na synchronized parts kwenye Service Requests.
+- Generic Request Service button imeondolewa ili request zote zianzie kwenye
+  machine husika.
+
+
 8. CHECKLIST TEMPLATE MANAGEMENT
 --------------------------------
 - Admin ana-create checklist template.
 - Admin ana-edit template name na machine type.
 - Admin ana-activate/deactivate template.
 - Admin ana-add na remove checklist items.
+- Template ina Service Type.
+- Admin ana-add/remove service spare-parts name, part number na quantity.
+- Template, checklist items na service parts zote zinasave pamoja kwa
+  transaction moja.
 - Input types:
   TEXT
   NUMBER
@@ -140,9 +184,28 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Technician anaweka current hour-meter reading.
 - Technician anakamilisha required checklist items.
 - Technician anatuma inspection report.
+- Save Checklist ikifanikiwa inafungua saved Checked Report automatically.
+- Backend inarudisha Checked Report kamili kwenye Save response, hivyo report
+  inafunguka reliably baada ya Machine List kurudi.
+- Technician akifunga report anarudi kwenye Customer Machine List.
+- Kila Technician machine card ina Checked Reports.
+- Checked Reports ina inspection history ya machine hiyo na View Checked Report
+  yenye answers zote, status, fundi, tarehe, hour meter na photo evidence.
+- Technician aliye-save checklist anaweza kutumia Edit Checklist hadi saa
+  00:00 Tanzania ya siku hiyo.
+- Saa 00:00 report inakuwa Expired / No Edit, na API inakataa mabadiliko yote.
 - Technician anaona My Tasks alizopewa na Admin.
 - Anaweza kuweka task kuwa Completed.
 - Task ya Technician inafungwa automatically kwa Assigned Customer wake.
+- Technician dashboard ina + Add Spare.
+- Add Spare fields: assigned machine, machine type, part number na description.
+- Request ina-create/link Spare Parts Inventory record yenye stock 0.
+- Spare Parts Inventory ina alert ya addition au purchase.
+- Inventory anaweza kuweka Purchase Required au kuongeza stock zaidi ya 0 na
+  kufunga alert.
+- Technician hawezi kutuma request kwa machine ya customer mwingine.
+- Technician akilogin kupitia Administrator Login hahitaji ku-login tena
+  baada ya kupelekwa /tech.
 
 
 10. RELIABLE CHECKLIST REPORT SAVE
@@ -154,6 +217,9 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Report, answers na machine status zinasave kwa transaction moja.
 - Error ikitokea kila kitu kinarollback.
 - Overall status inahesabiwa GREEN, YELLOW au RED.
+- Checklist edit inasoma item definitions na safety rules tena kutoka database.
+- Checklist edit inaruhusiwa tu kwa Technician aliyeijaza, akiwa assigned kwa
+  machine hiyo, na kabla ya saa 00:00 Africa/Dar_es_Salaam.
 - Machine last checked date ina-update automatically.
 
 
@@ -162,6 +228,7 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Customer/assistant anaona machine cards.
 - Anaona machine checklist reports.
 - Anaona report date, filled by, hour meter na overall status.
+- Anafungua View Checked Report kuona majibu yote na kuprint report.
 - Ana-download checklist report data kwa authenticated download.
 - Anaona service status.
 - Anaona machine operation/uptime analysis.
@@ -183,6 +250,20 @@ BELM PORTAL - FUNCTIONS ZOTE
 
 13. ADMIN DASHBOARD
 -------------------
+- All Overview card dashboard: /overview-manager/.
+- Overview ina totals za customers, machines, employees, registrations,
+  service requests, tasks na low stock.
+- Overview ina sales, revenue, expenses, profit/loss na analysis ya kila role.
+- Overview inasoma Spare Parts Inventory moja kwa moja kutoka database:
+  part types, total stock quantity, low stock, out of stock, purchase value,
+  expected sales value na potential margin.
+- Inventory table inaweka out-of-stock na low-stock parts kwanza, pamoja na
+  part number, category, quantity, reorder point na stock value.
+- Reports & Comparisons: /reports-manager/.
+- Reports ina current-vs-previous finance, 12-month trends, attendance,
+  staff activity, tasks, service status, CSV na Print/PDF.
+- Admin ana-record daily employee attendance, check-in/out na notes.
+- System Settings: /settings-manager/.
 - Customer registration and machine management.
 - Customers overview/search.
 - Roles and system users.
@@ -211,13 +292,18 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Mfumo unalinda Super Admin wa mwisho asibadilishwe au kufutwa.
 - Invoice/Proforma customer selection inaonyesha automatically company name,
   email, phone, address, TIN na VRN.
-- Billing Manager ina Back to Main Menu inayofanya kazi.
+- Billing Manager ina All Overview link inayofanya kazi.
 - Customers Overview ina customer cards zenye full company information.
 - Kila customer card ina machine cards na Green/Yellow/Red/Not Checked status.
 - Customer link ina Copy Link na Open Login, na inafanya kazi kwenye Render
   URL au custom portal domain inayotumika.
+- Approval na Customer credential dialogs zina Copy All, Copy Link na
+  Copy Password buttons tofauti.
 - Supplier Directory ina cards, Smart Trust Score, trust status, WhatsApp,
   website, Save/Edit/Delete.
+- Supplier Directory ina Google Technical Search yenye dropdown ya Spare Parts,
+  Parts Diagrams, Service Manuals, Wiring/Hydraulic Diagrams, Specifications,
+  Fault Codes na Suppliers/Distributors.
 
 
 14. SECURITY

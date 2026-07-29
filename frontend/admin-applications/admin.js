@@ -39,6 +39,19 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
+async function copyText(value) {
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch (_) {
+    const area = document.createElement("textarea");
+    area.value = value;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand("copy");
+    area.remove();
+  }
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -267,8 +280,18 @@ document.getElementById("copyMessageButton").addEventListener("click", async () 
     "Use the recovery code on Forgot Password if you lose your password. Save it securely.",
     "BELM General Tech Service Limited"
   ].join("\n");
-  await navigator.clipboard.writeText(message);
+  await copyText(message);
   document.getElementById("copyMessageButton").textContent = "Credentials copied";
+});
+document.getElementById("copyApprovedLinkButton").addEventListener("click", async () => {
+  if (!lastApproval) return;
+  await copyText(lastApproval.loginUrl || "");
+  document.getElementById("copyApprovedLinkButton").textContent = "Login link copied";
+});
+document.getElementById("copyApprovedPasswordButton").addEventListener("click", async () => {
+  if (!lastApproval) return;
+  await copyText(lastApproval.temporaryPassword || "");
+  document.getElementById("copyApprovedPasswordButton").textContent = "Password copied";
 });
 
 loadApplications();

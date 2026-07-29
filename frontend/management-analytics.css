@@ -397,6 +397,34 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
+.inventory-panel .inventory-metrics {
+  margin-bottom: 16px;
+}
+
+.inventory-panel td strong {
+  color: var(--ink);
+}
+
+.stock-badge {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #087039;
+  background: #e7f8ee;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.stock-badge.low_stock {
+  color: #705900;
+  background: #fff5b8;
+}
+
+.stock-badge.out_of_stock {
+  color: #9b251d;
+  background: #feeeee;
+}
+
 td input,
 td select {
   min-width: 105px;

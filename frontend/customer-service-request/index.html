@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Request Machine Service — BELM Customer Portal</title>
+  <link rel="stylesheet" href="/customer-service-request/request.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/portal/dashboard">
+      <span class="mark">B</span>
+      <span><b>BELM Customer Portal</b><small>Machine-aware Service Request</small></span>
+    </a>
+    <nav>
+      <a href="/portal/dashboard">← Customer dashboard</a>
+      <button id="logoutButton" type="button">Log out</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div>
+        <p class="eyebrow">MODEL-MATCHED SERVICE</p>
+        <h1 id="pageTitle">Request machine service</h1>
+        <p id="machineDetails" class="lead">Detecting machine model and service types…</p>
+      </div>
+    </section>
+
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Service request details</h2><p>The selected service type automatically synchronizes its spare-parts list.</p></div>
+        <span id="matchStatus">Checking machine…</span>
+      </div>
+      <form id="serviceForm">
+        <label>Service type
+          <select id="serviceTemplate"></select>
+        </label>
+        <label>Priority
+          <select id="priority">
+            <option value="NORMAL">Normal</option>
+            <option value="LOW">Low</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
+          </select>
+        </label>
+        <label class="wide">Service description
+          <textarea id="description" rows="4" maxlength="2000" required placeholder="Describe any symptoms, fault codes or work required."></textarea>
+        </label>
+        <div class="form-actions">
+          <a href="/portal/dashboard">Cancel</a>
+          <button class="primary" id="submitButton" type="submit">Submit service request</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Synchronized parts list</h2><p>Parts configured by Admin in the matching Checklist Template.</p></div>
+        <strong id="partCount">0 parts</strong>
+      </div>
+      <div id="partsList" class="parts-list">
+        <div class="empty">Choose a service type to see its spare parts.</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="/customer-service-request/request.js"></script>
+</body>
+</html>

@@ -197,6 +197,7 @@ if ($method === 'POST' && !$action) {
         $roleId,
         $assignedCustomerId,
     ]);
+    log_activity($user['id'], 'created', 'user', $newId, ['name' => $name]);
     json_out([
         'id' => $newId,
         'temporaryPassword' => $password,
@@ -220,6 +221,7 @@ if ($method === 'PUT' && !$action) {
     );
     db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
         ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
+    log_activity($user['id'], 'updated', 'user', $id, ['name' => $name]);
     json_out(['ok' => true, 'message' => 'User role and access updated successfully.']);
 }
 
@@ -266,6 +268,7 @@ if ($method === 'DELETE' && !$action) {
     }
     send_to_trash('user', $id, $row['name'], $user['id']);
     soft_delete('users', $id);
+    log_activity($user['id'], 'deleted', 'user', $id, ['name' => $row['name']]);
     json_out(null, 204);
 }
 

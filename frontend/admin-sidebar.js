@@ -3,7 +3,6 @@
 
   const pathname = window.location.pathname;
   const standaloneAdminPaths = [
-    "/admin-menu/",
     "/overview-manager/",
     "/customers-manager/",
     "/admin-applications/",
@@ -37,7 +36,6 @@
   }
 
   const pages = [
-    { section: "Navigation", key: null, label: "Main Menu", short: "MM", href: "/admin-menu/", paths: ["/admin-menu/"] },
     { section: "Analysis", key: "overview", label: "All Overview", short: "AO", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
     { section: "Operations", key: "customers", label: "Customers", short: "CU", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     { key: "customers", label: "Registration Requests", short: "AR", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true },
@@ -64,7 +62,7 @@
 
   const brand = document.createElement("a");
   brand.className = "belm-sidebar-brand";
-  brand.href = "/admin-menu/";
+  brand.href = "/overview-manager/";
   const mark = document.createElement("span");
   mark.className = "belm-sidebar-brand-mark";
   mark.textContent = "B";

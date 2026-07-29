@@ -128,8 +128,6 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(0, 169, 88, 
 .check-option { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; }
 .check-option input { width: auto; margin: 0; }
 .dialog-actions { justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
-.credentials { display: grid; gap: 12px; margin-top: 16px; }
-.credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 @media (max-width: 900px) {
   .metrics { grid-template-columns: 1fr 1fr; }

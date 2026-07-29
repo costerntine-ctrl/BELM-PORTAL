@@ -136,12 +136,13 @@ if ($method === 'POST' && !$action) {
             password_hash($recoveryCode, PASSWORD_BCRYPT),
         ]);
 
+    log_activity($user['id'], 'created', 'customer', $newId, ['name' => $details['name']]);
     json_out([
         'id' => $newId,
         'portalLoginInfo' => [
-            'portalLink' => customer_portal_url($portalLink, $details['email']),
+            'portalLink' => customer_portal_url($portalLink),
             'portalId' => $portalLink,
-            'portalUrl' => customer_portal_url($portalLink, $details['email']),
+            'portalUrl' => customer_portal_url($portalLink),
             'temporaryPassword' => $tempPassword,
             'recoveryCode' => $recoveryCode,
         ],
@@ -155,20 +156,17 @@ if ($method === 'PUT' && $action === 'reset-password') {
     $stmt = db()->prepare(
         'UPDATE customers
          SET password = ?, recovery_code_hash = ?
-         WHERE id = ? AND deleted_at IS NULL
-         RETURNING email, portal_link'
+         WHERE id = ? AND deleted_at IS NULL'
     );
     $stmt->execute([
         password_hash($temporaryPassword, PASSWORD_BCRYPT),
         password_hash($recoveryCode, PASSWORD_BCRYPT),
         $id,
     ]);
-    $resetCustomer = $stmt->fetch();
-    if (!$resetCustomer) json_error('Customer not found.', 404);
+    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
     json_out([
         'temporaryPassword' => $temporaryPassword,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => customer_portal_url($resetCustomer['portal_link'], $resetCustomer['email']),
     ]);
 }
 
@@ -197,6 +195,7 @@ if ($method === 'PUT' && !$action) {
             $isActive,
             $id,
         ]);
+    log_activity($user['id'], 'updated', 'customer', $id, ['name' => $details['name']]);
     json_out([
         'ok' => true,
         'portalLink' => $portalLink,
@@ -213,6 +212,7 @@ if ($method === 'DELETE' && !$action) {
     if (!$row) json_error('Not found', 404);
     send_to_trash('customer', $id, $row['name'], $user['id']);
     soft_delete('customers', $id);
+    log_activity($user['id'], 'deleted', 'customer', $id, ['name' => $row['name']]);
     json_out(null, 204);
 }
 

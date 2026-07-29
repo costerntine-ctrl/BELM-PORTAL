@@ -195,14 +195,14 @@ if ($method === 'POST' && !$id) {
         ]);
     } else {
         $companyName = clean_required($body, 'companyName', 'Company name');
-        $address = clean_required($body, 'address', 'Company address', 500);
+        $address = clean_required($body, 'address', 'Company location', 500);
         $phone = clean_required($body, 'phone', 'Phone number', 50);
-        $tinNumber = clean_required($body, 'tinNumber', 'TIN number', 50);
-        $vrn = clean_required($body, 'vrn', 'VRN number', 50);
-        $machineType = clean_required($body, 'machineType', 'Machine type', 100);
-        $brand = clean_required($body, 'brand', 'Machine brand', 100);
-        $model = clean_required($body, 'model', 'Machine model');
-        $regNumber = clean_required($body, 'regNumber', 'Machine registration number', 100);
+        $tinNumber = trim((string)($body['tinNumber'] ?? '')) ?: null;
+        $vrn = trim((string)($body['vrn'] ?? '')) ?: null;
+        $machineType = trim((string)($body['machineType'] ?? '')) ?: null;
+        $brand = trim((string)($body['brand'] ?? '')) ?: null;
+        $model = trim((string)($body['model'] ?? '')) ?: null;
+        $regNumber = trim((string)($body['regNumber'] ?? '')) ?: null;
 
         // The real password is generated only after administrator approval.
         // This placeholder preserves compatibility with existing databases.
@@ -324,9 +324,11 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 json_error('This email already belongs to another portal account.', 409);
             }
 
-            $checklist = sync_checklist_for_machine_type($application['machine_type']);
+            $hasMachineDetails = trim((string)($application['machine_type'] ?? '')) !== ''
+                && trim((string)($application['model'] ?? '')) !== '';
+            $checklist = $hasMachineDetails ? sync_checklist_for_machine_type($application['machine_type']) : null;
             $customerId = uuid();
-            $machineId = uuid();
+            $machineId = $hasMachineDetails ? uuid() : null;
             $portalLink = customer_portal_slug($application['company_name']);
             $temporaryPassword = secure_account_secret();
             $recoveryCode = account_recovery_code();
@@ -349,20 +351,22 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 password_hash($recoveryCode, PASSWORD_BCRYPT),
             ]);
 
-            $pdo->prepare(
-                'INSERT INTO machines
-                 (id, customer_id, machine_type, model, serial_number, reg_number,
-                  brand, status, created_at)
-                 VALUES (?,?,?,?,NULL,?,?,?,NOW())'
-            )->execute([
-                $machineId,
-                $customerId,
-                $checklist['machineType'],
-                $application['model'],
-                $application['reg_number'],
-                $application['brand'],
-                'UNKNOWN',
-            ]);
+            if ($hasMachineDetails) {
+                $pdo->prepare(
+                    'INSERT INTO machines
+                     (id, customer_id, machine_type, model, serial_number, reg_number,
+                      brand, status, created_at)
+                     VALUES (?,?,?,?,NULL,?,?,?,NOW())'
+                )->execute([
+                    $machineId,
+                    $customerId,
+                    $checklist['machineType'],
+                    $application['model'],
+                    $application['reg_number'],
+                    $application['brand'],
+                    'UNKNOWN',
+                ]);
+            }
 
             $pdo->prepare(
                 "UPDATE customer_applications
@@ -397,10 +401,12 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'temporaryPassword' => $temporaryPassword,
                 'recoveryCode' => $recoveryCode,
                 'portalLink' => $portalLink,
-                'loginUrl' => customer_portal_url($portalLink, $application['email']),
-                'checklistTemplateId' => $checklist['templateId'],
-                'checklistCreated' => $checklist['created'],
-                'message' => 'Customer, machine and checklist access are ready.',
+                'loginUrl' => customer_portal_url($portalLink),
+                'checklistTemplateId' => $checklist['templateId'] ?? null,
+                'checklistCreated' => $checklist['created'] ?? false,
+                'message' => $hasMachineDetails
+                    ? 'Customer, machine and checklist access are ready.'
+                    : 'Customer account is ready. Add the customer\'s machine details from Customers to finish setup.',
             ]);
         }
 

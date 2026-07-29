@@ -15,13 +15,13 @@
   const allowedPages = Array.isArray(user.allowedPages) ? user.allowedPages : [];
   const routes = {
     customers: "/customers-manager/",
-    overview: "/overview-manager/",
+    overview: "/admin/overview",
     roles: "/roles-manager/",
     "service-requests": "/service-request-manager/",
     "spare-parts": "/spare-parts-manager/",
     billing: "/billing-manager/",
-    reports: "/reports-manager/",
-    settings: "/settings-manager/",
+    reports: "/admin/reports",
+    settings: "/admin/settings",
     "checklist-templates": "/checklist-manager/",
     suppliers: "/suppliers-manager/",
     "activity-log": "/admin/activity-log"
@@ -29,15 +29,12 @@
   const pathRules = [
     [/^\/customers-manager(?:\/|$)/, "customers"],
     [/^\/admin-applications(?:\/|$)/, "customers"],
-    [/^\/overview-manager(?:\/|$)/, "overview"],
     [/^\/checklist-manager(?:\/|$)/, "checklist-templates"],
     [/^\/service-request-manager(?:\/|$)/, "service-requests"],
     [/^\/spare-parts-manager(?:\/|$)/, "spare-parts"],
     [/^\/billing-manager(?:\/|$)/, "billing"],
     [/^\/roles-manager(?:\/|$)/, "roles"],
     [/^\/suppliers-manager(?:\/|$)/, "suppliers"],
-    [/^\/reports-manager(?:\/|$)/, "reports"],
-    [/^\/settings-manager(?:\/|$)/, "settings"],
     [/^\/admin\/([^/]+)/, null]
   ];
 

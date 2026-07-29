@@ -24,7 +24,7 @@
     settings: "/settings-manager/",
     "checklist-templates": "/checklist-manager/",
     suppliers: "/suppliers-manager/",
-    "activity-log": "/overview-manager/"
+    "activity-log": "/admin/activity-log"
   };
   const pathRules = [
     [/^\/customers-manager(?:\/|$)/, "customers"],

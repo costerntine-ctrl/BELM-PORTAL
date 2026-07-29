@@ -335,12 +335,12 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   email VARCHAR(255) NOT NULL,
   address VARCHAR(500) NOT NULL,
   phone VARCHAR(50) NOT NULL,
-  tin_number VARCHAR(50),
-  vrn VARCHAR(50),
-  machine_type VARCHAR(100),
-  brand VARCHAR(100),
-  model VARCHAR(255),
-  reg_number VARCHAR(100),
+  tin_number VARCHAR(50) NOT NULL,
+  vrn VARCHAR(50) NOT NULL,
+  machine_type VARCHAR(100) NOT NULL,
+  brand VARCHAR(100) NOT NULL,
+  model VARCHAR(255) NOT NULL,
+  reg_number VARCHAR(100) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -349,15 +349,6 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   customer_id VARCHAR(36) NULL REFERENCES customers(id),
   machine_id VARCHAR(36) NULL REFERENCES machines(id)
 );
-
--- Existing databases created before the simplified registration form: relax
--- the columns that are no longer collected up-front on the public form.
-ALTER TABLE customer_applications ALTER COLUMN tin_number DROP NOT NULL;
-ALTER TABLE customer_applications ALTER COLUMN vrn DROP NOT NULL;
-ALTER TABLE customer_applications ALTER COLUMN machine_type DROP NOT NULL;
-ALTER TABLE customer_applications ALTER COLUMN brand DROP NOT NULL;
-ALTER TABLE customer_applications ALTER COLUMN model DROP NOT NULL;
-ALTER TABLE customer_applications ALTER COLUMN reg_number DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS user_applications (
   id VARCHAR(36) PRIMARY KEY,
@@ -445,6 +436,13 @@ VALUES
   )
 ON CONFLICT (name) DO NOTHING;
 
+-- Keep the built-in Administrator role usable when this schema is applied to
+-- a database created by an older BELM release. Other custom roles and their
+-- permissions remain untouched.
+UPDATE roles
+SET deleted_at = NULL
+WHERE name = 'Super Admin';
+
 INSERT INTO users (id, name, email, password_hash, role_id)
 SELECT
   '00000000-0000-4000-8000-000000000003',
@@ -454,7 +452,18 @@ SELECT
   id
 FROM roles
 WHERE name = 'Super Admin'
-ON CONFLICT (email) DO NOTHING;
+ON CONFLICT (email) DO UPDATE SET
+  name = EXCLUDED.name,
+  is_active = 1,
+  role_id = EXCLUDED.role_id,
+  deleted_at = NULL,
+  -- Preserve a password the Administrator has already changed. Only repair a
+  -- clearly invalid/empty legacy hash with the documented temporary password.
+  password_hash = CASE
+    WHEN users.password_hash LIKE '$2%' OR users.password_hash LIKE '$argon2%'
+      THEN users.password_hash
+    ELSE EXCLUDED.password_hash
+  END;
 
 INSERT INTO system_settings (id, "key", "value")
 VALUES (

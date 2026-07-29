@@ -23,23 +23,70 @@ function dispatch(string $file, array $getOverrides = []): void {
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
         $databaseVersion = db()->query('SELECT VERSION()')->fetchColumn();
-        $adminReady = false;
+        $requiredTables = [
+            'roles',
+            'users',
+            'customers',
+            'customer_users',
+            'machines',
+            'customer_applications',
+            'user_applications',
+        ];
+        $tableChecks = [];
+        $schemaReady = true;
+        $tableStatement = db()->prepare('SELECT to_regclass(?) IS NOT NULL');
+        foreach ($requiredTables as $table) {
+            $tableStatement->execute(['public.' . $table]);
+            $tableChecks[$table] = (bool)$tableStatement->fetchColumn();
+            if (!$tableChecks[$table]) $schemaReady = false;
+        }
+
+        $adminChecks = [
+            'exactlyOneAccount' => false,
+            'active' => false,
+            'superAdminRole' => false,
+            'passwordHashStored' => false,
+        ];
         try {
             $stmt = db()->prepare(
-                "SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?) AND deleted_at IS NULL"
+                "SELECT u.id, u.is_active, u.deleted_at, u.password_hash,
+                        r.name AS role_name,
+                        COUNT(*) OVER () AS matching_accounts
+                 FROM users u
+                 LEFT JOIN roles r ON r.id = u.role_id
+                 WHERE LOWER(u.email) = LOWER(?)
+                 ORDER BY
+                   CASE WHEN u.deleted_at IS NULL AND u.is_active = 1 THEN 0 ELSE 1 END,
+                   u.created_at ASC
+                 LIMIT 1"
             );
             $stmt->execute(['admin@belmgeneraltech.co.tz']);
-            $adminReady = (int)$stmt->fetchColumn() > 0;
+            $admin = $stmt->fetch();
+            if ($admin) {
+                $hash = (string)($admin['password_hash'] ?? '');
+                $adminChecks['exactlyOneAccount'] = (int)$admin['matching_accounts'] === 1;
+                $adminChecks['active'] =
+                    (int)$admin['is_active'] === 1 && $admin['deleted_at'] === null;
+                $adminChecks['superAdminRole'] = $admin['role_name'] === 'Super Admin';
+                $adminChecks['passwordHashStored'] =
+                    str_starts_with($hash, '$2') || str_starts_with($hash, '$argon2');
+            }
         } catch (Throwable $ignored) {
             // The database connection works, but schema.sql has not been imported.
         }
+        $adminReady = !in_array(false, $adminChecks, true);
 
         json_out([
             'ok' => true,
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
+            'schemaVersion' => '14-db-login-integrity',
+            'schemaReady' => $schemaReady,
+            'tables' => $tableChecks,
             'adminReady' => $adminReady,
+            'adminChecks' => $adminChecks,
+            'loginEndpoint' => '/api/auth/unified-login',
         ]);
     } catch (Throwable $e) {
         json_out([
@@ -161,9 +208,6 @@ switch ($resource) {
 
     case 'suppliers':
         dispatch('suppliers.php', ['id' => $segments[1] ?? null]);
-
-    case 'activity-log':
-        dispatch('activity_log.php', ['entity' => $segments[1] ?? '']);
 
     case 'reports':
         dispatch('reports.php', ['action' => $segments[1] ?? '']);

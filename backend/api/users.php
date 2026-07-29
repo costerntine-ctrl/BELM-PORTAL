@@ -164,6 +164,7 @@ if ($method === 'POST' && !$action) {
     $password = (string)($b['password'] ?? '');
     if ($name === '') json_error('User name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
+    if ($password === '') $password = secure_account_secret();
     if (strlen($password) < 8) json_error('Password must contain at least 8 characters.');
     $roleId = trim((string)($b['roleId'] ?? ''));
     if ($roleId === '' || role_name($roleId) === null) json_error('Select a valid role.');
@@ -196,7 +197,12 @@ if ($method === 'POST' && !$action) {
         $roleId,
         $assignedCustomerId,
     ]);
-    json_out(['id' => $newId, 'recoveryCode' => $recoveryCode], 201);
+    json_out([
+        'id' => $newId,
+        'temporaryPassword' => $password,
+        'recoveryCode' => $recoveryCode,
+        'loginUrl' => portal_base_url() . '/login/',
+    ], 201);
 }
 
 if ($method === 'PUT' && !$action) {
@@ -231,7 +237,11 @@ if ($method === 'PUT' && $action === 'reset-password') {
         $id,
     ]);
     if ($stmt->rowCount() === 0) json_error('User not found.', 404);
-    json_out(['newPassword' => $newPassword, 'recoveryCode' => $recoveryCode]);
+    json_out([
+        'newPassword' => $newPassword,
+        'recoveryCode' => $recoveryCode,
+        'loginUrl' => portal_base_url() . '/login/',
+    ]);
 }
 
 if ($method === 'DELETE' && !$action) {

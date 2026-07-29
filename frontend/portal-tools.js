@@ -1,15 +1,29 @@
 (function () {
   const buttonId = "belm-applications-shortcut";
   const pathname = window.location.pathname;
-  const legacyCustomerLogin = pathname === "/portal/login";
-  const legacyAdminLogin = pathname === "/admin/login";
-  const legacyTechnicianLogin = pathname === "/tech"
-    && !localStorage.getItem("belm_tech_token");
-  if (legacyCustomerLogin || legacyAdminLogin || legacyTechnicianLogin) {
+
+  function redirectLegacyLogin() {
+    const currentPath = window.location.pathname;
+    const legacyCustomerLogin = currentPath === "/portal/login";
+    const legacyAdminLogin = currentPath === "/admin/login";
+    const legacyTechnicianLogin = currentPath === "/tech"
+      && !localStorage.getItem("belm_tech_token");
+    if (!legacyCustomerLogin && !legacyAdminLogin && !legacyTechnicianLogin) {
+      return false;
+    }
     const customer = new URLSearchParams(window.location.search).get("customer");
-    window.location.replace(customer
+    const destination = customer
       ? `/login/?customer=${encodeURIComponent(customer)}`
-      : "/login/");
+      : "/login/";
+    if (typeof window.BELM_NAVIGATE === "function") {
+      window.BELM_NAVIGATE(destination);
+    } else {
+      window.location.replace(destination);
+    }
+    return true;
+  }
+
+  if (redirectLegacyLogin()) {
     return;
   }
   document.body.dataset.belmArea = pathname.startsWith("/admin")
@@ -564,6 +578,7 @@
   enforceViewerInterface();
   correctLegacyCopy();
   setInterval(() => {
+    if (redirectLegacyLogin()) return;
     refreshShortcut();
     addTechnicianTasksShortcut();
     syncTechnicianCustomerName();

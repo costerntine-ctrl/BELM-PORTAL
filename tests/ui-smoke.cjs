@@ -133,6 +133,15 @@ async function testRoleChange() {
     if (url === "/api/customers") return response(customers);
     if (url === "/api/settings") return response({ displayTheme: "light" });
     if (url === "/api/users/user-2" && options.method === "PUT") return response({ ok: true });
+    if (url === "/api/users" && options.method === "POST") {
+      const payload = JSON.parse(options.body);
+      return response({
+        id: "user-3",
+        temporaryPassword: payload.password,
+        recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
+        loginUrl: "https://belm-portal.onrender.com/login/",
+      }, 201);
+    }
     return response(null, 404);
   };
   dom.window.eval(fs.readFileSync(path.join(root, "frontend/roles-manager/manager.js"), "utf8"));
@@ -149,6 +158,23 @@ async function testRoleChange() {
   const body = JSON.parse(save.options.body);
   assert.equal(body.roleId, "role-tech");
   assert.equal(body.assignedCustomerId, "customer-1");
+
+  dom.window.document.getElementById("addUserButton").click();
+  assert.ok(dom.window.document.getElementById("userPassword").value.length >= 8);
+  dom.window.document.getElementById("userName").value = "Technician Two";
+  dom.window.document.getElementById("userEmail").value = "tech2@example.com";
+  dom.window.document.getElementById("userRole").value = "role-tech";
+  dom.window.document.getElementById("userRole").dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  dom.window.document.getElementById("assignedCustomer").value = "customer-1";
+  dom.window.document.getElementById("userForm").dispatchEvent(
+    new dom.window.Event("submit", { bubbles: true, cancelable: true })
+  );
+  await flush();
+  const create = requests.find((request) => request.url === "/api/users" && request.options.method === "POST");
+  assert.ok(create, "System-user POST request was not sent");
+  assert.ok(dom.window.document.getElementById("userCredentialsDialog").open);
+  assert.equal(dom.window.document.getElementById("systemCredentialEmail").value, "tech2@example.com");
+  assert.equal(dom.window.document.getElementById("systemCredentialLink").value, "https://belm-portal.onrender.com/login/");
 }
 
 async function testSettingsSaving() {
@@ -233,6 +259,38 @@ async function testUnifiedLogin() {
     assert.equal(dom.window.document.documentElement.dataset.testDestination, scenario.destination);
     dom.window.close();
   }
+}
+
+async function testLegacyLoginsAlwaysReturnToUnifiedLogin() {
+  const oldCustomerLogin = new JSDOM("<!doctype html><html><body></body></html>", {
+    url: "https://belm-portal.onrender.com/portal/login?customer=ecls-icd",
+    runScripts: "outside-only",
+  });
+  let customerDestination = "";
+  oldCustomerLogin.window.BELM_NAVIGATE = (destination) => { customerDestination = destination; };
+  oldCustomerLogin.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  assert.equal(customerDestination, "/login/?customer=ecls-icd");
+  oldCustomerLogin.window.close();
+
+  const technicianApp = new JSDOM("<!doctype html><html><body></body></html>", {
+    url: "https://belm-portal.onrender.com/tech",
+    runScripts: "outside-only",
+  });
+  let intervalCallback = null;
+  let technicianDestination = "";
+  technicianApp.window.localStorage.setItem("belm_tech_token", "test-token");
+  technicianApp.window.setInterval = (callback) => {
+    intervalCallback = callback;
+    return 1;
+  };
+  technicianApp.window.fetch = async () => response(null, 404);
+  technicianApp.window.BELM_NAVIGATE = (destination) => { technicianDestination = destination; };
+  technicianApp.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  assert.equal(technicianDestination, "");
+  technicianApp.window.localStorage.removeItem("belm_tech_token");
+  intervalCallback();
+  assert.equal(technicianDestination, "/login/");
+  technicianApp.window.close();
 }
 
 async function testChecklistDropdownValues() {
@@ -633,6 +691,7 @@ async function testReportsAndAttendance() {
   await testRoleChange();
   await testSettingsSaving();
   await testUnifiedLogin();
+  await testLegacyLoginsAlwaysReturnToUnifiedLogin();
   await testChecklistDropdownValues();
   await testSupplierCards();
   await testCustomerCardsAndLinks();

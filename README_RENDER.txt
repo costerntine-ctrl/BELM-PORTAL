@@ -26,6 +26,10 @@ NAVIGATION UPDATE
 - Admin, Technician and Customer use one login at /login/.
 - Public "Register for Portal Access" has been removed. Administrators create
   and approve accounts from the management portal.
+- New and reset Staff/Technician accounts display one credentials card with
+  the unified login link, generated password, recovery code and Copy buttons.
+- Logging out from any role returns to /login/; old separate login routes also
+  redirect to the unified login.
 - Apache now serves the React application for direct URLs such as
   /login/, /portal/login, /admin/login and old /admin/* bookmarks instead of 404.
 

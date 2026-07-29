@@ -93,7 +93,6 @@ if ($method === 'POST' && !$action) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
-    log_activity($user['id'], 'created', 'invoice', $newId, ['invoiceNo' => $invoiceNo, 'total' => $total]);
     json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
 }
 
@@ -118,7 +117,6 @@ if ($method === 'PUT' && !$action) {
     $stmt = db()->prepare('UPDATE invoices SET status=?, due_date=?, machine_id=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([$status, $b['dueDate'] ?? null, $machineId !== '' ? $machineId : null, $id]);
     if ($stmt->rowCount() === 0) json_error('Invoice not found.', 404);
-    log_activity($user['id'], 'updated', 'invoice', $id, ['status' => $status]);
     json_out(['ok' => true]);
 }
 
@@ -129,7 +127,6 @@ if ($method === 'DELETE' && !$action) {
     if (!$row) json_error('Not found', 404);
     send_to_trash('invoice', $id, $row['invoice_no'], $user['id']);
     soft_delete('invoices', $id);
-    log_activity($user['id'], 'deleted', 'invoice', $id, ['invoiceNo' => $row['invoice_no']]);
     json_out(null, 204);
 }
 
@@ -171,7 +168,6 @@ if ($method === 'POST' && $action === 'payment') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
-    log_activity($user['id'], 'payment-recorded', 'invoice', $id, ['amount' => $amount]);
     json_out(['ok' => true], 201);
 }
 

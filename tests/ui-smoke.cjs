@@ -261,36 +261,65 @@ async function testUnifiedLogin() {
   }
 }
 
-async function testLegacyLoginsAlwaysReturnToUnifiedLogin() {
-  const oldCustomerLogin = new JSDOM("<!doctype html><html><body></body></html>", {
-    url: "https://belm-portal.onrender.com/portal/login?customer=ecls-icd",
+async function testLegacyLoginStaysPutAndUsesUnifiedAuth() {
+  const html = `<!doctype html><html><body>
+    <form>
+      <label for="legacyLogin">Email <input id="legacyLogin" type="email" required></label>
+      <label for="legacyPassword">Password <input id="legacyPassword" type="password" required></label>
+      <button type="submit">Login</button>
+    </form>
+  </body></html>`;
+  const dom = new JSDOM(html, {
+    url: "https://belm-portal.onrender.com/admin/login?customer=ecls-icd",
     runScripts: "outside-only",
   });
-  let customerDestination = "";
-  oldCustomerLogin.window.BELM_NAVIGATE = (destination) => { customerDestination = destination; };
-  oldCustomerLogin.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
-  assert.equal(customerDestination, "/login/?customer=ecls-icd");
-  oldCustomerLogin.window.close();
-
-  const technicianApp = new JSDOM("<!doctype html><html><body></body></html>", {
-    url: "https://belm-portal.onrender.com/tech",
-    runScripts: "outside-only",
-  });
+  const requests = [];
+  let destination = "";
   let intervalCallback = null;
-  let technicianDestination = "";
-  technicianApp.window.localStorage.setItem("belm_tech_token", "test-token");
-  technicianApp.window.setInterval = (callback) => {
+  dom.window.setInterval = (callback) => {
     intervalCallback = callback;
     return 1;
   };
-  technicianApp.window.fetch = async () => response(null, 404);
-  technicianApp.window.BELM_NAVIGATE = (destination) => { technicianDestination = destination; };
-  technicianApp.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
-  assert.equal(technicianDestination, "");
-  technicianApp.window.localStorage.removeItem("belm_tech_token");
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url === "/api/auth/unified-login") {
+      return response({
+        token: "customer-token",
+        accountType: "customer",
+        destination: "/portal/dashboard",
+        customer: { id: "customer-1", name: "ECLS ICD" },
+      });
+    }
+    return response(null, 404);
+  };
+  dom.window.BELM_NAVIGATE = (nextDestination) => {
+    destination = nextDestination;
+  };
+
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
   intervalCallback();
-  assert.equal(technicianDestination, "/login/");
-  technicianApp.window.close();
+
+  const loginInput = dom.window.document.getElementById("legacyLogin");
+  assert.equal(destination, "", "Legacy login redirected before password entry");
+  assert.equal(loginInput.type, "text");
+  assert.equal(loginInput.value, "ecls-icd");
+  assert.match(loginInput.closest("label").textContent, /Email or Customer Portal ID/);
+
+  dom.window.document.getElementById("legacyPassword").value = "GeneratedPassword!2";
+  dom.window.document.querySelector("form").dispatchEvent(
+    new dom.window.Event("submit", { bubbles: true, cancelable: true })
+  );
+  await flush();
+
+  const login = requests.find((request) => request.url === "/api/auth/unified-login");
+  assert.ok(login, "Legacy form did not use unified login");
+  assert.deepEqual(JSON.parse(login.options.body), {
+    loginId: "ecls-icd",
+    password: "GeneratedPassword!2",
+  });
+  assert.equal(dom.window.localStorage.getItem("belm_customer_token"), "customer-token");
+  assert.equal(destination, "/portal/dashboard");
+  dom.window.close();
 }
 
 async function testChecklistDropdownValues() {
@@ -691,7 +720,7 @@ async function testReportsAndAttendance() {
   await testRoleChange();
   await testSettingsSaving();
   await testUnifiedLogin();
-  await testLegacyLoginsAlwaysReturnToUnifiedLogin();
+  await testLegacyLoginStaysPutAndUsesUnifiedAuth();
   await testChecklistDropdownValues();
   await testSupplierCards();
   await testCustomerCardsAndLinks();

@@ -230,22 +230,6 @@ function require_customer_write_access(array $customer): void {
     }
 }
 
-// ---- Cross-entity activity feed --------------------------------------------
-// Call after any create/update/delete on customers, billing, spare parts,
-// users, tasks or suppliers so the Overview > Activity Log panel shows a
-// unified feed instead of technician checkups only.
-function log_activity(string $userId, string $action, string $entity, ?string $entityId = null, array $metadata = []): void {
-    try {
-        $stmt = db()->prepare(
-            'INSERT INTO activity_logs (id, user_id, action, entity, entity_id, metadata, created_at)
-             VALUES (?,?,?,?,?,?,NOW())'
-        );
-        $stmt->execute([uuid(), $userId, $action, $entity, $entityId, json_encode($metadata)]);
-    } catch (Throwable $ignored) {
-        // Activity logging must never break the primary action.
-    }
-}
-
 // ---- Recycle Bin ------------------------------------------------------------
 function send_to_trash(string $entityType, string $entityId, string $label, ?string $deletedBy): void {
     $stmt = db()->prepare('INSERT INTO trash_entries (id, entity_type, entity_id, label, deleted_by, deleted_at) VALUES (?,?,?,?,?,NOW())');

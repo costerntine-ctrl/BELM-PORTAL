@@ -1,31 +1,6 @@
 (function () {
   const buttonId = "belm-applications-shortcut";
   const pathname = window.location.pathname;
-
-  function redirectLegacyLogin() {
-    const currentPath = window.location.pathname;
-    const legacyCustomerLogin = currentPath === "/portal/login";
-    const legacyAdminLogin = currentPath === "/admin/login";
-    const legacyTechnicianLogin = currentPath === "/tech"
-      && !localStorage.getItem("belm_tech_token");
-    if (!legacyCustomerLogin && !legacyAdminLogin && !legacyTechnicianLogin) {
-      return false;
-    }
-    const customer = new URLSearchParams(window.location.search).get("customer");
-    const destination = customer
-      ? `/login/?customer=${encodeURIComponent(customer)}`
-      : "/login/";
-    if (typeof window.BELM_NAVIGATE === "function") {
-      window.BELM_NAVIGATE(destination);
-    } else {
-      window.location.replace(destination);
-    }
-    return true;
-  }
-
-  if (redirectLegacyLogin()) {
-    return;
-  }
   document.body.dataset.belmArea = pathname.startsWith("/admin")
     ? "admin"
     : pathname.startsWith("/tech")
@@ -244,6 +219,196 @@
       const labels = form.querySelectorAll("label");
       if (labels.length > 0) form.insertBefore(note, labels[0]);
     }
+  }
+
+  function isLegacyUnifiedLoginPage() {
+    const currentPath = window.location.pathname;
+    return currentPath === "/admin/login"
+      || currentPath === "/portal/login"
+      || (currentPath === "/tech" && !localStorage.getItem("belm_tech_token"));
+  }
+
+  function legacyLoginForm() {
+    if (!isLegacyUnifiedLoginPage()) return null;
+    return Array.from(document.querySelectorAll("form")).find((form) =>
+      form.querySelector('input[type="password"]')
+    ) || null;
+  }
+
+  function loginIdInput(form) {
+    return form.querySelector(
+      'input:not([type="password"]):not([type="hidden"]):not([type="checkbox"]):not([type="submit"])'
+    );
+  }
+
+  function setControlledInputValue(input, value) {
+    const nativeValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value"
+    )?.set;
+    if (nativeValueSetter) {
+      nativeValueSetter.call(input, value);
+    } else {
+      input.value = value;
+    }
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  function clearAccountSessions() {
+    [
+      "belm_admin_token",
+      "belm_admin_user",
+      "belm_tech_token",
+      "belm_tech_user",
+      "belm_customer_token",
+    ].forEach((key) => localStorage.removeItem(key));
+  }
+
+  function saveUnifiedAccount(result) {
+    clearAccountSessions();
+    if (result.accountType === "technician") {
+      localStorage.setItem("belm_tech_token", result.token);
+      localStorage.setItem("belm_tech_user", JSON.stringify(result.user));
+      return "/tech";
+    }
+    if (result.accountType === "admin") {
+      localStorage.setItem("belm_admin_token", result.token);
+      localStorage.setItem("belm_admin_user", JSON.stringify(result.user));
+      return "/admin-menu/";
+    }
+    if (result.accountType === "customer") {
+      localStorage.setItem("belm_customer_token", result.token);
+      return "/portal/dashboard";
+    }
+    throw new Error("This account has no assigned BELM workspace.");
+  }
+
+  function enhanceUnifiedLegacyLogin() {
+    const form = legacyLoginForm();
+    if (!form) return;
+
+    const loginInput = loginIdInput(form);
+    const passwordInput = form.querySelector('input[type="password"]');
+    if (loginInput) {
+      loginInput.type = "text";
+      loginInput.placeholder = "name@example.com or customer-id";
+      loginInput.autocomplete = "username";
+      const label = loginInput.closest("label")
+        || (loginInput.id && document.querySelector(`label[for="${loginInput.id}"]`));
+      if (label) {
+        const textNode = Array.from(label.childNodes)
+          .find((node) => node.nodeType === Node.TEXT_NODE && node.nodeValue.trim());
+        if (textNode) textNode.nodeValue = "Email or Customer Portal ID ";
+      }
+    }
+    if (passwordInput) passwordInput.autocomplete = "current-password";
+
+    const customerSlug = new URLSearchParams(window.location.search).get("customer");
+    if (customerSlug && loginInput && !loginInput.value) {
+      setControlledInputValue(loginInput, customerSlug);
+    }
+
+    if (!document.getElementById("belm-unified-login-note")) {
+      const note = document.createElement("div");
+      note.id = "belm-unified-login-note";
+      note.textContent = "One login opens the correct Admin, Technician or Customer dashboard.";
+      Object.assign(note.style, {
+        marginBottom: "14px",
+        padding: "10px 12px",
+        border: "1px solid #efd65d",
+        borderRadius: "8px",
+        background: "#fff9cf",
+        color: "#151d31",
+        font: "700 12px Inter, system-ui, sans-serif",
+      });
+      form.insertBefore(note, form.firstChild);
+    }
+
+    const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+    if (submitButton && submitButton.dataset.belmLoginBusy !== "1") {
+      submitButton.textContent = "Sign in securely";
+    }
+  }
+
+  function installUnifiedLegacyLogin() {
+    if (document.documentElement.dataset.belmUnifiedLogin === "ready") return;
+    document.documentElement.dataset.belmUnifiedLogin = "ready";
+
+    document.addEventListener("submit", async (event) => {
+      if (!isLegacyUnifiedLoginPage()) return;
+      const form = event.target;
+      if (!form || form.tagName !== "FORM" || !form.querySelector('input[type="password"]')) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const loginInput = loginIdInput(form);
+      const passwordInput = form.querySelector('input[type="password"]');
+      const submitButton = form.querySelector('button[type="submit"], button:not([type])');
+      let errorBox = document.getElementById("belm-unified-login-error");
+      if (!errorBox) {
+        errorBox = document.createElement("div");
+        errorBox.id = "belm-unified-login-error";
+        errorBox.setAttribute("role", "alert");
+        Object.assign(errorBox.style, {
+          display: "none",
+          margin: "10px 0",
+          padding: "10px 12px",
+          border: "1px solid #dc2626",
+          borderRadius: "8px",
+          background: "#fef2f2",
+          color: "#991b1b",
+          font: "700 12px Inter, system-ui, sans-serif",
+        });
+        if (submitButton) form.insertBefore(errorBox, submitButton);
+        else form.appendChild(errorBox);
+      }
+
+      const loginId = loginInput?.value.trim() || "";
+      const password = passwordInput?.value || "";
+      if (!loginId || !password) {
+        errorBox.textContent = "Enter your email or Customer Portal ID and password.";
+        errorBox.style.display = "block";
+        return;
+      }
+
+      errorBox.style.display = "none";
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.dataset.belmLoginBusy = "1";
+        submitButton.textContent = "Checking account…";
+      }
+
+      try {
+        const response = await fetch("/api/auth/unified-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ loginId, password }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.error || "Login failed. Check your details and try again.");
+        }
+        const destination = saveUnifiedAccount(result);
+        sessionStorage.setItem("belm_login_destination", destination);
+        if (submitButton) submitButton.textContent = "Opening your dashboard…";
+        if (typeof window.BELM_NAVIGATE === "function") {
+          window.BELM_NAVIGATE(destination);
+        } else {
+          window.location.assign(destination);
+        }
+      } catch (error) {
+        errorBox.textContent = error.message || "Login failed. Please try again.";
+        errorBox.style.display = "block";
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.dataset.belmLoginBusy = "0";
+          submitButton.textContent = "Sign in securely";
+        }
+      }
+    }, true);
   }
 
   function addForgotPasswordLink() {
@@ -553,12 +718,14 @@
 
   installAuthenticatedReportDownloads();
   installThemeSaving();
+  installUnifiedLegacyLogin();
   syncSavedTheme();
   refreshShortcut();
   addTechnicianTasksShortcut();
   syncTechnicianCustomerName();
   clarifyTechnicianAssignment();
   enhanceCustomerLogin();
+  enhanceUnifiedLegacyLogin();
   addForgotPasswordLink();
   addPortalHomeLink();
   enforceAdminPageAccess();
@@ -578,12 +745,12 @@
   enforceViewerInterface();
   correctLegacyCopy();
   setInterval(() => {
-    if (redirectLegacyLogin()) return;
     refreshShortcut();
     addTechnicianTasksShortcut();
     syncTechnicianCustomerName();
     clarifyTechnicianAssignment();
     enhanceCustomerLogin();
+    enhanceUnifiedLegacyLogin();
     addForgotPasswordLink();
     addPortalHomeLink();
     enforceAdminPageAccess();

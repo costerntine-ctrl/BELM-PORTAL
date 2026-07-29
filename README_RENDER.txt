@@ -28,8 +28,8 @@ NAVIGATION UPDATE
   and approve accounts from the management portal.
 - New and reset Staff/Technician accounts display one credentials card with
   the unified login link, generated password, recovery code and Copy buttons.
-- Logging out from any role returns to /login/; old separate login routes also
-  redirect to the unified login.
+- Logging out keeps a stable login form. Old /admin/login, /portal/login and
+  /tech login screens use the same role-aware authentication without redirects.
 - Apache now serves the React application for direct URLs such as
   /login/, /portal/login, /admin/login and old /admin/* bookmarks instead of 404.
 

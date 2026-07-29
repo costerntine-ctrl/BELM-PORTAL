@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>All Overview — BELM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/management-analytics.css">
+  <link rel="stylesheet" href="/admin-sidebar.css">
+</head>
+<body class="management-page">
+  <header class="management-topbar">
+    <div><strong>BELM General Tech</strong><small>All-role management analysis</small></div>
+    <div class="topbar-actions">
+      <a class="button" href="/admin-menu/">← Main Menu</a>
+      <button id="refreshButton" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main class="management-shell">
+    <section class="management-hero">
+      <div>
+        <p class="eyebrow">Business, people and operations</p>
+        <h1>All Overview</h1>
+        <p>One card-based view of customers, staff roles, finance, service work, machines, attendance and current activity.</p>
+      </div>
+      <a class="button secondary" href="/reports-manager/">Open Detailed Reports</a>
+    </section>
+
+    <section class="filter-panel">
+      <div class="filters">
+        <label>Analysis period
+          <select id="periodSelect">
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month" selected>This month</option>
+            <option value="year">This year</option>
+          </select>
+        </label>
+        <span id="periodLabel" class="period-note">Loading current period…</span>
+      </div>
+    </section>
+
+    <div id="pageAlert" class="alert hidden"></div>
+    <section id="primaryMetrics" class="metrics-grid" aria-label="Main overview totals"></section>
+    <section id="financeMetrics" class="metrics-grid" aria-label="Finance overview"></section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Analysis by role</h2><p>Active users, pending work and completed work for each system role.</p></div>
+      </div>
+      <div id="roleGrid" class="role-grid"></div>
+    </section>
+
+    <section class="three-column">
+      <article class="panel">
+        <div class="section-head"><div><h2>Service requests</h2><p>Status comparison</p></div></div>
+        <div id="serviceBars" class="bar-list"></div>
+      </article>
+      <article class="panel">
+        <div class="section-head"><div><h2>Machine condition</h2><p>Health status comparison</p></div></div>
+        <div id="machineBars" class="bar-list"></div>
+      </article>
+      <article class="panel">
+        <div class="section-head"><div><h2>Attendance today</h2><p>Presence by status</p></div></div>
+        <div id="attendanceBars" class="bar-list"></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Recent employee activity</h2><p>Latest work recorded in the system.</p></div>
+        <a class="button" href="/reports-manager/">Compare activity</a>
+      </div>
+      <div id="activityList" class="activity-list"></div>
+    </section>
+  </main>
+
+  <script src="/admin-access.js"></script>
+  <script src="/admin-sidebar.js"></script>
+  <script src="/overview-manager/app.js"></script>
+</body>
+</html>

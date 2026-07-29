@@ -15,11 +15,48 @@ Hii ZIP ina:
 
 NAVIGATION UPDATE
 -----------------
-- Admin pages now return directly to /admin-menu/.
+- Admin pages now use the same permanent left sidebar.
+- Sidebar contains Main Menu, All Overview, Customers, Registration Requests,
+  Checklists, Service Requests, Spare Parts, Billing, Suppliers, Reports,
+  Roles & Users and Settings according to the signed-in role.
+- Admin pages also return directly to /admin-menu/.
 - The Main Menu only shows sections assigned to the signed-in user's role.
 - Customer assistant management returns to /portal/dashboard.
 - Technician task management returns to /tech.
 - Admin, Technician and Customer login screens include Back to Portal Home.
+- Customer login includes Request Registration.
+- Apache now serves the React application for direct URLs such as
+  /portal/login, /admin/login and old /admin/* bookmarks instead of 404.
+
+
+ALL OVERVIEW & MANAGEMENT REPORTS
+---------------------------------
+All Overview:
+  /overview-manager/
+
+- Card analysis for customers, machines, employees, registration requests,
+  service requests, tasks and low stock.
+- Finance cards for sales, received revenue, expenses and profit/loss.
+- Every role has a card with staff, active accounts, pending tasks and
+  completed tasks.
+- Service, machine and today's attendance status comparisons.
+- Latest recorded employee activity.
+
+Reports:
+  /reports-manager/
+
+- Today, week, month, year or custom-date reporting.
+- Current vs previous financial comparison.
+- Sales, revenue, expenses, profit/loss and outstanding balances.
+- 12-month visual trend.
+- Attendance, tasks, service requests and employee/role activity.
+- Daily employee attendance saving with status, check-in, check-out and notes.
+- Export CSV and Print / Save PDF.
+
+Settings:
+  /settings-manager/
+
+- Company details, business defaults, light/dark theme and protected PIN save.
 
 
 JINSI YA KUIWEKA RENDER
@@ -252,6 +289,7 @@ CUSTOMER CARDS NA WORKING LINKS
 - Kila customer card ina Copy Link na Open Customer Login.
 - Customer mpya anaonyesha email, temporary password, recovery code na
   working portal link.
+- Credential dialog ina Copy All, Copy Link na Copy Password tofauti.
 - Reset Login inagenerate password/recovery code mpya kwa existing customer.
 
 

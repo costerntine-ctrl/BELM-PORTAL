@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>System Settings — BELM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/management-analytics.css">
+  <link rel="stylesheet" href="/admin-sidebar.css">
+</head>
+<body class="management-page">
+  <header class="management-topbar">
+    <div><strong>BELM General Tech</strong><small>Protected system configuration</small></div>
+    <div class="topbar-actions"><a class="button" href="/admin-menu/">← Main Menu</a></div>
+  </header>
+
+  <main class="management-shell">
+    <section class="management-hero">
+      <div>
+        <p class="eyebrow">Company and portal configuration</p>
+        <h1>System Settings</h1>
+        <p>Save company details, document defaults, display theme and the protected delete PIN.</p>
+      </div>
+    </section>
+
+    <div id="pageAlert" class="alert hidden"></div>
+    <section class="settings-grid">
+      <article class="panel">
+        <div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div>
+        <form id="companyForm" class="settings-form">
+          <label>Company name<input id="companyName" required maxlength="255"></label>
+          <label>Business email<input id="companyEmail" type="email" maxlength="255"></label>
+          <label>Business phone<input id="companyPhone" maxlength="50"></label>
+          <label>Address<textarea id="companyAddress" rows="3" maxlength="500"></textarea></label>
+          <div class="two-column">
+            <label>TIN<input id="companyTin" maxlength="50"></label>
+            <label>VRN<input id="companyVrn" maxlength="50"></label>
+          </div>
+          <button id="saveCompanyButton" class="primary" type="submit">Save company settings</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="section-head"><div><h2>Business defaults</h2><p>Finance display and document numbering preferences.</p></div></div>
+        <form id="businessForm" class="settings-form">
+          <div class="two-column">
+            <label>Currency<select id="currency"><option value="TZS">TZS — Tanzanian shilling</option><option value="USD">USD — US dollar</option></select></label>
+            <label>Time zone<input id="timezone" value="Africa/Dar_es_Salaam"></label>
+          </div>
+          <div class="two-column">
+            <label>Invoice prefix<input id="invoicePrefix" maxlength="20" value="INV"></label>
+            <label>Proforma prefix<input id="proformaPrefix" maxlength="20" value="PF"></label>
+          </div>
+          <label>Default VAT (%)<input id="defaultVat" type="number" min="0" max="100" step="0.01" value="18"></label>
+          <button id="saveBusinessButton" class="primary" type="submit">Save business defaults</button>
+        </form>
+      </article>
+
+      <article class="panel">
+        <div class="section-head"><div><h2>Display theme</h2><p>The chosen light/dark setting is saved for the admin portal.</p></div></div>
+        <div class="theme-picker">
+          <button id="lightTheme" class="theme-choice" data-theme-choice="light" type="button">☀<br>Light mode</button>
+          <button id="darkTheme" class="theme-choice" data-theme-choice="dark" type="button">☾<br>Dark mode</button>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="section-head"><div><h2>Change delete PIN</h2><p>Super Admin protection for permanent deletion actions.</p></div></div>
+        <form id="pinForm" class="settings-form">
+          <label>Current 4-digit PIN<input id="currentPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label>
+          <label>New 4-digit PIN<input id="newPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label>
+          <label>Confirm new PIN<input id="confirmPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label>
+          <button id="changePinButton" class="secondary" type="submit">Change protected PIN</button>
+        </form>
+      </article>
+    </section>
+  </main>
+
+  <script src="/admin-access.js"></script>
+  <script src="/admin-sidebar.js"></script>
+  <script src="/settings-manager/app.js"></script>
+</body>
+</html>

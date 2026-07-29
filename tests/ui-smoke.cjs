@@ -151,24 +151,19 @@ async function testRoleChange() {
   assert.equal(body.assignedCustomerId, "customer-1");
 }
 
-async function testThemeSaving() {
-  const dom = new JSDOM("<!doctype html><html><body><button id=\"light\">☀️ Light</button><button id=\"dark\">🌙 Dark</button></body></html>", {
-    url: "https://portal.belmgeneraltech.co.tz/admin/settings",
-    runScripts: "outside-only",
-  });
-  dom.window.localStorage.setItem("belm_admin_token", "test-token");
-  dom.window.localStorage.setItem("belm_admin_user", JSON.stringify({ role: "Super Admin" }));
+async function testSettingsSaving() {
+  const dom = setup("frontend/settings-manager/index.html");
   const requests = [];
   dom.window.fetch = async (url, options = {}) => {
     requests.push({ url, options });
     if (url === "/api/settings" && !options.method) return response({ displayTheme: "light" });
     if (url === "/api/settings/displayTheme" && options.method === "PUT") return response({ ok: true });
-    if (url.startsWith("/api/applications")) return response({ applications: [] });
+    if (url.startsWith("/api/settings/") && options.method === "PUT") return response({ ok: true });
     return response(null, 404);
   };
-  dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/settings-manager/app.js"), "utf8"));
   await flush();
-  dom.window.document.getElementById("dark").click();
+  dom.window.document.getElementById("darkTheme").click();
   await flush();
   assert.equal(dom.window.localStorage.getItem("belm_theme"), "dark");
   assert.equal(dom.window.document.documentElement.dataset.theme, "dark");
@@ -176,6 +171,23 @@ async function testThemeSaving() {
   const save = requests.find((request) => request.url === "/api/settings/displayTheme" && request.options.method === "PUT");
   assert.ok(save, "Theme preference PUT request was not sent");
   assert.equal(JSON.parse(save.options.body).value, "dark");
+  dom.window.close();
+}
+
+async function testCustomerLoginRegistrationLink() {
+  const dom = new JSDOM(
+    '<!doctype html><html><body><form><label>Portal link / ID<input id="portalId" type="text"></label><label>Password<input type="password"></label><button>Log in</button></form></body></html>',
+    {
+      url: "https://belm-portal.onrender.com/portal/login?customer=ecls-icd",
+      runScripts: "outside-only",
+    }
+  );
+  dom.window.fetch = async () => response(null, 404);
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  await flush();
+  assert.equal(dom.window.document.getElementById("portalId").value, "ecls-icd");
+  assert.equal(dom.window.document.getElementById("belm-registration-request").getAttribute("href"), "/apply/");
+  assert.match(dom.window.document.getElementById("belm-registration-request").textContent, /Request Registration/);
   dom.window.close();
 }
 
@@ -476,17 +488,21 @@ async function testAdminMainMenu() {
   assert.deepEqual(visiblePages, ["billing", "reports"]);
   assert.match(dom.window.document.getElementById("signedInUser").textContent, /Accounts User/);
   assert.ok(dom.window.document.querySelector('.menu-card[href="/billing-manager/"]'));
-  assert.ok(dom.window.document.querySelector('.menu-card[href="/admin/reports"]'));
+  assert.ok(dom.window.document.querySelector('.menu-card[href="/reports-manager/"]'));
 }
 
 async function testAllBackLinks() {
   const adminPages = [
+    "frontend/admin-menu/index.html",
     "frontend/admin-applications/index.html",
     "frontend/billing-manager/index.html",
     "frontend/checklist-manager/index.html",
     "frontend/customers-manager/index.html",
+    "frontend/overview-manager/index.html",
+    "frontend/reports-manager/index.html",
     "frontend/roles-manager/index.html",
     "frontend/service-request-manager/index.html",
+    "frontend/settings-manager/index.html",
     "frontend/spare-parts-manager/index.html",
     "frontend/suppliers-manager/index.html",
   ];
@@ -499,6 +515,8 @@ async function testAllBackLinks() {
     const backLink = Array.from(dom.window.document.querySelectorAll('a[href="/admin-menu/"]'))
       .find((link) => /main menu|belm general tech/i.test(link.textContent));
     assert.ok(backLink, `${page} does not have a working Main Menu link`);
+    assert.match(html, /\/admin-sidebar\.css/, `${page} is missing the shared sidebar stylesheet`);
+    assert.match(html, /\/admin-sidebar\.js/, `${page} is missing the shared sidebar script`);
   }
 
   const customerUsers = fs.readFileSync(path.join(root, "frontend/customer-users/index.html"), "utf8");
@@ -509,11 +527,92 @@ async function testAllBackLinks() {
   assert.match(publicApply, /href="\/">Return to portal home/);
 }
 
+async function testAllOverview() {
+  const dom = setup("frontend/overview-manager/index.html");
+  dom.window.fetch = async (url) => {
+    assert.match(url, /^\/api\/reports\/all-overview\?/);
+    return response({
+      period: { label: "Month", from: "2026-07-01", to: "2026-07-29" },
+      totals: {
+        customers: 2, machines: 3, employees: 4, activeEmployees: 4,
+        pendingApplications: 1, openRequests: 2, pendingTasks: 3,
+        completedTasks: 5, lowStockParts: 1,
+      },
+      finance: { sales: 1000000, revenue: 700000, expenses: 200000, profitLoss: 500000 },
+      serviceStatus: { OPEN: 2, DONE: 3 },
+      machineStatus: { GREEN: 2, RED: 1 },
+      attendanceToday: { PRESENT: 3, LATE: 1 },
+      roles: [{
+        name: "Technician", staffTotal: 2, activeTotal: 2,
+        pendingTasks: 3, completedTasks: 5,
+      }],
+      recentActivities: [{
+        userName: "Tech One", roleName: "Technician", action: "Updated",
+        entity: "Service Request", createdAt: "2026-07-29T10:00:00Z",
+      }],
+    });
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/overview-manager/app.js"), "utf8"));
+  await flush();
+  assert.match(dom.window.document.getElementById("primaryMetrics").textContent, /Customers/);
+  assert.match(dom.window.document.getElementById("roleGrid").textContent, /Technician/);
+  assert.match(dom.window.document.getElementById("activityList").textContent, /Tech One/);
+}
+
+async function testReportsAndAttendance() {
+  const dom = setup("frontend/reports-manager/index.html");
+  const requests = [];
+  dom.window.URL.createObjectURL = () => "blob:test";
+  dom.window.URL.revokeObjectURL = () => {};
+  dom.window.print = () => {};
+  dom.window.fetch = async (url, options = {}) => {
+    requests.push({ url, options });
+    if (url.startsWith("/api/reports/analytics")) {
+      return response({
+        period: { label: "Month", from: "2026-07-01", to: "2026-07-29" },
+        current: { sales: 1000, revenue: 800, expenses: 200, profitLoss: 600, outstanding: 200 },
+        previous: { sales: 500, revenue: 400, expenses: 100, profitLoss: 300, outstanding: 100 },
+        trend: [{ month: "2026-07", sales: 1000, revenue: 800, expenses: 200, profitLoss: 600 }],
+        attendance: { PRESENT: 1 },
+        tasks: { PENDING: 1, DONE: 2 },
+        serviceRequests: { OPEN: 1, COMPLETED: 2 },
+        roleActivity: [{ name: "Technician", activeUsers: 1, activities: 4, pendingTasks: 1, completedTasks: 2 }],
+      });
+    }
+    if (url.startsWith("/api/reports/attendance") && !options.method) {
+      return response({
+        date: "2026-07-29",
+        employees: [{
+          userId: "user-1", name: "Tech One", email: "tech@example.com",
+          roleName: "Technician", status: "PRESENT", checkIn: "2026-07-29T08:00:00Z",
+          checkOut: null, notes: "",
+        }],
+      });
+    }
+    if (url === "/api/reports/attendance" && options.method === "POST") {
+      return response({ ok: true, message: "Attendance saved successfully." });
+    }
+    return response(null, 404);
+  };
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/reports-manager/app.js"), "utf8"));
+  await flush();
+  assert.match(dom.window.document.getElementById("financeMetrics").textContent, /Sales invoiced/);
+  assert.match(dom.window.document.getElementById("roleTable").textContent, /Technician/);
+  const saveButton = dom.window.document.querySelector("[data-save-attendance]");
+  assert.ok(saveButton, "Attendance save button was not rendered");
+  saveButton.click();
+  await flush();
+  assert.ok(requests.some((request) =>
+    request.url === "/api/reports/attendance" && request.options.method === "POST"
+  ));
+}
+
 (async () => {
   await testBilling();
   await testSpareParts();
   await testRoleChange();
-  await testThemeSaving();
+  await testSettingsSaving();
+  await testCustomerLoginRegistrationLink();
   await testChecklistDropdownValues();
   await testSupplierCards();
   await testCustomerCardsAndLinks();
@@ -523,7 +622,9 @@ async function testAllBackLinks() {
   await testRoleNavigationIsolation();
   await testAdminMainMenu();
   await testAllBackLinks();
-  console.log("BELM UI smoke tests passed: managers, registration, approvals, recovery, role isolation, and all Back/Main Menu navigation.");
+  await testAllOverview();
+  await testReportsAndAttendance();
+  console.log("BELM UI smoke tests passed: managers, settings, registration, approvals, customer links, role isolation, overview, reports, attendance, and all sidebar/Main Menu navigation.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

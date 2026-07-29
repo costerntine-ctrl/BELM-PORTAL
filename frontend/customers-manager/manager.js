@@ -322,6 +322,12 @@
     const text = `Email: ${document.getElementById("credentialEmail").value}\nTemporary password: ${document.getElementById("credentialPassword").value}\nRecovery code: ${document.getElementById("credentialRecovery").value}\nPortal link: ${document.getElementById("credentialLink").value}`;
     copyText(text, "Customer login information copied.");
   });
+  document.getElementById("copyCredentialLinkButton").addEventListener("click", () => {
+    copyText(document.getElementById("credentialLink").value, "Customer portal link copied.");
+  });
+  document.getElementById("copyCredentialPasswordButton").addEventListener("click", () => {
+    copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
+  });
   document.getElementById("customerGrid").addEventListener("click", (event) => {
     const addMachine = event.target.closest("[data-add-machine]");
     const editMachine = event.target.closest("[data-edit-machine]");

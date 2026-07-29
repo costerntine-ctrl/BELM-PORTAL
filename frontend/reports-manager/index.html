@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reports & Comparisons — BELM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/management-analytics.css">
+  <link rel="stylesheet" href="/admin-sidebar.css">
+</head>
+<body class="management-page">
+  <header class="management-topbar">
+    <div><strong>BELM General Tech</strong><small>Reports, analysis and comparisons</small></div>
+    <div class="topbar-actions no-print">
+      <a class="button" href="/admin-menu/">← Main Menu</a>
+      <button id="csvButton" type="button">Export CSV</button>
+      <button id="printButton" class="secondary" type="button">Print / Save PDF</button>
+    </div>
+  </header>
+
+  <main class="management-shell">
+    <section class="management-hero">
+      <div>
+        <p class="eyebrow">Decision-ready management reporting</p>
+        <h1>Reports & Comparisons</h1>
+        <p>Finance, expenses, sales, employee attendance, role activity, tasks and service performance in one report centre.</p>
+      </div>
+      <a class="button secondary" href="/overview-manager/">All Overview</a>
+    </section>
+
+    <section class="filter-panel no-print">
+      <div class="filters">
+        <label>Period
+          <select id="periodSelect">
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month" selected>This month</option>
+            <option value="year">This year</option>
+            <option value="custom">Custom dates</option>
+          </select>
+        </label>
+        <label id="dateFromLabel" class="hidden">From<input id="dateFrom" type="date"></label>
+        <label id="dateToLabel" class="hidden">To<input id="dateTo" type="date"></label>
+        <button id="applyButton" class="primary" type="button">Apply report</button>
+        <span id="periodLabel" class="period-note">Loading report…</span>
+      </div>
+    </section>
+
+    <div id="pageAlert" class="alert hidden"></div>
+    <section id="financeMetrics" class="metrics-grid"></section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Financial comparison</h2><p>Current period compared with the immediately preceding equivalent period.</p></div>
+      </div>
+      <div id="comparisonTable" class="data-table-wrap"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>12-month sales, revenue and expenses</h2><p>Visual movement over time. Profit/loss equals received revenue minus expenses.</p></div>
+        <div class="legend">
+          <span><i style="background:#2374d8"></i>Sales</span>
+          <span><i style="background:#00a958"></i>Revenue</span>
+          <span><i style="background:#dc3e4d"></i>Expenses</span>
+        </div>
+      </div>
+      <div id="trendGrid" class="trend-grid"></div>
+    </section>
+
+    <section class="three-column">
+      <article class="panel">
+        <div class="section-head"><div><h2>Attendance</h2><p>Period totals by status</p></div></div>
+        <div id="attendanceBars" class="bar-list"></div>
+      </article>
+      <article class="panel">
+        <div class="section-head"><div><h2>Employee tasks</h2><p>Pending vs completed</p></div></div>
+        <div id="taskBars" class="bar-list"></div>
+      </article>
+      <article class="panel">
+        <div class="section-head"><div><h2>Service work</h2><p>Request status comparison</p></div></div>
+        <div id="serviceBars" class="bar-list"></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Employee and role activity</h2><p>Activities and assigned tasks grouped by role.</p></div>
+      </div>
+      <div id="roleTable" class="data-table-wrap"></div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Daily employee attendance</h2><p>Record each active employee's presence, time and notes.</p></div>
+        <div class="inline-actions no-print">
+          <input id="attendanceDate" type="date" aria-label="Attendance date">
+          <button id="attendanceRefreshButton" type="button">Load date</button>
+        </div>
+      </div>
+      <div id="attendanceMessage" class="alert success hidden"></div>
+      <div id="attendanceTable" class="data-table-wrap"></div>
+    </section>
+  </main>
+
+  <script src="/admin-access.js"></script>
+  <script src="/admin-sidebar.js"></script>
+  <script src="/reports-manager/app.js"></script>
+</body>
+</html>

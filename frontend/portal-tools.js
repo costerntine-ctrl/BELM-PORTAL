@@ -181,13 +181,27 @@
     if (window.location.pathname !== "/portal/login") return;
     for (const label of document.querySelectorAll("label")) {
       if (label.textContent.trim() === "Portal link / ID") {
-        label.textContent = "Email address / Portal ID";
+        const textNode = Array.from(label.childNodes).find((node) => node.nodeType === Node.TEXT_NODE);
+        if (textNode) textNode.nodeValue = "Email address / Portal ID";
       }
     }
     const loginInput = document.querySelector('form input:not([type="password"])');
     if (loginInput) loginInput.placeholder = "customer@email.com or customer-name";
     const customerSlug = new URLSearchParams(window.location.search).get("customer");
     const form = document.querySelector("form");
+    if (customerSlug && loginInput && !loginInput.value) {
+      const nativeValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value"
+      )?.set;
+      if (nativeValueSetter) {
+        nativeValueSetter.call(loginInput, customerSlug);
+      } else {
+        loginInput.value = customerSlug;
+      }
+      loginInput.dispatchEvent(new Event("input", { bubbles: true }));
+      loginInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
     if (customerSlug && form && !document.getElementById("belm-customer-link-note")) {
       const note = document.createElement("div");
       note.id = "belm-customer-link-note";
@@ -205,6 +219,30 @@
       const labels = form.querySelectorAll("label");
       if (labels.length > 0) form.insertBefore(note, labels[0]);
     }
+  }
+
+  function addRegistrationRequestLink() {
+    if (window.location.pathname !== "/portal/login"
+      || document.getElementById("belm-registration-request")) return;
+    const form = document.querySelector("form");
+    if (!form) return;
+    const link = document.createElement("a");
+    link.id = "belm-registration-request";
+    link.href = "/apply/";
+    link.textContent = "Request Registration — register as a new customer";
+    Object.assign(link.style, {
+      display: "block",
+      margin: "12px 0 4px",
+      padding: "11px 13px",
+      color: "#111a2d",
+      border: "1px solid #00a958",
+      borderRadius: "9px",
+      background: "#ecfff5",
+      font: "800 12px Inter, system-ui, sans-serif",
+      textAlign: "center",
+      textDecoration: "none"
+    });
+    form.appendChild(link);
   }
 
   function addForgotPasswordLink() {
@@ -331,6 +369,24 @@
   function redirectSuppliersManager() {
     if (window.location.pathname === "/admin/suppliers") {
       window.location.replace("/suppliers-manager/");
+    }
+  }
+
+  function redirectOverviewManager() {
+    if (window.location.pathname === "/admin/overview") {
+      window.location.replace("/overview-manager/");
+    }
+  }
+
+  function redirectReportsManager() {
+    if (window.location.pathname === "/admin/reports") {
+      window.location.replace("/reports-manager/");
+    }
+  }
+
+  function redirectSettingsManager() {
+    if (window.location.pathname === "/admin/settings") {
+      window.location.replace("/settings-manager/");
     }
   }
 
@@ -502,6 +558,7 @@
   syncTechnicianCustomerName();
   clarifyTechnicianAssignment();
   enhanceCustomerLogin();
+  addRegistrationRequestLink();
   addForgotPasswordLink();
   addPortalHomeLink();
   enforceAdminPageAccess();
@@ -513,6 +570,9 @@
   redirectSparePartsManager();
   redirectRolesManager();
   redirectSuppliersManager();
+  redirectOverviewManager();
+  redirectReportsManager();
+  redirectSettingsManager();
   removeLegacyOwnerRole();
   improvePhotoInputs();
   enforceViewerInterface();
@@ -523,6 +583,7 @@
     syncTechnicianCustomerName();
     clarifyTechnicianAssignment();
     enhanceCustomerLogin();
+    addRegistrationRequestLink();
     addForgotPasswordLink();
     addPortalHomeLink();
     enforceAdminPageAccess();
@@ -534,6 +595,9 @@
     redirectSparePartsManager();
     redirectRolesManager();
     redirectSuppliersManager();
+    redirectOverviewManager();
+    redirectReportsManager();
+    redirectSettingsManager();
     removeLegacyOwnerRole();
     improvePhotoInputs();
     enforceViewerInterface();

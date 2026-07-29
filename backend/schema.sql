@@ -314,6 +314,20 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS attendance_records (
+  id VARCHAR(36) PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  work_date DATE NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'PRESENT',
+  check_in TIMESTAMPTZ NULL,
+  check_out TIMESTAMPTZ NULL,
+  notes VARCHAR(500) NULL,
+  recorded_by VARCHAR(36) NULL REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, work_date)
+);
+
 CREATE TABLE IF NOT EXISTS customer_applications (
   id VARCHAR(36) PRIMARY KEY,
   reference_no VARCHAR(30) NOT NULL UNIQUE,
@@ -365,6 +379,8 @@ CREATE INDEX IF NOT EXISTS idx_sr_customer ON service_requests(customer_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_customer ON invoices(customer_id);
 CREATE INDEX IF NOT EXISTS idx_usagelog_machine ON usage_logs(machine_id);
 CREATE INDEX IF NOT EXISTS idx_task_assignedto ON tasks(assigned_to_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_records(work_date DESC);
+CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance_records(user_id, work_date DESC);
 CREATE INDEX IF NOT EXISTS idx_trash_deletedat ON trash_entries(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_application_status ON customer_applications(status, submitted_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_application_pending_email
@@ -397,6 +413,11 @@ FOR EACH ROW EXECUTE FUNCTION belm_set_updated_at();
 DROP TRIGGER IF EXISTS service_requests_set_updated_at ON service_requests;
 CREATE TRIGGER service_requests_set_updated_at
 BEFORE UPDATE ON service_requests
+FOR EACH ROW EXECUTE FUNCTION belm_set_updated_at();
+
+DROP TRIGGER IF EXISTS attendance_records_set_updated_at ON attendance_records;
+CREATE TRIGGER attendance_records_set_updated_at
+BEFORE UPDATE ON attendance_records
 FOR EACH ROW EXECUTE FUNCTION belm_set_updated_at();
 
 INSERT INTO roles (id, name, permissions, allowed_pages)

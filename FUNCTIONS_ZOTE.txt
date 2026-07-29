@@ -4,11 +4,17 @@ BELM PORTAL - FUNCTIONS ZOTE
 0. NAVIGATION / BACK BUTTONS
 ----------------------------
 - /admin-menu/ is the single Admin Main Menu.
+- Left sidebar inaonekana kwenye admin managers zote na React admin routes.
+- Sidebar ina All Overview, Customers, Registration Requests, Checklists,
+  Service Requests, Spare Parts, Billing, Suppliers, Reports, Roles na Settings.
+- Sidebar links zinafichwa kulingana na allowedPages ya role.
 - All standalone Admin managers have a direct Back to Main Menu link.
 - Main Menu cards are filtered by each user's allowedPages role assignment.
 - Customer pages return to Customer Dashboard.
 - Technician pages return to the Checklist app.
 - Login screens provide a direct Back to Portal Home link.
+- Customer Login ina Request Registration inayofungua /apply/.
+- Direct React routes zina Apache fallback; hazirudishi Apache 404.
 
 
 1. PUBLIC UNIFIED REGISTRATION
@@ -183,6 +189,15 @@ BELM PORTAL - FUNCTIONS ZOTE
 
 13. ADMIN DASHBOARD
 -------------------
+- All Overview card dashboard: /overview-manager/.
+- Overview ina totals za customers, machines, employees, registrations,
+  service requests, tasks na low stock.
+- Overview ina sales, revenue, expenses, profit/loss na analysis ya kila role.
+- Reports & Comparisons: /reports-manager/.
+- Reports ina current-vs-previous finance, 12-month trends, attendance,
+  staff activity, tasks, service status, CSV na Print/PDF.
+- Admin ana-record daily employee attendance, check-in/out na notes.
+- System Settings: /settings-manager/.
 - Customer registration and machine management.
 - Customers overview/search.
 - Roles and system users.
@@ -216,6 +231,8 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Kila customer card ina machine cards na Green/Yellow/Red/Not Checked status.
 - Customer link ina Copy Link na Open Login, na inafanya kazi kwenye Render
   URL au custom portal domain inayotumika.
+- Approval na Customer credential dialogs zina Copy All, Copy Link na
+  Copy Password buttons tofauti.
 - Supplier Directory ina cards, Smart Trust Score, trust status, WhatsApp,
   website, Save/Edit/Delete.
 

@@ -6,85 +6,11 @@
   const button = document.getElementById("loginButton");
   const customerNote = document.getElementById("customerNote");
 
-  function tokenIsCurrent(token) {
-    if (!token) return false;
-    try {
-      const encoded = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-      const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
-      const payload = JSON.parse(decodeURIComponent(Array.from(atob(padded))
-        .map((character) => `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`)
-        .join("")));
-      return !payload.exp || payload.exp * 1000 > Date.now() + 30000;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  function navigateOnce(destination) {
-    if (typeof window.BELM_NAVIGATE === "function") {
-      window.BELM_NAVIGATE(destination);
-    } else {
-      window.location.replace(destination);
-    }
-  }
-
-  function resumeExistingSession() {
-    const adminToken = localStorage.getItem("belm_admin_token");
-    const adminUser = localStorage.getItem("belm_admin_user");
-    if (adminUser && tokenIsCurrent(adminToken)) {
-      navigateOnce("/admin-menu/");
-      return true;
-    }
-
-    const technicianToken = localStorage.getItem("belm_tech_token");
-    const technicianUser = localStorage.getItem("belm_tech_user");
-    if (technicianUser && tokenIsCurrent(technicianToken)) {
-      navigateOnce("/tech");
-      return true;
-    }
-
-    const customerToken = localStorage.getItem("belm_customer_token");
-    if (tokenIsCurrent(customerToken)) {
-      navigateOnce("/portal/dashboard");
-      return true;
-    }
-
-    if (adminToken || adminUser) {
-      localStorage.removeItem("belm_admin_token");
-      localStorage.removeItem("belm_admin_user");
-    }
-    if (technicianToken || technicianUser) {
-      localStorage.removeItem("belm_tech_token");
-      localStorage.removeItem("belm_tech_user");
-    }
-    if (customerToken) localStorage.removeItem("belm_customer_token");
-    return false;
-  }
-
-  if (resumeExistingSession()) return;
-
-  const parameters = new URLSearchParams(window.location.search);
-  const customerSlug = parameters.get("customer");
-  const accountId = parameters.get("account");
-  const roleHint = parameters.get("role");
+  const customerSlug = new URLSearchParams(window.location.search).get("customer");
   if (customerSlug) {
     loginId.value = customerSlug;
     customerNote.textContent = `Customer portal: ${customerSlug.replace(/-/g, " ")}`;
     customerNote.classList.remove("hidden");
-  } else if (accountId) {
-    loginId.value = accountId;
-  }
-
-  if (accountId) {
-    document.getElementById("forgotPasswordLink").href =
-      `/forgot-password/?account=${encodeURIComponent(accountId)}`;
-  }
-
-  if (roleHint === "admin") {
-    document.getElementById("welcomeTitle").textContent = "Administrator login";
-    document.getElementById("loginTitle").textContent = "Enter your Administrator credentials";
-    document.getElementById("loginHint").textContent =
-      "Only an approved Administrator account can open the administration dashboard.";
   }
 
   document.getElementById("togglePassword").addEventListener("click", (event) => {
@@ -146,7 +72,11 @@
       const destination = saveAccount(result);
       sessionStorage.setItem("belm_login_destination", destination);
       button.textContent = "Opening your dashboard…";
-      navigateOnce(destination);
+      if (typeof window.BELM_NAVIGATE === "function") {
+        window.BELM_NAVIGATE(destination);
+      } else {
+        window.location.assign(destination);
+      }
     } catch (error) {
       errorBox.textContent = error.message || "Login failed. Please try again.";
       errorBox.classList.remove("hidden");

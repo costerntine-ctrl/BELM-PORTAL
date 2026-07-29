@@ -17,8 +17,51 @@
         document.documentElement.dataset.theme = theme;
       })();
     </script>
+    <script>
+      // Runs before the compiled admin console loads. The console still has
+      // its own legacy "/admin/*" screens (including a separate login form
+      // that is not connected to the current PHP/PostgreSQL backend). Any
+      // visit to one of those legacy routes must bounce immediately to the
+      // real, working page instead of ever rendering that old form again.
+      (function () {
+        var path = window.location.pathname;
+        if (path.indexOf("/admin") !== 0) return;
+
+        var adminToken = localStorage.getItem("belm_admin_token");
+        var search = window.location.search || "";
+
+        var knownReplacements = {
+          "/admin/login": "/login/",
+          "/admin/customers": "/customers-manager/",
+          "/admin/overview": "/overview-manager/",
+          "/admin/checklist-templates": "/checklist-manager/",
+          "/admin/service-requests": "/service-request-manager/",
+          "/admin/spare-parts": "/spare-parts-manager/",
+          "/admin/billing": "/billing-manager/",
+          "/admin/suppliers": "/suppliers-manager/",
+          "/admin/reports": "/reports-manager/",
+          "/admin/roles": "/roles-manager/",
+          "/admin/settings": "/settings-manager/",
+          "/admin/activity-log": "/overview-manager/",
+        };
+
+        var destination = knownReplacements[path];
+        if (!destination) {
+          // Any other legacy admin route (bare "/admin", "/admin/dashboard",
+          // "/admin/activity-log", "/admin/roles/recycle-bin", etc.): send a
+          // signed-in admin to the real Main Menu, or an unauthenticated
+          // visitor straight to the unified login — never to the old console.
+          destination = adminToken ? "/admin-menu/" : "/login/";
+        } else if (destination === "/login/" && adminToken) {
+          // Already signed in and landed on the legacy login route.
+          destination = "/admin-menu/";
+        }
+
+        window.location.replace(destination + (destination === "/login/" ? search : ""));
+      })();
+    </script>
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
-    <script defer src="/portal-tools.js?v=13-one-admin-login"></script>
+    <script defer src="/portal-tools.js"></script>
     <script defer src="/admin-sidebar.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BHFQaDFg.css">
     <link rel="stylesheet" href="/belm-theme.css">

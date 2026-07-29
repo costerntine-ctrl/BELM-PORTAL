@@ -162,6 +162,9 @@ switch ($resource) {
     case 'suppliers':
         dispatch('suppliers.php', ['id' => $segments[1] ?? null]);
 
+    case 'activity-log':
+        dispatch('activity_log.php', ['entity' => $segments[1] ?? '']);
+
     case 'reports':
         dispatch('reports.php', ['action' => $segments[1] ?? '']);
 

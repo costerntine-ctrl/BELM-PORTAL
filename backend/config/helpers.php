@@ -132,7 +132,7 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
 }
 
 function customer_portal_url(string $portalSlug): string {
-    return portal_base_url() . '/portal/login?customer=' . rawurlencode($portalSlug);
+    return portal_base_url() . '/login/?customer=' . rawurlencode($portalSlug);
 }
 
 function document_number(string $prefix): string {

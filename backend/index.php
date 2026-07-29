@@ -55,7 +55,7 @@ $resource = $segments[0] ?? '';
 
 switch ($resource) {
     case 'auth':
-        // /auth/login, /auth/customer-login
+        // /auth/unified-login, plus legacy /auth/login and /auth/customer-login
         dispatch('auth.php', ['action' => $segments[1] ?? '']);
 
     case 'applications':

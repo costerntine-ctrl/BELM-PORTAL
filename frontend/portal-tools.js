@@ -1,6 +1,17 @@
 (function () {
   const buttonId = "belm-applications-shortcut";
   const pathname = window.location.pathname;
+  const legacyCustomerLogin = pathname === "/portal/login";
+  const legacyAdminLogin = pathname === "/admin/login";
+  const legacyTechnicianLogin = pathname === "/tech"
+    && !localStorage.getItem("belm_tech_token");
+  if (legacyCustomerLogin || legacyAdminLogin || legacyTechnicianLogin) {
+    const customer = new URLSearchParams(window.location.search).get("customer");
+    window.location.replace(customer
+      ? `/login/?customer=${encodeURIComponent(customer)}`
+      : "/login/");
+    return;
+  }
   document.body.dataset.belmArea = pathname.startsWith("/admin")
     ? "admin"
     : pathname.startsWith("/tech")
@@ -219,30 +230,6 @@
       const labels = form.querySelectorAll("label");
       if (labels.length > 0) form.insertBefore(note, labels[0]);
     }
-  }
-
-  function addRegistrationRequestLink() {
-    if (window.location.pathname !== "/portal/login"
-      || document.getElementById("belm-registration-request")) return;
-    const form = document.querySelector("form");
-    if (!form) return;
-    const link = document.createElement("a");
-    link.id = "belm-registration-request";
-    link.href = "/apply/";
-    link.textContent = "Request Registration — register as a new customer";
-    Object.assign(link.style, {
-      display: "block",
-      margin: "12px 0 4px",
-      padding: "11px 13px",
-      color: "#111a2d",
-      border: "1px solid #00a958",
-      borderRadius: "9px",
-      background: "#ecfff5",
-      font: "800 12px Inter, system-ui, sans-serif",
-      textAlign: "center",
-      textDecoration: "none"
-    });
-    form.appendChild(link);
   }
 
   function addForgotPasswordLink() {
@@ -469,7 +456,7 @@
 
       const token = localStorage.getItem("belm_customer_token");
       if (!token) {
-        window.location.href = "/portal/login";
+        window.location.href = "/login/";
         return;
       }
 
@@ -558,7 +545,6 @@
   syncTechnicianCustomerName();
   clarifyTechnicianAssignment();
   enhanceCustomerLogin();
-  addRegistrationRequestLink();
   addForgotPasswordLink();
   addPortalHomeLink();
   enforceAdminPageAccess();
@@ -583,7 +569,6 @@
     syncTechnicianCustomerName();
     clarifyTechnicianAssignment();
     enhanceCustomerLogin();
-    addRegistrationRequestLink();
     addForgotPasswordLink();
     addPortalHomeLink();
     enforceAdminPageAccess();

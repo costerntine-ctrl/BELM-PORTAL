@@ -27,7 +27,7 @@
   } catch (_) {}
 
   if (!token || !user) {
-    window.location.replace("/admin/login");
+    window.location.replace("/login/");
     return;
   }
 
@@ -123,7 +123,7 @@
   logout.addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.href = "/login/";
   });
   footer.appendChild(logout);
   sidebar.append(brand, userCard, nav, footer);

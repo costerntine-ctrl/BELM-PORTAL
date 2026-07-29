@@ -8,7 +8,7 @@ Hii ZIP ina:
 - Dockerfile
 - render.yaml (Blueprint)
 - Automatic database initialization
-- Unified customer/staff registration and admin role approval workflow
+- One role-aware login for Customer, Technician and Administrator accounts
 - Automatic customer, machine and checklist synchronization
 - public_website_patch/ for belmgeneraltech.co.tz
 
@@ -23,10 +23,11 @@ NAVIGATION UPDATE
 - The Main Menu only shows sections assigned to the signed-in user's role.
 - Customer assistant management returns to /portal/dashboard.
 - Technician task management returns to /tech.
-- Admin, Technician and Customer login screens include Back to Portal Home.
-- Customer login includes Request Registration.
+- Admin, Technician and Customer use one login at /login/.
+- Public "Register for Portal Access" has been removed. Administrators create
+  and approve accounts from the management portal.
 - Apache now serves the React application for direct URLs such as
-  /portal/login, /admin/login and old /admin/* bookmarks instead of 404.
+  /login/, /portal/login, /admin/login and old /admin/* bookmarks instead of 404.
 
 
 ALL OVERVIEW & MANAGEMENT REPORTS
@@ -100,26 +101,25 @@ Default delete PIN:
 Badilisha password na PIN baada ya kuingia.
 
 
-UNIFIED REGISTRATION & APPROVAL
--------------------------------
-Public registration for Customer, Technician and Staff:
-  https://portal.belmgeneraltech.co.tz/apply/
+ONE LOGIN & ADMIN APPROVAL
+--------------------------
+Unified login for Customer, Technician and Staff:
+  https://portal.belmgeneraltech.co.tz/login/
 
 Admin applications:
   https://portal.belmgeneraltech.co.tz/admin-applications/
 
 Workflow:
-1. Registration type ni Customer au Staff / Technician.
-2. Customer anajaza company, TIN, VRN, contact na machine details.
-3. Staff/Technician anajaza name, email, phone na requested role.
-4. Request inakuwa PENDING na haiwezi kuona dashboard yoyote.
-5. Kwa Customer, Admin ana-approve; account, machine na checklist
-   vinatengenezwa kutoka details za request.
-6. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
+1. Admin anatengeneza/ana-approve account ya Customer au Staff / Technician.
+2. Kwa Customer, Admin anaweka company, TIN, VRN, contact na machine details.
+3. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
    apewe Assigned Customer.
-7. Approval inagenerate login link, temporary password na recovery code.
-8. Admin anatumia Copy credentials kumtumia user taarifa zote.
-9. User anaona pages/data za role yake tu.
+4. Approval inagenerate unified login link, temporary password na recovery code.
+5. Admin anatumia Copy credentials kumtumia user taarifa zote.
+6. User anaingia kupitia /login/. Mfumo unatambua role automatically:
+   Admin -> /admin-menu/, Technician -> /tech,
+   Customer -> /portal/dashboard.
+7. User anaona pages na data za role yake tu.
 
 Admin > Service Requests sasa inafungua manager kamili:
   /service-request-manager/
@@ -128,16 +128,13 @@ Hapa Admin anaweza kuchagua Technician anayehudumia customer huyo, kubadilisha
 job status na kuhifadhi service notes.
 
 Customer link inatengenezwa automatically kwa jina la kampuni:
-  https://portal.belmgeneraltech.co.tz/portal/login?customer=customer-name
+  https://portal.belmgeneraltech.co.tz/login/?customer=customer-name
 
 Customer na assistants wake wanatumia link hiyo hiyo. Kila mmoja anaingia
 kwa email na password yake.
 
-Portal home ina login choices:
-  Registration: /apply/
-  Admin:       /admin/login
-  Technician:  /tech
-  Customer:    /portal/login
+Portal home ina login moja:
+  Admin, Technician na Customer: /login/
   Password reset: /forgot-password/
 
 

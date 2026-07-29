@@ -149,7 +149,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/admin/login";
+      window.location.href = "/login/";
       return;
     }
     try {
@@ -167,7 +167,7 @@
       } catch (_) {}
     } catch (error) {
       document.getElementById("usersPanel").className = "empty";
-      document.getElementById("usersPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;
+      document.getElementById("usersPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/login/">Go to portal login</a>`;
       showAlert(error.message, true);
     }
   }

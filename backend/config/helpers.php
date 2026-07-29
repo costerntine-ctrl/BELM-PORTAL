@@ -131,17 +131,8 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
     }
 }
 
-function customer_portal_url(string $portalSlug, ?string $email = null): string {
-    $parameters = ['customer' => $portalSlug];
-    if ($email !== null && trim($email) !== '') {
-        $parameters['account'] = strtolower(trim($email));
-    }
-    return portal_base_url() . '/login/?' . http_build_query(
-        $parameters,
-        '',
-        '&',
-        PHP_QUERY_RFC3986
-    );
+function customer_portal_url(string $portalSlug): string {
+    return portal_base_url() . '/portal/login?customer=' . rawurlencode($portalSlug);
 }
 
 function document_number(string $prefix): string {

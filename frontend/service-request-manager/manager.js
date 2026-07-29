@@ -92,7 +92,7 @@
   async function load() {
     requestList.innerHTML = '<div class="loading">Loading service requests…</div>';
     if (!token) {
-      requestList.innerHTML = '<div class="locked">Administrator login required.<br><a href="/login/">Go to portal login</a></div>';
+      requestList.innerHTML = '<div class="locked">Administrator login required.<br><a href="/admin/login">Go to admin login</a></div>';
       return;
     }
     try {
@@ -103,7 +103,7 @@
       renderRequests();
     } catch (error) {
       requestList.innerHTML = error.status === 401 || error.status === 403
-        ? `<div class="locked">${escapeHtml(error.message)}<br><a href="/login/">Go to portal login</a></div>`
+        ? `<div class="locked">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`
         : '<div class="empty">Could not load service requests.</div>';
       showAlert(error.message, true);
     }
@@ -195,7 +195,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/login/";
+    window.location.href = "/admin/login";
   });
   load();
 })();

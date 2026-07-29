@@ -39,19 +39,6 @@ function formatDate(value) {
   return new Date(value).toLocaleString();
 }
 
-async function copyText(value) {
-  try {
-    await navigator.clipboard.writeText(value);
-  } catch (_) {
-    const area = document.createElement("textarea");
-    area.value = value;
-    document.body.appendChild(area);
-    area.select();
-    document.execCommand("copy");
-    area.remove();
-  }
-}
-
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -64,7 +51,7 @@ async function api(path, options = {}) {
   const data = await response.json().catch(() => ({}));
   if (response.status === 401) {
     localStorage.removeItem("belm_admin_token");
-    location.href = "/login/";
+    location.href = "/admin/login";
     throw new Error("Your session has expired.");
   }
   if (!response.ok) throw new Error(data.error || "Request failed.");
@@ -129,7 +116,7 @@ function renderCard(application) {
 
 async function loadApplications() {
   if (!token) {
-    location.href = "/login/";
+    location.href = "/admin/login";
     return;
   }
   alertBox.classList.add("hidden");
@@ -248,7 +235,7 @@ document.getElementById("refreshButton").addEventListener("click", loadApplicati
 document.getElementById("logoutButton").addEventListener("click", () => {
   localStorage.removeItem("belm_admin_token");
   localStorage.removeItem("belm_admin_user");
-  location.href = "/login/";
+  location.href = "/admin/login";
 });
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 document.querySelector(".assignment-close").addEventListener("click", () => assignmentDialog.close());
@@ -280,18 +267,8 @@ document.getElementById("copyMessageButton").addEventListener("click", async () 
     "Use the recovery code on Forgot Password if you lose your password. Save it securely.",
     "BELM General Tech Service Limited"
   ].join("\n");
-  await copyText(message);
+  await navigator.clipboard.writeText(message);
   document.getElementById("copyMessageButton").textContent = "Credentials copied";
-});
-document.getElementById("copyApprovedLinkButton").addEventListener("click", async () => {
-  if (!lastApproval) return;
-  await copyText(lastApproval.loginUrl || "");
-  document.getElementById("copyApprovedLinkButton").textContent = "Login link copied";
-});
-document.getElementById("copyApprovedPasswordButton").addEventListener("click", async () => {
-  if (!lastApproval) return;
-  await copyText(lastApproval.temporaryPassword || "");
-  document.getElementById("copyApprovedPasswordButton").textContent = "Password copied";
 });
 
 loadApplications();

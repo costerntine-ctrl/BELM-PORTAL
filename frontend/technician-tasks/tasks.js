@@ -56,14 +56,14 @@
   async function load() {
     const payload = tokenPayload();
     if (!token || payload?.roleName !== "Technician" || !payload?.id) {
-      taskList.innerHTML = '<div class="locked">Technician login required.<br><a href="/login/">Go to portal login</a></div>';
+      taskList.innerHTML = '<div class="locked">Technician login required.<br><a href="/tech">Go to Technician login</a></div>';
       return;
     }
     try {
       tasks = await api(`/tasks/user/${payload.id}`);
       render();
     } catch (error) {
-      taskList.innerHTML = '<div class="locked">Could not load your tasks.<br><a href="/login/">Log in again</a></div>';
+      taskList.innerHTML = '<div class="locked">Could not load your tasks.<br><a href="/tech">Log in again</a></div>';
       alertBox.textContent = error.message;
       alertBox.className = "alert error";
     }
@@ -93,7 +93,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_tech_token");
     localStorage.removeItem("belm_tech_user");
-    window.location.href = "/login/";
+    window.location.href = "/tech";
   });
   load();
 })();

@@ -78,7 +78,7 @@
     clearAlert();
     userList.innerHTML = '<div class="loading">Loading assistants…</div>';
     if (!token) {
-      userList.innerHTML = '<div class="locked"><strong>Customer login required</strong>Please log in using the main customer account.<br><a href="/login/">Go to portal login</a></div>';
+      userList.innerHTML = '<div class="locked"><strong>Customer login required</strong>Please log in using the main customer account.<br><a href="/portal/login">Go to customer login</a></div>';
       return;
     }
     try {
@@ -86,7 +86,7 @@
       render();
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        userList.innerHTML = `<div class="locked"><strong>Owner access required</strong>${escapeHtml(error.message)}<br><a href="/login/">Log in as main customer</a></div>`;
+        userList.innerHTML = `<div class="locked"><strong>Owner access required</strong>${escapeHtml(error.message)}<br><a href="/portal/login">Log in as main customer</a></div>`;
         document.getElementById("addButton").disabled = true;
       } else {
         userList.innerHTML = '<div class="empty">Could not load assistant accounts.</div>';
@@ -201,12 +201,12 @@
   document.getElementById("cancelButton").addEventListener("click", () => dialog.close());
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
-    window.location.href = "/login/";
+    window.location.href = "/portal/login";
   });
   const payload = tokenPayload();
   const customerPortalUrl = payload?.portalLink
-    ? `${window.location.origin}/login/?customer=${encodeURIComponent(payload.portalLink)}`
-    : `${window.location.origin}/login/`;
+    ? `${window.location.origin}/portal/login?customer=${encodeURIComponent(payload.portalLink)}`
+    : `${window.location.origin}/portal/login`;
   document.getElementById("customerPortalUrl").textContent = customerPortalUrl;
   document.getElementById("copyLinkButton").dataset.portalUrl = customerPortalUrl;
   document.getElementById("copyLinkButton").addEventListener("click", async () => {

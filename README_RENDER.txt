@@ -8,64 +8,18 @@ Hii ZIP ina:
 - Dockerfile
 - render.yaml (Blueprint)
 - Automatic database initialization
-- One role-aware login for Customer, Technician and Administrator accounts
+- Unified customer/staff registration and admin role approval workflow
 - Automatic customer, machine and checklist synchronization
 - public_website_patch/ for belmgeneraltech.co.tz
 
 
 NAVIGATION UPDATE
 -----------------
-- Admin pages now use the same permanent left sidebar.
-- Sidebar contains Main Menu, All Overview, Customers, Registration Requests,
-  Checklists, Service Requests, Spare Parts, Billing, Suppliers, Reports,
-  Roles & Users and Settings according to the signed-in role.
-- Admin pages also return directly to /admin-menu/.
+- Admin pages now return directly to /admin-menu/.
 - The Main Menu only shows sections assigned to the signed-in user's role.
 - Customer assistant management returns to /portal/dashboard.
 - Technician task management returns to /tech.
-- Portal Home shows Administrator Login and Request Registration.
-- New Customers, Staff and Technicians submit /apply/ and remain blocked until
-  Admin approval. Approved users then use their generated /login/ link.
-- New and reset Staff/Technician accounts display one credentials card with
-  the unified login link, generated password, recovery code and Copy buttons.
-- Logging out keeps a stable login form. Old /admin/login, /portal/login and
-  /tech login screens use the same role-aware authentication without redirects.
-- Admin enters credentials once. A valid Admin session skips every later login
-  screen and returns directly to /admin-menu/; login is removed from Back history.
-- Apache redirects old /admin/login and /portal/login addresses to the only
-  stable /login/ form before the old React login can appear.
-- Database migration repairs the built-in Admin active state and Super Admin
-  role without overwriting a password that the Administrator already changed.
-
-
-ALL OVERVIEW & MANAGEMENT REPORTS
----------------------------------
-All Overview:
-  /overview-manager/
-
-- Card analysis for customers, machines, employees, registration requests,
-  service requests, tasks and low stock.
-- Finance cards for sales, received revenue, expenses and profit/loss.
-- Every role has a card with staff, active accounts, pending tasks and
-  completed tasks.
-- Service, machine and today's attendance status comparisons.
-- Latest recorded employee activity.
-
-Reports:
-  /reports-manager/
-
-- Today, week, month, year or custom-date reporting.
-- Current vs previous financial comparison.
-- Sales, revenue, expenses, profit/loss and outstanding balances.
-- 12-month visual trend.
-- Attendance, tasks, service requests and employee/role activity.
-- Daily employee attendance saving with status, check-in, check-out and notes.
-- Export CSV and Print / Save PDF.
-
-Settings:
-  /settings-manager/
-
-- Company details, business defaults, light/dark theme and protected PIN save.
+- Admin, Technician and Customer login screens include Back to Portal Home.
 
 
 JINSI YA KUIWEKA RENDER
@@ -88,12 +42,7 @@ JINSI YA KUIWEKA RENDER
 Jibu sahihi la health:
   "ok": true
   "database": "connected"
-  "schemaVersion": "14-db-login-integrity"
-  "schemaReady": true
   "adminReady": true
-
-`adminChecks` zote lazima ziwe true. Zikionyesha false, database ndiyo ina
-tatizo la Admin account badala ya browser/login page.
 
 Apache ina API FallbackResource ya /api/index.php, kwa hiyo REST URLs kama
 /api/health, /api/customers na /api/billing/invoices zinafika kwenye router
@@ -114,26 +63,26 @@ Default delete PIN:
 Badilisha password na PIN baada ya kuingia.
 
 
-ONE LOGIN & ADMIN APPROVAL
---------------------------
-Unified login for Customer, Technician and Staff:
-  https://portal.belmgeneraltech.co.tz/login/
+UNIFIED REGISTRATION & APPROVAL
+-------------------------------
+Public registration for Customer, Technician and Staff:
+  https://portal.belmgeneraltech.co.tz/apply/
 
 Admin applications:
   https://portal.belmgeneraltech.co.tz/admin-applications/
 
 Workflow:
-1. Customer, Staff au Technician anatuma Request Registration kupitia /apply/.
-2. Request inabaki PENDING na haina dashboard access wala password.
-3. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
+1. Registration type ni Customer au Staff / Technician.
+2. Customer anajaza company, TIN, VRN, contact na machine details.
+3. Staff/Technician anajaza name, email, phone na requested role.
+4. Request inakuwa PENDING na haiwezi kuona dashboard yoyote.
+5. Kwa Customer, Admin ana-approve; account, machine na checklist
+   vinatengenezwa kutoka details za request.
+6. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
    apewe Assigned Customer.
-4. Admin approval inagenerate private login link yenye account iliyojazwa,
-   temporary password na recovery code.
-5. Admin anatumia Copy credentials kumtumia user taarifa zote.
-6. User anaingia kupitia /login/. Mfumo unatambua role automatically:
-   Admin -> /admin-menu/, Technician -> /tech,
-   Customer -> /portal/dashboard.
-7. User anaona pages na data za role yake tu.
+7. Approval inagenerate login link, temporary password na recovery code.
+8. Admin anatumia Copy credentials kumtumia user taarifa zote.
+9. User anaona pages/data za role yake tu.
 
 Admin > Service Requests sasa inafungua manager kamili:
   /service-request-manager/
@@ -142,16 +91,17 @@ Hapa Admin anaweza kuchagua Technician anayehudumia customer huyo, kubadilisha
 job status na kuhifadhi service notes.
 
 Customer link inatengenezwa automatically kwa jina la kampuni:
-  https://portal.belmgeneraltech.co.tz/login/?customer=customer-name
+  https://portal.belmgeneraltech.co.tz/portal/login?customer=customer-name
 
 Customer na assistants wake wanatumia link hiyo hiyo. Kila mmoja anaingia
 kwa email na password yake.
 
-Portal home ina:
-  Administrator Login: /login/?role=admin
-  Request Registration: /apply/
-Baada ya approval, Customer/Staff/Technician anatumia generated login link.
-Login page ina Login na Forgot Password; haina registration form.
+Portal home ina login choices:
+  Registration: /apply/
+  Admin:       /admin/login
+  Technician:  /tech
+  Customer:    /portal/login
+  Password reset: /forgot-password/
 
 
 SELF-SERVICE FORGOT PASSWORD
@@ -302,7 +252,6 @@ CUSTOMER CARDS NA WORKING LINKS
 - Kila customer card ina Copy Link na Open Customer Login.
 - Customer mpya anaonyesha email, temporary password, recovery code na
   working portal link.
-- Credential dialog ina Copy All, Copy Link na Copy Password tofauti.
 - Reset Login inagenerate password/recovery code mpya kwa existing customer.
 
 

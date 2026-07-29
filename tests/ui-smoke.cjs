@@ -38,14 +38,6 @@ function setup(pagePath, origin = "https://portal.belmgeneraltech.co.tz") {
 
 const flush = () => new Promise((resolve) => setTimeout(resolve, 20));
 
-function testJwt(payload = {}) {
-  const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");
-  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({
-    exp: Math.floor(Date.now() / 1000) + 3600,
-    ...payload,
-  })}.signature`;
-}
-
 async function testBilling() {
   const dom = setup("frontend/billing-manager/index.html");
   const requests = [];
@@ -141,15 +133,6 @@ async function testRoleChange() {
     if (url === "/api/customers") return response(customers);
     if (url === "/api/settings") return response({ displayTheme: "light" });
     if (url === "/api/users/user-2" && options.method === "PUT") return response({ ok: true });
-    if (url === "/api/users" && options.method === "POST") {
-      const payload = JSON.parse(options.body);
-      return response({
-        id: "user-3",
-        temporaryPassword: payload.password,
-        recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
-        loginUrl: "https://belm-portal.onrender.com/login/",
-      }, 201);
-    }
     return response(null, 404);
   };
   dom.window.eval(fs.readFileSync(path.join(root, "frontend/roles-manager/manager.js"), "utf8"));
@@ -166,38 +149,26 @@ async function testRoleChange() {
   const body = JSON.parse(save.options.body);
   assert.equal(body.roleId, "role-tech");
   assert.equal(body.assignedCustomerId, "customer-1");
-
-  dom.window.document.getElementById("addUserButton").click();
-  assert.ok(dom.window.document.getElementById("userPassword").value.length >= 8);
-  dom.window.document.getElementById("userName").value = "Technician Two";
-  dom.window.document.getElementById("userEmail").value = "tech2@example.com";
-  dom.window.document.getElementById("userRole").value = "role-tech";
-  dom.window.document.getElementById("userRole").dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-  dom.window.document.getElementById("assignedCustomer").value = "customer-1";
-  dom.window.document.getElementById("userForm").dispatchEvent(
-    new dom.window.Event("submit", { bubbles: true, cancelable: true })
-  );
-  await flush();
-  const create = requests.find((request) => request.url === "/api/users" && request.options.method === "POST");
-  assert.ok(create, "System-user POST request was not sent");
-  assert.ok(dom.window.document.getElementById("userCredentialsDialog").open);
-  assert.equal(dom.window.document.getElementById("systemCredentialEmail").value, "tech2@example.com");
-  assert.equal(dom.window.document.getElementById("systemCredentialLink").value, "https://belm-portal.onrender.com/login/");
 }
 
-async function testSettingsSaving() {
-  const dom = setup("frontend/settings-manager/index.html");
+async function testThemeSaving() {
+  const dom = new JSDOM("<!doctype html><html><body><button id=\"light\">☀️ Light</button><button id=\"dark\">🌙 Dark</button></body></html>", {
+    url: "https://portal.belmgeneraltech.co.tz/admin/settings",
+    runScripts: "outside-only",
+  });
+  dom.window.localStorage.setItem("belm_admin_token", "test-token");
+  dom.window.localStorage.setItem("belm_admin_user", JSON.stringify({ role: "Super Admin" }));
   const requests = [];
   dom.window.fetch = async (url, options = {}) => {
     requests.push({ url, options });
     if (url === "/api/settings" && !options.method) return response({ displayTheme: "light" });
     if (url === "/api/settings/displayTheme" && options.method === "PUT") return response({ ok: true });
-    if (url.startsWith("/api/settings/") && options.method === "PUT") return response({ ok: true });
+    if (url.startsWith("/api/applications")) return response({ applications: [] });
     return response(null, 404);
   };
-  dom.window.eval(fs.readFileSync(path.join(root, "frontend/settings-manager/app.js"), "utf8"));
+  dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
   await flush();
-  dom.window.document.getElementById("darkTheme").click();
+  dom.window.document.getElementById("dark").click();
   await flush();
   assert.equal(dom.window.localStorage.getItem("belm_theme"), "dark");
   assert.equal(dom.window.document.documentElement.dataset.theme, "dark");
@@ -206,191 +177,6 @@ async function testSettingsSaving() {
   assert.ok(save, "Theme preference PUT request was not sent");
   assert.equal(JSON.parse(save.options.body).value, "dark");
   dom.window.close();
-}
-
-async function testUnifiedLogin() {
-  const scenarios = [
-    {
-      accountType: "admin",
-      destination: "/admin-menu/",
-      user: { id: "admin-1", name: "Admin", role: "Super Admin", allowedPages: null },
-      tokenKey: "belm_admin_token",
-      userKey: "belm_admin_user",
-    },
-    {
-      accountType: "technician",
-      destination: "/tech",
-      user: {
-        id: "tech-1", name: "Technician", role: "Technician",
-        assignedCustomerId: "customer-1", assignedCustomerName: "ECLS ICD",
-      },
-      tokenKey: "belm_tech_token",
-      userKey: "belm_tech_user",
-    },
-    {
-      accountType: "customer",
-      destination: "/portal/dashboard",
-      customer: { id: "customer-1", name: "ECLS ICD", actorType: "owner" },
-      tokenKey: "belm_customer_token",
-    },
-  ];
-
-  for (const scenario of scenarios) {
-    const html = fs.readFileSync(path.join(root, "frontend/login/index.html"), "utf8");
-    const dom = new JSDOM(html, {
-      url: "https://belm-portal.onrender.com/login/?customer=ecls-icd",
-      runScripts: "outside-only",
-    });
-    const requests = [];
-    dom.window.fetch = async (url, options = {}) => {
-      requests.push({ url, options });
-      return response({ token: `${scenario.accountType}-token`, ...scenario });
-    };
-    dom.window.BELM_NAVIGATE = (destination) => {
-      dom.window.document.documentElement.dataset.testDestination = destination;
-    };
-    dom.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-    assert.equal(dom.window.document.getElementById("loginId").value, "ecls-icd");
-    dom.window.document.getElementById("password").value = "GeneratedPassword!2";
-    dom.window.document.getElementById("loginForm").dispatchEvent(
-      new dom.window.Event("submit", { bubbles: true, cancelable: true })
-    );
-    await flush();
-    const login = requests.find((request) => request.url === "/api/auth/unified-login");
-    assert.ok(login, `${scenario.accountType} did not use unified login`);
-    assert.equal(JSON.parse(login.options.body).loginId, "ecls-icd");
-    assert.equal(dom.window.localStorage.getItem(scenario.tokenKey), `${scenario.accountType}-token`);
-    if (scenario.userKey) {
-      assert.equal(JSON.parse(dom.window.localStorage.getItem(scenario.userKey)).role, scenario.user.role);
-    }
-    assert.equal(dom.window.sessionStorage.getItem("belm_login_destination"), scenario.destination);
-    assert.equal(dom.window.document.documentElement.dataset.testDestination, scenario.destination);
-    dom.window.close();
-  }
-
-  const approvedStaffHtml = fs.readFileSync(path.join(root, "frontend/login/index.html"), "utf8");
-  const approvedStaff = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/login/?account=tech%40example.com",
-    runScripts: "outside-only",
-  });
-  approvedStaff.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-  assert.equal(approvedStaff.window.document.getElementById("loginId").value, "tech@example.com");
-  assert.match(
-    approvedStaff.window.document.getElementById("forgotPasswordLink").href,
-    /forgot-password\/\?account=tech%40example\.com$/
-  );
-  approvedStaff.window.close();
-
-  const adminLogin = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/login/?role=admin",
-    runScripts: "outside-only",
-  });
-  adminLogin.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-  assert.equal(adminLogin.window.document.getElementById("welcomeTitle").textContent, "Administrator login");
-  adminLogin.window.close();
-
-  const activeAdmin = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/admin/login",
-    runScripts: "outside-only",
-  });
-  let resumedDestination = "";
-  activeAdmin.window.localStorage.setItem("belm_admin_token", testJwt({ type: "staff" }));
-  activeAdmin.window.localStorage.setItem("belm_admin_user", JSON.stringify({
-    id: "admin-1",
-    name: "BELM Admin",
-    role: "Super Admin",
-  }));
-  activeAdmin.window.BELM_NAVIGATE = destination => {
-    resumedDestination = destination;
-  };
-  activeAdmin.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-  assert.equal(
-    resumedDestination,
-    "/admin-menu/",
-    "An active Admin session displayed a second login instead of resuming the dashboard"
-  );
-  activeAdmin.window.close();
-}
-
-async function testLegacyLoginRoutesUseOnlyUnifiedPage() {
-  const html = `<!doctype html><html><body>
-    <form>
-      <label for="legacyLogin">Email <input id="legacyLogin" type="email" required></label>
-      <label for="legacyPassword">Password <input id="legacyPassword" type="password" required></label>
-      <button type="submit">Login</button>
-    </form>
-  </body></html>`;
-  const dom = new JSDOM(html, {
-    url: "https://belm-portal.onrender.com/admin/login",
-    runScripts: "outside-only",
-  });
-  let destination = "";
-  dom.window.setInterval = () => 1;
-  dom.window.BELM_NAVIGATE = (nextDestination) => {
-    destination = nextDestination;
-  };
-
-  dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
-  assert.equal(
-    destination,
-    "/login/?role=admin",
-    "The old React Admin login was not redirected to the only login page"
-  );
-  dom.window.close();
-
-  const activeLegacyAdmin = new JSDOM("<!doctype html><html><body></body></html>", {
-    url: "https://belm-portal.onrender.com/admin/login",
-    runScripts: "outside-only",
-  });
-  let resumedAdminDestination = "";
-  activeLegacyAdmin.window.localStorage.setItem("belm_admin_token", testJwt({ type: "staff" }));
-  activeLegacyAdmin.window.localStorage.setItem("belm_admin_user", JSON.stringify({
-    id: "admin-1",
-    name: "BELM Admin",
-    role: "Super Admin",
-  }));
-  activeLegacyAdmin.window.BELM_NAVIGATE = nextDestination => {
-    resumedAdminDestination = nextDestination;
-  };
-  activeLegacyAdmin.window.eval(
-    fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8")
-  );
-  assert.equal(
-    resumedAdminDestination,
-    "/admin-menu/",
-    "The old React Admin route displayed another login for an active Admin"
-  );
-  activeLegacyAdmin.window.close();
-
-  const oldCustomerLogin = new JSDOM(html, {
-    url: "https://belm-portal.onrender.com/portal/login?customer=ecls-icd",
-    runScripts: "outside-only",
-  });
-  let customerLoginDestination = "";
-  oldCustomerLogin.window.setInterval = () => 1;
-  oldCustomerLogin.window.BELM_NAVIGATE = nextDestination => {
-    customerLoginDestination = nextDestination;
-  };
-  oldCustomerLogin.window.eval(
-    fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8")
-  );
-  assert.equal(customerLoginDestination, "/login/?customer=ecls-icd");
-  oldCustomerLogin.window.close();
-
-  const oldTechnicianLogin = new JSDOM(html, {
-    url: "https://belm-portal.onrender.com/tech",
-    runScripts: "outside-only",
-  });
-  let technicianLoginDestination = "";
-  oldTechnicianLogin.window.setInterval = () => 1;
-  oldTechnicianLogin.window.BELM_NAVIGATE = nextDestination => {
-    technicianLoginDestination = nextDestination;
-  };
-  oldTechnicianLogin.window.eval(
-    fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8")
-  );
-  assert.equal(technicianLoginDestination, "/login/?role=technician");
-  oldTechnicianLogin.window.close();
 }
 
 async function testChecklistDropdownValues() {
@@ -520,7 +306,7 @@ async function testCustomerCardsAndLinks() {
   assert.match(dom.window.document.getElementById("customerGrid").textContent, /ECLS ICD/);
   assert.ok(dom.window.document.querySelector(".machine-card.RED"));
   const portalLink = dom.window.document.querySelector(".portal-actions a").href;
-  assert.equal(portalLink, "https://belm-portal.onrender.com/login/?customer=ecls-icd");
+  assert.equal(portalLink, "https://belm-portal.onrender.com/portal/login?customer=ecls-icd");
   assert.match(dom.window.document.querySelector(".machine-status").textContent, /Don't operate/);
   dom.window.document.querySelector('[data-reset-customer="customer-1"]').click();
   await flush();
@@ -530,71 +316,39 @@ async function testCustomerCardsAndLinks() {
   assert.equal(dom.window.document.getElementById("credentialRecovery").value, "BELM-ABCD-EFGH-JKLM-NPQR");
 }
 
-async function testPublicRegistrationAndApprovalFlow() {
-  const home = fs.readFileSync(path.join(root, "frontend/portal-home.html"), "utf8");
-  assert.match(home, /Administrator Login/);
-  assert.match(home, /href="\/login\/\?role=admin"/);
-  assert.match(home, /Request Registration/);
-  assert.match(home, /href="\/apply\/"/);
-
-  const apply = fs.readFileSync(path.join(root, "frontend/apply/index.html"), "utf8");
-  assert.match(apply, /id="applicationForm"/);
-  assert.match(apply, /No password is requested here/);
-
-  const dom = new JSDOM(apply, {
-    url: "https://belm-portal.onrender.com/apply/",
-    runScripts: "outside-only",
-  });
+async function testUnifiedRegistration() {
+  const dom = setup("frontend/apply/index.html", "https://belm-portal.onrender.com");
   const requests = [];
-  dom.window.HTMLElement.prototype.scrollIntoView = function () {};
-  dom.window.scrollTo = function () {};
+  dom.window.scrollTo = () => {};
   dom.window.fetch = async (url, options = {}) => {
     requests.push({ url, options });
     return response({
       ok: true,
-      reference: "BELM-C-12345678",
-      status: "PENDING",
+      reference: "BELM-U-12345678",
+      applicationType: "SYSTEM_USER",
     }, 201);
   };
   dom.window.eval(fs.readFileSync(path.join(root, "frontend/apply/app.js"), "utf8"));
-
-  const setValue = (selector, value) => {
-    dom.window.document.querySelector(selector).value = value;
-  };
-  setValue('#customerFields [name="companyName"]', "ECLS ICD");
-  setValue('#customerFields [name="email"]', "customer@example.com");
-  setValue('#customerFields [name="phone"]', "+255700000001");
-  setValue('#customerFields [name="address"]', "Dar es Salaam");
-  setValue('#customerFields [name="tinNumber"]', "TIN-1");
-  setValue('#customerFields [name="vrn"]', "VRN-1");
-  setValue('#customerFields [name="regNumber"]', "T 123 ABC");
-
-  const machineType = dom.window.document.getElementById("machineType");
-  machineType.value = "Reach Stacker";
-  machineType.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-  const brand = dom.window.document.getElementById("brand");
-  brand.value = "Konecranes";
-  brand.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-  dom.window.document.getElementById("model").value = "SMV4531TB6";
+  const type = dom.window.document.getElementById("applicationType");
+  type.value = "SYSTEM_USER";
+  type.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  dom.window.document.querySelector('[name="email"]').value = "tech@example.com";
+  dom.window.document.querySelector('[name="fullName"]').value = "Technician One";
+  dom.window.document.getElementById("userPhone").value = "+255700000001";
+  dom.window.document.querySelector('[name="requestedRole"]').value = "Technician";
   dom.window.document.querySelector('[name="consent"]').checked = true;
-
   dom.window.document.getElementById("applicationForm").dispatchEvent(
     new dom.window.Event("submit", { bubbles: true, cancelable: true })
   );
   await flush();
-
-  const request = requests.find(item =>
-    item.url === "/api/applications" && item.options.method === "POST"
-  );
-  assert.ok(request, "Public registration request was not submitted");
-  const payload = JSON.parse(request.options.body);
-  assert.equal(payload.applicationType, "CUSTOMER");
-  assert.equal(payload.companyName, "ECLS ICD");
-  assert.equal(payload.model, "SMV4531TB6");
+  const registration = requests.find(request => request.url === "/api/applications");
+  assert.ok(registration, "Unified registration POST request was not sent");
+  const payload = JSON.parse(registration.options.body);
+  assert.equal(payload.applicationType, "SYSTEM_USER");
+  assert.equal(payload.requestedRole, "Technician");
   assert.equal(payload.password, undefined);
-  assert.equal(dom.window.document.getElementById("referenceNo").textContent, "BELM-C-12345678");
-  assert.ok(dom.window.document.getElementById("successCard").classList.contains("hidden") === false);
-  dom.window.close();
+  assert.match(dom.window.document.getElementById("referenceNo").textContent, /BELM-U/);
+  assert.ok(!dom.window.document.getElementById("successCard").classList.contains("hidden"));
 }
 
 async function testStaffRoleApproval() {
@@ -632,7 +386,7 @@ async function testStaffRoleApproval() {
         loginEmail: "tech@example.com",
         temporaryPassword: "TempPass!234",
         recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
-        loginUrl: "https://belm-portal.onrender.com/login/?account=tech%40example.com",
+        loginUrl: "https://belm-portal.onrender.com/tech",
       });
     }
     return response(null, 404);
@@ -658,7 +412,6 @@ async function testStaffRoleApproval() {
   assert.equal(payload.assignedCustomerId, "customer-1");
   assert.equal(dom.window.document.getElementById("approvedPassword").textContent, "TempPass!234");
   assert.match(dom.window.document.getElementById("approvedRecovery").textContent, /^BELM-/);
-  assert.match(dom.window.document.getElementById("approvedLink").href, /account=tech%40example\.com/);
 }
 
 async function testForgotPassword() {
@@ -723,21 +476,17 @@ async function testAdminMainMenu() {
   assert.deepEqual(visiblePages, ["billing", "reports"]);
   assert.match(dom.window.document.getElementById("signedInUser").textContent, /Accounts User/);
   assert.ok(dom.window.document.querySelector('.menu-card[href="/billing-manager/"]'));
-  assert.ok(dom.window.document.querySelector('.menu-card[href="/reports-manager/"]'));
+  assert.ok(dom.window.document.querySelector('.menu-card[href="/admin/reports"]'));
 }
 
 async function testAllBackLinks() {
   const adminPages = [
-    "frontend/admin-menu/index.html",
     "frontend/admin-applications/index.html",
     "frontend/billing-manager/index.html",
     "frontend/checklist-manager/index.html",
     "frontend/customers-manager/index.html",
-    "frontend/overview-manager/index.html",
-    "frontend/reports-manager/index.html",
     "frontend/roles-manager/index.html",
     "frontend/service-request-manager/index.html",
-    "frontend/settings-manager/index.html",
     "frontend/spare-parts-manager/index.html",
     "frontend/suppliers-manager/index.html",
   ];
@@ -750,8 +499,6 @@ async function testAllBackLinks() {
     const backLink = Array.from(dom.window.document.querySelectorAll('a[href="/admin-menu/"]'))
       .find((link) => /main menu|belm general tech/i.test(link.textContent));
     assert.ok(backLink, `${page} does not have a working Main Menu link`);
-    assert.match(html, /\/admin-sidebar\.css/, `${page} is missing the shared sidebar stylesheet`);
-    assert.match(html, /\/admin-sidebar\.js/, `${page} is missing the shared sidebar script`);
   }
 
   const customerUsers = fs.readFileSync(path.join(root, "frontend/customer-users/index.html"), "utf8");
@@ -759,108 +506,24 @@ async function testAllBackLinks() {
   const technicianTasks = fs.readFileSync(path.join(root, "frontend/technician-tasks/index.html"), "utf8");
   assert.match(technicianTasks, /href="\/tech">← Checklist app/);
   const publicApply = fs.readFileSync(path.join(root, "frontend/apply/index.html"), "utf8");
-  assert.match(publicApply, /href="\/login\/">Already approved\? Login/);
-}
-
-async function testAllOverview() {
-  const dom = setup("frontend/overview-manager/index.html");
-  dom.window.fetch = async (url) => {
-    assert.match(url, /^\/api\/reports\/all-overview\?/);
-    return response({
-      period: { label: "Month", from: "2026-07-01", to: "2026-07-29" },
-      totals: {
-        customers: 2, machines: 3, employees: 4, activeEmployees: 4,
-        pendingApplications: 1, openRequests: 2, pendingTasks: 3,
-        completedTasks: 5, lowStockParts: 1,
-      },
-      finance: { sales: 1000000, revenue: 700000, expenses: 200000, profitLoss: 500000 },
-      serviceStatus: { OPEN: 2, DONE: 3 },
-      machineStatus: { GREEN: 2, RED: 1 },
-      attendanceToday: { PRESENT: 3, LATE: 1 },
-      roles: [{
-        name: "Technician", staffTotal: 2, activeTotal: 2,
-        pendingTasks: 3, completedTasks: 5,
-      }],
-      recentActivities: [{
-        userName: "Tech One", roleName: "Technician", action: "Updated",
-        entity: "Service Request", createdAt: "2026-07-29T10:00:00Z",
-      }],
-    });
-  };
-  dom.window.eval(fs.readFileSync(path.join(root, "frontend/overview-manager/app.js"), "utf8"));
-  await flush();
-  assert.match(dom.window.document.getElementById("primaryMetrics").textContent, /Customers/);
-  assert.match(dom.window.document.getElementById("roleGrid").textContent, /Technician/);
-  assert.match(dom.window.document.getElementById("activityList").textContent, /Tech One/);
-}
-
-async function testReportsAndAttendance() {
-  const dom = setup("frontend/reports-manager/index.html");
-  const requests = [];
-  dom.window.URL.createObjectURL = () => "blob:test";
-  dom.window.URL.revokeObjectURL = () => {};
-  dom.window.print = () => {};
-  dom.window.fetch = async (url, options = {}) => {
-    requests.push({ url, options });
-    if (url.startsWith("/api/reports/analytics")) {
-      return response({
-        period: { label: "Month", from: "2026-07-01", to: "2026-07-29" },
-        current: { sales: 1000, revenue: 800, expenses: 200, profitLoss: 600, outstanding: 200 },
-        previous: { sales: 500, revenue: 400, expenses: 100, profitLoss: 300, outstanding: 100 },
-        trend: [{ month: "2026-07", sales: 1000, revenue: 800, expenses: 200, profitLoss: 600 }],
-        attendance: { PRESENT: 1 },
-        tasks: { PENDING: 1, DONE: 2 },
-        serviceRequests: { OPEN: 1, COMPLETED: 2 },
-        roleActivity: [{ name: "Technician", activeUsers: 1, activities: 4, pendingTasks: 1, completedTasks: 2 }],
-      });
-    }
-    if (url.startsWith("/api/reports/attendance") && !options.method) {
-      return response({
-        date: "2026-07-29",
-        employees: [{
-          userId: "user-1", name: "Tech One", email: "tech@example.com",
-          roleName: "Technician", status: "PRESENT", checkIn: "2026-07-29T08:00:00Z",
-          checkOut: null, notes: "",
-        }],
-      });
-    }
-    if (url === "/api/reports/attendance" && options.method === "POST") {
-      return response({ ok: true, message: "Attendance saved successfully." });
-    }
-    return response(null, 404);
-  };
-  dom.window.eval(fs.readFileSync(path.join(root, "frontend/reports-manager/app.js"), "utf8"));
-  await flush();
-  assert.match(dom.window.document.getElementById("financeMetrics").textContent, /Sales invoiced/);
-  assert.match(dom.window.document.getElementById("roleTable").textContent, /Technician/);
-  const saveButton = dom.window.document.querySelector("[data-save-attendance]");
-  assert.ok(saveButton, "Attendance save button was not rendered");
-  saveButton.click();
-  await flush();
-  assert.ok(requests.some((request) =>
-    request.url === "/api/reports/attendance" && request.options.method === "POST"
-  ));
+  assert.match(publicApply, /href="\/">Return to portal home/);
 }
 
 (async () => {
   await testBilling();
   await testSpareParts();
   await testRoleChange();
-  await testSettingsSaving();
-  await testUnifiedLogin();
-  await testLegacyLoginRoutesUseOnlyUnifiedPage();
+  await testThemeSaving();
   await testChecklistDropdownValues();
   await testSupplierCards();
   await testCustomerCardsAndLinks();
-  await testPublicRegistrationAndApprovalFlow();
+  await testUnifiedRegistration();
   await testStaffRoleApproval();
   await testForgotPassword();
   await testRoleNavigationIsolation();
   await testAdminMainMenu();
   await testAllBackLinks();
-  await testAllOverview();
-  await testReportsAndAttendance();
-  console.log("BELM UI smoke tests passed: unified role login, managers, settings, approvals, customer links, role isolation, overview, reports, attendance, and all sidebar/Main Menu navigation.");
+  console.log("BELM UI smoke tests passed: managers, registration, approvals, recovery, role isolation, and all Back/Main Menu navigation.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

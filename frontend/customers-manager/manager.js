@@ -50,7 +50,7 @@
   }
 
   function customerPortalUrl(customer) {
-    return new URL(`/login/?customer=${encodeURIComponent(customer.portalLink || "")}`, window.location.origin).href;
+    return new URL(`/portal/login?customer=${encodeURIComponent(customer.portalLink || "")}`, window.location.origin).href;
   }
 
   async function copyText(text, successMessage = "Copied.") {
@@ -151,7 +151,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/login/";
+      window.location.href = "/admin/login";
       return;
     }
     try {
@@ -163,7 +163,7 @@
         if (["light", "dark"].includes(settings.displayTheme)) applyTheme(settings.displayTheme);
       } catch (_) {}
     } catch (error) {
-      document.getElementById("customerGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}<br><a href="/login/">Go to portal login</a></div>`;
+      document.getElementById("customerGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
     }
   }
@@ -310,7 +310,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/login/";
+    window.location.href = "/admin/login";
   });
   document.getElementById("searchInput").addEventListener("input", renderCustomers);
   document.getElementById("statusFilter").addEventListener("change", renderCustomers);
@@ -321,12 +321,6 @@
   document.getElementById("copyCredentialsButton").addEventListener("click", () => {
     const text = `Email: ${document.getElementById("credentialEmail").value}\nTemporary password: ${document.getElementById("credentialPassword").value}\nRecovery code: ${document.getElementById("credentialRecovery").value}\nPortal link: ${document.getElementById("credentialLink").value}`;
     copyText(text, "Customer login information copied.");
-  });
-  document.getElementById("copyCredentialLinkButton").addEventListener("click", () => {
-    copyText(document.getElementById("credentialLink").value, "Customer portal link copied.");
-  });
-  document.getElementById("copyCredentialPasswordButton").addEventListener("click", () => {
-    copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
   });
   document.getElementById("customerGrid").addEventListener("click", (event) => {
     const addMachine = event.target.closest("[data-add-machine]");

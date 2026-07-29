@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/admin-menu/menu.css">
-    <link rel="stylesheet" href="/admin-sidebar.css">
   </head>
   <body>
     <header class="topbar">
@@ -34,9 +33,9 @@
       </section>
 
       <section class="menu-grid" aria-label="BELM administration modules">
-        <a class="menu-card" data-page="overview" href="/overview-manager/">
+        <a class="menu-card" data-page="overview" href="/admin/overview">
           <span class="menu-icon">OV</span>
-          <span><strong>All Overview</strong><small>Cards and analysis across every assigned role</small></span>
+          <span><strong>Overview</strong><small>Dashboard summary and activity</small></span>
         </a>
         <a class="menu-card" data-page="customers" href="/customers-manager/">
           <span class="menu-icon">CU</span>
@@ -70,11 +69,11 @@
           <span class="menu-icon">SU</span>
           <span><strong>Suppliers</strong><small>Trusted supplier cards and WhatsApp contacts</small></span>
         </a>
-        <a class="menu-card" data-page="reports" href="/reports-manager/">
+        <a class="menu-card" data-page="reports" href="/admin/reports">
           <span class="menu-icon">RE</span>
           <span><strong>Reports</strong><small>Operational and business reports</small></span>
         </a>
-        <a class="menu-card" data-page="settings" href="/settings-manager/">
+        <a class="menu-card" data-page="settings" href="/admin/settings">
           <span class="menu-icon">SE</span>
           <span><strong>Settings</strong><small>Company and system configuration</small></span>
         </a>
@@ -86,7 +85,6 @@
     </main>
 
     <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js"></script>
     <script src="/admin-menu/menu.js"></script>
   </body>
 </html>

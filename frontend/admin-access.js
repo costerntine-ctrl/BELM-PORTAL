@@ -6,7 +6,7 @@
   } catch (_) {}
 
   if (!token || !user) {
-    window.location.replace("/login/");
+    window.location.replace("/admin/login");
     return;
   }
 
@@ -67,6 +67,6 @@
   } else {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.replace("/login/?access=not-assigned");
+    window.location.replace("/admin/login?access=not-assigned");
   }
 })();

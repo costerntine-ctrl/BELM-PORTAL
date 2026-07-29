@@ -8,7 +8,7 @@ Hii ZIP ina:
 - Dockerfile
 - render.yaml (Blueprint)
 - Automatic database initialization
-- One role-aware login for Customer, Technician and Administrator accounts
+- Original role-specific React login structure
 - Automatic customer, machine and checklist synchronization
 - public_website_patch/ for belmgeneraltech.co.tz
 
@@ -25,15 +25,13 @@ NAVIGATION UPDATE
 - Technician task management returns to /tech.
 - Portal Home shows Administrator Login and Request Registration.
 - New Customers, Staff and Technicians submit /apply/ and remain blocked until
-  Admin approval. Approved users then use their generated /login/ link.
+  Admin approval. Approval generates the correct role-specific login link.
 - New and reset Staff/Technician accounts display one credentials card with
-  the unified login link, generated password, recovery code and Copy buttons.
-- Logging out keeps a stable login form. Old /admin/login, /portal/login and
-  /tech login screens use the same role-aware authentication without redirects.
-- Admin enters credentials once. A valid Admin session skips every later login
-  screen and returns directly to /admin-menu/; login is removed from Back history.
-- Apache redirects old /admin/login and /portal/login addresses to the only
-  stable /login/ form before the old React login can appear.
+  the role-specific login link, generated password, recovery code and Copy buttons.
+- The extra static /login/ page and its JavaScript interception were removed.
+- Admin uses /admin/login, Customer uses /portal/login?customer=..., and
+  Technician uses /tech. These are the original React forms and do not redirect
+  before the password can be entered.
 - Database migration repairs the built-in Admin active state and Super Admin
   role without overwriting a password that the Administrator already changed.
 
@@ -114,10 +112,10 @@ Default delete PIN:
 Badilisha password na PIN baada ya kuingia.
 
 
-ONE LOGIN & ADMIN APPROVAL
---------------------------
-Unified login for Customer, Technician and Staff:
-  https://portal.belmgeneraltech.co.tz/login/
+ROLE LOGIN & ADMIN APPROVAL
+---------------------------
+Administrator login:
+  https://portal.belmgeneraltech.co.tz/admin/login
 
 Admin applications:
   https://portal.belmgeneraltech.co.tz/admin-applications/
@@ -127,12 +125,13 @@ Workflow:
 2. Request inabaki PENDING na haina dashboard access wala password.
 3. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
    apewe Assigned Customer.
-4. Admin approval inagenerate private login link yenye account iliyojazwa,
-   temporary password na recovery code.
+4. Admin approval inagenerate role-specific login link, temporary password
+   na recovery code.
 5. Admin anatumia Copy credentials kumtumia user taarifa zote.
-6. User anaingia kupitia /login/. Mfumo unatambua role automatically:
-   Admin -> /admin-menu/, Technician -> /tech,
-   Customer -> /portal/dashboard.
+6. User anaingia kupitia link ya role yake:
+   Admin /admin/login -> /admin-menu/
+   Technician /tech -> Technician workspace
+   Customer /portal/login?customer=... -> /portal/dashboard
 7. User anaona pages na data za role yake tu.
 
 Admin > Service Requests sasa inafungua manager kamili:
@@ -142,16 +141,15 @@ Hapa Admin anaweza kuchagua Technician anayehudumia customer huyo, kubadilisha
 job status na kuhifadhi service notes.
 
 Customer link inatengenezwa automatically kwa jina la kampuni:
-  https://portal.belmgeneraltech.co.tz/login/?customer=customer-name
+  https://portal.belmgeneraltech.co.tz/portal/login?customer=customer-name
 
 Customer na assistants wake wanatumia link hiyo hiyo. Kila mmoja anaingia
 kwa email na password yake.
 
 Portal home ina:
-  Administrator Login: /login/?role=admin
+  Administrator Login: /admin/login
   Request Registration: /apply/
 Baada ya approval, Customer/Staff/Technician anatumia generated login link.
-Login page ina Login na Forgot Password; haina registration form.
 
 
 SELF-SERVICE FORGOT PASSWORD

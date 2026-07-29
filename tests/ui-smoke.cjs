@@ -147,7 +147,7 @@ async function testRoleChange() {
         id: "user-3",
         temporaryPassword: payload.password,
         recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
-        loginUrl: "https://belm-portal.onrender.com/login/",
+        loginUrl: "https://belm-portal.onrender.com/tech",
       }, 201);
     }
     return response(null, 404);
@@ -182,7 +182,7 @@ async function testRoleChange() {
   assert.ok(create, "System-user POST request was not sent");
   assert.ok(dom.window.document.getElementById("userCredentialsDialog").open);
   assert.equal(dom.window.document.getElementById("systemCredentialEmail").value, "tech2@example.com");
-  assert.equal(dom.window.document.getElementById("systemCredentialLink").value, "https://belm-portal.onrender.com/login/");
+  assert.equal(dom.window.document.getElementById("systemCredentialLink").value, "https://belm-portal.onrender.com/tech");
 }
 
 async function testSettingsSaving() {
@@ -208,111 +208,30 @@ async function testSettingsSaving() {
   dom.window.close();
 }
 
-async function testUnifiedLogin() {
-  const scenarios = [
-    {
-      accountType: "admin",
-      destination: "/admin-menu/",
-      user: { id: "admin-1", name: "Admin", role: "Super Admin", allowedPages: null },
-      tokenKey: "belm_admin_token",
-      userKey: "belm_admin_user",
-    },
-    {
-      accountType: "technician",
-      destination: "/tech",
-      user: {
-        id: "tech-1", name: "Technician", role: "Technician",
-        assignedCustomerId: "customer-1", assignedCustomerName: "ECLS ICD",
-      },
-      tokenKey: "belm_tech_token",
-      userKey: "belm_tech_user",
-    },
-    {
-      accountType: "customer",
-      destination: "/portal/dashboard",
-      customer: { id: "customer-1", name: "ECLS ICD", actorType: "owner" },
-      tokenKey: "belm_customer_token",
-    },
-  ];
-
-  for (const scenario of scenarios) {
-    const html = fs.readFileSync(path.join(root, "frontend/login/index.html"), "utf8");
-    const dom = new JSDOM(html, {
-      url: "https://belm-portal.onrender.com/login/?customer=ecls-icd",
-      runScripts: "outside-only",
-    });
-    const requests = [];
-    dom.window.fetch = async (url, options = {}) => {
-      requests.push({ url, options });
-      return response({ token: `${scenario.accountType}-token`, ...scenario });
-    };
-    dom.window.BELM_NAVIGATE = (destination) => {
-      dom.window.document.documentElement.dataset.testDestination = destination;
-    };
-    dom.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-    assert.equal(dom.window.document.getElementById("loginId").value, "ecls-icd");
-    dom.window.document.getElementById("password").value = "GeneratedPassword!2";
-    dom.window.document.getElementById("loginForm").dispatchEvent(
-      new dom.window.Event("submit", { bubbles: true, cancelable: true })
-    );
-    await flush();
-    const login = requests.find((request) => request.url === "/api/auth/unified-login");
-    assert.ok(login, `${scenario.accountType} did not use unified login`);
-    assert.equal(JSON.parse(login.options.body).loginId, "ecls-icd");
-    assert.equal(dom.window.localStorage.getItem(scenario.tokenKey), `${scenario.accountType}-token`);
-    if (scenario.userKey) {
-      assert.equal(JSON.parse(dom.window.localStorage.getItem(scenario.userKey)).role, scenario.user.role);
-    }
-    assert.equal(dom.window.sessionStorage.getItem("belm_login_destination"), scenario.destination);
-    assert.equal(dom.window.document.documentElement.dataset.testDestination, scenario.destination);
-    dom.window.close();
-  }
-
-  const approvedStaffHtml = fs.readFileSync(path.join(root, "frontend/login/index.html"), "utf8");
-  const approvedStaff = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/login/?account=tech%40example.com",
-    runScripts: "outside-only",
-  });
-  approvedStaff.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-  assert.equal(approvedStaff.window.document.getElementById("loginId").value, "tech@example.com");
-  assert.match(
-    approvedStaff.window.document.getElementById("forgotPasswordLink").href,
-    /forgot-password\/\?account=tech%40example\.com$/
-  );
-  approvedStaff.window.close();
-
-  const adminLogin = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/login/?role=admin",
-    runScripts: "outside-only",
-  });
-  adminLogin.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-  assert.equal(adminLogin.window.document.getElementById("welcomeTitle").textContent, "Administrator login");
-  adminLogin.window.close();
-
-  const activeAdmin = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/admin/login",
-    runScripts: "outside-only",
-  });
-  let resumedDestination = "";
-  activeAdmin.window.localStorage.setItem("belm_admin_token", testJwt({ type: "staff" }));
-  activeAdmin.window.localStorage.setItem("belm_admin_user", JSON.stringify({
-    id: "admin-1",
-    name: "BELM Admin",
-    role: "Super Admin",
-  }));
-  activeAdmin.window.BELM_NAVIGATE = destination => {
-    resumedDestination = destination;
-  };
-  activeAdmin.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
+async function testOriginalLoginStructure() {
   assert.equal(
-    resumedDestination,
-    "/admin-menu/",
-    "An active Admin session displayed a second login instead of resuming the dashboard"
+    fs.existsSync(path.join(root, "frontend/login/index.html")),
+    false,
+    "The second static login page must not be shipped"
   );
-  activeAdmin.window.close();
-}
 
-async function testLegacyLoginRoutesUseOnlyUnifiedPage() {
+  const htaccess = fs.readFileSync(path.join(root, "frontend/.htaccess"), "utf8");
+  assert.doesNotMatch(htaccess, /admin\/login\/?\?\$.*R=302/);
+  assert.doesNotMatch(htaccess, /portal\/login\/?\?\$.*R=302/);
+  assert.match(htaccess, /RewriteRule \. \/index\.html \[L\]/);
+
+  const bundle = fs.readFileSync(path.join(root, "frontend/assets/index-CAwFm9Z4.js"), "utf8");
+  assert.match(bundle, /"\/admin\/login"/);
+  assert.match(bundle, /"\/portal\/login"/);
+  assert.match(bundle, /"\/tech"/);
+  assert.match(bundle, /"\/auth\/login"/);
+  assert.match(bundle, /"\/auth\/customer-login"/);
+
+  const tools = fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8");
+  assert.doesNotMatch(tools, /leaveLegacyLoginRoutes/);
+  assert.doesNotMatch(tools, /installUnifiedLegacyLogin/);
+  assert.doesNotMatch(tools, /\/auth\/unified-login/);
+
   const html = `<!doctype html><html><body>
     <form>
       <label for="legacyLogin">Email <input id="legacyLogin" type="email" required></label>
@@ -324,73 +243,16 @@ async function testLegacyLoginRoutesUseOnlyUnifiedPage() {
     url: "https://belm-portal.onrender.com/admin/login",
     runScripts: "outside-only",
   });
-  let destination = "";
   dom.window.setInterval = () => 1;
-  dom.window.BELM_NAVIGATE = (nextDestination) => {
-    destination = nextDestination;
-  };
-
   dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  const submitEvent = new dom.window.Event("submit", { bubbles: true, cancelable: true });
+  const wasAccepted = dom.window.document.querySelector("form").dispatchEvent(submitEvent);
   assert.equal(
-    destination,
-    "/login/?role=admin",
-    "The old React Admin login was not redirected to the only login page"
+    wasAccepted,
+    true,
+    "portal-tools must not intercept the original React login form"
   );
   dom.window.close();
-
-  const activeLegacyAdmin = new JSDOM("<!doctype html><html><body></body></html>", {
-    url: "https://belm-portal.onrender.com/admin/login",
-    runScripts: "outside-only",
-  });
-  let resumedAdminDestination = "";
-  activeLegacyAdmin.window.localStorage.setItem("belm_admin_token", testJwt({ type: "staff" }));
-  activeLegacyAdmin.window.localStorage.setItem("belm_admin_user", JSON.stringify({
-    id: "admin-1",
-    name: "BELM Admin",
-    role: "Super Admin",
-  }));
-  activeLegacyAdmin.window.BELM_NAVIGATE = nextDestination => {
-    resumedAdminDestination = nextDestination;
-  };
-  activeLegacyAdmin.window.eval(
-    fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8")
-  );
-  assert.equal(
-    resumedAdminDestination,
-    "/admin-menu/",
-    "The old React Admin route displayed another login for an active Admin"
-  );
-  activeLegacyAdmin.window.close();
-
-  const oldCustomerLogin = new JSDOM(html, {
-    url: "https://belm-portal.onrender.com/portal/login?customer=ecls-icd",
-    runScripts: "outside-only",
-  });
-  let customerLoginDestination = "";
-  oldCustomerLogin.window.setInterval = () => 1;
-  oldCustomerLogin.window.BELM_NAVIGATE = nextDestination => {
-    customerLoginDestination = nextDestination;
-  };
-  oldCustomerLogin.window.eval(
-    fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8")
-  );
-  assert.equal(customerLoginDestination, "/login/?customer=ecls-icd");
-  oldCustomerLogin.window.close();
-
-  const oldTechnicianLogin = new JSDOM(html, {
-    url: "https://belm-portal.onrender.com/tech",
-    runScripts: "outside-only",
-  });
-  let technicianLoginDestination = "";
-  oldTechnicianLogin.window.setInterval = () => 1;
-  oldTechnicianLogin.window.BELM_NAVIGATE = nextDestination => {
-    technicianLoginDestination = nextDestination;
-  };
-  oldTechnicianLogin.window.eval(
-    fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8")
-  );
-  assert.equal(technicianLoginDestination, "/login/?role=technician");
-  oldTechnicianLogin.window.close();
 }
 
 async function testChecklistDropdownValues() {
@@ -520,7 +382,7 @@ async function testCustomerCardsAndLinks() {
   assert.match(dom.window.document.getElementById("customerGrid").textContent, /ECLS ICD/);
   assert.ok(dom.window.document.querySelector(".machine-card.RED"));
   const portalLink = dom.window.document.querySelector(".portal-actions a").href;
-  assert.equal(portalLink, "https://belm-portal.onrender.com/login/?customer=ecls-icd");
+  assert.equal(portalLink, "https://belm-portal.onrender.com/portal/login?customer=ecls-icd");
   assert.match(dom.window.document.querySelector(".machine-status").textContent, /Don't operate/);
   dom.window.document.querySelector('[data-reset-customer="customer-1"]').click();
   await flush();
@@ -533,7 +395,7 @@ async function testCustomerCardsAndLinks() {
 async function testPublicRegistrationAndApprovalFlow() {
   const home = fs.readFileSync(path.join(root, "frontend/portal-home.html"), "utf8");
   assert.match(home, /Administrator Login/);
-  assert.match(home, /href="\/login\/\?role=admin"/);
+  assert.match(home, /href="\/admin\/login"/);
   assert.match(home, /Request Registration/);
   assert.match(home, /href="\/apply\/"/);
 
@@ -632,7 +494,7 @@ async function testStaffRoleApproval() {
         loginEmail: "tech@example.com",
         temporaryPassword: "TempPass!234",
         recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
-        loginUrl: "https://belm-portal.onrender.com/login/?account=tech%40example.com",
+        loginUrl: "https://belm-portal.onrender.com/tech",
       });
     }
     return response(null, 404);
@@ -658,7 +520,7 @@ async function testStaffRoleApproval() {
   assert.equal(payload.assignedCustomerId, "customer-1");
   assert.equal(dom.window.document.getElementById("approvedPassword").textContent, "TempPass!234");
   assert.match(dom.window.document.getElementById("approvedRecovery").textContent, /^BELM-/);
-  assert.match(dom.window.document.getElementById("approvedLink").href, /account=tech%40example\.com/);
+  assert.match(dom.window.document.getElementById("approvedLink").href, /\/tech$/);
 }
 
 async function testForgotPassword() {
@@ -759,7 +621,7 @@ async function testAllBackLinks() {
   const technicianTasks = fs.readFileSync(path.join(root, "frontend/technician-tasks/index.html"), "utf8");
   assert.match(technicianTasks, /href="\/tech">← Checklist app/);
   const publicApply = fs.readFileSync(path.join(root, "frontend/apply/index.html"), "utf8");
-  assert.match(publicApply, /href="\/login\/">Already approved\? Login/);
+  assert.match(publicApply, /href="\/">Return to portal home/);
 }
 
 async function testAllOverview() {
@@ -847,8 +709,7 @@ async function testReportsAndAttendance() {
   await testSpareParts();
   await testRoleChange();
   await testSettingsSaving();
-  await testUnifiedLogin();
-  await testLegacyLoginRoutesUseOnlyUnifiedPage();
+  await testOriginalLoginStructure();
   await testChecklistDropdownValues();
   await testSupplierCards();
   await testCustomerCardsAndLinks();
@@ -860,7 +721,7 @@ async function testReportsAndAttendance() {
   await testAllBackLinks();
   await testAllOverview();
   await testReportsAndAttendance();
-  console.log("BELM UI smoke tests passed: unified role login, managers, settings, approvals, customer links, role isolation, overview, reports, attendance, and all sidebar/Main Menu navigation.");
+  console.log("BELM UI smoke tests passed: original role login routes, managers, settings, approvals, customer links, role isolation, overview, reports, attendance, and all sidebar/Main Menu navigation.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

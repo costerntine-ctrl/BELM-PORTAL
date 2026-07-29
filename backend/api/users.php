@@ -197,11 +197,12 @@ if ($method === 'POST' && !$action) {
         $roleId,
         $assignedCustomerId,
     ]);
+    $loginPath = role_name($roleId) === 'Technician' ? '/tech' : '/admin/login';
     json_out([
         'id' => $newId,
         'temporaryPassword' => $password,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . '/login/?account=' . rawurlencode($email),
+        'loginUrl' => portal_base_url() . $loginPath,
     ], 201);
 }
 
@@ -230,7 +231,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
         'UPDATE users
          SET password_hash = ?, recovery_code_hash = ?
          WHERE id = ? AND deleted_at IS NULL
-         RETURNING email'
+         RETURNING email, role_id'
     );
     $stmt->execute([
         password_hash($newPassword, PASSWORD_BCRYPT),
@@ -239,10 +240,11 @@ if ($method === 'PUT' && $action === 'reset-password') {
     ]);
     $resetUser = $stmt->fetch();
     if (!$resetUser) json_error('User not found.', 404);
+    $loginPath = role_name((string)$resetUser['role_id']) === 'Technician' ? '/tech' : '/admin/login';
     json_out([
         'newPassword' => $newPassword,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . '/login/?account=' . rawurlencode($resetUser['email']),
+        'loginUrl' => portal_base_url() . $loginPath,
     ]);
 }
 

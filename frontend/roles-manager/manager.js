@@ -163,7 +163,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/login/";
+      window.location.href = "/admin/login";
       return;
     }
     try {
@@ -181,7 +181,7 @@
       } catch (_) {}
     } catch (error) {
       document.getElementById("usersPanel").className = "empty";
-      document.getElementById("usersPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/login/">Go to portal login</a>`;
+      document.getElementById("usersPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;
       showAlert(error.message, true);
     }
   }
@@ -220,7 +220,7 @@
   }
 
   function showUserCredentials(user, credentials) {
-    const loginUrl = credentials.loginUrl || `${window.location.origin}/login/`;
+    const loginUrl = credentials.loginUrl || `${window.location.origin}/admin/login`;
     document.getElementById("credentialsTitle").textContent = `Copy login — ${user.name}`;
     document.getElementById("systemCredentialEmail").value = user.email;
     document.getElementById("systemCredentialPassword").value = credentials.temporaryPassword || credentials.newPassword || "";

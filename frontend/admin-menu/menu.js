@@ -22,6 +22,6 @@
   document.getElementById("logoutButton")?.addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/login/";
+    window.location.href = "/admin/login";
   });
 })();

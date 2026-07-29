@@ -483,6 +483,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             ]),
         ]);
 
+        $loginPath = $assignment['roleName'] === 'Technician' ? '/tech' : '/admin/login';
         $pdo->commit();
         json_out([
             'ok' => true,
@@ -496,7 +497,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             'loginEmail' => $staffApplication['email'],
             'temporaryPassword' => $temporaryPassword,
             'recoveryCode' => $recoveryCode,
-            'loginUrl' => portal_base_url() . '/login/?account=' . rawurlencode($staffApplication['email']),
+            'loginUrl' => portal_base_url() . $loginPath,
             'message' => 'System user was activated with only the assigned role access.',
         ]);
     } catch (Throwable $error) {

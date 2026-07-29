@@ -90,7 +90,7 @@
 
   async function loadParts() {
     if (!token) {
-      window.location.href = "/login/";
+      window.location.href = "/admin/login";
       return;
     }
     try {
@@ -103,7 +103,7 @@
       } catch (_) {}
     } catch (error) {
       document.getElementById("partsPanel").className = "empty";
-      document.getElementById("partsPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/login/">Go to portal login</a>`;
+      document.getElementById("partsPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;
       showAlert(error.message, true);
     }
   }

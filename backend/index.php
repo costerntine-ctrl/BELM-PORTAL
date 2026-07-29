@@ -86,7 +86,10 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'tables' => $tableChecks,
             'adminReady' => $adminReady,
             'adminChecks' => $adminChecks,
-            'loginEndpoint' => '/api/auth/unified-login',
+            'loginEndpoints' => [
+                'staff' => '/api/auth/login',
+                'customer' => '/api/auth/customer-login',
+            ],
         ]);
     } catch (Throwable $e) {
         json_out([
@@ -102,7 +105,8 @@ $resource = $segments[0] ?? '';
 
 switch ($resource) {
     case 'auth':
-        // /auth/unified-login, plus legacy /auth/login and /auth/customer-login
+        // Original role login endpoints: /auth/login and /auth/customer-login.
+        // /auth/unified-login remains backward-compatible for older clients.
         dispatch('auth.php', ['action' => $segments[1] ?? '']);
 
     case 'applications':

@@ -97,7 +97,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/login/";
+      window.location.href = "/admin/login";
       return;
     }
     try {

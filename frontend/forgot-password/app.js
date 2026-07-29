@@ -1,10 +1,6 @@
 const form = document.getElementById("resetForm");
 const errorBox = document.getElementById("formError");
 const button = document.getElementById("resetButton");
-const accountId = new URLSearchParams(window.location.search).get("account");
-if (accountId && accountId.includes("@")) {
-  document.getElementById("email").value = accountId;
-}
 
 function showError(message) {
   errorBox.textContent = message;

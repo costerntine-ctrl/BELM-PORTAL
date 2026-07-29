@@ -259,88 +259,38 @@ async function testUnifiedLogin() {
     assert.equal(dom.window.document.documentElement.dataset.testDestination, scenario.destination);
     dom.window.close();
   }
-
-  const approvedStaffHtml = fs.readFileSync(path.join(root, "frontend/login/index.html"), "utf8");
-  const approvedStaff = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/login/?account=tech%40example.com",
-    runScripts: "outside-only",
-  });
-  approvedStaff.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-  assert.equal(approvedStaff.window.document.getElementById("loginId").value, "tech@example.com");
-  assert.match(
-    approvedStaff.window.document.getElementById("forgotPasswordLink").href,
-    /forgot-password\/\?account=tech%40example\.com$/
-  );
-  approvedStaff.window.close();
-
-  const adminLogin = new JSDOM(approvedStaffHtml, {
-    url: "https://belm-portal.onrender.com/login/?role=admin",
-    runScripts: "outside-only",
-  });
-  adminLogin.window.eval(fs.readFileSync(path.join(root, "frontend/login/login.js"), "utf8"));
-  assert.equal(adminLogin.window.document.getElementById("welcomeTitle").textContent, "Administrator login");
-  adminLogin.window.close();
 }
 
-async function testLegacyLoginStaysPutAndUsesUnifiedAuth() {
-  const html = `<!doctype html><html><body>
-    <form>
-      <label for="legacyLogin">Email <input id="legacyLogin" type="email" required></label>
-      <label for="legacyPassword">Password <input id="legacyPassword" type="password" required></label>
-      <button type="submit">Login</button>
-    </form>
-  </body></html>`;
-  const dom = new JSDOM(html, {
-    url: "https://belm-portal.onrender.com/admin/login?customer=ecls-icd",
+async function testLegacyLoginsAlwaysReturnToUnifiedLogin() {
+  const oldCustomerLogin = new JSDOM("<!doctype html><html><body></body></html>", {
+    url: "https://belm-portal.onrender.com/portal/login?customer=ecls-icd",
     runScripts: "outside-only",
   });
-  const requests = [];
-  let destination = "";
+  let customerDestination = "";
+  oldCustomerLogin.window.BELM_NAVIGATE = (destination) => { customerDestination = destination; };
+  oldCustomerLogin.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  assert.equal(customerDestination, "/login/?customer=ecls-icd");
+  oldCustomerLogin.window.close();
+
+  const technicianApp = new JSDOM("<!doctype html><html><body></body></html>", {
+    url: "https://belm-portal.onrender.com/tech",
+    runScripts: "outside-only",
+  });
   let intervalCallback = null;
-  dom.window.setInterval = (callback) => {
+  let technicianDestination = "";
+  technicianApp.window.localStorage.setItem("belm_tech_token", "test-token");
+  technicianApp.window.setInterval = (callback) => {
     intervalCallback = callback;
     return 1;
   };
-  dom.window.fetch = async (url, options = {}) => {
-    requests.push({ url, options });
-    if (url === "/api/auth/unified-login") {
-      return response({
-        token: "customer-token",
-        accountType: "customer",
-        destination: "/portal/dashboard",
-        customer: { id: "customer-1", name: "ECLS ICD" },
-      });
-    }
-    return response(null, 404);
-  };
-  dom.window.BELM_NAVIGATE = (nextDestination) => {
-    destination = nextDestination;
-  };
-
-  dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  technicianApp.window.fetch = async () => response(null, 404);
+  technicianApp.window.BELM_NAVIGATE = (destination) => { technicianDestination = destination; };
+  technicianApp.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
+  assert.equal(technicianDestination, "");
+  technicianApp.window.localStorage.removeItem("belm_tech_token");
   intervalCallback();
-
-  const loginInput = dom.window.document.getElementById("legacyLogin");
-  assert.equal(destination, "", "Legacy login redirected before password entry");
-  assert.equal(loginInput.type, "text");
-  assert.equal(loginInput.value, "ecls-icd");
-  assert.match(loginInput.closest("label").textContent, /Email or Customer Portal ID/);
-
-  dom.window.document.getElementById("legacyPassword").value = "GeneratedPassword!2";
-  dom.window.document.querySelector("form").dispatchEvent(
-    new dom.window.Event("submit", { bubbles: true, cancelable: true })
-  );
-  await flush();
-
-  const login = requests.find((request) => request.url === "/api/auth/unified-login");
-  assert.ok(login, "Legacy form did not use unified login");
-  assert.deepEqual(JSON.parse(login.options.body), {
-    loginId: "ecls-icd",
-    password: "GeneratedPassword!2",
-  });
-  assert.equal(dom.window.localStorage.getItem("belm_customer_token"), "customer-token");
-  assert.equal(destination, "/portal/dashboard");
-  dom.window.close();
+  assert.equal(technicianDestination, "/login/");
+  technicianApp.window.close();
 }
 
 async function testChecklistDropdownValues() {
@@ -480,71 +430,15 @@ async function testCustomerCardsAndLinks() {
   assert.equal(dom.window.document.getElementById("credentialRecovery").value, "BELM-ABCD-EFGH-JKLM-NPQR");
 }
 
-async function testPublicRegistrationAndApprovalFlow() {
+async function testPublicRegistrationRemoved() {
   const home = fs.readFileSync(path.join(root, "frontend/portal-home.html"), "utf8");
-  assert.match(home, /Administrator Login/);
-  assert.match(home, /href="\/login\/\?role=admin"/);
-  assert.match(home, /Request Registration/);
-  assert.match(home, /href="\/apply\/"/);
+  assert.doesNotMatch(home, /Register for Portal Access/);
+  assert.doesNotMatch(home, /href="\/apply\//);
+  assert.match(home, /href="\/login\/"/);
 
   const apply = fs.readFileSync(path.join(root, "frontend/apply/index.html"), "utf8");
-  assert.match(apply, /id="applicationForm"/);
-  assert.match(apply, /No password is requested here/);
-
-  const dom = new JSDOM(apply, {
-    url: "https://belm-portal.onrender.com/apply/",
-    runScripts: "outside-only",
-  });
-  const requests = [];
-  dom.window.HTMLElement.prototype.scrollIntoView = function () {};
-  dom.window.scrollTo = function () {};
-  dom.window.fetch = async (url, options = {}) => {
-    requests.push({ url, options });
-    return response({
-      ok: true,
-      reference: "BELM-C-12345678",
-      status: "PENDING",
-    }, 201);
-  };
-  dom.window.eval(fs.readFileSync(path.join(root, "frontend/apply/app.js"), "utf8"));
-
-  const setValue = (selector, value) => {
-    dom.window.document.querySelector(selector).value = value;
-  };
-  setValue('#customerFields [name="companyName"]', "ECLS ICD");
-  setValue('#customerFields [name="email"]', "customer@example.com");
-  setValue('#customerFields [name="phone"]', "+255700000001");
-  setValue('#customerFields [name="address"]', "Dar es Salaam");
-  setValue('#customerFields [name="tinNumber"]', "TIN-1");
-  setValue('#customerFields [name="vrn"]', "VRN-1");
-  setValue('#customerFields [name="regNumber"]', "T 123 ABC");
-
-  const machineType = dom.window.document.getElementById("machineType");
-  machineType.value = "Reach Stacker";
-  machineType.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-  const brand = dom.window.document.getElementById("brand");
-  brand.value = "Konecranes";
-  brand.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
-  dom.window.document.getElementById("model").value = "SMV4531TB6";
-  dom.window.document.querySelector('[name="consent"]').checked = true;
-
-  dom.window.document.getElementById("applicationForm").dispatchEvent(
-    new dom.window.Event("submit", { bubbles: true, cancelable: true })
-  );
-  await flush();
-
-  const request = requests.find(item =>
-    item.url === "/api/applications" && item.options.method === "POST"
-  );
-  assert.ok(request, "Public registration request was not submitted");
-  const payload = JSON.parse(request.options.body);
-  assert.equal(payload.applicationType, "CUSTOMER");
-  assert.equal(payload.companyName, "ECLS ICD");
-  assert.equal(payload.model, "SMV4531TB6");
-  assert.equal(payload.password, undefined);
-  assert.equal(dom.window.document.getElementById("referenceNo").textContent, "BELM-C-12345678");
-  assert.ok(dom.window.document.getElementById("successCard").classList.contains("hidden") === false);
-  dom.window.close();
+  assert.match(apply, /window\.location\.replace\("\/login\/"\)/);
+  assert.doesNotMatch(apply, /id="applicationForm"/);
 }
 
 async function testStaffRoleApproval() {
@@ -582,7 +476,7 @@ async function testStaffRoleApproval() {
         loginEmail: "tech@example.com",
         temporaryPassword: "TempPass!234",
         recoveryCode: "BELM-ABCD-EFGH-JKLM-NPQR",
-        loginUrl: "https://belm-portal.onrender.com/login/?account=tech%40example.com",
+        loginUrl: "https://belm-portal.onrender.com/login/",
       });
     }
     return response(null, 404);
@@ -608,7 +502,6 @@ async function testStaffRoleApproval() {
   assert.equal(payload.assignedCustomerId, "customer-1");
   assert.equal(dom.window.document.getElementById("approvedPassword").textContent, "TempPass!234");
   assert.match(dom.window.document.getElementById("approvedRecovery").textContent, /^BELM-/);
-  assert.match(dom.window.document.getElementById("approvedLink").href, /account=tech%40example\.com/);
 }
 
 async function testForgotPassword() {
@@ -709,7 +602,7 @@ async function testAllBackLinks() {
   const technicianTasks = fs.readFileSync(path.join(root, "frontend/technician-tasks/index.html"), "utf8");
   assert.match(technicianTasks, /href="\/tech">← Checklist app/);
   const publicApply = fs.readFileSync(path.join(root, "frontend/apply/index.html"), "utf8");
-  assert.match(publicApply, /href="\/login\/">Already approved\? Login/);
+  assert.match(publicApply, /href="\/login\/">Continue to login/);
 }
 
 async function testAllOverview() {
@@ -798,11 +691,11 @@ async function testReportsAndAttendance() {
   await testRoleChange();
   await testSettingsSaving();
   await testUnifiedLogin();
-  await testLegacyLoginStaysPutAndUsesUnifiedAuth();
+  await testLegacyLoginsAlwaysReturnToUnifiedLogin();
   await testChecklistDropdownValues();
   await testSupplierCards();
   await testCustomerCardsAndLinks();
-  await testPublicRegistrationAndApprovalFlow();
+  await testPublicRegistrationRemoved();
   await testStaffRoleApproval();
   await testForgotPassword();
   await testRoleNavigationIsolation();

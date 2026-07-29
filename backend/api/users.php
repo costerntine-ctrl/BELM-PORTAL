@@ -197,11 +197,12 @@ if ($method === 'POST' && !$action) {
         $roleId,
         $assignedCustomerId,
     ]);
+    log_activity($user['id'], 'created', 'user', $newId, ['name' => $name]);
     json_out([
         'id' => $newId,
         'temporaryPassword' => $password,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . '/login/?account=' . rawurlencode($email),
+        'loginUrl' => portal_base_url() . '/login/',
     ], 201);
 }
 
@@ -220,6 +221,7 @@ if ($method === 'PUT' && !$action) {
     );
     db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
         ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
+    log_activity($user['id'], 'updated', 'user', $id, ['name' => $name]);
     json_out(['ok' => true, 'message' => 'User role and access updated successfully.']);
 }
 
@@ -229,20 +231,18 @@ if ($method === 'PUT' && $action === 'reset-password') {
     $stmt = db()->prepare(
         'UPDATE users
          SET password_hash = ?, recovery_code_hash = ?
-         WHERE id = ? AND deleted_at IS NULL
-         RETURNING email'
+         WHERE id = ? AND deleted_at IS NULL'
     );
     $stmt->execute([
         password_hash($newPassword, PASSWORD_BCRYPT),
         password_hash($recoveryCode, PASSWORD_BCRYPT),
         $id,
     ]);
-    $resetUser = $stmt->fetch();
-    if (!$resetUser) json_error('User not found.', 404);
+    if ($stmt->rowCount() === 0) json_error('User not found.', 404);
     json_out([
         'newPassword' => $newPassword,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . '/login/?account=' . rawurlencode($resetUser['email']),
+        'loginUrl' => portal_base_url() . '/login/',
     ]);
 }
 
@@ -268,6 +268,7 @@ if ($method === 'DELETE' && !$action) {
     }
     send_to_trash('user', $id, $row['name'], $user['id']);
     soft_delete('users', $id);
+    log_activity($user['id'], 'deleted', 'user', $id, ['name' => $row['name']]);
     json_out(null, 204);
 }
 

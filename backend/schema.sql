@@ -335,12 +335,12 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   email VARCHAR(255) NOT NULL,
   address VARCHAR(500) NOT NULL,
   phone VARCHAR(50) NOT NULL,
-  tin_number VARCHAR(50) NOT NULL,
-  vrn VARCHAR(50) NOT NULL,
-  machine_type VARCHAR(100) NOT NULL,
-  brand VARCHAR(100) NOT NULL,
-  model VARCHAR(255) NOT NULL,
-  reg_number VARCHAR(100) NOT NULL,
+  tin_number VARCHAR(50),
+  vrn VARCHAR(50),
+  machine_type VARCHAR(100),
+  brand VARCHAR(100),
+  model VARCHAR(255),
+  reg_number VARCHAR(100),
   password_hash VARCHAR(255) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -349,6 +349,15 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   customer_id VARCHAR(36) NULL REFERENCES customers(id),
   machine_id VARCHAR(36) NULL REFERENCES machines(id)
 );
+
+-- Existing databases created before the simplified registration form: relax
+-- the columns that are no longer collected up-front on the public form.
+ALTER TABLE customer_applications ALTER COLUMN tin_number DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN vrn DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN machine_type DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN brand DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN model DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN reg_number DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS user_applications (
   id VARCHAR(36) PRIMARY KEY,

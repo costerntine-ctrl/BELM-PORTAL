@@ -201,7 +201,7 @@ if ($method === 'POST' && !$action) {
         'id' => $newId,
         'temporaryPassword' => $password,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . '/login/',
+        'loginUrl' => portal_base_url() . '/login/?account=' . rawurlencode($email),
     ], 201);
 }
 
@@ -229,18 +229,20 @@ if ($method === 'PUT' && $action === 'reset-password') {
     $stmt = db()->prepare(
         'UPDATE users
          SET password_hash = ?, recovery_code_hash = ?
-         WHERE id = ? AND deleted_at IS NULL'
+         WHERE id = ? AND deleted_at IS NULL
+         RETURNING email'
     );
     $stmt->execute([
         password_hash($newPassword, PASSWORD_BCRYPT),
         password_hash($recoveryCode, PASSWORD_BCRYPT),
         $id,
     ]);
-    if ($stmt->rowCount() === 0) json_error('User not found.', 404);
+    $resetUser = $stmt->fetch();
+    if (!$resetUser) json_error('User not found.', 404);
     json_out([
         'newPassword' => $newPassword,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . '/login/',
+        'loginUrl' => portal_base_url() . '/login/?account=' . rawurlencode($resetUser['email']),
     ]);
 }
 

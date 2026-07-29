@@ -23,15 +23,15 @@ NAVIGATION UPDATE
 - The Main Menu only shows sections assigned to the signed-in user's role.
 - Customer assistant management returns to /portal/dashboard.
 - Technician task management returns to /tech.
-- Admin, Technician and Customer use one login at /login/.
-- Public "Register for Portal Access" has been removed. Administrators create
-  and approve accounts from the management portal.
+- Portal Home shows Administrator Login and Request Registration.
+- New Customers, Staff and Technicians submit /apply/ and remain blocked until
+  Admin approval. Approved users then use their generated /login/ link.
 - New and reset Staff/Technician accounts display one credentials card with
   the unified login link, generated password, recovery code and Copy buttons.
 - Logging out keeps a stable login form. Old /admin/login, /portal/login and
   /tech login screens use the same role-aware authentication without redirects.
-- Apache now serves the React application for direct URLs such as
-  /login/, /portal/login, /admin/login and old /admin/* bookmarks instead of 404.
+- Apache serves /login/, /admin/login and /portal/login through the same stable
+  static login form, while old /admin/* bookmarks continue through the app.
 
 
 ALL OVERVIEW & MANAGEMENT REPORTS
@@ -114,11 +114,12 @@ Admin applications:
   https://portal.belmgeneraltech.co.tz/admin-applications/
 
 Workflow:
-1. Admin anatengeneza/ana-approve account ya Customer au Staff / Technician.
-2. Kwa Customer, Admin anaweka company, TIN, VRN, contact na machine details.
+1. Customer, Staff au Technician anatuma Request Registration kupitia /apply/.
+2. Request inabaki PENDING na haina dashboard access wala password.
 3. Kwa Staff/Technician, Super Admin anachagua exact role. Technician lazima
    apewe Assigned Customer.
-4. Approval inagenerate unified login link, temporary password na recovery code.
+4. Admin approval inagenerate private login link yenye account iliyojazwa,
+   temporary password na recovery code.
 5. Admin anatumia Copy credentials kumtumia user taarifa zote.
 6. User anaingia kupitia /login/. Mfumo unatambua role automatically:
    Admin -> /admin-menu/, Technician -> /tech,
@@ -137,9 +138,11 @@ Customer link inatengenezwa automatically kwa jina la kampuni:
 Customer na assistants wake wanatumia link hiyo hiyo. Kila mmoja anaingia
 kwa email na password yake.
 
-Portal home ina login moja:
-  Admin, Technician na Customer: /login/
-  Password reset: /forgot-password/
+Portal home ina:
+  Administrator Login: /login/?role=admin
+  Request Registration: /apply/
+Baada ya approval, Customer/Staff/Technician anatumia generated login link.
+Login page ina Login na Forgot Password; haina registration form.
 
 
 SELF-SERVICE FORGOT PASSWORD

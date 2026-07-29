@@ -6,11 +6,28 @@
   const button = document.getElementById("loginButton");
   const customerNote = document.getElementById("customerNote");
 
-  const customerSlug = new URLSearchParams(window.location.search).get("customer");
+  const parameters = new URLSearchParams(window.location.search);
+  const customerSlug = parameters.get("customer");
+  const accountId = parameters.get("account");
+  const roleHint = parameters.get("role");
   if (customerSlug) {
     loginId.value = customerSlug;
     customerNote.textContent = `Customer portal: ${customerSlug.replace(/-/g, " ")}`;
     customerNote.classList.remove("hidden");
+  } else if (accountId) {
+    loginId.value = accountId;
+  }
+
+  if (accountId) {
+    document.getElementById("forgotPasswordLink").href =
+      `/forgot-password/?account=${encodeURIComponent(accountId)}`;
+  }
+
+  if (roleHint === "admin") {
+    document.getElementById("welcomeTitle").textContent = "Administrator login";
+    document.getElementById("loginTitle").textContent = "Enter your Administrator credentials";
+    document.getElementById("loginHint").textContent =
+      "Only an approved Administrator account can open the administration dashboard.";
   }
 
   document.getElementById("togglePassword").addEventListener("click", (event) => {

@@ -1,5 +1,5 @@
 :root {
-  --belm-sidebar-width: 272px;
+  --belm-sidebar-width: 296px;
   --belm-sidebar-navy: #111a2d;
   --belm-sidebar-navy-soft: #1b2943;
   --belm-sidebar-green: #00a958;
@@ -121,6 +121,24 @@
   font-weight: 750;
   text-decoration: none;
   transition: .15s ease;
+}
+
+.belm-sidebar-link > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.35;
+}
+
+.belm-sidebar-link.workflow {
+  min-height: 47px;
+  color: #e7eef7;
+  border-color: rgba(255, 255, 255, .08);
+  background: rgba(255, 255, 255, .035);
+}
+
+.belm-sidebar-link.workflow .belm-sidebar-icon {
+  color: #142033;
+  background: var(--belm-sidebar-yellow);
 }
 
 .belm-sidebar-link:hover {

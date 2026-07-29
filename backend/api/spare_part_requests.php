@@ -147,6 +147,32 @@ if ($method === 'POST') {
 
 // Inventory users see all open Technician alerts.
 if ($method === 'GET') {
+    if (($user['roleName'] ?? '') === 'Technician') {
+        $assignedCustomerId = trim((string)($user['assignedCustomerId'] ?? ''));
+        if ($assignedCustomerId === '') {
+            json_error('This Technician has not been assigned to a customer.', 403);
+        }
+        $stmt = db()->prepare(
+            "SELECT spr.id, spr.spare_part_id, spr.machine_id, spr.quantity,
+                    spr.status, spr.requested_by_name, spr.description,
+                    spr.machine_type, spr.created_at,
+                    sp.part_number, sp.name AS part_name, sp.stock_qty,
+                    m.model AS machine_model, m.brand AS machine_brand,
+                    m.serial_number, m.reg_number,
+                    c.name AS customer_name
+             FROM spare_part_requests spr
+             JOIN spare_parts sp ON sp.id = spr.spare_part_id
+             JOIN machines m ON m.id = spr.machine_id
+             JOIN customers c ON c.id = m.customer_id
+             WHERE spr.requested_by_id = ?
+               AND m.customer_id = ?
+             ORDER BY spr.created_at DESC
+             LIMIT 30"
+        );
+        $stmt->execute([$user['id'], $assignedCustomerId]);
+        json_out($stmt->fetchAll());
+    }
+
     require_page_access($user, 'spare-parts');
     $stmt = db()->query(
         "SELECT spr.id, spr.spare_part_id, spr.machine_id, spr.quantity,
@@ -172,11 +198,102 @@ if ($method === 'GET') {
 
 // Inventory marks the alert for purchasing or closes it after stock is added.
 if ($method === 'PUT') {
-    require_page_access($user, 'spare-parts');
     if ($id === '') json_error('Spare request ID is required.');
     $body = body();
     $action = strtolower(trim((string)($body['action'] ?? '')));
 
+    if (($user['roleName'] ?? '') === 'Technician') {
+        if ($action !== 'edit') {
+            json_error('Technicians can only re-edit a pending Inventory Request.', 403);
+        }
+        $requestEdit = validate_technician_spare_request($body);
+        $machine = technician_spare_request_machine($user, $requestEdit['machineId']);
+        if (strcasecmp(trim((string)$machine['machine_type']), $requestEdit['machineType']) !== 0) {
+            json_error('Machine type does not match the selected machine.');
+        }
+
+        $stmt = db()->prepare(
+            "SELECT id, status
+             FROM spare_part_requests
+             WHERE id = ? AND requested_by_id = ?"
+        );
+        $stmt->execute([$id, $user['id']]);
+        $existingRequest = $stmt->fetch();
+        if (!$existingRequest) json_error('Inventory Request not found.', 404);
+        if ($existingRequest['status'] !== 'PENDING') {
+            json_error('This request cannot be edited because Inventory has already acted on it.', 409);
+        }
+
+        $partStmt = db()->prepare(
+            'SELECT id, stock_qty, deleted_at
+             FROM spare_parts
+             WHERE UPPER(part_number) = UPPER(?)
+             LIMIT 1'
+        );
+        $partStmt->execute([$requestEdit['partNumber']]);
+        $part = $partStmt->fetch();
+        if ($part && $part['deleted_at'] !== null) {
+            json_error('This part number is archived. Ask Inventory to restore it first.', 409);
+        }
+        if (!$part) {
+            $newPartId = uuid();
+            db()->prepare(
+                'INSERT INTO spare_parts
+                 (id, part_number, name, category, stock_qty, reorder_threshold,
+                  purchase_price, selling_price, created_at)
+                 VALUES (?,?,?,?,0,1,0,0,NOW())
+                 ON CONFLICT (part_number) DO NOTHING'
+            )->execute([
+                $newPartId,
+                $requestEdit['partNumber'],
+                $requestEdit['description'],
+                $machine['machine_type'],
+            ]);
+            $partStmt->execute([$requestEdit['partNumber']]);
+            $part = $partStmt->fetch();
+        }
+        if (!$part) json_error('The spare-part Inventory record could not be created.', 500);
+        if ((int)$part['stock_qty'] > 0) {
+            json_error(
+                'This spare part already has ' . (int)$part['stock_qty'] .
+                ' unit(s) in Inventory. Ask Inventory to issue the available stock.',
+                409
+            );
+        }
+
+        $duplicate = db()->prepare(
+            "SELECT id FROM spare_part_requests
+             WHERE spare_part_id = ? AND machine_id = ? AND id <> ?
+               AND status IN ('PENDING', 'PURCHASE_REQUIRED')
+             LIMIT 1"
+        );
+        $duplicate->execute([$part['id'], $machine['id'], $id]);
+        if ($duplicate->fetch()) {
+            json_error('Another open request for this part and machine already exists.', 409);
+        }
+
+        db()->prepare(
+            "UPDATE spare_part_requests
+             SET spare_part_id = ?, machine_id = ?, description = ?,
+                 machine_type = ?, quantity = 1
+             WHERE id = ? AND requested_by_id = ? AND status = 'PENDING'"
+        )->execute([
+            $part['id'],
+            $machine['id'],
+            $requestEdit['description'],
+            $machine['machine_type'],
+            $id,
+            $user['id'],
+        ]);
+        json_out([
+            'ok' => true,
+            'id' => $id,
+            'status' => 'PENDING',
+            'message' => 'Inventory Request updated successfully.',
+        ]);
+    }
+
+    require_page_access($user, 'spare-parts');
     $stmt = db()->prepare(
         'SELECT spr.id, spr.status, sp.stock_qty
          FROM spare_part_requests spr

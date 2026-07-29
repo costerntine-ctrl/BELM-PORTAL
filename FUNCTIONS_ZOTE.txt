@@ -5,8 +5,12 @@ BELM PORTAL - FUNCTIONS ZOTE
 ----------------------------
 - /overview-manager/ is the Admin landing page.
 - Left sidebar inaonekana kwenye admin managers zote na React admin routes.
-- Sidebar ina All Overview, Customers, Registration Requests, Checklists,
-  Service Requests, Spare Parts, Billing, Suppliers, Reports, Roles na Settings.
+- Main Workflow ya sidebar ina All Overview, Registration & Role Approval,
+  Service Requests, na Reports, Analysis & Comparison.
+- Customers & Maintenance ina Customers & Machines, Checklist Templates,
+  Spare Parts Inventory, na Suppliers Directory.
+- Finance & Administration ina Billing & Finance, Roles & System Users,
+  na System Settings.
 - Sidebar links zinafichwa kulingana na allowedPages ya role.
 - All standalone Admin managers have a direct All Overview link.
 - Main Menu page/button has been removed; sidebar pages are filtered by each
@@ -16,6 +20,14 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Login screens provide a direct Back to Portal Home link.
 - Customer Login ina Request Registration inayofungua /apply/.
 - Direct React routes zina Apache fallback; hazirudishi Apache 404.
+- BELM Technician anaona customer card kubwa yenye jina, location, simu,
+  email, TIN/VRN na idadi ya machines.
+- Machine List ya Technician ina cards kubwa zenye brand, model, machine type,
+  serial/registration, last checked, status na condition.
+- BELM Technician Inventory Request ina history na Re-edit button wakati
+  request bado ni PENDING; Inventory ikianza action request inakuwa no edit.
+- Checklist template input type PHOTO inafungua camera/file upload, ina-compress
+  picha hadi low-MB JPEG (target 0.45 MB, maximum 0.5 MB), kisha ina-save evidence.
 
 
 1. PUBLIC UNIFIED REGISTRATION

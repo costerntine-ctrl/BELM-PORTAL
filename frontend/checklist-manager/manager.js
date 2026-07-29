@@ -144,7 +144,9 @@
               `).join("")}
             </div>
           </div>
-        ` : '<div class="options-field options-help">Choose DROPDOWN to add selectable values.</div>'}
+        ` : item.inputType === "PHOTO"
+          ? '<div class="options-field options-help">Technician will get a camera/file uploader. The photo is compressed automatically to 0.5 MB or less before saving.</div>'
+          : '<div class="options-field options-help">Choose DROPDOWN to add selectable values.</div>'}
         <label class="required">Required<input data-field="isRequired" type="checkbox" ${item.isRequired ? "checked" : ""}></label>
         <button class="remove-item" type="button" data-remove="${escapeHtml(item.key)}" aria-label="Remove item">×</button>
       </article>

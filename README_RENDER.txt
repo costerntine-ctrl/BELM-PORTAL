@@ -16,9 +16,13 @@ Hii ZIP ina:
 NAVIGATION UPDATE
 -----------------
 - Admin pages now use the same permanent left sidebar.
-- Sidebar starts with All Overview, followed by Customers, Registration Requests,
-  Checklists, Service Requests, Spare Parts, Billing, Suppliers, Reports,
-  Roles & Users and Settings according to the signed-in role.
+- Sidebar is arranged as a clear left-side task list.
+- Main Workflow starts with All Overview, Registration & Role Approval,
+  Service Requests, and Reports, Analysis & Comparison.
+- Customers & Maintenance contains Customers & Machines, Checklist Templates,
+  Spare Parts Inventory, and Suppliers Directory.
+- Finance & Administration contains Billing & Finance, Roles & System Users,
+  and System Settings.
 - Admin pages return directly to /overview-manager/.
 - Main Menu has been removed. All Overview is now the Admin landing page.
 - Sidebar only shows sections assigned to the signed-in user's role.
@@ -35,6 +39,14 @@ NAVIGATION UPDATE
   before the password can be entered.
 - Database migration repairs the built-in Admin active state and Super Admin
   role without overwriting a password that the Administrator already changed.
+- BELM Technician dashboard shows a large assigned-customer card with location,
+  phone, email, TIN/VRN and machine count.
+- The Technician Machine List uses large cards showing brand, type, model,
+  serial/registration, service kit, last checked date, status and condition.
+- BELM Technician Inventory Request includes My Inventory Requests and Re-edit
+  for a request that is still PENDING. Once Inventory acts, it becomes read-only.
+- PHOTO checklist items use a real camera/file upload. The browser converts the
+  image to low-MB JPEG evidence (target about 0.45 MB, maximum 0.5 MB) before save.
 
 
 ALL OVERVIEW & MANAGEMENT REPORTS

@@ -77,7 +77,11 @@ if ($method === 'GET' && !$action) {
         ? ($user['assignedCustomerId'] ?? null)
         : null;
     if (($user['roleName'] ?? '') === 'Technician') {
-        $stmt = db()->prepare('SELECT id, name FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+        $stmt = db()->prepare(
+            'SELECT id, name, email, phone, address, tin_number, vrn, is_active
+             FROM customers
+             WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+        );
         $stmt->execute([$assigned]);
     } elseif ($q) {
         $stmt = db()->prepare('SELECT * FROM customers WHERE deleted_at IS NULL AND (name LIKE ? OR email LIKE ? OR phone LIKE ?) ORDER BY created_at DESC');
@@ -100,7 +104,9 @@ if ($method === 'GET' && !$action) {
 if ($method === 'GET' && $action === 'one') {
     require_customer_read_access($user, $id);
     $sql = ($user['roleName'] ?? '') === 'Technician'
-        ? 'SELECT id, name FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+        ? 'SELECT id, name, email, phone, address, tin_number, vrn, is_active
+           FROM customers
+           WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
         : 'SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL';
     $stmt = db()->prepare($sql);
     $stmt->execute([$id]);

@@ -36,17 +36,17 @@
   }
 
   const pages = [
-    { section: "Analysis", key: "overview", label: "All Overview", short: "AO", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
-    { section: "Operations", key: "customers", label: "Customers", short: "CU", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { key: "customers", label: "Registration Requests", short: "AR", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true },
-    { key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
-    { key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"] },
-    { key: "spare-parts", label: "Spare Parts", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"] },
-    { section: "Business", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
-    { key: "suppliers", label: "Suppliers", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
-    { key: "reports", label: "Reports & Comparisons", short: "RE", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"] },
-    { section: "Administration", key: "roles", label: "Roles & Users", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
-    { key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
+    { section: "Main workflow", key: "overview", label: "All Overview", short: "00", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
+    { section: "Main workflow", key: "customers", label: "Registration & Role Approval", short: "01", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
+    { section: "Main workflow", key: "service-requests", label: "Service Requests", short: "02", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
+    { section: "Main workflow", key: "reports", label: "Reports, Analysis & Comparison", short: "03", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
+    { section: "Customers & maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Customers & maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
+    { section: "Customers & maintenance", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"] },
+    { section: "Customers & maintenance", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
+    { section: "Finance & administration", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
+    { section: "Finance & administration", key: "roles", label: "Roles & System Users", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
+    { section: "Finance & administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
   ];
 
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
@@ -97,6 +97,7 @@
 
     const link = document.createElement("a");
     link.className = "belm-sidebar-link";
+    if (page.priority) link.classList.add("workflow");
     link.href = page.href;
     if (page.paths.some((path) => currentPath === path || currentPath.startsWith(path))) {
       link.classList.add("active");

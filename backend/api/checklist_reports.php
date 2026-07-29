@@ -24,6 +24,36 @@ function checklist_report_is_expired(string $createdAt): bool {
     return $now >= checklist_report_expiry($createdAt);
 }
 
+function validated_checklist_photo_url(string $photoUrl): string {
+    $photoUrl = trim($photoUrl);
+    if ($photoUrl === '') return '';
+
+    if (str_starts_with($photoUrl, 'data:image/')) {
+        if (strlen($photoUrl) > 700000) {
+            json_error('Checklist photo is too large. Upload the compressed low-MB photo again.');
+        }
+        if (!preg_match(
+            '/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+\/=]+)$/',
+            $photoUrl,
+            $matches
+        )) {
+            json_error('Checklist photo format is invalid. Use JPG, PNG or WEBP.');
+        }
+        $decoded = base64_decode($matches[2], true);
+        if ($decoded === false || strlen($decoded) > 500 * 1024) {
+            json_error('Checklist photo must be 500 KB or less after compression.');
+        }
+        return $photoUrl;
+    }
+
+    if (str_starts_with($photoUrl, '/')) return $photoUrl;
+    if (filter_var($photoUrl, FILTER_VALIDATE_URL)) {
+        $scheme = strtolower((string)parse_url($photoUrl, PHP_URL_SCHEME));
+        if (in_array($scheme, ['http', 'https'], true)) return $photoUrl;
+    }
+    json_error('Checklist photo reference is invalid.');
+}
+
 function require_report_machine_access(array $user, string $machineId, ?string $templateId = null): array {
     $sql = 'SELECT m.id, m.customer_id, m.machine_type, m.model, m.serial_number,
                    m.reg_number, m.brand, m.deleted_at, c.name AS customer_name,
@@ -134,7 +164,9 @@ function validate_checklist_report_answers(string $templateId, array $submittedA
         $answer = $submittedById[$item['id']] ?? null;
         $value = $answer !== null ? trim((string)($answer['value'] ?? '')) : '';
         if (in_array(strtolower($value), ['undefined', 'null'], true)) $value = '';
-        $photoUrl = $answer !== null ? trim((string)($answer['photoUrl'] ?? '')) : '';
+        $photoUrl = $answer !== null
+            ? validated_checklist_photo_url((string)($answer['photoUrl'] ?? ''))
+            : '';
         if ((bool)$item['is_required'] && $value === '' && $photoUrl === '') {
             json_error("Complete the required checklist item: {$item['label']}.");
         }

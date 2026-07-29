@@ -5,6 +5,8 @@
   let customerExpenseMachinesPromise = null;
   let technicianReportMachines = null;
   let technicianReportMachinesPromise = null;
+  let technicianCustomerProfile = null;
+  let technicianCustomerProfilePromise = null;
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
@@ -445,33 +447,138 @@
     });
   }
 
-  async function loadTechnicianReportMachines() {
-    if (technicianReportMachines) return technicianReportMachines;
-    if (technicianReportMachinesPromise) return technicianReportMachinesPromise;
+  async function loadTechnicianCustomerProfile() {
+    if (technicianCustomerProfile) return technicianCustomerProfile;
+    if (technicianCustomerProfilePromise) return technicianCustomerProfilePromise;
     const token = localStorage.getItem("belm_tech_token");
-    if (!token) return [];
+    if (!token) return null;
     let techUser = {};
     try {
       techUser = JSON.parse(localStorage.getItem("belm_tech_user") || "{}");
     } catch (_) {}
     const payload = tokenPayload("belm_tech_token") || {};
     const customerId = techUser.assignedCustomerId || payload.assignedCustomerId;
-    if (!customerId) return [];
+    if (!customerId) return null;
 
-    technicianReportMachinesPromise = fetch(`/api/customers/${encodeURIComponent(customerId)}`, {
+    technicianCustomerProfilePromise = fetch(`/api/customers/${encodeURIComponent(customerId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async response => {
-        if (!response.ok) throw new Error("Could not load assigned machines.");
+        if (!response.ok) throw new Error("Could not load assigned customer.");
         const customer = await response.json();
+        technicianCustomerProfile = customer;
         technicianReportMachines = Array.isArray(customer.machines) ? customer.machines : [];
-        return technicianReportMachines;
+        return technicianCustomerProfile;
       })
       .catch(() => {
+        technicianCustomerProfilePromise = null;
+        return null;
+      });
+    return technicianCustomerProfilePromise;
+  }
+
+  async function loadTechnicianReportMachines() {
+    if (technicianReportMachines) return technicianReportMachines;
+    if (technicianReportMachinesPromise) return technicianReportMachinesPromise;
+    technicianReportMachinesPromise = loadTechnicianCustomerProfile()
+      .then(customer => Array.isArray(customer?.machines) ? customer.machines : [])
+      .finally(() => {
         technicianReportMachinesPromise = null;
-        return [];
       });
     return technicianReportMachinesPromise;
+  }
+
+  function technicianCondition(status) {
+    const normalized = String(status || "UNKNOWN").toUpperCase();
+    const conditions = {
+      GREEN: {
+        label: "Good condition",
+        note: "Machine is operational.",
+      },
+      YELLOW: {
+        label: "Needs attention",
+        note: "Inspection or maintenance action is required.",
+      },
+      RED: {
+        label: "Critical condition",
+        note: "Do not operate until the fault is corrected.",
+      },
+      UNKNOWN: {
+        label: "Not inspected",
+        note: "Complete a checklist to confirm the condition.",
+      },
+    };
+    return {
+      status: normalized,
+      ...(conditions[normalized] || conditions.UNKNOWN),
+    };
+  }
+
+  function technicianCustomerInfoCard(customer) {
+    if (document.getElementById("belmTechnicianCustomerCard")) return;
+    const title = Array.from(document.querySelectorAll("h2"))
+      .find(heading => (heading.textContent || "").trim() === String(customer.name || "").trim());
+    if (!title) return;
+    const titleRow = title.parentElement;
+    const page = titleRow?.parentElement;
+    if (!page) return;
+
+    page.classList.add("belm-technician-dashboard-shell");
+    const machineGrid = Array.from(page.children)
+      .find(element => element.classList.contains("grid") && element.querySelector("button"));
+    if (!machineGrid) return;
+
+    const customerCard = document.createElement("section");
+    customerCard.id = "belmTechnicianCustomerCard";
+    customerCard.className = "belm-technician-customer-card";
+    customerCard.innerHTML = `
+      <div class="belm-technician-customer-head">
+        <div>
+          <span>Assigned Customer</span>
+          <h1>${escapeHtml(customer.name || "Customer")}</h1>
+          <p>${escapeHtml(customer.address || "Location not recorded")}</p>
+        </div>
+        <strong>${Number(customer.isActive ?? 1) === 1 ? "ACTIVE" : "INACTIVE"}</strong>
+      </div>
+      <div class="belm-technician-customer-info">
+        <div><span>Location</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
+        <div><span>Phone</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div>
+        <div><span>Email</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div>
+        <div><span>TIN / VRN</span><b>${escapeHtml([customer.tinNumber, customer.vrn].filter(Boolean).join(" / ") || "Not recorded")}</b></div>
+        <div><span>Registered Machines</span><b>${escapeHtml((customer.machines || []).length)}</b></div>
+      </div>`;
+
+    const listHeading = document.createElement("div");
+    listHeading.id = "belmTechnicianMachineListHeading";
+    listHeading.className = "belm-technician-machine-list-heading";
+    listHeading.innerHTML = `<div><span>Customer Fleet</span><h2>Machine List</h2></div>
+      <strong>${escapeHtml((customer.machines || []).length)} MACHINE(S)</strong>`;
+    machineGrid.classList.add("belm-technician-machine-grid");
+    machineGrid.before(customerCard, listHeading);
+  }
+
+  function technicianMachineInfoCard(card, machine) {
+    if (card.dataset.belmTechnicianInfoReady === "1") return;
+    card.dataset.belmTechnicianInfoReady = "1";
+    const condition = technicianCondition(machine.status);
+    const details = document.createElement("div");
+    details.className = "belm-technician-machine-info";
+    details.innerHTML = `
+      <div class="belm-technician-machine-data">
+        <div><span>Brand</span><b>${escapeHtml(machine.brand || "Not recorded")}</b></div>
+        <div><span>Machine Type</span><b>${escapeHtml(machine.machineType || machine.machine_type || "Not recorded")}</b></div>
+        <div><span>Serial No.</span><b>${escapeHtml(machine.serialNumber || machine.serial_number || "Not recorded")}</b></div>
+        <div><span>Registration</span><b>${escapeHtml(machine.regNumber || machine.reg_number || "Not recorded")}</b></div>
+        <div><span>Service Kit</span><b>${escapeHtml(machine.serviceKit || machine.service_kit || "Not recorded")}</b></div>
+        <div><span>Last Checked</span><b>${escapeHtml(machine.lastCheckedAt || machine.last_checked_at
+          ? new Date(machine.lastCheckedAt || machine.last_checked_at).toLocaleDateString()
+          : "Never checked")}</b></div>
+      </div>
+      <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}">
+        <div><span>Machine Status</span><strong>${escapeHtml(condition.status)}</strong></div>
+        <div><span>Condition</span><strong>${escapeHtml(condition.label)}</strong><small>${escapeHtml(condition.note)}</small></div>
+      </div>`;
+    card.appendChild(details);
   }
 
   function closeTechnicianReportHistory() {
@@ -563,7 +670,10 @@
 
   async function enhanceTechnicianReportCards() {
     if (!window.location.pathname.startsWith("/tech")) return;
-    const machines = await loadTechnicianReportMachines();
+    const customer = await loadTechnicianCustomerProfile();
+    if (!customer) return;
+    technicianCustomerInfoCard(customer);
+    const machines = Array.isArray(customer.machines) ? customer.machines : [];
     if (!machines.length) return;
     const buttons = Array.from(document.querySelectorAll("button"));
     machines.forEach(machine => {
@@ -579,6 +689,7 @@
 
       card.dataset.belmTechnicianReportsReady = "1";
       card.classList.add("belm-technician-machine-card");
+      technicianMachineInfoCard(card, machine);
       const reportLink = document.createElement("span");
       reportLink.className = "belm-technician-report-link";
       reportLink.setAttribute("role", "button");
@@ -752,9 +863,153 @@
     });
   }
 
+  const CHECKLIST_PHOTO_MAX_SOURCE_BYTES = 12 * 1024 * 1024;
+  const CHECKLIST_PHOTO_TARGET_BYTES = 450 * 1024;
+
+  function dataUrlByteSize(dataUrl) {
+    const encoded = String(dataUrl || "").split(",")[1] || "";
+    return Math.ceil(encoded.length * 3 / 4);
+  }
+
+  function loadChecklistPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("The selected photo could not be read."));
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error("Select a valid JPG, PNG or WEBP photo."));
+        image.onload = () => resolve(image);
+        image.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function compressChecklistPhoto(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      throw new Error("Select an image file.");
+    }
+    if (file.size > CHECKLIST_PHOTO_MAX_SOURCE_BYTES) {
+      throw new Error("Photo is above 12 MB. Select a smaller photo.");
+    }
+
+    const image = await loadChecklistPhoto(file);
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("This browser cannot compress the selected photo.");
+
+    const imageWidth = image.naturalWidth || image.width;
+    const imageHeight = image.naturalHeight || image.height;
+    const longestSide = Math.max(imageWidth, imageHeight);
+    let scale = Math.min(1, 1280 / Math.max(1, longestSide));
+    let quality = 0.68;
+    let compressed = "";
+
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      canvas.width = Math.max(1, Math.round(imageWidth * scale));
+      canvas.height = Math.max(1, Math.round(imageHeight * scale));
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      compressed = canvas.toDataURL("image/jpeg", quality);
+      if (dataUrlByteSize(compressed) <= CHECKLIST_PHOTO_TARGET_BYTES) break;
+      if (quality > 0.42) {
+        quality -= 0.08;
+      } else {
+        scale *= 0.78;
+        quality = 0.56;
+      }
+    }
+
+    const compressedBytes = dataUrlByteSize(compressed);
+    if (!compressed || compressedBytes > 500 * 1024) {
+      throw new Error("Photo could not be reduced enough. Crop it or select a smaller photo.");
+    }
+    return {
+      dataUrl: compressed,
+      originalBytes: file.size,
+      compressedBytes,
+    };
+  }
+
+  function setChecklistPhotoValue(input, value) {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value"
+    )?.set;
+    if (setter) {
+      setter.call(input, value);
+    } else {
+      input.value = value;
+    }
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
   function improvePhotoInputs() {
-    document.querySelectorAll('input[placeholder="Photo upload — wire up file input for production"]').forEach((input) => {
-      input.placeholder = "Paste photo link or photo reference";
+    document.querySelectorAll(
+      'input[placeholder="Photo upload — wire up file input for production"], input[data-checklist-photo="1"]'
+    ).forEach((input) => {
+      if (
+        input.dataset.belmPhotoUploader === "ready"
+        && input.parentElement?.querySelector(".belm-checklist-photo-uploader")
+      ) return;
+
+      input.dataset.belmPhotoUploader = "ready";
+      const wasRequired = input.required;
+      const existingPhoto = String(input.value || "").trim();
+      input.required = false;
+      input.hidden = true;
+      input.tabIndex = -1;
+
+      const uploader = document.createElement("div");
+      uploader.className = "belm-checklist-photo-uploader";
+      uploader.innerHTML = `
+        <label class="belm-checklist-photo-picker">
+          <span>Upload low-MB photo</span>
+          <small>JPG, PNG or WEBP · compressed automatically below about 0.5 MB</small>
+          <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" />
+        </label>
+        <div class="belm-checklist-photo-preview"${existingPhoto ? "" : " hidden"}>
+          <img alt="Checklist photo preview" />
+          <span>${existingPhoto ? "Existing photo ready. Select another photo to replace it." : ""}</span>
+        </div>
+        <p class="belm-checklist-photo-error" role="alert" hidden></p>`;
+      input.insertAdjacentElement("afterend", uploader);
+
+      const fileInput = uploader.querySelector('input[type="file"]');
+      const preview = uploader.querySelector(".belm-checklist-photo-preview");
+      const previewImage = preview.querySelector("img");
+      const previewText = preview.querySelector("span");
+      const errorBox = uploader.querySelector(".belm-checklist-photo-error");
+      fileInput.required = wasRequired && !existingPhoto;
+      if (existingPhoto && safeReportPhotoUrl(existingPhoto)) previewImage.src = existingPhoto;
+
+      fileInput.addEventListener("change", async () => {
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        fileInput.disabled = true;
+        errorBox.hidden = true;
+        preview.hidden = false;
+        previewImage.removeAttribute("src");
+        previewText.textContent = "Compressing photo…";
+        try {
+          const result = await compressChecklistPhoto(file);
+          setChecklistPhotoValue(input, result.dataUrl);
+          fileInput.required = false;
+          previewImage.src = result.dataUrl;
+          previewText.textContent = `Ready · ${(result.originalBytes / 1024 / 1024).toFixed(2)} MB reduced to ${Math.ceil(result.compressedBytes / 1024)} KB`;
+        } catch (error) {
+          setChecklistPhotoValue(input, "");
+          fileInput.value = "";
+          fileInput.required = wasRequired;
+          preview.hidden = true;
+          errorBox.textContent = error.message || "Photo could not be prepared.";
+          errorBox.hidden = false;
+        } finally {
+          fileInput.disabled = false;
+        }
+      });
     });
   }
 
@@ -817,6 +1072,10 @@
   function safeReportPhotoUrl(value) {
     const photoUrl = String(value || "").trim();
     if (!photoUrl) return "";
+    if (
+      photoUrl.length <= 700000
+      && /^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=\r\n]+$/i.test(photoUrl)
+    ) return photoUrl;
     if (photoUrl.startsWith("/")) return photoUrl;
     try {
       const parsed = new URL(photoUrl);
@@ -869,7 +1128,8 @@
     }
     if (inputType === "PHOTO") {
       const photoValue = answer.photoUrl || answer.photo_url || value;
-      return `<input ${common} type="url" value="${escapeHtml(photoValue)}" placeholder="Photo link" />`;
+      return `<input ${common} type="text" value="${escapeHtml(photoValue)}"
+        data-checklist-photo="1" placeholder="Photo upload — wire up file input for production" />`;
     }
     return `<input ${common} type="text" value="${escapeHtml(value)}" />`;
   }
@@ -1003,6 +1263,7 @@
       }
     });
     document.body.appendChild(modal);
+    improvePhotoInputs();
     modal.querySelector('[name="hourMeterReading"]')?.focus();
   }
 
@@ -1273,24 +1534,113 @@
         <p class="belm-technician-spare-success" role="status" hidden></p>
         <footer class="belm-checked-report-actions">
           <button type="button" data-close-tech-spare>Cancel</button>
+          <button type="button" data-new-tech-spare hidden>New Request</button>
           <button type="submit" class="primary">Send to Spare Parts Inventory</button>
         </footer>
       </form>
+      <section class="belm-technician-request-history" aria-labelledby="belmTechnicianRequestHistoryTitle">
+        <div class="belm-technician-request-history-head">
+          <div>
+            <span>Submitted by this Technician</span>
+            <h3 id="belmTechnicianRequestHistoryTitle">My Inventory Requests</h3>
+          </div>
+          <button type="button" data-refresh-tech-spares>Refresh</button>
+        </div>
+        <div class="belm-technician-request-list" data-tech-spare-list>
+          <div class="belm-report-empty">Loading Inventory Requests…</div>
+        </div>
+      </section>
     </section>`;
 
     const form = modal.querySelector("form");
     const machineSelect = form.elements.machineId;
     const machineTypeInput = form.elements.machineType;
+    const title = modal.querySelector("#belmTechnicianSpareTitle");
+    const headerDescription = title.nextElementSibling;
+    const submit = form.querySelector('button[type="submit"]');
+    const newRequestButton = form.querySelector("[data-new-tech-spare]");
+    const requestList = modal.querySelector("[data-tech-spare-list]");
+    let editingRequestId = "";
+    let loadedRequests = [];
     const syncMachineType = () => {
       const selected = machines.find((machine) => String(machine.id) === machineSelect.value);
       machineTypeInput.value = selected?.machineType || selected?.machine_type || "";
+    };
+    const resetRequestForm = () => {
+      editingRequestId = "";
+      form.reset();
+      if (machines[0]) machineSelect.value = String(machines[0].id);
+      syncMachineType();
+      title.textContent = "Add Spare";
+      headerDescription.textContent = "Send a zero-stock spare alert to Spare Parts Inventory.";
+      submit.textContent = "Send to Spare Parts Inventory";
+      newRequestButton.hidden = true;
+      form.querySelector(".belm-checklist-edit-error").hidden = true;
+    };
+    const editRequest = (request) => {
+      editingRequestId = String(request.id);
+      machineSelect.value = String(request.machineId || "");
+      syncMachineType();
+      form.elements.partNumber.value = request.partNumber || "";
+      form.elements.description.value = request.description || request.partName || "";
+      title.textContent = "Re-edit Inventory Request";
+      headerDescription.textContent = "Correct this pending request and send the updated information to Inventory.";
+      submit.textContent = "Update Inventory Request";
+      newRequestButton.hidden = false;
+      form.querySelector(".belm-technician-spare-success").hidden = true;
+      form.elements.partNumber.focus();
+    };
+    const renderRequests = (requests) => {
+      loadedRequests = Array.isArray(requests) ? requests : [];
+      requestList.innerHTML = loadedRequests.length ? loadedRequests.map((request) => {
+        const status = String(request.status || "PENDING").toUpperCase();
+        const machineName = [request.machineBrand, request.machineModel].filter(Boolean).join(" ")
+          || request.machineModel
+          || "Machine";
+        return `<article class="belm-technician-request-item">
+          <div class="belm-technician-request-copy">
+            <strong>${escapeHtml(request.partNumber || "No part number")}</strong>
+            <span>${escapeHtml(request.description || request.partName || "No description")}</span>
+            <small>${escapeHtml(machineName)} · ${escapeHtml(request.machineType || "Machine type not recorded")} · ${escapeHtml(request.customerName || "")}</small>
+            <time>${escapeHtml(request.createdAt ? new Date(request.createdAt).toLocaleString() : "Date not recorded")}</time>
+          </div>
+          <span class="belm-technician-request-status status-${escapeHtml(status.toLowerCase())}">${escapeHtml(status.replaceAll("_", " "))}</span>
+          ${status === "PENDING"
+            ? `<button type="button" data-reedit-tech-spare="${escapeHtml(request.id)}">Re-edit</button>`
+            : '<span class="belm-technician-request-locked">Inventory action started · No edit</span>'}
+        </article>`;
+      }).join("") : '<div class="belm-report-empty">No Inventory Requests sent yet.</div>';
+    };
+    const loadRequests = async () => {
+      const token = localStorage.getItem("belm_tech_token");
+      if (!token) return;
+      requestList.innerHTML = '<div class="belm-report-empty">Loading Inventory Requests…</div>';
+      try {
+        const response = await fetch("/api/spare-parts/requests", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const requests = await response.json().catch(() => []);
+        if (!response.ok) throw new Error(requests.error || "Inventory Requests could not be loaded.");
+        renderRequests(requests);
+      } catch (error) {
+        requestList.innerHTML = `<div class="belm-checklist-edit-error">${escapeHtml(error.message || "Inventory Requests could not be loaded.")}</div>`;
+      }
     };
     syncMachineType();
     machineSelect.addEventListener("change", syncMachineType);
     modal.addEventListener("click", (event) => {
       if (event.target === modal || event.target.closest("[data-close-tech-spare]")) {
         closeTechnicianSpareRequest();
+        return;
       }
+      if (event.target.closest("[data-new-tech-spare]")) resetRequestForm();
+      if (event.target.closest("[data-refresh-tech-spares]")) loadRequests();
+      const editButton = event.target.closest("[data-reedit-tech-spare]");
+      if (!editButton) return;
+      const request = loadedRequests.find(item =>
+        String(item.id) === String(editButton.dataset.reeditTechSpare)
+      );
+      if (request) editRequest(request);
     });
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1299,21 +1649,25 @@
         window.location.href = "/tech";
         return;
       }
-      const submit = form.querySelector('button[type="submit"]');
       const errorBox = form.querySelector(".belm-checklist-edit-error");
       const successBox = form.querySelector(".belm-technician-spare-success");
       submit.disabled = true;
-      submit.textContent = "Sending…";
+      submit.textContent = editingRequestId ? "Updating…" : "Sending…";
       errorBox.hidden = true;
       successBox.hidden = true;
       try {
-        const response = await fetch("/api/spare-parts/requests", {
-          method: "POST",
+        const response = await fetch(
+          editingRequestId
+            ? `/api/spare-parts/requests/${encodeURIComponent(editingRequestId)}`
+            : "/api/spare-parts/requests",
+          {
+          method: editingRequestId ? "PUT" : "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
+            action: editingRequestId ? "edit" : undefined,
             machineId: machineSelect.value,
             machineType: machineTypeInput.value,
             partNumber: form.elements.partNumber.value.trim(),
@@ -1324,18 +1678,23 @@
         if (!response.ok) throw new Error(result.error || "Spare request could not be sent.");
         successBox.textContent = result.message || "Spare request sent to Inventory.";
         successBox.hidden = false;
-        form.elements.partNumber.value = "";
-        form.elements.description.value = "";
+        resetRequestForm();
+        successBox.hidden = false;
+        successBox.textContent = result.message || "Inventory Request saved.";
+        await loadRequests();
         form.elements.partNumber.focus();
       } catch (error) {
         errorBox.textContent = error.message || "Spare request could not be sent.";
         errorBox.hidden = false;
       } finally {
         submit.disabled = false;
-        submit.textContent = "Send to Spare Parts Inventory";
+        submit.textContent = editingRequestId
+          ? "Update Inventory Request"
+          : "Send to Spare Parts Inventory";
       }
     });
     document.body.appendChild(modal);
+    loadRequests();
     form.elements.partNumber.focus();
   }
 

@@ -693,6 +693,17 @@ async function testSidebarStartsWithAllOverview() {
     .map((link) => link.textContent.trim());
   assert.equal(labels.some((label) => /Main Menu/i.test(label)), false);
   assert.match(labels[0], /All Overview/);
+  assert.match(labels[1], /Registration & Role Approval/);
+  assert.match(labels[2], /Service Requests/);
+  assert.match(labels[3], /Reports, Analysis & Comparison/);
+  assert.equal(dom.window.document.querySelectorAll(".belm-sidebar-link.workflow").length, 3);
+  const sections = Array.from(dom.window.document.querySelectorAll(".belm-sidebar-section"))
+    .map((heading) => heading.textContent.trim());
+  assert.deepEqual(sections, [
+    "Main workflow",
+    "Customers & maintenance",
+    "Finance & administration",
+  ]);
   assert.match(dom.window.document.querySelector(".belm-sidebar-brand").href, /\/overview-manager\/$/);
   assert.ok(dom.window.document.querySelector(".belm-admin-sidebar #activityList"));
   assert.match(dom.window.document.querySelector(".belm-sidebar-activity-head").textContent, /Recent Employee Activity/);
@@ -861,7 +872,7 @@ async function testTechnicianCheckedReportFlow() {
     assignedCustomerId: "customer-1",
   });
   const dom = new JSDOM(
-    '<!doctype html><html><body><main><h2>ECLS ICD</h2><button id="srs-machine">SRS45V <span>Reach Stacker · SRS-001</span></button><button id="save-checklist">Submit report</button></main></body></html>',
+    '<!doctype html><html><body><main><section class="p-5 max-w-3xl mx-auto"><div id="tech-page"><div><h2>ECLS ICD</h2></div><div class="grid"><button id="srs-machine">SRS45V <span>Reach Stacker · SRS-001</span></button></div></div><button id="save-checklist">Submit report</button><input id="photo-input" required placeholder="Photo upload — wire up file input for production"></section></main></body></html>',
     {
       url: "https://belm-portal.onrender.com/tech",
       runScripts: "outside-only",
@@ -875,6 +886,38 @@ async function testTechnicianCheckedReportFlow() {
     assignedCustomerName: "ECLS ICD",
   }));
   dom.window.setInterval = () => 1;
+  dom.window.FileReader = class {
+    readAsDataURL() {
+      this.result = "data:image/jpeg;base64,QUJD";
+      if (this.onload) this.onload();
+    }
+  };
+  dom.window.Image = class {
+    constructor() {
+      this.naturalWidth = 1600;
+      this.naturalHeight = 1200;
+    }
+    set src(value) {
+      this._src = value;
+      if (this.onload) this.onload();
+    }
+    get src() {
+      return this._src;
+    }
+  };
+  const createElement = dom.window.document.createElement.bind(dom.window.document);
+  dom.window.document.createElement = (tagName, options) => {
+    const element = createElement(tagName, options);
+    if (String(tagName).toLowerCase() === "canvas") {
+      element.getContext = () => ({
+        fillStyle: "",
+        fillRect() {},
+        drawImage() {},
+      });
+      element.toDataURL = () => `data:image/jpeg;base64,${"A".repeat(1200)}`;
+    }
+    return element;
+  };
   class FakeChecklistXhr extends dom.window.EventTarget {
     open(method, url) {
       this.method = method;
@@ -921,30 +964,68 @@ async function testTechnicianCheckedReportFlow() {
   let reportStatus = "GREEN";
   const checklistUpdates = [];
   const technicianSpareRequests = [];
+  const technicianSpareEdits = [];
+  const inventoryRequests = [];
   dom.window.fetch = async (url, options = {}) => {
     if (url === "/api/customers/customer-1") {
       return response({
         id: "customer-1",
         name: "ECLS ICD",
+        email: "operations@ecls.co.tz",
+        phone: "+255 700 123 456",
+        address: "Kurasini, Dar es Salaam",
+        tinNumber: "1242456",
+        vrn: "12456566",
+        isActive: 1,
         machines: [{
           id: "machine-srs45v",
           brand: "SANY",
           model: "SRS45V",
           machineType: "Reach Stacker",
           serialNumber: "SRS-001",
+          regNumber: "T 123 ABC",
+          serviceKit: "OK",
+          status: "RED",
+          lastCheckedAt: "2026-07-29T11:00:00Z",
         }],
       });
     }
     if (url === "/api/tasks/user/tech-1") return response([]);
+    if (url === "/api/spare-parts/requests" && !options.method) {
+      return response(inventoryRequests);
+    }
     if (url === "/api/spare-parts/requests" && options.method === "POST") {
       const payload = JSON.parse(options.body);
       technicianSpareRequests.push(payload);
+      inventoryRequests.unshift({
+        id: "spare-request-1",
+        machineId: payload.machineId,
+        machineType: payload.machineType,
+        partNumber: payload.partNumber,
+        description: payload.description,
+        status: "PENDING",
+        machineBrand: "SANY",
+        machineModel: "SRS45V",
+        customerName: "ECLS ICD",
+        createdAt: "2026-07-29T11:30:00Z",
+      });
       return response({
         id: "spare-request-1",
         stockQty: 0,
         status: "PENDING",
         message: "Spare request sent to Inventory. Stock is 0; addition or purchase is required.",
       }, 201);
+    }
+    if (url === "/api/spare-parts/requests/spare-request-1" && options.method === "PUT") {
+      const payload = JSON.parse(options.body);
+      technicianSpareEdits.push(payload);
+      Object.assign(inventoryRequests[0], payload);
+      return response({
+        ok: true,
+        id: "spare-request-1",
+        status: "PENDING",
+        message: "Inventory Request updated successfully.",
+      });
     }
     if (
       url === "/api/checklist-reports/report-srs45v"
@@ -997,6 +1078,30 @@ async function testTechnicianCheckedReportFlow() {
   dom.window.eval(fs.readFileSync(path.join(root, "frontend/portal-tools.js"), "utf8"));
   await flush();
 
+  const customerCard = dom.window.document.getElementById("belmTechnicianCustomerCard");
+  assert.ok(customerCard, "Technician dashboard is missing the assigned customer card");
+  assert.match(customerCard.textContent, /ECLS ICD/);
+  assert.match(customerCard.textContent, /Kurasini, Dar es Salaam/);
+  assert.match(customerCard.textContent, /\+255 700 123 456/);
+  assert.match(customerCard.textContent, /operations@ecls\.co\.tz/);
+  assert.match(customerCard.textContent, /1242456 \/ 12456566/);
+  assert.match(dom.window.document.getElementById("belmTechnicianMachineListHeading").textContent, /Machine List/);
+  const photoInput = dom.window.document.getElementById("photo-input");
+  assert.equal(photoInput.hidden, true);
+  const photoUploader = photoInput.parentElement.querySelector(".belm-checklist-photo-uploader");
+  assert.ok(photoUploader, "PHOTO checklist item is missing the low-MB uploader");
+  assert.match(photoUploader.textContent, /compressed automatically below about 0.5 MB/);
+  const photoFileInput = photoUploader.querySelector('input[type="file"]');
+  assert.equal(photoFileInput.accept, "image/jpeg,image/png,image/webp");
+  Object.defineProperty(photoFileInput, "files", {
+    configurable: true,
+    value: [{ type: "image/jpeg", size: 2 * 1024 * 1024 }],
+  });
+  photoFileInput.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  await flush();
+  assert.match(photoInput.value, /^data:image\/jpeg;base64,/);
+  assert.match(photoUploader.textContent, /2\.00 MB reduced to 1 KB/);
+
   const addSpareButton = dom.window.document.getElementById("belm-tech-spare-shortcut");
   assert.ok(addSpareButton, "Technician dashboard is missing Add Spare");
   addSpareButton.click();
@@ -1015,10 +1120,31 @@ async function testTechnicianCheckedReportFlow() {
   assert.equal(technicianSpareRequests[0].machineType, "Reach Stacker");
   assert.equal(technicianSpareRequests[0].partNumber, "kne-4040");
   assert.match(spareModal.textContent, /Stock is 0/);
+  await flush();
+  const reeditButton = spareModal.querySelector("[data-reedit-tech-spare]");
+  assert.ok(reeditButton, "Technician Inventory Request is missing Re-edit");
+  reeditButton.click();
+  assert.match(spareModal.querySelector("#belmTechnicianSpareTitle").textContent, /Re-edit Inventory Request/);
+  spareModal.querySelector('[name="description"]').value = "Hydraulic return filter — corrected";
+  spareModal.querySelector("form").dispatchEvent(
+    new dom.window.Event("submit", { bubbles: true, cancelable: true })
+  );
+  await flush();
+  await flush();
+  assert.equal(technicianSpareEdits.length, 1);
+  assert.equal(technicianSpareEdits[0].action, "edit");
+  assert.equal(technicianSpareEdits[0].description, "Hydraulic return filter — corrected");
+  assert.match(spareModal.textContent, /Inventory Request updated successfully/);
   spareModal.querySelector("[data-close-tech-spare]").click();
 
   const machineCard = dom.window.document.getElementById("srs-machine");
   assert.equal(dom.window.document.getElementById("save-checklist").textContent, "Save Checklist");
+  assert.equal(machineCard.classList.contains("belm-technician-machine-card"), true);
+  assert.match(machineCard.querySelector(".belm-technician-machine-data").textContent, /SANY/);
+  assert.match(machineCard.querySelector(".belm-technician-machine-data").textContent, /T 123 ABC/);
+  assert.match(machineCard.querySelector(".belm-technician-machine-health").textContent, /RED/);
+  assert.match(machineCard.querySelector(".belm-technician-machine-health").textContent, /Critical condition/);
+  assert.match(machineCard.querySelector(".belm-technician-machine-health").textContent, /Do not operate/);
   const checkedReports = machineCard.querySelector(".belm-technician-report-link");
   assert.ok(checkedReports, "Technician machine card is missing Checked Reports");
   checkedReports.click();
@@ -1087,11 +1213,30 @@ async function testTechnicianCheckedReportFlow() {
   assert.match(backend, /\$method === 'PUT' && \$action === 'update'/);
   assert.match(backend, /customer_name/);
   assert.match(backend, /template_name/);
+  assert.match(backend, /validated_checklist_photo_url/);
+  assert.match(backend, /500 \* 1024/);
+  assert.match(backend, /data:image/);
   const spareBackend = fs.readFileSync(path.join(root, "backend/api/spare_part_requests.php"), "utf8");
   assert.match(spareBackend, /Only a BELM Technician/);
   assert.match(spareBackend, /assignedCustomerId/);
   assert.match(spareBackend, /stock_qty.*> 0/s);
   assert.match(spareBackend, /PURCHASE_REQUIRED/);
+  assert.match(spareBackend, /Technicians can only re-edit a pending Inventory Request/);
+  assert.match(spareBackend, /Inventory Request updated successfully/);
+  const customerBackend = fs.readFileSync(path.join(root, "backend/api/customers.php"), "utf8");
+  assert.match(customerBackend, /SELECT id, name, email, phone, address, tin_number, vrn, is_active/);
+  const theme = fs.readFileSync(path.join(root, "frontend/belm-theme.css"), "utf8");
+  assert.match(theme, /\.belm-technician-customer-card/);
+  assert.match(theme, /\.belm-technician-machine-grid/);
+  assert.match(theme, /min-height: 330px !important/);
+  assert.match(theme, /\.belm-checklist-photo-uploader/);
+  assert.match(theme, /\.belm-technician-request-history/);
+  const checklistManager = fs.readFileSync(
+    path.join(root, "frontend/checklist-manager/manager.js"),
+    "utf8"
+  );
+  assert.match(checklistManager, /camera\/file uploader/);
+  assert.match(checklistManager, /compressed automatically to 0\.5 MB or less/);
 }
 
 async function testCustomerMachineExpenses() {
@@ -1412,7 +1557,7 @@ async function testReportsAndAttendance() {
   await testMachineAwareServiceRequest();
   await testAllOverview();
   await testReportsAndAttendance();
-  console.log("BELM UI smoke tests passed: original role login routes, managers, settings, approvals, customer links, Technician Add Spare zero-stock Inventory alerts and purchase/addition workflow, Technician Save Checklist auto-opens Checked Report, same-day checklist editing with Tanzania-midnight expiry lock, Technician machine checked-report history, customer checked-report viewer, receipt-backed machine expenses, model-aware service requests, synchronized checklist parts, Google technical supplier search, live inventory overview, role isolation, All Overview navigation, reports, attendance, and sidebar access.");
+  console.log("BELM UI smoke tests passed: original role login routes, managers, settings, approvals, customer links, Technician Inventory Request history and pending Re-edit, low-MB checklist PHOTO uploader, Add Spare zero-stock Inventory alerts and purchase/addition workflow, Technician Save Checklist auto-opens Checked Report, same-day checklist editing with Tanzania-midnight expiry lock, Technician machine checked-report history, customer checked-report viewer, receipt-backed machine expenses, model-aware service requests, synchronized checklist parts, Google technical supplier search, live inventory overview, role isolation, All Overview navigation, reports, attendance, and arranged left workflow sidebar access.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

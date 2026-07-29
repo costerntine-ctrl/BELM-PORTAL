@@ -208,9 +208,14 @@ switch ($resource) {
     case 'billing':
         // GET/POST /billing/invoices, GET/PUT/DELETE /billing/invoices/:id
         // POST /billing/invoices/:id/payments
+        // PUT  /billing/invoices/:id/payments/:paymentId
         if (($segments[1] ?? '') === 'invoices') {
             if (isset($segments[3]) && $segments[3] === 'payments') {
-                dispatch('billing.php', ['action' => 'payment', 'id' => $segments[2]]);
+                dispatch('billing.php', [
+                    'action' => 'payment',
+                    'id' => $segments[2],
+                    'paymentId' => $segments[4] ?? null,
+                ]);
             }
             dispatch('billing.php', ['id' => $segments[2] ?? null]);
         }

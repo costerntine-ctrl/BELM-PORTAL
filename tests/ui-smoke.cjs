@@ -48,6 +48,7 @@ function testJwt(payload = {}) {
 
 async function testBilling() {
   const dom = setup("frontend/billing-manager/index.html");
+  const billingCss = fs.readFileSync(path.join(root, "frontend/billing-manager/manager.css"), "utf8");
   const requests = [];
   const customer = {
     id: "customer-1",
@@ -59,15 +60,125 @@ async function testBilling() {
     vrn: "VRN-456",
     machines: [{ id: "machine-1", model: "CAT 320", regNumber: "T 123 ABC" }],
   };
+  let storedInvoices = [{
+    id: "invoice-1",
+    invoiceNo: "INV-001",
+    customerId: customer.id,
+    customer: { id: customer.id, name: customer.name },
+    machineId: "machine-1",
+    subtotal: 1000,
+    tax: 180,
+    total: 1180,
+    dueDate: "2026-08-10",
+    status: "PARTIALLY_PAID",
+    items: [{ description: "Machine service", quantity: 1, unitPrice: 1000 }],
+    payments: [{
+      id: "payment-1",
+      amount: 500,
+      method: "Bank",
+      reference: "TX-001",
+      paidAt: "2026-07-29T10:00:00Z",
+    }],
+    paidAmount: 500,
+    balance: 680,
+  }];
+  let storedExpenses = [{
+    id: "expense-1",
+    date: "2026-07-29",
+    category: "FUEL",
+    description: "Workshop fuel",
+    amount: 75000,
+    recordedBy: "Admin",
+    receiptUrl: "/uploads/receipt-1.jpg",
+  }];
   dom.window.fetch = async (url, options = {}) => {
     requests.push({ url, options });
     if (url === "/api/customers") return response([customer]);
     if (url === "/api/settings") return response({ displayTheme: "dark" });
-    if (options.method === "POST") return response({ id: "invoice-1" }, 201);
-    return response([]);
+    if (url === "/api/billing/invoices" && !options.method) return response(storedInvoices);
+    if (url === "/api/company-expenses" && !options.method) return response(storedExpenses);
+    if (url === "/api/proforma-invoices" && !options.method) return response([]);
+    if (url === "/api/billing/invoices/invoice-1" && options.method === "PUT") {
+      const payload = JSON.parse(options.body);
+      const subtotal = payload.items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0);
+      storedInvoices[0] = {
+        ...storedInvoices[0],
+        ...payload,
+        subtotal,
+        total: subtotal + payload.tax,
+        balance: subtotal + payload.tax - storedInvoices[0].paidAmount,
+      };
+      return response({ ok: true });
+    }
+    if (url === "/api/billing/invoices/invoice-1/payments/payment-1" && options.method === "PUT") {
+      const payload = JSON.parse(options.body);
+      storedInvoices[0].payments[0] = { ...storedInvoices[0].payments[0], ...payload };
+      storedInvoices[0].paidAmount = payload.amount;
+      storedInvoices[0].balance = storedInvoices[0].total - payload.amount;
+      return response({ ok: true });
+    }
+    if (url === "/api/company-expenses/expense-1" && options.method === "PUT") {
+      storedExpenses[0] = { ...storedExpenses[0], ...JSON.parse(options.body) };
+      return response({ ok: true });
+    }
+    if (url === "/api/billing/invoices" && options.method === "POST") {
+      return response({ id: "invoice-2" }, 201);
+    }
+    return response(null, 404);
   };
   dom.window.eval(fs.readFileSync(path.join(root, "frontend/billing-manager/manager.js"), "utf8"));
   await flush();
+
+  assert.deepEqual(
+    [...dom.window.document.querySelectorAll(".tabs [data-tab]")].map((button) =>
+      button.textContent.replace(/\d+/g, "").trim()),
+    ["Invoices", "Payments", "Expenses", "Proforma"],
+  );
+  assert.match(billingCss, /\.tabs\s*\{[^}]*display:\s*grid[^}]*grid-template-columns:\s*1fr/s);
+  assert.match(dom.window.document.getElementById("paymentsPanel").textContent, /TX-001/);
+  dom.window.document.querySelector('[data-tab="payments"]').click();
+  assert.equal(dom.window.document.getElementById("paymentsPanel").classList.contains("hidden"), false);
+  assert.equal(dom.window.document.getElementById("invoicesPanel").classList.contains("hidden"), true);
+  dom.window.document.querySelector('[data-tab="invoices"]').click();
+  dom.window.document.querySelector('[data-edit-invoice="invoice-1"]').click();
+  assert.match(dom.window.document.getElementById("invoiceTitle").textContent, /Re-edit/);
+  assert.equal(dom.window.document.getElementById("invoiceMachine").value, "machine-1");
+  assert.equal(dom.window.document.querySelector('#invoiceItems [data-field="description"]').value, "Machine service");
+  dom.window.document.querySelector('#invoiceItems [data-field="unitPrice"]').value = "1200";
+  dom.window.document.getElementById("invoiceTax").value = "216";
+  dom.window.document.getElementById("invoiceForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const invoiceEdit = requests.find((request) =>
+    request.url === "/api/billing/invoices/invoice-1" && request.options.method === "PUT");
+  assert.ok(invoiceEdit, "Invoice PUT request was not sent");
+  assert.equal(JSON.parse(invoiceEdit.options.body).action, "edit");
+  assert.equal(JSON.parse(invoiceEdit.options.body).items[0].unitPrice, 1200);
+
+  dom.window.document.querySelector('[data-tab="payments"]').click();
+  dom.window.document.querySelector('[data-edit-payment="payment-1"]').click();
+  assert.match(dom.window.document.getElementById("paymentTitle").textContent, /Re-edit payment/);
+  assert.equal(dom.window.document.getElementById("paymentReference").value, "TX-001");
+  dom.window.document.getElementById("paymentAmount").value = "600";
+  dom.window.document.getElementById("paymentReference").value = "TX-EDITED";
+  dom.window.document.getElementById("paymentForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const paymentEdit = requests.find((request) =>
+    request.url === "/api/billing/invoices/invoice-1/payments/payment-1"
+    && request.options.method === "PUT");
+  assert.ok(paymentEdit, "Payment PUT request was not sent");
+  assert.equal(JSON.parse(paymentEdit.options.body).reference, "TX-EDITED");
+
+  dom.window.document.querySelector('[data-edit-expense="expense-1"]').click();
+  assert.match(dom.window.document.getElementById("expenseTitle").textContent, /Re-edit/);
+  assert.equal(dom.window.document.getElementById("expenseDescription").value, "Workshop fuel");
+  dom.window.document.getElementById("expenseDescription").value = "Workshop fuel corrected";
+  dom.window.document.getElementById("expenseForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
+  await flush();
+  const expenseEdit = requests.find((request) =>
+    request.url === "/api/company-expenses/expense-1" && request.options.method === "PUT");
+  assert.ok(expenseEdit, "Expense PUT request was not sent");
+  assert.equal(JSON.parse(expenseEdit.options.body).receiptUrl, "/uploads/receipt-1.jpg");
+
   dom.window.document.getElementById("newInvoiceButton").click();
   const select = dom.window.document.getElementById("invoiceCustomer");
   select.value = customer.id;
@@ -78,10 +189,11 @@ async function testBilling() {
   assert.equal(dom.window.document.documentElement.dataset.theme, "dark");
   assert.match(dom.window.document.getElementById("mainMenuButton").href, /\/overview-manager\/$/);
 
-  dom.window.document.querySelector('#invoiceItems [data-field="description"]').value = "Service";
+  dom.window.document.querySelector('#invoiceItems [data-field="description"]').value = "New service";
   dom.window.document.getElementById("invoiceForm").dispatchEvent(new dom.window.Event("submit", { bubbles: true, cancelable: true }));
   await flush();
-  const save = requests.find((request) => request.url === "/api/billing/invoices" && request.options.method === "POST");
+  const save = requests.find((request) =>
+    request.url === "/api/billing/invoices" && request.options.method === "POST");
   assert.ok(save, "Invoice POST request was not sent");
   assert.equal(JSON.parse(save.options.body).customerId, customer.id);
 }
@@ -1557,7 +1669,7 @@ async function testReportsAndAttendance() {
   await testMachineAwareServiceRequest();
   await testAllOverview();
   await testReportsAndAttendance();
-  console.log("BELM UI smoke tests passed: original role login routes, managers, settings, approvals, customer links, Technician Inventory Request history and pending Re-edit, low-MB checklist PHOTO uploader, Add Spare zero-stock Inventory alerts and purchase/addition workflow, Technician Save Checklist auto-opens Checked Report, same-day checklist editing with Tanzania-midnight expiry lock, Technician machine checked-report history, customer checked-report viewer, receipt-backed machine expenses, model-aware service requests, synchronized checklist parts, Google technical supplier search, live inventory overview, role isolation, All Overview navigation, reports, attendance, and arranged left workflow sidebar access.");
+  console.log("BELM UI smoke tests passed: vertical Billing Review sidebar and separate Payments review, invoice/payment/expense Re-edit, original role login routes, managers, settings, approvals, customer links, Technician Inventory Request history and pending Re-edit, low-MB checklist PHOTO uploader, Add Spare zero-stock Inventory alerts and purchase/addition workflow, Technician Save Checklist auto-opens Checked Report, same-day checklist editing with Tanzania-midnight expiry lock, Technician machine checked-report history, customer checked-report viewer, receipt-backed machine expenses, model-aware service requests, synchronized checklist parts, Google technical supplier search, live inventory overview, role isolation, All Overview navigation, reports, attendance, and arranged left workflow sidebar access.");
 })().catch((error) => {
   console.error(error);
   process.exitCode = 1;

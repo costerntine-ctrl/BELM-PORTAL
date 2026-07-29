@@ -20,7 +20,7 @@ button { cursor: pointer; }
 .brand small { display: block; color: #aab3c5; font: 500 11px Inter, sans-serif; }
 .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--green); color: var(--yellow); font-weight: 800; }
 .top-actions, .hero-actions, .dialog-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-main { width: min(1220px, 92vw); margin: 34px auto 60px; }
+main { width: min(1220px, calc(100% - 44px)); margin: 34px auto 60px; }
 .hero { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 28px; border-radius: 20px; color: #fff; background: linear-gradient(135deg, var(--navy), var(--navy-2)); box-shadow: 0 16px 40px rgba(21,29,49,.13); }
 .hero h1 { margin: 4px 0 8px; font: 700 clamp(25px, 4vw, 40px)/1.08 "Space Grotesk", sans-serif; }
 .hero p:last-child { margin: 0; color: #bac3d2; }
@@ -36,10 +36,19 @@ main { width: min(1220px, 92vw); margin: 34px auto 60px; }
 .metrics article { padding: 18px; border-radius: 14px; background: var(--paper); border: 1px solid var(--line); }
 .metrics span { display: block; color: var(--muted); font-size: 12px; }
 .metrics strong { display: block; margin-top: 6px; font-size: 20px; font-family: "Space Grotesk", sans-serif; }
-.tabs { display: flex; gap: 8px; margin: 22px 0 12px; }
-.tabs button { border: 1px solid var(--line); background: #fff; padding: 9px 15px; border-radius: 999px; font-weight: 700; color: var(--muted); }
+.billing-workspace { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 22px; }
+.billing-section-sidebar { position: sticky; top: 18px; overflow: hidden; padding: 15px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); }
+.billing-section-sidebar > p { margin: 2px 4px 12px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.tabs { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 0; }
+.tabs button { display: flex; align-items: center; width: 100%; min-height: 48px; gap: 10px; border: 1px solid var(--line); background: #fff; padding: 9px 11px; border-radius: 10px; font-weight: 800; color: var(--muted); text-align: left; }
+.tabs button span { display: grid; flex: 0 0 28px; place-items: center; width: 28px; height: 28px; color: var(--navy); border-radius: 8px; background: var(--yellow); font-size: 9px; font-weight: 900; }
 .tabs button.active { color: #fff; border-color: var(--green); background: var(--green); }
+.tabs button.active span { color: var(--green); background: #fff; }
+.billing-content { min-width: 0; }
 .panel { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: #fff; }
+.review-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 19px 20px; border-bottom: 1px solid var(--line); background: #fbfcfd; }
+.review-heading h2 { margin: 3px 0 4px; font: 700 22px "Space Grotesk", sans-serif; }
+.review-heading span { color: var(--muted); font-size: 12px; }
 .empty, .locked, .loading { padding: 44px; text-align: center; color: var(--muted); }
 .locked a { color: var(--green); }
 .table-wrap { overflow-x: auto; }
@@ -54,8 +63,14 @@ tbody tr:last-child td { border-bottom: 0; }
 .badge.OVERDUE, .badge.CANCELLED { color: #9c2525; background: #fdeaea; }
 .row-actions { display: flex; justify-content: flex-end; gap: 6px; white-space: nowrap; }
 .row-actions button { border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; background: #fff; color: var(--navy); font-size: 11px; font-weight: 700; }
+.row-actions .edit, .payment-record .edit { color: #075f36; border-color: #8bcda9; background: #eaf8f0; }
 .row-actions .pay { color: #fff; border-color: var(--green); background: var(--green); }
 .row-actions .delete { color: var(--red); }
+.payment-history-row td { padding: 8px 15px 14px; background: #fafcfd; }
+.payment-history { display: grid; gap: 7px; padding-left: 14px; border-left: 3px solid var(--green); }
+.payment-history > strong { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+.payment-record { display: grid; grid-template-columns: minmax(130px, 1.2fr) 120px 100px minmax(120px, 1fr) auto; gap: 10px; align-items: center; font-size: 12px; }
+.payment-record button { border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font-size: 11px; font-weight: 700; cursor: pointer; }
 .status-select { max-width: 150px; border: 1px solid var(--line); border-radius: 7px; padding: 6px; background: #fff; }
 .alert { margin: 14px 0; padding: 11px 13px; border: 1px solid #8bcda9; border-radius: 10px; background: #eaf8f0; color: #075f36; font-size: 13px; }
 .alert.error { color: #8f2020; border-color: #e5a6a6; background: #fdf0f0; }
@@ -94,13 +109,21 @@ html[data-theme="dark"] {
 html[data-theme="dark"] .metrics article,
 html[data-theme="dark"] .panel,
 html[data-theme="dark"] dialog,
+html[data-theme="dark"] .billing-section-sidebar,
 html[data-theme="dark"] .tabs button,
 html[data-theme="dark"] .row-actions button {
   color: var(--ink);
   background: var(--paper);
 }
+html[data-theme="dark"] .tabs button.active {
+  color: #fff;
+  border-color: var(--green);
+  background: var(--green);
+}
 html[data-theme="dark"] th,
 html[data-theme="dark"] .item-row,
+html[data-theme="dark"] .payment-history-row td,
+html[data-theme="dark"] .review-heading,
 html[data-theme="dark"] .customer-info.empty-info {
   background: #111b2c;
 }
@@ -120,8 +143,11 @@ html[data-theme="dark"] .customer-info {
 @media (max-width: 820px) {
   .hero { align-items: start; flex-direction: column; }
   .metrics { grid-template-columns: 1fr 1fr; }
+  .billing-workspace { grid-template-columns: 1fr; }
+  .billing-section-sidebar { position: static; }
   .item-row, .proforma-row { grid-template-columns: 1fr 1fr; }
   .remove-item { grid-column: 2; justify-self: end; }
+  .payment-record { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 560px) {
   .topbar { padding: 10px 4vw; }
@@ -131,5 +157,5 @@ html[data-theme="dark"] .customer-info {
   .metrics, .form-grid { grid-template-columns: 1fr; }
   .customer-info { grid-template-columns: 1fr 1fr; }
   .metrics strong { font-size: 18px; }
-  .tabs { overflow-x: auto; }
+  .tabs { grid-template-columns: 1fr; }
 }

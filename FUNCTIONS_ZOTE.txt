@@ -283,8 +283,15 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Service requests.
 - Spare-parts inventory.
 - Billing Manager moja kwa invoices, payments, expenses na proformas.
+- Billing Review side bar ni list ya juu kwenda chini tu: Invoices, Payments,
+  Expenses, Proforma; kila moja ina review panel yake.
+- Payments Review inaonyesha invoice, customer, tarehe, method, reference,
+  amount na Re-edit.
 - Invoice create yenye items, tax, due date na optional machine.
 - Payment history, paid amount na balance.
+- Invoice, payment na company expense zina Re-edit; totals, balance na status
+  zinahesabiwa upya bila kuruhusu total ndogo kuliko payments zilizopo.
+- Expense Re-edit inalinda receipt URL iliyohifadhiwa.
 - PAID/PARTIALLY PAID status inahesabiwa kwa payments.
 - Proforma create/edit yenye items, VAT na discount.
 - Reporting and analytics.

@@ -27,8 +27,8 @@
       <section class="hero">
         <div>
           <p class="eyebrow">Accounting & Billing</p>
-          <h1>Invoices, payments and expenses</h1>
-          <p>Manage customer balances and business records from one reliable screen.</p>
+          <h1>Invoices, payments, expenses and proforma</h1>
+          <p>Review every billing record from a clear top-to-bottom menu.</p>
         </div>
         <div class="hero-actions">
           <button id="newInvoiceButton" class="primary" type="button">+ New invoice</button>
@@ -46,20 +46,30 @@
 
       <div id="alertBox" class="alert hidden" role="status"></div>
 
-      <nav class="tabs" aria-label="Billing sections">
-        <button class="active" data-tab="invoices" type="button">Invoices</button>
-        <button data-tab="expenses" type="button">Expenses</button>
-        <button data-tab="proformas" type="button">Proformas</button>
-      </nav>
+      <div class="billing-workspace">
+        <aside class="billing-section-sidebar" aria-label="Billing review menu">
+          <p>Billing Review</p>
+          <nav class="tabs" aria-label="Billing sections">
+            <button class="active" data-tab="invoices" type="button"><span>01</span>Invoices</button>
+            <button data-tab="payments" type="button"><span>02</span>Payments</button>
+            <button data-tab="expenses" type="button"><span>03</span>Expenses</button>
+            <button data-tab="proformas" type="button"><span>04</span>Proforma</button>
+          </nav>
+        </aside>
 
-      <section id="invoicesPanel" class="panel"></section>
-      <section id="expensesPanel" class="panel hidden"></section>
-      <section id="proformasPanel" class="panel hidden"></section>
+        <div class="billing-content">
+          <section id="invoicesPanel" class="panel" data-billing-panel="invoices"></section>
+          <section id="paymentsPanel" class="panel hidden" data-billing-panel="payments"></section>
+          <section id="expensesPanel" class="panel hidden" data-billing-panel="expenses"></section>
+          <section id="proformasPanel" class="panel hidden" data-billing-panel="proformas"></section>
+        </div>
+      </div>
     </main>
 
     <dialog id="invoiceDialog">
       <form id="invoiceForm" class="dialog-card">
-        <div class="dialog-head"><div><p class="eyebrow">Customer billing</p><h2>New invoice</h2></div><button class="icon-close" data-close="invoiceDialog" type="button">×</button></div>
+        <div class="dialog-head"><div><p class="eyebrow">Customer billing</p><h2 id="invoiceTitle">New invoice</h2></div><button class="icon-close" data-close="invoiceDialog" type="button">×</button></div>
+        <input id="invoiceId" type="hidden">
         <div id="invoiceError" class="alert error hidden"></div>
         <div class="form-grid">
           <label>Customer<select id="invoiceCustomer" required></select></label>
@@ -80,6 +90,7 @@
       <form id="paymentForm" class="dialog-card compact">
         <div class="dialog-head"><div><p class="eyebrow">Customer payment</p><h2 id="paymentTitle">Record payment</h2></div><button class="icon-close" data-close="paymentDialog" type="button">×</button></div>
         <input id="paymentInvoiceId" type="hidden">
+        <input id="paymentId" type="hidden">
         <div id="paymentError" class="alert error hidden"></div>
         <label>Amount (TZS)<input id="paymentAmount" required type="number" min="0.01" step="0.01"></label>
         <label>Method<select id="paymentMethod"><option>Bank</option><option>Cash</option><option>Mobile Money</option><option>Cheque</option></select></label>
@@ -90,7 +101,9 @@
 
     <dialog id="expenseDialog">
       <form id="expenseForm" class="dialog-card compact">
-        <div class="dialog-head"><div><p class="eyebrow">Operating cost</p><h2>Record expense</h2></div><button class="icon-close" data-close="expenseDialog" type="button">×</button></div>
+        <div class="dialog-head"><div><p class="eyebrow">Operating cost</p><h2 id="expenseTitle">Record expense</h2></div><button class="icon-close" data-close="expenseDialog" type="button">×</button></div>
+        <input id="expenseId" type="hidden">
+        <input id="expenseReceiptUrl" type="hidden">
         <div id="expenseError" class="alert error hidden"></div>
         <label>Date<input id="expenseDate" required type="date"></label>
         <label>Category<select id="expenseCategory"><option>SALARIES</option><option>RENT</option><option>FUEL</option><option>UTILITIES</option><option>SUPPLIES</option><option>MAINTENANCE</option><option selected>OTHER</option></select></label>
@@ -123,6 +136,6 @@
 
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-    <script src="/billing-manager/manager.js"></script>
+    <script src="/billing-manager/manager.js?v=29-vertical-review"></script>
   </body>
 </html>

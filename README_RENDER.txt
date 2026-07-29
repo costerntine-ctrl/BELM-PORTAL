@@ -344,6 +344,10 @@ BILLING MANAGER
 Admin > Accounting & Billing sasa inafungua:
   /billing-manager/
 
+- Billing Review menu iko side bar ya kushoto na ina-list kutoka juu kwenda
+  chini tu: Invoices, Payments, Expenses, Proforma.
+- Payments ina review panel yake yenye invoice, customer, method, reference,
+  amount na Re-edit; haijafichwa tena ndani ya invoice.
 - Create customer invoice yenye items, machine, due date na tax.
 - Customer akichaguliwa, company name, email, phone, address, TIN na VRN
   zinajazwa/kuonyeshwa automatically kwenye invoice na proforma form.
@@ -351,6 +355,11 @@ Admin > Accounting & Billing sasa inafungua:
 - Record payment; balance na PAID/PARTIALLY PAID status zinahesabiwa automatic.
 - Overpayment na payment ya cancelled invoice zinakataliwa.
 - Record company expenses.
+- Invoice, payment na company expense zote zina Re-edit.
+- Invoice Re-edit inahesabu upya items, subtotal, tax, total, paid na balance;
+  total mpya haiwezi kuwa chini ya payments zilizokwisha-recordiwa.
+- Payment Re-edit inalinda balance na inahesabu upya invoice status.
+- Expense Re-edit inahifadhi receipt iliyokwisha-uploadiwa.
 - Create na edit proforma invoice pamoja na items, VAT na discount.
 - Invoice/proforma na items zake zinasave kwa database transaction moja.
 

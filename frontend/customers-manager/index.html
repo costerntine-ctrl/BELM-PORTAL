@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/customers-manager/manager.css">
-    <link rel="stylesheet" href="/admin-sidebar.css">
   </head>
   <body>
     <header class="topbar">
@@ -32,8 +31,8 @@
       <a href="/billing-manager/">Billing</a>
       <a href="/roles-manager/">Roles & Users</a>
       <a href="/suppliers-manager/">Suppliers</a>
-      <a href="/reports-manager/">Reports</a>
-      <a href="/settings-manager/">Settings</a>
+      <a href="/admin/reports">Reports</a>
+      <a href="/admin/settings">Settings</a>
     </nav>
 
     <main class="shell">
@@ -128,15 +127,12 @@
         </div>
         <div class="dialog-actions">
           <button id="copyCredentialsButton" class="secondary" type="button">Copy all</button>
-          <button id="copyCredentialLinkButton" class="secondary" type="button">Copy link</button>
-          <button id="copyCredentialPasswordButton" class="secondary" type="button">Copy password</button>
           <a id="openCredentialLink" class="primary" target="_blank" rel="noopener">Open customer link</a>
         </div>
       </div>
     </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js"></script>
     <script src="/customers-manager/manager.js"></script>
   </body>
 </html>

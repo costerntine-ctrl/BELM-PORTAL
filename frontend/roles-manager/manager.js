@@ -9,12 +9,12 @@
 
   const pageOptions = [
     ["customers", "Customers"],
-    ["overview", "All Overview"],
+    ["overview", "Dashboard overview"],
     ["roles", "Roles & system users"],
     ["service-requests", "Service requests"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
-    ["reports", "Reports & comparisons"],
+    ["reports", "Reports"],
     ["settings", "System settings"],
     ["checklist-templates", "Checklist templates"],
     ["suppliers", "Suppliers"],

@@ -131,7 +131,7 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
     }
 }
 
-function customer_portal_url(string $portalSlug, ?string $email = null): string {
+function customer_portal_url(string $portalSlug): string {
     return portal_base_url() . '/portal/login?customer=' . rawurlencode($portalSlug);
 }
 
@@ -227,6 +227,22 @@ function require_customer_owner(array $customer): void {
 function require_customer_write_access(array $customer): void {
     if (($customer['actorType'] ?? '') === 'assistant' && ($customer['customerRole'] ?? '') === 'viewer') {
         json_error('This assistant has read-only access.', 403);
+    }
+}
+
+// ---- Cross-entity activity feed --------------------------------------------
+// Call after any create/update/delete on customers, billing, spare parts,
+// users, tasks or suppliers so an Activity Log view can show a unified feed
+// instead of technician checkups only.
+function log_activity(string $userId, string $action, string $entity, ?string $entityId = null, array $metadata = []): void {
+    try {
+        $stmt = db()->prepare(
+            'INSERT INTO activity_logs (id, user_id, action, entity, entity_id, metadata, created_at)
+             VALUES (?,?,?,?,?,?,NOW())'
+        );
+        $stmt->execute([uuid(), $userId, $action, $entity, $entityId, json_encode($metadata)]);
+    } catch (Throwable $ignored) {
+        // Activity logging must never break the primary action.
     }
 }
 

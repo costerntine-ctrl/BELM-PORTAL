@@ -27,9 +27,11 @@
     h2 { font-size:17px; margin:18px 0 8px; }
     .card p { font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 18px; }
     .go { color:var(--green2); font-weight:800; font-size:13px; }
-    .apply { border:2px solid var(--green); }
-    .apply .icon { background:var(--yellow); color:var(--navy); }
-    .apply::before { background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); transform:scaleX(1); }
+    .login { grid-column:1/-1; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:20px; border:2px solid var(--green); }
+    .login .icon { background:var(--yellow); color:var(--navy); }
+    .login h2,.login p { margin:0; }
+    .login::before { background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); transform:scaleX(1); }
+    @media (max-width:620px) { .login { grid-template-columns:auto 1fr; } .login .go { grid-column:1/-1; } }
     footer { color:#6c7c8d; text-align:center; font-size:12px; padding:20px; }
   </style>
 </head>
@@ -40,27 +42,17 @@
   </header>
   <main>
     <h1>Welcome to BELM Portal</h1>
-    <p class="lead">Register once, then use your email and password to enter only the workspace assigned to your role.</p>
+    <p class="lead">Administrators sign in here. New customers, staff and Technicians must first submit a registration request; dashboard access starts only after Admin approval.</p>
     <section class="grid">
-      <a class="card apply" href="/apply/">
-        <div class="icon">+</div><h2>Register for Portal Access</h2>
-        <p>Customer, Technician or staff. Access stays blocked until admin approval and role assignment.</p><span class="go">Register now →</span>
+      <a class="card login" href="/login/?role=admin">
+        <div class="icon">→</div>
+        <div><h2>Administrator Login</h2>
+        <p>Sign in with the approved Administrator email and password.</p></div>
+        <span class="go">Open Admin login →</span>
       </a>
-      <a class="card" href="/portal/login">
-        <div class="icon">C</div><h2>Customer Login</h2>
-        <p>View machines, inspection reports and service requests.</p><span class="go">Customer sign in →</span>
-      </a>
-      <a class="card" href="/tech">
-        <div class="icon">T</div><h2>Technician Login</h2>
-        <p>Complete synchronized checklists and submit field reports.</p><span class="go">Technician sign in →</span>
-      </a>
-      <a class="card" href="/admin/login">
-        <div class="icon">A</div><h2>Administrator Login</h2>
-        <p>Approve applications and manage portal operations.</p><span class="go">Admin sign in →</span>
-      </a>
-      <a class="card" href="/forgot-password/">
-        <div class="icon">R</div><h2>Forgot Password</h2>
-        <p>Use your email and BELM recovery code to set a new password yourself.</p><span class="go">Reset password →</span>
+      <a class="card" href="/apply/">
+        <div class="icon">R</div><h2>Request Registration</h2>
+        <p>Customers, staff and Technicians submit details here. Admin approval generates the first login link and password.</p><span class="go">Open registration request →</span>
       </a>
     </section>
   </main>

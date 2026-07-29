@@ -135,7 +135,7 @@
   async function loadTemplates() {
     templateList.innerHTML = '<div class="loading">Loading templates…</div>';
     if (!token) {
-      templateList.innerHTML = '<div class="locked">Administrator login required.<br><a href="/admin/login">Go to admin login</a></div>';
+      templateList.innerHTML = '<div class="locked">Administrator login required.<br><a href="/login/">Go to portal login</a></div>';
       return;
     }
     try {
@@ -143,7 +143,7 @@
       renderTemplates();
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        templateList.innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
+        templateList.innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/login/">Go to portal login</a></div>`;
       } else {
         templateList.innerHTML = '<div class="empty">Could not load checklist templates.</div>';
         showAlert(error.message, true);
@@ -273,7 +273,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.href = "/login/";
   });
   document.getElementById("itemList").addEventListener("input", (event) => {
     const card = event.target.closest("[data-key]");

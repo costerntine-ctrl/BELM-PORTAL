@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/admin-sidebar.css">
   </head>
   <body>
     <header class="topbar">
@@ -101,7 +102,29 @@
       </form>
     </dialog>
 
+    <dialog id="userCredentialsDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">LOGIN GENERATED</p><h2 id="credentialsTitle">Copy system-user login</h2></div>
+          <button class="icon-close" data-close="userCredentialsDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <p class="muted">Copy these credentials now and send them securely to the assigned user.</p>
+        <div class="credentials">
+          <label>Email<input id="systemCredentialEmail" readonly></label>
+          <label>Temporary password<input id="systemCredentialPassword" readonly></label>
+          <label>Recovery code<input id="systemCredentialRecovery" readonly></label>
+          <label>Unified login link<input id="systemCredentialLink" readonly></label>
+        </div>
+        <div class="dialog-actions">
+          <button id="copySystemCredentials" class="secondary" type="button">Copy all credentials</button>
+          <button id="copySystemPassword" class="ghost" type="button">Copy password</button>
+          <a id="openSystemLogin" class="primary" target="_blank" rel="noopener">Open login</a>
+        </div>
+      </div>
+    </dialog>
+
     <script src="/admin-access.js"></script>
+    <script src="/admin-sidebar.js"></script>
     <script src="/roles-manager/manager.js"></script>
   </body>
 </html>

@@ -133,7 +133,10 @@
 .belm-sidebar-link > span:nth-child(2) {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
   line-height: 1.35;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .belm-sidebar-link.workflow {

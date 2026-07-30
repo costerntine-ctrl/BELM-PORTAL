@@ -128,30 +128,7 @@
   });
   footer.appendChild(logout);
 
-  let recentActivityPanel = null;
-  if (pathname === "/overview-manager/" || pathname === "/admin/overview") {
-    recentActivityPanel = document.createElement("section");
-    recentActivityPanel.className = "belm-sidebar-activity-panel";
-    recentActivityPanel.setAttribute("aria-label", "Recent employee activity");
-
-    const activityHead = document.createElement("div");
-    activityHead.className = "belm-sidebar-activity-head";
-    const activityTitle = document.createElement("strong");
-    activityTitle.textContent = "Recent Employee Activity";
-    const activityLink = document.createElement("a");
-    activityLink.href = "/reports-manager/#employee-activity";
-    activityLink.textContent = "View analysis";
-    activityHead.append(activityTitle, activityLink);
-
-    const activityList = document.createElement("div");
-    activityList.id = "activityList";
-    activityList.className = "belm-sidebar-activity-list";
-    activityList.innerHTML = '<div class="belm-sidebar-activity-empty">Loading recent activity…</div>';
-    recentActivityPanel.append(activityHead, activityList);
-  }
-
   sidebar.append(brand, userCard, nav);
-  if (recentActivityPanel) sidebar.appendChild(recentActivityPanel);
   sidebar.appendChild(footer);
 
   const toggle = document.createElement("button");

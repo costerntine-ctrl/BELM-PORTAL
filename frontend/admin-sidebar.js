@@ -36,16 +36,16 @@
   }
 
   const pages = [
-    { section: "Main workflow", key: "overview", label: "All Overview", short: "00", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
-    { section: "Main workflow", key: "customers", label: "Registrations", short: "01", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
-    { section: "Main workflow", key: "service-requests", label: "Service Requests", short: "02", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
-    { section: "Main workflow", key: "reports", label: "Reports & Analysis", short: "03", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
+    { section: "Main workflow", key: "overview", label: "All Overview", short: "AO", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
+    { section: "Main workflow", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
+    { section: "Main workflow", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
+    { section: "Main workflow", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
     { section: "Customers & maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     { section: "Customers & maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Customers & maintenance", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"] },
     { section: "Customers & maintenance", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
     { section: "Finance & administration", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
-    { section: "Finance & administration", key: "billing", label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
+    { section: "Finance & administration", key: "bank-manager", label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
     { section: "Finance & administration", key: "roles", label: "Roles & System Users", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
     { section: "Finance & administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
   ];
@@ -60,20 +60,6 @@
   sidebar.id = "belmAdminSidebar";
   sidebar.className = "belm-admin-sidebar";
   sidebar.setAttribute("aria-label", "BELM administration sidebar");
-
-  const brand = document.createElement("a");
-  brand.className = "belm-sidebar-brand";
-  brand.href = "/overview-manager/";
-  const mark = document.createElement("span");
-  mark.className = "belm-sidebar-brand-mark";
-  mark.textContent = "B";
-  const brandText = document.createElement("span");
-  const brandName = document.createElement("strong");
-  brandName.textContent = "BELM General Tech";
-  const brandSubtitle = document.createElement("small");
-  brandSubtitle.textContent = "Management Portal";
-  brandText.append(brandName, brandSubtitle);
-  brand.append(mark, brandText);
 
   const userCard = document.createElement("div");
   userCard.className = "belm-sidebar-user";
@@ -128,30 +114,7 @@
   });
   footer.appendChild(logout);
 
-  let recentActivityPanel = null;
-  if (pathname === "/overview-manager/" || pathname === "/admin/overview") {
-    recentActivityPanel = document.createElement("section");
-    recentActivityPanel.className = "belm-sidebar-activity-panel";
-    recentActivityPanel.setAttribute("aria-label", "Recent employee activity");
-
-    const activityHead = document.createElement("div");
-    activityHead.className = "belm-sidebar-activity-head";
-    const activityTitle = document.createElement("strong");
-    activityTitle.textContent = "Recent Employee Activity";
-    const activityLink = document.createElement("a");
-    activityLink.href = "/reports-manager/#employee-activity";
-    activityLink.textContent = "View analysis";
-    activityHead.append(activityTitle, activityLink);
-
-    const activityList = document.createElement("div");
-    activityList.id = "activityList";
-    activityList.className = "belm-sidebar-activity-list";
-    activityList.innerHTML = '<div class="belm-sidebar-activity-empty">Loading recent activity…</div>';
-    recentActivityPanel.append(activityHead, activityList);
-  }
-
-  sidebar.append(brand, userCard, nav);
-  if (recentActivityPanel) sidebar.appendChild(recentActivityPanel);
+  sidebar.append(userCard, nav);
   sidebar.appendChild(footer);
 
   const toggle = document.createElement("button");

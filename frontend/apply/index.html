@@ -3,95 +3,153 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Register for BELM Portal</title>
+  <title>Request Registration — BELM Portal</title>
   <link rel="stylesheet" href="/apply/app.css">
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="/"><span class="mark">B</span><span><b>BELM GENERAL TECH</b><small>Portal Access Registration</small></span></a>
-    <a class="login-link" href="/">Sign in</a>
+    <a class="brand" href="/">
+      <span class="mark">B</span>
+      <span><b>BELM GENERAL TECH</b><small>Portal Registration Request</small></span>
+    </a>
+    <a class="login-link" href="/">Return to portal home</a>
   </header>
 
   <main class="page">
     <section class="intro">
-      <p class="eyebrow">ONE REGISTRATION POINT</p>
-      <h1>Register for the correct BELM Portal role</h1>
-      <p>Customers, Technicians and other staff register here. A request cannot open any dashboard until an administrator approves it and assigns the correct role.</p>
+      <p class="eyebrow">REQUEST REGISTRATION</p>
+      <h1>Request access to the BELM Portal</h1>
+      <p>Complete the correct form below. You cannot enter a dashboard until a BELM administrator reviews your request, assigns your role and approves it.</p>
       <ol class="steps">
-        <li><b>1</b><span>Choose Customer or Staff / Technician</span></li>
-        <li><b>2</b><span>Administrator verifies and assigns access</span></li>
-        <li><b>3</b><span>Receive link, password and recovery code</span></li>
+        <li><b>1</b><span>Submit your customer or staff details.</span></li>
+        <li><b>2</b><span>BELM Admin reviews and assigns access.</span></li>
+        <li><b>3</b><span>Approval generates your private login link, temporary password and recovery code.</span></li>
+        <li><b>4</b><span>Use that link for future Login or Forgot Password.</span></li>
       </ol>
     </section>
 
     <section class="form-card" id="applicationCard">
-      <form id="applicationForm" novalidate>
-        <div class="section-title"><span>1</span><div><b>Access type</b><small>Select the account you are requesting</small></div></div>
-        <div class="form-grid">
-          <label>Registration type
-            <select name="applicationType" id="applicationType" required>
-              <option value="CUSTOMER">Customer company</option>
-              <option value="SYSTEM_USER">Staff / Technician</option>
-            </select>
-          </label>
-          <label>Email address<input name="email" type="email" maxlength="255" required autocomplete="email"></label>
+      <form id="applicationForm">
+        <div class="section-title">
+          <span>1</span>
+          <div><b>Choose registration type</b><small>Admin assigns final access after review</small></div>
         </div>
+        <label class="wide">I am registering as
+          <select id="applicationType" name="applicationType" required>
+            <option value="CUSTOMER">Customer / Company</option>
+            <option value="SYSTEM_USER">Staff / Technician</option>
+          </select>
+        </label>
 
-        <div id="customerFields">
-          <div class="section-title"><span>2</span><div><b>Company information</b><small>These details will automatically create the customer record after approval</small></div></div>
+        <section id="customerFields" class="application-fields">
+          <div class="section-title">
+            <span>2</span>
+            <div><b>Customer and company details</b><small>These details will create the customer account after approval</small></div>
+          </div>
           <div class="form-grid">
-            <label class="wide">Company name<input name="companyName" maxlength="255" data-required autocomplete="organization"></label>
-            <label>Phone number<input name="phone" id="customerPhone" maxlength="50" data-required autocomplete="tel"></label>
-            <label>Company location<input name="address" maxlength="500" data-required autocomplete="street-address"></label>
-            <label>TIN number <small class="optional-tag">(optional)</small><input name="tinNumber" maxlength="50"></label>
-            <label>VRN number <small class="optional-tag">(optional)</small><input name="vrn" maxlength="50"></label>
+            <label>Company name
+              <input name="companyName" data-required required autocomplete="organization">
+            </label>
+            <label>Email address
+              <input name="email" type="email" data-required required autocomplete="email">
+            </label>
+            <label>Phone number
+              <input name="phone" data-required required autocomplete="tel">
+            </label>
+            <label>Company address
+              <input name="address" data-required required autocomplete="street-address">
+            </label>
+            <label>TIN number
+              <input name="tinNumber" data-required required>
+            </label>
+            <label>VRN number
+              <input name="vrn" data-required required>
+            </label>
           </div>
 
-          <div class="section-title"><span>3</span><div><b>Machine information</b><small>Optional — admin can add this after approval instead</small></div></div>
-          <div class="form-grid">
-            <label>Machine type <small class="optional-tag">(optional)</small><select name="machineType" id="machineType"><option value="">Select machine type</option></select></label>
-            <label>Machine / brand <small class="optional-tag">(optional)</small><select name="brand" id="brand" disabled><option value="">Select brand</option></select></label>
-            <label id="customBrandWrap" class="hidden">Enter machine brand<input id="customBrand" maxlength="100"></label>
-            <label>Machine model <small class="optional-tag">(optional)</small><select name="model" id="model" disabled><option value="">Select model</option></select></label>
-            <label id="customModelWrap" class="hidden">Enter machine model<input id="customModel" maxlength="255"></label>
-            <label>Machine registration number <small class="optional-tag">(optional)</small><input name="regNumber" maxlength="100"></label>
+          <div class="section-title">
+            <span>3</span>
+            <div><b>First machine</b><small>The machine is created only after Admin approval</small></div>
           </div>
-        </div>
-
-        <div id="userFields" class="hidden">
-          <div class="section-title"><span>2</span><div><b>User information</b><small>The administrator will verify and assign your actual system role</small></div></div>
           <div class="form-grid">
-            <label class="wide">Full name<input name="fullName" maxlength="255" data-required autocomplete="name"></label>
-            <label>Phone number<input name="phone" id="userPhone" maxlength="50" data-required autocomplete="tel"></label>
-            <label>Requested role
-              <select name="requestedRole" data-required>
-                <option value="">Select requested role</option>
-                <option value="Technician">Technician</option>
-                <option value="Service Manager">Service Manager</option>
-                <option value="Office / Accounts">Office / Accounts</option>
-                <option value="Other staff role">Other staff role</option>
+            <label>Machine type
+              <select id="machineType" name="machineType" data-required required>
+                <option value="">Select machine type</option>
               </select>
             </label>
-            <label class="wide">Reason / work responsibility<textarea name="reason" maxlength="800" rows="3" placeholder="Briefly explain why you need portal access"></textarea></label>
+            <label>Brand
+              <select id="brand" name="brand" data-required required disabled>
+                <option value="">Select brand</option>
+              </select>
+            </label>
+            <label id="customBrandWrap" class="hidden">Enter brand
+              <input id="customBrand">
+            </label>
+            <label>Model
+              <select id="model" name="model" data-required required disabled>
+                <option value="">Select model</option>
+              </select>
+            </label>
+            <label id="customModelWrap" class="hidden">Enter model
+              <input id="customModel">
+            </label>
+            <label>Machine registration number
+              <input name="regNumber" data-required required>
+            </label>
           </div>
-        </div>
+        </section>
 
-        <label class="bot-field" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+        <section id="userFields" class="application-fields hidden">
+          <div class="section-title">
+            <span>2</span>
+            <div><b>Staff or Technician details</b><small>Admin will assign the exact role and permitted dashboard</small></div>
+          </div>
+          <div class="form-grid">
+            <label>Full name
+              <input name="fullName" data-required required autocomplete="name">
+            </label>
+            <label>Email address
+              <input name="email" type="email" data-required required autocomplete="email">
+            </label>
+            <label>Phone number
+              <input name="phone" data-required required autocomplete="tel">
+            </label>
+            <label>Requested role
+              <select name="requestedRole" data-required required>
+                <option value="">Select requested role</option>
+                <option value="Technician">Technician</option>
+                <option value="Administrator">Administrator</option>
+                <option value="Finance / Accounts">Finance / Accounts</option>
+                <option value="Operations">Operations</option>
+                <option value="Other">Other</option>
+              </select>
+            </label>
+            <label class="wide">Work responsibility or reason
+              <textarea name="reason" rows="3" placeholder="Explain the work access you need"></textarea>
+            </label>
+          </div>
+        </section>
+
+        <label class="bot-field" aria-hidden="true">Website
+          <input name="website" tabindex="-1" autocomplete="off">
+        </label>
+        <label class="consent">
+          <input name="consent" type="checkbox" required>
+          <span>I confirm these details are correct and understand that registration does not provide access until BELM Admin approves it.</span>
+        </label>
         <div id="formError" class="alert error hidden" role="alert"></div>
-        <label class="consent"><input type="checkbox" name="consent" required> I confirm the information is correct and understand that access remains blocked until administrator approval.</label>
         <button id="submitButton" type="submit">Submit registration request</button>
-        <p class="privacy">Approval generates a temporary password and recovery code. Save both securely.</p>
+        <p class="privacy">No password is requested here. BELM generates it securely only after approval.</p>
       </form>
     </section>
 
     <section class="form-card success hidden" id="successCard">
       <div class="success-icon">✓</div>
-      <p class="eyebrow">APPLICATION RECEIVED</p>
-      <h2>Thank you. Registration is awaiting role approval.</h2>
-      <p>Keep this reference number:</p>
-      <strong id="referenceNo" class="reference"></strong>
-      <p>No dashboard is visible yet. After approval, BELM administration will provide your correct login link, temporary password and recovery code.</p>
-      <a class="secondary-button" href="/">Return to portal home</a>
+      <h2>Registration request submitted</h2>
+      <p>Your request is waiting for administrator approval. You do not have dashboard access yet.</p>
+      <strong class="reference" id="referenceNo"></strong>
+      <p>After approval, BELM will send your private login link, temporary password and recovery code.</p>
+      <a class="secondary-button" href="/">Return to Portal Home</a>
     </section>
   </main>
   <script src="/apply/app.js"></script>

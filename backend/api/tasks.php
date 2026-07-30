@@ -73,7 +73,6 @@ if ($method === 'POST') {
             $priority,
             $user['name'],
         ]);
-    log_activity($user['id'], 'created', 'task', $newId, ['title' => $title]);
     json_out(['id' => $newId], 201);
 }
 
@@ -81,13 +80,11 @@ if ($method === 'PUT') {
     $stmt = db()->prepare("UPDATE tasks SET status='DONE' WHERE id=?");
     $stmt->execute([$id]);
     if ($stmt->rowCount() === 0) json_error('Task not found.', 404);
-    log_activity($user['id'], 'completed', 'task', $id);
     json_out(['ok' => true]);
 }
 
 if ($method === 'DELETE') {
     db()->prepare('DELETE FROM tasks WHERE id = ?')->execute([$id]);
-    log_activity($user['id'], 'deleted', 'task', $id);
     json_out(null, 204);
 }
 

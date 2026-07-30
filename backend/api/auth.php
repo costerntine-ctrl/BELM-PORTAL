@@ -97,6 +97,163 @@ if ($action === 'recover' && $method === 'POST') {
     ]);
 }
 
+// POST /api/auth/unified-login
+// One secure entry point for administrators, Technicians, customers and
+// customer assistants. The verified account type determines the destination.
+if ($action === 'unified-login' && $method === 'POST') {
+    $b = body();
+    $rawLoginId = trim((string)($b['email'] ?? $b['loginId'] ?? $b['portalLink'] ?? ''));
+    $password = (string)($b['password'] ?? '');
+
+    if ($rawLoginId === '' || $password === '') {
+        json_error('Enter your email or Customer Portal ID and password.');
+    }
+
+    // Staff accounts use an email address. Technician accounts are staff
+    // accounts with a required customer assignment.
+    if (filter_var($rawLoginId, FILTER_VALIDATE_EMAIL)) {
+        $stmt = db()->prepare(
+            'SELECT u.*, r.name AS role_name, r.allowed_pages,
+                    c.name AS assigned_customer_name
+             FROM users u
+             JOIN roles r ON r.id = u.role_id
+             LEFT JOIN customers c ON c.id = u.assigned_customer_id
+                  AND c.deleted_at IS NULL AND c.is_active = 1
+             WHERE LOWER(u.email) = LOWER(?)
+               AND u.deleted_at IS NULL AND u.is_active = 1'
+        );
+        $stmt->execute([$rawLoginId]);
+        $user = $stmt->fetch();
+
+        if ($user && password_verify($password, $user['password_hash'])) {
+            if ($user['role_name'] === 'Technician') {
+                if (!$user['assigned_customer_id']) {
+                    json_error('This Technician account has not been assigned to a customer. Contact the administrator.', 403);
+                }
+                if (!$user['assigned_customer_name']) {
+                    json_error('The customer assigned to this Technician account is not available.', 403);
+                }
+            }
+
+            $allowedPages = $user['role_name'] === 'Super Admin'
+                ? null
+                : json_decode($user['allowed_pages'] ?? '[]', true);
+            $token = jwt_encode([
+                'type' => 'staff',
+                'id' => $user['id'],
+                'email' => $user['email'],
+                'name' => $user['name'],
+                'roleId' => $user['role_id'],
+                'roleName' => $user['role_name'],
+                'allowedPages' => $allowedPages,
+                'assignedCustomerId' => $user['assigned_customer_id'],
+            ]);
+
+            try {
+                db()->prepare('INSERT INTO activity_logs (id, user_id, action, created_at) VALUES (?,?,?,NOW())')
+                    ->execute([uuid(), $user['id'], 'LOGIN']);
+            } catch (Throwable $e) {}
+
+            $isTechnician = $user['role_name'] === 'Technician';
+            json_out([
+                'token' => $token,
+                'accountType' => $isTechnician ? 'technician' : 'admin',
+                'destination' => $isTechnician ? '/tech' : '/overview-manager/',
+                'user' => [
+                    'id' => $user['id'],
+                    'name' => $user['name'],
+                    'email' => $user['email'],
+                    'role' => $user['role_name'],
+                    'allowedPages' => $allowedPages,
+                    'assignedCustomerId' => $user['assigned_customer_id'],
+                    'assignedCustomerName' => $user['assigned_customer_name'],
+                ],
+            ]);
+        }
+    }
+
+    // Customers may enter either their email, Portal ID, or a full generated
+    // portal URL. Customer assistants use their own email and password.
+    $loginId = strtolower($rawLoginId);
+    $portalId = $rawLoginId;
+    if (filter_var($rawLoginId, FILTER_VALIDATE_URL)) {
+        $query = [];
+        parse_str(parse_url($rawLoginId, PHP_URL_QUERY) ?: '', $query);
+        $portalId = trim((string)($query['customer'] ?? ''));
+    }
+
+    $stmt = db()->prepare(
+        'SELECT * FROM customers
+         WHERE (LOWER(email) = ? OR portal_link = ?)
+           AND deleted_at IS NULL AND is_active = 1'
+    );
+    $stmt->execute([$loginId, $portalId]);
+    $customer = $stmt->fetch();
+    $loggedInAs = null;
+    $actorType = null;
+    $actorId = null;
+    $customerRole = null;
+
+    if ($customer && password_verify($password, $customer['password'])) {
+        $loggedInAs = $customer['name'];
+        $actorType = 'owner';
+        $actorId = $customer['id'];
+        $customerRole = 'owner';
+    } else {
+        $customer = null;
+        if (filter_var($rawLoginId, FILTER_VALIDATE_EMAIL)) {
+            $stmt = db()->prepare(
+                'SELECT cu.*, c.name AS customer_name, c.portal_link
+                 FROM customer_users cu
+                 JOIN customers c ON c.id = cu.customer_id
+                 WHERE LOWER(cu.email) = ? AND cu.is_active = 1
+                   AND c.deleted_at IS NULL AND c.is_active = 1'
+            );
+            $stmt->execute([$loginId]);
+            $subUser = $stmt->fetch();
+            if ($subUser && password_verify($password, $subUser['password'])) {
+                $stmt = db()->prepare(
+                    'SELECT * FROM customers
+                     WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+                );
+                $stmt->execute([$subUser['customer_id']]);
+                $customer = $stmt->fetch();
+                $loggedInAs = $subUser['name'];
+                $actorType = 'assistant';
+                $actorId = $subUser['id'];
+                $customerRole = $subUser['role'];
+            }
+        }
+    }
+
+    if (!$customer) json_error('Email, Customer Portal ID or password is incorrect.', 401);
+
+    $token = jwt_encode([
+        'type' => 'customer',
+        'id' => $customer['id'],
+        'name' => $customer['name'],
+        'portalLink' => $customer['portal_link'],
+        'actorType' => $actorType,
+        'actorId' => $actorId,
+        'actorName' => $loggedInAs,
+        'customerRole' => $customerRole,
+    ], 30 * 24 * 3600);
+
+    json_out([
+        'token' => $token,
+        'accountType' => 'customer',
+        'destination' => '/portal/dashboard',
+        'customer' => [
+            'id' => $customer['id'],
+            'name' => $customer['name'],
+            'loggedInAs' => $loggedInAs,
+            'actorType' => $actorType,
+            'role' => $customerRole,
+            'canManageAssistants' => $actorType === 'owner',
+        ],
+    ]);
+}
+
 // POST /api/auth.php?action=login  { email, password }
 if ($action === 'login' && $method === 'POST') {
     $b = body();

@@ -46,7 +46,7 @@ function role_payload(array $body, ?string $excludeRoleId = null): array {
 
     $allowedPageKeys = [
         'customers', 'overview', 'roles', 'service-requests', 'spare-parts',
-        'billing', 'reports', 'settings', 'checklist-templates', 'suppliers',
+        'billing', 'bank-manager', 'reports', 'settings', 'checklist-templates', 'suppliers',
         'activity-log',
     ];
     $requestedPages = is_array($body['allowedPages'] ?? null) ? $body['allowedPages'] : [];
@@ -135,7 +135,8 @@ if ($method === 'DELETE' && $action === 'roles') {
     $stmt = db()->prepare('SELECT COUNT(*) FROM users WHERE role_id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     if ($stmt->fetchColumn() > 0) json_error("Users still have this role. Reassign them first.", 409);
-    send_to_trash('role', $id, $role['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('role', $id, $role['name'], $user['id'], $reason);
     soft_delete('roles', $id);
     json_out(null, 204);
 }
@@ -197,12 +198,12 @@ if ($method === 'POST' && !$action) {
         $roleId,
         $assignedCustomerId,
     ]);
-    log_activity($user['id'], 'created', 'user', $newId, ['name' => $name]);
+    $loginPath = role_name($roleId) === 'Technician' ? '/tech' : '/admin/login';
     json_out([
         'id' => $newId,
         'temporaryPassword' => $password,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . (role_name($roleId) === 'Technician' ? '/tech' : '/admin/login'),
+        'loginUrl' => portal_base_url() . $loginPath,
     ], 201);
 }
 
@@ -221,7 +222,6 @@ if ($method === 'PUT' && !$action) {
     );
     db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
         ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
-    log_activity($user['id'], 'updated', 'user', $id, ['name' => $name]);
     json_out(['ok' => true, 'message' => 'User role and access updated successfully.']);
 }
 
@@ -231,23 +231,21 @@ if ($method === 'PUT' && $action === 'reset-password') {
     $stmt = db()->prepare(
         'UPDATE users
          SET password_hash = ?, recovery_code_hash = ?
-         WHERE id = ? AND deleted_at IS NULL'
+         WHERE id = ? AND deleted_at IS NULL
+         RETURNING email, role_id'
     );
     $stmt->execute([
         password_hash($newPassword, PASSWORD_BCRYPT),
         password_hash($recoveryCode, PASSWORD_BCRYPT),
         $id,
     ]);
-    if ($stmt->rowCount() === 0) json_error('User not found.', 404);
-    $roleRow = db()->prepare(
-        'SELECT r.name FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?'
-    );
-    $roleRow->execute([$id]);
-    $resetRoleName = $roleRow->fetchColumn();
+    $resetUser = $stmt->fetch();
+    if (!$resetUser) json_error('User not found.', 404);
+    $loginPath = role_name((string)$resetUser['role_id']) === 'Technician' ? '/tech' : '/admin/login';
     json_out([
         'newPassword' => $newPassword,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . ($resetRoleName === 'Technician' ? '/tech' : '/admin/login'),
+        'loginUrl' => portal_base_url() . $loginPath,
     ]);
 }
 
@@ -271,9 +269,9 @@ if ($method === 'DELETE' && !$action) {
             json_error('Create another active Super Admin before deleting this account.', 409);
         }
     }
-    send_to_trash('user', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('user', $id, $row['name'], $user['id'], $reason);
     soft_delete('users', $id);
-    log_activity($user['id'], 'deleted', 'user', $id, ['name' => $row['name']]);
     json_out(null, 204);
 }
 

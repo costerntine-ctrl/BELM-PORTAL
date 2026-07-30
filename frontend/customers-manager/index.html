@@ -9,21 +9,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/customers-manager/manager.css">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/admin-menu/">
+      <a class="brand" href="/overview-manager/">
         <span class="brand-mark">B</span>
-        <span>BELM General Tech <small>Admin Main Menu</small></span>
+        <span>BELM General Tech <small>Admin Overview</small></span>
       </a>
       <div class="top-actions">
-        <a class="ghost" href="/admin-menu/">← Main Menu</a>
+        <a class="ghost" href="/overview-manager/">← All Overview</a>
         <a class="ghost" href="/admin-applications/">Access Applications</a>
         <button id="logoutButton" class="ghost" type="button">Log out</button>
       </div>
     </header>
 
-    <nav class="admin-menu" aria-label="Admin main menu">
+    <nav class="admin-menu" aria-label="Admin navigation">
       <a class="active" href="/customers-manager/">Customers</a>
       <a href="/checklist-manager/">Checklists</a>
       <a href="/service-request-manager/">Service Requests</a>
@@ -31,8 +32,8 @@
       <a href="/billing-manager/">Billing</a>
       <a href="/roles-manager/">Roles & Users</a>
       <a href="/suppliers-manager/">Suppliers</a>
-      <a href="/admin/reports">Reports</a>
-      <a href="/admin/settings">Settings</a>
+      <a href="/reports-manager/">Reports</a>
+      <a href="/settings-manager/">Settings</a>
     </nav>
 
     <main class="shell">
@@ -127,12 +128,71 @@
         </div>
         <div class="dialog-actions">
           <button id="copyCredentialsButton" class="secondary" type="button">Copy all</button>
+          <button id="copyCredentialLinkButton" class="secondary" type="button">Copy link</button>
+          <button id="copyCredentialPasswordButton" class="secondary" type="button">Copy password</button>
           <a id="openCredentialLink" class="primary" target="_blank" rel="noopener">Open customer link</a>
         </div>
       </div>
     </dialog>
 
+    <dialog id="reportsDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Checklist History</p><h2 id="reportsDialogTitle">Reports</h2></div>
+          <button class="icon-close" data-close="reportsDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="reportsList" class="reports-list"></div>
+      </div>
+    </dialog>
+
+    <dialog id="reportViewDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Checked Report</p><h2 id="reportViewTitle">Report detail</h2></div>
+          <button class="icon-close" data-close="reportViewDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="reportViewBody" class="report-view-body"></div>
+      </div>
+    </dialog>
+
+    <dialog id="checkupDialog">
+      <form id="checkupForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Machine Check-up</p><h2 id="checkupDialogTitle">Check-up</h2></div>
+          <button class="icon-close" data-close="checkupDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="checkupMachineId" type="hidden">
+        <div id="checkupFormAlert" class="alert error hidden"></div>
+        <label>Checklist template
+          <select id="checkupTemplate"></select>
+        </label>
+        <label>Hour meter reading<input id="checkupHourMeter" type="number" min="0" step="0.1" required></label>
+        <label class="toggle-row"><input id="checkupIsServiceDay" type="checkbox"> Is this a service day?</label>
+        <div id="checkupServiceFields" class="two-column hidden">
+          <label>Service date<input id="checkupServiceDate" type="date"></label>
+          <label>Service type
+            <select id="checkupServiceType">
+              <option value="">Select service type</option>
+              <option value="80_HOUR">80-Hour Service</option>
+              <option value="250_HOUR">250-Hour Service</option>
+              <option value="500_HOUR">500-Hour Service</option>
+              <option value="1000_HOUR">1000-Hour Service</option>
+              <option value="ANNUAL">Annual Service</option>
+              <option value="OTHER">Other Service</option>
+            </select>
+          </label>
+        </div>
+        <div id="checkupItems" class="checkup-items"></div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="checkupDialog" type="button">Cancel</button>
+          <button id="saveCheckupButton" class="primary" type="submit">Save check-up</button>
+        </div>
+      </form>
+    </dialog>
+
     <script src="/admin-access.js"></script>
+    <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+    <script src="/delete-confirm.js"></script>
     <script src="/customers-manager/manager.js"></script>
   </body>
 </html>

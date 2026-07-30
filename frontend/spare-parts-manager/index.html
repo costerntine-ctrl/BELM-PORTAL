@@ -7,16 +7,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/admin-tools.css?v=2-tech-spare-alert">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/admin-menu/">
+      <a class="brand" href="/overview-manager/">
         <span class="brand-mark">B</span>
         <span>BELM General Tech <small>Spare Parts Manager</small></span>
       </a>
       <div class="top-actions">
-        <a class="ghost" href="/admin-menu/">← Back to Main Menu</a>
+        <a class="ghost" href="/overview-manager/">← All Overview</a>
         <button id="refreshButton" class="ghost" type="button">Refresh</button>
       </div>
     </header>
@@ -40,6 +41,17 @@
 
       <div id="pageAlert" class="alert hidden" role="status"></div>
 
+      <section class="panel request-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Technician spare alerts</h2>
+            <p class="muted">Stock is 0. Add the part to Inventory or mark it for purchase.</p>
+          </div>
+          <span id="requestCount" class="badge warn">0 open</span>
+        </div>
+        <div id="requestsPanel" class="loading">Loading Technician requests…</div>
+      </section>
+
       <section class="panel">
         <div class="panel-head">
           <h2>Saved spare parts</h2>
@@ -57,6 +69,7 @@
         </div>
         <input id="partId" type="hidden">
         <div id="formAlert" class="alert error hidden"></div>
+        <div id="requestContext" class="alert hidden"></div>
         <div class="form-grid">
           <label>Part number<input id="partNumber" required maxlength="100" placeholder="e.g. CAT-1R-0750"></label>
           <label>Name<input id="partName" required maxlength="255" placeholder="Spare part name"></label>
@@ -74,6 +87,8 @@
     </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/spare-parts-manager/manager.js"></script>
+    <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+    <script src="/delete-confirm.js"></script>
+    <script src="/spare-parts-manager/manager.js?v=2-tech-spare-alert"></script>
   </body>
 </html>

@@ -9,12 +9,13 @@
 
   const pageOptions = [
     ["customers", "Customers"],
-    ["overview", "Dashboard overview"],
+    ["overview", "All Overview"],
     ["roles", "Roles & system users"],
     ["service-requests", "Service requests"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
-    ["reports", "Reports"],
+    ["bank-manager", "Bank Manager"],
+    ["reports", "Reports & comparisons"],
     ["settings", "System settings"],
     ["checklist-templates", "Checklist templates"],
     ["suppliers", "Suppliers"],
@@ -331,9 +332,14 @@
 
   async function deleteUser(id) {
     const user = users.find((item) => item.id === id);
-    if (!user || !confirm(`Delete system user ${user.name}? The record will move to the Recycle Bin.`)) return;
+    if (!user) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete system user?",
+      message: `Delete system user ${user.name}? The record will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/users/${id}`, { method: "DELETE" });
+      await api(`/users/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("System user moved to the Recycle Bin.");
     } catch (error) {

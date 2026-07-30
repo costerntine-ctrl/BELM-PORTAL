@@ -73,7 +73,18 @@
           </div>
           <span class="priority ${escapeHtml(request.priority)}">${escapeHtml(request.priority)}</span>
         </div>
+        ${request.serviceType ? `<div class="service-type"><b>Service type:</b> ${escapeHtml(request.serviceType)}</div>` : ""}
         <div class="description">${escapeHtml(request.description)}</div>
+        ${(request.serviceParts || []).length ? `
+          <div class="request-parts">
+            <b>Synchronized service parts</b>
+            <div>
+              ${request.serviceParts.map((part) => `
+                <span>${escapeHtml(part.spareName)} · ${escapeHtml(part.partNumber)} · Qty ${Number(part.quantity).toLocaleString("en-TZ")}</span>
+              `).join("")}
+            </div>
+          </div>
+        ` : ""}
         <div class="control-grid">
           <label>Assigned Technician
             <select data-assign="${escapeHtml(request.id)}">${technicianOptions(request)}</select>

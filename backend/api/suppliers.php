@@ -114,7 +114,6 @@ if ($method === 'POST') {
             $supplier['location'], $supplier['notes'], $supplier['verified'],
         ]);
     $assessment = supplier_trust_assessment($supplier);
-    log_activity($user['id'], 'created', 'supplier', $newId, ['name' => $supplier['name']]);
     json_out(['id' => $newId, 'trustScore' => $assessment['score'], 'trustStatus' => $assessment['status']], 201);
 }
 
@@ -128,7 +127,6 @@ if ($method === 'PUT') {
     ]);
     if ($stmt->rowCount() === 0) json_error('Supplier not found.', 404);
     $assessment = supplier_trust_assessment($supplier);
-    log_activity($user['id'], 'updated', 'supplier', $id, ['name' => $supplier['name']]);
     json_out(['ok' => true, 'trustScore' => $assessment['score'], 'trustStatus' => $assessment['status']]);
 }
 
@@ -137,9 +135,9 @@ if ($method === 'DELETE') {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('supplier', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('supplier', $id, $row['name'], $user['id'], $reason);
     soft_delete('suppliers', $id);
-    log_activity($user['id'], 'deleted', 'supplier', $id, ['name' => $row['name']]);
     json_out(null, 204);
 }
 

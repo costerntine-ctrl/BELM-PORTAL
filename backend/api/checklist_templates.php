@@ -30,12 +30,37 @@ function fetch_items(string $templateId): array {
     $stmt->execute([$templateId]);
     $items = $stmt->fetchAll();
     foreach ($items as &$it) {
+        $it['inputType'] = $it['input_type'];
+        $it['safetyLevel'] = $it['safety_level'];
         $it['options'] = $it['options'] ? json_decode($it['options'], true) : null;
         $it['optionSafety'] = $it['option_safety'] ? json_decode($it['option_safety'], true) : null;
         $it['isRequired'] = (bool)$it['is_required'];
-        unset($it['option_safety'], $it['is_required']);
+        unset(
+            $it['input_type'],
+            $it['safety_level'],
+            $it['option_safety'],
+            $it['is_required']
+        );
     }
     return $items;
+}
+
+function fetch_service_parts(string $templateId): array {
+    $stmt = db()->prepare(
+        'SELECT id, spare_name, part_number, quantity, "order"
+         FROM checklist_template_parts
+         WHERE template_id = ?
+         ORDER BY "order" ASC'
+    );
+    $stmt->execute([$templateId]);
+    $parts = $stmt->fetchAll();
+    foreach ($parts as &$part) {
+        $part['spareName'] = $part['spare_name'];
+        $part['partNumber'] = $part['part_number'];
+        unset($part['spare_name'], $part['part_number']);
+    }
+    unset($part);
+    return $parts;
 }
 
 function fetch_template(string $templateId): ?array {
@@ -43,10 +68,28 @@ function fetch_template(string $templateId): ?array {
     $stmt->execute([$templateId]);
     $template = $stmt->fetch();
     if (!$template) return null;
+    $template['machineType'] = $template['machine_type'];
     $template['isActive'] = (bool)$template['is_active'];
-    unset($template['is_active']);
+    $template['serviceType'] = $template['service_type'] ?: 'General Service';
+    unset($template['machine_type'], $template['is_active'], $template['service_type']);
     $template['items'] = fetch_items($templateId);
+    $template['serviceParts'] = fetch_service_parts($templateId);
     return $template;
+}
+
+function normalize_service_part(array $part, int $order): array {
+    $spareName = trim((string)($part['spareName'] ?? $part['spare_name'] ?? ''));
+    $partNumber = strtoupper(trim((string)($part['partNumber'] ?? $part['part_number'] ?? '')));
+    $quantity = (float)($part['quantity'] ?? 0);
+    if ($spareName === '') json_error('Every service part must have a spare-parts name.');
+    if ($partNumber === '') json_error("Add a part number for \"$spareName\".");
+    if ($quantity <= 0) json_error("Quantity for \"$spareName\" must be greater than zero.");
+    return [
+        'spareName' => $spareName,
+        'partNumber' => $partNumber,
+        'quantity' => $quantity,
+        'order' => $order,
+    ];
 }
 
 function normalize_template_item(array $item, int $order): array {
@@ -102,8 +145,10 @@ function normalize_template_item(array $item, int $order): array {
 function normalize_template_payload(array $body, bool $requireItems): array {
     $name = trim((string)($body['name'] ?? ''));
     $machineType = trim((string)($body['machineType'] ?? ''));
+    $serviceType = trim((string)($body['serviceType'] ?? 'General Service'));
     if ($name === '') json_error('Template name is required.');
     if ($machineType === '') json_error('Machine type is required.');
+    if ($serviceType === '') json_error('Service type is required.');
 
     $normalizedItems = null;
     if (array_key_exists('items', $body)) {
@@ -118,11 +163,23 @@ function normalize_template_payload(array $body, bool $requireItems): array {
         json_error('Add at least one checklist item before saving.');
     }
 
+    $normalizedServiceParts = null;
+    if (array_key_exists('serviceParts', $body)) {
+        if (!is_array($body['serviceParts'])) json_error('Service parts must be a list.');
+        $normalizedServiceParts = [];
+        foreach ($body['serviceParts'] as $order => $part) {
+            if (!is_array($part)) json_error('Invalid service part.');
+            $normalizedServiceParts[] = normalize_service_part($part, $order);
+        }
+    }
+
     return [
         'name' => $name,
         'machineType' => $machineType,
+        'serviceType' => $serviceType,
         'isActive' => array_key_exists('isActive', $body) ? ((bool)$body['isActive'] ? 1 : 0) : 1,
         'items' => $normalizedItems,
+        'serviceParts' => $normalizedServiceParts,
     ];
 }
 
@@ -146,6 +203,23 @@ function insert_template_item(string $templateId, array $item, ?string $itemId =
     return $newId;
 }
 
+function insert_template_service_part(string $templateId, array $part): string {
+    $newId = uuid();
+    db()->prepare(
+        'INSERT INTO checklist_template_parts
+         (id, template_id, spare_name, part_number, quantity, "order")
+         VALUES (?,?,?,?,?,?)'
+    )->execute([
+        $newId,
+        $templateId,
+        $part['spareName'],
+        $part['partNumber'],
+        $part['quantity'],
+        $part['order'],
+    ]);
+    return $newId;
+}
+
 if ($method === 'GET' && !$action) {
     $machineType = $_GET['machineType'] ?? null;
     if ($machineType) {
@@ -161,9 +235,12 @@ if ($method === 'GET' && !$action) {
     }
     $templates = $stmt->fetchAll();
     foreach ($templates as &$t) {
+        $t['machineType'] = $t['machine_type'];
         $t['isActive'] = (bool)$t['is_active'];
-        unset($t['is_active']);
+        $t['serviceType'] = $t['service_type'] ?: 'General Service';
+        unset($t['machine_type'], $t['is_active'], $t['service_type']);
         $t['items'] = fetch_items($t['id']);
+        $t['serviceParts'] = fetch_service_parts($t['id']);
     }
     json_out($templates);
 }
@@ -180,9 +257,21 @@ if ($method === 'POST' && !$action) {
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->prepare('INSERT INTO checklist_templates (id, name, machine_type, is_active, created_at) VALUES (?,?,?,?,NOW())')
-            ->execute([$newId, $payload['name'], $payload['machineType'], $payload['isActive']]);
+        $pdo->prepare(
+            'INSERT INTO checklist_templates
+             (id, name, machine_type, service_type, is_active, created_at)
+             VALUES (?,?,?,?,?,NOW())'
+        )->execute([
+            $newId,
+            $payload['name'],
+            $payload['machineType'],
+            $payload['serviceType'],
+            $payload['isActive'],
+        ]);
         foreach ($payload['items'] as $item) insert_template_item($newId, $item);
+        foreach ($payload['serviceParts'] ?? [] as $part) {
+            insert_template_service_part($newId, $part);
+        }
         $pdo->commit();
     } catch (Throwable $error) {
         if ($pdo->inTransaction()) $pdo->rollBack();
@@ -192,16 +281,30 @@ if ($method === 'POST' && !$action) {
 }
 
 if ($method === 'PUT' && !$action) {
-    if (!fetch_template($id)) json_error('Checklist template not found.', 404);
+    $existing = fetch_template($id);
+    if (!$existing) json_error('Checklist template not found.', 404);
     $payload = normalize_template_payload(body(), false);
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->prepare('UPDATE checklist_templates SET name=?, machine_type=?, is_active=? WHERE id=?')
-            ->execute([$payload['name'], $payload['machineType'], $payload['isActive'], $id]);
+        $pdo->prepare(
+            'UPDATE checklist_templates
+             SET name=?, machine_type=?, service_type=?, is_active=?
+             WHERE id=?'
+        )->execute([
+            $payload['name'],
+            $payload['machineType'],
+            $payload['serviceType'] ?: ($existing['serviceType'] ?? 'General Service'),
+            $payload['isActive'],
+            $id,
+        ]);
         if ($payload['items'] !== null) {
             $pdo->prepare('DELETE FROM checklist_template_items WHERE template_id = ?')->execute([$id]);
             foreach ($payload['items'] as $item) insert_template_item($id, $item);
+        }
+        if ($payload['serviceParts'] !== null) {
+            $pdo->prepare('DELETE FROM checklist_template_parts WHERE template_id = ?')->execute([$id]);
+            foreach ($payload['serviceParts'] as $part) insert_template_service_part($id, $part);
         }
         $pdo->commit();
     } catch (Throwable $error) {
@@ -252,7 +355,8 @@ if ($method === 'DELETE' && !$action) {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('template', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('template', $id, $row['name'], $user['id'], $reason);
     soft_delete('checklist_templates', $id);
     json_out(null, 204);
 }

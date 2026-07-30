@@ -77,19 +77,39 @@
 
   function machineCard(customerId, machine) {
     const status = String(machine.status || "NOT_CHECKED").toUpperCase();
-    return `<article class="machine-card ${escapeHtml(status)}">
-      <span class="status-bar"></span>
+    const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
+    return `<article class="machine-card ${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <h4>${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}</h4>
         <p>${escapeHtml(machine.machineType)} · Reg: ${escapeHtml(machine.regNumber || "—")} · Serial: ${escapeHtml(machine.serialNumber || "—")}</p>
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
+        ${reasons.length ? `<span class="machine-alert-reason">${escapeHtml(reasons[0])}</span>` : '<span class="machine-alert-reason"></span>'}
       </div>
       <div class="machine-actions">
+        <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Reports</button>
+        <button data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Check-up</button>
         <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
         <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
       </div>
     </article>`;
   }
+
+  function rotateMachineAlertReasons() {
+    document.querySelectorAll(".machine-card[data-reasons]").forEach((card) => {
+      let reasons;
+      try {
+        reasons = JSON.parse(card.dataset.reasons || "[]");
+      } catch (_) {
+        return;
+      }
+      if (!Array.isArray(reasons) || reasons.length < 2) return;
+      const index = (Number(card.dataset.reasonIndex || 0) + 1) % reasons.length;
+      card.dataset.reasonIndex = String(index);
+      const label = card.querySelector(".machine-alert-reason");
+      if (label) label.textContent = reasons[index];
+    });
+  }
+  setInterval(rotateMachineAlertReasons, 3000);
 
   function renderCustomers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
@@ -276,9 +296,14 @@
 
   async function removeCustomer(id) {
     const customer = customers.find((item) => item.id === id);
-    if (!customer || !confirm(`Delete customer ${customer.name}? The record will move to the Recycle Bin.`)) return;
+    if (!customer) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete customer?",
+      message: `Delete customer ${customer.name}? The record will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/customers/${id}`, { method: "DELETE" });
+      await api(`/customers/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Customer moved to the Recycle Bin.");
     } catch (error) { showAlert(error.message, true); }
@@ -298,13 +323,165 @@
 
   async function removeMachine(id) {
     const machine = customers.flatMap((customer) => customer.machines || []).find((item) => item.id === id);
-    if (!machine || !confirm(`Delete machine ${machine.model}?`)) return;
+    if (!machine) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete machine?",
+      message: `Delete machine ${machine.model}? The record will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/customers/machines/${id}`, { method: "DELETE" });
+      await api(`/customers/machines/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Machine moved to the Recycle Bin.");
     } catch (error) { showAlert(error.message, true); }
   }
+
+  let cachedMachineReports = [];
+
+  async function openMachineReports(machineId, machineName) {
+    document.getElementById("reportsDialogTitle").textContent = `${machineName} — Checklist Reports`;
+    const list = document.getElementById("reportsList");
+    list.innerHTML = '<p class="muted">Loading reports…</p>';
+    document.getElementById("reportsDialog").showModal();
+    try {
+      cachedMachineReports = await api(`/checklist-reports?action=for-machine&machineId=${encodeURIComponent(machineId)}`);
+      list.innerHTML = cachedMachineReports.length ? cachedMachineReports.map((report) => `
+        <article class="report-item">
+          <div>
+            <strong>${escapeHtml(report.templateName || "Checklist report")}</strong>
+            <span>${escapeHtml(new Date(report.createdAt).toLocaleString())} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</span>
+          </div>
+          <span class="machine-status ${escapeHtml(String(report.overallStatus || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(report.overallStatus))}</span>
+          <button type="button" data-view-report="${escapeHtml(report.id)}">View</button>
+        </article>`).join("") : '<p class="muted">No checklist reports recorded for this machine yet.</p>';
+    } catch (error) {
+      list.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  function viewReport(reportId) {
+    const report = cachedMachineReports.find((item) => String(item.id) === String(reportId));
+    const body = document.getElementById("reportViewBody");
+    document.getElementById("reportViewDialog").showModal();
+    if (!report) {
+      body.innerHTML = '<p class="muted">Report not found.</p>';
+      return;
+    }
+    document.getElementById("reportViewTitle").textContent = report.templateName || "Report detail";
+    const answers = Array.isArray(report.answers) ? report.answers : [];
+    body.innerHTML = `
+      <p class="muted">${escapeHtml(new Date(report.createdAt).toLocaleString())} · Filled by ${escapeHtml(report.filledBy || "—")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</p>
+      <table><thead><tr><th>Item</th><th>Result</th><th>Status</th></tr></thead>
+      <tbody>${answers.length ? answers.map((answer) => `
+        <tr>
+          <td>${escapeHtml(answer.label)}</td>
+          <td>${escapeHtml(answer.value || "—")}</td>
+          <td><span class="machine-status ${escapeHtml(String(answer.safetyLevel || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(answer.safetyLevel))}</span></td>
+        </tr>`).join("") : '<tr><td colspan="3" class="muted">No answers recorded.</td></tr>'}</tbody></table>`;
+  }
+
+  function checkupItemControl(item) {
+    const inputType = String(item.inputType || "TEXT").toUpperCase();
+    const options = Array.isArray(item.options) ? item.options : [];
+    const required = item.isRequired ? "required" : "";
+    const common = `data-checkup-item="${escapeHtml(item.id)}" ${required}`;
+    if (inputType === "DROPDOWN" || inputType === "YES_NO") {
+      const selectOptions = options.length ? options : (inputType === "YES_NO" ? ["Yes", "No"] : []);
+      return `<select ${common}><option value="">Select result</option>${selectOptions.map((option) =>
+        `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}</select>`;
+    }
+    if (inputType === "NUMBER") return `<input ${common} type="number" step="any">`;
+    if (inputType === "DATE") return `<input ${common} type="date">`;
+    return `<input ${common} type="text">`;
+  }
+
+  async function openMachineCheckup(machineId, machineType, machineName) {
+    document.getElementById("checkupDialogTitle").textContent = `${machineName} — Check-up`;
+    document.getElementById("checkupMachineId").value = machineId;
+    document.getElementById("checkupForm").reset();
+    document.getElementById("checkupFormAlert").classList.add("hidden");
+    document.getElementById("checkupServiceFields").classList.add("hidden");
+    document.getElementById("checkupItems").innerHTML = '<p class="muted">Loading checklist template…</p>';
+    document.getElementById("checkupDialog").showModal();
+    try {
+      const templates = await api(`/checklist-templates?machineType=${encodeURIComponent(machineType)}`);
+      const active = templates.filter((template) => template.isActive);
+      const select = document.getElementById("checkupTemplate");
+      select.innerHTML = active.length
+        ? active.map((template) => `<option value="${escapeHtml(template.id)}">${escapeHtml(template.name)}</option>`).join("")
+        : '<option value="">No checklist template for this machine type</option>';
+      select.dataset.templates = JSON.stringify(active);
+      renderCheckupItems();
+      select.onchange = renderCheckupItems;
+    } catch (error) {
+      document.getElementById("checkupItems").innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  function renderCheckupItems() {
+    const select = document.getElementById("checkupTemplate");
+    let templates = [];
+    try { templates = JSON.parse(select.dataset.templates || "[]"); } catch (_) {}
+    const template = templates.find((item) => item.id === select.value);
+    const container = document.getElementById("checkupItems");
+    if (!template) {
+      container.innerHTML = '<p class="muted">Select a checklist template.</p>';
+      return;
+    }
+    const items = Array.isArray(template.items) ? template.items : [];
+    container.innerHTML = items.length
+      ? items.map((item) => `<label class="wide">${escapeHtml(item.label)}${item.isRequired ? " *" : ""}${checkupItemControl(item)}</label>`).join("")
+      : '<p class="muted">This template has no checklist items.</p>';
+  }
+
+  document.getElementById("checkupIsServiceDay")?.addEventListener("change", (event) => {
+    document.getElementById("checkupServiceFields").classList.toggle("hidden", !event.target.checked);
+  });
+
+  document.getElementById("checkupForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = document.getElementById("saveCheckupButton");
+    const alertBox = document.getElementById("checkupFormAlert");
+    const templateId = document.getElementById("checkupTemplate").value;
+    if (!templateId) {
+      alertBox.textContent = "Select a checklist template.";
+      alertBox.classList.remove("hidden");
+      return;
+    }
+    const answers = Array.from(document.querySelectorAll("[data-checkup-item]")).map((field) => ({
+      templateItemId: field.dataset.checkupItem,
+      value: field.value,
+    }));
+    const isServiceDay = document.getElementById("checkupIsServiceDay").checked;
+    button.disabled = true;
+    try {
+      await api("/checklist-reports?action=submit", {
+        method: "POST",
+        body: JSON.stringify({
+          machineId: document.getElementById("checkupMachineId").value,
+          templateId,
+          hourMeterReading: Number(document.getElementById("checkupHourMeter").value),
+          answers,
+          isServiceDay,
+          serviceDate: isServiceDay ? document.getElementById("checkupServiceDate").value : undefined,
+          serviceType: isServiceDay ? document.getElementById("checkupServiceType").value : undefined,
+        }),
+      });
+      document.getElementById("checkupDialog").close();
+      showAlert("Check-up saved successfully.");
+      await load();
+    } catch (error) {
+      alertBox.textContent = error.message;
+      alertBox.classList.remove("hidden");
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById("reportsList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-view-report]");
+    if (button) viewReport(button.dataset.viewReport);
+  });
 
   document.getElementById("addCustomerButton").addEventListener("click", () => openCustomer());
   document.getElementById("logoutButton").addEventListener("click", () => {
@@ -322,6 +499,12 @@
     const text = `Email: ${document.getElementById("credentialEmail").value}\nTemporary password: ${document.getElementById("credentialPassword").value}\nRecovery code: ${document.getElementById("credentialRecovery").value}\nPortal link: ${document.getElementById("credentialLink").value}`;
     copyText(text, "Customer login information copied.");
   });
+  document.getElementById("copyCredentialLinkButton").addEventListener("click", () => {
+    copyText(document.getElementById("credentialLink").value, "Customer portal link copied.");
+  });
+  document.getElementById("copyCredentialPasswordButton").addEventListener("click", () => {
+    copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
+  });
   document.getElementById("customerGrid").addEventListener("click", (event) => {
     const addMachine = event.target.closest("[data-add-machine]");
     const editMachine = event.target.closest("[data-edit-machine]");
@@ -330,6 +513,10 @@
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
     const copyLink = event.target.closest("[data-copy-link]");
+    const viewReports = event.target.closest("[data-view-reports]");
+    const doCheckup = event.target.closest("[data-checkup]");
+    if (viewReports) openMachineReports(viewReports.dataset.viewReports, viewReports.dataset.machineName);
+    if (doCheckup) openMachineCheckup(doCheckup.dataset.checkup, doCheckup.dataset.machineType, doCheckup.dataset.machineName);
     if (addMachine) openMachine(customers.find((customer) => customer.id === addMachine.dataset.addMachine));
     if (editMachine) {
       const customer = customers.find((item) => item.id === editMachine.dataset.customer);

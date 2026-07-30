@@ -77,7 +77,11 @@ if ($method === 'GET' && !$action) {
         ? ($user['assignedCustomerId'] ?? null)
         : null;
     if (($user['roleName'] ?? '') === 'Technician') {
-        $stmt = db()->prepare('SELECT id, name FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+        $stmt = db()->prepare(
+            'SELECT id, name, email, phone, address, tin_number, vrn, is_active
+             FROM customers
+             WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+        );
         $stmt->execute([$assigned]);
     } elseif ($q) {
         $stmt = db()->prepare('SELECT * FROM customers WHERE deleted_at IS NULL AND (name LIKE ? OR email LIKE ? OR phone LIKE ?) ORDER BY created_at DESC');
@@ -100,7 +104,9 @@ if ($method === 'GET' && !$action) {
 if ($method === 'GET' && $action === 'one') {
     require_customer_read_access($user, $id);
     $sql = ($user['roleName'] ?? '') === 'Technician'
-        ? 'SELECT id, name FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+        ? 'SELECT id, name, email, phone, address, tin_number, vrn, is_active
+           FROM customers
+           WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
         : 'SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL';
     $stmt = db()->prepare($sql);
     $stmt->execute([$id]);
@@ -136,13 +142,12 @@ if ($method === 'POST' && !$action) {
             password_hash($recoveryCode, PASSWORD_BCRYPT),
         ]);
 
-    log_activity($user['id'], 'created', 'customer', $newId, ['name' => $details['name']]);
     json_out([
         'id' => $newId,
         'portalLoginInfo' => [
-            'portalLink' => customer_portal_url($portalLink),
+            'portalLink' => customer_portal_url($portalLink, $details['email']),
             'portalId' => $portalLink,
-            'portalUrl' => customer_portal_url($portalLink),
+            'portalUrl' => customer_portal_url($portalLink, $details['email']),
             'temporaryPassword' => $tempPassword,
             'recoveryCode' => $recoveryCode,
         ],
@@ -156,17 +161,20 @@ if ($method === 'PUT' && $action === 'reset-password') {
     $stmt = db()->prepare(
         'UPDATE customers
          SET password = ?, recovery_code_hash = ?
-         WHERE id = ? AND deleted_at IS NULL'
+         WHERE id = ? AND deleted_at IS NULL
+         RETURNING email, portal_link'
     );
     $stmt->execute([
         password_hash($temporaryPassword, PASSWORD_BCRYPT),
         password_hash($recoveryCode, PASSWORD_BCRYPT),
         $id,
     ]);
-    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
+    $resetCustomer = $stmt->fetch();
+    if (!$resetCustomer) json_error('Customer not found.', 404);
     json_out([
         'temporaryPassword' => $temporaryPassword,
         'recoveryCode' => $recoveryCode,
+        'loginUrl' => customer_portal_url($resetCustomer['portal_link'], $resetCustomer['email']),
     ]);
 }
 
@@ -195,7 +203,6 @@ if ($method === 'PUT' && !$action) {
             $isActive,
             $id,
         ]);
-    log_activity($user['id'], 'updated', 'customer', $id, ['name' => $details['name']]);
     json_out([
         'ok' => true,
         'portalLink' => $portalLink,
@@ -210,9 +217,9 @@ if ($method === 'DELETE' && !$action) {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('customer', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('customer', $id, $row['name'], $user['id'], $reason);
     soft_delete('customers', $id);
-    log_activity($user['id'], 'deleted', 'customer', $id, ['name' => $row['name']]);
     json_out(null, 204);
 }
 
@@ -314,7 +321,8 @@ if ($method === 'DELETE' && $action === 'delete-machine') {
     $stmt->execute([$machineId]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('machine', $machineId, $row['model'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('machine', $machineId, $row['model'], $user['id'], $reason);
     soft_delete('machines', $machineId);
     json_out(null, 204);
 }
@@ -323,7 +331,29 @@ if ($method === 'DELETE' && $action === 'delete-machine') {
 function fetch_machines(string $customerId): array {
     $stmt = db()->prepare('SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at ASC');
     $stmt->execute([$customerId]);
-    return $stmt->fetchAll();
+    $machines = $stmt->fetchAll();
+
+    $reasonStmt = db()->prepare(
+        "SELECT ca.label, ca.value, ca.safety_level
+         FROM checklist_answers ca
+         WHERE ca.report_id = (
+           SELECT id FROM checklist_reports
+           WHERE machine_id = ? ORDER BY created_at DESC LIMIT 1
+         )
+         AND ca.safety_level IN ('YELLOW', 'RED')
+         ORDER BY CASE ca.safety_level WHEN 'RED' THEN 0 ELSE 1 END, ca.label ASC"
+    );
+    foreach ($machines as &$machine) {
+        $reasonStmt->execute([$machine['id']]);
+        $flags = $reasonStmt->fetchAll();
+        $machine['alertReasons'] = array_map(
+            static fn(array $flag): string => trim($flag['label'] . ($flag['value'] !== '' ? ': ' . $flag['value'] : '')),
+            $flags
+        );
+    }
+    unset($machine);
+
+    return $machines;
 }
 function fetch_customer_users(string $customerId): array {
     $stmt = db()->prepare('SELECT id, name, email, phone, role, is_active, created_at FROM customer_users WHERE customer_id = ?');

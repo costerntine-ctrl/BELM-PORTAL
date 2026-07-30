@@ -83,6 +83,20 @@ function machine_expense_rows(string $customerId, string $machineId): array {
     return $stmt->fetchAll();
 }
 
+function petty_cash_rows(string $customerId, string $machineId): array {
+    $stmt = db()->prepare(
+        "SELECT id, date, description, cost, logged_by, receipt_photo_name,
+                CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''
+                     THEN 1 ELSE 0 END AS has_receipt,
+                created_at
+         FROM usage_logs
+         WHERE customer_id = ? AND machine_id = ? AND category = 'PETTY_CASH'
+         ORDER BY date DESC, created_at DESC"
+    );
+    $stmt->execute([$customerId, $machineId]);
+    return $stmt->fetchAll();
+}
+
 function customer_template_service_parts(string $templateId): array {
     $stmt = db()->prepare(
         'SELECT id, spare_name, part_number, quantity
@@ -442,6 +456,198 @@ if ($sub === 'machine-expenses' && $sub2) {
                 'receiptCount' => $receiptCount,
             ],
             'expenses' => $expenses,
+        ]);
+    }
+}
+
+// ---- Customer-recorded petty cash (small day-to-day machine costs) --------
+if ($sub === 'petty-cash' && $sub2) {
+    $machineId = $sub2;
+    $stmt = db()->prepare(
+        'SELECT id, machine_type, model, serial_number, reg_number, brand
+         FROM machines
+         WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+    );
+    $stmt->execute([$machineId, $customer['id']]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found for this customer.', 404);
+
+    if ($method === 'POST' && $sub3 === '') {
+        require_customer_write_access($customer);
+        $b = body();
+        $date = trim((string)($b['date'] ?? date('Y-m-d')));
+        $description = trim((string)($b['description'] ?? ''));
+        $amount = (float)($b['amount'] ?? 0);
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        $receiptData = null;
+        $receiptMime = null;
+        $parsedDate = DateTime::createFromFormat('!Y-m-d', $date);
+
+        if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date) {
+            json_error('Enter a valid date.');
+        }
+        if ($description === '') json_error('Description is required.');
+        if ($amount <= 0) json_error('Amount must be greater than zero.');
+        if ($receiptPhoto !== '') {
+            if (!preg_match('#^data:(image/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {
+                json_error('Receipt must be a JPG, PNG or WebP image.');
+            }
+            $decodedReceipt = base64_decode($matches[2], true);
+            if ($decodedReceipt === false) json_error('Receipt photo could not be read.');
+            if (strlen($decodedReceipt) > 2 * 1024 * 1024) {
+                json_error('Receipt photo must be 2 MB or smaller after compression.');
+            }
+            $imageInfo = @getimagesizefromstring($decodedReceipt);
+            if (
+                $imageInfo === false
+                || !in_array($imageInfo['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)
+            ) {
+                json_error('Receipt photo is not a valid image.');
+            }
+            $receiptData = base64_encode($decodedReceipt);
+            $receiptMime = $imageInfo['mime'];
+            $receiptName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt-photo');
+        }
+
+        $entryId = uuid();
+        $loggedBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+        db()->prepare(
+            "INSERT INTO usage_logs
+             (id, customer_id, machine_id, date, category, description, cost,
+              logged_by, receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at)
+             VALUES (?,?,?,?,'PETTY_CASH',?,?,?,?,?,?,NOW())"
+        )->execute([
+            $entryId,
+            $customer['id'],
+            $machineId,
+            $date,
+            $description,
+            round($amount, 2),
+            $loggedBy !== '' ? $loggedBy : 'Customer',
+            $receiptData,
+            $receiptMime,
+            $receiptName !== '' ? $receiptName : null,
+        ]);
+        json_out([
+            'id' => $entryId,
+            'amount' => round($amount, 2),
+            'message' => 'Petty cash entry saved successfully.',
+        ], 201);
+    }
+
+    if ($method === 'GET' && $sub3 === 'receipt') {
+        $entryId = trim((string)($_GET['expenseId'] ?? ''));
+        if ($entryId === '') json_error('Petty cash receipt was not specified.');
+        $stmt = db()->prepare(
+            "SELECT receipt_photo_data, receipt_photo_mime, receipt_photo_name
+             FROM usage_logs
+             WHERE id = ? AND customer_id = ? AND machine_id = ?
+               AND category = 'PETTY_CASH'"
+        );
+        $stmt->execute([$entryId, $customer['id'], $machineId]);
+        $receipt = $stmt->fetch();
+        if (!$receipt || !$receipt['receipt_photo_data']) {
+            json_error('Receipt photo was not found.', 404);
+        }
+        $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
+        if ($binary === false) json_error('Receipt photo is damaged.', 500);
+        $mime = in_array(
+            $receipt['receipt_photo_mime'],
+            ['image/jpeg', 'image/png', 'image/webp'],
+            true
+        ) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . strlen($binary));
+        header('Content-Disposition: inline; filename="' .
+            preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($receipt['receipt_photo_name'] ?: 'receipt-photo')) .
+            '"');
+        echo $binary;
+        exit;
+    }
+
+    $entries = petty_cash_rows($customer['id'], $machineId);
+
+    if ($method === 'GET' && $sub3 === 'csv') {
+        $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="petty-cash-' . $safeMachine . '.csv"');
+        $output = fopen('php://output', 'wb');
+        fputcsv($output, ['Date', 'Machine', 'Description', 'Amount TZS', 'Receipt', 'Recorded By']);
+        foreach ($entries as $entry) {
+            $safeText = static function ($value): string {
+                $text = (string)$value;
+                return preg_match('/^[=+\-@]/', $text) ? "'" . $text : $text;
+            };
+            fputcsv($output, [
+                $entry['date'],
+                $safeText($machine['model']),
+                $safeText($entry['description']),
+                $entry['cost'],
+                $entry['has_receipt'] ? 'Attached' : 'No receipt',
+                $safeText($entry['logged_by'] ?? ''),
+            ]);
+        }
+        fclose($output);
+        exit;
+    }
+
+    if ($method === 'GET' && $sub3 === 'pdf') {
+        $totalCost = array_reduce(
+            $entries,
+            static fn(float $sum, array $entry): float => $sum + (float)$entry['cost'],
+            0.0
+        );
+        $lines = [
+            'BELM GENERAL TECH - PETTY CASH REPORT',
+            'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
+            'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+            'Generated: ' . date('Y-m-d H:i'),
+            str_repeat('-', 78),
+        ];
+        foreach ($entries as $entry) {
+            $lines[] = sprintf(
+                '%s | Amount: TZS %s | Receipt: %s',
+                $entry['date'],
+                number_format((float)$entry['cost'], 2),
+                $entry['has_receipt'] ? 'Yes' : 'No'
+            );
+            $descriptionLine = (string)$entry['description'];
+            $descriptionLine = function_exists('mb_substr')
+                ? mb_substr($descriptionLine, 0, 105)
+                : substr($descriptionLine, 0, 105);
+            $lines[] = '  ' . $descriptionLine;
+        }
+        $lines[] = str_repeat('-', 78);
+        $lines[] = 'TOTAL PETTY CASH: TZS ' . number_format($totalCost, 2);
+        $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
+        output_machine_expense_pdf('petty-cash-' . $safeMachine . '.pdf', $lines);
+    }
+
+    if ($method === 'GET' && $sub3 === '') {
+        $recordCount = count($entries);
+        $totalCost = 0.0;
+        $receiptCount = 0;
+        foreach ($entries as $entry) {
+            $totalCost += (float)$entry['cost'];
+            if ($entry['has_receipt']) $receiptCount++;
+        }
+        json_out([
+            'machine' => [
+                'id' => $machine['id'],
+                'machineType' => $machine['machine_type'],
+                'model' => $machine['model'],
+                'serialNumber' => $machine['serial_number'],
+                'regNumber' => $machine['reg_number'],
+                'brand' => $machine['brand'],
+            ],
+            'summary' => [
+                'recordCount' => $recordCount,
+                'totalCost' => round($totalCost, 2),
+                'averageCost' => $recordCount > 0 ? round($totalCost / $recordCount, 2) : 0,
+                'receiptCount' => $receiptCount,
+            ],
+            'entries' => $entries,
         ]);
     }
 }

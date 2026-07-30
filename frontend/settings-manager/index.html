@@ -75,6 +75,24 @@
           <button id="changePinButton" class="secondary" type="submit">Change protected PIN</button>
         </form>
       </article>
+
+      <article class="panel">
+        <div class="section-head"><div><h2>Alerts</h2><p>Turn alert delivery on or off. WhatsApp alerts open a pre-filled WhatsApp message using the recipient's saved phone number — BELM Portal does not send WhatsApp messages automatically without a connected WhatsApp Business API.</p></div></div>
+        <div class="settings-form">
+          <label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label>
+          <label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label>
+          <label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp alert buttons enabled</label>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="section-head"><div><h2>Messages to customers</h2><p>Posted messages appear on every customer's dashboard.</p></div></div>
+        <form id="announcementForm" class="settings-form">
+          <label class="wide">New message<textarea id="announcementMessage" rows="3" maxlength="1000" required placeholder="e.g. BELM offices will be closed on public holidays."></textarea></label>
+          <button id="postAnnouncementButton" class="primary" type="submit">Post message</button>
+        </form>
+        <div id="announcementList" class="announcement-list"></div>
+      </article>
     </section>
   </main>
 

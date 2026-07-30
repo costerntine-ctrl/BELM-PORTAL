@@ -379,6 +379,189 @@
     return customerExpenseMachinesPromise;
   }
 
+  function customerMachineInfoCard(card, machine) {
+    if (card.dataset.belmCustomerInfoReady === "1") return;
+    card.dataset.belmCustomerInfoReady = "1";
+    const condition = technicianCondition(machine.status);
+    const details = document.createElement("div");
+    details.className = "belm-technician-machine-info";
+    details.innerHTML = `
+      <div class="belm-technician-machine-data">
+        <div><span>Brand</span><b>${escapeHtml(machine.brand || "Not recorded")}</b></div>
+        <div><span>Machine Type</span><b>${escapeHtml(machine.machineType || machine.machine_type || "Not recorded")}</b></div>
+        <div><span>Serial No.</span><b>${escapeHtml(machine.serialNumber || machine.serial_number || "Not recorded")}</b></div>
+        <div><span>Registration</span><b>${escapeHtml(machine.regNumber || machine.reg_number || "Not recorded")}</b></div>
+        <div><span>Service Kit</span><b>${escapeHtml(machine.serviceKit || machine.service_kit || "Not recorded")}</b></div>
+        <div><span>Last Checked</span><b>${escapeHtml(machine.lastCheckedAt || machine.last_checked_at
+          ? new Date(machine.lastCheckedAt || machine.last_checked_at).toLocaleDateString()
+          : "Never checked")}</b></div>
+      </div>
+      <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}">
+        <div><span>Machine Status</span><strong>${escapeHtml(condition.status)}</strong></div>
+        <div><span>Condition</span><strong>${escapeHtml(condition.label)}</strong><small>${escapeHtml(condition.note)}</small></div>
+      </div>`;
+    card.appendChild(details);
+  }
+
+  let customerServiceStatusCache = {};
+
+  async function loadServiceStatus(machineId) {
+    if (customerServiceStatusCache[machineId]) return customerServiceStatusCache[machineId];
+    const token = localStorage.getItem("belm_customer_token") || localStorage.getItem("belm_tech_token");
+    if (!token) return null;
+    try {
+      const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machineId)}/service-status`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      customerServiceStatusCache[machineId] = data;
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function whatsappShareUrl(text) {
+    return `https://wa.me/?text=${encodeURIComponent(text)}`;
+  }
+
+  async function customerServiceDuePanel(card, machine) {
+    if (card.dataset.belmServiceDueReady === "1") return;
+    card.dataset.belmServiceDueReady = "1";
+    const status = await loadServiceStatus(machine.id);
+    if (!status) return;
+
+    const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+    const serial = machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded";
+    const remaining = Math.round(status.hoursRemaining);
+    const levelLabel = status.level === "RED" ? "Service due now" : status.level === "YELLOW" ? "Service due soon" : "On schedule";
+
+    const panel = document.createElement("div");
+    panel.className = `belm-service-due-panel status-${String(status.level || "GREEN").toLowerCase()}`;
+    panel.innerHTML = `
+      <div class="belm-service-due-head">
+        <span>NEXT SERVICE</span>
+        <strong>${escapeHtml(levelLabel)}</strong>
+      </div>
+      <div class="belm-service-due-grid">
+        <div><span>Machine ID</span><b>${escapeHtml(serial)}</b></div>
+        <div><span>Type of service</span><b>${escapeHtml(status.intervalHours)}-Hour Service</b></div>
+        <div><span>Current Hrs</span><b>${escapeHtml(Math.round(status.totalHours))}</b></div>
+        <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
+      </div>
+      <a class="belm-service-whatsapp" target="_blank" rel="noopener"
+         href="${whatsappShareUrl(`BELM Portal alert: ${machineName} (${serial}) — ${levelLabel}. Current hour meter: ${Math.round(status.totalHours)} hrs, remaining to next service: ${remaining <= 0 ? "overdue" : `${remaining} hrs`}.`)}">
+        Send via WhatsApp
+      </a>`;
+    card.appendChild(panel);
+  }
+
+  async function enhanceCustomerAnnouncementsPanel() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    if (document.getElementById("belmAnnouncementsPanel")) return;
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return;
+    try {
+      const response = await fetch("/api/announcements", { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const data = await response.json();
+      const messages = Array.isArray(data.messages) ? data.messages : [];
+      if (!messages.length) return;
+
+      const heading = Array.from(document.querySelectorAll("h1, h2"))
+        .find(element => (element.textContent || "").trim() === "Your machines");
+      const anchor = heading?.closest("section") || heading?.parentElement;
+      if (!anchor) return;
+
+      const panel = document.createElement("section");
+      panel.id = "belmAnnouncementsPanel";
+      panel.className = "belm-announcements-panel";
+      panel.innerHTML = `
+        <div class="belm-announcements-head"><span>MESSAGES FROM BELM ADMIN</span></div>
+        <div class="belm-announcements-list">${messages.map(item => `
+          <article class="belm-announcement-item">
+            <p>${escapeHtml(item.message)}</p>
+            <div class="belm-announcement-footer">
+              <small>${new Date(item.created_at).toLocaleDateString()}</small>
+              <a target="_blank" rel="noopener" href="${whatsappShareUrl(`BELM Portal message: ${item.message}`)}">Send via WhatsApp</a>
+            </div>
+          </article>`).join("")}</div>`;
+      anchor.before(panel);
+    } catch (_) {}
+  }
+
+  let customerSpareRecommendationsCache = null;
+  let customerSpareRecommendationsPromise = null;
+
+  async function loadCustomerSpareRecommendations() {
+    if (customerSpareRecommendationsCache) return customerSpareRecommendationsCache;
+    if (customerSpareRecommendationsPromise) return customerSpareRecommendationsPromise;
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return [];
+    customerSpareRecommendationsPromise = fetch("/api/spare-recommendations", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error("Could not load recommendations.");
+        customerSpareRecommendationsCache = await response.json();
+        return customerSpareRecommendationsCache;
+      })
+      .catch(() => {
+        customerSpareRecommendationsPromise = null;
+        return [];
+      });
+    return customerSpareRecommendationsPromise;
+  }
+
+  async function confirmSpareRecommendation(id, button) {
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return;
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Sending…";
+    try {
+      const response = await fetch(`/api/spare-recommendations/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Could not send this service requirement.");
+      const item = button.closest(".belm-spare-recommendation-item");
+      if (item) {
+        item.innerHTML = `<span>Sent to BELM for action.</span>`;
+      }
+      customerSpareRecommendationsCache = null;
+    } catch (error) {
+      alert(error.message || "Could not send this service requirement.");
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+
+  async function customerSpareRecommendationsPanel(card, machine) {
+    if (card.dataset.belmSpareRecommendReady === "1") return;
+    const all = await loadCustomerSpareRecommendations();
+    const items = Array.isArray(all) ? all.filter(item => String(item.machine_id) === String(machine.id)) : [];
+    if (!items.length) return;
+    card.dataset.belmSpareRecommendReady = "1";
+
+    const panel = document.createElement("div");
+    panel.className = "belm-spare-recommendation-panel";
+    panel.innerHTML = `<div class="belm-spare-recommendation-head">SPARE RECOMMENDED BY TECHNICIAN</div>
+      ${items.map(item => `
+        <div class="belm-spare-recommendation-item" data-recommendation-id="${escapeHtml(item.id)}">
+          <span><b>${escapeHtml(item.spare_name)}</b><br>Ref: <b>${escapeHtml(item.reference_number)}</b></span>
+          <button type="button" data-confirm-recommendation="${escapeHtml(item.id)}">Service Requirements</button>
+        </div>`).join("")}`;
+    panel.addEventListener("click", event => {
+      const button = event.target.closest("[data-confirm-recommendation]");
+      if (!button) return;
+      confirmSpareRecommendation(button.dataset.confirmRecommendation, button);
+    });
+    card.appendChild(panel);
+  }
+
   async function enhanceCustomerMachineExpenseCards() {
     if (window.location.pathname !== "/portal/dashboard") return;
     const machines = await loadCustomerExpenseMachines();
@@ -406,6 +589,10 @@
 
       card.dataset.belmMachineExpenseReady = "1";
       card.classList.add("belm-customer-machine-card");
+      card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
+      customerMachineInfoCard(card, machine);
+      customerServiceDuePanel(card, machine);
+      customerSpareRecommendationsPanel(card, machine);
       const actionRow = document.createElement("span");
       actionRow.className = "belm-machine-action-row";
       const openPage = (event, page) => {
@@ -429,6 +616,19 @@
         }
       });
 
+      const pettyCashLink = document.createElement("span");
+      pettyCashLink.className = "belm-machine-pettycash-link";
+      pettyCashLink.setAttribute("role", "button");
+      pettyCashLink.setAttribute("tabindex", "0");
+      pettyCashLink.textContent = "Petty Cash";
+      pettyCashLink.title = `Open petty cash for ${model}`;
+      pettyCashLink.addEventListener("click", event => openPage(event, "/customer-petty-cash/"));
+      pettyCashLink.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          openPage(event, "/customer-petty-cash/");
+        }
+      });
+
       const serviceLink = document.createElement("span");
       serviceLink.className = "belm-machine-service-link";
       serviceLink.setAttribute("role", "button");
@@ -442,7 +642,7 @@
         }
       });
 
-      actionRow.append(expenseLink, serviceLink);
+      actionRow.append(expenseLink, pettyCashLink, serviceLink);
       card.appendChild(actionRow);
     });
   }
@@ -689,6 +889,7 @@
 
       card.dataset.belmTechnicianReportsReady = "1";
       card.classList.add("belm-technician-machine-card");
+      card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       technicianMachineInfoCard(card, machine);
       const reportLink = document.createElement("span");
       reportLink.className = "belm-technician-report-link";
@@ -1698,6 +1899,225 @@
     form.elements.partNumber.focus();
   }
 
+  const SPARE_RECOMMENDATION_SYSTEMS = [
+    ["ENGINE", "Engine"],
+    ["TRANSMISSION", "Transmission / Gearbox"],
+    ["BRAKE_SYSTEM", "Brake System"],
+    ["HYDRAULIC_SYSTEM", "Hydraulic System"],
+    ["ELECTRICAL_SYSTEM", "Electrical System"],
+    ["OTHER", "Other"],
+  ];
+
+  const SERVICE_DAY_TYPES = [
+    ["80_HOUR", "80-Hour Service"],
+    ["250_HOUR", "250-Hour Service"],
+    ["500_HOUR", "500-Hour Service"],
+    ["1000_HOUR", "1000-Hour Service"],
+    ["ANNUAL", "Annual Service"],
+    ["OTHER", "Other Service"],
+  ];
+
+  function injectServiceDayFields() {
+    if (!window.location.pathname.startsWith("/tech")) return;
+    if (document.getElementById("belmServiceDayBlock")) return;
+
+    const label = Array.from(document.querySelectorAll("label"))
+      .find(element => (element.textContent || "").trim().toLowerCase().startsWith("hour meter reading"));
+    if (!label) return;
+    const anchor = label.closest("label") || label;
+    const host = anchor.parentElement;
+    if (!host) return;
+
+    const block = document.createElement("div");
+    block.id = "belmServiceDayBlock";
+    block.className = "belm-service-day-block";
+    block.innerHTML = `
+      <label class="belm-service-day-toggle">
+        <input type="checkbox" id="belmIsServiceDay">
+        Is this a service day?
+      </label>
+      <div id="belmServiceDayFields" class="belm-service-day-fields hidden">
+        <label>Service date<input type="date" id="belmServiceDate"></label>
+        <label>Service type
+          <select id="belmServiceType">
+            <option value="">Select service type</option>
+            ${SERVICE_DAY_TYPES.map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
+          </select>
+        </label>
+      </div>`;
+    anchor.insertAdjacentElement("afterend", block);
+
+    document.getElementById("belmServiceDate").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("belmIsServiceDay").addEventListener("change", (event) => {
+      document.getElementById("belmServiceDayFields").classList.toggle("hidden", !event.target.checked);
+    });
+  }
+
+  function installServiceDayInjector() {
+    if (!window.location.pathname.startsWith("/tech")) return;
+    if (document.documentElement.dataset.belmServiceDaySync === "ready") return;
+    const Xhr = window.XMLHttpRequest;
+    if (!Xhr?.prototype?.send) return;
+    document.documentElement.dataset.belmServiceDaySync = "ready";
+
+    const previousSend = Xhr.prototype.send;
+    Xhr.prototype.send = function (body) {
+      if (this.belmChecklistSaveRequest) {
+        const isServiceDay = document.getElementById("belmIsServiceDay")?.checked || false;
+        try {
+          const request = typeof body === "string" ? JSON.parse(body) : {};
+          request.isServiceDay = isServiceDay;
+          if (isServiceDay) {
+            request.serviceDate = document.getElementById("belmServiceDate")?.value || "";
+            request.serviceType = document.getElementById("belmServiceType")?.value || "";
+          }
+          body = JSON.stringify(request);
+        } catch (_) {}
+      }
+      return previousSend.call(this, body);
+    };
+  }
+
+  function closeTechnicianSpareRecommendation() {
+    document.getElementById("belmSpareRecommendationModal")?.remove();
+  }
+
+  function renderTechnicianSpareRecommendation(machines) {
+    closeTechnicianSpareRecommendation();
+    const modal = document.createElement("div");
+    modal.id = "belmSpareRecommendationModal";
+    modal.className = "belm-checked-report-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("aria-labelledby", "belmSpareRecommendationTitle");
+    modal.innerHTML = `<section class="belm-checked-report-card belm-technician-spare-card">
+      <header class="belm-checked-report-head">
+        <div>
+          <p>BELM Technician · Customer spare recommendation</p>
+          <h2 id="belmSpareRecommendationTitle">Recommend Spare to Customer</h2>
+          <span>The customer will see only the reference number and can press Service Requirements to order it.</span>
+        </div>
+        <button type="button" data-close-spare-recommendation aria-label="Close">×</button>
+      </header>
+      <form class="belm-technician-spare-form">
+        <div class="belm-technician-spare-grid">
+          <label>
+            <span>Machine</span>
+            <select name="machineId" required>
+              ${machines.map((machine) => {
+                const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+                const reference = machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial";
+                return `<option value="${escapeHtml(machine.id)}">${escapeHtml(machineName)} · ${escapeHtml(reference)}</option>`;
+              }).join("")}
+            </select>
+          </label>
+          <label>
+            <span>System</span>
+            <select name="systemCategory" required>
+              ${SPARE_RECOMMENDATION_SYSTEMS.map(([value, label]) =>
+                `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}
+            </select>
+          </label>
+          <label>
+            <span>Spare name</span>
+            <input name="spareName" type="text" maxlength="255" placeholder="e.g. Hydraulic return filter" required />
+          </label>
+          <label>
+            <span>Reference number</span>
+            <input name="referenceNumber" type="text" maxlength="100" placeholder="e.g. BELM-HF-2201" required />
+          </label>
+          <label class="full">
+            <span>Manufacturer part number</span>
+            <input name="manufacturerPartNumber" type="text" maxlength="100" placeholder="e.g. 923855.0996" />
+          </label>
+        </div>
+        <p class="belm-checklist-edit-error" role="alert" hidden></p>
+        <p class="belm-technician-spare-success" role="status" hidden></p>
+        <footer class="belm-checked-report-actions">
+          <button type="button" data-close-spare-recommendation>Cancel</button>
+          <button type="submit" class="primary">Send Recommendation to Customer</button>
+        </footer>
+      </form>
+    </section>`;
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.closest("[data-close-spare-recommendation]")) {
+        closeTechnicianSpareRecommendation();
+      }
+    });
+    modal.querySelector("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const submit = form.querySelector('button[type="submit"]');
+      const errorBox = form.querySelector(".belm-checklist-edit-error");
+      const successBox = form.querySelector(".belm-technician-spare-success");
+      const token = localStorage.getItem("belm_tech_token");
+      if (!token) {
+        window.location.href = "/tech";
+        return;
+      }
+      submit.disabled = true;
+      submit.textContent = "Sending…";
+      errorBox.hidden = true;
+      try {
+        const response = await fetch("/api/spare-recommendations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            machineId: form.elements.machineId.value,
+            systemCategory: form.elements.systemCategory.value,
+            spareName: form.elements.spareName.value.trim(),
+            referenceNumber: form.elements.referenceNumber.value.trim(),
+            manufacturerPartNumber: form.elements.manufacturerPartNumber.value.trim(),
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Recommendation could not be sent.");
+        successBox.textContent = result.message || "Recommendation sent to the customer.";
+        successBox.hidden = false;
+        form.reset();
+      } catch (error) {
+        errorBox.textContent = error.message || "Recommendation could not be sent.";
+        errorBox.hidden = false;
+      } finally {
+        submit.disabled = false;
+        submit.textContent = "Send Recommendation to Customer";
+      }
+    });
+    document.body.appendChild(modal);
+    modal.querySelector('[name="spareName"]')?.focus();
+  }
+
+  async function addTechnicianSpareRecommendationShortcut() {
+    if (window.location.pathname !== "/tech") return;
+    if (document.getElementById("belm-tech-spare-recommend-shortcut")) return;
+    const payload = tokenPayload("belm_tech_token");
+    const token = localStorage.getItem("belm_tech_token");
+    if (!payload || !token || String(payload.roleName || "").toLowerCase() !== "technician") return;
+
+    const button = document.createElement("button");
+    button.id = "belm-tech-spare-recommend-shortcut";
+    button.type = "button";
+    button.className = "belm-tech-spare-recommend-shortcut";
+    button.textContent = "+ Recommend Spare";
+    button.addEventListener("click", async () => {
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Loading…";
+      try {
+        const machines = await loadTechnicianReportMachines();
+        if (!machines.length) throw new Error("No assigned machine is available for this Technician.");
+        renderTechnicianSpareRecommendation(machines);
+      } catch (error) {
+        alert(error.message || "Could not open Recommend Spare.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+    document.body.appendChild(button);
+  }
+
   async function addTechnicianSpareShortcut() {
     if (window.location.pathname !== "/tech") return;
     if (document.getElementById("belm-tech-spare-shortcut")) return;
@@ -1733,11 +2153,13 @@
   installCheckedReportViewer();
   installAuthenticatedReportDownloads();
   installTechnicianSavedReportViewer();
+  installServiceDayInjector();
   installThemeSaving();
   syncSavedTheme();
   refreshShortcut();
   addTechnicianTasksShortcut();
   addTechnicianSpareShortcut();
+  addTechnicianSpareRecommendationShortcut();
   syncTechnicianCustomerName();
   clarifyTechnicianAssignment();
   clarifyTechnicianChecklistSave();
@@ -1747,6 +2169,7 @@
   enforceAdminPageAccess();
   enhanceCustomerAssistants();
   enhanceCustomerMachineExpenseCards();
+  enhanceCustomerAnnouncementsPanel();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -1760,6 +2183,7 @@
   redirectSettingsManager();
   removeLegacyOwnerRole();
   improvePhotoInputs();
+  injectServiceDayFields();
   enforceViewerInterface();
   correctLegacyCopy();
   enhanceCheckedReportButtons();
@@ -1767,6 +2191,7 @@
     refreshShortcut();
     addTechnicianTasksShortcut();
     addTechnicianSpareShortcut();
+    addTechnicianSpareRecommendationShortcut();
     syncTechnicianCustomerName();
     clarifyTechnicianAssignment();
     clarifyTechnicianChecklistSave();
@@ -1776,6 +2201,7 @@
     enforceAdminPageAccess();
     enhanceCustomerAssistants();
     enhanceCustomerMachineExpenseCards();
+    enhanceCustomerAnnouncementsPanel();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();
@@ -1789,6 +2215,7 @@
     redirectSettingsManager();
     removeLegacyOwnerRole();
     improvePhotoInputs();
+    injectServiceDayFields();
     enforceViewerInterface();
     correctLegacyCopy();
     enhanceCheckedReportButtons();

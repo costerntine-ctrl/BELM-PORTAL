@@ -57,7 +57,7 @@ if ($method === 'GET' && !$action) {
         $stmt = db()->prepare("$sql WHERE sr.status = ? ORDER BY sr.created_at DESC");
         $stmt->execute([$status]);
     } else {
-        $stmt = db()->query("$sql ORDER BY sr.created_at DESC");
+        $stmt = db()->query("$sql WHERE sr.status <> 'PENDING_CUSTOMER' ORDER BY sr.created_at DESC");
     }
     $requests = $stmt->fetchAll();
     foreach ($requests as &$r) {

@@ -72,9 +72,38 @@
           document.getElementById(id).value = settings[key];
         }
       });
+      document.getElementById("adminAlertsToggle").checked = settings.adminAlertsEnabled !== false;
+      document.getElementById("technicianAlertsToggle").checked = settings.technicianAlertsEnabled !== false;
+      document.getElementById("whatsappAlertsToggle").checked = settings.whatsappAlertsEnabled !== false;
       applyTheme(settings.displayTheme || localStorage.getItem("belm_theme") || "light");
+      await loadAnnouncements();
     } catch (error) {
       message(error.message, true);
+    }
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
+    })[character]);
+  }
+
+  async function loadAnnouncements() {
+    const list = document.getElementById("announcementList");
+    try {
+      const announcements = await api("/announcements?all=1");
+      list.innerHTML = announcements.length
+        ? announcements.map(item => `
+          <article class="announcement-item${item.is_active ? "" : " inactive"}">
+            <div>
+              <p>${escapeHtml(item.message)}</p>
+              <small>${escapeHtml(item.created_by_name || "Admin")} · ${new Date(item.created_at).toLocaleString()}${item.is_active ? "" : " · Removed"}</small>
+            </div>
+            ${item.is_active ? `<button type="button" data-remove-announcement="${escapeHtml(item.id)}">Remove</button>` : ""}
+          </article>`).join("")
+        : '<p class="empty">No messages posted yet.</p>';
+    } catch (error) {
+      list.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
     }
   }
 
@@ -160,4 +189,60 @@
 
   applyTheme(localStorage.getItem("belm_theme") || "light");
   load();
+
+  document.getElementById("adminAlertsToggle").addEventListener("change", async (event) => {
+    try {
+      await saveSettings({ adminAlertsEnabled: event.target.checked });
+      message(`Admin alerts ${event.target.checked ? "enabled" : "disabled"}.`);
+    } catch (error) {
+      message(error.message, true);
+    }
+  });
+  document.getElementById("technicianAlertsToggle").addEventListener("change", async (event) => {
+    try {
+      await saveSettings({ technicianAlertsEnabled: event.target.checked });
+      message(`Technician alerts ${event.target.checked ? "enabled" : "disabled"}.`);
+    } catch (error) {
+      message(error.message, true);
+    }
+  });
+  document.getElementById("whatsappAlertsToggle").addEventListener("change", async (event) => {
+    try {
+      await saveSettings({ whatsappAlertsEnabled: event.target.checked });
+      message(`WhatsApp alert buttons ${event.target.checked ? "enabled" : "disabled"}.`);
+    } catch (error) {
+      message(error.message, true);
+    }
+  });
+
+  document.getElementById("announcementForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = document.getElementById("postAnnouncementButton");
+    button.disabled = true;
+    try {
+      await api("/announcements", {
+        method: "POST",
+        body: JSON.stringify({ message: document.getElementById("announcementMessage").value.trim() }),
+      });
+      event.currentTarget.reset();
+      message("Message posted to customer dashboards.");
+      await loadAnnouncements();
+    } catch (error) {
+      message(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById("announcementList").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-remove-announcement]");
+    if (!button) return;
+    if (!confirm("Remove this message from customer dashboards?")) return;
+    try {
+      await api(`/announcements/${encodeURIComponent(button.dataset.removeAnnouncement)}`, { method: "DELETE" });
+      await loadAnnouncements();
+    } catch (error) {
+      message(error.message, true);
+    }
+  });
 })();

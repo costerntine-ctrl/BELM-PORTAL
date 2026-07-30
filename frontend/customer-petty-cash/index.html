@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Petty Cash — BELM Customer Portal</title>
+  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=16-service-sync">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/portal/dashboard">
+      <span class="mark">B</span>
+      <span><b>BELM Customer Portal</b><small>Machine Petty Cash</small></span>
+    </a>
+    <nav>
+      <a href="/portal/dashboard">← Customer dashboard</a>
+      <button id="logoutButton" type="button">Log out</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div>
+        <p class="eyebrow">MACHINE COST TRACKING</p>
+        <h1 id="pageTitle">Petty cash</h1>
+        <p id="machineDetails" class="lead">Loading machine information…</p>
+      </div>
+      <div class="download-actions">
+        <button class="secondary" id="csvButton" type="button">Download CSV</button>
+        <button class="secondary" id="pdfButton" type="button">Download PDF</button>
+      </div>
+    </section>
+
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+
+    <section class="summary-grid" aria-label="Petty cash analysis">
+      <article><span>Total petty cash</span><strong id="totalCost">TZS 0</strong></article>
+      <article><span>Entries recorded</span><strong id="recordCount">0</strong></article>
+      <article><span>Average per entry</span><strong id="averageCost">TZS 0</strong></article>
+      <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
+    </section>
+
+    <section id="entryPanel" class="panel entry-panel">
+      <div class="panel-head">
+        <div><h2>Add petty cash entry</h2><p>Record a small day-to-day cash cost for this machine (fuel top-up, transport, minor labour, etc).</p></div>
+        <strong id="calculatedTotal">Amount: TZS 0</strong>
+      </div>
+      <form id="expenseForm">
+        <label>Date<input id="expenseDate" type="date" required></label>
+        <label class="wide">Description<input id="description" maxlength="500" required placeholder="e.g. Transport for technician visit"></label>
+        <label>Amount (TZS)<input id="amount" type="number" min="0.01" step="0.01" required></label>
+        <label class="receipt-field">Receipt photo <small>(optional)</small>
+          <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+          <small>Camera or gallery · JPG/PNG/WebP</small>
+        </label>
+        <div id="receiptPreviewWrap" class="receipt-preview hidden">
+          <img id="receiptPreview" alt="Receipt preview">
+          <button id="removeReceiptButton" type="button">Remove receipt</button>
+        </div>
+        <div class="form-actions"><button class="primary" id="saveButton" type="submit">Save petty cash entry</button></div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Petty cash history</h2><p>Saved day-to-day cash entries for this machine.</p></div>
+        <button class="secondary compact" id="refreshButton" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Receipt</th><th>Recorded by</th></tr></thead>
+          <tbody id="expenseRows"><tr><td colspan="5" class="empty">Loading entries…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="receiptDialog">
+    <div class="receipt-dialog-head"><b>Receipt photo</b><button id="closeReceiptButton" type="button" aria-label="Close receipt">×</button></div>
+    <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
+  </dialog>
+
+  <script src="/customer-petty-cash/petty-cash.js?v=1"></script>
+</body>
+</html>

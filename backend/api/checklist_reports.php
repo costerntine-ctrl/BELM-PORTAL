@@ -218,6 +218,45 @@ if ($method === 'POST' && $action === 'submit') {
     if (!is_numeric($b['hourMeterReading']) || (float)$b['hourMeterReading'] < 0) {
         json_error('Hour meter reading must be a valid positive number.');
     }
+    $newHourMeterReading = (float)$b['hourMeterReading'];
+
+    // Hour meters only move forward. The same reading as last time is fine
+    // (machine wasn't used that day), but a lower reading than the last
+    // recorded one is always invalid.
+    $lastReadingStmt = db()->prepare(
+        'SELECT hour_meter_reading FROM checklist_reports
+         WHERE machine_id = ? ORDER BY created_at DESC LIMIT 1'
+    );
+    $lastReadingStmt->execute([$b['machineId']]);
+    $lastReading = $lastReadingStmt->fetchColumn();
+    if ($lastReading !== false && $newHourMeterReading < (float)$lastReading) {
+        json_error(
+            'Hour meter reading (' . rtrim(rtrim(number_format($newHourMeterReading, 2), '0'), '.') .
+            ') cannot be lower than the last recorded reading (' .
+            rtrim(rtrim(number_format((float)$lastReading, 2), '0'), '.') .
+            '). If the machine was not used, enter the same reading as last time.'
+        );
+    }
+
+    $isServiceDay = !empty($b['isServiceDay']);
+    $serviceDate = trim((string)($b['serviceDate'] ?? ''));
+    $serviceType = trim((string)($b['serviceType'] ?? ''));
+    $serviceIntervals = [
+        '80_HOUR' => ['label' => '80-Hour Service', 'interval' => 80],
+        '250_HOUR' => ['label' => '250-Hour Service', 'interval' => 250],
+        '500_HOUR' => ['label' => '500-Hour Service', 'interval' => 500],
+        '1000_HOUR' => ['label' => '1000-Hour Service', 'interval' => 1000],
+        'ANNUAL' => ['label' => 'Annual Service', 'interval' => null],
+        'OTHER' => ['label' => 'Other Service', 'interval' => null],
+    ];
+    if ($isServiceDay) {
+        if ($serviceDate === '') json_error('Select the service date.');
+        $parsedServiceDate = DateTime::createFromFormat('!Y-m-d', $serviceDate);
+        if (!$parsedServiceDate || $parsedServiceDate->format('Y-m-d') !== $serviceDate) {
+            json_error('Enter a valid service date.');
+        }
+        if (!isset($serviceIntervals[$serviceType])) json_error('Select a valid service type.');
+    }
 
     $validated = validate_checklist_report_answers(
         $b['templateId'],
@@ -255,10 +294,48 @@ if ($method === 'POST' && $action === 'submit') {
 
         $pdo->prepare('UPDATE machines SET status=?, last_checked_at=NOW() WHERE id=?')
             ->execute([$worst, $b['machineId']]);
+
+        if ($isServiceDay) {
+            $historyStmt = $pdo->prepare('SELECT service_history, service_interval_hours FROM machines WHERE id = ?');
+            $historyStmt->execute([$b['machineId']]);
+            $machineRow = $historyStmt->fetch();
+            $history = $machineRow && $machineRow['service_history']
+                ? json_decode($machineRow['service_history'], true)
+                : [];
+            if (!is_array($history)) $history = [];
+            $history[] = [
+                'date' => $serviceDate,
+                'serviceType' => $serviceIntervals[$serviceType]['label'],
+                'hourMeterReading' => (float)$b['hourMeterReading'],
+                'reportId' => $reportId,
+                'recordedBy' => $filledBy,
+            ];
+            $newInterval = $serviceIntervals[$serviceType]['interval'] ?? $machineRow['service_interval_hours'];
+            $pdo->prepare(
+                'UPDATE machines
+                 SET last_service_hours = ?, service_interval_hours = ?, service_history = ?, updated_at = NOW()
+                 WHERE id = ?'
+            )->execute([
+                (float)$b['hourMeterReading'],
+                $newInterval,
+                json_encode($history),
+                $b['machineId'],
+            ]);
+        }
         $pdo->commit();
     } catch (Throwable $error) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
+    }
+
+    if ($isServiceDay) {
+        log_activity(
+            $user['id'],
+            'service-completed',
+            'machine',
+            $b['machineId'],
+            ['serviceType' => $serviceIntervals[$serviceType]['label'], 'serviceDate' => $serviceDate]
+        );
     }
 
     $reportStmt = db()->prepare(
@@ -360,6 +437,23 @@ if ($method === 'PUT' && $action === 'update') {
     }
     if (!is_numeric($b['hourMeterReading']) || (float)$b['hourMeterReading'] < 0) {
         json_error('Hour meter reading must be a valid positive number.');
+    }
+    $updatedHourMeterReading = (float)$b['hourMeterReading'];
+
+    $priorReadingStmt = db()->prepare(
+        'SELECT hour_meter_reading FROM checklist_reports
+         WHERE machine_id = ? AND id <> ?
+         ORDER BY created_at DESC LIMIT 1'
+    );
+    $priorReadingStmt->execute([$report['machine_id'], $reportId]);
+    $priorReading = $priorReadingStmt->fetchColumn();
+    if ($priorReading !== false && $updatedHourMeterReading < (float)$priorReading) {
+        json_error(
+            'Hour meter reading (' . rtrim(rtrim(number_format($updatedHourMeterReading, 2), '0'), '.') .
+            ') cannot be lower than the previous recorded reading (' .
+            rtrim(rtrim(number_format((float)$priorReading, 2), '0'), '.') .
+            '). If the machine was not used, enter the same reading as last time.'
+        );
     }
     $validated = validate_checklist_report_answers(
         $report['template_id'],

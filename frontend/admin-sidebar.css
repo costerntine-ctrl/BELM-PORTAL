@@ -91,13 +91,19 @@
 }
 
 .belm-sidebar-nav {
-  flex: 1;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   padding: 7px 9px 16px;
   overflow-y: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
 }
 
 .belm-sidebar-section {
+  flex: 0 0 auto;
   margin: 12px 10px 6px;
   color: #78889c;
   font-size: 9px;
@@ -109,6 +115,7 @@
 .belm-sidebar-link {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 10px;
   min-height: 42px;

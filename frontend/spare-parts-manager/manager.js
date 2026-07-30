@@ -55,7 +55,7 @@
     document.getElementById("inventoryCost").textContent = money(parts.reduce((sum, part) =>
       sum + Number(part.stockQty || 0) * Number(part.purchasePrice || 0), 0));
     document.getElementById("lowStockCount").textContent = parts.filter((part) =>
-      Number(part.stockQty) <= Number(part.reorderThreshold)).length.toLocaleString();
+      Number(part.stockQty || 0) <= 5).length.toLocaleString();
   }
 
   function renderRequests() {
@@ -111,12 +111,13 @@
       <thead><tr><th>Part number</th><th>Name</th><th>Category</th><th>Stock</th><th>Reorder</th><th>Purchase</th><th>Selling</th><th>Profit</th><th></th></tr></thead>
       <tbody>${filtered.map((part) => {
         const profit = Number(part.sellingPrice || 0) - Number(part.purchasePrice || 0);
-        const low = Number(part.stockQty) <= Number(part.reorderThreshold);
+        const stockQty = Number(part.stockQty || 0);
+        const stockClass = stockQty <= 0 ? "off" : stockQty <= 5 ? "warn" : "";
         return `<tr>
           <td class="nowrap"><strong>${escapeHtml(part.partNumber)}</strong></td>
           <td>${escapeHtml(part.name)}</td>
           <td class="muted">${escapeHtml(part.category || "—")}</td>
-          <td><span class="badge ${low ? "warn" : ""}">${escapeHtml(part.stockQty)}</span></td>
+          <td><span class="badge ${stockClass}">${escapeHtml(part.stockQty)}</span></td>
           <td>${escapeHtml(part.reorderThreshold)}</td>
           <td class="nowrap">${money(part.purchasePrice)}</td>
           <td class="nowrap">${money(part.sellingPrice)}</td>

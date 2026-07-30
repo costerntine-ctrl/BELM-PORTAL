@@ -143,7 +143,7 @@ if ($action === 'summary' && $method === 'GET') {
     $openRequests = (int)db()->query("SELECT COUNT(*) FROM service_requests WHERE status IN ('OPEN','ASSIGNED','IN_PROGRESS')")->fetchColumn();
     $parts = db()->query('SELECT stock_qty, reorder_threshold FROM spare_parts WHERE deleted_at IS NULL')->fetchAll();
     $lowStockParts = count(array_filter($parts, static fn(array $part): bool =>
-        (int)$part['stock_qty'] <= (int)$part['reorder_threshold']
+        (int)$part['stock_qty'] <= 5
     ));
     $unpaidInvoices = (int)db()->query("SELECT COUNT(*) FROM invoices WHERE deleted_at IS NULL AND status IN ('UNPAID','PARTIALLY_PAID','OVERDUE')")->fetchColumn();
     json_out(compact('customers', 'machines', 'openRequests', 'lowStockParts', 'unpaidInvoices'));
@@ -170,7 +170,7 @@ if ($action === 'all-overview' && $method === 'GET') {
         "SELECT
            COUNT(*) AS total_part_types,
            COALESCE(SUM(stock_qty), 0) AS total_stock_qty,
-           COUNT(*) FILTER (WHERE stock_qty <= reorder_threshold) AS low_stock_parts,
+           COUNT(*) FILTER (WHERE stock_qty <= 5) AS low_stock_parts,
            COUNT(*) FILTER (WHERE stock_qty = 0) AS out_of_stock_parts,
            COALESCE(SUM(stock_qty * purchase_price), 0) AS purchase_stock_value,
            COALESCE(SUM(stock_qty * selling_price), 0) AS selling_stock_value,
@@ -184,7 +184,7 @@ if ($action === 'all-overview' && $method === 'GET') {
                 (stock_qty * purchase_price) AS purchase_stock_value,
                 CASE
                   WHEN stock_qty = 0 THEN 'OUT_OF_STOCK'
-                  WHEN stock_qty <= reorder_threshold THEN 'LOW_STOCK'
+                  WHEN stock_qty <= 5 THEN 'LOW_STOCK'
                   ELSE 'IN_STOCK'
                 END AS stock_status
          FROM spare_parts
@@ -192,7 +192,7 @@ if ($action === 'all-overview' && $method === 'GET') {
          ORDER BY
            CASE
              WHEN stock_qty = 0 THEN 0
-             WHEN stock_qty <= reorder_threshold THEN 1
+             WHEN stock_qty <= 5 THEN 1
              ELSE 2
            END,
            name ASC"

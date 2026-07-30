@@ -329,7 +329,29 @@ if ($method === 'DELETE' && $action === 'delete-machine') {
 function fetch_machines(string $customerId): array {
     $stmt = db()->prepare('SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at ASC');
     $stmt->execute([$customerId]);
-    return $stmt->fetchAll();
+    $machines = $stmt->fetchAll();
+
+    $reasonStmt = db()->prepare(
+        "SELECT ca.label, ca.value, ca.safety_level
+         FROM checklist_answers ca
+         WHERE ca.report_id = (
+           SELECT id FROM checklist_reports
+           WHERE machine_id = ? ORDER BY created_at DESC LIMIT 1
+         )
+         AND ca.safety_level IN ('YELLOW', 'RED')
+         ORDER BY CASE ca.safety_level WHEN 'RED' THEN 0 ELSE 1 END, ca.label ASC"
+    );
+    foreach ($machines as &$machine) {
+        $reasonStmt->execute([$machine['id']]);
+        $flags = $reasonStmt->fetchAll();
+        $machine['alertReasons'] = array_map(
+            static fn(array $flag): string => trim($flag['label'] . ($flag['value'] !== '' ? ': ' . $flag['value'] : '')),
+            $flags
+        );
+    }
+    unset($machine);
+
+    return $machines;
 }
 function fetch_customer_users(string $customerId): array {
     $stmt = db()->prepare('SELECT id, name, email, phone, role, is_active, created_at FROM customer_users WHERE customer_id = ?');

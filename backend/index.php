@@ -207,6 +207,9 @@ switch ($resource) {
         }
         dispatch('spare_parts.php', ['id' => $segments[1] ?? null]);
 
+    case 'spare-recommendations':
+        dispatch('spare_recommendations.php', ['id' => $segments[1] ?? '']);
+
     case 'billing':
         // GET/POST /billing/invoices, GET/PUT/DELETE /billing/invoices/:id
         // POST /billing/invoices/:id/payments
@@ -248,6 +251,9 @@ switch ($resource) {
 
     case 'reports':
         dispatch('reports.php', ['action' => $segments[1] ?? '']);
+
+    case 'announcements':
+        dispatch('announcements.php', ['id' => $segments[1] ?? '']);
 
     case 'settings':
         // GET/PUT /settings, PUT /settings/:key

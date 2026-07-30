@@ -1,0 +1,98 @@
+dialog {
+  width: min(620px, 94vw);
+  max-height: 92vh;
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(7, 14, 28, .32);
+}
+
+dialog::backdrop {
+  background: rgba(12, 18, 31, .70);
+  backdrop-filter: blur(3px);
+}
+
+.dialog-card {
+  display: grid;
+  gap: 13px;
+  max-height: 92vh;
+  padding: 23px;
+  overflow-y: auto;
+}
+
+.dialog-card label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.dialog-card input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 5px;
+}
+
+.dialog-head h2 {
+  margin: 4px 0 0;
+  font: 750 23px "Space Grotesk", sans-serif;
+}
+
+.icon-close {
+  padding: 0;
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.account-detail {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.account-detail.hidden {
+  display: none;
+}
+
+.account-detail-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+#accountSelect {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 13px;
+  min-width: 260px;
+}

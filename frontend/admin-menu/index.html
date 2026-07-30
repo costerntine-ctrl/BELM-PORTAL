@@ -1,13 +1,90 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Opening All Overview — BELM</title>
-  <meta http-equiv="refresh" content="0;url=/overview-manager/">
-  <script>window.location.replace("/overview-manager/");</script>
-</head>
-<body>
-  <p><a href="/overview-manager/">Open All Overview</a></p>
-</body>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM Admin Main Menu</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/admin-menu/menu.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/admin-menu/">
+        <span class="brand-mark">B</span>
+        <span>BELM General Tech <small>Admin Main Menu</small></span>
+      </a>
+      <div class="top-actions">
+        <span id="signedInUser" class="signed-in-user">Signed in</span>
+        <button id="logoutButton" class="ghost" type="button">Log out</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Secure role-based navigation</p>
+          <h1>Main Menu</h1>
+          <p>Choose a section. Only pages assigned to your role are displayed.</p>
+        </div>
+        <a class="secondary" href="/">Public portal</a>
+      </section>
+
+      <section class="menu-grid" aria-label="BELM administration modules">
+        <a class="menu-card" data-page="overview" href="/admin/overview">
+          <span class="menu-icon">OV</span>
+          <span><strong>Overview</strong><small>Dashboard summary and activity</small></span>
+        </a>
+        <a class="menu-card" data-page="customers" href="/customers-manager/">
+          <span class="menu-icon">CU</span>
+          <span><strong>Customers</strong><small>Customer cards, machines and portal links</small></span>
+        </a>
+        <a class="menu-card" data-page="customers" href="/admin-applications/">
+          <span class="menu-icon">AP</span>
+          <span><strong>Access Applications</strong><small>Approve or cancel registration requests</small></span>
+        </a>
+        <a class="menu-card" data-page="checklist-templates" href="/checklist-manager/">
+          <span class="menu-icon">CL</span>
+          <span><strong>Checklists</strong><small>Templates, dropdown values and safety levels</small></span>
+        </a>
+        <a class="menu-card" data-page="service-requests" href="/service-request-manager/">
+          <span class="menu-icon">SR</span>
+          <span><strong>Service Requests</strong><small>Customer requests, assignments and notes</small></span>
+        </a>
+        <a class="menu-card" data-page="spare-parts" href="/spare-parts-manager/">
+          <span class="menu-icon">SP</span>
+          <span><strong>Spare Parts</strong><small>Inventory, stock levels and pricing</small></span>
+        </a>
+        <a class="menu-card" data-page="billing" href="/billing-manager/">
+          <span class="menu-icon">BI</span>
+          <span><strong>Billing</strong><small>Invoices, proformas, payments and expenses</small></span>
+        </a>
+        <a class="menu-card" data-page="roles" href="/roles-manager/">
+          <span class="menu-icon">RU</span>
+          <span><strong>Roles &amp; Users</strong><small>System users, roles and customer assignments</small></span>
+        </a>
+        <a class="menu-card" data-page="suppliers" href="/suppliers-manager/">
+          <span class="menu-icon">SU</span>
+          <span><strong>Suppliers</strong><small>Trusted supplier cards and WhatsApp contacts</small></span>
+        </a>
+        <a class="menu-card" data-page="reports" href="/admin/reports">
+          <span class="menu-icon">RE</span>
+          <span><strong>Reports</strong><small>Operational and business reports</small></span>
+        </a>
+        <a class="menu-card" data-page="settings" href="/admin/settings">
+          <span class="menu-icon">SE</span>
+          <span><strong>Settings</strong><small>Company and system configuration</small></span>
+        </a>
+      </section>
+
+      <section id="noAccessMessage" class="panel no-access hidden">
+        No dashboard section has been assigned to this account. Ask the Super Admin to assign a role.
+      </section>
+    </main>
+
+    <script src="/admin-access.js"></script>
+    <script src="/admin-menu/menu.js"></script>
+  </body>
 </html>

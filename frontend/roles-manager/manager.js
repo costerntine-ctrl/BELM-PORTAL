@@ -9,13 +9,12 @@
 
   const pageOptions = [
     ["customers", "Customers"],
-    ["overview", "All Overview"],
+    ["overview", "Dashboard overview"],
     ["roles", "Roles & system users"],
     ["service-requests", "Service requests"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
-    ["bank-manager", "Bank Manager"],
-    ["reports", "Reports & comparisons"],
+    ["reports", "Reports"],
     ["settings", "System settings"],
     ["checklist-templates", "Checklist templates"],
     ["suppliers", "Suppliers"],
@@ -64,20 +63,6 @@
     const box = document.getElementById(id);
     box.textContent = message;
     box.className = "alert error";
-  }
-
-  async function copyText(text, successMessage = "Copied.") {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (_) {
-      const area = document.createElement("textarea");
-      area.value = text;
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand("copy");
-      area.remove();
-    }
-    showAlert(successMessage);
   }
 
   function roleName(roleId) {
@@ -210,7 +195,6 @@
     document.getElementById("userPassword").required = !user;
     document.getElementById("userFormAlert").className = "alert error hidden";
     updateCustomerField();
-    if (!user) generatePassword();
     document.getElementById("userDialog").showModal();
   }
 
@@ -218,17 +202,6 @@
     const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$";
     const values = crypto.getRandomValues(new Uint32Array(12));
     document.getElementById("userPassword").value = Array.from(values, (value) => alphabet[value % alphabet.length]).join("");
-  }
-
-  function showUserCredentials(user, credentials) {
-    const loginUrl = credentials.loginUrl || `${window.location.origin}/admin/login`;
-    document.getElementById("credentialsTitle").textContent = `Copy login — ${user.name}`;
-    document.getElementById("systemCredentialEmail").value = user.email;
-    document.getElementById("systemCredentialPassword").value = credentials.temporaryPassword || credentials.newPassword || "";
-    document.getElementById("systemCredentialRecovery").value = credentials.recoveryCode || "";
-    document.getElementById("systemCredentialLink").value = loginUrl;
-    document.getElementById("openSystemLogin").href = loginUrl;
-    document.getElementById("userCredentialsDialog").showModal();
   }
 
   async function saveUser(event) {
@@ -258,12 +231,8 @@
       if (id) {
         showAlert("User role and access changed successfully.");
       } else {
-        showUserCredentials(
-          { name: payload.name, email: payload.email },
-          {
-            ...result,
-            temporaryPassword: result.temporaryPassword || payload.password,
-          }
+        alert(
+          `System user created.\n\nEmail: ${payload.email}\nTemporary password: ${payload.password}\nRecovery code: ${result.recoveryCode}\n\nCopy these details now.`
         );
         showAlert("System user added with role-limited access.");
       }
@@ -323,8 +292,9 @@
     if (!user || !confirm(`Reset password for ${user.name}?`)) return;
     try {
       const result = await api(`/users/${id}/reset-password`, { method: "PUT" });
-      showUserCredentials(user, result);
-      showAlert("New login credentials generated. Copy them before closing the window.");
+      alert(
+        `New credentials for ${user.name}:\n\nTemporary password: ${result.newPassword}\nRecovery code: ${result.recoveryCode}\n\nCopy both now and share them securely.`
+      );
     } catch (error) {
       showAlert(error.message, true);
     }
@@ -332,14 +302,9 @@
 
   async function deleteUser(id) {
     const user = users.find((item) => item.id === id);
-    if (!user) return;
-    const confirmation = await window.belmConfirmDelete({
-      title: "Delete system user?",
-      message: `Delete system user ${user.name}? The record will move to the Recycle Bin.`,
-    });
-    if (!confirmation) return;
+    if (!user || !confirm(`Delete system user ${user.name}? The record will move to the Recycle Bin.`)) return;
     try {
-      await api(`/users/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
+      await api(`/users/${id}`, { method: "DELETE" });
       await load();
       showAlert("System user moved to the Recycle Bin.");
     } catch (error) {
@@ -353,15 +318,6 @@
   document.getElementById("searchInput").addEventListener("input", renderUsers);
   document.getElementById("userRole").addEventListener("change", updateCustomerField);
   document.getElementById("generatePassword").addEventListener("click", generatePassword);
-  document.getElementById("copySystemCredentials").addEventListener("click", () => {
-    copyText(
-      `Email: ${document.getElementById("systemCredentialEmail").value}\nTemporary password: ${document.getElementById("systemCredentialPassword").value}\nRecovery code: ${document.getElementById("systemCredentialRecovery").value}\nLogin: ${document.getElementById("systemCredentialLink").value}`,
-      "System-user login credentials copied."
-    );
-  });
-  document.getElementById("copySystemPassword").addEventListener("click", () => {
-    copyText(document.getElementById("systemCredentialPassword").value, "Temporary password copied.");
-  });
   document.getElementById("userForm").addEventListener("submit", saveUser);
   document.getElementById("roleForm").addEventListener("submit", saveRole);
   document.querySelectorAll("[data-close]").forEach((button) =>

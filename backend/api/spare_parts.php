@@ -52,7 +52,7 @@ if ($method === 'GET') {
     $stmt = db()->query('SELECT * FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC');
     $parts = $stmt->fetchAll();
     if (($_GET['lowStock'] ?? '') === 'true') {
-        $parts = array_values(array_filter($parts, fn($p) => $p['stock_qty'] <= 5));
+        $parts = array_values(array_filter($parts, fn($p) => $p['stock_qty'] <= $p['reorder_threshold']));
     }
     json_out($parts);
 }
@@ -87,8 +87,7 @@ if ($method === 'DELETE') {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    $reason = require_delete_confirmation($user, body());
-    send_to_trash('sparePart', $id, $row['name'], $user['id'], $reason);
+    send_to_trash('sparePart', $id, $row['name'], $user['id']);
     soft_delete('spare_parts', $id);
     json_out(null, 204);
 }

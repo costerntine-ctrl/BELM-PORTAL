@@ -13,39 +13,6 @@
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
   })[character]);
 
-  const googleSearchSuffixes = {
-    "spare-parts": "spare parts OEM aftermarket supplier distributor",
-    "parts-diagrams": "parts diagram exploded view parts catalogue",
-    "service-manuals": "service workshop manual PDF",
-    "wiring-diagrams": "electrical wiring diagram schematic",
-    "hydraulic-diagrams": "hydraulic diagram schematic",
-    "technical-specifications": "technical specifications datasheet",
-    "fault-codes": "fault codes troubleshooting",
-    suppliers: "authorized supplier distributor dealer",
-    general: "",
-  };
-
-  function runGoogleSearch(event) {
-    event.preventDefault();
-    const input = document.getElementById("googleSearchInput");
-    const type = document.getElementById("googleSearchType").value;
-    const hint = document.getElementById("googleSearchHint");
-    const searchDetails = input.value.trim();
-    if (!searchDetails) {
-      hint.textContent = "Enter a machine brand, model, serial number or part number first.";
-      hint.classList.add("error");
-      input.focus();
-      return;
-    }
-
-    const query = [searchDetails, googleSearchSuffixes[type] || ""].filter(Boolean).join(" ");
-    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-    hint.textContent = `Opening Google search for: ${query}`;
-    hint.classList.remove("error");
-    const googleTab = window.open(googleUrl, "_blank", "noopener,noreferrer");
-    if (googleTab) googleTab.opener = null;
-  }
-
   async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
@@ -199,14 +166,9 @@
 
   async function deleteSupplier(id) {
     const supplier = suppliers.find((item) => item.id === id);
-    if (!supplier) return;
-    const confirmation = await window.belmConfirmDelete({
-      title: "Delete supplier?",
-      message: `Delete supplier ${supplier.name}? It will move to the Recycle Bin.`,
-    });
-    if (!confirmation) return;
+    if (!supplier || !confirm(`Delete supplier ${supplier.name}? It will move to the Recycle Bin.`)) return;
     try {
-      await api(`/suppliers/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
+      await api(`/suppliers/${id}`, { method: "DELETE" });
       await load();
       showAlert("Supplier moved to the Recycle Bin.");
     } catch (error) {
@@ -216,7 +178,6 @@
 
   document.getElementById("addButton").addEventListener("click", () => openSupplier());
   document.getElementById("refreshButton").addEventListener("click", load);
-  document.getElementById("googleSearchForm").addEventListener("submit", runGoogleSearch);
   document.getElementById("searchInput").addEventListener("input", renderSuppliers);
   document.getElementById("trustFilter").addEventListener("change", renderSuppliers);
   document.getElementById("supplierForm").addEventListener("submit", saveSupplier);

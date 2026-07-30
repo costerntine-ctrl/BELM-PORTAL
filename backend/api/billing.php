@@ -6,80 +6,6 @@ require_page_access($user, 'billing');
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
-$paymentId = $_GET['paymentId'] ?? null;
-
-function validate_invoice_input(array $payload): array {
-    $items = $payload['items'] ?? [];
-    if (!is_array($items) || count($items) === 0) json_error('Add at least one invoice item.');
-    $customerId = trim((string)($payload['customerId'] ?? ''));
-    $machineId = trim((string)($payload['machineId'] ?? ''));
-    $stmt = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
-    $stmt->execute([$customerId]);
-    if (!$stmt->fetch()) json_error('Select an active customer.', 422);
-    if ($machineId !== '') {
-        $stmt = db()->prepare(
-            'SELECT 1 FROM machines
-             WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
-        );
-        $stmt->execute([$machineId, $customerId]);
-        if (!$stmt->fetch()) json_error('Selected machine does not belong to this customer.', 422);
-    }
-    $normalizedItems = [];
-    $subtotal = 0.0;
-    foreach ($items as $item) {
-        $description = trim((string)($item['description'] ?? ''));
-        $quantity = $item['quantity'] ?? null;
-        $unitPrice = $item['unitPrice'] ?? null;
-        if ($description === '') json_error('Every invoice item needs a description.');
-        if (!is_numeric($quantity)
-            || (float)$quantity <= 0
-            || floor((float)$quantity) !== (float)$quantity) {
-            json_error('Invoice item quantity must be a whole number greater than zero.');
-        }
-        if (!is_numeric($unitPrice) || (float)$unitPrice < 0) {
-            json_error('Invoice item price cannot be negative.');
-        }
-        $lineTotal = (int)$quantity * (float)$unitPrice;
-        $normalizedItems[] = [
-            'description' => $description,
-            'quantity' => (int)$quantity,
-            'unitPrice' => (float)$unitPrice,
-            'lineTotal' => $lineTotal,
-        ];
-        $subtotal += $lineTotal;
-    }
-    $tax = (float)($payload['tax'] ?? 0);
-    if ($tax < 0) json_error('Tax cannot be negative.');
-    $dueDate = trim((string)($payload['dueDate'] ?? ''));
-    return [
-        'customerId' => $customerId,
-        'machineId' => $machineId !== '' ? $machineId : null,
-        'dueDate' => $dueDate !== '' ? $dueDate : null,
-        'items' => $normalizedItems,
-        'subtotal' => $subtotal,
-        'tax' => $tax,
-        'total' => $subtotal + $tax,
-    ];
-}
-
-function calculated_invoice_status(float $total, float $paid, ?string $dueDate): string {
-    if ($total > 0 && $paid >= $total - 0.005) return 'PAID';
-    if ($paid > 0) return 'PARTIALLY_PAID';
-    if ($dueDate && $dueDate < date('Y-m-d')) return 'OVERDUE';
-    return 'UNPAID';
-}
-
-function validated_payment_bank_id(array $payload): ?string {
-    $bankAccountId = trim((string)($payload['bankAccountId'] ?? ''));
-    if ($bankAccountId === '') return null;
-    $stmt = db()->prepare(
-        'SELECT 1 FROM bank_accounts
-         WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
-    );
-    $stmt->execute([$bankAccountId]);
-    if (!$stmt->fetch()) json_error('Selected bank account is not active.', 422);
-    return $bankAccountId;
-}
 
 if ($method === 'GET' && !$action) {
     $customerId = $_GET['customerId'] ?? null;
@@ -98,13 +24,7 @@ if ($method === 'GET' && !$action) {
         $stmt2 = db()->prepare('SELECT * FROM invoice_items WHERE invoice_id = ?');
         $stmt2->execute([$inv['id']]);
         $inv['items'] = $stmt2->fetchAll();
-        $stmt2 = db()->prepare(
-            'SELECT p.*, b.bank_name, b.account_name
-             FROM payments p
-             LEFT JOIN bank_accounts b ON b.id = p.bank_account_id
-             WHERE p.invoice_id = ?
-             ORDER BY p.paid_at DESC'
-        );
+        $stmt2 = db()->prepare('SELECT * FROM payments WHERE invoice_id = ? ORDER BY paid_at DESC');
         $stmt2->execute([$inv['id']]);
         $inv['payments'] = $stmt2->fetchAll();
         $inv['paidAmount'] = array_sum(array_map(
@@ -118,36 +38,54 @@ if ($method === 'GET' && !$action) {
 
 if ($method === 'POST' && !$action) {
     $b = body();
-    $invoice = validate_invoice_input($b);
+    $items = $b['items'] ?? [];
+    if (!is_array($items) || count($items) === 0) json_error('Add at least one invoice item.');
+    $customerId = trim((string)($b['customerId'] ?? ''));
+    $machineId = trim((string)($b['machineId'] ?? ''));
+    $stmt = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([$customerId]);
+    if (!$stmt->fetch()) json_error('Select an active customer.', 422);
+    if ($machineId !== '') {
+        $stmt = db()->prepare(
+            'SELECT 1 FROM machines
+             WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+        );
+        $stmt->execute([$machineId, $customerId]);
+        if (!$stmt->fetch()) json_error('Selected machine does not belong to this customer.', 422);
+    }
+    foreach ($items as $item) {
+        if (trim((string)($item['description'] ?? '')) === '') json_error('Every invoice item needs a description.');
+        if (!is_numeric($item['quantity'] ?? null)
+            || (float)$item['quantity'] <= 0
+            || floor((float)$item['quantity']) !== (float)$item['quantity']) {
+            json_error('Invoice item quantity must be a whole number greater than zero.');
+        }
+        if (!is_numeric($item['unitPrice'] ?? null) || (float)$item['unitPrice'] < 0) json_error('Invoice item price cannot be negative.');
+    }
+    $subtotal = array_sum(array_map(fn($it) => $it['quantity'] * $it['unitPrice'], $items));
+    $tax = (float)($b['tax'] ?? 0);
+    if ($tax < 0) json_error('Tax cannot be negative.');
+    $total = $subtotal + $tax;
     $invoiceNo = document_number('INV');
     $newId = uuid();
     $pdo = db();
     $pdo->beginTransaction();
     try {
         $pdo->prepare("INSERT INTO invoices (id, customer_id, machine_id, invoice_no, subtotal, tax, total, status, due_date, created_at) VALUES (?,?,?,?,?,?,?,'UNPAID',?,NOW())")
-            ->execute([
-                $newId,
-                $invoice['customerId'],
-                $invoice['machineId'],
-                $invoiceNo,
-                $invoice['subtotal'],
-                $invoice['tax'],
-                $invoice['total'],
-                $invoice['dueDate'],
-            ]);
+            ->execute([$newId, $customerId, $machineId !== '' ? $machineId : null, $invoiceNo, $subtotal, $tax, $total, $b['dueDate'] ?? null]);
         $itemStmt = $pdo->prepare(
             'INSERT INTO invoice_items
              (id, invoice_id, description, quantity, unit_price, line_total)
              VALUES (?,?,?,?,?,?)'
         );
-        foreach ($invoice['items'] as $item) {
+        foreach ($items as $item) {
             $itemStmt->execute([
                 uuid(),
                 $newId,
-                $item['description'],
-                $item['quantity'],
-                $item['unitPrice'],
-                $item['lineTotal'],
+                trim((string)$item['description']),
+                (int)$item['quantity'],
+                (float)$item['unitPrice'],
+                (float)$item['quantity'] * (float)$item['unitPrice'],
             ]);
         }
         $pdo->commit();
@@ -160,71 +98,6 @@ if ($method === 'POST' && !$action) {
 
 if ($method === 'PUT' && !$action) {
     $b = body();
-    if (($b['action'] ?? '') === 'edit') {
-        $invoice = validate_invoice_input($b);
-        $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $stmt = $pdo->prepare(
-                'SELECT status
-                 FROM invoices
-                 WHERE id = ? AND deleted_at IS NULL
-                 FOR UPDATE'
-            );
-            $stmt->execute([$id]);
-            $currentStatus = $stmt->fetchColumn();
-            if ($currentStatus === false) {
-                $pdo->rollBack();
-                json_error('Invoice not found.', 404);
-            }
-            $stmt = $pdo->prepare('SELECT COALESCE(SUM(amount),0) FROM payments WHERE invoice_id = ?');
-            $stmt->execute([$id]);
-            $paid = (float)$stmt->fetchColumn();
-            if ($paid > $invoice['total'] + 0.005) {
-                $pdo->rollBack();
-                json_error('Invoice total cannot be lower than payments already recorded.', 422);
-            }
-            $status = $currentStatus === 'CANCELLED'
-                ? 'CANCELLED'
-                : calculated_invoice_status($invoice['total'], $paid, $invoice['dueDate']);
-            $pdo->prepare(
-                'UPDATE invoices
-                 SET customer_id=?, machine_id=?, subtotal=?, tax=?, total=?,
-                     status=?, due_date=?
-                 WHERE id=? AND deleted_at IS NULL'
-            )->execute([
-                $invoice['customerId'],
-                $invoice['machineId'],
-                $invoice['subtotal'],
-                $invoice['tax'],
-                $invoice['total'],
-                $status,
-                $invoice['dueDate'],
-                $id,
-            ]);
-            $pdo->prepare('DELETE FROM invoice_items WHERE invoice_id = ?')->execute([$id]);
-            $itemStmt = $pdo->prepare(
-                'INSERT INTO invoice_items
-                 (id, invoice_id, description, quantity, unit_price, line_total)
-                 VALUES (?,?,?,?,?,?)'
-            );
-            foreach ($invoice['items'] as $item) {
-                $itemStmt->execute([
-                    uuid(),
-                    $id,
-                    $item['description'],
-                    $item['quantity'],
-                    $item['unitPrice'],
-                    $item['lineTotal'],
-                ]);
-            }
-            $pdo->commit();
-        } catch (Throwable $error) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            throw $error;
-        }
-        json_out(['ok' => true, 'status' => $status]);
-    }
     // PAID and PARTIALLY_PAID are calculated from recorded payments.
     $allowedStatuses = ['UNPAID', 'OVERDUE', 'CANCELLED'];
     $status = strtoupper(trim((string)($b['status'] ?? '')));
@@ -252,87 +125,15 @@ if ($method === 'DELETE' && !$action) {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    $reason = require_delete_confirmation($user, body());
-    send_to_trash('invoice', $id, $row['invoice_no'], $user['id'], $reason);
+    send_to_trash('invoice', $id, $row['invoice_no'], $user['id']);
     soft_delete('invoices', $id);
     json_out(null, 204);
-}
-
-if ($method === 'PUT' && $action === 'payment') {
-    $b = body();
-    $amount = (float)($b['amount'] ?? 0);
-    if ($amount <= 0) json_error('Payment amount must be greater than zero.');
-    if (!$paymentId) json_error('Payment not found.', 404);
-    $bankAccountId = validated_payment_bank_id($b);
-    $pdo = db();
-    $pdo->beginTransaction();
-    try {
-        $stmt = $pdo->prepare(
-            'SELECT total, status, due_date
-             FROM invoices
-             WHERE id = ? AND deleted_at IS NULL
-             FOR UPDATE'
-        );
-        $stmt->execute([$id]);
-        $invoice = $stmt->fetch();
-        if (!$invoice) {
-            $pdo->rollBack();
-            json_error('Invoice not found.', 404);
-        }
-        if ($invoice['status'] === 'CANCELLED') {
-            $pdo->rollBack();
-            json_error('A cancelled invoice payment cannot be edited.', 422);
-        }
-        $stmt = $pdo->prepare(
-            'SELECT id FROM payments
-             WHERE id = ? AND invoice_id = ?
-             FOR UPDATE'
-        );
-        $stmt->execute([$paymentId, $id]);
-        if (!$stmt->fetch()) {
-            $pdo->rollBack();
-            json_error('Payment not found for this invoice.', 404);
-        }
-        $stmt = $pdo->prepare(
-            'SELECT COALESCE(SUM(amount),0)
-             FROM payments
-             WHERE invoice_id = ? AND id <> ?'
-        );
-        $stmt->execute([$id, $paymentId]);
-        $otherPayments = (float)$stmt->fetchColumn();
-        $total = (float)$invoice['total'];
-        if ($otherPayments + $amount > $total + 0.005) {
-            $pdo->rollBack();
-            json_error('Edited payment is greater than the available invoice balance.', 422);
-        }
-        $pdo->prepare(
-            'UPDATE payments
-             SET bank_account_id=?, amount=?, method=?, reference=?
-             WHERE id=? AND invoice_id=?'
-        )->execute([
-            $bankAccountId,
-            $amount,
-            trim((string)($b['method'] ?? '')) ?: null,
-            trim((string)($b['reference'] ?? '')) ?: null,
-            $paymentId,
-            $id,
-        ]);
-        $paid = $otherPayments + $amount;
-        $status = calculated_invoice_status($total, $paid, $invoice['due_date']);
-        $pdo->prepare('UPDATE invoices SET status=? WHERE id=?')->execute([$status, $id]);
-        $pdo->commit();
-    } catch (Throwable $error) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        throw $error;
-    }
-    json_out(['ok' => true, 'status' => $status]);
 }
 
 if ($method === 'POST' && $action === 'payment') {
     $b = body();
     $amount = (float)($b['amount'] ?? 0);
     if ($amount <= 0) json_error('Payment amount must be greater than zero.');
-    $bankAccountId = validated_payment_bank_id($b);
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -357,8 +158,8 @@ if ($method === 'POST' && $action === 'payment') {
             $pdo->rollBack();
             json_error('Payment is greater than the invoice balance.', 422);
         }
-        $pdo->prepare('INSERT INTO payments (id, invoice_id, bank_account_id, amount, method, reference, paid_at) VALUES (?,?,?,?,?,?,NOW())')
-            ->execute([uuid(), $id, $bankAccountId, $amount, $b['method'] ?? null, $b['reference'] ?? null]);
+        $pdo->prepare('INSERT INTO payments (id, invoice_id, amount, method, reference, paid_at) VALUES (?,?,?,?,?,NOW())')
+            ->execute([uuid(), $id, $amount, $b['method'] ?? null, $b['reference'] ?? null]);
         $paid = $alreadyPaid + $amount;
         $status = $paid >= $total ? 'PAID' : 'PARTIALLY_PAID';
         $pdo->prepare('UPDATE invoices SET status=? WHERE id=?')->execute([$status, $id]);

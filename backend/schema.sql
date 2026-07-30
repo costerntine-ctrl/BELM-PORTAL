@@ -539,7 +539,7 @@ VALUES
     '00000000-0000-4000-8000-000000000001',
     'Super Admin',
     '{"customers":["view","edit","delete"],"checklists":["view","edit","delete"],"serviceRequests":["view","edit","delete"],"spareParts":["view","edit","delete"],"billing":["view","edit","delete"],"users":["view","edit","delete"],"reports":["view","edit","delete"],"settings":["view","edit","delete"]}'::jsonb,
-    '["customers","overview","roles","service-requests","spare-parts","billing","reports","settings","checklist-templates","suppliers","activity-log"]'::jsonb
+    '["customers","overview","roles","service-requests","spare-parts","billing","bank-manager","reports","settings","checklist-templates","suppliers","activity-log"]'::jsonb
   ),
   (
     '00000000-0000-4000-8000-000000000002',

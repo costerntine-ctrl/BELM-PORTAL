@@ -34,7 +34,7 @@
     [/^\/service-request-manager(?:\/|$)/, "service-requests"],
     [/^\/spare-parts-manager(?:\/|$)/, "spare-parts"],
     [/^\/billing-manager(?:\/|$)/, "billing"],
-    [/^\/bank-controller(?:\/|$)/, "billing"],
+    [/^\/bank-controller(?:\/|$)/, "bank-manager"],
     [/^\/roles-manager(?:\/|$)/, "roles"],
     [/^\/suppliers-manager(?:\/|$)/, "suppliers"],
     [/^\/reports-manager(?:\/|$)/, "reports"],

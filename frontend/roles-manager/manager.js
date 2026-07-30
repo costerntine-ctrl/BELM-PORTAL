@@ -14,6 +14,7 @@
     ["service-requests", "Service requests"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
+    ["bank-manager", "Bank Manager"],
     ["reports", "Reports & comparisons"],
     ["settings", "System settings"],
     ["checklist-templates", "Checklist templates"],

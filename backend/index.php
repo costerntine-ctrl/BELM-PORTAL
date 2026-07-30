@@ -19,6 +19,11 @@ function dispatch(string $file, array $getOverrides = []): void {
     exit;
 }
 
+if (($segments[0] ?? '') === 'reset-database') {
+    require __DIR__ . '/scripts/reset.php';
+    exit;
+}
+
 // Health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
@@ -251,6 +256,9 @@ switch ($resource) {
 
     case 'reports':
         dispatch('reports.php', ['action' => $segments[1] ?? '']);
+
+    case 'backup':
+        dispatch('backup.php');
 
     case 'announcements':
         dispatch('announcements.php', ['id' => $segments[1] ?? '']);

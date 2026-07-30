@@ -28,6 +28,21 @@
     <div id="pageAlert" class="alert hidden"></div>
     <section class="settings-grid">
       <article class="panel">
+        <div class="section-head"><div><h2>Backup</h2><p>Free Render databases have no automatic backups. Download a full copy of your data periodically and keep it somewhere safe (your computer, Google Drive, email to yourself).</p></div></div>
+        <div class="settings-form">
+          <button id="downloadBackupButton" class="primary" type="button">Download full backup (JSON)</button>
+        </div>
+      </article>
+
+      <article class="panel">
+        <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Only for use while still testing/building the portal. Wipes every customer, machine, invoice and report, then reseeds a fresh empty database. This cannot be undone — download a backup first.</p></div></div>
+        <form id="resetDbForm" class="settings-form">
+          <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label>
+          <button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Wipe and reset database</button>
+        </form>
+      </article>
+
+      <article class="panel">
         <div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div>
         <form id="companyForm" class="settings-form">
           <label>Company name<input id="companyName" required maxlength="255"></label>

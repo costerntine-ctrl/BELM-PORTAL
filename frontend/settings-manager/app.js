@@ -245,4 +245,68 @@
       message(error.message, true);
     }
   });
+
+  document.getElementById("resetDbForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!confirm("This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?")) {
+      return;
+    }
+    const button = document.getElementById("resetDbButton");
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Wiping database…";
+    try {
+      const token = localStorage.getItem("belm_admin_token");
+      const response = await fetch("/api/reset-database", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pin: document.getElementById("resetDbPin").value }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Reset failed.");
+      alert(result.message || "Database reset successfully. You will be logged out now.");
+      localStorage.removeItem("belm_admin_token");
+      localStorage.removeItem("belm_admin_user");
+      window.location.href = "/admin/login";
+    } catch (error) {
+      message(error.message, true);
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  });
+
+  document.getElementById("downloadBackupButton").addEventListener("click", async () => {
+    const button = document.getElementById("downloadBackupButton");
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Preparing backup…";
+    try {
+      const token = localStorage.getItem("belm_admin_token");
+      const response = await fetch("/api/backup", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Could not download backup.");
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const matchedName = disposition.match(/filename="([^"]+)"/i);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = matchedName?.[1] || "belm-portal-backup.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      message("Backup downloaded. Save this file somewhere safe (Google Drive, your computer).");
+    } catch (error) {
+      message(error.message, true);
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  });
 })();

@@ -61,20 +61,6 @@
   sidebar.className = "belm-admin-sidebar";
   sidebar.setAttribute("aria-label", "BELM administration sidebar");
 
-  const brand = document.createElement("a");
-  brand.className = "belm-sidebar-brand";
-  brand.href = "/overview-manager/";
-  const mark = document.createElement("span");
-  mark.className = "belm-sidebar-brand-mark";
-  mark.textContent = "B";
-  const brandText = document.createElement("span");
-  const brandName = document.createElement("strong");
-  brandName.textContent = "BELM General Tech";
-  const brandSubtitle = document.createElement("small");
-  brandSubtitle.textContent = "Management Portal";
-  brandText.append(brandName, brandSubtitle);
-  brand.append(mark, brandText);
-
   const userCard = document.createElement("div");
   userCard.className = "belm-sidebar-user";
   const userName = document.createElement("strong");
@@ -128,7 +114,7 @@
   });
   footer.appendChild(logout);
 
-  sidebar.append(brand, userCard, nav);
+  sidebar.append(userCard, nav);
   sidebar.appendChild(footer);
 
   const toggle = document.createElement("button");

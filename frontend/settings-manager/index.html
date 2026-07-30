@@ -35,10 +35,28 @@
       </article>
 
       <article class="panel">
-        <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Only for use while still testing/building the portal. Wipes every customer, machine, invoice and report, then reseeds a fresh empty database. This cannot be undone — download a backup first.</p></div></div>
+        <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Only for use while still testing/building the portal. Choose "Everything" to wipe the whole database, or pick one category to clear just that area — the rest stays untouched. This cannot be undone — download a backup first.</p></div></div>
         <form id="resetDbForm" class="settings-form">
+          <label>Category to reset
+            <select id="resetDbCategory">
+              <option value="all">Everything (full wipe)</option>
+              <option value="customers">Customers & Machines</option>
+              <option value="checklists">Checklist Templates & Reports</option>
+              <option value="spare-parts">Spare Parts & Requests</option>
+              <option value="suppliers">Suppliers</option>
+              <option value="billing">Billing & Finance</option>
+              <option value="service-requests">Service Requests</option>
+              <option value="bank">Bank Manager</option>
+              <option value="tasks">Tasks</option>
+              <option value="activity">Activity Log, Trash & Announcements</option>
+              <option value="usage-logs">Machine Expenses / Petty Cash logs</option>
+            </select>
+          </label>
+          <label id="resetCustomerPickerWrap" class="hidden">Specific customer <small>(leave as "All customers" to clear the whole category)</small>
+            <select id="resetCustomerPicker"><option value="">All customers</option></select>
+          </label>
           <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label>
-          <button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Wipe and reset database</button>
+          <button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Reset selected category</button>
         </form>
       </article>
 

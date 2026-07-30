@@ -246,28 +246,68 @@
     }
   });
 
-  document.getElementById("resetDbForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    if (!confirm("This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?")) {
+  let customersForResetCache = null;
+
+  document.getElementById("resetDbCategory").addEventListener("change", async (event) => {
+    const wrap = document.getElementById("resetCustomerPickerWrap");
+    if (event.target.value !== "customers") {
+      wrap.classList.add("hidden");
       return;
     }
+    wrap.classList.remove("hidden");
+    const picker = document.getElementById("resetCustomerPicker");
+    if (customersForResetCache) return;
+    try {
+      customersForResetCache = await api("/customers");
+      picker.innerHTML = '<option value="">All customers</option>' +
+        customersForResetCache.map((customer) =>
+          `<option value="${customer.id}">${customer.name}</option>`).join("");
+    } catch (_) {}
+  });
+
+  document.getElementById("resetDbForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const category = document.getElementById("resetDbCategory");
+    const categoryLabel = category.options[category.selectedIndex].text;
+    const customerPicker = document.getElementById("resetCustomerPicker");
+    const isSingleCustomer = category.value === "customers" && customerPicker.value;
+    const customerLabel = isSingleCustomer
+      ? customerPicker.options[customerPicker.selectedIndex].text
+      : "";
+    const confirmMessage = isSingleCustomer
+      ? `This will permanently delete customer "${customerLabel}" and everything tied to them (machines, invoices, checklist reports, service requests). This cannot be undone. Continue?`
+      : category.value === "all"
+        ? "This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?"
+        : `This will permanently delete all data under "${categoryLabel}" only. Everything else stays untouched. This cannot be undone. Continue?`;
+    if (!confirm(confirmMessage)) return;
     const button = document.getElementById("resetDbButton");
     const originalText = button.textContent;
     button.disabled = true;
-    button.textContent = "Wiping database…";
+    button.textContent = "Resetting…";
     try {
       const token = localStorage.getItem("belm_admin_token");
       const response = await fetch("/api/reset-database", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ pin: document.getElementById("resetDbPin").value }),
+        body: JSON.stringify({
+          pin: document.getElementById("resetDbPin").value,
+          category: category.value,
+          customerId: isSingleCustomer ? customerPicker.value : undefined,
+        }),
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error || "Reset failed.");
-      alert(result.message || "Database reset successfully. You will be logged out now.");
-      localStorage.removeItem("belm_admin_token");
-      localStorage.removeItem("belm_admin_user");
-      window.location.href = "/admin/login";
+      if (category.value === "all") {
+        alert(result.message || "Database reset successfully. You will be logged out now.");
+        localStorage.removeItem("belm_admin_token");
+        localStorage.removeItem("belm_admin_user");
+        window.location.href = "/admin/login";
+        return;
+      }
+      message(result.message || `${categoryLabel} cleared successfully.`);
+      document.getElementById("resetDbPin").value = "";
+      customersForResetCache = null;
+      customerPicker.innerHTML = '<option value="">All customers</option>';
     } catch (error) {
       message(error.message, true);
     } finally {

@@ -23,80 +23,23 @@ function dispatch(string $file, array $getOverrides = []): void {
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
         $databaseVersion = db()->query('SELECT VERSION()')->fetchColumn();
-        $requiredTables = [
-            'roles',
-            'users',
-            'customers',
-            'customer_users',
-            'machines',
-            'customer_applications',
-            'user_applications',
-            'usage_logs',
-            'checklist_template_parts',
-            'service_request_parts',
-            'spare_parts',
-            'spare_part_requests',
-            'bank_accounts',
-            'bank_withdrawals',
-        ];
-        $tableChecks = [];
-        $schemaReady = true;
-        $tableStatement = db()->prepare('SELECT to_regclass(?) IS NOT NULL');
-        foreach ($requiredTables as $table) {
-            $tableStatement->execute(['public.' . $table]);
-            $tableChecks[$table] = (bool)$tableStatement->fetchColumn();
-            if (!$tableChecks[$table]) $schemaReady = false;
-        }
-
-        $adminChecks = [
-            'exactlyOneAccount' => false,
-            'active' => false,
-            'superAdminRole' => false,
-            'passwordHashStored' => false,
-        ];
+        $adminReady = false;
         try {
             $stmt = db()->prepare(
-                "SELECT u.id, u.is_active, u.deleted_at, u.password_hash,
-                        r.name AS role_name,
-                        COUNT(*) OVER () AS matching_accounts
-                 FROM users u
-                 LEFT JOIN roles r ON r.id = u.role_id
-                 WHERE LOWER(u.email) = LOWER(?)
-                 ORDER BY
-                   CASE WHEN u.deleted_at IS NULL AND u.is_active = 1 THEN 0 ELSE 1 END,
-                   u.created_at ASC
-                 LIMIT 1"
+                "SELECT COUNT(*) FROM users WHERE LOWER(email) = LOWER(?) AND deleted_at IS NULL"
             );
             $stmt->execute(['admin@belmgeneraltech.co.tz']);
-            $admin = $stmt->fetch();
-            if ($admin) {
-                $hash = (string)($admin['password_hash'] ?? '');
-                $adminChecks['exactlyOneAccount'] = (int)$admin['matching_accounts'] === 1;
-                $adminChecks['active'] =
-                    (int)$admin['is_active'] === 1 && $admin['deleted_at'] === null;
-                $adminChecks['superAdminRole'] = $admin['role_name'] === 'Super Admin';
-                $adminChecks['passwordHashStored'] =
-                    str_starts_with($hash, '$2') || str_starts_with($hash, '$argon2');
-            }
+            $adminReady = (int)$stmt->fetchColumn() > 0;
         } catch (Throwable $ignored) {
             // The database connection works, but schema.sql has not been imported.
         }
-        $adminReady = !in_array(false, $adminChecks, true);
 
         json_out([
             'ok' => true,
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '18-bank-manager',
-            'schemaReady' => $schemaReady,
-            'tables' => $tableChecks,
             'adminReady' => $adminReady,
-            'adminChecks' => $adminChecks,
-            'loginEndpoints' => [
-                'staff' => '/api/auth/login',
-                'customer' => '/api/auth/customer-login',
-            ],
         ]);
     } catch (Throwable $e) {
         json_out([
@@ -112,8 +55,7 @@ $resource = $segments[0] ?? '';
 
 switch ($resource) {
     case 'auth':
-        // Original role login endpoints: /auth/login and /auth/customer-login.
-        // /auth/unified-login remains backward-compatible for older clients.
+        // /auth/login, /auth/customer-login
         dispatch('auth.php', ['action' => $segments[1] ?? '']);
 
     case 'applications':
@@ -179,7 +121,6 @@ switch ($resource) {
 
     case 'checklist-reports':
         // POST /checklist-reports -> submit
-        // PUT /checklist-reports/:id -> update until 00:00 Tanzania time
         // GET /checklist-reports/machine/:machineId -> for-machine
         // GET/POST /checklist-reports/service-status/:machineId[/log-service]
         if (($segments[1] ?? '') === 'machine' && isset($segments[2])) {
@@ -188,9 +129,6 @@ switch ($resource) {
         if (($segments[1] ?? '') === 'service-status' && isset($segments[2])) {
             $action = (isset($segments[3]) && $segments[3] === 'log-service') ? 'log-service' : 'service-status';
             dispatch('checklist_reports.php', ['action' => $action, 'machineId' => $segments[2]]);
-        }
-        if ($method === 'PUT' && isset($segments[1])) {
-            dispatch('checklist_reports.php', ['action' => 'update', 'id' => $segments[1]]);
         }
         dispatch('checklist_reports.php', ['action' => 'submit']);
 
@@ -202,25 +140,14 @@ switch ($resource) {
         dispatch('service_requests.php');
 
     case 'spare-parts':
-        if (($segments[1] ?? '') === 'requests') {
-            dispatch('spare_part_requests.php', ['id' => $segments[2] ?? null]);
-        }
         dispatch('spare_parts.php', ['id' => $segments[1] ?? null]);
-
-    case 'spare-recommendations':
-        dispatch('spare_recommendations.php', ['id' => $segments[1] ?? '']);
 
     case 'billing':
         // GET/POST /billing/invoices, GET/PUT/DELETE /billing/invoices/:id
         // POST /billing/invoices/:id/payments
-        // PUT  /billing/invoices/:id/payments/:paymentId
         if (($segments[1] ?? '') === 'invoices') {
             if (isset($segments[3]) && $segments[3] === 'payments') {
-                dispatch('billing.php', [
-                    'action' => 'payment',
-                    'id' => $segments[2],
-                    'paymentId' => $segments[4] ?? null,
-                ]);
+                dispatch('billing.php', ['action' => 'payment', 'id' => $segments[2]]);
             }
             dispatch('billing.php', ['id' => $segments[2] ?? null]);
         }
@@ -229,31 +156,17 @@ switch ($resource) {
     case 'company-expenses':
         dispatch('company_expenses.php', ['id' => $segments[1] ?? null]);
 
-    case 'bank-manager':
-        // GET  /bank-manager
-        // POST /bank-manager/accounts
-        // PUT  /bank-manager/accounts/:id
-        // POST /bank-manager/withdrawals
-        // PUT  /bank-manager/withdrawals/:id
-        if (($segments[1] ?? '') === 'accounts') {
-            dispatch('bank_manager.php', ['action' => 'account', 'id' => $segments[2] ?? null]);
-        }
-        if (($segments[1] ?? '') === 'withdrawals') {
-            dispatch('bank_manager.php', ['action' => 'withdrawal', 'id' => $segments[2] ?? null]);
-        }
-        dispatch('bank_manager.php');
-
     case 'proforma-invoices':
         dispatch('proforma_invoices.php', ['id' => $segments[1] ?? null]);
 
     case 'suppliers':
         dispatch('suppliers.php', ['id' => $segments[1] ?? null]);
 
+    case 'activity-log':
+        dispatch('activity_log.php', ['entity' => $segments[1] ?? '']);
+
     case 'reports':
         dispatch('reports.php', ['action' => $segments[1] ?? '']);
-
-    case 'announcements':
-        dispatch('announcements.php', ['id' => $segments[1] ?? '']);
 
     case 'settings':
         // GET/PUT /settings, PUT /settings/:key

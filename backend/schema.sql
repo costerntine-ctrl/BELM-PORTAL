@@ -94,14 +94,10 @@ CREATE TABLE IF NOT EXISTS checklist_templates (
   id VARCHAR(36) PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   machine_type VARCHAR(100) NOT NULL,
-  service_type VARCHAR(150) NOT NULL DEFAULT 'General Service',
   is_active SMALLINT NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ NULL
 );
-
-ALTER TABLE checklist_templates
-  ADD COLUMN IF NOT EXISTS service_type VARCHAR(150) NOT NULL DEFAULT 'General Service';
 
 CREATE TABLE IF NOT EXISTS checklist_template_items (
   id VARCHAR(36) PRIMARY KEY,
@@ -113,15 +109,6 @@ CREATE TABLE IF NOT EXISTS checklist_template_items (
   option_safety JSONB NULL,
   "order" INTEGER NOT NULL DEFAULT 0,
   is_required SMALLINT NOT NULL DEFAULT 1
-);
-
-CREATE TABLE IF NOT EXISTS checklist_template_parts (
-  id VARCHAR(36) PRIMARY KEY,
-  template_id VARCHAR(36) NOT NULL REFERENCES checklist_templates(id) ON DELETE CASCADE,
-  spare_name VARCHAR(255) NOT NULL,
-  part_number VARCHAR(100) NOT NULL,
-  quantity DOUBLE PRECISION NOT NULL DEFAULT 1,
-  "order" INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS checklist_reports (
@@ -150,8 +137,6 @@ CREATE TABLE IF NOT EXISTS service_requests (
   id VARCHAR(36) PRIMARY KEY,
   customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
   machine_id VARCHAR(36) NULL REFERENCES machines(id),
-  template_id VARCHAR(36) NULL REFERENCES checklist_templates(id),
-  service_type VARCHAR(150) NULL,
   description TEXT NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
   priority VARCHAR(10) NOT NULL DEFAULT 'NORMAL',
@@ -159,27 +144,6 @@ CREATE TABLE IF NOT EXISTS service_requests (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-ALTER TABLE service_requests
-  ADD COLUMN IF NOT EXISTS template_id VARCHAR(36) NULL REFERENCES checklist_templates(id);
-ALTER TABLE service_requests
-  ADD COLUMN IF NOT EXISTS service_type VARCHAR(150) NULL;
-ALTER TABLE service_requests
-  ADD COLUMN IF NOT EXISTS origin VARCHAR(30) NOT NULL DEFAULT 'CUSTOMER';
-ALTER TABLE service_requests
-  ADD COLUMN IF NOT EXISTS customer_confirmed SMALLINT NOT NULL DEFAULT 1;
-
-CREATE TABLE IF NOT EXISTS service_request_parts (
-  id VARCHAR(36) PRIMARY KEY,
-  request_id VARCHAR(36) NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
-  spare_name VARCHAR(255) NOT NULL,
-  part_number VARCHAR(100) NOT NULL,
-  quantity DOUBLE PRECISION NOT NULL DEFAULT 1,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-ALTER TABLE service_request_parts
-  ADD COLUMN IF NOT EXISTS manufacturer_part_number VARCHAR(100) NULL;
 
 CREATE TABLE IF NOT EXISTS service_notes (
   id VARCHAR(36) PRIMARY KEY,
@@ -206,40 +170,10 @@ CREATE TABLE IF NOT EXISTS spare_part_requests (
   id VARCHAR(36) PRIMARY KEY,
   spare_part_id VARCHAR(36) NOT NULL REFERENCES spare_parts(id),
   request_id VARCHAR(36) NULL REFERENCES service_requests(id),
-  machine_id VARCHAR(36) NULL REFERENCES machines(id),
-  requested_by_id VARCHAR(36) NULL REFERENCES users(id),
-  requested_by_name VARCHAR(255) NULL,
-  description TEXT NULL,
-  machine_type VARCHAR(100) NULL,
   quantity INTEGER NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  resolved_at TIMESTAMPTZ NULL
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL REFERENCES machines(id);
-ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_id VARCHAR(36) NULL REFERENCES users(id);
-ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_name VARCHAR(255) NULL;
-ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS description TEXT NULL;
-ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS machine_type VARCHAR(100) NULL;
-ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ NULL;
-CREATE INDEX IF NOT EXISTS idx_spare_part_requests_status ON spare_part_requests(status);
-CREATE INDEX IF NOT EXISTS idx_spare_part_requests_machine ON spare_part_requests(machine_id);
-
-CREATE TABLE IF NOT EXISTS bank_accounts (
-  id VARCHAR(36) PRIMARY KEY,
-  bank_name VARCHAR(120) NOT NULL,
-  account_name VARCHAR(180) NOT NULL,
-  account_number VARCHAR(100) NOT NULL,
-  opening_balance NUMERIC(14,2) NOT NULL DEFAULT 0,
-  is_active SMALLINT NOT NULL DEFAULT 1,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMPTZ NULL
-);
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_bank_accounts_active_number
-  ON bank_accounts (LOWER(bank_name), LOWER(account_number))
-  WHERE deleted_at IS NULL;
 
 CREATE TABLE IF NOT EXISTS invoices (
   id VARCHAR(36) PRIMARY KEY,
@@ -267,16 +201,11 @@ CREATE TABLE IF NOT EXISTS invoice_items (
 CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(36) PRIMARY KEY,
   invoice_id VARCHAR(36) NOT NULL REFERENCES invoices(id),
-  bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id),
   amount NUMERIC(12,2) NOT NULL,
   method VARCHAR(50),
   reference VARCHAR(100),
   paid_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
-ALTER TABLE payments
-  ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
-CREATE INDEX IF NOT EXISTS idx_payments_bank_account ON payments(bank_account_id);
 
 CREATE TABLE IF NOT EXISTS notification_logs (
   id VARCHAR(36) PRIMARY KEY,
@@ -310,22 +239,8 @@ CREATE TABLE IF NOT EXISTS usage_logs (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS part_number VARCHAR(100);
-ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_data TEXT;
-ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_mime VARCHAR(50);
-ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_name VARCHAR(255);
-
-CREATE TABLE IF NOT EXISTS admin_announcements (
-  id VARCHAR(36) PRIMARY KEY,
-  message VARCHAR(1000) NOT NULL,
-  created_by VARCHAR(36) NULL REFERENCES users(id),
-  is_active SMALLINT NOT NULL DEFAULT 1,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
 CREATE TABLE IF NOT EXISTS company_expenses (
   id VARCHAR(36) PRIMARY KEY,
-  bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id),
   date DATE NOT NULL,
   category VARCHAR(20) NOT NULL DEFAULT 'OTHER',
   description VARCHAR(500) NOT NULL,
@@ -335,31 +250,6 @@ CREATE TABLE IF NOT EXISTS company_expenses (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ NULL
 );
-
-ALTER TABLE company_expenses
-  ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
-CREATE INDEX IF NOT EXISTS idx_company_expenses_bank_account
-  ON company_expenses(bank_account_id);
-
-CREATE TABLE IF NOT EXISTS bank_withdrawals (
-  id VARCHAR(36) PRIMARY KEY,
-  bank_account_id VARCHAR(36) NOT NULL REFERENCES bank_accounts(id),
-  date DATE NOT NULL,
-  cheque_number VARCHAR(120),
-  description VARCHAR(500) NOT NULL,
-  amount NUMERIC(14,2) NOT NULL,
-  withdrawn_by VARCHAR(255),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  deleted_at TIMESTAMPTZ NULL
-);
-
-ALTER TABLE bank_withdrawals
-  ADD COLUMN IF NOT EXISTS cheque_number VARCHAR(120);
-
-CREATE INDEX IF NOT EXISTS idx_bank_withdrawals_account
-  ON bank_withdrawals(bank_account_id);
-CREATE INDEX IF NOT EXISTS idx_bank_withdrawals_date
-  ON bank_withdrawals(date);
 
 CREATE TABLE IF NOT EXISTS proforma_invoices (
   id VARCHAR(36) PRIMARY KEY,
@@ -424,20 +314,6 @@ CREATE TABLE IF NOT EXISTS tasks (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS attendance_records (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
-  work_date DATE NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'PRESENT',
-  check_in TIMESTAMPTZ NULL,
-  check_out TIMESTAMPTZ NULL,
-  notes VARCHAR(500) NULL,
-  recorded_by VARCHAR(36) NULL REFERENCES users(id),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(user_id, work_date)
-);
-
 CREATE TABLE IF NOT EXISTS customer_applications (
   id VARCHAR(36) PRIMARY KEY,
   reference_no VARCHAR(30) NOT NULL UNIQUE,
@@ -445,12 +321,12 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   email VARCHAR(255) NOT NULL,
   address VARCHAR(500) NOT NULL,
   phone VARCHAR(50) NOT NULL,
-  tin_number VARCHAR(50) NOT NULL,
-  vrn VARCHAR(50) NOT NULL,
-  machine_type VARCHAR(100) NOT NULL,
-  brand VARCHAR(100) NOT NULL,
-  model VARCHAR(255) NOT NULL,
-  reg_number VARCHAR(100) NOT NULL,
+  tin_number VARCHAR(50),
+  vrn VARCHAR(50),
+  machine_type VARCHAR(100),
+  brand VARCHAR(100),
+  model VARCHAR(255),
+  reg_number VARCHAR(100),
   password_hash VARCHAR(255) NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -459,6 +335,15 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   customer_id VARCHAR(36) NULL REFERENCES customers(id),
   machine_id VARCHAR(36) NULL REFERENCES machines(id)
 );
+
+-- Existing databases created before the simplified registration form: relax
+-- the columns that are no longer collected up-front on the public form.
+ALTER TABLE customer_applications ALTER COLUMN tin_number DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN vrn DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN machine_type DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN brand DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN model DROP NOT NULL;
+ALTER TABLE customer_applications ALTER COLUMN reg_number DROP NOT NULL;
 
 CREATE TABLE IF NOT EXISTS user_applications (
   id VARCHAR(36) PRIMARY KEY,
@@ -488,12 +373,7 @@ CREATE INDEX IF NOT EXISTS idx_report_filledby ON checklist_reports(filled_by);
 CREATE INDEX IF NOT EXISTS idx_sr_customer ON service_requests(customer_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_customer ON invoices(customer_id);
 CREATE INDEX IF NOT EXISTS idx_usagelog_machine ON usage_logs(machine_id);
-CREATE INDEX IF NOT EXISTS idx_usagelog_customer_date ON usage_logs(customer_id, date DESC);
-CREATE INDEX IF NOT EXISTS idx_template_part_template ON checklist_template_parts(template_id, "order");
-CREATE INDEX IF NOT EXISTS idx_service_request_part_request ON service_request_parts(request_id);
 CREATE INDEX IF NOT EXISTS idx_task_assignedto ON tasks(assigned_to_id);
-CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance_records(work_date DESC);
-CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance_records(user_id, work_date DESC);
 CREATE INDEX IF NOT EXISTS idx_trash_deletedat ON trash_entries(deleted_at);
 CREATE INDEX IF NOT EXISTS idx_application_status ON customer_applications(status, submitted_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_application_pending_email
@@ -528,11 +408,6 @@ CREATE TRIGGER service_requests_set_updated_at
 BEFORE UPDATE ON service_requests
 FOR EACH ROW EXECUTE FUNCTION belm_set_updated_at();
 
-DROP TRIGGER IF EXISTS attendance_records_set_updated_at ON attendance_records;
-CREATE TRIGGER attendance_records_set_updated_at
-BEFORE UPDATE ON attendance_records
-FOR EACH ROW EXECUTE FUNCTION belm_set_updated_at();
-
 INSERT INTO roles (id, name, permissions, allowed_pages)
 VALUES
   (
@@ -549,13 +424,6 @@ VALUES
   )
 ON CONFLICT (name) DO NOTHING;
 
--- Keep the built-in Administrator role usable when this schema is applied to
--- a database created by an older BELM release. Other custom roles and their
--- permissions remain untouched.
-UPDATE roles
-SET deleted_at = NULL
-WHERE name = 'Super Admin';
-
 INSERT INTO users (id, name, email, password_hash, role_id)
 SELECT
   '00000000-0000-4000-8000-000000000003',
@@ -565,18 +433,7 @@ SELECT
   id
 FROM roles
 WHERE name = 'Super Admin'
-ON CONFLICT (email) DO UPDATE SET
-  name = EXCLUDED.name,
-  is_active = 1,
-  role_id = EXCLUDED.role_id,
-  deleted_at = NULL,
-  -- Preserve a password the Administrator has already changed. Only repair a
-  -- clearly invalid/empty legacy hash with the documented temporary password.
-  password_hash = CASE
-    WHEN users.password_hash LIKE '$2%' OR users.password_hash LIKE '$argon2%'
-      THEN users.password_hash
-    ELSE EXCLUDED.password_hash
-  END;
+ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO system_settings (id, "key", "value")
 VALUES (

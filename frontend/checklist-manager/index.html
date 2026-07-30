@@ -4,13 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Checklist Templates — BELM Admin</title>
-  <link rel="stylesheet" href="/checklist-manager/manager.css?v=16-service-sync">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
+  <link rel="stylesheet" href="/checklist-manager/manager.css">
 </head>
 <body>
   <header>
-    <a class="brand" href="/overview-manager/"><span class="mark">B</span><span><b>BELM Admin</b><small>Reliable Checklist Manager</small></span></a>
-    <nav><a href="/overview-manager/">← All Overview</a><button id="logoutButton" type="button">Log out</button></nav>
+    <a class="brand" href="/admin-menu/"><span class="mark">B</span><span><b>BELM Admin</b><small>Reliable Checklist Manager</small></span></a>
+    <nav><a href="/admin-menu/">← Back to Main Menu</a><button id="logoutButton" type="button">Log out</button></nav>
   </header>
 
   <main>
@@ -32,13 +31,10 @@
       <div class="template-fields">
         <label>Template name<input id="templateName" maxlength="255" required placeholder="e.g. Daily Reach Stacker Inspection"></label>
         <label>Machine type<input id="machineType" maxlength="100" required placeholder="e.g. Reach Stacker"></label>
-        <label>Service type<input id="serviceType" maxlength="150" required placeholder="e.g. 500-hour Preventive Service"></label>
         <label class="active-row"><span>Template active</span><input id="isActive" type="checkbox" checked></label>
       </div>
       <div class="items-head"><div><h3>Checklist items</h3><p>All required items must be completed before a technician can submit a report.</p></div><button class="secondary" id="addItemButton" type="button">+ Add item</button></div>
       <section id="itemList" class="item-list"></section>
-      <div class="items-head service-parts-head"><div><h3>Service type spare parts</h3><p>These parts are synchronized automatically when the customer requests this service.</p></div><button class="secondary" id="addServicePartButton" type="button">+ Add spare part</button></div>
-      <section id="servicePartList" class="service-part-list"></section>
       <div id="formError" class="alert error hidden" role="alert"></div>
       <div class="dialog-actions">
         <button class="secondary" id="cancelButton" type="button">Cancel</button>
@@ -48,7 +44,6 @@
   </dialog>
 
   <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-  <script src="/checklist-manager/manager.js?v=27-photo-compression"></script>
+  <script src="/checklist-manager/manager.js"></script>
 </body>
 </html>

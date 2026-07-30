@@ -8,16 +8,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/overview-manager/">
+      <a class="brand" href="/admin-menu/">
         <span class="brand-mark">B</span>
         <span>BELM General Tech <small>Access Control</small></span>
       </a>
       <div class="top-actions">
-        <a class="ghost" href="/overview-manager/">← All Overview</a>
+        <a class="ghost" href="/admin-menu/">← Back to Main Menu</a>
         <button id="refreshButton" class="ghost" type="button">Refresh</button>
       </div>
     </header>
@@ -113,7 +112,7 @@
           <label>Email<input id="systemCredentialEmail" readonly></label>
           <label>Temporary password<input id="systemCredentialPassword" readonly></label>
           <label>Recovery code<input id="systemCredentialRecovery" readonly></label>
-          <label>Unified login link<input id="systemCredentialLink" readonly></label>
+          <label>Login link<input id="systemCredentialLink" readonly></label>
         </div>
         <div class="dialog-actions">
           <button id="copySystemCredentials" class="secondary" type="button">Copy all credentials</button>
@@ -124,7 +123,6 @@
     </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=25-left-workflow"></script>
     <script src="/roles-manager/manager.js"></script>
   </body>
 </html>

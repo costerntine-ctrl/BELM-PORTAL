@@ -6,7 +6,6 @@
   const form = document.getElementById("templateForm");
   let templates = [];
   let items = [];
-  let serviceParts = [];
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -49,15 +48,6 @@
     };
   }
 
-  function emptyServicePart() {
-    return {
-      key: crypto.randomUUID(),
-      spareName: "",
-      partNumber: "",
-      quantity: 1,
-    };
-  }
-
   function normalizeItem(item) {
     return {
       key: item.key || item.id || crypto.randomUUID(),
@@ -69,15 +59,6 @@
         safetyLevel: item.optionSafety?.[value] || item.safetyLevel || "GREEN",
       })) : [],
       isRequired: item.isRequired !== false,
-    };
-  }
-
-  function normalizeServicePart(part) {
-    return {
-      key: part.key || part.id || crypto.randomUUID(),
-      spareName: part.spareName || part.spare_name || "",
-      partNumber: part.partNumber || part.part_number || "",
-      quantity: Number(part.quantity || 1),
     };
   }
 
@@ -96,7 +77,7 @@
       return `
         <article class="template-card ${template.isActive ? "" : "inactive"}">
           <div class="card-head">
-            <div><h2>${escapeHtml(template.name)}</h2><div class="machine">${escapeHtml(template.machineType)} · ${escapeHtml(template.serviceType || "General Service")} · ${(template.items || []).length} items · ${(template.serviceParts || []).length} parts</div></div>
+            <div><h2>${escapeHtml(template.name)}</h2><div class="machine">${escapeHtml(template.machineType)} · ${(template.items || []).length} items</div></div>
             <span class="status ${template.isActive ? "" : "off"}">${template.isActive ? "Active" : "Inactive"}</span>
           </div>
           <ul class="item-preview">${preview}${extra}</ul>
@@ -144,33 +125,9 @@
               `).join("")}
             </div>
           </div>
-        ` : item.inputType === "PHOTO"
-          ? '<div class="options-field options-help">Technician will get a camera/file uploader. The photo is compressed automatically to 0.5 MB or less before saving.</div>'
-          : '<div class="options-field options-help">Choose DROPDOWN to add selectable values.</div>'}
+        ` : '<div class="options-field options-help">Choose DROPDOWN to add selectable values.</div>'}
         <label class="required">Required<input data-field="isRequired" type="checkbox" ${item.isRequired ? "checked" : ""}></label>
         <button class="remove-item" type="button" data-remove="${escapeHtml(item.key)}" aria-label="Remove item">×</button>
-      </article>
-    `).join("");
-  }
-
-  function renderServiceParts() {
-    const list = document.getElementById("servicePartList");
-    if (serviceParts.length === 0) {
-      list.innerHTML = '<div class="empty">No spare parts added for this service type.</div>';
-      return;
-    }
-    list.innerHTML = serviceParts.map((part) => `
-      <article class="service-part-row" data-service-part-key="${escapeHtml(part.key)}">
-        <label>Spare-parts name
-          <input data-service-part-field="spareName" maxlength="255" value="${escapeHtml(part.spareName)}" placeholder="e.g. Engine oil filter">
-        </label>
-        <label>Part number
-          <input data-service-part-field="partNumber" maxlength="100" value="${escapeHtml(part.partNumber)}" placeholder="e.g. 923855.0996">
-        </label>
-        <label>Quantity
-          <input data-service-part-field="quantity" type="number" min="0.01" step="0.01" value="${escapeHtml(part.quantity)}">
-        </label>
-        <button class="remove-service-part" data-remove-service-part="${escapeHtml(part.key)}" type="button" aria-label="Remove spare part">×</button>
       </article>
     `).join("");
   }
@@ -198,13 +155,10 @@
     form.reset();
     document.getElementById("templateId").value = "";
     document.getElementById("dialogTitle").textContent = "New template";
-    document.getElementById("serviceType").value = "Preventive Service";
     document.getElementById("isActive").checked = true;
     document.getElementById("formError").className = "alert error hidden";
     items = [emptyItem()];
-    serviceParts = [emptyServicePart()];
     renderItems();
-    renderServiceParts();
     dialog.showModal();
   }
 
@@ -214,15 +168,12 @@
       document.getElementById("templateId").value = template.id;
       document.getElementById("templateName").value = template.name || "";
       document.getElementById("machineType").value = template.machineType || "";
-      document.getElementById("serviceType").value = template.serviceType || "General Service";
       document.getElementById("isActive").checked = Boolean(template.isActive);
       document.getElementById("dialogTitle").textContent = "Edit template";
       document.getElementById("formError").className = "alert error hidden";
       items = (template.items || []).map(normalizeItem);
       if (items.length === 0) items = [emptyItem()];
-      serviceParts = (template.serviceParts || []).map(normalizeServicePart);
       renderItems();
-      renderServiceParts();
       dialog.showModal();
     } catch (error) {
       showAlert(error.message, true);
@@ -255,7 +206,6 @@
     const payload = {
       name: document.getElementById("templateName").value.trim(),
       machineType: document.getElementById("machineType").value.trim(),
-      serviceType: document.getElementById("serviceType").value.trim(),
       isActive: document.getElementById("isActive").checked,
       items: items.map((item) => ({
         label: item.label.trim(),
@@ -271,13 +221,6 @@
           : {},
         isRequired: item.isRequired,
       })),
-      serviceParts: serviceParts
-        .filter((part) => part.spareName.trim() || part.partNumber.trim())
-        .map((part) => ({
-          spareName: part.spareName.trim(),
-          partNumber: part.partNumber.trim(),
-          quantity: Number(part.quantity),
-        })),
     };
     if (payload.items.length === 0) {
       errorBox.textContent = "Add at least one checklist item.";
@@ -293,19 +236,12 @@
         method: id ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
-      if (
-        !saved
-        || !saved.id
-        || !Array.isArray(saved.items)
-        || saved.items.length !== payload.items.length
-        || !Array.isArray(saved.serviceParts)
-        || saved.serviceParts.length !== payload.serviceParts.length
-      ) {
+      if (!saved || !saved.id || !Array.isArray(saved.items) || saved.items.length !== payload.items.length) {
         throw new Error("Save verification failed. Please try again.");
       }
       dialog.close();
       await loadTemplates();
-      showAlert(`Template “${saved.name}” saved with ${saved.items.length} checklist item(s) and ${saved.serviceParts.length} service part(s).`, false);
+      showAlert(`Template “${saved.name}” saved successfully with ${saved.items.length} checklist item(s).`, false);
     } catch (error) {
       errorBox.textContent = error.message;
       errorBox.className = "alert error";
@@ -331,10 +267,6 @@
   document.getElementById("addItemButton").addEventListener("click", () => {
     items.push(emptyItem());
     renderItems();
-  });
-  document.getElementById("addServicePartButton").addEventListener("click", () => {
-    serviceParts.push(emptyServicePart());
-    renderServiceParts();
   });
   document.getElementById("closeButton").addEventListener("click", () => dialog.close());
   document.getElementById("cancelButton").addEventListener("click", () => dialog.close());
@@ -389,20 +321,6 @@
     if (!remove) return;
     items = items.filter((item) => item.key !== remove.dataset.remove);
     renderItems();
-  });
-  document.getElementById("servicePartList").addEventListener("input", (event) => {
-    const row = event.target.closest("[data-service-part-key]");
-    const field = event.target.dataset.servicePartField;
-    if (!row || !field) return;
-    serviceParts = serviceParts.map((part) => part.key === row.dataset.servicePartKey
-      ? { ...part, [field]: field === "quantity" ? Number(event.target.value) : event.target.value }
-      : part);
-  });
-  document.getElementById("servicePartList").addEventListener("click", (event) => {
-    const remove = event.target.closest("[data-remove-service-part]");
-    if (!remove) return;
-    serviceParts = serviceParts.filter((part) => part.key !== remove.dataset.removeServicePart);
-    renderServiceParts();
   });
   templateList.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");

@@ -42,10 +42,16 @@ function jwt_decode(string $token): ?array {
 // or null if missing/invalid.
 function current_token_payload(): ?array {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
-    if (!$headers && isset($_SERVER['HTTP_AUTHORIZATION'])) {
-        $headers['Authorization'] = $_SERVER['HTTP_AUTHORIZATION'];
-    }
     $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+    if ($auth === '') {
+        // Some Apache/PHP setups (mod_cgi, some reverse proxies) don't expose
+        // the Authorization header via getallheaders(). Fall back to the
+        // $_SERVER keys those setups use instead, so a valid token is never
+        // mistaken for a missing one right after a real login.
+        $auth = $_SERVER['HTTP_AUTHORIZATION']
+            ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
+            ?? '';
+    }
     if (!str_starts_with($auth, 'Bearer ')) return null;
     return jwt_decode(substr($auth, 7));
 }

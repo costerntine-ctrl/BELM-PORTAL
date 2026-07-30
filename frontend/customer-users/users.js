@@ -78,7 +78,7 @@
     clearAlert();
     userList.innerHTML = '<div class="loading">Loading assistants…</div>';
     if (!token) {
-      userList.innerHTML = '<div class="locked"><strong>Customer login required</strong>Please log in using the main customer account.<br><a href="/portal/login">Go to portal login</a></div>';
+      userList.innerHTML = '<div class="locked"><strong>Customer login required</strong>Please log in using the main customer account.<br><a href="/portal/login">Go to customer login</a></div>';
       return;
     }
     try {

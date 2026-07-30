@@ -52,7 +52,7 @@ if ($method === 'GET') {
     $stmt = db()->query('SELECT * FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC');
     $parts = $stmt->fetchAll();
     if (($_GET['lowStock'] ?? '') === 'true') {
-        $parts = array_values(array_filter($parts, fn($p) => $p['stock_qty'] <= 5));
+        $parts = array_values(array_filter($parts, fn($p) => $p['stock_qty'] <= $p['reorder_threshold']));
     }
     json_out($parts);
 }
@@ -66,6 +66,7 @@ if ($method === 'POST') {
             $part['stockQty'], $part['reorderThreshold'],
             $part['purchasePrice'], $part['sellingPrice'],
         ]);
+    log_activity($user['id'], 'created', 'sparePart', $newId, ['name' => $part['name'], 'partNumber' => $part['partNumber']]);
     json_out(['id' => $newId, 'message' => 'Spare part saved successfully.'], 201);
 }
 
@@ -79,6 +80,7 @@ if ($method === 'PUT') {
         $part['purchasePrice'], $part['sellingPrice'], $id,
     ]);
     if ($stmt->rowCount() === 0) json_error('Spare part not found.', 404);
+    log_activity($user['id'], 'updated', 'sparePart', $id, ['name' => $part['name'], 'partNumber' => $part['partNumber']]);
     json_out(['ok' => true, 'message' => 'Spare part updated successfully.']);
 }
 
@@ -89,6 +91,7 @@ if ($method === 'DELETE') {
     if (!$row) json_error('Not found', 404);
     send_to_trash('sparePart', $id, $row['name'], $user['id']);
     soft_delete('spare_parts', $id);
+    log_activity($user['id'], 'deleted', 'sparePart', $id, ['name' => $row['name']]);
     json_out(null, 204);
 }
 

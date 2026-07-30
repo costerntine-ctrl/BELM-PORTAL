@@ -25,21 +25,21 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .machine-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .machine-section-head h3 { margin: 0; font: 750 13px "Space Grotesk", sans-serif; }
 .machine-section-head button { padding: 6px 9px; color: var(--green-dark); border: 1px solid #b9dfca; border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
-.machine-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-.machine-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 12px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
-.machine-card.GREEN,.machine-card.OK { border-color: #22c55e; background: linear-gradient(160deg, #eafaf1, var(--paper) 70%); }
-.machine-card.YELLOW,.machine-card.ATTENTION { border-color: #eab308; background: linear-gradient(160deg, #fffbea, var(--paper) 70%); }
-.machine-card.RED,.machine-card.CRITICAL { border-color: #ef4444; background: linear-gradient(160deg, #fdecec, var(--paper) 70%); }
+.machine-list { display: grid; gap: 8px; }
+.machine-card { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.status-bar { align-self: stretch; border-radius: 999px; background: #9ba8b7; }
+.machine-card.GREEN .status-bar,.machine-card.OK .status-bar { background: var(--green); }
+.machine-card.YELLOW .status-bar,.machine-card.ATTENTION .status-bar { background: var(--yellow); }
+.machine-card.RED .status-bar,.machine-card.CRITICAL .status-bar { background: #d92d20; }
 .machine-card h4 { margin: 0 0 3px; font-size: 12px; }
 .machine-card p { margin: 0; color: var(--muted); font-size: 10px; }
-.machine-card .machine-status { display: inline-block; margin-top: 6px; padding: 4px 8px; border-radius: 999px; color: var(--muted); background: var(--canvas); font-size: 9px; font-weight: 850; }
-.machine-card.GREEN .machine-status,.machine-card.OK .machine-status { color: #fff; background: #16a34a; }
-.machine-card.YELLOW .machine-status,.machine-card.ATTENTION .machine-status { color: #1e293b; background: #eab308; }
-.machine-card.RED .machine-status,.machine-card.CRITICAL .machine-status { color: #fff; background: #dc2626; }
-.machine-alert-reason { display: block; margin-top: 6px; font-size: 10px; font-weight: 700; color: #1e293b; min-height: 14px; }
-.machine-card.GREEN .machine-alert-reason,.machine-card.OK .machine-alert-reason { color: #166534; }
-.machine-card.YELLOW .machine-alert-reason,.machine-card.ATTENTION .machine-alert-reason { color: #854d0e; }
-.machine-card.RED .machine-alert-reason,.machine-card.CRITICAL .machine-alert-reason { color: #991b1b; }
+.machine-card .machine-status { display: inline-block; margin-top: 5px; padding: 3px 6px; border-radius: 999px; color: var(--muted); background: var(--canvas); font-size: 9px; font-weight: 850; }
+.machine-card.GREEN .machine-status,.machine-card.OK .machine-status { color: #087039; background: #e5f8ee; }
+.machine-card.YELLOW .machine-status,.machine-card.ATTENTION .machine-status { color: #896500; background: #fff4c3; }
+.machine-card.RED .machine-status,.machine-card.CRITICAL .machine-status { color: #9b2424; background: #fdeaea; }
+html[data-theme="dark"] .machine-card.GREEN .machine-status,html[data-theme="dark"] .machine-card.OK .machine-status { color: #8fe5b7; background: #153b2b; }
+html[data-theme="dark"] .machine-card.YELLOW .machine-status,html[data-theme="dark"] .machine-card.ATTENTION .machine-status { color: #f6dc72; background: #403511; }
+html[data-theme="dark"] .machine-card.RED .machine-status,html[data-theme="dark"] .machine-card.CRITICAL .machine-status { color: #ffaaaa; background: #401d23; }
 .machine-actions { display: flex; gap: 5px; }
 .machine-actions button { padding: 5px 7px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 9px; font-weight: 800; }
 .machine-actions button.delete { color: var(--red); }
@@ -49,20 +49,4 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .credentials { display: grid; gap: 12px; }
 .credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 880px) { .customer-grid { grid-template-columns: 1fr; } }
-@media (max-width: 620px) { .customer-toolbar,.customer-info-grid { grid-template-columns: 1fr; } .machine-list { grid-template-columns: 1fr; } .machine-card { grid-template-columns: 1fr; } .machine-actions { grid-column: 1; } }
-
-.reports-list { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
-.report-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
-.report-item span { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
-.report-view-body { max-height: 60vh; overflow-y: auto; }
-.report-view-body table th, .report-view-body table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; }
-.checkup-items { display: grid; gap: 10px; margin-top: 10px; max-height: 40vh; overflow-y: auto; }
-.checkup-items label { display: grid; gap: 5px; font-size: 11px; font-weight: 700; color: var(--muted); }
-.checkup-items input, .checkup-items select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
-.two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.two-column.hidden { display: none; }
-.toggle-row { display: flex !important; flex-direction: row; align-items: center; gap: 8px; font-size: 12px !important; font-weight: 700; text-transform: none !important; }
-.toggle-row input { width: 17px; height: 17px; }
-.machine-status.GREEN { color: #fff; background: #16a34a; }
-.machine-status.YELLOW { color: #1e293b; background: #eab308; }
-.machine-status.RED { color: #fff; background: #dc2626; }
+@media (max-width: 620px) { .customer-toolbar,.customer-info-grid { grid-template-columns: 1fr; } .machine-card { grid-template-columns: 8px 1fr; } .machine-actions { grid-column: 2; } }

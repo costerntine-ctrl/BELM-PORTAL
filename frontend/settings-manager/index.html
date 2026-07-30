@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
 </head>
 <body class="management-page">
   <header class="management-topbar">
@@ -27,39 +27,6 @@
 
     <div id="pageAlert" class="alert hidden"></div>
     <section class="settings-grid">
-      <article class="panel">
-        <div class="section-head"><div><h2>Backup</h2><p>Free Render databases have no automatic backups. Download a full copy of your data periodically and keep it somewhere safe (your computer, Google Drive, email to yourself).</p></div></div>
-        <div class="settings-form">
-          <button id="downloadBackupButton" class="primary" type="button">Download full backup (JSON)</button>
-        </div>
-      </article>
-
-      <article class="panel">
-        <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Only for use while still testing/building the portal. Choose "Everything" to wipe the whole database, or pick one category to clear just that area — the rest stays untouched. This cannot be undone — download a backup first.</p></div></div>
-        <form id="resetDbForm" class="settings-form">
-          <label>Category to reset
-            <select id="resetDbCategory">
-              <option value="all">Everything (full wipe)</option>
-              <option value="customers">Customers & Machines</option>
-              <option value="checklists">Checklist Templates & Reports</option>
-              <option value="spare-parts">Spare Parts & Requests</option>
-              <option value="suppliers">Suppliers</option>
-              <option value="billing">Billing & Finance</option>
-              <option value="service-requests">Service Requests</option>
-              <option value="bank">Bank Manager</option>
-              <option value="tasks">Tasks</option>
-              <option value="activity">Activity Log, Trash & Announcements</option>
-              <option value="usage-logs">Machine Expenses / Petty Cash logs</option>
-            </select>
-          </label>
-          <label id="resetCustomerPickerWrap" class="hidden">Specific customer <small>(leave as "All customers" to clear the whole category)</small>
-            <select id="resetCustomerPicker"><option value="">All customers</option></select>
-          </label>
-          <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label>
-          <button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Reset selected category</button>
-        </form>
-      </article>
-
       <article class="panel">
         <div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div>
         <form id="companyForm" class="settings-form">
@@ -130,7 +97,7 @@
   </main>
 
   <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+  <script src="/admin-sidebar.js?v=25-left-workflow"></script>
   <script src="/settings-manager/app.js"></script>
 </body>
 </html>

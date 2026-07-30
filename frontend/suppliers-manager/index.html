@@ -8,16 +8,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/suppliers-manager/manager.css">
+    <link rel="stylesheet" href="/suppliers-manager/manager.css?v=19-google-search">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
   </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/admin-menu/">
+      <a class="brand" href="/overview-manager/">
         <span class="brand-mark">B</span>
         <span>BELM General Tech <small>Trusted Supplier Directory</small></span>
       </a>
       <div class="top-actions">
-        <a class="ghost" href="/admin-menu/">← Back to Main Menu</a>
+        <a class="ghost" href="/overview-manager/">← All Overview</a>
         <button id="refreshButton" class="ghost" type="button">Refresh</button>
       </div>
     </header>
@@ -44,6 +45,34 @@
         location and BELM verification. It is a screening aid—not a payment or authenticity guarantee.
       </div>
       <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section class="google-search-panel" aria-labelledby="googleSearchTitle">
+        <div class="google-search-copy">
+          <p class="eyebrow">Google Technical Search</p>
+          <h2 id="googleSearchTitle">Find parts, diagrams and technical information</h2>
+          <p>Enter a machine brand, model, serial number or part number, then choose the type of result required.</p>
+        </div>
+        <form id="googleSearchForm" class="google-search-form">
+          <label class="google-query">Search details
+            <input id="googleSearchInput" required autocomplete="off" placeholder="e.g. CAT 320D 1R-1808">
+          </label>
+          <label>Result type
+            <select id="googleSearchType">
+              <option value="spare-parts">Spare Parts</option>
+              <option value="parts-diagrams">Parts Diagrams</option>
+              <option value="service-manuals">Service Manuals</option>
+              <option value="wiring-diagrams">Wiring Diagrams</option>
+              <option value="hydraulic-diagrams">Hydraulic Diagrams</option>
+              <option value="technical-specifications">Technical Specifications</option>
+              <option value="fault-codes">Fault Codes &amp; Troubleshooting</option>
+              <option value="suppliers">Suppliers &amp; Distributors</option>
+              <option value="general">General Google Search</option>
+            </select>
+          </label>
+          <button class="google-search-button" type="submit">Search Google</button>
+        </form>
+        <p id="googleSearchHint" class="google-search-hint">Google results will open in a new tab. Verify supplier identity and part compatibility before ordering.</p>
+      </section>
 
       <section class="supplier-toolbar">
         <input id="searchInput" placeholder="Search name, specialty, location or contact" aria-label="Search suppliers">
@@ -84,6 +113,7 @@
     </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/suppliers-manager/manager.js"></script>
+    <script src="/admin-sidebar.js?v=25-left-workflow"></script>
+    <script src="/suppliers-manager/manager.js?v=19-google-search"></script>
   </body>
 </html>

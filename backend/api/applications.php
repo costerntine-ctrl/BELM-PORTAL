@@ -397,7 +397,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'temporaryPassword' => $temporaryPassword,
                 'recoveryCode' => $recoveryCode,
                 'portalLink' => $portalLink,
-                'loginUrl' => customer_portal_url($portalLink),
+                'loginUrl' => customer_portal_url($portalLink, $application['email']),
                 'checklistTemplateId' => $checklist['templateId'],
                 'checklistCreated' => $checklist['created'],
                 'message' => 'Customer, machine and checklist access are ready.',

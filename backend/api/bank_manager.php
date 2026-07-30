@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/helpers.php';
 
 $user = require_auth();
-require_page_access($user, 'bank-manager');
+require_page_access($user, 'billing');
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;

@@ -52,7 +52,7 @@ if ($method === 'GET') {
     $stmt = db()->query('SELECT * FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC');
     $parts = $stmt->fetchAll();
     if (($_GET['lowStock'] ?? '') === 'true') {
-        $parts = array_values(array_filter($parts, fn($p) => $p['stock_qty'] <= $p['reorder_threshold']));
+        $parts = array_values(array_filter($parts, fn($p) => $p['stock_qty'] <= 5));
     }
     json_out($parts);
 }

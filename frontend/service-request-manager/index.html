@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Service Requests — BELM Admin</title>
-  <link rel="stylesheet" href="/service-request-manager/manager.css">
+    <link rel="stylesheet" href="/service-request-manager/manager.css?v=16-service-sync">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
 </head>
 <body>
   <header>
-    <a class="brand" href="/admin-menu/"><span class="mark">B</span><span><b>BELM Admin</b><small>Service Request Control</small></span></a>
-    <nav><a href="/admin-menu/">← Back to Main Menu</a><button id="logoutButton" type="button">Log out</button></nav>
+    <a class="brand" href="/overview-manager/"><span class="mark">B</span><span><b>BELM Admin</b><small>Service Request Control</small></span></a>
+    <nav><a href="/overview-manager/">← All Overview</a><button id="logoutButton" type="button">Log out</button></nav>
   </header>
 
   <main>
@@ -33,7 +34,8 @@
     </form>
   </dialog>
 
-  <script src="/admin-access.js"></script>
-  <script src="/service-request-manager/manager.js"></script>
+    <script src="/admin-access.js"></script>
+    <script src="/admin-sidebar.js?v=25-left-workflow"></script>
+    <script src="/service-request-manager/manager.js?v=16-service-sync"></script>
 </body>
 </html>

@@ -131,7 +131,7 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
     }
 }
 
-function customer_portal_url(string $portalSlug): string {
+function customer_portal_url(string $portalSlug, ?string $email = null): string {
     return portal_base_url() . '/portal/login?customer=' . rawurlencode($portalSlug);
 }
 

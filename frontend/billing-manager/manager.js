@@ -576,9 +576,13 @@
   }
 
   async function remove(path, message) {
-    if (!confirm(message)) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete this record?",
+      message: message,
+    });
+    if (!confirmation) return;
     try {
-      await api(path, { method: "DELETE" });
+      await api(path, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Record moved to the Recycle Bin.");
     } catch (error) {

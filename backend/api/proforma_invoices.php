@@ -143,7 +143,8 @@ if ($method === 'DELETE') {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('proformaInvoice', $id, $row['invoice_no'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('proformaInvoice', $id, $row['invoice_no'], $user['id'], $reason);
     soft_delete('proforma_invoices', $id);
     json_out(null, 204);
 }

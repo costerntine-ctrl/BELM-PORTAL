@@ -317,9 +317,14 @@
 
   async function deleteTemplate(id) {
     const template = templates.find((item) => item.id === id);
-    if (!template || !confirm(`Delete checklist template “${template.name}”?`)) return;
+    if (!template) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete checklist template?",
+      message: `Delete checklist template "${template.name}"? It will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/${id}`, { method: "DELETE" });
+      await api(`/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await loadTemplates();
       showAlert("Checklist template moved to the Recycle Bin.", false);
     } catch (error) {

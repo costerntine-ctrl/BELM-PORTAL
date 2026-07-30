@@ -355,7 +355,8 @@ if ($method === 'DELETE' && !$action) {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('template', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('template', $id, $row['name'], $user['id'], $reason);
     soft_delete('checklist_templates', $id);
     json_out(null, 204);
 }

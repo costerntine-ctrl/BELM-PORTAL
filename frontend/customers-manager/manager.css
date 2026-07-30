@@ -3,7 +3,7 @@
 .admin-menu a:hover,.admin-menu a.active { color: #fff; background: var(--green); }
 .customer-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 230px; gap: 10px; margin: 18px 0 14px; }
 .customer-toolbar input,.customer-toolbar select { margin: 0; }
-.customer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.customer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 15px; }
 .customer-grid > .empty,.customer-grid > .loading { grid-column: 1 / -1; }
 .customer-card { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); box-shadow: var(--shadow); }
 .customer-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: var(--green); }

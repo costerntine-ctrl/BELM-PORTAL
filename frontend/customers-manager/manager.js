@@ -296,9 +296,14 @@
 
   async function removeCustomer(id) {
     const customer = customers.find((item) => item.id === id);
-    if (!customer || !confirm(`Delete customer ${customer.name}? The record will move to the Recycle Bin.`)) return;
+    if (!customer) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete customer?",
+      message: `Delete customer ${customer.name}? The record will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/customers/${id}`, { method: "DELETE" });
+      await api(`/customers/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Customer moved to the Recycle Bin.");
     } catch (error) { showAlert(error.message, true); }
@@ -318,9 +323,14 @@
 
   async function removeMachine(id) {
     const machine = customers.flatMap((customer) => customer.machines || []).find((item) => item.id === id);
-    if (!machine || !confirm(`Delete machine ${machine.model}?`)) return;
+    if (!machine) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete machine?",
+      message: `Delete machine ${machine.model}? The record will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/customers/machines/${id}`, { method: "DELETE" });
+      await api(`/customers/machines/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Machine moved to the Recycle Bin.");
     } catch (error) { showAlert(error.message, true); }

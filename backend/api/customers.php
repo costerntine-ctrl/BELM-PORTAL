@@ -217,7 +217,8 @@ if ($method === 'DELETE' && !$action) {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('customer', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('customer', $id, $row['name'], $user['id'], $reason);
     soft_delete('customers', $id);
     json_out(null, 204);
 }
@@ -320,7 +321,8 @@ if ($method === 'DELETE' && $action === 'delete-machine') {
     $stmt->execute([$machineId]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('machine', $machineId, $row['model'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('machine', $machineId, $row['model'], $user['id'], $reason);
     soft_delete('machines', $machineId);
     json_out(null, 204);
 }

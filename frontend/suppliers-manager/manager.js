@@ -199,9 +199,14 @@
 
   async function deleteSupplier(id) {
     const supplier = suppliers.find((item) => item.id === id);
-    if (!supplier || !confirm(`Delete supplier ${supplier.name}? It will move to the Recycle Bin.`)) return;
+    if (!supplier) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete supplier?",
+      message: `Delete supplier ${supplier.name}? It will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/suppliers/${id}`, { method: "DELETE" });
+      await api(`/suppliers/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Supplier moved to the Recycle Bin.");
     } catch (error) {

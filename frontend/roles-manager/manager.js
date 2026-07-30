@@ -332,9 +332,14 @@
 
   async function deleteUser(id) {
     const user = users.find((item) => item.id === id);
-    if (!user || !confirm(`Delete system user ${user.name}? The record will move to the Recycle Bin.`)) return;
+    if (!user) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete system user?",
+      message: `Delete system user ${user.name}? The record will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/users/${id}`, { method: "DELETE" });
+      await api(`/users/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("System user moved to the Recycle Bin.");
     } catch (error) {

@@ -190,6 +190,33 @@ function require_super_admin(array $user): void {
     }
 }
 
+// ---- Delete confirmation (PIN + admin password + reason) -------------------
+// Every destructive delete must pass {pin, adminPassword, reason} in the
+// request body. Throws a clean json_error() if any check fails.
+function require_delete_confirmation(array $user, array $body): string {
+    $pin = trim((string)($body['pin'] ?? ''));
+    $adminPassword = (string)($body['adminPassword'] ?? '');
+    $reason = trim((string)($body['reason'] ?? ''));
+
+    if ($pin === '') json_error('Enter the delete PIN to confirm.');
+    if ($adminPassword === '') json_error('Enter your admin password to confirm.');
+    if ($reason === '') json_error('Enter a reason for this deletion.');
+    if (mb_strlen($reason) > 500) json_error('Reason must be 500 characters or fewer.');
+
+    $pinRow = db()->query("SELECT \"value\" FROM system_settings WHERE \"key\" = 'adminDeletePin'")->fetch();
+    $currentPin = $pinRow ? json_decode($pinRow['value'], true) : '1234';
+    if ($pin !== $currentPin) json_error('Incorrect delete PIN.', 403);
+
+    $stmt = db()->prepare('SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$user['id']]);
+    $hash = $stmt->fetchColumn();
+    if (!$hash || !password_verify($adminPassword, $hash)) {
+        json_error('Incorrect admin password.', 403);
+    }
+
+    return $reason;
+}
+
 // ---- Customer portal auth ---------------------------------------------------
 function require_customer_auth(): array {
     $payload = current_token_payload();
@@ -231,9 +258,9 @@ function require_customer_write_access(array $customer): void {
 }
 
 // ---- Recycle Bin ------------------------------------------------------------
-function send_to_trash(string $entityType, string $entityId, string $label, ?string $deletedBy): void {
-    $stmt = db()->prepare('INSERT INTO trash_entries (id, entity_type, entity_id, label, deleted_by, deleted_at) VALUES (?,?,?,?,?,NOW())');
-    $stmt->execute([uuid(), $entityType, $entityId, $label, $deletedBy]);
+function send_to_trash(string $entityType, string $entityId, string $label, ?string $deletedBy, ?string $reason = null): void {
+    $stmt = db()->prepare('INSERT INTO trash_entries (id, entity_type, entity_id, label, deleted_by, reason, deleted_at) VALUES (?,?,?,?,?,?,NOW())');
+    $stmt->execute([uuid(), $entityType, $entityId, $label, $deletedBy, $reason]);
 }
 
 function soft_delete(string $table, string $id): void {

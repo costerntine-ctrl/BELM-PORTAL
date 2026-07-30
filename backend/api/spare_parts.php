@@ -87,7 +87,8 @@ if ($method === 'DELETE') {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('sparePart', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('sparePart', $id, $row['name'], $user['id'], $reason);
     soft_delete('spare_parts', $id);
     json_out(null, 204);
 }

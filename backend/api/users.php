@@ -135,7 +135,8 @@ if ($method === 'DELETE' && $action === 'roles') {
     $stmt = db()->prepare('SELECT COUNT(*) FROM users WHERE role_id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     if ($stmt->fetchColumn() > 0) json_error("Users still have this role. Reassign them first.", 409);
-    send_to_trash('role', $id, $role['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('role', $id, $role['name'], $user['id'], $reason);
     soft_delete('roles', $id);
     json_out(null, 204);
 }
@@ -268,7 +269,8 @@ if ($method === 'DELETE' && !$action) {
             json_error('Create another active Super Admin before deleting this account.', 409);
         }
     }
-    send_to_trash('user', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('user', $id, $row['name'], $user['id'], $reason);
     soft_delete('users', $id);
     json_out(null, 204);
 }

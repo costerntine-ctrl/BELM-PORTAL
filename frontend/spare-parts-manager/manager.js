@@ -227,9 +227,14 @@
 
   async function deletePart(id) {
     const part = parts.find((item) => item.id === id);
-    if (!part || !confirm(`Delete ${part.partNumber} — ${part.name}? It will move to the Recycle Bin.`)) return;
+    if (!part) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete spare part?",
+      message: `Delete ${part.partNumber} — ${part.name}? It will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/spare-parts/${id}`, { method: "DELETE" });
+      await api(`/spare-parts/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await loadParts();
       showAlert("Spare part moved to the Recycle Bin.");
     } catch (error) {

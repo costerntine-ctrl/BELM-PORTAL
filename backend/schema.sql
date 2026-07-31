@@ -237,6 +237,10 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   deleted_at TIMESTAMPTZ NULL
 );
 
+-- Older bank-account tables might predate soft deletion. Add the column
+-- before the partial index references it.
+ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_bank_accounts_active_number
   ON bank_accounts (LOWER(bank_name), LOWER(account_number))
   WHERE deleted_at IS NULL;
@@ -479,6 +483,241 @@ CREATE TABLE IF NOT EXISTS user_applications (
   assigned_customer_id VARCHAR(36) NULL REFERENCES customers(id)
 );
 
+-- Compatibility migration for databases created by older BELM portal builds.
+-- CREATE TABLE IF NOT EXISTS does not add columns to an existing table, so all
+-- newer optional/defaulted fields are repaired here without deleting records.
+ALTER TABLE roles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255) NULL;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS assigned_customer_id VARCHAR(36) NULL REFERENCES customers(id);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255) NULL;
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS phone VARCHAR(50) NULL;
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'viewer';
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS serial_number VARCHAR(100) NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS reg_number VARCHAR(100) NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS brand VARCHAR(100) NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'UNKNOWN';
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS last_checked_at TIMESTAMPTZ NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS service_kit VARCHAR(10) DEFAULT 'OK';
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS service_interval_hours INTEGER NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS last_service_hours DOUBLE PRECISION DEFAULT 0;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS service_history JSONB NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE checklist_templates ADD COLUMN IF NOT EXISTS service_type VARCHAR(150) NOT NULL DEFAULT 'General Service';
+ALTER TABLE checklist_templates ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE checklist_templates ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS safety_level VARCHAR(10) NULL;
+ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS options JSONB NULL;
+ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS option_safety JSONB NULL;
+ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS "order" INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE checklist_template_items ADD COLUMN IF NOT EXISTS is_required SMALLINT NOT NULL DEFAULT 1;
+
+ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS overall_status VARCHAR(10) NOT NULL DEFAULT 'GREEN';
+ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS pdf_url VARCHAR(500) NULL;
+ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS sent_to_customer_at TIMESTAMPTZ NULL;
+
+ALTER TABLE checklist_answers ADD COLUMN IF NOT EXISTS template_item_id VARCHAR(36) NULL;
+ALTER TABLE checklist_answers ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500) NULL;
+ALTER TABLE checklist_answers ADD COLUMN IF NOT EXISTS safety_level VARCHAR(10) NULL;
+
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL REFERENCES machines(id);
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS template_id VARCHAR(36) NULL REFERENCES checklist_templates(id);
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS service_type VARCHAR(150) NULL;
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'OPEN';
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT NULL DEFAULT 'NORMAL';
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS assigned_to_id VARCHAR(36) NULL REFERENCES users(id);
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS origin VARCHAR(30) NOT NULL DEFAULT 'CUSTOMER';
+ALTER TABLE service_requests ADD COLUMN IF NOT EXISTS customer_confirmed SMALLINT NOT NULL DEFAULT 1;
+
+ALTER TABLE service_request_parts ADD COLUMN IF NOT EXISTS manufacturer_part_number VARCHAR(100) NULL;
+
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS category VARCHAR(100) NULL;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS reorder_threshold INTEGER NOT NULL DEFAULT 5;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS purchase_price NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS selling_price NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS request_id VARCHAR(36) NULL REFERENCES service_requests(id);
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL REFERENCES machines(id);
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_id VARCHAR(36) NULL REFERENCES users(id);
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_name VARCHAR(255) NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS description TEXT NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS machine_type VARCHAR(100) NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ NULL;
+
+ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL REFERENCES machines(id);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'UNPAID';
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS due_date DATE NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
+
+ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS part_number VARCHAR(100) NULL;
+ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_data TEXT NULL;
+ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_mime VARCHAR(50) NULL;
+ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_name VARCHAR(255) NULL;
+
+ALTER TABLE admin_announcements ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+
+ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
+ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_url VARCHAR(500) NULL;
+ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE bank_withdrawals ADD COLUMN IF NOT EXISTS cheque_number VARCHAR(120) NULL;
+ALTER TABLE bank_withdrawals ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS discount NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS website VARCHAR(500) NULL;
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS verified SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
+
+ALTER TABLE trash_entries ADD COLUMN IF NOT EXISTS reason VARCHAR(500) NULL;
+
+-- Normalize JSON columns from older schemas that stored JSON as TEXT. Invalid
+-- legacy text is preserved as a JSON string instead of aborting the migration.
+CREATE OR REPLACE FUNCTION public.belm_safe_jsonb(input_value TEXT)
+RETURNS JSONB AS $$
+BEGIN
+  RETURN input_value::jsonb;
+EXCEPTION WHEN OTHERS THEN
+  RETURN to_jsonb(input_value);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+DO $belm_json_compatibility$
+DECLARE
+  item RECORD;
+  current_type TEXT;
+BEGIN
+  FOR item IN
+    SELECT * FROM (VALUES
+      ('roles', 'permissions'),
+      ('roles', 'allowed_pages'),
+      ('activity_logs', 'metadata'),
+      ('machines', 'service_history'),
+      ('checklist_template_items', 'options'),
+      ('checklist_template_items', 'option_safety'),
+      ('system_settings', 'value')
+    ) AS json_columns(table_name, column_name)
+  LOOP
+    SELECT data_type
+      INTO current_type
+      FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = item.table_name
+       AND column_name = item.column_name;
+
+    IF current_type IS NOT NULL AND current_type <> 'jsonb' THEN
+      EXECUTE format(
+        'ALTER TABLE public.%I ALTER COLUMN %I DROP DEFAULT',
+        item.table_name,
+        item.column_name
+      );
+      EXECUTE format(
+        'ALTER TABLE public.%I ALTER COLUMN %I TYPE JSONB USING public.belm_safe_jsonb(%I::text)',
+        item.table_name,
+        item.column_name,
+        item.column_name
+      );
+    END IF;
+  END LOOP;
+END;
+$belm_json_compatibility$;
+
+DROP FUNCTION IF EXISTS public.belm_safe_jsonb(TEXT);
+
+-- Some early PostgreSQL releases used BOOLEAN for active/verified fields while
+-- the API compares those fields with 0/1. Normalize only those known columns to
+-- SMALLINT so login and dashboard queries remain compatible with existing data.
+DO $belm_boolean_compatibility$
+DECLARE
+  item RECORD;
+  current_type TEXT;
+BEGIN
+  FOR item IN
+    SELECT * FROM (VALUES
+      ('customers', 'is_active', 1),
+      ('users', 'is_active', 1),
+      ('customer_users', 'is_active', 1),
+      ('checklist_templates', 'is_active', 1),
+      ('checklist_template_items', 'is_required', 1),
+      ('service_requests', 'customer_confirmed', 1),
+      ('suppliers', 'verified', 0),
+      ('bank_accounts', 'is_active', 1),
+      ('admin_announcements', 'is_active', 1)
+    ) AS columns_to_repair(table_name, column_name, default_value)
+  LOOP
+    SELECT data_type
+      INTO current_type
+      FROM information_schema.columns
+     WHERE table_schema = 'public'
+       AND table_name = item.table_name
+       AND column_name = item.column_name;
+
+    IF current_type IS NOT NULL THEN
+      EXECUTE format(
+        'ALTER TABLE public.%I ALTER COLUMN %I DROP DEFAULT',
+        item.table_name,
+        item.column_name
+      );
+
+      IF current_type <> 'smallint' THEN
+        EXECUTE format(
+          'ALTER TABLE public.%I ALTER COLUMN %I TYPE SMALLINT USING '
+          || '(CASE WHEN %I IS NULL THEN %s '
+          || 'WHEN LOWER(%I::text) IN (''1'',''t'',''true'',''yes'',''y'',''on'') THEN 1 ELSE 0 END)',
+          item.table_name,
+          item.column_name,
+          item.column_name,
+          item.default_value,
+          item.column_name
+        );
+      END IF;
+
+      EXECUTE format(
+        'UPDATE public.%I SET %I = %s WHERE %I IS NULL',
+        item.table_name,
+        item.column_name,
+        item.default_value,
+        item.column_name
+      );
+      EXECUTE format(
+        'ALTER TABLE public.%I ALTER COLUMN %I SET DEFAULT %s',
+        item.table_name,
+        item.column_name,
+        item.default_value
+      );
+      EXECUTE format(
+        'ALTER TABLE public.%I ALTER COLUMN %I SET NOT NULL',
+        item.table_name,
+        item.column_name
+      );
+    END IF;
+  END LOOP;
+END;
+$belm_boolean_compatibility$;
+
 -- Existing Render databases created by the previous portal version required a
 -- serial number. Applications only collect the registration number, so this
 -- safe migration makes serial number optional for newly approved machines.
@@ -587,3 +826,14 @@ VALUES (
   '"1234"'::jsonb
 )
 ON CONFLICT ("key") DO NOTHING;
+
+INSERT INTO system_settings (id, "key", "value", updated_at)
+VALUES (
+  '00000000-0000-4000-8000-000000000005',
+  'schemaVersion',
+  '"19-database-recovery"'::jsonb,
+  CURRENT_TIMESTAMP
+)
+ON CONFLICT ("key") DO UPDATE SET
+  "value" = EXCLUDED."value",
+  updated_at = CURRENT_TIMESTAMP;

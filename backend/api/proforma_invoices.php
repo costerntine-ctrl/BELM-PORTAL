@@ -83,6 +83,7 @@ if ($method === 'POST') {
 
 if ($method === 'PUT') {
     $b = body();
+    require_edit_confirmation($b);
     $items = $b['items'] ?? [];
     $vatMode = strtoupper(trim((string)($b['vatMode'] ?? '')));
     $discount = (float)($b['discount'] ?? 0);

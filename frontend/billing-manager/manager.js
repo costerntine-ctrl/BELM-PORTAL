@@ -255,6 +255,15 @@
       quantity: Number(row.querySelector('[data-field="quantity"]').value),
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
     }));
+    let editConfirmation = {};
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save invoice changes?",
+        message: "Confirm changes to this invoice's items and totals.",
+      });
+      if (!confirmation) return;
+      editConfirmation = confirmation;
+    }
     const button = document.getElementById("saveInvoiceButton");
     button.disabled = true;
     try {
@@ -267,6 +276,7 @@
           dueDate: document.getElementById("invoiceDueDate").value || null,
           tax: Number(document.getElementById("invoiceTax").value || 0),
           items,
+          ...editConfirmation,
         }),
       });
       document.getElementById("invoiceDialog").close();
@@ -343,6 +353,15 @@
   async function saveExpense(event) {
     event.preventDefault();
     const id = document.getElementById("expenseId").value;
+    let editConfirmation = {};
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save expense changes?",
+        message: "Confirm changes to this expense record.",
+      });
+      if (!confirmation) return;
+      editConfirmation = confirmation;
+    }
     const button = document.getElementById("saveExpenseButton");
     button.disabled = true;
     try {
@@ -356,6 +375,7 @@
           bankAccountId: document.getElementById("expenseBankAccount").value || null,
           recordedBy: document.getElementById("expenseRecordedBy").value.trim(),
           receiptUrl: document.getElementById("expenseReceiptUrl").value || null,
+          ...editConfirmation,
         }),
       });
       document.getElementById("expenseDialog").close();
@@ -413,6 +433,15 @@
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
     }));
     const button = document.getElementById("saveProformaButton");
+    let editConfirmation = {};
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save proforma changes?",
+        message: "Confirm changes to this proforma invoice.",
+      });
+      if (!confirmation) return;
+      editConfirmation = confirmation;
+    }
     button.disabled = true;
     try {
       await api(id ? `/proforma-invoices/${id}` : "/proforma-invoices", {
@@ -423,6 +452,7 @@
           vatMode: document.getElementById("proformaVatMode").value,
           discount: Number(document.getElementById("proformaDiscount").value || 0),
           items,
+          ...editConfirmation,
         }),
       });
       document.getElementById("proformaDialog").close();

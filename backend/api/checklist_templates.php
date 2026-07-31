@@ -283,7 +283,9 @@ if ($method === 'POST' && !$action) {
 if ($method === 'PUT' && !$action) {
     $existing = fetch_template($id);
     if (!$existing) json_error('Checklist template not found.', 404);
-    $payload = normalize_template_payload(body(), false);
+    $b = body();
+    require_edit_confirmation($b);
+    $payload = normalize_template_payload($b, false);
     $pdo = db();
     $pdo->beginTransaction();
     try {

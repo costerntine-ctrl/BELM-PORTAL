@@ -182,6 +182,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
 if ($method === 'PUT' && !$action) {
     require_page_access($user, 'customers');
     $b = body();
+    require_edit_confirmation($b);
     $stmt = db()->prepare('SELECT is_active FROM customers WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     $existingCustomer = $stmt->fetch();
@@ -297,6 +298,7 @@ if ($method === 'POST' && $action === 'add-machine') {
 if ($method === 'PUT' && $action === 'edit-machine') {
     require_page_access($user, 'customers');
     $b = body();
+    require_edit_confirmation($b);
     $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$_GET['machineId']]);
     if (!$stmt->fetch()) json_error('Machine not found.', 404);

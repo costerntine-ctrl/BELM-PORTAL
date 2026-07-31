@@ -284,6 +284,14 @@
       errorBox.className = "alert error";
       return;
     }
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save template changes?",
+        message: `Confirm changes to "${payload.name || "this checklist template"}".`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
+    }
 
     const saveButton = document.getElementById("saveButton");
     saveButton.disabled = true;

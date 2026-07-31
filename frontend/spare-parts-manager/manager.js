@@ -199,6 +199,14 @@
       formError("Enter received stock quantity above 0 to close this Technician alert.");
       return;
     }
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save spare part changes?",
+        message: `Confirm changes to ${payload.name || "this spare part"}.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
+    }
     button.disabled = true;
     button.textContent = "Saving…";
     try {

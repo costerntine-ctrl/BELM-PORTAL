@@ -179,6 +179,14 @@
       verified: document.getElementById("verified").checked,
     };
     const button = document.getElementById("saveButton");
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save supplier changes?",
+        message: `Confirm changes to ${payload.name || "this supplier"}.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
+    }
     button.disabled = true;
     button.textContent = "Checking & saving…";
     try {

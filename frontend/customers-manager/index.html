@@ -138,6 +138,19 @@
       </div>
     </dialog>
 
+    <dialog id="machineListDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Customer Fleet</p><h2 id="machineListTitle">Machines</h2></div>
+          <button class="icon-close" data-close="machineListDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-actions" style="justify-content: flex-start; border-top: 0; padding-top: 0; margin-bottom: 12px;">
+          <button id="machineListAddButton" class="primary" type="button">+ Add machine</button>
+        </div>
+        <div id="machineListBody"></div>
+      </div>
+    </dialog>
+
     <dialog id="reportsDialog">
       <div class="dialog-card">
         <div class="dialog-head">
@@ -217,6 +230,7 @@
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=30-bank-permission"></script>
     <script src="/delete-confirm.js"></script>
+    <script src="/edit-confirm.js"></script>
     <script src="/customers-manager/manager.js"></script>
   </body>
 </html>

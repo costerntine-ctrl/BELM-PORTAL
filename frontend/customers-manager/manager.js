@@ -157,8 +157,9 @@
           </div>
         </div>
         <div class="machine-section">
-          <div class="machine-section-head"><h3>Machines (${machines.length})</h3><button data-add-machine="${escapeHtml(customer.id)}">+ Add machine</button></div>
-          <div class="machine-list">${machines.length ? machines.map((machine) => machineCard(customer.id, machine)).join("") : '<div class="muted" style="font-size:11px">No machines registered.</div>'}</div>
+          <button class="view-machines-button" data-view-machines="${escapeHtml(customer.id)}" type="button">
+            View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">Needs attention</span>' : ""}
+          </button>
         </div>
         <div class="customer-card-actions">
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
@@ -167,6 +168,17 @@
         </div>
       </article>`;
     }).join("");
+  }
+
+  function openMachineList(customer) {
+    if (!customer) return;
+    const machines = customer.machines || [];
+    document.getElementById("machineListTitle").textContent = `${customer.name} — Machines (${machines.length})`;
+    document.getElementById("machineListAddButton").dataset.addMachine = customer.id;
+    document.getElementById("machineListBody").innerHTML = machines.length
+      ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine)).join("")}</div>`
+      : '<div class="empty">No machines registered for this customer yet.</div>';
+    document.getElementById("machineListDialog").showModal();
   }
 
   async function load() {
@@ -227,6 +239,14 @@
       vrn: document.getElementById("customerVrn").value.trim(),
       isActive: document.getElementById("customerActive").checked,
     };
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save customer changes?",
+        message: `Confirm changes to ${payload.name}.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
+    }
     const button = document.getElementById("saveCustomerButton");
     button.disabled = true;
     button.textContent = "Saving…";
@@ -275,6 +295,14 @@
       serialNumber: document.getElementById("machineSerialNumber").value.trim(),
       serviceKit: document.getElementById("machineServiceKit").value,
     };
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save machine changes?",
+        message: `Confirm changes to ${payload.model || "this machine"}.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
+    }
     const button = document.getElementById("saveMachineButton");
     button.disabled = true;
     button.textContent = "Saving…";
@@ -285,6 +313,9 @@
       });
       document.getElementById("machineDialog").close();
       await load();
+      if (document.getElementById("machineListDialog").open) {
+        openMachineList(customers.find((customer) => customer.id === customerId));
+      }
       showAlert(id ? "Machine updated successfully." : "Machine added to customer card.");
     } catch (error) {
       formError("machineFormAlert", error.message);
@@ -324,6 +355,7 @@
   async function removeMachine(id) {
     const machine = customers.flatMap((customer) => customer.machines || []).find((item) => item.id === id);
     if (!machine) return;
+    const customerId = customers.find((customer) => (customer.machines || []).some((m) => m.id === id))?.id;
     const confirmation = await window.belmConfirmDelete({
       title: "Delete machine?",
       message: `Delete machine ${machine.model}? The record will move to the Recycle Bin.`,
@@ -332,6 +364,9 @@
     try {
       await api(`/customers/machines/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
+      if (document.getElementById("machineListDialog").open && customerId) {
+        openMachineList(customers.find((customer) => customer.id === customerId));
+      }
       showAlert("Machine moved to the Recycle Bin.");
     } catch (error) { showAlert(error.message, true); }
   }
@@ -506,13 +541,29 @@
     copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
   });
   document.getElementById("customerGrid").addEventListener("click", (event) => {
-    const addMachine = event.target.closest("[data-add-machine]");
-    const editMachine = event.target.closest("[data-edit-machine]");
-    const deleteMachine = event.target.closest("[data-delete-machine]");
+    const viewMachines = event.target.closest("[data-view-machines]");
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
     const copyLink = event.target.closest("[data-copy-link]");
+    if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
+    if (editCustomer) openCustomer(customers.find((customer) => customer.id === editCustomer.dataset.editCustomer));
+    if (resetCustomer) resetCustomerLogin(resetCustomer.dataset.resetCustomer);
+    if (deleteCustomer) removeCustomer(deleteCustomer.dataset.deleteCustomer);
+    if (copyLink) {
+      const customer = customers.find((item) => item.id === copyLink.dataset.copyLink);
+      if (customer) copyText(customerPortalUrl(customer), "Customer portal link copied.");
+    }
+  });
+
+  document.getElementById("machineListAddButton").addEventListener("click", (event) => {
+    openMachine(customers.find((customer) => customer.id === event.currentTarget.dataset.addMachine));
+  });
+
+  document.getElementById("machineListBody").addEventListener("click", (event) => {
+    const addMachine = event.target.closest("[data-add-machine]");
+    const editMachine = event.target.closest("[data-edit-machine]");
+    const deleteMachine = event.target.closest("[data-delete-machine]");
     const viewReports = event.target.closest("[data-view-reports]");
     const doCheckup = event.target.closest("[data-checkup]");
     if (viewReports) openMachineReports(viewReports.dataset.viewReports, viewReports.dataset.machineName);
@@ -523,13 +574,6 @@
       openMachine(customer, customer?.machines?.find((machine) => machine.id === editMachine.dataset.editMachine));
     }
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
-    if (editCustomer) openCustomer(customers.find((customer) => customer.id === editCustomer.dataset.editCustomer));
-    if (resetCustomer) resetCustomerLogin(resetCustomer.dataset.resetCustomer);
-    if (deleteCustomer) removeCustomer(deleteCustomer.dataset.deleteCustomer);
-    if (copyLink) {
-      const customer = customers.find((item) => item.id === copyLink.dataset.copyLink);
-      if (customer) copyText(customerPortalUrl(customer), "Customer portal link copied.");
-    }
   });
 
   document.getElementById("mergeCustomersButton").addEventListener("click", () => {

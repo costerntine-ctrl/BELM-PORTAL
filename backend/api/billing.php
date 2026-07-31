@@ -161,6 +161,7 @@ if ($method === 'POST' && !$action) {
 if ($method === 'PUT' && !$action) {
     $b = body();
     if (($b['action'] ?? '') === 'edit') {
+        require_edit_confirmation($b);
         $invoice = validate_invoice_input($b);
         $pdo = db();
         $pdo->beginTransaction();

@@ -118,7 +118,9 @@ if ($method === 'POST') {
 }
 
 if ($method === 'PUT') {
-    $supplier = normalize_supplier(body());
+    $b = body();
+    require_edit_confirmation($b);
+    $supplier = normalize_supplier($b);
     $stmt = db()->prepare('UPDATE suppliers SET name=?, specialty=?, phone=?, whatsapp=?, email=?, website=?, location=?, notes=?, verified=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([
         $supplier['name'], $supplier['specialty'], $supplier['phone'],

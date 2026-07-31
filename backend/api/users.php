@@ -118,7 +118,9 @@ if ($method === 'PUT' && $action === 'roles') {
     if (in_array($existingName, ['Super Admin', 'Technician'], true)) {
         json_error('Built-in roles cannot be renamed or replaced.', 409);
     }
-    $role = role_payload(body(), $id);
+    $b = body();
+    require_edit_confirmation($b);
+    $role = role_payload($b, $id);
     db()->prepare('UPDATE roles SET name=?, permissions=?, allowed_pages=? WHERE id=?')
         ->execute([$role['name'], json_encode($role['permissions']), json_encode($role['allowedPages']), $id]);
     json_out(['ok' => true, 'message' => 'Role updated successfully.']);
@@ -209,6 +211,7 @@ if ($method === 'POST' && !$action) {
 
 if ($method === 'PUT' && !$action) {
     $b = body();
+    require_edit_confirmation($b);
     if (!$id) json_error('User ID is required.');
     $name = trim((string)($b['name'] ?? ''));
     $roleId = trim((string)($b['roleId'] ?? ''));

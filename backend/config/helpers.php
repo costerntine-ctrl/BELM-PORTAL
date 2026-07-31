@@ -217,6 +217,19 @@ function require_delete_confirmation(array $user, array $body): string {
     return $reason;
 }
 
+// ---- Edit confirmation (PIN only) -------------------------------------------
+// Every save-changes action on an existing record must pass {editPin} in the
+// request body. Lighter than delete confirmation (no password/reason) since
+// edits are reversible, but still requires deliberate confirmation.
+function require_edit_confirmation(array $body): void {
+    $pin = trim((string)($body['editPin'] ?? ''));
+    if ($pin === '') json_error('Enter the edit PIN to confirm.');
+
+    $pinRow = db()->query("SELECT \"value\" FROM system_settings WHERE \"key\" = 'adminEditPin'")->fetch();
+    $currentPin = $pinRow ? json_decode($pinRow['value'], true) : '2026';
+    if ($pin !== $currentPin) json_error('Incorrect edit PIN.', 403);
+}
+
 // ---- Customer portal auth ---------------------------------------------------
 function require_customer_auth(): array {
     $payload = current_token_payload();

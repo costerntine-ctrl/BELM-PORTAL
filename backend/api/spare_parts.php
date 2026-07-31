@@ -71,7 +71,9 @@ if ($method === 'POST') {
 
 if ($method === 'PUT') {
     if (!$id) json_error('Spare part ID is required.');
-    $part = spare_part_payload(body(), $id);
+    $b = body();
+    require_edit_confirmation($b);
+    $part = spare_part_payload($b, $id);
     $stmt = db()->prepare('UPDATE spare_parts SET part_number=?, name=?, category=?, stock_qty=?, reorder_threshold=?, purchase_price=?, selling_price=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([
         $part['partNumber'], $part['name'], $part['category'],

@@ -48,6 +48,7 @@
     { section: "Finance & administration", key: "bank-manager", label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
     { section: "Finance & administration", key: "roles", label: "Roles & System Users", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
     { section: "Finance & administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
+    { section: "Finance & administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
   ];
 
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;

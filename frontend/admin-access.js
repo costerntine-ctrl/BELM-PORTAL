@@ -39,6 +39,7 @@
     [/^\/suppliers-manager(?:\/|$)/, "suppliers"],
     [/^\/reports-manager(?:\/|$)/, "reports"],
     [/^\/settings-manager(?:\/|$)/, "settings"],
+    [/^\/recycle-bin(?:\/|$)/, "roles"],
     [/^\/admin\/([^/]+)/, null]
   ];
 

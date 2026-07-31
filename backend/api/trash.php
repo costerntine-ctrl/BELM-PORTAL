@@ -37,6 +37,7 @@ if ($method === 'POST') { // restore
 }
 
 if ($method === 'DELETE') { // permanently delete
+    $reason = require_delete_confirmation($user, body());
     $stmt = db()->prepare('SELECT * FROM trash_entries WHERE id = ?');
     $stmt->execute([$id]);
     $entry = $stmt->fetch();

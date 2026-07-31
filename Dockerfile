@@ -1,41 +1,20 @@
 FROM php:8.3-apache
 
-# Install system packages and PHP extensions
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        libpq-dev \
-        libonig-dev \
-        libzip-dev \
-        zip \
-        unzip \
-        git \
-        curl && \
-    docker-php-ext-install \
-        pdo \
-        pdo_pgsql \
-        mbstring && \
-    a2enmod rewrite headers && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libpq-dev \
+    && docker-php-ext-install pdo_pgsql mbstring \
+    && a2enmod rewrite headers \
+    && rm -rf /var/lib/apt/lists/*
 
-# Working directory
-WORKDIR /var/www/html
+COPY docker/belm-apache.conf /etc/apache2/conf-available/belm.conf
+RUN a2enconf belm
 
-# Copy frontend
 COPY frontend/ /var/www/html/
-
-# Copy backend
 COPY backend/ /var/www/html/api/
-
-# Apache configuration
-COPY docker/belm-apache.conf /etc/apache2/sites-available/000-default.conf
-
-# Startup script
 COPY docker/start-render.sh /usr/local/bin/start-render.sh
-RUN chmod +x /usr/local/bin/start-render.sh
 
-# Render uses port 10000
-ENV PORT=10000
+RUN chown -R www-data:www-data /var/www/html
+
 EXPOSE 10000
 
-CMD ["/usr/local/bin/start-render.sh"]
+CMD ["sh", "/usr/local/bin/start-render.sh"]

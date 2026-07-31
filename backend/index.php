@@ -153,6 +153,9 @@ switch ($resource) {
         if (isset($segments[2]) && $segments[2] === 'users') {
             dispatch('customers.php', ['action' => 'add-user', 'id' => $segments[1]]);
         }
+        if (($segments[1] ?? '') === 'merge') {
+            dispatch('customers.php', ['action' => 'merge']);
+        }
         if (isset($segments[1])) dispatch('customers.php', ['action' => $method === 'GET' ? 'one' : '', 'id' => $segments[1]]);
         dispatch('customers.php');
 

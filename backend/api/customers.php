@@ -361,4 +361,59 @@ function fetch_customer_users(string $customerId): array {
     return $stmt->fetchAll();
 }
 
+// ---- Merge two customer records into one -----------------------------------
+// Moves every machine, invoice, checklist report, service request, spare
+// part request, proforma, expense log, task and portal user from the
+// "source" customer onto the "target" customer, then permanently removes
+// the now-empty source record. Use this when the same real company was
+// accidentally registered twice (e.g. duplicate email conflict).
+if ($method === 'POST' && $action === 'merge') {
+    require_page_access($user, 'customers');
+    $b = body();
+    $sourceId = trim((string)($b['sourceCustomerId'] ?? ''));
+    $targetId = trim((string)($b['targetCustomerId'] ?? ''));
+    if ($sourceId === '' || $targetId === '') json_error('Select both the duplicate and the customer to keep.');
+    if ($sourceId === $targetId) json_error('Select two different customers to merge.');
+
+    $reason = require_delete_confirmation($user, $b);
+
+    $stmt = db()->prepare('SELECT id, name, email FROM customers WHERE id IN (?, ?) AND deleted_at IS NULL');
+    $stmt->execute([$sourceId, $targetId]);
+    $rows = $stmt->fetchAll();
+    if (count($rows) !== 2) json_error('One of the selected customers was not found.', 404);
+    $names = [];
+    foreach ($rows as $row) $names[$row['id']] = $row['name'];
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('UPDATE machines SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare('UPDATE service_requests SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare('UPDATE invoices SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare('UPDATE proforma_invoices SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare('UPDATE usage_logs SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare('UPDATE tasks SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare('UPDATE customer_applications SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare(
+            "UPDATE customer_users SET customer_id = ?
+             WHERE customer_id = ?
+               AND LOWER(email) NOT IN (SELECT LOWER(email) FROM customer_users WHERE customer_id = ?)"
+        )->execute([$targetId, $sourceId, $targetId]);
+        $pdo->prepare('DELETE FROM customer_users WHERE customer_id = ?')->execute([$sourceId]);
+        $pdo->prepare('UPDATE users SET assigned_customer_id = ? WHERE assigned_customer_id = ?')->execute([$targetId, $sourceId]);
+        $pdo->prepare("UPDATE customers SET deleted_at = NOW() WHERE id = ?")->execute([$sourceId]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+
+    send_to_trash('customer', $sourceId, $names[$sourceId], $user['id'], $reason . ' (merged into ' . $names[$targetId] . ')');
+
+    json_out([
+        'ok' => true,
+        'message' => "\"{$names[$sourceId]}\" has been merged into \"{$names[$targetId]}\". All machines, invoices and reports moved successfully.",
+    ]);
+}
+
 json_error('Unknown request', 404);

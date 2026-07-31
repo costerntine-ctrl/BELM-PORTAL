@@ -24,223 +24,93 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
-// Liveness does not touch PostgreSQL. Render can use this endpoint to confirm
-// that Apache/PHP is running while /api/health reports database readiness.
-if (($segments[0] ?? '') === 'live') {
-    $environment = database_environment_summary();
-    json_out([
-        'ok' => true,
-        'api' => 'BELM PHP/PostgreSQL',
-        'service' => 'running',
-        'schemaVersion' => '19-database-recovery',
-        'requestId' => belm_request_id(),
-        'databaseUrlConfigured' => $environment['databaseUrlConfigured'],
-        'pgsqlDriverAvailable' => $environment['pgsqlDriverAvailable'],
-    ]);
-}
-
-// Database/schema readiness check. It deliberately exposes no credentials,
-// hostnames, usernames or SQL text.
+// Health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
-    $environment = database_environment_summary();
-
     try {
-        $pdo = db();
-        $pdo->query('SELECT 1')->fetchColumn();
-    } catch (Throwable $error) {
-        $classification = belm_classify_exception($error);
-        error_log(sprintf(
-            'BELM health error requestId=%s code=%s sqlstate=%s message=%s',
-            belm_request_id(),
-            $classification['code'],
-            $classification['sqlState'] ?: 'none',
-            preg_replace('/[\r\n]+/', ' ', $error->getMessage())
-        ));
+        $databaseVersion = db()->query('SELECT VERSION()')->fetchColumn();
+        $requiredTables = [
+            'roles',
+            'users',
+            'customers',
+            'customer_users',
+            'machines',
+            'customer_applications',
+            'user_applications',
+            'usage_logs',
+            'checklist_template_parts',
+            'service_request_parts',
+            'spare_parts',
+            'spare_part_requests',
+            'bank_accounts',
+            'bank_withdrawals',
+        ];
+        $tableChecks = [];
+        $schemaReady = true;
+        $tableStatement = db()->prepare('SELECT to_regclass(?) IS NOT NULL');
+        foreach ($requiredTables as $table) {
+            $tableStatement->execute(['public.' . $table]);
+            $tableChecks[$table] = (bool)$tableStatement->fetchColumn();
+            if (!$tableChecks[$table]) $schemaReady = false;
+        }
 
+        $adminChecks = [
+            'exactlyOneAccount' => false,
+            'active' => false,
+            'superAdminRole' => false,
+            'passwordHashStored' => false,
+        ];
+        try {
+            $stmt = db()->prepare(
+                "SELECT u.id, u.is_active, u.deleted_at, u.password_hash,
+                        r.name AS role_name,
+                        COUNT(*) OVER () AS matching_accounts
+                 FROM users u
+                 LEFT JOIN roles r ON r.id = u.role_id
+                 WHERE LOWER(u.email) = LOWER(?)
+                 ORDER BY
+                   CASE WHEN u.deleted_at IS NULL AND u.is_active = 1 THEN 0 ELSE 1 END,
+                   u.created_at ASC
+                 LIMIT 1"
+            );
+            $stmt->execute(['admin@belmgeneraltech.co.tz']);
+            $admin = $stmt->fetch();
+            if ($admin) {
+                $hash = (string)($admin['password_hash'] ?? '');
+                $adminChecks['exactlyOneAccount'] = (int)$admin['matching_accounts'] === 1;
+                $adminChecks['active'] =
+                    (int)$admin['is_active'] === 1 && $admin['deleted_at'] === null;
+                $adminChecks['superAdminRole'] = $admin['role_name'] === 'Super Admin';
+                $adminChecks['passwordHashStored'] =
+                    str_starts_with($hash, '$2') || str_starts_with($hash, '$argon2');
+            }
+        } catch (Throwable $ignored) {
+            // The database connection works, but schema.sql has not been imported.
+        }
+        $adminReady = !in_array(false, $adminChecks, true);
+
+        json_out([
+            'ok' => true,
+            'api' => 'BELM PHP/PostgreSQL',
+            'database' => 'connected',
+            'databaseVersion' => $databaseVersion,
+            'schemaVersion' => '18-bank-manager',
+            'schemaReady' => $schemaReady,
+            'tables' => $tableChecks,
+            'adminReady' => $adminReady,
+            'adminChecks' => $adminChecks,
+            'loginEndpoints' => [
+                'staff' => '/api/auth/login',
+                'customer' => '/api/auth/customer-login',
+            ],
+        ]);
+    } catch (Throwable $e) {
         json_out([
             'ok' => false,
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'not-connected',
-            'code' => $classification['code'],
-            'message' => $classification['message'],
-            'requestId' => belm_request_id(),
-            'databaseUrlConfigured' => $environment['databaseUrlConfigured'],
-            'pgsqlDriverAvailable' => $environment['pgsqlDriverAvailable'],
+            'message' => 'Check DATABASE_URL and the Render Postgres service.',
         ], 503);
     }
-
-    $databaseVersion = (string)$pdo->query('SHOW server_version')->fetchColumn();
-    $requiredTables = [
-        'roles',
-        'users',
-        'customers',
-        'customer_users',
-        'machines',
-        'checklist_templates',
-        'checklist_template_items',
-        'checklist_template_parts',
-        'checklist_reports',
-        'checklist_answers',
-        'service_requests',
-        'service_request_parts',
-        'spare_parts',
-        'spare_part_requests',
-        'invoices',
-        'payments',
-        'company_expenses',
-        'bank_accounts',
-        'bank_withdrawals',
-        'suppliers',
-        'system_settings',
-        'customer_applications',
-        'user_applications',
-    ];
-
-    $tableChecks = [];
-    $schemaIssues = [];
-    $tableStatement = $pdo->prepare('SELECT to_regclass(?) IS NOT NULL');
-    foreach ($requiredTables as $table) {
-        $tableStatement->execute(['public.' . $table]);
-        $exists = (bool)$tableStatement->fetchColumn();
-        $tableChecks[$table] = $exists;
-        if (!$exists) {
-            $schemaIssues[] = 'Missing table: ' . $table;
-        }
-    }
-
-    $requiredColumns = [
-        'customers.is_active' => 'smallint',
-        'customers.recovery_code_hash' => 'character varying',
-        'users.is_active' => 'smallint',
-        'users.assigned_customer_id' => 'character varying',
-        'customer_users.is_active' => 'smallint',
-        'machines.service_history' => 'jsonb',
-        'machines.updated_at' => 'timestamp with time zone',
-        'checklist_templates.service_type' => 'character varying',
-        'checklist_templates.is_active' => 'smallint',
-        'checklist_template_items.option_safety' => 'jsonb',
-        'checklist_template_items.is_required' => 'smallint',
-        'service_requests.customer_confirmed' => 'smallint',
-        'service_requests.origin' => 'character varying',
-        'payments.bank_account_id' => 'character varying',
-        'bank_accounts.is_active' => 'smallint',
-        'suppliers.verified' => 'smallint',
-        'trash_entries.reason' => 'character varying',
-        'system_settings.value' => 'jsonb',
-    ];
-
-    $columnChecks = [];
-    $columnStatement = $pdo->prepare(
-        'SELECT data_type
-         FROM information_schema.columns
-         WHERE table_schema = ? AND table_name = ? AND column_name = ?'
-    );
-    foreach ($requiredColumns as $qualifiedColumn => $expectedType) {
-        [$table, $column] = explode('.', $qualifiedColumn, 2);
-        $columnStatement->execute(['public', $table, $column]);
-        $actualType = $columnStatement->fetchColumn();
-        $matches = is_string($actualType) && $actualType === $expectedType;
-        $columnChecks[$qualifiedColumn] = [
-            'ok' => $matches,
-            'expected' => $expectedType,
-            'actual' => $actualType ?: null,
-        ];
-        if (!$matches) {
-            $schemaIssues[] = sprintf(
-                'Column %s expected %s, found %s',
-                $qualifiedColumn,
-                $expectedType,
-                $actualType ?: 'missing'
-            );
-        }
-    }
-
-    $storedSchemaVersion = null;
-    if ($tableChecks['system_settings'] ?? false) {
-        try {
-            $versionStatement = $pdo->prepare(
-                'SELECT "value"::text
-                 FROM system_settings
-                 WHERE "key" = ?
-                 LIMIT 1'
-            );
-            $versionStatement->execute(['schemaVersion']);
-            $versionRaw = $versionStatement->fetchColumn();
-            $storedSchemaVersion = is_string($versionRaw)
-                ? trim($versionRaw, '"')
-                : null;
-            if ($storedSchemaVersion !== '19-database-recovery') {
-                $schemaIssues[] = 'Database migration version is not current.';
-            }
-        } catch (Throwable $error) {
-            $classification = belm_classify_exception($error);
-            $schemaIssues[] = 'Could not read schemaVersion (' . $classification['code'] . ').';
-        }
-    }
-
-    $adminChecks = [
-        'exactlyOneAccount' => false,
-        'active' => false,
-        'superAdminRole' => false,
-        'passwordHashStored' => false,
-    ];
-    try {
-        $stmt = $pdo->prepare(
-            "SELECT u.id, u.is_active, u.deleted_at, u.password_hash,
-                    r.name AS role_name,
-                    COUNT(*) OVER () AS matching_accounts
-             FROM users u
-             LEFT JOIN roles r ON r.id = u.role_id
-             WHERE LOWER(u.email) = LOWER(?)
-             ORDER BY
-               CASE WHEN u.deleted_at IS NULL AND u.is_active = 1 THEN 0 ELSE 1 END,
-               u.created_at ASC
-             LIMIT 1"
-        );
-        $stmt->execute(['admin@belmgeneraltech.co.tz']);
-        $admin = $stmt->fetch();
-        if ($admin) {
-            $hash = (string)($admin['password_hash'] ?? '');
-            $adminChecks['exactlyOneAccount'] = (int)$admin['matching_accounts'] === 1;
-            $adminChecks['active'] =
-                (int)$admin['is_active'] === 1 && $admin['deleted_at'] === null;
-            $adminChecks['superAdminRole'] = $admin['role_name'] === 'Super Admin';
-            $adminChecks['passwordHashStored'] =
-                str_starts_with($hash, '$2') || str_starts_with($hash, '$argon2');
-        } else {
-            $schemaIssues[] = 'Built-in Administrator account is missing.';
-        }
-    } catch (Throwable $error) {
-        $classification = belm_classify_exception($error);
-        $schemaIssues[] = 'Administrator readiness check failed (' . $classification['code'] . ').';
-    }
-
-    $schemaReady = count($schemaIssues) === 0;
-    $adminReady = !in_array(false, $adminChecks, true);
-    $ready = $schemaReady && $adminReady;
-
-    json_out([
-        'ok' => $ready,
-        'api' => 'BELM PHP/PostgreSQL',
-        'database' => 'connected',
-        'databaseVersion' => $databaseVersion,
-        'pdoDriver' => $pdo->getAttribute(PDO::ATTR_DRIVER_NAME),
-        'databaseUrlConfigured' => $environment['databaseUrlConfigured'],
-        'pgsqlDriverAvailable' => $environment['pgsqlDriverAvailable'],
-        'schemaVersion' => '19-database-recovery',
-        'databaseSchemaVersion' => $storedSchemaVersion,
-        'schemaReady' => $schemaReady,
-        'schemaIssues' => $schemaIssues,
-        'tables' => $tableChecks,
-        'columns' => $columnChecks,
-        'adminReady' => $adminReady,
-        'adminChecks' => $adminChecks,
-        'requestId' => belm_request_id(),
-        'loginEndpoints' => [
-            'staff' => '/api/auth/login',
-            'customer' => '/api/auth/customer-login',
-        ],
-    ], $ready ? 200 : 503);
 }
 
 $resource = $segments[0] ?? '';

@@ -1,0 +1,14 @@
+# Route every request (except real files) through index.php, so URLs like
+# /customers, /billing/invoices, /auth/login all reach the router.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /api/
+  RewriteRule ^(?:config|scripts)(?:/|$) - [F,L,NC]
+  RewriteRule ^(?:schema|repair_admin)\.sql$ - [F,L,NC]
+  RewriteRule ^index\.php$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [L]
+</IfModule>
+
+Options -Indexes

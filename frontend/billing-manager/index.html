@@ -54,7 +54,6 @@
             <button data-tab="payments" type="button"><span>02</span>Payments</button>
             <button data-tab="expenses" type="button"><span>03</span>Expenses</button>
             <button data-tab="proformas" type="button"><span>04</span>Proforma</button>
-            <button data-tab="bank" type="button"><span>05</span>Bank Manager</button>
           </nav>
         </aside>
 
@@ -63,7 +62,6 @@
           <section id="paymentsPanel" class="panel hidden" data-billing-panel="payments"></section>
           <section id="expensesPanel" class="panel hidden" data-billing-panel="expenses"></section>
           <section id="proformasPanel" class="panel hidden" data-billing-panel="proformas"></section>
-          <section id="bankPanel" class="panel hidden" data-billing-panel="bank"></section>
         </div>
       </div>
     </main>
@@ -115,34 +113,6 @@
         <label>Paid from bank<select id="expenseBankAccount"><option value="">Unallocated / cash expense</option></select></label>
         <label>Recorded by<input id="expenseRecordedBy"></label>
         <div class="dialog-actions"><button class="ghost" data-close="expenseDialog" type="button">Cancel</button><button id="saveExpenseButton" class="primary">Save expense</button></div>
-      </form>
-    </dialog>
-
-    <dialog id="bankAccountDialog">
-      <form id="bankAccountForm" class="dialog-card compact">
-        <div class="dialog-head"><div><p class="eyebrow">Bank Manager</p><h2 id="bankAccountTitle">Add bank account</h2></div><button class="icon-close" data-close="bankAccountDialog" type="button">×</button></div>
-        <input id="bankAccountId" type="hidden">
-        <div id="bankAccountError" class="alert error hidden"></div>
-        <label>Bank name<input id="bankName" required placeholder="CRDB, NMB, NBC…"></label>
-        <label>Account name<input id="bankAccountName" required placeholder="BELM GENERAL TECH SERVICE LTD"></label>
-        <label>Account number<input id="bankAccountNumber" required></label>
-        <label>Opening balance (TZS)<input id="bankOpeningBalance" required type="number" min="0" step="0.01" value="0"></label>
-        <div class="dialog-actions"><button class="ghost" data-close="bankAccountDialog" type="button">Cancel</button><button id="saveBankAccountButton" class="primary">Save bank</button></div>
-      </form>
-    </dialog>
-
-    <dialog id="withdrawalDialog">
-      <form id="withdrawalForm" class="dialog-card compact">
-        <div class="dialog-head"><div><p class="eyebrow">Bank Manager</p><h2 id="withdrawalTitle">Record withdrawal</h2></div><button class="icon-close" data-close="withdrawalDialog" type="button">×</button></div>
-        <input id="withdrawalId" type="hidden">
-        <div id="withdrawalError" class="alert error hidden"></div>
-        <label>Bank account<select id="withdrawalBankAccount" required></select></label>
-        <label>Date<input id="withdrawalDate" required type="date"></label>
-        <label>Cheque / transaction number<input id="withdrawalChequeNumber" required placeholder="Cheque no. or bank transaction reference"></label>
-        <label>Reason / description<input id="withdrawalDescription" required placeholder="Reason for withdrawal"></label>
-        <label>Amount (TZS)<input id="withdrawalAmount" required type="number" min="0.01" step="0.01"></label>
-        <label>Withdrawn by<input id="withdrawalBy"></label>
-        <div class="dialog-actions"><button class="ghost" data-close="withdrawalDialog" type="button">Cancel</button><button id="saveWithdrawalButton" class="primary">Save withdrawal</button></div>
       </form>
     </dialog>
 

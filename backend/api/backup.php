@@ -12,21 +12,18 @@ require_super_admin($user);
 
 $tables = [
     'roles', 'users', 'customers', 'customer_users', 'machines',
-    'activity_logs', 'customer_applications', 'user_applications',
-    'checklist_templates', 'checklist_template_items',
+    'customer_applications', 'user_applications', 'checklist_templates',
     'checklist_template_parts', 'checklist_reports', 'checklist_answers',
-    'service_requests', 'service_request_parts', 'service_notes',
-    'spare_parts', 'spare_part_requests', 'suppliers',
-    'bank_accounts', 'invoices', 'invoice_items', 'payments',
-    'notification_logs', 'system_settings', 'usage_logs',
-    'admin_announcements', 'company_expenses', 'bank_withdrawals',
-    'proforma_invoices', 'proforma_invoice_items', 'trash_entries',
-    'tasks', 'attendance_records',
+    'service_requests', 'service_request_parts', 'spare_parts',
+    'spare_part_requests', 'suppliers', 'invoices', 'invoice_payments',
+    'company_expenses', 'proforma_invoices', 'usage_logs', 'tasks',
+    'bank_accounts', 'bank_withdrawals', 'admin_announcements',
+    'system_settings', 'activity_logs', 'trash_entries',
 ];
 
 $backup = [
     'exportedAt' => date('c'),
-    'schemaVersion' => '19-database-recovery',
+    'schemaVersion' => '18-bank-manager',
     'tables' => [],
 ];
 

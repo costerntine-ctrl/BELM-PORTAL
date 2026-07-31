@@ -2,163 +2,13 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/jwt.php';
 
-/**
- * Stable request identifier returned to the browser and written to Render logs.
- */
-function belm_request_id(): string
-{
-    static $requestId = null;
-    if (is_string($requestId)) {
-        return $requestId;
-    }
-
-    $incoming = trim((string)($_SERVER['HTTP_X_REQUEST_ID'] ?? ''));
-    if ($incoming !== '' && preg_match('/^[A-Za-z0-9._-]{8,80}$/', $incoming)) {
-        $requestId = $incoming;
-    } else {
-        try {
-            $requestId = 'belm-' . bin2hex(random_bytes(8));
-        } catch (Throwable $ignored) {
-            $requestId = 'belm-' . str_replace('.', '', uniqid('', true));
-        }
-    }
-
-    return $requestId;
-}
-
-/**
- * Find a PostgreSQL SQLSTATE without exposing the query or credentials.
- */
-function belm_sqlstate(Throwable $error): ?string
-{
-    $current = $error;
-    while ($current instanceof Throwable) {
-        if ($current instanceof PDOException) {
-            $errorInfo = $current->errorInfo ?? null;
-            if (is_array($errorInfo) && isset($errorInfo[0])) {
-                $state = strtoupper((string)$errorInfo[0]);
-                if (preg_match('/^[0-9A-Z]{5}$/', $state)) {
-                    return $state;
-                }
-            }
-        }
-
-        $code = strtoupper((string)$current->getCode());
-        if (preg_match('/^[0-9A-Z]{5}$/', $code)) {
-            return $code;
-        }
-
-        $current = $current->getPrevious();
-    }
-
-    return null;
-}
-
-/**
- * Translate internal errors into safe, actionable API messages.
- */
-function belm_classify_exception(Throwable $error): array
-{
-    $sqlState = belm_sqlstate($error);
-    $message = strtolower($error->getMessage());
-
-    if (str_contains($message, 'pdo postgresql driver') || str_contains($message, 'could not find driver')) {
-        return [
-            'status' => 500,
-            'code' => 'DATABASE_DRIVER_MISSING',
-            'message' => 'PostgreSQL support is missing from the API image. Redeploy this build.',
-            'sqlState' => $sqlState,
-        ];
-    }
-
-    if (
-        str_contains($message, 'database_url')
-        || str_contains($message, 'database name')
-        || str_contains($message, 'jwt_secret')
-    ) {
-        return [
-            'status' => 503,
-            'code' => 'SERVER_CONFIGURATION_ERROR',
-            'message' => 'Server configuration is incomplete. Check DATABASE_URL and service environment variables.',
-            'sqlState' => $sqlState,
-        ];
-    }
-
-    if (
-        str_contains($message, 'password authentication failed')
-        || (str_contains($message, 'database') && str_contains($message, 'does not exist'))
-        || str_contains($message, 'no pg_hba.conf entry')
-    ) {
-        return [
-            'status' => 503,
-            'code' => 'DATABASE_CREDENTIALS_INVALID',
-            'message' => 'PostgreSQL rejected the configured connection. Refresh DATABASE_URL from the Render database.',
-            'sqlState' => $sqlState,
-        ];
-    }
-
-    if (
-        ($sqlState !== null && str_starts_with($sqlState, '08'))
-        || in_array($sqlState, ['57P01', '57P02', '57P03', '53300'], true)
-        || str_contains($message, 'connection refused')
-        || str_contains($message, 'could not translate host name')
-        || str_contains($message, 'server closed the connection')
-    ) {
-        return [
-            'status' => 503,
-            'code' => 'DATABASE_UNAVAILABLE',
-            'message' => 'Database is unavailable. Check the Render Postgres status and DATABASE_URL.',
-            'sqlState' => $sqlState,
-        ];
-    }
-
-    if ($sqlState === '42P01') {
-        return [
-            'status' => 500,
-            'code' => 'DATABASE_TABLE_MISSING',
-            'message' => 'Database schema is incomplete. Run the portal migration and redeploy.',
-            'sqlState' => $sqlState,
-        ];
-    }
-
-    if ($sqlState === '42703') {
-        return [
-            'status' => 500,
-            'code' => 'DATABASE_COLUMN_MISSING',
-            'message' => 'Database schema is older than the portal code. Run the compatibility migration and redeploy.',
-            'sqlState' => $sqlState,
-        ];
-    }
-
-    if (in_array($sqlState, ['42804', '42883', '22P02'], true)) {
-        return [
-            'status' => 500,
-            'code' => 'DATABASE_TYPE_MISMATCH',
-            'message' => 'Database column types do not match this portal version. Run the compatibility migration and redeploy.',
-            'sqlState' => $sqlState,
-        ];
-    }
-
-    return [
-        'status' => 500,
-        'code' => 'INTERNAL_SERVER_ERROR',
-        'message' => 'Server error. Use the request ID to find the exact API log entry.',
-        'sqlState' => $sqlState,
-    ];
-}
-
-$requestId = belm_request_id();
-header('X-Request-ID: ' . $requestId);
-
 $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = array_values(array_filter(array_map(
     'trim',
     explode(',', getenv('ALLOWED_ORIGINS') ?: '')
 )));
 $renderHostname = getenv('RENDER_EXTERNAL_HOSTNAME') ?: '';
-if ($renderHostname !== '') {
-    $allowedOrigins[] = 'https://' . $renderHostname;
-}
+if ($renderHostname !== '') $allowedOrigins[] = 'https://' . $renderHostname;
 if (isset($_SERVER['HTTP_HOST'])) {
     $scheme = ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? 'https') === 'http' ? 'http' : 'https';
     $allowedOrigins[] = $scheme . '://' . $_SERVER['HTTP_HOST'];
@@ -167,41 +17,16 @@ if ($requestOrigin !== '' && in_array($requestOrigin, array_unique($allowedOrigi
     header('Access-Control-Allow-Origin: ' . $requestOrigin);
     header('Vary: Origin');
 }
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Request-ID');
-header('Access-Control-Expose-Headers: X-Request-ID');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
+header('Content-Type: application/json');
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
 set_exception_handler(static function (Throwable $error): void {
-    $classification = belm_classify_exception($error);
-    $path = parse_url((string)($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '';
-    $sqlState = $classification['sqlState'] ?? null;
-
-    error_log(sprintf(
-        'BELM API error requestId=%s method=%s path=%s class=%s code=%s sqlstate=%s message=%s at=%s:%d',
-        belm_request_id(),
-        (string)($_SERVER['REQUEST_METHOD'] ?? 'CLI'),
-        $path,
-        get_class($error),
-        (string)$error->getCode(),
-        $sqlState ?: 'none',
-        preg_replace('/[\r\n]+/', ' ', $error->getMessage()),
-        $error->getFile(),
-        $error->getLine()
-    ));
-
-    json_out([
-        'error' => $classification['message'] . ' Request ID: ' . belm_request_id(),
-        'code' => $classification['code'],
-        'requestId' => belm_request_id(),
-    ], (int)$classification['status']);
+    error_log('BELM API error: ' . $error->getMessage());
+    json_error('Server error. Check the API error log and database configuration.', 500);
 });
 
 /**

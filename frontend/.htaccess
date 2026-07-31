@@ -1,0 +1,13 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  DirectoryIndex portal-home.html index.html
+  RewriteRule ^api(?:/|$) - [L]
+  RewriteRule ^portal-home\.html$ - [L]
+  RewriteRule ^index\.html$ - [L]
+  RewriteRule ^admin-menu/?$ /overview-manager/ [R=302,L]
+  RewriteRule ^(?:admin/login|portal/login|tech)(?:/.*)?$ /index.html [END]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [END]
+</IfModule>

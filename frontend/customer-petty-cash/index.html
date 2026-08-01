@@ -26,6 +26,15 @@
         <p id="machineDetails" class="lead">Loading machine information…</p>
       </div>
       <div class="download-actions">
+        <label class="print-options">Print options
+          <select id="printScope">
+            <option value="all">All (single page)</option>
+            <option value="date">Select date…</option>
+            <option value="month">Select month…</option>
+          </select>
+        </label>
+        <input type="date" id="printDateInput" class="hidden">
+        <input type="month" id="printMonthInput" class="hidden">
         <button class="secondary" id="csvButton" type="button">Download CSV</button>
         <button class="secondary" id="pdfButton" type="button">Download PDF</button>
       </div>

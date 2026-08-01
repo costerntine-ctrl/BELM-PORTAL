@@ -154,17 +154,31 @@
           <td>${money.format(Number(expense.unit_price || 0))}</td>
           <td><strong>${money.format(Number(expense.cost || 0))}</strong></td>
           <td>${hasReceipt(expense.has_receipt)
-            ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(expense.id)}">View photo</button>`
+            ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(expense.id)}">View photo</button>
+               <button class="receipt-button" type="button" data-print-receipt="${escapeHtml(expense.id)}">Print</button>`
             : "—"}</td>
           <td>${escapeHtml(expense.logged_by || "Customer")}</td>
         </tr>`).join("")
       : '<tr><td colspan="8" class="empty">No machine expenses recorded yet.</td></tr>';
   }
 
+  function currentRangeQuery() {
+    const scope = document.getElementById("printScope").value;
+    if (scope === "date") {
+      const value = document.getElementById("printDateInput").value;
+      return value ? `?date=${encodeURIComponent(value)}` : "";
+    }
+    if (scope === "month") {
+      const value = document.getElementById("printMonthInput").value;
+      return value ? `?month=${encodeURIComponent(value)}` : "";
+    }
+    return "";
+  }
+
   async function load() {
     clearAlert();
     try {
-      render(await api(`/machine-expenses/${encodeURIComponent(machineId)}`));
+      render(await api(`/machine-expenses/${encodeURIComponent(machineId)}${currentRangeQuery()}`));
     } catch (error) {
       showAlert(error.message || "Could not load machine expenses.", true);
     }
@@ -177,7 +191,7 @@
     button.textContent = "Preparing…";
     try {
       const response = await fetch(
-        `/api/customer-portal/machine-expenses/${encodeURIComponent(machineId)}/${format}`,
+        `/api/customer-portal/machine-expenses/${encodeURIComponent(machineId)}/${format}${currentRangeQuery()}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!response.ok) {
@@ -224,6 +238,26 @@
     }
   }
 
+  async function printReceipt(expenseId) {
+    try {
+      const response = await fetch(
+        `/api/customer-portal/machine-expenses/${encodeURIComponent(machineId)}/receipt?expenseId=${encodeURIComponent(expenseId)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error("Could not load receipt photo.");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open("", "_blank");
+      printWindow.document.write(`<!doctype html><html><head><title>Receipt</title>
+        <style>body{margin:0;display:flex;justify-content:center;padding:20px;font-family:sans-serif}
+        img{max-width:100%;height:auto}</style></head>
+        <body><img src="${url}" onload="window.print()"></body></html>`);
+      printWindow.document.close();
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
   document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
   document.getElementById("quantity").addEventListener("input", calculateTotal);
   document.getElementById("unitPrice").addEventListener("input", calculateTotal);
@@ -248,11 +282,20 @@
   document.getElementById("removeReceiptButton").addEventListener("click", clearReceiptInput);
   document.getElementById("expenseRows").addEventListener("click", event => {
     const button = event.target.closest("[data-receipt]");
+    const printButton = event.target.closest("[data-print-receipt]");
     if (button) viewReceipt(button.dataset.receipt);
+    if (printButton) printReceipt(printButton.dataset.printReceipt);
   });
   document.getElementById("closeReceiptButton").addEventListener("click", () => {
     document.getElementById("receiptDialog").close();
   });
+  document.getElementById("printScope").addEventListener("change", event => {
+    document.getElementById("printDateInput").classList.toggle("hidden", event.target.value !== "date");
+    document.getElementById("printMonthInput").classList.toggle("hidden", event.target.value !== "month");
+    if (event.target.value === "all") load();
+  });
+  document.getElementById("printDateInput").addEventListener("change", load);
+  document.getElementById("printMonthInput").addEventListener("change", load);
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("csvButton").addEventListener("click", () => download("csv"));
   document.getElementById("pdfButton").addEventListener("click", () => download("pdf"));

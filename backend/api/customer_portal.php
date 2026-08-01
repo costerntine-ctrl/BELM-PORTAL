@@ -19,22 +19,51 @@ function output_machine_expense_pdf(string $filename, array $lines): void {
     $pages = array_chunk($lines, 48);
     if (!$pages) $pages = [['No machine expenses recorded.']];
 
+    $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
+    $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
+    $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+
     $objects = [];
+    $watermarkObject = null;
     $fontObject = 3 + count($pages) * 2;
+    if ($watermarkData !== false && $watermarkSize !== false) {
+        $watermarkObject = $fontObject + 1;
+    }
     $pageReferences = [];
+
+    // A4 page = 595 x 842pt. Draw the watermark centered, ~360pt wide,
+    // keeping its original aspect ratio, so it stays faint and legible
+    // behind the report text rather than dominating the page.
+    $wmDrawWidth = 360;
+    $wmDrawHeight = $watermarkSize ? $wmDrawWidth * ($watermarkSize[1] / $watermarkSize[0]) : 0;
+    $wmX = (595 - $wmDrawWidth) / 2;
+    $wmY = (842 - $wmDrawHeight) / 2;
+
     foreach ($pages as $index => $pageLines) {
         $pageObject = 3 + $index * 2;
         $contentObject = $pageObject + 1;
         $pageReferences[] = $pageObject . ' 0 R';
-        $content = "BT\n/F1 10 Tf\n50 790 Td\n13 TL\n";
+
+        $content = '';
+        if ($watermarkObject !== null) {
+            $content .= sprintf(
+                "q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Wm Do\nQ\n",
+                $wmDrawWidth, $wmDrawHeight, $wmX, $wmY
+            );
+        }
+        $content .= "BT\n/F1 10 Tf\n50 790 Td\n13 TL\n";
         foreach ($pageLines as $line) {
             $content .= '(' . machine_expense_pdf_escape((string)$line) . ") Tj\nT*\n";
         }
         $content .= "ET\n";
+
+        $resources = "/Font << /F1 {$fontObject} 0 R >>";
+        if ($watermarkObject !== null) {
+            $resources .= " /XObject << /Wm {$watermarkObject} 0 R >>";
+        }
         $objects[$pageObject] =
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-            . "/Resources << /Font << /F1 {$fontObject} 0 R >> >> "
-            . "/Contents {$contentObject} 0 R >>";
+            . "/Resources << {$resources} >> /Contents {$contentObject} 0 R >>";
         $objects[$contentObject] =
             "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";
     }
@@ -43,6 +72,12 @@ function output_machine_expense_pdf(string $filename, array $lines): void {
         '<< /Type /Pages /Kids [' . implode(' ', $pageReferences)
         . '] /Count ' . count($pages) . ' >>';
     $objects[$fontObject] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+    if ($watermarkObject !== null) {
+        $objects[$watermarkObject] =
+            "<< /Type /XObject /Subtype /Image /Width {$watermarkSize[0]} /Height {$watermarkSize[1]} "
+            . "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode "
+            . "/Length " . strlen($watermarkData) . " >>\nstream\n{$watermarkData}\nendstream";
+    }
     ksort($objects);
 
     $pdf = "%PDF-1.4\n";
@@ -68,33 +103,53 @@ function output_machine_expense_pdf(string $filename, array $lines): void {
     exit;
 }
 
-function machine_expense_rows(string $customerId, string $machineId): array {
-    $stmt = db()->prepare(
-        "SELECT id, date, description, part_number, quantity, unit, unit_price,
+function machine_expense_rows(string $customerId, string $machineId, ?string $from = null, ?string $to = null): array {
+    $sql = "SELECT id, date, description, part_number, quantity, unit, unit_price,
                 cost, logged_by, receipt_photo_name,
                 CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''
                      THEN 1 ELSE 0 END AS has_receipt,
                 created_at
          FROM usage_logs
-         WHERE customer_id = ? AND machine_id = ? AND category = 'SPARE_PART'
-         ORDER BY date DESC, created_at DESC"
-    );
-    $stmt->execute([$customerId, $machineId]);
+         WHERE customer_id = ? AND machine_id = ? AND category = 'SPARE_PART'";
+    $params = [$customerId, $machineId];
+    if ($from !== null) { $sql .= ' AND date >= ?'; $params[] = $from; }
+    if ($to !== null) { $sql .= ' AND date <= ?'; $params[] = $to; }
+    $sql .= ' ORDER BY date DESC, created_at DESC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
     return $stmt->fetchAll();
 }
 
-function petty_cash_rows(string $customerId, string $machineId): array {
-    $stmt = db()->prepare(
-        "SELECT id, date, description, cost, logged_by, receipt_photo_name,
+function petty_cash_rows(string $customerId, string $machineId, ?string $from = null, ?string $to = null): array {
+    $sql = "SELECT id, date, description, cost, logged_by, receipt_photo_name,
                 CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''
                      THEN 1 ELSE 0 END AS has_receipt,
                 created_at
          FROM usage_logs
-         WHERE customer_id = ? AND machine_id = ? AND category = 'PETTY_CASH'
-         ORDER BY date DESC, created_at DESC"
-    );
-    $stmt->execute([$customerId, $machineId]);
+         WHERE customer_id = ? AND machine_id = ? AND category = 'PETTY_CASH'";
+    $params = [$customerId, $machineId];
+    if ($from !== null) { $sql .= ' AND date >= ?'; $params[] = $from; }
+    if ($to !== null) { $sql .= ' AND date <= ?'; $params[] = $to; }
+    $sql .= ' ORDER BY date DESC, created_at DESC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
     return $stmt->fetchAll();
+}
+
+// Reads ?date=YYYY-MM-DD or ?month=YYYY-MM from the query string and returns
+// [from, to] (both null if neither was supplied, meaning "everything").
+function usage_log_date_range_from_query(): array {
+    $date = trim((string)($_GET['date'] ?? ''));
+    $month = trim((string)($_GET['month'] ?? ''));
+    if ($date !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return [$date, $date];
+    }
+    if ($month !== '' && preg_match('/^\d{4}-\d{2}$/', $month)) {
+        $start = $month . '-01';
+        $end = date('Y-m-t', strtotime($start));
+        return [$start, $end];
+    }
+    return [null, null];
 }
 
 function customer_template_service_parts(string $templateId): array {
@@ -363,13 +418,17 @@ if ($sub === 'machine-expenses' && $sub2) {
         exit;
     }
 
-    $expenses = machine_expense_rows($customer['id'], $machineId);
+    [$rangeFrom, $rangeTo] = usage_log_date_range_from_query();
+    $expenses = machine_expense_rows($customer['id'], $machineId, $rangeFrom, $rangeTo);
 
     if ($method === 'GET' && $sub3 === 'csv') {
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="machine-expenses-' . $safeMachine . '.csv"');
         $output = fopen('php://output', 'wb');
+        fputcsv($output, ['Customer', $customer['name']]);
+        fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
+        fputcsv($output, []);
         fputcsv($output, ['Date', 'Machine', 'Part Number', 'Description', 'Quantity', 'Unit', 'Unit Cost TZS', 'Total TZS', 'Receipt', 'Recorded By']);
         foreach ($expenses as $expense) {
             $safeText = static function ($value): string {
@@ -401,8 +460,10 @@ if ($sub === 'machine-expenses' && $sub2) {
         );
         $lines = [
             'BELM GENERAL TECH - MACHINE EXPENSE REPORT',
+            'Customer: ' . $customer['name'],
             'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
             'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+            'Period: ' . ($rangeFrom ? "$rangeFrom to $rangeTo" : 'All time'),
             'Generated: ' . date('Y-m-d H:i'),
             str_repeat('-', 78),
         ];
@@ -566,13 +627,17 @@ if ($sub === 'petty-cash' && $sub2) {
         exit;
     }
 
-    $entries = petty_cash_rows($customer['id'], $machineId);
+    [$rangeFrom, $rangeTo] = usage_log_date_range_from_query();
+    $entries = petty_cash_rows($customer['id'], $machineId, $rangeFrom, $rangeTo);
 
     if ($method === 'GET' && $sub3 === 'csv') {
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="petty-cash-' . $safeMachine . '.csv"');
         $output = fopen('php://output', 'wb');
+        fputcsv($output, ['Customer', $customer['name']]);
+        fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
+        fputcsv($output, []);
         fputcsv($output, ['Date', 'Machine', 'Description', 'Amount TZS', 'Receipt', 'Recorded By']);
         foreach ($entries as $entry) {
             $safeText = static function ($value): string {
@@ -600,8 +665,10 @@ if ($sub === 'petty-cash' && $sub2) {
         );
         $lines = [
             'BELM GENERAL TECH - PETTY CASH REPORT',
+            'Customer: ' . $customer['name'],
             'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
             'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+            'Period: ' . ($rangeFrom ? "$rangeFrom to $rangeTo" : 'All time'),
             'Generated: ' . date('Y-m-d H:i'),
             str_repeat('-', 78),
         ];

@@ -98,7 +98,7 @@
   function renderParts() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filtered = parts.filter((part) =>
-      [part.partNumber, part.name, part.category].some((value) => String(value || "").toLowerCase().includes(query)));
+      [part.partNumber, part.referenceNumber, part.name, part.category].some((value) => String(value || "").toLowerCase().includes(query)));
     const panel = document.getElementById("partsPanel");
     if (!filtered.length) {
       panel.className = "empty";
@@ -108,13 +108,14 @@
 
     panel.className = "table-wrap";
     panel.innerHTML = `<table>
-      <thead><tr><th>Part number</th><th>Name</th><th>Category</th><th>Stock</th><th>Reorder</th><th>Purchase</th><th>Selling</th><th>Profit</th><th></th></tr></thead>
+      <thead><tr><th>Part number</th><th>Reference No.</th><th>Name</th><th>Category</th><th>Stock</th><th>Reorder</th><th>Purchase</th><th>Selling</th><th>Profit</th><th></th></tr></thead>
       <tbody>${filtered.map((part) => {
         const profit = Number(part.sellingPrice || 0) - Number(part.purchasePrice || 0);
         const stockQty = Number(part.stockQty || 0);
         const stockClass = stockQty <= 0 ? "off" : stockQty <= 5 ? "warn" : "";
         return `<tr>
           <td class="nowrap"><strong>${escapeHtml(part.partNumber)}</strong></td>
+          <td class="muted nowrap">${escapeHtml(part.referenceNumber || "—")}</td>
           <td>${escapeHtml(part.name)}</td>
           <td class="muted">${escapeHtml(part.category || "—")}</td>
           <td><span class="badge ${stockClass}">${escapeHtml(part.stockQty)}</span></td>
@@ -156,6 +157,7 @@
     document.getElementById("partId").value = part?.id || "";
     document.getElementById("dialogTitle").textContent = part ? "Edit spare part" : "Add spare part";
     document.getElementById("partNumber").value = part?.partNumber || "";
+    document.getElementById("referenceNumber").value = part?.referenceNumber || "";
     document.getElementById("partName").value = part?.name || "";
     document.getElementById("category").value = part?.category || "";
     document.getElementById("stockQty").value = part?.stockQty ?? 0;
@@ -187,6 +189,7 @@
     const resolvingRequestId = activeRequestId;
     const payload = {
       partNumber: document.getElementById("partNumber").value.trim(),
+      referenceNumber: document.getElementById("referenceNumber").value.trim(),
       name: document.getElementById("partName").value.trim(),
       category: document.getElementById("category").value.trim(),
       stockQty: Number(document.getElementById("stockQty").value),

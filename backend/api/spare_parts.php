@@ -8,6 +8,7 @@ $id = $_GET['id'] ?? null;
 
 function spare_part_payload(array $body, ?string $excludeId = null): array {
     $partNumber = strtoupper(trim((string)($body['partNumber'] ?? '')));
+    $referenceNumber = strtoupper(trim((string)($body['referenceNumber'] ?? '')));
     $name = trim((string)($body['name'] ?? ''));
     $category = trim((string)($body['category'] ?? ''));
 
@@ -39,6 +40,7 @@ function spare_part_payload(array $body, ?string $excludeId = null): array {
 
     return [
         'partNumber' => $partNumber,
+        'referenceNumber' => $referenceNumber !== '' ? $referenceNumber : null,
         'name' => $name,
         'category' => $category !== '' ? $category : null,
         'stockQty' => (int)$stockQty,
@@ -60,9 +62,9 @@ if ($method === 'GET') {
 if ($method === 'POST') {
     $part = spare_part_payload(body());
     $newId = uuid();
-    db()->prepare('INSERT INTO spare_parts (id, part_number, name, category, stock_qty, reorder_threshold, purchase_price, selling_price, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())')
+    db()->prepare('INSERT INTO spare_parts (id, part_number, reference_number, name, category, stock_qty, reorder_threshold, purchase_price, selling_price, created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())')
         ->execute([
-            $newId, $part['partNumber'], $part['name'], $part['category'],
+            $newId, $part['partNumber'], $part['referenceNumber'], $part['name'], $part['category'],
             $part['stockQty'], $part['reorderThreshold'],
             $part['purchasePrice'], $part['sellingPrice'],
         ]);
@@ -74,9 +76,9 @@ if ($method === 'PUT') {
     $b = body();
     require_edit_confirmation($b);
     $part = spare_part_payload($b, $id);
-    $stmt = db()->prepare('UPDATE spare_parts SET part_number=?, name=?, category=?, stock_qty=?, reorder_threshold=?, purchase_price=?, selling_price=? WHERE id=? AND deleted_at IS NULL');
+    $stmt = db()->prepare('UPDATE spare_parts SET part_number=?, reference_number=?, name=?, category=?, stock_qty=?, reorder_threshold=?, purchase_price=?, selling_price=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([
-        $part['partNumber'], $part['name'], $part['category'],
+        $part['partNumber'], $part['referenceNumber'], $part['name'], $part['category'],
         $part['stockQty'], $part['reorderThreshold'],
         $part['purchasePrice'], $part['sellingPrice'], $id,
     ]);

@@ -413,6 +413,17 @@ CREATE TABLE IF NOT EXISTS trash_entries (
 
 ALTER TABLE trash_entries ADD COLUMN IF NOT EXISTS reason VARCHAR(500) NULL;
 
+CREATE TABLE IF NOT EXISTS password_reset_codes (
+  id VARCHAR(36) PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  code_hash VARCHAR(255) NOT NULL,
+  account_type VARCHAR(20) NOT NULL,
+  attempts SMALLINT NOT NULL DEFAULT 0,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_password_reset_codes_email ON password_reset_codes(LOWER(email));
+
 CREATE TABLE IF NOT EXISTS tasks (
   id VARCHAR(36) PRIMARY KEY,
   assigned_to_id VARCHAR(36) NOT NULL REFERENCES users(id),

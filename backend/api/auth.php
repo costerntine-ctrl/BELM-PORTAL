@@ -1,8 +1,111 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/mailer.php';
 
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
+
+// POST /api/auth/forgot-password  { email }
+// Sends a 6-digit verification code to the account's email, valid for 10
+// minutes. Always responds the same way whether or not the email exists,
+// so this cannot be used to discover which emails have BELM accounts.
+if ($action === 'forgot-password' && $method === 'POST') {
+    $b = body();
+    $email = strtolower(trim((string)($b['email'] ?? '')));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        json_error('Enter the email address used for your BELM account.');
+    }
+
+    $accountType = null;
+    $stmt = db()->prepare('SELECT id FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([$email]);
+    if ($stmt->fetch()) $accountType = 'staff';
+
+    if (!$accountType) {
+        $stmt = db()->prepare('SELECT id FROM customers WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) $accountType = 'customer';
+    }
+
+    if (!$accountType) {
+        $stmt = db()->prepare('SELECT id FROM customer_users WHERE LOWER(email) = ? AND is_active = 1');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) $accountType = 'customer-assistant';
+    }
+
+    // Same response either way — do not reveal whether the email exists.
+    $genericResponse = ['ok' => true, 'message' => "If $email has a BELM account, a verification code has been sent to it."];
+
+    if (!$accountType) json_out($genericResponse);
+
+    db()->prepare('DELETE FROM password_reset_codes WHERE LOWER(email) = ?')->execute([$email]);
+
+    $code = (string)random_int(100000, 999999);
+    db()->prepare(
+        'INSERT INTO password_reset_codes (id, email, code_hash, account_type, expires_at, created_at)
+         VALUES (?,?,?,?, NOW() + INTERVAL \'10 minutes\', NOW())'
+    )->execute([uuid(), $email, password_hash($code, PASSWORD_BCRYPT), $accountType]);
+
+    try {
+        send_email(
+            $email,
+            'Your BELM Portal verification code',
+            "Your BELM Portal password reset code is: $code\n\nThis code expires in 10 minutes. If you did not request this, ignore this email — your password will not change."
+        );
+    } catch (Throwable $error) {
+        error_log('BELM mail error: ' . $error->getMessage());
+        json_error('Could not send the verification email right now. Please try again shortly or contact your administrator.', 500);
+    }
+
+    json_out($genericResponse);
+}
+
+// POST /api/auth/reset-with-code  { email, code, newPassword }
+// Verifies the 6-digit code and sets a new password. Max 5 attempts per code.
+if ($action === 'reset-with-code' && $method === 'POST') {
+    $b = body();
+    $email = strtolower(trim((string)($b['email'] ?? '')));
+    $code = trim((string)($b['code'] ?? ''));
+    $newPassword = (string)($b['newPassword'] ?? '');
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email address.');
+    if ($code === '') json_error('Enter the verification code sent to your email.');
+    if (strlen($newPassword) < 8) json_error('New password must contain at least 8 characters.');
+
+    $stmt = db()->prepare(
+        'SELECT * FROM password_reset_codes WHERE LOWER(email) = ? AND expires_at > NOW() ORDER BY created_at DESC LIMIT 1'
+    );
+    $stmt->execute([$email]);
+    $entry = $stmt->fetch();
+    if (!$entry) json_error('That code has expired or was not found. Request a new one.', 400);
+
+    if ((int)$entry['attempts'] >= 5) {
+        db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
+        json_error('Too many incorrect attempts. Request a new code.', 429);
+    }
+
+    if (!password_verify($code, $entry['code_hash'])) {
+        db()->prepare('UPDATE password_reset_codes SET attempts = attempts + 1 WHERE id = ?')->execute([$entry['id']]);
+        json_error('Incorrect verification code.', 400);
+    }
+
+    $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+    $accountType = $entry['account_type'];
+
+    if ($accountType === 'staff') {
+        db()->prepare('UPDATE users SET password_hash = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
+    } elseif ($accountType === 'customer') {
+        db()->prepare('UPDATE customers SET password = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
+    } elseif ($accountType === 'customer-assistant') {
+        db()->prepare('UPDATE customer_users SET password = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
+    } else {
+        json_error('Unknown account type.', 500);
+    }
+
+    db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
+
+    json_out(['ok' => true, 'message' => 'Password reset successfully. You can now log in with your new password.']);
+}
 
 // POST /api/auth/recover
 // Self-service password recovery for staff, customers and customer assistants.

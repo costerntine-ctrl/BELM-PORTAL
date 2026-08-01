@@ -23,6 +23,20 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      - key: SMTP_HOST
+        value: ""
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: ""
+      - key: SMTP_PASS
+        value: ""
+      - key: SMTP_FROM_EMAIL
+        value: ""
+      - key: SMTP_FROM_NAME
+        value: BELM General Tech
+      - key: SMTP_SECURE
+        value: tls
 
 databases:
   - name: belm-portal-db

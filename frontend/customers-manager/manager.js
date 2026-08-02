@@ -1,6 +1,14 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
   let customers = [];
+  let pendingEditPin = null;
+
+  async function confirmThenOpen(title, message, openFn) {
+    const confirmation = await window.belmConfirmEdit({ title, message });
+    if (!confirmation) return;
+    pendingEditPin = confirmation.editPin;
+    openFn();
+  }
 
   function applyTheme(theme) {
     const safeTheme = theme === "dark" ? "dark" : "light";
@@ -240,12 +248,8 @@
       isActive: document.getElementById("customerActive").checked,
     };
     if (id) {
-      const confirmation = await window.belmConfirmEdit({
-        title: "Save customer changes?",
-        message: `Confirm changes to ${payload.name}.`,
-      });
-      if (!confirmation) return;
-      Object.assign(payload, confirmation);
+      if (!pendingEditPin) return;
+      payload.editPin = pendingEditPin;
     }
     const button = document.getElementById("saveCustomerButton");
     button.disabled = true;
@@ -256,6 +260,7 @@
         body: JSON.stringify(payload),
       });
       document.getElementById("customerDialog").close();
+      pendingEditPin = null;
       await load();
       const savedCustomer = customers.find((customer) => customer.id === (id || result.id));
       if (!id && savedCustomer) showCredentials(savedCustomer, result.portalLoginInfo);
@@ -296,12 +301,8 @@
       serviceKit: document.getElementById("machineServiceKit").value,
     };
     if (id) {
-      const confirmation = await window.belmConfirmEdit({
-        title: "Save machine changes?",
-        message: `Confirm changes to ${payload.model || "this machine"}.`,
-      });
-      if (!confirmation) return;
-      Object.assign(payload, confirmation);
+      if (!pendingEditPin) return;
+      payload.editPin = pendingEditPin;
     }
     const button = document.getElementById("saveMachineButton");
     button.disabled = true;
@@ -312,6 +313,7 @@
         body: JSON.stringify(payload),
       });
       document.getElementById("machineDialog").close();
+      pendingEditPin = null;
       await load();
       if (document.getElementById("machineListDialog").open) {
         openMachineList(customers.find((customer) => customer.id === customerId));
@@ -406,13 +408,16 @@
     const answers = Array.isArray(report.answers) ? report.answers : [];
     body.innerHTML = `
       <p class="muted">${escapeHtml(new Date(report.createdAt).toLocaleString())} · Filled by ${escapeHtml(report.filledBy || "—")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</p>
-      <table><thead><tr><th>Item</th><th>Result</th><th>Status</th></tr></thead>
-      <tbody>${answers.length ? answers.map((answer) => `
-        <tr>
+      <table><thead><tr><th>Item</th><th>Result</th><th>Status</th><th style="text-align:right">Evidence</th></tr></thead>
+      <tbody>${answers.length ? answers.map((answer) => {
+        const photoUrl = String(answer.photoUrl || "").trim();
+        return `<tr>
           <td>${escapeHtml(answer.label)}</td>
           <td>${escapeHtml(answer.value || "—")}</td>
           <td><span class="machine-status ${escapeHtml(String(answer.safetyLevel || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(answer.safetyLevel))}</span></td>
-        </tr>`).join("") : '<tr><td colspan="3" class="muted">No answers recorded.</td></tr>'}</tbody></table>`;
+          <td style="text-align:right">${photoUrl ? `<a href="${escapeHtml(photoUrl)}" target="_blank" rel="noopener"><img src="${escapeHtml(photoUrl)}" alt="Evidence" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"></a>` : "—"}</td>
+        </tr>`;
+      }).join("") : '<tr><td colspan="4" class="muted">No answers recorded.</td></tr>'}</tbody></table>`;
   }
 
   function checkupItemControl(item) {
@@ -547,7 +552,10 @@
     const deleteCustomer = event.target.closest("[data-delete-customer]");
     const copyLink = event.target.closest("[data-copy-link]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
-    if (editCustomer) openCustomer(customers.find((customer) => customer.id === editCustomer.dataset.editCustomer));
+    if (editCustomer) {
+      const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
+      confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));
+    }
     if (resetCustomer) resetCustomerLogin(resetCustomer.dataset.resetCustomer);
     if (deleteCustomer) removeCustomer(deleteCustomer.dataset.deleteCustomer);
     if (copyLink) {
@@ -571,7 +579,8 @@
     if (addMachine) openMachine(customers.find((customer) => customer.id === addMachine.dataset.addMachine));
     if (editMachine) {
       const customer = customers.find((item) => item.id === editMachine.dataset.customer);
-      openMachine(customer, customer?.machines?.find((machine) => machine.id === editMachine.dataset.editMachine));
+      const machine = customer?.machines?.find((item) => item.id === editMachine.dataset.editMachine);
+      confirmThenOpen("Edit machine?", `Confirm you want to edit ${machine?.model || "this machine"}.`, () => openMachine(customer, machine));
     }
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
   });

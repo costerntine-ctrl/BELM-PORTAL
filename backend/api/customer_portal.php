@@ -256,6 +256,79 @@ if ($sub === 'dashboard') {
     json_out(['customer' => $profile, 'machines' => $machines]);
 }
 
+// ---- Analysis summary for the dashboard's right-side card -------------------
+if ($sub === 'analysis') {
+    $custId = $customer['id'];
+
+    $machineStmt = db()->prepare(
+        "SELECT COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE status IN ('YELLOW','ATTENTION')) AS yellow,
+                COUNT(*) FILTER (WHERE status IN ('RED','CRITICAL')) AS red,
+                COUNT(*) FILTER (WHERE status IN ('GREEN','OK')) AS green
+         FROM machines WHERE customer_id = ? AND deleted_at IS NULL"
+    );
+    $machineStmt->execute([$custId]);
+    $machineStats = $machineStmt->fetch();
+
+    $requestStmt = db()->prepare(
+        "SELECT COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE status NOT IN ('COMPLETED','CANCELLED')) AS open
+         FROM service_requests WHERE customer_id = ?"
+    );
+    $requestStmt->execute([$custId]);
+    $requestStats = $requestStmt->fetch();
+
+    $expenseStmt = db()->prepare(
+        "SELECT COALESCE(SUM(cost), 0) AS total FROM usage_logs
+         WHERE customer_id = ? AND category = 'SPARE_PART'"
+    );
+    $expenseStmt->execute([$custId]);
+    $totalExpenses = (float)$expenseStmt->fetchColumn();
+
+    $pettyCashStmt = db()->prepare(
+        "SELECT COALESCE(SUM(cost), 0) AS total FROM usage_logs
+         WHERE customer_id = ? AND category = 'PETTY_CASH'"
+    );
+    $pettyCashStmt->execute([$custId]);
+    $totalPettyCash = (float)$pettyCashStmt->fetchColumn();
+
+    $reportStmt = db()->prepare(
+        "SELECT COUNT(*) FROM checklist_reports cr
+         JOIN machines m ON m.id = cr.machine_id
+         WHERE m.customer_id = ?"
+    );
+    $reportStmt->execute([$custId]);
+    $totalReports = (int)$reportStmt->fetchColumn();
+
+    $invoiceStmt = db()->prepare(
+        "SELECT COALESCE(SUM(total), 0) AS total,
+                COALESCE(SUM(total) FILTER (WHERE status <> 'PAID'), 0) AS outstanding
+         FROM invoices WHERE customer_id = ?"
+    );
+    $invoiceStmt->execute([$custId]);
+    $invoiceStats = $invoiceStmt->fetch();
+
+    json_out([
+        'machines' => [
+            'total' => (int)$machineStats['total'],
+            'green' => (int)$machineStats['green'],
+            'yellow' => (int)$machineStats['yellow'],
+            'red' => (int)$machineStats['red'],
+        ],
+        'serviceRequests' => [
+            'total' => (int)$requestStats['total'],
+            'open' => (int)$requestStats['open'],
+        ],
+        'machineExpensesTotal' => $totalExpenses,
+        'pettyCashTotal' => $totalPettyCash,
+        'checklistReportsCount' => $totalReports,
+        'invoices' => [
+            'total' => (float)$invoiceStats['total'],
+            'outstanding' => (float)$invoiceStats['outstanding'],
+        ],
+    ]);
+}
+
 // ---- Machine-aware service types and their synchronized parts ---------------
 if ($sub === 'service-options' && $sub2 && $method === 'GET') {
     $stmt = db()->prepare(

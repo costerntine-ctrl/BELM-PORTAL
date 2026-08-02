@@ -190,7 +190,38 @@ function require_super_admin(array $user): void {
     }
 }
 
-// ---- Delete confirmation (PIN + admin password + reason) -------------------
+// ---- Multi-role support -----------------------------------------------------
+// A user has one primary role (users.role_id) and may have additional roles
+// via the user_roles table. Their effective permissions are the union of
+// every assigned role's allowed_pages. Returns null (meaning "everything")
+// if any assigned role is Super Admin.
+function merged_allowed_pages_for_user(string $userId, string $primaryRoleName, ?string $primaryAllowedPagesJson): ?array {
+    if ($primaryRoleName === 'Super Admin') return null;
+
+    $pages = json_decode($primaryAllowedPagesJson ?? '[]', true) ?: [];
+
+    $stmt = db()->prepare(
+        'SELECT r.name, r.allowed_pages FROM user_roles ur
+         JOIN roles r ON r.id = ur.role_id
+         WHERE ur.user_id = ?'
+    );
+    $stmt->execute([$userId]);
+    foreach ($stmt->fetchAll() as $extra) {
+        if ($extra['name'] === 'Super Admin') return null;
+        $pages = array_merge($pages, json_decode($extra['allowed_pages'] ?? '[]', true) ?: []);
+    }
+
+    return array_values(array_unique($pages));
+}
+
+// Returns the full list of role IDs (primary + extra) assigned to a user.
+function role_ids_for_user(string $userId, string $primaryRoleId): array {
+    $stmt = db()->prepare('SELECT role_id FROM user_roles WHERE user_id = ?');
+    $stmt->execute([$userId]);
+    return array_values(array_unique(array_merge([$primaryRoleId], $stmt->fetchAll(PDO::FETCH_COLUMN))));
+}
+
+
 // Every destructive delete must pass {pin, adminPassword, reason} in the
 // request body. Throws a clean json_error() if any check fails.
 function require_delete_confirmation(array $user, array $body): string {

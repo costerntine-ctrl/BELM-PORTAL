@@ -150,14 +150,46 @@ if ($method === 'GET' && !$action) {
                           LEFT JOIN customers c ON c.id = u.assigned_customer_id
                           WHERE u.deleted_at IS NULL');
     $users = $stmt->fetchAll();
+    $extraStmt = db()->prepare(
+        'SELECT r.id, r.name FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = ?'
+    );
     foreach ($users as &$row) {
         $row['role'] = ['id' => $row['role_id'], 'name' => $row['role_name']];
         $row['assignedCustomer'] = $row['assigned_customer_id']
             ? ['id' => $row['assigned_customer_id'], 'name' => $row['assigned_customer_name']]
             : null;
+        $extraStmt->execute([$row['id']]);
+        $extraRoles = $extraStmt->fetchAll();
+        $row['roleIds'] = array_merge([$row['role_id']], array_column($extraRoles, 'id'));
+        $row['roleNames'] = array_merge([$row['role_name']], array_column($extraRoles, 'name'));
         unset($row['role_name'], $row['assigned_customer_name']);
     }
     json_out($users);
+}
+
+function role_ids_from_body(array $body): array {
+    $raw = $body['roleIds'] ?? null;
+    if (!is_array($raw) || count($raw) === 0) {
+        $single = trim((string)($body['roleId'] ?? ''));
+        $raw = $single !== '' ? [$single] : [];
+    }
+    $ids = array_values(array_unique(array_filter(array_map('strval', $raw))));
+    foreach ($ids as $roleId) {
+        if (role_name($roleId) === null) json_error('One of the selected roles was not found.');
+    }
+    if (count($ids) === 0) json_error('Select at least one role.');
+    return $ids;
+}
+
+// Replaces a user's extra roles (everything after the primary role_id) with
+// the given set.
+function sync_extra_user_roles(string $userId, string $primaryRoleId, array $allRoleIds): void {
+    db()->prepare('DELETE FROM user_roles WHERE user_id = ?')->execute([$userId]);
+    $extra = array_values(array_diff($allRoleIds, [$primaryRoleId]));
+    if ($extra) {
+        $stmt = db()->prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?, ?) ON CONFLICT DO NOTHING');
+        foreach ($extra as $roleId) $stmt->execute([$userId, $roleId]);
+    }
 }
 
 if ($method === 'POST' && !$action) {
@@ -169,8 +201,8 @@ if ($method === 'POST' && !$action) {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
     if ($password === '') $password = secure_account_secret();
     if (strlen($password) < 8) json_error('Password must contain at least 8 characters.');
-    $roleId = trim((string)($b['roleId'] ?? ''));
-    if ($roleId === '' || role_name($roleId) === null) json_error('Select a valid role.');
+    $roleIds = role_ids_from_body($b);
+    $roleId = $roleIds[0];
     $emailCheck = db()->prepare(
         'SELECT 1 FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL
          UNION ALL SELECT 1 FROM customers WHERE LOWER(email) = ? AND deleted_at IS NULL
@@ -200,6 +232,7 @@ if ($method === 'POST' && !$action) {
         $roleId,
         $assignedCustomerId,
     ]);
+    sync_extra_user_roles($newId, $roleId, $roleIds);
     $loginPath = role_name($roleId) === 'Technician' ? '/tech' : '/admin/login';
     json_out([
         'id' => $newId,
@@ -214,9 +247,9 @@ if ($method === 'PUT' && !$action) {
     require_edit_confirmation($b);
     if (!$id) json_error('User ID is required.');
     $name = trim((string)($b['name'] ?? ''));
-    $roleId = trim((string)($b['roleId'] ?? ''));
+    $roleIds = role_ids_from_body($b);
+    $roleId = $roleIds[0];
     if ($name === '') json_error('User name is required.');
-    if ($roleId === '' || role_name($roleId) === null) json_error('Select a valid role.');
     $isActive = !isset($b['isActive']) || filter_var($b['isActive'], FILTER_VALIDATE_BOOL);
     protect_last_super_admin($id, $roleId, $isActive);
     $assignedCustomerId = assigned_customer_for_role(
@@ -225,6 +258,7 @@ if ($method === 'PUT' && !$action) {
     );
     db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
         ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
+    sync_extra_user_roles($id, $roleId, $roleIds);
     json_out(['ok' => true, 'message' => 'User role and access updated successfully.']);
 }
 

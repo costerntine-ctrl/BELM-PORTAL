@@ -94,6 +94,16 @@
     ).join("")}`;
   }
 
+  function renderUserRoleCheckboxes(selectedIds = []) {
+    document.getElementById("userRoles").innerHTML = roles.map((role) =>
+      `<label class="check-option"><input type="checkbox" value="${escapeHtml(role.id)}" ${selectedIds.includes(role.id) ? "checked" : ""}> ${escapeHtml(role.name)}</label>`
+    ).join("");
+  }
+
+  function selectedUserRoleIds() {
+    return [...document.querySelectorAll("#userRoles input:checked")].map((input) => input.value);
+  }
+
   function renderCustomerOptions(selected = "") {
     return `<option value="">Select customer…</option>${customers.map((customer) =>
       `<option value="${escapeHtml(customer.id)}" ${customer.id === selected ? "selected" : ""}>${escapeHtml(customer.name)}</option>`
@@ -133,7 +143,7 @@
   function renderUsers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filtered = users.filter((user) => [
-      user.name, user.email, user.role?.name, user.assignedCustomer?.name,
+      user.name, user.email, ...(user.roleNames || [user.role?.name]), user.assignedCustomer?.name,
     ].some((value) => String(value || "").toLowerCase().includes(query)));
     const panel = document.getElementById("usersPanel");
     if (!filtered.length) {
@@ -143,13 +153,14 @@
     }
     panel.className = "table-wrap";
     panel.innerHTML = `<table>
-      <thead><tr><th>Name</th><th>Email / phone</th><th>Role</th><th>Assigned customer</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Email / phone</th><th>Role(s)</th><th>Assigned customer</th><th>Status</th><th></th></tr></thead>
       <tbody>${filtered.map((user) => {
         const isSelf = user.id === currentUser.id;
+        const roleLabel = (user.roleNames && user.roleNames.length ? user.roleNames : [user.role?.name || "—"]).join(", ");
         return `<tr>
           <td><strong>${escapeHtml(user.name)}</strong>${isSelf ? ' <span class="badge">You</span>' : ""}</td>
           <td><div>${escapeHtml(user.email)}</div><div class="muted">${escapeHtml(user.phone || "—")}</div></td>
-          <td><strong>${escapeHtml(user.role?.name || "—")}</strong></td>
+          <td><strong>${escapeHtml(roleLabel)}</strong></td>
           <td>${escapeHtml(user.assignedCustomer?.name || (user.role?.name === "Technician" ? "Not assigned" : "All customers"))}</td>
           <td><span class="badge ${Number(user.isActive) === 1 ? "" : "off"}">${Number(user.isActive) === 1 ? "Active" : "Inactive"}</span></td>
           <td><div class="row-actions">
@@ -188,7 +199,7 @@
   }
 
   function updateCustomerField() {
-    const technician = isTechnicianRole(document.getElementById("userRole").value);
+    const technician = selectedUserRoleIds().some(isTechnicianRole);
     document.getElementById("customerField").classList.toggle("hidden", !technician);
     document.getElementById("assignedCustomer").required = technician;
     if (!technician) document.getElementById("assignedCustomer").value = "";
@@ -201,7 +212,8 @@
     document.getElementById("userName").value = user?.name || "";
     document.getElementById("userPhone").value = user?.phone || "";
     document.getElementById("userEmail").value = user?.email || "";
-    document.getElementById("userRole").innerHTML = renderRoleOptions(user?.role?.id || "");
+    document.getElementById("userRoles").innerHTML = "";
+    renderUserRoleCheckboxes(user?.roleIds || (user?.role?.id ? [user.role.id] : []));
     document.getElementById("assignedCustomer").innerHTML = renderCustomerOptions(user?.assignedCustomer?.id || "");
     document.getElementById("userActive").checked = user ? Number(user.isActive) === 1 : true;
     document.getElementById("emailField").classList.toggle("hidden", Boolean(user));
@@ -237,13 +249,24 @@
     const payload = {
       name: document.getElementById("userName").value.trim(),
       phone: document.getElementById("userPhone").value.trim(),
-      roleId: document.getElementById("userRole").value,
+      roleIds: selectedUserRoleIds(),
       assignedCustomerId: document.getElementById("assignedCustomer").value || null,
       isActive: document.getElementById("userActive").checked,
     };
+    if (payload.roleIds.length === 0) {
+      formError("userFormAlert", "Select at least one role.");
+      return;
+    }
     if (!id) {
       payload.email = document.getElementById("userEmail").value.trim();
       payload.password = document.getElementById("userPassword").value;
+    } else {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save user changes?",
+        message: `Confirm changes to ${payload.name}.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
     }
     const button = document.getElementById("saveUserButton");
     button.disabled = true;
@@ -299,6 +322,14 @@
       allowedPages: [...document.querySelectorAll("#allowedPages input:checked")].map((input) => input.value),
       permissions: {},
     };
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save role changes?",
+        message: `Confirm changes to the "${payload.name}" role's access.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
+    }
     const button = document.getElementById("saveRoleButton");
     button.disabled = true;
     button.textContent = "Saving…";
@@ -351,7 +382,7 @@
   document.getElementById("addRoleButton").addEventListener("click", () => openRole());
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("searchInput").addEventListener("input", renderUsers);
-  document.getElementById("userRole").addEventListener("change", updateCustomerField);
+  document.getElementById("userRoles").addEventListener("change", updateCustomerField);
   document.getElementById("generatePassword").addEventListener("click", generatePassword);
   document.getElementById("copySystemCredentials").addEventListener("click", () => {
     copyText(

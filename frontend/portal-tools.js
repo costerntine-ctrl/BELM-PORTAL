@@ -491,8 +491,62 @@
     } catch (_) {}
   }
 
-  let customerSpareRecommendationsCache = null;
-  let customerSpareRecommendationsPromise = null;
+  async function renderCustomerAnalysisPanel() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    if (document.getElementById("belmCustomerAnalysisPanel")) return;
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return;
+    try {
+      const response = await fetch("/api/customer-portal/analysis", { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const data = await response.json();
+      const money = (value) => "TZS " + Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 0 });
+
+      const panel = document.createElement("aside");
+      panel.id = "belmCustomerAnalysisPanel";
+      panel.className = "belm-customer-analysis-panel";
+      panel.innerHTML = `
+        <div class="belm-analysis-head"><span>YOUR ANALYSIS</span></div>
+        <div class="belm-analysis-body">
+          <div class="belm-analysis-block">
+            <span>Machines</span>
+            <strong>${data.machines.total}</strong>
+            <div class="belm-analysis-dots">
+              <em class="green">${data.machines.green} OK</em>
+              <em class="yellow">${data.machines.yellow} Attention</em>
+              <em class="red">${data.machines.red} Critical</em>
+            </div>
+          </div>
+          <div class="belm-analysis-block">
+            <span>Service Requests</span>
+            <strong>${data.serviceRequests.total}</strong>
+            <small>${data.serviceRequests.open} currently open</small>
+          </div>
+          <div class="belm-analysis-block">
+            <span>Checklist Reports</span>
+            <strong>${data.checklistReportsCount}</strong>
+            <small>Inspections completed</small>
+          </div>
+          <div class="belm-analysis-block">
+            <span>Machine Expenses</span>
+            <strong>${money(data.machineExpensesTotal)}</strong>
+            <small>Spare parts logged</small>
+          </div>
+          <div class="belm-analysis-block">
+            <span>Petty Cash</span>
+            <strong>${money(data.pettyCashTotal)}</strong>
+            <small>Total recorded</small>
+          </div>
+          <div class="belm-analysis-block">
+            <span>Invoices</span>
+            <strong>${money(data.invoices.total)}</strong>
+            <small>${money(data.invoices.outstanding)} outstanding</small>
+          </div>
+        </div>`;
+      document.body.appendChild(panel);
+    } catch (_) {}
+  }
+
 
   async function loadCustomerSpareRecommendations() {
     if (customerSpareRecommendationsCache) return customerSpareRecommendationsCache;
@@ -1522,7 +1576,7 @@
               <td>${escapeHtml(answer.label || "Checklist item")}</td>
               <td><strong>${escapeHtml(answer.value || "—")}</strong></td>
               <td><span class="belm-report-status status-${escapeHtml(answerStatus.toLowerCase())}">${escapeHtml(answerStatus)}</span></td>
-              <td>${photoUrl ? `<a href="${escapeHtml(photoUrl)}" target="_blank" rel="noopener">View photo</a>` : "—"}</td>
+              <td class="belm-report-evidence">${photoUrl ? `<a href="${escapeHtml(photoUrl)}" target="_blank" rel="noopener" class="belm-report-photo-link"><img src="${escapeHtml(photoUrl)}" alt="Evidence photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy"></a>` : "—"}</td>
             </tr>`;
           }).join("") : '<tr><td colspan="4" class="belm-report-empty">No checked answers were recorded.</td></tr>'}</tbody>
         </table>
@@ -2170,6 +2224,7 @@
   enhanceCustomerAssistants();
   enhanceCustomerMachineExpenseCards();
   enhanceCustomerAnnouncementsPanel();
+  renderCustomerAnalysisPanel();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -2202,6 +2257,7 @@
     enhanceCustomerAssistants();
     enhanceCustomerMachineExpenseCards();
     enhanceCustomerAnnouncementsPanel();
+    renderCustomerAnalysisPanel();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

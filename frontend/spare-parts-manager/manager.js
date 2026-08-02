@@ -3,6 +3,14 @@
   let parts = [];
   let requests = [];
   let activeRequestId = "";
+  let pendingEditPin = null;
+
+  async function confirmThenOpen(title, message, openFn) {
+    const confirmation = await window.belmConfirmEdit({ title, message });
+    if (!confirmation) return;
+    pendingEditPin = confirmation.editPin;
+    openFn();
+  }
 
   function applyTheme(theme) {
     const safeTheme = theme === "dark" ? "dark" : "light";
@@ -180,6 +188,7 @@
 
   function closePart() {
     activeRequestId = "";
+    pendingEditPin = null;
     document.getElementById("partDialog").close();
   }
 
@@ -203,12 +212,8 @@
       return;
     }
     if (id) {
-      const confirmation = await window.belmConfirmEdit({
-        title: "Save spare part changes?",
-        message: `Confirm changes to ${payload.name || "this spare part"}.`,
-      });
-      if (!confirmation) return;
-      Object.assign(payload, confirmation);
+      if (!pendingEditPin) return;
+      payload.editPin = pendingEditPin;
     }
     button.disabled = true;
     button.textContent = "Saving…";
@@ -275,7 +280,10 @@
   document.getElementById("partsPanel").addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
     const remove = event.target.closest("[data-delete]");
-    if (edit) openPart(parts.find((part) => part.id === edit.dataset.edit));
+    if (edit) {
+      const part = parts.find((item) => item.id === edit.dataset.edit);
+      confirmThenOpen("Edit spare part?", `Confirm you want to edit ${part?.name || "this spare part"}.`, () => openPart(part));
+    }
     if (remove) deletePart(remove.dataset.delete);
   });
   document.getElementById("requestsPanel").addEventListener("click", (event) => {
@@ -288,7 +296,7 @@
         showAlert("The linked spare-part record could not be opened.", true);
         return;
       }
-      openPart(part, request.id);
+      confirmThenOpen("Edit spare part?", `Confirm you want to edit ${part.name}.`, () => openPart(part, request.id));
     }
     if (purchase) markPurchaseRequired(purchase.dataset.purchaseRequest);
   });

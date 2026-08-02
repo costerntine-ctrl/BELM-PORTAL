@@ -1,6 +1,14 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
   let suppliers = [];
+  let pendingEditPin = null;
+
+  async function confirmThenOpen(title, message, openFn) {
+    const confirmation = await window.belmConfirmEdit({ title, message });
+    if (!confirmation) return;
+    pendingEditPin = confirmation.editPin;
+    openFn();
+  }
 
   function applyTheme(theme) {
     const safeTheme = theme === "dark" ? "dark" : "light";
@@ -180,12 +188,8 @@
     };
     const button = document.getElementById("saveButton");
     if (id) {
-      const confirmation = await window.belmConfirmEdit({
-        title: "Save supplier changes?",
-        message: `Confirm changes to ${payload.name || "this supplier"}.`,
-      });
-      if (!confirmation) return;
-      Object.assign(payload, confirmation);
+      if (!pendingEditPin) return;
+      payload.editPin = pendingEditPin;
     }
     button.disabled = true;
     button.textContent = "Checking & saving…";
@@ -195,6 +199,7 @@
         body: JSON.stringify(payload),
       });
       document.getElementById("supplierDialog").close();
+      pendingEditPin = null;
       await load();
       showAlert(`Supplier saved. Smart trust status: ${result.trustStatus} (${result.trustScore}%).`);
     } catch (error) {
@@ -229,11 +234,14 @@
   document.getElementById("trustFilter").addEventListener("change", renderSuppliers);
   document.getElementById("supplierForm").addEventListener("submit", saveSupplier);
   document.querySelectorAll("[data-close]").forEach((button) =>
-    button.addEventListener("click", () => document.getElementById("supplierDialog").close()));
+    button.addEventListener("click", () => { pendingEditPin = null; document.getElementById("supplierDialog").close(); }));
   document.getElementById("supplierGrid").addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
     const remove = event.target.closest("[data-delete]");
-    if (edit) openSupplier(suppliers.find((supplier) => supplier.id === edit.dataset.edit));
+    if (edit) {
+      const supplier = suppliers.find((item) => item.id === edit.dataset.edit);
+      confirmThenOpen("Edit supplier?", `Confirm you want to edit ${supplier?.name || "this supplier"}.`, () => openSupplier(supplier));
+    }
     if (remove) deleteSupplier(remove.dataset.delete);
   });
 

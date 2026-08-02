@@ -7,6 +7,14 @@
   let templates = [];
   let items = [];
   let serviceParts = [];
+  let pendingEditPin = null;
+
+  async function confirmThenOpen(title, message, openFn) {
+    const confirmation = await window.belmConfirmEdit({ title, message });
+    if (!confirmation) return;
+    pendingEditPin = confirmation.editPin;
+    openFn();
+  }
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -285,12 +293,8 @@
       return;
     }
     if (id) {
-      const confirmation = await window.belmConfirmEdit({
-        title: "Save template changes?",
-        message: `Confirm changes to "${payload.name || "this checklist template"}".`,
-      });
-      if (!confirmation) return;
-      Object.assign(payload, confirmation);
+      if (!pendingEditPin) return;
+      payload.editPin = pendingEditPin;
     }
 
     const saveButton = document.getElementById("saveButton");
@@ -420,7 +424,10 @@
   templateList.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
     const remove = event.target.closest("[data-delete]");
-    if (edit) openEdit(edit.dataset.edit);
+    if (edit) {
+      const template = templates.find((item) => item.id === edit.dataset.edit);
+      confirmThenOpen("Edit checklist template?", `Confirm you want to edit "${template?.name || "this template"}".`, () => openEdit(edit.dataset.edit));
+    }
     if (remove) deleteTemplate(remove.dataset.delete);
   });
   form.addEventListener("submit", saveTemplate);

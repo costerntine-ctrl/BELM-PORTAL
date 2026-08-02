@@ -73,7 +73,7 @@
           <label>Phone<input id="userPhone" maxlength="50"></label>
           <label id="emailField">Email<input id="userEmail" required type="email"></label>
           <label id="passwordField">Temporary password<input id="userPassword" type="text" minlength="8"><button id="generatePassword" class="ghost" style="width:100%;margin-top:6px;min-height:34px" type="button">Generate secure password</button></label>
-          <label>Role<select id="userRole" required></select></label>
+          <div class="field-block">Roles <small>(select one or more)</small><div id="userRoles" class="check-list"></div></div>
           <label id="customerField">Assigned customer<select id="assignedCustomer"></select></label>
           <label class="full"><span class="check-option"><input id="userActive" type="checkbox" checked> User account is active</span></label>
         </div>
@@ -126,6 +126,7 @@
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=30-bank-permission"></script>
     <script src="/delete-confirm.js"></script>
+    <script src="/edit-confirm.js"></script>
     <script src="/roles-manager/manager.js"></script>
   </body>
 </html>

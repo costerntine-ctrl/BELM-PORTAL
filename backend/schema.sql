@@ -41,6 +41,14 @@ CREATE TABLE IF NOT EXISTS users (
   deleted_at TIMESTAMPTZ NULL
 );
 
+-- Additional roles beyond the primary role_id above. A user's effective
+-- permissions are the union of their primary role and every extra role here.
+CREATE TABLE IF NOT EXISTS user_roles (
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role_id VARCHAR(36) NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, role_id)
+);
+
 CREATE TABLE IF NOT EXISTS activity_logs (
   id VARCHAR(36) PRIMARY KEY,
   user_id VARCHAR(36) NOT NULL REFERENCES users(id),

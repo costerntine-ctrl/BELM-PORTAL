@@ -238,9 +238,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                 }
             }
 
-            $allowedPages = $user['role_name'] === 'Super Admin'
-                ? null
-                : json_decode($user['allowed_pages'] ?? '[]', true);
+            $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
             $token = jwt_encode([
                 'type' => 'staff',
                 'id' => $user['id'],
@@ -388,7 +386,7 @@ if ($action === 'login' && $method === 'POST') {
         }
     }
 
-    $allowedPages = $user['role_name'] === 'Super Admin' ? null : json_decode($user['allowed_pages'] ?? '[]', true);
+    $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
 
     $token = jwt_encode([
         'type' => 'staff',

@@ -4,7 +4,6 @@
   const alertBox = document.getElementById("alertBox");
   let serviceOptions = [];
   let machine = null;
-  let sparePartsInventory = null;
   let partRowCount = 0;
 
   if (!token) {
@@ -126,54 +125,54 @@
     }
   }
 
-  async function loadSparePartsInventory() {
-    if (sparePartsInventory) return sparePartsInventory;
-    try {
-      sparePartsInventory = await api("/spare-parts");
-    } catch (_) {
-      sparePartsInventory = [];
-    }
-    return sparePartsInventory;
-  }
-
-  function inventoryOptionsHtml(selectedId = "") {
-    return `<option value="">Select a spare part…</option>${(sparePartsInventory || []).map((part) =>
-      `<option value="${escapeHtml(part.id)}" ${part.id === selectedId ? "selected" : ""}>${escapeHtml(part.name)} (${escapeHtml(part.partNumber)}) — Stock: ${Number(part.stockQty || 0)}</option>`
+  function machineListOptionsHtml(selectedIndex = "") {
+    const option = selectedOption();
+    const parts = option?.serviceParts || [];
+    return `<option value="">Select from this machine's parts list…</option>${parts.map((part, index) =>
+      `<option value="${index}" ${String(index) === String(selectedIndex) ? "selected" : ""}>${escapeHtml(part.spareName)} (${escapeHtml(part.partNumber)})</option>`
     ).join("")}`;
   }
 
-  async function addPartRow() {
-    await loadSparePartsInventory();
+  function hasMachineList() {
+    return (selectedOption()?.serviceParts || []).length > 0;
+  }
+
+  function addPartRow() {
     partRowCount += 1;
     const rowId = `partRow${partRowCount}`;
     const row = document.createElement("div");
     row.className = "part-request-row";
     row.dataset.rowId = rowId;
-    row.dataset.mode = "inventory";
+    row.dataset.mode = "custom";
+    const listButton = hasMachineList()
+      ? '<button type="button" data-mode="machine-list">Choose from this machine\'s list</button>'
+      : "";
     row.innerHTML = `
       <div class="part-request-row-head">
         <div class="part-source-toggle">
-          <button type="button" data-mode="inventory" class="active">From BELM inventory</button>
-          <button type="button" data-mode="custom">Custom part</button>
+          <button type="button" data-mode="custom" class="active">Fill in part needed</button>
+          ${listButton}
         </div>
         <button type="button" class="remove-part-row" data-remove-row>Remove</button>
       </div>
-      <div class="part-request-fields" data-fields>
-        <select data-spare-part>${inventoryOptionsHtml()}</select>
+      <div class="part-request-fields custom" data-fields>
+        <input type="text" placeholder="Reference number" data-reference maxlength="100">
+        <input type="text" placeholder="Description" data-description maxlength="255">
         <input type="number" min="1" step="1" placeholder="Qty" data-qty required>
       </div>`;
     document.getElementById("partRequestRows").appendChild(row);
   }
 
   function setRowMode(row, mode) {
+    if (mode === "machine-list" && !hasMachineList()) return;
     row.dataset.mode = mode;
     row.querySelectorAll(".part-source-toggle button").forEach((button) =>
       button.classList.toggle("active", button.dataset.mode === mode));
     const fields = row.querySelector("[data-fields]");
-    if (mode === "inventory") {
+    if (mode === "machine-list") {
       fields.className = "part-request-fields";
       fields.innerHTML = `
-        <select data-spare-part>${inventoryOptionsHtml()}</select>
+        <select data-machine-part>${machineListOptionsHtml()}</select>
         <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
     } else {
       fields.className = "part-request-fields custom";
@@ -187,13 +186,15 @@
   function collectPartRows() {
     const rows = [...document.querySelectorAll(".part-request-row")];
     const parts = [];
+    const machineParts = selectedOption()?.serviceParts || [];
     for (const row of rows) {
       const mode = row.dataset.mode;
       const qty = Number(row.querySelector("[data-qty]")?.value || 0);
-      if (mode === "inventory") {
-        const sparePartId = row.querySelector("[data-spare-part]")?.value || "";
-        if (!sparePartId || qty <= 0) continue;
-        parts.push({ sparePartId, quantity: qty });
+      if (mode === "machine-list") {
+        const index = row.querySelector("[data-machine-part]")?.value ?? "";
+        const part = machineParts[Number(index)];
+        if (!part || qty <= 0) continue;
+        parts.push({ referenceNumber: part.partNumber, description: part.spareName, quantity: qty });
       } else {
         const referenceNumber = row.querySelector("[data-reference]")?.value.trim() || "";
         const description = row.querySelector("[data-description]")?.value.trim() || "";
@@ -276,6 +277,5 @@
     showAlert("Viewer assistants can review service parts but cannot submit requests.");
   }
 
-  load();
-  addPartRow();
+  load().then(addPartRow);
 })();

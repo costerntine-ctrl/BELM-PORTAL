@@ -26,73 +26,98 @@
         <p id="machineDetails" class="lead">Loading machine information…</p>
       </div>
       <div class="download-actions">
-        <label class="print-options">Print options
-          <select id="printScope">
-            <option value="all">All (single page)</option>
-            <option value="date">Select date…</option>
-            <option value="month">Select month…</option>
-          </select>
-        </label>
-        <input type="date" id="printDateInput" class="hidden">
-        <input type="month" id="printMonthInput" class="hidden">
         <button class="secondary" id="csvButton" type="button">Download CSV</button>
         <button class="secondary" id="pdfButton" type="button">Download PDF</button>
+        <a class="secondary" id="pettyCashLink" href="/customer-petty-cash/">Petty Cash</a>
+        <a class="secondary" id="serviceRequestLink" href="/customer-service-request/">Service Request</a>
       </div>
     </section>
 
     <div id="alertBox" class="alert hidden" role="alert"></div>
 
-    <section class="summary-grid" aria-label="Machine expense analysis">
-      <article><span>Total machine expense</span><strong id="totalCost">TZS 0</strong></article>
-      <article><span>Total spare quantity</span><strong id="totalQuantity">0</strong></article>
-      <article><span>Expense records</span><strong id="recordCount">0</strong></article>
-      <article><span>Average per record</span><strong id="averageCost">TZS 0</strong></article>
-      <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
-    </section>
-
-    <section id="entryPanel" class="panel entry-panel">
-      <div class="panel-head">
-        <div><h2>Add machine expense</h2><p>Record a spare part used or purchased for this machine.</p></div>
-        <strong id="calculatedTotal">Total: TZS 0</strong>
-      </div>
-      <form id="expenseForm">
-        <label>Date<input id="expenseDate" type="date" required></label>
-        <label class="wide">Receipt for<input id="description" maxlength="500" required placeholder="e.g. Hydraulic return filter"></label>
-        <label>Part number<input id="partNumber" maxlength="100" required placeholder="e.g. 923855.0996"></label>
-        <label>Quantity<input id="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
-        <label>Unit
-          <select id="unit">
-            <option value="PC">PC</option>
-            <option value="SET">SET</option>
-            <option value="L">Litre</option>
-            <option value="KG">KG</option>
-          </select>
-        </label>
-        <label>Unit cost (TZS)<input id="unitPrice" type="number" min="0" step="0.01" value="0" required></label>
-        <label class="receipt-field">Receipt photo
-          <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
-          <small>Camera or gallery · JPG/PNG/WebP</small>
-        </label>
-        <div id="receiptPreviewWrap" class="receipt-preview hidden">
-          <img id="receiptPreview" alt="Receipt preview">
-          <button id="removeReceiptButton" type="button">Remove receipt</button>
+    <div class="expenses-layout">
+      <div class="expenses-main">
+        <div class="print-options-row">
+          <label class="print-options">Print options
+            <select id="printScope">
+              <option value="all">All (single page)</option>
+              <option value="date">Select date…</option>
+              <option value="month">Select month…</option>
+            </select>
+          </label>
+          <input type="date" id="printDateInput" class="hidden">
+          <input type="month" id="printMonthInput" class="hidden">
         </div>
-        <div class="form-actions"><button class="primary" id="saveButton" type="submit">Save expense</button></div>
-      </form>
-    </section>
 
-    <section class="panel">
-      <div class="panel-head">
-        <div><h2>Expense history</h2><p>Saved spare parts and calculated machine costs.</p></div>
-        <button class="secondary compact" id="refreshButton" type="button">Refresh</button>
+        <section class="summary-grid" aria-label="Machine expense analysis">
+          <article><span>Total machine expense</span><strong id="totalCost">TZS 0</strong></article>
+          <article><span>Total spare quantity</span><strong id="totalQuantity">0</strong></article>
+          <article><span>Expense records</span><strong id="recordCount">0</strong></article>
+          <article><span>Average per record</span><strong id="averageCost">TZS 0</strong></article>
+          <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
+        </section>
+
+        <section id="entryPanel" class="panel entry-panel">
+          <div class="panel-head">
+            <div><h2>Add machine expense</h2><p>Record a spare part used or purchased for this machine.</p></div>
+            <strong id="calculatedTotal">Total: TZS 0</strong>
+          </div>
+          <form id="expenseForm">
+            <label>Date<input id="expenseDate" type="date" required></label>
+            <label class="wide">Receipt for<input id="description" maxlength="500" required placeholder="e.g. Hydraulic return filter"></label>
+            <label>Part number<input id="partNumber" maxlength="100" required placeholder="e.g. 923855.0996"></label>
+            <label>Quantity<input id="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
+            <label>Unit
+              <select id="unit">
+                <option value="PC">PC</option>
+                <option value="SET">SET</option>
+                <option value="L">Litre</option>
+                <option value="KG">KG</option>
+              </select>
+            </label>
+            <label>Unit cost (TZS)<input id="unitPrice" type="number" min="0" step="0.01" value="0" required></label>
+            <label class="receipt-field">Receipt photo
+              <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+              <small>Camera or gallery · JPG/PNG/WebP</small>
+            </label>
+            <div id="receiptPreviewWrap" class="receipt-preview hidden">
+              <img id="receiptPreview" alt="Receipt preview">
+              <button id="removeReceiptButton" type="button">Remove receipt</button>
+            </div>
+            <div class="form-actions"><button class="primary" id="saveButton" type="submit">Save expense</button></div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div><h2>Expense history</h2><p>Saved spare parts and calculated machine costs.</p></div>
+            <button class="secondary compact" id="refreshButton" type="button">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Part number</th><th>Description</th><th>Qty</th><th>Unit cost</th><th>Total</th><th>Receipt</th><th>Recorded by</th></tr></thead>
+              <tbody id="expenseRows"><tr><td colspan="8" class="empty">Loading expenses…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Date</th><th>Part number</th><th>Description</th><th>Qty</th><th>Unit cost</th><th>Total</th><th>Receipt</th><th>Recorded by</th></tr></thead>
-          <tbody id="expenseRows"><tr><td colspan="8" class="empty">Loading expenses…</td></tr></tbody>
-        </table>
-      </div>
-    </section>
+
+      <aside class="expenses-sidebar">
+        <article class="sidebar-card petty-cash-card">
+          <span class="sidebar-card-label">Petty Cash Balance</span>
+          <strong id="sidebarPettyCashBalance">TZS 0</strong>
+          <small id="sidebarPettyCashSub">Synced with expenses used</small>
+        </article>
+
+        <article class="sidebar-card analysis-card">
+          <div class="sidebar-card-head"><span class="sidebar-card-label">Machine Analysis</span></div>
+          <div class="analysis-row"><span>Total Expenses</span><b id="sidebarTotalExpenses">TZS 0</b></div>
+          <div class="analysis-row"><span>Petty Cash Used</span><b id="sidebarPettyCashUsed">TZS 0</b></div>
+          <div class="analysis-row"><span>Service Requests</span><b id="sidebarServiceRequests">0</b></div>
+          <div class="analysis-row"><span>Checklist Reports</span><b id="sidebarChecklistReports">0</b></div>
+        </article>
+      </aside>
+    </div>
   </main>
 
   <dialog id="receiptDialog">

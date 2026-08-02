@@ -391,6 +391,55 @@ if ($sub === 'dashboard') {
 }
 
 // ---- Analysis summary for the dashboard's right-side card -------------------
+// ---- Analysis for ONE specific machine (Machine Expenses page sidebar) -----
+if ($sub === 'machine-analysis' && $sub2) {
+    $machineId = $sub2;
+    $stmt = db()->prepare('SELECT id, model FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId, $customer['id']]);
+    if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+
+    $expenseStmt = db()->prepare(
+        "SELECT COALESCE(SUM(cost), 0) FROM usage_logs WHERE machine_id = ? AND category = 'SPARE_PART'"
+    );
+    $expenseStmt->execute([$machineId]);
+    $totalExpenses = (float)$expenseStmt->fetchColumn();
+
+    $toppedUpStmt = db()->prepare('SELECT COALESCE(SUM(amount), 0) FROM petty_cash_topups WHERE machine_id = ?');
+    $toppedUpStmt->execute([$machineId]);
+    $totalToppedUp = (float)$toppedUpStmt->fetchColumn();
+
+    $usedStmt = db()->prepare(
+        "SELECT COALESCE(SUM(cost), 0) FROM usage_logs WHERE machine_id = ? AND category = 'PETTY_CASH'"
+    );
+    $usedStmt->execute([$machineId]);
+    $totalUsed = (float)$usedStmt->fetchColumn();
+
+    $requestStmt = db()->prepare(
+        "SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE status NOT IN ('COMPLETED','CANCELLED')) AS open
+         FROM service_requests WHERE machine_id = ?"
+    );
+    $requestStmt->execute([$machineId]);
+    $requestStats = $requestStmt->fetch();
+
+    $reportStmt = db()->prepare('SELECT COUNT(*) FROM checklist_reports WHERE machine_id = ?');
+    $reportStmt->execute([$machineId]);
+    $totalReports = (int)$reportStmt->fetchColumn();
+
+    json_out([
+        'machineExpensesTotal' => $totalExpenses,
+        'pettyCash' => [
+            'totalToppedUp' => $totalToppedUp,
+            'totalUsed' => $totalUsed,
+            'balance' => $totalToppedUp - $totalUsed,
+        ],
+        'serviceRequests' => [
+            'total' => (int)$requestStats['total'],
+            'open' => (int)$requestStats['open'],
+        ],
+        'checklistReportsCount' => $totalReports,
+    ]);
+}
+
 if ($sub === 'analysis') {
     $custId = $customer['id'];
 

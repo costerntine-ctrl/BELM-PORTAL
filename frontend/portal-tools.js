@@ -488,6 +488,20 @@
     card.appendChild(panel);
   }
 
+  function dismissedAnnouncementIds() {
+    try {
+      return JSON.parse(localStorage.getItem("belm_dismissed_announcements") || "[]");
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function dismissAnnouncement(id) {
+    const dismissed = dismissedAnnouncementIds();
+    if (!dismissed.includes(id)) dismissed.push(id);
+    localStorage.setItem("belm_dismissed_announcements", JSON.stringify(dismissed));
+  }
+
   async function enhanceCustomerAnnouncementsPanel() {
     if (window.location.pathname !== "/portal/dashboard") return;
     if (document.getElementById("belmAnnouncementsPanel")) return;
@@ -497,7 +511,9 @@
       const response = await fetch("/api/announcements", { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) return;
       const data = await response.json();
-      const messages = Array.isArray(data.messages) ? data.messages : [];
+      const dismissed = dismissedAnnouncementIds();
+      const messages = (Array.isArray(data.messages) ? data.messages : [])
+        .filter(item => !dismissed.includes(item.id));
       if (!messages.length) return;
 
       const heading = Array.from(document.querySelectorAll("h1, h2"))
@@ -511,14 +527,27 @@
       panel.innerHTML = `
         <div class="belm-announcements-head"><span>MESSAGES FROM BELM ADMIN</span></div>
         <div class="belm-announcements-list">${messages.map(item => `
-          <article class="belm-announcement-item">
+          <article class="belm-announcement-item" data-announcement-id="${escapeHtml(item.id)}">
             <p>${escapeHtml(item.message)}</p>
             <div class="belm-announcement-footer">
               <small>${new Date(item.created_at).toLocaleDateString()}</small>
-              <a target="_blank" rel="noopener" href="${whatsappShareUrl(`BELM Portal message: ${item.message}`)}">Send via WhatsApp</a>
+              <div class="belm-announcement-actions">
+                <a target="_blank" rel="noopener" href="${whatsappShareUrl(`BELM Portal message: ${item.message}`)}">Send via WhatsApp</a>
+                <button type="button" class="belm-announcement-ok" data-dismiss-announcement="${escapeHtml(item.id)}">OK</button>
+              </div>
             </div>
           </article>`).join("")}</div>`;
       anchor.before(panel);
+
+      panel.querySelectorAll("[data-dismiss-announcement]").forEach(button => {
+        button.addEventListener("click", () => {
+          const id = button.dataset.dismissAnnouncement;
+          dismissAnnouncement(id);
+          const item = panel.querySelector(`[data-announcement-id="${id}"]`);
+          if (item) item.remove();
+          if (!panel.querySelector(".belm-announcement-item")) panel.remove();
+        });
+      });
     } catch (_) {}
   }
 

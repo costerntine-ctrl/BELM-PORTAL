@@ -175,10 +175,25 @@
     return "";
   }
 
+  async function loadSidebarAnalysis() {
+    try {
+      const data = await api(`/machine-analysis/${encodeURIComponent(machineId)}`);
+      document.getElementById("sidebarPettyCashBalance").textContent = money.format(Number(data.pettyCash.balance || 0));
+      document.getElementById("sidebarPettyCashSub").textContent =
+        `Topped up ${money.format(Number(data.pettyCash.totalToppedUp || 0))} · Used ${money.format(Number(data.pettyCash.totalUsed || 0))}`;
+      document.getElementById("sidebarTotalExpenses").textContent = money.format(Number(data.machineExpensesTotal || 0));
+      document.getElementById("sidebarPettyCashUsed").textContent = money.format(Number(data.pettyCash.totalUsed || 0));
+      document.getElementById("sidebarServiceRequests").textContent =
+        `${data.serviceRequests.total} (${data.serviceRequests.open} open)`;
+      document.getElementById("sidebarChecklistReports").textContent = data.checklistReportsCount;
+    } catch (_) {}
+  }
+
   async function load() {
     clearAlert();
     try {
       render(await api(`/machine-expenses/${encodeURIComponent(machineId)}${currentRangeQuery()}`));
+      loadSidebarAnalysis();
     } catch (error) {
       showAlert(error.message || "Could not load machine expenses.", true);
     }
@@ -258,6 +273,8 @@
     }
   }
 
+  document.getElementById("pettyCashLink").href = `/customer-petty-cash/?machine=${encodeURIComponent(machineId)}`;
+  document.getElementById("serviceRequestLink").href = `/customer-service-request/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
   document.getElementById("quantity").addEventListener("input", calculateTotal);
   document.getElementById("unitPrice").addEventListener("input", calculateTotal);

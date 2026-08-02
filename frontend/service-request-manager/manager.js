@@ -87,7 +87,7 @@
         ` : ""}
         <div class="control-grid">
           <label>Assigned Technician
-            <select data-assign="${escapeHtml(request.id)}">${technicianOptions(request)}</select>
+            <select data-assign="${escapeHtml(request.id)}" ${["COMPLETED", "CANCELLED"].includes(request.status) ? "disabled" : ""}>${technicianOptions(request)}</select>
           </label>
           <label>Job status
             <select data-status-update="${escapeHtml(request.id)}">

@@ -382,7 +382,7 @@
     list.innerHTML = '<p class="muted">Loading reports…</p>';
     document.getElementById("reportsDialog").showModal();
     try {
-      cachedMachineReports = await api(`/checklist-reports?action=for-machine&machineId=${encodeURIComponent(machineId)}`);
+      cachedMachineReports = await api(`/checklist-reports/machine/${encodeURIComponent(machineId)}`);
       list.innerHTML = cachedMachineReports.length ? cachedMachineReports.map((report) => `
         <article class="report-item">
           <div>

@@ -499,7 +499,8 @@ if ($sub === 'machine-expenses' && $sub2) {
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="machine-expenses-' . $safeMachine . '.csv"');
         $output = fopen('php://output', 'wb');
-        fputcsv($output, ['Customer', $customer['name']]);
+        fputcsv($output, [strtoupper($customer['name']) . ' - MACHINE EXPENSE REPORT']);
+        fputcsv($output, ['Service provided by', 'BELM General Tech Service Limited']);
         fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
         fputcsv($output, []);
         fputcsv($output, ['Date', 'Machine', 'Part Number', 'Description', 'Quantity', 'Unit', 'Unit Cost TZS', 'Total TZS', 'Receipt', 'Recorded By']);
@@ -532,8 +533,8 @@ if ($sub === 'machine-expenses' && $sub2) {
             0.0
         );
         $lines = [
-            'BELM GENERAL TECH - MACHINE EXPENSE REPORT',
-            'Customer: ' . $customer['name'],
+            strtoupper($customer['name']) . ' - MACHINE EXPENSE REPORT',
+            'Service provided by: BELM General Tech Service Limited',
             'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
             'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
             'Period: ' . ($rangeFrom ? "$rangeFrom to $rangeTo" : 'All time'),
@@ -708,7 +709,8 @@ if ($sub === 'petty-cash' && $sub2) {
         header('Content-Type: text/csv; charset=utf-8');
         header('Content-Disposition: attachment; filename="petty-cash-' . $safeMachine . '.csv"');
         $output = fopen('php://output', 'wb');
-        fputcsv($output, ['Customer', $customer['name']]);
+        fputcsv($output, [strtoupper($customer['name']) . ' - PETTY CASH REPORT']);
+        fputcsv($output, ['Service provided by', 'BELM General Tech Service Limited']);
         fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
         fputcsv($output, []);
         fputcsv($output, ['Date', 'Machine', 'Description', 'Amount TZS', 'Receipt', 'Recorded By']);
@@ -737,8 +739,8 @@ if ($sub === 'petty-cash' && $sub2) {
             0.0
         );
         $lines = [
-            'BELM GENERAL TECH - PETTY CASH REPORT',
-            'Customer: ' . $customer['name'],
+            strtoupper($customer['name']) . ' - PETTY CASH REPORT',
+            'Service provided by: BELM General Tech Service Limited',
             'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
             'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
             'Period: ' . ($rangeFrom ? "$rangeFrom to $rangeTo" : 'All time'),
@@ -1116,36 +1118,59 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'P
 
 // ---- Spare parts (read-only, no pricing) -----------------------------------
 if ($sub === 'spare-parts' && $method === 'GET') {
-    $stmt = db()->query('SELECT id, part_number, name, category, stock_qty FROM spare_parts WHERE deleted_at IS NULL');
+    $stmt = db()->query('SELECT id, part_number, reference_number, name, category, stock_qty FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC');
     json_out($stmt->fetchAll());
 }
 
 // ---- Request spare parts ----------------------------------------------------
+// Either sparePartId (pick from BELM's live inventory) OR referenceNumber +
+// description (a custom part not yet in inventory) must be provided.
 if ($sub === 'spare-part-requests' && $method === 'POST') {
     require_customer_write_access($customer);
     $b = body();
     $sparePartId = trim((string)($b['sparePartId'] ?? ''));
+    $referenceNumber = trim((string)($b['referenceNumber'] ?? ''));
+    $description = trim((string)($b['description'] ?? ''));
     $serviceRequestId = trim((string)($b['serviceRequestId'] ?? ''));
+    $machineId = trim((string)($b['machineId'] ?? ''));
     $quantity = (float)($b['quantity'] ?? 0);
     if ($quantity <= 0 || floor($quantity) !== $quantity) {
         json_error('Spare-part quantity must be a whole number greater than zero.');
     }
-    $stmt = db()->prepare('SELECT 1 FROM spare_parts WHERE id = ? AND deleted_at IS NULL');
-    $stmt->execute([$sparePartId]);
-    if (!$stmt->fetch()) json_error('Spare part not found.', 404);
+
+    if ($sparePartId !== '') {
+        $stmt = db()->prepare('SELECT 1 FROM spare_parts WHERE id = ? AND deleted_at IS NULL');
+        $stmt->execute([$sparePartId]);
+        if (!$stmt->fetch()) json_error('Spare part not found.', 404);
+    } elseif ($referenceNumber === '' && $description === '') {
+        json_error('Select a spare part from inventory, or enter a reference number / description for a custom part.');
+    }
+
     if ($serviceRequestId !== '') {
         $stmt = db()->prepare('SELECT 1 FROM service_requests WHERE id = ? AND customer_id = ?');
         $stmt->execute([$serviceRequestId, $customer['id']]);
         if (!$stmt->fetch()) json_error('Service request not found for this customer.', 404);
     }
+    if ($machineId !== '') {
+        $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+        $stmt->execute([$machineId, $customer['id']]);
+        if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+    }
+
     $newId = uuid();
-    db()->prepare("INSERT INTO spare_part_requests (id, spare_part_id, request_id, quantity, status, created_at) VALUES (?,?,?,?,'PENDING',NOW())")
-        ->execute([
-            $newId,
-            $sparePartId,
-            $serviceRequestId !== '' ? $serviceRequestId : null,
-            (int)$quantity,
-        ]);
+    db()->prepare(
+        "INSERT INTO spare_part_requests
+            (id, spare_part_id, reference_number, description, request_id, machine_id, quantity, status, created_at)
+         VALUES (?,?,?,?,?,?,?,'PENDING',NOW())"
+    )->execute([
+        $newId,
+        $sparePartId !== '' ? $sparePartId : null,
+        $referenceNumber !== '' ? $referenceNumber : null,
+        $description !== '' ? $description : null,
+        $serviceRequestId !== '' ? $serviceRequestId : null,
+        $machineId !== '' ? $machineId : null,
+        (int)$quantity,
+    ]);
     json_out(['id' => $newId], 201);
 }
 

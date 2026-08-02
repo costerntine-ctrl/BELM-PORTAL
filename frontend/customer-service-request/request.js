@@ -4,6 +4,8 @@
   const alertBox = document.getElementById("alertBox");
   let serviceOptions = [];
   let machine = null;
+  let sparePartsInventory = null;
+  let partRowCount = 0;
 
   if (!token) {
     window.location.replace("/portal/login");
@@ -124,6 +126,96 @@
     }
   }
 
+  async function loadSparePartsInventory() {
+    if (sparePartsInventory) return sparePartsInventory;
+    try {
+      sparePartsInventory = await api("/spare-parts");
+    } catch (_) {
+      sparePartsInventory = [];
+    }
+    return sparePartsInventory;
+  }
+
+  function inventoryOptionsHtml(selectedId = "") {
+    return `<option value="">Select a spare part…</option>${(sparePartsInventory || []).map((part) =>
+      `<option value="${escapeHtml(part.id)}" ${part.id === selectedId ? "selected" : ""}>${escapeHtml(part.name)} (${escapeHtml(part.partNumber)}) — Stock: ${Number(part.stockQty || 0)}</option>`
+    ).join("")}`;
+  }
+
+  async function addPartRow() {
+    await loadSparePartsInventory();
+    partRowCount += 1;
+    const rowId = `partRow${partRowCount}`;
+    const row = document.createElement("div");
+    row.className = "part-request-row";
+    row.dataset.rowId = rowId;
+    row.dataset.mode = "inventory";
+    row.innerHTML = `
+      <div class="part-request-row-head">
+        <div class="part-source-toggle">
+          <button type="button" data-mode="inventory" class="active">From BELM inventory</button>
+          <button type="button" data-mode="custom">Custom part</button>
+        </div>
+        <button type="button" class="remove-part-row" data-remove-row>Remove</button>
+      </div>
+      <div class="part-request-fields" data-fields>
+        <select data-spare-part>${inventoryOptionsHtml()}</select>
+        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>
+      </div>`;
+    document.getElementById("partRequestRows").appendChild(row);
+  }
+
+  function setRowMode(row, mode) {
+    row.dataset.mode = mode;
+    row.querySelectorAll(".part-source-toggle button").forEach((button) =>
+      button.classList.toggle("active", button.dataset.mode === mode));
+    const fields = row.querySelector("[data-fields]");
+    if (mode === "inventory") {
+      fields.className = "part-request-fields";
+      fields.innerHTML = `
+        <select data-spare-part>${inventoryOptionsHtml()}</select>
+        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
+    } else {
+      fields.className = "part-request-fields custom";
+      fields.innerHTML = `
+        <input type="text" placeholder="Reference number" data-reference maxlength="100">
+        <input type="text" placeholder="Description" data-description maxlength="255">
+        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
+    }
+  }
+
+  function collectPartRows() {
+    const rows = [...document.querySelectorAll(".part-request-row")];
+    const parts = [];
+    for (const row of rows) {
+      const mode = row.dataset.mode;
+      const qty = Number(row.querySelector("[data-qty]")?.value || 0);
+      if (mode === "inventory") {
+        const sparePartId = row.querySelector("[data-spare-part]")?.value || "";
+        if (!sparePartId || qty <= 0) continue;
+        parts.push({ sparePartId, quantity: qty });
+      } else {
+        const referenceNumber = row.querySelector("[data-reference]")?.value.trim() || "";
+        const description = row.querySelector("[data-description]")?.value.trim() || "";
+        if ((!referenceNumber && !description) || qty <= 0) continue;
+        parts.push({ referenceNumber, description, quantity: qty });
+      }
+    }
+    return parts;
+  }
+
+  document.getElementById("addPartRowButton").addEventListener("click", addPartRow);
+  document.getElementById("partRequestRows").addEventListener("click", (event) => {
+    const row = event.target.closest(".part-request-row");
+    if (!row) return;
+    if (event.target.closest("[data-remove-row]")) {
+      row.remove();
+      return;
+    }
+    const modeButton = event.target.closest("[data-mode]");
+    if (modeButton) setRowMode(row, modeButton.dataset.mode);
+  });
+
   document.getElementById("serviceTemplate").addEventListener("change", () => {
     document.getElementById("description").value = "";
     renderParts();
@@ -150,8 +242,26 @@
           description: document.getElementById("description").value.trim(),
         }),
       });
-      showAlert(`Service request saved successfully. Reference: ${result.id}`);
+
+      const partRows = collectPartRows();
+      let partErrors = 0;
+      for (const part of partRows) {
+        try {
+          await api("/spare-part-requests", {
+            method: "POST",
+            body: JSON.stringify({ ...part, serviceRequestId: result.id, machineId }),
+          });
+        } catch (_) {
+          partErrors += 1;
+        }
+      }
+
+      showAlert(
+        `Service request saved successfully. Reference: ${result.id}`
+        + (partRows.length ? ` · ${partRows.length - partErrors} of ${partRows.length} spare-part request(s) saved.` : "")
+      );
       document.getElementById("serviceForm").reset();
+      document.getElementById("partRequestRows").innerHTML = "";
       render({ machine, serviceOptions });
     } catch (error) {
       showAlert(error.message || "Could not submit service request.", true);
@@ -167,4 +277,5 @@
   }
 
   load();
+  addPartRow();
 })();

@@ -213,7 +213,7 @@ ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100) N
 
 CREATE TABLE IF NOT EXISTS spare_part_requests (
   id VARCHAR(36) PRIMARY KEY,
-  spare_part_id VARCHAR(36) NOT NULL REFERENCES spare_parts(id),
+  spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id),
   request_id VARCHAR(36) NULL REFERENCES service_requests(id),
   machine_id VARCHAR(36) NULL REFERENCES machines(id),
   requested_by_id VARCHAR(36) NULL REFERENCES users(id),
@@ -226,6 +226,8 @@ CREATE TABLE IF NOT EXISTS spare_part_requests (
   resolved_at TIMESTAMPTZ NULL
 );
 
+ALTER TABLE spare_part_requests ALTER COLUMN spare_part_id DROP NOT NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100) NULL;
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL REFERENCES machines(id);
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_id VARCHAR(36) NULL REFERENCES users(id);
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_name VARCHAR(255) NULL;

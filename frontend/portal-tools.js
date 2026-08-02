@@ -92,6 +92,27 @@
     }
   }
 
+  function redirectIfAlreadyLoggedIn() {
+    const pathname = window.location.pathname;
+
+    function isValid(storageKey) {
+      const payload = tokenPayload(storageKey);
+      if (!payload) return false;
+      if (typeof payload.exp === "number" && payload.exp * 1000 <= Date.now()) return false;
+      return true;
+    }
+
+    if (pathname === "/admin/login" && isValid("belm_admin_token")) {
+      window.location.replace("/overview-manager/");
+      return true;
+    }
+    if (pathname === "/portal/login" && isValid("belm_customer_token")) {
+      window.location.replace("/portal/dashboard");
+      return true;
+    }
+    return false;
+  }
+
   function handoffTechnicianSession() {
     if (!window.location.pathname.startsWith("/tech")) return false;
     if (localStorage.getItem("belm_tech_token") && localStorage.getItem("belm_tech_user")) {
@@ -2202,6 +2223,7 @@
     document.body.appendChild(button);
   }
 
+  if (redirectIfAlreadyLoggedIn()) return;
   if (handoffTechnicianSession()) return;
 
   installCheckedReportViewer();

@@ -138,6 +138,9 @@ switch ($resource) {
         // DELETE /customers/machines/:machineId  -> delete-machine
         // POST /customers/:id/users              -> add-user
         // DELETE /customers/users/:subUserId     -> remove-user
+        if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'petty-cash-topup') {
+            dispatch('customers.php', ['action' => 'petty-cash-topup', 'machineId' => $segments[2]]);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2])) {
             dispatch('customers.php', ['action' => $method === 'PUT' ? 'edit-machine' : 'delete-machine', 'machineId' => $segments[2]]);
         }

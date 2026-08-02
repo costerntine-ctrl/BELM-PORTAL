@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/mailer.php';
 
 $customer = require_customer_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -13,6 +14,82 @@ function machine_expense_pdf_escape(string $value): string {
         : $value;
     if ($converted === false) $converted = preg_replace('/[^\x20-\x7E]/', '?', $value);
     return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], (string)$converted);
+}
+
+function output_single_receipt_pdf(string $filename, array $captionLines, string $jpegData): void {
+    $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
+    $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
+    $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    $receiptSize = @getimagesizefromstring($jpegData);
+    if ($receiptSize === false) json_error('Receipt photo could not be processed for PDF export.', 500);
+
+    // A4 = 595 x 842pt. Caption block sits at the top; the receipt image is
+    // scaled to fit the remaining space, keeping its aspect ratio.
+    $captionHeight = 24 + count($captionLines) * 13;
+    $maxImgWidth = 495;
+    $maxImgHeight = 842 - $captionHeight - 60;
+    $scale = min($maxImgWidth / $receiptSize[0], $maxImgHeight / $receiptSize[1], 1);
+    $imgWidth = $receiptSize[0] * $scale;
+    $imgHeight = $receiptSize[1] * $scale;
+    $imgX = (595 - $imgWidth) / 2;
+    $imgY = 842 - $captionHeight - 30 - $imgHeight;
+
+    $wmDrawWidth = 260;
+    $wmDrawHeight = $watermarkSize ? $wmDrawWidth * ($watermarkSize[1] / $watermarkSize[0]) : 0;
+    $wmX = (595 - $wmDrawWidth) / 2;
+    $wmY = 40;
+
+    $content = '';
+    if ($watermarkData !== false && $watermarkSize !== false) {
+        $content .= sprintf("q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Wm Do\nQ\n", $wmDrawWidth, $wmDrawHeight, $wmX, $wmY);
+    }
+    $content .= "BT\n/F1 11 Tf\n50 810 Td\n13 TL\n";
+    foreach ($captionLines as $line) {
+        $content .= '(' . machine_expense_pdf_escape((string)$line) . ") Tj\nT*\n";
+    }
+    $content .= "ET\n";
+    $content .= sprintf("q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Receipt Do\nQ\n", $imgWidth, $imgHeight, $imgX, $imgY);
+
+    $resources = '/Font << /F1 4 0 R >> /XObject << /Receipt 5 0 R';
+    $objects = [
+        1 => '<< /Type /Catalog /Pages 2 0 R >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << PLACEHOLDER >> /Contents 6 0 R >>",
+        4 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        5 => "<< /Type /XObject /Subtype /Image /Width {$receiptSize[0]} /Height {$receiptSize[1]} "
+            . "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($jpegData) . " >>\nstream\n{$jpegData}\nendstream",
+        6 => "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream",
+    ];
+
+    $watermarkObject = null;
+    if ($watermarkData !== false && $watermarkSize !== false) {
+        $watermarkObject = 7;
+        $objects[7] = "<< /Type /XObject /Subtype /Image /Width {$watermarkSize[0]} /Height {$watermarkSize[1]} "
+            . "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($watermarkData) . " >>\nstream\n{$watermarkData}\nendstream";
+    }
+    $resources .= ($watermarkObject !== null ? ' /Wm 7 0 R' : '') . ' >>';
+    $objects[3] = str_replace('PLACEHOLDER', $resources, $objects[3]);
+    ksort($objects);
+
+    $pdf = "%PDF-1.4\n";
+    $offsets = [];
+    foreach ($objects as $num => $body) {
+        $offsets[$num] = strlen($pdf);
+        $pdf .= "$num 0 obj\n$body\nendobj\n";
+    }
+    $xrefStart = strlen($pdf);
+    $count = count($objects) + 1;
+    $pdf .= "xref\n0 $count\n0000000000 65535 f \n";
+    for ($i = 1; $i <= count($objects); $i++) {
+        $pdf .= str_pad((string)$offsets[$i], 10, '0', STR_PAD_LEFT) . " 00000 n \n";
+    }
+    $pdf .= "trailer\n<< /Size $count /Root 1 0 R >>\nstartxref\n$xrefStart\n%%EOF";
+
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . strlen($pdf));
+    echo $pdf;
+    exit;
 }
 
 function output_machine_expense_pdf(string $filename, array $lines): void {
@@ -233,6 +310,63 @@ function customer_request_service_parts(string $requestId): array {
 }
 
 // ---- Dashboard ------------------------------------------------------------
+// ---- Saved emails (boss / management team) for quick report sharing --------
+if ($sub === 'saved-emails' && $method === 'GET') {
+    $stmt = db()->prepare('SELECT id, label, email FROM customer_saved_emails WHERE customer_id = ? ORDER BY label ASC');
+    $stmt->execute([$customer['id']]);
+    json_out($stmt->fetchAll());
+}
+
+if ($sub === 'saved-emails' && $method === 'POST') {
+    require_customer_write_access($customer);
+    $b = body();
+    $label = trim((string)($b['label'] ?? ''));
+    $email = trim((string)($b['email'] ?? ''));
+    if ($label === '') json_error('Enter a label, e.g. "Boss" or "Management Team".');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email address.');
+    $newId = uuid();
+    db()->prepare('INSERT INTO customer_saved_emails (id, customer_id, label, email, created_at) VALUES (?,?,?,?,NOW())')
+        ->execute([$newId, $customer['id'], $label, $email]);
+    json_out(['id' => $newId, 'label' => $label, 'email' => $email], 201);
+}
+
+if ($sub === 'saved-emails' && $sub2 && $method === 'DELETE') {
+    require_customer_write_access($customer);
+    db()->prepare('DELETE FROM customer_saved_emails WHERE id = ? AND customer_id = ?')->execute([$sub2, $customer['id']]);
+    json_out(null, 204);
+}
+
+// ---- Email a report to the customer's boss / management team ---------------
+if ($sub === 'email-report' && $method === 'POST') {
+    require_customer_write_access($customer);
+    $b = body();
+    $to = trim((string)($b['to'] ?? ''));
+    $subject = trim((string)($b['subject'] ?? 'BELM Portal report'));
+    $message = trim((string)($b['message'] ?? ''));
+    $saveLabel = trim((string)($b['saveAsLabel'] ?? ''));
+
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid recipient email address.');
+    if ($message === '') json_error('The report message is empty.');
+
+    if ($saveLabel !== '') {
+        $exists = db()->prepare('SELECT 1 FROM customer_saved_emails WHERE customer_id = ? AND LOWER(email) = LOWER(?)');
+        $exists->execute([$customer['id'], $to]);
+        if (!$exists->fetch()) {
+            db()->prepare('INSERT INTO customer_saved_emails (id, customer_id, label, email, created_at) VALUES (?,?,?,?,NOW())')
+                ->execute([uuid(), $customer['id'], $saveLabel, $to]);
+        }
+    }
+
+    try {
+        send_email($to, $subject, $message . "\n\n— Sent from the BELM Portal by {$customer['name']}.");
+    } catch (Throwable $error) {
+        error_log('BELM mail error: ' . $error->getMessage());
+        json_error('Could not send the email right now. Please try again shortly.', 500);
+    }
+
+    json_out(['ok' => true, 'message' => "Report emailed to $to successfully."]);
+}
+
 if ($sub === 'dashboard') {
     $stmt = db()->prepare('SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL');
     $stmt->execute([$customer['id']]);
@@ -774,6 +908,26 @@ if ($sub === 'petty-cash' && $sub2) {
             $totalCost += (float)$entry['cost'];
             if ($entry['has_receipt']) $receiptCount++;
         }
+
+        $topupStmt = db()->prepare(
+            "SELECT pct.id, pct.amount, pct.note, pct.created_at, u.name AS added_by_name
+             FROM petty_cash_topups pct
+             LEFT JOIN users u ON u.id = pct.added_by
+             WHERE pct.machine_id = ?
+             ORDER BY pct.created_at DESC"
+        );
+        $topupStmt->execute([$machineId]);
+        $topups = $topupStmt->fetchAll();
+        $totalToppedUp = array_reduce($topups, static fn(float $sum, array $t): float => $sum + (float)$t['amount'], 0.0);
+
+        // Total used includes every logged expense regardless of the current
+        // date-range filter, so the balance always reflects real spending.
+        $allUsedStmt = db()->prepare(
+            "SELECT COALESCE(SUM(cost), 0) FROM usage_logs WHERE machine_id = ? AND category = 'PETTY_CASH'"
+        );
+        $allUsedStmt->execute([$machineId]);
+        $totalUsedAllTime = (float)$allUsedStmt->fetchColumn();
+
         json_out([
             'machine' => [
                 'id' => $machine['id'],
@@ -788,6 +942,18 @@ if ($sub === 'petty-cash' && $sub2) {
                 'totalCost' => round($totalCost, 2),
                 'averageCost' => $recordCount > 0 ? round($totalCost / $recordCount, 2) : 0,
                 'receiptCount' => $receiptCount,
+            ],
+            'account' => [
+                'totalToppedUp' => round($totalToppedUp, 2),
+                'totalUsed' => round($totalUsedAllTime, 2),
+                'balance' => round($totalToppedUp - $totalUsedAllTime, 2),
+                'topups' => array_map(static fn(array $t): array => [
+                    'id' => $t['id'],
+                    'amount' => (float)$t['amount'],
+                    'note' => $t['note'],
+                    'addedBy' => $t['added_by_name'],
+                    'createdAt' => $t['created_at'],
+                ], $topups),
             ],
             'entries' => $entries,
         ]);
@@ -989,9 +1155,12 @@ if ($sub === 'users' && $sub2 && $method === 'DELETE') {
 // ---- Service requests -------------------------------------------------------
 if ($sub === 'service-requests' && $method === 'GET') {
     $stmt = db()->prepare(
-        'SELECT sr.*, m.model AS machine_model, m.machine_type
+        'SELECT sr.*, m.model AS machine_model, m.machine_type,
+                cu.name AS completed_by_name, xu.name AS cancelled_by_name
          FROM service_requests sr
          LEFT JOIN machines m ON m.id = sr.machine_id
+         LEFT JOIN users cu ON cu.id = sr.completed_by_id
+         LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
          WHERE sr.customer_id = ?
          ORDER BY sr.created_at DESC'
     );
@@ -1009,8 +1178,12 @@ if ($sub === 'service-requests' && $method === 'GET') {
         $request['templateId'] = $request['template_id'];
         $request['createdAt'] = $request['created_at'];
         $request['updatedAt'] = $request['updated_at'];
+        $request['completedBy'] = $request['completed_by_id'] ? ['name' => $request['completed_by_name']] : null;
+        $request['completedAt'] = $request['completed_at'];
+        $request['cancelledBy'] = $request['cancelled_by_id'] ? ['name' => $request['cancelled_by_name']] : null;
+        $request['cancelledAt'] = $request['cancelled_at'];
         $request['serviceParts'] = customer_request_service_parts($request['id']);
-        unset($request['machine_model'], $request['machine_type']);
+        unset($request['machine_model'], $request['machine_type'], $request['completed_by_name'], $request['cancelled_by_name']);
     }
     unset($request);
     json_out($requests);

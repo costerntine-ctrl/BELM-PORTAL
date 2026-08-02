@@ -474,7 +474,17 @@
       <a class="belm-service-whatsapp" target="_blank" rel="noopener"
          href="${whatsappShareUrl(`BELM Portal alert: ${machineName} (${serial}) — ${levelLabel}. Current hour meter: ${Math.round(status.totalHours)} hrs, remaining to next service: ${remaining <= 0 ? "overdue" : `${remaining} hrs`}.`)}">
         Send via WhatsApp
-      </a>`;
+      </a>
+      <button type="button" class="belm-email-report-button" data-email-report
+        data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
+        data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
+        Email report to boss / management
+      </button>
+      <div class="belm-machine-quick-actions">
+        <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}">Expenses</a>
+        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}">Service Request</a>
+        <button type="button" class="belm-open-analysis" data-open-analysis>Analysis</button>
+      </div>`;
     card.appendChild(panel);
   }
 
@@ -512,60 +522,209 @@
     } catch (_) {}
   }
 
-  async function renderCustomerAnalysisPanel() {
+  let belmSavedEmailsCache = null;
+
+  function ensureEmailReportDialog() {
+    let dialog = document.getElementById("belmEmailReportDialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "belmEmailReportDialog";
+    dialog.className = "belm-analysis-dialog";
+    dialog.innerHTML = `
+      <form class="belm-analysis-dialog-card belm-email-form">
+        <div class="belm-analysis-head">
+          <span>EMAIL REPORT</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-email-body">
+          <p class="belm-email-intro">Share this with your boss or management team — for approval, review, or their records.</p>
+          <div id="belmEmailError" class="belm-email-error" hidden></div>
+          <label>Send to
+            <select id="belmSavedEmailSelect"><option value="">— Choose a saved email or enter a new one —</option></select>
+          </label>
+          <label>Recipient email
+            <input type="email" id="belmEmailTo" placeholder="boss@company.com" required>
+          </label>
+          <label>Save this email as <small>(optional, e.g. "Boss", "Management Team")</small>
+            <input type="text" id="belmEmailSaveLabel" maxlength="100" placeholder="Leave blank to not save">
+          </label>
+          <label>Message
+            <textarea id="belmEmailMessage" rows="5"></textarea>
+          </label>
+          <button type="submit" class="belm-email-send" id="belmEmailSendButton">Send email</button>
+        </div>
+      </form>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+
+    dialog.querySelector("#belmSavedEmailSelect").addEventListener("change", (event) => {
+      if (event.target.value) document.getElementById("belmEmailTo").value = event.target.value;
+    });
+
+    dialog.querySelector("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorBox = document.getElementById("belmEmailError");
+      const button = document.getElementById("belmEmailSendButton");
+      const token = localStorage.getItem("belm_customer_token");
+      errorBox.hidden = true;
+      button.disabled = true;
+      button.textContent = "Sending…";
+      try {
+        const response = await fetch("/api/customer-portal/email-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            to: document.getElementById("belmEmailTo").value.trim(),
+            subject: dialog.dataset.subject || "BELM Portal report",
+            message: document.getElementById("belmEmailMessage").value,
+            saveAsLabel: document.getElementById("belmEmailSaveLabel").value.trim(),
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not send the email.");
+        belmSavedEmailsCache = null; // force refresh next time, in case a new one was saved
+        dialog.close();
+        alert(result.message || "Email sent successfully.");
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.hidden = false;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Send email";
+      }
+    });
+    return dialog;
+  }
+
+  async function loadSavedEmails() {
+    if (belmSavedEmailsCache) return belmSavedEmailsCache;
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return [];
+    try {
+      const response = await fetch("/api/customer-portal/saved-emails", { headers: { Authorization: `Bearer ${token}` } });
+      belmSavedEmailsCache = response.ok ? await response.json() : [];
+    } catch (_) {
+      belmSavedEmailsCache = [];
+    }
+    return belmSavedEmailsCache;
+  }
+
+  async function openEmailReportDialog(subject, message) {
+    const dialog = ensureEmailReportDialog();
+    dialog.dataset.subject = subject;
+    document.getElementById("belmEmailMessage").value = message;
+    document.getElementById("belmEmailTo").value = "";
+    document.getElementById("belmEmailSaveLabel").value = "";
+    document.getElementById("belmEmailError").hidden = true;
+    const select = document.getElementById("belmSavedEmailSelect");
+    select.innerHTML = '<option value="">— Choose a saved email or enter a new one —</option>';
+    const saved = await loadSavedEmails();
+    saved.forEach((entry) => {
+      const option = document.createElement("option");
+      option.value = entry.email;
+      option.textContent = `${entry.label} (${entry.email})`;
+      select.appendChild(option);
+    });
+    dialog.showModal();
+  }
+
+  function wireEmailReportButtons() {
     if (window.location.pathname !== "/portal/dashboard") return;
-    if (document.getElementById("belmCustomerAnalysisPanel")) return;
+    document.querySelectorAll("[data-email-report]").forEach((button) => {
+      if (button.dataset.belmWired === "1") return;
+      button.dataset.belmWired = "1";
+      button.addEventListener("click", () => {
+        openEmailReportDialog(button.dataset.reportSubject || "BELM Portal report", button.dataset.reportMessage || "");
+      });
+    });
+  }
+
+
+  function ensureAnalysisDialog() {
+    let dialog = document.getElementById("belmAnalysisDialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "belmAnalysisDialog";
+    dialog.className = "belm-analysis-dialog";
+    dialog.innerHTML = `
+      <div class="belm-analysis-dialog-card">
+        <div class="belm-analysis-head">
+          <span>YOUR ANALYSIS</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-analysis-body" id="belmAnalysisBody"><p class="belm-analysis-loading">Loading…</p></div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    return dialog;
+  }
+
+  async function openCustomerAnalysisDialog() {
+    const dialog = ensureAnalysisDialog();
+    dialog.showModal();
+    const body = document.getElementById("belmAnalysisBody");
+    if (belmAnalysisDataCache) {
+      renderAnalysisBody(belmAnalysisDataCache);
+      return;
+    }
     const token = localStorage.getItem("belm_customer_token");
     if (!token) return;
     try {
       const response = await fetch("/api/customer-portal/analysis", { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) return;
-      const data = await response.json();
-      const money = (value) => "TZS " + Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 0 });
+      if (!response.ok) throw new Error();
+      belmAnalysisDataCache = await response.json();
+      renderAnalysisBody(belmAnalysisDataCache);
+    } catch (_) {
+      body.innerHTML = '<p class="belm-analysis-loading">Could not load your analysis right now.</p>';
+    }
+  }
 
-      const panel = document.createElement("aside");
-      panel.id = "belmCustomerAnalysisPanel";
-      panel.className = "belm-customer-analysis-panel";
-      panel.innerHTML = `
-        <div class="belm-analysis-head"><span>YOUR ANALYSIS</span></div>
-        <div class="belm-analysis-body">
-          <div class="belm-analysis-block">
-            <span>Machines</span>
-            <strong>${data.machines.total}</strong>
-            <div class="belm-analysis-dots">
-              <em class="green">${data.machines.green} OK</em>
-              <em class="yellow">${data.machines.yellow} Attention</em>
-              <em class="red">${data.machines.red} Critical</em>
-            </div>
-          </div>
-          <div class="belm-analysis-block">
-            <span>Service Requests</span>
-            <strong>${data.serviceRequests.total}</strong>
-            <small>${data.serviceRequests.open} currently open</small>
-          </div>
-          <div class="belm-analysis-block">
-            <span>Checklist Reports</span>
-            <strong>${data.checklistReportsCount}</strong>
-            <small>Inspections completed</small>
-          </div>
-          <div class="belm-analysis-block">
-            <span>Machine Expenses</span>
-            <strong>${money(data.machineExpensesTotal)}</strong>
-            <small>Spare parts logged</small>
-          </div>
-          <div class="belm-analysis-block">
-            <span>Petty Cash</span>
-            <strong>${money(data.pettyCashTotal)}</strong>
-            <small>Total recorded</small>
-          </div>
-          <div class="belm-analysis-block">
-            <span>Invoices</span>
-            <strong>${money(data.invoices.total)}</strong>
-            <small>${money(data.invoices.outstanding)} outstanding</small>
-          </div>
-        </div>`;
-      document.body.appendChild(panel);
-    } catch (_) {}
+  function renderAnalysisBody(data) {
+    const money = (value) => "TZS " + Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 0 });
+    document.getElementById("belmAnalysisBody").innerHTML = `
+      <div class="belm-analysis-block">
+        <span>Machines</span>
+        <strong>${data.machines.total}</strong>
+        <div class="belm-analysis-dots">
+          <em class="green">${data.machines.green} OK</em>
+          <em class="yellow">${data.machines.yellow} Attention</em>
+          <em class="red">${data.machines.red} Critical</em>
+        </div>
+      </div>
+      <div class="belm-analysis-block">
+        <span>Service Requests</span>
+        <strong>${data.serviceRequests.total}</strong>
+        <small>${data.serviceRequests.open} currently open</small>
+      </div>
+      <div class="belm-analysis-block">
+        <span>Checklist Reports</span>
+        <strong>${data.checklistReportsCount}</strong>
+        <small>Inspections completed</small>
+      </div>
+      <div class="belm-analysis-block">
+        <span>Machine Expenses</span>
+        <strong>${money(data.machineExpensesTotal)}</strong>
+        <small>Spare parts logged</small>
+      </div>
+      <div class="belm-analysis-block">
+        <span>Petty Cash</span>
+        <strong>${money(data.pettyCashTotal)}</strong>
+        <small>Total recorded</small>
+      </div>
+      <div class="belm-analysis-block">
+        <span>Invoices</span>
+        <strong>${money(data.invoices.total)}</strong>
+        <small>${money(data.invoices.outstanding)} outstanding</small>
+      </div>`;
+  }
+
+  function wireCustomerAnalysisButtons() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    document.querySelectorAll("[data-open-analysis]").forEach((button) => {
+      if (button.dataset.belmWired === "1") return;
+      button.dataset.belmWired = "1";
+      button.addEventListener("click", openCustomerAnalysisDialog);
+    });
   }
 
 
@@ -2246,7 +2405,8 @@
   enhanceCustomerAssistants();
   enhanceCustomerMachineExpenseCards();
   enhanceCustomerAnnouncementsPanel();
-  renderCustomerAnalysisPanel();
+  wireCustomerAnalysisButtons();
+  wireEmailReportButtons();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -2279,7 +2439,8 @@
     enhanceCustomerAssistants();
     enhanceCustomerMachineExpenseCards();
     enhanceCustomerAnnouncementsPanel();
-    renderCustomerAnalysisPanel();
+    wireCustomerAnalysisButtons();
+  wireEmailReportButtons();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

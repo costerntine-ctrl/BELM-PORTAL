@@ -31,7 +31,8 @@ $categories = [
     'bank' => ['label' => 'Bank Manager', 'tables' => ['bank_accounts', 'bank_withdrawals']],
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
-    'usage-logs' => ['label' => 'Machine Expenses / Petty Cash logs', 'tables' => ['usage_logs']],
+    'machine-expenses' => ['label' => 'Machine Expenses logs', 'tables' => []],
+    'petty-cash' => ['label' => 'Petty Cash logs & top-ups', 'tables' => ['petty_cash_topups']],
 ];
 
 $category = trim((string)($body['category'] ?? 'all'));
@@ -153,6 +154,12 @@ try {
     $existingTables = $pdo->query(
         "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
     )->fetchAll(PDO::FETCH_COLUMN);
+
+    if ($category === 'machine-expenses') {
+        $pdo->exec("DELETE FROM usage_logs WHERE category = 'SPARE_PART'");
+    } elseif ($category === 'petty-cash') {
+        $pdo->exec("DELETE FROM usage_logs WHERE category = 'PETTY_CASH'");
+    }
 
     $tablesToClear = array_values(array_intersect($categories[$category]['tables'], $existingTables));
     if ($tablesToClear) {

@@ -277,5 +277,36 @@
     showAlert("Viewer assistants can review service parts but cannot submit requests.");
   }
 
+  async function loadHistory() {
+    const rows = document.getElementById("historyRows");
+    rows.innerHTML = '<tr><td colspan="5" class="empty">Loading…</td></tr>';
+    try {
+      const requests = await api("/service-requests");
+      rows.innerHTML = requests.length
+        ? requests.map((request) => {
+            const statusLower = String(request.status || "").toLowerCase();
+            let handledBy = "—";
+            if (request.status === "COMPLETED" && request.completedBy) {
+              handledBy = `Completed by ${escapeHtml(request.completedBy.name)}`;
+            } else if (request.status === "CANCELLED" && request.cancelledBy) {
+              handledBy = `Cancelled by ${escapeHtml(request.cancelledBy.name)}`;
+            }
+            return `<tr>
+              <td>${new Date(request.createdAt).toLocaleDateString()}</td>
+              <td>${escapeHtml(request.machine?.model || "—")}</td>
+              <td>${escapeHtml((request.description || "").slice(0, 60))}${(request.description || "").length > 60 ? "…" : ""}</td>
+              <td><span class="status-pill ${statusLower}">${escapeHtml(request.status)}</span></td>
+              <td class="handled-by">${handledBy}</td>
+            </tr>`;
+          }).join("")
+        : '<tr><td colspan="5" class="empty">No service requests yet.</td></tr>';
+    } catch (error) {
+      rows.innerHTML = `<tr><td colspan="5" class="empty">${escapeHtml(error.message || "Could not load history.")}</td></tr>`;
+    }
+  }
+
+  document.getElementById("refreshHistoryButton").addEventListener("click", loadHistory);
+
   load().then(addPartRow);
+  loadHistory();
 })();

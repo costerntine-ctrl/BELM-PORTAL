@@ -26,6 +26,36 @@ function fetch_request_parts(string $requestId): array {
     return $parts;
 }
 
+if ($method === 'GET' && $action === 'daily-report') {
+    $date = trim((string)($_GET['date'] ?? date('Y-m-d')));
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) json_error('Enter a valid date (YYYY-MM-DD).');
+
+    $stmt = db()->prepare(
+        'SELECT sr.*, c.name AS customer_name, m.model AS machine_model, m.machine_type,
+                cu.name AS completed_by_name, xu.name AS cancelled_by_name
+         FROM service_requests sr
+         LEFT JOIN customers c ON c.id = sr.customer_id
+         LEFT JOIN machines m ON m.id = sr.machine_id
+         LEFT JOIN users cu ON cu.id = sr.completed_by_id
+         LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
+         WHERE (sr.status = \'COMPLETED\' AND sr.completed_at::date = ?)
+            OR (sr.status = \'CANCELLED\' AND sr.cancelled_at::date = ?)
+         ORDER BY COALESCE(sr.completed_at, sr.cancelled_at) DESC'
+    );
+    $stmt->execute([$date, $date]);
+    $requests = $stmt->fetchAll();
+    foreach ($requests as &$r) {
+        $r['customer'] = $r['customer_id'] ? ['id' => $r['customer_id'], 'name' => $r['customer_name']] : null;
+        $r['machine'] = $r['machine_id'] ? ['model' => $r['machine_model'], 'machineType' => $r['machine_type']] : null;
+        $r['completedBy'] = $r['completed_by_id'] ? ['name' => $r['completed_by_name']] : null;
+        $r['cancelledBy'] = $r['cancelled_by_id'] ? ['name' => $r['cancelled_by_name']] : null;
+        $r['completedAt'] = $r['completed_at'];
+        $r['cancelledAt'] = $r['cancelled_at'];
+        unset($r['customer_name'], $r['machine_model'], $r['machine_type'], $r['completed_by_name'], $r['cancelled_by_name']);
+    }
+    json_out(['date' => $date, 'requests' => $requests]);
+}
+
 if ($method === 'GET' && $action === 'assignees') {
     $stmt = db()->query(
         "SELECT u.id, u.name, u.email, u.assigned_customer_id, c.name AS assigned_customer_name
@@ -48,11 +78,14 @@ if ($method === 'GET' && $action === 'assignees') {
 if ($method === 'GET' && !$action) {
     $status = $_GET['status'] ?? null;
     $sql = 'SELECT sr.*, c.name AS customer_name, m.model AS machine_model,
-                   m.machine_type, u.name AS assigned_to_name
+                   m.machine_type, u.name AS assigned_to_name,
+                   cu.name AS completed_by_name, xu.name AS cancelled_by_name
             FROM service_requests sr
             LEFT JOIN customers c ON c.id = sr.customer_id
             LEFT JOIN machines m ON m.id = sr.machine_id
-            LEFT JOIN users u ON u.id = sr.assigned_to_id';
+            LEFT JOIN users u ON u.id = sr.assigned_to_id
+            LEFT JOIN users cu ON cu.id = sr.completed_by_id
+            LEFT JOIN users xu ON xu.id = sr.cancelled_by_id';
     if ($status) {
         $stmt = db()->prepare("$sql WHERE sr.status = ? ORDER BY sr.created_at DESC");
         $stmt->execute([$status]);
@@ -74,6 +107,14 @@ if ($method === 'GET' && !$action) {
         $r['assignedTo'] = $r['assigned_to_id']
             ? ['id' => $r['assigned_to_id'], 'name' => $r['assigned_to_name']]
             : null;
+        $r['completedBy'] = $r['completed_by_id']
+            ? ['id' => $r['completed_by_id'], 'name' => $r['completed_by_name']]
+            : null;
+        $r['completedAt'] = $r['completed_at'];
+        $r['cancelledBy'] = $r['cancelled_by_id']
+            ? ['id' => $r['cancelled_by_id'], 'name' => $r['cancelled_by_name']]
+            : null;
+        $r['cancelledAt'] = $r['cancelled_at'];
         $r['serviceType'] = $r['service_type'];
         $r['templateId'] = $r['template_id'];
         $r['createdAt'] = $r['created_at'];
@@ -83,7 +124,9 @@ if ($method === 'GET' && !$action) {
             $r['customer_name'],
             $r['machine_model'],
             $r['machine_type'],
-            $r['assigned_to_name']
+            $r['assigned_to_name'],
+            $r['completed_by_name'],
+            $r['cancelled_by_name']
         );
         $stmt2 = db()->prepare('SELECT * FROM service_notes WHERE request_id = ? ORDER BY created_at ASC');
         $stmt2->execute([$r['id']]);
@@ -100,8 +143,21 @@ if ($method === 'PUT' && $action === 'status') {
     $b = body();
     $status = strtoupper(trim((string)($b['status'] ?? '')));
     if (!in_array($status, $allowedStatuses, true)) json_error('Invalid service request status.');
-    $stmt = db()->prepare('UPDATE service_requests SET status=?, updated_at=NOW() WHERE id=?');
-    $stmt->execute([$status, $id]);
+
+    if ($status === 'COMPLETED') {
+        $stmt = db()->prepare(
+            'UPDATE service_requests SET status=?, updated_at=NOW(), completed_by_id=?, completed_at=NOW() WHERE id=?'
+        );
+        $stmt->execute([$status, $user['id'], $id]);
+    } elseif ($status === 'CANCELLED') {
+        $stmt = db()->prepare(
+            'UPDATE service_requests SET status=?, updated_at=NOW(), cancelled_by_id=?, cancelled_at=NOW() WHERE id=?'
+        );
+        $stmt->execute([$status, $user['id'], $id]);
+    } else {
+        $stmt = db()->prepare('UPDATE service_requests SET status=?, updated_at=NOW() WHERE id=?');
+        $stmt->execute([$status, $id]);
+    }
     if ($stmt->rowCount() === 0) json_error('Service request not found.', 404);
     json_out(['ok' => true]);
 }

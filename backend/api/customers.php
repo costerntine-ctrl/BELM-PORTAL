@@ -329,7 +329,28 @@ if ($method === 'DELETE' && $action === 'delete-machine') {
     json_out(null, 204);
 }
 
-// ---- Helpers ------------------------------------------------------------
+// ---- Petty Cash Top-Up (admin adds funds to a machine's petty cash account) -
+if ($method === 'POST' && $action === 'petty-cash-topup') {
+    require_page_access($user, 'customers');
+    $machineId = trim((string)($_GET['machineId'] ?? ''));
+    $b = body();
+    $amount = (float)($b['amount'] ?? 0);
+    $note = trim((string)($b['note'] ?? ''));
+    if ($amount <= 0) json_error('Enter a top-up amount greater than zero.');
+
+    $stmt = db()->prepare('SELECT customer_id, model FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found.', 404);
+
+    $newId = uuid();
+    db()->prepare(
+        'INSERT INTO petty_cash_topups (id, machine_id, customer_id, amount, note, added_by, created_at)
+         VALUES (?,?,?,?,?,?,NOW())'
+    )->execute([$newId, $machineId, $machine['customer_id'], $amount, $note !== '' ? $note : null, $user['id']]);
+
+    json_out(['id' => $newId, 'message' => "Petty cash topped up by TZS " . number_format($amount, 2) . " for {$machine['model']}."], 201);
+}
 function fetch_machines(string $customerId): array {
     $stmt = db()->prepare('SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at ASC');
     $stmt->execute([$customerId]);

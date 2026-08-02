@@ -175,6 +175,14 @@ ALTER TABLE service_requests
 ALTER TABLE service_requests
   ADD COLUMN IF NOT EXISTS origin VARCHAR(30) NOT NULL DEFAULT 'CUSTOMER';
 ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS completed_by_id VARCHAR(36) NULL REFERENCES users(id);
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ NULL;
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS cancelled_by_id VARCHAR(36) NULL REFERENCES users(id);
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ NULL;
+ALTER TABLE service_requests
   ADD COLUMN IF NOT EXISTS customer_confirmed SMALLINT NOT NULL DEFAULT 1;
 
 CREATE TABLE IF NOT EXISTS service_request_parts (
@@ -434,6 +442,24 @@ CREATE TABLE IF NOT EXISTS password_reset_codes (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_password_reset_codes_email ON password_reset_codes(LOWER(email));
+
+CREATE TABLE IF NOT EXISTS petty_cash_topups (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  amount NUMERIC(12,2) NOT NULL,
+  note VARCHAR(255) NULL,
+  added_by VARCHAR(36) NULL REFERENCES users(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS customer_saved_emails (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  label VARCHAR(100) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE IF NOT EXISTS tasks (
   id VARCHAR(36) PRIMARY KEY,

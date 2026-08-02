@@ -202,6 +202,44 @@
   document.getElementById("noteForm").addEventListener("submit", saveNote);
   document.getElementById("closeNoteButton").addEventListener("click", () => noteDialog.close());
   document.getElementById("cancelNoteButton").addEventListener("click", () => noteDialog.close());
+  async function loadDailyReport(date) {
+    const rows = document.getElementById("dailyReportRows");
+    rows.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+    try {
+      const result = await api(`/service-requests?action=daily-report&date=${encodeURIComponent(date)}`);
+      const requests = result.requests || [];
+      rows.innerHTML = requests.length
+        ? requests.map((request) => {
+            const isCompleted = request.status === "COMPLETED";
+            const handledBy = isCompleted
+              ? (request.completedBy?.name || "—")
+              : (request.cancelledBy?.name || "—");
+            const when = isCompleted ? request.completedAt : request.cancelledAt;
+            return `<tr>
+              <td>${when ? new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+              <td>${escapeHtml(request.customer?.name || "—")}</td>
+              <td>${escapeHtml(request.machine?.model || "—")}</td>
+              <td>${escapeHtml((request.description || "").slice(0, 50))}${(request.description || "").length > 50 ? "…" : ""}</td>
+              <td>${escapeHtml(request.status)}</td>
+              <td><strong>${escapeHtml(handledBy)}</strong></td>
+            </tr>`;
+          }).join("")
+        : '<tr><td colspan="6" class="empty">No completed or cancelled requests on this date.</td></tr>';
+    } catch (error) {
+      rows.innerHTML = `<tr><td colspan="6" class="empty">${escapeHtml(error.message || "Could not load the daily report.")}</td></tr>`;
+    }
+  }
+
+  document.getElementById("dailyReportButton").addEventListener("click", () => {
+    const dateInput = document.getElementById("dailyReportDate");
+    if (!dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+    document.getElementById("dailyReportDialog").showModal();
+    loadDailyReport(dateInput.value);
+  });
+  document.getElementById("dailyReportDate").addEventListener("change", (event) => loadDailyReport(event.target.value));
+  document.getElementById("closeDailyReportButton").addEventListener("click", () =>
+    document.getElementById("dailyReportDialog").close());
+
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");

@@ -125,6 +125,7 @@
   function render(data) {
     const machine = data.machine || {};
     const summary = data.summary || {};
+    const account = data.account || {};
     document.getElementById("pageTitle").textContent =
       `${machine.brand ? `${machine.brand} ` : ""}${machine.model || "Machine"} petty cash`;
     document.getElementById("machineDetails").textContent = [
@@ -132,6 +133,9 @@
       machine.serialNumber ? `Serial: ${machine.serialNumber}` : "",
       machine.regNumber ? `Registration: ${machine.regNumber}` : "",
     ].filter(Boolean).join(" · ");
+    document.getElementById("balanceAmount").textContent = money.format(Number(account.balance || 0));
+    document.getElementById("totalToppedUp").textContent = money.format(Number(account.totalToppedUp || 0));
+    document.getElementById("totalUsed").textContent = money.format(Number(account.totalUsed || 0));
     document.getElementById("totalCost").textContent = money.format(Number(summary.totalCost || 0));
     document.getElementById("recordCount").textContent =
       Number(summary.recordCount || 0).toLocaleString("en-TZ");
@@ -139,6 +143,16 @@
       money.format(Number(summary.averageCost || 0));
     document.getElementById("receiptCount").textContent =
       Number(summary.receiptCount || 0).toLocaleString("en-TZ");
+
+    const topups = Array.isArray(account.topups) ? account.topups : [];
+    document.getElementById("topupRows").innerHTML = topups.length
+      ? topups.map(topup => `<tr>
+          <td>${new Date(topup.createdAt).toLocaleDateString()}</td>
+          <td><strong>${money.format(Number(topup.amount || 0))}</strong></td>
+          <td>${escapeHtml(topup.note || "—")}</td>
+          <td>${escapeHtml(topup.addedBy || "BELM Admin")}</td>
+        </tr>`).join("")
+      : '<tr><td colspan="4" class="empty">No top-ups yet.</td></tr>';
 
     const rows = Array.isArray(data.entries) ? data.entries : [];
     document.getElementById("expenseRows").innerHTML = rows.length

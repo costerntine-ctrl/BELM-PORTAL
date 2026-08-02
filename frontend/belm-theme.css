@@ -476,7 +476,7 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 }
 
 .belm-service-due-head strong {
-  font-size: 13px;
+  font-size: 17px;
   font-weight: 900;
   color: #1e293b;
 }
@@ -489,7 +489,7 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 
 .belm-service-due-grid > div {
   padding: 10px 12px;
-  border-radius: 9px;
+  border-radius: 0;
   background: rgba(255, 255, 255, .65);
 }
 
@@ -506,7 +506,7 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 .belm-service-due-grid b {
   display: block;
   color: #1e293b;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 900;
 }
 
@@ -530,14 +530,138 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   background: #1ebc59;
 }
 
-/* Messages from BELM Admin panel — customer dashboard. */
-.belm-customer-analysis-panel {
-  position: fixed;
-  top: 96px;
-  right: 18px;
-  z-index: 900;
-  width: 240px;
-  max-height: calc(100vh - 120px);
+.belm-email-report-button {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--belm-line);
+  border-radius: 9px;
+  color: #101b31;
+  background: #ffd400;
+  font-size: 11.5px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+}
+.belm-email-report-button:hover { background: #f0c700; }
+
+.belm-email-body {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+.belm-email-intro {
+  margin: 0;
+  color: #9fb0c8;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.belm-email-error {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(217, 45, 32, .2);
+  color: #ff9d90;
+  font-size: 11px;
+  font-weight: 700;
+}
+.belm-email-body label {
+  display: grid;
+  gap: 5px;
+  color: #9fb0c8;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.belm-email-body label small {
+  text-transform: none;
+  font-weight: 500;
+  color: #7f92ac;
+}
+.belm-email-body input,
+.belm-email-body select,
+.belm-email-body textarea {
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+}
+.belm-email-send {
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: #ffd400;
+  color: #101b31;
+  font-size: 13px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+}
+.belm-email-send:hover { background: #f0c700; }
+.belm-email-send:disabled { opacity: .6; cursor: wait; }
+
+.belm-machine-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+.belm-machine-quick-actions a,
+.belm-machine-quick-actions button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 6px;
+  border: 1px solid var(--belm-line);
+  border-radius: 9px;
+  color: var(--belm-navy, #101b31);
+  background: #f4f7fb;
+  font-size: 10.5px;
+  font-weight: 800;
+  text-decoration: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.belm-machine-quick-actions a:hover,
+.belm-machine-quick-actions button:hover {
+  background: #e8edf5;
+}
+
+/* "Analysis" button on the machine card, opens the dialog below. */
+.belm-machine-quick-actions .belm-open-analysis {
+  border: 1px solid var(--belm-line);
+  border-radius: 9px;
+  background: #101b31;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.belm-machine-quick-actions .belm-open-analysis:hover { background: #182842; }
+
+.belm-analysis-dialog {
+  width: min(420px, 92vw);
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: none;
+}
+.belm-analysis-dialog::backdrop {
+  background: rgba(7, 14, 28, .6);
+  backdrop-filter: blur(2px);
+}
+.belm-analysis-dialog-card {
+  max-height: 82vh;
   overflow-y: auto;
   border-radius: 16px;
   background: linear-gradient(165deg, #101b31, #16233d 60%, #101b31);
@@ -546,6 +670,9 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-family: Inter, system-ui, sans-serif;
 }
 .belm-analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   padding: 14px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, .1);
 }
@@ -554,6 +681,21 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-size: 10px;
   font-weight: 900;
   letter-spacing: .08em;
+}
+.belm-analysis-close {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9fb0c8;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.belm-analysis-loading {
+  padding: 20px 16px;
+  margin: 0;
+  color: #9fb0c8;
+  font-size: 12px;
 }
 .belm-analysis-body {
   display: grid;
@@ -603,9 +745,6 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 .belm-analysis-dots .green { background: rgba(0, 166, 81, .22); color: #6fe0a3; }
 .belm-analysis-dots .yellow { background: rgba(255, 212, 0, .22); color: #ffe066; }
 .belm-analysis-dots .red { background: rgba(217, 45, 32, .22); color: #ff9d90; }
-@media (max-width: 1180px) {
-  .belm-customer-analysis-panel { display: none; }
-}
 
 .belm-announcements-panel {
   margin: 0 0 24px;

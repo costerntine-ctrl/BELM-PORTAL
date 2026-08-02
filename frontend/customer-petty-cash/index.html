@@ -42,11 +42,27 @@
 
     <div id="alertBox" class="alert hidden" role="alert"></div>
 
+    <section class="summary-grid balance-grid" aria-label="Petty cash account">
+      <article class="balance-card"><span>Petty Cash Balance</span><strong id="balanceAmount">TZS 0</strong><small>Available to spend</small></article>
+      <article><span>Total topped up</span><strong id="totalToppedUp">TZS 0</strong></article>
+      <article><span>Total used</span><strong id="totalUsed">TZS 0</strong></article>
+    </section>
+
     <section class="summary-grid" aria-label="Petty cash analysis">
       <article><span>Total petty cash</span><strong id="totalCost">TZS 0</strong></article>
       <article><span>Entries recorded</span><strong id="recordCount">0</strong></article>
       <article><span>Average per entry</span><strong id="averageCost">TZS 0</strong></article>
       <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
+    </section>
+
+    <section class="panel" id="topupHistoryPanel">
+      <div class="panel-head"><div><h2>Top-up history</h2><p>Funds added to this machine's petty cash by BELM.</p></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Amount</th><th>Note</th><th>Added by</th></tr></thead>
+          <tbody id="topupRows"><tr><td colspan="4" class="empty">No top-ups yet.</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
     <section id="entryPanel" class="panel entry-panel">
@@ -56,7 +72,7 @@
       </div>
       <form id="expenseForm">
         <label>Date<input id="expenseDate" type="date" required></label>
-        <label class="wide">Description<input id="description" maxlength="500" required placeholder="e.g. Transport for technician visit"></label>
+        <label class="wide">Receipt for<input id="description" maxlength="500" required placeholder="e.g. Transport for technician visit"></label>
         <label>Amount (TZS)<input id="amount" type="number" min="0.01" step="0.01" required></label>
         <label class="receipt-field">Receipt photo <small>(optional)</small>
           <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">

@@ -16,12 +16,31 @@
   <main>
     <section class="heading">
       <div><p class="eyebrow">CUSTOMER SUPPORT WORKFLOW</p><h1>Service requests</h1><p class="lead">Assign the correct Technician, update job status and keep service notes in one place.</p></div>
-      <button class="secondary" id="refreshButton" type="button">Refresh</button>
+      <div class="top-actions">
+        <button class="secondary" id="dailyReportButton" type="button">Daily Report</button>
+        <button class="secondary" id="refreshButton" type="button">Refresh</button>
+      </div>
     </section>
     <div id="alertBox" class="alert hidden" role="alert"></div>
     <section id="statusTabs" class="tabs"></section>
     <section id="requestList" class="request-list"><div class="loading">Loading service requests…</div></section>
   </main>
+
+  <dialog id="dailyReportDialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">COMPLETED & CANCELLED</p><h2>Daily Report</h2></div>
+      <button id="closeDailyReportButton" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="daily-report-body">
+      <label>Date<input id="dailyReportDate" type="date"></label>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Time</th><th>Customer</th><th>Machine</th><th>Description</th><th>Status</th><th>Handled by</th></tr></thead>
+          <tbody id="dailyReportRows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="noteDialog">
     <form id="noteForm">

@@ -73,6 +73,19 @@
         <div class="empty">Choose a service type to see its spare parts.</div>
       </div>
     </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Your service requests</h2><p>History for your machines — completed or cancelled requests show who handled them.</p></div>
+        <button class="secondary" id="refreshHistoryButton" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Machine</th><th>Description</th><th>Status</th><th>Handled by</th></tr></thead>
+          <tbody id="historyRows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
   </main>
 
   <script src="/customer-service-request/request.js"></script>

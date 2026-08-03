@@ -446,6 +446,14 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_codes_email ON password_reset_code
 -- A roster of the people who physically operate a machine day-to-day.
 -- Managed by the customer's own Machine Admin (or the primary owner),
 -- distinct from portal login "assistants".
+CREATE TABLE IF NOT EXISTS customer_activity_logs (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  actor_name VARCHAR(255) NOT NULL,
+  action VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS machine_operators (
   id VARCHAR(36) PRIMARY KEY,
   machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),

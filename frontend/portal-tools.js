@@ -1877,7 +1877,7 @@
       <header class="belm-checked-report-head">
         <div>
           <p>Completed machine inspection</p>
-          <h2 id="belmCheckedReportTitle">${escapeHtml(machineName)} — Checked Report</h2>
+          <h2 id="belmCheckedReportTitle">${report.customerName ? `${escapeHtml(report.customerName.toUpperCase())} — ` : ""}${escapeHtml(machineName)} Checked Report</h2>
           <span>${escapeHtml(report.customerName || "")}${report.customerName ? " · " : ""}${escapeHtml(report.templateName || "Checklist report")}</span>
         </div>
         <button type="button" data-close-checked-report aria-label="Close checked report">×</button>
@@ -1932,7 +1932,7 @@
       const button = document.createElement("button");
       button.type = "button";
       button.className = "belm-view-checked-report";
-      button.dataset.reportUrl = downloadLink.getAttribute("href");
+      button.dataset.reportUrl = downloadLink.getAttribute("href").replace(/\/download$/, "/view");
       button.textContent = "View Checked Report";
       downloadLink.parentElement?.insertBefore(button, downloadLink);
     });

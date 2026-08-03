@@ -1942,6 +1942,11 @@ html.dark .belm-technician-machine-data > div {
 }
 
 @media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
   body > *:not(.belm-checked-report-modal) {
     display: none !important;
   }

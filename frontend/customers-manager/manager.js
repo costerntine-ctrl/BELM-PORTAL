@@ -188,9 +188,12 @@
     }).join("");
   }
 
+  let currentMachineListCustomerName = "";
+
   function openMachineList(customer) {
     if (!customer) return;
     const machines = customer.machines || [];
+    currentMachineListCustomerName = customer.name || "";
     document.getElementById("machineListTitle").textContent = `${customer.name} — Machines (${machines.length})`;
     document.getElementById("machineListAddButton").dataset.addMachine = customer.id;
     document.getElementById("machineListBody").innerHTML = machines.length
@@ -387,7 +390,8 @@
 
   async function openMachineReports(machineId, machineName) {
     document.getElementById("machineListDialog").close();
-    document.getElementById("reportsDialogTitle").textContent = `${machineName} — Checklist Reports`;
+    document.getElementById("reportsDialogTitle").textContent =
+      `${currentMachineListCustomerName ? currentMachineListCustomerName.toUpperCase() + " — " : ""}${machineName} Checklist Reports`;
     const list = document.getElementById("reportsList");
     list.innerHTML = '<p class="muted">Loading reports…</p>';
     document.getElementById("reportsDialog").showModal();
@@ -416,7 +420,8 @@
       body.innerHTML = '<p class="muted">Report not found.</p>';
       return;
     }
-    document.getElementById("reportViewTitle").textContent = report.templateName || "Report detail";
+    document.getElementById("reportViewTitle").textContent =
+      `${currentMachineListCustomerName ? currentMachineListCustomerName.toUpperCase() + " — " : ""}${report.templateName || "Report detail"}`;
     document.getElementById("reportViewDownloadLink").href =
       `/api/checklist-reports/${encodeURIComponent(report.id)}/pdf?token=${encodeURIComponent(token)}`;
     const answers = Array.isArray(report.answers) ? report.answers : [];

@@ -9,6 +9,13 @@ $sub = $_GET['sub'] ?? '';
 $sub2 = $_GET['sub2'] ?? '';
 $sub3 = $_GET['sub3'] ?? '';
 
+function log_customer_activity(array $customer, string $action): void {
+    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Someone'));
+    db()->prepare(
+        'INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())'
+    )->execute([uuid(), $customer['id'], $actorName, $action]);
+}
+
 function display_date(string $isoDate): string {
     $timestamp = strtotime($isoDate);
     return $timestamp !== false ? date('d/m/Y', $timestamp) : $isoDate;
@@ -1092,12 +1099,17 @@ if ($sub === 'machine-operators' && $sub2 && $method === 'POST') {
     $newId = uuid();
     db()->prepare('INSERT INTO machine_operators (id, machine_id, customer_id, name, contact, created_at) VALUES (?,?,?,?,?,NOW())')
         ->execute([$newId, $machineId, $customer['id'], $name, $contact]);
+    log_customer_activity($customer, "Added \"$name\" to the Machine Operator roster.");
     json_out(['id' => $newId, 'name' => $name, 'contact' => $contact], 201);
 }
 
 if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'DELETE') {
     require_customer_owner_or_admin($customer);
+    $opStmt = db()->prepare('SELECT name FROM machine_operators WHERE id = ? AND customer_id = ?');
+    $opStmt->execute([$sub3, $customer['id']]);
+    $opName = $opStmt->fetchColumn();
     db()->prepare('DELETE FROM machine_operators WHERE id = ? AND customer_id = ?')->execute([$sub3, $customer['id']]);
+    if ($opName) log_customer_activity($customer, "Removed \"$opName\" from the Machine Operator roster.");
     json_out(null, 204);
 }
 
@@ -1193,6 +1205,24 @@ if ($sub === 'users' && $sub2 === 'analysis' && $method === 'GET') {
     ]);
 }
 
+// ---- Recent team activity ---------------------------------------------------
+if ($sub === 'activity-logs' && $method === 'GET') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare(
+        'SELECT id, actor_name, action, created_at FROM customer_activity_logs
+         WHERE customer_id = ? ORDER BY created_at DESC LIMIT 30'
+    );
+    $stmt->execute([$customer['id']]);
+    $logs = $stmt->fetchAll();
+    foreach ($logs as &$log) {
+        $log['actorName'] = $log['actor_name'];
+        $log['createdAt'] = $log['created_at'];
+        unset($log['actor_name'], $log['created_at']);
+    }
+    unset($log);
+    json_out($logs);
+}
+
 if ($sub === 'users' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
@@ -1248,6 +1278,7 @@ if ($sub === 'users' && $method === 'POST') {
         $role,
         1,
     ]);
+    log_customer_activity($customer, "Added \"$name\" as $role.");
     json_out([
         'id' => $newId,
         'name' => $name,
@@ -1330,9 +1361,13 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
 
 if ($sub === 'users' && $sub2 && $method === 'DELETE') {
     require_customer_owner_or_admin($customer);
+    $nameStmt = db()->prepare('SELECT name FROM customer_users WHERE id = ? AND customer_id = ?');
+    $nameStmt->execute([$sub2, $customer['id']]);
+    $removedName = $nameStmt->fetchColumn();
     $stmt = db()->prepare('DELETE FROM customer_users WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
     if ($stmt->rowCount() === 0) json_error('Assistant not found.', 404);
+    if ($removedName) log_customer_activity($customer, "Removed assistant \"$removedName\".");
     json_out(null, 204);
 }
 
@@ -1533,6 +1568,30 @@ if ($sub === 'spare-part-requests' && $method === 'POST') {
 
 // ---- Download a checklist report (JSON for now — swap in a real PDF
 // generator such as dompdf/mpdf if you want a byte-for-byte PDF file) -----
+// Returns the report as JSON for the "View Checked Report" modal. Kept
+// separate from /download (which returns a PDF file) — these serve two
+// different purposes and must not share a URL.
+if ($sub === 'reports' && $sub2 && $sub3 === 'view' && $method === 'GET') {
+    $stmt = db()->prepare(
+        'SELECT cr.*, m.customer_id, m.model AS machine_model, m.machine_type,
+                m.serial_number, m.reg_number, m.brand,
+                c.name AS customer_name, ct.name AS template_name
+         FROM checklist_reports cr
+         JOIN machines m ON m.id = cr.machine_id
+         JOIN customers c ON c.id = m.customer_id
+         LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
+         WHERE cr.id = ?'
+    );
+    $stmt->execute([$sub2]);
+    $report = $stmt->fetch();
+    if (!$report || $report['customer_id'] !== $customer['id']) json_error('Not found', 404);
+    $stmt2 = db()->prepare('SELECT * FROM checklist_answers WHERE report_id = ?');
+    $stmt2->execute([$sub2]);
+    $view = customer_checklist_report_view($report);
+    $view['answers'] = array_map('customer_checklist_answer_view', $stmt2->fetchAll());
+    json_out($view);
+}
+
 if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
     $stmt = db()->prepare(
         'SELECT cr.*, m.customer_id, m.model AS machine_model, m.machine_type,

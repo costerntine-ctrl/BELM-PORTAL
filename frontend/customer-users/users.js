@@ -115,6 +115,22 @@
     }
   }
 
+  async function loadActivityLog() {
+    const container = document.getElementById("activityLogRows");
+    try {
+      const logs = await api("/activity-logs");
+      container.innerHTML = logs.length
+        ? logs.map((log) => `
+            <div class="activity-log-row">
+              <span>${escapeHtml(log.action)}</span>
+              <small>${escapeHtml(log.actorName)} · ${new Date(log.createdAt).toLocaleString([], { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</small>
+            </div>`).join("")
+        : '<p class="empty-role">No activity recorded yet.</p>';
+    } catch (error) {
+      container.innerHTML = `<p class="empty-role">${escapeHtml(error.message || "Could not load activity log.")}</p>`;
+    }
+  }
+
   let rosterMachines = [];
   let rosterEntries = [];
 
@@ -323,6 +339,7 @@
       document.getElementById("rosterContact").value = "";
       loadRoster(machineId);
       loadTeamAnalysis();
+      loadActivityLog();
       showAlert("Operator added to the roster.", false);
     } catch (error) {
       showAlert(error.message, true);
@@ -339,6 +356,7 @@
       });
       loadRoster(machineId);
       loadTeamAnalysis();
+      loadActivityLog();
     } catch (error) {
       showAlert(error.message, true);
     }
@@ -348,4 +366,5 @@
   loadPortalLink();
   loadTeamAnalysis();
   loadRosterMachines();
+  loadActivityLog();
 })();

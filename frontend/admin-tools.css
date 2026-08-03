@@ -112,7 +112,7 @@ html[data-theme="dark"] .alert.error { color: #ffb3b3; border-color: #71404a; ba
 .role-card h3 { margin: 0 0 7px; font: 700 15px "Space Grotesk", sans-serif; }
 .role-card p { min-height: 34px; margin: 0 0 11px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 dialog { width: min(620px, 94vw); max-height: 92vh; padding: 0; color: var(--ink); border: 0; border-radius: 18px; background: var(--paper); box-shadow: 0 28px 80px rgba(7, 14, 28, .32); }
-#reportsDialog, #reportViewDialog { width: min(900px, 96vw); max-height: 88vh; overflow-y: auto; }
+#reportsDialog, #reportViewDialog, #machineListDialog { width: min(900px, 96vw); max-height: 88vh; overflow-y: auto; }
 dialog::backdrop { background: rgba(12, 18, 31, .70); backdrop-filter: blur(3px); }
 .dialog-card { max-height: 92vh; padding: 23px; overflow-y: auto; }
 .dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 15px; margin-bottom: 18px; }

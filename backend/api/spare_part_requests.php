@@ -153,7 +153,7 @@ if ($method === 'GET') {
             json_error('This Technician has not been assigned to a customer.', 403);
         }
         $stmt = db()->prepare(
-            "SELECT spr.id, spr.spare_part_id, spr.machine_id, spr.quantity,
+            "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.machine_id, spr.quantity,
                     spr.status, spr.requested_by_name, spr.description,
                     spr.machine_type, spr.created_at,
                     sp.part_number, sp.name AS part_name, sp.stock_qty,
@@ -161,7 +161,7 @@ if ($method === 'GET') {
                     m.serial_number, m.reg_number,
                     c.name AS customer_name
              FROM spare_part_requests spr
-             JOIN spare_parts sp ON sp.id = spr.spare_part_id
+             LEFT JOIN spare_parts sp ON sp.id = spr.spare_part_id
              JOIN machines m ON m.id = spr.machine_id
              JOIN customers c ON c.id = m.customer_id
              WHERE spr.requested_by_id = ?
@@ -175,7 +175,7 @@ if ($method === 'GET') {
 
     require_page_access($user, 'spare-parts');
     $stmt = db()->query(
-        "SELECT spr.id, spr.spare_part_id, spr.machine_id, spr.quantity,
+        "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.machine_id, spr.quantity,
                 spr.status, spr.requested_by_name, spr.description,
                 spr.machine_type, spr.created_at,
                 sp.part_number, sp.name AS part_name, sp.stock_qty,
@@ -184,7 +184,7 @@ if ($method === 'GET') {
                 m.serial_number, m.reg_number,
                 c.name AS customer_name
          FROM spare_part_requests spr
-         JOIN spare_parts sp ON sp.id = spr.spare_part_id
+         LEFT JOIN spare_parts sp ON sp.id = spr.spare_part_id
          LEFT JOIN machines m ON m.id = spr.machine_id
          LEFT JOIN customers c ON c.id = m.customer_id
          WHERE spr.machine_id IS NOT NULL
@@ -295,9 +295,9 @@ if ($method === 'PUT') {
 
     require_page_access($user, 'spare-parts');
     $stmt = db()->prepare(
-        'SELECT spr.id, spr.status, sp.stock_qty
+        'SELECT spr.id, spr.status, spr.spare_part_id, sp.stock_qty
          FROM spare_part_requests spr
-         JOIN spare_parts sp ON sp.id = spr.spare_part_id
+         LEFT JOIN spare_parts sp ON sp.id = spr.spare_part_id
          WHERE spr.id = ?'
     );
     $stmt->execute([$id]);
@@ -313,7 +313,10 @@ if ($method === 'PUT') {
         json_out(['ok' => true, 'status' => 'PURCHASE_REQUIRED']);
     }
     if ($action === 'resolve') {
-        if ((int)$request['stock_qty'] <= 0) {
+        // Inventory-linked requests must actually have stock before closing.
+        // Custom (non-inventory) requests have nothing to check — BELM has
+        // simply sourced/delivered the part, so just mark it fulfilled.
+        if ($request['spare_part_id'] !== null && (int)$request['stock_qty'] <= 0) {
             json_error('Add stock quantity above 0 before closing this alert.', 409);
         }
         db()->prepare(

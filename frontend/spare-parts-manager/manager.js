@@ -72,7 +72,7 @@
     count.textContent = `${requests.length.toLocaleString()} open`;
     if (!requests.length) {
       panel.className = "empty";
-      panel.textContent = "No open Technician spare alerts.";
+      panel.textContent = "No open spare-part requests.";
       return;
     }
 
@@ -81,23 +81,31 @@
       const machineName = [request.machineBrand, request.machineModel].filter(Boolean).join(" ") || "Machine";
       const reference = request.serialNumber || request.regNumber || "No serial recorded";
       const purchaseRequired = request.status === "PURCHASE_REQUIRED";
+      const isCustom = !request.sparePartId;
+      const title = isCustom
+        ? (request.referenceNumber ? `${request.referenceNumber} — ${request.description || ""}` : (request.description || "Custom part"))
+        : `${request.partNumber} — ${request.description || request.partName}`;
       return `<article class="request-card${purchaseRequired ? " purchase" : ""}">
         <div class="request-card-head">
           <div>
-            <span class="badge ${purchaseRequired ? "off" : "warn"}">${purchaseRequired ? "PURCHASE REQUIRED" : "STOCK 0 · NEW REQUEST"}</span>
-            <h3>${escapeHtml(request.partNumber)} — ${escapeHtml(request.description || request.partName)}</h3>
+            <span class="badge ${purchaseRequired ? "off" : "warn"}">${purchaseRequired ? "PURCHASE REQUIRED" : (isCustom ? "NOT IN INVENTORY" : "STOCK 0 · NEW REQUEST")}</span>
+            <h3>${escapeHtml(title)}</h3>
           </div>
-          <strong>Stock ${escapeHtml(request.stockQty ?? 0)}</strong>
+          ${isCustom ? "" : `<strong>Stock ${escapeHtml(request.stockQty ?? 0)}</strong>`}
         </div>
         <dl>
           <div><dt>Machine</dt><dd>${escapeHtml(machineName)} · ${escapeHtml(reference)}</dd></div>
           <div><dt>Machine type</dt><dd>${escapeHtml(request.machineType || "—")}</dd></div>
           <div><dt>Customer</dt><dd>${escapeHtml(request.customerName || "—")}</dd></div>
-          <div><dt>Requested by</dt><dd>${escapeHtml(request.requestedByName || "Technician")}</dd></div>
+          <div><dt>Requested by</dt><dd>${escapeHtml(request.requestedByName || "Customer")}</dd></div>
+          <div><dt>Quantity</dt><dd>${escapeHtml(request.quantity ?? 1)}</dd></div>
         </dl>
         <div class="row-actions request-actions">
-          <button data-add-request="${escapeHtml(request.id)}">Add to Inventory</button>
-          <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>
+          ${isCustom
+            ? `<button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>
+               <button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>`
+            : `<button data-add-request="${escapeHtml(request.id)}">Add to Inventory</button>
+               <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>`}
         </div>
       </article>`;
     }).join("");
@@ -271,6 +279,19 @@
     }
   }
 
+  async function markFulfilled(id) {
+    try {
+      await api(`/spare-parts/requests/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({ action: "resolve" }),
+      });
+      await loadParts();
+      showAlert("Marked as fulfilled — customer's part has been sourced.");
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
   document.getElementById("addButton").addEventListener("click", () => openPart());
   document.getElementById("refreshButton").addEventListener("click", loadParts);
   document.getElementById("searchInput").addEventListener("input", renderParts);
@@ -289,6 +310,8 @@
   document.getElementById("requestsPanel").addEventListener("click", (event) => {
     const add = event.target.closest("[data-add-request]");
     const purchase = event.target.closest("[data-purchase-request]");
+    const resolve = event.target.closest("[data-resolve-request]");
+    if (resolve) markFulfilled(resolve.dataset.resolveRequest);
     if (add) {
       const request = requests.find((item) => item.id === add.dataset.addRequest);
       const part = request && parts.find((item) => item.id === request.sparePartId);

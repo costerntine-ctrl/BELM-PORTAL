@@ -113,6 +113,20 @@
     return false;
   }
 
+  // The React dashboard sometimes shows an internal view (like "Checklist
+  // Reports" for one machine) without changing the URL away from
+  // /portal/dashboard. If the user then navigates elsewhere and presses the
+  // browser's Back button, the app can restore that same stuck internal
+  // view instead of the normal dashboard — even though the address bar
+  // correctly shows /portal/dashboard. Forcing a full reload whenever
+  // back/forward navigation lands on this URL guarantees a fresh, correct
+  // dashboard every time.
+  window.addEventListener("popstate", () => {
+    if (window.location.pathname === "/portal/dashboard") {
+      window.location.reload();
+    }
+  });
+
   function handoffTechnicianSession() {
     if (!window.location.pathname.startsWith("/tech")) return false;
     if (localStorage.getItem("belm_tech_token") && localStorage.getItem("belm_tech_user")) {

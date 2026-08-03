@@ -48,12 +48,12 @@
   }
 
   function technicianOptions(request) {
-    const eligible = technicians.filter((technician) =>
-      !request.customer?.id || technician.assignedCustomerId === request.customer.id
-    );
     return [
       '<option value="">Unassigned</option>',
-      ...eligible.map((technician) => `<option value="${escapeHtml(technician.id)}" ${request.assignedTo?.id === technician.id ? "selected" : ""}>${escapeHtml(technician.name)}</option>`),
+      ...technicians.map((technician) => {
+        const context = technician.assignedCustomerName ? ` — ${technician.assignedCustomerName}` : "";
+        return `<option value="${escapeHtml(technician.id)}" ${request.assignedTo?.id === technician.id ? "selected" : ""}>${escapeHtml(technician.name)}${escapeHtml(context)}</option>`;
+      }),
     ].join("");
   }
 

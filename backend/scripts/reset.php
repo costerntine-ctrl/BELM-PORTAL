@@ -32,7 +32,7 @@ $categories = [
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
     'machine-expenses' => ['label' => 'Machine Expenses logs', 'tables' => []],
-    'petty-cash' => ['label' => 'Petty Cash logs & top-ups', 'tables' => ['petty_cash_topups']],
+    'petty-cash' => ['label' => 'Petty Cash deposits (top-ups) — keeps spending history', 'tables' => ['petty_cash_topups']],
 ];
 
 $category = trim((string)($body['category'] ?? 'all'));
@@ -157,9 +157,10 @@ try {
 
     if ($category === 'machine-expenses') {
         $pdo->exec("DELETE FROM usage_logs WHERE category = 'SPARE_PART'");
-    } elseif ($category === 'petty-cash') {
-        $pdo->exec("DELETE FROM usage_logs WHERE category = 'PETTY_CASH'");
     }
+    // Note: 'petty-cash' category intentionally does NOT touch usage_logs here —
+    // only the petty_cash_topups table (deposits) is truncated below, so all
+    // spending/expense history is preserved for reporting.
 
     $tablesToClear = array_values(array_intersect($categories[$category]['tables'], $existingTables));
     if ($tablesToClear) {

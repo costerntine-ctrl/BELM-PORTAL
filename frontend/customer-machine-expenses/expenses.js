@@ -11,6 +11,84 @@
     maximumFractionDigits: 2,
   });
 
+  const adminToken = localStorage.getItem("belm_admin_token");
+
+  function setupPettyCashAdminActions() {
+    if (!adminToken) return;
+    document.getElementById("pettyCashAdminActions").classList.remove("hidden");
+
+    document.getElementById("depositPettyCashButton").addEventListener("click", () => {
+      document.getElementById("depositPettyCashForm").reset();
+      document.getElementById("depositPettyCashError").classList.add("hidden");
+      document.getElementById("depositPettyCashDialog").showModal();
+    });
+    document.getElementById("clearPettyCashButton").addEventListener("click", () => {
+      document.getElementById("clearPettyCashForm").reset();
+      document.getElementById("clearPettyCashError").classList.add("hidden");
+      document.getElementById("clearPettyCashDialog").showModal();
+    });
+    document.querySelectorAll("[data-close-dialog]").forEach((button) => {
+      button.addEventListener("click", () => document.getElementById(button.dataset.closeDialog).close());
+    });
+
+    document.getElementById("depositPettyCashForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorBox = document.getElementById("depositPettyCashError");
+      const button = document.getElementById("saveDepositButton");
+      errorBox.classList.add("hidden");
+      button.disabled = true;
+      try {
+        const response = await fetch(`/api/customers/machines/${encodeURIComponent(machineId)}/petty-cash-topup`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+          body: JSON.stringify({
+            amount: Number(document.getElementById("depositAmount").value),
+            note: document.getElementById("depositNote").value.trim(),
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not deposit petty cash.");
+        document.getElementById("depositPettyCashDialog").close();
+        showAlert(result.message || "Petty cash deposited successfully.");
+        loadSidebarAnalysis();
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.classList.remove("hidden");
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById("clearPettyCashForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorBox = document.getElementById("clearPettyCashError");
+      const button = document.getElementById("saveClearButton");
+      errorBox.classList.add("hidden");
+      button.disabled = true;
+      try {
+        const response = await fetch(`/api/customers/machines/${encodeURIComponent(machineId)}/petty-cash-topup`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+          body: JSON.stringify({
+            pin: document.getElementById("clearPin").value,
+            adminPassword: document.getElementById("clearAdminPassword").value,
+            reason: document.getElementById("clearReason").value.trim(),
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not clear petty cash deposits.");
+        document.getElementById("clearPettyCashDialog").close();
+        showAlert(result.message || "Petty cash deposits cleared successfully.");
+        loadSidebarAnalysis();
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.classList.remove("hidden");
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
   if (!token) {
     window.location.replace("/portal/login");
     return;
@@ -376,5 +454,6 @@
   }
 
   calculateTotal();
+  setupPettyCashAdminActions();
   load();
 })();

@@ -683,7 +683,7 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 
 .belm-machine-quick-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 8px;
   margin-top: 8px;
 }
@@ -1531,6 +1531,21 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   color: #fff;
   border-color: var(--belm-green);
   background: var(--belm-green);
+}
+
+.belm-checked-report-actions a[data-checked-report-download] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid var(--belm-line);
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
 }
 
 .belm-edit-state {

@@ -482,7 +482,6 @@
       </button>
       <div class="belm-machine-quick-actions">
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}">Machine Expenses</a>
-        <a href="/customer-petty-cash/?machine=${encodeURIComponent(machine.id)}">Petty Cash</a>
         <button type="button" class="belm-open-analysis" data-open-analysis>Analysis</button>
         <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}">Request Service</a>
       </div>`;
@@ -1779,6 +1778,7 @@
       </div>
       <footer class="belm-checked-report-actions">
         <button type="button" data-print-checked-report>Print Report</button>
+        <a href="/api/customer-portal/reports/${escapeHtml(report.id)}/download" data-checked-report-download>Download</a>
         ${report.canEdit && !report.isExpired ? '<button type="button" data-edit-checked-report>Edit Checklist</button>' : ""}
         <button type="button" class="primary" data-close-checked-report>Close</button>
       </footer>

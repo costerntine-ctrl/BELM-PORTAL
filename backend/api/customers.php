@@ -329,6 +329,23 @@ if ($method === 'DELETE' && $action === 'delete-machine') {
     json_out(null, 204);
 }
 
+// ---- Clear Petty Cash Deposits for ONE machine (keeps spending history) ---
+if ($method === 'DELETE' && $action === 'petty-cash-topup') {
+    require_page_access($user, 'customers');
+    $machineId = trim((string)($_GET['machineId'] ?? ''));
+    $b = body();
+    $reason = require_delete_confirmation($user, $b);
+
+    $stmt = db()->prepare('SELECT model FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found.', 404);
+
+    db()->prepare('DELETE FROM petty_cash_topups WHERE machine_id = ?')->execute([$machineId]);
+
+    json_out(['ok' => true, 'message' => "Petty cash deposits cleared for {$machine['model']}. Spending history was kept."]);
+}
+
 // ---- Petty Cash Top-Up (admin adds funds to a machine's petty cash account) -
 if ($method === 'POST' && $action === 'petty-cash-topup') {
     require_page_access($user, 'customers');

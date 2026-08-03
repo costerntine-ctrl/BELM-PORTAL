@@ -96,7 +96,6 @@
       <div class="machine-actions">
         <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Reports</button>
         <button data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Check-up</button>
-        <button data-topup="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Petty Cash Top-Up</button>
         <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
         <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
       </div>
@@ -377,6 +376,7 @@
   let cachedMachineReports = [];
 
   async function openMachineReports(machineId, machineName) {
+    document.getElementById("machineListDialog").close();
     document.getElementById("reportsDialogTitle").textContent = `${machineName} — Checklist Reports`;
     const list = document.getElementById("reportsList");
     list.innerHTML = '<p class="muted">Loading reports…</p>';
@@ -437,6 +437,7 @@
   }
 
   async function openMachineCheckup(machineId, machineType, machineName) {
+    document.getElementById("machineListDialog").close();
     document.getElementById("checkupDialogTitle").textContent = `${machineName} — Check-up`;
     document.getElementById("checkupMachineId").value = machineId;
     document.getElementById("checkupForm").reset();
@@ -575,8 +576,6 @@
     const deleteMachine = event.target.closest("[data-delete-machine]");
     const viewReports = event.target.closest("[data-view-reports]");
     const doCheckup = event.target.closest("[data-checkup]");
-    const topup = event.target.closest("[data-topup]");
-    if (topup) openTopup(topup.dataset.topup, topup.dataset.machineName);
     if (viewReports) openMachineReports(viewReports.dataset.viewReports, viewReports.dataset.machineName);
     if (doCheckup) openMachineCheckup(doCheckup.dataset.checkup, doCheckup.dataset.machineType, doCheckup.dataset.machineName);
     if (addMachine) openMachine(customers.find((customer) => customer.id === addMachine.dataset.addMachine));
@@ -586,39 +585,6 @@
       confirmThenOpen("Edit machine?", `Confirm you want to edit ${machine?.model || "this machine"}.`, () => openMachine(customer, machine));
     }
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
-  });
-
-  function openTopup(machineId, machineName) {
-    document.getElementById("topupDialogTitle").textContent = `Top up petty cash — ${machineName}`;
-    document.getElementById("topupMachineId").value = machineId;
-    document.getElementById("topupForm").reset();
-    document.getElementById("topupMachineId").value = machineId;
-    document.getElementById("topupError").classList.add("hidden");
-    document.getElementById("topupDialog").showModal();
-  }
-
-  document.getElementById("topupForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const errorBox = document.getElementById("topupError");
-    const button = document.getElementById("saveTopupButton");
-    const machineId = document.getElementById("topupMachineId").value;
-    button.disabled = true;
-    try {
-      const result = await api(`/customers/machines/${encodeURIComponent(machineId)}/petty-cash-topup`, {
-        method: "POST",
-        body: JSON.stringify({
-          amount: Number(document.getElementById("topupAmount").value),
-          note: document.getElementById("topupNote").value.trim(),
-        }),
-      });
-      document.getElementById("topupDialog").close();
-      showAlert(result.message || "Petty cash topped up successfully.");
-    } catch (error) {
-      errorBox.textContent = error.message;
-      errorBox.classList.remove("hidden");
-    } finally {
-      button.disabled = false;
-    }
   });
 
   document.getElementById("mergeCustomersButton").addEventListener("click", () => {

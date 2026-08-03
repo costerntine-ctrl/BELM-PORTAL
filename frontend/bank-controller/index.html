@@ -70,7 +70,7 @@
       <label>Bank name<input id="bankName" required maxlength="120" placeholder="e.g. CRDB Bank"></label>
       <label>Account name<input id="accountName" required maxlength="180" placeholder="e.g. BELM General Tech Service Ltd"></label>
       <label>Account number<input id="accountNumber" required maxlength="100"></label>
-      <label>Opening balance (TZS)<input id="openingBalance" type="number" min="0" step="0.01" value="0" required></label>
+      <label>Opening balance (TZS)<input id="openingBalance" type="number" min="0" max="999999999999" step="0.01" value="0" required></label>
       <div class="dialog-actions">
         <button class="ghost" data-close="accountDialog" type="button">Cancel</button>
         <button id="saveAccountButton" class="primary" type="submit">Save account</button>
@@ -88,7 +88,7 @@
       <label>Date<input id="withdrawalDate" type="date" required></label>
       <label>Cheque / transaction number<input id="chequeNumber" required maxlength="120"></label>
       <label>Description<input id="withdrawalDescription" required maxlength="500" placeholder="e.g. Fuel purchase for site visit"></label>
-      <label>Amount (TZS)<input id="withdrawalAmount" type="number" min="0.01" step="0.01" required></label>
+      <label>Amount (TZS)<input id="withdrawalAmount" type="number" min="0.01" max="999999999999" step="0.01" required></label>
       <label>Withdrawn by<input id="withdrawnBy" maxlength="255" placeholder="Name of person who withdrew the funds"></label>
       <div class="dialog-actions">
         <button class="ghost" data-close="withdrawalDialog" type="button">Cancel</button>

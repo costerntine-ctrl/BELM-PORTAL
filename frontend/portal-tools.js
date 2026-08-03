@@ -481,8 +481,6 @@
         Email report to boss / management
       </button>
       <div class="belm-machine-quick-actions">
-        <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}">Expenses</a>
-        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}">Service Request</a>
         <button type="button" class="belm-open-analysis" data-open-analysis>Analysis</button>
       </div>`;
     card.appendChild(panel);

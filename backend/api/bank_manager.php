@@ -167,6 +167,7 @@ if ($method === 'POST' && $action === 'account') {
     if ($accountName === '') json_error('Account name is required.');
     if ($accountNumber === '') json_error('Account number is required.');
     if ($openingBalance < 0) json_error('Opening balance cannot be negative.');
+    if ($openingBalance >= 999999999999.99) json_error('Opening balance is too large. Check the number you entered.');
     $stmt = db()->prepare(
         'SELECT 1 FROM bank_accounts
          WHERE LOWER(bank_name) = LOWER(?) AND LOWER(account_number) = LOWER(?)
@@ -193,6 +194,7 @@ if ($method === 'PUT' && $action === 'account') {
         json_error('Bank name, account name and account number are required.');
     }
     if ($openingBalance < 0) json_error('Opening balance cannot be negative.');
+    if ($openingBalance >= 999999999999.99) json_error('Opening balance is too large. Check the number you entered.');
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -240,6 +242,7 @@ if (($method === 'POST' || $method === 'PUT') && $action === 'withdrawal') {
     if ($chequeNumber === '') json_error('Cheque or transaction number is required.');
     if ($description === '') json_error('Withdrawal reason or description is required.');
     if ($amount <= 0) json_error('Withdrawal amount must be greater than zero.');
+    if ($amount >= 999999999999.99) json_error('Withdrawal amount is too large. Check the number you entered.');
     $pdo = db();
     $pdo->beginTransaction();
     try {

@@ -178,7 +178,21 @@
   async function loadSidebarAnalysis() {
     try {
       const data = await api(`/machine-analysis/${encodeURIComponent(machineId)}`);
-      document.getElementById("sidebarPettyCashBalance").textContent = money.format(Number(data.pettyCash.balance || 0));
+      const balanceEl = document.getElementById("sidebarPettyCashBalance");
+      const balanceLabelEl = document.getElementById("sidebarPettyCashLabel");
+      const balanceCardEl = document.querySelector(".petty-cash-card");
+      const balance = Number(data.pettyCash.balance || 0);
+      if (balance < 0) {
+        balanceLabelEl.textContent = "Petty Cash Debt";
+        balanceEl.textContent = money.format(Math.abs(balance));
+        balanceEl.classList.add("is-debt");
+        balanceCardEl?.classList.add("has-debt");
+      } else {
+        balanceLabelEl.textContent = "Petty Cash Balance";
+        balanceEl.textContent = money.format(balance);
+        balanceEl.classList.remove("is-debt");
+        balanceCardEl?.classList.remove("has-debt");
+      }
       document.getElementById("sidebarPettyCashSub").textContent =
         `Topped up ${money.format(Number(data.pettyCash.totalToppedUp || 0))} · Used ${money.format(Number(data.pettyCash.totalUsed || 0))}`;
       document.getElementById("sidebarTotalExpenses").textContent = money.format(Number(data.machineExpensesTotal || 0));

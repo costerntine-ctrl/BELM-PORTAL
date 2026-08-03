@@ -16,6 +16,8 @@ a.secondary { display:inline-flex; align-items:center; justify-content:center; t
 .petty-cash-card { background:linear-gradient(155deg,var(--navy),#1d3049); border:0; }
 .petty-cash-card .sidebar-card-label { color:#9fb0c8; }
 .petty-cash-card strong { display:block; margin-top:8px; color:#fff; font-size:26px; font-family:"Space Grotesk",sans-serif; }
+.petty-cash-card strong.is-debt { color:#ff8a80; }
+.petty-cash-card.has-debt { background:linear-gradient(155deg,#3a1414,#5a1f1f 60%,#3a1414); }
 .petty-cash-card small { display:block; margin-top:5px; color:#7f92ac; font-size:10px; }
 .analysis-card { display:grid; gap:2px; }
 .analysis-card .sidebar-card-head { margin-bottom:8px; }

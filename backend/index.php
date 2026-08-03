@@ -200,6 +200,9 @@ switch ($resource) {
             $action = (isset($segments[3]) && $segments[3] === 'log-service') ? 'log-service' : 'service-status';
             dispatch('checklist_reports.php', ['action' => $action, 'machineId' => $segments[2]]);
         }
+        if ($method === 'GET' && isset($segments[1]) && ($segments[2] ?? '') === 'pdf') {
+            dispatch('checklist_reports.php', ['action' => 'pdf', 'id' => $segments[1]]);
+        }
         if ($method === 'PUT' && isset($segments[1])) {
             dispatch('checklist_reports.php', ['action' => 'update', 'id' => $segments[1]]);
         }

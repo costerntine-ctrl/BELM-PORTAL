@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/mailer.php';
+require_once __DIR__ . '/checklist_reports_helpers.php';
 
 $customer = require_customer_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -1414,9 +1415,34 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
     if (!$report || $report['customer_id'] !== $customer['id']) json_error('Not found', 404);
     $stmt2 = db()->prepare('SELECT * FROM checklist_answers WHERE report_id = ?');
     $stmt2->execute([$sub2]);
-    $report = customer_checklist_report_view($report);
-    $report['answers'] = array_map('customer_checklist_answer_view', $stmt2->fetchAll());
-    json_out($report);
+    $view = customer_checklist_report_view($report);
+    $answers = array_map('customer_checklist_answer_view', $stmt2->fetchAll());
+
+    $lines = [
+        strtoupper($report['customer_name'] ?: 'BELM CUSTOMER') . ' - CHECKLIST REPORT',
+        'Service provided by: BELM General Tech Service Limited',
+        'Template: ' . ($report['template_name'] ?: 'Checklist'),
+        'Machine: ' . trim(($report['brand'] ?? '') . ' ' . ($report['machine_model'] ?? '')),
+        'Serial / Registration: ' . ($report['serial_number'] ?: ($report['reg_number'] ?: 'Not recorded')),
+        'Filled by: ' . ($view['filledBy'] ?? '—'),
+        'Date: ' . date('Y-m-d H:i', strtotime((string)($view['createdAt'] ?? 'now'))),
+        'Hour meter: ' . ($view['hourMeterReading'] ?? 0),
+        'Overall status: ' . ($view['overallStatus'] ?? 'GREEN'),
+        str_repeat('-', 78),
+    ];
+    foreach ($answers as $answer) {
+        $lines[] = sprintf(
+            '%s: %s [%s]%s',
+            $answer['label'],
+            $answer['value'] !== '' ? $answer['value'] : '—',
+            $answer['safetyLevel'],
+            !empty($answer['photoUrl']) ? ' (Photo attached — view online)' : ''
+        );
+    }
+    $lines[] = str_repeat('-', 78);
+
+    $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', trim(($report['brand'] ?? '') . '-' . ($report['machine_model'] ?? '')));
+    output_checklist_report_pdf('checklist-report-' . $safeMachine . '.pdf', $lines);
 }
 
 json_error('Unknown request', 404);

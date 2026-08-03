@@ -608,9 +608,82 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 .belm-email-send:hover { background: #f0c700; }
 .belm-email-send:disabled { opacity: .6; cursor: wait; }
 
+.belm-email-recipients {
+  display: grid;
+  gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.belm-email-empty-list {
+  margin: 0;
+  padding: 10px;
+  color: #7f92ac;
+  font-size: 11px;
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, .15);
+  border-radius: 8px;
+}
+.belm-email-recipient-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .04);
+  cursor: pointer;
+}
+.belm-email-recipient-row input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+.belm-email-recipient-row span {
+  color: #fff;
+  font-size: 12.5px;
+  text-transform: none;
+  font-weight: 700;
+  letter-spacing: normal;
+}
+.belm-email-recipient-row span small {
+  color: #9fb0c8;
+  font-weight: 500;
+}
+.belm-email-add-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr auto;
+  gap: 6px;
+  margin: 4px 0 10px;
+}
+.belm-email-add-row input {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .06);
+  color: #fff;
+  font-size: 12px;
+  font-family: inherit;
+}
+#belmEmailAddButton {
+  padding: 8px 12px;
+  border: 1px solid var(--belm-green, #00a651);
+  border-radius: 8px;
+  color: #fff;
+  background: var(--belm-green, #00a651);
+  font-size: 11.5px;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+#belmEmailAddButton:hover { background: #008c44; }
+@media (max-width: 420px) {
+  .belm-email-add-row { grid-template-columns: 1fr; }
+}
+
 .belm-machine-quick-actions {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 8px;
 }
@@ -1862,4 +1935,12 @@ html.dark .belm-technician-machine-data > div {
   .belm-checked-report-head button {
     display: none !important;
   }
+}
+
+/* Machine status badge (Normal / Attention / Don't operate) — square instead
+   of pill-shaped, with slightly larger text for readability. */
+span.rounded-full.px-2\.5.py-1.text-xs.font-medium {
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  padding: 5px 10px !important;
 }

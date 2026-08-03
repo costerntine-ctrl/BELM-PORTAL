@@ -478,10 +478,13 @@
       <button type="button" class="belm-email-report-button" data-email-report
         data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
         data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
-        Email report to boss / management
+        Management Email
       </button>
       <div class="belm-machine-quick-actions">
+        <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}">Machine Expenses</a>
+        <a href="/customer-petty-cash/?machine=${encodeURIComponent(machine.id)}">Petty Cash</a>
         <button type="button" class="belm-open-analysis" data-open-analysis>Analysis</button>
+        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}">Request Service</a>
       </div>`;
     card.appendChild(panel);
   }
@@ -560,21 +563,24 @@
     dialog.innerHTML = `
       <form class="belm-analysis-dialog-card belm-email-form">
         <div class="belm-analysis-head">
-          <span>EMAIL REPORT</span>
+          <span>MANAGEMENT EMAIL</span>
           <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
         </div>
         <div class="belm-email-body">
           <p class="belm-email-intro">Share this with your boss or management team — for approval, review, or their records.</p>
           <div id="belmEmailError" class="belm-email-error" hidden></div>
-          <label>Send to
-            <select id="belmSavedEmailSelect"><option value="">— Choose a saved email or enter a new one —</option></select>
-          </label>
-          <label>Recipient email
-            <input type="email" id="belmEmailTo" placeholder="boss@company.com" required>
-          </label>
-          <label>Save this email as <small>(optional, e.g. "Boss", "Management Team")</small>
-            <input type="text" id="belmEmailSaveLabel" maxlength="100" placeholder="Leave blank to not save">
-          </label>
+
+          <label>Send to <small>(select one or more)</small></label>
+          <div id="belmEmailRecipients" class="belm-email-recipients">
+            <p class="belm-email-empty-list">No saved emails yet — add one below.</p>
+          </div>
+
+          <div class="belm-email-add-row">
+            <input type="text" id="belmEmailNewLabel" maxlength="100" placeholder="Label, e.g. Boss">
+            <input type="email" id="belmEmailNewAddress" placeholder="email@company.com">
+            <button type="button" id="belmEmailAddButton">+ Add</button>
+          </div>
+
           <label>Message
             <textarea id="belmEmailMessage" rows="5"></textarea>
           </label>
@@ -584,8 +590,33 @@
     document.body.appendChild(dialog);
     dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
 
-    dialog.querySelector("#belmSavedEmailSelect").addEventListener("change", (event) => {
-      if (event.target.value) document.getElementById("belmEmailTo").value = event.target.value;
+    dialog.querySelector("#belmEmailAddButton").addEventListener("click", async () => {
+      const errorBox = document.getElementById("belmEmailError");
+      const label = document.getElementById("belmEmailNewLabel").value.trim();
+      const email = document.getElementById("belmEmailNewAddress").value.trim();
+      errorBox.hidden = true;
+      if (!label || !email) {
+        errorBox.textContent = "Enter both a label and an email address to add it.";
+        errorBox.hidden = false;
+        return;
+      }
+      const token = localStorage.getItem("belm_customer_token");
+      try {
+        const response = await fetch("/api/customer-portal/saved-emails", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ label, email }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not add this email.");
+        document.getElementById("belmEmailNewLabel").value = "";
+        document.getElementById("belmEmailNewAddress").value = "";
+        belmSavedEmailsCache = null;
+        await renderEmailRecipients();
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.hidden = false;
+      }
     });
 
     dialog.querySelector("form").addEventListener("submit", async (event) => {
@@ -593,34 +624,53 @@
       const errorBox = document.getElementById("belmEmailError");
       const button = document.getElementById("belmEmailSendButton");
       const token = localStorage.getItem("belm_customer_token");
+      const recipients = [...dialog.querySelectorAll("[data-recipient-checkbox]:checked")].map((box) => box.value);
       errorBox.hidden = true;
+      if (recipients.length === 0) {
+        errorBox.textContent = "Select at least one saved email to send to.";
+        errorBox.hidden = false;
+        return;
+      }
       button.disabled = true;
       button.textContent = "Sending…";
-      try {
-        const response = await fetch("/api/customer-portal/email-report", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            to: document.getElementById("belmEmailTo").value.trim(),
-            subject: dialog.dataset.subject || "BELM Portal report",
-            message: document.getElementById("belmEmailMessage").value,
-            saveAsLabel: document.getElementById("belmEmailSaveLabel").value.trim(),
-          }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || "Could not send the email.");
-        belmSavedEmailsCache = null; // force refresh next time, in case a new one was saved
+      const message = document.getElementById("belmEmailMessage").value;
+      const subject = dialog.dataset.subject || "BELM Portal report";
+      let failures = 0;
+      for (const to of recipients) {
+        try {
+          const response = await fetch("/api/customer-portal/email-report", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ to, subject, message }),
+          });
+          if (!response.ok) failures += 1;
+        } catch (_) {
+          failures += 1;
+        }
+      }
+      button.disabled = false;
+      button.textContent = "Send email";
+      if (failures === 0) {
         dialog.close();
-        alert(result.message || "Email sent successfully.");
-      } catch (error) {
-        errorBox.textContent = error.message;
+        alert(`Email sent successfully to ${recipients.length} recipient(s).`);
+      } else {
+        errorBox.textContent = `${recipients.length - failures} of ${recipients.length} email(s) sent. ${failures} failed — please try again.`;
         errorBox.hidden = false;
-      } finally {
-        button.disabled = false;
-        button.textContent = "Send email";
       }
     });
     return dialog;
+  }
+
+  async function renderEmailRecipients() {
+    const container = document.getElementById("belmEmailRecipients");
+    const saved = await loadSavedEmails();
+    container.innerHTML = saved.length
+      ? saved.map((entry) => `
+          <label class="belm-email-recipient-row">
+            <input type="checkbox" data-recipient-checkbox value="${entry.email.replace(/"/g, "&quot;")}">
+            <span>${entry.label} <small>(${entry.email})</small></span>
+          </label>`).join("")
+      : '<p class="belm-email-empty-list">No saved emails yet — add one below.</p>';
   }
 
   async function loadSavedEmails() {
@@ -640,18 +690,8 @@
     const dialog = ensureEmailReportDialog();
     dialog.dataset.subject = subject;
     document.getElementById("belmEmailMessage").value = message;
-    document.getElementById("belmEmailTo").value = "";
-    document.getElementById("belmEmailSaveLabel").value = "";
     document.getElementById("belmEmailError").hidden = true;
-    const select = document.getElementById("belmSavedEmailSelect");
-    select.innerHTML = '<option value="">— Choose a saved email or enter a new one —</option>';
-    const saved = await loadSavedEmails();
-    saved.forEach((entry) => {
-      const option = document.createElement("option");
-      option.value = entry.email;
-      option.textContent = `${entry.label} (${entry.email})`;
-      select.appendChild(option);
-    });
+    await renderEmailRecipients();
     dialog.showModal();
   }
 
@@ -854,57 +894,6 @@
       customerMachineInfoCard(card, machine);
       customerServiceDuePanel(card, machine);
       customerSpareRecommendationsPanel(card, machine);
-      const actionRow = document.createElement("span");
-      actionRow.className = "belm-machine-action-row";
-      const openPage = (event, page) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
-        const query = new URLSearchParams({ machine: machine.id });
-        window.location.href = `${page}?${query.toString()}`;
-      };
-
-      const expenseLink = document.createElement("span");
-      expenseLink.className = "belm-machine-expense-link";
-      expenseLink.setAttribute("role", "button");
-      expenseLink.setAttribute("tabindex", "0");
-      expenseLink.textContent = "Machine Expenses";
-      expenseLink.title = `Open spare-part expenses for ${model}`;
-      expenseLink.addEventListener("click", event => openPage(event, "/customer-machine-expenses/"));
-      expenseLink.addEventListener("keydown", event => {
-        if (event.key === "Enter" || event.key === " ") {
-          openPage(event, "/customer-machine-expenses/");
-        }
-      });
-
-      const pettyCashLink = document.createElement("span");
-      pettyCashLink.className = "belm-machine-pettycash-link";
-      pettyCashLink.setAttribute("role", "button");
-      pettyCashLink.setAttribute("tabindex", "0");
-      pettyCashLink.textContent = "Petty Cash";
-      pettyCashLink.title = `Open petty cash for ${model}`;
-      pettyCashLink.addEventListener("click", event => openPage(event, "/customer-petty-cash/"));
-      pettyCashLink.addEventListener("keydown", event => {
-        if (event.key === "Enter" || event.key === " ") {
-          openPage(event, "/customer-petty-cash/");
-        }
-      });
-
-      const serviceLink = document.createElement("span");
-      serviceLink.className = "belm-machine-service-link";
-      serviceLink.setAttribute("role", "button");
-      serviceLink.setAttribute("tabindex", "0");
-      serviceLink.textContent = "Request Service";
-      serviceLink.title = `Request model-matched service for ${model}`;
-      serviceLink.addEventListener("click", event => openPage(event, "/customer-service-request/"));
-      serviceLink.addEventListener("keydown", event => {
-        if (event.key === "Enter" || event.key === " ") {
-          openPage(event, "/customer-service-request/");
-        }
-      });
-
-      actionRow.append(expenseLink, pettyCashLink, serviceLink);
-      card.appendChild(actionRow);
     });
   }
 
@@ -1884,10 +1873,12 @@
 
         const blob = await response.blob();
         const reportId = (link.getAttribute("href").match(/reports\/([^/]+)\/download/) || [])[1] || "report";
+        const disposition = response.headers.get("Content-Disposition") || "";
+        const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
         const objectUrl = URL.createObjectURL(blob);
         const download = document.createElement("a");
         download.href = objectUrl;
-        download.download = `BELM-checklist-${reportId}.json`;
+        download.download = filenameMatch ? filenameMatch[1] : `BELM-checklist-${reportId}.pdf`;
         document.body.appendChild(download);
         download.click();
         download.remove();

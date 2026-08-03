@@ -403,7 +403,67 @@ if ($method === 'GET' && $action === 'for-machine') {
     json_out($reports);
 }
 
-// PUT ?action=update&id=...  { hourMeterReading, answers[] }
+// GET ?action=pdf&id=... — download a single checklist report as PDF
+if ($method === 'GET' && $action === 'pdf') {
+    $reportId = trim((string)($_GET['id'] ?? ''));
+    if ($reportId === '') json_error('Checklist report ID is required.');
+
+    $stmt = db()->prepare(
+        'SELECT cr.*, ct.name AS template_name
+         FROM checklist_reports cr
+         LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
+         WHERE cr.id = ?'
+    );
+    $stmt->execute([$reportId]);
+    $report = $stmt->fetch();
+    if (!$report) json_error('Checklist report not found.', 404);
+
+    $machine = require_report_machine_access($user, $report['machine_id']);
+
+    $answerStmt = db()->prepare(
+        'SELECT ca.id, ? AS report_id, cti.id AS template_item_id,
+                cti.label, COALESCE(ca.value, \'\') AS value,
+                ca.photo_url,
+                COALESCE(ca.safety_level, cti.safety_level, \'GREEN\') AS safety_level,
+                cti.input_type, cti.options, cti.is_required
+         FROM checklist_template_items cti
+         LEFT JOIN checklist_answers ca
+           ON ca.template_item_id = cti.id AND ca.report_id = ?
+         WHERE cti.template_id = ?
+         ORDER BY cti."order" ASC'
+    );
+    $answerStmt->execute([$report['id'], $report['id'], $report['template_id']]);
+    $view = checklist_report_api_view($report, $machine, $user);
+    $answers = array_map('checklist_report_answer_view', $answerStmt->fetchAll());
+
+    $lines = [
+        strtoupper($machine['customer_name'] ?? 'BELM CUSTOMER') . ' - CHECKLIST REPORT',
+        'Service provided by: BELM General Tech Service Limited',
+        'Template: ' . ($view['templateName'] ?: 'Checklist'),
+        'Machine: ' . trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')),
+        'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+        'Filled by: ' . ($view['filledBy'] ?: '—'),
+        'Date: ' . date('Y-m-d H:i', strtotime((string)$view['createdAt'])),
+        'Hour meter: ' . $view['hourMeterReading'],
+        'Overall status: ' . $view['overallStatus'],
+        str_repeat('-', 78),
+    ];
+    foreach ($answers as $answer) {
+        $lines[] = sprintf(
+            '%s: %s [%s]%s',
+            $answer['label'],
+            $answer['value'] !== '' ? $answer['value'] : '—',
+            $answer['safetyLevel'],
+            $answer['photoUrl'] ? ' (Photo attached — view online)' : ''
+        );
+    }
+    $lines[] = str_repeat('-', 78);
+
+    $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', trim(($machine['brand'] ?? '') . '-' . ($machine['model'] ?? '')));
+    output_checklist_report_pdf('checklist-report-' . $safeMachine . '.pdf', $lines);
+}
+
+
 if ($method === 'PUT' && $action === 'update') {
     if (($user['roleName'] ?? '') !== 'Technician') {
         json_error('Only a BELM Technician can edit a saved checklist.', 403);

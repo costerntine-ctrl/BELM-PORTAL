@@ -46,6 +46,14 @@ function current_token_payload(): ?array {
         $headers['Authorization'] = $_SERVER['HTTP_AUTHORIZATION'];
     }
     $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-    if (!str_starts_with($auth, 'Bearer ')) return null;
-    return jwt_decode(substr($auth, 7));
+    if (str_starts_with($auth, 'Bearer ')) {
+        return jwt_decode(substr($auth, 7));
+    }
+    // Fallback for plain download links (e.g. <a href>), which browsers
+    // navigate to directly without attaching an Authorization header.
+    $queryToken = trim((string)($_GET['token'] ?? ''));
+    if ($queryToken !== '') {
+        return jwt_decode($queryToken);
+    }
+    return null;
 }

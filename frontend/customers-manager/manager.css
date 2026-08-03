@@ -34,7 +34,7 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .machine-card.RED,.machine-card.CRITICAL { border-color: #ef4444; background: linear-gradient(160deg, #fdecec, var(--paper) 70%); }
 .machine-card h4 { margin: 0 0 3px; font-size: 12px; }
 .machine-card p { margin: 0; color: var(--muted); font-size: 10px; }
-.machine-card .machine-status { display: inline-block; margin-top: 6px; padding: 4px 8px; border-radius: 999px; color: var(--muted); background: var(--canvas); font-size: 9px; font-weight: 850; }
+.machine-card .machine-status { display: inline-block; margin-top: 6px; padding: 5px 10px; border-radius: 4px; color: var(--muted); background: var(--canvas); font-size: 11px; font-weight: 850; }
 .machine-card.GREEN .machine-status,.machine-card.OK .machine-status { color: #fff; background: #16a34a; }
 .machine-card.YELLOW .machine-status,.machine-card.ATTENTION .machine-status { color: #1e293b; background: #eab308; }
 .machine-card.RED .machine-status,.machine-card.CRITICAL .machine-status { color: #fff; background: #dc2626; }
@@ -54,8 +54,10 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 @media (max-width: 620px) { .customer-toolbar,.customer-info-grid { grid-template-columns: 1fr; } .machine-list { grid-template-columns: 1fr; } .machine-card { grid-template-columns: 1fr; } .machine-actions { grid-column: 1; } }
 
 .reports-list { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
-.report-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.report-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
 .report-item span { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
+.report-download-link { padding: 8px 13px; border: 1px solid var(--green); border-radius: 8px; color: var(--green2); background: #f4fbf7; font-size: 11px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.report-download-link:hover { background: #e8f7ee; }
 .report-view-body { max-height: 60vh; overflow-y: auto; }
 .report-view-body table th, .report-view-body table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; }
 .checkup-items { display: grid; gap: 10px; margin-top: 10px; max-height: 40vh; overflow-y: auto; }

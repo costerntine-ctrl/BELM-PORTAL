@@ -391,6 +391,7 @@
           </div>
           <span class="machine-status ${escapeHtml(String(report.overallStatus || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(report.overallStatus))}</span>
           <button type="button" data-view-report="${escapeHtml(report.id)}">View</button>
+          <a class="report-download-link" href="/api/checklist-reports/${escapeHtml(report.id)}/pdf?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">Download</a>
         </article>`).join("") : '<p class="muted">No checklist reports recorded for this machine yet.</p>';
     } catch (error) {
       list.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;

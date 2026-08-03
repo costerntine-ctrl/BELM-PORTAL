@@ -53,25 +53,104 @@
     return data;
   }
 
+  const roleLabels = {
+    admin: "Machinery Admin",
+    assistant: "Machinery Admin Assistant",
+    accounts: "Accounts",
+    operator: "Machine Operator",
+  };
+
   function render() {
     document.getElementById("totalCount").textContent = users.length;
     document.getElementById("activeCount").textContent = users.filter((user) => user.isActive).length;
     if (users.length === 0) {
       userList.innerHTML = '<div class="empty">No assistants yet. Use “Add assistant” to create the first login.</div>';
+    } else {
+      userList.innerHTML = users.map((user) => `
+        <article class="user-card">
+          <div class="identity"><strong>${escapeHtml(user.name)}</strong><span>${escapeHtml(user.phone || "No phone number")}</span></div>
+          <div class="email">${escapeHtml(user.email)}</div>
+          <span class="badge ${escapeHtml(user.role)}">${escapeHtml(roleLabels[user.role] || user.role)}</span>
+          <span class="badge ${user.isActive ? "operator" : "inactive"}">${user.isActive ? "Active" : "Inactive"}</span>
+          <div class="actions">
+            <button class="edit" type="button" data-edit="${escapeHtml(user.id)}">Edit</button>
+            <button class="delete" type="button" data-delete="${escapeHtml(user.id)}">Delete</button>
+          </div>
+        </article>
+      `).join("");
+    }
+    renderRoleCards();
+  }
+
+  function renderRoleCards() {
+    const container = document.getElementById("roleCards");
+    const roles = ["admin", "assistant", "accounts", "operator"];
+    container.innerHTML = roles.map((roleKey) => {
+      const members = users.filter((user) => user.role === roleKey);
+      return `
+        <article class="role-card">
+          <div class="role-card-head">
+            <span class="badge ${roleKey}">${escapeHtml(roleLabels[roleKey])}</span>
+            <strong>${members.length}</strong>
+          </div>
+          ${members.length
+            ? `<ul>${members.map((user) => `<li>${escapeHtml(user.name)} ${user.isActive ? "" : "<small>(inactive)</small>"}</li>`).join("")}</ul>`
+            : '<p class="empty-role">No one in this role yet.</p>'}
+        </article>`;
+    }).join("");
+  }
+
+  async function loadTeamAnalysis() {
+    const container = document.getElementById("analysisRows");
+    try {
+      const data = await api("/users/analysis");
+      container.innerHTML = data.departments.map((dept) => `
+        <div class="analysis-row">
+          <span>${escapeHtml(dept.label)}</span>
+          <b>${dept.active} active${dept.total !== dept.active ? ` <small>(${dept.total} total)</small>` : ""}</b>
+        </div>`).join("")
+        + `<div class="analysis-row"><span>Machine Operators (roster, no login)</span><b>${data.machineOperatorRosterCount}</b></div>`;
+    } catch (error) {
+      container.innerHTML = `<p class="empty-role">${escapeHtml(error.message || "Could not load team analysis.")}</p>`;
+    }
+  }
+
+  let rosterMachines = [];
+  let rosterEntries = [];
+
+  async function loadRosterMachines() {
+    const select = document.getElementById("rosterMachineSelect");
+    try {
+      const dashboard = await api("/dashboard");
+      rosterMachines = dashboard.machines || [];
+      select.innerHTML = '<option value="">Select a machine…</option>'
+        + rosterMachines.map((machine) =>
+          `<option value="${escapeHtml(machine.id)}">${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}</option>`
+        ).join("");
+    } catch (_) {
+      select.innerHTML = '<option value="">Could not load machines</option>';
+    }
+  }
+
+  async function loadRoster(machineId) {
+    const list = document.getElementById("rosterList");
+    if (!machineId) {
+      list.innerHTML = "";
       return;
     }
-    userList.innerHTML = users.map((user) => `
-      <article class="user-card">
-        <div class="identity"><strong>${escapeHtml(user.name)}</strong><span>${escapeHtml(user.phone || "No phone number")}</span></div>
-        <div class="email">${escapeHtml(user.email)}</div>
-        <span class="badge ${escapeHtml(user.role)}">${escapeHtml(user.role)}</span>
-        <span class="badge ${user.isActive ? "operator" : "inactive"}">${user.isActive ? "Active" : "Inactive"}</span>
-        <div class="actions">
-          <button class="edit" type="button" data-edit="${escapeHtml(user.id)}">Edit</button>
-          <button class="delete" type="button" data-delete="${escapeHtml(user.id)}">Delete</button>
-        </div>
-      </article>
-    `).join("");
+    list.innerHTML = '<div class="loading">Loading operators…</div>';
+    try {
+      rosterEntries = await api(`/machine-operators/${encodeURIComponent(machineId)}`);
+      list.innerHTML = rosterEntries.length
+        ? rosterEntries.map((entry) => `
+            <div class="roster-item">
+              <span><strong>${escapeHtml(entry.name)}</strong> · ${escapeHtml(entry.contact)}</span>
+              <button type="button" class="delete" data-remove-operator="${escapeHtml(entry.id)}">Remove</button>
+            </div>`).join("")
+        : '<p class="empty-role">No operators added for this machine yet.</p>';
+    } catch (error) {
+      list.innerHTML = `<p class="empty-role">${escapeHtml(error.message || "Could not load the operator roster.")}</p>`;
+    }
   }
 
   async function loadUsers() {
@@ -220,6 +299,53 @@
     if (remove) deleteUser(remove.dataset.delete);
   });
   form.addEventListener("submit", saveUser);
+  document.getElementById("rosterMachineSelect").addEventListener("change", (event) => {
+    const machineId = event.target.value;
+    document.getElementById("rosterAddRow").classList.toggle("hidden", !machineId);
+    loadRoster(machineId);
+  });
+
+  document.getElementById("rosterAddButton").addEventListener("click", async () => {
+    const machineId = document.getElementById("rosterMachineSelect").value;
+    const name = document.getElementById("rosterName").value.trim();
+    const contact = document.getElementById("rosterContact").value.trim();
+    if (!machineId) return;
+    if (!name || !contact) {
+      showAlert("Enter both the operator's name and contact number.", true);
+      return;
+    }
+    try {
+      await api(`/machine-operators/${encodeURIComponent(machineId)}`, {
+        method: "POST",
+        body: JSON.stringify({ name, contact }),
+      });
+      document.getElementById("rosterName").value = "";
+      document.getElementById("rosterContact").value = "";
+      loadRoster(machineId);
+      loadTeamAnalysis();
+      showAlert("Operator added to the roster.", false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
+
+  document.getElementById("rosterList").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-remove-operator]");
+    if (!button) return;
+    const machineId = document.getElementById("rosterMachineSelect").value;
+    try {
+      await api(`/machine-operators/${encodeURIComponent(machineId)}/${button.dataset.removeOperator}`, {
+        method: "DELETE",
+      });
+      loadRoster(machineId);
+      loadTeamAnalysis();
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
+
   loadUsers();
   loadPortalLink();
+  loadTeamAnalysis();
+  loadRosterMachines();
 })();

@@ -1156,6 +1156,43 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
     json_out(['id' => $newId, 'message' => 'Problem reported successfully. BELM has been notified.'], 201);
 }
 
+// ---- Team analysis: how many active users in each department/role --------
+if ($sub === 'users' && $sub2 === 'analysis' && $method === 'GET') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare(
+        "SELECT role, COUNT(*) FILTER (WHERE is_active = 1) AS active_count, COUNT(*) AS total_count
+         FROM customer_users WHERE customer_id = ? GROUP BY role"
+    );
+    $stmt->execute([$customer['id']]);
+    $rows = $stmt->fetchAll();
+    $byRole = ['admin' => 0, 'assistant' => 0, 'accounts' => 0, 'operator' => 0];
+    $totalByRole = ['admin' => 0, 'assistant' => 0, 'accounts' => 0, 'operator' => 0];
+    foreach ($rows as $row) {
+        if (isset($byRole[$row['role']])) {
+            $byRole[$row['role']] = (int)$row['active_count'];
+            $totalByRole[$row['role']] = (int)$row['total_count'];
+        }
+    }
+    $machineStmt = db()->prepare(
+        'SELECT COUNT(*) FROM machine_operators mo
+         JOIN machines m ON m.id = mo.machine_id
+         WHERE mo.customer_id = ? AND m.deleted_at IS NULL'
+    );
+    $machineStmt->execute([$customer['id']]);
+    $machineOperatorCount = (int)$machineStmt->fetchColumn();
+
+    json_out([
+        'departments' => [
+            ['key' => 'admin', 'label' => 'Machinery Admin', 'active' => $byRole['admin'], 'total' => $totalByRole['admin']],
+            ['key' => 'assistant', 'label' => 'Machinery Admin Assistant', 'active' => $byRole['assistant'], 'total' => $totalByRole['assistant']],
+            ['key' => 'accounts', 'label' => 'Accounts', 'active' => $byRole['accounts'], 'total' => $totalByRole['accounts']],
+            ['key' => 'operator', 'label' => 'Machine Operator (portal login)', 'active' => $byRole['operator'], 'total' => $totalByRole['operator']],
+        ],
+        'machineOperatorRosterCount' => $machineOperatorCount,
+        'totalUsers' => array_sum($totalByRole),
+    ]);
+}
+
 if ($sub === 'users' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
@@ -1183,7 +1220,7 @@ if ($sub === 'users' && $method === 'POST') {
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
     if (strlen($password) < 8) json_error('Assistant password must contain at least 8 characters.');
-    if (!in_array($role, ['admin', 'operator', 'viewer'], true)) json_error('Assistant role must be Admin, Operator or Viewer.');
+    if (!in_array($role, ['admin', 'assistant', 'accounts', 'operator'], true)) json_error('Assistant role must be Admin, Assistant, Accounts or Operator.');
 
     $emailCheck = db()->prepare(
         'SELECT 1 FROM customers WHERE LOWER(email) = ?
@@ -1239,7 +1276,7 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
 
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
-    if (!in_array($role, ['admin', 'operator', 'viewer'], true)) json_error('Assistant role must be Admin, Operator or Viewer.');
+    if (!in_array($role, ['admin', 'assistant', 'accounts', 'operator'], true)) json_error('Assistant role must be Admin, Assistant, Accounts or Operator.');
     if ($newPassword !== '' && strlen($newPassword) < 8) {
         json_error('New password must contain at least 8 characters.');
     }

@@ -23,7 +23,7 @@
       <div>
         <p class="eyebrow">CUSTOMER ACCOUNT SECURITY</p>
         <h1>Manage assistants</h1>
-        <p class="lead">Create separate email and password logins for company admins, operators, or read-only viewers. Every assistant remains limited to your company and machines.</p>
+        <p class="lead">Create separate email and password logins for your Machinery Admin team, Accounts staff, or Machine Operators. Every assistant remains limited to your company and machines.</p>
       </div>
       <button class="primary compact" id="addButton" type="button">+ Add assistant</button>
     </section>
@@ -33,13 +33,44 @@
     <section class="summary-grid">
       <article><strong id="totalCount">0</strong><span>Total assistants</span></article>
       <article><strong id="activeCount">0</strong><span>Active accounts</span></article>
-      <article><strong>3</strong><span>Admin / Operator / Viewer roles</span></article>
+      <article><strong>4</strong><span>Admin / Assistant / Accounts / Operator roles</span></article>
     </section>
 
     <section class="share-link">
       <div><strong>One customer portal link</strong><span>Share this same link with your assistants. Each person uses their own email and password.</span></div>
       <code id="customerPortalUrl">Loading link…</code>
       <button class="secondary" id="copyLinkButton" type="button">Copy link</button>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Team by role</h2><p>Who's currently in each department.</p></div>
+      </div>
+      <div id="roleCards" class="role-cards"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Team analysis</h2><p>Headcount across all departments.</p></div>
+      </div>
+      <div id="analysisRows" class="analysis-rows"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2>Machine Operator roster</h2><p>These are the people who physically operate each machine — no portal login, just a name and contact so their "Report a Problem" messages are attributed correctly.</p></div>
+      </div>
+      <div class="roster-controls">
+        <label>Machine
+          <select id="rosterMachineSelect"><option value="">Select a machine…</option></select>
+        </label>
+      </div>
+      <div id="rosterAddRow" class="roster-add-row hidden">
+        <input type="text" id="rosterName" maxlength="255" placeholder="Operator name">
+        <input type="text" id="rosterContact" maxlength="100" placeholder="Phone number">
+        <button type="button" id="rosterAddButton">+ Add operator</button>
+      </div>
+      <div id="rosterList" class="roster-list"></div>
     </section>
 
     <section class="panel">
@@ -64,9 +95,10 @@
         <label>Phone number<input id="phone" maxlength="50" autocomplete="tel"></label>
         <label>Access role
           <select id="role" required>
-            <option value="admin">Admin — can also manage other assistants</option>
-            <option value="operator">Operator — view and request service</option>
-            <option value="viewer">Viewer — read only</option>
+            <option value="admin">Machinery Admin — full access, can manage the team</option>
+            <option value="assistant">Machinery Admin Assistant</option>
+            <option value="accounts">Accounts</option>
+            <option value="operator">Machine Operator</option>
           </select>
         </label>
         <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>

@@ -540,14 +540,14 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   padding: 8px 12px;
   border: 1px solid var(--belm-line);
   border-radius: 9px;
-  color: #101b31;
-  background: #ffd400;
+  color: #fff;
+  background: #1e73e8;
   font-size: 11.5px;
   font-weight: 800;
   font-family: inherit;
   cursor: pointer;
 }
-.belm-email-report-button:hover { background: #f0c700; }
+.belm-email-report-button:hover { background: #1660c9; }
 
 .belm-email-body {
   display: grid;

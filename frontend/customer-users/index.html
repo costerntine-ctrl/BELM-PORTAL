@@ -23,7 +23,7 @@
       <div>
         <p class="eyebrow">CUSTOMER ACCOUNT SECURITY</p>
         <h1>Manage assistants</h1>
-        <p class="lead">Create separate email and password logins for your operators or read-only viewers. Every assistant remains limited to your company and machines.</p>
+        <p class="lead">Create separate email and password logins for company admins, operators, or read-only viewers. Every assistant remains limited to your company and machines.</p>
       </div>
       <button class="primary compact" id="addButton" type="button">+ Add assistant</button>
     </section>
@@ -33,7 +33,7 @@
     <section class="summary-grid">
       <article><strong id="totalCount">0</strong><span>Total assistants</span></article>
       <article><strong id="activeCount">0</strong><span>Active accounts</span></article>
-      <article><strong>2</strong><span>Operator / Viewer roles</span></article>
+      <article><strong>3</strong><span>Admin / Operator / Viewer roles</span></article>
     </section>
 
     <section class="share-link">
@@ -64,6 +64,7 @@
         <label>Phone number<input id="phone" maxlength="50" autocomplete="tel"></label>
         <label>Access role
           <select id="role" required>
+            <option value="admin">Admin — can also manage other assistants</option>
             <option value="operator">Operator — view and request service</option>
             <option value="viewer">Viewer — read only</option>
           </select>

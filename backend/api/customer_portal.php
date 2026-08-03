@@ -1059,8 +1059,100 @@ if ($sub === 'machines' && $sub2) {
 }
 
 // ---- Customer assistants ---------------------------------------------------
+// ---- Machine Operators (roster) — managed by owner or Machine Admin -------
+if ($sub === 'machine-operators' && $sub2 && $method === 'GET') {
+    $machineId = $sub2;
+    $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId, $customer['id']]);
+    if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+
+    $stmt = db()->prepare('SELECT id, name, contact, created_at FROM machine_operators WHERE machine_id = ? ORDER BY name ASC');
+    $stmt->execute([$machineId]);
+    json_out($stmt->fetchAll());
+}
+
+if ($sub === 'machine-operators' && $sub2 && $method === 'POST') {
+    require_customer_owner_or_admin($customer);
+    $machineId = $sub2;
+    $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId, $customer['id']]);
+    if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+
+    $b = body();
+    $name = trim((string)($b['name'] ?? ''));
+    $contact = trim((string)($b['contact'] ?? ''));
+    if ($name === '') json_error('Operator name is required.');
+    if ($contact === '') json_error('Operator contact (phone) is required.');
+
+    $newId = uuid();
+    db()->prepare('INSERT INTO machine_operators (id, machine_id, customer_id, name, contact, created_at) VALUES (?,?,?,?,?,NOW())')
+        ->execute([$newId, $machineId, $customer['id'], $name, $contact]);
+    json_out(['id' => $newId, 'name' => $name, 'contact' => $contact], 201);
+}
+
+if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'DELETE') {
+    require_customer_owner_or_admin($customer);
+    db()->prepare('DELETE FROM machine_operators WHERE id = ? AND customer_id = ?')->execute([$sub3, $customer['id']]);
+    json_out(null, 204);
+}
+
+// ---- Operator problem reports -----------------------------------------------
+// Any operator (or owner/admin) can report a problem. Visible to the
+// customer's own Machine Admin/owner, and to BELM engineer/technician staff
+// on the admin side.
+if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
+    $machineId = $sub2;
+    $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId, $customer['id']]);
+    if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+
+    $stmt = db()->prepare(
+        'SELECT id, operator_name, operator_contact, message, status, created_at, resolved_at
+         FROM operator_reports WHERE machine_id = ? ORDER BY created_at DESC'
+    );
+    $stmt->execute([$machineId]);
+    json_out($stmt->fetchAll());
+}
+
+if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
+    require_customer_write_access($customer);
+    $machineId = $sub2;
+    $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId, $customer['id']]);
+    if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+
+    $b = body();
+    $message = trim((string)($b['message'] ?? ''));
+    $operatorId = trim((string)($b['operatorId'] ?? ''));
+    if ($message === '') json_error('Write a short message describing the problem.');
+
+    $operatorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Operator'));
+    $operatorContact = null;
+    if ($operatorId !== '') {
+        $stmt = db()->prepare('SELECT name, contact FROM machine_operators WHERE id = ? AND machine_id = ?');
+        $stmt->execute([$operatorId, $machineId]);
+        $operatorRow = $stmt->fetch();
+        if ($operatorRow) {
+            $operatorName = $operatorRow['name'];
+            $operatorContact = $operatorRow['contact'];
+        }
+    }
+
+    $newId = uuid();
+    db()->prepare(
+        'INSERT INTO operator_reports
+            (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, created_at)
+         VALUES (?,?,?,?,?,?,?,\'OPEN\',NOW())'
+    )->execute([
+        $newId, $machineId, $customer['id'],
+        $operatorId !== '' ? $operatorId : null,
+        $operatorName, $operatorContact, $message,
+    ]);
+    json_out(['id' => $newId, 'message' => 'Problem reported successfully. BELM has been notified.'], 201);
+}
+
 if ($sub === 'users' && $method === 'GET') {
-    require_customer_owner($customer);
+    require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
         'SELECT id, name, email, phone, role, is_active, created_at
          FROM customer_users WHERE customer_id = ? ORDER BY created_at DESC'
@@ -1075,7 +1167,7 @@ if ($sub === 'users' && $method === 'GET') {
 }
 
 if ($sub === 'users' && $method === 'POST') {
-    require_customer_owner($customer);
+    require_customer_owner_or_admin($customer);
     $b = body();
     $name = trim((string)($b['name'] ?? ''));
     $email = strtolower(trim((string)($b['email'] ?? '')));
@@ -1086,7 +1178,7 @@ if ($sub === 'users' && $method === 'POST') {
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
     if (strlen($password) < 8) json_error('Assistant password must contain at least 8 characters.');
-    if (!in_array($role, ['operator', 'viewer'], true)) json_error('Assistant role must be Operator or Viewer.');
+    if (!in_array($role, ['admin', 'operator', 'viewer'], true)) json_error('Assistant role must be Admin, Operator or Viewer.');
 
     $emailCheck = db()->prepare(
         'SELECT 1 FROM customers WHERE LOWER(email) = ?
@@ -1126,7 +1218,7 @@ if ($sub === 'users' && $method === 'POST') {
 }
 
 if ($sub === 'users' && $sub2 && $method === 'PUT') {
-    require_customer_owner($customer);
+    require_customer_owner_or_admin($customer);
     $stmt = db()->prepare('SELECT * FROM customer_users WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
     $existing = $stmt->fetch();
@@ -1142,7 +1234,7 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
 
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
-    if (!in_array($role, ['operator', 'viewer'], true)) json_error('Assistant role must be Operator or Viewer.');
+    if (!in_array($role, ['admin', 'operator', 'viewer'], true)) json_error('Assistant role must be Admin, Operator or Viewer.');
     if ($newPassword !== '' && strlen($newPassword) < 8) {
         json_error('New password must contain at least 8 characters.');
     }
@@ -1195,7 +1287,7 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
 }
 
 if ($sub === 'users' && $sub2 && $method === 'DELETE') {
-    require_customer_owner($customer);
+    require_customer_owner_or_admin($customer);
     $stmt = db()->prepare('DELETE FROM customer_users WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
     if ($stmt->rowCount() === 0) json_error('Assistant not found.', 404);

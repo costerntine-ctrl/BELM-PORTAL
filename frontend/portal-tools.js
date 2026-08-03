@@ -484,6 +484,7 @@
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}">Machine Expenses</a>
         <button type="button" class="belm-open-analysis" data-open-analysis>Analysis</button>
         <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}">Request Service</a>
+        <button type="button" class="belm-report-problem-button" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
       </div>`;
     card.appendChild(panel);
   }
@@ -782,6 +783,105 @@
         <strong>${money(data.invoices.total)}</strong>
         <small>${money(data.invoices.outstanding)} outstanding</small>
       </div>`;
+  }
+
+  function ensureProblemReportDialog() {
+    let dialog = document.getElementById("belmProblemReportDialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "belmProblemReportDialog";
+    dialog.className = "belm-analysis-dialog";
+    dialog.innerHTML = `
+      <form class="belm-analysis-dialog-card belm-email-form">
+        <div class="belm-analysis-head">
+          <span>REPORT A PROBLEM</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-email-body">
+          <p class="belm-email-intro">This goes straight to your Machine Admin and BELM's engineer/technician team.</p>
+          <div id="belmProblemError" class="belm-email-error" hidden></div>
+          <label>Who is reporting? <small>(optional — pick from your operators)</small>
+            <select id="belmProblemOperator"><option value="">— Myself / Not listed —</option></select>
+          </label>
+          <label>What's the problem?
+            <textarea id="belmProblemMessage" rows="5" placeholder="e.g. Hydraulic arm making a grinding noise since this morning" required></textarea>
+          </label>
+          <button type="submit" class="belm-email-send" id="belmProblemSendButton">Send report</button>
+        </div>
+      </form>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+
+    dialog.querySelector("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorBox = document.getElementById("belmProblemError");
+      const button = document.getElementById("belmProblemSendButton");
+      const token = localStorage.getItem("belm_customer_token");
+      errorBox.hidden = true;
+      const message = document.getElementById("belmProblemMessage").value.trim();
+      if (!message) {
+        errorBox.textContent = "Describe the problem before sending.";
+        errorBox.hidden = false;
+        return;
+      }
+      button.disabled = true;
+      button.textContent = "Sending…";
+      try {
+        const response = await fetch(`/api/customer-portal/operator-reports/${encodeURIComponent(dialog.dataset.machineId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            message,
+            operatorId: document.getElementById("belmProblemOperator").value,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not send this report.");
+        dialog.close();
+        alert(result.message || "Problem reported successfully.");
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.hidden = false;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Send report";
+      }
+    });
+    return dialog;
+  }
+
+  async function openProblemReportDialog(machineId) {
+    const dialog = ensureProblemReportDialog();
+    dialog.dataset.machineId = machineId;
+    document.getElementById("belmProblemMessage").value = "";
+    document.getElementById("belmProblemError").hidden = true;
+    const select = document.getElementById("belmProblemOperator");
+    select.innerHTML = '<option value="">— Myself / Not listed —</option>';
+    const token = localStorage.getItem("belm_customer_token");
+    try {
+      const response = await fetch(`/api/customer-portal/machine-operators/${encodeURIComponent(machineId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const operators = await response.json();
+        operators.forEach((operator) => {
+          const option = document.createElement("option");
+          option.value = operator.id;
+          option.textContent = `${operator.name} (${operator.contact})`;
+          select.appendChild(option);
+        });
+      }
+    } catch (_) {}
+    dialog.showModal();
+  }
+
+  function wireProblemReportButtons() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    document.querySelectorAll("[data-report-problem]").forEach((button) => {
+      if (button.dataset.belmWired === "1") return;
+      button.dataset.belmWired = "1";
+      button.addEventListener("click", () => openProblemReportDialog(button.dataset.reportProblem));
+    });
   }
 
   function wireCustomerAnalysisButtons() {
@@ -2425,6 +2525,7 @@
   enhanceCustomerAnnouncementsPanel();
   wireCustomerAnalysisButtons();
   wireEmailReportButtons();
+  wireProblemReportButtons();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -2459,6 +2560,7 @@
     enhanceCustomerAnnouncementsPanel();
     wireCustomerAnalysisButtons();
   wireEmailReportButtons();
+  wireProblemReportButtons();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

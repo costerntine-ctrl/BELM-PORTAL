@@ -26,6 +26,44 @@ function fetch_request_parts(string $requestId): array {
     return $parts;
 }
 
+// ---- Operator problem reports (visible to BELM Technician/Admin staff) ----
+if ($method === 'GET' && $action === 'operator-reports') {
+    $statusFilter = trim((string)($_GET['status'] ?? ''));
+    $sql = "SELECT opr.*, c.name AS customer_name, m.model AS machine_model, m.machine_type
+            FROM operator_reports opr
+            JOIN customers c ON c.id = opr.customer_id
+            JOIN machines m ON m.id = opr.machine_id";
+    $params = [];
+    if ($statusFilter !== '') {
+        $sql .= ' WHERE opr.status = ?';
+        $params[] = strtoupper($statusFilter);
+    }
+    $sql .= ' ORDER BY opr.created_at DESC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    $reports = $stmt->fetchAll();
+    foreach ($reports as &$r) {
+        $r['customer'] = ['name' => $r['customer_name']];
+        $r['machine'] = ['model' => $r['machine_model'], 'machineType' => $r['machine_type']];
+        $r['operatorName'] = $r['operator_name'];
+        $r['operatorContact'] = $r['operator_contact'];
+        $r['createdAt'] = $r['created_at'];
+        $r['resolvedAt'] = $r['resolved_at'];
+        unset($r['customer_name'], $r['machine_model'], $r['machine_type'], $r['operator_name'], $r['operator_contact']);
+    }
+    unset($r);
+    json_out($reports);
+}
+
+if ($method === 'PUT' && $action === 'operator-reports') {
+    $reportId = trim((string)($_GET['id'] ?? ''));
+    if ($reportId === '') json_error('Report ID is required.');
+    $stmt = db()->prepare("UPDATE operator_reports SET status='RESOLVED', resolved_at=NOW(), resolved_by_id=? WHERE id=?");
+    $stmt->execute([$user['id'], $reportId]);
+    if ($stmt->rowCount() === 0) json_error('Report not found.', 404);
+    json_out(['ok' => true]);
+}
+
 if ($method === 'GET' && $action === 'daily-report') {
     $date = trim((string)($_GET['date'] ?? date('Y-m-d')));
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) json_error('Enter a valid date (YYYY-MM-DD).');

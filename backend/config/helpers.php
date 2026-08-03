@@ -295,6 +295,19 @@ function require_customer_owner(array $customer): void {
     }
 }
 
+// Same as require_customer_owner(), but also allows an assistant whose own
+// role is 'admin' — so a customer can delegate day-to-day team management
+// (adding/editing/removing other assistants) without sharing the primary
+// account's password. Admin assistants still can never touch technician
+// checklist reports — that stays exclusively a BELM technician/admin action.
+function require_customer_owner_or_admin(array $customer): void {
+    $isOwner = ($customer['actorType'] ?? '') === 'owner';
+    $isAdminAssistant = ($customer['actorType'] ?? '') === 'assistant' && ($customer['customerRole'] ?? '') === 'admin';
+    if (!$isOwner && !$isAdminAssistant) {
+        json_error('Only the main customer account or a Company Admin can manage assistants.', 403);
+    }
+}
+
 function require_customer_write_access(array $customer): void {
     if (($customer['actorType'] ?? '') === 'assistant' && ($customer['customerRole'] ?? '') === 'viewer') {
         json_error('This assistant has read-only access.', 403);

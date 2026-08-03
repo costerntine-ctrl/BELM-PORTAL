@@ -443,6 +443,34 @@ CREATE TABLE IF NOT EXISTS password_reset_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_password_reset_codes_email ON password_reset_codes(LOWER(email));
 
+-- A roster of the people who physically operate a machine day-to-day.
+-- Managed by the customer's own Machine Admin (or the primary owner),
+-- distinct from portal login "assistants".
+CREATE TABLE IF NOT EXISTS machine_operators (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  name VARCHAR(255) NOT NULL,
+  contact VARCHAR(100) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- A short problem report an operator can write, visible to the customer's
+-- own Machine Admin and to BELM's engineer/technician staff.
+CREATE TABLE IF NOT EXISTS operator_reports (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  operator_id VARCHAR(36) NULL REFERENCES machine_operators(id),
+  operator_name VARCHAR(255) NOT NULL,
+  operator_contact VARCHAR(100) NULL,
+  message TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at TIMESTAMPTZ NULL,
+  resolved_by_id VARCHAR(36) NULL REFERENCES users(id)
+);
+
 CREATE TABLE IF NOT EXISTS petty_cash_topups (
   id VARCHAR(36) PRIMARY KEY,
   machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),

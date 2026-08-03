@@ -17,6 +17,7 @@
     <section class="heading">
       <div><p class="eyebrow">CUSTOMER SUPPORT WORKFLOW</p><h1>Service requests</h1><p class="lead">Assign the correct Technician, update job status and keep service notes in one place.</p></div>
       <div class="top-actions">
+        <button class="secondary" id="operatorReportsButton" type="button">Operator Reports</button>
         <button class="secondary" id="dailyReportButton" type="button">Daily Report</button>
         <button class="secondary" id="refreshButton" type="button">Refresh</button>
       </div>
@@ -25,6 +26,26 @@
     <section id="statusTabs" class="tabs"></section>
     <section id="requestList" class="request-list"><div class="loading">Loading service requests…</div></section>
   </main>
+
+  <dialog id="operatorReportsDialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">FROM MACHINE OPERATORS</p><h2>Operator Reports</h2></div>
+      <button id="closeOperatorReportsButton" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="daily-report-body">
+      <div class="tabs" id="operatorReportsTabs" style="margin-bottom:14px">
+        <button class="active" data-op-status="">All</button>
+        <button data-op-status="OPEN">Open</button>
+        <button data-op-status="RESOLVED">Resolved</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Customer</th><th>Machine</th><th>Reported by</th><th>Message</th><th>Status</th><th></th></tr></thead>
+          <tbody id="operatorReportsRows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </dialog>
 
   <dialog id="dailyReportDialog">
     <div class="dialog-head">

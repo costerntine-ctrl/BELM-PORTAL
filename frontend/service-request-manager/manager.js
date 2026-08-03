@@ -240,6 +240,53 @@
   document.getElementById("closeDailyReportButton").addEventListener("click", () =>
     document.getElementById("dailyReportDialog").close());
 
+  async function loadOperatorReports(status = "") {
+    const rows = document.getElementById("operatorReportsRows");
+    rows.innerHTML = '<tr><td colspan="7" class="empty">Loading…</td></tr>';
+    try {
+      const reports = await api(`/service-requests?action=operator-reports${status ? `&status=${status}` : ""}`);
+      rows.innerHTML = reports.length
+        ? reports.map((report) => `<tr>
+            <td>${new Date(report.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+            <td>${escapeHtml(report.customer?.name || "—")}</td>
+            <td>${escapeHtml(report.machine?.model || "—")}</td>
+            <td>${escapeHtml(report.operatorName || "—")}${report.operatorContact ? ` <small>(${escapeHtml(report.operatorContact)})</small>` : ""}</td>
+            <td>${escapeHtml(report.message)}</td>
+            <td>${escapeHtml(report.status)}</td>
+            <td>${report.status === "OPEN" ? `<button type="button" class="secondary compact" data-resolve-report="${escapeHtml(report.id)}">Mark Resolved</button>` : "—"}</td>
+          </tr>`).join("")
+        : '<tr><td colspan="7" class="empty">No operator reports found.</td></tr>';
+    } catch (error) {
+      rows.innerHTML = `<tr><td colspan="7" class="empty">${escapeHtml(error.message || "Could not load operator reports.")}</td></tr>`;
+    }
+  }
+
+  document.getElementById("operatorReportsButton").addEventListener("click", () => {
+    document.getElementById("operatorReportsDialog").showModal();
+    loadOperatorReports();
+  });
+  document.getElementById("closeOperatorReportsButton").addEventListener("click", () =>
+    document.getElementById("operatorReportsDialog").close());
+  document.getElementById("operatorReportsTabs").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-op-status]");
+    if (!button) return;
+    document.querySelectorAll("#operatorReportsTabs button").forEach((b) => b.classList.remove("active"));
+    button.classList.add("active");
+    loadOperatorReports(button.dataset.opStatus);
+  });
+  document.getElementById("operatorReportsRows").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-resolve-report]");
+    if (!button) return;
+    button.disabled = true;
+    try {
+      await api(`/service-requests?action=operator-reports&id=${button.dataset.resolveReport}`, { method: "PUT" });
+      const activeStatus = document.querySelector("#operatorReportsTabs button.active")?.dataset.opStatus || "";
+      loadOperatorReports(activeStatus);
+    } catch (error) {
+      showAlert(error.message || "Could not mark this report resolved.", true);
+    }
+  });
+
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");

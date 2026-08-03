@@ -99,6 +99,15 @@
     return;
   }
 
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}`;
+  }
+
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -225,7 +234,7 @@
     const rows = Array.isArray(data.expenses) ? data.expenses : [];
     document.getElementById("expenseRows").innerHTML = rows.length
       ? rows.map(expense => `<tr>
-          <td>${escapeHtml(expense.date)}</td>
+          <td>${formatDate(expense.date)}</td>
           <td><strong>${escapeHtml(expense.part_number || "-")}</strong></td>
           <td>${escapeHtml(expense.description)}</td>
           <td>${Number(expense.quantity || 0).toLocaleString("en-TZ")} ${escapeHtml(expense.unit || "PC")}</td>

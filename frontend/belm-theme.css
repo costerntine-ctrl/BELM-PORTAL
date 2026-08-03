@@ -1956,6 +1956,23 @@ html.dark .belm-technician-machine-data > div {
     max-height: none;
     border: 0;
     box-shadow: none;
+    position: relative;
+  }
+  .belm-checked-report-card::before {
+    content: "";
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 360px;
+    height: 260px;
+    transform: translate(-50%, -50%);
+    background: url("/belm-watermark.jpg") center / contain no-repeat;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .belm-checked-report-card > * {
+    position: relative;
+    z-index: 1;
   }
   .belm-checked-report-actions,
   .belm-checked-report-head button {

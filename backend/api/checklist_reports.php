@@ -443,7 +443,7 @@ if ($method === 'GET' && $action === 'pdf') {
         'Machine: ' . trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')),
         'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
         'Filled by: ' . ($view['filledBy'] ?: '—'),
-        'Date: ' . date('Y-m-d H:i', strtotime((string)$view['createdAt'])),
+        'Date: ' . date('d/m/Y H:i', strtotime((string)$view['createdAt'])),
         'Hour meter: ' . $view['hourMeterReading'],
         'Overall status: ' . $view['overallStatus'],
         str_repeat('-', 78),

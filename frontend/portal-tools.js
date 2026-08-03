@@ -1643,15 +1643,31 @@
     if (!value) return "Not recorded";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "Not recorded";
-    return date.toLocaleString("en-TZ", {
+    const parts = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Africa/Dar_es_Salaam",
+      day: "2-digit",
+      month: "2-digit",
       year: "numeric",
-      month: "short",
-      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-    });
+    }).formatToParts(date);
+    const get = (type) => parts.find((p) => p.type === type)?.value || "";
+    return `${get("day")}/${get("month")}/${get("year")}, ${get("hour")}:${get("minute")}`;
+  }
+
+  function formatTanzaniaDate(value) {
+    if (!value) return "Not recorded";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not recorded";
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Dar_es_Salaam",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).formatToParts(date);
+    const get = (type) => parts.find((p) => p.type === type)?.value || "";
+    return `${get("day")}/${get("month")}/${get("year")}`;
   }
 
   function checklistEditControl(answer, index) {

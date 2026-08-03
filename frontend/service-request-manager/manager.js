@@ -9,6 +9,26 @@
   let technicians = [];
   let activeStatus = "";
 
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}`;
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}, ${hours}:${minutes}`;
+  }
+
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -69,7 +89,7 @@
         <div class="request-head">
           <div>
             <h2>${escapeHtml(request.customer?.name || "Unknown customer")} · ${escapeHtml(request.machine?.model || "General request")}</h2>
-            <div class="meta">${new Date(request.createdAt).toLocaleString()} · ${escapeHtml(request.status.replaceAll("_", " "))}</div>
+            <div class="meta">${formatDateTime(request.createdAt)} · ${escapeHtml(request.status.replaceAll("_", " "))}</div>
           </div>
           <span class="priority ${escapeHtml(request.priority)}">${escapeHtml(request.priority)}</span>
         </div>
@@ -155,7 +175,7 @@
     document.getElementById("noteText").value = "";
     document.getElementById("noteError").className = "alert error hidden";
     document.getElementById("noteHistory").innerHTML = (request.notes || []).length
-      ? request.notes.map((note) => `<div class="note"><small>${new Date(note.createdAt).toLocaleString()} · ${escapeHtml(note.author || "BELM")}</small>${escapeHtml(note.note)}</div>`).join("")
+      ? request.notes.map((note) => `<div class="note"><small>${formatDateTime(note.createdAt)} · ${escapeHtml(note.author || "BELM")}</small>${escapeHtml(note.note)}</div>`).join("")
       : '<div class="note">No notes yet.</div>';
     noteDialog.showModal();
   }
@@ -216,7 +236,7 @@
               : (request.cancelledBy?.name || "—");
             const when = isCompleted ? request.completedAt : request.cancelledAt;
             return `<tr>
-              <td>${when ? new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+              <td>${when ? formatDateTime(when) : "—"}</td>
               <td>${escapeHtml(request.customer?.name || "—")}</td>
               <td>${escapeHtml(request.machine?.model || "—")}</td>
               <td>${escapeHtml((request.description || "").slice(0, 50))}${(request.description || "").length > 50 ? "…" : ""}</td>
@@ -247,7 +267,7 @@
       const reports = await api(`/service-requests?action=operator-reports${status ? `&status=${status}` : ""}`);
       rows.innerHTML = reports.length
         ? reports.map((report) => `<tr>
-            <td>${new Date(report.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+            <td>${formatDateTime(report.createdAt)}</td>
             <td>${escapeHtml(report.customer?.name || "—")}</td>
             <td>${escapeHtml(report.machine?.model || "—")}</td>
             <td>${escapeHtml(report.operatorName || "—")}${report.operatorContact ? ` <small>(${escapeHtml(report.operatorContact)})</small>` : ""}</td>

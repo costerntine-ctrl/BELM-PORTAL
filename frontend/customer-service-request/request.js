@@ -16,6 +16,15 @@
     return;
   }
 
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}`;
+  }
+
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, character => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -292,7 +301,7 @@
               handledBy = `Cancelled by ${escapeHtml(request.cancelledBy.name)}`;
             }
             return `<tr>
-              <td>${new Date(request.createdAt).toLocaleDateString()}</td>
+              <td>${formatDate(request.createdAt)}</td>
               <td>${escapeHtml(request.machine?.model || "—")}</td>
               <td>${escapeHtml((request.description || "").slice(0, 60))}${(request.description || "").length > 60 ? "…" : ""}</td>
               <td><span class="status-pill ${statusLower}">${escapeHtml(request.status)}</span></td>

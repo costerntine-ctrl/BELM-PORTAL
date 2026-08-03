@@ -6,6 +6,15 @@
   let proformas = [];
   let bankData = { accounts: [], withdrawals: [], summary: {} };
 
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}`;
+  }
+
   function applyTheme(theme) {
     const safeTheme = theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = safeTheme;
@@ -115,7 +124,7 @@
         <td class="money">${money(invoice.total)}</td>
         <td class="money">${money(invoice.paidAmount)}</td>
         <td class="money">${money(invoice.balance)}</td>
-        <td>${invoice.dueDate ? new Date(`${invoice.dueDate}T00:00:00`).toLocaleDateString() : "—"}</td>
+        <td>${invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</td>
         <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}">${statuses.map((status) => `<option value="${status}" ${status === invoice.status ? "selected" : ""} ${["PAID", "PARTIALLY_PAID"].includes(status) ? "disabled" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select></td>
         <td><div class="row-actions"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button>` : ""}<button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></td>
       </tr>`).join("")}</tbody></table></div>`;
@@ -153,7 +162,7 @@
       return;
     }
     panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
-      <tr><td>${new Date(`${expense.date}T00:00:00`).toLocaleDateString()}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions"><button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
+      <tr><td>${formatDate(expense.date)}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions"><button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
 
@@ -164,7 +173,7 @@
       return;
     }
     panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.")}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
-      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${new Date(`${proforma.date}T00:00:00`).toLocaleDateString()}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><div class="row-actions"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></td></tr>
+      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><div class="row-actions"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
 

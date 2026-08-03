@@ -20,6 +20,16 @@
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
   })[character]);
+  const formatDateTime = (value) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}, ${hours}:${minutes}`;
+  };
   const statusLabel = (status) => ({
     GREEN: "Green — Normal", OK: "Green — Normal",
     YELLOW: "Yellow — Attention", ATTENTION: "Yellow — Attention",
@@ -387,7 +397,7 @@
         <article class="report-item">
           <div>
             <strong>${escapeHtml(report.templateName || "Checklist report")}</strong>
-            <span>${escapeHtml(new Date(report.createdAt).toLocaleString())} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</span>
+            <span>${formatDateTime(report.createdAt)} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</span>
           </div>
           <span class="machine-status ${escapeHtml(String(report.overallStatus || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(report.overallStatus))}</span>
           <button type="button" data-view-report="${escapeHtml(report.id)}">View</button>
@@ -407,9 +417,11 @@
       return;
     }
     document.getElementById("reportViewTitle").textContent = report.templateName || "Report detail";
+    document.getElementById("reportViewDownloadLink").href =
+      `/api/checklist-reports/${encodeURIComponent(report.id)}/pdf?token=${encodeURIComponent(token)}`;
     const answers = Array.isArray(report.answers) ? report.answers : [];
     body.innerHTML = `
-      <p class="muted">${escapeHtml(new Date(report.createdAt).toLocaleString())} · Filled by ${escapeHtml(report.filledBy || "—")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</p>
+      <p class="muted">${formatDateTime(report.createdAt)} · Filled by ${escapeHtml(report.filledBy || "—")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</p>
       <table><thead><tr><th>Item</th><th>Result</th><th>Status</th><th style="text-align:right">Evidence</th></tr></thead>
       <tbody>${answers.length ? answers.map((answer) => {
         const photoUrl = String(answer.photoUrl || "").trim();

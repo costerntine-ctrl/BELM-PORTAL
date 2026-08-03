@@ -27,6 +27,15 @@
     })[character]);
   }
 
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}`;
+  }
+
   function tokenPayload() {
     try {
       const encoded = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
@@ -147,7 +156,7 @@
     const topups = Array.isArray(account.topups) ? account.topups : [];
     document.getElementById("topupRows").innerHTML = topups.length
       ? topups.map(topup => `<tr>
-          <td>${new Date(topup.createdAt).toLocaleDateString()}</td>
+          <td>${formatDate(topup.createdAt)}</td>
           <td><strong>${money.format(Number(topup.amount || 0))}</strong></td>
           <td>${escapeHtml(topup.note || "—")}</td>
           <td>${escapeHtml(topup.addedBy || "BELM Admin")}</td>
@@ -157,7 +166,7 @@
     const rows = Array.isArray(data.entries) ? data.entries : [];
     document.getElementById("expenseRows").innerHTML = rows.length
       ? rows.map(entry => `<tr>
-          <td>${escapeHtml(entry.date)}</td>
+          <td>${formatDate(entry.date)}</td>
           <td>${escapeHtml(entry.description)}</td>
           <td><strong>${money.format(Number(entry.cost || 0))}</strong></td>
           <td>${hasReceipt(entry.has_receipt)

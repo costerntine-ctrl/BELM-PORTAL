@@ -9,6 +9,11 @@ $sub = $_GET['sub'] ?? '';
 $sub2 = $_GET['sub2'] ?? '';
 $sub3 = $_GET['sub3'] ?? '';
 
+function display_date(string $isoDate): string {
+    $timestamp = strtotime($isoDate);
+    return $timestamp !== false ? date('d/m/Y', $timestamp) : $isoDate;
+}
+
 function machine_expense_pdf_escape(string $value): string {
     $converted = function_exists('iconv')
         ? iconv('UTF-8', 'Windows-1252//TRANSLIT', $value)
@@ -721,14 +726,14 @@ if ($sub === 'machine-expenses' && $sub2) {
             'Service provided by: BELM General Tech Service Limited',
             'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
             'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
-            'Period: ' . ($rangeFrom ? "$rangeFrom to $rangeTo" : 'All time'),
-            'Generated: ' . date('Y-m-d H:i'),
+            'Period: ' . ($rangeFrom ? display_date($rangeFrom) . ' to ' . display_date($rangeTo) : 'All time'),
+            'Generated: ' . date('d/m/Y H:i'),
             str_repeat('-', 78),
         ];
         foreach ($expenses as $expense) {
             $lines[] = sprintf(
                 '%s | Part: %s | Qty: %s %s | Unit: %s | Total: TZS %s | Receipt: %s',
-                $expense['date'],
+                display_date($expense['date']),
                 $expense['part_number'] ?: '-',
                 rtrim(rtrim(number_format((float)$expense['quantity'], 2, '.', ''), '0'), '.'),
                 $expense['unit'] ?: 'PC',
@@ -927,14 +932,14 @@ if ($sub === 'petty-cash' && $sub2) {
             'Service provided by: BELM General Tech Service Limited',
             'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
             'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
-            'Period: ' . ($rangeFrom ? "$rangeFrom to $rangeTo" : 'All time'),
-            'Generated: ' . date('Y-m-d H:i'),
+            'Period: ' . ($rangeFrom ? display_date($rangeFrom) . ' to ' . display_date($rangeTo) : 'All time'),
+            'Generated: ' . date('d/m/Y H:i'),
             str_repeat('-', 78),
         ];
         foreach ($entries as $entry) {
             $lines[] = sprintf(
                 '%s | Amount: TZS %s | Receipt: %s',
-                $entry['date'],
+                display_date($entry['date']),
                 number_format((float)$entry['cost'], 2),
                 $entry['has_receipt'] ? 'Yes' : 'No'
             );
@@ -1517,7 +1522,7 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
         'Machine: ' . trim(($report['brand'] ?? '') . ' ' . ($report['machine_model'] ?? '')),
         'Serial / Registration: ' . ($report['serial_number'] ?: ($report['reg_number'] ?: 'Not recorded')),
         'Filled by: ' . ($view['filledBy'] ?? '—'),
-        'Date: ' . date('Y-m-d H:i', strtotime((string)($view['createdAt'] ?? 'now'))),
+        'Date: ' . date('d/m/Y H:i', strtotime((string)($view['createdAt'] ?? 'now'))),
         'Hour meter: ' . ($view['hourMeterReading'] ?? 0),
         'Overall status: ' . ($view['overallStatus'] ?? 'GREEN'),
         str_repeat('-', 78),

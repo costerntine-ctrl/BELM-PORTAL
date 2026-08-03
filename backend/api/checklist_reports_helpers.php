@@ -18,22 +18,49 @@ function output_checklist_report_pdf(string $filename, array $lines): void {
     $pages = array_chunk($lines, 50);
     if (!$pages) $pages = [['No data recorded.']];
 
+    $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
+    $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
+    $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+
     $objects = [];
+    $watermarkObject = null;
     $fontObject = 3 + count($pages) * 2;
+    if ($watermarkData !== false && $watermarkSize !== false) {
+        $watermarkObject = $fontObject + 1;
+    }
     $pageReferences = [];
+
+    // A4 = 595 x 842pt. Watermark centered, faint behind the text.
+    $wmDrawWidth = 360;
+    $wmDrawHeight = $watermarkSize ? $wmDrawWidth * ($watermarkSize[1] / $watermarkSize[0]) : 0;
+    $wmX = (595 - $wmDrawWidth) / 2;
+    $wmY = (842 - $wmDrawHeight) / 2;
+
     foreach ($pages as $index => $pageLines) {
         $pageObject = 3 + $index * 2;
         $contentObject = $pageObject + 1;
         $pageReferences[] = $pageObject . ' 0 R';
-        $content = "BT\n/F1 10 Tf\n50 790 Td\n13 TL\n";
+
+        $content = '';
+        if ($watermarkObject !== null) {
+            $content .= sprintf(
+                "q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Wm Do\nQ\n",
+                $wmDrawWidth, $wmDrawHeight, $wmX, $wmY
+            );
+        }
+        $content .= "BT\n/F1 10 Tf\n50 790 Td\n13 TL\n";
         foreach ($pageLines as $line) {
             $content .= '(' . checklist_report_pdf_escape((string)$line) . ") Tj\nT*\n";
         }
         $content .= "ET\n";
+
+        $resources = "/Font << /F1 {$fontObject} 0 R >>";
+        if ($watermarkObject !== null) {
+            $resources .= " /XObject << /Wm {$watermarkObject} 0 R >>";
+        }
         $objects[$pageObject] =
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-            . "/Resources << /Font << /F1 {$fontObject} 0 R >> >> "
-            . "/Contents {$contentObject} 0 R >>";
+            . "/Resources << {$resources} >> /Contents {$contentObject} 0 R >>";
         $objects[$contentObject] =
             "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";
     }
@@ -42,6 +69,12 @@ function output_checklist_report_pdf(string $filename, array $lines): void {
         '<< /Type /Pages /Kids [' . implode(' ', $pageReferences)
         . '] /Count ' . count($pages) . ' >>';
     $objects[$fontObject] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+    if ($watermarkObject !== null) {
+        $objects[$watermarkObject] =
+            "<< /Type /XObject /Subtype /Image /Width {$watermarkSize[0]} /Height {$watermarkSize[1]} "
+            . "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode "
+            . "/Length " . strlen($watermarkData) . " >>\nstream\n{$watermarkData}\nendstream";
+    }
     ksort($objects);
 
     $pdf = "%PDF-1.4\n";

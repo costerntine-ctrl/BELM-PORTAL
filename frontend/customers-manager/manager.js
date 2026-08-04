@@ -173,11 +173,6 @@
           <div><span>Address</span><strong>${escapeHtml(customer.address || "—")}</strong></div>
           <div><span>TIN / VRN</span><strong>${escapeHtml(customer.tinNumber || "—")} / ${escapeHtml(customer.vrn || "—")}</strong></div>
         </div>
-        <div class="machine-section">
-          <button class="view-machines-button" data-view-machines="${escapeHtml(customer.id)}" type="button">
-            View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">Needs attention</span>' : ""}
-          </button>
-        </div>
         <div class="portal-link-box">
           <span>Working customer portal link</span>
           <code>${escapeHtml(portalUrl)}</code>
@@ -187,6 +182,9 @@
           </div>
         </div>
         <div class="customer-card-actions">
+          <button class="view-machines-inline" data-view-machines="${escapeHtml(customer.id)}">
+            View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">!</span>' : ""}
+          </button>
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
           <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
           <button class="delete" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>

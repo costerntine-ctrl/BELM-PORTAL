@@ -160,11 +160,23 @@
           <div><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
         </div>
+        <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
+          <div class="customer-feed-head">
+            <strong>Customer updates</strong>
+            <button type="button" class="view-messages-button" data-view-messages="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View all</button>
+          </div>
+          <div class="customer-feed-body">Loading recent updates…</div>
+        </div>
         <div class="customer-info-grid">
           <div><span>Email</span><strong>${escapeHtml(customer.email)}</strong></div>
           <div><span>Phone</span><strong>${escapeHtml(customer.phone)}</strong></div>
           <div><span>Address</span><strong>${escapeHtml(customer.address || "—")}</strong></div>
           <div><span>TIN / VRN</span><strong>${escapeHtml(customer.tinNumber || "—")} / ${escapeHtml(customer.vrn || "—")}</strong></div>
+        </div>
+        <div class="machine-section">
+          <button class="view-machines-button" data-view-machines="${escapeHtml(customer.id)}" type="button">
+            View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">Needs attention</span>' : ""}
+          </button>
         </div>
         <div class="portal-link-box">
           <span>Working customer portal link</span>
@@ -174,16 +186,6 @@
             <a href="${escapeHtml(portalUrl)}" target="_blank" rel="noopener">Open customer login</a>
           </div>
         </div>
-        <div class="machine-section">
-          <button class="view-machines-button" data-view-machines="${escapeHtml(customer.id)}" type="button">
-            View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">Needs attention</span>' : ""}
-          </button>
-        </div>
-        <div class="machine-section">
-          <button class="view-messages-button" data-view-messages="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}" type="button">
-            Customer Messages <span id="msgCount-${escapeHtml(customer.id)}"></span>
-          </button>
-        </div>
         <div class="customer-card-actions">
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
           <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
@@ -191,9 +193,33 @@
         </div>
       </article>`;
     }).join("");
+    loadCustomerFeeds(filtered);
   }
 
   let currentMachineListCustomerName = "";
+
+  async function loadCustomerFeeds(customerList) {
+    for (const customer of customerList) {
+      const body = document.querySelector(`#feed-${customer.id} .customer-feed-body`);
+      if (!body) continue;
+      try {
+        const items = await api(`/service-requests?action=customer-inbox&customerId=${encodeURIComponent(customer.id)}`);
+        body.innerHTML = items.length
+          ? items.slice(0, 3).map((item) => `
+              <div class="customer-feed-row">
+                <div class="customer-feed-row-head">
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <span class="badge">${escapeHtml(item.status)}</span>
+                </div>
+                <p>${escapeHtml(item.detail || "—")}</p>
+                <small>${formatDateTime(item.createdAt)}</small>
+              </div>`).join("")
+          : '<p class="customer-feed-empty">No recent updates from this customer.</p>';
+      } catch (_) {
+        body.innerHTML = '<p class="customer-feed-empty">Could not load updates.</p>';
+      }
+    }
+  }
 
   async function openCustomerMessages(customerId, customerName) {
     document.getElementById("customerMessagesTitle").textContent = `${customerName} — Customer Messages`;

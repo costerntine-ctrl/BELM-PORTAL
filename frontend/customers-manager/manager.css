@@ -81,3 +81,16 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .machine-status.GREEN { color: #fff; background: #16a34a; }
 .machine-status.YELLOW { color: #1e293b; background: #eab308; }
 .machine-status.RED { color: #fff; background: #dc2626; }
+
+.customer-feed { margin-top: 14px; padding: 14px; border: 1px solid #2f7cf5; border-radius: 12px; background: color-mix(in srgb, #2f7cf5 6%, var(--paper)); }
+.customer-feed-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.customer-feed-head strong { color: #1a4fb0; font-size: 14px; }
+.customer-feed-head .view-messages-button { padding: 6px 12px; border: 1px solid #2f7cf5; border-radius: 8px; background: #fff; color: #1a4fb0; font-size: 10px; font-weight: 800; cursor: pointer; }
+.customer-feed-body { display: grid; gap: 9px; }
+.customer-feed-row { padding: 11px 13px; border: 1px solid #cfe0fb; border-radius: 9px; background: #fff; }
+.customer-feed-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.customer-feed-row-head strong { color: #1a4fb0; font-size: 13px; }
+.customer-feed-row-head .badge { background: #2f7cf5; color: #fff; }
+.customer-feed-row p { margin: 6px 0 4px; color: #33475a; font-size: 13px; line-height: 1.5; }
+.customer-feed-row small { color: var(--muted); font-size: 10.5px; }
+.customer-feed-empty { margin: 0; padding: 10px; color: var(--muted); font-size: 12px; text-align: center; }

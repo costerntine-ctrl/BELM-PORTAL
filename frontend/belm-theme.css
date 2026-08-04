@@ -530,13 +530,19 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   background: #1ebc59;
 }
 
+.belm-email-assign-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .belm-email-report-button {
   display: flex;
   width: 100%;
   justify-content: center;
   align-items: center;
   min-height: 34px;
-  margin-top: 8px;
   padding: 8px 12px;
   border: 1px solid var(--belm-line);
   border-radius: 9px;
@@ -548,6 +554,25 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   cursor: pointer;
 }
 .belm-email-report-button:hover { background: #1660c9; }
+
+.belm-assign-users-button {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  min-height: 34px;
+  padding: 8px 12px;
+  border: 1px solid var(--belm-line);
+  border-radius: 9px;
+  color: #101b31;
+  background: #f4c542;
+  font-size: 11.5px;
+  font-weight: 800;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.belm-assign-users-button:hover { background: #e0b52f; }
 
 .belm-email-body {
   display: grid;
@@ -1334,22 +1359,22 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   position: fixed;
   inset: 0;
   z-index: 20000;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  background: rgba(7, 14, 28, .72);
-  backdrop-filter: blur(3px);
+  display: block;
+  padding: 0;
+  background: #fff;
+  overflow-y: auto;
 }
 
 .belm-checked-report-card {
-  width: min(960px, 96vw);
-  max-height: 92vh;
-  overflow-y: auto;
+  width: 100%;
+  min-height: 100vh;
+  max-height: none;
+  overflow-y: visible;
   color: var(--belm-ink);
-  border: 1px solid var(--belm-line);
-  border-radius: 18px;
+  border: 0;
+  border-radius: 0;
   background: #fff;
-  box-shadow: 0 28px 80px rgba(7, 14, 28, .34);
+  box-shadow: none;
 }
 
 .belm-checked-report-head {
@@ -1553,7 +1578,7 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   border: 1px solid var(--belm-line);
   border-radius: 8px;
   background: #fff;
-  color: inherit;
+  color: #101b31;
   font-size: 10px;
   font-weight: 800;
   text-decoration: none;
@@ -1705,7 +1730,6 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   .belm-machine-action-row {
     grid-template-columns: 1fr;
   }
-  .belm-checked-report-modal { padding: 8px; }
   .belm-checked-report-summary { grid-template-columns: 1fr 1fr; padding: 14px; }
   .belm-checked-report-table-wrap { padding: 14px 14px 4px; }
   .belm-checked-report-head { padding: 18px 16px; }

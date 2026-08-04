@@ -26,6 +26,16 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .machine-section-head h3 { margin: 0; font: 750 13px "Space Grotesk", sans-serif; }
 .machine-section-head button { padding: 6px 9px; color: var(--green-dark); border: 1px solid #b9dfca; border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .view-machines-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: 1px solid var(--green); border-radius: 10px; background: color-mix(in srgb, var(--green) 8%, var(--paper)); color: var(--green-dark); font-size: 13px; font-weight: 800; }
+
+.view-messages-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: 1px solid #2f7cf5; border-radius: 10px; background: color-mix(in srgb, #2f7cf5 8%, var(--paper)); color: #1a4fb0; font-size: 13px; font-weight: 800; cursor: pointer; }
+.view-messages-button span { padding: 2px 7px; border-radius: 999px; background: #2f7cf5; color: #fff; font-size: 10px; }
+.customer-messages-list { display: grid; gap: 10px; }
+.customer-message-row { padding: 12px 14px; border: 1px solid #cfe0fb; border-radius: 10px; background: #f2f7ff; }
+.customer-message-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.customer-message-head strong { color: #1a4fb0; font-size: 13px; }
+.customer-message-head .badge { background: #2f7cf5; color: #fff; }
+.customer-message-row p { margin: 6px 0 4px; color: #33475a; font-size: 12.5px; line-height: 1.5; }
+.customer-message-row small { color: var(--muted); font-size: 10.5px; }
 .view-machines-button:hover { background: color-mix(in srgb, var(--green) 16%, var(--paper)); }
 .machine-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
 .machine-card { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
@@ -56,7 +66,7 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .reports-list { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
 .report-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
 .report-item span { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
-.report-download-link { padding: 8px 13px; border: 1px solid var(--green); border-radius: 8px; color: var(--green2); background: #f4fbf7; font-size: 11px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.report-download-link { padding: 8px 13px; border: 1px solid #1f9d55; border-radius: 8px; color: #0d6b38; background: #f4fbf7; font-size: 11px; font-weight: 800; text-decoration: none; white-space: nowrap; }
 .report-download-link:hover { background: #e8f7ee; }
 .report-view-body { max-height: 60vh; overflow-y: auto; }
 .report-view-body table th, .report-view-body table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; }

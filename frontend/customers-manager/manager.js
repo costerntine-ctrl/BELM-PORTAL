@@ -179,6 +179,11 @@
             View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">Needs attention</span>' : ""}
           </button>
         </div>
+        <div class="machine-section">
+          <button class="view-messages-button" data-view-messages="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}" type="button">
+            Customer Messages <span id="msgCount-${escapeHtml(customer.id)}"></span>
+          </button>
+        </div>
         <div class="customer-card-actions">
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
           <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
@@ -189,6 +194,29 @@
   }
 
   let currentMachineListCustomerName = "";
+
+  async function openCustomerMessages(customerId, customerName) {
+    document.getElementById("customerMessagesTitle").textContent = `${customerName} — Customer Messages`;
+    const body = document.getElementById("customerMessagesBody");
+    body.innerHTML = '<p class="muted">Loading messages…</p>';
+    document.getElementById("customerMessagesDialog").showModal();
+    try {
+      const items = await api(`/service-requests?action=customer-inbox&customerId=${encodeURIComponent(customerId)}`);
+      body.innerHTML = items.length
+        ? `<div class="customer-messages-list">${items.map((item) => `
+            <article class="customer-message-row">
+              <div class="customer-message-head">
+                <strong>${escapeHtml(item.title)}</strong>
+                <span class="badge">${escapeHtml(item.status)}</span>
+              </div>
+              <p>${escapeHtml(item.detail || "—")}</p>
+              <small>${formatDateTime(item.createdAt)}</small>
+            </article>`).join("")}</div>`
+        : '<p class="muted">No open messages from this customer.</p>';
+    } catch (error) {
+      body.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load customer messages.")}</p>`;
+    }
+  }
 
   function openMachineList(customer) {
     if (!customer) return;
@@ -567,11 +595,13 @@
   });
   document.getElementById("customerGrid").addEventListener("click", (event) => {
     const viewMachines = event.target.closest("[data-view-machines]");
+    const viewMessages = event.target.closest("[data-view-messages]");
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
     const copyLink = event.target.closest("[data-copy-link]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
+    if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
     if (editCustomer) {
       const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
       confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));

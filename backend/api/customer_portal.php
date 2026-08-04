@@ -1648,12 +1648,14 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
         str_repeat('-', 78),
     ];
     foreach ($answers as $answer) {
+        $displayValue = $answer['value'];
+        $isImageValue = $displayValue !== '' && str_starts_with((string)$displayValue, 'data:image/');
         $lines[] = sprintf(
             '%s: %s [%s]%s',
             $answer['label'],
-            $answer['value'] !== '' ? $answer['value'] : '—',
+            $isImageValue ? '(Photo)' : ($displayValue !== '' ? $displayValue : '—'),
             $answer['safetyLevel'],
-            !empty($answer['photoUrl']) ? ' (Photo attached — view online)' : ''
+            (!empty($answer['photoUrl']) || $isImageValue) ? ' (Photo attached — view online)' : ''
         );
     }
     $lines[] = str_repeat('-', 78);

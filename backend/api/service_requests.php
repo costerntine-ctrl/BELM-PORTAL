@@ -113,6 +113,56 @@ if ($method === 'GET' && $action === 'assignees') {
     json_out($technicians);
 }
 
+// ---- Customer inbox: service requests + operator reports for ONE customer -
+if ($method === 'GET' && $action === 'customer-inbox') {
+    $customerId = trim((string)($_GET['customerId'] ?? ''));
+    if ($customerId === '') json_error('customerId is required.');
+
+    $srStmt = db()->prepare(
+        "SELECT sr.id, sr.status, sr.description, sr.service_type, sr.created_at,
+                m.model AS machine_model
+         FROM service_requests sr
+         LEFT JOIN machines m ON m.id = sr.machine_id
+         WHERE sr.customer_id = ? AND sr.status NOT IN ('COMPLETED','CANCELLED')
+         ORDER BY sr.created_at DESC LIMIT 15"
+    );
+    $srStmt->execute([$customerId]);
+    $serviceRequests = array_map(function ($row) {
+        return [
+            'type' => 'service-request',
+            'id' => $row['id'],
+            'title' => 'Service Request' . ($row['machine_model'] ? " — {$row['machine_model']}" : ''),
+            'detail' => $row['description'] ?: ($row['service_type'] ?: ''),
+            'status' => $row['status'],
+            'createdAt' => $row['created_at'],
+        ];
+    }, $srStmt->fetchAll());
+
+    $opStmt = db()->prepare(
+        "SELECT opr.id, opr.status, opr.message, opr.operator_name, opr.created_at,
+                m.model AS machine_model
+         FROM operator_reports opr
+         LEFT JOIN machines m ON m.id = opr.machine_id
+         WHERE opr.customer_id = ? AND opr.status = 'OPEN'
+         ORDER BY opr.created_at DESC LIMIT 15"
+    );
+    $opStmt->execute([$customerId]);
+    $operatorReports = array_map(function ($row) {
+        return [
+            'type' => 'operator-report',
+            'id' => $row['id'],
+            'title' => 'Operator Report' . ($row['machine_model'] ? " — {$row['machine_model']}" : ''),
+            'detail' => "{$row['operator_name']}: {$row['message']}",
+            'status' => $row['status'],
+            'createdAt' => $row['created_at'],
+        ];
+    }, $opStmt->fetchAll());
+
+    $combined = array_merge($serviceRequests, $operatorReports);
+    usort($combined, fn($a, $b) => strcmp($b['createdAt'], $a['createdAt']));
+    json_out($combined);
+}
+
 if ($method === 'GET' && !$action) {
     $status = $_GET['status'] ?? null;
     $sql = 'SELECT sr.*, c.name AS customer_name, m.model AS machine_model,

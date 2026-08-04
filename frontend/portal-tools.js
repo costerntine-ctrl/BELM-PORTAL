@@ -489,11 +489,14 @@
          href="${whatsappShareUrl(`BELM Portal alert: ${machineName} (${serial}) — ${levelLabel}. Current hour meter: ${Math.round(status.totalHours)} hrs, remaining to next service: ${remaining <= 0 ? "overdue" : `${remaining} hrs`}.`)}">
         Send via WhatsApp
       </a>
-      <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
-        data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
-        data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
-        Management Email
-      </button>
+      <div class="belm-email-assign-row">
+        <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
+          data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
+          data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
+          Management Email
+        </button>
+        <a href="/customer-users/" class="belm-assign-users-button" data-belm-owner-admin-only>Assign Users</a>
+      </div>
       <div class="belm-machine-quick-actions">
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Machine Expenses</a>
         <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
@@ -507,12 +510,19 @@
   function enforceCustomerFeaturePermissions(scope) {
     const payload = tokenPayload("belm_customer_token");
     const permissions = payload?.permissions;
-    if (!Array.isArray(permissions)) return; // null/missing = full access
-    scope.querySelectorAll("[data-belm-feature]").forEach((element) => {
-      if (!permissions.includes(element.dataset.belmFeature)) {
+    if (Array.isArray(permissions)) {
+      scope.querySelectorAll("[data-belm-feature]").forEach((element) => {
+        if (!permissions.includes(element.dataset.belmFeature)) {
+          element.style.display = "none";
+        }
+      });
+    }
+    const role = payload?.customerRole;
+    if (role !== "owner" && role !== "admin") {
+      scope.querySelectorAll("[data-belm-owner-admin-only]").forEach((element) => {
         element.style.display = "none";
-      }
-    });
+      });
+    }
   }
 
   function dismissedAnnouncementIds() {
@@ -1909,9 +1919,14 @@
           <tbody>${answers.length ? answers.map((answer) => {
             const answerStatus = String(answer.safetyLevel || answer.safety_level || "GREEN").toUpperCase();
             const photoUrl = safeReportPhotoUrl(answer.photoUrl || answer.photo_url);
+            const rawValue = String(answer.value ?? "");
+            const valueAsPhoto = /^data:image\//i.test(rawValue) ? safeReportPhotoUrl(rawValue) : "";
+            const resultCell = valueAsPhoto
+              ? `<a href="${escapeHtml(valueAsPhoto)}" target="_blank" rel="noopener" class="belm-report-photo-link"><img src="${escapeHtml(valueAsPhoto)}" alt="Photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy"></a>`
+              : `<strong>${escapeHtml(rawValue || "—")}</strong>`;
             return `<tr>
               <td>${escapeHtml(answer.label || "Checklist item")}</td>
-              <td><strong>${escapeHtml(answer.value || "—")}</strong></td>
+              <td>${resultCell}</td>
               <td><span class="belm-report-status status-${escapeHtml(answerStatus.toLowerCase())}">${escapeHtml(answerStatus)}</span></td>
               <td class="belm-report-evidence">${photoUrl ? `<a href="${escapeHtml(photoUrl)}" target="_blank" rel="noopener" class="belm-report-photo-link"><img src="${escapeHtml(photoUrl)}" alt="Evidence photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy"></a>` : "—"}</td>
             </tr>`;

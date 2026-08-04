@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS customer_users (
 );
 
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS permissions TEXT NULL;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);

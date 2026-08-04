@@ -16,6 +16,22 @@ function log_customer_activity(array $customer, string $action): void {
     )->execute([uuid(), $customer['id'], $actorName, $action]);
 }
 
+// Valid per-feature access keys an assistant can be limited to. If the
+// request sends 'all' (or omits permissions entirely), the assistant gets
+// full access — represented internally as NULL, not an exhaustive list.
+const CUSTOMER_PERMISSION_KEYS = [
+    'machine-expenses', 'email', 'whatsapp', 'service-request', 'report-problem', 'analysis',
+];
+
+function customer_permissions_from_body(array $body): ?string {
+    $raw = $body['permissions'] ?? 'all';
+    if ($raw === 'all' || $raw === null) return null;
+    if (!is_array($raw)) return null;
+    $clean = array_values(array_intersect(array_map('strval', $raw), CUSTOMER_PERMISSION_KEYS));
+    if (count($clean) === 0 || count($clean) === count(CUSTOMER_PERMISSION_KEYS)) return null;
+    return json_encode($clean);
+}
+
 function display_date(string $isoDate): string {
     $timestamp = strtotime($isoDate);
     return $timestamp !== false ? date('d/m/Y', $timestamp) : $isoDate;
@@ -1226,13 +1242,14 @@ if ($sub === 'activity-logs' && $method === 'GET') {
 if ($sub === 'users' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
-        'SELECT id, name, email, phone, role, is_active, created_at
+        'SELECT id, name, email, phone, role, is_active, permissions, created_at
          FROM customer_users WHERE customer_id = ? ORDER BY created_at DESC'
     );
     $stmt->execute([$customer['id']]);
     $assistants = $stmt->fetchAll();
     foreach ($assistants as &$assistant) {
         $assistant['isActive'] = (bool)$assistant['is_active'];
+        $assistant['permissions'] = $assistant['permissions'] ? json_decode($assistant['permissions'], true) : null;
         unset($assistant['is_active']);
     }
     json_out($assistants);
@@ -1246,6 +1263,7 @@ if ($sub === 'users' && $method === 'POST') {
     $password = (string)($b['password'] ?? '');
     $phone = trim((string)($b['phone'] ?? ''));
     $role = strtolower(trim((string)($b['role'] ?? 'operator')));
+    $permissionsJson = customer_permissions_from_body($b);
 
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
@@ -1265,8 +1283,8 @@ if ($sub === 'users' && $method === 'POST') {
     $recoveryCode = account_recovery_code();
     db()->prepare(
         'INSERT INTO customer_users
-         (id, customer_id, name, email, password, recovery_code_hash, phone, role, is_active, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,NOW())'
+         (id, customer_id, name, email, password, recovery_code_hash, phone, role, is_active, permissions, created_at)
+         VALUES (?,?,?,?,?,?,?,?,?,?,NOW())'
     )->execute([
         $newId,
         $customer['id'],
@@ -1277,6 +1295,7 @@ if ($sub === 'users' && $method === 'POST') {
         $phone !== '' ? $phone : null,
         $role,
         1,
+        $permissionsJson,
     ]);
     log_customer_activity($customer, "Added \"$name\" as $role.");
     json_out([
@@ -1304,6 +1323,9 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
     $role = strtolower(trim((string)($b['role'] ?? $existing['role'])));
     $isActive = array_key_exists('isActive', $b) ? ((bool)$b['isActive'] ? 1 : 0) : (int)$existing['is_active'];
     $newPassword = (string)($b['password'] ?? '');
+    $permissionsJson = array_key_exists('permissions', $b)
+        ? customer_permissions_from_body($b)
+        : $existing['permissions'];
 
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
@@ -1325,7 +1347,7 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
         $recoveryCode = account_recovery_code();
         db()->prepare(
             'UPDATE customer_users
-             SET name=?, email=?, phone=?, role=?, is_active=?, password=?, recovery_code_hash=?
+             SET name=?, email=?, phone=?, role=?, is_active=?, password=?, recovery_code_hash=?, permissions=?
              WHERE id=? AND customer_id=?'
         )->execute([
             $name,
@@ -1335,13 +1357,14 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
             $isActive,
             password_hash($newPassword, PASSWORD_BCRYPT),
             password_hash($recoveryCode, PASSWORD_BCRYPT),
+            $permissionsJson,
             $sub2,
             $customer['id'],
         ]);
     } else {
         db()->prepare(
             'UPDATE customer_users
-             SET name=?, email=?, phone=?, role=?, is_active=?
+             SET name=?, email=?, phone=?, role=?, is_active=?, permissions=?
              WHERE id=? AND customer_id=?'
         )->execute([
             $name,
@@ -1349,6 +1372,7 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
             $phone !== '' ? $phone : null,
             $role,
             $isActive,
+            $permissionsJson,
             $sub2,
             $customer['id'],
         ]);

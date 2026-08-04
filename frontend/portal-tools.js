@@ -485,22 +485,34 @@
         <div><span>Current Hrs</span><b>${escapeHtml(Math.round(status.totalHours))}</b></div>
         <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
       </div>
-      <a class="belm-service-whatsapp" target="_blank" rel="noopener"
+      <a class="belm-service-whatsapp" data-belm-feature="whatsapp" target="_blank" rel="noopener"
          href="${whatsappShareUrl(`BELM Portal alert: ${machineName} (${serial}) — ${levelLabel}. Current hour meter: ${Math.round(status.totalHours)} hrs, remaining to next service: ${remaining <= 0 ? "overdue" : `${remaining} hrs`}.`)}">
         Send via WhatsApp
       </a>
-      <button type="button" class="belm-email-report-button" data-email-report
+      <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
         data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
         data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
         Management Email
       </button>
       <div class="belm-machine-quick-actions">
-        <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}">Machine Expenses</a>
-        <button type="button" class="belm-open-analysis" data-open-analysis>Analysis</button>
-        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}">Request Service</a>
-        <button type="button" class="belm-report-problem-button" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
+        <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Machine Expenses</a>
+        <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
+        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Request Service</a>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
       </div>`;
     card.appendChild(panel);
+    enforceCustomerFeaturePermissions(panel);
+  }
+
+  function enforceCustomerFeaturePermissions(scope) {
+    const payload = tokenPayload("belm_customer_token");
+    const permissions = payload?.permissions;
+    if (!Array.isArray(permissions)) return; // null/missing = full access
+    scope.querySelectorAll("[data-belm-feature]").forEach((element) => {
+      if (!permissions.includes(element.dataset.belmFeature)) {
+        element.style.display = "none";
+      }
+    });
   }
 
   function dismissedAnnouncementIds() {

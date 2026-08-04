@@ -111,6 +111,17 @@
         <label>Password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">At least 8 characters</small></label>
         <label>Confirm password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
       </div>
+      <div class="field-block">Access to
+        <label class="check-option access-all"><input type="checkbox" id="accessAll" checked> <b>Access All</b></label>
+        <div id="accessOptions" class="access-options">
+          <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Machine Expenses</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="whatsapp"> Send via WhatsApp</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Service Request</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report a Problem</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="analysis"> Analysis</label>
+        </div>
+      </div>
       <div id="formError" class="alert error hidden" role="alert"></div>
       <div class="dialog-actions">
         <button class="secondary" id="cancelButton" type="button">Cancel</button>

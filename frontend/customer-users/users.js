@@ -202,6 +202,25 @@
     }
   }
 
+  function setAccessUI(permissions) {
+    const accessAll = document.getElementById("accessAll");
+    const items = document.querySelectorAll(".access-item");
+    if (!permissions) {
+      accessAll.checked = true;
+      document.getElementById("accessOptions").classList.add("hidden");
+      items.forEach((item) => { item.checked = false; });
+    } else {
+      accessAll.checked = false;
+      document.getElementById("accessOptions").classList.remove("hidden");
+      items.forEach((item) => { item.checked = permissions.includes(item.value); });
+    }
+  }
+
+  function readAccessPayload() {
+    if (document.getElementById("accessAll").checked) return "all";
+    return [...document.querySelectorAll(".access-item:checked")].map((item) => item.value);
+  }
+
   function openCreate() {
     form.reset();
     document.getElementById("userId").value = "";
@@ -211,6 +230,7 @@
     document.getElementById("passwordHint").textContent = "Required · at least 8 characters";
     document.getElementById("statusWrap").classList.add("hidden");
     document.getElementById("formError").className = "alert error hidden";
+    setAccessUI(null);
     dialog.showModal();
   }
 
@@ -230,8 +250,13 @@
     document.getElementById("passwordHint").textContent = "Leave blank to keep the current password";
     document.getElementById("statusWrap").classList.remove("hidden");
     document.getElementById("formError").className = "alert error hidden";
+    setAccessUI(user.permissions || null);
     dialog.showModal();
   }
+
+  document.getElementById("accessAll").addEventListener("change", (event) => {
+    document.getElementById("accessOptions").classList.toggle("hidden", event.target.checked);
+  });
 
   async function saveUser(event) {
     event.preventDefault();
@@ -250,6 +275,7 @@
       phone: document.getElementById("phone").value.trim(),
       role: document.getElementById("role").value,
       password,
+      permissions: readAccessPayload(),
     };
     if (id) payload.isActive = document.getElementById("isActive").checked;
 

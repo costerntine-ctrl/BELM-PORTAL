@@ -294,6 +294,7 @@ if ($action === 'unified-login' && $method === 'POST') {
     $actorType = null;
     $actorId = null;
     $customerRole = null;
+    $permissions = null;
 
     if ($customer && password_verify($password, $customer['password'])) {
         $loggedInAs = $customer['name'];
@@ -323,6 +324,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                 $actorType = 'assistant';
                 $actorId = $subUser['id'];
                 $customerRole = $subUser['role'];
+                $permissions = $subUser['permissions'] ? json_decode($subUser['permissions'], true) : null;
             }
         }
     }
@@ -338,6 +340,7 @@ if ($action === 'unified-login' && $method === 'POST') {
         'actorId' => $actorId,
         'actorName' => $loggedInAs,
         'customerRole' => $customerRole,
+        'permissions' => $permissions,
     ], 30 * 24 * 3600);
 
     json_out([
@@ -437,6 +440,7 @@ if ($action === 'customer-login' && $method === 'POST') {
     $actorType = null;
     $actorId = null;
     $customerRole = null;
+    $permissions = null;
 
     if ($customer && password_verify($password, $customer['password'])) {
         $loggedInAs = $customer['name'];
@@ -457,6 +461,7 @@ if ($action === 'customer-login' && $method === 'POST') {
             $actorType = 'assistant';
             $actorId = $subUser['id'];
             $customerRole = $subUser['role'];
+            $permissions = $subUser['permissions'] ? json_decode($subUser['permissions'], true) : null;
         }
     }
 
@@ -471,6 +476,7 @@ if ($action === 'customer-login' && $method === 'POST') {
         'actorId' => $actorId,
         'actorName' => $loggedInAs,
         'customerRole' => $customerRole,
+        'permissions' => $permissions,
     ], 30 * 24 * 3600);
 
     json_out([

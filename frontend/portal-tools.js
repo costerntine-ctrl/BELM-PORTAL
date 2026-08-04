@@ -507,6 +507,53 @@
     enforceCustomerFeaturePermissions(panel);
   }
 
+  async function enhanceServiceRequestHistory() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    const heading = Array.from(document.querySelectorAll("h2"))
+      .find((h) => (h.textContent || "").trim() === "Your service requests");
+    if (!heading) return;
+    const table = heading.parentElement?.querySelector("table");
+    if (!table || table.dataset.belmHandledBy === "1") return;
+
+    const token = localStorage.getItem("belm_customer_token");
+    let requests;
+    try {
+      const response = await fetch("/api/customer-portal/service-requests", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      requests = await response.json();
+    } catch (_) {
+      return;
+    }
+
+    const headRow = table.querySelector("thead tr");
+    const bodyRows = table.querySelectorAll("tbody tr");
+    if (!headRow || bodyRows.length === 0 || bodyRows.length !== requests.length) return;
+
+    table.dataset.belmHandledBy = "1";
+    const th = document.createElement("th");
+    th.className = "text-left px-5 py-3";
+    th.textContent = "Handled by";
+    headRow.insertBefore(th, headRow.lastElementChild);
+
+    bodyRows.forEach((row, index) => {
+      const request = requests[index];
+      let text = "—";
+      if (request.status === "COMPLETED" && request.completedBy) {
+        text = `Completed by ${request.completedBy.name}`;
+      } else if (request.status === "CANCELLED" && request.cancelledBy) {
+        text = `Cancelled by ${request.cancelledBy.name}`;
+      } else if (request.assignedTo) {
+        text = `Assigned to ${request.assignedTo.name}`;
+      }
+      const td = document.createElement("td");
+      td.className = "px-5 py-3 text-slate-500";
+      td.textContent = text;
+      row.insertBefore(td, row.lastElementChild);
+    });
+  }
+
   function enforceCustomerFeaturePermissions(scope) {
     const payload = tokenPayload("belm_customer_token");
     const permissions = payload?.permissions;
@@ -2583,6 +2630,7 @@
   wireCustomerAnalysisButtons();
   wireEmailReportButtons();
   wireProblemReportButtons();
+  enhanceServiceRequestHistory();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -2618,6 +2666,7 @@
     wireCustomerAnalysisButtons();
   wireEmailReportButtons();
   wireProblemReportButtons();
+  enhanceServiceRequestHistory();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

@@ -3,7 +3,8 @@
 .admin-menu a:hover,.admin-menu a.active { color: #fff; background: var(--green); }
 .customer-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 230px; gap: 10px; margin: 18px 0 14px; }
 .customer-toolbar input,.customer-toolbar select { margin: 0; }
-.customer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 15px; }
+.customer-grid { display: flex; flex-wrap: wrap; gap: 15px; }
+.customer-card { width: 460px; box-sizing: border-box; }
 .customer-grid > .empty,.customer-grid > .loading { grid-column: 1 / -1; }
 .customer-card { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); box-shadow: var(--shadow); }
 .customer-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: var(--green); }
@@ -38,7 +39,7 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .customer-message-row small { color: var(--muted); font-size: 10.5px; }
 .view-machines-button:hover { background: color-mix(in srgb, var(--green) 16%, var(--paper)); }
 .machine-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-.machine-card { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 14px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
+.machine-card { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; min-height: 280px; padding: 26px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
 .machine-card.GREEN,.machine-card.OK { border-color: #22c55e; background: linear-gradient(160deg, #eafaf1, var(--paper) 70%); }
 .machine-card.YELLOW,.machine-card.ATTENTION { border-color: #eab308; background: linear-gradient(160deg, #fffbea, var(--paper) 70%); }
 .machine-card.RED,.machine-card.CRITICAL { border-color: #ef4444; background: linear-gradient(160deg, #fdecec, var(--paper) 70%); }
@@ -60,7 +61,7 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .customer-card-actions button.delete { color: var(--red); }
 .credentials { display: grid; gap: 12px; }
 .credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-@media (max-width: 880px) { .customer-grid { grid-template-columns: 1fr; } }
+@media (max-width: 880px) { .customer-card { width: 100%; } }
 @media (max-width: 620px) { .customer-toolbar,.customer-info-grid { grid-template-columns: 1fr; } .machine-list { grid-template-columns: 1fr; } }
 
 .reports-list { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }

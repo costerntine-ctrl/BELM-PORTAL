@@ -1399,11 +1399,13 @@ if ($sub === 'users' && $sub2 && $method === 'DELETE') {
 if ($sub === 'service-requests' && $method === 'GET') {
     $stmt = db()->prepare(
         'SELECT sr.*, m.model AS machine_model, m.machine_type,
-                cu.name AS completed_by_name, xu.name AS cancelled_by_name
+                cu.name AS completed_by_name, xu.name AS cancelled_by_name,
+                au.name AS assigned_to_name
          FROM service_requests sr
          LEFT JOIN machines m ON m.id = sr.machine_id
          LEFT JOIN users cu ON cu.id = sr.completed_by_id
          LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
+         LEFT JOIN users au ON au.id = sr.assigned_to_id
          WHERE sr.customer_id = ?
          ORDER BY sr.created_at DESC'
     );
@@ -1425,8 +1427,9 @@ if ($sub === 'service-requests' && $method === 'GET') {
         $request['completedAt'] = $request['completed_at'];
         $request['cancelledBy'] = $request['cancelled_by_id'] ? ['name' => $request['cancelled_by_name']] : null;
         $request['cancelledAt'] = $request['cancelled_at'];
+        $request['assignedTo'] = $request['assigned_to_id'] ? ['name' => $request['assigned_to_name']] : null;
         $request['serviceParts'] = customer_request_service_parts($request['id']);
-        unset($request['machine_model'], $request['machine_type'], $request['completed_by_name'], $request['cancelled_by_name']);
+        unset($request['machine_model'], $request['machine_type'], $request['completed_by_name'], $request['cancelled_by_name'], $request['assigned_to_name']);
     }
     unset($request);
     json_out($requests);

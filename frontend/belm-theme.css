@@ -2016,3 +2016,16 @@ span.rounded-full.px-2\.5.py-1.text-xs.font-medium {
   font-size: 13px !important;
   padding: 5px 10px !important;
 }
+
+/* Any "Download report" link, wherever it's rendered (including inside the
+   compiled React app itself), must always have visible, readable text —
+   never rely on inherited color which can end up white-on-white. */
+a[href^="/api/customer-portal/reports/"][href$="/download"] {
+  color: #0d6b38 !important;
+  background: #f4fbf7 !important;
+  border: 1px solid #1f9d55 !important;
+  border-radius: 8px !important;
+  padding: 8px 14px !important;
+  font-weight: 800 !important;
+  text-decoration: none !important;
+}

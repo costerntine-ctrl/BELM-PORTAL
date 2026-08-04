@@ -144,14 +144,30 @@
     receiptPhotoData = "";
     receiptPhotoName = "";
     document.getElementById("receiptPhoto").value = "";
-    document.getElementById("receiptPreview").removeAttribute("src");
+    const preview = document.getElementById("receiptPreview");
+    preview.removeAttribute("src");
+    preview.style.display = "";
+    const pdfBadge = document.getElementById("receiptPdfBadge");
+    if (pdfBadge) pdfBadge.style.display = "none";
     document.getElementById("receiptPreviewWrap").classList.add("hidden");
   }
 
   function compressReceipt(file) {
+    if (file.type === "application/pdf") {
+      return new Promise((resolve, reject) => {
+        if (file.size > 4 * 1024 * 1024) {
+          reject(new Error("Receipt PDF is too large (max 4MB)."));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error("Could not read the receipt PDF."));
+        reader.onload = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+    }
     return new Promise((resolve, reject) => {
       if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
-        reject(new Error("Receipt must be a JPG, PNG or WebP image."));
+        reject(new Error("Receipt must be a JPG, PNG, WebP image, or a PDF."));
         return;
       }
       const reader = new FileReader();
@@ -386,10 +402,27 @@
       return;
     }
     try {
-      showAlert("Preparing and compressing receipt photo…");
+      showAlert(file.type === "application/pdf" ? "Preparing receipt PDF…" : "Preparing and compressing receipt photo…");
       receiptPhotoData = await compressReceipt(file);
-      receiptPhotoName = file.name || "receipt-photo.jpg";
-      document.getElementById("receiptPreview").src = receiptPhotoData;
+      receiptPhotoName = file.name || (file.type === "application/pdf" ? "receipt.pdf" : "receipt-photo.jpg");
+      const preview = document.getElementById("receiptPreview");
+      if (file.type === "application/pdf") {
+        preview.style.display = "none";
+        let pdfBadge = document.getElementById("receiptPdfBadge");
+        if (!pdfBadge) {
+          pdfBadge = document.createElement("div");
+          pdfBadge.id = "receiptPdfBadge";
+          pdfBadge.className = "receipt-pdf-badge";
+          preview.insertAdjacentElement("afterend", pdfBadge);
+        }
+        pdfBadge.textContent = `📄 ${receiptPhotoName}`;
+        pdfBadge.style.display = "block";
+      } else {
+        preview.style.display = "";
+        preview.src = receiptPhotoData;
+        const pdfBadge = document.getElementById("receiptPdfBadge");
+        if (pdfBadge) pdfBadge.style.display = "none";
+      }
       document.getElementById("receiptPreviewWrap").classList.remove("hidden");
       clearAlert();
     } catch (error) {
@@ -417,6 +450,45 @@
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("csvButton").addEventListener("click", () => download("csv"));
   document.getElementById("pdfButton").addEventListener("click", () => download("pdf"));
+  document.getElementById("receiptsButton").addEventListener("click", downloadAllReceipts);
+
+  async function downloadAllReceipts() {
+    const button = document.getElementById("receiptsButton");
+    button.disabled = true;
+    button.textContent = "Finding receipts…";
+    try {
+      const list = await api(`/machine-expenses/${encodeURIComponent(machineId)}/receipts-list${currentRangeQuery()}`);
+      if (!list.length) {
+        showAlert("No receipts found for the selected range.", true);
+        return;
+      }
+      button.textContent = `Downloading 0/${list.length}…`;
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        const response = await fetch(`/api${item.downloadUrl}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) continue;
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = item.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        button.textContent = `Downloading ${i + 1}/${list.length}…`;
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+      showAlert(`Downloaded ${list.length} receipt(s).`, false);
+    } catch (error) {
+      showAlert(error.message || "Could not download receipts.", true);
+    } finally {
+      button.disabled = false;
+      button.textContent = "Download Receipts";
+    }
+  }
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
     window.location.href = "/portal/login";

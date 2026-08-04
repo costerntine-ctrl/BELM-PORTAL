@@ -28,6 +28,7 @@
       <div class="download-actions">
         <button class="secondary" id="csvButton" type="button">Download CSV</button>
         <button class="secondary" id="pdfButton" type="button">Download PDF</button>
+        <button class="secondary" id="receiptsButton" type="button">Download Receipts</button>
         <a class="secondary" id="pettyCashLink" href="/customer-petty-cash/">Petty Cash</a>
         <a class="secondary" id="serviceRequestLink" href="/customer-service-request/">Service Request</a>
       </div>
@@ -77,8 +78,8 @@
             </label>
             <label>Unit cost (TZS)<input id="unitPrice" type="number" min="0" step="0.01" value="0" required></label>
             <label class="receipt-field">Receipt photo
-              <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
-              <small>Camera or gallery · JPG/PNG/WebP</small>
+              <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment">
+              <small>Camera, gallery, or PDF scan · JPG/PNG/WebP/PDF</small>
             </label>
             <div id="receiptPreviewWrap" class="receipt-preview hidden">
               <img id="receiptPreview" alt="Receipt preview">

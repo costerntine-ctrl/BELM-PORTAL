@@ -303,8 +303,10 @@ function require_customer_owner(array $customer): void {
 function require_customer_owner_or_admin(array $customer): void {
     $isOwner = ($customer['actorType'] ?? '') === 'owner';
     $isAdminAssistant = ($customer['actorType'] ?? '') === 'assistant' && ($customer['customerRole'] ?? '') === 'admin';
-    if (!$isOwner && !$isAdminAssistant) {
-        json_error('Only the main customer account or a Company Admin can manage assistants.', 403);
+    $permissions = $customer['permissions'] ?? null;
+    $hasAssignUsersPermission = is_array($permissions) && in_array('assign-users', $permissions, true);
+    if (!$isOwner && !$isAdminAssistant && !$hasAssignUsersPermission) {
+        json_error('Only the main customer account, a Company Admin, or someone granted "Assign Users" access can manage assistants.', 403);
     }
 }
 

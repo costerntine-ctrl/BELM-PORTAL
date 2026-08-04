@@ -565,7 +565,8 @@
       });
     }
     const role = payload?.customerRole;
-    if (role !== "owner" && role !== "admin") {
+    const hasAssignUsersPermission = Array.isArray(permissions) && permissions.includes("assign-users");
+    if (role !== "owner" && role !== "admin" && !hasAssignUsersPermission) {
       scope.querySelectorAll("[data-belm-owner-admin-only]").forEach((element) => {
         element.style.display = "none";
       });

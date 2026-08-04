@@ -20,7 +20,7 @@ function log_customer_activity(array $customer, string $action): void {
 // request sends 'all' (or omits permissions entirely), the assistant gets
 // full access — represented internally as NULL, not an exhaustive list.
 const CUSTOMER_PERMISSION_KEYS = [
-    'machine-expenses', 'email', 'whatsapp', 'service-request', 'report-problem', 'analysis',
+    'machine-expenses', 'email', 'whatsapp', 'service-request', 'report-problem', 'analysis', 'assign-users',
 ];
 
 function customer_permissions_from_body(array $body): ?string {
@@ -30,6 +30,46 @@ function customer_permissions_from_body(array $body): ?string {
     $clean = array_values(array_intersect(array_map('strval', $raw), CUSTOMER_PERMISSION_KEYS));
     if (count($clean) === 0 || count($clean) === count(CUSTOMER_PERMISSION_KEYS)) return null;
     return json_encode($clean);
+}
+
+// Validates a base64 receipt upload (image OR pdf). Returns [data, mime, name]
+// or calls json_error() and exits if the upload is invalid.
+function validate_receipt_upload(string $receiptPhoto, string $receiptName): array {
+    if (!preg_match('#^data:(image/(?:jpeg|png|webp)|application/pdf);base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {
+        json_error('Receipt must be a JPG, PNG, WebP image, or a PDF.');
+    }
+    $declaredType = $matches[1];
+    $decodedReceipt = base64_decode($matches[2], true);
+    if ($decodedReceipt === false) json_error('Receipt could not be read.');
+
+    if ($declaredType === 'application/pdf') {
+        if (strlen($decodedReceipt) > 4 * 1024 * 1024) {
+            json_error('Receipt PDF must be 4 MB or smaller.');
+        }
+        if (substr($decodedReceipt, 0, 4) !== '%PDF') {
+            json_error('Receipt is not a valid PDF file.');
+        }
+        $cleanName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt');
+        if (!str_ends_with(strtolower($cleanName), '.pdf')) $cleanName .= '.pdf';
+        return [
+            base64_encode($decodedReceipt),
+            'application/pdf',
+            $cleanName,
+        ];
+    }
+
+    if (strlen($decodedReceipt) > 2 * 1024 * 1024) {
+        json_error('Receipt photo must be 2 MB or smaller after compression.');
+    }
+    $imageInfo = @getimagesizefromstring($decodedReceipt);
+    if ($imageInfo === false || !in_array($imageInfo['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)) {
+        json_error('Receipt photo is not a valid image.');
+    }
+    return [
+        base64_encode($decodedReceipt),
+        $imageInfo['mime'],
+        preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt-photo'),
+    ];
 }
 
 function display_date(string $isoDate): string {
@@ -621,24 +661,7 @@ if ($sub === 'machine-expenses' && $sub2) {
         if ($unitPrice < 0) json_error('Unit cost cannot be negative.');
         if ($unit === '' || strlen($unit) > 20) json_error('Enter a valid unit.');
         if ($receiptPhoto !== '') {
-            if (!preg_match('#^data:(image/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {
-                json_error('Receipt must be a JPG, PNG or WebP image.');
-            }
-            $decodedReceipt = base64_decode($matches[2], true);
-            if ($decodedReceipt === false) json_error('Receipt photo could not be read.');
-            if (strlen($decodedReceipt) > 2 * 1024 * 1024) {
-                json_error('Receipt photo must be 2 MB or smaller after compression.');
-            }
-            $imageInfo = @getimagesizefromstring($decodedReceipt);
-            if (
-                $imageInfo === false
-                || !in_array($imageInfo['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)
-            ) {
-                json_error('Receipt photo is not a valid image.');
-            }
-            $receiptData = base64_encode($decodedReceipt);
-            $receiptMime = $imageInfo['mime'];
-            $receiptName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt-photo');
+            [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
         }
 
         $cost = round($quantity * $unitPrice, 2);
@@ -673,6 +696,40 @@ if ($sub === 'machine-expenses' && $sub2) {
         ], 201);
     }
 
+    if ($method === 'GET' && $sub3 === 'receipts-list') {
+        $dateFilter = trim((string)($_GET['date'] ?? ''));
+        $monthFilter = trim((string)($_GET['month'] ?? ''));
+        $sql = "SELECT id, receipt_photo_name, receipt_photo_mime, date, description
+                FROM usage_logs
+                WHERE customer_id = ? AND machine_id = ? AND category = 'SPARE_PART'
+                  AND receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''";
+        $params = [$customer['id'], $machineId];
+        if ($dateFilter !== '') {
+            $sql .= ' AND date = ?';
+            $params[] = $dateFilter;
+        } elseif ($monthFilter !== '') {
+            $sql .= " AND to_char(date, 'YYYY-MM') = ?";
+            $params[] = $monthFilter;
+        }
+        $sql .= ' ORDER BY date ASC';
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        $result = array_map(function ($row) use ($machineId) {
+            $ext = $row['receipt_photo_mime'] === 'application/pdf' ? '.pdf' : '';
+            $name = $row['receipt_photo_name'] ?: ('receipt-' . $row['id']);
+            if ($ext && !str_ends_with(strtolower($name), '.pdf')) $name .= $ext;
+            return [
+                'id' => $row['id'],
+                'name' => $name,
+                'date' => $row['date'],
+                'description' => $row['description'],
+                'downloadUrl' => "/api/customer-portal/machine-expenses/{$machineId}/receipt?expenseId={$row['id']}",
+            ];
+        }, $rows);
+        json_out($result);
+    }
+
     if ($method === 'GET' && $sub3 === 'receipt') {
         $expenseId = trim((string)($_GET['expenseId'] ?? ''));
         if ($expenseId === '') json_error('Expense receipt was not specified.');
@@ -691,7 +748,7 @@ if ($sub === 'machine-expenses' && $sub2) {
         if ($binary === false) json_error('Receipt photo is damaged.', 500);
         $mime = in_array(
             $receipt['receipt_photo_mime'],
-            ['image/jpeg', 'image/png', 'image/webp'],
+            ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
             true
         ) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
         header('Content-Type: ' . $mime);
@@ -837,24 +894,7 @@ if ($sub === 'petty-cash' && $sub2) {
         if ($description === '') json_error('Description is required.');
         if ($amount <= 0) json_error('Amount must be greater than zero.');
         if ($receiptPhoto !== '') {
-            if (!preg_match('#^data:(image/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {
-                json_error('Receipt must be a JPG, PNG or WebP image.');
-            }
-            $decodedReceipt = base64_decode($matches[2], true);
-            if ($decodedReceipt === false) json_error('Receipt photo could not be read.');
-            if (strlen($decodedReceipt) > 2 * 1024 * 1024) {
-                json_error('Receipt photo must be 2 MB or smaller after compression.');
-            }
-            $imageInfo = @getimagesizefromstring($decodedReceipt);
-            if (
-                $imageInfo === false
-                || !in_array($imageInfo['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)
-            ) {
-                json_error('Receipt photo is not a valid image.');
-            }
-            $receiptData = base64_encode($decodedReceipt);
-            $receiptMime = $imageInfo['mime'];
-            $receiptName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt-photo');
+            [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
         }
 
         $entryId = uuid();
@@ -901,7 +941,7 @@ if ($sub === 'petty-cash' && $sub2) {
         if ($binary === false) json_error('Receipt photo is damaged.', 500);
         $mime = in_array(
             $receipt['receipt_photo_mime'],
-            ['image/jpeg', 'image/png', 'image/webp'],
+            ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
             true
         ) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
         header('Content-Type: ' . $mime);

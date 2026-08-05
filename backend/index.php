@@ -141,6 +141,9 @@ switch ($resource) {
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'petty-cash-topup') {
             dispatch('customers.php', ['action' => 'petty-cash-topup', 'machineId' => $segments[2]]);
         }
+        if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'settle-petty-cash-debt') {
+            dispatch('customers.php', ['action' => 'settle-petty-cash-debt', 'machineId' => $segments[2]]);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2])) {
             dispatch('customers.php', ['action' => $method === 'PUT' ? 'edit-machine' : 'delete-machine', 'machineId' => $segments[2]]);
         }

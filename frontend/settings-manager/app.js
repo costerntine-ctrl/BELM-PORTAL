@@ -265,6 +265,44 @@
     } catch (_) {}
   });
 
+  document.getElementById("editPinForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.getElementById("newEditPin");
+    const button = event.target.querySelector("button[type=submit]");
+    button.disabled = true;
+    try {
+      const result = await api("/settings?action=change-pin", {
+        method: "PUT",
+        body: JSON.stringify({ pinKey: "adminEditPin", newPin: input.value }),
+      });
+      showAlert(result.message || "Edit PIN updated successfully.", false);
+      input.value = "";
+    } catch (error) {
+      showAlert(error.message || "Could not update the Edit PIN.", true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById("deletePinForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = document.getElementById("newDeletePin");
+    const button = event.target.querySelector("button[type=submit]");
+    button.disabled = true;
+    try {
+      const result = await api("/settings?action=change-pin", {
+        method: "PUT",
+        body: JSON.stringify({ pinKey: "adminDeletePin", newPin: input.value }),
+      });
+      showAlert(result.message || "Delete/Clear PIN updated successfully.", false);
+      input.value = "";
+    } catch (error) {
+      showAlert(error.message || "Could not update the Delete/Clear PIN.", true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
   document.getElementById("resetDbForm").addEventListener("submit", async (event) => {
     event.preventDefault();
     const category = document.getElementById("resetDbCategory");

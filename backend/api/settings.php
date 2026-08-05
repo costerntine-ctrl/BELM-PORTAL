@@ -20,18 +20,14 @@ if ($action === 'change-pin' && $method === 'PUT') {
     $pinUser = require_auth();
     require_super_admin($pinUser);
     $b = body();
-    $stmt = db()->prepare("SELECT \"value\" FROM system_settings WHERE \"key\" = 'adminDeletePin'");
-    $stmt->execute();
-    $stored = $stmt->fetchColumn();
-    $stored = $stored ? json_decode($stored, true) : '1234';
-    if ($b['currentPin'] !== $stored) json_error('Current PIN is incorrect.');
+    $pinKey = in_array($b['pinKey'] ?? '', ['adminEditPin', 'adminDeletePin'], true) ? $b['pinKey'] : 'adminDeletePin';
     if (!preg_match('/^\d{4}$/', $b['newPin'] ?? '')) json_error('New PIN must be exactly 4 digits.');
-    db()->prepare("INSERT INTO system_settings (id, \"key\", \"value\", updated_at)
-                   VALUES (?,'adminDeletePin',?,NOW())
-                   ON CONFLICT (\"key\") DO UPDATE
-                   SET \"value\" = EXCLUDED.\"value\", updated_at = NOW()")
-        ->execute([uuid(), json_encode($b['newPin'])]);
-    json_out(['ok' => true]);
+    db()->prepare('INSERT INTO system_settings (id, "key", "value", updated_at)
+                   VALUES (?,?,?,NOW())
+                   ON CONFLICT ("key") DO UPDATE
+                   SET "value" = EXCLUDED."value", updated_at = NOW()')
+        ->execute([uuid(), $pinKey, json_encode($b['newPin'])]);
+    json_out(['ok' => true, 'message' => 'PIN updated successfully.']);
 }
 
 $user = require_auth();

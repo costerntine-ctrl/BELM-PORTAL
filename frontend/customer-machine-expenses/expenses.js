@@ -22,6 +22,27 @@
       document.getElementById("depositPettyCashError").classList.add("hidden");
       document.getElementById("depositPettyCashDialog").showModal();
     });
+    document.getElementById("settleDebtButton").addEventListener("click", async () => {
+      if (!confirm("Deposit exactly enough to bring this machine's petty cash balance to zero? Spending history stays untouched.")) return;
+      const button = document.getElementById("settleDebtButton");
+      button.disabled = true;
+      button.textContent = "Settling…";
+      try {
+        const response = await fetch(`/api/customers/machines/${encodeURIComponent(machineId)}/settle-petty-cash-debt`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}` },
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not settle the debt.");
+        showAlert(result.message || "Debt settled successfully.");
+        loadSidebarAnalysis();
+      } catch (error) {
+        showAlert(error.message, true);
+      } finally {
+        button.disabled = false;
+        button.textContent = "Settle Debt (bring balance to 0)";
+      }
+    });
     document.getElementById("clearPettyCashButton").addEventListener("click", () => {
       document.getElementById("clearPettyCashForm").reset();
       document.getElementById("clearPettyCashError").classList.add("hidden");

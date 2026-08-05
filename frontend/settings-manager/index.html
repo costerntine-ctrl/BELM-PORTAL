@@ -35,6 +35,18 @@
       </article>
 
       <article class="panel">
+        <div class="section-head"><div><h2>Security PINs</h2><p>Change the PIN required before confirming edits, or before deleting/clearing records. If you've forgotten the current PIN, just set a new one below — your own login already confirms you're a Super Admin.</p></div></div>
+        <form id="editPinForm" class="settings-form">
+          <label>New Edit PIN (4 digits)<input id="newEditPin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 2026"></label>
+          <button type="submit" class="primary">Update Edit PIN</button>
+        </form>
+        <form id="deletePinForm" class="settings-form" style="margin-top:14px;">
+          <label>New Delete/Clear PIN (4 digits)<input id="newDeletePin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 1234"></label>
+          <button type="submit" class="primary">Update Delete/Clear PIN</button>
+        </form>
+      </article>
+
+      <article class="panel">
         <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Only for use while still testing/building the portal. Choose "Everything" to wipe the whole database, or pick one category to clear just that area — the rest stays untouched. This cannot be undone — download a backup first.</p></div></div>
         <form id="resetDbForm" class="settings-form">
           <label>Category to reset

@@ -330,6 +330,46 @@ if ($method === 'DELETE' && $action === 'delete-machine') {
 }
 
 // ---- Clear Petty Cash Deposits for ONE machine (keeps spending history) ---
+// ---- Settle Petty Cash Debt (top up exactly enough to zero the balance) ---
+if ($method === 'POST' && $action === 'settle-petty-cash-debt') {
+    require_page_access($user, 'customers');
+    $machineId = trim((string)($_GET['machineId'] ?? ''));
+
+    $stmt = db()->prepare('SELECT model, customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found.', 404);
+
+    $toppedUpStmt = db()->prepare('SELECT COALESCE(SUM(amount), 0) FROM petty_cash_topups WHERE machine_id = ?');
+    $toppedUpStmt->execute([$machineId]);
+    $totalToppedUp = (float)$toppedUpStmt->fetchColumn();
+
+    $usedStmt = db()->prepare("SELECT COALESCE(SUM(cost), 0) FROM usage_logs WHERE machine_id = ? AND category = 'PETTY_CASH'");
+    $usedStmt->execute([$machineId]);
+    $totalUsed = (float)$usedStmt->fetchColumn();
+
+    $balance = $totalToppedUp - $totalUsed;
+    if ($balance >= 0) {
+        json_out(['ok' => true, 'settledAmount' => 0, 'message' => 'There is no petty cash debt to settle for this machine.']);
+    }
+
+    $settleAmount = abs($balance);
+    $newId = uuid();
+    db()->prepare(
+        'INSERT INTO petty_cash_topups (id, machine_id, customer_id, amount, note, added_by, created_at)
+         VALUES (?,?,?,?,?,?,NOW())'
+    )->execute([
+        $newId, $machineId, $machine['customer_id'] ?? null, $settleAmount,
+        'Debt settlement — brings balance to TZS 0 (spending history kept)', $user['id'],
+    ]);
+
+    json_out([
+        'ok' => true,
+        'settledAmount' => $settleAmount,
+        'message' => "Debt settled — TZS " . number_format($settleAmount, 2) . " deposited to bring {$machine['model']}'s balance to zero.",
+    ]);
+}
+
 if ($method === 'DELETE' && $action === 'petty-cash-topup') {
     require_page_access($user, 'customers');
     $machineId = trim((string)($_GET['machineId'] ?? ''));

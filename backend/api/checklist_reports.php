@@ -329,13 +329,17 @@ if ($method === 'POST' && $action === 'submit') {
     }
 
     if ($isServiceDay) {
-        log_activity(
+        db()->prepare(
+            'INSERT INTO activity_logs (id, user_id, action, entity, entity_id, metadata, created_at)
+             VALUES (?,?,?,?,?,?,NOW())'
+        )->execute([
+            uuid(),
             $user['id'],
             'service-completed',
             'machine',
             $b['machineId'],
-            ['serviceType' => $serviceIntervals[$serviceType]['label'], 'serviceDate' => $serviceDate]
-        );
+            json_encode(['serviceType' => $serviceIntervals[$serviceType]['label'], 'serviceDate' => $serviceDate]),
+        ]);
     }
 
     $reportStmt = db()->prepare(

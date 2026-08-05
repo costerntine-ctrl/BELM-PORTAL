@@ -95,3 +95,6 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .customer-feed-row p { margin: 6px 0 4px; color: #33475a; font-size: 13px; line-height: 1.5; }
 .customer-feed-row small { color: var(--muted); font-size: 10.5px; }
 .customer-feed-empty { margin: 0; padding: 10px; color: var(--muted); font-size: 12px; text-align: center; }
+.badge-resolve { border: 0; cursor: pointer; }
+.badge-resolve:hover { filter: brightness(1.1); }
+.badge-resolve:disabled { opacity: .5; cursor: wait; }

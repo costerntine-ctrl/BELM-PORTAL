@@ -204,10 +204,10 @@
         const items = await api(`/service-requests?action=customer-inbox&customerId=${encodeURIComponent(customer.id)}`);
         body.innerHTML = items.length
           ? items.slice(0, 3).map((item) => `
-              <div class="customer-feed-row">
+              <div class="customer-feed-row" data-message-type="${escapeHtml(item.type)}" data-message-id="${escapeHtml(item.id)}">
                 <div class="customer-feed-row-head">
                   <strong>${escapeHtml(item.title)}</strong>
-                  <span class="badge">${escapeHtml(item.status)}</span>
+                  <button type="button" class="badge badge-resolve" data-resolve-message>${escapeHtml(item.status)}</button>
                 </div>
                 <p>${escapeHtml(item.detail || "—")}</p>
                 <small>${formatDateTime(item.createdAt)}</small>
@@ -216,6 +216,17 @@
       } catch (_) {
         body.innerHTML = '<p class="customer-feed-empty">Could not load updates.</p>';
       }
+    }
+  }
+
+  async function resolveCustomerMessage(type, id) {
+    if (type === "operator-report") {
+      await api(`/service-requests?action=operator-reports&id=${encodeURIComponent(id)}`, { method: "PUT" });
+    } else {
+      await api(`/service-requests/${encodeURIComponent(id)}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
     }
   }
 
@@ -228,10 +239,10 @@
       const items = await api(`/service-requests?action=customer-inbox&customerId=${encodeURIComponent(customerId)}`);
       body.innerHTML = items.length
         ? `<div class="customer-messages-list">${items.map((item) => `
-            <article class="customer-message-row">
+            <article class="customer-message-row" data-message-type="${escapeHtml(item.type)}" data-message-id="${escapeHtml(item.id)}">
               <div class="customer-message-head">
                 <strong>${escapeHtml(item.title)}</strong>
-                <span class="badge">${escapeHtml(item.status)}</span>
+                <button type="button" class="badge badge-resolve" data-resolve-message>${escapeHtml(item.status)}</button>
               </div>
               <p>${escapeHtml(item.detail || "—")}</p>
               <small>${formatDateTime(item.createdAt)}</small>
@@ -241,6 +252,22 @@
       body.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load customer messages.")}</p>`;
     }
   }
+
+  document.getElementById("customerMessagesBody").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-resolve-message]");
+    if (!button) return;
+    const row = button.closest("[data-message-id]");
+    button.disabled = true;
+    try {
+      await resolveCustomerMessage(row.dataset.messageType, row.dataset.messageId);
+      row.style.transition = "opacity .2s";
+      row.style.opacity = "0";
+      setTimeout(() => row.remove(), 200);
+    } catch (error) {
+      button.disabled = false;
+      showAlert(error.message || "Could not resolve this message.", true);
+    }
+  });
 
   function openMachineList(customer) {
     if (!customer) return;
@@ -617,7 +644,22 @@
   document.getElementById("copyCredentialPasswordButton").addEventListener("click", () => {
     copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
   });
-  document.getElementById("customerGrid").addEventListener("click", (event) => {
+  document.getElementById("customerGrid").addEventListener("click", async (event) => {
+    const resolveMessage = event.target.closest("[data-resolve-message]");
+    if (resolveMessage) {
+      const row = resolveMessage.closest("[data-message-id]");
+      resolveMessage.disabled = true;
+      try {
+        await resolveCustomerMessage(row.dataset.messageType, row.dataset.messageId);
+        row.style.transition = "opacity .2s";
+        row.style.opacity = "0";
+        setTimeout(() => row.remove(), 200);
+      } catch (error) {
+        resolveMessage.disabled = false;
+        showAlert(error.message || "Could not resolve this message.", true);
+      }
+      return;
+    }
     const viewMachines = event.target.closest("[data-view-machines]");
     const viewMessages = event.target.closest("[data-view-messages]");
     const editCustomer = event.target.closest("[data-edit-customer]");

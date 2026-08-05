@@ -135,8 +135,18 @@ dialog::backdrop { background: rgba(12, 18, 31, .70); backdrop-filter: blur(3px)
 .dialog-card { max-height: 92vh; padding: 23px; overflow-y: auto; }
 .dialog-head { display: flex; align-items: start; justify-content: space-between; gap: 15px; margin-bottom: 18px; }
 .dialog-head-actions { display: flex; align-items: center; gap: 12px; }
-.dialog-head-actions a { padding: 6px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--green2); background: #f4fbf7; font-size: 11px; font-weight: 800; text-decoration: none; white-space: nowrap; }
-.dialog-head-actions a:hover { background: #e8f7ee; }
+.dialog-head-actions a {
+  padding: 6px 12px;
+  border: 1px solid #1f9d55 !important;
+  border-radius: 8px;
+  color: #0d6b38 !important;
+  background: #f4fbf7 !important;
+  font-size: 11px;
+  font-weight: 800;
+  text-decoration: none !important;
+  white-space: nowrap;
+}
+.dialog-head-actions a:hover { background: #e8f7ee !important; }
 .dialog-head h2 { margin: 4px 0 0; font: 750 23px "Space Grotesk", sans-serif; }
 .icon-close { padding: 0; color: var(--muted); border: 0; background: transparent; font-size: 28px; line-height: 1; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

@@ -1,15 +1,45 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 
 $user = require_auth();
 require_page_access($user, 'billing');
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
+$action = $_GET['action'] ?? '';
 
 function compute_totals(array $items, float $discount, string $vatMode): array {
     $subtotal = array_sum(array_map(fn($i) => $i['qty'] * $i['unit_price'], $items));
     $vat = $vatMode === 'VAT' ? ($subtotal - $discount) * 0.18 : 0;
     return ['subtotal' => $subtotal, 'discount' => $discount, 'vat' => $vat, 'grandTotal' => $subtotal - $discount + $vat];
+}
+
+if ($method === 'GET' && $action === 'export') {
+    $stmt = db()->query(
+        'SELECT p.invoice_no, p.date, p.discount, p.vat_mode, c.name AS customer_name, p.id
+         FROM proforma_invoices p JOIN customers c ON c.id = p.customer_id
+         WHERE p.deleted_at IS NULL ORDER BY p.date DESC'
+    );
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $itemsStmt = db()->prepare('SELECT qty, unit_price FROM proforma_invoice_items WHERE proforma_id = ?');
+        $itemsStmt->execute([$row['id']]);
+        $items = $itemsStmt->fetchAll();
+        $totals = compute_totals($items, (float)$row['discount'], (string)$row['vat_mode']);
+        $rows[] = [
+            $row['invoice_no'],
+            $row['customer_name'],
+            display_date_billing((string)$row['date']),
+            'Total: TZS ' . number_format($totals['grandTotal'], 2),
+            (string)($row['vat_mode'] ?? '—'),
+        ];
+    }
+    output_table_pdf(
+        'BELM-proforma-' . date('Ymd-His') . '.pdf',
+        'BELM General Tech Service Limited — Proforma Invoices Report',
+        ['Generated: ' . date('d/m/Y H:i'), 'Total records: ' . count($rows)],
+        $rows
+    );
 }
 
 if ($method === 'GET') {

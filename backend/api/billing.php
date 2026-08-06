@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 
 $user = require_auth();
 require_page_access($user, 'billing');
@@ -7,6 +8,63 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 $paymentId = $_GET['paymentId'] ?? null;
+
+if ($method === 'GET' && $action === 'export-invoices') {
+    $stmt = db()->query(
+        'SELECT i.invoice_no, i.total, i.status, i.due_date, c.name AS customer_name,
+                COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.invoice_id = i.id), 0) AS paid
+         FROM invoices i JOIN customers c ON c.id = i.customer_id
+         WHERE i.deleted_at IS NULL ORDER BY i.created_at DESC'
+    );
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $balance = (float)$row['total'] - (float)$row['paid'];
+        $rows[] = [
+            $row['invoice_no'],
+            $row['customer_name'],
+            'Total: TZS ' . number_format((float)$row['total'], 2),
+            'Paid: TZS ' . number_format((float)$row['paid'], 2),
+            'Balance: TZS ' . number_format($balance, 2),
+            'Due: ' . display_date_billing((string)$row['due_date']),
+            strtoupper((string)$row['status']),
+        ];
+    }
+    output_table_pdf(
+        'BELM-invoices-' . date('Ymd-His') . '.pdf',
+        'BELM General Tech Service Limited — Invoices Report',
+        ['Generated: ' . date('d/m/Y H:i'), 'Total records: ' . count($rows)],
+        $rows
+    );
+}
+
+if ($method === 'GET' && $action === 'export-payments') {
+    $stmt = db()->query(
+        "SELECT p.paid_at, p.amount, p.method, i.invoice_no, c.name AS customer_name,
+                b.bank_name, b.account_name
+         FROM payments p
+         JOIN invoices i ON i.id = p.invoice_id
+         JOIN customers c ON c.id = i.customer_id
+         LEFT JOIN bank_accounts b ON b.id = p.bank_account_id
+         ORDER BY p.paid_at DESC"
+    );
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $rows[] = [
+            display_date_billing((string)$row['paid_at']),
+            $row['invoice_no'],
+            $row['customer_name'],
+            'TZS ' . number_format((float)$row['amount'], 2),
+            (string)($row['method'] ?? '—'),
+            $row['bank_name'] ? "{$row['bank_name']} ({$row['account_name']})" : '—',
+        ];
+    }
+    output_table_pdf(
+        'BELM-payments-' . date('Ymd-His') . '.pdf',
+        'BELM General Tech Service Limited — Payments Report',
+        ['Generated: ' . date('d/m/Y H:i'), 'Total records: ' . count($rows)],
+        $rows
+    );
+}
 
 function validate_invoice_input(array $payload): array {
     $items = $payload['items'] ?? [];

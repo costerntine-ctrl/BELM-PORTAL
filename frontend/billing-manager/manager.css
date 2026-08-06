@@ -49,6 +49,8 @@ main { width: min(1220px, calc(100% - 44px)); margin: 34px auto 60px; }
 .review-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 19px 20px; border-bottom: 1px solid var(--line); background: #fbfcfd; }
 .review-heading h2 { margin: 3px 0 4px; font: 700 22px "Space Grotesk", sans-serif; }
 .review-heading span { color: var(--muted); font-size: 12px; }
+.export-pdf-button { flex-shrink: 0; padding: 9px 16px; border: 1px solid #1f9d55 !important; border-radius: 8px; color: #0d6b38 !important; background: #f4fbf7 !important; font-size: 11px; font-weight: 800; text-decoration: none !important; white-space: nowrap; }
+.export-pdf-button:hover { background: #e8f7ee !important; }
 .review-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .review-actions button:disabled { cursor: not-allowed; opacity: .5; }
 .empty, .locked, .loading { padding: 44px; text-align: center; color: var(--muted); }

@@ -106,18 +106,18 @@
     document.getElementById("expenseValue").textContent = money(expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0));
   }
 
-  function reviewHeading(title, description) {
-    return `<div class="review-heading"><div><p class="eyebrow">Review</p><h2>${escapeHtml(title)}</h2><span>${escapeHtml(description)}</span></div></div>`;
+  function reviewHeading(title, description, exportUrl) {
+    return `<div class="review-heading"><div><p class="eyebrow">Review</p><h2>${escapeHtml(title)}</h2><span>${escapeHtml(description)}</span></div>${exportUrl ? `<a class="export-pdf-button" href="${exportUrl}" target="_blank" rel="noopener">Export PDF</a>` : ""}</div>`;
   }
 
   function renderInvoices() {
     const panel = document.getElementById("invoicesPanel");
     if (!invoices.length) {
-      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.")}<div class="empty">No invoices yet. Select “New invoice” to create one.</div>`;
+      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="empty">No invoices yet. Select “New invoice” to create one.</div>`;
       return;
     }
     const statuses = ["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
-    panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.")}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
+    panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
       <tr>
         <td><strong>${escapeHtml(invoice.invoiceNo)}</strong><div class="muted">${(invoice.items || []).length} item(s)</div></td>
         <td>${escapeHtml(invoice.customer?.name || "—")}</td>
@@ -139,10 +139,10 @@
       customerName: invoice.customer?.name || "—",
     })));
     if (!payments.length) {
-      panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.")}<div class="empty">No customer payments recorded.</div>`;
+      panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.", `/api/billing?action=export-payments&token=${encodeURIComponent(token)}`)}<div class="empty">No customer payments recorded.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Method</th><th>Bank</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody>${payments.map((payment) => `
+    panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.", `/api/billing?action=export-payments&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Method</th><th>Bank</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody>${payments.map((payment) => `
       <tr>
         <td>${payment.paidAt ? new Date(payment.paidAt).toLocaleString() : "—"}</td>
         <td><strong>${escapeHtml(payment.invoiceNo)}</strong></td>
@@ -158,10 +158,10 @@
   function renderExpenses() {
     const panel = document.getElementById("expensesPanel");
     if (!expenses.length) {
-      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="empty">No company expenses recorded.</div>`;
+      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}<div class="empty">No company expenses recorded.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
+    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
       <tr><td>${formatDate(expense.date)}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions"><button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
@@ -169,10 +169,10 @@
   function renderProformas() {
     const panel = document.getElementById("proformasPanel");
     if (!proformas.length) {
-      panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.")}<div class="empty">No proforma invoices yet.</div>`;
+      panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="empty">No proforma invoices yet.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.")}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
+    panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
       <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><div class="row-actions"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }

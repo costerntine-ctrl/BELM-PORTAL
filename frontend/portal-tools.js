@@ -507,6 +507,18 @@
     enforceCustomerFeaturePermissions(panel);
   }
 
+  function addCustomerNameToMachinesHeading() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    const heading = Array.from(document.querySelectorAll("h1, h2"))
+      .find(element => (element.textContent || "").trim() === "Your machines");
+    if (!heading || heading.dataset.belmNamed === "1") return;
+    const payload = tokenPayload("belm_customer_token");
+    const name = payload?.name;
+    if (!name) return;
+    heading.dataset.belmNamed = "1";
+    heading.textContent = `${name} — Your machines`;
+  }
+
   async function enhanceServiceRequestHistory() {
     if (window.location.pathname !== "/portal/dashboard") return;
     const heading = Array.from(document.querySelectorAll("h2"))
@@ -2632,6 +2644,7 @@
   wireEmailReportButtons();
   wireProblemReportButtons();
   enhanceServiceRequestHistory();
+  addCustomerNameToMachinesHeading();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -2668,6 +2681,7 @@
   wireEmailReportButtons();
   wireProblemReportButtons();
   enhanceServiceRequestHistory();
+  addCustomerNameToMachinesHeading();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

@@ -1,10 +1,38 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 
 $user = require_auth();
 require_page_access($user, 'billing');
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
+$action = $_GET['action'] ?? '';
+
+if ($method === 'GET' && $action === 'export') {
+    $stmt = db()->query(
+        'SELECT e.date, e.category, e.description, e.amount, b.bank_name, b.account_name
+         FROM company_expenses e
+         LEFT JOIN bank_accounts b ON b.id = e.bank_account_id
+         WHERE e.deleted_at IS NULL
+         ORDER BY e.date DESC, e.created_at DESC'
+    );
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $rows[] = [
+            display_date_billing((string)$row['date']),
+            strtoupper((string)$row['category']),
+            (string)$row['description'],
+            'TZS ' . number_format((float)$row['amount'], 2),
+            $row['bank_name'] ? "{$row['bank_name']} ({$row['account_name']})" : '—',
+        ];
+    }
+    output_table_pdf(
+        'BELM-expenses-' . date('Ymd-His') . '.pdf',
+        'BELM General Tech Service Limited — Company Expenses Report',
+        ['Generated: ' . date('d/m/Y H:i'), 'Total records: ' . count($rows)],
+        $rows
+    );
+}
 
 function validated_expense_bank_id(array $payload): ?string {
     $bankAccountId = trim((string)($payload['bankAccountId'] ?? ''));

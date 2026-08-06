@@ -195,10 +195,27 @@ function require_super_admin(array $user): void {
 // via the user_roles table. Their effective permissions are the union of
 // every assigned role's allowed_pages. Returns null (meaning "everything")
 // if any assigned role is Super Admin.
+// Normalizes an allowed_pages JSON value into a flat list of page keys.
+// Two historical formats exist in the data:
+//   - flat array:  ["customers","checklists",...]
+//   - old object:  {"customers":["view"],"checklists":["view","edit"],...}
+// Passing the object form straight into array_merge/array_unique corrupts
+// it (the page names are keys, not values), so every permission check
+// silently fails. Always normalize to a flat array of page-name strings.
+function normalize_allowed_pages($decoded): array {
+    if (!is_array($decoded)) return [];
+    // Flat/list form: keys are 0,1,2... and values are page-name strings.
+    if (array_is_list($decoded)) {
+        return array_values(array_filter($decoded, 'is_string'));
+    }
+    // Object form: keys ARE the page names.
+    return array_keys($decoded);
+}
+
 function merged_allowed_pages_for_user(string $userId, string $primaryRoleName, ?string $primaryAllowedPagesJson): ?array {
     if ($primaryRoleName === 'Super Admin') return null;
 
-    $pages = json_decode($primaryAllowedPagesJson ?? '[]', true) ?: [];
+    $pages = normalize_allowed_pages(json_decode($primaryAllowedPagesJson ?? '[]', true) ?: []);
 
     $stmt = db()->prepare(
         'SELECT r.name, r.allowed_pages FROM user_roles ur
@@ -208,7 +225,7 @@ function merged_allowed_pages_for_user(string $userId, string $primaryRoleName, 
     $stmt->execute([$userId]);
     foreach ($stmt->fetchAll() as $extra) {
         if ($extra['name'] === 'Super Admin') return null;
-        $pages = array_merge($pages, json_decode($extra['allowed_pages'] ?? '[]', true) ?: []);
+        $pages = array_merge($pages, normalize_allowed_pages(json_decode($extra['allowed_pages'] ?? '[]', true) ?: []));
     }
 
     return array_values(array_unique($pages));

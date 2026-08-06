@@ -14,6 +14,47 @@ function compute_totals(array $items, float $discount, string $vatMode): array {
     return ['subtotal' => $subtotal, 'discount' => $discount, 'vat' => $vat, 'grandTotal' => $subtotal - $discount + $vat];
 }
 
+if ($method === 'GET' && $action === 'export-one') {
+    $proformaId = trim((string)($_GET['proformaId'] ?? ''));
+    $stmt = db()->prepare(
+        'SELECT p.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone
+         FROM proforma_invoices p JOIN customers c ON c.id = p.customer_id
+         WHERE p.id = ? AND p.deleted_at IS NULL'
+    );
+    $stmt->execute([$proformaId]);
+    $proforma = $stmt->fetch();
+    if (!$proforma) json_error('Proforma not found.', 404);
+
+    $itemsStmt = db()->prepare('SELECT section, part_number, description, qty, unit, unit_price FROM proforma_invoice_items WHERE proforma_id = ? ORDER BY "order" ASC');
+    $itemsStmt->execute([$proformaId]);
+    $items = $itemsStmt->fetchAll();
+    $totals = compute_totals($items, (float)$proforma['discount'], (string)$proforma['vat_mode']);
+
+    $rows = [];
+    foreach ($items as $item) {
+        $rows[] = [
+            $item['part_number'] ?: '—',
+            $item['description'],
+            'Qty: ' . $item['qty'] . ' ' . $item['unit'],
+            'Unit: TZS ' . number_format((float)$item['unit_price'], 2),
+            'Line total: TZS ' . number_format($item['qty'] * $item['unit_price'], 2),
+        ];
+    }
+
+    output_table_pdf(
+        'BELM-' . $proforma['invoice_no'] . '.pdf',
+        'BELM General Tech Service Limited — Proforma ' . $proforma['invoice_no'],
+        [
+            'Customer: ' . $proforma['customer_name'] . ' (' . ($proforma['customer_email'] ?: '—') . ', ' . ($proforma['customer_phone'] ?: '—') . ')',
+            'Date: ' . display_date_billing((string)$proforma['date']) . '   VAT mode: ' . (string)$proforma['vat_mode'],
+            'Subtotal: TZS ' . number_format($totals['subtotal'], 2) . '   Discount: TZS ' . number_format($totals['discount'], 2)
+                . '   VAT: TZS ' . number_format($totals['vat'], 2) . '   Grand total: TZS ' . number_format($totals['grandTotal'], 2),
+            'Generated: ' . date('d/m/Y H:i'),
+        ],
+        $rows
+    );
+}
+
 if ($method === 'GET' && $action === 'export') {
     $stmt = db()->query(
         'SELECT p.invoice_no, p.date, p.discount, p.vat_mode, c.name AS customer_name, p.id

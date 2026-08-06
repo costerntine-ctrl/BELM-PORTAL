@@ -9,6 +9,66 @@ $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 $paymentId = $_GET['paymentId'] ?? null;
 
+if ($method === 'GET' && $action === 'export-invoice') {
+    $invoiceId = trim((string)($_GET['id'] ?? ''));
+    $stmt = db()->prepare(
+        'SELECT i.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone
+         FROM invoices i JOIN customers c ON c.id = i.customer_id
+         WHERE i.id = ? AND i.deleted_at IS NULL'
+    );
+    $stmt->execute([$invoiceId]);
+    $invoice = $stmt->fetch();
+    if (!$invoice) json_error('Invoice not found.', 404);
+
+    $itemsStmt = db()->prepare('SELECT description, quantity, unit_price, line_total FROM invoice_items WHERE invoice_id = ?');
+    $itemsStmt->execute([$invoiceId]);
+    $items = $itemsStmt->fetchAll();
+
+    $paymentsStmt = db()->prepare(
+        "SELECT p.paid_at, p.amount, p.method, b.bank_name
+         FROM payments p LEFT JOIN bank_accounts b ON b.id = p.bank_account_id
+         WHERE p.invoice_id = ? ORDER BY p.paid_at ASC"
+    );
+    $paymentsStmt->execute([$invoiceId]);
+    $payments = $paymentsStmt->fetchAll();
+    $paid = array_sum(array_map(static fn($p) => (float)$p['amount'], $payments));
+    $balance = (float)$invoice['total'] - $paid;
+
+    $rows = [];
+    foreach ($items as $item) {
+        $rows[] = [
+            $item['description'],
+            'Qty: ' . $item['quantity'],
+            'Unit: TZS ' . number_format((float)$item['unit_price'], 2),
+            'Line total: TZS ' . number_format((float)$item['line_total'], 2),
+        ];
+    }
+    if (count($payments)) {
+        $rows[] = ['', '', '', ''];
+        $rows[] = ['PAYMENTS RECEIVED', '', '', ''];
+        foreach ($payments as $payment) {
+            $rows[] = [
+                display_date_billing((string)$payment['paid_at']),
+                (string)($payment['method'] ?? '—'),
+                $payment['bank_name'] ?: '—',
+                'TZS ' . number_format((float)$payment['amount'], 2),
+            ];
+        }
+    }
+
+    output_table_pdf(
+        'BELM-' . $invoice['invoice_no'] . '.pdf',
+        'BELM General Tech Service Limited — Invoice ' . $invoice['invoice_no'],
+        [
+            'Customer: ' . $invoice['customer_name'] . ' (' . ($invoice['customer_email'] ?: '—') . ', ' . ($invoice['customer_phone'] ?: '—') . ')',
+            'Due: ' . display_date_billing((string)$invoice['due_date']) . '   Status: ' . strtoupper((string)$invoice['status']),
+            'Total: TZS ' . number_format((float)$invoice['total'], 2) . '   Paid: TZS ' . number_format($paid, 2) . '   Balance: TZS ' . number_format($balance, 2),
+            'Generated: ' . date('d/m/Y H:i'),
+        ],
+        $rows
+    );
+}
+
 if ($method === 'GET' && $action === 'export-invoices') {
     $stmt = db()->query(
         'SELECT i.invoice_no, i.total, i.status, i.due_date, c.name AS customer_name,

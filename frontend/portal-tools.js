@@ -537,6 +537,7 @@
       document.getElementById("belm-stuck-retry").addEventListener("click", () => window.location.reload());
       document.getElementById("belm-stuck-relogin").addEventListener("click", () => {
         localStorage.removeItem("belm_tech_token");
+        localStorage.removeItem("belm_tech_user");
         window.location.reload();
       });
     }, 8000);

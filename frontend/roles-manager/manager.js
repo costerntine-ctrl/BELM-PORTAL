@@ -186,6 +186,12 @@
       ]);
       updateMetrics();
       renderRoles();
+      const roleParam = new URLSearchParams(window.location.search).get("role");
+      if (roleParam) {
+        document.getElementById("searchInput").value = roleParam;
+        const heading = document.querySelector("h1, .page-title h1, header h1");
+        if (heading && roleParam === "Technician") heading.textContent = "Engineering — Technicians";
+      }
       renderUsers();
       try {
         const settings = await api("/settings");

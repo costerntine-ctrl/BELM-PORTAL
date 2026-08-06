@@ -507,6 +507,41 @@
     enforceCustomerFeaturePermissions(panel);
   }
 
+  let techLoadingWatchdogScheduled = false;
+  function watchForStuckTechLoading() {
+    if (window.location.pathname !== "/tech") return;
+    if (techLoadingWatchdogScheduled) return;
+    techLoadingWatchdogScheduled = true;
+    const isStuck = () => {
+      const loadingNode = Array.from(document.querySelectorAll("div"))
+        .find(el => el.children.length === 0 && (el.textContent || "").trim() === "Loading…");
+      return !!loadingNode && !document.getElementById("belm-stuck-loading-banner");
+    };
+    setTimeout(() => {
+      techLoadingWatchdogScheduled = false;
+      if (!isStuck()) return;
+      const banner = document.createElement("div");
+      banner.id = "belm-stuck-loading-banner";
+      banner.style.cssText =
+        "position:fixed;left:16px;right:16px;bottom:16px;z-index:9999;padding:14px 16px;" +
+        "border-radius:12px;background:#fff3f1;border:1px solid #f1c8c4;color:#b3261e;" +
+        "font:600 13px Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:space-between;gap:10px;" +
+        "box-shadow:0 10px 30px rgba(0,0,0,.15);";
+      banner.innerHTML =
+        '<span>This is taking longer than expected. Your session may have expired.</span>' +
+        '<span style="display:flex;gap:8px;flex-shrink:0;">' +
+        '<button type="button" id="belm-stuck-retry" style="padding:8px 14px;border:0;border-radius:8px;background:#101b31;color:#fff;font-weight:800;cursor:pointer;">Refresh</button>' +
+        '<button type="button" id="belm-stuck-relogin" style="padding:8px 14px;border:1px solid #b3261e;border-radius:8px;background:#fff;color:#b3261e;font-weight:800;cursor:pointer;">Log in again</button>' +
+        '</span>';
+      document.body.appendChild(banner);
+      document.getElementById("belm-stuck-retry").addEventListener("click", () => window.location.reload());
+      document.getElementById("belm-stuck-relogin").addEventListener("click", () => {
+        localStorage.removeItem("belm_tech_token");
+        window.location.reload();
+      });
+    }, 8000);
+  }
+
   function addCustomerNameToMachinesHeading() {
     if (window.location.pathname !== "/portal/dashboard") return;
     const heading = Array.from(document.querySelectorAll("h1, h2"))
@@ -2699,5 +2734,6 @@
     enforceViewerInterface();
     correctLegacyCopy();
     enhanceCheckedReportButtons();
+    watchForStuckTechLoading();
   }, 1500);
 })();

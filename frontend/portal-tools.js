@@ -79,6 +79,51 @@
     }, true);
   }
 
+  function customerThemeKey() {
+    const payload = tokenPayload("belm_customer_token");
+    const userId = payload?.id || payload?.userId || "default";
+    return `belm_customer_theme_${userId}`;
+  }
+
+  function applyCustomerTheme(theme) {
+    const safeTheme = theme === "dark" ? "dark" : "light";
+    document.documentElement.classList.toggle("dark", safeTheme === "dark");
+    document.documentElement.dataset.theme = safeTheme;
+    localStorage.setItem(customerThemeKey(), safeTheme);
+    const button = document.getElementById("belm-customer-theme-toggle");
+    if (button) {
+      button.textContent = safeTheme === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
+    }
+  }
+
+  function installCustomerThemeToggle() {
+    if (!window.location.pathname.startsWith("/portal")) return;
+    if (document.getElementById("belm-customer-theme-toggle")) return;
+    const header = Array.from(document.querySelectorAll("div, header"))
+      .find(element => Array.from(element.children).some(
+        child => (child.textContent || "").trim() === "BELM Customer Portal"
+      ));
+    const logOut = Array.from(document.querySelectorAll("button, a"))
+      .find(element => (element.textContent || "").trim().toLowerCase().includes("log out"));
+    const anchor = logOut?.parentElement || header;
+    if (!anchor) return;
+
+    const saved = localStorage.getItem(customerThemeKey()) || "light";
+    const button = document.createElement("button");
+    button.id = "belm-customer-theme-toggle";
+    button.type = "button";
+    button.textContent = saved === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
+    button.style.cssText =
+      "margin-right:10px;padding:8px 14px;border:1px solid #d5dae2;border-radius:8px;" +
+      "background:#fff;color:#101b31;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;";
+    button.addEventListener("click", () => {
+      const current = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+      applyCustomerTheme(current === "dark" ? "light" : "dark");
+    });
+    anchor.insertBefore(button, anchor.firstChild);
+    applyCustomerTheme(saved);
+  }
+
   function tokenPayload(storageKey) {
     const token = localStorage.getItem(storageKey);
     if (!token) return null;
@@ -2736,5 +2781,6 @@
     correctLegacyCopy();
     enhanceCheckedReportButtons();
     watchForStuckTechLoading();
+    installCustomerThemeToggle();
   }, 1500);
 })();

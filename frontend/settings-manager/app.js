@@ -329,6 +329,8 @@
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           pin: document.getElementById("resetDbPin").value,
+          adminPassword: document.getElementById("resetDbPassword").value,
+          reason: document.getElementById("resetDbReason").value,
           category: category.value,
           customerId: isSingleCustomer ? customerPicker.value : undefined,
         }),
@@ -344,6 +346,8 @@
       }
       message(result.message || `${categoryLabel} cleared successfully.`);
       document.getElementById("resetDbPin").value = "";
+      document.getElementById("resetDbPassword").value = "";
+      document.getElementById("resetDbReason").value = "";
       customersForResetCache = null;
       customerPicker.innerHTML = '<option value="">All customers</option>';
     } catch (error) {

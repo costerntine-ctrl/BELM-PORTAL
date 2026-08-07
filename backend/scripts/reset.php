@@ -12,14 +12,7 @@ $user = require_auth();
 require_super_admin($user);
 
 $body = body();
-$pin = trim((string)($body['pin'] ?? ''));
-if ($pin === '') json_error('Enter the delete PIN to confirm.');
-
-$pinRow = db()->query("SELECT \"value\" FROM system_settings WHERE \"key\" = 'adminDeletePin'")->fetch();
-$currentPin = $pinRow ? json_decode($pinRow['value'], true) : '1234';
-if ($pin !== $currentPin) {
-    json_error('Incorrect delete PIN.', 403);
-}
+$reason = require_delete_confirmation($user, $body);
 
 $categories = [
     'customers' => ['label' => 'Customers & Machines', 'tables' => ['customers', 'customer_users', 'machines', 'customer_applications']],

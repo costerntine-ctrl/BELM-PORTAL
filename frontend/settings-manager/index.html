@@ -68,6 +68,8 @@
             <select id="resetCustomerPicker"><option value="">All customers</option></select>
           </label>
           <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label>
+          <label>Admin password<input id="resetDbPassword" type="password" required></label>
+          <label>Reason for this reset<input id="resetDbReason" type="text" maxlength="500" required placeholder="e.g. Clearing test data before go-live"></label>
           <button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Reset selected category</button>
         </form>
       </article>

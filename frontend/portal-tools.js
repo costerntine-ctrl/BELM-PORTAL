@@ -480,9 +480,9 @@
         <strong>${escapeHtml(levelLabel)}</strong>
       </div>
       <div class="belm-service-due-grid">
-        <div><span>Machine ID</span><b>${escapeHtml(serial)}</b></div>
+        <div><span>Fleet Number</span><b class="belm-fleet-number-value">${escapeHtml(machine.fleetNumber || machine.fleet_number || serial)}</b></div>
         <div><span>Type of service</span><b>${escapeHtml(status.intervalHours)}-Hour Service</b></div>
-        <div><span>Current Hrs</span><b>${escapeHtml(Math.round(status.totalHours))}</b></div>
+        <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
         <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
       </div>
       <div class="belm-machine-quick-actions">

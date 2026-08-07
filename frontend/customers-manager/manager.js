@@ -374,6 +374,7 @@
     document.getElementById("machineBrand").value = machine?.brand || "";
     document.getElementById("machineModel").value = machine?.model || "";
     document.getElementById("machineRegNumber").value = machine?.regNumber || "";
+    document.getElementById("machineFleetNumber").value = machine?.fleetNumber || "";
     document.getElementById("machineSerialNumber").value = machine?.serialNumber || "";
     document.getElementById("machineServiceKit").value = machine?.serviceKit || "OK";
     document.getElementById("machineFormAlert").className = "alert error hidden";
@@ -389,6 +390,7 @@
       brand: document.getElementById("machineBrand").value.trim(),
       model: document.getElementById("machineModel").value.trim(),
       regNumber: document.getElementById("machineRegNumber").value.trim(),
+      fleetNumber: document.getElementById("machineFleetNumber").value.trim(),
       serialNumber: document.getElementById("machineSerialNumber").value.trim(),
       serviceKit: document.getElementById("machineServiceKit").value,
     };

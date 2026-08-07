@@ -53,6 +53,7 @@ function normalized_machine_details(array $body): array {
     $model = trim((string)($body['model'] ?? ''));
     $serialNumber = trim((string)($body['serialNumber'] ?? ''));
     $regNumber = trim((string)($body['regNumber'] ?? ''));
+    $fleetNumber = trim((string)($body['fleetNumber'] ?? ''));
     $brand = trim((string)($body['brand'] ?? ''));
     if ($machineType === '') json_error('Machine type is required.');
     if ($model === '') json_error('Machine model is required.');
@@ -64,6 +65,7 @@ function normalized_machine_details(array $body): array {
         'model' => $model,
         'serialNumber' => $serialNumber !== '' ? $serialNumber : null,
         'regNumber' => $regNumber !== '' ? $regNumber : null,
+        'fleetNumber' => $fleetNumber !== '' ? $fleetNumber : null,
         'brand' => $brand !== '' ? $brand : null,
         'serviceKit' => trim((string)($body['serviceKit'] ?? 'OK')) ?: 'OK',
     ];
@@ -280,7 +282,7 @@ if ($method === 'POST' && $action === 'add-machine') {
     if (!$stmt->fetch()) json_error('Select an active customer.', 422);
     $machine = normalized_machine_details($b);
     $newId = uuid();
-    db()->prepare('INSERT INTO machines (id, customer_id, machine_type, model, serial_number, reg_number, brand, service_kit, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())')
+    db()->prepare('INSERT INTO machines (id, customer_id, machine_type, model, serial_number, reg_number, fleet_number, brand, service_kit, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())')
         ->execute([
             $newId,
             $id,
@@ -288,6 +290,7 @@ if ($method === 'POST' && $action === 'add-machine') {
             $machine['model'],
             $machine['serialNumber'],
             $machine['regNumber'],
+            $machine['fleetNumber'],
             $machine['brand'],
             $machine['serviceKit'],
             'NOT_CHECKED',
@@ -303,12 +306,13 @@ if ($method === 'PUT' && $action === 'edit-machine') {
     $stmt->execute([$_GET['machineId']]);
     if (!$stmt->fetch()) json_error('Machine not found.', 404);
     $machine = normalized_machine_details($b);
-    db()->prepare('UPDATE machines SET machine_type=?, model=?, serial_number=?, reg_number=?, brand=?, service_kit=? WHERE id=?')
+    db()->prepare('UPDATE machines SET machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=? WHERE id=?')
         ->execute([
             $machine['machineType'],
             $machine['model'],
             $machine['serialNumber'],
             $machine['regNumber'],
+            $machine['fleetNumber'],
             $machine['brand'],
             $machine['serviceKit'],
             $_GET['machineId'],

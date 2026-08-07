@@ -144,8 +144,8 @@ a.bg-belm-blue:hover {
 .belm-customer-machine-card.status-red,
 .belm-technician-machine-card.status-red {
   background: linear-gradient(160deg, #fdecec, #ffffff) !important;
-  border: 2px solid #ef4444 !important;
-  box-shadow: 0 14px 30px rgba(239, 68, 68, .18) !important;
+  border: 5px solid #ff0000 !important;
+  box-shadow: 0 0 0 2px rgba(255, 0, 0, .25), 0 14px 30px rgba(239, 68, 68, .28) !important;
 }
 
 .belm-customer-machine-card.status-unknown,
@@ -2032,4 +2032,15 @@ a[href^="/api/customer-portal/reports/"][href$="/download"] {
   padding: 8px 14px !important;
   font-weight: 800 !important;
   text-decoration: none !important;
+}
+
+/* "Current Hrs" on the machine service panel always reads green,
+   regardless of the card's overall RED/YELLOW/GREEN status tint. */
+.belm-service-due-grid b.belm-current-hrs-value {
+  color: #16a34a !important;
+}
+
+/* "Fleet Number" (was "Machine ID") always reads green too. */
+.belm-service-due-grid b.belm-fleet-number-value {
+  color: #16a34a !important;
 }

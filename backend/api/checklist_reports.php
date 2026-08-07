@@ -454,21 +454,24 @@ if ($method === 'GET' && $action === 'pdf') {
         'Overall status: ' . $view['overallStatus'],
         str_repeat('-', 78),
     ];
+    $photos = [];
     foreach ($answers as $answer) {
         $displayValue = $answer['value'];
         $isImageValue = $displayValue !== '' && str_starts_with((string)$displayValue, 'data:image/');
+        $photo = checklist_report_decode_photo($answer['photoUrl'] ?: ($isImageValue ? $displayValue : null));
+        if ($photo) $photos[] = ['label' => $answer['label'], 'photo' => $photo];
         $lines[] = sprintf(
             '%s: %s [%s]%s',
             $answer['label'],
             $isImageValue ? '(Photo)' : ($displayValue !== '' ? $displayValue : '—'),
             $answer['safetyLevel'],
-            ($answer['photoUrl'] || $isImageValue) ? ' (Photo attached — view online)' : ''
+            $photo ? ' (see photo page below)' : ''
         );
     }
     $lines[] = str_repeat('-', 78);
 
     $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', trim(($machine['brand'] ?? '') . '-' . ($machine['model'] ?? '')));
-    output_checklist_report_pdf('checklist-report-' . $safeMachine . '.pdf', $lines);
+    output_checklist_report_pdf('checklist-report-' . $safeMachine . '.pdf', $lines, $photos);
 }
 
 

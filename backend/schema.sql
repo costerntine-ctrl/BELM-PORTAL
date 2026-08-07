@@ -144,8 +144,10 @@ CREATE TABLE IF NOT EXISTS checklist_reports (
   overall_status VARCHAR(10) NOT NULL DEFAULT 'GREEN',
   pdf_url VARCHAR(500) NULL,
   sent_to_customer_at TIMESTAMPTZ NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NULL
 );
+ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NULL;
 
 CREATE TABLE IF NOT EXISTS checklist_answers (
   id VARCHAR(36) PRIMARY KEY,
@@ -633,10 +635,21 @@ VALUES
   (
     '00000000-0000-4000-8000-000000000002',
     'Technician',
-    '{"customers":["view"],"checklists":["view","edit"],"serviceRequests":["view","edit"],"spareParts":["view"]}'::jsonb,
-    '[]'::jsonb
+    '{"customers":["view"],"checklist-templates":["view","edit"],"service-requests":["view","edit"],"spare-parts":["view"]}'::jsonb,
+    '["customers","checklist-templates","service-requests","spare-parts"]'::jsonb
   )
 ON CONFLICT (name) DO NOTHING;
+
+-- Fix already-deployed databases where the Technician role's allowed_pages
+-- was seeded as an empty array (or with mismatched camelCase keys like
+-- serviceRequests/spareParts) instead of the page keys require_page_access()
+-- actually checks (checklist-templates/service-requests/spare-parts).
+-- Without this, existing Technician accounts silently lose access to their
+-- own pages.
+UPDATE roles
+SET allowed_pages = '["customers","checklist-templates","service-requests","spare-parts"]'::jsonb
+WHERE name = 'Technician'
+  AND allowed_pages::text NOT LIKE '%checklist-templates%';
 
 -- Keep the built-in Administrator role usable when this schema is applied to
 -- a database created by an older BELM release. Other custom roles and their

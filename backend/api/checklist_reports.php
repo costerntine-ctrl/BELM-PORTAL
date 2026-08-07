@@ -129,9 +129,11 @@ function checklist_report_api_view(array $report, array $machine, array $user): 
         : 0;
     $report['overallStatus'] = $report['overall_status'] ?? 'GREEN';
     $report['createdAt'] = $report['created_at'] ?? null;
+    $report['updatedAt'] = $report['updated_at'] ?? null;
     $report['expiresAt'] = $expiry->format(DateTimeInterface::ATOM);
     $report['isExpired'] = $isExpired;
-    $report['canEdit'] = $isOriginalTechnician && !$isExpired;
+    $isBreakdownReport = ($report['overall_status'] ?? 'GREEN') === 'RED';
+    $report['canEdit'] = $isOriginalTechnician && (!$isExpired || $isBreakdownReport);
     $report['templateName'] = $report['template_name'] ?? '';
     $report['customerName'] = $machine['customer_name'] ?? '';
     $report['machine'] = [
@@ -478,7 +480,7 @@ if ($method === 'PUT' && $action === 'update') {
     if ($reportId === '') json_error('Checklist report is required.');
 
     $stmt = db()->prepare(
-        'SELECT id, machine_id, template_id, filled_by, created_at
+        'SELECT id, machine_id, template_id, filled_by, created_at, overall_status
          FROM checklist_reports WHERE id = ?'
     );
     $stmt->execute([$reportId]);
@@ -490,7 +492,8 @@ if ($method === 'PUT' && $action === 'update') {
         json_error('Only the Technician who saved this checklist can edit it.', 403);
     }
     $expiry = checklist_report_expiry((string)$report['created_at']);
-    if (checklist_report_is_expired((string)$report['created_at'])) {
+    $isBreakdown = ($report['overall_status'] ?? 'GREEN') === 'RED';
+    if (!$isBreakdown && checklist_report_is_expired((string)$report['created_at'])) {
         json_error(
             'This checklist expired at 00:00 Tanzania time and can no longer be edited.',
             409
@@ -533,7 +536,7 @@ if ($method === 'PUT' && $action === 'update') {
     try {
         $pdo->prepare(
             'UPDATE checklist_reports
-             SET hour_meter_reading = ?, overall_status = ?
+             SET hour_meter_reading = ?, overall_status = ?, updated_at = NOW()
              WHERE id = ?'
         )->execute([(float)$b['hourMeterReading'], $worst, $reportId]);
         $pdo->prepare('DELETE FROM checklist_answers WHERE report_id = ?')
@@ -582,6 +585,7 @@ if ($method === 'PUT' && $action === 'update') {
         'overallStatus' => $worst,
         'expiresAt' => $expiry->format(DateTimeInterface::ATOM),
         'canEdit' => true,
+        'updatedAt' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
     ]);
 }
 

@@ -588,6 +588,63 @@
     }, 8000);
   }
 
+  function checkedTodayKey() {
+    const today = new Date().toISOString().slice(0, 10);
+    return `belm_tech_checked_today_${today}`;
+  }
+
+  function getCheckedTodayList() {
+    try {
+      return JSON.parse(sessionStorage.getItem(checkedTodayKey()) || "[]");
+    } catch {
+      return [];
+    }
+  }
+
+  function installTechChecklistSubmitInterceptor() {
+    if (window.__belmFetchPatched) return;
+    window.__belmFetchPatched = true;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      try {
+        const url = typeof args[0] === "string" ? args[0] : args[0]?.url || "";
+        const method = (args[1]?.method || "GET").toUpperCase();
+        if (response.ok && method === "POST" && url.includes("/api/checklist-reports") && !url.includes("action=")) {
+          response.clone().json().then((data) => {
+            const serial = data?.machine?.serialNumber;
+            if (!serial) return;
+            const list = getCheckedTodayList();
+            if (!list.includes(serial)) {
+              list.push(serial);
+              sessionStorage.setItem(checkedTodayKey(), JSON.stringify(list));
+            }
+          }).catch(() => {});
+        }
+      } catch (_) {}
+      return response;
+    };
+  }
+
+  function hideCheckedMachinesFromTechList() {
+    if (window.location.pathname !== "/tech") return;
+    const checked = getCheckedTodayList();
+    if (!checked.length) return;
+    document.querySelectorAll(".grid button").forEach((card) => {
+      const text = card.textContent || "";
+      if (checked.some((serial) => text.includes(serial)) && card.style.display !== "none") {
+        card.style.display = "none";
+        const note = document.createElement("p");
+        note.textContent = "✅ Already checked today — hidden from this list.";
+        note.style.cssText = "grid-column:1/-1;margin:4px 0;padding:8px;background:#eaf8f0;color:#075f36;border-radius:8px;font-size:12px;font-weight:700;text-align:center;";
+        note.dataset.belmCheckedNote = "1";
+        if (!card.previousElementSibling?.dataset?.belmCheckedNote) {
+          card.insertAdjacentElement("beforebegin", note);
+        }
+      }
+    });
+  }
+
   function addCustomerNameToMachinesHeading() {
     if (window.location.pathname !== "/portal/dashboard") return;
     const heading = Array.from(document.querySelectorAll("h1, h2"))
@@ -2049,6 +2106,7 @@
         <div><span>Overall status</span><strong class="status-${escapeHtml(status.toLowerCase())}">${escapeHtml(status)}</strong></div>
         <div><span>Checked by</span><strong>${escapeHtml(filledBy)}</strong></div>
         <div><span>Date checked</span><strong>${escapeHtml(formattedDate)}</strong></div>
+        <div><span>Last updated</span><strong>${report.updatedAt ? escapeHtml(formatTanzaniaDateTime(report.updatedAt)) : "—"}</strong></div>
         <div><span>Hour meter</span><strong>${escapeHtml(hourMeter)}</strong></div>
         <div><span>Machine type</span><strong>${escapeHtml(machine.machineType || "Not recorded")}</strong></div>
         <div><span>Serial / registration</span><strong>${escapeHtml(serialReference)}</strong></div>
@@ -2782,5 +2840,7 @@
     enhanceCheckedReportButtons();
     watchForStuckTechLoading();
     installCustomerThemeToggle();
+    installTechChecklistSubmitInterceptor();
+    hideCheckedMachinesFromTechList();
   }, 1500);
 })();

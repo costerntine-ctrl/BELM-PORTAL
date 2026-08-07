@@ -158,6 +158,7 @@ if ($method === 'POST' && !$action) {
 
 if ($method === 'PUT' && $action === 'reset-password') {
     require_page_access($user, 'customers');
+    $reason = require_delete_confirmation($user, body());
     $temporaryPassword = secure_account_secret();
     $recoveryCode = account_recovery_code();
     $stmt = db()->prepare(

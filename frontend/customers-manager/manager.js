@@ -438,9 +438,14 @@
 
   async function resetCustomerLogin(id) {
     const customer = customers.find((item) => item.id === id);
-    if (!customer || !confirm(`Generate a new password and recovery code for ${customer.name}? The old password and recovery code will stop working.`)) return;
+    if (!customer) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Reset customer login?",
+      message: `Generate a new password and recovery code for ${customer.name}? The old password and recovery code will stop working.`,
+    });
+    if (!confirmation) return;
     try {
-      const result = await api(`/customers/${id}/reset-password`, { method: "PUT" });
+      const result = await api(`/customers/${id}/reset-password`, { method: "PUT", body: JSON.stringify(confirmation) });
       showCredentials(customer, result);
       showAlert("New customer credentials generated. Copy them before closing the window.");
     } catch (error) {

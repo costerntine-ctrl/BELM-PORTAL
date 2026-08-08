@@ -183,9 +183,22 @@ function validate_checklist_report_answers(string $templateId, array $submittedA
         if (
             in_array($item['input_type'], ['DROPDOWN', 'YES_NO'], true)
             && $allowedOptions
-            && !in_array($value, $allowedOptions, true)
         ) {
-            json_error("Select a valid result for checklist item: {$item['label']}.");
+            // Match case-insensitively and ignore surrounding whitespace so a
+            // template's option casing (e.g. "yes" vs "Yes") never silently
+            // blocks a technician from saving an otherwise valid selection.
+            // If matched, normalize $value to the option's canonical form.
+            $matchedOption = null;
+            foreach ($allowedOptions as $option) {
+                if (strcasecmp(trim((string)$option), $value) === 0) {
+                    $matchedOption = (string)$option;
+                    break;
+                }
+            }
+            if ($matchedOption === null) {
+                json_error("Select a valid result for checklist item: {$item['label']}.");
+            }
+            $value = $matchedOption;
         }
 
         $level = strtoupper((string)($item['safety_level'] ?: 'GREEN'));

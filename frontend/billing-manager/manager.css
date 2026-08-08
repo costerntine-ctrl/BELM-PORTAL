@@ -93,7 +93,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .bank-total-row strong { font-size: 12px; }
 .compact-empty { padding: 24px; }
 .calculation-note { padding: 13px 18px; color: var(--muted); border-top: 1px solid var(--line); background: #fafbfc; font-size: 11px; line-height: 1.5; }
-.status-select { max-width: 150px; border: 1px solid var(--line); border-radius: 7px; padding: 6px; background: #fff; }
+.status-select { width: 168px; min-width: 168px; max-width: 100%; flex-shrink: 0; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; background: #fff; font-size: 12px; white-space: nowrap; text-overflow: clip; }
+td:has(> .status-select) { white-space: nowrap; }
 .alert { margin: 14px 0; padding: 11px 13px; border: 1px solid #8bcda9; border-radius: 10px; background: #eaf8f0; color: #075f36; font-size: 13px; }
 .alert.error { color: #8f2020; border-color: #e5a6a6; background: #fdf0f0; }
 .hidden { display: none !important; }

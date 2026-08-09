@@ -206,7 +206,7 @@
     form.reset();
     document.getElementById("templateId").value = "";
     document.getElementById("dialogTitle").textContent = "New template";
-    document.getElementById("serviceType").value = "Preventive Service";
+    document.getElementById("serviceType").value = "250hrs";
     document.getElementById("isActive").checked = true;
     document.getElementById("formError").className = "alert error hidden";
     items = [emptyItem()];
@@ -222,7 +222,9 @@
       document.getElementById("templateId").value = template.id;
       document.getElementById("templateName").value = template.name || "";
       document.getElementById("machineType").value = template.machineType || "";
-      document.getElementById("serviceType").value = template.serviceType || "General Service";
+      const serviceTypeSelect = document.getElementById("serviceType");
+      const validServiceTypes = Array.from(serviceTypeSelect.options).map((option) => option.value);
+      serviceTypeSelect.value = validServiceTypes.includes(template.serviceType) ? template.serviceType : "250hrs";
       document.getElementById("isActive").checked = Boolean(template.isActive);
       document.getElementById("dialogTitle").textContent = "Edit template";
       document.getElementById("formError").className = "alert error hidden";

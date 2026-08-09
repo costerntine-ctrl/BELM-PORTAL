@@ -257,12 +257,10 @@ if ($method === 'POST' && $action === 'submit') {
     $serviceDate = trim((string)($b['serviceDate'] ?? ''));
     $serviceType = trim((string)($b['serviceType'] ?? ''));
     $serviceIntervals = [
-        '80_HOUR' => ['label' => '80-Hour Service', 'interval' => 80],
         '250_HOUR' => ['label' => '250-Hour Service', 'interval' => 250],
         '500_HOUR' => ['label' => '500-Hour Service', 'interval' => 500],
         '1000_HOUR' => ['label' => '1000-Hour Service', 'interval' => 1000],
-        'ANNUAL' => ['label' => 'Annual Service', 'interval' => null],
-        'OTHER' => ['label' => 'Other Service', 'interval' => null],
+        '2000_HOUR' => ['label' => '2000-Hour Service', 'interval' => 2000],
     ];
     if ($isServiceDay) {
         if ($serviceDate === '') json_error('Select the service date.');

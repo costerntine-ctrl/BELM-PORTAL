@@ -32,7 +32,14 @@
       <div class="template-fields">
         <label>Template name<input id="templateName" maxlength="255" required placeholder="e.g. Daily Reach Stacker Inspection"></label>
         <label>Machine type<input id="machineType" maxlength="100" required placeholder="e.g. Reach Stacker"></label>
-        <label>Service type<input id="serviceType" maxlength="150" required placeholder="e.g. 500-hour Preventive Service"></label>
+        <label>Service type
+          <select id="serviceType" required>
+            <option value="250hrs">250hrs Service</option>
+            <option value="500hrs">500hrs Service</option>
+            <option value="1000hrs">1000hrs Service</option>
+            <option value="2000hrs">2000hrs Service</option>
+          </select>
+        </label>
         <label class="active-row"><span>Template active</span><input id="isActive" type="checkbox" checked></label>
       </div>
       <div class="items-head"><div><h3>Checklist items</h3><p>All required items must be completed before a technician can submit a report.</p></div><button class="secondary" id="addItemButton" type="button">+ Add item</button></div>

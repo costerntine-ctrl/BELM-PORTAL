@@ -2517,12 +2517,10 @@
   ];
 
   const SERVICE_DAY_TYPES = [
-    ["80_HOUR", "80-Hour Service"],
     ["250_HOUR", "250-Hour Service"],
     ["500_HOUR", "500-Hour Service"],
     ["1000_HOUR", "1000-Hour Service"],
-    ["ANNUAL", "Annual Service"],
-    ["OTHER", "Other Service"],
+    ["2000_HOUR", "2000-Hour Service"],
   ];
 
   function injectServiceDayFields() {

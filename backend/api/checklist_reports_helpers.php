@@ -179,16 +179,19 @@ function compute_service_status_helper(string $machineId): array {
     $stmt->execute([$machineId]);
     $latest = $stmt->fetch();
 
-    $intervalHours = $machine['service_interval_hours'] ?: 80;
+    $intervalHours = $machine['service_interval_hours'] ?: 250;
     $totalHours = $latest ? (float)$latest['hour_meter_reading'] : 0;
     $lastServiceHours = (float)($machine['last_service_hours'] ?? 0);
     $hoursSinceService = max(0, $totalHours - $lastServiceHours);
     $hoursRemaining = $intervalHours - $hoursSinceService;
     $pct = min(100, round(($hoursSinceService / $intervalHours) * 100));
 
+    // Reminder window is a flat 60 hours before the service is due,
+    // regardless of the interval length (250/500/1000/2000 hrs).
+    $reminderWindowHours = 60;
     $level = 'GREEN';
     if ($hoursRemaining <= 0) $level = 'RED';
-    elseif ($hoursRemaining <= $intervalHours * 0.15) $level = 'YELLOW';
+    elseif ($hoursRemaining <= $reminderWindowHours) $level = 'YELLOW';
 
     return compact('intervalHours', 'totalHours', 'lastServiceHours', 'hoursSinceService', 'hoursRemaining', 'pct', 'level');
 }

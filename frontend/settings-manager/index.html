@@ -49,9 +49,12 @@
       <article class="panel">
         <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Only for use while still testing/building the portal. Pick one category to clear just that area — the rest stays untouched. This cannot be undone — download a backup first.</p></div></div>
         <form id="resetDbForm" class="settings-form">
-          <label>Category to reset
+          <label>Category to reset <small>(each one is independent — clearing it never touches the others)</small>
             <select id="resetDbCategory">
-              <option value="customers">Customers & Machines</option>
+              <option value="customers">Customers (pick one)</option>
+              <option value="machines">Machines (pick one, or all)</option>
+              <option value="machine-log">Machine Log (1 machine) — hours, logs & expenses</option>
+              <option value="users">Users & Technicians (pick one, or all)</option>
               <option value="checklists">Checklist Templates & Reports</option>
               <option value="spare-parts">Spare Parts & Requests</option>
               <option value="suppliers">Suppliers</option>
@@ -61,12 +64,26 @@
               <option value="tasks">Tasks</option>
               <option value="activity">Activity Log, Trash & Announcements</option>
               <option value="machine-expenses">Machine Expenses logs</option>
-              <option value="machine-log">Machine Log (1 machine) — hours, logs & expenses</option>
               <option value="petty-cash">Petty Cash deposits (top-ups only — keeps spending history)</option>
             </select>
           </label>
-          <label id="resetCustomerPickerWrap" class="hidden">Specific customer <small>(leave as "All customers" to clear the whole category)</small>
-            <select id="resetCustomerPicker"><option value="">All customers</option></select>
+          <label id="resetCustomerPickerWrap" class="hidden">Customer to delete <small>(required)</small>
+            <select id="resetCustomerPicker"><option value="">Select a customer…</option></select>
+          </label>
+          <label id="resetMachineScopeWrap" class="hidden">Scope
+            <select id="resetMachineScope">
+              <option value="single">One machine</option>
+              <option value="all">All machines</option>
+            </select>
+          </label>
+          <label id="resetUserScopeWrap" class="hidden">Scope
+            <select id="resetUserScope">
+              <option value="single">One user</option>
+              <option value="all">All users (Super Admins &amp; you stay protected)</option>
+            </select>
+          </label>
+          <label id="resetUserPickerWrap" class="hidden">User to delete <small>(required)</small>
+            <select id="resetUserPicker"><option value="">Select a user…</option></select>
           </label>
           <label id="resetMachinePickerWrap" class="hidden">Machine <small>(required — pick the one machine to clear)</small>
             <select id="resetMachinePicker"><option value="">Select a machine…</option></select>

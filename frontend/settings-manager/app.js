@@ -250,39 +250,79 @@
 
   let customersForResetCache = null;
   let machinesForResetCache = null;
+  let usersForResetCache = null;
+
+  function resetHideAllPickers() {
+    ["resetCustomerPickerWrap", "resetMachineScopeWrap", "resetMachinePickerWrap", "resetUserScopeWrap", "resetUserPickerWrap"]
+      .forEach((id) => document.getElementById(id).classList.add("hidden"));
+  }
+
+  async function ensureCustomersLoaded() {
+    if (!customersForResetCache) customersForResetCache = await api("/customers");
+    return customersForResetCache;
+  }
+
+  async function populateMachinePicker() {
+    const picker = document.getElementById("resetMachinePicker");
+    if (machinesForResetCache) return;
+    const customers = await ensureCustomersLoaded();
+    machinesForResetCache = customers.flatMap((customer) =>
+      (customer.machines || []).map((machine) => ({ ...machine, customerName: customer.name })));
+    picker.innerHTML = '<option value="">Select a machine…</option>' +
+      machinesForResetCache.map((machine) =>
+        `<option value="${machine.id}">${escapeHtml(machine.customerName)} — ${escapeHtml(machine.model)}${machine.fleetNumber ? ` (#${escapeHtml(machine.fleetNumber)})` : ""}</option>`).join("");
+  }
 
   document.getElementById("resetDbCategory").addEventListener("change", async (event) => {
-    const customerWrap = document.getElementById("resetCustomerPickerWrap");
-    const machineWrap = document.getElementById("resetMachinePickerWrap");
-    customerWrap.classList.add("hidden");
-    machineWrap.classList.add("hidden");
+    resetHideAllPickers();
+    const value = event.target.value;
 
-    if (event.target.value === "customers") {
-      customerWrap.classList.remove("hidden");
-      const picker = document.getElementById("resetCustomerPicker");
-      if (customersForResetCache) return;
-      try {
-        customersForResetCache = await api("/customers");
-        picker.innerHTML = '<option value="">All customers</option>' +
-          customersForResetCache.map((customer) =>
-            `<option value="${customer.id}">${escapeHtml(customer.name)}</option>`).join("");
-      } catch (_) {}
-      return;
-    }
+    try {
+      if (value === "customers") {
+        document.getElementById("resetCustomerPickerWrap").classList.remove("hidden");
+        const picker = document.getElementById("resetCustomerPicker");
+        if (!customersForResetCache) {
+          const customers = await ensureCustomersLoaded();
+          picker.innerHTML = '<option value="">Select a customer…</option>' +
+            customers.map((customer) => `<option value="${customer.id}">${escapeHtml(customer.name)}</option>`).join("");
+        }
+        return;
+      }
 
-    if (event.target.value === "machine-log") {
-      machineWrap.classList.remove("hidden");
-      const picker = document.getElementById("resetMachinePicker");
-      if (machinesForResetCache) return;
-      try {
-        const customers = customersForResetCache || (customersForResetCache = await api("/customers"));
-        machinesForResetCache = customers.flatMap((customer) =>
-          (customer.machines || []).map((machine) => ({ ...machine, customerName: customer.name })));
-        picker.innerHTML = '<option value="">Select a machine…</option>' +
-          machinesForResetCache.map((machine) =>
-            `<option value="${machine.id}">${escapeHtml(machine.customerName)} — ${escapeHtml(machine.model)}${machine.fleetNumber ? ` (#${escapeHtml(machine.fleetNumber)})` : ""}</option>`).join("");
-      } catch (_) {}
-    }
+      if (value === "machines") {
+        document.getElementById("resetMachineScopeWrap").classList.remove("hidden");
+        document.getElementById("resetMachinePickerWrap").classList.remove("hidden");
+        await populateMachinePicker();
+        return;
+      }
+
+      if (value === "machine-log") {
+        document.getElementById("resetMachinePickerWrap").classList.remove("hidden");
+        await populateMachinePicker();
+        return;
+      }
+
+      if (value === "users") {
+        document.getElementById("resetUserScopeWrap").classList.remove("hidden");
+        document.getElementById("resetUserPickerWrap").classList.remove("hidden");
+        const picker = document.getElementById("resetUserPicker");
+        if (!usersForResetCache) {
+          usersForResetCache = await api("/users");
+          picker.innerHTML = '<option value="">Select a user…</option>' +
+            usersForResetCache
+              .filter((u) => u.role?.name !== "Super Admin")
+              .map((u) => `<option value="${u.id}">${escapeHtml(u.name)}${u.role?.name ? ` — ${escapeHtml(u.role.name)}` : ""}</option>`).join("");
+        }
+      }
+    } catch (_) {}
+  });
+
+  document.getElementById("resetMachineScope").addEventListener("change", (event) => {
+    document.getElementById("resetMachinePickerWrap").classList.toggle("hidden", event.target.value === "all");
+  });
+
+  document.getElementById("resetUserScope").addEventListener("change", (event) => {
+    document.getElementById("resetUserPickerWrap").classList.toggle("hidden", event.target.value === "all");
   });
 
   document.getElementById("editPinForm").addEventListener("submit", async (event) => {
@@ -329,25 +369,51 @@
     const categoryLabel = category.options[category.selectedIndex].text;
     const customerPicker = document.getElementById("resetCustomerPicker");
     const machinePicker = document.getElementById("resetMachinePicker");
-    const isSingleCustomer = category.value === "customers" && customerPicker.value;
+    const machineScope = document.getElementById("resetMachineScope");
+    const userPicker = document.getElementById("resetUserPicker");
+    const userScope = document.getElementById("resetUserScope");
+
+    const isCustomers = category.value === "customers";
+    const isMachines = category.value === "machines";
     const isMachineLog = category.value === "machine-log";
-    if (isMachineLog && !machinePicker.value) {
-      message("Select a machine to clear its log.", true);
+    const isUsers = category.value === "users";
+    const machinesAll = isMachines && machineScope.value === "all";
+    const usersAll = isUsers && userScope.value === "all";
+
+    if (isCustomers && !customerPicker.value) {
+      message("Select a customer to delete.", true);
       return;
     }
-    const customerLabel = isSingleCustomer
-      ? customerPicker.options[customerPicker.selectedIndex].text
-      : "";
-    const machineLabel = isMachineLog
+    if ((isMachines && !machinesAll && !machinePicker.value) || (isMachineLog && !machinePicker.value)) {
+      message("Select a machine.", true);
+      return;
+    }
+    if (isUsers && !usersAll && !userPicker.value) {
+      message("Select a user to delete.", true);
+      return;
+    }
+
+    const customerLabel = isCustomers ? customerPicker.options[customerPicker.selectedIndex].text : "";
+    const machineLabel = (isMachines && !machinesAll) || isMachineLog
       ? machinePicker.options[machinePicker.selectedIndex].text
       : "";
-    const confirmMessage = isSingleCustomer
-      ? `This will permanently delete customer "${customerLabel}" and everything tied to them (machines, invoices, checklist reports, service requests). This cannot be undone. Continue?`
+    const userLabel = isUsers && !usersAll ? userPicker.options[userPicker.selectedIndex].text : "";
+
+    const confirmMessage = isCustomers
+      ? `This will permanently delete customer "${customerLabel}" and everything tied to them (their own machines, invoices, checklist reports, service requests). This cannot be undone. Continue?`
       : isMachineLog
         ? `This will permanently clear the hour meter readings, checklist logs and expense entries for "${machineLabel}". The machine record and customer stay untouched. This cannot be undone. Continue?`
-        : category.value === "all"
-          ? "This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?"
-          : `This will permanently delete all data under "${categoryLabel}" only. Everything else stays untouched. This cannot be undone. Continue?`;
+        : isMachines
+          ? machinesAll
+            ? "This will permanently delete EVERY machine and its checklist/usage history. Customers and users stay untouched. This cannot be undone. Continue?"
+            : `This will permanently delete machine "${machineLabel}" and its checklist/usage history. The customer stays untouched. This cannot be undone. Continue?`
+          : isUsers
+            ? usersAll
+              ? "This will permanently delete every non-Super-Admin user account. Customers and machines stay untouched, and your own login is protected. This cannot be undone. Continue?"
+              : `This will permanently delete the user "${userLabel}". Customers and machines stay untouched. This cannot be undone. Continue?`
+            : category.value === "all"
+              ? "This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?"
+              : `This will permanently delete all data under "${categoryLabel}" only. Everything else stays untouched. This cannot be undone. Continue?`;
     if (!confirm(confirmMessage)) return;
     const button = document.getElementById("resetDbButton");
     const originalText = button.textContent;
@@ -363,8 +429,11 @@
           adminPassword: document.getElementById("resetDbPassword").value,
           reason: document.getElementById("resetDbReason").value,
           category: category.value,
-          customerId: isSingleCustomer ? customerPicker.value : undefined,
-          machineId: isMachineLog ? machinePicker.value : undefined,
+          customerId: isCustomers ? customerPicker.value : undefined,
+          machineId: (isMachines && !machinesAll) || isMachineLog ? machinePicker.value : undefined,
+          machineScope: isMachines ? machineScope.value : undefined,
+          userId: isUsers && !usersAll ? userPicker.value : undefined,
+          userScope: isUsers ? userScope.value : undefined,
         }),
       });
       const result = await response.json().catch(() => ({}));
@@ -382,8 +451,10 @@
       document.getElementById("resetDbReason").value = "";
       customersForResetCache = null;
       machinesForResetCache = null;
-      customerPicker.innerHTML = '<option value="">All customers</option>';
+      usersForResetCache = null;
+      customerPicker.innerHTML = '<option value="">Select a customer…</option>';
       machinePicker.innerHTML = '<option value="">Select a machine…</option>';
+      userPicker.innerHTML = '<option value="">Select a user…</option>';
     } catch (error) {
       message(error.message, true);
     } finally {

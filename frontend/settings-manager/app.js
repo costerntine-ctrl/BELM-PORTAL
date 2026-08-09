@@ -251,9 +251,10 @@
   let customersForResetCache = null;
   let machinesForResetCache = null;
   let usersForResetCache = null;
+  let rolesForResetCache = null;
 
   function resetHideAllPickers() {
-    ["resetCustomerPickerWrap", "resetMachineScopeWrap", "resetMachinePickerWrap", "resetUserScopeWrap", "resetUserPickerWrap"]
+    ["resetCustomerPickerWrap", "resetMachineScopeWrap", "resetMachinePickerWrap", "resetUserScopeWrap", "resetUserPickerWrap", "resetRolePickerWrap"]
       .forEach((id) => document.getElementById(id).classList.add("hidden"));
   }
 
@@ -312,6 +313,19 @@
             usersForResetCache
               .filter((u) => u.role?.name !== "Super Admin")
               .map((u) => `<option value="${u.id}">${escapeHtml(u.name)}${u.role?.name ? ` — ${escapeHtml(u.role.name)}` : ""}</option>`).join("");
+        }
+        return;
+      }
+
+      if (value === "roles") {
+        document.getElementById("resetRolePickerWrap").classList.remove("hidden");
+        const picker = document.getElementById("resetRolePicker");
+        if (!rolesForResetCache) {
+          rolesForResetCache = await api("/users/roles");
+          picker.innerHTML = '<option value="">Select a role…</option>' +
+            rolesForResetCache
+              .filter((r) => !["Super Admin", "Technician"].includes(r.name))
+              .map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join("");
         }
       }
     } catch (_) {}
@@ -372,11 +386,13 @@
     const machineScope = document.getElementById("resetMachineScope");
     const userPicker = document.getElementById("resetUserPicker");
     const userScope = document.getElementById("resetUserScope");
+    const rolePicker = document.getElementById("resetRolePicker");
 
     const isCustomers = category.value === "customers";
     const isMachines = category.value === "machines";
     const isMachineLog = category.value === "machine-log";
     const isUsers = category.value === "users";
+    const isRoles = category.value === "roles";
     const machinesAll = isMachines && machineScope.value === "all";
     const usersAll = isUsers && userScope.value === "all";
 
@@ -392,12 +408,17 @@
       message("Select a user to delete.", true);
       return;
     }
+    if (isRoles && !rolePicker.value) {
+      message("Select a role to delete.", true);
+      return;
+    }
 
     const customerLabel = isCustomers ? customerPicker.options[customerPicker.selectedIndex].text : "";
     const machineLabel = (isMachines && !machinesAll) || isMachineLog
       ? machinePicker.options[machinePicker.selectedIndex].text
       : "";
     const userLabel = isUsers && !usersAll ? userPicker.options[userPicker.selectedIndex].text : "";
+    const roleLabel = isRoles ? rolePicker.options[rolePicker.selectedIndex].text : "";
 
     const confirmMessage = isCustomers
       ? `This will permanently delete customer "${customerLabel}" and everything tied to them (their own machines, invoices, checklist reports, service requests). This cannot be undone. Continue?`
@@ -411,9 +432,11 @@
             ? usersAll
               ? "This will permanently delete every non-Super-Admin user account. Customers and machines stay untouched, and your own login is protected. This cannot be undone. Continue?"
               : `This will permanently delete the user "${userLabel}". Customers and machines stay untouched. This cannot be undone. Continue?`
-            : category.value === "all"
-              ? "This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?"
-              : `This will permanently delete all data under "${categoryLabel}" only. Everything else stays untouched. This cannot be undone. Continue?`;
+            : isRoles
+              ? `This will permanently delete the role "${roleLabel}". This only works if no user currently has it as their primary role. This cannot be undone. Continue?`
+              : category.value === "all"
+                ? "This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?"
+                : `This will permanently delete all data under "${categoryLabel}" only. Everything else stays untouched. This cannot be undone. Continue?`;
     if (!confirm(confirmMessage)) return;
     const button = document.getElementById("resetDbButton");
     const originalText = button.textContent;
@@ -434,6 +457,7 @@
           machineScope: isMachines ? machineScope.value : undefined,
           userId: isUsers && !usersAll ? userPicker.value : undefined,
           userScope: isUsers ? userScope.value : undefined,
+          roleId: isRoles ? rolePicker.value : undefined,
         }),
       });
       const result = await response.json().catch(() => ({}));
@@ -452,9 +476,11 @@
       customersForResetCache = null;
       machinesForResetCache = null;
       usersForResetCache = null;
+      rolesForResetCache = null;
       customerPicker.innerHTML = '<option value="">Select a customer…</option>';
       machinePicker.innerHTML = '<option value="">Select a machine…</option>';
       userPicker.innerHTML = '<option value="">Select a user…</option>';
+      rolePicker.innerHTML = '<option value="">Select a role…</option>';
     } catch (error) {
       message(error.message, true);
     } finally {

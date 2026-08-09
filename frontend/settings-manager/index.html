@@ -55,6 +55,7 @@
               <option value="machines">Machines (pick one, or all)</option>
               <option value="machine-log">Machine Log (1 machine) — hours, logs & expenses</option>
               <option value="users">Users & Technicians (pick one, or all)</option>
+              <option value="roles">Custom Roles (pick one)</option>
               <option value="checklists">Checklist Templates & Reports</option>
               <option value="spare-parts">Spare Parts & Requests</option>
               <option value="suppliers">Suppliers</option>
@@ -84,6 +85,9 @@
           </label>
           <label id="resetUserPickerWrap" class="hidden">User to delete <small>(required)</small>
             <select id="resetUserPicker"><option value="">Select a user…</option></select>
+          </label>
+          <label id="resetRolePickerWrap" class="hidden">Role to delete <small>(required — Super Admin &amp; Technician are protected, and roles still assigned to a user can't be deleted)</small>
+            <select id="resetRolePicker"><option value="">Select a role…</option></select>
           </label>
           <label id="resetMachinePickerWrap" class="hidden">Machine <small>(required — pick the one machine to clear)</small>
             <select id="resetMachinePicker"><option value="">Select a machine…</option></select>

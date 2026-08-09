@@ -21,6 +21,7 @@ $categories = [
     'machines' => ['label' => 'Machines (fully deleted — customers stay untouched)', 'tables' => []],
     'machine-log' => ['label' => 'Machine Log (1 machine) — hours, checklist logs & expenses', 'tables' => []],
     'users' => ['label' => 'Users & Technicians (system logins — customers/machines untouched)', 'tables' => []],
+    'roles' => ['label' => 'Custom Roles (pick one — Super Admin & Technician are protected)', 'tables' => []],
     'checklists' => ['label' => 'Checklist Templates & Reports', 'tables' => []],
     'spare-parts' => ['label' => 'Spare Parts & Requests', 'tables' => ['spare_parts', 'spare_part_requests']],
     'suppliers' => ['label' => 'Suppliers', 'tables' => ['suppliers']],
@@ -37,6 +38,7 @@ $category = trim((string)($body['category'] ?? 'all'));
 $customerId = trim((string)($body['customerId'] ?? ''));
 $machineId = trim((string)($body['machineId'] ?? ''));
 $userId = trim((string)($body['userId'] ?? ''));
+$roleId = trim((string)($body['roleId'] ?? ''));
 $machineScope = trim((string)($body['machineScope'] ?? 'single')); // 'single' | 'all'
 $userScope = trim((string)($body['userScope'] ?? 'single'));       // 'single' | 'all'
 
@@ -389,6 +391,48 @@ try {
         json_out([
             'ok' => true,
             'message' => "User \"{$target['name']}\" has been permanently deleted. Customers, machines and other users are untouched.",
+        ]);
+    }
+
+    // -------------------- CUSTOM ROLES (single role, built-ins protected) --------------------
+    if ($category === 'roles') {
+        if ($roleId === '') json_error('Select a role to delete.', 400);
+
+        $roleStmt = $pdo->prepare('SELECT name FROM roles WHERE id = ? AND deleted_at IS NULL');
+        $roleStmt->execute([$roleId]);
+        $role = $roleStmt->fetch();
+        if (!$role) json_error('Role not found.', 404);
+
+        if (in_array($role['name'], ['Super Admin', 'Technician'], true)) {
+            json_error('Super Admin and Technician are built-in roles and cannot be deleted.', 400);
+        }
+
+        $usersWithRoleStmt = $pdo->prepare('SELECT COUNT(*) FROM users WHERE role_id = ? AND deleted_at IS NULL');
+        $usersWithRoleStmt->execute([$roleId]);
+        $usersWithRole = (int)$usersWithRoleStmt->fetchColumn();
+        if ($usersWithRole > 0) {
+            json_error(
+                "\"{$role['name']}\" still has {$usersWithRole} user(s) assigned as their primary role. Reassign them to a different role first, then try again.",
+                409
+            );
+        }
+
+        $pdo->beginTransaction();
+        try {
+            // user_roles has ON DELETE CASCADE for role_id, so any secondary
+            // (additional) role assignments to this role are cleaned up
+            // automatically. Primary role_id is checked above and blocked
+            // if still in use, so this delete is always safe.
+            $pdo->prepare('DELETE FROM roles WHERE id = ?')->execute([$roleId]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+
+        json_out([
+            'ok' => true,
+            'message' => "Role \"{$role['name']}\" has been permanently deleted. Other roles, users, customers and machines are untouched.",
         ]);
     }
 

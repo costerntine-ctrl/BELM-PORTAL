@@ -25,11 +25,26 @@ $categories = [
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
     'machine-expenses' => ['label' => 'Machine Expenses logs', 'tables' => []],
+    'machine-log' => ['label' => 'Machine Log (1 machine) — hours, checklist logs & expenses', 'tables' => []],
     'petty-cash' => ['label' => 'Petty Cash deposits (top-ups) — keeps spending history', 'tables' => ['petty_cash_topups']],
 ];
 
 $category = trim((string)($body['category'] ?? 'all'));
 $customerId = trim((string)($body['customerId'] ?? ''));
+$machineId = trim((string)($body['machineId'] ?? ''));
+
+function belm_clear_machine_log(PDO $pdo, string $machineId): void {
+    $pdo->prepare(
+        'DELETE FROM checklist_answers WHERE report_id IN (
+            SELECT id FROM checklist_reports WHERE machine_id = ?
+         )'
+    )->execute([$machineId]);
+    $pdo->prepare('DELETE FROM checklist_reports WHERE machine_id = ?')->execute([$machineId]);
+    $pdo->prepare('DELETE FROM usage_logs WHERE machine_id = ?')->execute([$machineId]);
+    $pdo->prepare(
+        'UPDATE machines SET last_service_hours = 0, service_history = NULL, last_checked_at = NULL, updated_at = NOW() WHERE id = ?'
+    )->execute([$machineId]);
+}
 
 function belm_hard_delete_customer(PDO $pdo, string $customerId): void {
     $machineIds = $pdo->prepare('SELECT id FROM machines WHERE customer_id = ?');
@@ -141,6 +156,31 @@ try {
         json_out([
             'ok' => true,
             'message' => "Customer \"$customerName\" and everything tied to them (machines, invoices, checklist reports, service requests) has been permanently deleted. Everything else is untouched.",
+        ]);
+    }
+
+    if ($category === 'machine-log') {
+        if ($machineId === '') json_error('Select a machine to clear its log.', 400);
+
+        $machineStmt = $pdo->prepare('SELECT model, fleet_number, reg_number FROM machines WHERE id = ? AND deleted_at IS NULL');
+        $machineStmt->execute([$machineId]);
+        $machine = $machineStmt->fetch();
+        if (!$machine) json_error('Machine not found.', 404);
+
+        $machineLabel = $machine['model'] . ($machine['fleet_number'] ? " (#{$machine['fleet_number']})" : ($machine['reg_number'] ? " ({$machine['reg_number']})" : ''));
+
+        $pdo->beginTransaction();
+        try {
+            belm_clear_machine_log($pdo, $machineId);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+
+        json_out([
+            'ok' => true,
+            'message' => "Log cleared for \"$machineLabel\" — hour meter readings, checklist reports and expense entries removed. The machine record and customer are untouched.",
         ]);
     }
 

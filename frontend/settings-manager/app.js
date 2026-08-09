@@ -164,6 +164,7 @@
 
   document.getElementById("pinForm").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const currentPin = document.getElementById("currentPin").value;
     const newPin = document.getElementById("newPin").value;
     const confirmPin = document.getElementById("confirmPin").value;
@@ -178,7 +179,7 @@
         method: "PUT",
         body: JSON.stringify({ currentPin, newPin }),
       });
-      event.currentTarget.reset();
+      form.reset();
       message("Protected delete PIN changed successfully.");
     } catch (error) {
       message(error.message, true);
@@ -217,6 +218,7 @@
 
   document.getElementById("announcementForm").addEventListener("submit", async (event) => {
     event.preventDefault();
+    const form = event.currentTarget;
     const button = document.getElementById("postAnnouncementButton");
     button.disabled = true;
     try {
@@ -224,7 +226,7 @@
         method: "POST",
         body: JSON.stringify({ message: document.getElementById("announcementMessage").value.trim() }),
       });
-      event.currentTarget.reset();
+      form.reset();
       message("Message posted to customer dashboards.");
       await loadAnnouncements();
     } catch (error) {
@@ -247,22 +249,40 @@
   });
 
   let customersForResetCache = null;
+  let machinesForResetCache = null;
 
   document.getElementById("resetDbCategory").addEventListener("change", async (event) => {
-    const wrap = document.getElementById("resetCustomerPickerWrap");
-    if (event.target.value !== "customers") {
-      wrap.classList.add("hidden");
+    const customerWrap = document.getElementById("resetCustomerPickerWrap");
+    const machineWrap = document.getElementById("resetMachinePickerWrap");
+    customerWrap.classList.add("hidden");
+    machineWrap.classList.add("hidden");
+
+    if (event.target.value === "customers") {
+      customerWrap.classList.remove("hidden");
+      const picker = document.getElementById("resetCustomerPicker");
+      if (customersForResetCache) return;
+      try {
+        customersForResetCache = await api("/customers");
+        picker.innerHTML = '<option value="">All customers</option>' +
+          customersForResetCache.map((customer) =>
+            `<option value="${customer.id}">${escapeHtml(customer.name)}</option>`).join("");
+      } catch (_) {}
       return;
     }
-    wrap.classList.remove("hidden");
-    const picker = document.getElementById("resetCustomerPicker");
-    if (customersForResetCache) return;
-    try {
-      customersForResetCache = await api("/customers");
-      picker.innerHTML = '<option value="">All customers</option>' +
-        customersForResetCache.map((customer) =>
-          `<option value="${customer.id}">${customer.name}</option>`).join("");
-    } catch (_) {}
+
+    if (event.target.value === "machine-log") {
+      machineWrap.classList.remove("hidden");
+      const picker = document.getElementById("resetMachinePicker");
+      if (machinesForResetCache) return;
+      try {
+        const customers = customersForResetCache || (customersForResetCache = await api("/customers"));
+        machinesForResetCache = customers.flatMap((customer) =>
+          (customer.machines || []).map((machine) => ({ ...machine, customerName: customer.name })));
+        picker.innerHTML = '<option value="">Select a machine…</option>' +
+          machinesForResetCache.map((machine) =>
+            `<option value="${machine.id}">${escapeHtml(machine.customerName)} — ${escapeHtml(machine.model)}${machine.fleetNumber ? ` (#${escapeHtml(machine.fleetNumber)})` : ""}</option>`).join("");
+      } catch (_) {}
+    }
   });
 
   document.getElementById("editPinForm").addEventListener("submit", async (event) => {
@@ -308,15 +328,26 @@
     const category = document.getElementById("resetDbCategory");
     const categoryLabel = category.options[category.selectedIndex].text;
     const customerPicker = document.getElementById("resetCustomerPicker");
+    const machinePicker = document.getElementById("resetMachinePicker");
     const isSingleCustomer = category.value === "customers" && customerPicker.value;
+    const isMachineLog = category.value === "machine-log";
+    if (isMachineLog && !machinePicker.value) {
+      message("Select a machine to clear its log.", true);
+      return;
+    }
     const customerLabel = isSingleCustomer
       ? customerPicker.options[customerPicker.selectedIndex].text
       : "";
+    const machineLabel = isMachineLog
+      ? machinePicker.options[machinePicker.selectedIndex].text
+      : "";
     const confirmMessage = isSingleCustomer
       ? `This will permanently delete customer "${customerLabel}" and everything tied to them (machines, invoices, checklist reports, service requests). This cannot be undone. Continue?`
-      : category.value === "all"
-        ? "This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?"
-        : `This will permanently delete all data under "${categoryLabel}" only. Everything else stays untouched. This cannot be undone. Continue?`;
+      : isMachineLog
+        ? `This will permanently clear the hour meter readings, checklist logs and expense entries for "${machineLabel}". The machine record and customer stay untouched. This cannot be undone. Continue?`
+        : category.value === "all"
+          ? "This will permanently delete EVERY customer, machine, invoice and report, then reset to a fresh empty database. This cannot be undone. Continue?"
+          : `This will permanently delete all data under "${categoryLabel}" only. Everything else stays untouched. This cannot be undone. Continue?`;
     if (!confirm(confirmMessage)) return;
     const button = document.getElementById("resetDbButton");
     const originalText = button.textContent;
@@ -333,6 +364,7 @@
           reason: document.getElementById("resetDbReason").value,
           category: category.value,
           customerId: isSingleCustomer ? customerPicker.value : undefined,
+          machineId: isMachineLog ? machinePicker.value : undefined,
         }),
       });
       const result = await response.json().catch(() => ({}));
@@ -349,7 +381,9 @@
       document.getElementById("resetDbPassword").value = "";
       document.getElementById("resetDbReason").value = "";
       customersForResetCache = null;
+      machinesForResetCache = null;
       customerPicker.innerHTML = '<option value="">All customers</option>';
+      machinePicker.innerHTML = '<option value="">Select a machine…</option>';
     } catch (error) {
       message(error.message, true);
     } finally {

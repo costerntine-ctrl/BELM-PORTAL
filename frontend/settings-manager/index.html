@@ -61,11 +61,15 @@
               <option value="tasks">Tasks</option>
               <option value="activity">Activity Log, Trash & Announcements</option>
               <option value="machine-expenses">Machine Expenses logs</option>
+              <option value="machine-log">Machine Log (1 machine) — hours, logs & expenses</option>
               <option value="petty-cash">Petty Cash deposits (top-ups only — keeps spending history)</option>
             </select>
           </label>
           <label id="resetCustomerPickerWrap" class="hidden">Specific customer <small>(leave as "All customers" to clear the whole category)</small>
             <select id="resetCustomerPicker"><option value="">All customers</option></select>
+          </label>
+          <label id="resetMachinePickerWrap" class="hidden">Machine <small>(required — pick the one machine to clear)</small>
+            <select id="resetMachinePicker"><option value="">Select a machine…</option></select>
           </label>
           <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label>
           <label>Admin password<input id="resetDbPassword" type="password" required></label>

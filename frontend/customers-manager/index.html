@@ -39,13 +39,9 @@
     <main class="shell">
       <section class="hero">
         <div>
-          <p class="eyebrow">Customer Registration & Fleet Status</p>
+          <p class="eyebrow">Fleet Status</p>
           <h1>Customers Overview</h1>
-          <p>Customer information and machine health arranged in clear cards.</p>
-        </div>
-        <div class="top-actions">
-          <button id="mergeCustomersButton" class="ghost" type="button">Merge duplicate customers</button>
-          <button id="addCustomerButton" class="secondary" type="button">+ Register customer</button>
+          <p>Customer information and machine health arranged in clear cards. New customers are registered from the <a href="/admin-applications/">Registrations</a> page.</p>
         </div>
       </section>
 
@@ -214,27 +210,6 @@
         <div class="dialog-actions">
           <button class="ghost" data-close="checkupDialog" type="button">Cancel</button>
           <button id="saveCheckupButton" class="primary" type="submit">Save check-up</button>
-        </div>
-      </form>
-    </dialog>
-
-    <dialog id="mergeCustomersDialog">
-      <form id="mergeCustomersForm" class="dialog-card">
-        <div class="dialog-head">
-          <div><p class="eyebrow">Duplicate Cleanup</p><h2>Merge two customers</h2></div>
-          <button class="icon-close" data-close="mergeCustomersDialog" type="button" aria-label="Close">×</button>
-        </div>
-        <p class="muted">Use this when the same company was registered twice by mistake. Everything (machines, invoices, checklist reports, service requests) moves onto the customer you keep, and the duplicate is removed.</p>
-        <div id="mergeCustomersError" class="alert error hidden"></div>
-        <label>Duplicate to remove
-          <select id="mergeSourceCustomer" required><option value="">Select the duplicate…</option></select>
-        </label>
-        <label>Customer to keep
-          <select id="mergeTargetCustomer" required><option value="">Select who keeps the data…</option></select>
-        </label>
-        <div class="dialog-actions">
-          <button class="ghost" data-close="mergeCustomersDialog" type="button">Cancel</button>
-          <button id="mergeCustomersSubmit" class="primary" type="submit">Continue</button>
         </div>
       </form>
     </dialog>

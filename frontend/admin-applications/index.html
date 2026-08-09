@@ -16,7 +16,11 @@
   <main>
     <div class="heading">
       <div><p>PORTAL ONBOARDING</p><h1>Registration & role approval</h1><span>Customers and users remain blocked until you approve and assign their access.</span></div>
-      <button class="refresh" id="refreshButton">Refresh</button>
+      <div class="heading-actions">
+        <button class="secondary" id="registerCustomerButton" type="button">+ Register customer</button>
+        <button class="secondary" id="registerTechnicianButton" type="button">+ Register technician</button>
+        <button class="refresh" id="refreshButton">Refresh</button>
+      </div>
     </div>
 
     <div class="tabs" role="tablist">
@@ -67,6 +71,72 @@
       <div id="assignmentError" class="alert hidden"></div>
       <button id="confirmAssignmentButton" class="primary" type="submit">Approve and generate credentials</button>
     </form>
+  </dialog>
+
+  <dialog id="registerCustomerDialog">
+    <button class="dialog-close" id="closeRegisterCustomer" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">MANUAL REGISTRATION</p>
+      <h2>Register customer &amp; machine</h2>
+      <p>Creates the customer account directly (no application to approve). Adding a first machine is optional — more can be added later from Customers &amp; Machines.</p>
+    </div>
+    <form id="registerCustomerForm" class="assignment-form">
+      <label>Company name<input id="regCustomerName" required maxlength="255"></label>
+      <label>Email<input id="regCustomerEmail" required type="email" maxlength="255"></label>
+      <label>Phone number<input id="regCustomerPhone" required maxlength="50"></label>
+      <label>Company address<input id="regCustomerAddress" maxlength="500"></label>
+      <label>TIN number<input id="regCustomerTin" maxlength="50"></label>
+      <label>VRN number<input id="regCustomerVrn" maxlength="50"></label>
+      <div class="field-block"><span class="check-option"><input id="regAddMachineToggle" type="checkbox"> Also register a first machine now</span></div>
+      <div id="regMachineFields" class="hidden">
+        <label>Machine type<input id="regMachineType" maxlength="100" placeholder="Reach Stacker, Forklift…"></label>
+        <label>Brand<input id="regMachineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
+        <label>Model<input id="regMachineModel" maxlength="255"></label>
+        <label>Registration number<input id="regMachineRegNumber" maxlength="100"></label>
+        <label>Fleet number<input id="regMachineFleetNumber" maxlength="100" placeholder="e.g. BELM-045"></label>
+        <label>Serial number<input id="regMachineSerialNumber" maxlength="100"></label>
+      </div>
+      <div id="registerCustomerError" class="alert hidden"></div>
+      <button id="saveRegisterCustomerButton" class="primary" type="submit">Register customer</button>
+    </form>
+  </dialog>
+
+  <dialog id="registerTechnicianDialog">
+    <button class="dialog-close" id="closeRegisterTechnician" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">MANUAL REGISTRATION</p>
+      <h2>Register technician / system user</h2>
+      <p>Creates a live login directly (no application to approve). Choose the exact role — the user will not see pages outside it.</p>
+    </div>
+    <form id="registerTechnicianForm" class="assignment-form">
+      <label>Name<input id="regUserName" required maxlength="255"></label>
+      <label>Email<input id="regUserEmail" required type="email" maxlength="255"></label>
+      <label>Phone<input id="regUserPhone" maxlength="50"></label>
+      <label>Assign role
+        <select id="regUserRole" required></select>
+      </label>
+      <label id="regUserCustomerWrap" class="hidden">Customer served by Technician
+        <select id="regUserCustomer"></select>
+      </label>
+      <div id="registerTechnicianError" class="alert hidden"></div>
+      <button id="saveRegisterTechnicianButton" class="primary" type="submit">Register technician</button>
+    </form>
+  </dialog>
+
+  <dialog id="registerCredentialsDialog">
+    <button class="dialog-close" id="closeRegisterCredentials" aria-label="Close">×</button>
+    <div class="check">✓</div>
+    <h2>Account created</h2>
+    <p>Copy these credentials now. The password and recovery code are shown only once.</p>
+    <div class="login-summary">
+      <label>Name</label><strong id="regCredName"></strong>
+      <label>Role / type</label><strong id="regCredRole"></strong>
+      <label>Login email</label><strong id="regCredEmail"></strong>
+      <label>Temporary password</label><strong id="regCredPassword"></strong>
+      <label>Recovery code</label><strong id="regCredRecovery"></strong>
+      <label>Login link</label><a id="regCredLink" target="_blank" rel="noopener"></a>
+    </div>
+    <button id="copyRegCredButton" class="primary" type="button">Copy link + password + recovery</button>
   </dialog>
 
   <script src="/admin-access.js"></script>

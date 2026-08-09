@@ -629,7 +629,6 @@
     if (button) viewReport(button.dataset.viewReport);
   });
 
-  document.getElementById("addCustomerButton").addEventListener("click", () => openCustomer());
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
@@ -706,54 +705,6 @@
       confirmThenOpen("Edit machine?", `Confirm you want to edit ${machine?.model || "this machine"}.`, () => openMachine(customer, machine));
     }
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
-  });
-
-  document.getElementById("mergeCustomersButton").addEventListener("click", () => {
-    const sourceSelect = document.getElementById("mergeSourceCustomer");
-    const targetSelect = document.getElementById("mergeTargetCustomer");
-    const options = customers.map((customer) =>
-      `<option value="${customer.id}">${customer.name} (${customer.email || "no email"})</option>`).join("");
-    sourceSelect.innerHTML = '<option value="">Select the duplicate…</option>' + options;
-    targetSelect.innerHTML = '<option value="">Select who keeps the data…</option>' + options;
-    document.getElementById("mergeCustomersError").classList.add("hidden");
-    document.getElementById("mergeCustomersDialog").showModal();
-  });
-
-  document.getElementById("mergeCustomersForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const errorBox = document.getElementById("mergeCustomersError");
-    const sourceId = document.getElementById("mergeSourceCustomer").value;
-    const targetId = document.getElementById("mergeTargetCustomer").value;
-    if (!sourceId || !targetId) {
-      errorBox.textContent = "Select both customers.";
-      errorBox.classList.remove("hidden");
-      return;
-    }
-    if (sourceId === targetId) {
-      errorBox.textContent = "Select two different customers.";
-      errorBox.classList.remove("hidden");
-      return;
-    }
-    const sourceName = customers.find((c) => c.id === sourceId)?.name || "the duplicate";
-    const targetName = customers.find((c) => c.id === targetId)?.name || "the customer you keep";
-    document.getElementById("mergeCustomersDialog").close();
-
-    const confirmation = await window.belmConfirmDelete({
-      title: "Merge customers?",
-      message: `Merge "${sourceName}" into "${targetName}"? Everything from "${sourceName}" (machines, invoices, reports) moves onto "${targetName}", and "${sourceName}" is permanently removed.`,
-    });
-    if (!confirmation) return;
-
-    try {
-      const result = await api("/customers/merge", {
-        method: "POST",
-        body: JSON.stringify({ sourceCustomerId: sourceId, targetCustomerId: targetId, ...confirmation }),
-      });
-      showAlert(result.message || "Customers merged successfully.");
-      await load();
-    } catch (error) {
-      showAlert(error.message, true);
-    }
   });
 
   load();

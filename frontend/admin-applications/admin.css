@@ -39,7 +39,13 @@ dialog h2 { margin-bottom:6px; }dialog>p { color:var(--muted); font-size:13px; }
 .eyebrow { color:var(--green2); font-size:10px; letter-spacing:1.3px; font-weight:900; margin:0; }
 .assignment-form { text-align:left; display:grid; gap:15px; margin-top:22px; }
 .assignment-form label { display:grid; gap:7px; color:#344b61; font-size:12px; font-weight:800; }
-.assignment-form select { width:100%; border:1px solid #c9d5e1; border-radius:9px; padding:11px 12px; background:#fff; color:#18344f; font:500 14px inherit; }
+.assignment-form select,.assignment-form input { width:100%; border:1px solid #c9d5e1; border-radius:9px; padding:11px 12px; background:#fff; color:#18344f; font:500 14px inherit; }
+.field-block { text-align:left; display:grid; gap:6px; }
+.check-option { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#344b61; }
+.check-option input { width:auto !important; }
+.heading-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.secondary { border:1px solid var(--green) !important; background:#fff; color:var(--green2); border-radius:9px; padding:10px 16px; font-weight:750; cursor:pointer; box-shadow:0 5px 15px rgba(0,166,81,.08); }
+.secondary:hover { background:#e7f8ee; }
 .assignment-form .primary { margin-top:4px; }
 .login-summary { text-align:left; background:#f5f8fb; border-radius:11px; padding:15px; display:grid; gap:5px; margin:20px 0; }
 .login-summary strong,.login-summary a { color:#18344f; font-size:13px; overflow-wrap:anywhere; margin-bottom:5px; }

@@ -295,3 +295,186 @@ document.getElementById("copyApprovedPasswordButton").addEventListener("click", 
 });
 
 loadApplications();
+
+// ---------------------------------------------------------------------
+// MANUAL REGISTRATION — Register Customer (+ optional first machine) and
+// Register Technician/system user, without going through the
+// applications approval queue. Lives here so every registration path
+// (self-service application review AND manual entry) is on one page.
+// ---------------------------------------------------------------------
+const registerCustomerDialog = document.getElementById("registerCustomerDialog");
+const registerTechnicianDialog = document.getElementById("registerTechnicianDialog");
+const registerCredentialsDialog = document.getElementById("registerCredentialsDialog");
+let rolesForRegisterCache = null;
+let customersForRegisterCache = null;
+
+async function ensureRolesAndCustomersLoaded() {
+  if (!rolesForRegisterCache) rolesForRegisterCache = await api("/api/users/roles");
+  if (!customersForRegisterCache) customersForRegisterCache = await api("/api/customers");
+  return [rolesForRegisterCache, customersForRegisterCache];
+}
+
+function showRegisterError(boxId, message) {
+  const box = document.getElementById(boxId);
+  box.textContent = message;
+  box.classList.remove("hidden");
+}
+
+function openRegisterCredentials({ name, role, email, password, recoveryCode, loginUrl }) {
+  document.getElementById("regCredName").textContent = name;
+  document.getElementById("regCredRole").textContent = role;
+  document.getElementById("regCredEmail").textContent = email;
+  document.getElementById("regCredPassword").textContent = password;
+  document.getElementById("regCredRecovery").textContent = recoveryCode || "—";
+  const link = document.getElementById("regCredLink");
+  link.href = loginUrl || "#";
+  link.textContent = loginUrl || "—";
+  registerCredentialsDialog.showModal();
+}
+
+document.getElementById("registerCustomerButton").addEventListener("click", () => {
+  document.getElementById("registerCustomerForm").reset();
+  document.getElementById("regMachineFields").classList.add("hidden");
+  document.getElementById("registerCustomerError").classList.add("hidden");
+  registerCustomerDialog.showModal();
+});
+document.getElementById("closeRegisterCustomer").addEventListener("click", () => registerCustomerDialog.close());
+
+document.getElementById("regAddMachineToggle").addEventListener("change", event => {
+  document.getElementById("regMachineFields").classList.toggle("hidden", !event.target.checked);
+});
+
+document.getElementById("registerCustomerForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  document.getElementById("registerCustomerError").classList.add("hidden");
+  const button = document.getElementById("saveRegisterCustomerButton");
+  button.disabled = true;
+  button.textContent = "Registering…";
+  try {
+    const customer = await api("/api/customers", {
+      method: "POST",
+      body: JSON.stringify({
+        name: document.getElementById("regCustomerName").value.trim(),
+        email: document.getElementById("regCustomerEmail").value.trim(),
+        phone: document.getElementById("regCustomerPhone").value.trim(),
+        address: document.getElementById("regCustomerAddress").value.trim(),
+        tinNumber: document.getElementById("regCustomerTin").value.trim(),
+        vrn: document.getElementById("regCustomerVrn").value.trim()
+      })
+    });
+
+    if (document.getElementById("regAddMachineToggle").checked) {
+      const machineType = document.getElementById("regMachineType").value.trim();
+      const machineModel = document.getElementById("regMachineModel").value.trim();
+      if (machineType && machineModel) {
+        await api(`/api/customers/${customer.id}/machines`, {
+          method: "POST",
+          body: JSON.stringify({
+            machineType,
+            model: machineModel,
+            brand: document.getElementById("regMachineBrand").value.trim(),
+            regNumber: document.getElementById("regMachineRegNumber").value.trim(),
+            fleetNumber: document.getElementById("regMachineFleetNumber").value.trim(),
+            serialNumber: document.getElementById("regMachineSerialNumber").value.trim()
+          })
+        });
+      }
+    }
+
+    registerCustomerDialog.close();
+    openRegisterCredentials({
+      name: document.getElementById("regCustomerName").value.trim(),
+      role: "Customer",
+      email: document.getElementById("regCustomerEmail").value.trim(),
+      password: customer.portalLoginInfo.temporaryPassword,
+      recoveryCode: customer.portalLoginInfo.recoveryCode,
+      loginUrl: customer.portalLoginInfo.portalUrl
+    });
+    await loadApplications();
+  } catch (error) {
+    showRegisterError("registerCustomerError", error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Register customer";
+  }
+});
+
+document.getElementById("registerTechnicianButton").addEventListener("click", async () => {
+  document.getElementById("registerTechnicianForm").reset();
+  document.getElementById("registerTechnicianError").classList.add("hidden");
+  try {
+    const [roleList, customerList] = await ensureRolesAndCustomersLoaded();
+    const roleSelect = document.getElementById("regUserRole");
+    roleSelect.innerHTML = '<option value="">Select role…</option>' + roleList.map(role =>
+      `<option value="${escapeHtml(role.id)}" ${role.name === "Technician" ? "selected" : ""}>${escapeHtml(role.name)}</option>`
+    ).join("");
+    document.getElementById("regUserCustomer").innerHTML =
+      '<option value="">Select customer…</option>' + customerList.map(customer =>
+        `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`
+      ).join("");
+    updateRegisterUserCustomerVisibility();
+    registerTechnicianDialog.showModal();
+  } catch (error) {
+    alert(error.message);
+  }
+});
+document.getElementById("closeRegisterTechnician").addEventListener("click", () => registerTechnicianDialog.close());
+
+function updateRegisterUserCustomerVisibility() {
+  const role = (rolesForRegisterCache || []).find(item => item.id === document.getElementById("regUserRole").value);
+  const isTechnician = role?.name === "Technician";
+  document.getElementById("regUserCustomerWrap").classList.toggle("hidden", !isTechnician);
+  document.getElementById("regUserCustomer").required = isTechnician;
+  if (!isTechnician) document.getElementById("regUserCustomer").value = "";
+}
+document.getElementById("regUserRole").addEventListener("change", updateRegisterUserCustomerVisibility);
+
+document.getElementById("registerTechnicianForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  document.getElementById("registerTechnicianError").classList.add("hidden");
+  const button = document.getElementById("saveRegisterTechnicianButton");
+  button.disabled = true;
+  button.textContent = "Registering…";
+  try {
+    const roleId = document.getElementById("regUserRole").value;
+    const role = (rolesForRegisterCache || []).find(item => item.id === roleId);
+    const result = await api("/api/users", {
+      method: "POST",
+      body: JSON.stringify({
+        name: document.getElementById("regUserName").value.trim(),
+        email: document.getElementById("regUserEmail").value.trim(),
+        phone: document.getElementById("regUserPhone").value.trim(),
+        roleId,
+        assignedCustomerId: document.getElementById("regUserCustomer").value || null
+      })
+    });
+    registerTechnicianDialog.close();
+    openRegisterCredentials({
+      name: document.getElementById("regUserName").value.trim(),
+      role: role ? role.name : "System user",
+      email: document.getElementById("regUserEmail").value.trim(),
+      password: result.temporaryPassword,
+      recoveryCode: result.recoveryCode,
+      loginUrl: result.loginUrl
+    });
+  } catch (error) {
+    showRegisterError("registerTechnicianError", error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Register technician";
+  }
+});
+
+document.getElementById("closeRegisterCredentials").addEventListener("click", () => registerCredentialsDialog.close());
+document.getElementById("copyRegCredButton").addEventListener("click", async () => {
+  const message = [
+    `Name: ${document.getElementById("regCredName").textContent}`,
+    `Role: ${document.getElementById("regCredRole").textContent}`,
+    `Login: ${document.getElementById("regCredLink").textContent}`,
+    `Email: ${document.getElementById("regCredEmail").textContent}`,
+    `Temporary password: ${document.getElementById("regCredPassword").textContent}`,
+    `Recovery code: ${document.getElementById("regCredRecovery").textContent}`
+  ].join("\n");
+  await copyText(message);
+  document.getElementById("copyRegCredButton").textContent = "Credentials copied";
+});

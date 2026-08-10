@@ -634,9 +634,35 @@
           <td>${escapeHtml(answer.label)}</td>
           <td>${escapeHtml(answer.value || "—")}</td>
           <td><span class="machine-status ${escapeHtml(String(answer.safetyLevel || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(answer.safetyLevel))}</span></td>
-          <td style="text-align:right">${photoUrl ? `<a href="${escapeHtml(photoUrl)}" target="_blank" rel="noopener"><img src="${escapeHtml(photoUrl)}" alt="Evidence" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"></a>` : "—"}</td>
+          <td style="text-align:right">${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="Evidence" class="evidence-thumb" data-view-evidence-photo="${escapeHtml(photoUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer">` : "—"}</td>
         </tr>`;
       }).join("") : '<tr><td colspan="4" class="muted">No answers recorded.</td></tr>'}</tbody></table>`;
+  }
+
+  document.getElementById("reportViewBody")?.addEventListener("click", (event) => {
+    const thumb = event.target.closest("[data-view-evidence-photo]");
+    if (!thumb) return;
+    openEvidencePhotoLightbox(thumb.dataset.viewEvidencePhoto);
+  });
+
+  function openEvidencePhotoLightbox(photoUrl) {
+    let overlay = document.getElementById("evidencePhotoLightbox");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "evidencePhotoLightbox";
+      overlay.className = "evidence-photo-lightbox";
+      overlay.innerHTML = `
+        <button type="button" class="evidence-photo-lightbox-close" aria-label="Close">×</button>
+        <img alt="Evidence photo — full size">`;
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay || event.target.closest(".evidence-photo-lightbox-close")) {
+          overlay.classList.remove("open");
+        }
+      });
+    }
+    overlay.querySelector("img").src = photoUrl;
+    overlay.classList.add("open");
   }
 
   function checkupItemControl(item) {

@@ -62,6 +62,15 @@
         companyAddress: "companyAddress",
         companyTin: "companyTin",
         companyVrn: "companyVrn",
+        companyWebsite: "companyWebsite",
+        bankAccountName: "bankAccountName",
+        bankNmbNumber: "bankNmbNumber",
+        bankCrdbNumber: "bankCrdbNumber",
+        defaultVatRate: "defaultVatRate",
+        defaultPaymentTerms: "defaultPaymentTerms",
+        defaultDeliveryTime: "defaultDeliveryTime",
+        defaultQuoteValidity: "defaultQuoteValidity",
+        footerMessage: "footerMessage",
         currency: "currency",
         timezone: "timezone",
         invoicePrefix: "invoicePrefix",
@@ -73,6 +82,9 @@
           document.getElementById(id).value = settings[key];
         }
       });
+      if (Array.isArray(settings.whyChooseUs)) {
+        document.getElementById("whyChooseUsText").value = settings.whyChooseUs.join("\n");
+      }
       document.getElementById("adminAlertsToggle").checked = settings.adminAlertsEnabled !== false;
       document.getElementById("technicianAlertsToggle").checked = settings.technicianAlertsEnabled !== false;
       document.getElementById("whatsappAlertsToggle").checked = settings.whatsappAlertsEnabled !== false;
@@ -122,6 +134,31 @@
         companyVrn: document.getElementById("companyVrn").value.trim(),
       });
       message("Company settings saved successfully.");
+    } catch (error) {
+      message(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  });
+
+  document.getElementById("documentBrandingForm").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = document.getElementById("saveDocumentBrandingButton");
+    button.disabled = true;
+    try {
+      await saveSettings({
+        companyWebsite: document.getElementById("companyWebsite").value.trim(),
+        bankAccountName: document.getElementById("bankAccountName").value.trim(),
+        bankNmbNumber: document.getElementById("bankNmbNumber").value.trim(),
+        bankCrdbNumber: document.getElementById("bankCrdbNumber").value.trim(),
+        defaultVatRate: parseFloat(document.getElementById("defaultVatRate").value) || 0,
+        defaultPaymentTerms: document.getElementById("defaultPaymentTerms").value.trim(),
+        defaultDeliveryTime: document.getElementById("defaultDeliveryTime").value.trim(),
+        defaultQuoteValidity: document.getElementById("defaultQuoteValidity").value.trim(),
+        whyChooseUs: document.getElementById("whyChooseUsText").value.split("\n").map((line) => line.trim()).filter(Boolean),
+        footerMessage: document.getElementById("footerMessage").value.trim(),
+      });
+      message("Document branding saved successfully.");
     } catch (error) {
       message(error.message, true);
     } finally {

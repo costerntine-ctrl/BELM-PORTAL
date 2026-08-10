@@ -61,16 +61,15 @@ if ($method === 'GET' && $action === 'export-invoice') {
         ];
     }
 
+    $bank = [];
+    if ($company['bankAccountName']) $bank[] = ['ACCOUNT NAME', $company['bankAccountName']];
+    if ($company['bankNmbNumber']) $bank[] = ['NMB BANK', $company['bankNmbNumber']];
+    if ($company['bankCrdbNumber']) $bank[] = ['CRDB BANK', $company['bankCrdbNumber']];
+
     output_professional_document_pdf(
-        'BELM-' . $invoice['invoice_no'] . '.pdf',
+        'Invoice-' . $invoice['invoice_no'] . '-' . $invoice['customer_name'] . '.pdf',
         'Invoice',
-        [
-            'name' => $company['companyName'],
-            'address1' => $company['companyAddress'],
-            'tel' => $company['companyPhone'],
-            'email' => $company['companyEmail'],
-            'website' => $company['companyWebsite'],
-        ],
+        $company,
         [
             'name' => $invoice['customer_name'],
             'tin' => $invoice['customer_tin'] ?: null,
@@ -91,16 +90,13 @@ if ($method === 'GET' && $action === 'export-invoice') {
             'vatLabel' => 'Tax',
             'grandTotal' => number_format((float)$invoice['total'], 2),
         ],
-        [
-            ['ACCOUNT NAME', $company['companyName']],
-            ['NMB BANK', '20710076849'],
-            ['CRDB BANK', '0150761848600'],
-        ],
-        [
-            'Term of Payment: As agreed with BELM General Tech Service Limited',
-        ],
+        (string)($invoice['notice'] ?? ''),
+        $bank,
+        array_values(array_filter([
+            $invoice['payment_terms'] ? 'Term of Payment: ' . $invoice['payment_terms'] : ($company['defaultPaymentTerms'] ? 'Term of Payment: ' . $company['defaultPaymentTerms'] : null),
+        ])),
         [],
-        'Thank you for your business',
+        (string)($company['footerMessage'] ?? 'Thank you for your business'),
         $paymentSummary
     );
 }
@@ -205,10 +201,14 @@ function validate_invoice_input(array $payload): array {
     $tax = (float)($payload['tax'] ?? 0);
     if ($tax < 0) json_error('Tax cannot be negative.');
     $dueDate = trim((string)($payload['dueDate'] ?? ''));
+    $notice = trim((string)($payload['notice'] ?? ''));
+    $paymentTerms = trim((string)($payload['paymentTerms'] ?? ''));
     return [
         'customerId' => $customerId,
         'machineId' => $machineId !== '' ? $machineId : null,
         'dueDate' => $dueDate !== '' ? $dueDate : null,
+        'notice' => $notice !== '' ? $notice : null,
+        'paymentTerms' => $paymentTerms !== '' ? $paymentTerms : null,
         'items' => $normalizedItems,
         'subtotal' => $subtotal,
         'tax' => $tax,
@@ -216,12 +216,6 @@ function validate_invoice_input(array $payload): array {
     ];
 }
 
-function calculated_invoice_status(float $total, float $paid, ?string $dueDate): string {
-    if ($total > 0 && $paid >= $total - 0.005) return 'PAID';
-    if ($paid > 0) return 'PARTIALLY_PAID';
-    if ($dueDate && $dueDate < date('Y-m-d')) return 'OVERDUE';
-    return 'UNPAID';
-}
 
 function validated_payment_bank_id(array $payload): ?string {
     $bankAccountId = trim((string)($payload['bankAccountId'] ?? ''));
@@ -273,12 +267,12 @@ if ($method === 'GET' && !$action) {
 if ($method === 'POST' && !$action) {
     $b = body();
     $invoice = validate_invoice_input($b);
-    $invoiceNo = document_number('INV');
+    $invoiceNo = belm_next_document_number('INV', 'invoice_number_seq');
     $newId = uuid();
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->prepare("INSERT INTO invoices (id, customer_id, machine_id, invoice_no, subtotal, tax, total, status, due_date, created_at) VALUES (?,?,?,?,?,?,?,'UNPAID',?,NOW())")
+        $pdo->prepare("INSERT INTO invoices (id, customer_id, machine_id, invoice_no, subtotal, tax, total, status, due_date, notice, payment_terms, created_at) VALUES (?,?,?,?,?,?,?,'UNPAID',?,?,?,NOW())")
             ->execute([
                 $newId,
                 $invoice['customerId'],
@@ -288,6 +282,8 @@ if ($method === 'POST' && !$action) {
                 $invoice['tax'],
                 $invoice['total'],
                 $invoice['dueDate'],
+                $invoice['notice'],
+                $invoice['paymentTerms'],
             ]);
         $itemStmt = $pdo->prepare(
             'INSERT INTO invoice_items
@@ -345,7 +341,7 @@ if ($method === 'PUT' && !$action) {
             $pdo->prepare(
                 'UPDATE invoices
                  SET customer_id=?, machine_id=?, subtotal=?, tax=?, total=?,
-                     status=?, due_date=?
+                     status=?, due_date=?, notice=?, payment_terms=?
                  WHERE id=? AND deleted_at IS NULL'
             )->execute([
                 $invoice['customerId'],
@@ -355,6 +351,8 @@ if ($method === 'PUT' && !$action) {
                 $invoice['total'],
                 $status,
                 $invoice['dueDate'],
+                $invoice['notice'],
+                $invoice['paymentTerms'],
                 $id,
             ]);
             $pdo->prepare('DELETE FROM invoice_items WHERE invoice_id = ?')->execute([$id]);

@@ -403,6 +403,54 @@ CREATE TABLE IF NOT EXISTS proforma_invoices (
   deleted_at TIMESTAMPTZ NULL
 );
 
+-- Per-document customization so a Proforma can carry its own discount
+-- type/rate, an optional printed notice, and its own trading-term text
+-- without touching Company Settings (which only supplies the defaults
+-- pre-filled on a new document). All additive/backward compatible —
+-- existing proforma rows keep working unchanged (discount_type defaults
+-- to the same FIXED-amount behaviour they already had).
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS discount_type VARCHAR(10) NOT NULL DEFAULT 'FIXED';
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5,2) NOT NULL DEFAULT 18;
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS notice TEXT NULL;
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(500) NULL;
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS delivery_time VARCHAR(255) NULL;
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS quote_validity VARCHAR(255) NULL;
+
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notice TEXT NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(500) NULL;
+
+-- Server-side, gap-free (per type) document numbering. Existing rows
+-- already have unique invoice_no values in the older PRO-<timestamp>-<rand>
+-- format — that data is untouched. New documents prefer the clean
+-- PI-0001 / RCPT-0001 style; belm_next_document_number() falls back to the
+-- legacy format only if a sequence somehow isn't available.
+CREATE SEQUENCE IF NOT EXISTS proforma_number_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS receipt_number_seq START WITH 1;
+
+-- ---------------------------------------------------------------------
+-- RECEIPTS — official payment receipts, optionally linked to an invoice
+-- so "Create Receipt" from an invoice can prefill customer/invoice/amount
+-- and show Invoice Total / Previous Payments / Amount Paid / Balance.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS receipts (
+  id VARCHAR(36) PRIMARY KEY,
+  receipt_no VARCHAR(50) NOT NULL UNIQUE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  invoice_id VARCHAR(36) NULL REFERENCES invoices(id),
+  amount NUMERIC(12,2) NOT NULL,
+  payment_method VARCHAR(30) NOT NULL DEFAULT 'CASH',
+  payment_reference VARCHAR(100) NULL,
+  bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id),
+  received_by VARCHAR(36) NULL REFERENCES users(id),
+  notes VARCHAR(500) NULL,
+  paid_at DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS idx_receipts_invoice ON receipts(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_customer ON receipts(customer_id);
+
 CREATE TABLE IF NOT EXISTS proforma_invoice_items (
   id VARCHAR(36) PRIMARY KEY,
   proforma_id VARCHAR(36) NOT NULL REFERENCES proforma_invoices(id),

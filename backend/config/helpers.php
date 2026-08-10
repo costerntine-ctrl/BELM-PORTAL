@@ -276,9 +276,35 @@ function require_delete_confirmation(array $user, array $body): string {
 // ---- Edit confirmation (PIN only) -------------------------------------------
 // Every save-changes action on an existing record must pass {editPin} in the
 // request body. Lighter than delete confirmation (no password/reason) since
-// Reads the company details saved in System Settings, with the same
-// defaults BELM has always used, so invoice/proforma PDFs always have a
-// full header even before an admin fills in System Settings.
+// edits are reversible, but still requires deliberate confirmation.
+
+// Server-side, gap-free-per-type document numbering using a real
+// PostgreSQL sequence (atomic — safe even with concurrent requests).
+// Falls back to the legacy long-form number only if the sequence is
+// somehow missing, so this never breaks a deploy that hasn't run the
+// latest schema.sql yet.
+function belm_next_document_number(string $prefix, string $sequenceName, int $pad = 4): string {
+    try {
+        $stmt = db()->query('SELECT nextval(' . db()->quote($sequenceName) . ')');
+        $next = (int)$stmt->fetchColumn();
+        return $prefix . '-' . str_pad((string)$next, $pad, '0', STR_PAD_LEFT);
+    } catch (Throwable $error) {
+        return document_number($prefix);
+    }
+}
+
+// Shared invoice-status calculation used both when an invoice is edited
+// directly and when a Receipt gets linked to an invoice (a receipt is
+// recorded as a payment too, so this keeps balance/status consistent
+// everywhere it's shown).
+function calculated_invoice_status(float $total, float $paid, ?string $dueDate): string {
+    if ($total > 0 && $paid >= $total - 0.005) return 'PAID';
+    if ($paid > 0) return 'PARTIALLY_PAID';
+    if ($dueDate && $dueDate < date('Y-m-d')) return 'OVERDUE';
+    return 'UNPAID';
+}
+
+
 function belm_get_company_details(): array {
     $defaults = [
         'companyName' => 'BELM GENERAL TECH SERVICE LIMITED',
@@ -288,10 +314,26 @@ function belm_get_company_details(): array {
         'companyWebsite' => 'www.belmgeneral.co.tz',
         'companyTin' => '',
         'companyVrn' => '',
+        'bankAccountName' => 'BELM GENERAL TECH SERVICE LIMITED',
+        'bankNmbNumber' => '20710076849',
+        'bankCrdbNumber' => '0150761848600',
+        'defaultVatRate' => 18,
+        'defaultPaymentTerms' => '100% Paid before delivery',
+        'defaultDeliveryTime' => '7-14 working days after receiving your payment',
+        'defaultQuoteValidity' => 'within 7 days from the date of quotation',
+        'whyChooseUs' => [
+            'Premium Quality and Genuine Spare Parts',
+            'Extensive Industry Experience',
+            'Competitive Pricing',
+            'Sit back and relax while we ensure seamless delivery.',
+        ],
+        'footerMessage' => 'Thank you for your business',
     ];
     $stmt = db()->query(
         "SELECT \"key\", \"value\" FROM system_settings WHERE \"key\" IN "
-        . "('companyName','companyAddress','companyPhone','companyEmail','companyWebsite','companyTin','companyVrn')"
+        . "('companyName','companyAddress','companyPhone','companyEmail','companyWebsite','companyTin','companyVrn',"
+        . "'bankAccountName','bankNmbNumber','bankCrdbNumber','defaultVatRate','defaultPaymentTerms',"
+        . "'defaultDeliveryTime','defaultQuoteValidity','whyChooseUs','footerMessage')"
     );
     foreach ($stmt->fetchAll() as $row) {
         $decoded = json_decode($row['value'], true);
@@ -300,7 +342,6 @@ function belm_get_company_details(): array {
     return $defaults;
 }
 
-// edits are reversible, but still requires deliberate confirmation.
 // Reads a PIN previously stored via settings.php's change-pin action and
 // normalizes it to a plain string, regardless of exactly how it was
 // JSON-encoded (a quoted string like "2026", a bare JSON number like 2026

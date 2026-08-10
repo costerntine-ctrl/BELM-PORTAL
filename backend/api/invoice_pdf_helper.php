@@ -1,9 +1,10 @@
 <?php
-// Professional single-document PDF for one Invoice or Proforma Invoice —
-// logo, colored table header, bank details, trading terms, and a Code 39
+// Professional single-document PDF for one Invoice, Proforma Invoice or
+// Receipt — logo, colored table header with full grid borders, bank
+// details, trading terms, an optional Important Notice box, and a Code 39
 // barcode (for physical/paper tracking) encoding the document number.
 // Hand-rolled raw PDF bytes, no external library — same technique as
-// table_pdf_helper.php, just richer layout for a single document.
+// table_pdf_helper.php, just a richer, paginated layout.
 
 if (!function_exists('table_pdf_escape')) {
     require_once __DIR__ . '/table_pdf_helper.php';
@@ -31,13 +32,9 @@ function code39_table(): array {
     ];
 }
 
-/**
- * Returns ['content' => pdf stream fragment, 'width' => total drawn width]
- * drawing a Code 39 barcode with its lower-left corner at ($x, $y).
- */
 function draw_code39_barcode(float $x, float $y, float $barHeight, string $text, float $narrow = 1.1): array {
     $table = code39_table();
-    $clean = strtoupper(preg_replace('/[^A-Za-z0-9\-. $\/+%]/', '', $text));
+    $clean = strtoupper((string)preg_replace('/[^A-Za-z0-9\-. $\/+%]/', '', $text));
     if ($clean === '') $clean = '0';
     $sequence = '*' . $clean . '*';
 
@@ -55,13 +52,13 @@ function draw_code39_barcode(float $x, float $y, float $barHeight, string $text,
             }
             $cursor += $width;
         }
-        $cursor += $narrow; // inter-character gap
+        $cursor += $narrow;
     }
     return ['content' => $content, 'width' => $cursor - $x];
 }
 
 // ---------------------------------------------------------------------
-// Small drawing helpers shared by the layout builder below.
+// Small drawing helpers.
 // ---------------------------------------------------------------------
 function pdf_text(float $x, float $y, string $text, string $font, float $size, array $rgb = [0, 0, 0]): string {
     $color = ($rgb === [0, 0, 0]) ? '' : sprintf("%.2F %.2F %.2F rg\n", $rgb[0], $rgb[1], $rgb[2]);
@@ -73,17 +70,13 @@ function pdf_text(float $x, float $y, string $text, string $font, float $size, a
 }
 
 function pdf_text_right(float $rightX, float $y, string $text, string $font, float $size, array $rgb = [0, 0, 0]): string {
-    $width = pdf_estimate_text_width($text, $font, $size);
-    return pdf_text($rightX - $width, $y, $text, $font, $size, $rgb);
+    return pdf_text($rightX - pdf_estimate_text_width($text, $font, $size), $y, $text, $font, $size, $rgb);
 }
 
 function pdf_text_center(float $centerX, float $y, string $text, string $font, float $size, array $rgb = [0, 0, 0]): string {
-    $width = pdf_estimate_text_width($text, $font, $size);
-    return pdf_text($centerX - $width / 2, $y, $text, $font, $size, $rgb);
+    return pdf_text($centerX - pdf_estimate_text_width($text, $font, $size) / 2, $y, $text, $font, $size, $rgb);
 }
 
-// Rough Helvetica average-width metric — good enough for right/center
-// alignment of short invoice labels and currency figures.
 function pdf_estimate_text_width(string $text, string $font, float $size): float {
     $factor = ($font === 'FB') ? 0.60 : 0.52;
     return strlen($text) * $size * $factor;
@@ -97,14 +90,10 @@ function pdf_rect_stroke(float $x, float $y, float $w, float $h, float $lineWidt
     return sprintf("%.2F w\n%.2F %.2F %.2F %.2F re S\n", $lineWidth, $x, $y, $w, $h);
 }
 
-function pdf_hline(float $x1, float $x2, float $y, float $lineWidth = 0.6): string {
-    return sprintf("%.2F w\n%.2F %.2F m\n%.2F %.2F l\nS\n", $lineWidth, $x1, $y, $x2, $y);
+function pdf_line(float $x1, float $y1, float $x2, float $y2, float $lineWidth = 0.6): string {
+    return sprintf("%.2F w\n%.2F %.2F m\n%.2F %.2F l\nS\n", $lineWidth, $x1, $y1, $x2, $y2);
 }
 
-/**
- * Wraps $text to fit within $maxWidth points at the given font/size,
- * returning an array of lines (simple greedy word-wrap).
- */
 function pdf_wrap_text(string $text, string $font, float $size, float $maxWidth): array {
     $words = preg_split('/\s+/', trim($text));
     $lines = [];
@@ -122,19 +111,147 @@ function pdf_wrap_text(string $text, string $font, float $size, float $maxWidth)
     return $lines ?: [''];
 }
 
+/** Safe filename for a Content-Disposition header — letters, digits, dash, underscore, dot only. */
+function belm_safe_filename(string $name): string {
+    $clean = preg_replace('/[^A-Za-z0-9\-_.]+/', '-', $name);
+    $clean = trim((string)preg_replace('/-+/', '-', $clean), '-');
+    return $clean === '' ? 'document' : $clean;
+}
+
+const BELM_PDF_PAGE_WIDTH = 595.0;
+const BELM_PDF_PAGE_HEIGHT = 842.0;
+const BELM_PDF_MARGIN_X = 40.0;
+const BELM_PDF_NAVY = [0.12, 0.19, 0.32];
+const BELM_PDF_LIGHT_GRAY = [0.94, 0.95, 0.97];
+const BELM_PDF_GOLD = [0.98, 0.95, 0.86];
+const BELM_PDF_TABLE_COLS = ['itemNo' => 25, 'partNumber' => 80, 'description' => 175, 'qty' => 30, 'unit' => 35, 'unitPrice' => 75, 'extended' => 90];
+
 /**
- * @param string $filename        download filename
- * @param string $documentLabel   "PROFORMA INVOICE" or "INVOICE"
- * @param array  $company         ['name','address1','address2','tel','email','website']
- * @param array  $customer        ['name','tin','vrn']
- * @param array  $meta            ['invoiceNo','tin','vrn','date', 'dueDate'?]
+ * Draws the shared page header (logo + company block, document title,
+ * customer/meta blocks and barcode). Returns [content, nextY, logoData, logoSize].
+ * $fullHeader is false on table-continuation pages (page 2+), which only
+ * repeat a small running header + the table.
+ */
+function belm_render_document_head(
+    array $company, string $documentLabel, array $customer, array $meta,
+    bool $fullHeader, int $pageNumber, int $pageCount
+): array {
+    $pageWidth = BELM_PDF_PAGE_WIDTH;
+    $marginX = BELM_PDF_MARGIN_X;
+    $content = '';
+
+    $logoPath = __DIR__ . '/../assets/watermark.jpg';
+    $logoData = is_file($logoPath) ? file_get_contents($logoPath) : false;
+    $logoSize = $logoData !== false ? @getimagesizefromstring($logoData) : false;
+    $logoDrawW = $fullHeader ? 74.0 : 44.0;
+    $logoDrawH = $logoSize ? $logoDrawW * ($logoSize[1] / $logoSize[0]) : 0.0;
+    $logoTopY = BELM_PDF_PAGE_HEIGHT - 48 - $logoDrawH;
+    if ($logoData !== false && $logoSize !== false) {
+        $content .= sprintf("q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Logo Do\nQ\n", $logoDrawW, $logoDrawH, $marginX, $logoTopY);
+    }
+
+    $headerRightX = $pageWidth - $marginX;
+    $headerY = BELM_PDF_PAGE_HEIGHT - 55;
+    $content .= pdf_text_right($headerRightX, $headerY, $company['companyName'] ?? 'BELM GENERAL TECH SERVICE LIMITED', 'FB', $fullHeader ? 12 : 10);
+
+    $lineY = $headerY - 15;
+    if ($fullHeader) {
+        $headerLines = array_filter([
+            $company['companyAddress'] ?? null,
+            isset($company['companyPhone']) ? 'TEL: ' . $company['companyPhone'] : null,
+            isset($company['companyEmail']) ? 'EMAIL: ' . $company['companyEmail'] : null,
+            isset($company['companyWebsite']) ? 'Website: ' . $company['companyWebsite'] : null,
+        ]);
+        foreach ($headerLines as $line) {
+            $content .= pdf_text_right($headerRightX, $lineY, (string)$line, 'F1', 9);
+            $lineY -= 13;
+        }
+    }
+
+    if ($pageCount > 1) {
+        $content .= pdf_text_right($headerRightX, $lineY - 4, "Page {$pageNumber} of {$pageCount}", 'F1', 8, [0.4, 0.4, 0.4]);
+        $lineY -= 16;
+    }
+
+    $titleY = $logoTopY - 30;
+    $titleText = $fullHeader ? strtoupper($documentLabel) : strtoupper($documentLabel) . ' (continued)';
+    $content .= pdf_text_center($pageWidth / 2, $titleY, $titleText, 'FB', $fullHeader ? 16 : 12);
+
+    $nextY = $titleY - 30;
+
+    if ($fullHeader) {
+        $content .= pdf_text($marginX, $nextY, 'BILL TO: ' . strtoupper((string)($customer['name'] ?? '—')), 'FB', 10);
+        $billLineY = $nextY - 14;
+        foreach (['tin' => 'TIN', 'vrn' => 'VRN', 'address' => 'Address', 'phone' => 'Phone', 'email' => 'Email'] as $key => $label) {
+            if (!empty($customer[$key])) {
+                $content .= pdf_text($marginX + 12, $billLineY, $label . ': ' . $customer[$key], 'F1', 9);
+                $billLineY -= 13;
+            }
+        }
+
+        $metaRightX = $pageWidth - $marginX;
+        $metaLineY = $nextY;
+        foreach ($meta as $label => $value) {
+            if ($value === null || $value === '') continue;
+            $niceLabel = strtoupper((string)preg_replace('/(?<!^)([A-Z])/', ' $1', $label));
+            $isPrimary = in_array($label, ['invoiceNo', 'receiptNo'], true);
+            $content .= pdf_text_right($metaRightX, $metaLineY, $niceLabel . ': ' . $value, $isPrimary ? 'FB' : 'F1', 9.5);
+            $metaLineY -= 14;
+        }
+
+        $barcodeY = min($billLineY, $metaLineY) - 26;
+        $barcodeText = (string)($meta['invoiceNo'] ?? $meta['receiptNo'] ?? '');
+        if ($barcodeText !== '') {
+            $barcode = draw_code39_barcode($marginX, $barcodeY, 24, $barcodeText, 1.05);
+            $content .= $barcode['content'];
+            $content .= pdf_text($marginX, $barcodeY - 11, $barcodeText, 'F1', 8);
+            $nextY = $barcodeY - 34;
+        } else {
+            $nextY = min($billLineY, $metaLineY) - 20;
+        }
+    } else {
+        $nextY -= 10;
+    }
+
+    return [$content, $nextY, $logoData, $logoSize];
+}
+
+/** Draws the items table header row at $y, returns the content fragment. */
+function belm_render_table_header(float $y): string {
+    $marginX = BELM_PDF_MARGIN_X;
+    $colWidths = BELM_PDF_TABLE_COLS;
+    $colLabels = ['itemNo' => 'Item', 'partNumber' => 'Part Number', 'description' => 'Description', 'qty' => 'Qty', 'unit' => 'Unit', 'unitPrice' => 'Unit Price', 'extended' => 'Extended Price'];
+    $tableWidth = array_sum($colWidths);
+    $headerHeight = 20.0;
+
+    $content = pdf_rect_fill($marginX, $y - $headerHeight, $tableWidth, $headerHeight, BELM_PDF_NAVY);
+    $colX = $marginX;
+    $textY = $y - $headerHeight + 6;
+    foreach ($colWidths as $key => $width) {
+        $align = in_array($key, ['qty', 'unitPrice', 'extended'], true) ? 'right' : 'left';
+        $label = $colLabels[$key];
+        $content .= $align === 'right'
+            ? pdf_text_right($colX + $width - 5, $textY, $label, 'FB', 8.5, [1, 1, 1])
+            : pdf_text($colX + 5, $textY, $label, 'FB', 8.5, [1, 1, 1]);
+        $colX += $width;
+    }
+    return $content;
+}
+
+/**
+ * @param string $filename        download filename (already meaningful; will be sanitized)
+ * @param string $documentLabel   "PROFORMA INVOICE" / "INVOICE" / "OFFICIAL RECEIPT"
+ * @param array  $company         result of belm_get_company_details()
+ * @param array  $customer        ['name','tin','vrn','address'?,'phone'?,'email'?]
+ * @param array  $meta            ordered [label => value] pairs, e.g. ['invoiceNo'=>..,'tin'=>..,'vrn'=>..,'date'=>..]
  * @param array  $items           each: ['itemNo','partNumber','description','qty','unit','unitPrice','extended']
- * @param array  $totals          ['subtotal','discount','vat','vatLabel','grandTotal']
- * @param array  $bank            list of ['label','value'] lines
+ * @param array  $totals          ['subtotal','discount','discountLabel'?,'vat','vatLabel','grandTotal']
+ * @param string $notice          optional Important Notice text — omit the whole box if empty
+ * @param array  $bank            list of [label, value] pairs
  * @param array  $tradingTerms    list of plain text lines
  * @param array  $whyChooseUs     list of bullet strings (empty array to omit the section)
- * @param string $footerNote      e.g. "Thank you for your business"
- * @param array  $paymentSummary  optional list of ['label','value'] lines (e.g. Paid/Balance for real invoices)
+ * @param string $footerNote
+ * @param array  $paymentSummary  optional list of [label, value] lines
  */
 function output_professional_document_pdf(
     string $filename,
@@ -144,217 +261,214 @@ function output_professional_document_pdf(
     array $meta,
     array $items,
     array $totals,
+    string $notice,
     array $bank,
     array $tradingTerms,
     array $whyChooseUs,
     string $footerNote,
     array $paymentSummary = []
 ): void {
-    $pageWidth = 595.0;
-    $pageHeight = 842.0;
-    $marginX = 40.0;
-    $navy = [0.12, 0.19, 0.32];
-    $lightGray = [0.94, 0.95, 0.97];
-    $accentGold = [0.98, 0.95, 0.86];
-
-    $content = '';
-
-    // ---------------- Logo + company header ----------------
-    $logoPath = __DIR__ . '/../assets/watermark.jpg';
-    $logoData = is_file($logoPath) ? file_get_contents($logoPath) : false;
-    $logoSize = $logoData !== false ? @getimagesizefromstring($logoData) : false;
-    $logoDrawW = 74.0;
-    $logoDrawH = $logoSize ? $logoDrawW * ($logoSize[1] / $logoSize[0]) : 0.0;
-    $logoTopY = $pageHeight - 48 - $logoDrawH;
-    if ($logoData !== false && $logoSize !== false) {
-        $content .= sprintf("q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Logo Do\nQ\n", $logoDrawW, $logoDrawH, $marginX, $logoTopY);
-    }
-
-    $headerRightX = $pageWidth - $marginX;
-    $headerY = $pageHeight - 55;
-    $content .= pdf_text_right($headerRightX, $headerY, $company['name'] ?? 'BELM GENERAL TECH SERVICE LIMITED', 'FB', 12);
-    $headerLines = array_filter([
-        $company['address1'] ?? null,
-        $company['address2'] ?? null,
-        isset($company['tel']) ? 'TEL: ' . $company['tel'] : null,
-        isset($company['email']) ? 'EMAIL: ' . $company['email'] : null,
-        isset($company['website']) ? 'Website: ' . $company['website'] : null,
-    ]);
-    $lineY = $headerY - 15;
-    foreach ($headerLines as $line) {
-        $content .= pdf_text_right($headerRightX, $lineY, (string)$line, 'F1', 9);
-        $lineY -= 13;
-    }
-
-    // ---------------- Document title ----------------
-    $titleY = $logoTopY - 30;
-    $content .= pdf_text_center($pageWidth / 2, $titleY, strtoupper($documentLabel), 'FB', 16);
-
-    // ---------------- Bill-to block + meta block ----------------
-    $blockTopY = $titleY - 30;
-    $content .= pdf_text($marginX, $blockTopY, 'BILL TO: ' . strtoupper((string)($customer['name'] ?? '—')), 'FB', 10);
-    $billLineY = $blockTopY - 14;
-    if (!empty($customer['tin'])) { $content .= pdf_text($marginX + 12, $billLineY, 'TIN: ' . $customer['tin'], 'F1', 9); $billLineY -= 13; }
-    if (!empty($customer['vrn'])) { $content .= pdf_text($marginX + 12, $billLineY, 'VRN: ' . $customer['vrn'], 'F1', 9); $billLineY -= 13; }
-
-    $metaRightX = $pageWidth - $marginX;
-    $metaLineY = $blockTopY;
-    foreach ($meta as $label => $value) {
-        if ($value === null || $value === '') continue;
-        $niceLabel = strtoupper((string)preg_replace('/(?<!^)([A-Z])/', ' $1', $label));
-        $isPrimary = in_array($label, ['invoiceNo'], true);
-        $content .= pdf_text_right($metaRightX, $metaLineY, $niceLabel . ': ' . $value, $isPrimary ? 'FB' : 'F1', 9.5);
-        $metaLineY -= 14;
-    }
-
-    // ---------------- Barcode (tracking) ----------------
-    $barcodeText = (string)($meta['invoiceNo'] ?? $filename);
-    $barcodeY = min($billLineY, $metaLineY) - 26;
-    $barcode = draw_code39_barcode($marginX, $barcodeY, 24, $barcodeText, 1.05);
-    $content .= $barcode['content'];
-    $content .= pdf_text($marginX, $barcodeY - 11, $barcodeText, 'F1', 8);
-
-    // ---------------- Items table ----------------
-    $tableTop = $barcodeY - 34;
-    $colWidths = ['itemNo' => 25, 'partNumber' => 85, 'description' => 180, 'qty' => 30, 'unit' => 35, 'unitPrice' => 75, 'extended' => 85];
-    $colLabels = ['itemNo' => 'Item', 'partNumber' => 'Part Number', 'description' => 'Description', 'qty' => 'Qty', 'unit' => 'Unit', 'unitPrice' => 'Unit Price', 'extended' => 'Extended Price'];
+    $marginX = BELM_PDF_MARGIN_X;
+    $colWidths = BELM_PDF_TABLE_COLS;
     $tableWidth = array_sum($colWidths);
     $rowHeight = 18.0;
-    $headerHeight = 20.0;
+    $bottomSafeY = 60.0;
 
-    $content .= pdf_rect_fill($marginX, $tableTop - $headerHeight, $tableWidth, $headerHeight, $navy);
-    $colX = $marginX;
-    $headerTextY = $tableTop - $headerHeight + 6;
-    foreach ($colWidths as $key => $width) {
-        $align = in_array($key, ['qty', 'unitPrice', 'extended'], true) ? 'right' : 'left';
-        $label = $colLabels[$key];
-        if ($align === 'right') {
-            $content .= pdf_text_right($colX + $width - 5, $headerTextY, $label, 'FB', 8.5, [1, 1, 1]);
-        } else {
-            $content .= pdf_text($colX + 5, $headerTextY, $label, 'FB', 8.5, [1, 1, 1]);
-        }
-        $colX += $width;
-    }
+    $totalRowsCount = count(array_filter([
+        isset($totals['subtotal']),
+        isset($totals['discount']) && (float)str_replace(',', '', (string)($totals['discount'] ?? '0')) != 0.0,
+        isset($totals['vat']),
+        isset($totals['grandTotal']),
+    ])) + count($paymentSummary);
+    $footerBlockHeight = 22 + $totalRowsCount * 17
+        + ($notice !== '' ? 46 : 0)
+        + ($bank ? 18 + count($bank) * 13 + 4 : 0)
+        + ($tradingTerms ? 18 + count($tradingTerms) * 13 + 4 : 0)
+        + ($whyChooseUs ? 18 + count($whyChooseUs) * 13 + 6 : 0)
+        + ($footerNote !== '' ? 30 : 0)
+        + 20;
 
-    $rowTop = $tableTop - $headerHeight;
-    $rowIndex = 0;
-    foreach ($items as $item) {
-        $rowTop -= $rowHeight;
-        if ($rowIndex % 2 === 1) {
-            $content .= pdf_rect_fill($marginX, $rowTop, $tableWidth, $rowHeight, $lightGray);
-        }
-        $colX = $marginX;
-        $textY = $rowTop + 5;
-        foreach ($colWidths as $key => $width) {
-            $value = (string)($item[$key] ?? '');
-            $align = in_array($key, ['qty', 'unitPrice', 'extended'], true) ? 'right' : 'left';
-            if ($align === 'right') {
-                $content .= pdf_text_right($colX + $width - 5, $textY, $value, 'F1', 8.5);
+    $pages = [];
+    $remaining = $items;
+    $pageIndex = 0;
+    while (true) {
+        $pageIndex++;
+        $isFirstPage = $pageIndex === 1;
+        $headEndY = $isFirstPage ? 460.0 : 700.0;
+        $isLastChunk = false;
+        $maxRowsHere = (int)floor(($headEndY - $bottomSafeY) / $rowHeight);
+        if (count($remaining) <= $maxRowsHere) {
+            $roomWithFooter = (int)floor(($headEndY - $bottomSafeY - $footerBlockHeight) / $rowHeight);
+            if (count($remaining) <= max(1, $roomWithFooter)) {
+                $isLastChunk = true;
+                $maxRowsHere = count($remaining);
             } else {
-                $content .= pdf_text($colX + 5, $textY, $value, 'F1', 8.5);
+                $maxRowsHere = max(1, $roomWithFooter);
             }
+        }
+        $take = array_splice($remaining, 0, max(1, $maxRowsHere));
+        $pages[] = ['rows' => $take, 'isLast' => $isLastChunk && count($remaining) === 0];
+        if (count($remaining) === 0) break;
+        if ($pageIndex > 40) break;
+    }
+    if (!$pages) $pages = [['rows' => [], 'isLast' => true]];
+    $pageCount = count($pages);
+
+    $logoData = false;
+    $logoSize = false;
+    $pageContents = [];
+
+    foreach ($pages as $index => $pageInfo) {
+        $pageNumber = $index + 1;
+        $isFirstPage = $pageNumber === 1;
+        [$headContent, $tableTop, $ld, $ls] = belm_render_document_head(
+            $company, $documentLabel, $customer, $meta, $isFirstPage, $pageNumber, $pageCount
+        );
+        if ($ld !== false) { $logoData = $ld; $logoSize = $ls; }
+
+        $content = $headContent;
+        $content .= belm_render_table_header($tableTop);
+        $headerHeight = 20.0;
+        $rowTop = $tableTop - $headerHeight;
+        $rowIndexOnPage = 0;
+        foreach ($pageInfo['rows'] as $item) {
+            $rowTop -= $rowHeight;
+            if ($rowIndexOnPage % 2 === 1) {
+                $content .= pdf_rect_fill($marginX, $rowTop, $tableWidth, $rowHeight, BELM_PDF_LIGHT_GRAY);
+            }
+            $colX = $marginX;
+            $textY = $rowTop + 5;
+            foreach ($colWidths as $key => $width) {
+                $value = (string)($item[$key] ?? '');
+                $align = in_array($key, ['qty', 'unitPrice', 'extended'], true) ? 'right' : 'left';
+                $content .= $align === 'right'
+                    ? pdf_text_right($colX + $width - 5, $textY, $value, 'F1', 8.5)
+                    : pdf_text($colX + 5, $textY, $value, 'F1', 8.5);
+                $colX += $width;
+            }
+            $rowIndexOnPage++;
+        }
+        $tableBottom = $rowTop;
+
+        $content .= pdf_rect_stroke($marginX, $tableBottom, $tableWidth, $tableTop - $tableBottom, 0.7);
+        $colX = $marginX;
+        foreach ($colWidths as $width) {
             $colX += $width;
+            $content .= pdf_line($colX, $tableTop, $colX, $tableBottom, 0.4);
         }
-        $rowIndex++;
-    }
-    $tableBottom = $rowTop;
-    $content .= pdf_rect_stroke($marginX, $tableBottom, $tableWidth, $tableTop - $tableBottom, 0.7);
-    // Column separators
-    $colX = $marginX;
-    foreach ($colWidths as $width) {
-        $colX += $width;
-        if ($colX < $marginX + $tableWidth - 1) $content .= pdf_hline($colX, $colX, $tableTop, 0.4) . '';
-        // vertical separator drawn via rect-less line:
-    }
-    $colX = $marginX;
-    foreach ($colWidths as $width) {
-        $colX += $width;
-        $content .= sprintf("0.4 w\n%.2F %.2F m\n%.2F %.2F l\nS\n", $colX, $tableTop, $colX, $tableBottom);
-    }
-
-    // ---------------- Totals ----------------
-    $totalsY = $tableBottom - 20;
-    $totalsLabelX = $marginX + $tableWidth - $colWidths['extended'] - $colWidths['unitPrice'];
-    $totalsValueRightX = $marginX + $tableWidth;
-
-    $totalRows = [];
-    if (isset($totals['subtotal'])) $totalRows[] = ['Subtotal', $totals['subtotal'], false];
-    if (isset($totals['discount']) && (float)str_replace(',', '', (string)$totals['discount']) != 0.0) $totalRows[] = ['Discount', $totals['discount'], false];
-    if (isset($totals['vat'])) $totalRows[] = [$totals['vatLabel'] ?? 'VAT', $totals['vat'], false];
-    if (isset($totals['grandTotal'])) $totalRows[] = ['Grand Total', $totals['grandTotal'], true];
-
-    foreach ($totalRows as [$label, $value, $isGrand]) {
-        if ($isGrand) {
-            $content .= pdf_rect_fill($totalsLabelX - 6, $totalsY - 4, $totalsValueRightX - $totalsLabelX + 6, 18, $accentGold);
+        for ($lineY = $tableTop - $headerHeight; $lineY >= $tableBottom; $lineY -= $rowHeight) {
+            $content .= pdf_line($marginX, $lineY, $marginX + $tableWidth, $lineY, 0.4);
         }
-        $content .= pdf_text($totalsLabelX, $totalsY, $label, $isGrand ? 'FB' : 'F1', 9.5);
-        $content .= pdf_text_right($totalsValueRightX, $totalsY, (string)$value, $isGrand ? 'FB' : 'F1', 9.5);
-        $totalsY -= 17;
-    }
 
-    foreach ($paymentSummary as [$label, $value]) {
-        $content .= pdf_text($totalsLabelX, $totalsY, $label, 'F1', 9.5);
-        $content .= pdf_text_right($totalsValueRightX, $totalsY, (string)$value, 'F1', 9.5);
-        $totalsY -= 17;
-    }
-
-    // ---------------- Bank details ----------------
-    $sectionY = $totalsY - 22;
-    $content .= pdf_hline($marginX, $marginX + $tableWidth, $sectionY + 12, 0.6);
-    if ($bank) {
-        $content .= pdf_text($marginX, $sectionY, 'BANK DETAILS', 'FB', 9.5);
-        $sectionY -= 14;
-        foreach ($bank as [$label, $value]) {
-            $content .= pdf_text($marginX, $sectionY, $label . ': ', 'FB', 8.5);
-            $content .= pdf_text($marginX + pdf_estimate_text_width($label . ':  ', 'FB', 8.5), $sectionY, (string)$value, 'F1', 8.5);
-            $sectionY -= 13;
+        if (!$pageInfo['isLast']) {
+            $content .= pdf_text($marginX, $tableBottom - 16, 'Continued on next page…', 'F1', 8, [0.4, 0.4, 0.4]);
+            $pageContents[] = $content;
+            continue;
         }
-        $sectionY -= 4;
-    }
 
-    // ---------------- Trading terms ----------------
-    if ($tradingTerms) {
-        $content .= pdf_text($marginX, $sectionY, 'TRADING TERMS', 'FB', 9.5);
-        $sectionY -= 14;
-        foreach ($tradingTerms as $term) {
-            $content .= pdf_text($marginX, $sectionY, (string)$term, 'F1', 8.5);
-            $sectionY -= 13;
+        $y = $tableBottom - 20;
+        $totalsLabelX = $marginX + $tableWidth - $colWidths['extended'] - $colWidths['unitPrice'];
+        $totalsValueRightX = $marginX + $tableWidth;
+
+        $totalRows = [];
+        if (isset($totals['subtotal'])) $totalRows[] = ['Subtotal', $totals['subtotal'], false];
+        if (isset($totals['discount']) && (float)str_replace(',', '', (string)$totals['discount']) != 0.0) {
+            $totalRows[] = [$totals['discountLabel'] ?? 'Discount', $totals['discount'], false];
         }
-        $sectionY -= 4;
-    }
+        if (isset($totals['vat'])) $totalRows[] = [$totals['vatLabel'] ?? 'VAT', $totals['vat'], false];
+        if (isset($totals['grandTotal'])) $totalRows[] = ['Grand Total', $totals['grandTotal'], true];
 
-    // ---------------- Why choose us ----------------
-    if ($whyChooseUs) {
-        $content .= pdf_text($marginX, $sectionY, 'Why Choose Us!', 'FB', 9.5, $navy);
-        $sectionY -= 14;
-        foreach ($whyChooseUs as $point) {
-            $content .= pdf_text($marginX + 12, $sectionY, '* ' . $point, 'F1', 8.5, $navy);
-            $sectionY -= 13;
+        foreach ($totalRows as [$label, $value, $isGrand]) {
+            if ($isGrand) {
+                $content .= pdf_rect_fill($totalsLabelX - 6, $y - 4, $totalsValueRightX - $totalsLabelX + 6, 18, BELM_PDF_GOLD);
+            }
+            $content .= pdf_text($totalsLabelX, $y, $label, $isGrand ? 'FB' : 'F1', 9.5);
+            $content .= pdf_text_right($totalsValueRightX, $y, (string)$value, $isGrand ? 'FB' : 'F1', 9.5);
+            $y -= 17;
         }
-        $sectionY -= 6;
+        foreach ($paymentSummary as [$label, $value]) {
+            $content .= pdf_text($totalsLabelX, $y, $label, 'F1', 9.5);
+            $content .= pdf_text_right($totalsValueRightX, $y, (string)$value, 'F1', 9.5);
+            $y -= 17;
+        }
+
+        if ($notice !== '') {
+            $y -= 8;
+            $noticeLines = pdf_wrap_text('Important Notice: ' . $notice, 'F1', 8.5, $tableWidth - 20);
+            $boxHeight = 14 + count($noticeLines) * 12;
+            $content .= pdf_rect_stroke($marginX, $y - $boxHeight + 10, $tableWidth, $boxHeight, 0.7);
+            $noticeY = $y;
+            foreach ($noticeLines as $lineIndex => $line) {
+                $content .= pdf_text($marginX + 10, $noticeY, $line, $lineIndex === 0 ? 'FB' : 'F1', 8.5);
+                $noticeY -= 12;
+            }
+            $y = $y - $boxHeight - 6;
+        }
+
+        $y -= 6;
+        $content .= pdf_line($marginX, $y + 12, $marginX + $tableWidth, $y + 12, 0.6);
+        if ($bank) {
+            $content .= pdf_text($marginX, $y, 'BANK DETAILS', 'FB', 9.5);
+            $y -= 14;
+            foreach ($bank as [$label, $value]) {
+                $content .= pdf_text($marginX, $y, $label . ': ', 'FB', 8.5);
+                $content .= pdf_text($marginX + pdf_estimate_text_width($label . ':  ', 'FB', 8.5), $y, (string)$value, 'F1', 8.5);
+                $y -= 13;
+            }
+            $y -= 4;
+        }
+        if ($tradingTerms) {
+            $content .= pdf_text($marginX, $y, 'TRADING TERMS', 'FB', 9.5);
+            $y -= 14;
+            foreach ($tradingTerms as $term) {
+                $content .= pdf_text($marginX, $y, (string)$term, 'F1', 8.5);
+                $y -= 13;
+            }
+            $y -= 4;
+        }
+        if ($whyChooseUs) {
+            $content .= pdf_text($marginX, $y, 'Why Choose Us!', 'FB', 9.5, BELM_PDF_NAVY);
+            $y -= 14;
+            foreach ($whyChooseUs as $point) {
+                $content .= pdf_text($marginX + 12, $y, '* ' . $point, 'F1', 8.5, BELM_PDF_NAVY);
+                $y -= 13;
+            }
+            $y -= 6;
+        }
+        if ($footerNote !== '') {
+            $footerY = max($y, $bottomSafeY);
+            $content .= pdf_rect_fill($marginX, $footerY - 4, $tableWidth, 18, BELM_PDF_NAVY);
+            $content .= pdf_text_center($marginX + $tableWidth / 2, $footerY, $footerNote, 'FB', 9.5, [1, 1, 1]);
+        }
+
+        $pageContents[] = $content;
     }
 
-    // ---------------- Footer bar ----------------
-    if ($footerNote !== '') {
-        $footerY = max($sectionY, 60);
-        $content .= pdf_rect_fill($marginX, $footerY - 4, $tableWidth, 18, $navy);
-        $content .= pdf_text_center($marginX + $tableWidth / 2, $footerY, $footerNote, 'FB', 9.5, [1, 1, 1]);
-    }
+    belm_assemble_pdf($filename, $pageContents, $logoData, $logoSize);
+}
 
-    // ---------------- Assemble the raw PDF ----------------
-    $fontObject = 4;
-    $fontBoldObject = 5;
-    $logoObject = null;
-    if ($logoData !== false && $logoSize !== false) $logoObject = 6;
+/** Turns a list of page content-stream strings into raw PDF bytes and streams the download. */
+function belm_assemble_pdf(string $filename, array $pageContents, $logoData, $logoSize): void {
+    $pageCount = count($pageContents);
+    $fontObject = 3 + $pageCount * 2;
+    $fontBoldObject = $fontObject + 1;
+    $logoObject = ($logoData !== false && $logoSize !== false) ? $fontBoldObject + 1 : null;
 
     $objects = [];
+    $pageReferences = [];
+    foreach ($pageContents as $index => $content) {
+        $pageObject = 3 + $index * 2;
+        $contentObject = $pageObject + 1;
+        $pageReferences[] = $pageObject . ' 0 R';
+        $objects[$pageObject] =
+            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " . BELM_PDF_PAGE_WIDTH . ' ' . BELM_PDF_PAGE_HEIGHT . '] '
+            . "/Resources << /Font << /F1 {$fontObject} 0 R /FB {$fontBoldObject} 0 R >>"
+            . ($logoObject !== null ? " /XObject << /Logo {$logoObject} 0 R >>" : '')
+            . " >> /Contents {$contentObject} 0 R >>";
+        $objects[$contentObject] = "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";
+    }
     $objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
-    $objects[2] = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
-    $objects[3] =
-        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {$pageWidth} {$pageHeight}] "
-        . "/Resources << /Font << /F1 {$fontObject} 0 R /FB {$fontBoldObject} 0 R >>"
-        . ($logoObject !== null ? " /XObject << /Logo {$logoObject} 0 R >>" : '')
-        . " >> /Contents 7 0 R >>";
+    $objects[2] = '<< /Type /Pages /Kids [' . implode(' ', $pageReferences) . '] /Count ' . $pageCount . ' >>';
     $objects[$fontObject] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
     $objects[$fontBoldObject] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
     if ($logoObject !== null) {
@@ -363,7 +477,6 @@ function output_professional_document_pdf(
             . "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode "
             . "/Length " . strlen($logoData) . " >>\nstream\n{$logoData}\nendstream";
     }
-    $objects[7] = "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";
     ksort($objects);
 
     $pdf = "%PDF-1.4\n";
@@ -383,8 +496,9 @@ function output_professional_document_pdf(
     $pdf .= "trailer\n<< /Size " . ($objectCount + 1) . " /Root 1 0 R >>\n";
     $pdf .= "startxref\n{$xrefOffset}\n%%EOF";
 
+    $safeFilename = belm_safe_filename($filename);
     header('Content-Type: application/pdf');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Disposition: attachment; filename="' . $safeFilename . '"');
     header('Content-Length: ' . strlen($pdf));
     echo $pdf;
     exit;

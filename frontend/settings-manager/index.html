@@ -115,6 +115,33 @@
       </article>
 
       <article class="panel">
+        <div class="section-head"><div><h2>Invoice &amp; document branding</h2><p>Bank details, trading terms and marketing text printed on every Proforma, Invoice and Receipt PDF.</p></div></div>
+        <form id="documentBrandingForm" class="settings-form">
+          <label>Website<input id="companyWebsite" maxlength="255" placeholder="www.belmgeneral.co.tz"></label>
+          <div class="section-head" style="margin-top:6px"><h3 style="margin:0;font-size:13px">Bank details</h3></div>
+          <label>Account name<input id="bankAccountName" maxlength="255"></label>
+          <div class="two-column">
+            <label>NMB account number<input id="bankNmbNumber" maxlength="50"></label>
+            <label>CRDB account number<input id="bankCrdbNumber" maxlength="50"></label>
+          </div>
+          <div class="section-head" style="margin-top:6px"><h3 style="margin:0;font-size:13px">Defaults for new documents</h3></div>
+          <div class="two-column">
+            <label>Default VAT rate (%)<input id="defaultVatRate" type="number" min="0" max="100" step="0.1"></label>
+            <label>Default delivery time<input id="defaultDeliveryTime" maxlength="255" placeholder="e.g. 7-14 working days"></label>
+          </div>
+          <div class="two-column">
+            <label>Default payment terms<input id="defaultPaymentTerms" maxlength="255" placeholder="e.g. 100% Paid before delivery"></label>
+            <label>Default quote validity<input id="defaultQuoteValidity" maxlength="255" placeholder="e.g. within 7 days from the date of quotation"></label>
+          </div>
+          <label>Why Choose Us <small>(one point per line)</small>
+            <textarea id="whyChooseUsText" rows="4" maxlength="1000" placeholder="Premium Quality and Genuine Spare Parts&#10;Extensive Industry Experience"></textarea>
+          </label>
+          <label>Footer message<input id="footerMessage" maxlength="255" placeholder="Thank you for your business"></label>
+          <button id="saveDocumentBrandingButton" class="primary" type="submit">Save document branding</button>
+        </form>
+      </article>
+
+      <article class="panel">
         <div class="section-head"><div><h2>Business defaults</h2><p>Finance display and document numbering preferences.</p></div></div>
         <form id="businessForm" class="settings-form">
           <div class="two-column">

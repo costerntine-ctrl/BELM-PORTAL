@@ -263,6 +263,9 @@ switch ($resource) {
     case 'proforma-invoices':
         dispatch('proforma_invoices.php', ['id' => $segments[1] ?? null]);
 
+    case 'receipts':
+        dispatch('receipts.php', ['id' => $segments[1] ?? null]);
+
     case 'suppliers':
         dispatch('suppliers.php', ['id' => $segments[1] ?? null]);
 

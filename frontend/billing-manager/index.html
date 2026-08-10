@@ -54,6 +54,7 @@
             <button data-tab="payments" type="button"><span>02</span>Payments</button>
             <button data-tab="expenses" type="button"><span>03</span>Expenses</button>
             <button data-tab="proformas" type="button"><span>04</span>Proforma</button>
+            <button data-tab="receipts" type="button"><span>05</span>Receipts</button>
           </nav>
         </aside>
 
@@ -62,6 +63,7 @@
           <section id="paymentsPanel" class="panel hidden" data-billing-panel="payments"></section>
           <section id="expensesPanel" class="panel hidden" data-billing-panel="expenses"></section>
           <section id="proformasPanel" class="panel hidden" data-billing-panel="proformas"></section>
+          <section id="receiptsPanel" class="panel hidden" data-billing-panel="receipts"></section>
         </div>
       </div>
     </main>
@@ -100,6 +102,23 @@
       </form>
     </dialog>
 
+    <dialog id="receiptDialog">
+      <form id="receiptForm" class="dialog-card compact">
+        <div class="dialog-head"><div><p class="eyebrow">Official receipt</p><h2>Create receipt</h2></div><button class="icon-close" data-close="receiptDialog" type="button">×</button></div>
+        <input id="receiptInvoiceId" type="hidden">
+        <input id="receiptCustomerId" type="hidden">
+        <div id="receiptError" class="alert error hidden"></div>
+        <div id="receiptInvoiceSummary" class="customer-info empty-info">Select an invoice to auto-fill the balance.</div>
+        <label>Amount received (TZS)<input id="receiptAmount" required type="number" min="0.01" step="0.01"></label>
+        <label>Payment date<input id="receiptPaidAt" required type="date"></label>
+        <label>Payment method<select id="receiptMethod"><option value="CASH">Cash</option><option value="BANK">Bank</option><option value="MOBILE">Mobile Money</option><option value="CHEQUE">Cheque</option><option value="OTHER">Other</option></select></label>
+        <label>Receive into bank<select id="receiptBankAccount"><option value="">Unallocated / cash account</option></select></label>
+        <label>Reference<input id="receiptReference" placeholder="Transaction reference"></label>
+        <label>Notes<input id="receiptNotes" maxlength="500"></label>
+        <div class="dialog-actions"><button class="ghost" data-close="receiptDialog" type="button">Cancel</button><button id="saveReceiptButton" class="primary">Create &amp; download receipt</button></div>
+      </form>
+    </dialog>
+
     <dialog id="expenseDialog">
       <form id="expenseForm" class="dialog-card compact">
         <div class="dialog-head"><div><p class="eyebrow">Operating cost</p><h2 id="expenseTitle">Record expense</h2></div><button class="icon-close" data-close="expenseDialog" type="button">×</button></div>
@@ -124,14 +143,24 @@
         <div class="form-grid">
           <label>Customer<select id="proformaCustomer" required></select></label>
           <label>Date<input id="proformaDate" required type="date"></label>
-          <label>VAT mode<select id="proformaVatMode"><option value="VAT">VAT 18%</option><option value="NO_VAT">No VAT</option></select></label>
-          <label>Discount (TZS)<input id="proformaDiscount" type="number" min="0" step="0.01" value="0"></label>
+          <label>VAT mode<select id="proformaVatMode"><option value="VAT">VAT (rate below)</option><option value="NO_VAT">No VAT</option></select></label>
+          <label>VAT rate (%)<input id="proformaVatRate" type="number" min="0" max="100" step="0.1" value="18"></label>
+          <label>Discount type<select id="proformaDiscountType"><option value="FIXED">Fixed amount (TZS)</option><option value="PERCENT">Percentage (%)</option></select></label>
+          <label>Discount value<input id="proformaDiscount" type="number" min="0" step="0.01" value="0"></label>
         </div>
         <div id="proformaCustomerInfo" class="customer-info empty-info">
           Choose a customer to auto-fill company information.
         </div>
         <div class="items-head"><h3>Proforma items</h3><button id="addProformaItem" class="link-button" type="button">+ Add item</button></div>
         <div id="proformaItems" class="item-list"></div>
+        <div class="form-grid">
+          <label>Payment terms <small>(blank = use System Settings default)</small><input id="proformaPaymentTerms" maxlength="255" placeholder="100% Paid before delivery"></label>
+          <label>Delivery time <small>(blank = use default)</small><input id="proformaDeliveryTime" maxlength="255" placeholder="7-14 working days"></label>
+          <label>Quote validity <small>(blank = use default)</small><input id="proformaQuoteValidity" maxlength="255" placeholder="within 7 days from the date of quotation"></label>
+          <label class="full">Important Notice <small>(optional — leave blank to hide this box on the PDF)</small>
+            <textarea id="proformaNotice" rows="2" maxlength="1000"></textarea>
+          </label>
+        </div>
         <div class="dialog-actions"><button class="ghost" data-close="proformaDialog" type="button">Cancel</button><button id="saveProformaButton" class="primary">Save proforma</button></div>
       </form>
     </dialog>

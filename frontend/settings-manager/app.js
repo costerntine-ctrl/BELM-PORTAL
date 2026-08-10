@@ -259,20 +259,45 @@
       .forEach((id) => document.getElementById(id).classList.add("hidden"));
   }
 
-  async function ensureCustomersLoaded() {
+  async function populateCustomerPicker(force) {
+    const picker = document.getElementById("resetCustomerPicker");
+    if (force) customersForResetCache = null;
     if (!customersForResetCache) customersForResetCache = await api("/customers");
-    return customersForResetCache;
+    picker.innerHTML = '<option value="">Select a customer…</option>' +
+      customersForResetCache.map((customer) => `<option value="${customer.id}">${escapeHtml(customer.name)}</option>`).join("");
   }
 
-  async function populateMachinePicker() {
+  async function populateMachinePicker(force) {
     const picker = document.getElementById("resetMachinePicker");
-    if (machinesForResetCache) return;
-    const customers = await ensureCustomersLoaded();
-    machinesForResetCache = customers.flatMap((customer) =>
-      (customer.machines || []).map((machine) => ({ ...machine, customerName: customer.name })));
+    if (force) { machinesForResetCache = null; customersForResetCache = null; }
+    if (!customersForResetCache) customersForResetCache = await api("/customers");
+    if (!machinesForResetCache) {
+      machinesForResetCache = customersForResetCache.flatMap((customer) =>
+        (customer.machines || []).map((machine) => ({ ...machine, customerName: customer.name })));
+    }
     picker.innerHTML = '<option value="">Select a machine…</option>' +
       machinesForResetCache.map((machine) =>
         `<option value="${machine.id}">${escapeHtml(machine.customerName)} — ${escapeHtml(machine.model)}${machine.fleetNumber ? ` (#${escapeHtml(machine.fleetNumber)})` : ""}</option>`).join("");
+  }
+
+  async function populateUserPicker(force) {
+    const picker = document.getElementById("resetUserPicker");
+    if (force) usersForResetCache = null;
+    if (!usersForResetCache) usersForResetCache = await api("/users");
+    picker.innerHTML = '<option value="">Select a user…</option>' +
+      usersForResetCache
+        .filter((u) => u.role?.name !== "Super Admin")
+        .map((u) => `<option value="${u.id}">${escapeHtml(u.name)}${u.role?.name ? ` — ${escapeHtml(u.role.name)}` : ""}</option>`).join("");
+  }
+
+  async function populateRolePicker(force) {
+    const picker = document.getElementById("resetRolePicker");
+    if (force) rolesForResetCache = null;
+    if (!rolesForResetCache) rolesForResetCache = await api("/users/roles");
+    picker.innerHTML = '<option value="">Select a role…</option>' +
+      rolesForResetCache
+        .filter((r) => !["Super Admin", "Technician"].includes(r.name))
+        .map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join("");
   }
 
   document.getElementById("resetDbCategory").addEventListener("change", async (event) => {
@@ -282,52 +307,33 @@
     try {
       if (value === "customers") {
         document.getElementById("resetCustomerPickerWrap").classList.remove("hidden");
-        const picker = document.getElementById("resetCustomerPicker");
-        if (!customersForResetCache) {
-          const customers = await ensureCustomersLoaded();
-          picker.innerHTML = '<option value="">Select a customer…</option>' +
-            customers.map((customer) => `<option value="${customer.id}">${escapeHtml(customer.name)}</option>`).join("");
-        }
+        await populateCustomerPicker(false);
         return;
       }
 
       if (value === "machines") {
         document.getElementById("resetMachineScopeWrap").classList.remove("hidden");
         document.getElementById("resetMachinePickerWrap").classList.remove("hidden");
-        await populateMachinePicker();
+        await populateMachinePicker(false);
         return;
       }
 
       if (value === "machine-log") {
         document.getElementById("resetMachinePickerWrap").classList.remove("hidden");
-        await populateMachinePicker();
+        await populateMachinePicker(false);
         return;
       }
 
       if (value === "users") {
         document.getElementById("resetUserScopeWrap").classList.remove("hidden");
         document.getElementById("resetUserPickerWrap").classList.remove("hidden");
-        const picker = document.getElementById("resetUserPicker");
-        if (!usersForResetCache) {
-          usersForResetCache = await api("/users");
-          picker.innerHTML = '<option value="">Select a user…</option>' +
-            usersForResetCache
-              .filter((u) => u.role?.name !== "Super Admin")
-              .map((u) => `<option value="${u.id}">${escapeHtml(u.name)}${u.role?.name ? ` — ${escapeHtml(u.role.name)}` : ""}</option>`).join("");
-        }
+        await populateUserPicker(false);
         return;
       }
 
       if (value === "roles") {
         document.getElementById("resetRolePickerWrap").classList.remove("hidden");
-        const picker = document.getElementById("resetRolePicker");
-        if (!rolesForResetCache) {
-          rolesForResetCache = await api("/users/roles");
-          picker.innerHTML = '<option value="">Select a role…</option>' +
-            rolesForResetCache
-              .filter((r) => !["Super Admin", "Technician"].includes(r.name))
-              .map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join("");
-        }
+        await populateRolePicker(false);
       }
     } catch (_) {}
   });
@@ -474,14 +480,12 @@
       document.getElementById("resetDbPin").value = "";
       document.getElementById("resetDbPassword").value = "";
       document.getElementById("resetDbReason").value = "";
-      customersForResetCache = null;
-      machinesForResetCache = null;
-      usersForResetCache = null;
-      rolesForResetCache = null;
-      customerPicker.innerHTML = '<option value="">Select a customer…</option>';
-      machinePicker.innerHTML = '<option value="">Select a machine…</option>';
-      userPicker.innerHTML = '<option value="">Select a user…</option>';
-      rolePicker.innerHTML = '<option value="">Select a role…</option>';
+      try {
+        if (isCustomers) await populateCustomerPicker(true);
+        else if (isMachines || isMachineLog) await populateMachinePicker(true);
+        else if (isUsers) await populateUserPicker(true);
+        else if (isRoles) await populateRolePicker(true);
+      } catch (_) {}
     } catch (error) {
       message(error.message, true);
     } finally {

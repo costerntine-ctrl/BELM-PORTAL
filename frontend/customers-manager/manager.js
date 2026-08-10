@@ -2,6 +2,11 @@
   const token = localStorage.getItem("belm_admin_token");
   let customers = [];
   let pendingEditPin = null;
+  let isSuperAdmin = false;
+  try {
+    const currentUser = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
+    isSuperAdmin = currentUser?.role === "Super Admin";
+  } catch (_) {}
 
   async function confirmThenOpen(title, message, openFn) {
     const confirmation = await window.belmConfirmEdit({ title, message });
@@ -103,6 +108,7 @@
         <p>${escapeHtml(machine.machineType)} · Reg: ${escapeHtml(machine.regNumber || "—")} · Serial: ${escapeHtml(machine.serialNumber || "—")}</p>
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
         ${reasons.length ? `<span class="machine-alert-reason">${escapeHtml(reasons[0])}</span>` : '<span class="machine-alert-reason"></span>'}
+        <span class="service-due-badge" data-service-due-badge="${escapeHtml(machine.id)}">Service due: checking…</span>
       </div>
       <div class="machine-actions">
         <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Reports</button>
@@ -111,6 +117,26 @@
         <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
       </div>
     </article>`;
+  }
+
+  // Uses the SAME endpoint and SAME GREEN/YELLOW/RED thresholds (60hrs
+  // reminder window) as the Customer Portal's "Next Service" panel, so
+  // admin sees exactly what the customer sees — no separate, conflicting
+  // source of truth for service-due status.
+  async function loadServiceDueBadges() {
+    document.querySelectorAll("[data-service-due-badge]").forEach(async (badge) => {
+      const machineId = badge.dataset.serviceDueBadge;
+      try {
+        const status = await api(`/checklist-reports/service-status/${machineId}`);
+        const remaining = Math.round(status.hoursRemaining);
+        const level = String(status.level || "GREEN").toUpperCase();
+        const label = level === "RED" ? "Service due now" : level === "YELLOW" ? "Service due soon" : "On schedule";
+        badge.textContent = `${status.intervalHours}-Hr Service — ${remaining <= 0 ? "Overdue" : `${remaining} hrs left`} (${label})`;
+        badge.className = `service-due-badge ${level}`;
+      } catch (_) {
+        badge.textContent = "Service due: not available";
+      }
+    });
   }
 
   function rotateMachineAlertReasons() {
@@ -189,6 +215,7 @@
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
           <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
           <button class="delete" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
+          ${isSuperAdmin ? `<button class="delete" data-forget-customer="${escapeHtml(customer.id)}" title="Permanently erase — skips the Recycle Bin, cannot be undone or restored">Forget permanently</button>` : ""}
         </div>
       </article>`;
     }).join("");
@@ -280,6 +307,7 @@
       ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine)).join("")}</div>`
       : '<div class="empty">No machines registered for this customer yet.</div>';
     document.getElementById("machineListDialog").showModal();
+    if (machines.length) loadServiceDueBadges();
   }
 
   async function load() {
@@ -434,6 +462,21 @@
       await api(`/customers/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Customer moved to the Recycle Bin.");
+    } catch (error) { showAlert(error.message, true); }
+  }
+
+  async function forgetCustomer(id) {
+    const customer = customers.find((item) => item.id === id);
+    if (!customer) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Forget customer permanently?",
+      message: `This permanently erases "${customer.name}" and all their machines, invoices, checklist reports and service requests. It skips the Recycle Bin entirely — there is no undo and no restore. Use "Delete" instead if you might need this back later.`,
+    });
+    if (!confirmation) return;
+    try {
+      await api(`/customers/${id}?permanent=1`, { method: "DELETE", body: JSON.stringify(confirmation) });
+      await load();
+      showAlert(`"${customer.name}" has been permanently forgotten.`);
     } catch (error) { showAlert(error.message, true); }
   }
 
@@ -672,6 +715,7 @@
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
+    const forgetCustomerButton = event.target.closest("[data-forget-customer]");
     const copyLink = event.target.closest("[data-copy-link]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
@@ -681,6 +725,7 @@
     }
     if (resetCustomer) resetCustomerLogin(resetCustomer.dataset.resetCustomer);
     if (deleteCustomer) removeCustomer(deleteCustomer.dataset.deleteCustomer);
+    if (forgetCustomerButton) forgetCustomer(forgetCustomerButton.dataset.forgetCustomer);
     if (copyLink) {
       const customer = customers.find((item) => item.id === copyLink.dataset.copyLink);
       if (customer) copyText(customerPortalUrl(customer), "Customer portal link copied.");

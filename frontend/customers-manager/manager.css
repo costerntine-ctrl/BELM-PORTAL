@@ -53,6 +53,10 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .machine-card.GREEN .machine-alert-reason,.machine-card.OK .machine-alert-reason { color: #166534; }
 .machine-card.YELLOW .machine-alert-reason,.machine-card.ATTENTION .machine-alert-reason { color: #854d0e; }
 .machine-card.RED .machine-alert-reason,.machine-card.CRITICAL .machine-alert-reason { color: #991b1b; }
+.service-due-badge { display: inline-block; margin-top: 8px; padding: 5px 10px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: .2px; background: var(--canvas); color: var(--muted); }
+.service-due-badge.GREEN { background: #e7f8ee; color: #166534; }
+.service-due-badge.YELLOW { background: #fffbea; color: #854d0e; }
+.service-due-badge.RED { background: #fdecec; color: #991b1b; }
 .machine-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .machine-actions button { padding: 6px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .machine-actions button.delete { color: var(--red); }

@@ -21,6 +21,78 @@ function require_customer_read_access(array $user, ?string $customerId = null): 
     }
 }
 
+function belm_in_clause(array $ids): string {
+    return implode(',', array_fill(0, count($ids), '?'));
+}
+
+// Permanently erases a customer and everything tied only to them —
+// bypasses the Recycle Bin entirely so it cannot come back. Mirrors the
+// hard-delete used by Danger Zone > Reset Database, exposed here as a
+// direct "Forget" action on the Customers & Machines page.
+function belm_forget_customer_permanently(PDO $pdo, string $customerId): void {
+    $machineIds = $pdo->prepare('SELECT id FROM machines WHERE customer_id = ?');
+    $machineIds->execute([$customerId]);
+    $machines = $machineIds->fetchAll(PDO::FETCH_COLUMN);
+
+    $requestIds = $pdo->prepare('SELECT id FROM service_requests WHERE customer_id = ?');
+    $requestIds->execute([$customerId]);
+    $requests = $requestIds->fetchAll(PDO::FETCH_COLUMN);
+
+    $invoiceIds = $pdo->prepare('SELECT id FROM invoices WHERE customer_id = ?');
+    $invoiceIds->execute([$customerId]);
+    $invoices = $invoiceIds->fetchAll(PDO::FETCH_COLUMN);
+
+    if ($machines) {
+        $in = belm_in_clause($machines);
+        $pdo->prepare("DELETE FROM checklist_answers WHERE report_id IN (SELECT id FROM checklist_reports WHERE machine_id IN ($in))")->execute($machines);
+        $pdo->prepare("DELETE FROM checklist_reports WHERE machine_id IN ($in)")->execute($machines);
+        $pdo->prepare("DELETE FROM petty_cash_topups WHERE machine_id IN ($in)")->execute($machines);
+        $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($machines);
+        $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($machines);
+    }
+
+    if ($requests) {
+        $in = belm_in_clause($requests);
+        $pdo->prepare("DELETE FROM service_notes WHERE request_id IN ($in)")->execute($requests);
+        $pdo->prepare("DELETE FROM service_request_parts WHERE request_id IN ($in)")->execute($requests);
+    }
+
+    if ($machines || $requests) {
+        $conditions = [];
+        $params = [];
+        if ($machines) { $conditions[] = 'machine_id IN (' . belm_in_clause($machines) . ')'; $params = array_merge($params, $machines); }
+        if ($requests) { $conditions[] = 'request_id IN (' . belm_in_clause($requests) . ')'; $params = array_merge($params, $requests); }
+        $pdo->prepare('DELETE FROM spare_part_requests WHERE ' . implode(' OR ', $conditions))->execute($params);
+    }
+
+    $pdo->prepare('DELETE FROM service_requests WHERE customer_id = ?')->execute([$customerId]);
+
+    if ($invoices) {
+        $in = belm_in_clause($invoices);
+        $pdo->prepare("DELETE FROM invoice_items WHERE invoice_id IN ($in)")->execute($invoices);
+        $pdo->prepare("DELETE FROM payments WHERE invoice_id IN ($in)")->execute($invoices);
+    }
+    $pdo->prepare('DELETE FROM invoices WHERE customer_id = ?')->execute([$customerId]);
+
+    $pdo->prepare('DELETE FROM proforma_invoices WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM usage_logs WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM tasks WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_applications WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_users WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_saved_emails WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_activity_logs WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM machines WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('UPDATE users SET assigned_customer_id = NULL WHERE assigned_customer_id = ?')->execute([$customerId]);
+    // Also purge any Recycle Bin entry so "Restore" can never bring this
+    // customer or its machines back after a permanent Forget.
+    $pdo->prepare("DELETE FROM trash_entries WHERE entity_type = 'customer' AND entity_id = ?")->execute([$customerId]);
+    if ($machines) {
+        $in = belm_in_clause($machines);
+        $pdo->prepare("DELETE FROM trash_entries WHERE entity_type = 'machine' AND entity_id IN ($in)")->execute($machines);
+    }
+    $pdo->prepare('DELETE FROM customers WHERE id = ?')->execute([$customerId]);
+}
+
 function validate_customer_details(array $body, ?string $excludeCustomerId = null): array {
     $name = trim((string)($body['name'] ?? ''));
     $email = strtolower(trim((string)($body['email'] ?? '')));
@@ -214,7 +286,7 @@ if ($method === 'PUT' && !$action) {
     ]);
 }
 
-// ---- Delete (soft, -> Recycle Bin) -----------------------------------------
+// ---- Delete (soft, -> Recycle Bin, OR permanent "Forget") ------------------
 if ($method === 'DELETE' && !$action) {
     require_page_access($user, 'customers');
     $stmt = db()->prepare('SELECT name FROM customers WHERE id = ?');
@@ -222,6 +294,22 @@ if ($method === 'DELETE' && !$action) {
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
     $reason = require_delete_confirmation($user, body());
+
+    $permanent = ($_GET['permanent'] ?? '') === '1';
+    if ($permanent) {
+        require_super_admin($user);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            belm_forget_customer_permanently($pdo, $id);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        json_out(['ok' => true, 'message' => "\"{$row['name']}\" has been permanently forgotten — it will not appear in the Recycle Bin and cannot be restored."]);
+    }
+
     send_to_trash('customer', $id, $row['name'], $user['id'], $reason);
     soft_delete('customers', $id);
     json_out(null, 204);

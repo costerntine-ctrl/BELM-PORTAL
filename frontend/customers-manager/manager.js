@@ -894,6 +894,7 @@
   document.getElementById("machineForm").addEventListener("submit", saveMachine);
   document.querySelectorAll("[data-close]").forEach((button) =>
     button.addEventListener("click", () => document.getElementById(button.dataset.close).close()));
+  document.getElementById("reportViewPrintButton").addEventListener("click", () => window.print());
   document.getElementById("copyCredentialsButton").addEventListener("click", () => {
     const text = `Email: ${document.getElementById("credentialEmail").value}\nTemporary password: ${document.getElementById("credentialPassword").value}\nRecovery code: ${document.getElementById("credentialRecovery").value}\nPortal link: ${document.getElementById("credentialLink").value}`;
     copyText(text, "Customer login information copied.");

@@ -8,6 +8,7 @@ RUN apt-get update \
 
 COPY docker/belm-apache.conf /etc/apache2/conf-available/belm.conf
 RUN a2enconf belm
+COPY docker/belm-php.ini /usr/local/etc/php/conf.d/belm-overrides.ini
 
 COPY frontend/ /var/www/html/
 COPY backend/ /var/www/html/api/

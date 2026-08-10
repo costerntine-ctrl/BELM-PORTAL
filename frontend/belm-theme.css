@@ -736,6 +736,49 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   white-space: nowrap;
 }
 #belmEmailAddButton:hover { background: #008c44; }
+.belm-email-attach-row {
+  margin: 4px 0 8px;
+}
+.belm-email-attach-row input[type="file"] {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px dashed rgba(255, 255, 255, .25);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .04);
+  color: #dbe4f2;
+  font-size: 11.5px;
+  font-family: inherit;
+}
+.belm-email-attach-list {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+.belm-email-attach-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .05);
+  color: #e5edf7;
+  font-size: 11.5px;
+}
+.belm-email-attach-list li small { color: #9fb0c8; }
+.belm-email-attach-list li button {
+  border: 0;
+  background: transparent;
+  color: #f3a6a1;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.belm-email-attach-list li button:hover { color: #ef4444; }
 @media (max-width: 420px) {
   .belm-email-add-row { grid-template-columns: 1fr; }
 }
@@ -2067,6 +2110,46 @@ html.dark .belm-technician-machine-data > div {
     border: 0;
     box-shadow: none;
     position: relative;
+  }
+  /* Printing must always come out as a clean white document, even when
+     the on-screen theme is Dark Mode — dark-mode's own !important rules
+     otherwise win over the print rules above and the printout comes out
+     with a black/navy background wasting ink and hard to read on paper. */
+  html.dark .belm-checked-report-modal,
+  .belm-checked-report-modal,
+  html.dark .belm-checked-report-card,
+  .belm-checked-report-card,
+  html.dark .belm-checked-report-summary,
+  .belm-checked-report-summary,
+  html.dark .belm-checked-report-summary div,
+  .belm-checked-report-summary div,
+  html.dark .belm-checked-report-table,
+  .belm-checked-report-table,
+  html.dark .belm-checked-report-table th,
+  .belm-checked-report-table th {
+    background: #fff !important;
+    color: #101b31 !important;
+    border-color: #d7deea !important;
+  }
+  html.dark .belm-checked-report-summary div,
+  .belm-checked-report-summary div {
+    background: #f6f8fb !important;
+  }
+  html.dark .belm-checked-report-table th,
+  .belm-checked-report-table th {
+    background: #eef1f6 !important;
+  }
+  html.dark .belm-checked-report-summary span,
+  .belm-checked-report-summary span,
+  html.dark .belm-checked-report-head span,
+  .belm-checked-report-head span {
+    color: #68778d !important;
+  }
+  html.dark .belm-checked-report-table td,
+  .belm-checked-report-table td,
+  html.dark .belm-checked-report-table th,
+  .belm-checked-report-table th {
+    border-bottom-color: #d7deea !important;
   }
   .belm-checked-report-card::before {
     content: "";

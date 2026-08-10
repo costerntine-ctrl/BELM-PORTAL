@@ -226,6 +226,15 @@
     const modeButton = event.target.closest("[data-mode]");
     if (modeButton) setRowMode(row, modeButton.dataset.mode);
   });
+  // Safety net for mobile browsers that sometimes fail to focus an
+  // <input>/<select> created via innerHTML on the very first tap —
+  // forces focus explicitly so the on-screen keyboard reliably opens.
+  document.getElementById("partRequestRows").addEventListener("pointerdown", (event) => {
+    const field = event.target.closest("input, select, textarea");
+    if (field && document.activeElement !== field) {
+      setTimeout(() => field.focus(), 0);
+    }
+  });
 
   document.getElementById("serviceTemplate").addEventListener("change", () => {
     document.getElementById("description").value = "";

@@ -413,9 +413,33 @@ if ($sub === 'email-report' && $method === 'POST') {
     $subject = trim((string)($b['subject'] ?? 'BELM Portal report'));
     $message = trim((string)($b['message'] ?? ''));
     $saveLabel = trim((string)($b['saveAsLabel'] ?? ''));
+    $rawAttachments = is_array($b['attachments'] ?? null) ? $b['attachments'] : [];
 
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid recipient email address.');
     if ($message === '') json_error('The report message is empty.');
+    if (count($rawAttachments) > 5) json_error('Attach at most 5 files per email.');
+
+    // Attachments arrive as data: URLs (data:<mime>;base64,<data>) — same
+    // pattern already used for checklist/receipt photos. Cap total size so
+    // one email can't silently overload the SMTP connection or the
+    // recipient's own inbox limits.
+    $attachments = [];
+    $totalBytes = 0;
+    foreach ($rawAttachments as $item) {
+        $filename = trim((string)($item['filename'] ?? 'attachment'));
+        $dataUrl = (string)($item['data'] ?? '');
+        if (!preg_match('#^data:([\w.+-]+/[\w.+-]+);base64,(.+)$#s', $dataUrl, $matches)) {
+            json_error("Attachment \"$filename\" is not a valid file.");
+        }
+        $mimeType = $matches[1];
+        $decoded = base64_decode($matches[2], true);
+        if ($decoded === false) json_error("Attachment \"$filename\" could not be read.");
+        $totalBytes += strlen($decoded);
+        if ($totalBytes > 15 * 1024 * 1024) {
+            json_error('Attachments are too large — keep the total under 15 MB.');
+        }
+        $attachments[] = ['filename' => $filename !== '' ? $filename : 'attachment', 'mimeType' => $mimeType, 'data' => $decoded];
+    }
 
     if ($saveLabel !== '') {
         $exists = db()->prepare('SELECT 1 FROM customer_saved_emails WHERE customer_id = ? AND LOWER(email) = LOWER(?)');
@@ -427,7 +451,7 @@ if ($sub === 'email-report' && $method === 'POST') {
     }
 
     try {
-        send_email($to, $subject, $message . "\n\n— Sent from the BELM Portal by {$customer['name']}.");
+        send_email($to, $subject, $message . "\n\n— Sent from the BELM Portal by {$customer['name']}.", $attachments);
     } catch (Throwable $error) {
         error_log('BELM mail error: ' . $error->getMessage());
         json_error('Could not send the email right now. Please try again shortly.', 500);

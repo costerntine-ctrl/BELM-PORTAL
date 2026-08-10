@@ -855,11 +855,67 @@
           <label>Message
             <textarea id="belmEmailMessage" rows="5"></textarea>
           </label>
+
+          <label>Attachments <small>(photo, PDF, Excel, Word — up to 5 files, 15 MB total)</small></label>
+          <div class="belm-email-attach-row">
+            <input type="file" id="belmEmailAttachInput" multiple accept="image/*,.pdf,.xlsx,.xls,.doc,.docx,application/pdf">
+          </div>
+          <ul id="belmEmailAttachList" class="belm-email-attach-list"></ul>
+
           <button type="submit" class="belm-email-send" id="belmEmailSendButton">Send email</button>
         </div>
       </form>`;
     document.body.appendChild(dialog);
     dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+
+    const attachState = [];
+    dialog._attachState = attachState;
+    const MAX_ATTACH_TOTAL_BYTES = 15 * 1024 * 1024;
+
+    function renderAttachList() {
+      const list = document.getElementById("belmEmailAttachList");
+      list.innerHTML = attachState.map((item, index) => `
+        <li>
+          <span>${item.name} <small>(${(item.size / 1024).toFixed(0)} KB)</small></span>
+          <button type="button" data-remove-attach="${index}" aria-label="Remove">×</button>
+        </li>`).join("");
+      list.querySelectorAll("[data-remove-attach]").forEach((button) => {
+        button.addEventListener("click", () => {
+          attachState.splice(Number(button.dataset.removeAttach), 1);
+          renderAttachList();
+        });
+      });
+    }
+    dialog._renderAttachList = renderAttachList;
+
+    dialog.querySelector("#belmEmailAttachInput").addEventListener("change", async (event) => {
+      const errorBox = document.getElementById("belmEmailError");
+      errorBox.hidden = true;
+      const files = Array.from(event.target.files || []);
+      event.target.value = "";
+      if (attachState.length + files.length > 5) {
+        errorBox.textContent = "Attach at most 5 files per email.";
+        errorBox.hidden = false;
+        return;
+      }
+      for (const file of files) {
+        const currentTotal = attachState.reduce((sum, item) => sum + item.size, 0);
+        if (currentTotal + file.size > MAX_ATTACH_TOTAL_BYTES) {
+          errorBox.textContent = "Attachments are too large — keep the total under 15 MB.";
+          errorBox.hidden = false;
+          break;
+        }
+        const dataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ""));
+          reader.onerror = () => reject(new Error("Could not read this file."));
+          reader.readAsDataURL(file);
+        }).catch(() => null);
+        if (!dataUrl) continue;
+        attachState.push({ name: file.name, size: file.size, dataUrl });
+      }
+      renderAttachList();
+    });
 
     dialog.querySelector("#belmEmailAddButton").addEventListener("click", async () => {
       const errorBox = document.getElementById("belmEmailError");
@@ -906,13 +962,14 @@
       button.textContent = "Sending…";
       const message = document.getElementById("belmEmailMessage").value;
       const subject = dialog.dataset.subject || "BELM Portal report";
+      const attachmentsPayload = attachState.map((item) => ({ filename: item.name, data: item.dataUrl }));
       let failures = 0;
       for (const to of recipients) {
         try {
           const response = await fetch("/api/customer-portal/email-report", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ to, subject, message }),
+            body: JSON.stringify({ to, subject, message, attachments: attachmentsPayload }),
           });
           if (!response.ok) failures += 1;
         } catch (_) {
@@ -923,6 +980,8 @@
       button.textContent = "Send email";
       if (failures === 0) {
         dialog.close();
+        attachState.length = 0;
+        renderAttachList();
         alert(`Email sent successfully to ${recipients.length} recipient(s).`);
       } else {
         errorBox.textContent = `${recipients.length - failures} of ${recipients.length} email(s) sent. ${failures} failed — please try again.`;
@@ -962,6 +1021,8 @@
     dialog.dataset.subject = subject;
     document.getElementById("belmEmailMessage").value = message;
     document.getElementById("belmEmailError").hidden = true;
+    if (dialog._attachState) dialog._attachState.length = 0;
+    dialog._renderAttachList?.();
     await renderEmailRecipients();
     dialog.showModal();
   }

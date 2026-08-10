@@ -116,3 +116,38 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .badge-resolve { border: 0; cursor: pointer; }
 .badge-resolve:hover { filter: brightness(1.1); }
 .badge-resolve:disabled { opacity: .5; cursor: wait; }
+
+/* Printed Checked Report must always come out as a clean white document,
+   matching what Customer and Technician get from the same report data —
+   never the app's own dark chrome (sidebar, other dialogs, dark theme). */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body > *:not(#reportViewDialog) { display: none !important; }
+  #reportViewDialog {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #101b31 !important;
+  }
+  #reportViewDialog .dialog-card {
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    background: #fff !important;
+    color: #101b31 !important;
+  }
+  #reportViewDialog .dialog-head-actions,
+  #reportViewDialog .icon-close {
+    display: none !important;
+  }
+  .report-view-body table th, .report-view-body table td {
+    border-bottom-color: #d7deea !important;
+    color: #101b31 !important;
+  }
+}

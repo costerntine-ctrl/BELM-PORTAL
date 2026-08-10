@@ -40,9 +40,11 @@ function smtp_expect(&$socket, string $command, string $expectedCode): string {
     return $response;
 }
 
-// Sends a plain-text email. Returns true on success, throws on failure so
-// the caller can decide whether to surface the error or fail silently.
-function send_email(string $to, string $subject, string $textBody): bool {
+// Sends a plain-text email, optionally with file attachments. Returns true
+// on success, throws on failure so the caller can decide whether to
+// surface the error or fail silently.
+// $attachments: list of ['filename' => string, 'mimeType' => string, 'data' => raw binary bytes]
+function send_email(string $to, string $subject, string $textBody, array $attachments = []): bool {
     $config = smtp_config();
     if ($config['host'] === '') {
         throw new RuntimeException('Email is not configured on this server (missing SMTP_HOST). Ask the administrator to set up SMTP_HOST, SMTP_USER, SMTP_PASS.');
@@ -89,11 +91,39 @@ function send_email(string $to, string $subject, string $textBody): bool {
             'To: <' . $to . '>',
             'Subject: ' . $subject,
             'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
             'Date: ' . date('r'),
         ];
-        $escapedBody = preg_replace('/^\./m', '..', $textBody); // dot-stuffing per SMTP spec
-        $message = implode("\r\n", $headers) . "\r\n\r\n" . $escapedBody . "\r\n.";
+
+        if (empty($attachments)) {
+            $headers[] = 'Content-Type: text/plain; charset=UTF-8';
+            $escapedBody = preg_replace('/^\./m', '..', $textBody);
+            $message = implode("\r\n", $headers) . "\r\n\r\n" . $escapedBody . "\r\n.";
+        } else {
+            // multipart/mixed: a text part plus one part per attachment,
+            // each base64-encoded — standard email attachment format,
+            // built by hand since there's no PHPMailer/Composer dependency.
+            $boundary = 'belm-' . bin2hex(random_bytes(12));
+            $headers[] = 'Content-Type: multipart/mixed; boundary="' . $boundary . '"';
+
+            $parts = "--{$boundary}\r\n";
+            $parts .= "Content-Type: text/plain; charset=UTF-8\r\n";
+            $parts .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+            $parts .= preg_replace('/^\./m', '..', $textBody) . "\r\n";
+
+            foreach ($attachments as $attachment) {
+                $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '_', (string)($attachment['filename'] ?? 'attachment'));
+                $mimeType = (string)($attachment['mimeType'] ?? 'application/octet-stream');
+                $encoded = chunk_split(base64_encode((string)($attachment['data'] ?? '')));
+                $parts .= "--{$boundary}\r\n";
+                $parts .= "Content-Type: {$mimeType}; name=\"{$safeName}\"\r\n";
+                $parts .= "Content-Transfer-Encoding: base64\r\n";
+                $parts .= "Content-Disposition: attachment; filename=\"{$safeName}\"\r\n\r\n";
+                $parts .= $encoded;
+            }
+            $parts .= "--{$boundary}--\r\n";
+
+            $message = implode("\r\n", $headers) . "\r\n\r\n" . $parts . "\r\n.";
+        }
         smtp_expect($socket, $message, '250');
 
         smtp_expect($socket, 'QUIT', '221');

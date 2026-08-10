@@ -19,6 +19,7 @@
       <div class="heading-actions">
         <button class="secondary" id="registerCustomerButton" type="button">+ Register customer</button>
         <button class="secondary" id="registerTechnicianButton" type="button">+ Register technician</button>
+        <button class="secondary" id="addMachineButton" type="button">+ Add machine</button>
         <button class="refresh" id="refreshButton">Refresh</button>
       </div>
     </div>
@@ -120,6 +121,28 @@
       </label>
       <div id="registerTechnicianError" class="alert hidden"></div>
       <button id="saveRegisterTechnicianButton" class="primary" type="submit">Register technician</button>
+    </form>
+  </dialog>
+
+  <dialog id="addMachineDialog">
+    <button class="dialog-close" id="closeAddMachine" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">MANUAL REGISTRATION</p>
+      <h2>Add machine to existing customer</h2>
+      <p>Choose the customer this machine belongs to, then fill in the machine details.</p>
+    </div>
+    <form id="addMachineForm" class="assignment-form">
+      <label>Customer
+        <select id="addMachineCustomer" required><option value="">Select customer…</option></select>
+      </label>
+      <label>Machine type<input id="addMachineType" required maxlength="100" placeholder="Reach Stacker, Forklift…"></label>
+      <label>Brand<input id="addMachineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
+      <label>Model<input id="addMachineModel" required maxlength="255"></label>
+      <label>Registration number<input id="addMachineRegNumber" maxlength="100"></label>
+      <label>Fleet number<input id="addMachineFleetNumber" maxlength="100" placeholder="e.g. BELM-045"></label>
+      <label>Serial number<input id="addMachineSerialNumber" maxlength="100"></label>
+      <div id="addMachineError" class="alert hidden"></div>
+      <button id="saveAddMachineButton" class="primary" type="submit">Save machine</button>
     </form>
   </dialog>
 

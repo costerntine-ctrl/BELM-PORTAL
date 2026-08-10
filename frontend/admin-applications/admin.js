@@ -383,6 +383,7 @@ document.getElementById("registerCustomerForm").addEventListener("submit", async
     }
 
     registerCustomerDialog.close();
+    customersForRegisterCache = null;
     openRegisterCredentials({
       name: document.getElementById("regCustomerName").value.trim(),
       role: "Customer",
@@ -478,4 +479,59 @@ document.getElementById("copyRegCredButton").addEventListener("click", async () 
   ].join("\n");
   await copyText(message);
   document.getElementById("copyRegCredButton").textContent = "Credentials copied";
+});
+
+// ---------------------------------------------------------------------
+// ADD MACHINE — to an existing, already-registered customer. Pick the
+// customer from a dropdown, fill in machine details, save.
+// ---------------------------------------------------------------------
+const addMachineDialog = document.getElementById("addMachineDialog");
+
+document.getElementById("addMachineButton").addEventListener("click", async () => {
+  document.getElementById("addMachineForm").reset();
+  document.getElementById("addMachineError").classList.add("hidden");
+  try {
+    const [, customerList] = await ensureRolesAndCustomersLoaded();
+    document.getElementById("addMachineCustomer").innerHTML =
+      '<option value="">Select customer…</option>' + customerList.map(customer =>
+        `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`
+      ).join("");
+    addMachineDialog.showModal();
+  } catch (error) {
+    alert(error.message);
+  }
+});
+document.getElementById("closeAddMachine").addEventListener("click", () => addMachineDialog.close());
+
+document.getElementById("addMachineForm").addEventListener("submit", async event => {
+  event.preventDefault();
+  document.getElementById("addMachineError").classList.add("hidden");
+  const button = document.getElementById("saveAddMachineButton");
+  const customerId = document.getElementById("addMachineCustomer").value;
+  if (!customerId) {
+    showRegisterError("addMachineError", "Select a customer.");
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Saving…";
+  try {
+    await api(`/api/customers/${customerId}/machines`, {
+      method: "POST",
+      body: JSON.stringify({
+        machineType: document.getElementById("addMachineType").value.trim(),
+        model: document.getElementById("addMachineModel").value.trim(),
+        brand: document.getElementById("addMachineBrand").value.trim(),
+        regNumber: document.getElementById("addMachineRegNumber").value.trim(),
+        fleetNumber: document.getElementById("addMachineFleetNumber").value.trim(),
+        serialNumber: document.getElementById("addMachineSerialNumber").value.trim()
+      })
+    });
+    addMachineDialog.close();
+    showAlert("Machine added successfully.");
+  } catch (error) {
+    showRegisterError("addMachineError", error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save machine";
+  }
 });

@@ -476,16 +476,47 @@
     }
   }
 
+  let sparePartsCache = null;
+  async function ensureSparePartsLoaded() {
+    if (!sparePartsCache) {
+      try {
+        sparePartsCache = await api("/spare-parts");
+      } catch (_) {
+        sparePartsCache = [];
+      }
+    }
+    return sparePartsCache;
+  }
+
+  function sparePartOptionsHtml() {
+    return '<option value="">— Custom item (not in inventory) —</option>' +
+      (sparePartsCache || []).map((part) =>
+        `<option value="${escapeHtml(part.id)}">${escapeHtml(part.partNumber || part.referenceNumber || "")} — ${escapeHtml(part.name)} (${money(part.sellingPrice)})</option>`
+      ).join("");
+  }
+
   function proformaItemRow(item = {}) {
     const row = document.createElement("div");
     row.className = "item-row proforma-row";
     row.innerHTML = `
+      <label class="full">Pick from Spare Parts Inventory <small>(auto-fills part no., description &amp; selling price — optional)</small>
+        <select data-field="sparePartId">${sparePartOptionsHtml()}</select>
+      </label>
       <label>Part no.<input data-field="partNumber" value="${escapeHtml(item.partNumber || item.part_number || "")}"></label>
       <label>Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
       <label>Qty<input data-field="qty" required type="number" min="1" step="1" value="${escapeHtml(item.qty || 1)}"></label>
       <label>Unit<input data-field="unit" value="${escapeHtml(item.unit || "PC")}"></label>
       <label>Unit price<input data-field="unitPrice" required type="number" min="0" step="0.01" value="${escapeHtml(item.unitPrice || item.unit_price || 0)}"></label>
       <button class="remove-item" type="button" aria-label="Remove item">×</button>`;
+    row.querySelector('[data-field="sparePartId"]').addEventListener("change", (event) => {
+      const partId = event.target.value;
+      if (!partId) return;
+      const part = (sparePartsCache || []).find((p) => p.id === partId);
+      if (!part) return;
+      row.querySelector('[data-field="partNumber"]').value = part.partNumber || part.referenceNumber || "";
+      row.querySelector('[data-field="description"]').value = part.name || "";
+      row.querySelector('[data-field="unitPrice"]').value = part.sellingPrice || 0;
+    });
     return row;
   }
 
@@ -493,7 +524,7 @@
     document.getElementById("proformaItems").appendChild(proformaItemRow(item));
   }
 
-  function openProforma(proforma = null) {
+  async function openProforma(proforma = null) {
     document.getElementById("proformaForm").reset();
     document.getElementById("proformaId").value = proforma?.id || "";
     document.getElementById("proformaTitle").textContent = proforma ? `Re-edit ${proforma.invoiceNo}` : "New proforma";
@@ -510,6 +541,7 @@
     document.getElementById("proformaQuoteValidity").value = proforma?.quoteValidity || "";
     document.getElementById("proformaNotice").value = proforma?.notice || "";
     fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
+    await ensureSparePartsLoaded();
     document.getElementById("proformaItems").replaceChildren();
     (proforma?.items?.length ? proforma.items : [{}]).forEach(addProformaItem);
     document.getElementById("proformaError").className = "alert error hidden";

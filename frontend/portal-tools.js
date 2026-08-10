@@ -2121,13 +2121,13 @@
             const rawValue = String(answer.value ?? "");
             const valueAsPhoto = /^data:image\//i.test(rawValue) ? safeReportPhotoUrl(rawValue) : "";
             const resultCell = valueAsPhoto
-              ? `<a href="${escapeHtml(valueAsPhoto)}" target="_blank" rel="noopener" class="belm-report-photo-link"><img src="${escapeHtml(valueAsPhoto)}" alt="Photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy"></a>`
+              ? `<img src="${escapeHtml(valueAsPhoto)}" alt="Photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy" class="belm-report-photo-thumb" data-view-report-photo="${escapeHtml(valueAsPhoto)}">`
               : `<strong>${escapeHtml(rawValue || "—")}</strong>`;
             return `<tr>
               <td>${escapeHtml(answer.label || "Checklist item")}</td>
               <td>${resultCell}</td>
               <td><span class="belm-report-status status-${escapeHtml(answerStatus.toLowerCase())}">${escapeHtml(answerStatus)}</span></td>
-              <td class="belm-report-evidence">${photoUrl ? `<a href="${escapeHtml(photoUrl)}" target="_blank" rel="noopener" class="belm-report-photo-link"><img src="${escapeHtml(photoUrl)}" alt="Evidence photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy"></a>` : "—"}</td>
+              <td class="belm-report-evidence">${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="Evidence photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy" class="belm-report-photo-thumb" data-view-report-photo="${escapeHtml(photoUrl)}">` : "—"}</td>
             </tr>`;
           }).join("") : '<tr><td colspan="4" class="belm-report-empty">No checked answers were recorded.</td></tr>'}</tbody>
         </table>
@@ -2141,6 +2141,11 @@
     </section>`;
 
     modal.addEventListener("click", (event) => {
+      const photoThumb = event.target.closest("[data-view-report-photo]");
+      if (photoThumb) {
+        openReportPhotoLightbox(photoThumb.dataset.viewReportPhoto);
+        return;
+      }
       if (event.target === modal || event.target.closest("[data-close-checked-report]")) {
         closeCheckedReport();
       }
@@ -2151,16 +2156,56 @@
     modal.querySelector("[data-close-checked-report]")?.focus();
   }
 
+  // In-page lightbox for evidence/displayer photos. Chrome (and some
+  // other browsers) blocks top-level navigation to large data: URLs
+  // opened via target="_blank" and silently downloads the file instead
+  // of showing it — this avoids that entirely by never navigating.
+  function openReportPhotoLightbox(photoUrl) {
+    let overlay = document.getElementById("belmReportPhotoLightbox");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "belmReportPhotoLightbox";
+      overlay.className = "belm-report-photo-lightbox";
+      overlay.innerHTML = `
+        <button type="button" class="belm-report-photo-lightbox-close" aria-label="Close">×</button>
+        <img alt="Photo — full size">`;
+      document.body.appendChild(overlay);
+      overlay.addEventListener("click", (event) => {
+        if (event.target === overlay || event.target.closest(".belm-report-photo-lightbox-close")) {
+          overlay.classList.remove("open");
+        }
+      });
+    }
+    overlay.querySelector("img").src = photoUrl;
+    overlay.classList.add("open");
+  }
+
   function enhanceCheckedReportButtons() {
     if (window.location.pathname !== "/portal/dashboard") return;
+    // De-duplicate first: if the underlying app re-renders a download
+    // link without fully removing our previously-inserted button, two
+    // "View Checked Report" buttons can end up pointing at the same
+    // report. Keep only one per unique report URL.
+    const seenReportUrls = new Set();
+    document.querySelectorAll(".belm-view-checked-report").forEach((button) => {
+      const url = button.dataset.reportUrl;
+      if (seenReportUrls.has(url)) {
+        button.remove();
+      } else {
+        seenReportUrls.add(url);
+      }
+    });
     document.querySelectorAll('a[href^="/api/customer-portal/reports/"][href$="/download"]').forEach((downloadLink) => {
+      const reportUrl = downloadLink.getAttribute("href").replace(/\/download$/, "/view");
+      if (seenReportUrls.has(reportUrl)) return;
       if (downloadLink.parentElement?.querySelector(".belm-view-checked-report")) return;
       const button = document.createElement("button");
       button.type = "button";
       button.className = "belm-view-checked-report";
-      button.dataset.reportUrl = downloadLink.getAttribute("href").replace(/\/download$/, "/view");
+      button.dataset.reportUrl = reportUrl;
       button.textContent = "View Checked Report";
       downloadLink.parentElement?.insertBefore(button, downloadLink);
+      seenReportUrls.add(reportUrl);
     });
   }
 

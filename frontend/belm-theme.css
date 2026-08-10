@@ -1509,13 +1509,57 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   display: inline-block;
   line-height: 0;
 }
-.belm-report-photo-link img {
+.belm-report-photo-link img,
+.belm-report-photo-thumb {
   width: 56px;
   height: 56px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid var(--belm-line);
   box-shadow: 0 2px 6px rgba(10, 18, 34, .12);
+  cursor: pointer;
+}
+.belm-report-photo-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(4, 10, 20, .88);
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.belm-report-photo-lightbox.open { display: flex; }
+.belm-report-photo-lightbox img {
+  max-width: min(92vw, 900px);
+  max-height: 88vh;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+  object-fit: contain;
+}
+.belm-report-photo-lightbox-close {
+  position: fixed;
+  top: 18px;
+  right: 22px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, .15);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.belm-report-photo-lightbox-close:hover { background: rgba(255, 255, 255, .28); }
+@media print {
+  .belm-report-photo-thumb, .belm-report-photo-link img {
+    width: 40px !important;
+    height: 40px !important;
+    max-width: 40px !important;
+    max-height: 40px !important;
+  }
+  .belm-report-photo-lightbox { display: none !important; }
 }
 
 .belm-report-status {

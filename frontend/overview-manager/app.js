@@ -13,6 +13,7 @@
 
   async function api(path) {
     const response = await fetch(`/api${path}`, {
+      cache: "no-store",
       headers: { Authorization: `Bearer ${token || ""}` },
     });
     const data = await response.json().catch(() => ({}));

@@ -30,6 +30,7 @@
   async function api(path, options = {}) {
     const response = await fetch(`/api/checklist-templates${path}`, {
       ...options,
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token || ""}`,

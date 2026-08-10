@@ -55,6 +55,7 @@ async function copyText(value) {
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
+    cache: "no-store",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,

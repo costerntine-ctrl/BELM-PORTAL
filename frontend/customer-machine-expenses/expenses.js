@@ -220,6 +220,7 @@
   async function api(path, options = {}) {
     const response = await fetch(`/api/customer-portal${path}`, {
       ...options,
+      cache: "no-store",
       headers: {
         ...(options.body ? { "Content-Type": "application/json" } : {}),
         Authorization: `Bearer ${token}`,

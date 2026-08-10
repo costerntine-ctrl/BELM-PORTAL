@@ -59,6 +59,15 @@ function api_shape($value) {
 
 function json_out($data, int $status = 200): void {
     http_response_code($status);
+    // Every API response is dynamic — never let the browser (or an
+    // intermediate proxy) cache it. Without this, GET requests like
+    // /customers or /users can be served stale from the browser's HTTP
+    // cache after navigating back/forward, making newly added
+    // customers/machines/technicians appear "missing" even though they
+    // are correctly saved in the database.
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Content-Type: application/json');
     echo json_encode(api_shape($data), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
 }

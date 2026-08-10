@@ -180,6 +180,7 @@ function validate_invoice_input(array $payload): array {
         $description = trim((string)($item['description'] ?? ''));
         $quantity = $item['quantity'] ?? null;
         $unitPrice = $item['unitPrice'] ?? null;
+        $sparePartId = trim((string)($item['sparePartId'] ?? ''));
         if ($description === '') json_error('Every invoice item needs a description.');
         if (!is_numeric($quantity)
             || (float)$quantity <= 0
@@ -189,12 +190,18 @@ function validate_invoice_input(array $payload): array {
         if (!is_numeric($unitPrice) || (float)$unitPrice < 0) {
             json_error('Invoice item price cannot be negative.');
         }
+        if ($sparePartId !== '') {
+            $partCheck = db()->prepare('SELECT 1 FROM spare_parts WHERE id = ? AND deleted_at IS NULL');
+            $partCheck->execute([$sparePartId]);
+            if (!$partCheck->fetch()) json_error('Selected spare part was not found.', 422);
+        }
         $lineTotal = (int)$quantity * (float)$unitPrice;
         $normalizedItems[] = [
             'description' => $description,
             'quantity' => (int)$quantity,
             'unitPrice' => (float)$unitPrice,
             'lineTotal' => $lineTotal,
+            'sparePartId' => $sparePartId !== '' ? $sparePartId : null,
         ];
         $subtotal += $lineTotal;
     }
@@ -287,8 +294,8 @@ if ($method === 'POST' && !$action) {
             ]);
         $itemStmt = $pdo->prepare(
             'INSERT INTO invoice_items
-             (id, invoice_id, description, quantity, unit_price, line_total)
-             VALUES (?,?,?,?,?,?)'
+             (id, invoice_id, description, quantity, unit_price, line_total, spare_part_id)
+             VALUES (?,?,?,?,?,?,?)'
         );
         foreach ($invoice['items'] as $item) {
             $itemStmt->execute([
@@ -298,6 +305,7 @@ if ($method === 'POST' && !$action) {
                 $item['quantity'],
                 $item['unitPrice'],
                 $item['lineTotal'],
+                $item['sparePartId'],
             ]);
         }
         $pdo->commit();
@@ -358,8 +366,8 @@ if ($method === 'PUT' && !$action) {
             $pdo->prepare('DELETE FROM invoice_items WHERE invoice_id = ?')->execute([$id]);
             $itemStmt = $pdo->prepare(
                 'INSERT INTO invoice_items
-                 (id, invoice_id, description, quantity, unit_price, line_total)
-                 VALUES (?,?,?,?,?,?)'
+                 (id, invoice_id, description, quantity, unit_price, line_total, spare_part_id)
+                 VALUES (?,?,?,?,?,?,?)'
             );
             foreach ($invoice['items'] as $item) {
                 $itemStmt->execute([
@@ -369,6 +377,7 @@ if ($method === 'PUT' && !$action) {
                     $item['quantity'],
                     $item['unitPrice'],
                     $item['lineTotal'],
+                    $item['sparePartId'],
                 ]);
             }
             $pdo->commit();

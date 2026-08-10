@@ -553,6 +553,43 @@
   }
 
   let techLoadingWatchdogScheduled = false;
+  // Detects the specific "your assigned customer has changed" 401 the
+  // backend now sends when a Technician's session token is stale (their
+  // assigned customer was deleted/merged/reassigned after they logged
+  // in). Without this, the app just silently retries the same broken
+  // request forever and the person is stuck on "Loading…" no matter how
+  // many times they hit Refresh — only a fresh login fixes it, so do
+  // that automatically instead of making them find "Log in again".
+  function installStaleTechSessionDetector() {
+    if (window.location.pathname !== "/tech") return;
+    if (window.__belmStaleTechDetectorInstalled) return;
+    window.__belmStaleTechDetectorInstalled = true;
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      try {
+        if (response.status === 401) {
+          const clone = response.clone();
+          const text = await clone.text();
+          if (text.includes("assigned customer has changed")) {
+            localStorage.removeItem("belm_tech_token");
+            localStorage.removeItem("belm_tech_user");
+            const banner = document.createElement("div");
+            banner.style.cssText =
+              "position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" +
+              "background:rgba(4,10,20,.9);color:#fff;font:600 14px Inter,system-ui,sans-serif;text-align:center;padding:24px;";
+            banner.innerHTML =
+              '<div><p style="margin:0 0 14px;font-size:16px;font-weight:800;">Your session needs refreshing</p>' +
+              '<p style="margin:0 0 18px;color:#cbd5e1;">Your assigned customer changed since you last logged in. Redirecting to login…</p></div>';
+            document.body.appendChild(banner);
+            setTimeout(() => window.location.href = "/auth/login", 1800);
+          }
+        }
+      } catch (_) {}
+      return response;
+    };
+  }
+
   function watchForStuckTechLoading() {
     if (window.location.pathname !== "/tech") return;
     if (techLoadingWatchdogScheduled) return;
@@ -2881,6 +2918,7 @@
     enforceViewerInterface();
     correctLegacyCopy();
     enhanceCheckedReportButtons();
+    installStaleTechSessionDetector();
     watchForStuckTechLoading();
     installCustomerThemeToggle();
     installTechChecklistSubmitInterceptor();

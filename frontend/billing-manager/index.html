@@ -97,9 +97,26 @@
         <label>Amount (TZS)<input id="paymentAmount" required type="number" min="0.01" step="0.01"></label>
         <label>Method<select id="paymentMethod"><option>Bank</option><option>Cash</option><option>Mobile Money</option><option>Cheque</option></select></label>
         <label>Receive into bank<select id="paymentBankAccount"><option value="">Unallocated / cash account</option></select></label>
-        <label>Reference<input id="paymentReference" placeholder="Receipt or transfer reference"></label>
+        <label>Reference
+          <div class="reference-with-scan">
+            <input id="paymentReference" placeholder="Receipt or transfer reference">
+            <button id="paymentScanQrButton" type="button" title="Scan QR code with camera">📷 Scan</button>
+          </div>
+          <small id="paymentScanHint" class="hidden">Point the camera at the receipt's QR code…</small>
+        </label>
         <div class="dialog-actions"><button class="ghost" data-close="paymentDialog" type="button">Cancel</button><button id="savePaymentButton" class="primary">Record payment</button></div>
       </form>
+    </dialog>
+
+    <dialog id="reviewExportDialog">
+      <div class="dialog-card compact">
+        <div class="dialog-head"><div><p class="eyebrow">Review before export</p><h2 id="reviewExportTitle">Review document</h2></div><button class="icon-close" data-close="reviewExportDialog" type="button">×</button></div>
+        <div id="reviewExportBody" class="review-export-body"></div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="reviewExportDialog" type="button">Cancel, keep editing</button>
+          <a id="reviewExportDownload" class="primary" href="#" target="_blank" rel="noopener">Looks correct — Download PDF</a>
+        </div>
+      </div>
     </dialog>
 
     <dialog id="receiptDialog">
@@ -170,5 +187,10 @@
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
     <script src="/billing-manager/manager.js?v=31-bank-total-cheque"></script>
+    <div id="qrScanOverlay" class="qr-scan-overlay hidden">
+      <video id="qrScanVideo" autoplay playsinline muted></video>
+      <button id="qrScanCancelButton" type="button" class="qr-scan-cancel">Cancel scan</button>
+      <p class="qr-scan-caption">Point the camera at the receipt's QR code</p>
+    </div>
   </body>
 </html>

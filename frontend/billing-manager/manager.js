@@ -128,7 +128,7 @@
         <td class="money">${money(invoice.balance)}</td>
         <td>${invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</td>
         <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}">${statuses.map((status) => `<option value="${status}" ${status === invoice.status ? "selected" : ""} ${["PAID", "PARTIALLY_PAID"].includes(status) ? "disabled" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select></td>
-        <td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><a class="export-row-button" href="/api/billing?action=export-invoice&id=${escapeHtml(invoice.id)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">Export</a><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
+        <td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><button class="export-row-button" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</button><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
@@ -175,8 +175,43 @@
       return;
     }
     panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
-      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button></div><div class="row-actions-line"><a class="export-row-button" href="/api/proforma-invoices?action=export-one&proformaId=${escapeHtml(proforma.id)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">Export</a><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
+      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button></div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
     `).join("")}</tbody></table></div>`;
+  }
+
+  function openReviewExport(type, record) {
+    const isInvoice = type === "invoice";
+    const totals = isInvoice
+      ? { subtotal: record.subtotal, tax: record.tax, grandTotal: record.total }
+      : { subtotal: record.totals?.subtotal, discount: record.totals?.discount, vat: record.totals?.vat, grandTotal: record.totals?.grandTotal };
+    const items = record.items || [];
+    document.getElementById("reviewExportTitle").textContent =
+      `Review ${isInvoice ? "Invoice" : "Proforma"} ${record.invoiceNo || ""}`;
+    document.getElementById("reviewExportBody").innerHTML = `
+      <div class="customer-info">
+        <div><span>Customer</span><strong>${escapeHtml(record.customer?.name || "—")}</strong></div>
+        <div><span>Date</span><strong>${formatDate(record.date || record.createdAt)}</strong></div>
+        ${isInvoice ? `<div><span>Due date</span><strong>${formatDate(record.dueDate)}</strong></div><div><span>Status</span><strong>${escapeHtml(record.status)}</strong></div>` : `<div><span>VAT mode</span><strong>${escapeHtml(record.vatMode)}</strong></div><div><span>Discount type</span><strong>${escapeHtml(record.discountType || "FIXED")}</strong></div>`}
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead>
+        <tbody>${items.length ? items.map((item) => `
+          <tr><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.qty || item.quantity || 1)}</td><td class="money">${money(item.unitPrice ?? item.unit_price)}</td><td class="money">${money((item.unitPrice ?? item.unit_price ?? 0) * (item.qty ?? item.quantity ?? 1))}</td></tr>
+        `).join("") : '<tr><td colspan="4" class="muted">No items</td></tr>'}</tbody></table>
+      </div>
+      <div class="review-export-totals">
+        <div><span>Subtotal</span><strong>${money(totals.subtotal)}</strong></div>
+        ${totals.discount ? `<div><span>Discount</span><strong>${money(totals.discount)}</strong></div>` : ""}
+        <div><span>${isInvoice ? "Tax" : "VAT"}</span><strong>${money(totals.tax ?? totals.vat)}</strong></div>
+        <div class="grand"><span>Grand Total</span><strong>${money(totals.grandTotal)}</strong></div>
+      </div>
+      <p class="muted">Check the customer, items and totals above are correct before exporting.</p>
+    `;
+    const url = isInvoice
+      ? `/api/billing?action=export-invoice&id=${encodeURIComponent(record.id)}&token=${encodeURIComponent(token)}`
+      : `/api/proforma-invoices?action=export-one&proformaId=${encodeURIComponent(record.id)}&token=${encodeURIComponent(token)}`;
+    document.getElementById("reviewExportDownload").href = url;
+    document.getElementById("reviewExportDialog").showModal();
   }
 
   function renderReceipts() {
@@ -239,10 +274,22 @@
     const row = document.createElement("div");
     row.className = "item-row";
     row.innerHTML = `
+      <label class="full">Pick from Spare Parts Inventory <small>(auto-fills description &amp; price, links cost-of-goods for profit tracking — optional)</small>
+        <select data-field="sparePartId">${sparePartOptionsHtml()}</select>
+      </label>
       <label>Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
       <label>Qty<input data-field="quantity" required type="number" min="1" step="1" value="${escapeHtml(item.quantity || 1)}"></label>
       <label>Unit price<input data-field="unitPrice" required type="number" min="0" step="0.01" value="${escapeHtml(item.unitPrice || item.unit_price || 0)}"></label>
       <button class="remove-item" type="button" aria-label="Remove item">×</button>`;
+    if (item.sparePartId) row.querySelector('[data-field="sparePartId"]').value = item.sparePartId;
+    row.querySelector('[data-field="sparePartId"]').addEventListener("change", (event) => {
+      const partId = event.target.value;
+      if (!partId) return;
+      const part = (sparePartsCache || []).find((p) => p.id === partId);
+      if (!part) return;
+      row.querySelector('[data-field="description"]').value = part.name || "";
+      row.querySelector('[data-field="unitPrice"]').value = part.sellingPrice || 0;
+    });
     return row;
   }
 
@@ -250,7 +297,7 @@
     document.getElementById("invoiceItems").appendChild(invoiceItemRow(item));
   }
 
-  function openInvoice(id = "") {
+  async function openInvoice(id = "") {
     const invoice = invoices.find((item) => item.id === id);
     document.getElementById("invoiceForm").reset();
     document.getElementById("invoiceId").value = invoice?.id || "";
@@ -263,6 +310,7 @@
     document.getElementById("invoiceError").className = "alert error hidden";
     fillCustomerInformation("invoiceCustomer", "invoiceCustomerInfo");
     updateMachineOptions(invoice?.machineId || "");
+    await ensureSparePartsLoaded();
     (invoice?.items?.length ? invoice.items : [{}]).forEach(addInvoiceItem);
     document.getElementById("saveInvoiceButton").textContent = invoice ? "Save changes" : "Save invoice";
     document.getElementById("invoiceDialog").showModal();
@@ -282,6 +330,7 @@
       description: row.querySelector('[data-field="description"]').value.trim(),
       quantity: Number(row.querySelector('[data-field="quantity"]').value),
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
+      sparePartId: row.querySelector('[data-field="sparePartId"]').value || undefined,
     }));
     let editConfirmation = {};
     if (id) {
@@ -632,6 +681,91 @@
   document.getElementById("invoiceForm").addEventListener("submit", saveInvoice);
   document.getElementById("paymentForm").addEventListener("submit", savePayment);
   document.getElementById("receiptForm").addEventListener("submit", saveReceipt);
+
+  // ------------------------------------------------------------------
+  // QR SCAN for payment reference — uses the camera directly via the
+  // browser's native BarcodeDetector (Chrome/Edge; no external library,
+  // no big file upload). Falls back to a single lightweight photo
+  // capture + decode attempt on browsers without BarcodeDetector.
+  // ------------------------------------------------------------------
+  let qrScanStream = null;
+  let qrScanRAF = null;
+
+  function stopQrScan() {
+    if (qrScanRAF) cancelAnimationFrame(qrScanRAF);
+    qrScanRAF = null;
+    if (qrScanStream) qrScanStream.getTracks().forEach((track) => track.stop());
+    qrScanStream = null;
+    document.getElementById("qrScanOverlay").classList.add("hidden");
+    document.getElementById("paymentScanHint").classList.add("hidden");
+  }
+
+  async function scanQrFromFilePhoto() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment";
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!("BarcodeDetector" in window)) {
+        showAlert("This browser can't scan QR codes automatically. Please type the reference manually.", true);
+        return;
+      }
+      try {
+        const bitmap = await createImageBitmap(file);
+        const detector = new BarcodeDetector({ formats: ["qr_code"] });
+        const results = await detector.detect(bitmap);
+        if (results.length) {
+          document.getElementById("paymentReference").value = results[0].rawValue;
+          showAlert("QR code captured.");
+        } else {
+          showAlert("No QR code found in that photo. Try again or type the reference manually.", true);
+        }
+      } catch (_) {
+        showAlert("Could not read a QR code from that photo. Type the reference manually.", true);
+      }
+    });
+    input.click();
+  }
+
+  async function startQrScan() {
+    if (!("BarcodeDetector" in window) || !navigator.mediaDevices?.getUserMedia) {
+      await scanQrFromFilePhoto();
+      return;
+    }
+    const overlay = document.getElementById("qrScanOverlay");
+    const video = document.getElementById("qrScanVideo");
+    try {
+      qrScanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch (_) {
+      showAlert("Camera access was denied or unavailable. Type the reference manually.", true);
+      return;
+    }
+    video.srcObject = qrScanStream;
+    overlay.classList.remove("hidden");
+    document.getElementById("paymentScanHint").classList.remove("hidden");
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    const scanFrame = async () => {
+      if (!qrScanStream) return;
+      try {
+        const results = await detector.detect(video);
+        if (results.length) {
+          document.getElementById("paymentReference").value = results[0].rawValue;
+          stopQrScan();
+          showAlert("QR code captured.");
+          return;
+        }
+      } catch (_) { /* keep trying */ }
+      qrScanRAF = requestAnimationFrame(scanFrame);
+    };
+    qrScanRAF = requestAnimationFrame(scanFrame);
+  }
+
+  document.getElementById("paymentScanQrButton").addEventListener("click", startQrScan);
+  document.getElementById("qrScanCancelButton").addEventListener("click", stopQrScan);
+  document.getElementById("paymentDialog").addEventListener("close", stopQrScan);
+
   document.getElementById("expenseForm").addEventListener("submit", saveExpense);
   document.getElementById("proformaForm").addEventListener("submit", saveProforma);
   document.querySelectorAll(".item-list").forEach((list) => list.addEventListener("click", (event) => {
@@ -642,10 +776,15 @@
     const pay = event.target.closest("[data-payment]");
     const receiptButton = event.target.closest("[data-receipt]");
     const edit = event.target.closest("[data-edit-invoice]");
+    const reviewButton = event.target.closest("[data-review-invoice]");
     const removeButton = event.target.closest("[data-delete-invoice]");
     if (edit) openInvoice(edit.dataset.editInvoice);
     if (pay) openPayment(pay.dataset.payment);
     if (receiptButton) openReceipt(receiptButton.dataset.receipt, receiptButton.dataset.receiptCustomer);
+    if (reviewButton) {
+      const invoice = invoices.find((item) => item.id === reviewButton.dataset.reviewInvoice);
+      if (invoice) openReviewExport("invoice", invoice);
+    }
     if (removeButton) remove(`/billing/invoices/${removeButton.dataset.deleteInvoice}`, "Delete this invoice? It will move to the Recycle Bin.");
   });
   document.getElementById("paymentsPanel").addEventListener("click", (event) => {
@@ -679,8 +818,13 @@
   });
   document.getElementById("proformasPanel").addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit-proforma]");
+    const reviewButton = event.target.closest("[data-review-proforma]");
     const removeButton = event.target.closest("[data-delete-proforma]");
     if (edit) openProforma(proformas.find((item) => item.id === edit.dataset.editProforma));
+    if (reviewButton) {
+      const proforma = proformas.find((item) => item.id === reviewButton.dataset.reviewProforma);
+      if (proforma) openReviewExport("proforma", proforma);
+    }
     if (removeButton) remove(`/proforma-invoices/${removeButton.dataset.deleteProforma}`, "Delete this proforma? It will move to the Recycle Bin.");
   });
   document.getElementById("logoutButton").addEventListener("click", () => {
@@ -689,5 +833,29 @@
     window.location.href = "/admin/login";
   });
 
-  load();
+  async function applyProformaPrefillFromSparePartRequest() {
+    const raw = sessionStorage.getItem("belm_prefill_proforma");
+    if (!raw) return;
+    sessionStorage.removeItem("belm_prefill_proforma");
+    let prefill;
+    try {
+      prefill = JSON.parse(raw);
+    } catch (_) {
+      return;
+    }
+    await ensureSparePartsLoaded();
+    await openProforma();
+    if (prefill.customerId) document.getElementById("proformaCustomer").value = prefill.customerId;
+    fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
+    const firstRow = document.querySelector("#proformaItems .item-row");
+    if (firstRow) {
+      firstRow.querySelector('[data-field="partNumber"]').value = prefill.partNumber || "";
+      firstRow.querySelector('[data-field="description"]').value = prefill.description || "";
+      firstRow.querySelector('[data-field="qty"]').value = prefill.qty || 1;
+      firstRow.querySelector('[data-field="unitPrice"]').value = prefill.unitPrice || 0;
+    }
+    showAlert(`Proforma pre-filled from the spare-part request — check the customer and pricing, then Save.`);
+  }
+
+  load().then(applyProformaPrefillFromSparePartRequest);
 })();

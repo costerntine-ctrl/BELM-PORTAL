@@ -107,6 +107,7 @@
                <button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>`
             : `<button data-add-request="${escapeHtml(request.id)}">Add to Inventory</button>
                <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>`}
+          ${request.customerId ? `<button class="proforma-button" data-generate-proforma="${escapeHtml(request.id)}">+ Generate Proforma</button>` : ""}
         </div>
       </article>`;
     }).join("");
@@ -312,6 +313,19 @@
     const add = event.target.closest("[data-add-request]");
     const purchase = event.target.closest("[data-purchase-request]");
     const resolve = event.target.closest("[data-resolve-request]");
+    const generateProforma = event.target.closest("[data-generate-proforma]");
+    if (generateProforma) {
+      const request = requests.find((item) => item.id === generateProforma.dataset.generateProforma);
+      if (!request) return;
+      sessionStorage.setItem("belm_prefill_proforma", JSON.stringify({
+        customerId: request.customerId,
+        partNumber: request.partNumber || request.referenceNumber || "",
+        description: request.description || request.partName || "Spare part",
+        qty: request.quantity || 1,
+        unitPrice: request.sellingPrice || 0,
+      }));
+      window.location.href = "/billing-manager/#new-proforma";
+    }
     if (resolve) markFulfilled(resolve.dataset.resolveRequest);
     if (add) {
       const request = requests.find((item) => item.id === add.dataset.addRequest);

@@ -179,10 +179,10 @@ if ($method === 'GET') {
                 spr.status, spr.requested_by_name, spr.description,
                 spr.machine_type, spr.created_at,
                 sp.part_number, sp.name AS part_name, sp.stock_qty,
-                sp.reorder_threshold,
+                sp.reorder_threshold, sp.selling_price,
                 m.model AS machine_model, m.brand AS machine_brand,
                 m.serial_number, m.reg_number,
-                c.name AS customer_name
+                c.id AS customer_id, c.name AS customer_name
          FROM spare_part_requests spr
          LEFT JOIN spare_parts sp ON sp.id = spr.spare_part_id
          LEFT JOIN machines m ON m.id = spr.machine_id

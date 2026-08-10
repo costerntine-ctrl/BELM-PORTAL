@@ -13,6 +13,69 @@ function finance_amount(PDO $pdo, string $sql, array $params = []): float {
     return (float)$stmt->fetchColumn();
 }
 
+// Drill-down behind the "Customer Debt" card: every invoice with money
+// still owed (the actual debt), plus every invoice that has been paid —
+// with the receipt (if one was issued and carries a payment reference)
+// shown alongside so it's obvious which payments have proof attached.
+if ($method === 'GET' && $action === 'customer-debt') {
+    $pdo = db();
+    $stmt = $pdo->query(
+        "SELECT i.id, i.invoice_no, i.total, i.due_date, i.status, i.created_at,
+                c.name AS customer_name,
+                COALESCE(p.paid, 0) AS paid
+         FROM invoices i
+         JOIN customers c ON c.id = i.customer_id
+         LEFT JOIN (
+           SELECT invoice_id, SUM(amount) AS paid
+           FROM payments
+           GROUP BY invoice_id
+         ) p ON p.invoice_id = i.id
+         WHERE i.deleted_at IS NULL AND i.status <> 'CANCELLED'
+         ORDER BY i.created_at DESC"
+    );
+    $invoices = $stmt->fetchAll();
+
+    $receiptStmt = $pdo->query(
+        "SELECT invoice_id, receipt_no, payment_reference, paid_at
+         FROM receipts
+         WHERE deleted_at IS NULL AND invoice_id IS NOT NULL
+         ORDER BY paid_at DESC"
+    );
+    $receiptsByInvoice = [];
+    foreach ($receiptStmt->fetchAll() as $receipt) {
+        $receiptsByInvoice[$receipt['invoice_id']][] = $receipt;
+    }
+
+    $owing = [];
+    $settled = [];
+    foreach ($invoices as $invoice) {
+        $balance = max(0, (float)$invoice['total'] - (float)$invoice['paid']);
+        $row = [
+            'id' => $invoice['id'],
+            'invoiceNo' => $invoice['invoice_no'],
+            'customerName' => $invoice['customer_name'],
+            'total' => (float)$invoice['total'],
+            'paid' => (float)$invoice['paid'],
+            'balance' => $balance,
+            'dueDate' => $invoice['due_date'],
+            'status' => $invoice['status'],
+            'createdAt' => $invoice['created_at'],
+            'receipts' => $receiptsByInvoice[$invoice['id']] ?? [],
+        ];
+        if ($balance > 0.005) {
+            $owing[] = $row;
+        } else {
+            $settled[] = $row;
+        }
+    }
+
+    json_out([
+        'owing' => $owing,
+        'settled' => $settled,
+        'totalOwing' => array_sum(array_map(static fn($r) => $r['balance'], $owing)),
+    ]);
+}
+
 function bank_components(PDO $pdo, string $accountId, ?string $excludeWithdrawalId = null): array {
     $opening = finance_amount(
         $pdo,
@@ -119,11 +182,26 @@ if ($method === 'GET' && $action === '') {
          ) p ON p.invoice_id = i.id
          WHERE i.deleted_at IS NULL AND i.status <> 'CANCELLED'"
     );
+    // VAT is government's money, not BELM's revenue — calculated as 18% of
+    // every invoice's subtotal (not the free-typed "Tax" field, which
+    // admins may have used loosely), so this always reflects the true
+    // statutory liability regardless of what was entered per invoice.
     $vatDebt = finance_amount(
         $pdo,
-        "SELECT COALESCE(SUM(tax),0)
+        "SELECT COALESCE(SUM(ROUND(subtotal * 0.18, 2)),0)
          FROM invoices
          WHERE deleted_at IS NULL AND status <> 'CANCELLED'"
+    );
+    // Cost of goods sold — the purchase price BELM itself paid for the
+    // spare parts on invoices, so "profit" only counts the markup, not
+    // the full sale price of parts that were bought in first.
+    $costOfGoodsSold = finance_amount(
+        $pdo,
+        "SELECT COALESCE(SUM(ii.quantity * sp.purchase_price),0)
+         FROM invoice_items ii
+         JOIN invoices i ON i.id = ii.invoice_id
+         JOIN spare_parts sp ON sp.id = ii.spare_part_id
+         WHERE i.deleted_at IS NULL AND i.status <> 'CANCELLED'"
     );
     $unallocatedPayments = finance_amount(
         $pdo,
@@ -137,7 +215,7 @@ if ($method === 'GET' && $action === '') {
          FROM company_expenses
          WHERE bank_account_id IS NULL AND deleted_at IS NULL'
     );
-    $netAfterVat = $paymentsReceived - $companyExpenses - $totalWithdrawals - $vatDebt;
+    $netAfterVat = $paymentsReceived - $companyExpenses - $totalWithdrawals - $vatDebt - $costOfGoodsSold;
 
     json_out([
         'accounts' => $accounts,
@@ -149,6 +227,7 @@ if ($method === 'GET' && $action === '') {
             'totalWithdrawals' => $totalWithdrawals,
             'customerDebt' => $customerDebt,
             'vatDebt' => $vatDebt,
+            'costOfGoodsSold' => $costOfGoodsSold,
             'loss' => max(0, -$netAfterVat),
             'belmProfit' => max(0, $netAfterVat),
             'unallocatedPayments' => $unallocatedPayments,

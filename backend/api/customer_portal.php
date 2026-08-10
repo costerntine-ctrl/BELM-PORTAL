@@ -1603,6 +1603,23 @@ if ($sub === 'spare-part-requests' && $method === 'POST') {
         if (!$stmt->fetch()) json_error('Spare part not found.', 404);
     } elseif ($referenceNumber === '' && $description === '') {
         json_error('Select a spare part from inventory, or enter a reference number / description for a custom part.');
+    } else {
+        // Customer typed a reference number instead of picking from the
+        // dropdown — try to match it against Spare Parts Inventory (by
+        // reference number or part number) so Inventory/Billing see this
+        // request as already synced with stock and pricing, instead of
+        // treating it as a brand-new custom part.
+        if ($referenceNumber !== '') {
+            $matchStmt = db()->prepare(
+                'SELECT id FROM spare_parts
+                 WHERE deleted_at IS NULL
+                   AND (UPPER(reference_number) = UPPER(?) OR UPPER(part_number) = UPPER(?))
+                 LIMIT 1'
+            );
+            $matchStmt->execute([$referenceNumber, $referenceNumber]);
+            $matchedId = $matchStmt->fetchColumn();
+            if ($matchedId) $sparePartId = $matchedId;
+        }
     }
 
     if ($serviceRequestId !== '') {

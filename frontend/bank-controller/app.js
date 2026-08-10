@@ -42,8 +42,8 @@
     box.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
-  function metricCard(label, value, tone = "") {
-    return `<article class="metric-card${tone ? " " + tone : ""}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`;
+  function metricCard(label, value, tone = "", clickable = false) {
+    return `<article class="metric-card${tone ? " " + tone : ""}${clickable ? " clickable" : ""}" ${clickable ? `data-metric-click="${escapeHtml(label)}" role="button" tabindex="0"` : ""}><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></article>`;
   }
 
   function renderCompanyMetrics() {
@@ -53,12 +53,58 @@
       metricCard("Payments Received", money.format(s.paymentsReceived || 0)),
       metricCard("Company Expenses", money.format(s.companyExpenses || 0), "yellow"),
       metricCard("Total Withdrawals", money.format(s.totalWithdrawals || 0), "yellow"),
-      metricCard("Customer Debt", money.format(s.customerDebt || 0)),
-      metricCard("VAT Debt", money.format(s.vatDebt || 0)),
+      metricCard("Customer Debt", money.format(s.customerDebt || 0), "", true),
+      metricCard("VAT Debt (18%)", money.format(s.vatDebt || 0)),
+      s.costOfGoodsSold > 0 ? metricCard("Cost of Goods Sold", money.format(s.costOfGoodsSold || 0)) : "",
       s.belmProfit > 0 ? metricCard("BELM Profit", money.format(s.belmProfit || 0), "green") : "",
       s.loss > 0 ? metricCard("Loss", money.format(s.loss || 0), "red") : "",
     ].join("");
   }
+
+  async function openCustomerDebtDrilldown() {
+    const dialog = document.getElementById("customerDebtDialog");
+    const body = document.getElementById("customerDebtBody");
+    body.innerHTML = '<p class="muted">Loading…</p>';
+    dialog.showModal();
+    try {
+      const result = await api("/bank-manager?action=customer-debt");
+      const receiptBadge = (receipts) => receipts.length
+        ? receipts.map((r) => `<span class="receipt-chip">${escapeHtml(r.receipt_no)}${r.payment_reference ? ` · ${escapeHtml(r.payment_reference)}` : ""}</span>`).join(" ")
+        : '<span class="muted">No receipt on file</span>';
+      const rowsHtml = (list) => list.length
+        ? list.map((row) => `
+          <tr>
+            <td><strong>${escapeHtml(row.invoiceNo)}</strong></td>
+            <td>${escapeHtml(row.customerName)}</td>
+            <td class="money">${money.format(row.total)}</td>
+            <td class="money">${money.format(row.paid)}</td>
+            <td class="money">${money.format(row.balance)}</td>
+            <td>${receiptBadge(row.receipts)}</td>
+          </tr>`).join("")
+        : '<tr><td colspan="6" class="muted">None</td></tr>';
+      body.innerHTML = `
+        <h3>Owing — ${money.format(result.totalOwing || 0)}</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Receipt</th></tr></thead>
+          <tbody>${rowsHtml(result.owing || [])}</tbody>
+        </table></div>
+        <h3 style="margin-top:18px">Settled (paid in full)</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Receipt</th></tr></thead>
+          <tbody>${rowsHtml(result.settled || [])}</tbody>
+        </table></div>`;
+    } catch (error) {
+      body.innerHTML = `<p class="alert">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  document.getElementById("companyMetrics")?.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-metric-click]");
+    if (card && card.dataset.metricClick === "Customer Debt") openCustomerDebtDrilldown();
+  });
+  document.getElementById("closeCustomerDebtDialog")?.addEventListener("click", () =>
+    document.getElementById("customerDebtDialog").close());
+
 
   function populateAccountSelect() {
     const select = document.getElementById("accountSelect");

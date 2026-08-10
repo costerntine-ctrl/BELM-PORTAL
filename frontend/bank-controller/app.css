@@ -1,3 +1,55 @@
+dialog.wide-dialog {
+  width: min(900px, 94vw);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table-wrap th {
+  padding: 9px 10px;
+  text-align: left;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
+}
+
+.table-wrap td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.table-wrap td.money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted { color: var(--muted); }
+
+.receipt-chip {
+  display: inline-block;
+  margin: 1px 3px 1px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eefaf3;
+  border: 1px solid #a6d9bd;
+  color: #0a6b3d;
+  font-size: 10px;
+  font-weight: 800;
+}
+
 dialog {
   width: min(620px, 94vw);
   max-height: 92vh;

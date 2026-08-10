@@ -294,6 +294,10 @@ CREATE TABLE IF NOT EXISTS invoice_items (
   unit_price NUMERIC(12,2) NOT NULL,
   line_total NUMERIC(12,2) NOT NULL
 );
+-- Links an invoice line to the actual Spare Parts Inventory row it sold
+-- (when it is one), so BELM's real profit can subtract the purchase cost
+-- of goods sold, not just count the sale price as pure profit.
+ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id);
 
 CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(36) PRIMARY KEY,

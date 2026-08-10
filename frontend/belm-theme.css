@@ -402,12 +402,14 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   color: #65510c;
   border-color: #ead36a;
   background: #fff9d8;
+  animation: belm-status-blink-yellow 1.6s ease-in-out infinite;
 }
 
 .belm-technician-machine-health.status-red {
   color: #802520;
   border-color: #e7a09a;
   background: #fff0ee;
+  animation: belm-status-blink-red 1.2s ease-in-out infinite;
 }
 
 .belm-technician-machine-health.status-unknown {
@@ -449,11 +451,13 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 .belm-service-due-panel.status-yellow {
   border-color: #eab308;
   background: #fffbea;
+  animation: belm-status-blink-yellow-panel 1.6s ease-in-out infinite;
 }
 
 .belm-service-due-panel.status-red {
   border-color: #ef4444;
   background: #fdecec;
+  animation: belm-status-blink-red-panel 1.2s ease-in-out infinite;
 }
 
 .belm-service-due-panel.status-unknown {
@@ -466,6 +470,35 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
+}
+
+/* Yellow/red status cards blink gently to draw the eye — a customer
+   glancing at several machines should immediately notice which ones
+   need attention without having to read every card. Green/unknown
+   stay static since there's nothing urgent to flag. */
+@keyframes belm-status-blink-yellow {
+  0%, 100% { border-color: #ead36a; background: #fff9d8; }
+  50% { border-color: #d4a017; background: #fff3b0; }
+}
+@keyframes belm-status-blink-red {
+  0%, 100% { border-color: #e7a09a; background: #fff0ee; }
+  50% { border-color: #c0392b; background: #ffd9d5; }
+}
+@keyframes belm-status-blink-yellow-panel {
+  0%, 100% { border-color: #eab308; box-shadow: 0 0 0 0 rgba(234,179,8,0); }
+  50% { border-color: #b8860b; box-shadow: 0 0 0 4px rgba(234,179,8,.25); }
+}
+@keyframes belm-status-blink-red-panel {
+  0%, 100% { border-color: #ef4444; box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  50% { border-color: #b91c1c; box-shadow: 0 0 0 4px rgba(239,68,68,.28); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .belm-technician-machine-health.status-yellow,
+  .belm-technician-machine-health.status-red,
+  .belm-service-due-panel.status-yellow,
+  .belm-service-due-panel.status-red {
+    animation: none;
+  }
 }
 
 .belm-service-due-head span {

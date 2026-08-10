@@ -143,7 +143,7 @@ function belm_render_document_head(
     $logoPath = __DIR__ . '/../assets/watermark.jpg';
     $logoData = is_file($logoPath) ? file_get_contents($logoPath) : false;
     $logoSize = $logoData !== false ? @getimagesizefromstring($logoData) : false;
-    $logoDrawW = $fullHeader ? 74.0 : 44.0;
+    $logoDrawW = $fullHeader ? 130.0 : 70.0;
     $logoDrawH = $logoSize ? $logoDrawW * ($logoSize[1] / $logoSize[0]) : 0.0;
     $logoTopY = BELM_PDF_PAGE_HEIGHT - 48 - $logoDrawH;
     if ($logoData !== false && $logoSize !== false) {
@@ -326,7 +326,18 @@ function output_professional_document_pdf(
         );
         if ($ld !== false) { $logoData = $ld; $logoSize = $ls; }
 
-        $content = $headContent;
+        $content = '';
+        if ($ld !== false && $ls !== false) {
+            $wmWidth = 340.0;
+            $wmHeight = $wmWidth * ($ls[1] / $ls[0]);
+            $wmX = (BELM_PDF_PAGE_WIDTH - $wmWidth) / 2;
+            $wmY = (BELM_PDF_PAGE_HEIGHT - $wmHeight) / 2;
+            // Faint background watermark — drawn first (behind everything
+            // else) at low opacity via an ExtGState so it never competes
+            // with the text and numbers printed on top of it.
+            $content .= sprintf("q\n/GSWatermark gs\n%.2F 0 0 %.2F %.2F %.2F cm\n/Logo Do\nQ\n", $wmWidth, $wmHeight, $wmX, $wmY);
+        }
+        $content .= $headContent;
         $content .= belm_render_table_header($tableTop);
         $headerHeight = 20.0;
         $rowTop = $tableTop - $headerHeight;
@@ -453,6 +464,7 @@ function belm_assemble_pdf(string $filename, array $pageContents, $logoData, $lo
     $fontObject = 3 + $pageCount * 2;
     $fontBoldObject = $fontObject + 1;
     $logoObject = ($logoData !== false && $logoSize !== false) ? $fontBoldObject + 1 : null;
+    $gsObject = $logoObject !== null ? $logoObject + 1 : null;
 
     $objects = [];
     $pageReferences = [];
@@ -464,6 +476,7 @@ function belm_assemble_pdf(string $filename, array $pageContents, $logoData, $lo
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " . BELM_PDF_PAGE_WIDTH . ' ' . BELM_PDF_PAGE_HEIGHT . '] '
             . "/Resources << /Font << /F1 {$fontObject} 0 R /FB {$fontBoldObject} 0 R >>"
             . ($logoObject !== null ? " /XObject << /Logo {$logoObject} 0 R >>" : '')
+            . ($gsObject !== null ? " /ExtGState << /GSWatermark {$gsObject} 0 R >>" : '')
             . " >> /Contents {$contentObject} 0 R >>";
         $objects[$contentObject] = "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";
     }
@@ -476,6 +489,11 @@ function belm_assemble_pdf(string $filename, array $pageContents, $logoData, $lo
             "<< /Type /XObject /Subtype /Image /Width {$logoSize[0]} /Height {$logoSize[1]} "
             . "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode "
             . "/Length " . strlen($logoData) . " >>\nstream\n{$logoData}\nendstream";
+    }
+    if ($gsObject !== null) {
+        // Low opacity so the watermark sits faintly behind the printed
+        // text/table instead of competing with it.
+        $objects[$gsObject] = '<< /Type /ExtGState /ca 0.07 /CA 0.07 >>';
     }
     ksort($objects);
 

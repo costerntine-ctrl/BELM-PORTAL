@@ -112,6 +112,20 @@ input:focus, select:focus { outline: 3px solid rgba(0,169,88,.15); border-color:
 .customer-info { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 18px; margin-top: 14px; padding: 14px; border: 1px solid #b9dfca; border-left: 4px solid var(--green); border-radius: 11px; background: #f0faf4; }
 .customer-info.empty-info { display: block; color: var(--muted); border-color: var(--line); border-left-color: var(--yellow); background: #fafbfc; font-size: 12px; }
 .customer-info div { min-width: 0; }
+.review-export-body .table-wrap { margin-top: 14px; max-height: 240px; overflow-y: auto; }
+.review-export-totals { display: grid; gap: 6px; margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--canvas); }
+.review-export-totals div { display: flex; justify-content: space-between; font-size: 13px; }
+.review-export-totals .grand { padding-top: 6px; margin-top: 4px; border-top: 1px solid var(--line); font-weight: 900; font-size: 15px; color: var(--green2); }
+.reference-with-scan { display: flex; gap: 8px; }
+.reference-with-scan input { flex: 1 1 auto; min-width: 0; }
+.reference-with-scan button { flex: 0 0 auto; border: 1px solid var(--line); background: #fff; border-radius: 9px; padding: 0 12px; font-weight: 800; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.reference-with-scan button:hover { background: var(--canvas); }
+.qr-scan-overlay { position: fixed; inset: 0; z-index: 99999; background: rgba(4,10,20,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+.qr-scan-overlay.hidden { display: none; }
+.qr-scan-overlay video { width: min(92vw, 420px); aspect-ratio: 1/1; object-fit: cover; border-radius: 16px; border: 3px solid var(--green); }
+.qr-scan-caption { color: #fff; font-size: 13px; font-weight: 700; margin: 0; }
+.qr-scan-cancel { border: 1px solid rgba(255,255,255,.4); background: rgba(255,255,255,.12); color: #fff; border-radius: 9px; padding: 9px 18px; font-weight: 800; cursor: pointer; }
+.qr-scan-cancel:hover { background: rgba(255,255,255,.22); }
 .customer-info span { display: block; margin-bottom: 3px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .customer-info strong { display: block; overflow-wrap: anywhere; color: var(--ink); font-size: 12px; }
 .items-head { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
@@ -191,4 +205,6 @@ html[data-theme="dark"] .customer-info {
   .metrics strong { font-size: 18px; }
   .billing-section-sidebar { flex-wrap: nowrap; overflow-x: auto; }
   .tabs { flex-wrap: nowrap; }
+  .hero-actions { flex-wrap: nowrap; overflow-x: auto; width: 100%; justify-content: flex-start; }
+  .hero-actions button { flex: 0 0 auto; font-size: 12px; padding: 9px 12px; white-space: nowrap; }
 }

@@ -179,6 +179,26 @@ function account_recovery_code(): string {
 function require_auth(): array {
     $payload = current_token_payload();
     if (!$payload || ($payload['type'] ?? '') !== 'staff') json_error('Not authenticated', 401);
+
+    // A Technician's assignedCustomerId is baked into their JWT at login
+    // time and never re-checked afterward. If that customer is later
+    // deleted, merged, or reassigned (e.g. via Danger Zone "Forget
+    // customer" or "Merge customers"), the token keeps pointing at a
+    // customer row that no longer exists — every request that trusts it
+    // 404s, and the Technician app has no way to recover on its own,
+    // leaving it stuck on "Loading…" forever even after Refresh (since
+    // Refresh just resends the same stale token). Catch that here with
+    // one lightweight check and force a clean re-login instead.
+    if (($payload['roleName'] ?? '') === 'Technician') {
+        $assigned = $payload['assignedCustomerId'] ?? null;
+        if ($assigned) {
+            $stmt = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+            $stmt->execute([$assigned]);
+            if (!$stmt->fetch()) {
+                json_error('Your assigned customer has changed. Please log out and log in again.', 401);
+            }
+        }
+    }
     return $payload;
 }
 

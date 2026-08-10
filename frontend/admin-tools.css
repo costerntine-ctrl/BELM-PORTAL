@@ -177,6 +177,7 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(0, 169, 88, 
 .request-card dd { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 11px; font-weight: 650; }
 .request-actions { justify-content: flex-start; }
 .request-actions .purchase-button { color: #8f2020; border-color: #dfaaaa; }
+.request-actions .proforma-button { color: #0a6b3d; border-color: #a6d9bd; background: #eefaf3; }
 
 @media (max-width: 900px) {
   .metrics { grid-template-columns: 1fr 1fr; }

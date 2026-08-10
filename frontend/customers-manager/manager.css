@@ -79,6 +79,15 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .checkup-items { display: grid; gap: 10px; margin-top: 10px; max-height: 40vh; overflow-y: auto; }
 .checkup-items label { display: grid; gap: 5px; font-size: 11px; font-weight: 700; color: var(--muted); }
 .checkup-items input, .checkup-items select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.checkup-photo-uploader { display: grid; gap: 8px; }
+.checkup-photo-picker { display: grid; gap: 3px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 10px; text-align: center; cursor: pointer; background: var(--canvas); }
+.checkup-photo-picker span { font-size: 12px; font-weight: 800; color: var(--ink); text-transform: none; }
+.checkup-photo-picker small { font-size: 10px; color: var(--muted); font-weight: 600; }
+.checkup-photo-picker input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.checkup-photo-preview { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.checkup-photo-preview img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); background: var(--canvas); }
+.checkup-photo-preview span { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: none; }
+.checkup-photo-error { color: #dc2626; font-size: 11px; font-weight: 700; margin: 0; text-transform: none; }
 .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .two-column.hidden { display: none; }
 .toggle-row { display: flex !important; flex-direction: row; align-items: center; gap: 8px; font-size: 12px !important; font-weight: 700; text-transform: none !important; }

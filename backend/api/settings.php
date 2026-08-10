@@ -9,11 +9,8 @@ $action = $_GET['action'] ?? '';
 if ($action === 'verify-pin' && $method === 'POST') {
     require_auth();
     $b = body();
-    $stmt = db()->prepare("SELECT \"value\" FROM system_settings WHERE \"key\" = 'adminDeletePin'");
-    $stmt->execute();
-    $currentPin = $stmt->fetchColumn();
-    $currentPin = $currentPin ? json_decode($currentPin, true) : '1234';
-    json_out(['ok' => $b['pin'] === $currentPin]);
+    $currentPin = belm_read_stored_pin('adminDeletePin', '1234');
+    json_out(['ok' => hash_equals($currentPin, trim((string)($b['pin'] ?? '')))]);
 }
 
 if ($action === 'change-pin' && $method === 'PUT') {

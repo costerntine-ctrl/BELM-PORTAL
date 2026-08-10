@@ -452,6 +452,15 @@
     document.getElementById("machineSerialNumber").value = machine?.serialNumber || "";
     document.getElementById("machineServiceKit").value = machine?.serviceKit || "OK";
     document.getElementById("machineFormAlert").className = "alert error hidden";
+    const moveWrap = document.getElementById("machineMoveCustomerWrap");
+    if (machine) {
+      moveWrap.classList.remove("hidden");
+      const moveSelect = document.getElementById("machineMoveCustomer");
+      moveSelect.innerHTML = customers.map((c) =>
+        `<option value="${escapeHtml(c.id)}" ${c.id === customer.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("");
+    } else {
+      moveWrap.classList.add("hidden");
+    }
     document.getElementById("machineDialog").showModal();
   }
 
@@ -476,9 +485,15 @@
       formError("machineFormAlert", "Select or type a machine type.");
       return;
     }
+    let targetCustomerId = customerId;
     if (id) {
       if (!pendingEditPin) return;
       payload.editPin = pendingEditPin;
+      const moveSelect = document.getElementById("machineMoveCustomer");
+      if (moveSelect.value && moveSelect.value !== customerId) {
+        payload.customerId = moveSelect.value;
+        targetCustomerId = moveSelect.value;
+      }
     }
     const button = document.getElementById("saveMachineButton");
     button.disabled = true;
@@ -492,9 +507,11 @@
       pendingEditPin = null;
       await load();
       if (document.getElementById("machineListDialog").open) {
-        openMachineList(customers.find((customer) => customer.id === customerId));
+        openMachineList(customers.find((customer) => customer.id === targetCustomerId));
       }
-      showAlert(id ? "Machine updated successfully." : "Machine added to customer card.");
+      showAlert(id && targetCustomerId !== customerId
+        ? "Machine moved to the selected customer."
+        : id ? "Machine updated successfully." : "Machine added to customer card.");
     } catch (error) {
       formError("machineFormAlert", error.message);
     } finally {
@@ -634,8 +651,118 @@
     }
     if (inputType === "NUMBER") return `<input ${common} type="number" step="any">`;
     if (inputType === "DATE") return `<input ${common} type="date">`;
+    if (inputType === "PHOTO") {
+      return `<input type="hidden" ${common} data-checkup-item-type="PHOTO" value="">
+        <div class="checkup-photo-uploader" data-photo-uploader-for="${escapeHtml(item.id)}">
+          <label class="checkup-photo-picker">
+            <span>Take photo / choose from gallery</span>
+            <small>JPG, PNG or WEBP — compressed automatically</small>
+            <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+          </label>
+          <div class="checkup-photo-preview" hidden><img alt="Photo preview"><span></span></div>
+          <p class="checkup-photo-error" hidden></p>
+        </div>`;
+    }
     return `<input ${common} type="text">`;
   }
+
+  // ------------------------------------------------------------------
+  // PHOTO capture for checklist items — take a picture with the device
+  // camera or pick one from the gallery, compress it client-side, and
+  // store it as a small data: URL on the hidden field the submit
+  // handler reads. Mirrors the same compression approach the
+  // Technician app uses, so both sides behave the same way.
+  // ------------------------------------------------------------------
+  const CHECKUP_PHOTO_MAX_SOURCE_BYTES = 12 * 1024 * 1024;
+  const CHECKUP_PHOTO_TARGET_BYTES = 450 * 1024;
+
+  function checkupPhotoDataUrlBytes(dataUrl) {
+    const encoded = String(dataUrl || "").split(",")[1] || "";
+    return Math.ceil((encoded.length * 3) / 4);
+  }
+
+  function loadCheckupPhoto(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("The selected photo could not be read."));
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error("Select a valid JPG, PNG or WEBP photo."));
+        image.onload = () => resolve(image);
+        image.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function compressCheckupPhoto(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) throw new Error("Select an image file.");
+    if (file.size > CHECKUP_PHOTO_MAX_SOURCE_BYTES) throw new Error("Photo is above 12 MB. Select a smaller photo.");
+
+    const image = await loadCheckupPhoto(file);
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("This browser cannot compress the selected photo.");
+
+    const imageWidth = image.naturalWidth || image.width;
+    const imageHeight = image.naturalHeight || image.height;
+    const longestSide = Math.max(imageWidth, imageHeight);
+    let scale = Math.min(1, 1280 / Math.max(1, longestSide));
+    let quality = 0.68;
+    let compressed = "";
+
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      canvas.width = Math.max(1, Math.round(imageWidth * scale));
+      canvas.height = Math.max(1, Math.round(imageHeight * scale));
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      compressed = canvas.toDataURL("image/jpeg", quality);
+      if (checkupPhotoDataUrlBytes(compressed) <= CHECKUP_PHOTO_TARGET_BYTES) break;
+      if (quality > 0.42) quality -= 0.08;
+      else { scale *= 0.78; quality = 0.56; }
+    }
+
+    const compressedBytes = checkupPhotoDataUrlBytes(compressed);
+    if (!compressed || compressedBytes > 500 * 1024) {
+      throw new Error("Photo could not be reduced enough. Crop it or select a smaller photo.");
+    }
+    return { dataUrl: compressed, originalBytes: file.size, compressedBytes };
+  }
+
+  document.getElementById("checkupItems")?.addEventListener("change", async (event) => {
+    const fileInput = event.target.closest('.checkup-photo-uploader input[type="file"]');
+    if (!fileInput) return;
+    const uploader = fileInput.closest(".checkup-photo-uploader");
+    const itemId = uploader.dataset.photoUploaderFor;
+    const hiddenField = document.querySelector(`input[type="hidden"][data-checkup-item="${itemId}"]`);
+    const preview = uploader.querySelector(".checkup-photo-preview");
+    const previewImage = preview.querySelector("img");
+    const previewText = preview.querySelector("span");
+    const errorBox = uploader.querySelector(".checkup-photo-error");
+    const file = fileInput.files?.[0];
+    if (!file || !hiddenField) return;
+
+    fileInput.disabled = true;
+    errorBox.hidden = true;
+    preview.hidden = false;
+    previewImage.removeAttribute("src");
+    previewText.textContent = "Compressing photo…";
+    try {
+      const result = await compressCheckupPhoto(file);
+      hiddenField.value = result.dataUrl;
+      previewImage.src = result.dataUrl;
+      previewText.textContent = `Ready · ${(result.originalBytes / 1024 / 1024).toFixed(2)} MB reduced to ${Math.ceil(result.compressedBytes / 1024)} KB`;
+    } catch (error) {
+      hiddenField.value = "";
+      fileInput.value = "";
+      preview.hidden = true;
+      errorBox.textContent = error.message || "Photo could not be prepared.";
+      errorBox.hidden = false;
+    } finally {
+      fileInput.disabled = false;
+    }
+  });
 
   async function openMachineCheckup(machineId, machineType, machineName) {
     document.getElementById("machineListDialog").close();
@@ -691,10 +818,14 @@
       alertBox.classList.remove("hidden");
       return;
     }
-    const answers = Array.from(document.querySelectorAll("[data-checkup-item]")).map((field) => ({
-      templateItemId: field.dataset.checkupItem,
-      value: field.value,
-    }));
+    const answers = Array.from(document.querySelectorAll("[data-checkup-item]")).map((field) => {
+      const isPhoto = field.dataset.checkupItemType === "PHOTO";
+      return {
+        templateItemId: field.dataset.checkupItem,
+        value: isPhoto ? "" : field.value,
+        photoUrl: isPhoto ? field.value : undefined,
+      };
+    });
     const isServiceDay = document.getElementById("checkupIsServiceDay").checked;
     button.disabled = true;
     try {

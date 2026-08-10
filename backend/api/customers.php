@@ -391,12 +391,24 @@ if ($method === 'PUT' && $action === 'edit-machine') {
     require_page_access($user, 'customers');
     $b = body();
     require_edit_confirmation($b);
-    $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $stmt = db()->prepare('SELECT customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$_GET['machineId']]);
-    if (!$stmt->fetch()) json_error('Machine not found.', 404);
+    $existingMachine = $stmt->fetch();
+    if (!$existingMachine) json_error('Machine not found.', 404);
     $machine = normalized_machine_details($b);
-    db()->prepare('UPDATE machines SET machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=? WHERE id=?')
+
+    $newCustomerId = trim((string)($b['customerId'] ?? ''));
+    $targetCustomerId = $existingMachine['customer_id'];
+    if ($newCustomerId !== '' && $newCustomerId !== $existingMachine['customer_id']) {
+        $customerCheck = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+        $customerCheck->execute([$newCustomerId]);
+        if (!$customerCheck->fetch()) json_error('Select an active customer to move this machine to.', 422);
+        $targetCustomerId = $newCustomerId;
+    }
+
+    db()->prepare('UPDATE machines SET customer_id=?, machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=? WHERE id=?')
         ->execute([
+            $targetCustomerId,
             $machine['machineType'],
             $machine['model'],
             $machine['serialNumber'],
@@ -406,7 +418,7 @@ if ($method === 'PUT' && $action === 'edit-machine') {
             $machine['serviceKit'],
             $_GET['machineId'],
         ]);
-    json_out(['ok' => true]);
+    json_out(['ok' => true, 'movedToCustomerId' => $targetCustomerId !== $existingMachine['customer_id'] ? $targetCustomerId : null]);
 }
 
 if ($method === 'DELETE' && $action === 'delete-machine') {

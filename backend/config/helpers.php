@@ -260,9 +260,8 @@ function require_delete_confirmation(array $user, array $body): string {
     if ($reason === '') json_error('Enter a reason for this deletion.');
     if (mb_strlen($reason) > 500) json_error('Reason must be 500 characters or fewer.');
 
-    $pinRow = db()->query("SELECT \"value\" FROM system_settings WHERE \"key\" = 'adminDeletePin'")->fetch();
-    $currentPin = $pinRow ? json_decode($pinRow['value'], true) : '1234';
-    if ($pin !== $currentPin) json_error('Incorrect delete PIN.', 403);
+    $currentPin = belm_read_stored_pin('adminDeletePin', '1234');
+    if (!hash_equals($currentPin, $pin)) json_error('Incorrect delete PIN.', 403);
 
     $stmt = db()->prepare('SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$user['id']]);
@@ -278,13 +277,30 @@ function require_delete_confirmation(array $user, array $body): string {
 // Every save-changes action on an existing record must pass {editPin} in the
 // request body. Lighter than delete confirmation (no password/reason) since
 // edits are reversible, but still requires deliberate confirmation.
+// Reads a PIN previously stored via settings.php's change-pin action and
+// normalizes it to a plain string, regardless of exactly how it was
+// JSON-encoded (a quoted string like "2026", a bare JSON number like 2026
+// from an older code path, or anything else). Without this, PHP's strict
+// !== comparison could treat a numeric-looking stored value and the typed
+// PIN as different types and report "Incorrect PIN" even when the digits
+// match exactly.
+function belm_read_stored_pin(string $key, string $default): string {
+    $stmt = db()->prepare('SELECT "value" FROM system_settings WHERE "key" = ?');
+    $stmt->execute([$key]);
+    $row = $stmt->fetch();
+    if (!$row || $row['value'] === null) return $default;
+    $decoded = json_decode($row['value'], true);
+    if ($decoded !== null) return trim((string)$decoded);
+    // Not valid JSON — fall back to the raw stored text as-is.
+    return trim((string)$row['value'], "\" \t\n\r\0\x0B");
+}
+
 function require_edit_confirmation(array $body): void {
     $pin = trim((string)($body['editPin'] ?? ''));
     if ($pin === '') json_error('Enter the edit PIN to confirm.');
 
-    $pinRow = db()->query("SELECT \"value\" FROM system_settings WHERE \"key\" = 'adminEditPin'")->fetch();
-    $currentPin = $pinRow ? json_decode($pinRow['value'], true) : '2026';
-    if ($pin !== $currentPin) json_error('Incorrect edit PIN.', 403);
+    $currentPin = belm_read_stored_pin('adminEditPin', '2026');
+    if (!hash_equals($currentPin, $pin)) json_error('Incorrect edit PIN.', 403);
 }
 
 // ---- Customer portal auth ---------------------------------------------------

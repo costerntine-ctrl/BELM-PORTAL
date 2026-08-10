@@ -90,7 +90,15 @@
       <label>VRN number<input id="regCustomerVrn" maxlength="50"></label>
       <div class="field-block"><span class="check-option"><input id="regAddMachineToggle" type="checkbox"> Also register a first machine now</span></div>
       <div id="regMachineFields" class="hidden">
-        <label>Machine type<input id="regMachineType" maxlength="100" placeholder="Reach Stacker, Forklift…"></label>
+        <label>Machine type
+          <select id="regMachineType">
+            <option value="">Select machine type…</option>
+            <option value="__other__">+ New machine type…</option>
+          </select>
+        </label>
+        <label id="regMachineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet)</small>
+          <input id="regMachineTypeOther" maxlength="100" placeholder="Type the new machine type">
+        </label>
         <label>Brand<input id="regMachineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
         <label>Model<input id="regMachineModel" maxlength="255"></label>
         <label>Registration number<input id="regMachineRegNumber" maxlength="100"></label>
@@ -135,7 +143,15 @@
       <label>Customer
         <select id="addMachineCustomer" required><option value="">Select customer…</option></select>
       </label>
-      <label>Machine type<input id="addMachineType" required maxlength="100" placeholder="Reach Stacker, Forklift…"></label>
+      <label>Machine type
+        <select id="addMachineType" required>
+          <option value="">Select machine type…</option>
+          <option value="__other__">+ New machine type…</option>
+        </select>
+      </label>
+      <label id="addMachineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet)</small>
+        <input id="addMachineTypeOther" maxlength="100" placeholder="Type the new machine type">
+      </label>
       <label>Brand<input id="addMachineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
       <label>Model<input id="addMachineModel" required maxlength="255"></label>
       <label>Registration number<input id="addMachineRegNumber" maxlength="100"></label>

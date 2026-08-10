@@ -99,7 +99,14 @@
         <input id="machineId" type="hidden">
         <div id="machineFormAlert" class="alert error hidden"></div>
         <div class="form-grid">
-          <label>Machine type<input id="machineType" required maxlength="100" placeholder="Reach Stacker, Forklift…"></label>
+          <label>Machine type
+            <select id="machineType" required>
+              <option value="">Select machine type…</option>
+            </select>
+          </label>
+          <label id="machineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet — add a matching template later so check-ups work)</small>
+            <input id="machineTypeOther" maxlength="100" placeholder="Type the new machine type">
+          </label>
           <label>Brand<input id="machineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
           <label>Model<input id="machineModel" required maxlength="255"></label>
           <label>Registration number<input id="machineRegNumber" maxlength="100"></label>

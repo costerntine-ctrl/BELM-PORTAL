@@ -308,6 +308,35 @@ const registerTechnicianDialog = document.getElementById("registerTechnicianDial
 const registerCredentialsDialog = document.getElementById("registerCredentialsDialog");
 let rolesForRegisterCache = null;
 let customersForRegisterCache = null;
+let machineTypesForRegisterCache = null;
+
+async function ensureMachineTypesLoaded() {
+  if (machineTypesForRegisterCache) return machineTypesForRegisterCache;
+  try {
+    const templates = await api("/api/checklist-templates");
+    const seen = new Set();
+    machineTypesForRegisterCache = templates
+      .map(t => t.machineType)
+      .filter(type => {
+        const key = String(type || "").trim().toLowerCase();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.localeCompare(b));
+  } catch (_) {
+    machineTypesForRegisterCache = [];
+  }
+  return machineTypesForRegisterCache;
+}
+
+async function populateMachineTypeSelect(selectId) {
+  const select = document.getElementById(selectId);
+  const types = await ensureMachineTypesLoaded();
+  select.innerHTML = '<option value="">Select machine type…</option>' +
+    types.map(type => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("") +
+    '<option value="__other__">+ New machine type…</option>';
+}
 
 async function ensureRolesAndCustomersLoaded() {
   if (!rolesForRegisterCache) rolesForRegisterCache = await api("/api/users/roles");
@@ -333,16 +362,21 @@ function openRegisterCredentials({ name, role, email, password, recoveryCode, lo
   registerCredentialsDialog.showModal();
 }
 
-document.getElementById("registerCustomerButton").addEventListener("click", () => {
+document.getElementById("registerCustomerButton").addEventListener("click", async () => {
   document.getElementById("registerCustomerForm").reset();
   document.getElementById("regMachineFields").classList.add("hidden");
+  document.getElementById("regMachineTypeOtherWrap").classList.add("hidden");
   document.getElementById("registerCustomerError").classList.add("hidden");
+  await populateMachineTypeSelect("regMachineType");
   registerCustomerDialog.showModal();
 });
 document.getElementById("closeRegisterCustomer").addEventListener("click", () => registerCustomerDialog.close());
 
 document.getElementById("regAddMachineToggle").addEventListener("change", event => {
   document.getElementById("regMachineFields").classList.toggle("hidden", !event.target.checked);
+});
+document.getElementById("regMachineType").addEventListener("change", event => {
+  document.getElementById("regMachineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
 });
 
 document.getElementById("registerCustomerForm").addEventListener("submit", async event => {
@@ -365,7 +399,10 @@ document.getElementById("registerCustomerForm").addEventListener("submit", async
     });
 
     if (document.getElementById("regAddMachineToggle").checked) {
-      const machineType = document.getElementById("regMachineType").value.trim();
+      const typeSelectValue = document.getElementById("regMachineType").value;
+      const machineType = typeSelectValue === "__other__"
+        ? document.getElementById("regMachineTypeOther").value.trim()
+        : typeSelectValue;
       const machineModel = document.getElementById("regMachineModel").value.trim();
       if (machineType && machineModel) {
         await api(`/api/customers/${customer.id}/machines`, {
@@ -489,6 +526,7 @@ const addMachineDialog = document.getElementById("addMachineDialog");
 
 document.getElementById("addMachineButton").addEventListener("click", async () => {
   document.getElementById("addMachineForm").reset();
+  document.getElementById("addMachineTypeOtherWrap").classList.add("hidden");
   document.getElementById("addMachineError").classList.add("hidden");
   try {
     const [, customerList] = await ensureRolesAndCustomersLoaded();
@@ -496,12 +534,16 @@ document.getElementById("addMachineButton").addEventListener("click", async () =
       '<option value="">Select customer…</option>' + customerList.map(customer =>
         `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`
       ).join("");
+    await populateMachineTypeSelect("addMachineType");
     addMachineDialog.showModal();
   } catch (error) {
     alert(error.message);
   }
 });
 document.getElementById("closeAddMachine").addEventListener("click", () => addMachineDialog.close());
+document.getElementById("addMachineType").addEventListener("change", event => {
+  document.getElementById("addMachineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
+});
 
 document.getElementById("addMachineForm").addEventListener("submit", async event => {
   event.preventDefault();
@@ -512,13 +554,21 @@ document.getElementById("addMachineForm").addEventListener("submit", async event
     showRegisterError("addMachineError", "Select a customer.");
     return;
   }
+  const typeSelectValue = document.getElementById("addMachineType").value;
+  const machineType = typeSelectValue === "__other__"
+    ? document.getElementById("addMachineTypeOther").value.trim()
+    : typeSelectValue;
+  if (!machineType) {
+    showRegisterError("addMachineError", "Select or type a machine type.");
+    return;
+  }
   button.disabled = true;
   button.textContent = "Saving…";
   try {
     await api(`/api/customers/${customerId}/machines`, {
       method: "POST",
       body: JSON.stringify({
-        machineType: document.getElementById("addMachineType").value.trim(),
+        machineType,
         model: document.getElementById("addMachineModel").value.trim(),
         brand: document.getElementById("addMachineBrand").value.trim(),
         regNumber: document.getElementById("addMachineRegNumber").value.trim(),

@@ -394,12 +394,57 @@
     }
   }
 
+  let machineTypesCache = null;
+
+  async function ensureMachineTypesLoaded(force) {
+    if (force) machineTypesCache = null;
+    if (machineTypesCache) return machineTypesCache;
+    try {
+      const templates = await api("/checklist-templates");
+      const seen = new Set();
+      machineTypesCache = templates
+        .map((t) => t.machineType)
+        .filter((type) => {
+          const key = String(type || "").trim().toLowerCase();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => a.localeCompare(b));
+    } catch (_) {
+      machineTypesCache = [];
+    }
+    return machineTypesCache;
+  }
+
+  async function populateMachineTypeSelect(selectedType) {
+    const select = document.getElementById("machineType");
+    const types = await ensureMachineTypesLoaded(false);
+    const matchesExisting = types.some((type) => type.toLowerCase() === String(selectedType || "").trim().toLowerCase());
+    select.innerHTML = '<option value="">Select machine type…</option>' +
+      types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("") +
+      '<option value="__other__">+ New machine type…</option>';
+    if (selectedType && !matchesExisting) {
+      select.value = "__other__";
+      document.getElementById("machineTypeOtherWrap").classList.remove("hidden");
+      document.getElementById("machineTypeOther").value = selectedType;
+    } else {
+      select.value = selectedType || "";
+      document.getElementById("machineTypeOtherWrap").classList.add("hidden");
+      document.getElementById("machineTypeOther").value = "";
+    }
+  }
+
+  document.getElementById("machineType").addEventListener("change", (event) => {
+    document.getElementById("machineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
+  });
+
   function openMachine(customer, machine = null) {
     document.getElementById("machineForm").reset();
     document.getElementById("machineCustomerId").value = customer.id;
     document.getElementById("machineId").value = machine?.id || "";
     document.getElementById("machineDialogTitle").textContent = machine ? `Edit ${machine.model}` : `Add machine — ${customer.name}`;
-    document.getElementById("machineType").value = machine?.machineType || "";
+    populateMachineTypeSelect(machine?.machineType || "");
     document.getElementById("machineBrand").value = machine?.brand || "";
     document.getElementById("machineModel").value = machine?.model || "";
     document.getElementById("machineRegNumber").value = machine?.regNumber || "";
@@ -414,8 +459,12 @@
     event.preventDefault();
     const customerId = document.getElementById("machineCustomerId").value;
     const id = document.getElementById("machineId").value;
+    const typeSelectValue = document.getElementById("machineType").value;
+    const machineTypeValue = typeSelectValue === "__other__"
+      ? document.getElementById("machineTypeOther").value.trim()
+      : typeSelectValue;
     const payload = {
-      machineType: document.getElementById("machineType").value.trim(),
+      machineType: machineTypeValue,
       brand: document.getElementById("machineBrand").value.trim(),
       model: document.getElementById("machineModel").value.trim(),
       regNumber: document.getElementById("machineRegNumber").value.trim(),
@@ -423,6 +472,10 @@
       serialNumber: document.getElementById("machineSerialNumber").value.trim(),
       serviceKit: document.getElementById("machineServiceKit").value,
     };
+    if (!payload.machineType) {
+      formError("machineFormAlert", "Select or type a machine type.");
+      return;
+    }
     if (id) {
       if (!pendingEditPin) return;
       payload.editPin = pendingEditPin;

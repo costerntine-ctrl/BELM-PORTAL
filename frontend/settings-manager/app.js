@@ -300,10 +300,8 @@
         .map((r) => `<option value="${r.id}">${escapeHtml(r.name)}</option>`).join("");
   }
 
-  document.getElementById("resetDbCategory").addEventListener("change", async (event) => {
+  async function handleResetCategoryChange(value) {
     resetHideAllPickers();
-    const value = event.target.value;
-
     try {
       if (value === "customers") {
         document.getElementById("resetCustomerPickerWrap").classList.remove("hidden");
@@ -336,7 +334,16 @@
         await populateRolePicker(false);
       }
     } catch (_) {}
-  });
+  }
+
+  document.getElementById("resetDbCategory").addEventListener("change", (event) => handleResetCategoryChange(event.target.value));
+  // The category dropdown defaults to "Customers" (its first option), so
+  // the native 'change' event never fires on page load — the browser only
+  // fires 'change' when the selection actually moves to a different
+  // option. Without this, the customer picker stayed hidden until the
+  // person picked a different category and came back. Run the same logic
+  // once immediately for whatever is selected by default.
+  handleResetCategoryChange(document.getElementById("resetDbCategory").value);
 
   document.getElementById("resetMachineScope").addEventListener("change", (event) => {
     document.getElementById("resetMachinePickerWrap").classList.toggle("hidden", event.target.value === "all");

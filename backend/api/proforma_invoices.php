@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/table_pdf_helper.php';
+require_once __DIR__ . '/invoice_pdf_helper.php';
 
 $user = require_auth();
 require_page_access($user, 'billing');
@@ -17,7 +18,8 @@ function compute_totals(array $items, float $discount, string $vatMode): array {
 if ($method === 'GET' && $action === 'export-one') {
     $proformaId = trim((string)($_GET['proformaId'] ?? ''));
     $stmt = db()->prepare(
-        'SELECT p.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone
+        'SELECT p.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
+                c.tin_number AS customer_tin, c.vrn AS customer_vrn
          FROM proforma_invoices p JOIN customers c ON c.id = p.customer_id
          WHERE p.id = ? AND p.deleted_at IS NULL'
     );
@@ -29,29 +31,68 @@ if ($method === 'GET' && $action === 'export-one') {
     $itemsStmt->execute([$proformaId]);
     $items = $itemsStmt->fetchAll();
     $totals = compute_totals($items, (float)$proforma['discount'], (string)$proforma['vat_mode']);
+    $company = belm_get_company_details();
 
-    $rows = [];
-    foreach ($items as $item) {
-        $rows[] = [
-            $item['part_number'] ?: '—',
-            $item['description'],
-            'Qty: ' . $item['qty'] . ' ' . $item['unit'],
-            'Unit: TZS ' . number_format((float)$item['unit_price'], 2),
-            'Line total: TZS ' . number_format($item['qty'] * $item['unit_price'], 2),
+    $pdfItems = [];
+    foreach ($items as $index => $item) {
+        $pdfItems[] = [
+            'itemNo' => (string)($index + 1),
+            'partNumber' => $item['part_number'] ?: '—',
+            'description' => $item['description'],
+            'qty' => (string)$item['qty'],
+            'unit' => (string)$item['unit'],
+            'unitPrice' => number_format((float)$item['unit_price'], 2),
+            'extended' => number_format($item['qty'] * $item['unit_price'], 2),
         ];
     }
 
-    output_table_pdf(
+    output_professional_document_pdf(
         'BELM-' . $proforma['invoice_no'] . '.pdf',
-        'BELM General Tech Service Limited — Proforma ' . $proforma['invoice_no'],
+        'Proforma Invoice',
         [
-            'Customer: ' . $proforma['customer_name'] . ' (' . ($proforma['customer_email'] ?: '—') . ', ' . ($proforma['customer_phone'] ?: '—') . ')',
-            'Date: ' . display_date_billing((string)$proforma['date']) . '   VAT mode: ' . (string)$proforma['vat_mode'],
-            'Subtotal: TZS ' . number_format($totals['subtotal'], 2) . '   Discount: TZS ' . number_format($totals['discount'], 2)
-                . '   VAT: TZS ' . number_format($totals['vat'], 2) . '   Grand total: TZS ' . number_format($totals['grandTotal'], 2),
-            'Generated: ' . date('d/m/Y H:i'),
+            'name' => $company['companyName'],
+            'address1' => $company['companyAddress'],
+            'tel' => $company['companyPhone'],
+            'email' => $company['companyEmail'],
+            'website' => $company['companyWebsite'],
         ],
-        $rows
+        [
+            'name' => $proforma['customer_name'],
+            'tin' => $proforma['customer_tin'] ?: null,
+            'vrn' => $proforma['customer_vrn'] ?: null,
+        ],
+        [
+            'invoiceNo' => $proforma['invoice_no'],
+            'tin' => $company['companyTin'] ?: null,
+            'vrn' => $company['companyVrn'] ?: null,
+            'date' => display_date_billing((string)$proforma['date']),
+        ],
+        $pdfItems,
+        [
+            'subtotal' => number_format($totals['subtotal'], 2),
+            'discount' => number_format($totals['discount'], 2),
+            'vat' => number_format($totals['vat'], 2),
+            'vatLabel' => $proforma['vat_mode'] === 'VAT' ? 'VAT 18%' : 'VAT (not applicable)',
+            'grandTotal' => number_format($totals['grandTotal'], 2),
+        ],
+        [
+            ['ACCOUNT NAME', $company['companyName']],
+            ['NMB BANK', '20710076849'],
+            ['CRDB BANK', '0150761848600'],
+        ],
+        [
+            'Term of Payment: 100% Paid before delivery',
+            'Delivery Time: 7-14 Working days after receiving your payment',
+            'Type of Shipment: Air',
+            'Period of validity for the above quoted price: within 7 days from the date of quotation.',
+        ],
+        [
+            'Premium Quality and Genuine Spare Parts',
+            'Extensive Industry Experience',
+            'Competitive Pricing',
+            'Sit back and relax while we ensure seamless delivery.',
+        ],
+        'Thank you for your business'
     );
 }
 

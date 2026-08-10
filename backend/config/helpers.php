@@ -276,6 +276,30 @@ function require_delete_confirmation(array $user, array $body): string {
 // ---- Edit confirmation (PIN only) -------------------------------------------
 // Every save-changes action on an existing record must pass {editPin} in the
 // request body. Lighter than delete confirmation (no password/reason) since
+// Reads the company details saved in System Settings, with the same
+// defaults BELM has always used, so invoice/proforma PDFs always have a
+// full header even before an admin fills in System Settings.
+function belm_get_company_details(): array {
+    $defaults = [
+        'companyName' => 'BELM GENERAL TECH SERVICE LIMITED',
+        'companyAddress' => 'P. O. BOX 8419, KINONDONI, DAR ES SALAAM',
+        'companyPhone' => '+255 713 309 529 / +255 683 317 053',
+        'companyEmail' => 'info@belmgeneral.co.tz',
+        'companyWebsite' => 'www.belmgeneral.co.tz',
+        'companyTin' => '',
+        'companyVrn' => '',
+    ];
+    $stmt = db()->query(
+        "SELECT \"key\", \"value\" FROM system_settings WHERE \"key\" IN "
+        . "('companyName','companyAddress','companyPhone','companyEmail','companyWebsite','companyTin','companyVrn')"
+    );
+    foreach ($stmt->fetchAll() as $row) {
+        $decoded = json_decode($row['value'], true);
+        if ($decoded !== null && $decoded !== '') $defaults[$row['key']] = $decoded;
+    }
+    return $defaults;
+}
+
 // edits are reversible, but still requires deliberate confirmation.
 // Reads a PIN previously stored via settings.php's change-pin action and
 // normalizes it to a plain string, regardless of exactly how it was

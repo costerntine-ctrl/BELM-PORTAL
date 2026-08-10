@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/table_pdf_helper.php';
+require_once __DIR__ . '/invoice_pdf_helper.php';
 
 $user = require_auth();
 require_page_access($user, 'billing');
@@ -12,7 +13,8 @@ $paymentId = $_GET['paymentId'] ?? null;
 if ($method === 'GET' && $action === 'export-invoice') {
     $invoiceId = trim((string)($_GET['id'] ?? ''));
     $stmt = db()->prepare(
-        'SELECT i.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone
+        'SELECT i.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
+                c.tin_number AS customer_tin, c.vrn AS customer_vrn
          FROM invoices i JOIN customers c ON c.id = i.customer_id
          WHERE i.id = ? AND i.deleted_at IS NULL'
     );
@@ -33,39 +35,73 @@ if ($method === 'GET' && $action === 'export-invoice') {
     $payments = $paymentsStmt->fetchAll();
     $paid = array_sum(array_map(static fn($p) => (float)$p['amount'], $payments));
     $balance = (float)$invoice['total'] - $paid;
+    $company = belm_get_company_details();
 
-    $rows = [];
-    foreach ($items as $item) {
-        $rows[] = [
-            $item['description'],
-            'Qty: ' . $item['quantity'],
-            'Unit: TZS ' . number_format((float)$item['unit_price'], 2),
-            'Line total: TZS ' . number_format((float)$item['line_total'], 2),
+    $pdfItems = [];
+    foreach ($items as $index => $item) {
+        $pdfItems[] = [
+            'itemNo' => (string)($index + 1),
+            'partNumber' => '—',
+            'description' => $item['description'],
+            'qty' => (string)$item['quantity'],
+            'unit' => 'PC',
+            'unitPrice' => number_format((float)$item['unit_price'], 2),
+            'extended' => number_format((float)$item['line_total'], 2),
         ];
     }
-    if (count($payments)) {
-        $rows[] = ['', '', '', ''];
-        $rows[] = ['PAYMENTS RECEIVED', '', '', ''];
-        foreach ($payments as $payment) {
-            $rows[] = [
-                display_date_billing((string)$payment['paid_at']),
-                (string)($payment['method'] ?? '—'),
-                $payment['bank_name'] ?: '—',
-                'TZS ' . number_format((float)$payment['amount'], 2),
-            ];
-        }
+
+    $paymentSummary = [
+        ['Amount Paid', 'TZS ' . number_format($paid, 2)],
+        ['Balance Due', 'TZS ' . number_format($balance, 2)],
+    ];
+    foreach ($payments as $payment) {
+        $paymentSummary[] = [
+            'Paid ' . display_date_billing((string)$payment['paid_at']) . ' (' . ($payment['method'] ?? '—') . ($payment['bank_name'] ? ', ' . $payment['bank_name'] : '') . ')',
+            'TZS ' . number_format((float)$payment['amount'], 2),
+        ];
     }
 
-    output_table_pdf(
+    output_professional_document_pdf(
         'BELM-' . $invoice['invoice_no'] . '.pdf',
-        'BELM General Tech Service Limited — Invoice ' . $invoice['invoice_no'],
+        'Invoice',
         [
-            'Customer: ' . $invoice['customer_name'] . ' (' . ($invoice['customer_email'] ?: '—') . ', ' . ($invoice['customer_phone'] ?: '—') . ')',
-            'Due: ' . display_date_billing((string)$invoice['due_date']) . '   Status: ' . strtoupper((string)$invoice['status']),
-            'Total: TZS ' . number_format((float)$invoice['total'], 2) . '   Paid: TZS ' . number_format($paid, 2) . '   Balance: TZS ' . number_format($balance, 2),
-            'Generated: ' . date('d/m/Y H:i'),
+            'name' => $company['companyName'],
+            'address1' => $company['companyAddress'],
+            'tel' => $company['companyPhone'],
+            'email' => $company['companyEmail'],
+            'website' => $company['companyWebsite'],
         ],
-        $rows
+        [
+            'name' => $invoice['customer_name'],
+            'tin' => $invoice['customer_tin'] ?: null,
+            'vrn' => $invoice['customer_vrn'] ?: null,
+        ],
+        [
+            'invoiceNo' => $invoice['invoice_no'],
+            'tin' => $company['companyTin'] ?: null,
+            'vrn' => $company['companyVrn'] ?: null,
+            'date' => display_date_billing((string)$invoice['created_at']),
+            'dueDate' => display_date_billing((string)$invoice['due_date']),
+            'status' => strtoupper((string)$invoice['status']),
+        ],
+        $pdfItems,
+        [
+            'subtotal' => number_format((float)$invoice['subtotal'], 2),
+            'vat' => number_format((float)$invoice['tax'], 2),
+            'vatLabel' => 'Tax',
+            'grandTotal' => number_format((float)$invoice['total'], 2),
+        ],
+        [
+            ['ACCOUNT NAME', $company['companyName']],
+            ['NMB BANK', '20710076849'],
+            ['CRDB BANK', '0150761848600'],
+        ],
+        [
+            'Term of Payment: As agreed with BELM General Tech Service Limited',
+        ],
+        [],
+        'Thank you for your business',
+        $paymentSummary
     );
 }
 

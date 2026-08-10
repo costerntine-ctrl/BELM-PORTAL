@@ -159,6 +159,13 @@ CREATE TABLE IF NOT EXISTS checklist_answers (
   safety_level VARCHAR(10) NULL
 );
 
+-- photo_url originally allowed only 500 characters, but a compressed
+-- checklist photo is stored as a full data:image/...;base64,... URL which
+-- can run to several hundred KB of text. Anything over 500 chars caused a
+-- silent PostgreSQL "value too long" error (surfaced to the admin as a
+-- generic "Server error"). Widen it to TEXT so photo check-ups can save.
+ALTER TABLE checklist_answers ALTER COLUMN photo_url TYPE TEXT;
+
 CREATE TABLE IF NOT EXISTS service_requests (
   id VARCHAR(36) PRIMARY KEY,
   customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),

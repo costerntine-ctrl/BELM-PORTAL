@@ -463,6 +463,12 @@
     if (card.dataset.belmCustomerInfoReady === "1") return;
     card.dataset.belmCustomerInfoReady = "1";
     const condition = technicianCondition(machine.status);
+    const opStatus = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
+    const opLabels = {
+      NORMAL: "Normal — no active work", SERVICE_IN_PROGRESS: "Service in progress",
+      CHECKUP_IN_PROGRESS: "Check-up in progress", MAINTENANCE_IN_PROGRESS: "Maintenance in progress",
+      GROUNDED: "Grounded (not operational)",
+    };
     const details = document.createElement("div");
     details.className = "belm-technician-machine-info";
     details.innerHTML = `
@@ -479,6 +485,10 @@
       <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}">
         <div><span>Machine Status</span><strong>${escapeHtml(condition.status)}</strong></div>
         <div><span>Condition</span><strong>${escapeHtml(condition.label)}</strong><small>${escapeHtml(condition.note)}</small></div>
+      </div>
+      <div class="belm-customer-op-status op-${escapeHtml(opStatus)}">
+        <span>What's happening now</span>
+        <strong>${escapeHtml(opLabels[opStatus] || "Normal")}</strong>
       </div>`;
     card.appendChild(details);
   }
@@ -536,8 +546,6 @@
         <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Request Service</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <a href="/customer-users/" class="belm-assign-users-button" data-belm-owner-admin-only>Assign Users</a>
-      </div>
-      <div class="belm-email-assign-row">
         <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
           data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
           data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
@@ -830,7 +838,7 @@
     if (dialog) return dialog;
     dialog = document.createElement("dialog");
     dialog.id = "belmEmailReportDialog";
-    dialog.className = "belm-analysis-dialog";
+    dialog.className = "belm-analysis-dialog belm-email-dialog";
     dialog.innerHTML = `
       <form class="belm-analysis-dialog-card belm-email-form">
         <div class="belm-analysis-head">
@@ -851,6 +859,10 @@
             <input type="email" id="belmEmailNewAddress" placeholder="email@company.com">
             <button type="button" id="belmEmailAddButton">+ Add</button>
           </div>
+
+          <label>CC <small>(optional — other people to copy in, comma-separated)</small>
+            <input type="text" id="belmEmailCc" placeholder="accountant@company.com, office@company.com">
+          </label>
 
           <label>Message
             <textarea id="belmEmailMessage" rows="5"></textarea>
@@ -962,6 +974,18 @@
       button.textContent = "Sending…";
       const message = document.getElementById("belmEmailMessage").value;
       const subject = dialog.dataset.subject || "BELM Portal report";
+      const ccList = document.getElementById("belmEmailCc").value
+        .split(",")
+        .map((email) => email.trim())
+        .filter((email) => email !== "");
+      const invalidCc = ccList.find((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email));
+      if (invalidCc) {
+        errorBox.textContent = `"${invalidCc}" is not a valid CC email address.`;
+        errorBox.hidden = false;
+        button.disabled = false;
+        button.textContent = "Send email";
+        return;
+      }
       const attachmentsPayload = attachState.map((item) => ({ filename: item.name, data: item.dataUrl }));
       let failures = 0;
       for (const to of recipients) {
@@ -969,7 +993,7 @@
           const response = await fetch("/api/customer-portal/email-report", {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ to, subject, message, attachments: attachmentsPayload }),
+            body: JSON.stringify({ to, cc: ccList, subject, message, attachments: attachmentsPayload }),
           });
           if (!response.ok) failures += 1;
         } catch (_) {
@@ -1020,6 +1044,7 @@
     const dialog = ensureEmailReportDialog();
     dialog.dataset.subject = subject;
     document.getElementById("belmEmailMessage").value = message;
+    document.getElementById("belmEmailCc").value = "";
     document.getElementById("belmEmailError").hidden = true;
     if (dialog._attachState) dialog._attachState.length = 0;
     dialog._renderAttachList?.();
@@ -1442,6 +1467,11 @@
     if (card.dataset.belmTechnicianInfoReady === "1") return;
     card.dataset.belmTechnicianInfoReady = "1";
     const condition = technicianCondition(machine.status);
+    const opStatus = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
+    const opLabels = {
+      NORMAL: "Normal", SERVICE_IN_PROGRESS: "Service in progress", CHECKUP_IN_PROGRESS: "Check-up in progress",
+      MAINTENANCE_IN_PROGRESS: "Maintenance in progress", GROUNDED: "Grounded (not operational)",
+    };
     const details = document.createElement("div");
     details.className = "belm-technician-machine-info";
     details.innerHTML = `
@@ -1458,8 +1488,32 @@
       <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}">
         <div><span>Machine Status</span><strong>${escapeHtml(condition.status)}</strong></div>
         <div><span>Condition</span><strong>${escapeHtml(condition.label)}</strong><small>${escapeHtml(condition.note)}</small></div>
+      </div>
+      <div class="belm-technician-op-status">
+        <span>Activity status <small>(customer sees this update live)</small></span>
+        <select data-belm-op-status="${escapeHtml(machine.id)}">
+          ${Object.entries(opLabels).map(([value, label]) =>
+            `<option value="${value}" ${value === opStatus ? "selected" : ""}>${label}</option>`).join("")}
+        </select>
       </div>`;
     card.appendChild(details);
+    details.querySelector("[data-belm-op-status]").addEventListener("change", async (event) => {
+      const select = event.target;
+      const token = localStorage.getItem("belm_tech_token");
+      select.disabled = true;
+      try {
+        const response = await fetch(`/api/customers/machines/${machine.id}/status`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ operationalStatus: select.value }),
+        });
+        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Could not update status.");
+      } catch (error) {
+        alert(error.message || "Could not update machine activity status.");
+      } finally {
+        select.disabled = false;
+      }
+    });
   }
 
   function closeTechnicianReportHistory() {

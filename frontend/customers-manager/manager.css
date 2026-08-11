@@ -57,6 +57,13 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .service-due-badge.GREEN { background: #e7f8ee; color: #166534; }
 .service-due-badge.YELLOW { background: #fffbea; color: #854d0e; }
 .service-due-badge.RED { background: #fdecec; color: #991b1b; }
+.operational-status-picker { display: block; margin-top: 10px; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.operational-status-picker select { display: block; width: 100%; margin-top: 4px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 700; text-transform: none; letter-spacing: normal; }
+.operational-status-picker.op-NORMAL select { border-color: #b9dfca; background: #f0faf4; color: #166534; }
+.operational-status-picker.op-SERVICE_IN_PROGRESS select,
+.operational-status-picker.op-CHECKUP_IN_PROGRESS select,
+.operational-status-picker.op-MAINTENANCE_IN_PROGRESS select { border-color: #ead36a; background: #fffbea; color: #854d0e; }
+.operational-status-picker.op-GROUNDED select { border-color: #e7a09a; background: #fdecec; color: #991b1b; }
 .machine-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .machine-actions button { padding: 6px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .machine-actions button.delete { color: var(--red); }

@@ -135,9 +135,13 @@ switch ($resource) {
         // GET/PUT/DELETE /customers/:id  -> one / update / delete
         // POST /customers/:id/machines           -> add-machine
         // PUT  /customers/machines/:machineId    -> edit-machine
+        // PUT  /customers/machines/:machineId/status -> operational-status
         // DELETE /customers/machines/:machineId  -> delete-machine
         // POST /customers/:id/users              -> add-user
         // DELETE /customers/users/:subUserId     -> remove-user
+        if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'status') {
+            dispatch('customers.php', ['action' => 'operational-status', 'machineId' => $segments[2]]);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'petty-cash-topup') {
             dispatch('customers.php', ['action' => 'petty-cash-topup', 'machineId' => $segments[2]]);
         }

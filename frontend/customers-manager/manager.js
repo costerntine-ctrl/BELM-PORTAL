@@ -110,9 +110,18 @@
     document.getElementById("attentionCount").textContent = machines.filter((machine) => isAttention(machine.status)).length.toLocaleString();
   }
 
+  const OPERATIONAL_STATUS_LABELS = {
+    NORMAL: "Normal",
+    SERVICE_IN_PROGRESS: "Service in progress",
+    CHECKUP_IN_PROGRESS: "Check-up in progress",
+    MAINTENANCE_IN_PROGRESS: "Maintenance in progress",
+    GROUNDED: "Grounded (not operational)",
+  };
+
   function machineCard(customerId, machine) {
     const status = String(machine.status || "NOT_CHECKED").toUpperCase();
     const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
+    const opStatus = String(machine.operationalStatus || "NORMAL").toUpperCase();
     return `<article class="machine-card ${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <h4>${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}</h4>
@@ -120,6 +129,12 @@
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
         ${reasons.length ? `<span class="machine-alert-reason">${escapeHtml(reasons[0])}</span>` : '<span class="machine-alert-reason"></span>'}
         <span class="service-due-badge" data-service-due-badge="${escapeHtml(machine.id)}">Service due: checking…</span>
+        <label class="operational-status-picker op-${escapeHtml(opStatus)}">Activity status
+          <select data-operational-status="${escapeHtml(machine.id)}">
+            ${Object.entries(OPERATIONAL_STATUS_LABELS).map(([value, label]) =>
+              `<option value="${value}" ${value === opStatus ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </label>
       </div>
       <div class="machine-actions">
         <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Reports</button>
@@ -982,6 +997,27 @@
       confirmThenOpen("Edit machine?", `Confirm you want to edit ${machine?.model || "this machine"}.`, () => openMachine(customer, machine));
     }
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
+  });
+  document.getElementById("machineListBody").addEventListener("change", async (event) => {
+    const select = event.target.closest("[data-operational-status]");
+    if (!select) return;
+    const machineId = select.dataset.operationalStatus;
+    const label = select.closest(".operational-status-picker");
+    const previousClass = label.className;
+    select.disabled = true;
+    try {
+      await api(`/customers/machines/${machineId}/status`, {
+        method: "PUT",
+        body: JSON.stringify({ operationalStatus: select.value }),
+      });
+      label.className = `operational-status-picker op-${select.value}`;
+      showAlert("Machine activity status updated — customer will see this on their portal.");
+    } catch (error) {
+      label.className = previousClass;
+      showAlert(error.message, true);
+    } finally {
+      select.disabled = false;
+    }
   });
 
   load();

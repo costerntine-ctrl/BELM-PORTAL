@@ -100,6 +100,13 @@ CREATE TABLE IF NOT EXISTS machines (
   deleted_at TIMESTAMPTZ NULL
 );
 ALTER TABLE machines ADD COLUMN IF NOT EXISTS fleet_number VARCHAR(100);
+-- Real-time activity status — separate from the checklist-derived
+-- GREEN/YELLOW/RED safety condition. Selected by BELM Admin, Engineer or
+-- Technician to tell the customer what is actively happening with their
+-- machine right now (e.g. mid-service, grounded, being checked).
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS operational_status VARCHAR(30) NOT NULL DEFAULT 'NORMAL';
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS operational_status_note VARCHAR(255) NULL;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS operational_status_updated_at TIMESTAMPTZ NULL;
 
 CREATE TABLE IF NOT EXISTS checklist_templates (
   id VARCHAR(36) PRIMARY KEY,

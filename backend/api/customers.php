@@ -387,6 +387,30 @@ if ($method === 'POST' && $action === 'add-machine') {
     json_out(['id' => $newId], 201);
 }
 
+const MACHINE_OPERATIONAL_STATUSES = ['NORMAL', 'SERVICE_IN_PROGRESS', 'CHECKUP_IN_PROGRESS', 'MAINTENANCE_IN_PROGRESS', 'GROUNDED'];
+
+// Quick activity-status flip for BELM Admin, Engineer or Technician —
+// deliberately lighter than edit-machine (no Edit PIN) since this is
+// meant to be updated in the moment work starts/stops, not a formal
+// record edit. Requires only normal page access to the customer/machine.
+if ($method === 'PUT' && $action === 'operational-status') {
+    $b = body();
+    $status = strtoupper(trim((string)($b['operationalStatus'] ?? '')));
+    $note = trim((string)($b['note'] ?? ''));
+    if (!in_array($status, MACHINE_OPERATIONAL_STATUSES, true)) json_error('Invalid operational status.', 422);
+
+    $stmt = db()->prepare('SELECT customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$_GET['machineId']]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found.', 404);
+    require_customer_read_access($user, $machine['customer_id']);
+
+    db()->prepare('UPDATE machines SET operational_status = ?, operational_status_note = ?, operational_status_updated_at = NOW() WHERE id = ?')
+        ->execute([$status, $note !== '' ? $note : null, $_GET['machineId']]);
+
+    json_out(['ok' => true]);
+}
+
 if ($method === 'PUT' && $action === 'edit-machine') {
     require_page_access($user, 'customers');
     $b = body();

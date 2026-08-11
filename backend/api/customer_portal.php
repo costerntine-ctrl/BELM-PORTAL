@@ -414,10 +414,20 @@ if ($sub === 'email-report' && $method === 'POST') {
     $message = trim((string)($b['message'] ?? ''));
     $saveLabel = trim((string)($b['saveAsLabel'] ?? ''));
     $rawAttachments = is_array($b['attachments'] ?? null) ? $b['attachments'] : [];
+    $rawCc = is_array($b['cc'] ?? null) ? $b['cc'] : [];
 
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid recipient email address.');
     if ($message === '') json_error('The report message is empty.');
     if (count($rawAttachments) > 5) json_error('Attach at most 5 files per email.');
+    if (count($rawCc) > 10) json_error('Add at most 10 CC recipients.');
+
+    $cc = [];
+    foreach ($rawCc as $ccAddress) {
+        $ccAddress = trim((string)$ccAddress);
+        if ($ccAddress === '') continue;
+        if (!filter_var($ccAddress, FILTER_VALIDATE_EMAIL)) json_error("\"$ccAddress\" is not a valid CC email address.");
+        if (strcasecmp($ccAddress, $to) !== 0 && !in_array($ccAddress, $cc, true)) $cc[] = $ccAddress;
+    }
 
     // Attachments arrive as data: URLs (data:<mime>;base64,<data>) — same
     // pattern already used for checklist/receipt photos. Cap total size so
@@ -451,13 +461,13 @@ if ($sub === 'email-report' && $method === 'POST') {
     }
 
     try {
-        send_email($to, $subject, $message . "\n\n— Sent from the BELM Portal by {$customer['name']}.", $attachments);
+        send_email($to, $subject, $message . "\n\n— Sent from the BELM Portal by {$customer['name']}.", $attachments, $cc);
     } catch (Throwable $error) {
         error_log('BELM mail error: ' . $error->getMessage());
         json_error('Could not send the email right now. Please try again shortly.', 500);
     }
 
-    json_out(['ok' => true, 'message' => "Report emailed to $to successfully."]);
+    json_out(['ok' => true, 'message' => "Report emailed to $to" . ($cc ? ' (cc: ' . implode(', ', $cc) . ')' : '') . " successfully."]);
 }
 
 if ($sub === 'dashboard') {

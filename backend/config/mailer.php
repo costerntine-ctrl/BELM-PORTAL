@@ -44,7 +44,10 @@ function smtp_expect(&$socket, string $command, string $expectedCode): string {
 // on success, throws on failure so the caller can decide whether to
 // surface the error or fail silently.
 // $attachments: list of ['filename' => string, 'mimeType' => string, 'data' => raw binary bytes]
-function send_email(string $to, string $subject, string $textBody, array $attachments = []): bool {
+// $cc: list of extra email addresses to copy in (added to the RCPT TO
+// list at the SMTP level so they genuinely receive the message, and to
+// the visible "Cc:" header so recipients can see who else was copied).
+function send_email(string $to, string $subject, string $textBody, array $attachments = [], array $cc = []): bool {
     $config = smtp_config();
     if ($config['host'] === '') {
         throw new RuntimeException('Email is not configured on this server (missing SMTP_HOST). Ask the administrator to set up SMTP_HOST, SMTP_USER, SMTP_PASS.');
@@ -84,15 +87,23 @@ function send_email(string $to, string $subject, string $textBody, array $attach
 
         smtp_expect($socket, 'MAIL FROM:<' . $config['fromEmail'] . '>', '250');
         smtp_expect($socket, 'RCPT TO:<' . $to . '>', '250');
+        foreach ($cc as $ccAddress) {
+            smtp_expect($socket, 'RCPT TO:<' . $ccAddress . '>', '250');
+        }
         smtp_expect($socket, 'DATA', '354');
 
         $headers = [
             'From: ' . $config['fromName'] . ' <' . $config['fromEmail'] . '>',
             'To: <' . $to . '>',
+        ];
+        if (!empty($cc)) {
+            $headers[] = 'Cc: <' . implode('>, <', $cc) . '>';
+        }
+        $headers = array_merge($headers, [
             'Subject: ' . $subject,
             'MIME-Version: 1.0',
             'Date: ' . date('r'),
-        ];
+        ]);
 
         if (empty($attachments)) {
             $headers[] = 'Content-Type: text/plain; charset=UTF-8';

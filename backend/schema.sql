@@ -724,16 +724,25 @@ UPDATE roles
 SET deleted_at = NULL
 WHERE name = 'Super Admin';
 
+-- Migrate the seeded Super Admin's login email from the old default to the
+-- company's real inbox, on databases that already have this exact row from
+-- an earlier deploy. Only touches it if the email is still the old default
+-- (so it never overwrites an email the Administrator has since changed).
+UPDATE users
+SET email = 'info@belmgeneral.co.tz'
+WHERE id = '00000000-0000-4000-8000-000000000003'
+  AND email = 'admin@belmgeneraltech.co.tz';
+
 INSERT INTO users (id, name, email, password_hash, role_id)
 SELECT
   '00000000-0000-4000-8000-000000000003',
   'BELM Admin',
-  'admin@belmgeneraltech.co.tz',
+  'info@belmgeneral.co.tz',
   '$2y$10$uXo8bDdT3YV7BlM7V4oOR.ybSIUrBtG0x/bwydGsmf98C0IBBWtme',
   id
 FROM roles
 WHERE name = 'Super Admin'
-ON CONFLICT (email) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
   is_active = 1,
   role_id = EXCLUDED.role_id,

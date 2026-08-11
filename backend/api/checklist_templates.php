@@ -326,6 +326,7 @@ if ($method === 'POST' && $action === 'add-item') {
 
 if ($method === 'PUT' && $action === 'edit-item') {
     $body = body();
+    require_edit_confirmation($body);
     $item = normalize_template_item($body, (int)($body['order'] ?? 0));
     $stmt = db()->prepare(
         'UPDATE checklist_template_items
@@ -348,6 +349,7 @@ if ($method === 'PUT' && $action === 'edit-item') {
 }
 
 if ($method === 'DELETE' && $action === 'delete-item') {
+    require_edit_confirmation(body());
     db()->prepare('DELETE FROM checklist_template_items WHERE id = ?')->execute([$_GET['itemId']]);
     json_out(null, 204);
 }

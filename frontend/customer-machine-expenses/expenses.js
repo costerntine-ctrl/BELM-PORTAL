@@ -279,9 +279,13 @@
           <td>${money.format(Number(expense.unit_price || 0))}</td>
           <td><strong>${money.format(Number(expense.cost || 0))}</strong></td>
           <td>${hasReceipt(expense.has_receipt)
-            ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(expense.id)}">View photo</button>
+            ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(expense.id)}">View</button>
+               <button class="receipt-button" type="button" data-download-receipt="${escapeHtml(expense.id)}">Download</button>
                <button class="receipt-button" type="button" data-print-receipt="${escapeHtml(expense.id)}">Print</button>`
-            : "—"}</td>
+            : `<label class="receipt-upload-inline">
+                 <span class="receipt-button">Upload</span>
+                 <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-attach-receipt="${escapeHtml(expense.id)}" hidden>
+               </label>`}</td>
           <td>${escapeHtml(expense.logged_by || "Customer")}</td>
         </tr>`).join("")
       : '<tr><td colspan="8" class="empty">No machine expenses recorded yet.</td></tr>';
@@ -381,10 +385,17 @@
         `/api/customer-portal/machine-expenses/${encodeURIComponent(machineId)}/receipt?expenseId=${encodeURIComponent(expenseId)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (!response.ok) throw new Error("Could not load receipt photo.");
+      if (!response.ok) throw new Error("Could not load receipt.");
+      const contentType = response.headers.get("Content-Type") || "";
       const blob = await response.blob();
       if (openReceiptUrl) URL.revokeObjectURL(openReceiptUrl);
       openReceiptUrl = URL.createObjectURL(blob);
+      if (contentType === "application/pdf") {
+        // <img> can't render a PDF — open it in its own tab instead of
+        // showing a broken image inside the dialog.
+        window.open(openReceiptUrl, "_blank");
+        return;
+      }
       document.getElementById("receiptImage").src = openReceiptUrl;
       document.getElementById("receiptDialog").showModal();
     } catch (error) {
@@ -398,9 +409,16 @@
         `/api/customer-portal/machine-expenses/${encodeURIComponent(machineId)}/receipt?expenseId=${encodeURIComponent(expenseId)}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (!response.ok) throw new Error("Could not load receipt photo.");
+      if (!response.ok) throw new Error("Could not load receipt.");
+      const contentType = response.headers.get("Content-Type") || "";
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
+      if (contentType === "application/pdf") {
+        // A PDF already has its own print button in the browser's PDF
+        // viewer — just open it, rather than trying to embed it as <img>.
+        window.open(url, "_blank");
+        return;
+      }
       const printWindow = window.open("", "_blank");
       printWindow.document.write(`<!doctype html><html><head><title>Receipt</title>
         <style>body{margin:0;display:flex;justify-content:center;padding:20px;font-family:sans-serif}
@@ -409,6 +427,43 @@
       printWindow.document.close();
     } catch (error) {
       showAlert(error.message, true);
+    }
+  }
+
+  async function downloadReceipt(expenseId) {
+    try {
+      const response = await fetch(
+        `/api/customer-portal/machine-expenses/${encodeURIComponent(machineId)}/receipt?expenseId=${encodeURIComponent(expenseId)}&download=1`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error("Could not download receipt.");
+      const contentDisposition = response.headers.get("Content-Disposition") || "";
+      const nameMatch = contentDisposition.match(/filename="([^"]+)"/);
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = nameMatch ? nameMatch[1] : "receipt";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      showAlert(error.message || "Could not download receipt.", true);
+    }
+  }
+
+  async function attachReceiptToExpense(expenseId, file) {
+    try {
+      const dataUrl = await compressReceipt(file);
+      await api(`/machine-expenses/${encodeURIComponent(machineId)}/receipt?expenseId=${encodeURIComponent(expenseId)}`, {
+        method: "PUT",
+        body: JSON.stringify({ receiptPhoto: dataUrl, receiptName: file.name }),
+      });
+      showAlert("Receipt attached successfully.", false);
+      await load();
+    } catch (error) {
+      showAlert(error.message || "Could not attach receipt.", true);
     }
   }
 
@@ -456,8 +511,18 @@
   document.getElementById("expenseRows").addEventListener("click", event => {
     const button = event.target.closest("[data-receipt]");
     const printButton = event.target.closest("[data-print-receipt]");
+    const downloadButton = event.target.closest("[data-download-receipt]");
     if (button) viewReceipt(button.dataset.receipt);
     if (printButton) printReceipt(printButton.dataset.printReceipt);
+    if (downloadButton) downloadReceipt(downloadButton.dataset.downloadReceipt);
+  });
+  document.getElementById("expenseRows").addEventListener("change", event => {
+    const input = event.target.closest("[data-attach-receipt]");
+    if (!input) return;
+    const file = input.files?.[0];
+    if (!file) return;
+    attachReceiptToExpense(input.dataset.attachReceipt, file);
+    input.value = "";
   });
   document.getElementById("closeReceiptButton").addEventListener("click", () => {
     document.getElementById("receiptDialog").close();

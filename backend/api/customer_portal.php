@@ -731,6 +731,26 @@ if ($sub === 'machine-expenses' && $sub2) {
         ], 201);
     }
 
+    if ($method === 'PUT' && $sub3 === 'receipt') {
+        require_customer_write_access($customer);
+        $expenseId = trim((string)($_GET['expenseId'] ?? ''));
+        if ($expenseId === '') json_error('Expense is required.');
+        $b = body();
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        if ($receiptPhoto === '') json_error('Choose a receipt photo or PDF to upload.');
+        [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
+
+        $stmt = db()->prepare(
+            "UPDATE usage_logs
+             SET receipt_photo_data = ?, receipt_photo_mime = ?, receipt_photo_name = ?
+             WHERE id = ? AND customer_id = ? AND machine_id = ? AND category = 'SPARE_PART'"
+        );
+        $stmt->execute([$receiptData, $receiptMime, $receiptName, $expenseId, $customer['id'], $machineId]);
+        if ($stmt->rowCount() === 0) json_error('Expense not found.', 404);
+        json_out(['ok' => true, 'message' => 'Receipt attached successfully.']);
+    }
+
     if ($method === 'GET' && $sub3 === 'receipts-list') {
         $dateFilter = trim((string)($_GET['date'] ?? ''));
         $monthFilter = trim((string)($_GET['month'] ?? ''));
@@ -788,7 +808,8 @@ if ($sub === 'machine-expenses' && $sub2) {
         ) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . strlen($binary));
-        header('Content-Disposition: inline; filename="' .
+        $disposition = !empty($_GET['download']) ? 'attachment' : 'inline';
+        header('Content-Disposition: ' . $disposition . '; filename="' .
             preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($receipt['receipt_photo_name'] ?: 'receipt-photo')) .
             '"');
         echo $binary;

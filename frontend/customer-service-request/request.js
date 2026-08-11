@@ -244,12 +244,20 @@
     localStorage.removeItem("belm_customer_token");
     window.location.href = "/portal/login";
   });
+  let isSubmittingServiceRequest = false;
   document.getElementById("serviceForm").addEventListener("submit", async event => {
     event.preventDefault();
+    // Guards against duplicate submissions from a fast double-click/tap —
+    // checked before anything else runs, so a second click while the
+    // first request is still in flight is simply ignored instead of
+    // firing the request twice.
+    if (isSubmittingServiceRequest) return;
+    isSubmittingServiceRequest = true;
     clearAlert();
     const button = document.getElementById("submitButton");
     const option = selectedOption();
     button.disabled = true;
+    button.classList.remove("success");
     button.textContent = "Submitting…";
     try {
       const result = await api("/service-requests", {
@@ -283,11 +291,20 @@
       document.getElementById("serviceForm").reset();
       document.getElementById("partRequestRows").innerHTML = "";
       render({ machine, serviceOptions });
+
+      // Unmistakable "it worked" confirmation right on the button itself
+      // — not just the alert banner above — so there's no doubt the tap
+      // registered, before the button returns to its normal state.
+      button.classList.add("success");
+      button.textContent = "✓ Sent";
+      await new Promise(resolve => setTimeout(resolve, 1600));
     } catch (error) {
       showAlert(error.message || "Could not submit service request.", true);
     } finally {
+      button.classList.remove("success");
       button.disabled = false;
       button.textContent = "Submit service request";
+      isSubmittingServiceRequest = false;
     }
   });
 

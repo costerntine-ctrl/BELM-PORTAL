@@ -25,8 +25,10 @@ main { width: min(1220px, calc(100% - 44px)); margin: 34px auto 60px; }
 .hero h1 { margin: 4px 0 8px; font: 700 clamp(25px, 4vw, 40px)/1.08 "Space Grotesk", sans-serif; }
 .hero p:last-child { margin: 0; color: #bac3d2; }
 .eyebrow { margin: 0; color: var(--green); font-size: 11px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-.primary, .secondary, .ghost, .link-button { border: 0; border-radius: 10px; padding: 11px 15px; font-weight: 700; }
+.primary, .secondary, .ghost, .link-button { border: 0; border-radius: 10px; padding: 11px 15px; font-weight: 700; transition: background .18s, transform .1s; }
 .primary { background: var(--green); color: #fff; }
+.primary:active:not(:disabled) { transform: scale(.97); }
+.primary.success { background: #087039; }
 .secondary { background: var(--yellow); color: var(--navy); }
 .ghost { background: #fff; color: var(--navy); border: 1px solid var(--line); }
 .topbar .ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.24); }

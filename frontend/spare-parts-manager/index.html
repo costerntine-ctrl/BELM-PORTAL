@@ -29,7 +29,11 @@
           <h1>Spare Parts Inventory</h1>
           <p>Save stock, prices and reorder levels with clear confirmation.</p>
         </div>
-        <button id="addButton" class="secondary" type="button">+ Add spare part</button>
+        <div class="top-actions">
+          <button id="importButton" class="ghost" type="button">Import CSV</button>
+          <input id="importFileInput" type="file" accept=".csv,text/csv" class="hidden">
+          <button id="addButton" class="secondary" type="button">+ Add spare part</button>
+        </div>
       </section>
 
       <section class="metrics">
@@ -56,6 +60,13 @@
         <div class="panel-head">
           <h2>Saved spare parts</h2>
           <input id="searchInput" aria-label="Search spare parts" placeholder="Search part number, name or category" style="width:min(330px,100%);margin:0">
+        </div>
+        <div class="panel-subhead">
+          <span id="selectedPartsCount" class="muted">0 selected</span>
+          <div class="panel-subhead-actions">
+            <button id="selectLowStockButton" class="ghost" type="button">Select all low stock (yellow &amp; red)</button>
+            <button id="exportSelectedButton" class="secondary" type="button" disabled>Export selected to CSV</button>
+          </div>
         </div>
         <div id="partsPanel" class="loading">Loading spare parts…</div>
       </section>

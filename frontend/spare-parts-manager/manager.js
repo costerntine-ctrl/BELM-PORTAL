@@ -113,6 +113,13 @@
     }).join("");
   }
 
+  let selectedPartIds = new Set();
+
+  function updateSelectedCount() {
+    document.getElementById("selectedPartsCount").textContent = `${selectedPartIds.size} selected`;
+    document.getElementById("exportSelectedButton").disabled = selectedPartIds.size === 0;
+  }
+
   function renderParts() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filtered = parts.filter((part) =>
@@ -126,12 +133,13 @@
 
     panel.className = "table-wrap";
     panel.innerHTML = `<table>
-      <thead><tr><th>Part number</th><th>Reference No.</th><th>Name</th><th>Category</th><th>Stock</th><th>Reorder</th><th>Purchase</th><th>Selling</th><th>Profit</th><th></th></tr></thead>
+      <thead><tr><th></th><th>Part number</th><th>Reference No.</th><th>Name</th><th>Category</th><th>Stock</th><th>Reorder</th><th>Purchase</th><th>Selling</th><th>Profit</th><th></th></tr></thead>
       <tbody>${filtered.map((part) => {
         const profit = Number(part.sellingPrice || 0) - Number(part.purchasePrice || 0);
         const stockQty = Number(part.stockQty || 0);
         const stockClass = stockQty <= 0 ? "off" : stockQty <= 5 ? "warn" : "";
         return `<tr>
+          <td><input type="checkbox" data-select-part="${escapeHtml(part.id)}" ${selectedPartIds.has(part.id) ? "checked" : ""}></td>
           <td class="nowrap"><strong>${escapeHtml(part.partNumber)}</strong></td>
           <td class="muted nowrap">${escapeHtml(part.referenceNumber || "—")}</td>
           <td>${escapeHtml(part.name)}</td>
@@ -145,6 +153,7 @@
         </tr>`;
       }).join("")}</tbody>
     </table>`;
+    updateSelectedCount();
   }
 
   async function loadParts() {
@@ -309,6 +318,151 @@
     }
     if (remove) deletePart(remove.dataset.delete);
   });
+  document.getElementById("partsPanel").addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-select-part]");
+    if (!checkbox) return;
+    if (checkbox.checked) selectedPartIds.add(checkbox.dataset.selectPart);
+    else selectedPartIds.delete(checkbox.dataset.selectPart);
+    updateSelectedCount();
+  });
+
+  document.getElementById("selectLowStockButton").addEventListener("click", () => {
+    parts.forEach((part) => {
+      if (Number(part.stockQty || 0) <= 5) selectedPartIds.add(part.id);
+    });
+    renderParts();
+  });
+
+  function csvEscape(value) {
+    const text = String(value ?? "");
+    return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+
+  document.getElementById("exportSelectedButton").addEventListener("click", () => {
+    const selected = parts.filter((part) => selectedPartIds.has(part.id));
+    if (!selected.length) return;
+    const headers = ["Part Number", "Reference No.", "Name", "Category", "Current Stock", "Reorder Threshold", "Suggested Order Qty", "Purchase Price", "Notes"];
+    const rows = selected.map((part) => {
+      const stockQty = Number(part.stockQty || 0);
+      const reorder = Number(part.reorderThreshold || 5);
+      const suggestedQty = Math.max(reorder * 2 - stockQty, reorder);
+      return [
+        part.partNumber, part.referenceNumber || "", part.name, part.category || "",
+        stockQty, reorder, suggestedQty, part.purchasePrice || 0,
+        stockQty <= 0 ? "OUT OF STOCK" : "LOW STOCK",
+      ].map(csvEscape).join(",");
+    });
+    const csv = [headers.map(csvEscape).join(","), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `BELM-restock-order-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    showAlert(`Exported ${selected.length} part(s) to CSV — ready to send to your supplier.`);
+  });
+
+  // ------------------------------------------------------------------
+  // IMPORT CSV — bulk add/update spare parts. Expected header row:
+  // Part Number, Reference No., Name, Category, Stock, Reorder,
+  // Purchase, Selling  (case-insensitive, extra/missing columns tolerated)
+  // ------------------------------------------------------------------
+  function parseCsv(text) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === '"' && text[i + 1] === '"') { field += '"'; i++; }
+        else if (char === '"') inQuotes = false;
+        else field += char;
+      } else if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        row.push(field); field = "";
+      } else if (char === "\n" || char === "\r") {
+        if (char === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.some((cell) => cell !== "")) rows.push(row);
+        row = [];
+      } else {
+        field += char;
+      }
+    }
+    if (field !== "" || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  document.getElementById("importButton").addEventListener("click", () =>
+    document.getElementById("importFileInput").click());
+
+  document.getElementById("importFileInput").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    const text = await file.text();
+    const rows = parseCsv(text);
+    if (rows.length < 2) {
+      showAlert("That CSV file has no data rows to import.", true);
+      return;
+    }
+    const header = rows[0].map((h) => h.trim().toLowerCase());
+    const col = (...names) => names.map((n) => header.indexOf(n)).find((i) => i !== -1) ?? -1;
+    const idx = {
+      partNumber: col("part number", "partnumber", "part no", "part_number"),
+      referenceNumber: col("reference no.", "reference no", "reference number", "referencenumber"),
+      name: col("name", "spare part name"),
+      category: col("category"),
+      stockQty: col("stock", "current stock", "stockqty"),
+      reorderThreshold: col("reorder", "reorder threshold", "reorderthreshold"),
+      purchasePrice: col("purchase", "purchase price", "purchaseprice"),
+      sellingPrice: col("selling", "selling price", "sellingprice"),
+    };
+    if (idx.partNumber === -1 || idx.name === -1) {
+      showAlert("CSV must include at least a 'Part Number' and 'Name' column.", true);
+      return;
+    }
+
+    const button = document.getElementById("importButton");
+    button.disabled = true;
+    button.textContent = "Importing…";
+    let created = 0, updated = 0, failed = 0;
+    for (const row of rows.slice(1)) {
+      const partNumber = (row[idx.partNumber] || "").trim();
+      const name = (row[idx.name] || "").trim();
+      if (!partNumber || !name) { failed++; continue; }
+      const existing = parts.find((p) => p.partNumber.toUpperCase() === partNumber.toUpperCase());
+      const payload = {
+        partNumber,
+        name,
+        referenceNumber: idx.referenceNumber !== -1 ? (row[idx.referenceNumber] || "").trim() : (existing?.referenceNumber || ""),
+        category: idx.category !== -1 ? (row[idx.category] || "").trim() : (existing?.category || ""),
+        stockQty: idx.stockQty !== -1 ? Number(row[idx.stockQty] || 0) : (existing?.stockQty ?? 0),
+        reorderThreshold: idx.reorderThreshold !== -1 ? Number(row[idx.reorderThreshold] || 5) : (existing?.reorderThreshold ?? 5),
+        purchasePrice: idx.purchasePrice !== -1 ? Number(row[idx.purchasePrice] || 0) : (existing?.purchasePrice ?? 0),
+        sellingPrice: idx.sellingPrice !== -1 ? Number(row[idx.sellingPrice] || 0) : (existing?.sellingPrice ?? 0),
+      };
+      try {
+        if (existing) {
+          await api(`/spare-parts/${existing.id}`, { method: "PUT", body: JSON.stringify(payload) });
+          updated++;
+        } else {
+          await api("/spare-parts", { method: "POST", body: JSON.stringify(payload) });
+          created++;
+        }
+      } catch (_) {
+        failed++;
+      }
+    }
+    button.disabled = false;
+    button.textContent = "Import CSV";
+    await loadParts();
+    showAlert(`Import complete — ${created} added, ${updated} updated${failed ? `, ${failed} failed` : ""}.`, failed > 0 && created === 0 && updated === 0);
+  });
+
   document.getElementById("requestsPanel").addEventListener("click", (event) => {
     const add = event.target.closest("[data-add-request]");
     const purchase = event.target.closest("[data-purchase-request]");

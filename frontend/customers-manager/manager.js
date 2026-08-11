@@ -73,6 +73,17 @@
     box.className = "alert error";
   }
 
+  function showButtonSuccess(button, text = "✓ Saved") {
+    button.classList.add("success");
+    const original = button.dataset.originalText || button.textContent;
+    button.textContent = text;
+    return new Promise((resolve) => setTimeout(() => {
+      button.classList.remove("success");
+      button.textContent = original;
+      resolve();
+    }, 900));
+  }
+
   function customerPortalUrl(customer) {
     return new URL(`/portal/login?customer=${encodeURIComponent(customer.portalLink || "")}`, window.location.origin).href;
   }
@@ -358,6 +369,8 @@
 
   async function saveCustomer(event) {
     event.preventDefault();
+    const button = document.getElementById("saveCustomerButton");
+    if (button.disabled) return;
     const id = document.getElementById("customerId").value;
     const payload = {
       name: document.getElementById("customerName").value.trim(),
@@ -372,14 +385,15 @@
       if (!pendingEditPin) return;
       payload.editPin = pendingEditPin;
     }
-    const button = document.getElementById("saveCustomerButton");
     button.disabled = true;
+    button.dataset.originalText = "Save customer";
     button.textContent = "Saving…";
     try {
       const result = await api(id ? `/customers/${id}` : "/customers", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
+      await showButtonSuccess(button);
       document.getElementById("customerDialog").close();
       pendingEditPin = null;
       await load();
@@ -466,6 +480,8 @@
 
   async function saveMachine(event) {
     event.preventDefault();
+    const button = document.getElementById("saveMachineButton");
+    if (button.disabled) return;
     const customerId = document.getElementById("machineCustomerId").value;
     const id = document.getElementById("machineId").value;
     const typeSelectValue = document.getElementById("machineType").value;
@@ -495,14 +511,15 @@
         targetCustomerId = moveSelect.value;
       }
     }
-    const button = document.getElementById("saveMachineButton");
     button.disabled = true;
+    button.dataset.originalText = "Save machine";
     button.textContent = "Saving…";
     try {
       await api(id ? `/customers/machines/${id}` : `/customers/${customerId}/machines`, {
         method: id ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
+      await showButtonSuccess(button);
       document.getElementById("machineDialog").close();
       pendingEditPin = null;
       await load();
@@ -837,6 +854,7 @@
   document.getElementById("checkupForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const button = document.getElementById("saveCheckupButton");
+    if (button.disabled) return;
     const alertBox = document.getElementById("checkupFormAlert");
     const templateId = document.getElementById("checkupTemplate").value;
     if (!templateId) {
@@ -854,6 +872,7 @@
     });
     const isServiceDay = document.getElementById("checkupIsServiceDay").checked;
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       await api("/checklist-reports?action=submit", {
         method: "POST",
@@ -867,6 +886,7 @@
           serviceType: isServiceDay ? document.getElementById("checkupServiceType").value : undefined,
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("checkupDialog").close();
       showAlert("Check-up saved successfully.");
       await load();

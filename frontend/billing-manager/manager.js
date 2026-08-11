@@ -323,8 +323,21 @@
     ).join("");
   }
 
+  function showButtonSuccess(button, text = "✓ Saved") {
+    button.classList.add("success");
+    const original = button.dataset.originalText || button.textContent;
+    button.textContent = text;
+    return new Promise((resolve) => setTimeout(() => {
+      button.classList.remove("success");
+      button.textContent = original;
+      resolve();
+    }, 900));
+  }
+
   async function saveInvoice(event) {
     event.preventDefault();
+    const button = document.getElementById("saveInvoiceButton");
+    if (button.disabled) return;
     const id = document.getElementById("invoiceId").value;
     const items = [...document.querySelectorAll("#invoiceItems .item-row")].map((row) => ({
       description: row.querySelector('[data-field="description"]').value.trim(),
@@ -341,8 +354,8 @@
       if (!confirmation) return;
       editConfirmation = confirmation;
     }
-    const button = document.getElementById("saveInvoiceButton");
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       await api(id ? `/billing/invoices/${id}` : "/billing/invoices", {
         method: id ? "PUT" : "POST",
@@ -356,6 +369,7 @@
           ...editConfirmation,
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("invoiceDialog").close();
       await load();
       showAlert(id ? "Invoice changes saved and totals recalculated." : "Invoice saved successfully.");
@@ -386,10 +400,12 @@
 
   async function savePayment(event) {
     event.preventDefault();
+    const button = document.getElementById("savePaymentButton");
+    if (button.disabled) return;
     const invoiceId = document.getElementById("paymentInvoiceId").value;
     const paymentId = document.getElementById("paymentId").value;
-    const button = document.getElementById("savePaymentButton");
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       await api(`/billing/invoices/${invoiceId}/payments${paymentId ? `/${paymentId}` : ""}`, {
         method: paymentId ? "PUT" : "POST",
@@ -400,6 +416,7 @@
           reference: document.getElementById("paymentReference").value.trim(),
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("paymentDialog").close();
       await load();
       showAlert(paymentId ? "Payment changes saved and invoice balance recalculated." : "Payment recorded and invoice balance updated.");
@@ -436,6 +453,7 @@
     const invoiceId = document.getElementById("receiptInvoiceId").value;
     const customerId = document.getElementById("receiptCustomerId").value;
     const button = document.getElementById("saveReceiptButton");
+    if (button.disabled) return;
     const errorBox = document.getElementById("receiptError");
     errorBox.className = "alert error hidden";
     if (!customerId) {
@@ -444,6 +462,7 @@
       return;
     }
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       const result = await api("/receipts", {
         method: "POST",
@@ -458,6 +477,7 @@
           notes: document.getElementById("receiptNotes").value.trim(),
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("receiptDialog").close();
       await load();
       showAlert(`Receipt ${result.receiptNo} created.`);
@@ -489,6 +509,8 @@
 
   async function saveExpense(event) {
     event.preventDefault();
+    const button = document.getElementById("saveExpenseButton");
+    if (button.disabled) return;
     const id = document.getElementById("expenseId").value;
     let editConfirmation = {};
     if (id) {
@@ -499,8 +521,8 @@
       if (!confirmation) return;
       editConfirmation = confirmation;
     }
-    const button = document.getElementById("saveExpenseButton");
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       await api(id ? `/company-expenses/${id}` : "/company-expenses", {
         method: id ? "PUT" : "POST",
@@ -515,6 +537,7 @@
           ...editConfirmation,
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("expenseDialog").close();
       await load();
       showAlert(id ? "Expense changes saved successfully." : "Expense recorded successfully.");
@@ -599,6 +622,8 @@
 
   async function saveProforma(event) {
     event.preventDefault();
+    const button = document.getElementById("saveProformaButton");
+    if (button.disabled) return;
     const id = document.getElementById("proformaId").value;
     const items = [...document.querySelectorAll("#proformaItems .item-row")].map((row) => ({
       partNumber: row.querySelector('[data-field="partNumber"]').value.trim(),
@@ -607,7 +632,6 @@
       unit: row.querySelector('[data-field="unit"]').value.trim() || "PC",
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
     }));
-    const button = document.getElementById("saveProformaButton");
     let editConfirmation = {};
     if (id) {
       const confirmation = await window.belmConfirmEdit({
@@ -618,6 +642,7 @@
       editConfirmation = confirmation;
     }
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       await api(id ? `/proforma-invoices/${id}` : "/proforma-invoices", {
         method: id ? "PUT" : "POST",
@@ -636,6 +661,7 @@
           ...editConfirmation,
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("proformaDialog").close();
       await load();
       showAlert(id ? "Proforma updated successfully." : "Proforma saved successfully.");

@@ -585,7 +585,7 @@
   async function resetCustomerLogin(id) {
     const customer = customers.find((item) => item.id === id);
     if (!customer) return;
-    const confirmation = await window.belmConfirmDelete({
+    const confirmation = await window.belmConfirmEdit({
       title: "Reset customer login?",
       message: `Generate a new password and recovery code for ${customer.name}? The old password and recovery code will stop working.`,
     });

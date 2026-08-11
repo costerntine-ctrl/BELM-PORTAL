@@ -230,7 +230,11 @@ if ($method === 'POST' && !$action) {
 
 if ($method === 'PUT' && $action === 'reset-password') {
     require_page_access($user, 'customers');
-    $reason = require_delete_confirmation($user, body());
+    // Resetting a customer's portal login is reversible (it can simply
+    // be reset again) and doesn't touch or delete any business data, so
+    // it only needs the lighter Edit PIN confirmation — not the delete
+    // PIN + the admin's own account password + a written reason.
+    require_edit_confirmation(body());
     $temporaryPassword = secure_account_secret();
     $recoveryCode = account_recovery_code();
     $stmt = db()->prepare(

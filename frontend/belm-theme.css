@@ -159,23 +159,23 @@ a.bg-belm-blue:hover {
    was written for the dark default card background. Force it dark/readable
    now that the whole card is tinted — but leave our own injected info panel
    and action buttons alone, since those already carry correct colors. */
-.belm-customer-machine-card.status-green *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-green *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-green *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-green *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #14532d !important;
 }
 
-.belm-customer-machine-card.status-yellow *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-yellow *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-yellow *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-yellow *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #713f12 !important;
 }
 
-.belm-customer-machine-card.status-red *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-red *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-red *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-red *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #7f1d1d !important;
 }
 
-.belm-customer-machine-card.status-unknown *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-unknown *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-report-link):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-unknown *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-unknown *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #1e293b !important;
 }
 
@@ -1247,19 +1247,25 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   }
 }
 
+.belm-technician-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
 .belm-technician-report-link {
   display: flex;
-  width: 100%;
+  flex: 1 1 40%;
   justify-content: center;
   align-items: center;
-  min-height: 36px;
-  margin-top: 14px;
-  padding: 8px 11px;
+  min-height: 40px;
+  margin-top: 0;
+  padding: 8px 8px;
   color: var(--belm-navy);
   border: 1px solid var(--belm-yellow);
   border-radius: 8px;
   background: var(--belm-yellow);
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 850;
   text-align: center;
 }
@@ -1267,6 +1273,31 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 .belm-technician-report-link:hover,
 .belm-technician-report-link:focus {
   outline: 3px solid rgba(0, 166, 81, .18);
+}
+
+.belm-technician-checkup-button {
+  display: flex;
+  flex: 1 1 60%;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 8px;
+  color: #fff;
+  border: 1px solid #1d5fd6;
+  border-radius: 8px;
+  background: #2563eb;
+  font-size: 11.5px;
+  font-weight: 850;
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.belm-technician-checkup-button:hover {
+  background: #1d4ed8;
+}
+.belm-technician-checkup-button:focus {
+  outline: 3px solid rgba(37, 99, 235, .25);
 }
 
 .belm-tech-spare-shortcut {

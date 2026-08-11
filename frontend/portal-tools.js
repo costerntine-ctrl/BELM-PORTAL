@@ -1497,6 +1497,12 @@
         </select>
       </div>`;
     card.appendChild(details);
+    // The whole card is itself a native button that opens the checklist
+    // form on click. Without this, tapping our injected content (the
+    // Activity Status dropdown especially) bubbles up and opens the
+    // checklist by accident instead of doing what was actually tapped.
+    details.addEventListener("click", (event) => event.stopPropagation());
+    details.addEventListener("pointerdown", (event) => event.stopPropagation());
     details.querySelector("[data-belm-op-status]").addEventListener("change", async (event) => {
       const select = event.target;
       const token = localStorage.getItem("belm_tech_token");
@@ -1626,6 +1632,10 @@
       card.classList.add("belm-technician-machine-card");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       technicianMachineInfoCard(card, machine);
+
+      const actionsRow = document.createElement("div");
+      actionsRow.className = "belm-technician-card-actions";
+
       const reportLink = document.createElement("span");
       reportLink.className = "belm-technician-report-link";
       reportLink.setAttribute("role", "button");
@@ -1642,7 +1652,27 @@
       reportLink.addEventListener("keydown", event => {
         if (event.key === "Enter" || event.key === " ") openReports(event);
       });
-      card.appendChild(reportLink);
+
+      // Explicit "Check-up" button — re-fires the card's own native click
+      // (which is what already opens the checklist form) through a clear,
+      // dedicated blue button instead of relying on tapping bare card
+      // space, which now risks landing on the Activity Status dropdown
+      // or the Checked Reports link instead.
+      const checkupButton = document.createElement("button");
+      checkupButton.type = "button";
+      checkupButton.className = "belm-technician-checkup-button";
+      checkupButton.textContent = "Check-up";
+      checkupButton.title = `Start a check-up for ${model}`;
+      checkupButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+        card.click();
+      });
+
+      actionsRow.appendChild(reportLink);
+      actionsRow.appendChild(checkupButton);
+      card.appendChild(actionsRow);
     });
   }
 

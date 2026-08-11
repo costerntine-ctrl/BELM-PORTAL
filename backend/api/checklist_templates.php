@@ -97,7 +97,7 @@ function normalize_template_item(array $item, int $order): array {
     $inputType = strtoupper(trim((string)($item['inputType'] ?? 'TEXT')));
     $safetyLevel = strtoupper(trim((string)($item['safetyLevel'] ?? 'GREEN')));
     $allowedInputTypes = ['TEXT', 'NUMBER', 'YES_NO', 'DROPDOWN', 'PHOTO', 'DATE'];
-    $allowedSafetyLevels = ['GREEN', 'YELLOW', 'RED'];
+    $allowedSafetyLevels = ['NONE', 'GREEN', 'YELLOW', 'RED'];
 
     if ($label === '') json_error('Every checklist item must have a label.');
     if (!in_array($inputType, $allowedInputTypes, true)) {

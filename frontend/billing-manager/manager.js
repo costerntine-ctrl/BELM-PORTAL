@@ -16,12 +16,9 @@
     return `${day}/${month}/${date.getFullYear()}`;
   }
 
-  function applyTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem("belm_theme", safeTheme);
-  }
-  applyTheme(localStorage.getItem("belm_theme") || "light");
+  // Dark/light mode is handled centrally by admin-sidebar.js (per-admin
+  // localStorage preference) — this page no longer sets its own theme or
+  // reads/writes a shared company-wide setting.
 
   const money = (value) => `TZS ${Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -252,12 +249,6 @@
       } catch (_) {
         bankData = { accounts: [], withdrawals: [], summary: {} };
       }
-      try {
-        const settings = await api("/settings");
-        if (settings.displayTheme === "dark" || settings.displayTheme === "light") {
-          applyTheme(settings.displayTheme);
-        }
-      } catch (_) {}
       renderInvoices();
       renderPayments();
       renderExpenses();

@@ -155,6 +155,10 @@ CREATE TABLE IF NOT EXISTS checklist_reports (
   updated_at TIMESTAMPTZ NULL
 );
 ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NULL;
+-- A built-in "Display photo" field on every checklist submission — same
+-- standing as Hour Meter and Service Day (not a configurable per-template
+-- item), always captured, always shown at the top of the report.
+ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS display_photo_url TEXT NULL;
 
 CREATE TABLE IF NOT EXISTS checklist_answers (
   id VARCHAR(36) PRIMARY KEY,
@@ -165,6 +169,10 @@ CREATE TABLE IF NOT EXISTS checklist_answers (
   photo_url VARCHAR(500) NULL,
   safety_level VARCHAR(10) NULL
 );
+-- Free-text note the Technician/Admin adds when a Yes/No answer is flagged
+-- (YELLOW/RED) — kept separate from `value` because `value` is strictly
+-- matched against the item's allowed options (Yes/No) during validation.
+ALTER TABLE checklist_answers ADD COLUMN IF NOT EXISTS note TEXT NULL;
 
 -- photo_url originally allowed only 500 characters, but a compressed
 -- checklist photo is stored as a full data:image/...;base64,... URL which

@@ -1,11 +1,21 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
 
+  // Dark/light mode is a personal, per-admin preference — same storage key
+  // admin-sidebar.js uses, so the toggle here and the one in the sidebar
+  // always agree. It is never saved to System Settings (which is shared
+  // by the whole company), so one admin's choice never affects another's.
+  let currentAdminId = "default";
+  try {
+    currentAdminId = JSON.parse(localStorage.getItem("belm_admin_user") || "null")?.id || "default";
+  } catch (_) {}
+  const themeStorageKey = `belm_theme_admin_${currentAdminId}`;
+
   function applyTheme(theme) {
     const safeTheme = theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = safeTheme;
     document.documentElement.classList.toggle("dark", safeTheme === "dark");
-    localStorage.setItem("belm_theme", safeTheme);
+    localStorage.setItem(themeStorageKey, safeTheme);
     document.querySelectorAll("[data-theme-choice]").forEach((button) => {
       button.classList.toggle("active", button.dataset.themeChoice === safeTheme);
     });
@@ -88,7 +98,7 @@
       document.getElementById("adminAlertsToggle").checked = settings.adminAlertsEnabled !== false;
       document.getElementById("technicianAlertsToggle").checked = settings.technicianAlertsEnabled !== false;
       document.getElementById("whatsappAlertsToggle").checked = settings.whatsappAlertsEnabled !== false;
-      applyTheme(settings.displayTheme || localStorage.getItem("belm_theme") || "light");
+      applyTheme(localStorage.getItem(themeStorageKey) || "light");
       await loadAnnouncements();
     } catch (error) {
       message(error.message, true);
@@ -187,16 +197,9 @@
   });
 
   document.querySelectorAll("[data-theme-choice]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const previous = localStorage.getItem("belm_theme") || "light";
+    button.addEventListener("click", () => {
       applyTheme(button.dataset.themeChoice);
-      try {
-        await saveSettings({ displayTheme: button.dataset.themeChoice });
-        message(`${button.dataset.themeChoice === "dark" ? "Dark" : "Light"} theme saved.`);
-      } catch (error) {
-        applyTheme(previous);
-        message(error.message, true);
-      }
+      message(`${button.dataset.themeChoice === "dark" ? "Dark" : "Light"} mode set for your account on this device.`);
     });
   });
 
@@ -226,7 +229,7 @@
     }
   });
 
-  applyTheme(localStorage.getItem("belm_theme") || "light");
+  applyTheme(localStorage.getItem(themeStorageKey) || "light");
   load();
 
   document.getElementById("adminAlertsToggle").addEventListener("change", async (event) => {

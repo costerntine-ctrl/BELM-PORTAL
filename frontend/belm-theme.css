@@ -1388,6 +1388,43 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   .belm-service-day-fields { grid-template-columns: 1fr; }
 }
 
+.belm-display-photo-field {
+  display: block !important;
+  margin-top: 14px;
+  color: var(--belm-navy);
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase;
+}
+.belm-display-photo-field small {
+  display: block;
+  margin-top: 2px;
+  color: #64748b;
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: none;
+}
+.belm-display-photo-field input[type="file"] {
+  margin-top: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 12px;
+  background: #fff;
+  color: #1f2c42;
+}
+.belm-display-photo-preview {
+  display: block;
+  width: 110px;
+  height: 110px;
+  object-fit: cover;
+  border-radius: 9px;
+  border: 1px solid #cbd5e1;
+  margin-top: 10px;
+}
+.belm-display-photo-preview.hidden { display: none; }
+
 .belm-tech-spare-shortcut:hover,
 .belm-tech-spare-shortcut:focus {
   outline: 3px solid rgba(0, 166, 81, .24);
@@ -1751,6 +1788,20 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-size: 12px;
 }
 
+.belm-checked-report-display-photo-cell {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+}
+.belm-checked-report-display-photo {
+  width: 74px;
+  height: 74px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--belm-line);
+  cursor: pointer;
+}
+
 .belm-checked-report-table-wrap {
   padding: 20px 24px 6px;
   overflow-x: auto;
@@ -1794,6 +1845,12 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 .belm-report-photo-link {
   display: inline-block;
   line-height: 0;
+}
+.belm-report-issue-note {
+  margin-top: 4px;
+  font-size: 10.5px;
+  font-style: italic;
+  color: #b91c1c;
 }
 .belm-report-photo-link img,
 .belm-report-photo-thumb {

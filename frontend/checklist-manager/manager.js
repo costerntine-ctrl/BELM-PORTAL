@@ -54,6 +54,7 @@
       inputType: "TEXT",
       safetyLevel: "GREEN",
       dropdownOptions: [],
+      yesNoSafety: { YES: "GREEN", NO: "RED" },
       isRequired: true,
     };
   }
@@ -68,15 +69,19 @@
   }
 
   function normalizeItem(item) {
+    const inputType = item.inputType || "TEXT";
     return {
       key: item.key || item.id || crypto.randomUUID(),
       label: item.label || "",
-      inputType: item.inputType || "TEXT",
-      safetyLevel: item.safetyLevel || "GREEN",
-      dropdownOptions: Array.isArray(item.options) ? item.options.map((value) => ({
+      inputType,
+      safetyLevel: inputType === "PHOTO" ? "NONE" : (item.safetyLevel || "GREEN"),
+      dropdownOptions: Array.isArray(item.options) && inputType === "DROPDOWN" ? item.options.map((value) => ({
         value,
         safetyLevel: item.optionSafety?.[value] || item.safetyLevel || "GREEN",
       })) : [],
+      yesNoSafety: inputType === "YES_NO"
+        ? { YES: item.optionSafety?.YES || "GREEN", NO: item.optionSafety?.NO || "RED" }
+        : { YES: "GREEN", NO: "RED" },
       isRequired: item.isRequired !== false,
     };
   }
@@ -124,7 +129,10 @@
       itemList.innerHTML = '<div class="empty">Add at least one checklist item.</div>';
       return;
     }
-    itemList.innerHTML = items.map((item, index) => `
+    itemList.innerHTML = items.map((item, index) => {
+      const inputType = item.inputType;
+      const isPhoto = inputType === "PHOTO";
+      return `
       <article class="item-card" data-key="${escapeHtml(item.key)}">
         <span class="item-number">${index + 1}</span>
         <label class="label-field">Item label<input data-field="label" value="${escapeHtml(item.label)}" maxlength="255" required placeholder="e.g. Hydraulic oil level"></label>
@@ -133,11 +141,12 @@
             ${["TEXT", "NUMBER", "YES_NO", "DROPDOWN", "DATE", "PHOTO"].map((value) => `<option value="${value}" ${item.inputType === value ? "selected" : ""}>${value.replace("_", " / ")}</option>`).join("")}
           </select>
         </label>
-        <label>Safety
+        ${isPhoto ? "" : `
+        <label>Safety <small>(NONE = informational only, no color shown on the report)</small>
           <select data-field="safetyLevel">
-            ${["GREEN", "YELLOW", "RED"].map((value) => `<option value="${value}" ${item.safetyLevel === value ? "selected" : ""}>${value}</option>`).join("")}
+            ${["NONE", "GREEN", "YELLOW", "RED"].map((value) => `<option value="${value}" ${(item.safetyLevel || "GREEN") === value ? "selected" : ""}>${value === "NONE" ? "No color (informational)" : value}</option>`).join("")}
           </select>
-        </label>
+        </label>`}
         ${item.inputType === "DROPDOWN" ? `
           <div class="options-field dropdown-editor">
             <div class="dropdown-title"><span>Dropdown values</span><button type="button" data-add-option="${escapeHtml(item.key)}">+ Add value</button></div>
@@ -153,13 +162,31 @@
               `).join("")}
             </div>
           </div>
+        ` : item.inputType === "YES_NO" ? `
+          <div class="options-field dropdown-editor">
+            <div class="dropdown-title"><span>Which answer is safe?</span></div>
+            <div class="yes-no-safety-editor">
+              <label>“Yes” means
+                <select data-yes-no-safety="YES">
+                  ${["GREEN", "YELLOW", "RED"].map((level) => `<option value="${level}" ${(item.yesNoSafety?.YES || "GREEN") === level ? "selected" : ""}>${level}</option>`).join("")}
+                </select>
+              </label>
+              <label>“No” means
+                <select data-yes-no-safety="NO">
+                  ${["GREEN", "YELLOW", "RED"].map((level) => `<option value="${level}" ${(item.yesNoSafety?.NO || "RED") === level ? "selected" : ""}>${level}</option>`).join("")}
+                </select>
+              </label>
+            </div>
+            <p class="options-help">When the technician picks the answer marked YELLOW or RED, they'll be asked to describe the issue.</p>
+          </div>
         ` : item.inputType === "PHOTO"
-          ? '<div class="options-field options-help">Technician will get a camera/file uploader. The photo is compressed automatically to 0.5 MB or less before saving.</div>'
+          ? '<div class="options-field options-help">Technician will get a camera/file uploader. The photo is compressed automatically to 0.5 MB or less before saving. Photo items never carry a safety color.</div>'
           : '<div class="options-field options-help">Choose DROPDOWN to add selectable values.</div>'}
         <label class="required">Required<input data-field="isRequired" type="checkbox" ${item.isRequired ? "checked" : ""}></label>
         <button class="remove-item" type="button" data-remove="${escapeHtml(item.key)}" aria-label="Remove item">×</button>
       </article>
-    `).join("");
+    `;
+    }).join("");
   }
 
   function renderServiceParts() {
@@ -246,6 +273,15 @@
       if (field === "inputType" && value === "DROPDOWN" && item.dropdownOptions.length === 0) {
         return { ...item, [field]: value, dropdownOptions: [{ value: "", safetyLevel: item.safetyLevel || "GREEN" }] };
       }
+      if (field === "inputType" && value === "PHOTO") {
+        return { ...item, [field]: value, safetyLevel: "NONE" };
+      }
+      if (field === "inputType" && value === "YES_NO" && !item.yesNoSafety) {
+        return { ...item, [field]: value, yesNoSafety: { YES: "GREEN", NO: "RED" } };
+      }
+      if (field === "inputType" && item.safetyLevel === "NONE" && value !== "PHOTO") {
+        return { ...item, [field]: value, safetyLevel: "GREEN" };
+      }
       return { ...item, [field]: value };
     });
     if (field === "inputType") renderItems();
@@ -271,7 +307,7 @@
       items: items.map((item) => ({
         label: item.label.trim(),
         inputType: item.inputType,
-        safetyLevel: item.safetyLevel,
+        safetyLevel: item.inputType === "PHOTO" ? "NONE" : item.safetyLevel,
         options: item.inputType === "DROPDOWN"
           ? item.dropdownOptions.map((option) => option.value.trim()).filter(Boolean)
           : item.inputType === "YES_NO" ? ["YES", "NO"] : [],
@@ -279,7 +315,9 @@
           ? Object.fromEntries(item.dropdownOptions
             .filter((option) => option.value.trim())
             .map((option) => [option.value.trim(), option.safetyLevel]))
-          : {},
+          : item.inputType === "YES_NO"
+            ? { YES: item.yesNoSafety?.YES || "GREEN", NO: item.yesNoSafety?.NO || "RED" }
+            : {},
         isRequired: item.isRequired,
       })),
       serviceParts: serviceParts
@@ -379,6 +417,14 @@
     const optionField = event.target.dataset.optionField;
     if (card && optionField) {
       updateDropdownOption(card.dataset.key, Number(event.target.dataset.optionIndex), optionField, event.target.value);
+      return;
+    }
+    const yesNoKey = event.target.dataset.yesNoSafety;
+    if (card && yesNoKey) {
+      items = items.map((item) => item.key === card.dataset.key ? {
+        ...item,
+        yesNoSafety: { ...(item.yesNoSafety || { YES: "GREEN", NO: "RED" }), [yesNoKey]: event.target.value },
+      } : item);
       return;
     }
     const field = event.target.dataset.field;

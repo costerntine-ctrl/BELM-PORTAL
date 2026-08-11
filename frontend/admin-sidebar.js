@@ -14,6 +14,8 @@
     "/reports-manager/",
     "/roles-manager/",
     "/settings-manager/",
+    "/bank-controller/",
+    "/recycle-bin/",
   ];
   const isAdminArea = pathname.startsWith("/admin/")
     || standaloneAdminPaths.some((path) => pathname === path || pathname.startsWith(path));
@@ -34,6 +36,19 @@
     window.location.replace("/tech");
     return;
   }
+
+  // Dark/light mode is a personal, per-admin preference kept purely in this
+  // browser's storage — keyed by this admin's own account id so it never
+  // leaks between different staff accounts sharing a computer, and never
+  // affects the separate Customer Portal / Technician app themes (which
+  // use their own keys entirely).
+  const themeStorageKey = `belm_theme_admin_${user.id || "default"}`;
+  function applyAdminTheme(theme) {
+    const safeTheme = theme === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = safeTheme;
+    localStorage.setItem(themeStorageKey, safeTheme);
+  }
+  applyAdminTheme(localStorage.getItem(themeStorageKey) || "light");
 
   const pages = [
     { section: "Main workflow", key: "overview", label: "All Overview", short: "AO", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
@@ -105,6 +120,19 @@
 
   const footer = document.createElement("div");
   footer.className = "belm-sidebar-footer";
+  const themeToggle = document.createElement("button");
+  themeToggle.className = "belm-sidebar-theme-toggle";
+  themeToggle.type = "button";
+  const updateThemeToggleLabel = () => {
+    const isDark = document.documentElement.dataset.theme === "dark";
+    themeToggle.textContent = isDark ? "☀ Light mode" : "☾ Dark mode";
+  };
+  updateThemeToggleLabel();
+  themeToggle.addEventListener("click", () => {
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    applyAdminTheme(next);
+    updateThemeToggleLabel();
+  });
   const logout = document.createElement("button");
   logout.className = "belm-sidebar-logout";
   logout.type = "button";
@@ -114,7 +142,7 @@
     localStorage.removeItem("belm_admin_user");
     window.location.href = "/admin/login";
   });
-  footer.appendChild(logout);
+  footer.append(themeToggle, logout);
 
   sidebar.append(userCard, nav);
   sidebar.appendChild(footer);

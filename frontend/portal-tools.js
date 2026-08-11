@@ -2268,6 +2268,7 @@
         ? `Editable until ${formatTanzaniaDateTime(report.expiresAt)}`
         : "Read-only";
     const editStateClass = report.isExpired ? "expired" : report.canEdit ? "editable" : "readonly";
+    const displayPhotoUrl = String(report.displayPhotoUrl || report.display_photo_url || "").trim();
 
     const modal = document.createElement("div");
     modal.id = "belmCheckedReportModal";
@@ -2293,6 +2294,7 @@
         <div><span>Machine type</span><strong>${escapeHtml(machine.machineType || "Not recorded")}</strong></div>
         <div><span>Serial / registration</span><strong>${escapeHtml(serialReference)}</strong></div>
         <div><span>Edit status</span><strong class="belm-edit-state ${editStateClass}">${escapeHtml(editState)}</strong></div>
+        ${displayPhotoUrl ? `<div class="belm-checked-report-display-photo-cell"><span>Display photo</span><img src="${escapeHtml(displayPhotoUrl)}" alt="Display photo" class="belm-checked-report-display-photo" data-view-report-photo="${escapeHtml(displayPhotoUrl)}"></div>` : ""}
       </div>
       <div class="belm-checked-report-table-wrap">
         <table class="belm-checked-report-table">
@@ -2307,8 +2309,8 @@
               : `<strong>${escapeHtml(rawValue || "—")}</strong>`;
             return `<tr>
               <td>${escapeHtml(answer.label || "Checklist item")}</td>
-              <td>${resultCell}</td>
-              <td><span class="belm-report-status status-${escapeHtml(answerStatus.toLowerCase())}">${escapeHtml(answerStatus)}</span></td>
+              <td>${resultCell}${String(answer.note || "").trim() ? `<div class="belm-report-issue-note">Issue: ${escapeHtml(String(answer.note).trim())}</div>` : ""}</td>
+              <td>${answerStatus === "NONE" ? "—" : `<span class="belm-report-status status-${escapeHtml(answerStatus.toLowerCase())}">${escapeHtml(answerStatus)}</span>`}</td>
               <td class="belm-report-evidence">${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="Evidence photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy" class="belm-report-photo-thumb" data-view-report-photo="${escapeHtml(photoUrl)}">` : "—"}</td>
             </tr>`;
           }).join("") : '<tr><td colspan="4" class="belm-report-empty">No checked answers were recorded.</td></tr>'}</tbody>
@@ -2777,12 +2779,62 @@
             ${SERVICE_DAY_TYPES.map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}
           </select>
         </label>
-      </div>`;
+      </div>
+      <label class="belm-display-photo-field">Display photo <small>(shown at the top of the report, next to Hour Meter)</small>
+        <input type="file" id="belmDisplayPhotoFile" accept="image/*" capture="environment">
+        <img id="belmDisplayPhotoPreview" class="belm-display-photo-preview hidden" alt="Display photo preview">
+      </label>`;
     anchor.insertAdjacentElement("afterend", block);
 
     document.getElementById("belmServiceDate").value = new Date().toISOString().slice(0, 10);
     document.getElementById("belmIsServiceDay").addEventListener("change", (event) => {
       document.getElementById("belmServiceDayFields").classList.toggle("hidden", !event.target.checked);
+    });
+    document.getElementById("belmDisplayPhotoFile").addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        const dataUrl = await compressPhotoToDataUrl(file);
+        block.dataset.displayPhoto = dataUrl;
+        const preview = document.getElementById("belmDisplayPhotoPreview");
+        preview.src = dataUrl;
+        preview.classList.remove("hidden");
+      } catch (error) {
+        alert(error.message || "Could not prepare that photo.");
+        event.target.value = "";
+      }
+    });
+  }
+
+  // Compresses an image file to a small JPEG data URL — shared logic so the
+  // "Display photo" field stays lightweight like every other checklist
+  // photo capture in this app, regardless of the source camera's resolution.
+  function compressPhotoToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !String(file.type || "").startsWith("image/")) {
+        reject(new Error("Select an image file."));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Could not read that photo."));
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => reject(new Error("Could not read that photo."));
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          const longestSide = Math.max(image.naturalWidth, image.naturalHeight);
+          const scale = Math.min(1, 1280 / Math.max(1, longestSide));
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext("2d");
+          context.fillStyle = "#ffffff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL("image/jpeg", 0.68));
+        };
+        image.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(file);
     });
   }
 
@@ -2797,6 +2849,7 @@
     Xhr.prototype.send = function (body) {
       if (this.belmChecklistSaveRequest) {
         const isServiceDay = document.getElementById("belmIsServiceDay")?.checked || false;
+        const displayPhoto = document.getElementById("belmServiceDayBlock")?.dataset.displayPhoto || "";
         try {
           const request = typeof body === "string" ? JSON.parse(body) : {};
           request.isServiceDay = isServiceDay;
@@ -2804,6 +2857,7 @@
             request.serviceDate = document.getElementById("belmServiceDate")?.value || "";
             request.serviceType = document.getElementById("belmServiceType")?.value || "";
           }
+          if (displayPhoto) request.displayPhotoUrl = displayPhoto;
           body = JSON.stringify(request);
         } catch (_) {}
       }

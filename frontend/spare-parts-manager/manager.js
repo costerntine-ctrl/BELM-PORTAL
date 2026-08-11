@@ -12,12 +12,9 @@
     openFn();
   }
 
-  function applyTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem("belm_theme", safeTheme);
-  }
-  applyTheme(localStorage.getItem("belm_theme") || "light");
+  // Dark/light mode is handled centrally by admin-sidebar.js (per-admin
+  // localStorage preference) — this page no longer sets its own theme or
+  // reads/writes a shared company-wide setting.
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -167,10 +164,6 @@
       updateMetrics();
       renderParts();
       renderRequests();
-      try {
-        const settings = await api("/settings");
-        if (["light", "dark"].includes(settings.displayTheme)) applyTheme(settings.displayTheme);
-      } catch (_) {}
     } catch (error) {
       document.getElementById("partsPanel").className = "empty";
       document.getElementById("partsPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;

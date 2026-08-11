@@ -217,6 +217,13 @@
             </select>
           </label>
         </div>
+        <label>Display photo <small>(shown at the top of the report, alongside Hour Meter and Service Day)</small>
+          <div class="checkup-photo-uploader">
+            <input id="checkupDisplayPhotoFile" type="file" accept="image/*" capture="environment" class="checkup-photo-picker">
+            <img id="checkupDisplayPhotoPreview" class="checkup-photo-preview hidden" alt="Display photo preview">
+            <input id="checkupDisplayPhotoValue" type="hidden">
+          </div>
+        </label>
         <div id="checkupItems" class="checkup-items"></div>
         <div class="dialog-actions">
           <button class="ghost" data-close="checkupDialog" type="button">Cancel</button>

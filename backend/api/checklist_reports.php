@@ -6,7 +6,7 @@ $user = require_auth();
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
-const SAFETY_RANK = ['GREEN' => 0, 'YELLOW' => 1, 'RED' => 2];
+const SAFETY_RANK = ['NONE' => -1, 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2];
 const CHECKLIST_REPORT_TIMEZONE = 'Africa/Dar_es_Salaam';
 
 function checklist_report_expiry(string $createdAt): DateTimeImmutable {
@@ -128,6 +128,7 @@ function checklist_report_api_view(array $report, array $machine, array $user): 
         ? (float)$report['hour_meter_reading']
         : 0;
     $report['overallStatus'] = $report['overall_status'] ?? 'GREEN';
+    $report['displayPhotoUrl'] = $report['display_photo_url'] ?? null;
     $report['createdAt'] = $report['created_at'] ?? null;
     $report['updatedAt'] = $report['updated_at'] ?? null;
     $report['expiresAt'] = $expiry->format(DateTimeInterface::ATOM);
@@ -214,6 +215,7 @@ function validate_checklist_report_answers(string $templateId, array $submittedA
             'value' => $value,
             'photoUrl' => $photoUrl !== '' ? $photoUrl : null,
             'safetyLevel' => $level,
+            'note' => $answer !== null ? trim((string)($answer['note'] ?? '')) : '',
         ];
     }
 
@@ -278,6 +280,8 @@ if ($method === 'POST' && $action === 'submit') {
     $answers = $validated['answers'];
     $worst = $validated['overallStatus'];
 
+    $displayPhotoUrl = trim((string)($b['displayPhotoUrl'] ?? ''));
+
     $reportId = uuid();
     $filledBy = ($user['roleName'] ?? '') === 'Technician'
         ? $user['name']
@@ -285,13 +289,13 @@ if ($method === 'POST' && $action === 'submit') {
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->prepare('INSERT INTO checklist_reports (id, machine_id, template_id, filled_by, hour_meter_reading, overall_status, created_at) VALUES (?,?,?,?,?,?,NOW())')
-            ->execute([$reportId, $b['machineId'], $b['templateId'], $filledBy, (float)$b['hourMeterReading'], $worst]);
+        $pdo->prepare('INSERT INTO checklist_reports (id, machine_id, template_id, filled_by, hour_meter_reading, overall_status, display_photo_url, created_at) VALUES (?,?,?,?,?,?,?,NOW())')
+            ->execute([$reportId, $b['machineId'], $b['templateId'], $filledBy, (float)$b['hourMeterReading'], $worst, $displayPhotoUrl !== '' ? $displayPhotoUrl : null]);
 
         $answerStmt = $pdo->prepare(
             'INSERT INTO checklist_answers
-             (id, report_id, template_item_id, label, value, photo_url, safety_level)
-             VALUES (?,?,?,?,?,?,?)'
+             (id, report_id, template_item_id, label, value, photo_url, safety_level, note)
+             VALUES (?,?,?,?,?,?,?,?)'
         );
         foreach ($answers as $answer) {
             $answerStmt->execute([
@@ -302,6 +306,7 @@ if ($method === 'POST' && $action === 'submit') {
                 $answer['value'],
                 $answer['photoUrl'],
                 $answer['safetyLevel'],
+                $answer['note'] !== '' ? $answer['note'] : null,
             ]);
         }
 
@@ -463,19 +468,30 @@ if ($method === 'GET' && $action === 'pdf') {
         'Date: ' . date('d/m/Y H:i', strtotime((string)$view['createdAt'])),
         'Hour meter: ' . $view['hourMeterReading'],
         'Overall status: ' . $view['overallStatus'],
-        str_repeat('-', 78),
     ];
     $photos = [];
+    // The built-in Display Photo (same standing as Hour Meter) goes first —
+    // both in the text summary and as the very first photo page, so it's
+    // the first thing seen after the header, ahead of individual item photos.
+    $displayPhoto = checklist_report_decode_photo($view['displayPhotoUrl'] ?? null);
+    if ($displayPhoto) {
+        $lines[] = 'Display photo: (see photo page below)';
+        $photos[] = ['label' => 'Display Photo', 'photo' => $displayPhoto];
+    }
+    $lines[] = str_repeat('-', 78);
     foreach ($answers as $answer) {
         $displayValue = $answer['value'];
         $isImageValue = $displayValue !== '' && str_starts_with((string)$displayValue, 'data:image/');
         $photo = checklist_report_decode_photo($answer['photoUrl'] ?: ($isImageValue ? $displayValue : null));
         if ($photo) $photos[] = ['label' => $answer['label'], 'photo' => $photo];
+        $levelSuffix = strtoupper((string)$answer['safetyLevel']) === 'NONE' ? '' : ' [' . $answer['safetyLevel'] . ']';
+        $noteSuffix = trim((string)($answer['note'] ?? '')) !== '' ? ' -- Issue: ' . trim((string)$answer['note']) : '';
         $lines[] = sprintf(
-            '%s: %s [%s]%s',
+            '%s: %s%s%s%s',
             $answer['label'],
             $isImageValue ? '(Photo)' : ($displayValue !== '' ? $displayValue : '—'),
-            $answer['safetyLevel'],
+            $levelSuffix,
+            $noteSuffix,
             $photo ? ' (see photo page below)' : ''
         );
     }
@@ -558,8 +574,8 @@ if ($method === 'PUT' && $action === 'update') {
 
         $answerStmt = $pdo->prepare(
             'INSERT INTO checklist_answers
-             (id, report_id, template_item_id, label, value, photo_url, safety_level)
-             VALUES (?,?,?,?,?,?,?)'
+             (id, report_id, template_item_id, label, value, photo_url, safety_level, note)
+             VALUES (?,?,?,?,?,?,?,?)'
         );
         foreach ($answers as $answer) {
             $answerStmt->execute([
@@ -570,6 +586,7 @@ if ($method === 'PUT' && $action === 'update') {
                 $answer['value'],
                 $answer['photoUrl'],
                 $answer['safetyLevel'],
+                $answer['note'] !== '' ? $answer['note'] : null,
             ]);
         }
 

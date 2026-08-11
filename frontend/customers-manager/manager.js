@@ -15,12 +15,9 @@
     openFn();
   }
 
-  function applyTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem("belm_theme", safeTheme);
-  }
-  applyTheme(localStorage.getItem("belm_theme") || "light");
+  // Dark/light mode is handled centrally by admin-sidebar.js (per-admin
+  // localStorage preference) — this page no longer sets its own theme or
+  // reads/writes a shared company-wide setting.
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -40,6 +37,7 @@
     YELLOW: "Yellow — Attention", ATTENTION: "Yellow — Attention",
     RED: "Red — Don't operate", CRITICAL: "Red — Don't operate",
     NOT_CHECKED: "Not checked", UNKNOWN: "Unknown",
+    NONE: "—",
   })[status] || status || "Not checked";
   const isAttention = (status) => ["YELLOW", "ATTENTION", "RED", "CRITICAL"].includes(status);
 
@@ -345,10 +343,6 @@
       customers = await api("/customers");
       updateMetrics();
       renderCustomers();
-      try {
-        const settings = await api("/settings");
-        if (["light", "dark"].includes(settings.displayTheme)) applyTheme(settings.displayTheme);
-      } catch (_) {}
     } catch (error) {
       document.getElementById("customerGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
@@ -657,15 +651,29 @@
     document.getElementById("reportViewDownloadLink").href =
       `/api/checklist-reports/${encodeURIComponent(report.id)}/pdf?token=${encodeURIComponent(token)}`;
     const answers = Array.isArray(report.answers) ? report.answers : [];
+    const displayPhotoUrl = String(report.displayPhotoUrl || "").trim();
     body.innerHTML = `
-      <p class="muted">${formatDateTime(report.createdAt)} · Filled by ${escapeHtml(report.filledBy || "—")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</p>
+      <div class="report-top-summary">
+        <div class="report-top-fact"><span>Hour Meter</span><strong>${escapeHtml(report.hourMeterReading ?? "—")}</strong></div>
+        <div class="report-top-fact"><span>Filled By</span><strong>${escapeHtml(report.filledBy || "—")}</strong></div>
+        <div class="report-top-fact"><span>Date</span><strong>${formatDateTime(report.createdAt)}</strong></div>
+        ${displayPhotoUrl ? `<div class="report-top-fact report-top-photo"><span>Display Photo</span><img src="${escapeHtml(displayPhotoUrl)}" alt="Display photo" class="report-display-photo" data-view-evidence-photo="${escapeHtml(displayPhotoUrl)}"></div>` : ""}
+      </div>
       <table><thead><tr><th>Item</th><th>Result</th><th>Status</th><th style="text-align:right">Evidence</th></tr></thead>
       <tbody>${answers.length ? answers.map((answer) => {
         const photoUrl = String(answer.photoUrl || "").trim();
+        const rawValue = String(answer.value ?? "");
+        const valueAsPhoto = /^data:image\//i.test(rawValue) ? rawValue : "";
+        const resultCell = valueAsPhoto
+          ? `<img src="${escapeHtml(valueAsPhoto)}" alt="Photo for ${escapeHtml(answer.label)}" class="evidence-thumb" data-view-evidence-photo="${escapeHtml(valueAsPhoto)}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer">`
+          : escapeHtml(rawValue || "—");
+        const level = String(answer.safetyLevel || "GREEN").toUpperCase();
+        const statusCell = level === "NONE" ? "—" : `<span class="machine-status ${escapeHtml(level)}">${escapeHtml(statusLabel(level))}</span>`;
+        const note = String(answer.note || "").trim();
         return `<tr>
           <td>${escapeHtml(answer.label)}</td>
-          <td>${escapeHtml(answer.value || "—")}</td>
-          <td><span class="machine-status ${escapeHtml(String(answer.safetyLevel || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(answer.safetyLevel))}</span></td>
+          <td>${resultCell}${note ? `<div class="checkup-issue-note-display">Issue: ${escapeHtml(note)}</div>` : ""}</td>
+          <td>${statusCell}</td>
           <td style="text-align:right">${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="Evidence" class="evidence-thumb" data-view-evidence-photo="${escapeHtml(photoUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer">` : "—"}</td>
         </tr>`;
       }).join("") : '<tr><td colspan="4" class="muted">No answers recorded.</td></tr>'}</tbody></table>`;
@@ -704,8 +712,14 @@
     const common = `data-checkup-item="${escapeHtml(item.id)}" ${required}`;
     if (inputType === "DROPDOWN" || inputType === "YES_NO") {
       const selectOptions = options.length ? options : (inputType === "YES_NO" ? ["Yes", "No"] : []);
-      return `<select ${common}><option value="">Select result</option>${selectOptions.map((option) =>
+      const optionSafety = item.optionSafety || {};
+      const selectHtml = `<select ${common} ${inputType === "YES_NO" ? 'data-yes-no-select="1"' : ""}><option value="">Select result</option>${selectOptions.map((option) =>
         `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}</select>`;
+      if (inputType !== "YES_NO") return selectHtml;
+      return `${selectHtml}
+        <div class="checkup-issue-note hidden" data-issue-note-for="${escapeHtml(item.id)}" data-option-safety='${escapeHtml(JSON.stringify(optionSafety))}'>
+          <label>Describe the issue<textarea data-checkup-issue-note="${escapeHtml(item.id)}" rows="2" placeholder="What did you observe?"></textarea></label>
+        </div>`;
     }
     if (inputType === "NUMBER") return `<input ${common} type="number" step="any">`;
     if (inputType === "DATE") return `<input ${common} type="date">`;
@@ -789,6 +803,21 @@
   }
 
   document.getElementById("checkupItems")?.addEventListener("change", async (event) => {
+    const yesNoSelect = event.target.closest("[data-yes-no-select]");
+    if (yesNoSelect) {
+      const itemId = yesNoSelect.dataset.checkupItem;
+      const noteBlock = document.querySelector(`[data-issue-note-for="${itemId}"]`);
+      if (noteBlock) {
+        let optionSafety = {};
+        try { optionSafety = JSON.parse(noteBlock.dataset.optionSafety || "{}"); } catch (_) {}
+        const selected = yesNoSelect.value.trim().toUpperCase();
+        const level = String(
+          optionSafety[selected] || optionSafety[yesNoSelect.value.trim()] || "GREEN"
+        ).toUpperCase();
+        noteBlock.classList.toggle("hidden", !["YELLOW", "RED"].includes(level));
+      }
+      return;
+    }
     const fileInput = event.target.closest('.checkup-photo-uploader input[type="file"]');
     if (!fileInput) return;
     const uploader = fileInput.closest(".checkup-photo-uploader");
@@ -829,6 +858,9 @@
     document.getElementById("checkupForm").reset();
     document.getElementById("checkupFormAlert").classList.add("hidden");
     document.getElementById("checkupServiceFields").classList.add("hidden");
+    document.getElementById("checkupDisplayPhotoValue").value = "";
+    document.getElementById("checkupDisplayPhotoPreview").src = "";
+    document.getElementById("checkupDisplayPhotoPreview").classList.add("hidden");
     document.getElementById("checkupItems").innerHTML = '<p class="muted">Loading checklist template…</p>';
     document.getElementById("checkupDialog").showModal();
     try {
@@ -866,6 +898,21 @@
     document.getElementById("checkupServiceFields").classList.toggle("hidden", !event.target.checked);
   });
 
+  document.getElementById("checkupDisplayPhotoFile")?.addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressCheckupPhoto(file);
+      document.getElementById("checkupDisplayPhotoValue").value = compressed.dataUrl;
+      const preview = document.getElementById("checkupDisplayPhotoPreview");
+      preview.src = compressed.dataUrl;
+      preview.classList.remove("hidden");
+    } catch (error) {
+      showAlert(error.message, true);
+      event.target.value = "";
+    }
+  });
+
   document.getElementById("checkupForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const button = document.getElementById("saveCheckupButton");
@@ -879,10 +926,13 @@
     }
     const answers = Array.from(document.querySelectorAll("[data-checkup-item]")).map((field) => {
       const isPhoto = field.dataset.checkupItemType === "PHOTO";
+      const issueNote = document.querySelector(`[data-checkup-issue-note="${field.dataset.checkupItem}"]`);
+      const issueNoteVisible = issueNote && !issueNote.closest(".checkup-issue-note")?.classList.contains("hidden");
       return {
         templateItemId: field.dataset.checkupItem,
         value: isPhoto ? "" : field.value,
         photoUrl: isPhoto ? field.value : undefined,
+        note: issueNoteVisible ? issueNote.value.trim() || undefined : undefined,
       };
     });
     const isServiceDay = document.getElementById("checkupIsServiceDay").checked;
@@ -899,6 +949,7 @@
           isServiceDay,
           serviceDate: isServiceDay ? document.getElementById("checkupServiceDate").value : undefined,
           serviceType: isServiceDay ? document.getElementById("checkupServiceType").value : undefined,
+          displayPhotoUrl: document.getElementById("checkupDisplayPhotoValue").value || undefined,
         }),
       });
       await showButtonSuccess(button);

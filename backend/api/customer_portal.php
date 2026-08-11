@@ -331,6 +331,7 @@ function customer_checklist_report_view(array $report): array {
         ? (float)$report['hour_meter_reading']
         : 0;
     $report['overallStatus'] = $report['overall_status'] ?? 'GREEN';
+    $report['displayPhotoUrl'] = $report['display_photo_url'] ?? null;
     $report['pdfUrl'] = $report['pdf_url'] ?? null;
     $report['sentToCustomerAt'] = $report['sent_to_customer_at'] ?? null;
     $report['createdAt'] = $report['created_at'] ?? null;
@@ -1739,19 +1740,27 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
         'Date: ' . date('d/m/Y H:i', strtotime((string)($view['createdAt'] ?? 'now'))),
         'Hour meter: ' . ($view['hourMeterReading'] ?? 0),
         'Overall status: ' . ($view['overallStatus'] ?? 'GREEN'),
-        str_repeat('-', 78),
     ];
     $photos = [];
+    $displayPhoto = checklist_report_decode_photo($view['displayPhotoUrl'] ?? null);
+    if ($displayPhoto) {
+        $lines[] = 'Display photo: (see photo page below)';
+        $photos[] = ['label' => 'Display Photo', 'photo' => $displayPhoto];
+    }
+    $lines[] = str_repeat('-', 78);
     foreach ($answers as $answer) {
         $displayValue = $answer['value'];
         $isImageValue = $displayValue !== '' && str_starts_with((string)$displayValue, 'data:image/');
         $photo = checklist_report_decode_photo($answer['photoUrl'] ?: ($isImageValue ? $displayValue : null));
         if ($photo) $photos[] = ['label' => $answer['label'], 'photo' => $photo];
+        $levelSuffix = strtoupper((string)$answer['safetyLevel']) === 'NONE' ? '' : ' [' . $answer['safetyLevel'] . ']';
+        $noteSuffix = trim((string)($answer['note'] ?? '')) !== '' ? ' -- Issue: ' . trim((string)$answer['note']) : '';
         $lines[] = sprintf(
-            '%s: %s [%s]%s',
+            '%s: %s%s%s%s',
             $answer['label'],
             $isImageValue ? '(Photo)' : ($displayValue !== '' ? $displayValue : '—'),
-            $answer['safetyLevel'],
+            $levelSuffix,
+            $noteSuffix,
             $photo ? ' (see photo page below)' : ''
         );
     }

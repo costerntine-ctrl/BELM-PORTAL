@@ -3,53 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Operations Control Center — BELM</title>
+  <title>All Overview — BELM Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/management-analytics.css?v=140">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=140">
-  <link rel="stylesheet" href="/belm-theme.css?v=140">
+  <link rel="stylesheet" href="/management-analytics.css?v=18-sidebar-activity">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
 </head>
-<body class="management-page belm-v140">
-  <header class="management-topbar belm-command-topbar">
-    <div class="belm-brand-lockup">
-      <span class="belm-brand-mark">B</span>
-      <div><strong>BELM General Tech</strong><small>Service & Operations Platform</small></div>
-    </div>
+<body class="management-page">
+  <header class="management-topbar">
+    <div><strong>BELM General Tech</strong><small>All-role management analysis</small></div>
     <div class="topbar-actions">
-      <span class="belm-live-pill"><i></i> Live operations</span>
       <button id="refreshButton" type="button">Refresh</button>
     </div>
   </header>
 
-  <main class="management-shell belm-command-shell">
-    <section class="management-hero belm-command-hero">
+  <main class="management-shell">
+    <section class="management-hero">
       <div>
-        <p class="eyebrow">BELM COMMAND CENTER</p>
-        <h1>Operations Control Center</h1>
-        <p>Manage customers, machines, service jobs, people, stock and finance from one connected operational view.</p>
-        <div class="belm-hero-actions">
-          <a class="button belm-primary-action" href="/service-request-manager/">Open service work</a>
-          <a class="button secondary" href="/customers-manager/">Customers & machines</a>
-          <a class="button secondary" href="/reports-manager/">Reports</a>
-        </div>
+        <p class="eyebrow">Business, people and operations</p>
+        <h1>All Overview</h1>
+        <p>One card-based view of customers, staff roles, finance, service work, machines and attendance.</p>
       </div>
-      <div class="belm-hero-status-card">
-        <span>System focus</span>
-        <strong>Service → Approval → Work → Billing</strong>
-        <p>Every job should leave a clear timeline, machine history and financial trail.</p>
-      </div>
+      <a class="button secondary" href="/reports-manager/">Open Detailed Reports</a>
     </section>
 
-    <section class="belm-quick-actions" aria-label="Quick actions">
-      <a href="/service-request-manager/" class="belm-quick-card"><span class="belm-quick-icon">SR</span><div><strong>Service Requests</strong><small>Review, assign and track jobs</small></div><b>→</b></a>
-      <a href="/customers-manager/" class="belm-quick-card"><span class="belm-quick-icon">CM</span><div><strong>Customers & Machines</strong><small>Fleet and customer records</small></div><b>→</b></a>
-      <a href="/spare-parts-manager/" class="belm-quick-card"><span class="belm-quick-icon">SP</span><div><strong>Parts & Stock</strong><small>Inventory and service parts</small></div><b>→</b></a>
-      <a href="/billing-manager/" class="belm-quick-card"><span class="belm-quick-icon">FN</span><div><strong>Finance</strong><small>Invoices, payments and costs</small></div><b>→</b></a>
-    </section>
-
-    <section class="filter-panel belm-period-panel">
+    <section class="filter-panel">
       <div class="filters">
         <label>Analysis period
           <select id="periodSelect">
@@ -64,50 +43,60 @@
     </section>
 
     <div id="pageAlert" class="alert hidden"></div>
+    <section id="primaryMetrics" class="metrics-grid" aria-label="Main overview totals"></section>
+    <section id="financeMetrics" class="metrics-grid" aria-label="Finance overview"></section>
 
-    <section class="belm-section-heading"><div><span>01</span><h2>Operational pulse</h2></div><p>Customers, machines, work and action items requiring attention.</p></section>
-    <section id="primaryMetrics" class="metrics-grid belm-metric-grid" aria-label="Main overview totals"></section>
-
-    <section class="belm-section-heading"><div><span>02</span><h2>Financial pulse</h2></div><p>Sales, collections, expenses and current profit/loss picture.</p></section>
-    <section id="financeMetrics" class="metrics-grid belm-metric-grid" aria-label="Finance overview"></section>
-
-    <section class="three-column belm-status-grid">
-      <article class="panel belm-data-card">
-        <div class="section-head"><div><h2>Service requests</h2><p>Job pipeline by status</p></div><a href="/service-request-manager/">Open →</a></div>
-        <div id="serviceBars" class="bar-list"></div>
-      </article>
-      <article class="panel belm-data-card">
-        <div class="section-head"><div><h2>Machine condition</h2><p>Fleet health comparison</p></div><a href="/customers-manager/">Fleet →</a></div>
-        <div id="machineBars" class="bar-list"></div>
-      </article>
-      <article class="panel belm-data-card">
-        <div class="section-head"><div><h2>Attendance today</h2><p>Employee presence status</p></div><a href="/roles-manager/">People →</a></div>
-        <div id="attendanceBars" class="bar-list"></div>
-      </article>
-    </section>
-
-    <section class="panel inventory-panel belm-data-card belm-inventory-card">
+    <section class="panel inventory-panel">
       <div class="section-head">
-        <div><span class="belm-kicker">STOCK CONTROL</span><h2>Spare Parts Inventory</h2><p>Live stock quantities, values and reorder warnings connected to service operations.</p></div>
-        <a class="button" href="/spare-parts-manager/">Open inventory</a>
+        <div><h2>Spare Parts Inventory</h2><p>Live stock quantities, values and reorder warnings read directly from inventory.</p></div>
+        <a class="button" href="/spare-parts-manager/">Open Spare Parts Inventory</a>
       </div>
-      <section id="inventoryMetrics" class="metrics-grid inventory-metrics belm-metric-grid" aria-label="Spare parts inventory totals"></section>
-      <div class="data-table-wrap belm-table-wrap">
+      <section id="inventoryMetrics" class="metrics-grid inventory-metrics" aria-label="Spare parts inventory totals"></section>
+      <div class="data-table-wrap">
         <table>
-          <thead><tr><th>Spare part</th><th>Part number</th><th>Category</th><th>Stock qty</th><th>Reorder point</th><th>Purchase value</th><th>Status</th></tr></thead>
-          <tbody id="inventoryRows"><tr><td colspan="7" class="empty-state">Loading inventory…</td></tr></tbody>
+          <thead>
+            <tr>
+              <th>Spare part</th>
+              <th>Part number</th>
+              <th>Category</th>
+              <th>Stock qty</th>
+              <th>Reorder point</th>
+              <th>Purchase value</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryRows">
+            <tr><td colspan="7" class="empty-state">Loading inventory…</td></tr>
+          </tbody>
         </table>
       </div>
     </section>
 
-    <section class="panel belm-data-card">
-      <div class="section-head"><div><span class="belm-kicker">PEOPLE & RESPONSIBILITY</span><h2>Team workload by role</h2><p>Active users, pending work and completed work for each BELM role.</p></div><a class="button secondary" href="/roles-manager/">Manage people</a></div>
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Analysis by role</h2><p>Active users, pending work and completed work for each system role.</p></div>
+      </div>
       <div id="roleGrid" class="role-grid"></div>
+    </section>
+
+    <section class="three-column">
+      <article class="panel">
+        <div class="section-head"><div><h2>Service requests</h2><p>Status comparison</p></div></div>
+        <div id="serviceBars" class="bar-list"></div>
+      </article>
+      <article class="panel">
+        <div class="section-head"><div><h2>Machine condition</h2><p>Health status comparison</p></div></div>
+        <div id="machineBars" class="bar-list"></div>
+      </article>
+      <article class="panel">
+        <div class="section-head"><div><h2>Attendance today</h2><p>Presence by status</p></div></div>
+        <div id="attendanceBars" class="bar-list"></div>
+      </article>
     </section>
   </main>
 
   <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=140"></script>
-  <script src="/overview-manager/app.js?v=140"></script>
+  <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+  <script src="/overview-manager/app.js?v=18-sidebar-activity"></script>
 </body>
 </html>

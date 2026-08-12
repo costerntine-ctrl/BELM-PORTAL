@@ -3,31 +3,59 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>BELM Service & Operations Platform</title>
+  <title>BELM Portal</title>
   <style>
-    :root{--navy:#121b2e;--green:#00a651;--green2:#087c42;--yellow:#ffd400;--muted:#6e7c90;--line:#e2eae6;--canvas:#f5f8f6}
-    *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Inter,system-ui,sans-serif;color:#172236;background:radial-gradient(circle at 5% 5%,rgba(0,166,81,.08),transparent 24rem),radial-gradient(circle at 95% 0,rgba(255,212,0,.11),transparent 25rem),var(--canvas)}
-    body:before{content:"";position:fixed;inset:0 0 auto;height:4px;background:linear-gradient(90deg,var(--yellow) 0 32%,var(--green) 32% 100%);z-index:10}
-    header{width:min(1180px,calc(100% - 32px));margin:0 auto;padding:26px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{display:flex;align-items:center;gap:12px}.mark{width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,var(--green),var(--green2));color:white;border:2px solid var(--yellow);font-weight:900;box-shadow:0 10px 26px rgba(0,166,81,.2)}.brand strong{display:block}.brand span{display:block;margin-top:2px;color:var(--muted);font-size:11px;font-weight:600}.secure{padding:8px 11px;border:1px solid #cdebd9;border-radius:999px;background:#effcf4;color:#227146;font-size:11px;font-weight:800}
-    main{width:min(1180px,calc(100% - 32px));margin:32px auto 60px}.hero{overflow:hidden;position:relative;padding:clamp(34px,6vw,72px);border-radius:32px;color:white;background:radial-gradient(circle at 85% 10%,rgba(255,212,0,.18),transparent 22rem),linear-gradient(125deg,#11192b,#192943 55%,#123c33);box-shadow:0 30px 80px rgba(18,27,46,.18)}.eyebrow{margin:0 0 10px;color:#9ee8be;font-size:11px;font-weight:900;letter-spacing:1.6px}.hero h1{max-width:800px;margin:0;font-size:clamp(38px,6vw,70px);line-height:.98;letter-spacing:-2.6px}.hero p{max-width:690px;margin:20px 0 0;color:#c9d5e2;font-size:16px;line-height:1.7}.flow{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}.flow span{padding:8px 10px;border:1px solid rgba(255,255,255,.13);border-radius:999px;background:rgba(255,255,255,.07);font-size:11px;font-weight:700}.flow b{align-self:center;color:#81dca9}
-    .grid{display:grid;grid-template-columns:1.35fr .65fr;gap:18px;margin-top:18px}.card{position:relative;overflow:hidden;padding:28px;border:1px solid var(--line);border-radius:22px;background:white;box-shadow:0 12px 34px rgba(18,27,46,.07);text-decoration:none;color:inherit;transition:.18s ease}.card:hover{transform:translateY(-3px);border-color:#b8dfc8;box-shadow:0 20px 48px rgba(18,27,46,.11)}.card .icon{width:46px;height:46px;display:grid;place-items:center;border-radius:14px;background:#eaf9f0;color:var(--green2);font-weight:900}.card h2{margin:20px 0 8px;font-size:21px;letter-spacing:-.5px}.card p{margin:0;color:var(--muted);font-size:13px;line-height:1.6}.go{display:inline-block;margin-top:22px;color:var(--green2);font-size:12px;font-weight:900}.login{border-color:#bce5cc}.apply .icon{background:#fff8d6;color:#8a7300}.roles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.role{padding:12px;border-radius:14px;background:#f7faf8}.role strong{display:block;font-size:12px}.role span{display:block;margin-top:3px;color:var(--muted);font-size:10px}
-    footer{text-align:center;padding:12px 20px 28px;color:#7b8795;font-size:11px}@media(max-width:760px){header{align-items:flex-start}.secure{display:none}.grid{grid-template-columns:1fr}.roles{grid-template-columns:1fr}.hero{border-radius:24px;padding:36px 24px}.hero h1{font-size:42px}}
+    :root { color-scheme: light; --navy:#151d31; --navy2:#202b45; --green:#00a651; --green2:#008640; --yellow:#ffd400; --line:#dce6e0; --muted:#617083; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; font-family:Inter,system-ui,sans-serif; color:#102235;
+      background:radial-gradient(circle at 10% 8%,rgba(255,212,0,.12) 0,transparent 31rem),radial-gradient(circle at 95% 3%,rgba(0,166,81,.1) 0,transparent 30rem),#f4f7f5; }
+    body::before { content:""; position:fixed; inset:0 0 auto; z-index:100; height:5px; background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); }
+    header { background:linear-gradient(110deg,var(--navy),var(--navy2)); color:#fff; padding:22px clamp(20px,5vw,68px); display:flex; align-items:center; gap:14px; box-shadow:0 8px 24px rgba(21,29,49,.17); }
+    .mark { width:46px; height:46px; border-radius:12px; display:grid; place-items:center; background:var(--green); border:2px solid var(--yellow); font-weight:900; box-shadow:0 7px 18px rgba(0,166,81,.23); }
+    header strong { display:block; font-size:18px; }
+    header span { color:#a9bdd2; font-size:12px; }
+    main { width:min(1040px,calc(100% - 32px)); margin:54px auto; }
+    h1 { font-size:clamp(30px,5vw,50px); margin:0; color:var(--navy); letter-spacing:-1.5px; }
+    .lead { color:var(--muted); font-size:17px; max-width:720px; line-height:1.6; margin:14px 0 34px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+    .card { background:#fff; border:1px solid var(--line); border-radius:18px; padding:24px; color:inherit; position:relative; overflow:hidden;
+      text-decoration:none; box-shadow:0 8px 26px rgba(21,29,49,.06); transition:.18s ease; }
+    .card::before { content:""; position:absolute; inset:0 0 auto; height:4px; background:var(--green); transform:scaleX(0); transform-origin:left; transition:.18s ease; }
+    .card:hover { transform:translateY(-3px); border-color:#9ccfb4; box-shadow:0 14px 34px rgba(21,29,49,.1); }
+    .card:hover::before { transform:scaleX(1); }
+    .icon { width:42px; height:42px; border-radius:11px; background:#e7f8ee; color:var(--green2); display:grid; place-items:center; font-weight:900; }
+    h2 { font-size:17px; margin:18px 0 8px; }
+    .card p { font-size:13px; color:var(--muted); line-height:1.5; margin:0 0 18px; }
+    .go { color:var(--green2); font-weight:800; font-size:13px; }
+    .login { grid-column:1/-1; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:20px; border:2px solid var(--green); }
+    .login .icon { background:var(--yellow); color:var(--navy); }
+    .login h2,.login p { margin:0; }
+    .login::before { background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); transform:scaleX(1); }
+    @media (max-width:620px) { .login { grid-template-columns:auto 1fr; } .login .go { grid-column:1/-1; } }
+    footer { color:#6c7c8d; text-align:center; font-size:12px; padding:20px; }
   </style>
 </head>
 <body>
-<header><div class="brand"><div class="mark">B</div><div><strong>BELM GENERAL TECH</strong><span>Service & Operations Platform</span></div></div><span class="secure">Operations · Maintenance · Finance</span></header>
-<main>
-  <section class="hero">
-    <p class="eyebrow">CONNECTED SERVICE OPERATIONS</p>
-    <h1>One workspace for BELM, customers and their teams.</h1>
-    <p>Manage machines, service jobs, inspections, approvals, people, parts and billing with a clear operational trail from the first request to job closure.</p>
-    <div class="flow"><span>Request</span><b>→</b><span>Review</span><b>→</b><span>Assign</span><b>→</b><span>Inspect</span><b>→</b><span>Approve</span><b>→</b><span>Work</span><b>→</b><span>Sign-off</span><b>→</b><span>Billing</span></div>
-  </section>
-  <section class="grid">
-    <a class="card login" href="/admin/login"><div class="icon">→</div><h2>Sign in to BELM Operations</h2><p>Authorized BELM management and employees can access the operational workspace according to their role and permissions.</p><div class="roles"><div class="role"><strong>Management</strong><span>Control & approvals</span></div><div class="role"><strong>Service Team</strong><span>Jobs & engineering</span></div><div class="role"><strong>Finance / Store</strong><span>Costs, billing & parts</span></div></div><span class="go">Open secure login →</span></a>
-    <a class="card apply" href="/apply/"><div class="icon">+</div><h2>Request Access</h2><p>Customers and authorized employees request registration here. Access is activated after BELM approval.</p><span class="go">Start registration →</span></a>
-  </section>
-</main>
-<footer>© BELM General Tech Service Limited · Tanzania</footer>
+  <header>
+    <div class="mark">B</div>
+    <div><strong>BELM GENERAL TECH</strong><span>Service & Maintenance Portal</span></div>
+  </header>
+  <main>
+    <h1>Welcome to BELM Portal</h1>
+    <p class="lead">Administrators sign in here. New customers, staff and Technicians must first submit a registration request; dashboard access starts only after Admin approval.</p>
+    <section class="grid">
+      <a class="card login" href="/admin/login">
+        <div class="icon">→</div>
+        <div><h2>Administrator Login</h2>
+        <p>Sign in with the approved Administrator email and password.</p></div>
+        <span class="go">Open Admin login →</span>
+      </a>
+      <a class="card" href="/apply/">
+        <div class="icon">R</div><h2>Request Registration</h2>
+        <p>Customers, staff and Technicians submit details here. Admin approval generates the first login link and password.</p><span class="go">Open registration request →</span>
+      </a>
+    </section>
+  </main>
+  <footer>© BELM General Tech Service Limited · Tanzania</footer>
 </body>
 </html>

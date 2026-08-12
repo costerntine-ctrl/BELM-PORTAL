@@ -3127,7 +3127,6 @@
   installThemeSaving();
   syncSavedTheme();
   refreshShortcut();
-  addCustomerWorkshopShortcut();
   addTechnicianTasksShortcut();
   addTechnicianSpareShortcut();
   addTechnicianSpareRecommendationShortcut();
@@ -3164,16 +3163,7 @@
   correctLegacyCopy();
   enhanceCheckedReportButtons();
   setInterval(() => {
-  
-  function addCustomerWorkshopShortcut() {
-    if (!window.location.pathname.startsWith("/portal") || window.location.pathname === "/portal/login") return;
-    if (!localStorage.getItem("belm_customer_token") || document.getElementById("belm-workshop-shortcut")) return;
-    const a = document.createElement("a");
-    a.id = "belm-workshop-shortcut"; a.href = "/customer-workshop/"; a.textContent = "Workshop Control";
-    Object.assign(a.style,{position:"fixed",right:"18px",bottom:"18px",zIndex:"9999",padding:"12px 16px",borderRadius:"999px",background:"#087c42",color:"white",fontWeight:"800",fontSize:"12px",textDecoration:"none",boxShadow:"0 10px 30px #0003"});
-    document.body.appendChild(a);
-  }
-  refreshShortcut();
+    refreshShortcut();
     addTechnicianTasksShortcut();
     addTechnicianSpareShortcut();
     addTechnicianSpareRecommendationShortcut();

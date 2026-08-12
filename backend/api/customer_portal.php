@@ -8,7 +8,6 @@ $method = $_SERVER['REQUEST_METHOD'];
 $sub = $_GET['sub'] ?? '';
 $sub2 = $_GET['sub2'] ?? '';
 $sub3 = $_GET['sub3'] ?? '';
-$sub4 = $_GET['sub4'] ?? '';
 
 function log_customer_activity(array $customer, string $action): void {
     $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Someone'));
@@ -1817,28 +1816,4 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
     output_checklist_report_pdf('checklist-report-' . $safeMachine . '.pdf', $lines, $photos);
 }
 
-// V150 Customer Workshop workspace: customer-managed technicians and internal jobs.
-if ($sub === 'workshop' && $sub2 === 'overview' && $method === 'GET') {
-    $cid=$customer['id'];
-    $contract=db()->prepare("SELECT * FROM customer_contracts WHERE customer_id=? AND status='ACTIVE' AND end_date>=CURRENT_DATE ORDER BY end_date LIMIT 1");$contract->execute([$cid]);
-    $counts=[];
-    foreach(['sites'=>'customer_sites','staff'=>'customer_workshop_staff','orders'=>'workshop_work_orders'] as $key=>$table){$q=db()->prepare("SELECT COUNT(*) FROM $table WHERE customer_id=?".($key==='orders'?" AND status NOT IN ('COMPLETED','CANCELLED')":""));$q->execute([$cid]);$counts[$key]=(int)$q->fetchColumn();}
-    $q=db()->prepare("SELECT COUNT(*) FROM machines WHERE customer_id=? AND deleted_at IS NULL");$q->execute([$cid]);$counts['machines']=(int)$q->fetchColumn();
-    json_out(['contract'=>$contract->fetch()?:null,'counts'=>$counts]);
-}
-if ($sub === 'workshop' && $sub2 === 'sites') {
-    if($method==='GET'){ $q=db()->prepare('SELECT * FROM customer_sites WHERE customer_id=? AND is_active=1 ORDER BY name');$q->execute([$customer['id']]);json_out($q->fetchAll()); }
-    if($method==='POST'){ require_customer_write_access($customer);$b=body();$name=trim((string)($b['name']??''));if(!$name)json_error('Site/workshop name is required.');$id=uuid();db()->prepare('INSERT INTO customer_sites(id,customer_id,name,location,site_type) VALUES(?,?,?,?,?)')->execute([$id,$customer['id'],$name,$b['location']??null,$b['siteType']??'WORKSHOP']);log_customer_activity($customer,"Created workshop/site $name.");json_out(['id'=>$id],201); }
-}
-if ($sub === 'workshop' && $sub2 === 'staff') {
-    if($method==='GET'){ $q=db()->prepare('SELECT ws.*,cs.name site_name FROM customer_workshop_staff ws LEFT JOIN customer_sites cs ON cs.id=ws.site_id WHERE ws.customer_id=? AND ws.is_active=1 ORDER BY ws.name');$q->execute([$customer['id']]);json_out($q->fetchAll()); }
-    if($method==='POST'){ require_customer_write_access($customer);$b=body();$name=trim((string)($b['name']??''));if(!$name)json_error('Employee name is required.');$id=uuid();db()->prepare('INSERT INTO customer_workshop_staff(id,customer_id,site_id,name,phone,email,role,specialty) VALUES(?,?,?,?,?,?,?,?)')->execute([$id,$customer['id'],$b['siteId']??null,$name,$b['phone']??null,$b['email']??null,$b['role']??'TECHNICIAN',$b['specialty']??null]);log_customer_activity($customer,"Added workshop employee $name.");json_out(['id'=>$id],201); }
-}
-if ($sub === 'workshop' && $sub2 === 'orders') {
-    if($method==='GET'){ $q=db()->prepare('SELECT wo.*,m.model machine_model,cs.name site_name,ws.name assigned_customer_staff_name FROM workshop_work_orders wo LEFT JOIN machines m ON m.id=wo.machine_id LEFT JOIN customer_sites cs ON cs.id=wo.site_id LEFT JOIN customer_workshop_staff ws ON ws.id=wo.assigned_customer_staff_id WHERE wo.customer_id=? ORDER BY wo.created_at DESC');$q->execute([$customer['id']]);json_out($q->fetchAll()); }
-    if($method==='POST' && !$sub3){ require_customer_write_access($customer);$b=body();$title=trim((string)($b['title']??''));$desc=trim((string)($b['description']??''));if(!$title||!$desc)json_error('Title and description are required.');$machine=$b['machineId']??null;if($machine){$v=db()->prepare('SELECT 1 FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL');$v->execute([$machine,$customer['id']]);if(!$v->fetch())json_error('Machine not found.',404);} $contract=db()->prepare("SELECT id FROM customer_contracts WHERE customer_id=? AND status='ACTIVE' AND end_date>=CURRENT_DATE ORDER BY end_date LIMIT 1");$contract->execute([$customer['id']]);$contractId=$contract->fetchColumn()?:null;$id=uuid();$number='WO-'.date('ymd').'-'.strtoupper(substr(str_replace('-','',$id),0,6));db()->prepare('INSERT INTO workshop_work_orders(id,work_order_number,customer_id,contract_id,site_id,machine_id,assigned_customer_staff_id,job_type,title,description,priority,status,created_by_name) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([$id,$number,$customer['id'],$contractId,$b['siteId']??null,$machine,$b['assignedStaffId']??null,$b['jobType']??'BREAKDOWN_REPAIR',$title,$desc,$b['priority']??'NORMAL','OPEN',$customer['actorName']??$customer['name']]);db()->prepare('INSERT INTO workshop_work_order_history(id,work_order_id,event_type,to_value,actor_name,note) VALUES(?,?,?,?,?,?)')->execute([uuid(),$id,'OPENED','OPEN',$customer['actorName']??$customer['name'],'Internal workshop work order opened']);log_customer_activity($customer,"Opened workshop work order $number.");json_out(['id'=>$id,'workOrderNumber'=>$number],201); }
-    if($method==='POST' && $sub3 && $sub4==='escalate'){ require_customer_write_access($customer); $id=$sub3; $q=db()->prepare('SELECT * FROM workshop_work_orders WHERE id=? AND customer_id=?');$q->execute([$id,$customer['id']]);$wo=$q->fetch();if(!$wo)json_error('Work order not found.',404);if($wo['belm_service_request_id'])json_error('Already escalated to BELM.');$sr=uuid();$pdo=db();$pdo->beginTransaction();try{$pdo->prepare("INSERT INTO service_requests(id,customer_id,machine_id,service_type,description,status,priority,origin,created_at,updated_at) VALUES(?,?,?,?,?,'OPEN',?,'CUSTOMER_WORKSHOP',NOW(),NOW())")->execute([$sr,$customer['id'],$wo['machine_id'],$wo['job_type'],'Workshop escalation '.$wo['work_order_number'].': '.$wo['description'],$wo['priority']]);$pdo->prepare("UPDATE workshop_work_orders SET status='ESCALATED_TO_BELM',belm_service_request_id=?,updated_at=NOW() WHERE id=?")->execute([$sr,$id]);$pdo->prepare('INSERT INTO workshop_work_order_history(id,work_order_id,event_type,from_value,to_value,actor_name,note) VALUES(?,?,?,?,?,?,?)')->execute([uuid(),$id,'ESCALATED',$wo['status'],'ESCALATED_TO_BELM',$customer['actorName']??$customer['name'],'Escalated to BELM']);$pdo->commit();}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}log_customer_activity($customer,"Escalated workshop work order {$wo['work_order_number']} to BELM.");json_out(['ok'=>true,'serviceRequestId'=>$sr]); }
-}
-
 json_error('Unknown request', 404);
-

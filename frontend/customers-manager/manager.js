@@ -862,7 +862,17 @@
     document.getElementById("checkupDisplayPhotoPreview").src = "";
     document.getElementById("checkupDisplayPhotoPreview").classList.add("hidden");
     document.getElementById("checkupItems").innerHTML = '<p class="muted">Loading checklist template…</p>';
+    document.getElementById("checkupLastHourMeter").textContent = "(loading last recorded hours…)";
     document.getElementById("checkupDialog").showModal();
+    api(`/checklist-reports?action=service-status&machineId=${encodeURIComponent(machineId)}`)
+      .then((status) => {
+        const lastHours = Number(status?.totalHours || 0);
+        document.getElementById("checkupLastHourMeter").textContent =
+          `(last recorded: ${lastHours.toLocaleString("en-TZ")} hrs — today's reading must be the same or higher)`;
+      })
+      .catch(() => {
+        document.getElementById("checkupLastHourMeter").textContent = "(last recorded hours unavailable)";
+      });
     try {
       const templates = await api(`/checklist-templates?machineType=${encodeURIComponent(machineType)}`);
       const active = templates.filter((template) => template.isActive);
@@ -921,6 +931,11 @@
     const templateId = document.getElementById("checkupTemplate").value;
     if (!templateId) {
       alertBox.textContent = "Select a checklist template.";
+      alertBox.classList.remove("hidden");
+      return;
+    }
+    if (!document.getElementById("checkupDisplayPhotoValue").value) {
+      alertBox.textContent = "Take a photo of the machine display (fuel level, codes) before submitting.";
       alertBox.classList.remove("hidden");
       return;
     }

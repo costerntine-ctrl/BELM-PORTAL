@@ -1466,6 +1466,17 @@
   function technicianMachineInfoCard(card, machine) {
     if (card.dataset.belmTechnicianInfoReady === "1") return;
     card.dataset.belmTechnicianInfoReady = "1";
+    // Any click that results in this card's own native "open checklist"
+    // action (a direct tap on the card OR our injected "Check-up" button
+    // re-firing card.click()) reliably tells us which machine is about to
+    // be checked — capture phase so it fires before any child's
+    // stopPropagation. This is far more reliable than trying to guess the
+    // machine later from page text once the checklist form has opened.
+    card.addEventListener("click", () => {
+      try {
+        sessionStorage.setItem("belm_current_checkup_machine_id", machine.id);
+      } catch (_) {}
+    }, true);
     const condition = technicianCondition(machine.status);
     const opStatus = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
     const opLabels = {
@@ -2763,10 +2774,44 @@
     const host = anchor.parentElement;
     if (!host) return;
 
+    // The machine being checked is known for certain from the moment the
+    // Technician tapped into it (see technicianMachineInfoCard's capture
+    // listener). Fall back to matching the page's visible heading text
+    // only if that wasn't captured for some reason.
+    (async () => {
+      try {
+        let matchedMachineId = null;
+        try { matchedMachineId = sessionStorage.getItem("belm_current_checkup_machine_id"); } catch (_) {}
+
+        if (!matchedMachineId) {
+          const machines = await loadTechnicianReportMachines();
+          const pageText = document.body.innerText || "";
+          const match = (machines || []).find(machine => {
+            const name = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType;
+            return name && pageText.includes(name);
+          });
+          matchedMachineId = match?.id || null;
+        }
+        if (!matchedMachineId) return;
+
+        const token = localStorage.getItem("belm_tech_token");
+        const response = await fetch(`/api/checklist-reports?action=service-status&machineId=${encodeURIComponent(matchedMachineId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return;
+        const status = await response.json();
+        const hint = document.getElementById("belmLastHourMeterHint");
+        if (hint) {
+          hint.textContent = `Last recorded: ${Number(status?.totalHours || 0).toLocaleString("en-TZ")} hrs — today's reading must be the same or higher.`;
+        }
+      } catch (_) { /* purely a helper hint — safe to skip on any failure */ }
+    })();
+
     const block = document.createElement("div");
     block.id = "belmServiceDayBlock";
     block.className = "belm-service-day-block";
     block.innerHTML = `
+      <p id="belmLastHourMeterHint" class="belm-last-hour-meter-hint">Loading last recorded hours…</p>
       <label class="belm-service-day-toggle">
         <input type="checkbox" id="belmIsServiceDay">
         Is this a service day?
@@ -2780,7 +2825,7 @@
           </select>
         </label>
       </div>
-      <label class="belm-display-photo-field">Display photo <small>(shown at the top of the report, next to Hour Meter)</small>
+      <label class="belm-display-photo-field">Display photo <span style="color:#ff8a80;font-weight:900">*</span> <small>(REQUIRED every check-up — photo of the machine's display screen showing fuel level, fault codes, etc.)</small>
         <input type="file" id="belmDisplayPhotoFile" accept="image/*" capture="environment">
         <img id="belmDisplayPhotoPreview" class="belm-display-photo-preview hidden" alt="Display photo preview">
       </label>`;

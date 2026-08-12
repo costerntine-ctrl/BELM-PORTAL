@@ -235,6 +235,13 @@ if ($method === 'POST' && $action === 'submit') {
     if (!is_numeric($b['hourMeterReading']) || (float)$b['hourMeterReading'] < 0) {
         json_error('Hour meter reading must be a valid positive number.');
     }
+    // Display Photo is a required built-in field on every check-up — same
+    // standing as Hour Meter — because it's the photo of the machine's
+    // own display/dashboard screen (fuel level, fault codes, etc.), which
+    // must be captured fresh every time, not just occasionally.
+    if (empty($b['displayPhotoUrl']) || trim((string)($b['displayPhotoUrl'] ?? '')) === '') {
+        json_error('Take a photo of the machine display (fuel level, codes) before submitting.');
+    }
     $newHourMeterReading = (float)$b['hourMeterReading'];
 
     // Hour meters only move forward. The same reading as last time is fine

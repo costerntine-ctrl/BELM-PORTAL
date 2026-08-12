@@ -113,6 +113,7 @@ img#checkupDisplayPhotoPreview.checkup-photo-preview.hidden { display: none; }
 .checkup-issue-note { margin-top: 8px; padding: 10px; border: 1px dashed #f2cbc7; border-radius: 8px; background: #fff8f7; }
 .checkup-issue-note.hidden { display: none; }
 .checkup-issue-note textarea { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 7px; font: inherit; resize: vertical; }
+.required-mark { color: #b42318; font-weight: 900; }
 .checkup-photo-error { color: #dc2626; font-size: 11px; font-weight: 700; margin: 0; text-transform: none; }
 .evidence-photo-lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(4,10,20,.85); align-items: center; justify-content: center; padding: 24px; }
 .evidence-photo-lightbox.open { display: flex; }

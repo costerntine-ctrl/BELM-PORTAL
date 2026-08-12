@@ -62,8 +62,10 @@
 
   function renderTabs() {
     statusTabs.innerHTML = statuses.map((status) => {
-      const count = status ? requests.filter((request) => request.status === status).length : requests.length;
-      const label = status ? status.replaceAll("_", " ") : "ALL";
+      const count = status
+        ? requests.filter((request) => request.status === status).length
+        : requests.filter((request) => !["COMPLETED", "CANCELLED"].includes(request.status)).length;
+      const label = status ? status.replaceAll("_", " ") : "ACTIVE";
       return `<button class="${activeStatus === status ? "active" : ""}" data-status="${status}">${label}<b>${count}</b></button>`;
     }).join("");
   }
@@ -80,9 +82,13 @@
 
   function renderRequests() {
     renderTabs();
-    const visible = activeStatus ? requests.filter((request) => request.status === activeStatus) : requests;
+    const visible = activeStatus
+      ? requests.filter((request) => request.status === activeStatus)
+      : requests.filter((request) => !["COMPLETED", "CANCELLED"].includes(request.status));
     if (visible.length === 0) {
-      requestList.innerHTML = '<div class="empty">No service requests in this status.</div>';
+      requestList.innerHTML = activeStatus
+        ? '<div class="empty">No service requests in this status.</div>'
+        : '<div class="empty">No active service requests. Check the COMPLETED or CANCELLED tabs for history.</div>';
       return;
     }
     requestList.innerHTML = visible.map((request) => `
@@ -116,6 +122,7 @@
             </select>
           </label>
           <button class="note-button" type="button" data-note="${escapeHtml(request.id)}">Notes (${(request.notes || []).length})</button>
+          <button class="note-button history-button" type="button" data-history="${escapeHtml(request.id)}">History</button>
         </div>
       </article>
     `).join("");
@@ -181,6 +188,49 @@
     noteDialog.showModal();
   }
 
+  const HISTORY_EVENT_LABELS = {
+    OPENED: "Opened",
+    STATUS: "Status changed",
+    ASSIGNMENT: "Assignment changed",
+  };
+
+  async function openHistory(requestId) {
+    const dialog = document.getElementById("historyDialog");
+    const body = document.getElementById("historyBody");
+    body.innerHTML = '<p class="muted">Loading…</p>';
+    dialog.showModal();
+    try {
+      const timeline = await api(`/service-requests?action=history&requestId=${encodeURIComponent(requestId)}`);
+      body.innerHTML = timeline.length ? timeline.map((entry) => {
+        if (entry.kind === "NOTE") {
+          return `<div class="history-entry history-note">
+            <b>Note by ${escapeHtml(entry.actorName || "BELM")}</b>
+            <small>${formatDateTime(entry.createdAt)}</small>
+            <p>${escapeHtml(entry.note || "")}</p>
+          </div>`;
+        }
+        const label = HISTORY_EVENT_LABELS[entry.eventType] || entry.eventType;
+        let description;
+        if (entry.eventType === "OPENED") {
+          description = `Opened by ${escapeHtml(entry.actorName || "Customer")}`;
+        } else if (entry.eventType === "ASSIGNMENT") {
+          description = entry.to
+            ? `Assigned to <b>${escapeHtml(entry.to)}</b> by ${escapeHtml(entry.actorName || "BELM")}`
+            : `Unassigned by ${escapeHtml(entry.actorName || "BELM")}`;
+        } else {
+          description = `Changed from <b>${escapeHtml((entry.from || "—").replaceAll("_", " "))}</b> to <b>${escapeHtml((entry.to || "—").replaceAll("_", " "))}</b> by ${escapeHtml(entry.actorName || "BELM")}`;
+        }
+        return `<div class="history-entry">
+          <b>${escapeHtml(label)}</b>
+          <small>${formatDateTime(entry.createdAt)}</small>
+          <p>${description}${entry.note ? ` — ${escapeHtml(entry.note)}` : ""}</p>
+        </div>`;
+      }).join("") : '<p class="muted">No history recorded yet.</p>';
+    } catch (error) {
+      body.innerHTML = `<p class="alert error">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
   async function saveNote(event) {
     event.preventDefault();
     const requestId = document.getElementById("noteRequestId").value;
@@ -218,8 +268,12 @@
   });
   requestList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-note]");
+    const historyButton = event.target.closest("[data-history]");
     if (button) openNotes(button.dataset.note);
+    if (historyButton) openHistory(historyButton.dataset.history);
   });
+  document.getElementById("closeHistoryButton")?.addEventListener("click", () =>
+    document.getElementById("historyDialog").close());
   document.getElementById("noteForm").addEventListener("submit", saveNote);
   document.getElementById("closeNoteButton").addEventListener("click", () => noteDialog.close());
   document.getElementById("cancelNoteButton").addEventListener("click", () => noteDialog.close());

@@ -8,6 +8,21 @@ $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 $allowedStatuses = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
 
+// Records one entry in a service request's audit trail — every status
+// change and every (re)assignment, who did it, and when. This is what
+// "Opened -> Assigned -> In Progress -> Completed/Cancelled by ..." on
+// the History panel is built from.
+function log_service_request_history(
+    string $requestId, string $eventType, ?string $fromValue, ?string $toValue,
+    array $user, ?string $note = null
+): void {
+    db()->prepare(
+        'INSERT INTO service_request_history
+         (id, request_id, event_type, from_value, to_value, actor_id, actor_name, note, created_at)
+         VALUES (?,?,?,?,?,?,?,?,NOW())'
+    )->execute([uuid(), $requestId, $eventType, $fromValue, $toValue, $user['id'], $user['name'], $note]);
+}
+
 function fetch_request_parts(string $requestId): array {
     $stmt = db()->prepare(
         'SELECT id, spare_name, part_number, quantity
@@ -111,6 +126,39 @@ if ($method === 'GET' && $action === 'assignees') {
     }
     unset($technician);
     json_out($technicians);
+}
+
+// ---- Full audit trail for one request: Opened -> Assigned -> In Progress
+// -> Completed/Cancelled by ..., merged with any notes on the same timeline.
+if ($method === 'GET' && $action === 'history') {
+    $requestId = trim((string)($_GET['requestId'] ?? ''));
+    if ($requestId === '') json_error('requestId is required.');
+    $stmt = db()->prepare('SELECT 1 FROM service_requests WHERE id = ?');
+    $stmt->execute([$requestId]);
+    if (!$stmt->fetch()) json_error('Service request not found.', 404);
+
+    $stmt = db()->prepare(
+        "SELECT 'STATUS' AS kind, event_type, from_value, to_value, actor_name, note, created_at
+         FROM service_request_history WHERE request_id = ?
+         UNION ALL
+         SELECT 'NOTE' AS kind, NULL, NULL, NULL, author, note, created_at
+         FROM service_notes WHERE request_id = ?
+         ORDER BY created_at ASC"
+    );
+    $stmt->execute([$requestId, $requestId]);
+    $rows = $stmt->fetchAll();
+    $timeline = array_map(function ($row) {
+        return [
+            'kind' => $row['kind'],
+            'eventType' => $row['event_type'],
+            'from' => $row['from_value'],
+            'to' => $row['to_value'],
+            'actorName' => $row['actor_name'],
+            'note' => $row['note'],
+            'createdAt' => $row['created_at'],
+        ];
+    }, $rows);
+    json_out($timeline);
 }
 
 // ---- Customer inbox: service requests + operator reports for ONE customer -
@@ -232,6 +280,12 @@ if ($method === 'PUT' && $action === 'status') {
     $status = strtoupper(trim((string)($b['status'] ?? '')));
     if (!in_array($status, $allowedStatuses, true)) json_error('Invalid service request status.');
 
+    $stmt = db()->prepare('SELECT status FROM service_requests WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) json_error('Service request not found.', 404);
+    $previousStatus = $existing['status'];
+
     if ($status === 'COMPLETED') {
         $stmt = db()->prepare(
             'UPDATE service_requests SET status=?, updated_at=NOW(), completed_by_id=?, completed_at=NOW() WHERE id=?'
@@ -242,18 +296,26 @@ if ($method === 'PUT' && $action === 'status') {
             'UPDATE service_requests SET status=?, updated_at=NOW(), cancelled_by_id=?, cancelled_at=NOW() WHERE id=?'
         );
         $stmt->execute([$status, $user['id'], $id]);
+    } elseif ($status === 'IN_PROGRESS') {
+        $stmt = db()->prepare(
+            'UPDATE service_requests SET status=?, updated_at=NOW(), started_by_id=?, started_at=NOW() WHERE id=?'
+        );
+        $stmt->execute([$status, $user['id'], $id]);
     } else {
         $stmt = db()->prepare('UPDATE service_requests SET status=?, updated_at=NOW() WHERE id=?');
         $stmt->execute([$status, $id]);
     }
     if ($stmt->rowCount() === 0) json_error('Service request not found.', 404);
+    if ($previousStatus !== $status) {
+        log_service_request_history($id, 'STATUS', $previousStatus, $status, $user, trim((string)($b['note'] ?? '')) ?: null);
+    }
     json_out(['ok' => true]);
 }
 
 if ($method === 'PUT' && $action === 'assign') {
     $b = body();
     $assignedToId = trim((string)($b['assignedToId'] ?? ''));
-    $stmt = db()->prepare('SELECT customer_id FROM service_requests WHERE id = ?');
+    $stmt = db()->prepare('SELECT customer_id, assigned_to_id, status FROM service_requests WHERE id = ?');
     $stmt->execute([$id]);
     $request = $stmt->fetch();
     if (!$request) json_error('Service request not found.', 404);
@@ -266,11 +328,14 @@ if ($method === 'PUT' && $action === 'assign') {
                  updated_at=NOW()
              WHERE id=?"
         )->execute([$id]);
+        if ($request['assigned_to_id']) {
+            log_service_request_history($id, 'ASSIGNMENT', $request['assigned_to_id'], null, $user);
+        }
         json_out(['ok' => true]);
     }
 
     $stmt = db()->prepare(
-        "SELECT u.id, u.assigned_customer_id
+        "SELECT u.id, u.name, u.assigned_customer_id
          FROM users u JOIN roles r ON r.id = u.role_id
          WHERE u.id = ? AND r.name = 'Technician'
            AND u.deleted_at IS NULL AND u.is_active = 1"
@@ -284,9 +349,13 @@ if ($method === 'PUT' && $action === 'assign') {
 
     db()->prepare(
         "UPDATE service_requests
-         SET assigned_to_id=?, status='ASSIGNED', updated_at=NOW()
+         SET assigned_to_id=?, assigned_by_id=?, status='ASSIGNED', updated_at=NOW()
          WHERE id=?"
-    )->execute([$assignedToId, $id]);
+    )->execute([$assignedToId, $user['id'], $id]);
+    log_service_request_history($id, 'ASSIGNMENT', $request['assigned_to_id'], $technician['name'], $user);
+    if ($request['status'] !== 'ASSIGNED') {
+        log_service_request_history($id, 'STATUS', $request['status'], 'ASSIGNED', $user);
+    }
     json_out(['ok' => true]);
 }
 

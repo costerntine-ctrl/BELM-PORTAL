@@ -211,6 +211,30 @@ ALTER TABLE service_requests
   ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ NULL;
 ALTER TABLE service_requests
   ADD COLUMN IF NOT EXISTS customer_confirmed SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS assigned_by_id VARCHAR(36) NULL REFERENCES users(id);
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ NULL;
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS started_by_id VARCHAR(36) NULL REFERENCES users(id);
+
+-- Full audit trail for one service request's lifecycle — every status
+-- change and every (re)assignment, who did it, and when. This is what
+-- powers "Opened -> Assigned -> In Progress -> Completed/Cancelled by ..."
+-- on the request's History panel, independent of the single-day
+-- daily-report view.
+CREATE TABLE IF NOT EXISTS service_request_history (
+  id VARCHAR(36) PRIMARY KEY,
+  request_id VARCHAR(36) NOT NULL REFERENCES service_requests(id),
+  event_type VARCHAR(20) NOT NULL,
+  from_value VARCHAR(100) NULL,
+  to_value VARCHAR(100) NULL,
+  actor_id VARCHAR(36) NULL REFERENCES users(id),
+  actor_name VARCHAR(255) NULL,
+  note VARCHAR(500) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_service_request_history_request ON service_request_history(request_id, created_at);
 
 CREATE TABLE IF NOT EXISTS service_request_parts (
   id VARCHAR(36) PRIMARY KEY,

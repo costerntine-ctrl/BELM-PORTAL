@@ -1595,6 +1595,11 @@ if ($sub === 'service-requests' && $method === 'POST') {
             $description,
             $priority,
         ]);
+        $pdo->prepare(
+            'INSERT INTO service_request_history
+             (id, request_id, event_type, from_value, to_value, actor_id, actor_name, created_at)
+             VALUES (?,?,?,?,?,?,?,NOW())'
+        )->execute([uuid(), $newId, 'OPENED', null, 'OPEN', null, trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'))]);
         foreach ($serviceParts as $part) {
             $pdo->prepare(
                 'INSERT INTO service_request_parts

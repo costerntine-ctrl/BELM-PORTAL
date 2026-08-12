@@ -78,6 +78,15 @@ if ($method === 'POST') {
              (id, request_id, spare_name, part_number, manufacturer_part_number, quantity, created_at)
              VALUES (?,?,?,?,?,1,NOW())'
         )->execute([$partId, $requestId, $spareName, $referenceNumber, $manufacturerPartNumber ?: null]);
+        $pdo->prepare(
+            'INSERT INTO service_request_history
+             (id, request_id, event_type, from_value, to_value, actor_id, actor_name, note, created_at)
+             VALUES (?,?,?,?,?,?,?,?,NOW())'
+        )->execute([
+            uuid(), $requestId, 'OPENED', null, 'PENDING_CUSTOMER',
+            $payload['id'] ?? null, $payload['name'] ?? 'Technician',
+            'Recommended for customer confirmation',
+        ]);
 
         $pdo->commit();
     } catch (Throwable $error) {
@@ -149,6 +158,11 @@ if ($method === 'PUT' && $id) {
          SET status = 'OPEN', customer_confirmed = 1, updated_at = NOW()
          WHERE id = ?"
     )->execute([$id]);
+    db()->prepare(
+        'INSERT INTO service_request_history
+         (id, request_id, event_type, from_value, to_value, actor_id, actor_name, created_at)
+         VALUES (?,?,?,?,?,?,?,NOW())'
+    )->execute([uuid(), $id, 'STATUS', 'PENDING_CUSTOMER', 'OPEN', null, trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'))]);
     json_out(['ok' => true, 'message' => 'Service requirement sent to BELM for action.']);
 }
 

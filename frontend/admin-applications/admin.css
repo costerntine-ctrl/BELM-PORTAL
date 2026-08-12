@@ -46,6 +46,7 @@ dialog h2 { margin-bottom:6px; }dialog>p { color:var(--muted); font-size:13px; }
 .heading-actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
 .secondary { border:1px solid var(--green) !important; background:#fff; color:var(--green2); border-radius:9px; padding:10px 16px; font-weight:750; cursor:pointer; box-shadow:0 5px 15px rgba(0,166,81,.08); }
 .secondary:hover { background:#e7f8ee; }
+a.secondary { display:inline-block; text-decoration:none; }
 .assignment-form .primary { margin-top:4px; }
 .login-summary { text-align:left; background:#f5f8fb; border-radius:11px; padding:15px; display:grid; gap:5px; margin:20px 0; }
 .login-summary strong,.login-summary a { color:#18344f; font-size:13px; overflow-wrap:anywhere; margin-bottom:5px; }

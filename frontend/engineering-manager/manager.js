@@ -1,5 +1,20 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
+  const pageOptions = [
+    ["customers", "Customers"],
+    ["overview", "All Overview"],
+    ["roles", "Roles & system users"],
+    ["service-requests", "Service requests"],
+    ["spare-parts", "Spare parts"],
+    ["billing", "Billing"],
+    ["bank-manager", "Bank Manager"],
+    ["reports", "Reports & comparisons"],
+    ["settings", "System settings"],
+    ["checklist-templates", "Checklist templates"],
+    ["suppliers", "Suppliers"],
+    ["activity-log", "Activity log"],
+  ];
+  let rolesCache = [];
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -16,10 +31,15 @@
     return `${day}/${month}/${date.getFullYear()}, ${hours}:${minutes}`;
   };
 
-  async function api(path) {
+  async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
+      ...options,
       cache: "no-store",
-      headers: { Authorization: `Bearer ${token || ""}` },
+      headers: {
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        Authorization: `Bearer ${token || ""}`,
+        ...(options.headers || {}),
+      },
     });
     const text = await response.text();
     let data = null;
@@ -128,14 +148,79 @@
 
   async function loadEngineerRoleSummary() {
     try {
-      const roles = await api("/users/roles");
-      const engineer = (roles || []).find((role) => role.name === "Engineer");
+      rolesCache = await api("/users/roles");
+      const engineer = rolesCache.find((role) => role.name === "Engineer");
+      const technician = rolesCache.find((role) => role.name === "Technician");
       document.getElementById("engineerRoleAccess").textContent =
         engineer?.allowedPages?.length ? engineer.allowedPages.join(", ") : "No pages assigned yet.";
+      if (technician) {
+        document.getElementById("technicianRoleAccess").textContent =
+          technician.allowedPages === null
+            ? "Technician app only / no admin dashboard pages"
+            : (technician.allowedPages?.length ? technician.allowedPages.join(", ") : "No pages assigned yet.");
+      }
     } catch (_) {
       document.getElementById("engineerRoleAccess").textContent = "—";
     }
   }
+
+  function renderAllowedPages(selected = []) {
+    document.getElementById("allowedPages").innerHTML = pageOptions.map(([key, label]) =>
+      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${selected.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>`
+    ).join("");
+  }
+
+  function openRoleDialog(roleName) {
+    const role = rolesCache.find((item) => item.name === roleName);
+    if (!role) return;
+    document.getElementById("roleForm").reset();
+    document.getElementById("roleId").value = role.id;
+    document.getElementById("roleDialogTitle").textContent = `Edit role — ${role.name}`;
+    document.getElementById("roleFormAlert").className = "alert error hidden";
+    renderAllowedPages(role.allowedPages || []);
+    document.getElementById("roleDialog").showModal();
+  }
+
+  async function saveRole(event) {
+    event.preventDefault();
+    const id = document.getElementById("roleId").value;
+    const role = rolesCache.find((item) => item.id === id);
+    const payload = {
+      name: role?.name,
+      allowedPages: [...document.querySelectorAll("#allowedPages input:checked")].map((input) => input.value),
+      permissions: {},
+    };
+    const confirmation = await window.belmConfirmEdit({
+      title: "Save role changes?",
+      message: `Confirm changes to the "${payload.name}" role's access.`,
+    });
+    if (!confirmation) return;
+    Object.assign(payload, confirmation);
+
+    const button = document.getElementById("saveRoleButton");
+    button.disabled = true;
+    button.textContent = "Saving…";
+    try {
+      await api(`/users/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+      document.getElementById("roleDialog").close();
+      await loadEngineerRoleSummary();
+      showAlert("Role access updated successfully.", false);
+    } catch (error) {
+      const box = document.getElementById("roleFormAlert");
+      box.textContent = error.message;
+      box.className = "alert error";
+    } finally {
+      button.disabled = false;
+      button.textContent = "Save role";
+    }
+  }
+
+  document.querySelectorAll("[data-edit-role]").forEach((button) => {
+    button.addEventListener("click", () => openRoleDialog(button.dataset.editRole));
+  });
+  document.getElementById("roleForm").addEventListener("submit", saveRole);
+  document.getElementById("closeRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
+  document.getElementById("cancelRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
 
   document.getElementById("refreshButton").addEventListener("click", load);
 

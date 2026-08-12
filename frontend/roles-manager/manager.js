@@ -191,6 +191,9 @@
         if (heading && roleParam === "Technician") heading.textContent = "Engineering — Technicians";
       }
       renderUsers();
+      const openParam = new URLSearchParams(window.location.search).get("open");
+      if (openParam === "addRole") openRole();
+      if (openParam === "addUser") openUser();
     } catch (error) {
       document.getElementById("usersPanel").className = "empty";
       document.getElementById("usersPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;

@@ -1,33 +1,43 @@
 .eng-roles-strip {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
   align-items: stretch;
   margin: 18px 0;
 }
-.eng-role-card {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--paper);
-}
+.eng-role-card { position: relative; padding: 14px 16px 54px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
 .eng-role-card h3 { margin: 0 0 4px; font: 700 14px "Space Grotesk", sans-serif; }
 .eng-role-card p { margin: 0; color: var(--muted); font-size: 12px; }
-.eng-role-manage-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 18px;
-  border: 1px dashed var(--line);
-  border-radius: 12px;
+.eng-role-edit {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--green, #00a958);
+  border-radius: 8px;
   color: var(--green, #00a958);
-  background: color-mix(in srgb, var(--green, #00a958) 6%, transparent);
+  background: transparent;
+  font-size: 11.5px;
   font-weight: 800;
-  font-size: 12.5px;
-  text-decoration: none;
-  text-align: center;
-  white-space: nowrap;
+  cursor: pointer;
 }
+.eng-role-edit:hover { background: color-mix(in srgb, var(--green, #00a958) 8%, transparent); }
+
+dialog#roleDialog {
+  width: min(560px, calc(100% - 28px));
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 25px 80px rgba(8, 15, 27, .35);
+}
+dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
+.eng-role-form { display: grid; }
+.eng-role-form .panel-head button { border: 0; color: var(--muted); background: none; cursor: pointer; font-size: 24px; }
+.eng-role-form label { padding: 14px 18px 0; font-size: 11px; font-weight: 800; color: var(--ink); text-transform: uppercase; letter-spacing: .04em; }
+.eng-allowed-pages { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 18px 0; }
+.eng-role-form-actions { display: flex; justify-content: flex-end; gap: 9px; padding: 18px; }
+#roleFormAlert { margin: 12px 18px 0; }
+@media (max-width: 480px) { .eng-allowed-pages { grid-template-columns: 1fr; } }
 
 .eng-grid {
   display: grid;

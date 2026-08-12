@@ -38,13 +38,28 @@
         <article class="eng-role-card">
           <h3>Engineer</h3>
           <p id="engineerRoleAccess" class="muted">Loading…</p>
+          <button class="eng-role-edit" type="button" data-edit-role="Engineer">Edit role access</button>
         </article>
         <article class="eng-role-card">
           <h3>Technician</h3>
-          <p>Technician app only / no admin dashboard pages</p>
+          <p id="technicianRoleAccess" class="muted">Technician app only / no admin dashboard pages</p>
+          <button class="eng-role-edit" type="button" data-edit-role="Technician">Edit role access</button>
         </article>
-        <a class="eng-role-manage-link" href="/roles-manager/">Manage roles & system users →</a>
       </section>
+
+      <dialog id="roleDialog">
+        <form id="roleForm" class="eng-role-form">
+          <div class="panel-head"><h2 id="roleDialogTitle">Edit role access</h2><button type="button" id="closeRoleDialog" aria-label="Close">×</button></div>
+          <input type="hidden" id="roleId">
+          <div id="roleFormAlert" class="alert error hidden"></div>
+          <label>Allowed pages</label>
+          <div id="allowedPages" class="eng-allowed-pages"></div>
+          <div class="eng-role-form-actions">
+            <button type="button" class="secondary" id="cancelRoleDialog">Cancel</button>
+            <button type="submit" class="primary" id="saveRoleButton">Save role</button>
+          </div>
+        </form>
+      </dialog>
 
       <section class="eng-grid">
         <article class="panel eng-card">
@@ -76,6 +91,7 @@
 
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+    <script src="/edit-confirm.js"></script>
     <script src="/engineering-manager/manager.js"></script>
   </body>
 </html>

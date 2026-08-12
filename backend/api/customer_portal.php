@@ -1366,6 +1366,44 @@ if ($sub === 'users' && $method === 'GET') {
     json_out($assistants);
 }
 
+// Self-service password change — works for both the main customer
+// (owner) account and any logged-in assistant, updating whichever table
+// their own login actually lives in.
+if ($sub === 'change-password' && $method === 'PUT') {
+    $b = body();
+    $currentPassword = (string)($b['currentPassword'] ?? '');
+    $newPassword = (string)($b['newPassword'] ?? '');
+    if ($currentPassword === '') json_error('Enter your current password.');
+    if (strlen($newPassword) < 8) json_error('New password must contain at least 8 characters.');
+
+    $rateLimitId = ($customer['actorType'] ?? 'owner') === 'assistant' ? $customer['actorId'] : $customer['id'];
+    assert_not_rate_limited('customer-change-password', $rateLimitId, 8, 15);
+
+    if (($customer['actorType'] ?? 'owner') === 'assistant') {
+        $stmt = db()->prepare('SELECT password FROM customer_users WHERE id = ? AND customer_id = ?');
+        $stmt->execute([$customer['actorId'], $customer['id']]);
+        $hash = $stmt->fetchColumn();
+        if (!$hash || !password_verify($currentPassword, $hash)) {
+            record_failed_attempt('customer-change-password', $rateLimitId);
+            json_error('Your current password is incorrect.', 403);
+        }
+        db()->prepare('UPDATE customer_users SET password = ? WHERE id = ?')
+            ->execute([password_hash($newPassword, PASSWORD_BCRYPT), $customer['actorId']]);
+    } else {
+        $stmt = db()->prepare('SELECT password FROM customers WHERE id = ?');
+        $stmt->execute([$customer['id']]);
+        $hash = $stmt->fetchColumn();
+        if (!$hash || !password_verify($currentPassword, $hash)) {
+            record_failed_attempt('customer-change-password', $rateLimitId);
+            json_error('Your current password is incorrect.', 403);
+        }
+        db()->prepare('UPDATE customers SET password = ? WHERE id = ?')
+            ->execute([password_hash($newPassword, PASSWORD_BCRYPT), $customer['id']]);
+    }
+    clear_rate_limit('customer-change-password', $rateLimitId);
+    json_out(['ok' => true, 'message' => 'Password changed successfully.']);
+}
+
 if ($sub === 'users' && $method === 'POST') {
     require_customer_owner_or_admin($customer);
     $b = body();

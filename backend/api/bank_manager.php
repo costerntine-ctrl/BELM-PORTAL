@@ -260,6 +260,7 @@ if ($method === 'POST' && $action === 'account') {
          (id, bank_name, account_name, account_number, opening_balance, is_active, created_at)
          VALUES (?,?,?,?,?,1,NOW())'
     )->execute([$newId, $bankName, $accountName, $accountNumber, $openingBalance]);
+    log_activity($user, 'bank-account-created', 'bankAccount', $newId, ['bankName' => $bankName]);
     json_out(['id' => $newId], 201);
 }
 
@@ -306,6 +307,7 @@ if ($method === 'PUT' && $action === 'account') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'bank-account-edited', 'bankAccount', $id, ['bankName' => $bankName]);
     json_out(['ok' => true]);
 }
 

@@ -216,6 +216,7 @@ if ($method === 'POST' && !$action) {
             password_hash($recoveryCode, PASSWORD_BCRYPT),
         ]);
 
+    log_activity($user, 'customer-created', 'customer', $newId, ['name' => $details['name']]);
     json_out([
         'id' => $newId,
         'portalLoginInfo' => [
@@ -250,6 +251,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
     ]);
     $resetCustomer = $stmt->fetch();
     if (!$resetCustomer) json_error('Customer not found.', 404);
+    log_activity($user, 'customer-login-reset', 'customer', $id);
     json_out([
         'temporaryPassword' => $temporaryPassword,
         'recoveryCode' => $recoveryCode,
@@ -283,6 +285,7 @@ if ($method === 'PUT' && !$action) {
             $isActive,
             $id,
         ]);
+    log_activity($user, 'customer-edited', 'customer', $id, ['name' => $details['name']]);
     json_out([
         'ok' => true,
         'portalLink' => $portalLink,
@@ -311,11 +314,13 @@ if ($method === 'DELETE' && !$action) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $error;
         }
+        log_activity($user, 'customer-forgotten-permanently', 'customer', $id, ['name' => $row['name'], 'reason' => $reason]);
         json_out(['ok' => true, 'message' => "\"{$row['name']}\" has been permanently forgotten — it will not appear in the Recycle Bin and cannot be restored."]);
     }
 
     send_to_trash('customer', $id, $row['name'], $user['id'], $reason);
     soft_delete('customers', $id);
+    log_activity($user, 'customer-deleted', 'customer', $id, ['name' => $row['name'], 'reason' => $reason]);
     json_out(null, 204);
 }
 
@@ -388,6 +393,7 @@ if ($method === 'POST' && $action === 'add-machine') {
             $machine['serviceKit'],
             'NOT_CHECKED',
         ]);
+    log_activity($user, 'machine-added', 'machine', $newId, ['model' => $machine['model'], 'customerId' => $id]);
     json_out(['id' => $newId], 201);
 }
 
@@ -446,6 +452,7 @@ if ($method === 'PUT' && $action === 'edit-machine') {
             $machine['serviceKit'],
             $_GET['machineId'],
         ]);
+    log_activity($user, 'machine-edited', 'machine', $_GET['machineId'], ['model' => $machine['model']]);
     json_out(['ok' => true, 'movedToCustomerId' => $targetCustomerId !== $existingMachine['customer_id'] ? $targetCustomerId : null]);
 }
 

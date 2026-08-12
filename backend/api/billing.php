@@ -313,6 +313,7 @@ if ($method === 'POST' && !$action) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'invoice-created', 'invoice', $newId, ['invoiceNo' => $invoiceNo, 'total' => $invoice['total']]);
     json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
 }
 
@@ -385,6 +386,7 @@ if ($method === 'PUT' && !$action) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $error;
         }
+        log_activity($user, 'invoice-edited', 'invoice', $id, ['status' => $status]);
         json_out(['ok' => true, 'status' => $status]);
     }
     // PAID and PARTIALLY_PAID are calculated from recorded payments.
@@ -406,6 +408,7 @@ if ($method === 'PUT' && !$action) {
     $stmt = db()->prepare('UPDATE invoices SET status=?, due_date=?, machine_id=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([$status, $b['dueDate'] ?? null, $machineId !== '' ? $machineId : null, $id]);
     if ($stmt->rowCount() === 0) json_error('Invoice not found.', 404);
+    log_activity($user, 'invoice-status-changed', 'invoice', $id, ['status' => $status]);
     json_out(['ok' => true]);
 }
 
@@ -529,6 +532,7 @@ if ($method === 'POST' && $action === 'payment') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'payment-recorded', 'invoice', $id, ['amount' => $amount]);
     json_out(['ok' => true], 201);
 }
 

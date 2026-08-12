@@ -114,6 +114,7 @@ if ($method === 'POST') {
             $supplier['location'], $supplier['notes'], $supplier['verified'],
         ]);
     $assessment = supplier_trust_assessment($supplier);
+    log_activity($user, 'supplier-created', 'supplier', $newId, ['name' => $supplier['name']]);
     json_out(['id' => $newId, 'trustScore' => $assessment['score'], 'trustStatus' => $assessment['status']], 201);
 }
 
@@ -129,6 +130,7 @@ if ($method === 'PUT') {
     ]);
     if ($stmt->rowCount() === 0) json_error('Supplier not found.', 404);
     $assessment = supplier_trust_assessment($supplier);
+    log_activity($user, 'supplier-edited', 'supplier', $id, ['name' => $supplier['name']]);
     json_out(['ok' => true, 'trustScore' => $assessment['score'], 'trustStatus' => $assessment['status']]);
 }
 

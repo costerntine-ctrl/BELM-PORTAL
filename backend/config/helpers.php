@@ -332,6 +332,49 @@ function calculated_invoice_status(float $total, float $paid, ?string $dueDate):
 }
 
 
+// ---- Machine safety/service alert emails --------------------------------
+// Sends a "Don't operate" (RED), "Attention needed" (YELLOW), or "Service
+// reminder" (service due soon/overdue) email to both the company inbox
+// and the customer's own registered email, whenever a fresh check-up
+// result crosses into one of those states. Best-effort — a failed email
+// must never block the checklist submission itself.
+function send_machine_alert_email(
+    string $overallStatus, ?array $serviceStatus, array $machine, string $customerEmail, string $customerName
+): void {
+    try {
+        $company = belm_get_company_details();
+        $adminEmail = trim((string)($company['companyEmail'] ?? ''));
+        $machineName = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: 'Machine';
+        $serial = $machine['serial_number'] ?? $machine['reg_number'] ?? 'Not recorded';
+
+        $alerts = [];
+        if (strtoupper($overallStatus) === 'RED') {
+            $alerts[] = [
+                'subject' => "DON'T OPERATE — $machineName ($customerName)",
+                'body' => "A check-up on $machineName ($serial) for $customerName came back RED — DON'T OPERATE.\n\nOpen BELM Portal to review the full checklist report.",
+            ];
+        } elseif (strtoupper($overallStatus) === 'YELLOW') {
+            $alerts[] = [
+                'subject' => "Attention needed — $machineName ($customerName)",
+                'body' => "A check-up on $machineName ($serial) for $customerName came back YELLOW — needs attention soon.\n\nOpen BELM Portal to review the full checklist report.",
+            ];
+        }
+        if ($serviceStatus && in_array($serviceStatus['level'] ?? '', ['YELLOW', 'RED'], true)) {
+            $remaining = round($serviceStatus['hoursRemaining'] ?? 0);
+            $dueText = $remaining <= 0 ? 'is OVERDUE' : "has $remaining hrs remaining";
+            $alerts[] = [
+                'subject' => "Service reminder — $machineName ($customerName)",
+                'body' => "$machineName ($serial) for $customerName $dueText until its next {$serviceStatus['intervalHours']}-hour service.\n\nOpen BELM Portal to schedule the service.",
+            ];
+        }
+
+        foreach ($alerts as $alert) {
+            if ($adminEmail !== '') send_email($adminEmail, $alert['subject'], $alert['body']);
+            if ($customerEmail !== '') send_email($customerEmail, $alert['subject'], $alert['body']);
+        }
+    } catch (Throwable $error) { /* alerts are best-effort — never break the caller */ }
+}
+
 function belm_get_company_details(): array {
     $defaults = [
         'companyName' => 'BELM GENERAL TECH SERVICE LIMITED',
@@ -407,6 +450,27 @@ function clear_rate_limit(string $scope, string $identifier): void {
     if ($identifier === '') return;
     db()->prepare('DELETE FROM security_rate_limits WHERE scope = ? AND identifier = ?')
         ->execute([$scope, $identifier]);
+}
+
+// ---- General-purpose audit trail -----------------------------------------
+// Records ONE staff/admin action for accountability — who did what, on
+// which record, and when. Every significant create/edit/delete across the
+// admin side calls this so "who did this?" can always be answered, not
+// just for service requests (which already has its own richer history).
+function log_activity(array $user, string $action, ?string $entity = null, ?string $entityId = null, array $metadata = []): void {
+    try {
+        db()->prepare(
+            'INSERT INTO activity_logs (id, user_id, action, entity, entity_id, metadata, created_at)
+             VALUES (?,?,?,?,?,?,NOW())'
+        )->execute([
+            uuid(),
+            $user['id'],
+            $action,
+            $entity,
+            $entityId,
+            $metadata ? json_encode($metadata) : null,
+        ]);
+    } catch (Throwable $error) { /* the audit log must never break the actual action */ }
 }
 
 function belm_read_stored_pin(string $key, string $default): string {

@@ -277,6 +277,7 @@ if ($method === 'POST' && !$action) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'checklist-template-created', 'checklistTemplate', $newId, ['name' => $payload['name']]);
     json_out(fetch_template($newId), 201);
 }
 
@@ -313,6 +314,7 @@ if ($method === 'PUT' && !$action) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'checklist-template-edited', 'checklistTemplate', $id, ['name' => $payload['name']]);
     json_out(fetch_template($id));
 }
 
@@ -362,6 +364,7 @@ if ($method === 'DELETE' && !$action) {
     $reason = require_delete_confirmation($user, body());
     send_to_trash('template', $id, $row['name'], $user['id'], $reason);
     soft_delete('checklist_templates', $id);
+    log_activity($user, 'checklist-template-deleted', 'checklistTemplate', $id, ['name' => $row['name'], 'reason' => $reason]);
     json_out(null, 204);
 }
 

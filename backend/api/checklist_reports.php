@@ -378,6 +378,22 @@ if ($method === 'POST' && $action === 'submit') {
     if (!$savedReport) {
         json_error('Checklist was saved, but the Checked Report could not be loaded.', 500);
     }
+
+    // Best-effort safety/service alert email — RED ("Don't operate"),
+    // YELLOW ("Attention needed"), and/or a service-due reminder — to the
+    // company inbox and the customer's own registered email.
+    try {
+        $customerEmailStmt = db()->prepare('SELECT email FROM customers WHERE id = ?');
+        $customerEmailStmt->execute([$machine['customer_id']]);
+        $customerEmail = trim((string)($customerEmailStmt->fetchColumn() ?: ''));
+        send_machine_alert_email(
+            $worst,
+            compute_service_status_helper($b['machineId']),
+            $machine,
+            $customerEmail,
+            $machine['customer_name'] ?? 'Customer'
+        );
+    } catch (Throwable $error) { /* alerts are best-effort */ }
     $answerStmt = db()->prepare(
         'SELECT ca.id, ? AS report_id, cti.id AS template_item_id,
                 cti.label, COALESCE(ca.value, \'\') AS value,
@@ -621,6 +637,28 @@ if ($method === 'PUT' && $action === 'update') {
         throw $error;
     }
 
+    // Best-effort safety/service alert email for this same-day correction —
+    // same three triggers as a fresh submission.
+    try {
+        $machineStmt = db()->prepare(
+            'SELECT m.brand, m.model, m.serial_number, m.reg_number, m.customer_id,
+                    c.name AS customer_name, c.email AS customer_email
+             FROM machines m JOIN customers c ON c.id = m.customer_id
+             WHERE m.id = ?'
+        );
+        $machineStmt->execute([$report['machine_id']]);
+        $machineRow = $machineStmt->fetch();
+        if ($machineRow) {
+            send_machine_alert_email(
+                $worst,
+                compute_service_status_helper($report['machine_id']),
+                $machineRow,
+                trim((string)($machineRow['customer_email'] ?? '')),
+                $machineRow['customer_name'] ?? 'Customer'
+            );
+        }
+    } catch (Throwable $error) { /* alerts are best-effort */ }
+
     json_out([
         'id' => $reportId,
         'overallStatus' => $worst,
@@ -634,6 +672,19 @@ if ($method === 'PUT' && $action === 'update') {
 if ($method === 'GET' && $action === 'service-status') {
     require_report_machine_access($user, $_GET['machineId']);
     json_out(compute_service_status_helper($_GET['machineId']));
+}
+
+// GET ?action=operator-reports&machineId=... — same "who reported what,
+// resolved or not" list the Customer already sees, now also reachable by
+// Technician/Engineer/Admin for a specific machine they have access to.
+if ($method === 'GET' && $action === 'operator-reports') {
+    require_report_machine_access($user, $_GET['machineId']);
+    $stmt = db()->prepare(
+        'SELECT id, operator_name, operator_contact, message, status, created_at, resolved_at
+         FROM operator_reports WHERE machine_id = ? ORDER BY created_at DESC'
+    );
+    $stmt->execute([$_GET['machineId']]);
+    json_out($stmt->fetchAll());
 }
 
 // POST ?action=log-service&machineId=...  { requirementsDone[] }

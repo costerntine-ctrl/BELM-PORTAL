@@ -71,6 +71,7 @@ if ($method === 'POST') {
     $newId = uuid();
     db()->prepare('INSERT INTO company_expenses (id, bank_account_id, date, category, description, amount, recorded_by, receipt_url, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())')
         ->execute([$newId, $bankAccountId, $date, $category, $description, $amount, $b['recordedBy'] ?? null, $b['receiptUrl'] ?? null]);
+    log_activity($user, 'company-expense-created', 'companyExpense', $newId, ['amount' => $amount, 'category' => $category]);
     json_out(['id' => $newId], 201);
 }
 
@@ -90,6 +91,7 @@ if ($method === 'PUT') {
     $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, amount=?, recorded_by=?, receipt_url=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([$bankAccountId, $date, $category, $description, $amount, $b['recordedBy'] ?? null, $b['receiptUrl'] ?? null, $id]);
     if ($stmt->rowCount() === 0) json_error('Expense not found.', 404);
+    log_activity($user, 'company-expense-edited', 'companyExpense', $id, ['amount' => $amount]);
     json_out(['ok' => true]);
 }
 

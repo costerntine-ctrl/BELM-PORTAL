@@ -68,6 +68,7 @@ if ($method === 'POST') {
             $part['stockQty'], $part['reorderThreshold'],
             $part['purchasePrice'], $part['sellingPrice'],
         ]);
+    log_activity($user, 'spare-part-created', 'sparePart', $newId, ['name' => $part['name']]);
     json_out(['id' => $newId, 'message' => 'Spare part saved successfully.'], 201);
 }
 
@@ -83,6 +84,7 @@ if ($method === 'PUT') {
         $part['purchasePrice'], $part['sellingPrice'], $id,
     ]);
     if ($stmt->rowCount() === 0) json_error('Spare part not found.', 404);
+    log_activity($user, 'spare-part-edited', 'sparePart', $id, ['name' => $part['name']]);
     json_out(['ok' => true, 'message' => 'Spare part updated successfully.']);
 }
 

@@ -354,9 +354,14 @@
 
   async function resetPassword(id) {
     const user = users.find((item) => item.id === id);
-    if (!user || !confirm(`Reset password for ${user.name}?`)) return;
+    if (!user) return;
+    const confirmation = await window.belmConfirmEdit({
+      title: "Reset password?",
+      message: `Generate a new password for ${user.name}? The old password will stop working.`,
+    });
+    if (!confirmation) return;
     try {
-      const result = await api(`/users/${id}/reset-password`, { method: "PUT" });
+      const result = await api(`/users/${id}/reset-password`, { method: "PUT", body: JSON.stringify(confirmation) });
       showUserCredentials(user, result);
       showAlert("New login credentials generated. Copy them before closing the window.");
     } catch (error) {

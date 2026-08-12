@@ -108,6 +108,7 @@ if ($method === 'POST' && $action === 'roles') {
     $newId = uuid();
     db()->prepare('INSERT INTO roles (id, name, permissions, allowed_pages, created_at) VALUES (?,?,?,?,NOW())')
         ->execute([$newId, $role['name'], json_encode($role['permissions']), json_encode($role['allowedPages'])]);
+    log_activity($user, 'role-created', 'role', $newId, ['name' => $role['name']]);
     json_out(['id' => $newId, 'message' => 'Role added successfully.'], 201);
 }
 
@@ -115,14 +116,21 @@ if ($method === 'PUT' && $action === 'roles') {
     if (!$id) json_error('Role ID is required.');
     $existingName = role_name($id);
     if ($existingName === null) json_error('Role not found.', 404);
-    if (in_array($existingName, ['Super Admin', 'Technician'], true)) {
+    $b = body();
+    // Built-in roles (Super Admin, Technician) can't be renamed away from
+    // their identity — too much of the app checks for that literal name
+    // (e.g. /tech routing, Super Admin bypass checks) — but their
+    // allowed-pages CAN still be adjusted (this is how the Engineering
+    // page's "Edit role access" for Technician works).
+    if (in_array($existingName, ['Super Admin', 'Technician'], true)
+        && trim((string)($b['name'] ?? '')) !== $existingName) {
         json_error('Built-in roles cannot be renamed or replaced.', 409);
     }
-    $b = body();
     require_edit_confirmation($user, $b);
     $role = role_payload($b, $id);
     db()->prepare('UPDATE roles SET name=?, permissions=?, allowed_pages=? WHERE id=?')
         ->execute([$role['name'], json_encode($role['permissions']), json_encode($role['allowedPages']), $id]);
+    log_activity($user, 'role-edited', 'role', $id, ['name' => $role['name']]);
     json_out(['ok' => true, 'message' => 'Role updated successfully.']);
 }
 
@@ -234,6 +242,7 @@ if ($method === 'POST' && !$action) {
     ]);
     sync_extra_user_roles($newId, $roleId, $roleIds);
     $loginPath = role_name($roleId) === 'Technician' ? '/tech' : '/admin/login';
+    log_activity($user, 'system-user-created', 'user', $newId, ['name' => $name, 'email' => $email]);
     json_out([
         'id' => $newId,
         'temporaryPassword' => $password,
@@ -259,10 +268,15 @@ if ($method === 'PUT' && !$action) {
     db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
         ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
     sync_extra_user_roles($id, $roleId, $roleIds);
+    log_activity($user, 'system-user-edited', 'user', $id, ['name' => $name]);
     json_out(['ok' => true, 'message' => 'User role and access updated successfully.']);
 }
 
 if ($method === 'PUT' && $action === 'reset-password') {
+    // Resetting a staff account's password is reversible (can simply be
+    // reset again) — same lighter Edit PIN standard as the customer
+    // version of this same action, not the full delete confirmation.
+    require_edit_confirmation($user, body());
     $newPassword = secure_account_secret();
     $recoveryCode = account_recovery_code();
     $stmt = db()->prepare(
@@ -279,6 +293,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
     $resetUser = $stmt->fetch();
     if (!$resetUser) json_error('User not found.', 404);
     $loginPath = role_name((string)$resetUser['role_id']) === 'Technician' ? '/tech' : '/admin/login';
+    log_activity($user, 'system-user-login-reset', 'user', $id);
     json_out([
         'newPassword' => $newPassword,
         'recoveryCode' => $recoveryCode,

@@ -227,6 +227,7 @@ if ($method === 'POST') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'proforma-created', 'proforma', $newId, ['invoiceNo' => $invoiceNo]);
     json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
 }
 
@@ -306,6 +307,7 @@ if ($method === 'PUT') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'proforma-edited', 'proforma', $id);
     json_out(['ok' => true]);
 }
 

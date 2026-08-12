@@ -545,7 +545,9 @@
         <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
         <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Request Service</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
+        <button type="button" class="belm-report-problem-button" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
         <a href="/customer-users/" class="belm-assign-users-button" data-belm-owner-admin-only>Assign Users</a>
+        <button type="button" class="belm-assign-users-button" data-open-change-password>Change Password</button>
         <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
           data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
           data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
@@ -587,7 +589,8 @@
         <div><span>Type of service</span><b>${escapeHtml(status.intervalHours)}-Hour Service</b></div>
         <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
         <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
-      </div>`;
+      </div>
+      <button type="button" class="belm-technician-operator-reports-button" data-view-operator-reports="${escapeHtml(machine.id)}" data-technician-context="1">Operator Reports</button>`;
     // Insert before the Checked Reports/Check-up buttons row (which is
     // created synchronously right after this call) rather than just
     // appending, so the NEXT SERVICE panel reliably lands between Activity
@@ -735,7 +738,7 @@
     const name = payload?.name;
     if (!name) return;
     heading.dataset.belmNamed = "1";
-    heading.textContent = `${name} — Your machines`;
+    heading.textContent = `${String(name).toUpperCase()} MACHINES`;
   }
 
   async function enhanceServiceRequestHistory() {
@@ -1337,6 +1340,141 @@
     });
   }
 
+  function ensureOperatorReportsDialog() {
+    let dialog = document.getElementById("belmOperatorReportsDialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "belmOperatorReportsDialog";
+    dialog.className = "belm-analysis-dialog belm-operator-reports-dialog";
+    dialog.innerHTML = `
+      <div class="belm-analysis-dialog-card">
+        <div class="belm-analysis-head">
+          <span>OPERATOR REPORTS</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div id="belmOperatorReportsBody" class="belm-operator-reports-body"></div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    return dialog;
+  }
+
+  async function openOperatorReportsDialog(machineId, isTechnician) {
+    const dialog = ensureOperatorReportsDialog();
+    const body = document.getElementById("belmOperatorReportsBody");
+    body.innerHTML = '<p class="muted">Loading…</p>';
+    dialog.showModal();
+    try {
+      let reports;
+      if (isTechnician) {
+        const token = localStorage.getItem("belm_tech_token");
+        const response = await fetch(`/api/checklist-reports?action=operator-reports&machineId=${encodeURIComponent(machineId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Could not load operator reports.");
+        reports = await response.json();
+      } else {
+        const token = localStorage.getItem("belm_customer_token");
+        const response = await fetch(`/api/customer-portal/operator-reports/${encodeURIComponent(machineId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Could not load operator reports.");
+        reports = await response.json();
+      }
+      body.innerHTML = (reports || []).length
+        ? reports.map((report) => `
+            <div class="belm-operator-report-row">
+              <div class="belm-operator-report-head">
+                <b>${escapeHtml(report.operator_name || report.operatorName || "Operator")}</b>
+                <span class="belm-operator-report-status status-${escapeHtml((report.status || "OPEN").toLowerCase())}">${escapeHtml(report.status || "OPEN")}</span>
+              </div>
+              <p>${escapeHtml(report.message)}</p>
+              <small>${formatTanzaniaDateTime(report.created_at || report.createdAt)}${report.resolved_at || report.resolvedAt ? ` · Resolved ${formatTanzaniaDateTime(report.resolved_at || report.resolvedAt)}` : ""}</small>
+            </div>`).join("")
+        : '<p class="muted">No operator reports for this machine yet.</p>';
+    } catch (error) {
+      body.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  function wireOperatorReportsButtons() {
+    document.querySelectorAll("[data-view-operator-reports]").forEach((button) => {
+      if (button.dataset.belmWired === "1") return;
+      button.dataset.belmWired = "1";
+      button.addEventListener("click", () =>
+        openOperatorReportsDialog(button.dataset.viewOperatorReports, button.dataset.technicianContext === "1"));
+    });
+  }
+
+  function ensureChangePasswordDialog() {
+    let dialog = document.getElementById("belmChangePasswordDialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "belmChangePasswordDialog";
+    dialog.className = "belm-analysis-dialog";
+    dialog.innerHTML = `
+      <form class="belm-analysis-dialog-card belm-change-password-form">
+        <div class="belm-analysis-head">
+          <span>CHANGE PASSWORD</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-change-password-body">
+          <div id="belmChangePasswordError" class="belm-analysis-error" hidden></div>
+          <label>Current password<input type="password" id="belmCurrentPassword" autocomplete="current-password" required></label>
+          <label>New password <small>(at least 8 characters)</small><input type="password" id="belmNewPassword" autocomplete="new-password" minlength="8" required></label>
+          <label>Confirm new password<input type="password" id="belmConfirmNewPassword" autocomplete="new-password" minlength="8" required></label>
+          <button type="submit" class="belm-email-send" id="belmChangePasswordSubmit">Change password</button>
+        </div>
+      </form>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    dialog.querySelector("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorBox = document.getElementById("belmChangePasswordError");
+      const button = document.getElementById("belmChangePasswordSubmit");
+      errorBox.hidden = true;
+      const currentPassword = document.getElementById("belmCurrentPassword").value;
+      const newPassword = document.getElementById("belmNewPassword").value;
+      const confirmPassword = document.getElementById("belmConfirmNewPassword").value;
+      if (newPassword !== confirmPassword) {
+        errorBox.textContent = "New password and confirmation do not match.";
+        errorBox.hidden = false;
+        return;
+      }
+      button.disabled = true;
+      button.textContent = "Changing…";
+      try {
+        const token = localStorage.getItem("belm_customer_token");
+        const response = await fetch("/api/customer-portal/change-password", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ currentPassword, newPassword }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not change password.");
+        dialog.querySelector("form").reset();
+        dialog.close();
+        alert("Password changed successfully.");
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.hidden = false;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Change password";
+      }
+    });
+    return dialog;
+  }
+
+  function wireChangePasswordButtons() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    document.querySelectorAll("[data-open-change-password]").forEach((button) => {
+      if (button.dataset.belmWired === "1") return;
+      button.dataset.belmWired = "1";
+      button.addEventListener("click", () => ensureChangePasswordDialog().showModal());
+    });
+  }
+
   function wireCustomerAnalysisButtons() {
     if (window.location.pathname !== "/portal/dashboard") return;
     document.querySelectorAll("[data-open-analysis]").forEach((button) => {
@@ -1553,7 +1691,7 @@
     const listHeading = document.createElement("div");
     listHeading.id = "belmTechnicianMachineListHeading";
     listHeading.className = "belm-technician-machine-list-heading";
-    listHeading.innerHTML = `<div><span>Customer Fleet</span><h2>Machine List</h2></div>
+    listHeading.innerHTML = `<div><span>Customer Fleet</span><h2>${escapeHtml((customer.name || "Customer").toUpperCase())} MACHINES</h2></div>
       <strong>${escapeHtml((customer.machines || []).length)} MACHINE(S)</strong>`;
     machineGrid.classList.add("belm-technician-machine-grid");
     machineGrid.before(customerCard, listHeading);
@@ -3224,6 +3362,8 @@
   wireCustomerAnalysisButtons();
   wireEmailReportButtons();
   wireProblemReportButtons();
+  wireOperatorReportsButtons();
+  wireChangePasswordButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
   enhanceTechnicianReportCards();
@@ -3261,6 +3401,8 @@
     wireCustomerAnalysisButtons();
   wireEmailReportButtons();
   wireProblemReportButtons();
+  wireOperatorReportsButtons();
+  wireChangePasswordButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
     enhanceTechnicianReportCards();

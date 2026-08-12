@@ -1366,6 +1366,20 @@ if ($sub === 'users' && $method === 'GET') {
     json_out($assistants);
 }
 
+// A small, separate endpoint (rather than reshaping the array above) so
+// the frontend can show "2 of 3 users used" before the customer even
+// tries to add one, without changing the existing assistants-list shape.
+if ($sub === 'users' && $sub2 === 'limit' && $method === 'GET') {
+    require_customer_owner_or_admin($customer);
+    $limitStmt = db()->prepare('SELECT user_limit FROM customers WHERE id = ?');
+    $limitStmt->execute([$customer['id']]);
+    $userLimit = $limitStmt->fetchColumn();
+    $userLimit = $userLimit !== false && $userLimit !== null ? (int)$userLimit : DEFAULT_CUSTOMER_USER_LIMIT;
+    $countStmt = db()->prepare('SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1');
+    $countStmt->execute([$customer['id']]);
+    json_out(['limit' => $userLimit, 'used' => (int)$countStmt->fetchColumn()]);
+}
+
 // Self-service password change — works for both the main customer
 // (owner) account and any logged-in assistant, updating whichever table
 // their own login actually lives in.
@@ -1413,6 +1427,24 @@ if ($sub === 'users' && $method === 'POST') {
     $phone = trim((string)($b['phone'] ?? ''));
     $role = strtolower(trim((string)($b['role'] ?? 'operator')));
     $permissionsJson = customer_permissions_from_body($b);
+
+    // Enforce this customer's user limit — set by BELM Admin per
+    // customer, or the system default if they haven't set one. Once
+    // reached, they must contact BELM Admin (or request more) rather
+    // than adding freely.
+    $limitStmt = db()->prepare('SELECT user_limit FROM customers WHERE id = ?');
+    $limitStmt->execute([$customer['id']]);
+    $userLimit = $limitStmt->fetchColumn();
+    $userLimit = $userLimit !== false && $userLimit !== null ? (int)$userLimit : DEFAULT_CUSTOMER_USER_LIMIT;
+    $countStmt = db()->prepare('SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1');
+    $countStmt->execute([$customer['id']]);
+    $currentUserCount = (int)$countStmt->fetchColumn();
+    if ($currentUserCount >= $userLimit) {
+        json_error(
+            "You've reached your limit of $userLimit portal user(s). Contact BELM Admin to request additional users.",
+            403
+        );
+    }
 
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');

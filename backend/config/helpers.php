@@ -2,6 +2,11 @@
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/jwt.php';
 
+// Default number of portal users (assistants) a customer can add for
+// themselves before hitting the limit — overridable per-customer via
+// customers.user_limit (set from the Customers page in BELM Admin).
+const DEFAULT_CUSTOMER_USER_LIMIT = 3;
+
 $requestOrigin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = array_values(array_filter(array_map(
     'trim',

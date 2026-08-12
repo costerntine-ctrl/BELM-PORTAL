@@ -169,6 +169,7 @@ if ($method === 'GET' && !$action) {
         $c['machines'] = fetch_machines($c['id']);
         if (($user['roleName'] ?? '') !== 'Technician') {
             $c['users'] = fetch_customer_users($c['id']);
+            $c['userLimit'] = isset($c['user_limit']) ? (int)$c['user_limit'] : null;
         }
     }
     json_out($customers);
@@ -257,6 +258,22 @@ if ($method === 'PUT' && $action === 'reset-password') {
         'recoveryCode' => $recoveryCode,
         'loginUrl' => customer_portal_url($resetCustomer['portal_link'], $resetCustomer['email']),
     ]);
+}
+
+if ($method === 'PUT' && $action === 'user-limit') {
+    require_page_access($user, 'customers');
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $limit = $b['userLimit'] ?? null;
+    if ($limit !== null) {
+        $limit = (int)$limit;
+        if ($limit < 0) json_error('User limit cannot be negative.');
+    }
+    $stmt = db()->prepare('UPDATE customers SET user_limit = ? WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$limit, $id]);
+    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
+    log_activity($user, 'customer-user-limit-changed', 'customer', $id, ['userLimit' => $limit]);
+    json_out(['ok' => true, 'userLimit' => $limit]);
 }
 
 // ---- Update customer --------------------------------------------------------

@@ -75,6 +75,10 @@ CREATE TABLE IF NOT EXISTS customer_users (
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS permissions TEXT NULL;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
+-- Caps how many portal users (assistants) a customer can add for
+-- themselves before they must contact BELM Admin for more. NULL means
+-- "use the system default" (see DEFAULT_CUSTOMER_USER_LIMIT in helpers.php).
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS user_limit INTEGER NULL;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_customer_users_customer ON customer_users(customer_id);

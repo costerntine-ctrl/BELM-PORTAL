@@ -180,6 +180,15 @@
   }
   setInterval(rotateMachineAlertReasons, 3000);
 
+  function populateUserLimitDropdown() {
+    const select = document.getElementById("userLimitCustomerSelect");
+    if (!select) return;
+    const previousValue = select.value;
+    select.innerHTML = '<option value="">Select customer…</option>'
+      + customers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join("");
+    if (previousValue) select.value = previousValue;
+  }
+
   function renderCustomers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filter = document.getElementById("statusFilter").value;
@@ -343,6 +352,7 @@
       customers = await api("/customers");
       updateMetrics();
       renderCustomers();
+      populateUserLimitDropdown();
     } catch (error) {
       document.getElementById("customerGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
@@ -990,6 +1000,46 @@
     window.location.href = "/admin/login";
   });
   document.getElementById("searchInput").addEventListener("input", renderCustomers);
+
+  document.getElementById("userLimitCustomerSelect")?.addEventListener("change", (event) => {
+    const customer = customers.find((item) => item.id === event.target.value);
+    const info = document.getElementById("userLimitCurrentInfo");
+    const input = document.getElementById("userLimitInput");
+    if (!customer) {
+      info.textContent = "";
+      input.value = "";
+      return;
+    }
+    input.value = customer.userLimit ?? "";
+    info.textContent = customer.userLimit != null
+      ? `Current limit: ${customer.userLimit} · Currently has ${(customer.users || []).length} user(s).`
+      : `Using the system default (3) · Currently has ${(customer.users || []).length} user(s).`;
+  });
+
+  document.getElementById("userLimitSaveButton")?.addEventListener("click", async () => {
+    const customerId = document.getElementById("userLimitCustomerSelect").value;
+    if (!customerId) {
+      showAlert("Select a customer first.", true);
+      return;
+    }
+    const rawValue = document.getElementById("userLimitInput").value.trim();
+    const confirmation = await window.belmConfirmEdit({
+      title: "Save user limit?",
+      message: "Confirm this new portal-user limit for the selected customer.",
+    });
+    if (!confirmation) return;
+    try {
+      await api(`/customers/${customerId}/user-limit`, {
+        method: "PUT",
+        body: JSON.stringify({ userLimit: rawValue === "" ? null : Number(rawValue), ...confirmation }),
+      });
+      showAlert("User limit saved successfully.", false);
+      await load();
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
+
   document.getElementById("statusFilter").addEventListener("change", renderCustomers);
   document.getElementById("customerForm").addEventListener("submit", saveCustomer);
   document.getElementById("machineForm").addEventListener("submit", saveMachine);

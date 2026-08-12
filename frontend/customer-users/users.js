@@ -180,6 +180,7 @@
     try {
       users = await api("/users");
       render();
+      loadUserLimitInfo();
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
         userList.innerHTML = `<div class="locked"><strong>Owner access required</strong>${escapeHtml(error.message)}<br><a href="/portal/login">Log in as main customer</a></div>`;
@@ -188,6 +189,25 @@
         userList.innerHTML = '<div class="empty">Could not load assistant accounts.</div>';
         showAlert(error.message, true);
       }
+    }
+  }
+
+  async function loadUserLimitInfo() {
+    const info = document.getElementById("userLimitInfo");
+    if (!info) return;
+    try {
+      const data = await api("/users/limit");
+      const used = data.used ?? 0;
+      const limit = data.limit ?? 0;
+      info.textContent = `${used} of ${limit} portal user(s) used.`;
+      info.classList.toggle("at-limit", used >= limit);
+      const addButton = document.getElementById("addButton");
+      if (addButton) addButton.disabled = used >= limit;
+      if (used >= limit) {
+        info.textContent += " Contact BELM Admin to request additional users.";
+      }
+    } catch (_) {
+      info.textContent = "";
     }
   }
 

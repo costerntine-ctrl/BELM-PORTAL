@@ -2519,3 +2519,163 @@ a[href^="/api/customer-portal/reports/"][href$="/download"] {
 .belm-service-due-grid b.belm-fleet-number-value {
   color: #16a34a !important;
 }
+
+/* ========================================================================
+   BELM V140 — PROFESSIONAL OPERATIONS DESIGN SYSTEM
+   Shared visual layer for Admin, Customer and Technician experiences.
+   ======================================================================== */
+:root {
+  --belm-surface: #ffffff;
+  --belm-surface-soft: #f8faf9;
+  --belm-shadow-sm: 0 8px 24px rgba(21,29,49,.06);
+  --belm-shadow-md: 0 18px 44px rgba(21,29,49,.09);
+  --belm-shadow-lg: 0 28px 70px rgba(21,29,49,.13);
+  --belm-radius: 20px;
+  --belm-radius-sm: 14px;
+}
+
+body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; }
+
+/* Upgrade generic white cards across legacy + React screens without touching business logic. */
+.bg-white.rounded-lg,
+.bg-white.rounded-xl,
+.bg-white.rounded-2xl,
+.card,
+.panel,
+.metric-card,
+.role-card {
+  border: 1px solid rgba(21,29,49,.08) !important;
+  border-radius: var(--belm-radius) !important;
+  box-shadow: var(--belm-shadow-sm) !important;
+}
+.bg-white.rounded-lg:hover,
+.bg-white.rounded-xl:hover,
+.bg-white.rounded-2xl:hover,
+.card:hover,
+.metric-card:hover,
+.role-card:hover {
+  border-color: rgba(0,166,81,.24) !important;
+  box-shadow: var(--belm-shadow-md) !important;
+}
+
+/* Machine cards: operational, compact, readable. */
+.belm-customer-machine-card {
+  min-height: 0 !important;
+  padding: 22px !important;
+  border-width: 1px !important;
+  border-radius: 22px !important;
+  box-shadow: var(--belm-shadow-md) !important;
+}
+.belm-technician-machine-card {
+  min-height: 0 !important;
+  padding: 22px !important;
+  border-width: 1px !important;
+  border-radius: 22px !important;
+  box-shadow: var(--belm-shadow-md) !important;
+}
+.belm-customer-machine-card.status-red,
+.belm-technician-machine-card.status-red {
+  border: 1px solid #fecaca !important;
+  border-left: 5px solid #ef4444 !important;
+  box-shadow: 0 18px 42px rgba(239,68,68,.12) !important;
+}
+.belm-customer-machine-card.status-yellow,
+.belm-technician-machine-card.status-yellow {
+  border: 1px solid #fde68a !important;
+  border-left: 5px solid #eab308 !important;
+}
+.belm-customer-machine-card.status-green,
+.belm-technician-machine-card.status-green {
+  border: 1px solid #bbf7d0 !important;
+  border-left: 5px solid #22c55e !important;
+}
+
+/* V140 command center */
+.belm-v140 { background: #f4f7f5 !important; }
+.belm-command-topbar {
+  position: sticky; top: 0; z-index: 35;
+  min-height: 74px; padding: 0 clamp(18px,3vw,36px) !important;
+  background: rgba(255,255,255,.92) !important;
+  color: var(--belm-navy) !important;
+  border-bottom: 1px solid rgba(21,29,49,.08);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 30px rgba(21,29,49,.05) !important;
+}
+.belm-brand-lockup { display:flex; align-items:center; gap:12px; }
+.belm-brand-lockup strong { display:block; font-weight:900; letter-spacing:-.3px; }
+.belm-brand-lockup small { display:block; margin-top:2px; color:#728095; font-weight:600; }
+.belm-brand-mark {
+  width:42px; height:42px; display:grid; place-items:center; border-radius:13px;
+  background:linear-gradient(145deg,var(--belm-green),var(--belm-green-dark)); color:white;
+  border:2px solid var(--belm-yellow); font-weight:900; box-shadow:0 10px 26px rgba(0,166,81,.22);
+}
+.belm-live-pill { display:inline-flex; align-items:center; gap:7px; color:#24613f; background:#ecfdf3; border:1px solid #bbf7d0; border-radius:999px; padding:7px 10px; font-size:12px; font-weight:800; }
+.belm-live-pill i { width:7px; height:7px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 4px rgba(34,197,94,.12); }
+.belm-command-shell { max-width:1500px !important; }
+.belm-command-hero {
+  position:relative; overflow:hidden; display:grid !important; grid-template-columns:minmax(0,1.4fr) minmax(280px,.65fr); gap:28px; align-items:end;
+  padding:clamp(28px,4vw,54px) !important; margin-top:28px; border:0 !important; border-radius:30px !important;
+  color:white !important; background:
+    radial-gradient(circle at 82% 10%,rgba(255,212,0,.20),transparent 20rem),
+    linear-gradient(125deg,#11192b 0%,#182641 52%,#123b32 100%) !important;
+  box-shadow:0 30px 80px rgba(21,29,49,.2) !important;
+}
+.belm-command-hero:after { content:""; position:absolute; right:-80px; bottom:-120px; width:320px; height:320px; border:1px solid rgba(255,255,255,.09); border-radius:50%; box-shadow:0 0 0 50px rgba(255,255,255,.025),0 0 0 100px rgba(255,255,255,.018); }
+.belm-command-hero .eyebrow { color:#9ee8be !important; font-weight:900; letter-spacing:1.6px; }
+.belm-command-hero h1 { color:white !important; max-width:760px; font-size:clamp(34px,5vw,64px) !important; letter-spacing:-2.2px !important; line-height:1 !important; margin:10px 0 16px !important; }
+.belm-command-hero p { color:#c7d3e0 !important; max-width:760px; font-size:16px; line-height:1.7; }
+.belm-hero-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:24px; }
+.belm-command-hero .button { border-radius:12px !important; padding:12px 16px !important; font-weight:850 !important; }
+.belm-primary-action { background:var(--belm-yellow) !important; color:var(--belm-navy) !important; border-color:var(--belm-yellow) !important; }
+.belm-command-hero .button.secondary { color:#fff !important; border-color:rgba(255,255,255,.22) !important; background:rgba(255,255,255,.08) !important; }
+.belm-hero-status-card { position:relative; z-index:1; padding:22px; border:1px solid rgba(255,255,255,.13); border-radius:20px; background:rgba(255,255,255,.08); backdrop-filter:blur(10px); }
+.belm-hero-status-card span { color:#9ee8be; font-size:11px; font-weight:900; letter-spacing:1.3px; text-transform:uppercase; }
+.belm-hero-status-card strong { display:block; margin:9px 0 8px; color:#fff; font-size:18px; line-height:1.35; }
+.belm-hero-status-card p { margin:0; font-size:13px; line-height:1.55; color:#c7d3e0 !important; }
+
+.belm-quick-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:14px; margin:18px 0 26px; }
+.belm-quick-card { display:grid; grid-template-columns:auto 1fr auto; gap:13px; align-items:center; text-decoration:none; color:var(--belm-navy); background:#fff; border:1px solid rgba(21,29,49,.08); border-radius:18px; padding:17px; box-shadow:var(--belm-shadow-sm); }
+.belm-quick-card:hover { transform:translateY(-3px); border-color:rgba(0,166,81,.28); box-shadow:var(--belm-shadow-md); }
+.belm-quick-icon { width:42px; height:42px; display:grid; place-items:center; border-radius:13px; color:#087c42; background:#e9f9f0; font-size:11px; font-weight:900; }
+.belm-quick-card strong { display:block; font-size:14px; }
+.belm-quick-card small { display:block; margin-top:4px; color:#718096; font-size:11px; line-height:1.35; }
+.belm-quick-card b { color:var(--belm-green); font-size:18px; }
+
+.belm-period-panel { margin-bottom:28px !important; border-radius:16px !important; border:1px solid rgba(21,29,49,.08) !important; box-shadow:none !important; background:#fff !important; }
+.belm-section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin:34px 2px 14px; }
+.belm-section-heading > div { display:flex; align-items:center; gap:10px; }
+.belm-section-heading span { display:grid; place-items:center; min-width:30px; height:30px; border-radius:9px; color:#087c42; background:#e9f9f0; font-size:10px; font-weight:900; }
+.belm-section-heading h2 { margin:0; font-size:20px; letter-spacing:-.5px; color:var(--belm-navy); }
+.belm-section-heading p { margin:0; color:#7b8798; font-size:12px; }
+
+.belm-metric-grid { gap:14px !important; }
+.belm-metric-grid .metric-card { position:relative; overflow:hidden; min-height:145px; padding:20px !important; background:linear-gradient(180deg,#fff,#fbfcfc) !important; transition:.18s ease; }
+.belm-metric-grid .metric-card:before { content:""; position:absolute; left:0; top:0; width:4px; height:100%; background:#cbd5e1; }
+.belm-metric-grid .metric-card.green:before { background:#22c55e; }
+.belm-metric-grid .metric-card.yellow:before { background:#eab308; }
+.belm-metric-grid .metric-card.red:before { background:#ef4444; }
+.belm-metric-grid .metric-card span { color:#788598 !important; font-size:11px !important; font-weight:800 !important; text-transform:uppercase; letter-spacing:.45px; }
+.belm-metric-grid .metric-card strong { margin:12px 0 8px !important; color:var(--belm-navy) !important; font-size:clamp(25px,2.3vw,34px) !important; letter-spacing:-1px; }
+.belm-metric-grid .metric-card small { color:#7b8798 !important; line-height:1.4; }
+
+.belm-status-grid { margin-top:28px !important; }
+.belm-data-card { background:#fff !important; border-radius:22px !important; box-shadow:var(--belm-shadow-sm) !important; }
+.belm-data-card .section-head a:not(.button) { color:var(--belm-green-dark); font-size:12px; font-weight:850; text-decoration:none; }
+.belm-kicker { display:block; margin-bottom:7px; color:var(--belm-green-dark); font-size:10px; font-weight:900; letter-spacing:1.3px; }
+.belm-inventory-card { margin-top:18px !important; }
+.belm-table-wrap { border:1px solid #e8eeeb; border-radius:16px; overflow:hidden; }
+.belm-table-wrap thead th { background:#f7faf8 !important; color:#526174 !important; font-size:10px !important; text-transform:uppercase; letter-spacing:.5px; }
+.belm-table-wrap tbody tr:hover { background:#f8fcfa !important; }
+
+@media (max-width:1050px) {
+  .belm-command-hero { grid-template-columns:1fr; }
+  .belm-quick-actions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:680px) {
+  .belm-live-pill { display:none; }
+  .belm-command-hero { padding:28px 22px !important; border-radius:22px !important; }
+  .belm-command-hero h1 { font-size:38px !important; }
+  .belm-quick-actions { grid-template-columns:1fr; }
+  .belm-section-heading { align-items:flex-start; flex-direction:column; }
+  .belm-section-heading p { max-width:38rem; }
+}

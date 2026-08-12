@@ -62,3 +62,8 @@ Expected high-level state after deployment:
 ## Release
 
 This package is the professionalized continuation of the supplied V136 notifications build. Existing runtime routes and user workflows are intentionally preserved while documentation, QA and consistency fixes are added.
+
+
+## Local PC testing (Windows)
+
+For pre-deployment testing, install Docker Desktop and double-click `RUN_LOCAL.bat`. This starts the BELM Portal and an isolated PostgreSQL database, then opens `http://localhost:8080`. See `LOCAL_TEST_GUIDE.md` for full instructions. Local test data is separate from Render production data.

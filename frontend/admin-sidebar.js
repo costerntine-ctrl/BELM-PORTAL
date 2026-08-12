@@ -51,20 +51,20 @@
   applyAdminTheme(localStorage.getItem(themeStorageKey) || "light");
 
   const pages = [
-    { section: "Main workflow", key: "overview", label: "All Overview", short: "AO", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
-    { section: "Main workflow", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
-    { section: "Main workflow", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
-    { section: "Main workflow", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
-    { section: "Customers & maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
-    { section: "Customers & maintenance", key: "roles", label: "Engineering", short: "EG", href: "/roles-manager/?role=Technician", paths: ["/roles-manager/"] },
-    { section: "Customers & maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Customers & maintenance", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"] },
-    { section: "Customers & maintenance", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
-    { section: "Finance & administration", key: "bank-manager", label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
-    { section: "Finance & administration", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
-    { section: "Finance & administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
-    { section: "Finance & administration", key: "roles", label: "Roles & System Users", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
-    { section: "Finance & administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
+    { section: "Command Center", key: "overview", label: "Operations Overview", short: "OC", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"], priority: true },
+    { section: "Operations", key: "service-requests", label: "Service Jobs", short: "SJ", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
+    { section: "Operations", key: "customers", label: "Registration & Approvals", short: "AP", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
+    { section: "Customers & Assets", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Customers & Assets", key: "checklist-templates", label: "Inspection Checklists", short: "IC", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
+    { section: "People", key: "roles", label: "BELM Team & Roles", short: "TM", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
+    { section: "People", key: "roles", label: "Technicians & Engineering", short: "TE", href: "/roles-manager/?role=Technician", paths: [] },
+    { section: "Parts & Supply", key: "spare-parts", label: "Parts & Stock", short: "PS", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"] },
+    { section: "Parts & Supply", key: "suppliers", label: "Suppliers", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
+    { section: "Finance", key: "billing", label: "Billing & Customer Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
+    { section: "Finance", key: "bank-manager", label: "Bank & Cash Control", short: "BC", href: "/bank-controller/", paths: ["/bank-controller/"] },
+    { section: "Intelligence", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"] },
+    { section: "System", key: "settings", label: "System Settings", short: "ST", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
+    { section: "System", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
   ];
 
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;

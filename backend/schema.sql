@@ -546,6 +546,17 @@ CREATE TABLE IF NOT EXISTS password_reset_codes (
 );
 CREATE INDEX IF NOT EXISTS idx_password_reset_codes_email ON password_reset_codes(LOWER(email));
 
+-- Tracks failed login/PIN attempts so they can be rate-limited. A generic
+-- table (not per-feature) so the same guard protects staff login, customer
+-- login, and the Edit/Delete PIN checks without duplicating logic.
+CREATE TABLE IF NOT EXISTS security_rate_limits (
+  id VARCHAR(36) PRIMARY KEY,
+  scope VARCHAR(40) NOT NULL,
+  identifier VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_security_rate_limits_lookup ON security_rate_limits(scope, identifier, created_at);
+
 -- A roster of the people who physically operate a machine day-to-day.
 -- Managed by the customer's own Machine Admin (or the primary owner),
 -- distinct from portal login "assistants".

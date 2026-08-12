@@ -284,7 +284,7 @@ if ($method === 'PUT' && !$action) {
     $existing = fetch_template($id);
     if (!$existing) json_error('Checklist template not found.', 404);
     $b = body();
-    require_edit_confirmation($b);
+    require_edit_confirmation($user, $b);
     $payload = normalize_template_payload($b, false);
     $pdo = db();
     $pdo->beginTransaction();
@@ -326,7 +326,7 @@ if ($method === 'POST' && $action === 'add-item') {
 
 if ($method === 'PUT' && $action === 'edit-item') {
     $body = body();
-    require_edit_confirmation($body);
+    require_edit_confirmation($user, $body);
     $item = normalize_template_item($body, (int)($body['order'] ?? 0));
     $stmt = db()->prepare(
         'UPDATE checklist_template_items
@@ -349,7 +349,7 @@ if ($method === 'PUT' && $action === 'edit-item') {
 }
 
 if ($method === 'DELETE' && $action === 'delete-item') {
-    require_edit_confirmation(body());
+    require_edit_confirmation($user, body());
     db()->prepare('DELETE FROM checklist_template_items WHERE id = ?')->execute([$_GET['itemId']]);
     json_out(null, 204);
 }

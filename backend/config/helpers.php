@@ -280,16 +280,23 @@ function require_delete_confirmation(array $user, array $body): string {
     if ($reason === '') json_error('Enter a reason for this deletion.');
     if (mb_strlen($reason) > 500) json_error('Reason must be 500 characters or fewer.');
 
+    assert_not_rate_limited('delete-pin', $user['id'], 8, 15);
+
     $currentPin = belm_read_stored_pin('adminDeletePin', '1234');
-    if (!hash_equals($currentPin, $pin)) json_error('Incorrect delete PIN.', 403);
+    if (!hash_equals($currentPin, $pin)) {
+        record_failed_attempt('delete-pin', $user['id']);
+        json_error('Incorrect delete PIN.', 403);
+    }
 
     $stmt = db()->prepare('SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$user['id']]);
     $hash = $stmt->fetchColumn();
     if (!$hash || !password_verify($adminPassword, $hash)) {
+        record_failed_attempt('delete-pin', $user['id']);
         json_error('Incorrect admin password.', 403);
     }
 
+    clear_rate_limit('delete-pin', $user['id']);
     return $reason;
 }
 
@@ -369,6 +376,39 @@ function belm_get_company_details(): array {
 // !== comparison could treat a numeric-looking stored value and the typed
 // PIN as different types and report "Incorrect PIN" even when the digits
 // match exactly.
+// ---- Brute-force protection --------------------------------------------
+// Generic, table-backed rate limiter shared by staff login, customer
+// login, and the Edit/Delete PIN checks. Counts FAILED attempts only
+// (successful ones don't count against the limit), keyed by a scope
+// (e.g. 'login', 'edit-pin') + identifier (email or user id) so one
+// person's lockout never affects anyone else.
+function assert_not_rate_limited(string $scope, string $identifier, int $maxAttempts = 8, int $windowMinutes = 15): void {
+    $identifier = mb_strtolower(trim($identifier));
+    if ($identifier === '') return;
+    $stmt = db()->prepare(
+        "SELECT COUNT(*) FROM security_rate_limits
+         WHERE scope = ? AND identifier = ? AND created_at > NOW() - (? || ' minutes')::interval"
+    );
+    $stmt->execute([$scope, $identifier, $windowMinutes]);
+    if ((int)$stmt->fetchColumn() >= $maxAttempts) {
+        json_error("Too many incorrect attempts. Please wait $windowMinutes minutes and try again.", 429);
+    }
+}
+
+function record_failed_attempt(string $scope, string $identifier): void {
+    $identifier = mb_strtolower(trim($identifier));
+    if ($identifier === '') return;
+    db()->prepare('INSERT INTO security_rate_limits (id, scope, identifier, created_at) VALUES (?,?,?,NOW())')
+        ->execute([uuid(), $scope, $identifier]);
+}
+
+function clear_rate_limit(string $scope, string $identifier): void {
+    $identifier = mb_strtolower(trim($identifier));
+    if ($identifier === '') return;
+    db()->prepare('DELETE FROM security_rate_limits WHERE scope = ? AND identifier = ?')
+        ->execute([$scope, $identifier]);
+}
+
 function belm_read_stored_pin(string $key, string $default): string {
     $stmt = db()->prepare('SELECT "value" FROM system_settings WHERE "key" = ?');
     $stmt->execute([$key]);
@@ -380,12 +420,18 @@ function belm_read_stored_pin(string $key, string $default): string {
     return trim((string)$row['value'], "\" \t\n\r\0\x0B");
 }
 
-function require_edit_confirmation(array $body): void {
+function require_edit_confirmation(array $user, array $body): void {
     $pin = trim((string)($body['editPin'] ?? ''));
     if ($pin === '') json_error('Enter the edit PIN to confirm.');
 
+    assert_not_rate_limited('edit-pin', $user['id'], 8, 15);
+
     $currentPin = belm_read_stored_pin('adminEditPin', '2026');
-    if (!hash_equals($currentPin, $pin)) json_error('Incorrect edit PIN.', 403);
+    if (!hash_equals($currentPin, $pin)) {
+        record_failed_attempt('edit-pin', $user['id']);
+        json_error('Incorrect edit PIN.', 403);
+    }
+    clear_rate_limit('edit-pin', $user['id']);
 }
 
 // ---- Customer portal auth ---------------------------------------------------

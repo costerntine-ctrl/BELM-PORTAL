@@ -588,7 +588,12 @@
         <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
         <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
       </div>`;
-    card.appendChild(panel);
+    // Insert before the Checked Reports/Check-up buttons row (which is
+    // created synchronously right after this call) rather than just
+    // appending, so the NEXT SERVICE panel reliably lands between Activity
+    // Status and the buttons regardless of how long this fetch takes.
+    const actionsRowRef = card.querySelector(".belm-technician-card-actions");
+    card.insertBefore(panel, actionsRowRef);
   }
 
   let techLoadingWatchdogScheduled = false;

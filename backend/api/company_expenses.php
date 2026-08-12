@@ -76,7 +76,7 @@ if ($method === 'POST') {
 
 if ($method === 'PUT') {
     $b = body();
-    require_edit_confirmation($b);
+    require_edit_confirmation($user, $b);
     $date = trim((string)($b['date'] ?? ''));
     $category = strtoupper(trim((string)($b['category'] ?? 'OTHER')));
     $description = trim((string)($b['description'] ?? ''));

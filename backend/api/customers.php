@@ -234,7 +234,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
     // be reset again) and doesn't touch or delete any business data, so
     // it only needs the lighter Edit PIN confirmation — not the delete
     // PIN + the admin's own account password + a written reason.
-    require_edit_confirmation(body());
+    require_edit_confirmation($user, body());
     $temporaryPassword = secure_account_secret();
     $recoveryCode = account_recovery_code();
     $stmt = db()->prepare(
@@ -261,7 +261,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
 if ($method === 'PUT' && !$action) {
     require_page_access($user, 'customers');
     $b = body();
-    require_edit_confirmation($b);
+    require_edit_confirmation($user, $b);
     $stmt = db()->prepare('SELECT is_active FROM customers WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     $existingCustomer = $stmt->fetch();
@@ -418,7 +418,7 @@ if ($method === 'PUT' && $action === 'operational-status') {
 if ($method === 'PUT' && $action === 'edit-machine') {
     require_page_access($user, 'customers');
     $b = body();
-    require_edit_confirmation($b);
+    require_edit_confirmation($user, $b);
     $stmt = db()->prepare('SELECT customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$_GET['machineId']]);
     $existingMachine = $stmt->fetch();

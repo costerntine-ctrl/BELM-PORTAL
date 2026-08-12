@@ -723,6 +723,34 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-weight: 900;
 }
 
+/* The Technician's card already has a lot of sections stacked (machine
+   data, health, activity status, NEXT SERVICE, then buttons) — this
+   compacts NEXT SERVICE specifically so the whole card isn't overly
+   long, without touching the Customer Portal's roomier version. */
+.belm-technician-machine-card .belm-service-due-panel {
+  margin-top: 10px;
+  padding: 11px 12px;
+}
+.belm-technician-machine-card .belm-service-due-head {
+  margin-bottom: 6px;
+}
+.belm-technician-machine-card .belm-service-due-head strong {
+  font-size: 13px;
+}
+.belm-technician-machine-card .belm-service-due-grid {
+  gap: 6px;
+}
+.belm-technician-machine-card .belm-service-due-grid > div {
+  padding: 6px 8px;
+}
+.belm-technician-machine-card .belm-service-due-grid span {
+  font-size: 8px;
+  margin-bottom: 1px;
+}
+.belm-technician-machine-card .belm-service-due-grid b {
+  font-size: 13px;
+}
+
 .belm-service-whatsapp {
   display: flex;
   width: 100%;

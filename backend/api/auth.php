@@ -125,6 +125,8 @@ if ($action === 'recover' && $method === 'POST') {
         json_error('New password must contain at least 8 characters.');
     }
 
+    assert_not_rate_limited('recovery-code', $email, 8, 15);
+
     $account = null;
     $accountType = null;
 
@@ -172,8 +174,10 @@ if ($action === 'recover' && $method === 'POST') {
         || !$account['recovery_code_hash']
         || !password_verify($recoveryCode, $account['recovery_code_hash'])
     ) {
+        record_failed_attempt('recovery-code', $email);
         json_error('Email or recovery code is incorrect. Ask the account administrator for a new recovery code.', 401);
     }
+    clear_rate_limit('recovery-code', $email);
 
     $nextRecoveryCode = account_recovery_code();
     $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
@@ -211,6 +215,8 @@ if ($action === 'unified-login' && $method === 'POST') {
     if ($rawLoginId === '' || $password === '') {
         json_error('Enter your email or Customer Portal ID and password.');
     }
+
+    assert_not_rate_limited('unified-login', $rawLoginId, 10, 15);
 
     // Staff accounts use an email address. Technician accounts are staff
     // accounts with a required customer assignment.
@@ -256,6 +262,7 @@ if ($action === 'unified-login' && $method === 'POST') {
             } catch (Throwable $e) {}
 
             $isTechnician = $user['role_name'] === 'Technician';
+            clear_rate_limit('unified-login', $rawLoginId);
             json_out([
                 'token' => $token,
                 'accountType' => $isTechnician ? 'technician' : 'admin',
@@ -329,8 +336,12 @@ if ($action === 'unified-login' && $method === 'POST') {
         }
     }
 
-    if (!$customer) json_error('Email, Customer Portal ID or password is incorrect.', 401);
+    if (!$customer) {
+        record_failed_attempt('unified-login', $rawLoginId);
+        json_error('Email, Customer Portal ID or password is incorrect.', 401);
+    }
 
+    clear_rate_limit('unified-login', $rawLoginId);
     $token = jwt_encode([
         'type' => 'customer',
         'id' => $customer['id'],
@@ -364,6 +375,8 @@ if ($action === 'login' && $method === 'POST') {
     $email = trim($b['email'] ?? '');
     $password = $b['password'] ?? '';
 
+    assert_not_rate_limited('staff-login', $email, 10, 15);
+
     $stmt = db()->prepare(
         'SELECT u.*, r.name AS role_name, r.allowed_pages,
                 c.name AS assigned_customer_name
@@ -377,8 +390,10 @@ if ($action === 'login' && $method === 'POST') {
     $user = $stmt->fetch();
 
     if (!$user || !password_verify($password, $user['password_hash'])) {
+        record_failed_attempt('staff-login', $email);
         json_error('Invalid email or password', 401);
     }
+    clear_rate_limit('staff-login', $email);
 
     if ($user['role_name'] === 'Technician') {
         if (!$user['assigned_customer_id']) {
@@ -432,6 +447,8 @@ if ($action === 'customer-login' && $method === 'POST') {
     }
     $password = $b['password'] ?? '';
 
+    assert_not_rate_limited('customer-login', $rawLoginId, 10, 15);
+
     $stmt = db()->prepare('SELECT * FROM customers WHERE (LOWER(email) = ? OR portal_link = ?) AND deleted_at IS NULL');
     $stmt->execute([$loginId, $portalId]);
     $customer = $stmt->fetch();
@@ -465,7 +482,11 @@ if ($action === 'customer-login' && $method === 'POST') {
         }
     }
 
-    if (!$customer || !$customer['is_active']) json_error('Invalid credentials', 401);
+    if (!$customer || !$customer['is_active']) {
+        record_failed_attempt('customer-login', $rawLoginId);
+        json_error('Invalid credentials', 401);
+    }
+    clear_rate_limit('customer-login', $rawLoginId);
 
     $token = jwt_encode([
         'type' => 'customer',

@@ -1618,6 +1618,26 @@ if ($sub === 'service-requests' && $method === 'POST') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    // Notify the company inbox by email (best-effort — a failed email
+    // must never block the customer's request from being saved).
+    try {
+        $company = belm_get_company_details();
+        $adminEmail = trim((string)($company['companyEmail'] ?? ''));
+        if ($adminEmail !== '') {
+            $machineLabel = $machineId !== '' ? " for machine ID $machineId" : '';
+            send_email(
+                $adminEmail,
+                'New Service Request — ' . ($customer['name'] ?? 'Customer'),
+                "A new service request was submitted$machineLabel.\n\n"
+                . "Customer: " . ($customer['name'] ?? 'Unknown') . "\n"
+                . "Submitted by: " . trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) . "\n"
+                . "Priority: $priority\n"
+                . "Service type: " . ($serviceType ?: 'Not specified') . "\n\n"
+                . "Description:\n$description\n\n"
+                . "Open the Service Requests page in BELM Portal to review and assign this."
+            );
+        }
+    } catch (Throwable $error) { /* notification only — never block the request itself */ }
     json_out([
         'id' => $newId,
         'serviceType' => $serviceType,

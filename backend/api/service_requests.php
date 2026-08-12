@@ -213,7 +213,7 @@ if ($method === 'GET' && $action === 'customer-inbox') {
 
 if ($method === 'GET' && !$action) {
     $status = $_GET['status'] ?? null;
-    $sql = 'SELECT sr.*, c.name AS customer_name, m.model AS machine_model,
+    $sql = 'SELECT sr.*, c.name AS customer_name, c.phone AS customer_phone, m.model AS machine_model,
                    m.machine_type, u.name AS assigned_to_name,
                    cu.name AS completed_by_name, xu.name AS cancelled_by_name
             FROM service_requests sr
@@ -231,7 +231,7 @@ if ($method === 'GET' && !$action) {
     $requests = $stmt->fetchAll();
     foreach ($requests as &$r) {
         $r['customer'] = $r['customer_id']
-            ? ['id' => $r['customer_id'], 'name' => $r['customer_name']]
+            ? ['id' => $r['customer_id'], 'name' => $r['customer_name'], 'phone' => $r['customer_phone']]
             : null;
         $r['machine'] = $r['machine_id']
             ? [
@@ -258,6 +258,7 @@ if ($method === 'GET' && !$action) {
         $r['serviceParts'] = fetch_request_parts($r['id']);
         unset(
             $r['customer_name'],
+            $r['customer_phone'],
             $r['machine_model'],
             $r['machine_type'],
             $r['assigned_to_name'],

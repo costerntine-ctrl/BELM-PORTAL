@@ -100,6 +100,7 @@
           </div>
           <span class="priority ${escapeHtml(request.priority)}">${escapeHtml(request.priority)}</span>
         </div>
+        ${request.customer?.phone ? `<a class="whatsapp-link" target="_blank" rel="noopener" href="https://wa.me/${escapeHtml(String(request.customer.phone).replace(/[^0-9]/g, ""))}?text=${encodeURIComponent(`Hello, this is BELM regarding your service request for ${request.machine?.model || "your machine"}.`)}">💬 WhatsApp ${escapeHtml(request.customer.name || "customer")}</a>` : ""}
         ${request.serviceType ? `<div class="service-type"><b>Service type:</b> ${escapeHtml(request.serviceType)}</div>` : ""}
         <div class="description">${escapeHtml(request.description)}</div>
         ${(request.serviceParts || []).length ? `

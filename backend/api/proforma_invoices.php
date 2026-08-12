@@ -232,7 +232,7 @@ if ($method === 'POST') {
 
 if ($method === 'PUT') {
     $b = body();
-    require_edit_confirmation($b);
+    require_edit_confirmation($user, $b);
     $items = $b['items'] ?? [];
     $vatMode = strtoupper(trim((string)($b['vatMode'] ?? '')));
     $vatRate = isset($b['vatRate']) ? (float)$b['vatRate'] : 18.0;

@@ -36,6 +36,7 @@
     [/^\/billing-manager(?:\/|$)/, "billing"],
     [/^\/bank-controller(?:\/|$)/, "bank-manager"],
     [/^\/roles-manager(?:\/|$)/, "roles"],
+    [/^\/engineering-manager(?:\/|$)/, "roles"],
     [/^\/suppliers-manager(?:\/|$)/, "suppliers"],
     [/^\/reports-manager(?:\/|$)/, "reports"],
     [/^\/settings-manager(?:\/|$)/, "settings"],

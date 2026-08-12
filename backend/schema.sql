@@ -211,6 +211,13 @@ ALTER TABLE service_requests
   ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ NULL;
 ALTER TABLE service_requests
   ADD COLUMN IF NOT EXISTS customer_confirmed SMALLINT NOT NULL DEFAULT 1;
+-- Lets Admin "hide" a completed/cancelled request from the daily working
+-- list without deleting anything — it stays fully intact for the daily
+-- report / audit history, just no longer clutters the main list.
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS hidden_at TIMESTAMPTZ NULL;
+ALTER TABLE service_requests
+  ADD COLUMN IF NOT EXISTS hidden_by_id VARCHAR(36) NULL REFERENCES users(id);
 ALTER TABLE service_requests
   ADD COLUMN IF NOT EXISTS assigned_by_id VARCHAR(36) NULL REFERENCES users(id);
 ALTER TABLE service_requests

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM Engineering</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
+    <link rel="stylesheet" href="/engineering-manager/manager.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/overview-manager/">
+        <span class="brand-mark">B</span>
+        <span>BELM General Tech <small>Engineering</small></span>
+      </a>
+      <div class="top-actions">
+        <a class="ghost" href="/overview-manager/">← All Overview</a>
+        <button id="refreshButton" class="ghost" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Machines & Field Work</p>
+          <h1>Engineering</h1>
+          <p>What's happening on machines right now — activity, operator messages, status, service reminders, and spare part needs.</p>
+        </div>
+      </section>
+
+      <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section class="eng-roles-strip">
+        <article class="eng-role-card">
+          <h3>Engineer</h3>
+          <p id="engineerRoleAccess" class="muted">Loading…</p>
+        </article>
+        <article class="eng-role-card">
+          <h3>Technician</h3>
+          <p>Technician app only / no admin dashboard pages</p>
+        </article>
+        <a class="eng-role-manage-link" href="/roles-manager/">Manage roles & system users →</a>
+      </section>
+
+      <section class="eng-grid">
+        <article class="panel eng-card">
+          <div class="panel-head"><h2>Machine activity</h2><span id="activityCount" class="eng-count">0</span></div>
+          <div id="activityList" class="eng-card-body"><p class="muted">Loading…</p></div>
+        </article>
+
+        <article class="panel eng-card">
+          <div class="panel-head"><h2>Operator messages</h2><span id="operatorCount" class="eng-count">0</span></div>
+          <div id="operatorList" class="eng-card-body"><p class="muted">Loading…</p></div>
+        </article>
+
+        <article class="panel eng-card">
+          <div class="panel-head"><h2>Machine status</h2></div>
+          <div id="statusSummary" class="eng-status-summary"><p class="muted">Loading…</p></div>
+        </article>
+
+        <article class="panel eng-card">
+          <div class="panel-head"><h2>Service reminders</h2><span id="reminderCount" class="eng-count">0</span></div>
+          <div id="reminderList" class="eng-card-body"><p class="muted">Loading…</p></div>
+        </article>
+
+        <article class="panel eng-card eng-card-wide">
+          <div class="panel-head"><h2>Spare parts needed</h2><span id="spareCount" class="eng-count">0</span></div>
+          <div id="spareList" class="eng-card-body"><p class="muted">Loading…</p></div>
+        </article>
+      </section>
+    </main>
+
+    <script src="/admin-access.js"></script>
+    <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+    <script src="/engineering-manager/manager.js"></script>
+  </body>
+</html>

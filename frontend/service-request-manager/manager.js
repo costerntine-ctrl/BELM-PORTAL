@@ -4,8 +4,9 @@
   const statusTabs = document.getElementById("statusTabs");
   const alertBox = document.getElementById("alertBox");
   const noteDialog = document.getElementById("noteDialog");
-  const statuses = ["", "OPEN", "ASSIGNED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED"];
+  const statuses = ["", "OPEN", "ASSIGNED", "IN_PROGRESS", "ON_HOLD", "COMPLETED", "CANCELLED", "HIDDEN"];
   let requests = [];
+  let hiddenRequests = [];
   let technicians = [];
   let activeStatus = "";
 
@@ -62,9 +63,11 @@
 
   function renderTabs() {
     statusTabs.innerHTML = statuses.map((status) => {
-      const count = status
-        ? requests.filter((request) => request.status === status).length
-        : requests.filter((request) => !["COMPLETED", "CANCELLED"].includes(request.status)).length;
+      const count = status === "HIDDEN"
+        ? hiddenRequests.length
+        : status
+          ? requests.filter((request) => request.status === status).length
+          : requests.filter((request) => !["COMPLETED", "CANCELLED"].includes(request.status)).length;
       const label = status ? status.replaceAll("_", " ") : "ACTIVE";
       return `<button class="${activeStatus === status ? "active" : ""}" data-status="${status}">${label}<b>${count}</b></button>`;
     }).join("");
@@ -82,13 +85,17 @@
 
   function renderRequests() {
     renderTabs();
-    const visible = activeStatus
-      ? requests.filter((request) => request.status === activeStatus)
-      : requests.filter((request) => !["COMPLETED", "CANCELLED"].includes(request.status));
+    const visible = activeStatus === "HIDDEN"
+      ? hiddenRequests
+      : activeStatus
+        ? requests.filter((request) => request.status === activeStatus)
+        : requests.filter((request) => !["COMPLETED", "CANCELLED"].includes(request.status));
     if (visible.length === 0) {
-      requestList.innerHTML = activeStatus
-        ? '<div class="empty">No service requests in this status.</div>'
-        : '<div class="empty">No active service requests. Check the COMPLETED or CANCELLED tabs for history.</div>';
+      requestList.innerHTML = activeStatus === "HIDDEN"
+        ? '<div class="empty">Nothing hidden. Completed/Cancelled requests can be hidden from their card.</div>'
+        : activeStatus
+          ? '<div class="empty">No service requests in this status.</div>'
+          : '<div class="empty">No active service requests. Check the COMPLETED or CANCELLED tabs for history.</div>';
       return;
     }
     requestList.innerHTML = visible.map((request) => `
@@ -119,11 +126,16 @@
           </label>
           <label>Job status
             <select data-status-update="${escapeHtml(request.id)}">
-              ${statuses.filter(Boolean).map((status) => `<option value="${status}" ${request.status === status ? "selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}
+              ${statuses.filter((status) => status && status !== "HIDDEN").map((status) => `<option value="${status}" ${request.status === status ? "selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}
             </select>
           </label>
           <button class="note-button" type="button" data-note="${escapeHtml(request.id)}">Notes (${(request.notes || []).length})</button>
           <button class="note-button history-button" type="button" data-history="${escapeHtml(request.id)}">History</button>
+          ${request.hiddenAt
+            ? `<button class="note-button unhide-button" type="button" data-unhide="${escapeHtml(request.id)}">Restore to list</button>`
+            : ["COMPLETED", "CANCELLED"].includes(request.status)
+              ? `<button class="note-button hide-button" type="button" data-hide="${escapeHtml(request.id)}">Hide from list</button>`
+              : ""}
         </div>
       </article>
     `).join("");
@@ -193,6 +205,7 @@
     OPENED: "Opened",
     STATUS: "Status changed",
     ASSIGNMENT: "Assignment changed",
+    HIDDEN: "Visibility changed",
   };
 
   async function openHistory(requestId) {
@@ -218,6 +231,8 @@
           description = entry.to
             ? `Assigned to <b>${escapeHtml(entry.to)}</b> by ${escapeHtml(entry.actorName || "BELM")}`
             : `Unassigned by ${escapeHtml(entry.actorName || "BELM")}`;
+        } else if (entry.eventType === "HIDDEN") {
+          description = `By ${escapeHtml(entry.actorName || "BELM")}`;
         } else {
           description = `Changed from <b>${escapeHtml((entry.from || "—").replaceAll("_", " "))}</b> to <b>${escapeHtml((entry.to || "—").replaceAll("_", " "))}</b> by ${escapeHtml(entry.actorName || "BELM")}`;
         }
@@ -257,10 +272,17 @@
     }
   }
 
-  statusTabs.addEventListener("click", (event) => {
+  statusTabs.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-status]");
     if (!button) return;
     activeStatus = button.dataset.status;
+    if (activeStatus === "HIDDEN" && hiddenRequests.length === 0) {
+      try {
+        hiddenRequests = await api("/service-requests?hidden=1");
+      } catch (error) {
+        showAlert(error.message, true);
+      }
+    }
     renderRequests();
   });
   requestList.addEventListener("change", (event) => {
@@ -270,9 +292,35 @@
   requestList.addEventListener("click", (event) => {
     const button = event.target.closest("[data-note]");
     const historyButton = event.target.closest("[data-history]");
+    const hideButton = event.target.closest("[data-hide]");
+    const unhideButton = event.target.closest("[data-unhide]");
     if (button) openNotes(button.dataset.note);
     if (historyButton) openHistory(historyButton.dataset.history);
+    if (hideButton) hideRequest(hideButton.dataset.hide);
+    if (unhideButton) unhideRequest(unhideButton.dataset.unhide);
   });
+
+  async function hideRequest(requestId) {
+    try {
+      await api(`/service-requests/${requestId}/hide`, { method: "PUT" });
+      requests = requests.filter((request) => request.id !== requestId);
+      renderRequests();
+      showAlert("Hidden from the daily list. It still appears in daily reports and History.", false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
+  async function unhideRequest(requestId) {
+    try {
+      await api(`/service-requests/${requestId}/unhide`, { method: "PUT" });
+      hiddenRequests = hiddenRequests.filter((request) => request.id !== requestId);
+      renderRequests();
+      showAlert("Restored to the daily list.", false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
   document.getElementById("closeHistoryButton")?.addEventListener("click", () =>
     document.getElementById("historyDialog").close());
   document.getElementById("noteForm").addEventListener("submit", saveNote);

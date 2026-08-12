@@ -660,7 +660,7 @@
         ${displayPhotoUrl ? `<div class="report-top-fact report-top-photo"><span>Display Photo</span><img src="${escapeHtml(displayPhotoUrl)}" alt="Display photo" class="report-display-photo" data-view-evidence-photo="${escapeHtml(displayPhotoUrl)}"></div>` : ""}
       </div>
       <table><thead><tr><th>Item</th><th>Result</th><th>Status</th><th style="text-align:right">Evidence</th></tr></thead>
-      <tbody>${answers.length ? answers.map((answer) => {
+      <tbody>${answers.length ? answers.map((answer, answerIndex) => {
         const photoUrl = String(answer.photoUrl || "").trim();
         const rawValue = String(answer.value ?? "");
         const valueAsPhoto = /^data:image\//i.test(rawValue) ? rawValue : "";
@@ -671,7 +671,7 @@
         const statusCell = level === "NONE" ? "—" : `<span class="machine-status ${escapeHtml(level)}">${escapeHtml(statusLabel(level))}</span>`;
         const note = String(answer.note || "").trim();
         return `<tr>
-          <td>${escapeHtml(answer.label)}</td>
+          <td>${answerIndex + 1}. ${escapeHtml(answer.label)}</td>
           <td>${resultCell}${note ? `<div class="checkup-issue-note-display">Issue: ${escapeHtml(note)}</div>` : ""}</td>
           <td>${statusCell}</td>
           <td style="text-align:right">${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="Evidence" class="evidence-thumb" data-view-evidence-photo="${escapeHtml(photoUrl)}" style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid var(--line);cursor:pointer">` : "—"}</td>

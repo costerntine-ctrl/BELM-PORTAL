@@ -894,12 +894,31 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 .belm-email-recipient-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 9px;
   padding: 8px 10px;
   border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 8px;
   background: rgba(255, 255, 255, .04);
+}
+.belm-email-recipient-row > label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 0;
   cursor: pointer;
+}
+.belm-email-edit-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 6px;
+  color: #ffd400;
+  background: rgba(255, 255, 255, .06);
+  cursor: pointer;
+  font-size: 12px;
 }
 .belm-email-recipient-row input[type="checkbox"] {
   width: auto;
@@ -911,11 +930,37 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   text-transform: none;
   font-weight: 700;
   letter-spacing: normal;
+  overflow-wrap: anywhere;
 }
 .belm-email-recipient-row span small {
   color: #9fb0c8;
   font-weight: 500;
 }
+.belm-email-recipient-row input.belm-email-edit-label,
+.belm-email-recipient-row input.belm-email-edit-address {
+  flex: 1;
+  min-width: 90px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 6px;
+  color: #fff;
+  background: rgba(255, 255, 255, .06);
+  font-size: 11.5px;
+}
+.belm-email-edit-save,
+.belm-email-edit-cancel,
+.belm-email-edit-delete {
+  flex-shrink: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.belm-email-edit-save { color: #06301c; background: #ffd400; }
+.belm-email-edit-cancel { color: #fff; background: rgba(255, 255, 255, .14); }
+.belm-email-edit-delete { color: #ffb4b4; background: rgba(255, 80, 80, .18); }
 .belm-email-add-row {
   display: grid;
   grid-template-columns: 1fr 1.4fr auto;

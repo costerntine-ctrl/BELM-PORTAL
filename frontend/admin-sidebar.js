@@ -16,6 +16,7 @@
     "/settings-manager/",
     "/bank-controller/",
     "/recycle-bin/",
+    "/engineering-manager/",
   ];
   const isAdminArea = pathname.startsWith("/admin/")
     || standaloneAdminPaths.some((path) => pathname === path || pathname.startsWith(path));
@@ -56,7 +57,7 @@
     { section: "Main workflow", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
     { section: "Main workflow", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
     { section: "Customers & maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
-    { section: "Customers & maintenance", key: "roles", label: "Engineering", short: "EG", href: "/roles-manager/?role=Technician", paths: ["/roles-manager/"] },
+    { section: "Customers & maintenance", key: "roles", label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
     { section: "Customers & maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     { section: "Customers & maintenance", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"] },
     { section: "Customers & maintenance", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },

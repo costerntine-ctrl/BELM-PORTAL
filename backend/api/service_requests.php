@@ -213,6 +213,7 @@ if ($method === 'GET' && $action === 'customer-inbox') {
 
 if ($method === 'GET' && !$action) {
     $status = $_GET['status'] ?? null;
+    $onlyHidden = !empty($_GET['hidden']);
     $sql = 'SELECT sr.*, c.name AS customer_name, c.phone AS customer_phone, m.model AS machine_model,
                    m.machine_type, u.name AS assigned_to_name,
                    cu.name AS completed_by_name, xu.name AS cancelled_by_name
@@ -222,11 +223,13 @@ if ($method === 'GET' && !$action) {
             LEFT JOIN users u ON u.id = sr.assigned_to_id
             LEFT JOIN users cu ON cu.id = sr.completed_by_id
             LEFT JOIN users xu ON xu.id = sr.cancelled_by_id';
-    if ($status) {
-        $stmt = db()->prepare("$sql WHERE sr.status = ? ORDER BY sr.created_at DESC");
+    if ($onlyHidden) {
+        $stmt = db()->query("$sql WHERE sr.hidden_at IS NOT NULL ORDER BY sr.hidden_at DESC");
+    } elseif ($status) {
+        $stmt = db()->prepare("$sql WHERE sr.status = ? AND sr.hidden_at IS NULL ORDER BY sr.created_at DESC");
         $stmt->execute([$status]);
     } else {
-        $stmt = db()->query("$sql WHERE sr.status <> 'PENDING_CUSTOMER' ORDER BY sr.created_at DESC");
+        $stmt = db()->query("$sql WHERE sr.status <> 'PENDING_CUSTOMER' AND sr.hidden_at IS NULL ORDER BY sr.created_at DESC");
     }
     $requests = $stmt->fetchAll();
     foreach ($requests as &$r) {
@@ -255,6 +258,7 @@ if ($method === 'GET' && !$action) {
         $r['templateId'] = $r['template_id'];
         $r['createdAt'] = $r['created_at'];
         $r['updatedAt'] = $r['updated_at'];
+        $r['hiddenAt'] = $r['hidden_at'];
         $r['serviceParts'] = fetch_request_parts($r['id']);
         unset(
             $r['customer_name'],
@@ -357,6 +361,30 @@ if ($method === 'PUT' && $action === 'assign') {
     if ($request['status'] !== 'ASSIGNED') {
         log_service_request_history($id, 'STATUS', $request['status'], 'ASSIGNED', $user);
     }
+    json_out(['ok' => true]);
+}
+
+// Hides a request from the main daily list without deleting it — it
+// remains fully intact for the daily report and its History timeline.
+// Only allowed once a request has reached a final state.
+if ($method === 'PUT' && $action === 'hide') {
+    $stmt = db()->prepare('SELECT status FROM service_requests WHERE id = ?');
+    $stmt->execute([$id]);
+    $existing = $stmt->fetch();
+    if (!$existing) json_error('Service request not found.', 404);
+    if (!in_array($existing['status'], ['COMPLETED', 'CANCELLED'], true)) {
+        json_error('Only Completed or Cancelled requests can be hidden.');
+    }
+    db()->prepare('UPDATE service_requests SET hidden_at = NOW(), hidden_by_id = ? WHERE id = ?')
+        ->execute([$user['id'], $id]);
+    log_service_request_history($id, 'HIDDEN', null, null, $user, 'Hidden from the daily list');
+    json_out(['ok' => true]);
+}
+
+if ($method === 'PUT' && $action === 'unhide') {
+    db()->prepare('UPDATE service_requests SET hidden_at = NULL, hidden_by_id = NULL WHERE id = ?')
+        ->execute([$id]);
+    log_service_request_history($id, 'HIDDEN', null, null, $user, 'Restored to the daily list');
     json_out(['ok' => true]);
 }
 

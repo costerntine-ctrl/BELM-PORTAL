@@ -486,7 +486,9 @@ if ($method === 'GET' && $action === 'pdf') {
         $photos[] = ['label' => 'Display Photo', 'photo' => $displayPhoto];
     }
     $lines[] = str_repeat('-', 78);
+    $itemNumber = 0;
     foreach ($answers as $answer) {
+        $itemNumber++;
         $displayValue = $answer['value'];
         $isImageValue = $displayValue !== '' && str_starts_with((string)$displayValue, 'data:image/');
         $photo = checklist_report_decode_photo($answer['photoUrl'] ?: ($isImageValue ? $displayValue : null));
@@ -494,7 +496,8 @@ if ($method === 'GET' && $action === 'pdf') {
         $levelSuffix = strtoupper((string)$answer['safetyLevel']) === 'NONE' ? '' : ' [' . $answer['safetyLevel'] . ']';
         $noteSuffix = trim((string)($answer['note'] ?? '')) !== '' ? ' -- Issue: ' . trim((string)$answer['note']) : '';
         $lines[] = sprintf(
-            '%s: %s%s%s%s',
+            '%d. %s: %s%s%s%s',
+            $itemNumber,
             $answer['label'],
             $isImageValue ? '(Photo)' : ($displayValue !== '' ? $displayValue : '—'),
             $levelSuffix,

@@ -400,6 +400,21 @@ if ($sub === 'saved-emails' && $method === 'POST') {
     json_out(['id' => $newId, 'label' => $label, 'email' => $email], 201);
 }
 
+if ($sub === 'saved-emails' && $sub2 && $method === 'PUT') {
+    require_customer_write_access($customer);
+    $b = body();
+    $label = trim((string)($b['label'] ?? ''));
+    $email = trim((string)($b['email'] ?? ''));
+    if ($label === '') json_error('Enter a label, e.g. "Boss" or "Management Team".');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email address.');
+    $stmt = db()->prepare(
+        'UPDATE customer_saved_emails SET label = ?, email = ? WHERE id = ? AND customer_id = ?'
+    );
+    $stmt->execute([$label, $email, $sub2, $customer['id']]);
+    if ($stmt->rowCount() === 0) json_error('Saved email not found.', 404);
+    json_out(['id' => $sub2, 'label' => $label, 'email' => $email]);
+}
+
 if ($sub === 'saved-emails' && $sub2 && $method === 'DELETE') {
     require_customer_write_access($customer);
     db()->prepare('DELETE FROM customer_saved_emails WHERE id = ? AND customer_id = ?')->execute([$sub2, $customer['id']]);
@@ -1794,7 +1809,9 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
         $photos[] = ['label' => 'Display Photo', 'photo' => $displayPhoto];
     }
     $lines[] = str_repeat('-', 78);
+    $itemNumber = 0;
     foreach ($answers as $answer) {
+        $itemNumber++;
         $displayValue = $answer['value'];
         $isImageValue = $displayValue !== '' && str_starts_with((string)$displayValue, 'data:image/');
         $photo = checklist_report_decode_photo($answer['photoUrl'] ?: ($isImageValue ? $displayValue : null));
@@ -1802,7 +1819,8 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
         $levelSuffix = strtoupper((string)$answer['safetyLevel']) === 'NONE' ? '' : ' [' . $answer['safetyLevel'] . ']';
         $noteSuffix = trim((string)($answer['note'] ?? '')) !== '' ? ' -- Issue: ' . trim((string)$answer['note']) : '';
         $lines[] = sprintf(
-            '%s: %s%s%s%s',
+            '%d. %s: %s%s%s%s',
+            $itemNumber,
             $answer['label'],
             $isImageValue ? '(Photo)' : ($displayValue !== '' ? $displayValue : '—'),
             $levelSuffix,

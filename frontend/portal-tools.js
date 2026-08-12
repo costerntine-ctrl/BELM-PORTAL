@@ -1056,11 +1056,71 @@
     const saved = await loadSavedEmails();
     container.innerHTML = saved.length
       ? saved.map((entry) => `
-          <label class="belm-email-recipient-row">
-            <input type="checkbox" data-recipient-checkbox value="${entry.email.replace(/"/g, "&quot;")}">
-            <span>${entry.label} <small>(${entry.email})</small></span>
-          </label>`).join("")
+          <div class="belm-email-recipient-row" data-recipient-row="${escapeHtml(entry.id)}">
+            <label>
+              <input type="checkbox" data-recipient-checkbox value="${escapeHtml(entry.email)}">
+              <span>${escapeHtml(entry.label)} <small>(${escapeHtml(entry.email)})</small></span>
+            </label>
+            <button type="button" class="belm-email-edit-btn" data-edit-recipient="${escapeHtml(entry.id)}" aria-label="Edit">✎</button>
+          </div>`).join("")
       : '<p class="belm-email-empty-list">No saved emails yet — add one below.</p>';
+
+    container.querySelectorAll("[data-edit-recipient]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const entryId = button.dataset.editRecipient;
+        const entry = saved.find((item) => item.id === entryId);
+        if (!entry) return;
+        const row = container.querySelector(`[data-recipient-row="${entryId}"]`);
+        row.innerHTML = `
+          <input type="text" class="belm-email-edit-label" value="${escapeHtml(entry.label)}" maxlength="100">
+          <input type="email" class="belm-email-edit-address" value="${escapeHtml(entry.email)}">
+          <button type="button" class="belm-email-edit-save" data-save-recipient="${escapeHtml(entryId)}">Save</button>
+          <button type="button" class="belm-email-edit-cancel" data-cancel-recipient="${escapeHtml(entryId)}">Cancel</button>
+          <button type="button" class="belm-email-edit-delete" data-delete-recipient="${escapeHtml(entryId)}">Delete</button>`;
+
+        row.querySelector("[data-cancel-recipient]").addEventListener("click", renderEmailRecipients);
+
+        row.querySelector("[data-delete-recipient]").addEventListener("click", async () => {
+          if (!confirm(`Remove "${entry.label}" (${entry.email}) from your saved emails?`)) return;
+          try {
+            const token = localStorage.getItem("belm_customer_token");
+            await fetch(`/api/customer-portal/saved-emails/${entryId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            belmSavedEmailsCache = null;
+            renderEmailRecipients();
+          } catch (_) {
+            alert("Could not remove that saved email. Try again.");
+          }
+        });
+
+        row.querySelector("[data-save-recipient]").addEventListener("click", async () => {
+          const label = row.querySelector(".belm-email-edit-label").value.trim();
+          const email = row.querySelector(".belm-email-edit-address").value.trim();
+          if (!label || !email) {
+            alert("Enter both a label and an email address.");
+            return;
+          }
+          try {
+            const token = localStorage.getItem("belm_customer_token");
+            const response = await fetch(`/api/customer-portal/saved-emails/${entryId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ label, email }),
+            });
+            if (!response.ok) {
+              const error = await response.json().catch(() => ({}));
+              throw new Error(error.error || "Could not save changes.");
+            }
+            belmSavedEmailsCache = null;
+            renderEmailRecipients();
+          } catch (error) {
+            alert(error.message || "Could not save changes.");
+          }
+        });
+      });
+    });
   }
 
   async function loadSavedEmails() {
@@ -2347,7 +2407,7 @@
       <div class="belm-checked-report-table-wrap">
         <table class="belm-checked-report-table">
           <thead><tr><th>Checked item</th><th>Recorded result</th><th>Status</th><th>Evidence</th></tr></thead>
-          <tbody>${answers.length ? answers.map((answer) => {
+          <tbody>${answers.length ? answers.map((answer, answerIndex) => {
             const answerStatus = String(answer.safetyLevel || answer.safety_level || "GREEN").toUpperCase();
             const photoUrl = safeReportPhotoUrl(answer.photoUrl || answer.photo_url);
             const rawValue = String(answer.value ?? "");
@@ -2356,7 +2416,7 @@
               ? `<img src="${escapeHtml(valueAsPhoto)}" alt="Photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy" class="belm-report-photo-thumb" data-view-report-photo="${escapeHtml(valueAsPhoto)}">`
               : `<strong>${escapeHtml(rawValue || "—")}</strong>`;
             return `<tr>
-              <td>${escapeHtml(answer.label || "Checklist item")}</td>
+              <td>${answerIndex + 1}. ${escapeHtml(answer.label || "Checklist item")}</td>
               <td>${resultCell}${String(answer.note || "").trim() ? `<div class="belm-report-issue-note">Issue: ${escapeHtml(String(answer.note).trim())}</div>` : ""}</td>
               <td>${answerStatus === "NONE" ? "—" : `<span class="belm-report-status status-${escapeHtml(answerStatus.toLowerCase())}">${escapeHtml(answerStatus)}</span>`}</td>
               <td class="belm-report-evidence">${photoUrl ? `<img src="${escapeHtml(photoUrl)}" alt="Evidence photo for ${escapeHtml(answer.label || "checklist item")}" loading="lazy" class="belm-report-photo-thumb" data-view-report-photo="${escapeHtml(photoUrl)}">` : "—"}</td>
@@ -2838,8 +2898,29 @@
         if (!response.ok) return;
         const status = await response.json();
         const hint = document.getElementById("belmLastHourMeterHint");
+        const remaining = Math.round(status?.hoursRemaining ?? 0);
+        const dueText = status?.level === "RED" ? " — Service due now" : status?.level === "YELLOW" ? " — Service due soon" : "";
         if (hint) {
-          hint.textContent = `Last recorded: ${Number(status?.totalHours || 0).toLocaleString("en-TZ")} hrs — today's reading must be the same or higher.`;
+          hint.textContent = `Last recorded: ${Number(status?.totalHours || 0).toLocaleString("en-TZ")} hrs — today's reading must be the same or higher.${dueText}`;
+        }
+        // Pre-select the matching Service Type (e.g. "500-Hour Service")
+        // from the same NEXT SERVICE panel shown on the machine card —
+        // the Technician shouldn't have to work out which interval is due
+        // by hand when the system already knows.
+        const intervalHours = Number(status?.intervalHours || 0);
+        if (intervalHours > 0) {
+          const serviceTypeSelect = document.getElementById("belmServiceType");
+          const matchingValue = `${intervalHours}_HOUR`;
+          if (serviceTypeSelect && [...serviceTypeSelect.options].some(option => option.value === matchingValue)) {
+            serviceTypeSelect.value = matchingValue;
+          }
+          // If service is due now or soon, default "Is this a service day?"
+          // to checked — the Technician can still uncheck it if this visit
+          // is just a routine check-up, not the actual service.
+          if (["RED", "YELLOW"].includes(status?.level) && !document.getElementById("belmIsServiceDay").checked) {
+            document.getElementById("belmIsServiceDay").checked = true;
+            document.getElementById("belmServiceDayFields").classList.remove("hidden");
+          }
         }
       } catch (_) { /* purely a helper hint — safe to skip on any failure */ }
     })();

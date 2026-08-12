@@ -560,6 +560,37 @@
     enforceCustomerFeaturePermissions(panel);
   }
 
+  // A leaner version of customerServiceDuePanel for the Technician view —
+  // same NEXT SERVICE info grid (Fleet Number, Type of Service, Current
+  // Hrs, Remaining Hrs), but without the customer-facing action buttons
+  // row (Assign Users, Request Service, etc.) since the Technician already
+  // has their own Checked Reports / Check-up buttons on this same card.
+  async function technicianServiceDuePanel(card, machine) {
+    if (card.dataset.belmServiceDueReady === "1") return;
+    card.dataset.belmServiceDueReady = "1";
+    const status = await loadServiceStatus(machine.id);
+    if (!status) return;
+
+    const serial = machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded";
+    const remaining = Math.round(status.hoursRemaining);
+    const levelLabel = status.level === "RED" ? "Service due now" : status.level === "YELLOW" ? "Service due soon" : "On schedule";
+
+    const panel = document.createElement("div");
+    panel.className = `belm-service-due-panel status-${String(status.level || "GREEN").toLowerCase()}`;
+    panel.innerHTML = `
+      <div class="belm-service-due-head">
+        <span>NEXT SERVICE</span>
+        <strong>${escapeHtml(levelLabel)}</strong>
+      </div>
+      <div class="belm-service-due-grid">
+        <div><span>Fleet Number</span><b class="belm-fleet-number-value">${escapeHtml(machine.fleetNumber || machine.fleet_number || serial)}</b></div>
+        <div><span>Type of service</span><b>${escapeHtml(status.intervalHours)}-Hour Service</b></div>
+        <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
+        <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
+      </div>`;
+    card.appendChild(panel);
+  }
+
   let techLoadingWatchdogScheduled = false;
   // Detects the specific "your assigned customer has changed" 401 the
   // backend now sends when a Technician's session token is stale (their
@@ -1643,6 +1674,7 @@
       card.classList.add("belm-technician-machine-card");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       technicianMachineInfoCard(card, machine);
+      technicianServiceDuePanel(card, machine);
 
       const actionsRow = document.createElement("div");
       actionsRow.className = "belm-technician-card-actions";

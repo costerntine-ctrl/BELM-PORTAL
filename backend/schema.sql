@@ -805,3 +805,93 @@ VALUES (
   '"1234"'::jsonb
 )
 ON CONFLICT ("key") DO NOTHING;
+
+-- V150: Contract-managed customer workshops and collaborative work orders
+CREATE TABLE IF NOT EXISTS customer_contracts (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  contract_number VARCHAR(100) NOT NULL UNIQUE,
+  title VARCHAR(255) NOT NULL,
+  contract_type VARCHAR(40) NOT NULL DEFAULT 'SERVICE_MAINTENANCE',
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  sla_response_hours INTEGER NOT NULL DEFAULT 24,
+  preventive_maintenance_included SMALLINT NOT NULL DEFAULT 1,
+  labour_included SMALLINT NOT NULL DEFAULT 1,
+  parts_included SMALLINT NOT NULL DEFAULT 0,
+  notes TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_contracts_customer ON customer_contracts(customer_id, status, end_date);
+
+CREATE TABLE IF NOT EXISTS customer_sites (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  name VARCHAR(255) NOT NULL,
+  location VARCHAR(255) NULL,
+  site_type VARCHAR(30) NOT NULL DEFAULT 'SITE',
+  is_active SMALLINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_sites_customer ON customer_sites(customer_id);
+
+CREATE TABLE IF NOT EXISTS customer_workshop_staff (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  site_id VARCHAR(36) NULL REFERENCES customer_sites(id),
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(50) NULL,
+  email VARCHAR(255) NULL,
+  role VARCHAR(40) NOT NULL DEFAULT 'TECHNICIAN',
+  specialty VARCHAR(255) NULL,
+  is_active SMALLINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_workshop_staff_customer ON customer_workshop_staff(customer_id, is_active);
+
+CREATE TABLE IF NOT EXISTS workshop_work_orders (
+  id VARCHAR(36) PRIMARY KEY,
+  work_order_number VARCHAR(100) NOT NULL UNIQUE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  contract_id VARCHAR(36) NULL REFERENCES customer_contracts(id),
+  site_id VARCHAR(36) NULL REFERENCES customer_sites(id),
+  machine_id VARCHAR(36) NULL REFERENCES machines(id),
+  assigned_customer_staff_id VARCHAR(36) NULL REFERENCES customer_workshop_staff(id),
+  belm_service_request_id VARCHAR(36) NULL REFERENCES service_requests(id),
+  job_type VARCHAR(40) NOT NULL DEFAULT 'BREAKDOWN_REPAIR',
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  priority VARCHAR(10) NOT NULL DEFAULT 'NORMAL',
+  status VARCHAR(30) NOT NULL DEFAULT 'OPEN',
+  source VARCHAR(30) NOT NULL DEFAULT 'CUSTOMER_WORKSHOP',
+  diagnosis TEXT NULL,
+  work_done TEXT NULL,
+  downtime_started_at TIMESTAMPTZ NULL,
+  completed_at TIMESTAMPTZ NULL,
+  created_by_name VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_workshop_work_orders_customer ON workshop_work_orders(customer_id, status, created_at);
+CREATE INDEX IF NOT EXISTS idx_workshop_work_orders_contract ON workshop_work_orders(contract_id, status);
+
+CREATE TABLE IF NOT EXISTS workshop_work_order_history (
+  id VARCHAR(36) PRIMARY KEY,
+  work_order_id VARCHAR(36) NOT NULL REFERENCES workshop_work_orders(id) ON DELETE CASCADE,
+  event_type VARCHAR(40) NOT NULL,
+  from_value VARCHAR(100) NULL,
+  to_value VARCHAR(100) NULL,
+  actor_name VARCHAR(255) NULL,
+  note TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_workshop_history_order ON workshop_work_order_history(work_order_id, created_at);
+
+CREATE TABLE IF NOT EXISTS contract_machine_coverage (
+  contract_id VARCHAR(36) NOT NULL REFERENCES customer_contracts(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  coverage_notes TEXT NULL,
+  PRIMARY KEY(contract_id, machine_id)
+);

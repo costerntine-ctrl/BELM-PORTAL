@@ -5,6 +5,7 @@
   const standaloneAdminPaths = [
     "/overview-manager/",
     "/customers-manager/",
+    "/contracts-workshops/",
     "/admin-applications/",
     "/checklist-manager/",
     "/service-request-manager/",
@@ -55,6 +56,7 @@
     { section: "Operations", key: "service-requests", label: "Service Jobs", short: "SJ", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
     { section: "Operations", key: "customers", label: "Registration & Approvals", short: "AP", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
     { section: "Customers & Assets", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Customers & Assets", key: "customers", label: "Contracts & Workshops", short: "CW", href: "/contracts-workshops/", paths: ["/contracts-workshops/"] },
     { section: "Customers & Assets", key: "checklist-templates", label: "Inspection Checklists", short: "IC", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "People", key: "roles", label: "BELM Team & Roles", short: "TM", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
     { section: "People", key: "roles", label: "Technicians & Engineering", short: "TE", href: "/roles-manager/?role=Technician", paths: [] },

@@ -303,8 +303,19 @@ switch ($resource) {
         if (isset($segments[1])) dispatch('tasks.php', ['id' => $segments[1]]);
         dispatch('tasks.php');
 
+    case 'contracts':
+        if (($segments[1] ?? '') === 'summary') dispatch('contracts.php', ['action' => 'summary']);
+        dispatch('contracts.php', ['id' => $segments[1] ?? '']);
+
+    case 'workshops':
+        // BELM oversight of customer sites, workshop staff and internal work orders.
+        if (($segments[1] ?? '') === 'sites') dispatch('workshops.php', ['resource' => 'sites', 'id' => $segments[2] ?? '']);
+        if (($segments[1] ?? '') === 'staff') dispatch('workshops.php', ['resource' => 'staff', 'id' => $segments[2] ?? '']);
+        if (($segments[1] ?? '') === 'orders') dispatch('workshops.php', ['resource' => 'orders', 'id' => $segments[2] ?? '', 'action' => $segments[3] ?? '']);
+        dispatch('workshops.php');
+
     case 'customer-portal':
-        dispatch('customer_portal.php', ['sub' => $segments[1] ?? '', 'sub2' => $segments[2] ?? '', 'sub3' => $segments[3] ?? '']);
+        dispatch('customer_portal.php', ['sub' => $segments[1] ?? '', 'sub2' => $segments[2] ?? '', 'sub3' => $segments[3] ?? '', 'sub4' => $segments[4] ?? '']);
 
     default:
         json_error('Not found', 404);

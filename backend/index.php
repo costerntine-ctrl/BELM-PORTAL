@@ -72,7 +72,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
                    u.created_at ASC
                  LIMIT 1"
             );
-            $stmt->execute(['admin@belmgeneraltech.co.tz']);
+            $stmt->execute(['info@belmgeneral.co.tz']);
             $admin = $stmt->fetch();
             if ($admin) {
                 $hash = (string)($admin['password_hash'] ?? '');

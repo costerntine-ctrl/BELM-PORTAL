@@ -241,7 +241,7 @@ try {
 
         json_out([
             'ok' => true,
-            'message' => 'Database wiped and reseeded. Admin login: admin@belmgeneraltech.co.tz / ChangeMe123! — change the password immediately.',
+            'message' => 'Database wiped and reseeded. Use the configured BELM Administrator account and change the temporary password and delete PIN immediately.',
         ]);
     }
 

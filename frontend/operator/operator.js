@@ -17,6 +17,11 @@
     ["loginSection", "shiftSection", "signOutSection", "doneSection"].forEach((sectionId) => {
       document.getElementById(sectionId).classList.toggle("hidden", sectionId !== id);
     });
+    // "Exit" only makes sense once signed in (shift/sign-out/done
+    // screens) — it just returns to the login screen without ending the
+    // open shift, in case the device needs to be handed to someone else
+    // or the operator wants to come back to it later.
+    document.getElementById("exitButton").classList.toggle("hidden", id === "loginSection");
   }
 
   async function api(path, options = {}) {
@@ -155,6 +160,12 @@
   });
 
   document.getElementById("startNewShiftButton").addEventListener("click", startShift);
+
+  document.getElementById("exitButton").addEventListener("click", () => {
+    clearAlert();
+    document.getElementById("loginForm").reset();
+    showSection("loginSection");
+  });
 
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_operator_token");

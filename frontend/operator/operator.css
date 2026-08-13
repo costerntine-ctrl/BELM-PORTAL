@@ -5,6 +5,8 @@ body { margin:0; min-height:100vh; color:#182235; font-family:Inter,system-ui,sa
 .op-brand { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; background:var(--green); font-weight:900; }
 .op-header b { display:block; font-size:14px; }
 .op-header small { color:#9fb0c8; font-size:11px; }
+.op-exit-button { margin-left:auto; padding:8px 14px; border:1px solid rgba(255,255,255,.25); border-radius:9px; color:#fff; background:rgba(255,255,255,.08); font-size:12px; font-weight:800; cursor:pointer; }
+.op-exit-button:hover { background:rgba(255,255,255,.16); }
 
 main { max-width:460px; margin:0 auto; padding:20px 16px 60px; }
 

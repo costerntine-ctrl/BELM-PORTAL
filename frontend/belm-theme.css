@@ -1307,14 +1307,27 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 }
 @media (min-width: 980px) {
   .belm-dashboard-layout > .belm-activity-overview-card {
-    flex: 0 0 300px;
-    align-self: stretch;
+    flex: 0 0 460px;
+    align-self: flex-start;
   }
   .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 16px;
+  }
+  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-item {
+    gap: 2px;
   }
   .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-item strong {
-    font-size: 26px;
+    font-size: 20px;
+  }
+  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-machines {
+    grid-template-columns: repeat(2, 1fr);
+    margin-top: 10px;
+    padding-top: 10px;
+    gap: 8px;
+  }
+  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-submhead {
+    grid-column: 1 / -1;
   }
 }
 @media (max-width: 979px) {

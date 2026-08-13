@@ -62,32 +62,34 @@
           <option value="ATTENTION">Machine needs attention</option>
         </select>
       </section>
-      <section class="user-limit-panel">
-        <div class="user-limit-panel-head">
-          <h2>Customer user limit</h2>
-          <p>Set how many portal users (assistants) a customer can add for themselves before they must contact BELM Admin.</p>
+      <section class="settings-panels-row">
+        <div class="user-limit-panel compact">
+          <div class="user-limit-panel-head">
+            <h2>Customer user limit</h2>
+            <p>Portal users a customer can self-add before contacting BELM.</p>
+          </div>
+          <div class="user-limit-panel-row">
+            <select id="userLimitCustomerSelect"><option value="">Select customer…</option></select>
+            <input id="userLimitInput" type="number" min="0" step="1" placeholder="e.g. 3">
+            <button id="userLimitSaveButton" class="secondary" type="button">Save</button>
+          </div>
+          <p id="userLimitCurrentInfo" class="muted"></p>
         </div>
-        <div class="user-limit-panel-row">
-          <select id="userLimitCustomerSelect"><option value="">Select customer…</option></select>
-          <input id="userLimitInput" type="number" min="0" step="1" placeholder="e.g. 3">
-          <button id="userLimitSaveButton" class="secondary" type="button">Save limit</button>
+        <div class="user-limit-panel compact">
+          <div class="user-limit-panel-head">
+            <h2>Machinery Admin <small>(self-service)</small></h2>
+            <p>Customer runs their own maintenance. BELM can't assign new Technicians to them.</p>
+          </div>
+          <div class="user-limit-panel-row">
+            <select id="machineryAdminCustomerSelect"><option value="">Select customer…</option></select>
+            <label class="machinery-admin-switch">
+              <input id="machineryAdminToggle" type="checkbox">
+              <span>ON</span>
+            </label>
+            <button id="machineryAdminSaveButton" class="secondary" type="button">Save</button>
+          </div>
+          <p id="machineryAdminCurrentInfo" class="muted"></p>
         </div>
-        <p id="userLimitCurrentInfo" class="muted"></p>
-      </section>
-      <section class="user-limit-panel">
-        <div class="user-limit-panel-head">
-          <h2>Machinery Admin (self-service)</h2>
-          <p>Customer runs their own maintenance with their own Technician accounts. BELM can no longer assign NEW Technicians to them — Service &amp; Spare Part requests still reach BELM by email either way.</p>
-        </div>
-        <div class="user-limit-panel-row">
-          <select id="machineryAdminCustomerSelect"><option value="">Select customer…</option></select>
-          <label class="machinery-admin-switch">
-            <input id="machineryAdminToggle" type="checkbox">
-            <span>Machinery Admin ON</span>
-          </label>
-          <button id="machineryAdminSaveButton" class="secondary" type="button">Save</button>
-        </div>
-        <p id="machineryAdminCurrentInfo" class="muted"></p>
       </section>
       <section id="customerGrid" class="customer-grid"><div class="loading">Loading customers…</div></section>
     </main>

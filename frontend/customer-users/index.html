@@ -106,6 +106,19 @@
       </div>
       <div id="userList" class="user-list"><div class="loading">Loading assistants…</div></div>
     </section>
+
+    <section id="technicianSection" class="panel hidden">
+      <div class="panel-head">
+        <div><h2>Your Field Technicians</h2><p>Machinery Admin self-service is ON for your account — add your own Technicians who will log into the BELM Technician app and run check-ups on your machines.</p></div>
+      </div>
+      <div class="technician-add-row">
+        <input type="text" id="technicianName" maxlength="255" placeholder="Technician name">
+        <input type="email" id="technicianEmail" maxlength="255" placeholder="Email">
+        <input type="text" id="technicianPhone" maxlength="50" placeholder="Phone (optional)">
+        <button type="button" id="technicianAddButton">+ Add Technician</button>
+      </div>
+      <div id="technicianList" class="user-list"></div>
+    </section>
   </main>
 
   <dialog id="userDialog">
@@ -135,10 +148,12 @@
         <label class="check-option access-all"><input type="checkbox" id="accessAll" checked> <b>Access All</b></label>
         <div id="accessOptions" class="access-options">
           <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Machine Expenses</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="whatsapp"> Send via WhatsApp</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Service Request</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report a Problem</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="operator-reports"> Operator Reports</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="analysis"> Analysis</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Assign Users</label>
         </div>

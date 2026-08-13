@@ -542,11 +542,11 @@
       </div>
       <div class="belm-machine-quick-actions">
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Machine Expenses</a>
-        <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Fuel Usage</a>
+        <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
         <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
         <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Request Service</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
-        <button type="button" class="belm-report-problem-button" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
         <a href="/customer-users/" class="belm-assign-users-button" data-belm-owner-admin-only>Assign Users</a>
         <button type="button" class="belm-assign-users-button" data-open-change-password>Change Password</button>
         <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
@@ -771,6 +771,9 @@
     th.className = "text-left px-5 py-3";
     th.textContent = "Handled by";
     headRow.insertBefore(th, headRow.lastElementChild);
+    const hideTh = document.createElement("th");
+    hideTh.className = "text-left px-5 py-3";
+    headRow.appendChild(hideTh);
 
     bodyRows.forEach((row, index) => {
       const request = requests[index];
@@ -786,7 +789,101 @@
       td.className = "px-5 py-3 text-slate-500";
       td.textContent = text;
       row.insertBefore(td, row.lastElementChild);
+
+      const hideTd = document.createElement("td");
+      hideTd.className = "px-5 py-3";
+      if (["COMPLETED", "CANCELLED"].includes(request.status)) {
+        const hideButton = document.createElement("button");
+        hideButton.type = "button";
+        hideButton.textContent = "Hide";
+        hideButton.className = "belm-hide-request-button";
+        hideButton.addEventListener("click", async () => {
+          hideButton.disabled = true;
+          hideButton.textContent = "Hiding…";
+          try {
+            const response = await fetch(`/api/customer-portal/service-requests/${encodeURIComponent(request.id)}/hide`, {
+              method: "PUT",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!response.ok) throw new Error();
+            row.remove();
+          } catch (_) {
+            hideButton.disabled = false;
+            hideButton.textContent = "Hide";
+          }
+        });
+        hideTd.appendChild(hideButton);
+      }
+      row.appendChild(hideTd);
     });
+
+    // A small link above the table to view/restore anything hidden —
+    // matches the same "still there, just tidied away" behaviour Admin
+    // already has for their own Service Request Manager.
+    if (!document.getElementById("belmShowHiddenRequestsLink")) {
+      const link = document.createElement("button");
+      link.id = "belmShowHiddenRequestsLink";
+      link.type = "button";
+      link.textContent = "View hidden requests";
+      link.className = "belm-show-hidden-requests-link";
+      link.addEventListener("click", () => openHiddenRequestsDialog(token));
+      heading.insertAdjacentElement("afterend", link);
+    }
+  }
+
+  async function openHiddenRequestsDialog(token) {
+    let dialog = document.getElementById("belmHiddenRequestsDialog");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "belmHiddenRequestsDialog";
+      dialog.className = "belm-analysis-dialog";
+      dialog.innerHTML = `
+        <div class="belm-analysis-dialog-card">
+          <div class="belm-analysis-head">
+            <span>HIDDEN SERVICE REQUESTS</span>
+            <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+          </div>
+          <div id="belmHiddenRequestsBody" class="belm-operator-reports-body"></div>
+        </div>`;
+      document.body.appendChild(dialog);
+      dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    }
+    const body = document.getElementById("belmHiddenRequestsBody");
+    body.innerHTML = '<p class="muted">Loading…</p>';
+    dialog.showModal();
+    try {
+      const response = await fetch("/api/customer-portal/service-requests?hidden=1", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const hidden = response.ok ? await response.json() : [];
+      body.innerHTML = hidden.length
+        ? hidden.map((request) => `
+            <div class="belm-operator-report-row">
+              <div class="belm-operator-report-head">
+                <b>${escapeHtml(request.description || request.serviceType || "Service request")}</b>
+                <span class="belm-operator-report-status status-resolved">${escapeHtml(request.status)}</span>
+              </div>
+              <small>${formatTanzaniaDateTime(request.createdAt)}</small>
+              <button type="button" class="belm-hide-request-button" data-unhide="${escapeHtml(request.id)}" style="margin-top:8px">Restore to list</button>
+            </div>`).join("")
+        : '<p class="muted">Nothing hidden right now.</p>';
+      body.querySelectorAll("[data-unhide]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          button.disabled = true;
+          try {
+            await fetch(`/api/customer-portal/service-requests/${encodeURIComponent(button.dataset.unhide)}/unhide`, {
+              method: "PUT",
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            button.closest(".belm-operator-report-row").remove();
+          } catch (_) {
+            button.disabled = false;
+          }
+        });
+      });
+    } catch (_) {
+      body.innerHTML = '<p class="belm-analysis-error">Could not load hidden requests.</p>';
+    }
   }
 
   function enforceCustomerFeaturePermissions(scope) {

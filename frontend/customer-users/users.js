@@ -223,8 +223,28 @@
         document.getElementById("customerPortalUrl").textContent = dashboard.customer.portalUrl;
         document.getElementById("copyLinkButton").dataset.portalUrl = dashboard.customer.portalUrl;
       }
+      document.getElementById("technicianSection").classList.toggle("hidden", !dashboard?.customer?.isMachineryAdmin);
+      if (dashboard?.customer?.isMachineryAdmin) loadTechnicians();
     } catch {
       // The user list already shows the actionable authentication error.
+    }
+  }
+
+  async function loadTechnicians() {
+    const list = document.getElementById("technicianList");
+    list.innerHTML = '<div class="loading">Loading your Technicians…</div>';
+    try {
+      const technicians = await api("/technicians");
+      list.innerHTML = technicians.length
+        ? technicians.map((tech) => `
+            <div class="roster-item">
+              <span><strong>${escapeHtml(tech.name)}</strong> · ${escapeHtml(tech.email)}${tech.phone ? ` · ${escapeHtml(tech.phone)}` : ""}
+                ${tech.is_active ? '<em class="roster-pin-set">Active</em>' : '<em class="roster-pin-missing">Inactive</em>'}
+              </span>
+            </div>`).join("")
+        : '<p class="empty-role">No Technicians added yet.</p>';
+    } catch (error) {
+      list.innerHTML = `<p class="empty-role">${escapeHtml(error.message || "Could not load your Technicians.")}</p>`;
     }
   }
 
@@ -375,6 +395,38 @@
       document.getElementById("rosterOperatorLink").value = `${window.location.origin}/operator/?machine=${machineId}`;
     }
     loadRoster(machineId);
+  });
+
+  document.getElementById("technicianAddButton")?.addEventListener("click", async () => {
+    const name = document.getElementById("technicianName").value.trim();
+    const email = document.getElementById("technicianEmail").value.trim();
+    const phone = document.getElementById("technicianPhone").value.trim();
+    if (!name || !email) {
+      showAlert("Enter both the Technician's name and email.", true);
+      return;
+    }
+    const button = document.getElementById("technicianAddButton");
+    button.disabled = true;
+    button.textContent = "Adding…";
+    try {
+      const result = await api("/technicians", {
+        method: "POST",
+        body: JSON.stringify({ name, email, phone }),
+      });
+      document.getElementById("technicianName").value = "";
+      document.getElementById("technicianEmail").value = "";
+      document.getElementById("technicianPhone").value = "";
+      await loadTechnicians();
+      showAlert(
+        `Technician added. Share these login details securely: ${result.loginUrl || "/tech"} · Password: ${result.temporaryPassword || "—"}`,
+        false
+      );
+    } catch (error) {
+      showAlert(error.message, true);
+    } finally {
+      button.disabled = false;
+      button.textContent = "+ Add Technician";
+    }
   });
 
   document.getElementById("copyOperatorLinkButton")?.addEventListener("click", async () => {

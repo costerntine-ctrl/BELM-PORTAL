@@ -20,7 +20,8 @@ function log_customer_activity(array $customer, string $action): void {
 // request sends 'all' (or omits permissions entirely), the assistant gets
 // full access — represented internally as NULL, not an exhaustive list.
 const CUSTOMER_PERMISSION_KEYS = [
-    'machine-expenses', 'email', 'whatsapp', 'service-request', 'report-problem', 'analysis', 'assign-users',
+    'machine-expenses', 'fuel-usage', 'email', 'whatsapp', 'service-request',
+    'report-problem', 'operator-reports', 'analysis', 'assign-users',
 ];
 
 // GET /spare-parts-catalog — the same "pick from inventory" list Admin's
@@ -504,12 +505,15 @@ if ($sub === 'dashboard') {
     }
     unset($machine);
     $stmt = db()->prepare(
-        'SELECT id, name, email, phone, portal_link
+        'SELECT id, name, email, phone, portal_link, is_machinery_admin
          FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
     );
     $stmt->execute([$customer['id']]);
     $profile = $stmt->fetch();
-    if ($profile) $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
+    if ($profile) {
+        $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
+        $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
+    }
     json_out(['customer' => $profile, 'machines' => $machines]);
 }
 
@@ -1565,7 +1569,7 @@ if ($sub === 'activity-logs' && $method === 'GET') {
     json_out($logs);
 }
 
-if ($sub === 'users' && $method === 'GET') {
+if ($sub === 'users' && !$sub2 && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
         'SELECT id, name, email, phone, role, is_active, permissions, created_at
@@ -1582,6 +1586,78 @@ if ($sub === 'users' && $method === 'GET') {
 }
 
 // A small, separate endpoint (rather than reshaping the array above) so
+// GET /technicians — list this customer's own field Technicians (only
+// meaningful once BELM has turned on Machinery Admin self-service).
+if ($sub === 'technicians' && $method === 'GET') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare(
+        "SELECT u.id, u.name, u.email, u.phone, u.is_active, u.created_at
+         FROM users u JOIN roles r ON r.id = u.role_id
+         WHERE r.name = 'Technician' AND u.assigned_customer_id = ? AND u.deleted_at IS NULL
+         ORDER BY u.created_at DESC"
+    );
+    $stmt->execute([$customer['id']]);
+    json_out($stmt->fetchAll());
+}
+
+// POST /technicians — a "Machinery Admin" self-service customer adds
+// their OWN field Technician. This creates a normal staff `users` row
+// (role=Technician, assigned_customer_id=this customer) — the exact
+// same account type BELM's own admin creates, just self-served. Blocked
+// entirely unless BELM has switched Machinery Admin ON for this customer.
+if ($sub === 'technicians' && $method === 'POST') {
+    require_customer_owner_or_admin($customer);
+    $customerRow = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ?');
+    $customerRow->execute([$customer['id']]);
+    if (empty($customerRow->fetchColumn())) {
+        json_error('Machinery Admin self-service is not enabled for your account. Contact BELM Admin to turn it on.', 403);
+    }
+
+    $b = body();
+    $name = trim((string)($b['name'] ?? ''));
+    $email = strtolower(trim((string)($b['email'] ?? '')));
+    $phone = trim((string)($b['phone'] ?? ''));
+    if ($name === '') json_error('Technician name is required.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email for this Technician.');
+
+    $emailCheck = db()->prepare(
+        'SELECT 1 FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL
+         UNION ALL SELECT 1 FROM customers WHERE LOWER(email) = ? AND deleted_at IS NULL
+         UNION ALL SELECT 1 FROM customer_users WHERE LOWER(email) = ?
+         LIMIT 1'
+    );
+    $emailCheck->execute([$email, $email, $email]);
+    if ($emailCheck->fetch()) json_error('This email is already used by another portal account.', 409);
+
+    $roleStmt = db()->prepare("SELECT id FROM roles WHERE name = 'Technician' LIMIT 1");
+    $roleStmt->execute();
+    $roleId = $roleStmt->fetchColumn();
+    if (!$roleId) json_error('The Technician role is not set up yet — contact BELM Admin.', 500);
+
+    $newId = uuid();
+    $password = secure_account_secret();
+    $recoveryCode = account_recovery_code();
+    db()->prepare(
+        'INSERT INTO users
+         (id, name, email, password_hash, recovery_code_hash, phone, role_id, assigned_customer_id, created_at)
+         VALUES (?,?,?,?,?,?,?,?,NOW())'
+    )->execute([
+        $newId, $name, $email,
+        password_hash($password, PASSWORD_BCRYPT),
+        password_hash($recoveryCode, PASSWORD_BCRYPT),
+        $phone !== '' ? $phone : null,
+        $roleId,
+        $customer['id'],
+    ]);
+    log_customer_activity($customer, "Added \"$name\" as their own field Technician.");
+    json_out([
+        'id' => $newId,
+        'temporaryPassword' => $password,
+        'recoveryCode' => $recoveryCode,
+        'loginUrl' => portal_base_url() . '/tech',
+    ], 201);
+}
+
 // the frontend can show "2 of 3 users used" before the customer even
 // tries to add one, without changing the existing assistants-list shape.
 if ($sub === 'users' && $sub2 === 'limit' && $method === 'GET') {
@@ -1793,6 +1869,7 @@ if ($sub === 'users' && $sub2 && $method === 'DELETE') {
 
 // ---- Service requests -------------------------------------------------------
 if ($sub === 'service-requests' && $method === 'GET') {
+    $showHidden = !empty($_GET['hidden']);
     $stmt = db()->prepare(
         'SELECT sr.*, m.model AS machine_model, m.machine_type,
                 cu.name AS completed_by_name, xu.name AS cancelled_by_name,
@@ -1802,7 +1879,7 @@ if ($sub === 'service-requests' && $method === 'GET') {
          LEFT JOIN users cu ON cu.id = sr.completed_by_id
          LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
          LEFT JOIN users au ON au.id = sr.assigned_to_id
-         WHERE sr.customer_id = ?
+         WHERE sr.customer_id = ? AND sr.hidden_at IS ' . ($showHidden ? 'NOT NULL' : 'NULL') . '
          ORDER BY sr.created_at DESC'
     );
     $stmt->execute([$customer['id']]);
@@ -1825,10 +1902,35 @@ if ($sub === 'service-requests' && $method === 'GET') {
         $request['cancelledAt'] = $request['cancelled_at'];
         $request['assignedTo'] = $request['assigned_to_id'] ? ['name' => $request['assigned_to_name']] : null;
         $request['serviceParts'] = customer_request_service_parts($request['id']);
+        $request['hiddenAt'] = $request['hidden_at'];
         unset($request['machine_model'], $request['machine_type'], $request['completed_by_name'], $request['cancelled_by_name'], $request['assigned_to_name']);
     }
     unset($request);
     json_out($requests);
+}
+
+// Lets the customer tidy up their own dashboard the same way BELM Admin
+// can — hide a COMPLETED/CANCELLED request from the default list without
+// deleting anything (still fully intact, retrievable via ?hidden=1).
+if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT') {
+    $stmt = db()->prepare(
+        "SELECT status FROM service_requests WHERE id = ? AND customer_id = ?"
+    );
+    $stmt->execute([$sub2, $customer['id']]);
+    $status = $stmt->fetchColumn();
+    if ($status === false) json_error('Service request not found.', 404);
+    if (!in_array($status, ['COMPLETED', 'CANCELLED'], true)) {
+        json_error('Only completed or cancelled requests can be hidden.', 422);
+    }
+    db()->prepare('UPDATE service_requests SET hidden_at = NOW() WHERE id = ?')->execute([$sub2]);
+    json_out(['ok' => true]);
+}
+
+if ($sub === 'service-requests' && $sub2 && $sub3 === 'unhide' && $method === 'PUT') {
+    $stmt = db()->prepare('UPDATE service_requests SET hidden_at = NULL WHERE id = ? AND customer_id = ?');
+    $stmt->execute([$sub2, $customer['id']]);
+    if ($stmt->rowCount() === 0) json_error('Service request not found.', 404);
+    json_out(['ok' => true]);
 }
 
 if ($sub === 'service-requests' && $method === 'POST') {

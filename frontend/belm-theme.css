@@ -1170,6 +1170,30 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-weight: 800;
   cursor: pointer;
 }
+.belm-hide-request-button {
+  padding: 5px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  color: #475569;
+  background: #fff;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.belm-hide-request-button:hover { background: #f1f5f9; }
+.belm-show-hidden-requests-link {
+  display: inline-block;
+  margin: 6px 0 10px;
+  padding: 6px 12px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 999px;
+  color: #475569;
+  background: none;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
 .belm-change-password-body { display: grid; gap: 14px; padding: 16px; }
 .belm-change-password-body label { display: grid; gap: 6px; color: #d7deea; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
 .belm-change-password-body label small { color: #9fb0c8; font-weight: 600; text-transform: none; }

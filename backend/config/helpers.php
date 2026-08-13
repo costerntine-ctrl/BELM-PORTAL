@@ -478,6 +478,38 @@ function log_activity(array $user, string $action, ?string $entity = null, ?stri
     } catch (Throwable $error) { /* the audit log must never break the actual action */ }
 }
 
+// Silent inventory match — tries to identify which BELM Spare Parts
+// Inventory item (if any) a customer's freely-typed reference/description
+// corresponds to. Never shown to the customer; purely for Admin/Engineer
+// visibility when preparing a Proforma. Exact part-number/reference match
+// first, then a loose name match as a fallback.
+function match_spare_part_by_text(?string $reference, ?string $description): ?string {
+    $reference = trim((string)$reference);
+    $description = trim((string)$description);
+    if ($reference !== '') {
+        $stmt = db()->prepare(
+            'SELECT id FROM spare_parts
+             WHERE deleted_at IS NULL
+               AND (UPPER(part_number) = UPPER(?) OR UPPER(reference_number) = UPPER(?))
+             LIMIT 1'
+        );
+        $stmt->execute([$reference, $reference]);
+        $matchId = $stmt->fetchColumn();
+        if ($matchId) return $matchId;
+    }
+    if ($description !== '') {
+        $stmt = db()->prepare(
+            "SELECT id FROM spare_parts
+             WHERE deleted_at IS NULL AND name ILIKE ?
+             ORDER BY LENGTH(name) ASC LIMIT 1"
+        );
+        $stmt->execute(['%' . $description . '%']);
+        $matchId = $stmt->fetchColumn();
+        if ($matchId) return $matchId;
+    }
+    return null;
+}
+
 // Validates a base64 data-URL receipt upload (JPG/PNG/WebP image or PDF)
 // and returns [base64Data, mimeType, safeFileName] — shared by both the
 // customer's own Machine Expenses uploads and BELM's own Company

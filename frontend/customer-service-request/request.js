@@ -5,18 +5,6 @@
   let serviceOptions = [];
   let machine = null;
   let partRowCount = 0;
-  let sparePartsCatalogPromise = null;
-
-  function loadSparePartsCatalog() {
-    if (!sparePartsCatalogPromise) {
-      sparePartsCatalogPromise = fetch("/api/customer-portal/spare-parts-catalog", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((response) => (response.ok ? response.json() : []))
-        .catch(() => []);
-    }
-    return sparePartsCatalogPromise;
-  }
 
   if (!token) {
     window.location.replace("/portal/login");
@@ -161,20 +149,9 @@
 
   function customFieldsHtml() {
     return `
-        <label class="spare-catalog-label">Pick from Spare Parts Inventory <small>(auto-fills reference &amp; description — optional)</small>
-          <select data-catalog-pick><option value="">— Custom item (not in inventory) —</option></select>
-        </label>
         <input type="text" placeholder="Reference number" data-reference maxlength="100">
         <input type="text" placeholder="Description" data-description maxlength="255">
         <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
-  }
-
-  async function fillCatalogDropdown(select) {
-    const catalog = await loadSparePartsCatalog();
-    select.innerHTML = '<option value="">— Custom item (not in inventory) —</option>'
-      + catalog.map((part) =>
-        `<option value="${part.id}" data-reference-value="${(part.referenceNumber || part.partNumber || "").replace(/"/g, "&quot;")}" data-description-value="${(part.name || "").replace(/"/g, "&quot;")}">${part.name}${part.partNumber ? ` (${part.partNumber})` : ""}</option>`
-      ).join("");
   }
 
   function addPartRow() {
@@ -197,7 +174,6 @@
       </div>
       <div class="part-request-fields custom" data-fields>${customFieldsHtml()}</div>`;
     document.getElementById("partRequestRows").appendChild(row);
-    fillCatalogDropdown(row.querySelector("[data-catalog-pick]"));
   }
 
   function setRowMode(row, mode) {
@@ -214,7 +190,6 @@
     } else {
       fields.className = "part-request-fields custom";
       fields.innerHTML = customFieldsHtml();
-      fillCatalogDropdown(fields.querySelector("[data-catalog-pick]"));
     }
   }
 
@@ -241,17 +216,6 @@
   }
 
   document.getElementById("addPartRowButton").addEventListener("click", addPartRow);
-  document.getElementById("partRequestRows").addEventListener("change", (event) => {
-    const select = event.target.closest("[data-catalog-pick]");
-    if (!select) return;
-    const option = select.selectedOptions[0];
-    const fields = select.closest("[data-fields]");
-    if (!option || !option.value || !fields) return;
-    const referenceField = fields.querySelector("[data-reference]");
-    const descriptionField = fields.querySelector("[data-description]");
-    if (referenceField) referenceField.value = option.dataset.referenceValue || "";
-    if (descriptionField) descriptionField.value = option.dataset.descriptionValue || "";
-  });
 
   document.getElementById("partRequestRows").addEventListener("click", (event) => {
     const row = event.target.closest(".part-request-row");

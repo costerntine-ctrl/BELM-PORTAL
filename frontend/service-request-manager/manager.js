@@ -115,7 +115,7 @@
             <b>Synchronized service parts</b>
             <div>
               ${request.serviceParts.map((part) => `
-                <span>${escapeHtml(part.spareName)} · ${escapeHtml(part.partNumber)} · Qty ${Number(part.quantity).toLocaleString("en-TZ")}</span>
+                <span>${escapeHtml(part.spareName)} · ${escapeHtml(part.partNumber)} · Qty ${Number(part.quantity).toLocaleString("en-TZ")}${part.inventoryMatch ? ` <em class="inventory-match-badge">✓ In stock: ${escapeHtml(part.inventoryMatch.name)} (${escapeHtml(part.inventoryMatch.stockQty)} available)</em>` : ' <em class="inventory-match-missing">Not in BELM inventory</em>'}</span>
               `).join("")}
             </div>
           </div>

@@ -24,25 +24,6 @@ const CUSTOMER_PERMISSION_KEYS = [
     'report-problem', 'operator-reports', 'analysis', 'assign-users',
 ];
 
-// GET /spare-parts-catalog — the same "pick from inventory" list Admin's
-// Proforma has (auto-fills part no./description), now also available on
-// the customer's Request Service form. No pricing — customers only need
-// enough here to correctly identify the part.
-if ($sub === 'spare-parts-catalog' && $method === 'GET') {
-    $stmt = db()->query(
-        "SELECT id, part_number, reference_number, name, category
-         FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC"
-    );
-    $parts = $stmt->fetchAll();
-    json_out(array_map(fn($row) => [
-        'id' => $row['id'],
-        'partNumber' => $row['part_number'],
-        'referenceNumber' => $row['reference_number'],
-        'name' => $row['name'],
-        'category' => $row['category'],
-    ], $parts));
-}
-
 function customer_permissions_from_body(array $body): ?string {
     $raw = $body['permissions'] ?? 'all';
     if ($raw === 'all' || $raw === null) return null;
@@ -368,17 +349,25 @@ function customer_checklist_answer_view(array $answer): array {
 
 function customer_request_service_parts(string $requestId): array {
     $stmt = db()->prepare(
-        'SELECT id, spare_name, part_number, quantity
-         FROM service_request_parts
-         WHERE request_id = ?
-         ORDER BY created_at ASC'
+        'SELECT srp.id, srp.spare_name, srp.part_number, srp.quantity,
+                sp.name AS matched_name, sp.part_number AS matched_part_number
+         FROM service_request_parts srp
+         LEFT JOIN spare_parts sp ON sp.id = srp.matched_spare_part_id AND sp.deleted_at IS NULL
+         WHERE srp.request_id = ?
+         ORDER BY srp.created_at ASC'
     );
     $stmt->execute([$requestId]);
     $parts = $stmt->fetchAll();
     foreach ($parts as &$part) {
         $part['spareName'] = $part['spare_name'];
         $part['partNumber'] = $part['part_number'];
-        unset($part['spare_name'], $part['part_number']);
+        // Internal-only field — the customer's own request-history views
+        // must never render this; it exists purely for the Admin/Engineer
+        // Service Request Manager and Proforma creation screens.
+        $part['inventoryMatch'] = $part['matched_name']
+            ? ['name' => $part['matched_name'], 'partNumber' => $part['matched_part_number']]
+            : null;
+        unset($part['spare_name'], $part['part_number'], $part['matched_name'], $part['matched_part_number']);
     }
     unset($part);
     return $parts;
@@ -1901,7 +1890,13 @@ if ($sub === 'service-requests' && $method === 'GET') {
         $request['cancelledBy'] = $request['cancelled_by_id'] ? ['name' => $request['cancelled_by_name']] : null;
         $request['cancelledAt'] = $request['cancelled_at'];
         $request['assignedTo'] = $request['assigned_to_id'] ? ['name' => $request['assigned_to_name']] : null;
-        $request['serviceParts'] = customer_request_service_parts($request['id']);
+        // Strip the internal inventory-match hint here — this is the
+        // customer's OWN view, and that field exists purely for BELM
+        // Admin/Engineer visibility, never for the customer to see.
+        $request['serviceParts'] = array_map(function ($part) {
+            unset($part['inventoryMatch']);
+            return $part;
+        }, customer_request_service_parts($request['id']));
         $request['hiddenAt'] = $request['hidden_at'];
         unset($request['machine_model'], $request['machine_type'], $request['completed_by_name'], $request['cancelled_by_name'], $request['assigned_to_name']);
     }
@@ -2005,14 +2000,15 @@ if ($sub === 'service-requests' && $method === 'POST') {
         foreach ($serviceParts as $part) {
             $pdo->prepare(
                 'INSERT INTO service_request_parts
-                 (id, request_id, spare_name, part_number, quantity, created_at)
-                 VALUES (?,?,?,?,?,NOW())'
+                 (id, request_id, spare_name, part_number, quantity, matched_spare_part_id, created_at)
+                 VALUES (?,?,?,?,?,?,NOW())'
             )->execute([
                 uuid(),
                 $newId,
                 $part['spareName'],
                 $part['partNumber'],
                 $part['quantity'],
+                match_spare_part_by_text($part['partNumber'] ?? '', $part['spareName'] ?? ''),
             ]);
         }
         $pdo->commit();

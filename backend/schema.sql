@@ -266,6 +266,14 @@ CREATE TABLE IF NOT EXISTS service_request_parts (
 ALTER TABLE service_request_parts
   ADD COLUMN IF NOT EXISTS manufacturer_part_number VARCHAR(100) NULL;
 
+-- Silent inventory match: when a customer types a spare part reference or
+-- description, the backend tries to match it against BELM's own Spare
+-- Parts Inventory (never shown to the customer) so Admin/Engineer and
+-- whoever prepares the Proforma can immediately see which inventory item
+-- (if any) it corresponds to.
+ALTER TABLE service_request_parts
+  ADD COLUMN IF NOT EXISTS matched_spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id);
+
 CREATE TABLE IF NOT EXISTS service_notes (
   id VARCHAR(36) PRIMARY KEY,
   request_id VARCHAR(36) NOT NULL REFERENCES service_requests(id),

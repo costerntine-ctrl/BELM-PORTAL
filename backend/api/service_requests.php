@@ -25,17 +25,26 @@ function log_service_request_history(
 
 function fetch_request_parts(string $requestId): array {
     $stmt = db()->prepare(
-        'SELECT id, spare_name, part_number, quantity
-         FROM service_request_parts
-         WHERE request_id = ?
-         ORDER BY created_at ASC'
+        'SELECT srp.id, srp.spare_name, srp.part_number, srp.quantity,
+                sp.name AS matched_name, sp.part_number AS matched_part_number,
+                sp.stock_qty AS matched_stock_qty
+         FROM service_request_parts srp
+         LEFT JOIN spare_parts sp ON sp.id = srp.matched_spare_part_id AND sp.deleted_at IS NULL
+         WHERE srp.request_id = ?
+         ORDER BY srp.created_at ASC'
     );
     $stmt->execute([$requestId]);
     $parts = $stmt->fetchAll();
     foreach ($parts as &$part) {
         $part['spareName'] = $part['spare_name'];
         $part['partNumber'] = $part['part_number'];
-        unset($part['spare_name'], $part['part_number']);
+        // Silent inventory match — helps whoever prepares the Proforma
+        // instantly see which stock item this corresponds to, without the
+        // customer ever having seen BELM's inventory themselves.
+        $part['inventoryMatch'] = $part['matched_name']
+            ? ['name' => $part['matched_name'], 'partNumber' => $part['matched_part_number'], 'stockQty' => (int)$part['matched_stock_qty']]
+            : null;
+        unset($part['spare_name'], $part['part_number'], $part['matched_name'], $part['matched_part_number'], $part['matched_stock_qty']);
     }
     unset($part);
     return $parts;

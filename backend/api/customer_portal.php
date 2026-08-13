@@ -607,6 +607,74 @@ if ($sub === 'analysis') {
     $invoiceStmt->execute([$custId]);
     $invoiceStats = $invoiceStmt->fetch();
 
+    $fuelStmt = db()->prepare(
+        "SELECT COALESCE(SUM(cost), 0) AS total FROM usage_logs
+         WHERE customer_id = ? AND category = 'FUEL'"
+    );
+    $fuelStmt->execute([$custId]);
+    $totalFuelCost = (float)$fuelStmt->fetchColumn();
+
+    // Machines whose next service is due soon or already overdue —
+    // reuses the same YELLOW/RED service-status logic as each machine's
+    // own "Next Service" panel, just counted across the whole fleet.
+    $machineIdsStmt = db()->prepare('SELECT id FROM machines WHERE customer_id = ? AND deleted_at IS NULL');
+    $machineIdsStmt->execute([$custId]);
+    $dueForServiceCount = 0;
+    foreach ($machineIdsStmt->fetchAll(PDO::FETCH_COLUMN) as $machineId) {
+        $status = compute_service_status_helper($machineId);
+        if ($status && in_array($status['level'], ['YELLOW', 'RED'], true)) $dueForServiceCount++;
+    }
+
+    // Total containers handled across every Operator shift (open or
+    // closed) for this customer's machines — the same running counter
+    // operators build up on their own shift screen.
+    $containerStmt = db()->prepare(
+        "SELECT COALESCE(SUM(container_count), 0) FROM machine_operator_shifts WHERE customer_id = ?"
+    );
+    $containerStmt->execute([$custId]);
+    $totalContainers = (int)$containerStmt->fetchColumn();
+
+    // A per-machine breakdown — each machine's own quick activity
+    // snapshot, listed inside the same Activity Overview card so the
+    // boss/owner can scan every machine at a glance before drilling into
+    // any one of them.
+    $perMachineStmt = db()->prepare(
+        'SELECT id, brand, model, machine_type, status FROM machines
+         WHERE customer_id = ? AND deleted_at IS NULL ORDER BY brand, model'
+    );
+    $perMachineStmt->execute([$custId]);
+    $perMachine = [];
+    foreach ($perMachineStmt->fetchAll() as $machineRow) {
+        $mReqStmt = db()->prepare(
+            "SELECT COUNT(*) FILTER (WHERE status NOT IN ('COMPLETED','CANCELLED')) AS open_count
+             FROM service_requests WHERE machine_id = ?"
+        );
+        $mReqStmt->execute([$machineRow['id']]);
+        $mOpenRequests = (int)$mReqStmt->fetchColumn();
+
+        $mReportStmt = db()->prepare('SELECT COUNT(*) FROM checklist_reports WHERE machine_id = ?');
+        $mReportStmt->execute([$machineRow['id']]);
+        $mReportsCount = (int)$mReportStmt->fetchColumn();
+
+        $mExpenseStmt = db()->prepare(
+            "SELECT COALESCE(SUM(cost), 0) FROM usage_logs WHERE machine_id = ? AND category = 'SPARE_PART'"
+        );
+        $mExpenseStmt->execute([$machineRow['id']]);
+        $mExpenseTotal = (float)$mExpenseStmt->fetchColumn();
+
+        $mServiceStatus = compute_service_status_helper($machineRow['id']);
+
+        $perMachine[] = [
+            'id' => $machineRow['id'],
+            'name' => trim(($machineRow['brand'] ?? '') . ' ' . ($machineRow['model'] ?? '')) ?: ($machineRow['machine_type'] ?: 'Machine'),
+            'status' => $machineRow['status'],
+            'openServiceRequests' => $mOpenRequests,
+            'checklistReportsCount' => $mReportsCount,
+            'expensesTotal' => $mExpenseTotal,
+            'serviceLevel' => $mServiceStatus['level'] ?? null,
+        ];
+    }
+
     json_out([
         'machines' => [
             'total' => (int)$machineStats['total'],
@@ -614,6 +682,10 @@ if ($sub === 'analysis') {
             'yellow' => (int)$machineStats['yellow'],
             'red' => (int)$machineStats['red'],
         ],
+        'perMachine' => $perMachine,
+        'fuelCostTotal' => $totalFuelCost,
+        'dueForServiceCount' => $dueForServiceCount,
+        'totalContainersHandled' => $totalContainers,
         'serviceRequests' => [
             'total' => (int)$requestStats['total'],
             'open' => (int)$requestStats['open'],

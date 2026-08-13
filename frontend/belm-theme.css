@@ -1195,17 +1195,21 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   box-shadow: 0 20px 50px rgba(7, 14, 28, .35);
   font-family: Inter, system-ui, sans-serif;
 }
+.belm-dashboard-layout > .belm-activity-overview-card { margin: 0; }
+@media (max-width: 480px) {
+  .belm-activity-overview-card { position: static; }
+}
 .belm-activity-overview-head {
   margin-bottom: 14px;
   color: #ffd400;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   letter-spacing: .08em;
 }
 .belm-activity-overview-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
+  gap: 14px;
 }
 .belm-activity-overview-item {
   display: flex;
@@ -1221,7 +1225,7 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
 }
 .belm-activity-overview-item strong {
   color: #fff;
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 800;
 }
 .belm-activity-overview-loading {
@@ -1230,18 +1234,95 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   color: #9fb0c8;
   font-size: 12px;
 }
-@media (max-width: 480px) {
-  .belm-activity-overview-card { position: static; }
+
+.belm-activity-overview-machines {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, .12);
+}
+.belm-activity-overview-submhead {
+  margin-bottom: 2px;
+  color: #ffd400;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.belm-activity-overview-machine {
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+}
+.belm-activity-overview-machine-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.belm-activity-overview-machine-head b { color: #fff; font-size: 13px; }
+.belm-activity-overview-machine-status {
+  flex-shrink: 0;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.belm-activity-overview-machine-status.status-green { color: #8ee4b6; background: rgba(0, 169, 88, .18); }
+.belm-activity-overview-machine-status.status-yellow { color: #ffe37a; background: rgba(242, 206, 0, .18); }
+.belm-activity-overview-machine-status.status-red { color: #ffb4b4; background: rgba(220, 62, 77, .18); }
+.belm-activity-overview-machine-status.status-not_checked { color: #9fb0c8; background: rgba(255, 255, 255, .08); }
+.belm-activity-overview-machine-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  margin-top: 6px;
+  color: #9fb0c8;
+  font-size: 10.5px;
+  font-weight: 600;
 }
 
 .belm-customer-machine-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(320px, 412px));
+  justify-content: start;
   gap: 16px;
   align-items: start;
 }
+
+/* Wide (desktop/PC) layout: machine grid on the left, Activity Overview
+   as a taller right-hand sidebar (vertical stack, not the horizontal bar
+   used on narrow screens) — only kicks in once there's real room for it. */
+.belm-dashboard-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 20px;
+}
+.belm-dashboard-layout > .belm-customer-machine-grid {
+  flex: 1 1 640px;
+  margin: 0;
+}
+@media (min-width: 980px) {
+  .belm-dashboard-layout > .belm-activity-overview-card {
+    flex: 0 0 300px;
+    align-self: stretch;
+  }
+  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-grid {
+    grid-template-columns: 1fr;
+  }
+  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-item strong {
+    font-size: 26px;
+  }
+}
+@media (max-width: 979px) {
+  .belm-dashboard-layout { flex-direction: column; }
+  .belm-dashboard-layout > .belm-activity-overview-card { width: 100%; order: -1; position: static; }
+}
 @media (max-width: 720px) {
-  .belm-customer-machine-grid { grid-template-columns: 1fr; }
+  .belm-customer-machine-grid { grid-template-columns: 1fr; justify-content: stretch; }
 }
 .belm-show-hidden-requests-link {
   display: inline-block;

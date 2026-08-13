@@ -762,6 +762,16 @@
     }
     if (!rowContainer || !rowContainer.parentElement) return;
 
+    // enhanceCustomerMachineExpenseCards() runs concurrently (not
+    // awaited) and marks the machine grid asynchronously — give it a
+    // short window to finish so the sidebar layout below can find it,
+    // rather than always falling back to the plain top-bar placement.
+    let machineGrid = document.querySelector(".belm-customer-machine-grid");
+    for (let attempt = 0; !machineGrid && attempt < 20; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      machineGrid = document.querySelector(".belm-customer-machine-grid");
+    }
+
     const card = document.createElement("div");
     card.id = "belmActivityOverviewCard";
     card.className = "belm-activity-overview-card";
@@ -769,8 +779,23 @@
       <div class="belm-activity-overview-head">ACTIVITY OVERVIEW</div>
       <div class="belm-activity-overview-grid" id="belmActivityOverviewGrid">
         <p class="belm-activity-overview-loading">Loading…</p>
-      </div>`;
-    rowContainer.insertAdjacentElement("afterend", card);
+      </div>
+      <div class="belm-activity-overview-machines" id="belmActivityOverviewMachines"></div>`;
+
+    // On wide (desktop/PC) screens, place this as a right-hand sidebar
+    // next to the machine grid rather than a full-width bar above it —
+    // on narrow screens it still just sits above the (single-column)
+    // machine list as before.
+    if (machineGrid && !document.getElementById("belmDashboardLayout")) {
+      const layout = document.createElement("div");
+      layout.id = "belmDashboardLayout";
+      layout.className = "belm-dashboard-layout";
+      machineGrid.insertAdjacentElement("beforebegin", layout);
+      layout.appendChild(machineGrid);
+      layout.appendChild(card);
+    } else {
+      rowContainer.insertAdjacentElement("afterend", card);
+    }
 
     try {
       const token = localStorage.getItem("belm_customer_token");
@@ -788,9 +813,37 @@
         ["Checklist reports", data.checklistReportsCount ?? "—"],
         ["Machine expenses (total)", data.machineExpensesTotal != null ? `TZS ${Number(data.machineExpensesTotal).toLocaleString("en-TZ")}` : "—"],
         ["Petty cash used", data.pettyCashTotal != null ? `TZS ${Number(data.pettyCashTotal).toLocaleString("en-TZ")}` : "—"],
+        ["Fuel top-up (total)", data.fuelCostTotal != null ? `TZS ${Number(data.fuelCostTotal).toLocaleString("en-TZ")}` : "—"],
+        ["Running hrs due for service", data.dueForServiceCount ?? "—"],
+        ["Total containers handled", data.totalContainersHandled ?? "—"],
       ];
       grid.innerHTML = items.map(([label, value]) => `
         <div class="belm-activity-overview-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
+
+      const machinesBox = document.getElementById("belmActivityOverviewMachines");
+      const perMachine = data.perMachine || [];
+      if (machinesBox && perMachine.length) {
+        machinesBox.innerHTML = `
+          <div class="belm-activity-overview-submhead">PER MACHINE</div>
+          ${perMachine.map((m) => {
+            const statusKey = String(m.status || "not_checked").toLowerCase();
+            const serviceNote = m.serviceLevel === "RED" ? "Service overdue"
+              : m.serviceLevel === "YELLOW" ? "Service due soon" : "Service on schedule";
+            return `
+              <div class="belm-activity-overview-machine">
+                <div class="belm-activity-overview-machine-head">
+                  <b>${m.name}</b>
+                  <span class="belm-activity-overview-machine-status status-${statusKey}">${(m.status || "—").replace("_", " ")}</span>
+                </div>
+                <div class="belm-activity-overview-machine-stats">
+                  <span>${m.openServiceRequests} open request(s)</span>
+                  <span>${m.checklistReportsCount} checklist(s)</span>
+                  <span>TZS ${Number(m.expensesTotal || 0).toLocaleString("en-TZ")}</span>
+                  <span>${serviceNote}</span>
+                </div>
+              </div>`;
+          }).join("")}`;
+      }
     } catch (_) {
       const grid = document.getElementById("belmActivityOverviewGrid");
       if (grid) grid.innerHTML = '<p class="belm-activity-overview-loading">Could not load activity overview.</p>';

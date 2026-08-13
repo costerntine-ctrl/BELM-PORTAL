@@ -87,9 +87,21 @@ dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
   text-transform: uppercase;
 }
 .eng-badge.status-green { color: #0a6b3d; background: #e3f8ec; }
-.eng-badge.status-yellow { color: #8a5a00; background: #fff3d6; }
-.eng-badge.status-red { color: #a4231b; background: #fde4e2; }
+.eng-badge.status-yellow { color: #8a5a00; background: #fff3d6; animation: eng-badge-blink-yellow 1.6s ease-in-out infinite; }
+.eng-badge.status-red { color: #a4231b; background: #fde4e2; animation: eng-badge-blink-red 1.2s ease-in-out infinite; }
 .eng-badge.status-not_checked { color: var(--muted); background: var(--canvas); }
+
+@media (prefers-reduced-motion: reduce) {
+  .eng-badge.status-yellow, .eng-badge.status-red { animation: none; }
+}
+@keyframes eng-badge-blink-yellow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 206, 0, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(242, 206, 0, .35); }
+}
+@keyframes eng-badge-blink-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 62, 77, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(220, 62, 77, .35); }
+}
 
 .eng-status-summary { padding: 14px 18px 18px; display: grid; gap: 12px; }
 .eng-status-bar-row { display: grid; grid-template-columns: 90px 1fr 28px; align-items: center; gap: 10px; font-size: 12px; color: var(--ink); }

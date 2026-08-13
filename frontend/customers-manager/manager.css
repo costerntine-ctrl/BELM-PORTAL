@@ -8,6 +8,9 @@
 .user-limit-panel-head p { margin: 0 0 10px; color: var(--muted); font-size: 11.5px; }
 .user-limit-panel-row { display: grid; grid-template-columns: 1fr 100px auto; gap: 8px; }
 .user-limit-panel-row select, .user-limit-panel-row input { margin: 0; }
+.machinery-admin-switch { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.machinery-admin-switch input { width: auto; margin: 0; }
+.machinery-admin-badge { display: inline-block; margin: 8px 0 0; padding: 4px 10px; border-radius: 999px; color: #6d28d9; background: #f1e9ff; font-size: 10.5px; font-weight: 800; }
 #userLimitCurrentInfo { margin: 8px 0 0; font-size: 11px; }
 @media (max-width: 560px) { .user-limit-panel-row { grid-template-columns: 1fr; } }
 .customer-grid { display: flex; flex-wrap: wrap; gap: 15px; }

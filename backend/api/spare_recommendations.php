@@ -24,6 +24,27 @@ $isStaff = ($payload['type'] ?? '') === 'staff';
 $isCustomer = ($payload['type'] ?? '') === 'customer';
 if (!$isStaff && !$isCustomer) json_error('Not authenticated', 401);
 
+// GET ?action=catalog — the Technician's "pick from inventory" list when
+// recommending a spare part, same idea as Admin's Proforma picker but
+// without pricing (Technician doesn't need purchase/selling price here).
+if ($method === 'GET' && ($_GET['action'] ?? '') === 'catalog') {
+    if (!$isStaff || ($payload['roleName'] ?? '') !== 'Technician') {
+        json_error('Only a BELM Technician can browse the spare-parts catalog here.', 403);
+    }
+    $stmt = db()->query(
+        "SELECT id, part_number, reference_number, name, category
+         FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC"
+    );
+    $parts = $stmt->fetchAll();
+    json_out(array_map(fn($row) => [
+        'id' => $row['id'],
+        'partNumber' => $row['part_number'],
+        'referenceNumber' => $row['reference_number'],
+        'name' => $row['name'],
+        'category' => $row['category'],
+    ], $parts));
+}
+
 // ---- Technician: create a recommendation for an assigned customer's machine
 if ($method === 'POST') {
     if (!$isStaff || ($payload['roleName'] ?? '') !== 'Technician') {

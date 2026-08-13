@@ -79,6 +79,13 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- themselves before they must contact BELM Admin for more. NULL means
 -- "use the system default" (see DEFAULT_CUSTOMER_USER_LIMIT in helpers.php).
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS user_limit INTEGER NULL;
+-- "Machinery Admin" self-service mode: this customer runs their own
+-- maintenance/workshop operation with their own Technician accounts.
+-- When ON, BELM staff can no longer be newly assigned as Technician for
+-- this customer (existing assignments are left untouched — they may
+-- BE the customer's own staff already). Service Requests / Spare Part
+-- Requests still reach BELM by email regardless of this setting.
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_machinery_admin SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_customer_users_customer ON customer_users(customer_id);
@@ -420,6 +427,11 @@ CREATE TABLE IF NOT EXISTS company_expenses (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ NULL
 );
+-- The company's own receipt/proof-of-purchase for this expense — separate
+-- from any customer-uploaded receipt, kept entirely on BELM's own side.
+ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_data TEXT NULL;
+ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_mime VARCHAR(50) NULL;
+ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_name VARCHAR(255) NULL;
 
 ALTER TABLE company_expenses
   ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
@@ -587,6 +599,27 @@ CREATE TABLE IF NOT EXISTS machine_operators (
   contact VARCHAR(100) NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+-- A short PIN so the operator can log into their own simple shift screen
+-- (container count + problem/OK + sign out) — set by the customer's
+-- owner/Machine Admin when adding the operator to the roster.
+ALTER TABLE machine_operators ADD COLUMN IF NOT EXISTS pin_hash VARCHAR(255) NULL;
+
+-- One row per operator work shift: sign-in, running container count
+-- (incremented one at a time as the operator finishes each container),
+-- and the sign-out report (a problem description, or OK if none).
+CREATE TABLE IF NOT EXISTS machine_operator_shifts (
+  id VARCHAR(36) PRIMARY KEY,
+  operator_id VARCHAR(36) NOT NULL REFERENCES machine_operators(id),
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  signed_in_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  signed_out_at TIMESTAMPTZ NULL,
+  container_count INTEGER NOT NULL DEFAULT 0,
+  has_problem SMALLINT NULL,
+  problem_description VARCHAR(1000) NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'OPEN'
+);
+CREATE INDEX IF NOT EXISTS idx_operator_shifts_operator ON machine_operator_shifts(operator_id, status);
 
 -- A short problem report an operator can write, visible to the customer's
 -- own Machine Admin and to BELM's engineer/technician staff.

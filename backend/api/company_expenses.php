@@ -47,13 +47,22 @@ function validated_expense_bank_id(array $payload): ?string {
 }
 
 if ($method === 'GET') {
-    json_out(db()->query(
+    // receipt_photo_data is intentionally excluded here (and replaced with
+    // a lightweight hasReceipt flag) — it can be large, and this list is
+    // loaded on every page view; the full receipt is only fetched when
+    // actually viewed/downloaded via the dedicated receipt endpoint below.
+    $rows = db()->query(
         'SELECT e.*, b.bank_name, b.account_name
          FROM company_expenses e
          LEFT JOIN bank_accounts b ON b.id = e.bank_account_id
          WHERE e.deleted_at IS NULL
          ORDER BY e.date DESC, e.created_at DESC'
-    )->fetchAll());
+    )->fetchAll();
+    foreach ($rows as &$row) {
+        $row['hasReceipt'] = !empty($row['receipt_photo_data']);
+        unset($row['receipt_photo_data']);
+    }
+    json_out($rows);
 }
 
 if ($method === 'POST') {
@@ -69,8 +78,13 @@ if ($method === 'POST') {
     if ($amount <= 0) json_error('Expense amount must be greater than zero.');
     $bankAccountId = validated_expense_bank_id($b);
     $newId = uuid();
-    db()->prepare('INSERT INTO company_expenses (id, bank_account_id, date, category, description, amount, recorded_by, receipt_url, created_at) VALUES (?,?,?,?,?,?,?,?,NOW())')
-        ->execute([$newId, $bankAccountId, $date, $category, $description, $amount, $b['recordedBy'] ?? null, $b['receiptUrl'] ?? null]);
+    $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+    $receiptData = $receiptMime = $receiptName = null;
+    if ($receiptPhoto !== '') {
+        [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, trim((string)($b['receiptName'] ?? '')));
+    }
+    db()->prepare('INSERT INTO company_expenses (id, bank_account_id, date, category, description, amount, recorded_by, receipt_url, receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW())')
+        ->execute([$newId, $bankAccountId, $date, $category, $description, $amount, $b['recordedBy'] ?? null, $b['receiptUrl'] ?? null, $receiptData, $receiptMime, $receiptName]);
     log_activity($user, 'company-expense-created', 'companyExpense', $newId, ['amount' => $amount, 'category' => $category]);
     json_out(['id' => $newId], 201);
 }
@@ -88,11 +102,43 @@ if ($method === 'PUT') {
     if ($description === '') json_error('Expense description is required.');
     if ($amount <= 0) json_error('Expense amount must be greater than zero.');
     $bankAccountId = validated_expense_bank_id($b);
-    $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, amount=?, recorded_by=?, receipt_url=? WHERE id=? AND deleted_at IS NULL');
-    $stmt->execute([$bankAccountId, $date, $category, $description, $amount, $b['recordedBy'] ?? null, $b['receiptUrl'] ?? null, $id]);
+    $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+    if ($receiptPhoto !== '') {
+        [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, trim((string)($b['receiptName'] ?? '')));
+        $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, amount=?, recorded_by=?, receipt_url=?, receipt_photo_data=?, receipt_photo_mime=?, receipt_photo_name=? WHERE id=? AND deleted_at IS NULL');
+        $stmt->execute([$bankAccountId, $date, $category, $description, $amount, $b['recordedBy'] ?? null, $b['receiptUrl'] ?? null, $receiptData, $receiptMime, $receiptName, $id]);
+    } else {
+        $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, amount=?, recorded_by=?, receipt_url=? WHERE id=? AND deleted_at IS NULL');
+        $stmt->execute([$bankAccountId, $date, $category, $description, $amount, $b['recordedBy'] ?? null, $b['receiptUrl'] ?? null, $id]);
+    }
     if ($stmt->rowCount() === 0) json_error('Expense not found.', 404);
     log_activity($user, 'company-expense-edited', 'companyExpense', $id, ['amount' => $amount]);
     json_out(['ok' => true]);
+}
+
+if ($method === 'GET' && ($_GET['action'] ?? '') === 'receipt') {
+    $stmt = db()->prepare(
+        'SELECT receipt_photo_data, receipt_photo_mime, receipt_photo_name
+         FROM company_expenses WHERE id = ? AND deleted_at IS NULL'
+    );
+    $stmt->execute([$id]);
+    $receipt = $stmt->fetch();
+    if (!$receipt || !$receipt['receipt_photo_data']) json_error('Receipt was not found.', 404);
+    $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
+    if ($binary === false) json_error('Receipt is damaged.', 500);
+    $mime = in_array(
+        $receipt['receipt_photo_mime'],
+        ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+        true
+    ) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . strlen($binary));
+    $disposition = !empty($_GET['download']) ? 'attachment' : 'inline';
+    header('Content-Disposition: ' . $disposition . '; filename="' .
+        preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($receipt['receipt_photo_name'] ?: 'receipt')) .
+        '"');
+    echo $binary;
+    exit;
 }
 
 if ($method === 'DELETE') {

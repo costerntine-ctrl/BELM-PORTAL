@@ -161,8 +161,13 @@
       list.innerHTML = rosterEntries.length
         ? rosterEntries.map((entry) => `
             <div class="roster-item">
-              <span><strong>${escapeHtml(entry.name)}</strong> · ${escapeHtml(entry.contact)}</span>
-              <button type="button" class="delete" data-remove-operator="${escapeHtml(entry.id)}">Remove</button>
+              <span><strong>${escapeHtml(entry.name)}</strong> · ${escapeHtml(entry.contact)}
+                ${entry.hasPin ? '<em class="roster-pin-set">PIN set</em>' : '<em class="roster-pin-missing">No PIN — cannot sign in yet</em>'}
+              </span>
+              <div class="roster-item-actions">
+                <button type="button" data-set-pin="${escapeHtml(entry.id)}">${entry.hasPin ? "Reset PIN" : "Set PIN"}</button>
+                <button type="button" class="delete" data-remove-operator="${escapeHtml(entry.id)}">Remove</button>
+              </div>
             </div>`).join("")
         : '<p class="empty-role">No operators added for this machine yet.</p>';
     } catch (error) {
@@ -365,25 +370,46 @@
   document.getElementById("rosterMachineSelect").addEventListener("change", (event) => {
     const machineId = event.target.value;
     document.getElementById("rosterAddRow").classList.toggle("hidden", !machineId);
+    document.getElementById("rosterOperatorLinkRow").classList.toggle("hidden", !machineId);
+    if (machineId) {
+      document.getElementById("rosterOperatorLink").value = `${window.location.origin}/operator/?machine=${machineId}`;
+    }
     loadRoster(machineId);
+  });
+
+  document.getElementById("copyOperatorLinkButton")?.addEventListener("click", async () => {
+    const input = document.getElementById("rosterOperatorLink");
+    try {
+      await navigator.clipboard.writeText(input.value);
+      showAlert("Operator link copied — share it with your operators for this machine.", false);
+    } catch (_) {
+      input.select();
+      showAlert("Could not copy automatically — the link is selected, copy it manually.", true);
+    }
   });
 
   document.getElementById("rosterAddButton").addEventListener("click", async () => {
     const machineId = document.getElementById("rosterMachineSelect").value;
     const name = document.getElementById("rosterName").value.trim();
     const contact = document.getElementById("rosterContact").value.trim();
+    const pin = document.getElementById("rosterPin").value.trim();
     if (!machineId) return;
     if (!name || !contact) {
       showAlert("Enter both the operator's name and contact number.", true);
       return;
     }
+    if (pin && !/^\d{4,6}$/.test(pin)) {
+      showAlert("PIN must be 4–6 digits.", true);
+      return;
+    }
     try {
       await api(`/machine-operators/${encodeURIComponent(machineId)}`, {
         method: "POST",
-        body: JSON.stringify({ name, contact }),
+        body: JSON.stringify({ name, contact, pin: pin || undefined }),
       });
       document.getElementById("rosterName").value = "";
       document.getElementById("rosterContact").value = "";
+      document.getElementById("rosterPin").value = "";
       loadRoster(machineId);
       loadTeamAnalysis();
       loadActivityLog();
@@ -394,11 +420,31 @@
   });
 
   document.getElementById("rosterList").addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-remove-operator]");
-    if (!button) return;
+    const removeButton = event.target.closest("[data-remove-operator]");
+    const pinButton = event.target.closest("[data-set-pin]");
     const machineId = document.getElementById("rosterMachineSelect").value;
+    if (pinButton) {
+      const newPin = prompt("Enter a 4–6 digit PIN for this operator:");
+      if (newPin === null) return;
+      if (!/^\d{4,6}$/.test(newPin.trim())) {
+        showAlert("PIN must be 4–6 digits.", true);
+        return;
+      }
+      try {
+        await api(`/machine-operators/${encodeURIComponent(machineId)}/${pinButton.dataset.setPin}`, {
+          method: "PUT",
+          body: JSON.stringify({ pin: newPin.trim() }),
+        });
+        showAlert("Operator PIN saved.", false);
+        loadRoster(machineId);
+      } catch (error) {
+        showAlert(error.message, true);
+      }
+      return;
+    }
+    if (!removeButton) return;
     try {
-      await api(`/machine-operators/${encodeURIComponent(machineId)}/${button.dataset.removeOperator}`, {
+      await api(`/machine-operators/${encodeURIComponent(machineId)}/${removeButton.dataset.removeOperator}`, {
         method: "DELETE",
       });
       loadRoster(machineId);

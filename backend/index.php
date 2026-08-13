@@ -142,6 +142,12 @@ switch ($resource) {
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'status') {
             dispatch('customers.php', ['action' => 'operational-status', 'machineId' => $segments[2]]);
         }
+        if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'expense-receipts') {
+            dispatch('customers.php', ['action' => 'expense-receipts', 'machineId' => $segments[2]]);
+        }
+        if (($segments[1] ?? '') === 'expense-receipt' && isset($segments[2])) {
+            dispatch('customers.php', ['action' => 'expense-receipt', 'expenseId' => $segments[2]]);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'petty-cash-topup') {
             dispatch('customers.php', ['action' => 'petty-cash-topup', 'machineId' => $segments[2]]);
         }
@@ -159,6 +165,9 @@ switch ($resource) {
         }
         if (isset($segments[2]) && $segments[2] === 'user-limit') {
             dispatch('customers.php', ['action' => 'user-limit', 'id' => $segments[1]]);
+        }
+        if (isset($segments[2]) && $segments[2] === 'machinery-admin') {
+            dispatch('customers.php', ['action' => 'machinery-admin', 'id' => $segments[1]]);
         }
         if (isset($segments[2]) && $segments[2] === 'machines') {
             dispatch('customers.php', ['action' => 'add-machine', 'id' => $segments[1]]);
@@ -220,6 +229,9 @@ switch ($resource) {
 
     case 'engineering':
         dispatch('engineering.php');
+
+    case 'operator':
+        dispatch('operator.php');
 
     case 'service-requests':
         if (($segments[1] ?? '') === 'assignees') dispatch('service_requests.php', ['action' => 'assignees']);

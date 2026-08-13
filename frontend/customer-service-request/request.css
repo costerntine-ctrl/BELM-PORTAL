@@ -19,6 +19,9 @@ main { width:min(980px,calc(100% - 28px)); margin:38px auto 70px; }.heading { ma
 .part-request-fields { display:grid; grid-template-columns:2fr 1fr; gap:10px; }
 .part-request-fields.custom { grid-template-columns:1fr 1fr; }
 .part-request-fields input, .part-request-fields select { padding:9px 10px; border:1px solid #cad6d0; border-radius:8px; font-size:13px; font:inherit; position:relative; z-index:1; touch-action:manipulation; -webkit-user-select:text; user-select:text; pointer-events:auto; background:#fff; }
+.spare-catalog-label { grid-column: 1 / -1; display: grid; gap: 6px; font-size: 11px; font-weight: 800; color: #394d60; text-transform: uppercase; letter-spacing: .02em; }
+.spare-catalog-label small { font-size: 10px; font-weight: 600; color: #7a8782; text-transform: none; letter-spacing: normal; }
+.spare-catalog-label select { width: 100%; }
 .remove-part-row { padding:5px 10px; border:1px solid #f1c8c4; border-radius:8px; background:#fff1f0; color:var(--red); font-size:11px; font-weight:800; cursor:pointer; }
 .alert { margin:18px 0; padding:12px 14px; border:1px solid #b9d8c8; border-radius:9px; color:#087039; background:#eefaf3; font-size:13px; }.alert.error { color:var(--red); border-color:#f1c8c4; background:#fff1f0; }.hidden { display:none !important; }
 @media(max-width:620px){.part-request-fields{grid-template-columns:1fr}}

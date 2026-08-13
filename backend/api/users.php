@@ -7,7 +7,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 
-function assigned_customer_for_role(string $roleId, ?string $assignedCustomerId): ?string {
+function assigned_customer_for_role(string $roleId, ?string $assignedCustomerId, ?string $currentAssignedCustomerId = null): ?string {
     $stmt = db()->prepare('SELECT name FROM roles WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$roleId]);
     $roleName = $stmt->fetchColumn();
@@ -19,12 +19,26 @@ function assigned_customer_for_role(string $roleId, ?string $assignedCustomerId)
     }
 
     $stmt = db()->prepare(
-        'SELECT COUNT(*) FROM customers
-         WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+        'SELECT is_active, is_machinery_admin
+         FROM customers
+         WHERE id = ? AND deleted_at IS NULL'
     );
     $stmt->execute([$assignedCustomerId]);
-    if ((int)$stmt->fetchColumn() === 0) {
+    $customerRow = $stmt->fetch();
+    if (!$customerRow || !$customerRow['is_active']) {
         json_error('The selected customer is not active or does not exist.', 422);
+    }
+    // "Machinery Admin" self-service customers manage their own Technician
+    // accounts — BELM can no longer assign NEW staff to them. Editing a
+    // Technician who is ALREADY assigned to this same customer is still
+    // allowed (that assignment already existed, likely the customer's own
+    // staff account, and isn't a new BELM assignment).
+    $isNewAssignment = $assignedCustomerId !== $currentAssignedCustomerId;
+    if ($isNewAssignment && !empty($customerRow['is_machinery_admin'])) {
+        json_error(
+            'This customer runs their own Machinery Admin self-service — BELM cannot assign new Technicians to them. Ask the customer to add their own Technician instead.',
+            403
+        );
     }
     return $assignedCustomerId;
 }
@@ -261,9 +275,13 @@ if ($method === 'PUT' && !$action) {
     if ($name === '') json_error('User name is required.');
     $isActive = !isset($b['isActive']) || filter_var($b['isActive'], FILTER_VALIDATE_BOOL);
     protect_last_super_admin($id, $roleId, $isActive);
+    $existingUserStmt = db()->prepare('SELECT assigned_customer_id FROM users WHERE id = ?');
+    $existingUserStmt->execute([$id]);
+    $currentAssignedCustomerId = $existingUserStmt->fetchColumn() ?: null;
     $assignedCustomerId = assigned_customer_for_role(
         $roleId,
-        $b['assignedCustomerId'] ?? null
+        $b['assignedCustomerId'] ?? null,
+        $currentAssignedCustomerId
     );
     db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
         ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);

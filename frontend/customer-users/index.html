@@ -79,16 +79,21 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Machine Operator roster</h2><p>These are the people who physically operate each machine — no portal login, just a name and contact so their "Report a Problem" messages are attributed correctly.</p></div>
+        <div><h2>Machine Operator roster</h2><p>These are the people who physically operate each machine. Give them a 4–6 digit PIN so they can sign in on their own shift screen — log containers, and sign out with an OK or a challenge report.</p></div>
       </div>
       <div class="roster-controls">
         <label>Machine
           <select id="rosterMachineSelect"><option value="">Select a machine…</option></select>
         </label>
       </div>
+      <div id="rosterOperatorLinkRow" class="roster-operator-link-row hidden">
+        <input type="text" id="rosterOperatorLink" readonly>
+        <button type="button" id="copyOperatorLinkButton">Copy operator link</button>
+      </div>
       <div id="rosterAddRow" class="roster-add-row hidden">
         <input type="text" id="rosterName" maxlength="255" placeholder="Operator name">
         <input type="text" id="rosterContact" maxlength="100" placeholder="Phone number">
+        <input type="text" id="rosterPin" maxlength="6" inputmode="numeric" placeholder="PIN (4–6 digits, optional)">
         <button type="button" id="rosterAddButton">+ Add operator</button>
       </div>
       <div id="rosterList" class="roster-list"></div>

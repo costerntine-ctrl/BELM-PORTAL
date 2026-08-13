@@ -74,6 +74,21 @@
         </div>
         <p id="userLimitCurrentInfo" class="muted"></p>
       </section>
+      <section class="user-limit-panel">
+        <div class="user-limit-panel-head">
+          <h2>Machinery Admin (self-service)</h2>
+          <p>Customer runs their own maintenance with their own Technician accounts. BELM can no longer assign NEW Technicians to them — Service &amp; Spare Part requests still reach BELM by email either way.</p>
+        </div>
+        <div class="user-limit-panel-row">
+          <select id="machineryAdminCustomerSelect"><option value="">Select customer…</option></select>
+          <label class="machinery-admin-switch">
+            <input id="machineryAdminToggle" type="checkbox">
+            <span>Machinery Admin ON</span>
+          </label>
+          <button id="machineryAdminSaveButton" class="secondary" type="button">Save</button>
+        </div>
+        <p id="machineryAdminCurrentInfo" class="muted"></p>
+      </section>
       <section id="customerGrid" class="customer-grid"><div class="loading">Loading customers…</div></section>
     </main>
 
@@ -187,6 +202,16 @@
           <button class="icon-close" data-close="reportsDialog" type="button" aria-label="Close">×</button>
         </div>
         <div id="reportsList" class="reports-list"></div>
+      </div>
+    </dialog>
+
+    <dialog id="expenseReceiptsDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Bookkeeping</p><h2 id="expenseReceiptsTitle">Expense receipts</h2></div>
+          <button class="icon-close" data-close="expenseReceiptsDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="expenseReceiptsBody" class="dialog-body"></div>
       </div>
     </dialog>
 

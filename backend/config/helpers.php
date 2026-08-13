@@ -478,6 +478,48 @@ function log_activity(array $user, string $action, ?string $entity = null, ?stri
     } catch (Throwable $error) { /* the audit log must never break the actual action */ }
 }
 
+// Validates a base64 data-URL receipt upload (JPG/PNG/WebP image or PDF)
+// and returns [base64Data, mimeType, safeFileName] — shared by both the
+// customer's own Machine Expenses uploads and BELM's own Company
+// Expenses uploads, so both sides store/validate receipts identically.
+function validate_receipt_upload(string $receiptPhoto, string $receiptName): array {
+    if (!preg_match('#^data:(image/(?:jpeg|png|webp)|application/pdf);base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {
+        json_error('Receipt must be a JPG, PNG, WebP image, or a PDF.');
+    }
+    $declaredType = $matches[1];
+    $decodedReceipt = base64_decode($matches[2], true);
+    if ($decodedReceipt === false) json_error('Receipt could not be read.');
+
+    if ($declaredType === 'application/pdf') {
+        if (strlen($decodedReceipt) > 4 * 1024 * 1024) {
+            json_error('Receipt PDF must be 4 MB or smaller.');
+        }
+        if (substr($decodedReceipt, 0, 4) !== '%PDF') {
+            json_error('Receipt is not a valid PDF file.');
+        }
+        $cleanName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt');
+        if (!str_ends_with(strtolower($cleanName), '.pdf')) $cleanName .= '.pdf';
+        return [
+            base64_encode($decodedReceipt),
+            'application/pdf',
+            $cleanName,
+        ];
+    }
+
+    if (strlen($decodedReceipt) > 2 * 1024 * 1024) {
+        json_error('Receipt photo must be 2 MB or smaller after compression.');
+    }
+    $imageInfo = @getimagesizefromstring($decodedReceipt);
+    if ($imageInfo === false || !in_array($imageInfo['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)) {
+        json_error('Receipt photo is not a valid image.');
+    }
+    return [
+        base64_encode($decodedReceipt),
+        $imageInfo['mime'],
+        preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt-photo'),
+    ];
+}
+
 function belm_read_stored_pin(string $key, string $default): string {
     $stmt = db()->prepare('SELECT "value" FROM system_settings WHERE "key" = ?');
     $stmt->execute([$key]);

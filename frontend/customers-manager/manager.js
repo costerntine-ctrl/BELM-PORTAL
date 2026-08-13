@@ -137,6 +137,7 @@
       <div class="machine-actions">
         <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Reports</button>
         <button data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Check-up</button>
+        <button data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Expense Receipts</button>
         <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
         <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
       </div>
@@ -189,6 +190,15 @@
     if (previousValue) select.value = previousValue;
   }
 
+  function populateMachineryAdminDropdown() {
+    const select = document.getElementById("machineryAdminCustomerSelect");
+    if (!select) return;
+    const previousValue = select.value;
+    select.innerHTML = '<option value="">Select customer…</option>'
+      + customers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}${customer.isMachineryAdmin ? " (Machinery Admin ON)" : ""}</option>`).join("");
+    if (previousValue) select.value = previousValue;
+  }
+
   function renderCustomers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filter = document.getElementById("statusFilter").value;
@@ -220,6 +230,7 @@
           <div><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
         </div>
+        ${customer.isMachineryAdmin ? '<span class="badge machinery-admin-badge">⚙ Machinery Admin (self-service)</span>' : ""}
         <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
           <div class="customer-feed-head">
             <strong>Customer updates</strong>
@@ -353,6 +364,7 @@
       updateMetrics();
       renderCustomers();
       populateUserLimitDropdown();
+      populateMachineryAdminDropdown();
     } catch (error) {
       document.getElementById("customerGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
@@ -623,6 +635,58 @@
   }
 
   let cachedMachineReports = [];
+
+  async function openExpenseReceipts(machineId, machineName) {
+    document.getElementById("expenseReceiptsTitle").textContent = `Expense receipts — ${machineName || "Machine"}`;
+    const body = document.getElementById("expenseReceiptsBody");
+    body.innerHTML = '<p class="muted">Loading…</p>';
+    document.getElementById("expenseReceiptsDialog").showModal();
+    try {
+      const receipts = await api(`/customers/machines/${encodeURIComponent(machineId)}/expense-receipts`);
+      body.innerHTML = receipts.length ? `<table><thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Cost</th><th>Recorded by</th><th style="text-align:right">Receipt</th></tr></thead>
+        <tbody>${receipts.map((r) => `<tr>
+          <td>${formatDate(r.date)}</td>
+          <td>${escapeHtml(r.description || r.partNumber || "—")}</td>
+          <td>${escapeHtml(r.quantity)} ${escapeHtml(r.unit || "")}</td>
+          <td>${escapeHtml(Number(r.cost || 0).toLocaleString("en-TZ"))}</td>
+          <td>${escapeHtml(r.recordedBy || "—")}</td>
+          <td style="text-align:right">
+            <button type="button" data-view-single-receipt="${escapeHtml(r.id)}">View</button>
+            <button type="button" data-download-single-receipt="${escapeHtml(r.id)}">Download</button>
+          </td>
+        </tr>`).join("")}</tbody></table>`
+        : '<p class="muted">No receipts uploaded for this machine yet.</p>';
+    } catch (error) {
+      body.innerHTML = `<p class="alert error">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  document.getElementById("expenseReceiptsBody").addEventListener("click", async (event) => {
+    const viewButton = event.target.closest("[data-view-single-receipt]");
+    const downloadButton = event.target.closest("[data-download-single-receipt]");
+    const expenseId = viewButton?.dataset.viewSingleReceipt || downloadButton?.dataset.downloadSingleReceipt;
+    if (!expenseId) return;
+    try {
+      const url = `/api/customers/expense-receipt/${encodeURIComponent(expenseId)}${downloadButton ? "?download=1" : ""}`;
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error("Could not load receipt.");
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      if (downloadButton) {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = "receipt";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      } else {
+        window.open(objectUrl, "_blank");
+      }
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
 
   async function openMachineReports(machineId, machineName) {
     document.getElementById("machineListDialog").close();
@@ -1040,6 +1104,47 @@
     }
   });
 
+  document.getElementById("machineryAdminCustomerSelect")?.addEventListener("change", (event) => {
+    const customer = customers.find((item) => item.id === event.target.value);
+    const info = document.getElementById("machineryAdminCurrentInfo");
+    const toggle = document.getElementById("machineryAdminToggle");
+    if (!customer) {
+      info.textContent = "";
+      toggle.checked = false;
+      return;
+    }
+    toggle.checked = Boolean(customer.isMachineryAdmin);
+    info.textContent = customer.isMachineryAdmin
+      ? "Currently ON — BELM cannot assign new Technicians to this customer."
+      : "Currently OFF — BELM operates this customer's machines as normal.";
+  });
+
+  document.getElementById("machineryAdminSaveButton")?.addEventListener("click", async () => {
+    const customerId = document.getElementById("machineryAdminCustomerSelect").value;
+    if (!customerId) {
+      showAlert("Select a customer first.", true);
+      return;
+    }
+    const enabled = document.getElementById("machineryAdminToggle").checked;
+    const confirmation = await window.belmConfirmEdit({
+      title: enabled ? "Turn ON Machinery Admin?" : "Turn OFF Machinery Admin?",
+      message: enabled
+        ? "This customer will run their own maintenance — BELM will no longer be able to assign new Technicians to them."
+        : "BELM will be able to assign Technicians to this customer again as normal.",
+    });
+    if (!confirmation) return;
+    try {
+      await api(`/customers/${customerId}/machinery-admin`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled, ...confirmation }),
+      });
+      showAlert("Machinery Admin setting saved successfully.", false);
+      await load();
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
+
   document.getElementById("statusFilter").addEventListener("change", renderCustomers);
   document.getElementById("customerForm").addEventListener("submit", saveCustomer);
   document.getElementById("machineForm").addEventListener("submit", saveMachine);
@@ -1104,8 +1209,10 @@
     const deleteMachine = event.target.closest("[data-delete-machine]");
     const viewReports = event.target.closest("[data-view-reports]");
     const doCheckup = event.target.closest("[data-checkup]");
+    const viewExpenseReceipts = event.target.closest("[data-view-expense-receipts]");
     if (viewReports) openMachineReports(viewReports.dataset.viewReports, viewReports.dataset.machineName);
     if (doCheckup) openMachineCheckup(doCheckup.dataset.checkup, doCheckup.dataset.machineType, doCheckup.dataset.machineName);
+    if (viewExpenseReceipts) openExpenseReceipts(viewExpenseReceipts.dataset.viewExpenseReceipts, viewExpenseReceipts.dataset.machineName);
     if (addMachine) openMachine(customers.find((customer) => customer.id === addMachine.dataset.addMachine));
     if (editMachine) {
       const customer = customers.find((item) => item.id === editMachine.dataset.customer);

@@ -49,6 +49,17 @@
     hint.classList.remove("error");
     const googleTab = window.open(googleUrl, "_blank", "noopener,noreferrer");
     if (googleTab) googleTab.opener = null;
+
+    // After a supplier-focused search, surface a one-tap way to save what
+    // was just found — pre-fills the name so the admin only has to paste
+    // in the WhatsApp/email/website they found in the Google tab.
+    const quickAddButton = document.getElementById("quickAddSupplierButton");
+    if (type === "suppliers") {
+      quickAddButton.classList.remove("hidden");
+      quickAddButton.dataset.searchedName = searchDetails;
+    } else {
+      quickAddButton.classList.add("hidden");
+    }
   }
 
   async function api(path, options = {}) {
@@ -224,6 +235,11 @@
   document.getElementById("addButton").addEventListener("click", () => openSupplier());
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("googleSearchForm").addEventListener("submit", runGoogleSearch);
+  document.getElementById("quickAddSupplierButton").addEventListener("click", (event) => {
+    openSupplier();
+    document.getElementById("supplierName").value = event.target.dataset.searchedName || "";
+    document.getElementById("whatsapp").focus();
+  });
   document.getElementById("searchInput").addEventListener("input", renderSuppliers);
   document.getElementById("trustFilter").addEventListener("change", renderSuppliers);
   document.getElementById("supplierForm").addEventListener("submit", saveSupplier);

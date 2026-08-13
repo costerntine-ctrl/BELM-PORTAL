@@ -167,6 +167,7 @@ if ($method === 'GET' && !$action) {
     $customers = $stmt->fetchAll();
     foreach ($customers as &$c) {
         $c['machines'] = fetch_machines($c['id']);
+        $c['isMachineryAdmin'] = !empty($c['is_machinery_admin']);
         if (($user['roleName'] ?? '') !== 'Technician') {
             $c['users'] = fetch_customer_users($c['id']);
             $c['userLimit'] = isset($c['user_limit']) ? (int)$c['user_limit'] : null;
@@ -274,6 +275,24 @@ if ($method === 'PUT' && $action === 'user-limit') {
     if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
     log_activity($user, 'customer-user-limit-changed', 'customer', $id, ['userLimit' => $limit]);
     json_out(['ok' => true, 'userLimit' => $limit]);
+}
+
+// "[Customer] Machinery Admin" self-service toggle. ON = this customer
+// runs their own maintenance with their own Technician accounts, and
+// BELM staff can no longer be newly assigned to service them directly
+// (existing Technician assignments for this customer are left as-is).
+// Service Requests / Spare Part Requests keep reaching BELM by email
+// either way.
+if ($method === 'PUT' && $action === 'machinery-admin') {
+    require_page_access($user, 'customers');
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $enabled = !empty($b['enabled']) ? 1 : 0;
+    $stmt = db()->prepare('UPDATE customers SET is_machinery_admin = ? WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$enabled, $id]);
+    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
+    log_activity($user, 'customer-machinery-admin-changed', 'customer', $id, ['enabled' => (bool)$enabled]);
+    json_out(['ok' => true, 'isMachineryAdmin' => (bool)$enabled]);
 }
 
 // ---- Update customer --------------------------------------------------------
@@ -420,6 +439,66 @@ const MACHINE_OPERATIONAL_STATUSES = ['NORMAL', 'SERVICE_IN_PROGRESS', 'CHECKUP_
 // deliberately lighter than edit-machine (no Edit PIN) since this is
 // meant to be updated in the moment work starts/stops, not a formal
 // record edit. Requires only normal page access to the customer/machine.
+// ---- Admin visibility into customer-uploaded expense receipts -------------
+// The customer uploads these from their own Machine Expenses page; BELM
+// Admin/Engineer need to be able to see and download the same receipts
+// for bookkeeping — this was previously only reachable from the
+// customer's own portal, with no admin-side view at all.
+if ($method === 'GET' && $action === 'expense-receipts') {
+    require_page_access($user, 'customers');
+    $machineId = $_GET['machineId'] ?? '';
+    if ($machineId === '') json_error('machineId is required.');
+    $stmt = db()->prepare(
+        "SELECT id, date, description, part_number, quantity, unit, cost,
+                receipt_photo_name, receipt_photo_mime, recorded_by
+         FROM usage_logs
+         WHERE machine_id = ? AND category = 'SPARE_PART'
+           AND receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''
+         ORDER BY date DESC"
+    );
+    $stmt->execute([$machineId]);
+    json_out(array_map(fn($row) => [
+        'id' => $row['id'],
+        'date' => $row['date'],
+        'description' => $row['description'],
+        'partNumber' => $row['part_number'],
+        'quantity' => $row['quantity'],
+        'unit' => $row['unit'],
+        'cost' => $row['cost'],
+        'receiptName' => $row['receipt_photo_name'],
+        'receiptMime' => $row['receipt_photo_mime'],
+        'recordedBy' => $row['recorded_by'],
+    ], $stmt->fetchAll()));
+}
+
+if ($method === 'GET' && $action === 'expense-receipt') {
+    require_page_access($user, 'customers');
+    $expenseId = $_GET['expenseId'] ?? '';
+    if ($expenseId === '') json_error('expenseId is required.');
+    $stmt = db()->prepare(
+        "SELECT receipt_photo_data, receipt_photo_mime, receipt_photo_name
+         FROM usage_logs WHERE id = ? AND category = 'SPARE_PART'"
+    );
+    $stmt->execute([$expenseId]);
+    $receipt = $stmt->fetch();
+    if (!$receipt || !$receipt['receipt_photo_data']) json_error('Receipt photo was not found.', 404);
+    $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
+    if ($binary === false) json_error('Receipt photo is damaged.', 500);
+    $mime = in_array(
+        $receipt['receipt_photo_mime'],
+        ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+        true
+    ) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
+    header('Content-Type: ' . $mime);
+    header('Content-Length: ' . strlen($binary));
+    $disposition = !empty($_GET['download']) ? 'attachment' : 'inline';
+    header('Content-Disposition: ' . $disposition . '; filename="' .
+        preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($receipt['receipt_photo_name'] ?: 'receipt-photo')) .
+        '"');
+    echo $binary;
+    exit;
+}
+
 if ($method === 'PUT' && $action === 'operational-status') {
     $b = body();
     $status = strtoupper(trim((string)($b['operationalStatus'] ?? '')));

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Operator — BELM Portal</title>
+  <link rel="stylesheet" href="/operator/operator.css">
+</head>
+<body>
+  <header class="op-header">
+    <span class="op-brand">B</span>
+    <div><b>BELM Portal</b><small>Machine Operator</small></div>
+  </header>
+
+  <main>
+    <div id="alertBox" class="op-alert hidden" role="alert"></div>
+
+    <section id="loginSection" class="op-card">
+      <p class="op-eyebrow">OPERATOR SIGN IN</p>
+      <h1>Start your shift</h1>
+      <form id="loginForm">
+        <label>Your name<input id="loginName" required maxlength="255" placeholder="e.g. Juma Hassan"></label>
+        <label>PIN<input id="loginPin" type="password" inputmode="numeric" required maxlength="6" placeholder="4–6 digit PIN"></label>
+        <button class="op-primary" id="loginButton" type="submit">Sign in</button>
+      </form>
+      <p class="op-hint">No PIN? Ask your Machine Admin to set one for you on the roster.</p>
+    </section>
+
+    <section id="shiftSection" class="op-card hidden">
+      <p class="op-eyebrow" id="shiftMachineName">MACHINE</p>
+      <h1 id="shiftGreeting">Hello</h1>
+      <p class="op-hint" id="shiftSignedInAt"></p>
+
+      <div class="op-counter-card">
+        <span>CONTAINERS HANDLED THIS SHIFT</span>
+        <strong id="containerCount">0</strong>
+        <button class="op-counter-button" id="logContainerButton" type="button">+ Log 1 container</button>
+      </div>
+
+      <button class="op-secondary" id="signOutButton" type="button">Sign out — end shift</button>
+      <button class="op-logout" id="logoutButton" type="button">Log out</button>
+    </section>
+
+    <section id="signOutSection" class="op-card hidden">
+      <p class="op-eyebrow">END OF SHIFT REPORT</p>
+      <h1>Any challenge today?</h1>
+      <div class="op-toggle-row">
+        <button class="op-toggle" id="reportOkButton" type="button" data-choice="ok">✓ OK — no problems</button>
+        <button class="op-toggle" id="reportProblemButton" type="button" data-choice="problem">⚠ There's a challenge</button>
+      </div>
+      <label id="problemLabel" class="hidden">Describe the challenge
+        <textarea id="problemDescription" rows="4" maxlength="1000" placeholder="What happened?"></textarea>
+      </label>
+      <button class="op-primary" id="confirmSignOutButton" type="button" disabled>Confirm sign out</button>
+      <button class="op-secondary" id="cancelSignOutButton" type="button">Back</button>
+    </section>
+
+    <section id="doneSection" class="op-card hidden">
+      <p class="op-eyebrow">SHIFT COMPLETE</p>
+      <h1>Signed out successfully</h1>
+      <p class="op-hint" id="doneSummary"></p>
+      <button class="op-primary" id="startNewShiftButton" type="button">Start a new shift</button>
+    </section>
+  </main>
+
+  <script src="/operator/operator.js"></script>
+</body>
+</html>

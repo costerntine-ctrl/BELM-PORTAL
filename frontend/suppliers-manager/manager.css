@@ -7,6 +7,9 @@ html[data-theme="dark"] .trust-note { color: #f3df89; border-color: #66591b; bac
 .google-search-form input,.google-search-form select { margin-bottom: 0; }
 .google-search-button { min-height: 39px; padding: 9px 15px; color: #fff; border: 1px solid #2d6bc4; border-radius: 9px; background: #4285f4; font-weight: 850; white-space: nowrap; }
 .google-search-button:hover { background: #2f73d9; }
+.quick-add-supplier-button { margin-top: 10px; padding: 10px 16px; border: 1px solid var(--green2, #008640); border-radius: 9px; color: #fff; background: var(--green, #00a651); font-weight: 850; cursor: pointer; }
+.quick-add-supplier-button:hover { background: var(--green2, #008640); }
+.quick-add-supplier-button.hidden { display: none; }
 .google-search-hint { grid-column: 2; margin: -7px 0 0; color: var(--muted); font-size: 9px; }
 .google-search-hint.error { color: var(--red); font-weight: 800; }
 .supplier-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 210px; gap: 10px; margin: 18px 0 14px; }

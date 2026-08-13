@@ -542,6 +542,7 @@
       </div>
       <div class="belm-machine-quick-actions">
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Machine Expenses</a>
+        <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Fuel Usage</a>
         <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
         <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Request Service</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
@@ -3206,6 +3207,10 @@
                 `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}
             </select>
           </label>
+          <label class="full">
+            <span>Pick from Spare Parts Inventory <small>(auto-fills the fields below — optional)</small></span>
+            <select id="belmSpareCatalogPick"><option value="">— Custom item (not in inventory) —</option></select>
+          </label>
           <label>
             <span>Spare name</span>
             <input name="spareName" type="text" maxlength="255" placeholder="e.g. Hydraulic return filter" required />
@@ -3227,6 +3232,30 @@
         </footer>
       </form>
     </section>`;
+
+    (async () => {
+      const select = document.getElementById("belmSpareCatalogPick");
+      if (!select) return;
+      try {
+        const token = localStorage.getItem("belm_tech_token");
+        const response = await fetch("/api/spare-recommendations?action=catalog", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const catalog = response.ok ? await response.json() : [];
+        select.innerHTML = '<option value="">— Custom item (not in inventory) —</option>'
+          + catalog.map((part) =>
+            `<option value="${escapeHtml(part.id)}" data-name-value="${escapeHtml(part.name || "")}" data-reference-value="${escapeHtml(part.referenceNumber || part.partNumber || "")}" data-part-number-value="${escapeHtml(part.partNumber || "")}">${escapeHtml(part.name)}${part.partNumber ? ` (${escapeHtml(part.partNumber)})` : ""}</option>`
+          ).join("");
+        select.addEventListener("change", () => {
+          const option = select.selectedOptions[0];
+          if (!option || !option.value) return;
+          const form = select.closest("form");
+          if (form.elements.spareName) form.elements.spareName.value = option.dataset.nameValue || "";
+          if (form.elements.referenceNumber) form.elements.referenceNumber.value = option.dataset.referenceValue || "";
+          if (form.elements.manufacturerPartNumber) form.elements.manufacturerPartNumber.value = option.dataset.partNumberValue || "";
+        });
+      } catch (_) { /* the picker is just a convenience — safe to skip on failure */ }
+    })();
 
     modal.addEventListener("click", (event) => {
       if (event.target === modal || event.target.closest("[data-close-spare-recommendation]")) {

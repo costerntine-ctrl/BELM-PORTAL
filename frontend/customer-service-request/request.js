@@ -5,6 +5,18 @@
   let serviceOptions = [];
   let machine = null;
   let partRowCount = 0;
+  let sparePartsCatalogPromise = null;
+
+  function loadSparePartsCatalog() {
+    if (!sparePartsCatalogPromise) {
+      sparePartsCatalogPromise = fetch("/api/customer-portal/spare-parts-catalog", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((response) => (response.ok ? response.json() : []))
+        .catch(() => []);
+    }
+    return sparePartsCatalogPromise;
+  }
 
   if (!token) {
     window.location.replace("/portal/login");
@@ -147,6 +159,24 @@
     return (selectedOption()?.serviceParts || []).length > 0;
   }
 
+  function customFieldsHtml() {
+    return `
+        <label class="spare-catalog-label">Pick from Spare Parts Inventory <small>(auto-fills reference &amp; description — optional)</small>
+          <select data-catalog-pick><option value="">— Custom item (not in inventory) —</option></select>
+        </label>
+        <input type="text" placeholder="Reference number" data-reference maxlength="100">
+        <input type="text" placeholder="Description" data-description maxlength="255">
+        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
+  }
+
+  async function fillCatalogDropdown(select) {
+    const catalog = await loadSparePartsCatalog();
+    select.innerHTML = '<option value="">— Custom item (not in inventory) —</option>'
+      + catalog.map((part) =>
+        `<option value="${part.id}" data-reference-value="${(part.referenceNumber || part.partNumber || "").replace(/"/g, "&quot;")}" data-description-value="${(part.name || "").replace(/"/g, "&quot;")}">${part.name}${part.partNumber ? ` (${part.partNumber})` : ""}</option>`
+      ).join("");
+  }
+
   function addPartRow() {
     partRowCount += 1;
     const rowId = `partRow${partRowCount}`;
@@ -165,12 +195,9 @@
         </div>
         <button type="button" class="remove-part-row" data-remove-row>Remove</button>
       </div>
-      <div class="part-request-fields custom" data-fields>
-        <input type="text" placeholder="Reference number" data-reference maxlength="100">
-        <input type="text" placeholder="Description" data-description maxlength="255">
-        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>
-      </div>`;
+      <div class="part-request-fields custom" data-fields>${customFieldsHtml()}</div>`;
     document.getElementById("partRequestRows").appendChild(row);
+    fillCatalogDropdown(row.querySelector("[data-catalog-pick]"));
   }
 
   function setRowMode(row, mode) {
@@ -186,10 +213,8 @@
         <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
     } else {
       fields.className = "part-request-fields custom";
-      fields.innerHTML = `
-        <input type="text" placeholder="Reference number" data-reference maxlength="100">
-        <input type="text" placeholder="Description" data-description maxlength="255">
-        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
+      fields.innerHTML = customFieldsHtml();
+      fillCatalogDropdown(fields.querySelector("[data-catalog-pick]"));
     }
   }
 
@@ -216,6 +241,18 @@
   }
 
   document.getElementById("addPartRowButton").addEventListener("click", addPartRow);
+  document.getElementById("partRequestRows").addEventListener("change", (event) => {
+    const select = event.target.closest("[data-catalog-pick]");
+    if (!select) return;
+    const option = select.selectedOptions[0];
+    const fields = select.closest("[data-fields]");
+    if (!option || !option.value || !fields) return;
+    const referenceField = fields.querySelector("[data-reference]");
+    const descriptionField = fields.querySelector("[data-description]");
+    if (referenceField) referenceField.value = option.dataset.referenceValue || "";
+    if (descriptionField) descriptionField.value = option.dataset.descriptionValue || "";
+  });
+
   document.getElementById("partRequestRows").addEventListener("click", (event) => {
     const row = event.target.closest(".part-request-row");
     if (!row) return;
@@ -227,14 +264,27 @@
     if (modeButton) setRowMode(row, modeButton.dataset.mode);
   });
   // Safety net for mobile browsers that sometimes fail to focus an
-  // <input>/<select> created via innerHTML on the very first tap —
-  // forces focus explicitly so the on-screen keyboard reliably opens.
-  document.getElementById("partRequestRows").addEventListener("pointerdown", (event) => {
+  // <input>/<select> created via innerHTML on the very first tap. Some
+  // mobile browsers only open the on-screen keyboard when .focus() runs
+  // SYNCHRONOUSLY inside the user's own gesture — wrapping it in
+  // setTimeout (even 0ms) breaks that "trusted gesture" chain on those
+  // browsers, so the field silently never gets a working keyboard. Also
+  // listens on "focus" itself in case the field IS logically focused but
+  // the keyboard still didn't open, re-asserting focus to nudge it.
+  function forceFieldFocus(event) {
     const field = event.target.closest("input, select, textarea");
-    if (field && document.activeElement !== field) {
-      setTimeout(() => field.focus(), 0);
+    if (!field) return;
+    field.focus();
+    if (document.activeElement !== field) {
+      // Second attempt on the next tick only if the first genuinely
+      // didn't take, as a last resort for stubborn browsers.
+      setTimeout(() => field.focus(), 30);
     }
-  });
+  }
+  const partRequestRowsEl = document.getElementById("partRequestRows");
+  partRequestRowsEl.addEventListener("pointerdown", forceFieldFocus);
+  partRequestRowsEl.addEventListener("touchstart", forceFieldFocus, { passive: true });
+  partRequestRowsEl.addEventListener("click", forceFieldFocus);
 
   document.getElementById("serviceTemplate").addEventListener("change", () => {
     document.getElementById("description").value = "";

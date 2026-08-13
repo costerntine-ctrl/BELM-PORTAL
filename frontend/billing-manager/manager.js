@@ -161,7 +161,7 @@
       return;
     }
     panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
-      <tr><td>${formatDate(expense.date)}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions"><button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
+      <tr><td>${formatDate(expense.date)}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions">${expense.hasReceipt ? `<button type="button" data-view-expense-receipt="${escapeHtml(expense.id)}">Receipt</button>` : ""}<button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
 
@@ -481,11 +481,50 @@
     }
   }
 
+  function readReceiptFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) { resolve(null); return; }
+      const isPdf = file.type === "application/pdf";
+      if (!isPdf && !file.type.startsWith("image/")) {
+        reject(new Error("Receipt must be a JPG, PNG, WebP image, or a PDF."));
+        return;
+      }
+      if (isPdf) {
+        if (file.size > 4 * 1024 * 1024) { reject(new Error("Receipt PDF must be 4 MB or smaller.")); return; }
+        const reader = new FileReader();
+        reader.onload = () => resolve({ dataUrl: reader.result, name: file.name });
+        reader.onerror = () => reject(new Error("Could not read that file."));
+        reader.readAsDataURL(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext("2d");
+          context.fillStyle = "#fff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve({ dataUrl: canvas.toDataURL("image/jpeg", 0.7), name: file.name });
+        };
+        image.onerror = () => reject(new Error("Could not read that image."));
+        image.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error("Could not read that file."));
+      reader.readAsDataURL(file);
+    });
+  }
+
   function openExpense(id = "") {
     const expense = expenses.find((item) => item.id === id);
     document.getElementById("expenseForm").reset();
     document.getElementById("expenseId").value = expense?.id || "";
     document.getElementById("expenseReceiptUrl").value = expense?.receiptUrl || "";
+    document.getElementById("expenseReceiptStatus").textContent = expense?.hasReceipt ? "A receipt is already attached — choosing a new file will replace it." : "";
     document.getElementById("expenseTitle").textContent = expense ? "Re-edit expense" : "Record expense";
     document.getElementById("expenseDate").value = expense?.date || today();
     document.getElementById("expenseCategory").value = expense?.category || "OTHER";
@@ -515,6 +554,13 @@
     button.disabled = true;
     button.dataset.originalText = button.textContent;
     try {
+      const receiptFile = document.getElementById("expenseReceiptFile").files[0];
+      let receiptPhoto = null, receiptName = null;
+      if (receiptFile) {
+        const read = await readReceiptFile(receiptFile);
+        receiptPhoto = read.dataUrl;
+        receiptName = read.name;
+      }
       await api(id ? `/company-expenses/${id}` : "/company-expenses", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify({
@@ -525,6 +571,8 @@
           bankAccountId: document.getElementById("expenseBankAccount").value || null,
           recordedBy: document.getElementById("expenseRecordedBy").value.trim(),
           receiptUrl: document.getElementById("expenseReceiptUrl").value || null,
+          receiptPhoto,
+          receiptName,
           ...editConfirmation,
         }),
       });
@@ -827,11 +875,26 @@
       await load();
     }
   });
-  document.getElementById("expensesPanel").addEventListener("click", (event) => {
+  document.getElementById("expensesPanel").addEventListener("click", async (event) => {
     const edit = event.target.closest("[data-edit-expense]");
     const removeButton = event.target.closest("[data-delete-expense]");
+    const receiptButton = event.target.closest("[data-view-expense-receipt]");
     if (edit) openExpense(edit.dataset.editExpense);
     if (removeButton) remove(`/company-expenses/${removeButton.dataset.deleteExpense}`, "Delete this expense? It will move to the Recycle Bin.");
+    if (receiptButton) {
+      try {
+        const response = await fetch(`/api/company-expenses/${receiptButton.dataset.viewExpenseReceipt}?action=receipt`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Could not load receipt.");
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+      } catch (error) {
+        showAlert(error.message, true);
+      }
+    }
   });
   document.getElementById("proformasPanel").addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit-proforma]");

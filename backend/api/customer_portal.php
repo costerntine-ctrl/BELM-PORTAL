@@ -23,6 +23,25 @@ const CUSTOMER_PERMISSION_KEYS = [
     'machine-expenses', 'email', 'whatsapp', 'service-request', 'report-problem', 'analysis', 'assign-users',
 ];
 
+// GET /spare-parts-catalog — the same "pick from inventory" list Admin's
+// Proforma has (auto-fills part no./description), now also available on
+// the customer's Request Service form. No pricing — customers only need
+// enough here to correctly identify the part.
+if ($sub === 'spare-parts-catalog' && $method === 'GET') {
+    $stmt = db()->query(
+        "SELECT id, part_number, reference_number, name, category
+         FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC"
+    );
+    $parts = $stmt->fetchAll();
+    json_out(array_map(fn($row) => [
+        'id' => $row['id'],
+        'partNumber' => $row['part_number'],
+        'referenceNumber' => $row['reference_number'],
+        'name' => $row['name'],
+        'category' => $row['category'],
+    ], $parts));
+}
+
 function customer_permissions_from_body(array $body): ?string {
     $raw = $body['permissions'] ?? 'all';
     if ($raw === 'all' || $raw === null) return null;
@@ -34,43 +53,7 @@ function customer_permissions_from_body(array $body): ?string {
 
 // Validates a base64 receipt upload (image OR pdf). Returns [data, mime, name]
 // or calls json_error() and exits if the upload is invalid.
-function validate_receipt_upload(string $receiptPhoto, string $receiptName): array {
-    if (!preg_match('#^data:(image/(?:jpeg|png|webp)|application/pdf);base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {
-        json_error('Receipt must be a JPG, PNG, WebP image, or a PDF.');
-    }
-    $declaredType = $matches[1];
-    $decodedReceipt = base64_decode($matches[2], true);
-    if ($decodedReceipt === false) json_error('Receipt could not be read.');
 
-    if ($declaredType === 'application/pdf') {
-        if (strlen($decodedReceipt) > 4 * 1024 * 1024) {
-            json_error('Receipt PDF must be 4 MB or smaller.');
-        }
-        if (substr($decodedReceipt, 0, 4) !== '%PDF') {
-            json_error('Receipt is not a valid PDF file.');
-        }
-        $cleanName = preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt');
-        if (!str_ends_with(strtolower($cleanName), '.pdf')) $cleanName .= '.pdf';
-        return [
-            base64_encode($decodedReceipt),
-            'application/pdf',
-            $cleanName,
-        ];
-    }
-
-    if (strlen($decodedReceipt) > 2 * 1024 * 1024) {
-        json_error('Receipt photo must be 2 MB or smaller after compression.');
-    }
-    $imageInfo = @getimagesizefromstring($decodedReceipt);
-    if ($imageInfo === false || !in_array($imageInfo['mime'] ?? '', ['image/jpeg', 'image/png', 'image/webp'], true)) {
-        json_error('Receipt photo is not a valid image.');
-    }
-    return [
-        base64_encode($decodedReceipt),
-        $imageInfo['mime'],
-        preg_replace('/[^A-Za-z0-9._-]+/', '-', $receiptName ?: 'receipt-photo'),
-    ];
-}
 
 function display_date(string $isoDate): string {
     $timestamp = strtotime($isoDate);
@@ -273,6 +256,27 @@ function petty_cash_rows(string $customerId, string $machineId, ?string $from = 
                 created_at
          FROM usage_logs
          WHERE customer_id = ? AND machine_id = ? AND category = 'PETTY_CASH'";
+    $params = [$customerId, $machineId];
+    if ($from !== null) { $sql .= ' AND date >= ?'; $params[] = $from; }
+    if ($to !== null) { $sql .= ' AND date <= ?'; $params[] = $to; }
+    $sql .= ' ORDER BY date DESC, created_at DESC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+// Daily fuel usage — same usage_logs table, its own category. quantity is
+// litres, unit_price is price/litre, cost is the total for that day's
+// fill-up, mirroring the same shape as Machine Expenses / Petty Cash so
+// the same CSV/PDF/receipt pattern applies consistently.
+function fuel_usage_rows(string $customerId, string $machineId, ?string $from = null, ?string $to = null): array {
+    $sql = "SELECT id, date, description, quantity, unit, unit_price,
+                cost, logged_by, receipt_photo_name,
+                CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''
+                     THEN 1 ELSE 0 END AS has_receipt,
+                created_at
+         FROM usage_logs
+         WHERE customer_id = ? AND machine_id = ? AND category = 'FUEL'";
     $params = [$customerId, $machineId];
     if ($from !== null) { $sql .= ' AND date >= ?'; $params[] = $from; }
     if ($to !== null) { $sql .= ' AND date <= ?'; $params[] = $to; }
@@ -935,6 +939,196 @@ if ($sub === 'machine-expenses' && $sub2) {
     }
 }
 
+// ---- Customer-recorded daily fuel usage per machine ------------------------
+if ($sub === 'fuel-usage' && $sub2) {
+    $machineId = $sub2;
+    $stmt = db()->prepare(
+        'SELECT id, machine_type, model, serial_number, reg_number, brand
+         FROM machines
+         WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+    );
+    $stmt->execute([$machineId, $customer['id']]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found for this customer.', 404);
+
+    if ($method === 'POST' && $sub3 === '') {
+        require_customer_write_access($customer);
+        $b = body();
+        $date = trim((string)($b['date'] ?? date('Y-m-d')));
+        $litres = (float)($b['litres'] ?? 0);
+        $unitPrice = (float)($b['unitPrice'] ?? 0);
+        $description = trim((string)($b['description'] ?? 'Fuel'));
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        $receiptData = null;
+        $receiptMime = null;
+        $parsedDate = DateTime::createFromFormat('!Y-m-d', $date);
+
+        if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date) {
+            json_error('Enter a valid fuel date.');
+        }
+        if ($litres <= 0) json_error('Litres must be greater than zero.');
+        if ($unitPrice < 0) json_error('Price per litre cannot be negative.');
+        if ($receiptPhoto !== '') {
+            [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
+        }
+
+        $cost = round($litres * $unitPrice, 2);
+        $fuelId = uuid();
+        $loggedBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+        db()->prepare(
+            "INSERT INTO usage_logs
+             (id, customer_id, machine_id, date, category, description,
+              quantity, unit, unit_price, cost, logged_by,
+              receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at)
+             VALUES (?,?,?,?,'FUEL',?,?,'L',?,?,?,?,?,?,NOW())"
+        )->execute([
+            $fuelId,
+            $customer['id'],
+            $machineId,
+            $date,
+            $description !== '' ? $description : 'Fuel',
+            $litres,
+            $unitPrice,
+            $cost,
+            $loggedBy !== '' ? $loggedBy : 'Customer',
+            $receiptData,
+            $receiptMime,
+            $receiptName !== '' ? $receiptName : null,
+        ]);
+        json_out([
+            'id' => $fuelId,
+            'cost' => $cost,
+            'message' => 'Fuel usage saved successfully.',
+        ], 201);
+    }
+
+    if ($method === 'GET' && $sub3 === 'receipt') {
+        $entryId = trim((string)($_GET['expenseId'] ?? ''));
+        if ($entryId === '') json_error('Fuel receipt was not specified.');
+        $stmt = db()->prepare(
+            "SELECT receipt_photo_data, receipt_photo_mime, receipt_photo_name
+             FROM usage_logs
+             WHERE id = ? AND customer_id = ? AND machine_id = ?
+               AND category = 'FUEL'"
+        );
+        $stmt->execute([$entryId, $customer['id'], $machineId]);
+        $receipt = $stmt->fetch();
+        if (!$receipt || !$receipt['receipt_photo_data']) {
+            json_error('Receipt photo was not found.', 404);
+        }
+        $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
+        if ($binary === false) json_error('Receipt photo is damaged.', 500);
+        $mime = in_array(
+            $receipt['receipt_photo_mime'],
+            ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+            true
+        ) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . strlen($binary));
+        $disposition = !empty($_GET['download']) ? 'attachment' : 'inline';
+        header('Content-Disposition: ' . $disposition . '; filename="' .
+            preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($receipt['receipt_photo_name'] ?: 'fuel-receipt')) .
+            '"');
+        echo $binary;
+        exit;
+    }
+
+    [$rangeFrom, $rangeTo] = usage_log_date_range_from_query();
+    $fuelEntries = fuel_usage_rows($customer['id'], $machineId, $rangeFrom, $rangeTo);
+
+    if ($method === 'GET' && $sub3 === 'csv') {
+        $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="fuel-usage-' . $safeMachine . '.csv"');
+        $output = fopen('php://output', 'w');
+        fputcsv($output, [strtoupper($customer['name']) . ' - DAILY FUEL USAGE']);
+        fputcsv($output, ['Service provided by', 'BELM General Tech Service Limited']);
+        fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
+        fputcsv($output, []);
+        fputcsv($output, ['Date', 'Machine', 'Litres', 'Price/Litre TZS', 'Total TZS', 'Receipt', 'Recorded By']);
+        $totalLitres = 0.0;
+        $totalCost = 0.0;
+        foreach ($fuelEntries as $entry) {
+            $totalLitres += (float)$entry['quantity'];
+            $totalCost += (float)$entry['cost'];
+            fputcsv($output, [
+                $entry['date'],
+                trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')),
+                $entry['quantity'],
+                number_format((float)$entry['unit_price'], 2, '.', ''),
+                number_format((float)$entry['cost'], 2, '.', ''),
+                $entry['has_receipt'] ? 'Yes' : 'No',
+                $entry['logged_by'],
+            ]);
+        }
+        fputcsv($output, []);
+        fputcsv($output, ['TOTAL', '', $totalLitres, '', number_format($totalCost, 2, '.', '')]);
+        fclose($output);
+        exit;
+    }
+
+    if ($method === 'GET' && $sub3 === 'pdf') {
+        $totalLitres = array_reduce($fuelEntries, static fn(float $sum, array $e): float => $sum + (float)$e['quantity'], 0.0);
+        $totalCost = array_reduce($fuelEntries, static fn(float $sum, array $e): float => $sum + (float)$e['cost'], 0.0);
+        $lines = [
+            strtoupper($customer['name']) . ' - DAILY FUEL USAGE REPORT',
+            'Service provided by: BELM General Tech Service Limited',
+            'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
+            'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+            'Period: ' . ($rangeFrom ? display_date($rangeFrom) . ' to ' . display_date($rangeTo) : 'All time'),
+            'Generated: ' . date('d/m/Y H:i'),
+            str_repeat('-', 78),
+        ];
+        foreach ($fuelEntries as $entry) {
+            $lines[] = sprintf(
+                '%s | Litres: %s | Price/L: TZS %s | Total: TZS %s | Receipt: %s | By: %s',
+                display_date($entry['date']),
+                rtrim(rtrim(number_format((float)$entry['quantity'], 2, '.', ''), '0'), '.'),
+                number_format((float)$entry['unit_price'], 2),
+                number_format((float)$entry['cost'], 2),
+                $entry['has_receipt'] ? 'Yes' : 'No',
+                $entry['logged_by'] ?: '—'
+            );
+        }
+        $lines[] = str_repeat('-', 78);
+        $lines[] = 'TOTAL LITRES: ' . rtrim(rtrim(number_format($totalLitres, 2, '.', ''), '0'), '.');
+        $lines[] = 'TOTAL FUEL COST: TZS ' . number_format($totalCost, 2);
+        $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
+        output_machine_expense_pdf('fuel-usage-' . $safeMachine . '.pdf', $lines);
+    }
+
+    if ($method === 'GET' && $sub3 === '') {
+        $recordCount = count($fuelEntries);
+        $totalLitres = 0.0;
+        $totalCost = 0.0;
+        $receiptCount = 0;
+        foreach ($fuelEntries as $entry) {
+            $totalLitres += (float)$entry['quantity'];
+            $totalCost += (float)$entry['cost'];
+            if ($entry['has_receipt']) $receiptCount++;
+        }
+        json_out([
+            'machine' => [
+                'id' => $machine['id'],
+                'machineType' => $machine['machine_type'],
+                'model' => $machine['model'],
+                'serialNumber' => $machine['serial_number'],
+                'regNumber' => $machine['reg_number'],
+                'brand' => $machine['brand'],
+            ],
+            'summary' => [
+                'recordCount' => $recordCount,
+                'totalLitres' => round($totalLitres, 2),
+                'totalCost' => round($totalCost, 2),
+                'averageCostPerFillUp' => $recordCount > 0 ? round($totalCost / $recordCount, 2) : 0,
+                'receiptCount' => $receiptCount,
+            ],
+            'entries' => $fuelEntries,
+        ]);
+    }
+}
+
 // ---- Customer-recorded petty cash (small day-to-day machine costs) --------
 if ($sub === 'petty-cash' && $sub2) {
     $machineId = $sub2;
@@ -1205,9 +1399,26 @@ if ($sub === 'machine-operators' && $sub2 && $method === 'GET') {
     $stmt->execute([$machineId, $customer['id']]);
     if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
 
-    $stmt = db()->prepare('SELECT id, name, contact, created_at FROM machine_operators WHERE machine_id = ? ORDER BY name ASC');
+    $stmt = db()->prepare('SELECT id, name, contact, created_at, (pin_hash IS NOT NULL) AS has_pin FROM machine_operators WHERE machine_id = ? ORDER BY name ASC');
     $stmt->execute([$machineId]);
-    json_out($stmt->fetchAll());
+    json_out(array_map(function ($row) {
+        $row['hasPin'] = !empty($row['has_pin']);
+        unset($row['has_pin']);
+        return $row;
+    }, $stmt->fetchAll()));
+}
+
+if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'PUT') {
+    require_customer_owner_or_admin($customer);
+    $b = body();
+    $pin = trim((string)($b['pin'] ?? ''));
+    if (!preg_match('/^\d{4,6}$/', $pin)) json_error('Operator PIN must be 4–6 digits.');
+    $stmt = db()->prepare(
+        'UPDATE machine_operators SET pin_hash = ? WHERE id = ? AND customer_id = ? AND machine_id = ?'
+    );
+    $stmt->execute([password_hash($pin, PASSWORD_BCRYPT), $sub3, $customer['id'], $sub2]);
+    if ($stmt->rowCount() === 0) json_error('Operator not found.', 404);
+    json_out(['ok' => true, 'message' => 'Operator PIN updated successfully.']);
 }
 
 if ($sub === 'machine-operators' && $sub2 && $method === 'POST') {
@@ -1220,14 +1431,18 @@ if ($sub === 'machine-operators' && $sub2 && $method === 'POST') {
     $b = body();
     $name = trim((string)($b['name'] ?? ''));
     $contact = trim((string)($b['contact'] ?? ''));
+    $pin = trim((string)($b['pin'] ?? ''));
     if ($name === '') json_error('Operator name is required.');
     if ($contact === '') json_error('Operator contact (phone) is required.');
+    if ($pin !== '' && !preg_match('/^\d{4,6}$/', $pin)) {
+        json_error('Operator PIN must be 4–6 digits.');
+    }
 
     $newId = uuid();
-    db()->prepare('INSERT INTO machine_operators (id, machine_id, customer_id, name, contact, created_at) VALUES (?,?,?,?,?,NOW())')
-        ->execute([$newId, $machineId, $customer['id'], $name, $contact]);
+    db()->prepare('INSERT INTO machine_operators (id, machine_id, customer_id, name, contact, pin_hash, created_at) VALUES (?,?,?,?,?,?,NOW())')
+        ->execute([$newId, $machineId, $customer['id'], $name, $contact, $pin !== '' ? password_hash($pin, PASSWORD_BCRYPT) : null]);
     log_customer_activity($customer, "Added \"$name\" to the Machine Operator roster.");
-    json_out(['id' => $newId, 'name' => $name, 'contact' => $contact], 201);
+    json_out(['id' => $newId, 'name' => $name, 'contact' => $contact, 'hasPin' => $pin !== ''], 201);
 }
 
 if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'DELETE') {

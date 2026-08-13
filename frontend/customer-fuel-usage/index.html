@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fuel Usage — BELM Customer Portal</title>
+  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=16-service-sync">
+  <link rel="stylesheet" href="/customer-fuel-usage/fuel.css">
+</head>
+<body>
+  <header>
+    <a class="brand" href="/portal/dashboard">
+      <span class="mark">B</span>
+      <span><b>BELM Customer Portal</b><small>Daily Fuel Usage</small></span>
+    </a>
+    <nav>
+      <a href="/portal/dashboard">← Customer dashboard</a>
+      <button id="logoutButton" type="button">Log out</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div>
+        <p class="eyebrow">FUEL COST TRACKING</p>
+        <h1 id="pageTitle">Daily fuel usage</h1>
+        <p id="machineDetails" class="lead">Loading machine information…</p>
+      </div>
+      <div class="download-actions">
+        <button class="secondary" id="csvButton" type="button">Download CSV</button>
+        <button class="secondary" id="pdfButton" type="button">Download PDF</button>
+        <a class="secondary" id="machineExpensesLink" href="/customer-machine-expenses/">Machine Expenses</a>
+      </div>
+    </section>
+
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+
+    <div class="expenses-layout">
+      <div class="expenses-main">
+        <div class="print-options-row">
+          <label class="print-options">Print options
+            <select id="printScope">
+              <option value="all">All (single page)</option>
+              <option value="date">Select date…</option>
+              <option value="month">Select month…</option>
+            </select>
+          </label>
+          <input type="date" id="printDateInput" class="hidden">
+          <input type="month" id="printMonthInput" class="hidden">
+        </div>
+
+        <section class="summary-grid" aria-label="Fuel usage analysis">
+          <article><span>Total fuel cost</span><strong id="totalCost">TZS 0</strong></article>
+          <article><span>Total litres</span><strong id="totalLitres">0 L</strong></article>
+          <article><span>Fill-up records</span><strong id="recordCount">0</strong></article>
+          <article><span>Average per fill-up</span><strong id="averageCost">TZS 0</strong></article>
+          <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
+        </section>
+
+        <section id="entryPanel" class="panel entry-panel">
+          <div class="panel-head">
+            <div><h2>Add today's fuel</h2><p>Record litres filled and price per litre for this machine.</p></div>
+            <strong id="calculatedTotal">Total: TZS 0</strong>
+          </div>
+          <form id="fuelForm">
+            <label>Date<input id="fuelDate" type="date" required></label>
+            <label>Litres<input id="litres" type="number" min="0.01" step="0.01" required placeholder="e.g. 45"></label>
+            <label>Price per litre (TZS)<input id="unitPrice" type="number" min="0" step="0.01" value="0" required></label>
+            <label class="wide">Note <small>(optional)</small><input id="description" maxlength="500" placeholder="e.g. Filled at Bunju fuel station"></label>
+            <label class="receipt-field">Receipt photo <small>(optional)</small>
+              <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment">
+              <small>Camera, gallery, or PDF scan · JPG/PNG/WebP/PDF</small>
+            </label>
+            <div id="receiptPreviewWrap" class="receipt-preview hidden">
+              <img id="receiptPreview" alt="Receipt preview">
+              <button id="removeReceiptButton" type="button">Remove receipt</button>
+            </div>
+            <div class="form-actions"><button class="primary" id="saveButton" type="submit">Save fuel entry</button></div>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div><h2>Fuel history</h2><p>Every fill-up recorded for this machine.</p></div>
+            <button class="secondary compact" id="refreshButton" type="button">Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Litres</th><th>Price/L</th><th>Total</th><th>Note</th><th>Receipt</th><th>Recorded by</th></tr></thead>
+              <tbody id="fuelRows"><tr><td colspan="7" class="empty">Loading fuel entries…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <dialog id="receiptDialog">
+    <div class="receipt-dialog-head"><b>Receipt photo</b><button id="closeReceiptButton" type="button" aria-label="Close receipt">×</button></div>
+    <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
+  </dialog>
+
+  <script src="/customer-fuel-usage/fuel.js"></script>
+</body>
+</html>

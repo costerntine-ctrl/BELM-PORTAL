@@ -109,13 +109,7 @@
 
     <section id="technicianSection" class="panel hidden">
       <div class="panel-head">
-        <div><h2>Your Field Technicians</h2><p>Machinery Admin self-service is ON for your account — add your own Technicians who will log into the BELM Technician app and run check-ups on your machines.</p></div>
-      </div>
-      <div class="technician-add-row">
-        <input type="text" id="technicianName" maxlength="255" placeholder="Technician name">
-        <input type="email" id="technicianEmail" maxlength="255" placeholder="Email">
-        <input type="text" id="technicianPhone" maxlength="50" placeholder="Phone (optional)">
-        <button type="button" id="technicianAddButton">+ Add Technician</button>
+        <div><h2>Your Field Technicians</h2><p>Machinery Admin self-service is ON for your account. Use "+ Add assistant" above and pick "Technician" as the Access role.</p></div>
       </div>
       <div id="technicianList" class="user-list"></div>
     </section>
@@ -138,13 +132,14 @@
             <option value="assistant">Machinery Admin Assistant</option>
             <option value="accounts">Accounts</option>
             <option value="operator">Machine Operator</option>
+            <option value="technician">Technician — runs check-ups in the BELM Technician app</option>
           </select>
         </label>
         <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>
         <label>Password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">At least 8 characters</small></label>
         <label>Confirm password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
       </div>
-      <div class="field-block">Access to
+      <div class="field-block" id="accessRoleWrap">Access to
         <label class="check-option access-all"><input type="checkbox" id="accessAll" checked> <b>Access All</b></label>
         <div id="accessOptions" class="access-options">
           <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Machine Expenses</label>

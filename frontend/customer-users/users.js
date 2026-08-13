@@ -224,6 +224,8 @@
         document.getElementById("copyLinkButton").dataset.portalUrl = dashboard.customer.portalUrl;
       }
       document.getElementById("technicianSection").classList.toggle("hidden", !dashboard?.customer?.isMachineryAdmin);
+      const technicianOption = document.getElementById("role").querySelector('option[value="technician"]');
+      if (technicianOption) technicianOption.disabled = !dashboard?.customer?.isMachineryAdmin;
       if (dashboard?.customer?.isMachineryAdmin) loadTechnicians();
     } catch {
       // The user list already shows the actionable authentication error.
@@ -267,6 +269,16 @@
     return [...document.querySelectorAll(".access-item:checked")].map((item) => item.value);
   }
 
+  function toggleFieldsForRole() {
+    const isTechnician = document.getElementById("role").value === "technician";
+    document.getElementById("password").closest("label").classList.toggle("hidden", isTechnician);
+    document.getElementById("confirmPassword").closest("label").classList.toggle("hidden", isTechnician);
+    document.getElementById("accessRoleWrap")?.classList.toggle("hidden", isTechnician);
+    document.getElementById("password").required = !isTechnician;
+    document.getElementById("confirmPassword").required = !isTechnician;
+  }
+  document.getElementById("role").addEventListener("change", toggleFieldsForRole);
+
   function openCreate() {
     form.reset();
     document.getElementById("userId").value = "";
@@ -277,6 +289,7 @@
     document.getElementById("statusWrap").classList.add("hidden");
     document.getElementById("formError").className = "alert error hidden";
     setAccessUI(null);
+    toggleFieldsForRole();
     dialog.showModal();
   }
 
@@ -297,6 +310,7 @@
     document.getElementById("statusWrap").classList.remove("hidden");
     document.getElementById("formError").className = "alert error hidden";
     setAccessUI(user.permissions || null);
+    toggleFieldsForRole();
     dialog.showModal();
   }
 
@@ -307,9 +321,50 @@
   async function saveUser(event) {
     event.preventDefault();
     const id = document.getElementById("userId").value;
+    const role = document.getElementById("role").value;
+    const errorBox = document.getElementById("formError");
+
+    // Technician is a different account type entirely under the hood (a
+    // real BELM staff Technician login, not a customer_users assistant),
+    // so it saves through its own endpoint — but shares this same "Add
+    // assistant" form for a single, unified experience.
+    if (role === "technician") {
+      if (id) {
+        errorBox.textContent = "Technicians can't be edited from here yet — remove and re-add if details change.";
+        errorBox.className = "alert error";
+        return;
+      }
+      const saveButton = document.getElementById("saveButton");
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving…";
+      try {
+        const result = await api("/technicians", {
+          method: "POST",
+          body: JSON.stringify({
+            name: document.getElementById("name").value.trim(),
+            email: document.getElementById("email").value.trim(),
+            phone: document.getElementById("phone").value.trim(),
+          }),
+        });
+        dialog.close();
+        await loadUsers();
+        await loadTechnicians();
+        alert(
+          `Technician added. Share these login details securely:\n\nLogin: ${result.loginUrl || "/tech"}\nPassword: ${result.temporaryPassword || "—"}`
+        );
+        showAlert("Technician added successfully.", false);
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.className = "alert error";
+      } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = "Save assistant";
+      }
+      return;
+    }
+
     const password = document.getElementById("password").value;
     const confirmation = document.getElementById("confirmPassword").value;
-    const errorBox = document.getElementById("formError");
     if (password !== confirmation) {
       errorBox.textContent = "Passwords do not match.";
       errorBox.className = "alert error";
@@ -319,7 +374,7 @@
       name: document.getElementById("name").value.trim(),
       email: document.getElementById("email").value.trim(),
       phone: document.getElementById("phone").value.trim(),
-      role: document.getElementById("role").value,
+      role,
       password,
       permissions: readAccessPayload(),
     };

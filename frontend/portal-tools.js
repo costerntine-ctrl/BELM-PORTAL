@@ -742,6 +742,61 @@
     heading.textContent = `${String(name).toUpperCase()} MACHINES`;
   }
 
+  // A sticky "Activity Overview" card, styled like the dark Petty Cash
+  // Balance card, placed right under the heading/"Manage assistants" row
+  // and above the machine grid. Stays in view while the machine list
+  // below it scrolls — a quick-glance summary of what's happening across
+  // every machine, not tied to any one of them.
+  async function insertCustomerActivityOverview() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    if (document.getElementById("belmActivityOverviewCard")) return;
+    const heading = Array.from(document.querySelectorAll("h1, h2"))
+      .find(element => (element.textContent || "").trim().endsWith("MACHINES") || (element.textContent || "").trim() === "Your machines");
+    if (!heading) return;
+    // Walk up to the row that also holds the "Manage assistants" button,
+    // so the new card lands directly under that whole header row.
+    let rowContainer = heading.parentElement;
+    for (let level = 0; level < 4 && rowContainer; level++) {
+      if (Array.from(rowContainer.querySelectorAll("button, a")).some(el => (el.textContent || "").trim() === "+ Manage assistants")) break;
+      rowContainer = rowContainer.parentElement;
+    }
+    if (!rowContainer || !rowContainer.parentElement) return;
+
+    const card = document.createElement("div");
+    card.id = "belmActivityOverviewCard";
+    card.className = "belm-activity-overview-card";
+    card.innerHTML = `
+      <div class="belm-activity-overview-head">ACTIVITY OVERVIEW</div>
+      <div class="belm-activity-overview-grid" id="belmActivityOverviewGrid">
+        <p class="belm-activity-overview-loading">Loading…</p>
+      </div>`;
+    rowContainer.insertAdjacentElement("afterend", card);
+
+    try {
+      const token = localStorage.getItem("belm_customer_token");
+      const response = await fetch("/api/customer-portal/analysis", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      const grid = document.getElementById("belmActivityOverviewGrid");
+      const machines = data.machines || {};
+      const items = [
+        ["Machines", machines.total ?? "—"],
+        ["Needing attention", (machines.yellow ?? 0) + (machines.red ?? 0)],
+        ["Open service requests", data.serviceRequests?.open ?? "—"],
+        ["Checklist reports", data.checklistReportsCount ?? "—"],
+        ["Machine expenses (total)", data.machineExpensesTotal != null ? `TZS ${Number(data.machineExpensesTotal).toLocaleString("en-TZ")}` : "—"],
+        ["Petty cash used", data.pettyCashTotal != null ? `TZS ${Number(data.pettyCashTotal).toLocaleString("en-TZ")}` : "—"],
+      ];
+      grid.innerHTML = items.map(([label, value]) => `
+        <div class="belm-activity-overview-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
+    } catch (_) {
+      const grid = document.getElementById("belmActivityOverviewGrid");
+      if (grid) grid.innerHTML = '<p class="belm-activity-overview-loading">Could not load activity overview.</p>';
+    }
+  }
+
   async function enhanceServiceRequestHistory() {
     if (window.location.pathname !== "/portal/dashboard") return;
     const heading = Array.from(document.querySelectorAll("h2"))
@@ -1683,6 +1738,27 @@
       customerServiceDuePanel(card, machine);
       customerSpareRecommendationsPanel(card, machine);
     });
+
+    // Force the machine cards into a 2-column grid (customers can have
+    // several machines) by finding their true shared ancestor — walking
+    // up from one card until an element is found that actually CONTAINS
+    // every other machine card too, not just assuming the immediate
+    // parent is shared.
+    const allCards = Array.from(document.querySelectorAll(".belm-customer-machine-card"));
+    if (allCards.length > 1) {
+      let ancestor = allCards[0].parentElement;
+      while (ancestor && !allCards.every(c => ancestor.contains(c))) {
+        ancestor = ancestor.parentElement;
+      }
+      // Safety check: only grid-ify if this ancestor's direct children are
+      // roughly just the cards themselves — avoids accidentally turning a
+      // much bigger, unrelated section of the page into a 2-col grid if
+      // the true shared ancestor turns out to be very high up the tree.
+      if (ancestor && ancestor.children.length <= allCards.length + 2
+          && !ancestor.classList.contains("belm-customer-machine-grid")) {
+        ancestor.classList.add("belm-customer-machine-grid");
+      }
+    }
   }
 
   async function loadTechnicianCustomerProfile() {
@@ -3492,6 +3568,7 @@
   wireChangePasswordButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
+  insertCustomerActivityOverview();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -3531,6 +3608,7 @@
   wireChangePasswordButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
+  insertCustomerActivityOverview();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

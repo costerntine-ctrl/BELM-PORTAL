@@ -31,7 +31,25 @@
       <input id="templateId" type="hidden">
       <div class="template-fields">
         <label>Template name<input id="templateName" maxlength="255" required placeholder="e.g. Daily Reach Stacker Inspection"></label>
-        <label>Machine type<input id="machineType" maxlength="100" required placeholder="e.g. Reach Stacker"></label>
+        <label>Machine type
+          <select id="machineType" required>
+            <option value="">Select…</option>
+            <option value="Reach Stacker">Reach Stacker</option>
+            <option value="Forklift">Forklift</option>
+            <option value="Crane">Crane</option>
+            <option value="Excavator">Excavator</option>
+            <option value="Wheel Loader">Wheel Loader</option>
+            <option value="Bulldozer">Bulldozer</option>
+            <option value="Motor Grader">Motor Grader</option>
+            <option value="Roller">Roller</option>
+            <option value="Dump Truck">Dump Truck</option>
+            <option value="Generator">Generator</option>
+            <option value="Compressor">Compressor</option>
+            <option value="Hydraulic System">Hydraulic System</option>
+            <option value="__other__">Other (type below)…</option>
+          </select>
+        </label>
+        <label id="machineTypeOtherWrap" class="hidden">New machine type<input id="machineTypeOther" maxlength="100" placeholder="Type the new machine type"></label>
         <label>Service type
           <select id="serviceType" required>
             <option value="250hrs">250hrs Service</option>

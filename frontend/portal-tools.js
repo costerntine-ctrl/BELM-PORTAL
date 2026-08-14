@@ -173,6 +173,19 @@
     }
   });
 
+  // Broader fix for the same underlying issue across every page this
+  // script manages — mobile browsers often restore a page from their
+  // "back-forward cache" (bfcache) on Back/Forward instead of truly
+  // reloading it, which means all our injected buttons/panels/listeners
+  // are gone (they were only ever attached once, on the original load)
+  // even though the page LOOKS normal. event.persisted === true is the
+  // signal a bfcache restore just happened; forcing one reload then
+  // guarantees everything re-attaches correctly, instead of the page
+  // silently staying "stuck" until the person manually refreshes.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) window.location.reload();
+  });
+
   function handoffTechnicianSession() {
     if (!window.location.pathname.startsWith("/tech")) return false;
     if (localStorage.getItem("belm_tech_token") && localStorage.getItem("belm_tech_user")) {
@@ -493,7 +506,32 @@
       </div>
       <div class="belm-machine-recent-updates" id="belmRecentUpdates-${escapeHtml(machine.id)}"></div>`;
     card.appendChild(details);
+    // The whole card is itself a native button that opens something else
+    // on click (same issue already fixed on the Technician side) —
+    // without this, tapping our injected content (the "OK" dismiss
+    // buttons, action buttons like Machine Expenses/Fuel Usage, etc.)
+    // bubbles up and the card opens blank instead of doing what was
+    // actually tapped.
+    details.addEventListener("click", (event) => event.stopPropagation());
+    details.addEventListener("pointerdown", (event) => event.stopPropagation());
     if (localStorage.getItem("belm_customer_token")) loadCustomerMachineRecentUpdates(machine.id);
+  }
+
+  function dismissedUpdateIds() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem("belm_dismissed_updates") || "[]"));
+    } catch (_) {
+      return new Set();
+    }
+  }
+  function dismissUpdateId(id) {
+    const dismissed = dismissedUpdateIds();
+    dismissed.add(id);
+    // Keep the stored list from growing forever — only the most recent
+    // 200 dismissed IDs are kept, which is far more than anyone will
+    // realistically accumulate across all their machines.
+    const trimmed = Array.from(dismissed).slice(-200);
+    localStorage.setItem("belm_dismissed_updates", JSON.stringify(trimmed));
   }
 
   async function loadCustomerMachineRecentUpdates(machineId) {
@@ -505,10 +543,23 @@
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) return;
-      const updates = await response.json();
-      if (!updates.length) return;
+      const allUpdates = await response.json();
+      const dismissed = dismissedUpdateIds();
+      const updates = allUpdates.filter((u) => !dismissed.has(u.id));
+      if (!updates.length) { box.innerHTML = ""; return; }
       box.innerHTML = `<span class="belm-machine-recent-updates-head">Recent updates</span>`
-        + updates.map((u) => `<div class="belm-machine-recent-update-row">${escapeHtml(u.text)}</div>`).join("");
+        + updates.map((u) => `
+          <div class="belm-machine-recent-update-row" data-update-id="${escapeHtml(u.id)}">
+            <span>${escapeHtml(u.text)}</span>
+            <button type="button" class="belm-update-ok-button" data-dismiss-update="${escapeHtml(u.id)}">OK</button>
+          </div>`).join("");
+      box.querySelectorAll("[data-dismiss-update]").forEach((button) => {
+        button.addEventListener("click", () => {
+          dismissUpdateId(button.dataset.dismissUpdate);
+          button.closest(".belm-machine-recent-update-row").remove();
+          if (!box.querySelector(".belm-machine-recent-update-row")) box.innerHTML = "";
+        });
+      });
     } catch (_) { /* a quiet feed — skip silently on failure */ }
   }
 
@@ -579,6 +630,12 @@
         </a>
       </div>`;
     card.appendChild(panel);
+    // Same "whole card is a native clickable button" issue as
+    // customerMachineInfoCard above — without this, tapping any of these
+    // action buttons/links bubbles up and the card opens blank instead
+    // of actually navigating to Machine Expenses, Fuel Usage, etc.
+    panel.addEventListener("click", (event) => event.stopPropagation());
+    panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     enforceCustomerFeaturePermissions(panel);
   }
 
@@ -1771,10 +1828,12 @@
           <button type="button" data-confirm-recommendation="${escapeHtml(item.id)}">Service Requirements</button>
         </div>`).join("")}`;
     panel.addEventListener("click", event => {
+      event.stopPropagation();
       const button = event.target.closest("[data-confirm-recommendation]");
       if (!button) return;
       confirmSpareRecommendation(button.dataset.confirmRecommendation, button);
     });
+    panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     card.appendChild(panel);
   }
 

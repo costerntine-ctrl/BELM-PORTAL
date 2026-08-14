@@ -1536,7 +1536,7 @@ if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
     if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
 
     $srStmt = db()->prepare(
-        "SELECT srh.event_type, srh.to_value, srh.actor_name, srh.created_at
+        "SELECT srh.id, srh.event_type, srh.to_value, srh.actor_name, srh.created_at
          FROM service_request_history srh
          JOIN service_requests sr ON sr.id = srh.request_id
          WHERE sr.machine_id = ? AND srh.event_type IN ('STATUS', 'ASSIGNMENT')
@@ -1547,11 +1547,11 @@ if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
         $text = $row['event_type'] === 'ASSIGNMENT'
             ? "Service request assigned to {$row['actor_name']}"
             : "Service request status changed to {$row['to_value']}" . ($row['actor_name'] ? " by {$row['actor_name']}" : '');
-        return ['text' => $text, 'createdAt' => $row['created_at']];
+        return ['id' => 'srh-' . $row['id'], 'text' => $text, 'createdAt' => $row['created_at']];
     }, $srStmt->fetchAll());
 
     $opStmt = db()->prepare(
-        "SELECT o.message, o.resolved_at, u.name AS resolved_by_name
+        "SELECT o.id, o.message, o.resolved_at, u.name AS resolved_by_name
          FROM operator_reports o
          LEFT JOIN users u ON u.id = o.resolved_by_id
          WHERE o.machine_id = ? AND o.status = 'RESOLVED' AND o.resolved_at IS NOT NULL
@@ -1560,6 +1560,7 @@ if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
     $opStmt->execute([$machineId]);
     foreach ($opStmt->fetchAll() as $row) {
         $updates[] = [
+            'id' => 'op-' . $row['id'],
             'text' => 'Operator report resolved' . ($row['resolved_by_name'] ? " by {$row['resolved_by_name']}" : ''),
             'createdAt' => $row['resolved_at'],
         ];

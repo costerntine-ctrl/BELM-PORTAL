@@ -230,6 +230,30 @@
     }
   }
 
+  function setMachineTypeField(value) {
+    const select = document.getElementById("machineType");
+    const otherWrap = document.getElementById("machineTypeOtherWrap");
+    const otherInput = document.getElementById("machineTypeOther");
+    const isKnown = Array.from(select.options).some((option) => option.value === value);
+    if (value && !isKnown) {
+      select.value = "__other__";
+      otherWrap.classList.remove("hidden");
+      otherInput.value = value;
+    } else {
+      select.value = value || "";
+      otherWrap.classList.add("hidden");
+      otherInput.value = "";
+    }
+  }
+  function readMachineTypeField() {
+    const select = document.getElementById("machineType");
+    if (select.value === "__other__") return document.getElementById("machineTypeOther").value.trim();
+    return select.value.trim();
+  }
+  document.getElementById("machineType").addEventListener("change", (event) => {
+    document.getElementById("machineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
+  });
+
   function openNew() {
     form.reset();
     document.getElementById("templateId").value = "";
@@ -237,6 +261,7 @@
     document.getElementById("serviceType").value = "250hrs";
     document.getElementById("isActive").checked = true;
     document.getElementById("formError").className = "alert error hidden";
+    setMachineTypeField("");
     items = [emptyItem()];
     serviceParts = [emptyServicePart()];
     renderItems();
@@ -249,7 +274,7 @@
       const template = await api(`/${id}`);
       document.getElementById("templateId").value = template.id;
       document.getElementById("templateName").value = template.name || "";
-      document.getElementById("machineType").value = template.machineType || "";
+      setMachineTypeField(template.machineType || "");
       const serviceTypeSelect = document.getElementById("serviceType");
       const validServiceTypes = Array.from(serviceTypeSelect.options).map((option) => option.value);
       serviceTypeSelect.value = validServiceTypes.includes(template.serviceType) ? template.serviceType : "250hrs";
@@ -299,9 +324,15 @@
     event.preventDefault();
     const id = document.getElementById("templateId").value;
     const errorBox = document.getElementById("formError");
+    const machineType = readMachineTypeField();
+    if (!machineType) {
+      errorBox.textContent = "Select a machine type (or choose \"Other\" and type one in).";
+      errorBox.className = "alert error";
+      return;
+    }
     const payload = {
       name: document.getElementById("templateName").value.trim(),
-      machineType: document.getElementById("machineType").value.trim(),
+      machineType,
       serviceType: document.getElementById("serviceType").value.trim(),
       isActive: document.getElementById("isActive").checked,
       items: items.map((item) => ({

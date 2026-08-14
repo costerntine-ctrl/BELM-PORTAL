@@ -502,10 +502,26 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   text-transform: uppercase;
 }
 .belm-machine-recent-update-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   color: #334155;
   font-size: 11px;
   line-height: 1.4;
 }
+.belm-update-ok-button {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  color: #475569;
+  background: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.belm-update-ok-button:hover { background: #f1f5f9; }
 .belm-customer-op-status.op-SERVICE_IN_PROGRESS,
 .belm-customer-op-status.op-CHECKUP_IN_PROGRESS,
 .belm-customer-op-status.op-MAINTENANCE_IN_PROGRESS {

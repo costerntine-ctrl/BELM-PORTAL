@@ -34,4 +34,4 @@ th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacin
 .status-pill.cancelled { background:#fde8e8; color:#8f2020; }
 .status-pill.open,.status-pill.assigned,.status-pill.in_progress,.status-pill.on_hold { background:#eef3fb; color:#2a4a7a; }
 .handled-by { color:var(--muted); font-size:11px; }
-@media(max-width:620px){header nav a{display:none}#serviceForm{grid-template-columns:1fr}.wide,.form-actions{grid-column:auto}.form-actions{align-items:stretch;flex-direction:column-reverse}.form-actions button,.form-actions a{width:100%;text-align:center}.part-row{grid-template-columns:1fr 1fr}.part-row > div:first-child{grid-column:1/-1}.panel-head{align-items:start;flex-direction:column}}
+@media(max-width:620px){#serviceForm{grid-template-columns:1fr}.wide,.form-actions{grid-column:auto}.form-actions{align-items:stretch;flex-direction:column-reverse}.form-actions button,.form-actions a{width:100%;text-align:center}.part-row{grid-template-columns:1fr 1fr}.part-row > div:first-child{grid-column:1/-1}.panel-head{align-items:start;flex-direction:column}}

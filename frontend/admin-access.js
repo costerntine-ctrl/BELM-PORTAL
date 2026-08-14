@@ -31,6 +31,7 @@
     [/^\/admin-applications(?:\/|$)/, "customers"],
     [/^\/overview-manager(?:\/|$)/, "overview"],
     [/^\/checklist-manager(?:\/|$)/, "checklist-templates"],
+    [/^\/controller-pinouts-manager(?:\/|$)/, "checklist-templates"],
     [/^\/service-request-manager(?:\/|$)/, "service-requests"],
     [/^\/spare-parts-manager(?:\/|$)/, "spare-parts"],
     [/^\/billing-manager(?:\/|$)/, "billing"],

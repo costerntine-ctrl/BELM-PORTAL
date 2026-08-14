@@ -295,6 +295,32 @@ CREATE TABLE IF NOT EXISTS spare_parts (
   deleted_at TIMESTAMPTZ NULL
 );
 ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100) NULL;
+-- Which machine brand/type this spare part is typically used on — helps
+-- staff quickly recognize "this filter is for a SANY reachstacker" etc.
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS machine_brand VARCHAR(100) NULL;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS machine_type VARCHAR(100) NULL;
+-- Physical measurements (mm) — which ones matter depends on category
+-- (bearing: inner/outer diameter + height; filter/air cleaner: length +
+-- diameter; valve: diameter + thread size). All optional/nullable since
+-- not every part needs every measurement.
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS height_mm NUMERIC(10,2) NULL;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS length_mm NUMERIC(10,2) NULL;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS outer_diameter_mm NUMERIC(10,2) NULL;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS inner_diameter_mm NUMERIC(10,2) NULL;
+ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS thread_size VARCHAR(50) NULL;
+
+-- Cross-reference / "equivalent" spare parts — different brands/part
+-- numbers that do the same job (e.g. Fleetguard LF670 = another brand's
+-- equivalent filter). Stored as one row per direction so a lookup from
+-- either part instantly finds the other; both directions are inserted
+-- together whenever a link is created so it's always symmetric.
+CREATE TABLE IF NOT EXISTS spare_part_equivalents (
+  id VARCHAR(36) PRIMARY KEY,
+  spare_part_id VARCHAR(36) NOT NULL REFERENCES spare_parts(id) ON DELETE CASCADE,
+  equivalent_part_id VARCHAR(36) NOT NULL REFERENCES spare_parts(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(spare_part_id, equivalent_part_id)
+);
 
 CREATE TABLE IF NOT EXISTS spare_part_requests (
   id VARCHAR(36) PRIMARY KEY,
@@ -849,6 +875,52 @@ ON CONFLICT (id) DO UPDATE SET
       THEN users.password_hash
     ELSE EXCLUDED.password_hash
   END;
+
+-- ---- Controller Pin Out reference library ---------------------------------
+-- Documents the pinout of a machine's controller (ECU, joystick controller,
+-- valve controller, etc.) — one record per controller, with any number of
+-- labelled reference photos and a list of what each pin does. Purely a
+-- reference library for BELM's own engineering work, not tied to any
+-- specific customer/machine record.
+CREATE TABLE IF NOT EXISTS controller_pinouts (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_brand VARCHAR(150) NOT NULL,
+  controller_number VARCHAR(150) NOT NULL,
+  controller_brand VARCHAR(150) NOT NULL,
+  system VARCHAR(150) NULL,
+  notes TEXT NULL,
+  created_by_id VARCHAR(36) NULL REFERENCES users(id),
+  created_by_name VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS idx_controller_pinouts_search ON controller_pinouts(machine_brand, controller_number, controller_brand);
+
+-- Any number of labelled photos per controller — e.g. "Connector A —
+-- Right side", "Top view", "Wiring diagram" — since one controller often
+-- needs several angles/diagrams to fully document.
+CREATE TABLE IF NOT EXISTS controller_pinout_photos (
+  id VARCHAR(36) PRIMARY KEY,
+  pinout_id VARCHAR(36) NOT NULL REFERENCES controller_pinouts(id) ON DELETE CASCADE,
+  label VARCHAR(150) NULL,
+  photo_data TEXT NOT NULL,
+  photo_mime VARCHAR(50) NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_controller_pinout_photos_pinout ON controller_pinout_photos(pinout_id);
+
+-- Pin-by-pin function list — pin number/name plus what it does
+-- (e.g. "Pin 3 — CAN-H", "Pin 7 — +12V ignition switched").
+CREATE TABLE IF NOT EXISTS controller_pinout_pins (
+  id VARCHAR(36) PRIMARY KEY,
+  pinout_id VARCHAR(36) NOT NULL REFERENCES controller_pinouts(id) ON DELETE CASCADE,
+  pin_label VARCHAR(100) NOT NULL,
+  pin_function VARCHAR(500) NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_controller_pinout_pins_pinout ON controller_pinout_pins(pinout_id);
 
 INSERT INTO system_settings (id, "key", "value")
 VALUES (

@@ -210,6 +210,15 @@ switch ($resource) {
         if (isset($segments[1])) dispatch('checklist_templates.php', ['action' => $method === 'GET' ? 'one' : '', 'id' => $segments[1]]);
         dispatch('checklist_templates.php');
 
+    case 'controller-pinouts':
+        // GET/POST /controller-pinouts, GET/PUT/DELETE /controller-pinouts/:id
+        // GET /controller-pinouts/photo?photoId=X, DELETE /controller-pinouts/photo?photoId=X
+        if (($segments[1] ?? '') === 'photo') {
+            dispatch('controller_pinouts.php', ['action' => 'photo']);
+        }
+        if (isset($segments[1])) dispatch('controller_pinouts.php', ['action' => $method === 'GET' ? 'one' : '', 'id' => $segments[1]]);
+        dispatch('controller_pinouts.php');
+
     case 'checklist-reports':
         // POST /checklist-reports -> submit
         // PUT /checklist-reports/:id -> update until 00:00 Tanzania time

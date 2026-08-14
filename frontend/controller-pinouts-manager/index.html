@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM Controller Pin Out</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
+    <link rel="stylesheet" href="/controller-pinouts-manager/manager.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/overview-manager/">
+        <span class="brand-mark">B</span>
+        <span>BELM General Tech <small>Controller Pin Out</small></span>
+      </a>
+      <div class="top-actions">
+        <a class="ghost" href="/overview-manager/">← All Overview</a>
+        <button id="addButton" class="primary" type="button">+ Add controller</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Reference Library</p>
+          <h1>Controller Pin Out</h1>
+          <p>Machine brand, controller brand/number, labelled reference photos, and what every pin does — a searchable library for BELM's own engineering work.</p>
+        </div>
+      </section>
+
+      <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section class="toolbar">
+        <input id="searchInput" placeholder="Search machine brand, controller number, brand or system…" aria-label="Search controllers">
+      </section>
+
+      <section id="pinoutGrid" class="pinout-grid"><div class="loading">Loading controllers…</div></section>
+    </main>
+
+    <dialog id="pinoutDialog">
+      <form id="pinoutForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Controller Record</p><h2 id="dialogTitle">Add controller</h2></div>
+          <button class="icon-close" data-close type="button" aria-label="Close">×</button>
+        </div>
+        <input id="pinoutId" type="hidden">
+        <div id="formAlert" class="alert error hidden"></div>
+        <div class="form-grid">
+          <label>Machine brand<input id="machineBrand" required maxlength="150" placeholder="e.g. SANY, Volvo"></label>
+          <label>Controller number<input id="controllerNumber" required maxlength="150" placeholder="e.g. SYMC-2000"></label>
+          <label>Controller brand<input id="controllerBrand" required maxlength="150" placeholder="e.g. IQAN, Bosch"></label>
+          <label>System <small>(optional)</small><input id="system" maxlength="150" placeholder="e.g. Hydraulic, Engine ECU, Joystick"></label>
+          <label class="full">Notes <small>(optional)</small><textarea id="notes" rows="2" maxlength="2000" placeholder="Any extra context…"></textarea></label>
+        </div>
+
+        <div class="pinout-section">
+          <div class="pinout-section-head">
+            <h3>Reference photos</h3>
+            <label class="add-photo-button">+ Add photo
+              <input id="photoInput" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" multiple hidden>
+            </label>
+          </div>
+          <div id="photosList" class="photos-list"></div>
+        </div>
+
+        <div class="pinout-section">
+          <div class="pinout-section-head">
+            <h3>Pin functions</h3>
+            <button type="button" id="addPinRowButton" class="ghost compact">+ Add pin</button>
+          </div>
+          <div id="pinsList" class="pins-list"></div>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="ghost" data-close type="button">Cancel</button>
+          <button id="saveButton" class="primary" type="submit">Save controller</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="photoViewDialog">
+      <div class="receipt-dialog-head"><b id="photoViewLabel">Photo</b><button id="closePhotoViewButton" type="button" aria-label="Close">×</button></div>
+      <div class="receipt-image-wrap"><img id="photoViewImage" alt="Controller reference photo"></div>
+    </dialog>
+
+    <script src="/admin-access.js"></script>
+    <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+    <script src="/delete-confirm.js"></script>
+    <script src="/edit-confirm.js"></script>
+    <script src="/controller-pinouts-manager/manager.js"></script>
+  </body>
+</html>

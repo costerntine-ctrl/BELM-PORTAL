@@ -1,6 +1,7 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
   let parts = [];
+  let equivalentsIndex = {};
   let requests = [];
   let activeRequestId = "";
   let pendingEditPin = null;
@@ -119,8 +120,16 @@
 
   function renderParts() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
-    const filtered = parts.filter((part) =>
-      [part.partNumber, part.referenceNumber, part.name, part.category].some((value) => String(value || "").toLowerCase().includes(query)));
+    const filtered = parts.filter((part) => {
+      const ownMatch = [part.partNumber, part.referenceNumber, part.name, part.category]
+        .some((value) => String(value || "").toLowerCase().includes(query));
+      if (ownMatch) return true;
+      // Also match if the query hits one of this part's linked
+      // equivalents — e.g. searching "670" for an LF670 finds the part
+      // that's been marked equivalent to it too.
+      const linked = equivalentsIndex[part.id] || [];
+      return linked.some((text) => text.toLowerCase().includes(query));
+    });
     const panel = document.getElementById("partsPanel");
     if (!filtered.length) {
       panel.className = "empty";
@@ -137,7 +146,7 @@
         const stockClass = stockQty <= 0 ? "off" : stockQty <= 5 ? "warn" : "";
         return `<tr>
           <td><input type="checkbox" data-select-part="${escapeHtml(part.id)}" ${selectedPartIds.has(part.id) ? "checked" : ""}></td>
-          <td class="nowrap"><strong>${escapeHtml(part.partNumber)}</strong></td>
+          <td class="nowrap"><strong>${escapeHtml(part.partNumber)}</strong>${part.equivalentCount > 0 ? ` <span class="badge" title="Linked equivalent spare parts">≈${escapeHtml(part.equivalentCount)}</span>` : ""}</td>
           <td class="muted nowrap">${escapeHtml(part.referenceNumber || "—")}</td>
           <td>${escapeHtml(part.name)}</td>
           <td class="muted">${escapeHtml(part.category || "—")}</td>
@@ -161,6 +170,7 @@
     try {
       parts = await api("/spare-parts");
       requests = await api("/spare-parts/requests");
+      try { equivalentsIndex = await api("/spare-parts?action=all-equivalents"); } catch (_) { equivalentsIndex = {}; }
       updateMetrics();
       renderParts();
       renderRequests();
@@ -171,6 +181,15 @@
     }
   }
 
+  function toggleMeasurementFields() {
+    const category = document.getElementById("category").value;
+    document.querySelectorAll("#measurementsBlock [data-measure]").forEach((label) => {
+      const categories = label.dataset.measure.split(",");
+      label.classList.toggle("hidden", category !== "" && !categories.includes(category));
+    });
+  }
+  document.getElementById("category").addEventListener("change", toggleMeasurementFields);
+
   function openPart(part = null, requestId = "") {
     activeRequestId = requestId;
     document.getElementById("partForm").reset();
@@ -180,10 +199,18 @@
     document.getElementById("referenceNumber").value = part?.referenceNumber || "";
     document.getElementById("partName").value = part?.name || "";
     document.getElementById("category").value = part?.category || "";
+    document.getElementById("machineBrand").value = part?.machineBrand || "";
+    document.getElementById("machineType").value = part?.machineType || "";
     document.getElementById("stockQty").value = part?.stockQty ?? 0;
     document.getElementById("reorderThreshold").value = part?.reorderThreshold ?? 5;
     document.getElementById("purchasePrice").value = part?.purchasePrice ?? 0;
     document.getElementById("sellingPrice").value = part?.sellingPrice ?? 0;
+    document.getElementById("heightMm").value = part?.heightMm ?? "";
+    document.getElementById("lengthMm").value = part?.lengthMm ?? "";
+    document.getElementById("outerDiameterMm").value = part?.outerDiameterMm ?? "";
+    document.getElementById("innerDiameterMm").value = part?.innerDiameterMm ?? "";
+    document.getElementById("threadSize").value = part?.threadSize || "";
+    toggleMeasurementFields();
     document.getElementById("formAlert").className = "alert error hidden";
     const context = document.getElementById("requestContext");
     const request = requests.find((item) => item.id === requestId);
@@ -194,9 +221,90 @@
       context.className = "alert hidden";
       context.textContent = "";
     }
+    const equivalentsBlock = document.getElementById("equivalentsBlock");
+    if (part?.id) {
+      equivalentsBlock.classList.remove("hidden");
+      loadEquivalents(part.id);
+    } else {
+      equivalentsBlock.classList.add("hidden");
+    }
     document.getElementById("partDialog").showModal();
     document.getElementById("partNumber").focus();
   }
+
+  async function loadEquivalents(partId) {
+    const list = document.getElementById("equivalentsList");
+    list.innerHTML = '<p class="muted">Loading…</p>';
+    try {
+      const equivalents = await api(`/spare-parts/${partId}?action=equivalents`);
+      list.innerHTML = equivalents.length
+        ? equivalents.map((eq) => `
+            <div class="equivalent-chip">
+              <span>${escapeHtml(eq.name)} (${escapeHtml(eq.partNumber)})</span>
+              <button type="button" data-unlink-equivalent="${escapeHtml(eq.id)}">×</button>
+            </div>`).join("")
+        : '<p class="muted">No equivalents linked yet.</p>';
+    } catch (error) {
+      list.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  let equivalentSearchTimer = null;
+  document.getElementById("equivalentSearchInput").addEventListener("input", (event) => {
+    clearTimeout(equivalentSearchTimer);
+    const query = event.target.value.trim();
+    const resultsBox = document.getElementById("equivalentSearchResults");
+    if (!query) {
+      resultsBox.classList.add("hidden");
+      resultsBox.innerHTML = "";
+      return;
+    }
+    equivalentSearchTimer = setTimeout(async () => {
+      try {
+        const currentPartId = document.getElementById("partId").value;
+        const results = await api(`/spare-parts?action=search-with-equivalents&q=${encodeURIComponent(query)}`);
+        const filtered = results.filter((r) => r.id !== currentPartId);
+        resultsBox.innerHTML = filtered.length
+          ? filtered.map((r) => `
+              <button type="button" class="equivalent-search-result" data-add-equivalent="${escapeHtml(r.id)}">
+                ${escapeHtml(r.name)} (${escapeHtml(r.part_number || r.partNumber)})
+              </button>`).join("")
+          : '<p class="muted">No matches.</p>';
+        resultsBox.classList.remove("hidden");
+      } catch (_) { /* keep the box quiet on failure */ }
+    }, 300);
+  });
+
+  document.getElementById("equivalentSearchResults").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-add-equivalent]");
+    if (!button) return;
+    const partId = document.getElementById("partId").value;
+    try {
+      await api("/spare-parts?action=link-equivalent", {
+        method: "POST",
+        body: JSON.stringify({ partId, equivalentPartId: button.dataset.addEquivalent }),
+      });
+      document.getElementById("equivalentSearchInput").value = "";
+      document.getElementById("equivalentSearchResults").classList.add("hidden");
+      await loadEquivalents(partId);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
+
+  document.getElementById("equivalentsList").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-unlink-equivalent]");
+    if (!button) return;
+    const partId = document.getElementById("partId").value;
+    try {
+      await api(`/spare-parts?action=unlink-equivalent&partId=${encodeURIComponent(partId)}&equivalentPartId=${encodeURIComponent(button.dataset.unlinkEquivalent)}`, {
+        method: "DELETE",
+      });
+      await loadEquivalents(partId);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
 
   function closePart() {
     activeRequestId = "";
@@ -213,10 +321,17 @@
       referenceNumber: document.getElementById("referenceNumber").value.trim(),
       name: document.getElementById("partName").value.trim(),
       category: document.getElementById("category").value.trim(),
+      machineBrand: document.getElementById("machineBrand").value.trim(),
+      machineType: document.getElementById("machineType").value.trim(),
       stockQty: Number(document.getElementById("stockQty").value),
       reorderThreshold: Number(document.getElementById("reorderThreshold").value),
       purchasePrice: Number(document.getElementById("purchasePrice").value),
       sellingPrice: Number(document.getElementById("sellingPrice").value),
+      heightMm: document.getElementById("heightMm").value.trim(),
+      lengthMm: document.getElementById("lengthMm").value.trim(),
+      outerDiameterMm: document.getElementById("outerDiameterMm").value.trim(),
+      innerDiameterMm: document.getElementById("innerDiameterMm").value.trim(),
+      threadSize: document.getElementById("threadSize").value.trim(),
     };
     const button = document.getElementById("saveButton");
     if (resolvingRequestId && payload.stockQty <= 0) {
@@ -230,7 +345,7 @@
     button.disabled = true;
     button.textContent = "Saving…";
     try {
-      await api(id ? `/spare-parts/${id}` : "/spare-parts", {
+      const result = await api(id ? `/spare-parts/${id}` : "/spare-parts", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify(payload),
       });
@@ -239,6 +354,15 @@
           method: "PUT",
           body: JSON.stringify({ action: "resolve" }),
         });
+      }
+      // A brand-new part doesn't have equivalents linked yet — reopen it
+      // in edit mode right away so the "Equivalent spare parts" search
+      // becomes available without a second manual click.
+      if (!id && result?.id) {
+        closePart();
+        await loadParts();
+        const savedPart = parts.find((item) => item.id === result.id);
+        if (savedPart) { openPart(savedPart); return; }
       }
       closePart();
       await loadParts();
@@ -252,6 +376,7 @@
       button.textContent = "Save spare part";
     }
   }
+
 
   async function deletePart(id) {
     const part = parts.find((item) => item.id === id);

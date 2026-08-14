@@ -85,12 +85,42 @@
           <label>Part number<input id="partNumber" required maxlength="100" placeholder="e.g. CAT-1R-0750"></label>
           <label>Reference number <small>(optional)</small><input id="referenceNumber" maxlength="100" placeholder="e.g. supplier's catalog number"></label>
           <label>Name<input id="partName" required maxlength="255" placeholder="Spare part name"></label>
-          <label class="full">Category<input id="category" maxlength="100" placeholder="Filter, hydraulic, engine…"></label>
+          <label>Category
+            <select id="category">
+              <option value="">Select…</option>
+              <option value="BEARING">Bearing</option>
+              <option value="FILTER">Filter</option>
+              <option value="AIR_CLEANER">Air Cleaner</option>
+              <option value="VALVE">Valve</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label>Machine brand <small>(optional)</small><input id="machineBrand" maxlength="100" placeholder="e.g. SANY, Volvo"></label>
+          <label>Machine type <small>(optional)</small><input id="machineType" maxlength="100" placeholder="e.g. Reach Stacker"></label>
           <label>Stock quantity<input id="stockQty" required type="number" min="0" step="1" value="0"></label>
           <label>Reorder at<input id="reorderThreshold" required type="number" min="0" step="1" value="5"></label>
           <label>Purchase price (TZS)<input id="purchasePrice" required type="number" min="0" step="0.01" value="0"></label>
           <label>Selling price (TZS)<input id="sellingPrice" required type="number" min="0" step="0.01" value="0"></label>
         </div>
+
+        <div id="measurementsBlock" class="form-grid measurements-grid">
+          <p class="full measurements-head">Measurements (mm) <small>— shown fields depend on category, all optional</small></p>
+          <label data-measure="BEARING,FILTER,AIR_CLEANER">Height / Width<input id="heightMm" type="number" min="0" step="0.01" placeholder="e.g. 45"></label>
+          <label data-measure="FILTER,AIR_CLEANER">Length<input id="lengthMm" type="number" min="0" step="0.01" placeholder="e.g. 180"></label>
+          <label data-measure="BEARING,FILTER,AIR_CLEANER,VALVE">Outer diameter<input id="outerDiameterMm" type="number" min="0" step="0.01" placeholder="e.g. 90"></label>
+          <label data-measure="BEARING,FILTER,VALVE">Inner diameter<input id="innerDiameterMm" type="number" min="0" step="0.01" placeholder="e.g. 45"></label>
+          <label data-measure="FILTER,VALVE">Thread size<input id="threadSize" maxlength="50" placeholder="e.g. M20x1.5"></label>
+        </div>
+
+        <div id="equivalentsBlock" class="equivalents-block hidden">
+          <p class="equivalents-head">Equivalent spare parts <small>— other brands/part numbers that do the same job</small></p>
+          <div id="equivalentsList" class="equivalents-list"></div>
+          <div class="equivalents-add-row">
+            <input id="equivalentSearchInput" placeholder="Search part number, reference or name…" autocomplete="off">
+            <div id="equivalentSearchResults" class="equivalents-search-results hidden"></div>
+          </div>
+        </div>
+
         <div class="dialog-actions">
           <button class="ghost" data-close type="button">Cancel</button>
           <button id="saveButton" class="primary" type="submit">Save spare part</button>

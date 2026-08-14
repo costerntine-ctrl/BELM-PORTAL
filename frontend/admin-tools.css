@@ -163,6 +163,21 @@ html[data-theme="dark"] select,
 html[data-theme="dark"] textarea { border-color: #43516a; background: #0f172a; }
 input:focus, select:focus, textarea:focus { outline: 3px solid rgba(0, 169, 88, .15); border-color: var(--green); }
 .full { grid-column: 1 / -1; }
+.measurements-grid { margin-top: 4px; }
+.measurements-head { margin: 4px 0 2px; color: var(--ink); font-size: 12.5px; font-weight: 800; }
+.measurements-head small { color: var(--muted); font-weight: 600; }
+.measurements-grid [data-measure].hidden { display: none; }
+.equivalents-block { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.equivalents-head { margin: 0 0 8px; color: var(--ink); font-size: 12.5px; font-weight: 800; }
+.equivalents-head small { color: var(--muted); font-weight: 600; }
+.equivalents-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.equivalent-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--canvas); font-size: 11px; font-weight: 700; }
+.equivalent-chip button { display: flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: 0; border-radius: 50%; color: var(--red, #b42318); background: #fde4e2; cursor: pointer; font-size: 12px; line-height: 1; }
+.equivalents-add-row { position: relative; }
+.equivalents-search-results { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; margin-top: 4px; max-height: 200px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); box-shadow: 0 12px 30px rgba(21,29,49,.12); }
+.equivalent-search-result { display: block; width: 100%; padding: 9px 12px; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font-size: 12px; text-align: left; cursor: pointer; }
+.equivalent-search-result:last-child { border-bottom: 0; }
+.equivalent-search-result:hover { background: var(--canvas); }
 .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 7px; }
 .check-option { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; }
 .check-option input { width: auto; margin: 0; }

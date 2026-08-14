@@ -863,7 +863,7 @@ if ($sub === 'machine-expenses' && $sub2) {
                 'name' => $name,
                 'date' => $row['date'],
                 'description' => $row['description'],
-                'downloadUrl' => "/api/customer-portal/machine-expenses/{$machineId}/receipt?expenseId={$row['id']}",
+                'downloadUrl' => "/customer-portal/machine-expenses/{$machineId}/receipt?expenseId={$row['id']}",
             ];
         }, $rows);
         json_out($result);
@@ -1068,6 +1068,40 @@ if ($sub === 'fuel-usage' && $sub2) {
         ], 201);
     }
 
+    if ($method === 'GET' && $sub3 === 'receipts-list') {
+        $dateFilter = trim((string)($_GET['date'] ?? ''));
+        $monthFilter = trim((string)($_GET['month'] ?? ''));
+        $sql = "SELECT id, receipt_photo_name, receipt_photo_mime, date, description
+                FROM usage_logs
+                WHERE customer_id = ? AND machine_id = ? AND category = 'FUEL'
+                  AND receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''";
+        $params = [$customer['id'], $machineId];
+        if ($dateFilter !== '') {
+            $sql .= ' AND date = ?';
+            $params[] = $dateFilter;
+        } elseif ($monthFilter !== '') {
+            $sql .= " AND to_char(date, 'YYYY-MM') = ?";
+            $params[] = $monthFilter;
+        }
+        $sql .= ' ORDER BY date ASC';
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        $result = array_map(function ($row) use ($machineId) {
+            $ext = $row['receipt_photo_mime'] === 'application/pdf' ? '.pdf' : '';
+            $name = $row['receipt_photo_name'] ?: ('fuel-receipt-' . $row['id']);
+            if ($ext && !str_ends_with(strtolower($name), '.pdf')) $name .= $ext;
+            return [
+                'id' => $row['id'],
+                'name' => $name,
+                'date' => $row['date'],
+                'description' => $row['description'],
+                'downloadUrl' => "/customer-portal/fuel-usage/{$machineId}/receipt?expenseId={$row['id']}",
+            ];
+        }, $rows);
+        json_out($result);
+    }
+
     if ($method === 'GET' && $sub3 === 'receipt') {
         $entryId = trim((string)($_GET['expenseId'] ?? ''));
         if ($entryId === '') json_error('Fuel receipt was not specified.');
@@ -1251,6 +1285,40 @@ if ($sub === 'petty-cash' && $sub2) {
             'amount' => round($amount, 2),
             'message' => 'Petty cash entry saved successfully.',
         ], 201);
+    }
+
+    if ($method === 'GET' && $sub3 === 'receipts-list') {
+        $dateFilter = trim((string)($_GET['date'] ?? ''));
+        $monthFilter = trim((string)($_GET['month'] ?? ''));
+        $sql = "SELECT id, receipt_photo_name, receipt_photo_mime, date, description
+                FROM usage_logs
+                WHERE customer_id = ? AND machine_id = ? AND category = 'PETTY_CASH'
+                  AND receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''";
+        $params = [$customer['id'], $machineId];
+        if ($dateFilter !== '') {
+            $sql .= ' AND date = ?';
+            $params[] = $dateFilter;
+        } elseif ($monthFilter !== '') {
+            $sql .= " AND to_char(date, 'YYYY-MM') = ?";
+            $params[] = $monthFilter;
+        }
+        $sql .= ' ORDER BY date ASC';
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+        $result = array_map(function ($row) use ($machineId) {
+            $ext = $row['receipt_photo_mime'] === 'application/pdf' ? '.pdf' : '';
+            $name = $row['receipt_photo_name'] ?: ('petty-cash-receipt-' . $row['id']);
+            if ($ext && !str_ends_with(strtolower($name), '.pdf')) $name .= $ext;
+            return [
+                'id' => $row['id'],
+                'name' => $name,
+                'date' => $row['date'],
+                'description' => $row['description'],
+                'downloadUrl' => "/customer-portal/petty-cash/{$machineId}/receipt?expenseId={$row['id']}",
+            ];
+        }, $rows);
+        json_out($result);
     }
 
     if ($method === 'GET' && $sub3 === 'receipt') {
@@ -1454,6 +1522,51 @@ if ($sub === 'machines' && $sub2) {
             'currentlyGrounded' => $currentlyGrounded, 'currentGroundedSinceMs' => $currentGroundedSinceMs, 'uptimePct' => $uptimePct,
         ]);
     }
+}
+
+// Recent updates for one machine — service request status changes
+// (Assigned/Completed/Cancelled by Engineer/BELM Admin/Technician) plus
+// operator report resolutions, combined into a single small feed shown
+// right on that machine's card so the customer sees what happened
+// without having to open Service Requests or Operator Reports separately.
+if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
+    $machineId = $sub2;
+    $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId, $customer['id']]);
+    if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+
+    $srStmt = db()->prepare(
+        "SELECT srh.event_type, srh.to_value, srh.actor_name, srh.created_at
+         FROM service_request_history srh
+         JOIN service_requests sr ON sr.id = srh.request_id
+         WHERE sr.machine_id = ? AND srh.event_type IN ('STATUS', 'ASSIGNMENT')
+         ORDER BY srh.created_at DESC LIMIT 5"
+    );
+    $srStmt->execute([$machineId]);
+    $updates = array_map(function ($row) {
+        $text = $row['event_type'] === 'ASSIGNMENT'
+            ? "Service request assigned to {$row['actor_name']}"
+            : "Service request status changed to {$row['to_value']}" . ($row['actor_name'] ? " by {$row['actor_name']}" : '');
+        return ['text' => $text, 'createdAt' => $row['created_at']];
+    }, $srStmt->fetchAll());
+
+    $opStmt = db()->prepare(
+        "SELECT o.message, o.resolved_at, u.name AS resolved_by_name
+         FROM operator_reports o
+         LEFT JOIN users u ON u.id = o.resolved_by_id
+         WHERE o.machine_id = ? AND o.status = 'RESOLVED' AND o.resolved_at IS NOT NULL
+         ORDER BY o.resolved_at DESC LIMIT 5"
+    );
+    $opStmt->execute([$machineId]);
+    foreach ($opStmt->fetchAll() as $row) {
+        $updates[] = [
+            'text' => 'Operator report resolved' . ($row['resolved_by_name'] ? " by {$row['resolved_by_name']}" : ''),
+            'createdAt' => $row['resolved_at'],
+        ];
+    }
+
+    usort($updates, fn($a, $b) => strcmp($b['createdAt'], $a['createdAt']));
+    json_out(array_slice($updates, 0, 5));
 }
 
 // ---- Customer assistants ---------------------------------------------------

@@ -147,14 +147,14 @@
       <tr>
         <td>${formatDate(entry.date)}</td>
         <td>${escapeHtml(entry.quantity)} L</td>
-        <td>${money.format(entry.unit_price || 0)}</td>
+        <td>${money.format(entry.unitPrice || 0)}</td>
         <td><strong>${money.format(entry.cost || 0)}</strong></td>
         <td>${escapeHtml(entry.description || "—")}</td>
-        <td>${hasReceipt(entry.has_receipt)
+        <td>${hasReceipt(entry.hasReceipt)
           ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(entry.id)}">View</button>
              <button class="receipt-button" type="button" data-download-receipt="${escapeHtml(entry.id)}">Download</button>`
           : "—"}</td>
-        <td>${escapeHtml(entry.logged_by || "—")}</td>
+        <td>${escapeHtml(entry.loggedBy || "—")}</td>
       </tr>`).join("");
   }
 
@@ -332,6 +332,45 @@
   }
   document.getElementById("csvButton").addEventListener("click", () => download("csv"));
   document.getElementById("pdfButton").addEventListener("click", () => download("pdf"));
+
+  document.getElementById("receiptsButton").addEventListener("click", downloadAllReceipts);
+  async function downloadAllReceipts() {
+    const button = document.getElementById("receiptsButton");
+    button.disabled = true;
+    button.textContent = "Finding receipts…";
+    try {
+      const list = await api(`/fuel-usage/${encodeURIComponent(machineId)}/receipts-list${currentRangeQuery()}`);
+      if (!list.length) {
+        showAlert("No receipts found for the selected range.", true);
+        return;
+      }
+      button.textContent = `Downloading 0/${list.length}…`;
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        const response = await fetch(`/api${item.downloadUrl}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) continue;
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = item.name;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        button.textContent = `Downloading ${i + 1}/${list.length}…`;
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+      showAlert(`Downloaded ${list.length} receipt(s).`);
+    } catch (error) {
+      showAlert(error.message || "Could not download receipts.", true);
+    } finally {
+      button.disabled = false;
+      button.textContent = "Download Receipts";
+    }
+  }
 
   document.getElementById("machineExpensesLink").href = `/customer-machine-expenses/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("refreshButton").addEventListener("click", load);

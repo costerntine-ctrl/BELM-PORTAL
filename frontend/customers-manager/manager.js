@@ -199,6 +199,15 @@
     if (previousValue) select.value = previousValue;
   }
 
+  function populatePortalAccessDropdown() {
+    const select = document.getElementById("portalAccessCustomerSelect");
+    if (!select) return;
+    const previousValue = select.value;
+    select.innerHTML = '<option value="">Select customer…</option>'
+      + customers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}${Number(customer.isActive) !== 1 ? " (Portal STOPPED)" : ""}</option>`).join("");
+    if (previousValue) select.value = previousValue;
+  }
+
   function renderCustomers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filter = document.getElementById("statusFilter").value;
@@ -365,6 +374,7 @@
       renderCustomers();
       populateUserLimitDropdown();
       populateMachineryAdminDropdown();
+      populatePortalAccessDropdown();
     } catch (error) {
       document.getElementById("customerGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
@@ -636,13 +646,17 @@
 
   let cachedMachineReports = [];
 
+  let currentExpenseReceipts = [];
+
   async function openExpenseReceipts(machineId, machineName) {
     document.getElementById("expenseReceiptsTitle").textContent = `Expense receipts — ${machineName || "Machine"}`;
     const body = document.getElementById("expenseReceiptsBody");
     body.innerHTML = '<p class="muted">Loading…</p>';
+    currentExpenseReceipts = [];
     document.getElementById("expenseReceiptsDialog").showModal();
     try {
       const receipts = await api(`/customers/machines/${encodeURIComponent(machineId)}/expense-receipts`);
+      currentExpenseReceipts = receipts;
       body.innerHTML = receipts.length ? `<table><thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Cost</th><th>Recorded by</th><th style="text-align:right">Receipt</th></tr></thead>
         <tbody>${receipts.map((r) => `<tr>
           <td>${formatDate(r.date)}</td>
@@ -660,6 +674,43 @@
       body.innerHTML = `<p class="alert error">${escapeHtml(error.message)}</p>`;
     }
   }
+
+  document.getElementById("downloadAllExpenseReceiptsButton").addEventListener("click", async () => {
+    const button = document.getElementById("downloadAllExpenseReceiptsButton");
+    if (!currentExpenseReceipts.length) {
+      showAlert("No receipts to download for this machine.", true);
+      return;
+    }
+    button.disabled = true;
+    const total = currentExpenseReceipts.length;
+    button.textContent = `Downloading 0/${total}…`;
+    try {
+      for (let i = 0; i < total; i++) {
+        const item = currentExpenseReceipts[i];
+        const response = await fetch(`/api/customers/expense-receipt/${encodeURIComponent(item.id)}?download=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) continue;
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = item.receiptName || `receipt-${item.id}`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(objectUrl);
+        button.textContent = `Downloading ${i + 1}/${total}…`;
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+      showAlert(`Downloaded ${total} receipt(s).`, false);
+    } catch (error) {
+      showAlert(error.message || "Could not download receipts.", true);
+    } finally {
+      button.disabled = false;
+      button.textContent = "Download All";
+    }
+  });
 
   document.getElementById("expenseReceiptsBody").addEventListener("click", async (event) => {
     const viewButton = event.target.closest("[data-view-single-receipt]");
@@ -1139,6 +1190,48 @@
         body: JSON.stringify({ enabled, ...confirmation }),
       });
       showAlert("Machinery Admin setting saved successfully.", false);
+      await load();
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  });
+
+  document.getElementById("portalAccessCustomerSelect")?.addEventListener("change", (event) => {
+    const customer = customers.find((item) => item.id === event.target.value);
+    const info = document.getElementById("portalAccessCurrentInfo");
+    const toggle = document.getElementById("portalAccessToggle");
+    if (!customer) {
+      info.textContent = "";
+      toggle.checked = true;
+      return;
+    }
+    const isActive = Number(customer.isActive) === 1;
+    toggle.checked = isActive;
+    info.textContent = isActive
+      ? "Currently ON — this customer can log in normally."
+      : "Currently STOPPED — this customer (and their assistants/operators) cannot log in.";
+  });
+
+  document.getElementById("portalAccessSaveButton")?.addEventListener("click", async () => {
+    const customerId = document.getElementById("portalAccessCustomerSelect").value;
+    if (!customerId) {
+      showAlert("Select a customer first.", true);
+      return;
+    }
+    const enabled = document.getElementById("portalAccessToggle").checked;
+    const confirmation = await window.belmConfirmEdit({
+      title: enabled ? "Restore portal service?" : "Stop portal service?",
+      message: enabled
+        ? "This customer will be able to log in again."
+        : "This customer (and their assistants/operators) will be blocked from logging in until you turn this back ON.",
+    });
+    if (!confirmation) return;
+    try {
+      await api(`/customers/${customerId}/portal-access`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled, ...confirmation }),
+      });
+      showAlert(enabled ? "Portal service restored." : "Portal service stopped for this customer.", false);
       await load();
     } catch (error) {
       showAlert(error.message, true);

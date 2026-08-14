@@ -6,11 +6,11 @@ header { min-height:72px; padding:11px clamp(18px,4vw,56px); display:flex; justi
 .brand { display:flex; align-items:center; gap:11px; color:#fff; text-decoration:none; }.brand b,.brand small { display:block; }.brand small { color:#bdc8d8; margin-top:2px; font-size:11px; }
 .mark { width:42px; height:42px; display:grid; place-items:center; border:2px solid var(--yellow); border-radius:11px; background:var(--green); font-weight:900; box-shadow:0 7px 18px rgba(0,166,81,.23); }
 nav { display:flex; align-items:center; gap:16px; }nav a,nav button { color:#e4eaf2; background:none; border:0; font:700 12px inherit; text-decoration:none; cursor:pointer; }
-main { width:min(1280px,calc(100% - 28px)); margin:38px auto 70px; }
+main { width:min(480px,calc(100% - 28px)); margin:38px auto 70px; }
 a.secondary { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
 .print-options-row { display:flex; justify-content:flex-end; margin-bottom:10px; }
-.expenses-layout { display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:22px; align-items:start; }
-.expenses-sidebar { position:sticky; top:20px; display:grid; gap:14px; }
+.expenses-layout { display:grid; grid-template-columns:1fr; gap:22px; align-items:start; }
+.expenses-sidebar { display:grid; gap:14px; }
 .sidebar-card { padding:18px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.05); }
 .sidebar-card-label { display:block; color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
 .petty-cash-card { background:linear-gradient(155deg,var(--navy),#1d3049); border:0; }
@@ -34,7 +34,7 @@ button,input,select { font:inherit; }.primary,.secondary { min-height:42px; padd
 .print-options { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--muted); }
 .print-options select { padding:6px 8px; border:1px solid var(--line); border-radius:7px; font-size:12px; }
 #printDateInput, #printMonthInput { padding:6px 8px; border:1px solid var(--line); border-radius:7px; font-size:12px; }
-.summary-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin:28px 0 18px; }.summary-grid article { padding:19px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.05); }.summary-grid span,.summary-grid strong { display:block; }.summary-grid span { color:var(--muted); font-size:11px; }.summary-grid strong { margin-top:5px; color:var(--navy); font-size:23px; }
+.summary-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:22px 0 16px; }.summary-grid article { padding:14px; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.05); }.summary-grid span,.summary-grid strong { display:block; }.summary-grid span { color:var(--muted); font-size:10.5px; }.summary-grid strong { margin-top:4px; color:var(--navy); font-size:19px; }
 .balance-grid { grid-template-columns:1.4fr 1fr 1fr; margin-bottom:14px; }
 .balance-card { background:linear-gradient(155deg,var(--navy),#1d3049) !important; border:0 !important; }
 .balance-card span { color:#9fb0c8 !important; }
@@ -42,7 +42,7 @@ button,input,select { font:inherit; }.primary,.secondary { min-height:42px; padd
 .balance-card small { display:block; margin-top:4px; color:#7f92ac; font-size:10px; }
 .panel { margin-bottom:18px; border:1px solid var(--line); border-radius:17px; background:#fff; overflow:hidden; box-shadow:0 10px 32px rgba(21,29,49,.065); }.panel::before { content:""; display:block; height:4px; background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); }
 .panel-head { display:flex; justify-content:space-between; align-items:center; gap:18px; padding:19px 20px; border-bottom:1px solid #edf2ef; }.panel-head h2 { margin:0 0 4px; font-size:18px; }.panel-head p { margin:0; color:var(--muted); font-size:12px; }.panel-head > strong { color:var(--green2); font-size:14px; }
-#expenseForm { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:20px; }#expenseForm label { display:grid; gap:7px; color:#394d60; font-size:11px; font-weight:800; }.wide { grid-column:span 2; }
+#expenseForm { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:16px; }#expenseForm label { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:800; }.wide { grid-column:1 / -1; }
 input,select { width:100%; min-height:42px; padding:10px 11px; border:1px solid #cad6d0; border-radius:8px; color:#182235; background:#fff; outline:none; font-size:13px; }input:focus,select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(0,166,81,.14); }
 .form-actions { display:flex; align-items:end; }.form-actions button { width:100%; }
 .dialog-form { display:grid; gap:12px; padding:18px 20px 20px; }

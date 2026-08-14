@@ -22,17 +22,24 @@ if ($action === 'login' && $method === 'POST') {
 
     $stmt = db()->prepare(
         'SELECT o.id, o.name, o.contact, o.pin_hash, o.customer_id, m.id AS machine_id,
-                m.brand, m.model, c.name AS customer_name
+                m.brand, m.model, c.name AS customer_name, c.is_active AS customer_is_active
          FROM machine_operators o
          JOIN machines m ON m.id = o.machine_id
          JOIN customers c ON c.id = o.customer_id
-         WHERE o.machine_id = ? AND LOWER(o.name) = LOWER(?) AND m.deleted_at IS NULL'
+         WHERE o.machine_id = ? AND LOWER(o.name) = LOWER(?) AND m.deleted_at IS NULL AND c.deleted_at IS NULL'
     );
     $stmt->execute([$machineId, $name]);
     $operator = $stmt->fetch();
     if (!$operator || !$operator['pin_hash'] || !password_verify($pin, $operator['pin_hash'])) {
         record_failed_attempt('operator-login', "$machineId:$name");
         json_error('Name or PIN is incorrect. Ask your Machine Admin to check your roster PIN.', 401);
+    }
+    // The customer's portal service being stopped (e.g. non-payment)
+    // must also block their Operators from signing in — otherwise
+    // "Stop portal service" wouldn't actually stop anyone from using it.
+    if (!$operator['customer_is_active']) {
+        record_failed_attempt('operator-login', "$machineId:$name");
+        json_error('This machine is not currently active on the portal. Contact your Machine Admin.', 403);
     }
     clear_rate_limit('operator-login', "$machineId:$name");
 

@@ -3,6 +3,7 @@
   const pathname = window.location.pathname;
   let customerExpenseMachines = null;
   let customerExpenseMachinesPromise = null;
+  let belmAnalysisDataCache = null;
   let technicianReportMachines = null;
   let technicianReportMachinesPromise = null;
   let technicianCustomerProfile = null;
@@ -489,8 +490,26 @@
       <div class="belm-customer-op-status op-${escapeHtml(opStatus)}">
         <span>What's happening now</span>
         <strong>${escapeHtml(opLabels[opStatus] || "Normal")}</strong>
-      </div>`;
+      </div>
+      <div class="belm-machine-recent-updates" id="belmRecentUpdates-${escapeHtml(machine.id)}"></div>`;
     card.appendChild(details);
+    if (localStorage.getItem("belm_customer_token")) loadCustomerMachineRecentUpdates(machine.id);
+  }
+
+  async function loadCustomerMachineRecentUpdates(machineId) {
+    const box = document.getElementById(`belmRecentUpdates-${machineId}`);
+    if (!box) return;
+    try {
+      const token = localStorage.getItem("belm_customer_token");
+      const response = await fetch(`/api/customer-portal/machine-recent-updates/${encodeURIComponent(machineId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) return;
+      const updates = await response.json();
+      if (!updates.length) return;
+      box.innerHTML = `<span class="belm-machine-recent-updates-head">Recent updates</span>`
+        + updates.map((u) => `<div class="belm-machine-recent-update-row">${escapeHtml(u.text)}</div>`).join("");
+    } catch (_) { /* a quiet feed — skip silently on failure */ }
   }
 
   let customerServiceStatusCache = {};

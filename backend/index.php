@@ -169,6 +169,9 @@ switch ($resource) {
         if (isset($segments[2]) && $segments[2] === 'machinery-admin') {
             dispatch('customers.php', ['action' => 'machinery-admin', 'id' => $segments[1]]);
         }
+        if (isset($segments[2]) && $segments[2] === 'portal-access') {
+            dispatch('customers.php', ['action' => 'portal-access', 'id' => $segments[1]]);
+        }
         if (isset($segments[2]) && $segments[2] === 'machines') {
             dispatch('customers.php', ['action' => 'add-machine', 'id' => $segments[1]]);
         }

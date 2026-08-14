@@ -295,6 +295,22 @@ if ($method === 'PUT' && $action === 'machinery-admin') {
     json_out(['ok' => true, 'isMachineryAdmin' => (bool)$enabled]);
 }
 
+// Quick "Stop portal service" toggle — for a customer who hasn't paid,
+// this blocks their login (and their assistants'/operators'/technicians'
+// too, since it's the same is_active flag the login query already
+// checks) without needing to open the full Edit Customer form.
+if ($method === 'PUT' && $action === 'portal-access') {
+    require_page_access($user, 'customers');
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $enabled = !empty($b['enabled']) ? 1 : 0;
+    $stmt = db()->prepare('UPDATE customers SET is_active = ? WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$enabled, $id]);
+    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
+    log_activity($user, 'customer-portal-access-changed', 'customer', $id, ['enabled' => (bool)$enabled]);
+    json_out(['ok' => true, 'isActive' => (bool)$enabled]);
+}
+
 // ---- Update customer --------------------------------------------------------
 if ($method === 'PUT' && !$action) {
     require_page_access($user, 'customers');

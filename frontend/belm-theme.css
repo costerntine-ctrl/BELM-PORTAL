@@ -484,6 +484,28 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-size: 15px;
   font-weight: 850;
 }
+.belm-machine-recent-updates:empty { display: none; }
+.belm-machine-recent-updates {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--belm-line);
+  border-radius: 10px;
+  background: #f8faf9;
+}
+.belm-machine-recent-updates-head {
+  color: #64748b;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.belm-machine-recent-update-row {
+  color: #334155;
+  font-size: 11px;
+  line-height: 1.4;
+}
 .belm-customer-op-status.op-SERVICE_IN_PROGRESS,
 .belm-customer-op-status.op-CHECKUP_IN_PROGRESS,
 .belm-customer-op-status.op-MAINTENANCE_IN_PROGRESS {

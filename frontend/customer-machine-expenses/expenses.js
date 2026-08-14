@@ -273,12 +273,12 @@
     document.getElementById("expenseRows").innerHTML = rows.length
       ? rows.map(expense => `<tr>
           <td>${formatDate(expense.date)}</td>
-          <td><strong>${escapeHtml(expense.part_number || "-")}</strong></td>
+          <td><strong>${escapeHtml(expense.partNumber || "-")}</strong></td>
           <td>${escapeHtml(expense.description)}</td>
           <td>${Number(expense.quantity || 0).toLocaleString("en-TZ")} ${escapeHtml(expense.unit || "PC")}</td>
-          <td>${money.format(Number(expense.unit_price || 0))}</td>
+          <td>${money.format(Number(expense.unitPrice || 0))}</td>
           <td><strong>${money.format(Number(expense.cost || 0))}</strong></td>
-          <td>${hasReceipt(expense.has_receipt)
+          <td>${hasReceipt(expense.hasReceipt)
             ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(expense.id)}">View</button>
                <button class="receipt-button" type="button" data-download-receipt="${escapeHtml(expense.id)}">Download</button>
                <button class="receipt-button" type="button" data-print-receipt="${escapeHtml(expense.id)}">Print</button>`
@@ -286,7 +286,7 @@
                  <span class="receipt-button">Upload</span>
                  <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-attach-receipt="${escapeHtml(expense.id)}" hidden>
                </label>`}</td>
-          <td>${escapeHtml(expense.logged_by || "Customer")}</td>
+          <td>${escapeHtml(expense.loggedBy || "Customer")}</td>
         </tr>`).join("")
       : '<tr><td colspan="8" class="empty">No machine expenses recorded yet.</td></tr>';
   }

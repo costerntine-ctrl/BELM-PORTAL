@@ -66,7 +66,7 @@
         <div class="user-limit-panel compact">
           <div class="user-limit-panel-head">
             <h2>Customer user limit</h2>
-            <p>Portal users a customer can self-add before contacting BELM.</p>
+            <p>Portal users a customer can self-add.</p>
           </div>
           <div class="user-limit-panel-row">
             <select id="userLimitCustomerSelect"><option value="">Select customer…</option></select>
@@ -78,7 +78,7 @@
         <div class="user-limit-panel compact">
           <div class="user-limit-panel-head">
             <h2>Machinery Admin <small>(self-service)</small></h2>
-            <p>Customer runs their own maintenance. BELM can't assign new Technicians to them.</p>
+            <p>Customer runs their own maintenance.</p>
           </div>
           <div class="user-limit-panel-row">
             <select id="machineryAdminCustomerSelect"><option value="">Select customer…</option></select>
@@ -89,6 +89,21 @@
             <button id="machineryAdminSaveButton" class="secondary" type="button">Save</button>
           </div>
           <p id="machineryAdminCurrentInfo" class="muted"></p>
+        </div>
+        <div class="user-limit-panel compact">
+          <div class="user-limit-panel-head">
+            <h2>Portal service <small>(non-payment)</small></h2>
+            <p>Stop a customer's portal login if they haven't paid.</p>
+          </div>
+          <div class="user-limit-panel-row">
+            <select id="portalAccessCustomerSelect"><option value="">Select customer…</option></select>
+            <label class="machinery-admin-switch">
+              <input id="portalAccessToggle" type="checkbox" checked>
+              <span>ON</span>
+            </label>
+            <button id="portalAccessSaveButton" class="secondary" type="button">Save</button>
+          </div>
+          <p id="portalAccessCurrentInfo" class="muted"></p>
         </div>
       </section>
       <section id="customerGrid" class="customer-grid"><div class="loading">Loading customers…</div></section>
@@ -211,7 +226,10 @@
       <div class="dialog-card">
         <div class="dialog-head">
           <div><p class="eyebrow">Bookkeeping</p><h2 id="expenseReceiptsTitle">Expense receipts</h2></div>
-          <button class="icon-close" data-close="expenseReceiptsDialog" type="button" aria-label="Close">×</button>
+          <div class="dialog-head-actions">
+            <button class="ghost" id="downloadAllExpenseReceiptsButton" type="button">Download All</button>
+            <button class="icon-close" data-close="expenseReceiptsDialog" type="button" aria-label="Close">×</button>
+          </div>
         </div>
         <div id="expenseReceiptsBody" class="dialog-body"></div>
       </div>

@@ -223,12 +223,10 @@
         document.getElementById("customerPortalUrl").textContent = dashboard.customer.portalUrl;
         document.getElementById("copyLinkButton").dataset.portalUrl = dashboard.customer.portalUrl;
       }
-      const customerTechEnabled = Boolean(dashboard?.customer?.isMachineryAdmin);
-      document.getElementById("technicianSection").classList.toggle("hidden", !customerTechEnabled);
-      document.getElementById("belmProviderNotice")?.classList.toggle("hidden", customerTechEnabled);
+      document.getElementById("technicianSection").classList.toggle("hidden", !dashboard?.customer?.isMachineryAdmin);
       const technicianOption = document.getElementById("role").querySelector('option[value="technician"]');
-      if (technicianOption) technicianOption.disabled = !customerTechEnabled;
-      if (customerTechEnabled) loadTechnicians();
+      if (technicianOption) technicianOption.disabled = !dashboard?.customer?.isMachineryAdmin;
+      if (dashboard?.customer?.isMachineryAdmin) loadTechnicians();
     } catch {
       // The user list already shows the actionable authentication error.
     }
@@ -273,14 +271,11 @@
 
   function toggleFieldsForRole() {
     const isTechnician = document.getElementById("role").value === "technician";
-    const isEdit = Boolean(document.getElementById("userId").value);
-    // Customer Admin sets the initial password only when creating an account.
-    // After creation, password recovery belongs to the user through Forgot Password + email OTP.
-    document.getElementById("passwordWrap")?.classList.toggle("hidden", isEdit);
-    document.getElementById("confirmPasswordWrap")?.classList.toggle("hidden", isEdit);
+    document.getElementById("password").closest("label").classList.toggle("hidden", isTechnician);
+    document.getElementById("confirmPassword").closest("label").classList.toggle("hidden", isTechnician);
     document.getElementById("accessRoleWrap")?.classList.toggle("hidden", isTechnician);
-    document.getElementById("password").required = !isEdit;
-    document.getElementById("confirmPassword").required = !isEdit;
+    document.getElementById("password").required = !isTechnician;
+    document.getElementById("confirmPassword").required = !isTechnician;
   }
   document.getElementById("role").addEventListener("change", toggleFieldsForRole);
 
@@ -290,7 +285,7 @@
     document.getElementById("dialogTitle").textContent = "Add assistant";
     document.getElementById("password").required = true;
     document.getElementById("confirmPassword").required = true;
-    document.getElementById("passwordHint").textContent = "Required · at least 8 characters. Give this first password to the user securely.";
+    document.getElementById("passwordHint").textContent = "Required · at least 8 characters";
     document.getElementById("statusWrap").classList.add("hidden");
     document.getElementById("formError").className = "alert error hidden";
     setAccessUI(null);
@@ -311,8 +306,7 @@
     document.getElementById("dialogTitle").textContent = "Edit assistant";
     document.getElementById("password").required = false;
     document.getElementById("confirmPassword").required = false;
-    document.getElementById("password").value = "";
-    document.getElementById("confirmPassword").value = "";
+    document.getElementById("passwordHint").textContent = "Leave blank to keep the current password";
     document.getElementById("statusWrap").classList.remove("hidden");
     document.getElementById("formError").className = "alert error hidden";
     setAccessUI(user.permissions || null);
@@ -329,14 +323,6 @@
     const id = document.getElementById("userId").value;
     const role = document.getElementById("role").value;
     const errorBox = document.getElementById("formError");
-
-    const password = document.getElementById("password").value;
-    const confirmation = document.getElementById("confirmPassword").value;
-    if (!id && password !== confirmation) {
-      errorBox.textContent = "Passwords do not match.";
-      errorBox.className = "alert error";
-      return;
-    }
 
     // Technician is a different account type entirely under the hood (a
     // real BELM staff Technician login, not a customer_users assistant),
@@ -358,14 +344,13 @@
             name: document.getElementById("name").value.trim(),
             email: document.getElementById("email").value.trim(),
             phone: document.getElementById("phone").value.trim(),
-            password: document.getElementById("password").value,
           }),
         });
         dialog.close();
         await loadUsers();
         await loadTechnicians();
         alert(
-          `Technician added. Share the email and the initial password you entered securely.\n\nLogin: ${result.loginUrl || "/tech"}`
+          `Technician added. Share these login details securely:\n\nLogin: ${result.loginUrl || "/tech"}\nPassword: ${result.temporaryPassword || "—"}`
         );
         showAlert("Technician added successfully.", false);
       } catch (error) {
@@ -378,18 +363,22 @@
       return;
     }
 
+    const password = document.getElementById("password").value;
+    const confirmation = document.getElementById("confirmPassword").value;
+    if (password !== confirmation) {
+      errorBox.textContent = "Passwords do not match.";
+      errorBox.className = "alert error";
+      return;
+    }
     const payload = {
       name: document.getElementById("name").value.trim(),
       email: document.getElementById("email").value.trim(),
       phone: document.getElementById("phone").value.trim(),
       role,
+      password,
       permissions: readAccessPayload(),
     };
-    if (id) {
-      payload.isActive = document.getElementById("isActive").checked;
-    } else {
-      payload.password = password;
-    }
+    if (id) payload.isActive = document.getElementById("isActive").checked;
 
     const saveButton = document.getElementById("saveButton");
     saveButton.disabled = true;
@@ -401,12 +390,12 @@
       });
       dialog.close();
       await loadUsers();
-      showAlert(
-        id
-          ? "Assistant account updated. Password changes are self-service through Forgot Password + email OTP."
-          : "Assistant created. Give the user the email and initial password you entered; future password recovery uses Forgot Password + email OTP.",
-        false
-      );
+      if (result?.recoveryCode) {
+        alert(
+          `${id ? "New" : "Assistant"} recovery code:\n\n${result.recoveryCode}\n\nCopy it now. It is required for self-service password recovery.`
+        );
+      }
+      showAlert(id ? "Assistant account updated successfully." : "Assistant created. They can now log in with the email and password you entered.", false);
     } catch (error) {
       errorBox.textContent = error.message;
       errorBox.className = "alert error";
@@ -461,6 +450,38 @@
       document.getElementById("rosterOperatorLink").value = `${window.location.origin}/operator/?machine=${machineId}`;
     }
     loadRoster(machineId);
+  });
+
+  document.getElementById("technicianAddButton")?.addEventListener("click", async () => {
+    const name = document.getElementById("technicianName").value.trim();
+    const email = document.getElementById("technicianEmail").value.trim();
+    const phone = document.getElementById("technicianPhone").value.trim();
+    if (!name || !email) {
+      showAlert("Enter both the Technician's name and email.", true);
+      return;
+    }
+    const button = document.getElementById("technicianAddButton");
+    button.disabled = true;
+    button.textContent = "Adding…";
+    try {
+      const result = await api("/technicians", {
+        method: "POST",
+        body: JSON.stringify({ name, email, phone }),
+      });
+      document.getElementById("technicianName").value = "";
+      document.getElementById("technicianEmail").value = "";
+      document.getElementById("technicianPhone").value = "";
+      await loadTechnicians();
+      showAlert(
+        `Technician added. Share these login details securely: ${result.loginUrl || "/tech"} · Password: ${result.temporaryPassword || "—"}`,
+        false
+      );
+    } catch (error) {
+      showAlert(error.message, true);
+    } finally {
+      button.disabled = false;
+      button.textContent = "+ Add Technician";
+    }
   });
 
   document.getElementById("copyOperatorLinkButton")?.addEventListener("click", async () => {

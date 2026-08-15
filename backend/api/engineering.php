@@ -41,7 +41,7 @@ if ($method === 'GET' && $action === 'dashboard') {
          FROM operator_reports o
          JOIN machines m ON m.id = o.machine_id
          JOIN customers c ON c.id = o.customer_id
-         WHERE o.status = 'OPEN' AND o.notify_belm = 1
+         WHERE o.status = 'OPEN'
          ORDER BY o.created_at DESC
          LIMIT 10"
     )->fetchAll();

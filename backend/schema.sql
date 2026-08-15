@@ -37,7 +37,6 @@ CREATE TABLE IF NOT EXISTS users (
   is_active SMALLINT NOT NULL DEFAULT 1,
   role_id VARCHAR(36) NOT NULL REFERENCES roles(id),
   assigned_customer_id VARCHAR(36) NULL REFERENCES customers(id),
-  is_customer_managed SMALLINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ NULL
 );
@@ -80,29 +79,14 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- themselves before they must contact BELM Admin for more. NULL means
 -- "use the system default" (see DEFAULT_CUSTOMER_USER_LIMIT in helpers.php).
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS user_limit INTEGER NULL;
--- Customer Self-Service / Independent Operations mode. When ON, the
--- customer runs day-to-day maintenance with their own Admins, Technicians
--- and Operators. BELM is involved only when the customer explicitly uses a
--- BELM support action (technical support, spare request, proforma, etc.).
--- The mode does NOT block BELM from responding when support is requested.
+-- "Machinery Admin" self-service mode: this customer runs their own
+-- maintenance/workshop operation with their own Technician accounts.
+-- When ON, BELM staff can no longer be newly assigned as Technician for
+-- this customer (existing assignments are left untouched — they may
+-- BE the customer's own staff already). Service Requests / Spare Part
+-- Requests still reach BELM by email regardless of this setting.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_machinery_admin SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
--- Distinguishes a Technician created by a customer's Self-Service admin from
--- a BELM Technician temporarily assigned to that customer for support.
-ALTER TABLE users ADD COLUMN IF NOT EXISTS is_customer_managed SMALLINT NOT NULL DEFAULT 0;
--- Backfill technicians created by the customer-portal flow used in recent
--- releases. Those accounts were created with no recovery_code_hash; BELM Admin
--- created technicians receive a recovery code. Restrict the heuristic to
--- customers already in Self-Service mode to avoid touching normal BELM staff.
-UPDATE users u
-SET is_customer_managed = 1
-FROM roles r, customers c
-WHERE u.role_id = r.id
-  AND r.name = 'Technician'
-  AND u.assigned_customer_id = c.id
-  AND c.is_machinery_admin = 1
-  AND u.recovery_code_hash IS NULL
-  AND u.is_customer_managed = 0;
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_customer_users_customer ON customer_users(customer_id);
 CREATE INDEX IF NOT EXISTS idx_customer_users_email ON customer_users(LOWER(email));
@@ -210,8 +194,8 @@ ALTER TABLE checklist_answers ALTER COLUMN photo_url TYPE TEXT;
 
 CREATE TABLE IF NOT EXISTS service_requests (
   id VARCHAR(36) PRIMARY KEY,
-  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  machine_id VARCHAR(36) NULL REFERENCES machines(id) ON DELETE CASCADE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  machine_id VARCHAR(36) NULL REFERENCES machines(id),
   template_id VARCHAR(36) NULL REFERENCES checklist_templates(id),
   service_type VARCHAR(150) NULL,
   description TEXT NOT NULL,
@@ -381,8 +365,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_bank_accounts_active_number
 
 CREATE TABLE IF NOT EXISTS invoices (
   id VARCHAR(36) PRIMARY KEY,
-  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  machine_id VARCHAR(36) NULL REFERENCES machines(id) ON DELETE CASCADE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
+  machine_id VARCHAR(36) NULL REFERENCES machines(id),
   invoice_no VARCHAR(50) NOT NULL UNIQUE,
   subtotal NUMERIC(12,2) NOT NULL,
   tax NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -687,11 +671,6 @@ CREATE TABLE IF NOT EXISTS operator_reports (
   resolved_by_id VARCHAR(36) NULL REFERENCES users(id)
 );
 
--- In Self-Service mode an operator report can remain internal to the
--- customer's own team. Set notify_belm=1 only when BELM support was
--- explicitly requested. Existing records default to 1 for compatibility.
-ALTER TABLE operator_reports ADD COLUMN IF NOT EXISTS notify_belm SMALLINT NOT NULL DEFAULT 1;
-
 CREATE TABLE IF NOT EXISTS petty_cash_topups (
   id VARCHAR(36) PRIMARY KEY,
   machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
@@ -950,34 +929,3 @@ VALUES (
   '"1234"'::jsonb
 )
 ON CONFLICT ("key") DO NOTHING;
-
--- V192: synchronized BELM <-> Customer communication and Proforma delivery.
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL;
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_spare_request_id VARCHAR(36) NULL;
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS delivery_status VARCHAR(20) NOT NULL DEFAULT 'DRAFT';
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ NULL;
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS sent_by_id VARCHAR(36) NULL;
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS customer_response VARCHAR(20) NULL;
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS customer_response_message VARCHAR(1000) NULL;
-ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS customer_responded_at TIMESTAMPTZ NULL;
-CREATE INDEX IF NOT EXISTS idx_proforma_customer_delivery ON proforma_invoices(customer_id, delivery_status, sent_at);
-CREATE INDEX IF NOT EXISTS idx_proforma_machine ON proforma_invoices(machine_id);
-CREATE INDEX IF NOT EXISTS idx_proforma_source_spare_request ON proforma_invoices(source_spare_request_id);
-
-CREATE TABLE IF NOT EXISTS customer_communications (
-  id VARCHAR(36) PRIMARY KEY,
-  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  machine_id VARCHAR(36) NULL REFERENCES machines(id) ON DELETE CASCADE,
-  related_type VARCHAR(40) NULL,
-  related_id VARCHAR(36) NULL,
-  direction VARCHAR(30) NOT NULL,
-  channel VARCHAR(20) NOT NULL DEFAULT 'PORTAL',
-  subject VARCHAR(255) NOT NULL,
-  message TEXT NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'SENT',
-  created_by_name VARCHAR(255) NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_customer_communications_customer ON customer_communications(customer_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_customer_communications_machine ON customer_communications(machine_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_customer_communications_related ON customer_communications(related_type, related_id);

@@ -213,9 +213,3 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(0, 169, 88, 
   .full { grid-column: auto; }
   .row-actions { flex-wrap: wrap; }
 }
-
-/* V191 customer spare request -> BELM internal selection */
-.spare-choice-list{display:grid;gap:8px;margin-top:12px;max-height:42vh;overflow:auto}
-.spare-choice{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
-.spare-choice strong,.spare-choice small{display:block}.spare-choice small{margin-top:2px;color:var(--muted)}
-.spare-choice .badge{white-space:nowrap}

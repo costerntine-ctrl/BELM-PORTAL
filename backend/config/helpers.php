@@ -197,26 +197,10 @@ function require_auth(): array {
     if (($payload['roleName'] ?? '') === 'Technician') {
         $assigned = $payload['assignedCustomerId'] ?? null;
         if ($assigned) {
-            // Re-check both assignment and Self-Service ownership on every request.
-            // This makes the customer Self-Service switch effective immediately
-            // without blocking BELM technicians who are temporarily assigned to
-            // the same customer for an explicit support request.
-            $stmt = db()->prepare(
-                'SELECT u.is_customer_managed, c.is_machinery_admin
-                 FROM users u
-                 JOIN customers c ON c.id = u.assigned_customer_id
-                 WHERE u.id = ?
-                   AND u.assigned_customer_id = ?
-                   AND u.deleted_at IS NULL AND u.is_active = 1
-                   AND c.deleted_at IS NULL AND c.is_active = 1'
-            );
-            $stmt->execute([$payload['id'] ?? '', $assigned]);
-            $live = $stmt->fetch();
-            if (!$live) {
+            $stmt = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+            $stmt->execute([$assigned]);
+            if (!$stmt->fetch()) {
                 json_error('Your assigned customer has changed. Please log out and log in again.', 401);
-            }
-            if (!empty($live['is_customer_managed']) && empty($live['is_machinery_admin'])) {
-                json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
             }
         }
     }
@@ -286,152 +270,6 @@ function role_ids_for_user(string $userId, string $primaryRoleId): array {
     $stmt = db()->prepare('SELECT role_id FROM user_roles WHERE user_id = ?');
     $stmt->execute([$userId]);
     return array_values(array_unique(array_merge([$primaryRoleId], $stmt->fetchAll(PDO::FETCH_COLUMN))));
-}
-
-// Return active CENTRAL BELM staff whose effective role grants at least one requested page.
-// Customer-bound Technician accounts use the same users table, so they must be
-// excluded here; otherwise a request from one customer could be emailed to a
-// Technician working inside another customer's environment. Specific assigned
-// Technicians receive work through their assigned request/task workflow instead.
-function belm_staff_recipients_for_pages(array $pageKeys): array {
-    $wanted = array_values(array_unique(array_filter(array_map('strval', $pageKeys))));
-    if (!$wanted) return [];
-    $stmt = db()->query(
-        'SELECT u.id, u.name, u.email, u.role_id, u.assigned_customer_id,
-                r.name AS role_name, r.allowed_pages
-         FROM users u JOIN roles r ON r.id = u.role_id
-         WHERE u.deleted_at IS NULL AND u.is_active = 1 AND r.deleted_at IS NULL
-           AND u.assigned_customer_id IS NULL'
-    );
-    $out = [];
-    foreach ($stmt->fetchAll() as $staff) {
-        $email = strtolower(trim((string)($staff['email'] ?? '')));
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
-        $pages = merged_allowed_pages_for_user(
-            (string)$staff['id'],
-            (string)$staff['role_name'],
-            (string)($staff['allowed_pages'] ?? '[]')
-        );
-        $matches = $pages === null ? $wanted : array_values(array_intersect($wanted, $pages));
-        if (!$matches) continue;
-        $out[$email] = [
-            'email' => $email,
-            'name' => (string)($staff['name'] ?? ''),
-            'pages' => $matches,
-        ];
-    }
-    return array_values($out);
-}
-
-// Best-effort email alert plus notification-log audit. If no matching staff
-// account exists yet, fall back to the Business Email from Settings so a
-// customer request is never silently lost.
-function belm_send_staff_page_alert(array $pageKeys, string $subject, string $body): array {
-    if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
-    $recipients = belm_staff_recipients_for_pages($pageKeys);
-    if (!$recipients) {
-        try {
-            $company = belm_get_company_details();
-            $fallback = strtolower(trim((string)($company['companyEmail'] ?? '')));
-            if (filter_var($fallback, FILTER_VALIDATE_EMAIL)) {
-                $recipients[] = ['email' => $fallback, 'name' => 'BELM Business Email', 'pages' => $pageKeys];
-            }
-        } catch (Throwable $ignored) {}
-    }
-    $result = ['sent' => 0, 'failed' => 0, 'recipients' => []];
-    foreach ($recipients as $recipient) {
-        $email = (string)$recipient['email'];
-        $status = 'SENT';
-        try {
-            send_email($email, $subject, $body);
-            $result['sent']++;
-            $result['recipients'][] = $email;
-        } catch (Throwable $error) {
-            $status = 'FAILED';
-            $result['failed']++;
-            error_log('BELM staff alert email failed for ' . $email . ': ' . $error->getMessage());
-        }
-        try {
-            db()->prepare(
-                'INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at)
-                 VALUES (?,?,?,?,?,?,NOW())'
-            )->execute([uuid(), 'EMAIL', $email, $subject, $body, $status]);
-        } catch (Throwable $ignored) {}
-    }
-    return $result;
-}
-
-
-// Customer-originated communication to BELM. Unlike the generic staff-page
-// alert helper, this ALWAYS includes the official Business Email from System
-// Settings, then also alerts any active BELM staff whose role owns the target
-// pages. Recipients are deduplicated. Reply-To can be the customer's own email
-// so a normal email reply goes back to the person who submitted the request.
-function belm_send_customer_to_belm_alert(
-    array $pageKeys,
-    string $subject,
-    string $body,
-    ?string $customerReplyTo = null
-): array {
-    if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
-
-    $recipientsByEmail = [];
-    try {
-        $company = belm_get_company_details();
-        $businessEmail = strtolower(trim((string)($company['companyEmail'] ?? '')));
-        if (filter_var($businessEmail, FILTER_VALIDATE_EMAIL)) {
-            $recipientsByEmail[$businessEmail] = [
-                'email' => $businessEmail,
-                'name' => 'BELM Business Email',
-                'source' => 'BUSINESS_EMAIL',
-            ];
-        }
-    } catch (Throwable $ignored) {}
-
-    foreach (belm_staff_recipients_for_pages($pageKeys) as $recipient) {
-        $email = strtolower(trim((string)($recipient['email'] ?? '')));
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
-        if (!isset($recipientsByEmail[$email])) {
-            $recipientsByEmail[$email] = [
-                'email' => $email,
-                'name' => (string)($recipient['name'] ?? ''),
-                'source' => 'STAFF_PAGE',
-            ];
-        }
-    }
-
-    $result = [
-        'sent' => 0,
-        'failed' => 0,
-        'recipients' => [],
-        'businessEmailConfigured' => false,
-        'businessEmailSent' => false,
-    ];
-    foreach (array_values($recipientsByEmail) as $recipient) {
-        if (($recipient['source'] ?? '') === 'BUSINESS_EMAIL') {
-            $result['businessEmailConfigured'] = true;
-        }
-        $email = (string)$recipient['email'];
-        $status = 'SENT';
-        try {
-            send_email($email, $subject, $body, [], [], $customerReplyTo);
-            $result['sent']++;
-            $result['recipients'][] = $email;
-            if (($recipient['source'] ?? '') === 'BUSINESS_EMAIL') $result['businessEmailSent'] = true;
-        } catch (Throwable $error) {
-            $status = 'FAILED';
-            $result['failed']++;
-            error_log('BELM customer-to-business alert failed for ' . $email . ': ' . $error->getMessage());
-        }
-        try {
-            db()->prepare(
-                'INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at)
-'
-                . 'VALUES (?,?,?,?,?,?,NOW())'
-            )->execute([uuid(), 'EMAIL', $email, $subject, $body, $status]);
-        } catch (Throwable $ignored) {}
-    }
-    return $result;
 }
 
 
@@ -749,22 +587,19 @@ function require_customer_auth(): array {
         json_error('Your session has expired after a security update. Please log in again.', 401);
     }
 
-    $stmt = db()->prepare('SELECT id, email FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt = db()->prepare('SELECT id FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
     $stmt->execute([$payload['id'] ?? '']);
-    $ownerRow = $stmt->fetch();
-    if (!$ownerRow) json_error('Customer account is not available.', 401);
-    if ($actorType === 'owner') $payload['actorEmail'] = $ownerRow['email'] ?? null;
+    if (!$stmt->fetch()) json_error('Customer account is not available.', 401);
 
     if ($actorType === 'assistant') {
         $stmt = db()->prepare(
-            'SELECT id, name, email, role FROM customer_users
+            'SELECT id, name, role FROM customer_users
              WHERE id = ? AND customer_id = ? AND is_active = 1'
         );
         $stmt->execute([$payload['actorId'] ?? '', $payload['id'] ?? '']);
         $assistant = $stmt->fetch();
         if (!$assistant) json_error('Assistant account is no longer active.', 401);
         $payload['actorName'] = $assistant['name'];
-        $payload['actorEmail'] = $assistant['email'] ?? null;
         $payload['customerRole'] = $assistant['role'];
     }
     return $payload;
@@ -806,134 +641,4 @@ function send_to_trash(string $entityType, string $entityId, string $label, ?str
 function soft_delete(string $table, string $id): void {
     $stmt = db()->prepare("UPDATE \"$table\" SET deleted_at = NOW() WHERE id = ?");
     $stmt->execute([$id]);
-}
-
-// V192 — one synchronized communication layer for BELM <-> Customer events.
-function belm_log_customer_communication(
-    string $customerId,
-    ?string $machineId,
-    string $direction,
-    string $channel,
-    string $subject,
-    string $message,
-    ?string $relatedType = null,
-    ?string $relatedId = null,
-    ?string $createdByName = null,
-    string $status = 'SENT'
-): string {
-    $id = uuid();
-    try {
-        db()->prepare(
-            'INSERT INTO customer_communications
-             (id, customer_id, machine_id, related_type, related_id, direction, channel,
-              subject, message, status, created_by_name, created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW())'
-        )->execute([
-            $id,
-            $customerId,
-            $machineId ?: null,
-            $relatedType ?: null,
-            $relatedId ?: null,
-            $direction,
-            $channel,
-            $subject,
-            $message,
-            $status,
-            $createdByName ?: null,
-        ]);
-    } catch (Throwable $error) {
-        // Communication audit must never block the operational transaction.
-        error_log('BELM communication log failed: ' . $error->getMessage());
-    }
-    return $id;
-}
-
-function belm_customer_notification_recipients(string $customerId, array $roles = []): array {
-    $wantedRoles = array_values(array_unique(array_filter(array_map(
-        static fn($role): string => strtolower(trim((string)$role)),
-        $roles
-    ))));
-    $recipients = [];
-
-    $ownerStmt = db()->prepare('SELECT name, email FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
-    $ownerStmt->execute([$customerId]);
-    $owner = $ownerStmt->fetch();
-    if ($owner) {
-        $email = strtolower(trim((string)($owner['email'] ?? '')));
-        if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $recipients[$email] = ['email' => $email, 'name' => (string)($owner['name'] ?? 'Customer'), 'role' => 'owner'];
-        }
-    }
-
-    $sql = 'SELECT name, email, role FROM customer_users WHERE customer_id = ? AND is_active = 1';
-    $params = [$customerId];
-    if ($wantedRoles) {
-        $placeholders = implode(',', array_fill(0, count($wantedRoles), '?'));
-        $sql .= " AND LOWER(role) IN ($placeholders)";
-        $params = array_merge($params, $wantedRoles);
-    }
-    $stmt = db()->prepare($sql);
-    $stmt->execute($params);
-    foreach ($stmt->fetchAll() as $row) {
-        $email = strtolower(trim((string)($row['email'] ?? '')));
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
-        $recipients[$email] = [
-            'email' => $email,
-            'name' => (string)($row['name'] ?? ''),
-            'role' => strtolower((string)($row['role'] ?? 'assistant')),
-        ];
-    }
-    return array_values($recipients);
-}
-
-function belm_send_customer_alert(
-    string $customerId,
-    ?string $machineId,
-    array $roles,
-    string $subject,
-    string $body,
-    ?string $relatedType = null,
-    ?string $relatedId = null,
-    ?string $createdByName = 'BELM',
-    ?string $portalBody = null
-): array {
-    if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
-    $recipients = belm_customer_notification_recipients($customerId, $roles);
-    $sent = 0;
-    $failed = 0;
-    $recipientEmails = [];
-    foreach ($recipients as $recipient) {
-        $email = (string)$recipient['email'];
-        $delivery = 'SENT';
-        try {
-            send_email($email, $subject, $body);
-            $sent++;
-            $recipientEmails[] = $email;
-        } catch (Throwable $error) {
-            $delivery = 'FAILED';
-            $failed++;
-            error_log('BELM customer alert failed for ' . $email . ': ' . $error->getMessage());
-        }
-        try {
-            db()->prepare(
-                'INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at)
-                 VALUES (?,?,?,?,?,?,NOW())'
-            )->execute([uuid(), 'EMAIL', $email, $subject, $body, $delivery]);
-        } catch (Throwable $ignored) {}
-    }
-
-    $auditStatus = $failed === 0 && $sent > 0 ? 'SENT' : ($sent > 0 ? 'PARTIAL' : 'PORTAL_ONLY');
-    belm_log_customer_communication(
-        $customerId,
-        $machineId,
-        'BELM_TO_CUSTOMER',
-        'EMAIL',
-        $subject,
-        $portalBody ?? $body,
-        $relatedType,
-        $relatedId,
-        $createdByName,
-        $auditStatus
-    );
-    return ['sent' => $sent, 'failed' => $failed, 'recipients' => $recipientEmails];
 }

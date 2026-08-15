@@ -152,7 +152,7 @@ if ($method === 'GET' && !$action) {
         : null;
     if (($user['roleName'] ?? '') === 'Technician') {
         $stmt = db()->prepare(
-            'SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin
+            'SELECT id, name, email, phone, address, tin_number, vrn, is_active
              FROM customers
              WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
         );
@@ -168,7 +168,6 @@ if ($method === 'GET' && !$action) {
     foreach ($customers as &$c) {
         $c['machines'] = fetch_machines($c['id']);
         $c['isMachineryAdmin'] = !empty($c['is_machinery_admin']);
-        $c['belmServiceProviderActive'] = empty($c['is_machinery_admin']);
         if (($user['roleName'] ?? '') !== 'Technician') {
             $c['users'] = fetch_customer_users($c['id']);
             $c['userLimit'] = isset($c['user_limit']) ? (int)$c['user_limit'] : null;
@@ -181,7 +180,7 @@ if ($method === 'GET' && !$action) {
 if ($method === 'GET' && $action === 'one') {
     require_customer_read_access($user, $id);
     $sql = ($user['roleName'] ?? '') === 'Technician'
-        ? 'SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin
+        ? 'SELECT id, name, email, phone, address, tin_number, vrn, is_active
            FROM customers
            WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
         : 'SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL';
@@ -190,142 +189,10 @@ if ($method === 'GET' && $action === 'one') {
     $customer = $stmt->fetch();
     if (!$customer) json_error('Not found', 404);
     $customer['machines'] = fetch_machines($customer['id']);
-    $customer['isMachineryAdmin'] = !empty($customer['is_machinery_admin']);
-    $customer['belmServiceProviderActive'] = empty($customer['is_machinery_admin']);
     if (($user['roleName'] ?? '') !== 'Technician') {
         $customer['users'] = fetch_customer_users($customer['id']);
     }
     json_out($customer);
-}
-
-// ---- BELM <-> Customer communication history -----------------------------
-if ($method === 'GET' && $action === 'communications') {
-    require_page_access($user, 'customers');
-    $stmt = db()->prepare('SELECT id, name FROM customers WHERE id = ? AND deleted_at IS NULL');
-    $stmt->execute([$id]);
-    $target = $stmt->fetch();
-    if (!$target) json_error('Customer not found.', 404);
-
-    $commStmt = db()->prepare(
-        'SELECT cc.*, m.model AS machine_model, m.machine_type
-         FROM customer_communications cc
-         LEFT JOIN machines m ON m.id = cc.machine_id
-         WHERE cc.customer_id = ?
-         ORDER BY cc.created_at DESC
-         LIMIT 100'
-    );
-    $commStmt->execute([$id]);
-    $rows = $commStmt->fetchAll();
-
-    $serviceIds = [];
-    $operatorIds = [];
-    foreach ($rows as $row) {
-        if (($row['related_type'] ?? '') === 'SERVICE_REQUEST' && !empty($row['related_id'])) $serviceIds[] = $row['related_id'];
-        if (($row['related_type'] ?? '') === 'OPERATOR_REPORT' && !empty($row['related_id'])) $operatorIds[] = $row['related_id'];
-    }
-    $serviceStatus = [];
-    if ($serviceIds) {
-        $serviceIds = array_values(array_unique($serviceIds));
-        $in = belm_in_clause($serviceIds);
-        $q = db()->prepare("SELECT id, status FROM service_requests WHERE id IN ($in)");
-        $q->execute($serviceIds);
-        foreach ($q->fetchAll() as $row) $serviceStatus[$row['id']] = $row['status'];
-    }
-    $operatorStatus = [];
-    if ($operatorIds) {
-        $operatorIds = array_values(array_unique($operatorIds));
-        $in = belm_in_clause($operatorIds);
-        $q = db()->prepare("SELECT id, status FROM operator_reports WHERE id IN ($in)");
-        $q->execute($operatorIds);
-        foreach ($q->fetchAll() as $row) $operatorStatus[$row['id']] = $row['status'];
-    }
-
-    $out = array_map(static function ($row) use ($serviceStatus, $operatorStatus) {
-        $relatedType = (string)($row['related_type'] ?? '');
-        $relatedId = (string)($row['related_id'] ?? '');
-        $actionType = null;
-        $actionStatus = null;
-        $actionable = false;
-        if ($relatedType === 'SERVICE_REQUEST' && $relatedId !== '') {
-            $actionType = 'service-request';
-            $actionStatus = $serviceStatus[$relatedId] ?? null;
-            $actionable = $actionStatus !== null && !in_array($actionStatus, ['COMPLETED', 'CANCELLED'], true);
-        } elseif ($relatedType === 'OPERATOR_REPORT' && $relatedId !== '') {
-            $actionType = 'operator-report';
-            $actionStatus = $operatorStatus[$relatedId] ?? null;
-            $actionable = $actionStatus === 'OPEN';
-        }
-        return [
-            'id' => $row['id'],
-            'direction' => $row['direction'],
-            'channel' => $row['channel'],
-            'subject' => $row['subject'],
-            'message' => $row['message'],
-            'deliveryStatus' => $row['status'],
-            'createdByName' => $row['created_by_name'],
-            'createdAt' => $row['created_at'],
-            'machineId' => $row['machine_id'],
-            'machineLabel' => trim((string)($row['machine_model'] ?? '') . ' ' . (string)($row['machine_type'] ?? '')),
-            'relatedType' => $relatedType,
-            'relatedId' => $relatedId ?: null,
-            'actionType' => $actionType,
-            'actionStatus' => $actionStatus,
-            'actionable' => $actionable,
-        ];
-    }, $rows);
-    json_out($out);
-}
-
-// ---- Direct BELM message to one customer ----------------------------------
-if ($method === 'POST' && $action === 'send-message') {
-    require_page_access($user, 'customers');
-    $stmt = db()->prepare('SELECT id, name, email, is_active FROM customers WHERE id = ? AND deleted_at IS NULL');
-    $stmt->execute([$id]);
-    $target = $stmt->fetch();
-    if (!$target) json_error('Customer not found.', 404);
-    if (!(int)$target['is_active']) json_error('This customer portal is inactive. Restore portal access before sending a portal message.', 409);
-
-    $b = body();
-    $subject = trim((string)($b['subject'] ?? 'Message from BELM'));
-    $message = trim((string)($b['message'] ?? ''));
-    $machineId = trim((string)($b['machineId'] ?? ''));
-    if ($subject === '') $subject = 'Message from BELM';
-    if (mb_strlen($subject) > 160) json_error('Subject must be 160 characters or fewer.');
-    if ($message === '') json_error('Write a message for the customer.');
-    if (mb_strlen($message) > 2000) json_error('Message must be 2000 characters or fewer.');
-
-    $machineLabel = '';
-    if ($machineId !== '') {
-        $machineStmt = db()->prepare('SELECT model, machine_type, brand FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
-        $machineStmt->execute([$machineId, $id]);
-        $machine = $machineStmt->fetch();
-        if (!$machine) json_error('Selected machine does not belong to this customer.', 400);
-        $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? '')) ?: (string)($machine['machine_type'] ?? 'Machine');
-    }
-
-    $sender = trim((string)($user['name'] ?? 'BELM')) ?: 'BELM';
-    $emailBody = $message;
-    if ($machineLabel !== '') $emailBody .= "\n\nMachine: $machineLabel";
-    $emailBody .= "\n\nSent by: $sender\nOpen the BELM Customer Portal to keep this message in your communication history.";
-    $result = belm_send_customer_alert(
-        (string)$id,
-        $machineId !== '' ? $machineId : null,
-        ['admin'],
-        $subject,
-        $emailBody,
-        'DIRECT_MESSAGE',
-        null,
-        $sender,
-        $message
-    );
-    json_out([
-        'ok' => true,
-        'emailDelivered' => (int)($result['sent'] ?? 0) > 0,
-        'emailRecipients' => $result['recipients'] ?? [],
-        'message' => (int)($result['sent'] ?? 0) > 0
-            ? 'Message saved to the customer portal and emailed successfully.'
-            : 'Message saved to the customer portal. Email was not delivered; check customer email/SMTP settings.',
-    ]);
 }
 
 // ---- Create customer ------------------------------------------------------
@@ -410,41 +277,22 @@ if ($method === 'PUT' && $action === 'user-limit') {
     json_out(['ok' => true, 'userLimit' => $limit]);
 }
 
-// BELM Service Provider mode. The database keeps the historical
-// is_machinery_admin flag where 1 = customer-managed maintenance and 0 = BELM
-// service-provider maintenance. Provider mode ONLY takes over maintenance /
-// machine-problem workflows. The customer's Accounts, Fuel Consumption,
-// Operators, Workshop, Store, Procurement and other portal roles stay active.
-// Customer-managed Technician access is paused automatically while provider
-// mode is active; no Technician account is deleted.
+// "[Customer] Machinery Admin" self-service toggle. ON = this customer
+// runs their own maintenance with their own Technician accounts, and
+// BELM staff can no longer be newly assigned to service them directly
+// (existing Technician assignments for this customer are left as-is).
+// Service Requests / Spare Part Requests keep reaching BELM by email
+// either way.
 if ($method === 'PUT' && $action === 'machinery-admin') {
     require_page_access($user, 'customers');
     $b = body();
     require_edit_confirmation($user, $b);
-
-    if (array_key_exists('serviceProviderEnabled', $b)) {
-        $providerEnabled = !empty($b['serviceProviderEnabled']);
-        $selfServiceEnabled = $providerEnabled ? 0 : 1;
-    } else {
-        // Backward compatibility for older clients using enabled=self-service.
-        $selfServiceEnabled = !empty($b['enabled']) ? 1 : 0;
-        $providerEnabled = !$selfServiceEnabled;
-    }
-
+    $enabled = !empty($b['enabled']) ? 1 : 0;
     $stmt = db()->prepare('UPDATE customers SET is_machinery_admin = ? WHERE id = ? AND deleted_at IS NULL');
-    $stmt->execute([$selfServiceEnabled, $id]);
+    $stmt->execute([$enabled, $id]);
     if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
-    log_activity($user, 'belm-service-provider-mode-changed', 'customer', $id, [
-        'serviceProviderEnabled' => (bool)$providerEnabled,
-        'customerTechnicianAccessPaused' => (bool)$providerEnabled,
-        'customerBusinessRolesRemainActive' => true,
-    ]);
-    json_out([
-        'ok' => true,
-        'isMachineryAdmin' => (bool)$selfServiceEnabled,
-        'belmServiceProviderActive' => (bool)$providerEnabled,
-        'customerTechnicianAccessPaused' => (bool)$providerEnabled,
-    ]);
+    log_activity($user, 'customer-machinery-admin-changed', 'customer', $id, ['enabled' => (bool)$enabled]);
+    json_out(['ok' => true, 'isMachineryAdmin' => (bool)$enabled]);
 }
 
 // Quick "Stop portal service" toggle — for a customer who hasn't paid,

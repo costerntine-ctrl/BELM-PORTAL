@@ -29,18 +29,7 @@ if (!$isStaff && !$isCustomer) json_error('Not authenticated', 401);
 // without pricing (Technician doesn't need purchase/selling price here).
 if ($method === 'GET' && ($_GET['action'] ?? '') === 'catalog') {
     if (!$isStaff || ($payload['roleName'] ?? '') !== 'Technician') {
-        json_error('Only a Technician can use this catalog.', 403);
-    }
-    $assignedCustomerId = trim((string)($payload['assignedCustomerId'] ?? ''));
-    $modeStmt = db()->prepare(
-        'SELECT c.is_machinery_admin, u.is_customer_managed
-         FROM users u JOIN customers c ON c.id = u.assigned_customer_id
-         WHERE u.id = ? AND c.id = ? AND u.deleted_at IS NULL AND c.deleted_at IS NULL'
-    );
-    $modeStmt->execute([(string)($payload['id'] ?? ''), $assignedCustomerId]);
-    $modeRow = $modeStmt->fetch();
-    if ($modeRow && !empty($modeRow['is_machinery_admin']) && !empty($modeRow['is_customer_managed'])) {
-        json_error('BELM Inventory is private in Customer Self-Service Mode. Enter the spare name/reference manually.', 403);
+        json_error('Only a BELM Technician can browse the spare-parts catalog here.', 403);
     }
     $stmt = db()->query(
         "SELECT id, part_number, reference_number, name, category
@@ -178,18 +167,12 @@ if ($method === 'PUT' && $id) {
     $customer = require_customer_auth();
     require_customer_write_access($customer);
     $stmt = db()->prepare(
-        "SELECT sr.id, sr.machine_id, sr.description, srp.spare_name, srp.part_number,
-                m.brand, m.model, m.machine_type, m.serial_number, m.reg_number
-         FROM service_requests sr
-         LEFT JOIN service_request_parts srp ON srp.request_id = sr.id
-         LEFT JOIN machines m ON m.id = sr.machine_id
-         WHERE sr.id = ? AND sr.customer_id = ? AND sr.origin = 'TECHNICIAN_RECOMMENDATION'
-           AND sr.status = 'PENDING_CUSTOMER'
-         LIMIT 1"
+        "SELECT id FROM service_requests
+         WHERE id = ? AND customer_id = ? AND origin = 'TECHNICIAN_RECOMMENDATION'
+           AND status = 'PENDING_CUSTOMER'"
     );
     $stmt->execute([$id, $customer['id']]);
-    $recommendation = $stmt->fetch();
-    if (!$recommendation) json_error('Recommendation not found or already ordered.', 404);
+    if (!$stmt->fetch()) json_error('Recommendation not found or already ordered.', 404);
 
     db()->prepare(
         "UPDATE service_requests
@@ -201,38 +184,7 @@ if ($method === 'PUT' && $id) {
          (id, request_id, event_type, from_value, to_value, actor_id, actor_name, created_at)
          VALUES (?,?,?,?,?,?,?,NOW())'
     )->execute([uuid(), $id, 'STATUS', 'PENDING_CUSTOMER', 'OPEN', null, trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'))]);
-
-    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
-    $machineLabel = trim((string)($recommendation['brand'] ?? '') . ' ' . (string)($recommendation['model'] ?? ''))
-        ?: ((string)($recommendation['machine_type'] ?? '') ?: 'Machine');
-    $supportText = 'Customer confirmed a spare recommendation and is requesting BELM action.'
-        . "\nCustomer: " . ($customer['name'] ?? 'Unknown')
-        . "\nConfirmed by: $actorName"
-        . "\nMachine: $machineLabel"
-        . "\nSpare: " . ($recommendation['spare_name'] ?? 'Not recorded')
-        . "\nReference: " . ($recommendation['part_number'] ?? 'Not recorded')
-        . "\nRequest ID: $id";
-    belm_log_customer_communication(
-        (string)$customer['id'], $recommendation['machine_id'] ?: null,
-        'CUSTOMER_TO_BELM', 'EMAIL', 'Spare Recommendation Confirmed', $supportText,
-        'SERVICE_REQUEST', $id, $actorName, 'SENT'
-    );
-    $alertResult = ['businessEmailSent' => false];
-    try {
-        $alertResult = belm_send_customer_to_belm_alert(
-            ['service-requests', 'spare-parts'],
-            'OFFICIAL SPARE SUPPORT REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
-            $supportText,
-            $customer['actorEmail'] ?? null
-        );
-    } catch (Throwable $ignored) {}
-    json_out([
-        'ok' => true,
-        'message' => !empty($alertResult['businessEmailSent'])
-            ? 'Service requirement sent to BELM official business email for action.'
-            : 'Service requirement saved, but BELM business-email delivery needs attention.',
-        'emailSent' => !empty($alertResult['businessEmailSent']),
-    ]);
+    json_out(['ok' => true, 'message' => 'Service requirement sent to BELM for action.']);
 }
 
 json_error('Unknown request', 404);

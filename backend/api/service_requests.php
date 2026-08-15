@@ -2,23 +2,6 @@
 require_once __DIR__ . '/../config/helpers.php';
 
 $user = require_auth();
-// The shared Technician role is used by both BELM field technicians and
-// customer-owned technicians. In Customer Self-Service mode, technicians work
-// only inside the customer's machine/checklist/operator workflow; BELM's
-// central Service Requests workspace remains private. The customer explicitly
-// opens a BELM support request from the Customer Portal when help is needed.
-if (($user['roleName'] ?? '') === 'Technician' && !empty($user['assignedCustomerId'])) {
-    $modeStmt = db()->prepare(
-        'SELECT c.is_machinery_admin, u.is_customer_managed
-         FROM users u JOIN customers c ON c.id = u.assigned_customer_id
-         WHERE u.id = ? AND c.id = ? AND u.deleted_at IS NULL AND c.deleted_at IS NULL'
-    );
-    $modeStmt->execute([(string)$user['id'], (string)$user['assignedCustomerId']]);
-    $modeRow = $modeStmt->fetch();
-    if ($modeRow && !empty($modeRow['is_machinery_admin']) && !empty($modeRow['is_customer_managed'])) {
-        json_error('BELM Service Requests workspace is not available to Customer Self-Service technicians.', 403);
-    }
-}
 require_page_access($user, 'service-requests');
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
@@ -38,31 +21,6 @@ function log_service_request_history(
          (id, request_id, event_type, from_value, to_value, actor_id, actor_name, note, created_at)
          VALUES (?,?,?,?,?,?,?,?,NOW())'
     )->execute([uuid(), $requestId, $eventType, $fromValue, $toValue, $user['id'], $user['name'], $note]);
-}
-
-
-function notify_service_request_customer(string $requestId, string $subject, string $message, array $user): void {
-    try {
-        $stmt = db()->prepare(
-            'SELECT sr.customer_id, sr.machine_id, sr.description, c.name AS customer_name, m.brand, m.model
-             FROM service_requests sr
-             JOIN customers c ON c.id = sr.customer_id
-             JOIN machines m ON m.id = sr.machine_id
-             WHERE sr.id = ?'
-        );
-        $stmt->execute([$requestId]);
-        $row = $stmt->fetch();
-        if (!$row) return;
-        $machine = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: 'Machine';
-        belm_send_customer_alert(
-            (string)$row['customer_id'], (string)$row['machine_id'], ['admin'],
-            $subject,
-            $message . "\nMachine: $machine\nRequest: " . ($row['description'] ?? '') . "\n\nOpen the BELM Customer Portal for the latest history.",
-            'SERVICE_REQUEST', $requestId, (string)($user['name'] ?? 'BELM')
-        );
-    } catch (Throwable $error) {
-        error_log('Service request customer notification failed: ' . $error->getMessage());
-    }
 }
 
 function fetch_request_parts(string $requestId): array {
@@ -98,11 +56,10 @@ if ($method === 'GET' && $action === 'operator-reports') {
     $sql = "SELECT opr.*, c.name AS customer_name, m.model AS machine_model, m.machine_type
             FROM operator_reports opr
             JOIN customers c ON c.id = opr.customer_id
-            JOIN machines m ON m.id = opr.machine_id
-            WHERE opr.notify_belm = 1";
+            JOIN machines m ON m.id = opr.machine_id";
     $params = [];
     if ($statusFilter !== '') {
-        $sql .= ' AND opr.status = ?';
+        $sql .= ' WHERE opr.status = ?';
         $params[] = strtoupper($statusFilter);
     }
     $sql .= ' ORDER BY opr.created_at DESC';
@@ -125,18 +82,9 @@ if ($method === 'GET' && $action === 'operator-reports') {
 if ($method === 'PUT' && $action === 'operator-reports') {
     $reportId = trim((string)($_GET['id'] ?? ''));
     if ($reportId === '') json_error('Report ID is required.');
-    $reportStmt = db()->prepare('SELECT customer_id, machine_id, message FROM operator_reports WHERE id = ? AND notify_belm = 1');
-    $reportStmt->execute([$reportId]);
-    $report = $reportStmt->fetch();
-    if (!$report) json_error('Report not found.', 404);
     $stmt = db()->prepare("UPDATE operator_reports SET status='RESOLVED', resolved_at=NOW(), resolved_by_id=? WHERE id=?");
     $stmt->execute([$user['id'], $reportId]);
-    belm_send_customer_alert(
-        (string)$report['customer_id'], (string)$report['machine_id'], ['admin'],
-        'Machine Problem Resolved',
-        'BELM resolved the reported problem: ' . $report['message'],
-        'OPERATOR_REPORT', $reportId, (string)($user['name'] ?? 'BELM')
-    );
+    if ($stmt->rowCount() === 0) json_error('Report not found.', 404);
     json_out(['ok' => true]);
 }
 
@@ -177,7 +125,6 @@ if ($method === 'GET' && $action === 'assignees') {
          JOIN roles r ON r.id = u.role_id
          LEFT JOIN customers c ON c.id = u.assigned_customer_id
          WHERE r.name = 'Technician' AND u.deleted_at IS NULL AND u.is_active = 1
-           AND u.is_customer_managed = 0
          ORDER BY u.name ASC"
     );
     $technicians = $stmt->fetchAll();
@@ -253,7 +200,7 @@ if ($method === 'GET' && $action === 'customer-inbox') {
                 m.model AS machine_model
          FROM operator_reports opr
          LEFT JOIN machines m ON m.id = opr.machine_id
-         WHERE opr.customer_id = ? AND opr.status = 'OPEN' AND opr.notify_belm = 1
+         WHERE opr.customer_id = ? AND opr.status = 'OPEN'
          ORDER BY opr.created_at DESC LIMIT 15"
     );
     $opStmt->execute([$customerId]);
@@ -375,12 +322,6 @@ if ($method === 'PUT' && $action === 'status') {
     if ($stmt->rowCount() === 0) json_error('Service request not found.', 404);
     if ($previousStatus !== $status) {
         log_service_request_history($id, 'STATUS', $previousStatus, $status, $user, trim((string)($b['note'] ?? '')) ?: null);
-        notify_service_request_customer(
-            (string)$id,
-            'Service Request Update — ' . str_replace('_', ' ', $status),
-            'BELM changed your service request status from ' . str_replace('_', ' ', $previousStatus) . ' to ' . str_replace('_', ' ', $status) . '.',
-            $user
-        );
     }
     json_out(['ok' => true]);
 }
@@ -411,8 +352,7 @@ if ($method === 'PUT' && $action === 'assign') {
         "SELECT u.id, u.name, u.assigned_customer_id
          FROM users u JOIN roles r ON r.id = u.role_id
          WHERE u.id = ? AND r.name = 'Technician'
-           AND u.deleted_at IS NULL AND u.is_active = 1
-           AND u.is_customer_managed = 0"
+           AND u.deleted_at IS NULL AND u.is_active = 1"
     );
     $stmt->execute([$assignedToId]);
     $technician = $stmt->fetch();
@@ -430,12 +370,6 @@ if ($method === 'PUT' && $action === 'assign') {
     if ($request['status'] !== 'ASSIGNED') {
         log_service_request_history($id, 'STATUS', $request['status'], 'ASSIGNED', $user);
     }
-    notify_service_request_customer(
-        (string)$id,
-        'Technician Assigned — ' . $technician['name'],
-        'BELM assigned Technician ' . $technician['name'] . ' to your service request.',
-        $user
-    );
     json_out(['ok' => true]);
 }
 

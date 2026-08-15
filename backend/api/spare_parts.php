@@ -2,22 +2,6 @@
 require_once __DIR__ . '/../config/helpers.php';
 
 $user = require_auth();
-// Customer Self-Service technicians must never see BELM's internal Inventory,
-// even if the shared Technician role carries the spare-parts page permission.
-// They can recommend a part manually; the customer then explicitly requests
-// BELM support and BELM staff select the internal inventory record.
-if (($user['roleName'] ?? '') === 'Technician' && !empty($user['assignedCustomerId'])) {
-    $modeStmt = db()->prepare(
-        'SELECT c.is_machinery_admin, u.is_customer_managed
-         FROM users u JOIN customers c ON c.id = u.assigned_customer_id
-         WHERE u.id = ? AND c.id = ? AND u.deleted_at IS NULL AND c.deleted_at IS NULL'
-    );
-    $modeStmt->execute([(string)$user['id'], (string)$user['assignedCustomerId']]);
-    $modeRow = $modeStmt->fetch();
-    if ($modeRow && !empty($modeRow['is_machinery_admin']) && !empty($modeRow['is_customer_managed'])) {
-        json_error('BELM Spare Parts Inventory is private in Customer Self-Service Mode.', 403);
-    }
-}
 require_page_access($user, 'spare-parts');
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;

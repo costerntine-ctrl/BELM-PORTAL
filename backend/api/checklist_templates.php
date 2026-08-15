@@ -6,21 +6,6 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 
-$selfServiceTechnician = false;
-if (($user['roleName'] ?? '') === 'Technician' && !empty($user['assignedCustomerId'])) {
-    $modeStmt = db()->prepare(
-        'SELECT c.is_machinery_admin, u.is_customer_managed
-         FROM users u JOIN customers c ON c.id = u.assigned_customer_id
-         WHERE u.id = ? AND c.id = ? AND u.deleted_at IS NULL AND c.deleted_at IS NULL'
-    );
-    $modeStmt->execute([(string)$user['id'], (string)$user['assignedCustomerId']]);
-    $modeRow = $modeStmt->fetch();
-    $selfServiceTechnician = $modeRow && !empty($modeRow['is_machinery_admin']) && !empty($modeRow['is_customer_managed']);
-    if ($selfServiceTechnician && $method !== 'GET') {
-        json_error('Checklist Templates are read-only for Customer Self-Service technicians. Contact your Customer Admin or BELM if the template needs to change.', 403);
-    }
-}
-
 if ($method === 'GET' && ($user['roleName'] ?? '') === 'Technician') {
     $machineType = trim((string)($_GET['machineType'] ?? ''));
     $assignedCustomerId = $user['assignedCustomerId'] ?? null;

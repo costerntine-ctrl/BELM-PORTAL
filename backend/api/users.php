@@ -28,10 +28,18 @@ function assigned_customer_for_role(string $roleId, ?string $assignedCustomerId,
     if (!$customerRow || !$customerRow['is_active']) {
         json_error('The selected customer is not active or does not exist.', 422);
     }
-    // Self-Service means the customer normally manages their own Technician
-    // accounts. It must NOT hard-block BELM from assigning a Technician when
-    // the customer has explicitly asked BELM for technical support. The
-    // support/request workflow controls when BELM should get involved.
+    // "Machinery Admin" self-service customers manage their own Technician
+    // accounts — BELM can no longer assign NEW staff to them. Editing a
+    // Technician who is ALREADY assigned to this same customer is still
+    // allowed (that assignment already existed, likely the customer's own
+    // staff account, and isn't a new BELM assignment).
+    $isNewAssignment = $assignedCustomerId !== $currentAssignedCustomerId;
+    if ($isNewAssignment && !empty($customerRow['is_machinery_admin'])) {
+        json_error(
+            'This customer runs their own Machinery Admin self-service — BELM cannot assign new Technicians to them. Ask the customer to add their own Technician instead.',
+            403
+        );
+    }
     return $assignedCustomerId;
 }
 

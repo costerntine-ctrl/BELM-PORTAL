@@ -48,12 +48,12 @@
       <section class="panel request-panel">
         <div class="panel-head">
           <div>
-            <h2>Spare requests</h2>
-            <p class="muted">Customer requests stay separate from Inventory until BELM chooses the correct spare. Technician zero-stock alerts also appear here.</p>
+            <h2>Technician spare alerts</h2>
+            <p class="muted">Stock is 0. Add the part to Inventory or mark it for purchase.</p>
           </div>
           <span id="requestCount" class="badge warn">0 open</span>
         </div>
-        <div id="requestsPanel" class="loading">Loading spare requests…</div>
+        <div id="requestsPanel" class="loading">Loading Technician requests…</div>
       </section>
 
       <section class="panel">
@@ -128,27 +128,10 @@
       </form>
     </dialog>
 
-
-    <dialog id="chooseSpareDialog">
-      <form id="chooseSpareForm" class="dialog-card">
-        <div class="dialog-head">
-          <div><p class="eyebrow">Internal BELM Selection</p><h2>Choose BELM spare</h2></div>
-          <button class="icon-close" data-close-choose type="button" aria-label="Close">×</button>
-        </div>
-        <div id="chooseSpareContext" class="alert"></div>
-        <label>Search BELM Inventory<input id="chooseSpareSearch" placeholder="Part number, reference or spare name" autocomplete="off"></label>
-        <div id="chooseSpareResults" class="spare-choice-list"></div>
-        <div class="dialog-actions">
-          <button class="ghost" data-close-choose type="button">Cancel</button>
-          <button id="chooseSpareSave" class="primary" type="submit">Use selected spare</button>
-        </div>
-      </form>
-    </dialog>
-
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=30-bank-permission"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/spare-parts-manager/manager.js?v=192-communication-sync"></script>
+    <script src="/spare-parts-manager/manager.js?v=2-tech-spare-alert"></script>
   </body>
 </html>

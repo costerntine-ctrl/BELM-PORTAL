@@ -195,7 +195,7 @@
     if (!select) return;
     const previousValue = select.value;
     select.innerHTML = '<option value="">Select customer…</option>'
-      + customers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}${customer.belmServiceProviderActive || !customer.isMachineryAdmin ? " (BELM Provider ON)" : ""}</option>`).join("");
+      + customers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}${customer.isMachineryAdmin ? " (Machinery Admin ON)" : ""}</option>`).join("");
     if (previousValue) select.value = previousValue;
   }
 
@@ -239,10 +239,10 @@
           <div><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
         </div>
-        ${customer.belmServiceProviderActive || !customer.isMachineryAdmin ? '<span class="badge machinery-admin-badge">🔧 BELM Service Provider ON</span>' : '<span class="badge machinery-admin-badge">⚙ Customer Maintenance Team</span>'}
+        ${customer.isMachineryAdmin ? '<span class="badge machinery-admin-badge">⚙ Machinery Admin (self-service)</span>' : ""}
         <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
           <div class="customer-feed-head">
-            <strong>Communication history</strong>
+            <strong>Customer updates</strong>
             <button type="button" class="view-messages-button" data-view-messages="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View all</button>
           </div>
           <div class="customer-feed-body">Loading recent updates…</div>
@@ -265,7 +265,6 @@
           <button class="view-machines-inline" data-view-machines="${escapeHtml(customer.id)}">
             View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">!</span>' : ""}
           </button>
-          <button class="secondary" data-message-customer="${escapeHtml(customer.id)}">Message Customer</button>
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
           <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
           <button class="delete" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
@@ -278,36 +277,25 @@
 
   let currentMachineListCustomerName = "";
 
-  function communicationDirectionLabel(item) {
-    return item.direction === "CUSTOMER_TO_BELM" ? "Customer → BELM" : "BELM → Customer";
-  }
-
-  function communicationStatusMarkup(item) {
-    if (item.actionable) {
-      return `<button type="button" class="badge badge-resolve" data-resolve-message>${escapeHtml(item.actionStatus || "OPEN")}</button>`;
-    }
-    return `<span class="badge">${escapeHtml(communicationDirectionLabel(item))}</span>`;
-  }
-
   async function loadCustomerFeeds(customerList) {
     for (const customer of customerList) {
       const body = document.querySelector(`#feed-${customer.id} .customer-feed-body`);
       if (!body) continue;
       try {
-        const items = await api(`/customers/${encodeURIComponent(customer.id)}/communications`);
+        const items = await api(`/service-requests?action=customer-inbox&customerId=${encodeURIComponent(customer.id)}`);
         body.innerHTML = items.length
           ? items.slice(0, 3).map((item) => `
-              <div class="customer-feed-row" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
+              <div class="customer-feed-row" data-message-type="${escapeHtml(item.type)}" data-message-id="${escapeHtml(item.id)}">
                 <div class="customer-feed-row-head">
-                  <strong>${escapeHtml(item.subject || "Communication")}</strong>
-                  ${communicationStatusMarkup(item)}
+                  <strong>${escapeHtml(item.title)}</strong>
+                  <button type="button" class="badge badge-resolve" data-resolve-message>${escapeHtml(item.status)}</button>
                 </div>
-                <p>${escapeHtml(item.message || "—")}</p>
-                <small>${escapeHtml(communicationDirectionLabel(item))}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
+                <p>${escapeHtml(item.detail || "—")}</p>
+                <small>${formatDateTime(item.createdAt)}</small>
               </div>`).join("")
-          : '<p class="customer-feed-empty">No communication history yet.</p>';
+          : '<p class="customer-feed-empty">No recent updates from this customer.</p>';
       } catch (_) {
-        body.innerHTML = '<p class="customer-feed-empty">Could not load communication history.</p>';
+        body.innerHTML = '<p class="customer-feed-empty">Could not load updates.</p>';
       }
     }
   }
@@ -324,41 +312,26 @@
   }
 
   async function openCustomerMessages(customerId, customerName) {
-    document.getElementById("customerMessagesTitle").textContent = `${customerName} — Communication History`;
+    document.getElementById("customerMessagesTitle").textContent = `${customerName} — Customer Messages`;
     const body = document.getElementById("customerMessagesBody");
-    body.innerHTML = '<p class="muted">Loading communication history…</p>';
+    body.innerHTML = '<p class="muted">Loading messages…</p>';
     document.getElementById("customerMessagesDialog").showModal();
     try {
-      const items = await api(`/customers/${encodeURIComponent(customerId)}/communications`);
+      const items = await api(`/service-requests?action=customer-inbox&customerId=${encodeURIComponent(customerId)}`);
       body.innerHTML = items.length
         ? `<div class="customer-messages-list">${items.map((item) => `
-            <article class="customer-message-row" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
+            <article class="customer-message-row" data-message-type="${escapeHtml(item.type)}" data-message-id="${escapeHtml(item.id)}">
               <div class="customer-message-head">
-                <strong>${escapeHtml(item.subject || "Communication")}</strong>
-                ${communicationStatusMarkup(item)}
+                <strong>${escapeHtml(item.title)}</strong>
+                <button type="button" class="badge badge-resolve" data-resolve-message>${escapeHtml(item.status)}</button>
               </div>
-              <p>${escapeHtml(item.message || "—")}</p>
-              <small>${escapeHtml(communicationDirectionLabel(item))}${item.createdByName ? ` · ${escapeHtml(item.createdByName)}` : ""}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
+              <p>${escapeHtml(item.detail || "—")}</p>
+              <small>${formatDateTime(item.createdAt)}</small>
             </article>`).join("")}</div>`
-        : '<p class="muted">No communication history yet.</p>';
+        : '<p class="muted">No open messages from this customer.</p>';
     } catch (error) {
-      body.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load communication history.")}</p>`;
+      body.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load customer messages.")}</p>`;
     }
-  }
-
-  function openSendCustomerMessage(customer) {
-    if (!customer) return;
-    document.getElementById("sendCustomerMessageCustomerId").value = customer.id;
-    document.getElementById("sendCustomerMessageTitle").textContent = `Message ${customer.name}`;
-    document.getElementById("sendCustomerMessageSubject").value = "Message from BELM";
-    document.getElementById("sendCustomerMessageBody").value = "";
-    const machineSelect = document.getElementById("sendCustomerMessageMachine");
-    machineSelect.innerHTML = '<option value="">General / customer account</option>' + (customer.machines || []).map((machine) => {
-      const label = [machine.brand, machine.model, machine.machineType].filter(Boolean).join(" ") || "Machine";
-      return `<option value="${escapeHtml(machine.id)}">${escapeHtml(label)}</option>`;
-    }).join("");
-    document.getElementById("sendCustomerMessageDialog").showModal();
-    setTimeout(() => document.getElementById("sendCustomerMessageBody").focus(), 0);
   }
 
   document.getElementById("customerMessagesBody").addEventListener("click", async (event) => {
@@ -1191,13 +1164,10 @@
       toggle.checked = false;
       return;
     }
-    const providerActive = typeof customer.belmServiceProviderActive === "boolean"
-      ? customer.belmServiceProviderActive
-      : !Boolean(customer.isMachineryAdmin);
-    toggle.checked = providerActive;
-    info.textContent = providerActive
-      ? "BELM SERVICE PROVIDER ON — machine problems and maintenance route to BELM. Customer Technician access is paused automatically; Fuel, Operators, Workshop, Store, Procurement, Accounts and other customer functions remain active."
-      : "BELM SERVICE PROVIDER OFF — customer runs maintenance with its own Technicians. BELM remains available only when support/spares are explicitly requested.";
+    toggle.checked = Boolean(customer.isMachineryAdmin);
+    info.textContent = customer.isMachineryAdmin
+      ? "Currently ON — BELM cannot assign new Technicians to this customer."
+      : "Currently OFF — BELM operates this customer's machines as normal.";
   });
 
   document.getElementById("machineryAdminSaveButton")?.addEventListener("click", async () => {
@@ -1206,20 +1176,20 @@
       showAlert("Select a customer first.", true);
       return;
     }
-    const serviceProviderEnabled = document.getElementById("machineryAdminToggle").checked;
+    const enabled = document.getElementById("machineryAdminToggle").checked;
     const confirmation = await window.belmConfirmEdit({
-      title: serviceProviderEnabled ? "Turn ON BELM Service Provider?" : "Turn OFF BELM Service Provider?",
-      message: serviceProviderEnabled
-        ? "BELM will take over machine-problem and maintenance workflows. Only the customer's Technician role will be paused automatically. Fuel, Operators, Workshop, Store, Procurement, Accounts and other portal roles remain active."
-        : "The customer will resume maintenance with its own Technicians. BELM support and spare requests remain available when explicitly requested.",
+      title: enabled ? "Turn ON Machinery Admin?" : "Turn OFF Machinery Admin?",
+      message: enabled
+        ? "This customer will run their own maintenance — BELM will no longer be able to assign new Technicians to them."
+        : "BELM will be able to assign Technicians to this customer again as normal.",
     });
     if (!confirmation) return;
     try {
       await api(`/customers/${customerId}/machinery-admin`, {
         method: "PUT",
-        body: JSON.stringify({ serviceProviderEnabled, ...confirmation }),
+        body: JSON.stringify({ enabled, ...confirmation }),
       });
-      showAlert(serviceProviderEnabled ? "BELM Service Provider mode is ON." : "BELM Service Provider mode is OFF; customer Technician access is restored.", false);
+      showAlert("Machinery Admin setting saved successfully.", false);
       await load();
     } catch (error) {
       showAlert(error.message, true);
@@ -1268,30 +1238,6 @@
     }
   });
 
-  document.getElementById("sendCustomerMessageForm")?.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const customerId = document.getElementById("sendCustomerMessageCustomerId").value;
-    const button = document.getElementById("sendCustomerMessageButton");
-    button.disabled = true;
-    try {
-      const result = await api(`/customers/${encodeURIComponent(customerId)}/message`, {
-        method: "POST",
-        body: JSON.stringify({
-          machineId: document.getElementById("sendCustomerMessageMachine").value,
-          subject: document.getElementById("sendCustomerMessageSubject").value.trim(),
-          message: document.getElementById("sendCustomerMessageBody").value.trim(),
-        }),
-      });
-      document.getElementById("sendCustomerMessageDialog").close();
-      showAlert(result.message || "Message sent to customer.", !result.emailDelivered);
-      await loadCustomerFeeds(customers.filter((item) => item.id === customerId));
-    } catch (error) {
-      showAlert(error.message || "Could not send customer message.", true);
-    } finally {
-      button.disabled = false;
-    }
-  });
-
   document.getElementById("statusFilter").addEventListener("change", renderCustomers);
   document.getElementById("customerForm").addEventListener("submit", saveCustomer);
   document.getElementById("machineForm").addEventListener("submit", saveMachine);
@@ -1326,7 +1272,6 @@
     }
     const viewMachines = event.target.closest("[data-view-machines]");
     const viewMessages = event.target.closest("[data-view-messages]");
-    const messageCustomer = event.target.closest("[data-message-customer]");
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
@@ -1334,7 +1279,6 @@
     const copyLink = event.target.closest("[data-copy-link]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
-    if (messageCustomer) openSendCustomerMessage(customers.find((customer) => customer.id === messageCustomer.dataset.messageCustomer));
     if (editCustomer) {
       const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
       confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));

@@ -5,8 +5,6 @@
   let serviceOptions = [];
   let machine = null;
   let partRowCount = 0;
-  let selfServiceMode = false;
-  let belmBusiness = {};
 
   if (!token) {
     window.location.replace("/portal/login");
@@ -81,8 +79,21 @@
     return serviceOptions.find(option => option.id === id) || null;
   }
 
-  function applyServiceDescription() {
+  function renderParts() {
     const option = selectedOption();
+    const parts = option?.serviceParts || [];
+    document.getElementById("partCount").textContent =
+      `${parts.length} part${parts.length === 1 ? "" : "s"}`;
+    document.getElementById("partsList").innerHTML = parts.length
+      ? parts.map(part => `
+        <article class="part-row">
+          <div><span>Spare-parts name</span><b>${escapeHtml(part.spareName)}</b></div>
+          <div><span>Part number</span><b>${escapeHtml(part.partNumber)}</b></div>
+          <div><span>Quantity</span><b>${Number(part.quantity).toLocaleString("en-TZ")}</b></div>
+        </article>
+      `).join("")
+      : '<div class="empty">No spare parts configured for this service type.</div>';
+
     if (option && !document.getElementById("description").value.trim()) {
       document.getElementById("description").value =
         `Request ${option.serviceType} for ${machine?.brand ? `${machine.brand} ` : ""}${machine?.model || "machine"}.`;
@@ -92,27 +103,8 @@
   function render(data) {
     machine = data.machine || {};
     serviceOptions = Array.isArray(data.serviceOptions) ? data.serviceOptions : [];
-    if (typeof data.selfServiceMode === "boolean") selfServiceMode = data.selfServiceMode;
-    if (data.belmBusiness) belmBusiness = data.belmBusiness;
-    const machineLabel = `${machine.brand ? `${machine.brand} ` : ""}${machine.model || "Machine"}`;
-    document.getElementById("pageTitle").textContent = selfServiceMode
-      ? `Request BELM Technical Support — ${machineLabel}`
-      : `Service request — ${machineLabel}`;
-    const notice = document.getElementById("supportModeNotice");
-    notice.classList.remove("hidden", "error");
-    if (selfServiceMode) {
-      notice.textContent = `SELF-SERVICE MODE: Your own technicians/operators handle normal maintenance. Use this page only when you want BELM involved. Requests here are sent to ${belmBusiness.email || "BELM Business Email"}.`;
-      document.getElementById("portalModeSubtitle").textContent = "Customer Self-Service · BELM Support Gateway";
-      document.getElementById("servicePanelTitle").textContent = "Request BELM Technical Support";
-      document.getElementById("servicePanelIntro").textContent = "Describe the technical assistance you want BELM to provide. Your internal maintenance work remains with your own team.";
-      document.getElementById("submitButton").textContent = "Send to BELM Technical Support";
-    } else {
-      notice.textContent = `BELM SERVICE PROVIDER ACTIVE: Maintenance/service requests are handled by BELM and sent to ${belmBusiness.email || "the BELM Business Email"}. Your other customer portal operations remain under your company.`;
-      document.getElementById("portalModeSubtitle").textContent = "BELM Managed Service Request";
-      document.getElementById("servicePanelTitle").textContent = "Service request details";
-      document.getElementById("servicePanelIntro").textContent = "Select the service required for this machine. BELM handles internal parts matching separately.";
-      document.getElementById("submitButton").textContent = "Submit service request to BELM";
-    }
+    document.getElementById("pageTitle").textContent =
+      `Service request — ${machine.brand ? `${machine.brand} ` : ""}${machine.model || "Machine"}`;
     document.getElementById("machineDetails").textContent = [
       machine.machineType,
       machine.serialNumber ? `Serial: ${machine.serialNumber}` : "",
@@ -131,7 +123,7 @@
       document.getElementById("matchStatus").textContent = "No matching template";
       showAlert("No active Checklist Template matches this machine type. You can submit a general request, or Admin can add the service type and parts first.");
     }
-    applyServiceDescription();
+    renderParts();
   }
 
   async function load() {
@@ -143,39 +135,82 @@
     }
   }
 
+  function machineListOptionsHtml(selectedIndex = "") {
+    const option = selectedOption();
+    const parts = option?.serviceParts || [];
+    return `<option value="">Select from this machine's parts list…</option>${parts.map((part, index) =>
+      `<option value="${index}" ${String(index) === String(selectedIndex) ? "selected" : ""}>${escapeHtml(part.spareName)} (${escapeHtml(part.partNumber)})</option>`
+    ).join("")}`;
+  }
+
+  function hasMachineList() {
+    return (selectedOption()?.serviceParts || []).length > 0;
+  }
+
   function customFieldsHtml() {
     return `
-        <label class="spare-field"><span>Spare name</span><input type="text" placeholder="e.g. Hydraulic return filter" data-description maxlength="255" required></label>
-        <label class="spare-field"><span>Reference / part number <small>(if known)</small></span><input type="text" placeholder="Optional" data-reference maxlength="100"></label>
-        <label class="spare-field qty-field"><span>Quantity</span><input type="number" min="1" step="1" value="1" data-qty required></label>`;
+        <input type="text" placeholder="Reference number" data-reference maxlength="100">
+        <input type="text" placeholder="Description" data-description maxlength="255">
+        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
   }
 
   function addPartRow() {
     partRowCount += 1;
+    const rowId = `partRow${partRowCount}`;
     const row = document.createElement("div");
     row.className = "part-request-row";
-    row.dataset.rowId = `partRow${partRowCount}`;
+    row.dataset.rowId = rowId;
+    row.dataset.mode = "custom";
+    const listButton = hasMachineList()
+      ? '<button type="button" data-mode="machine-list">Choose from this machine\'s list</button>'
+      : "";
     row.innerHTML = `
       <div class="part-request-row-head">
-        <strong>Spare request ${partRowCount}</strong>
+        <div class="part-source-toggle">
+          <button type="button" data-mode="custom" class="active">Fill in part needed</button>
+          ${listButton}
+        </div>
         <button type="button" class="remove-part-row" data-remove-row>Remove</button>
       </div>
-      <div class="part-request-fields customer-spare-fields" data-fields>${customFieldsHtml()}</div>`;
+      <div class="part-request-fields custom" data-fields>${customFieldsHtml()}</div>`;
     document.getElementById("partRequestRows").appendChild(row);
-    row.querySelector("[data-description]")?.focus();
+  }
+
+  function setRowMode(row, mode) {
+    if (mode === "machine-list" && !hasMachineList()) return;
+    row.dataset.mode = mode;
+    row.querySelectorAll(".part-source-toggle button").forEach((button) =>
+      button.classList.toggle("active", button.dataset.mode === mode));
+    const fields = row.querySelector("[data-fields]");
+    if (mode === "machine-list") {
+      fields.className = "part-request-fields";
+      fields.innerHTML = `
+        <select data-machine-part>${machineListOptionsHtml()}</select>
+        <input type="number" min="1" step="1" placeholder="Qty" data-qty required>`;
+    } else {
+      fields.className = "part-request-fields custom";
+      fields.innerHTML = customFieldsHtml();
+    }
   }
 
   function collectPartRows() {
     const rows = [...document.querySelectorAll(".part-request-row")];
     const parts = [];
+    const machineParts = selectedOption()?.serviceParts || [];
     for (const row of rows) {
-      const quantity = Number(row.querySelector("[data-qty]")?.value || 0);
-      const referenceNumber = row.querySelector("[data-reference]")?.value.trim() || "";
-      const description = row.querySelector("[data-description]")?.value.trim() || "";
-      if (!description && !referenceNumber) continue;
-      if (!description) throw new Error("Enter the spare name before submitting.");
-      if (quantity <= 0 || !Number.isInteger(quantity)) throw new Error("Spare quantity must be a whole number above zero.");
-      parts.push({ referenceNumber, description, quantity });
+      const mode = row.dataset.mode;
+      const qty = Number(row.querySelector("[data-qty]")?.value || 0);
+      if (mode === "machine-list") {
+        const index = row.querySelector("[data-machine-part]")?.value ?? "";
+        const part = machineParts[Number(index)];
+        if (!part || qty <= 0) continue;
+        parts.push({ referenceNumber: part.partNumber, description: part.spareName, quantity: qty });
+      } else {
+        const referenceNumber = row.querySelector("[data-reference]")?.value.trim() || "";
+        const description = row.querySelector("[data-description]")?.value.trim() || "";
+        if ((!referenceNumber && !description) || qty <= 0) continue;
+        parts.push({ referenceNumber, description, quantity: qty });
+      }
     }
     return parts;
   }
@@ -185,7 +220,12 @@
   document.getElementById("partRequestRows").addEventListener("click", (event) => {
     const row = event.target.closest(".part-request-row");
     if (!row) return;
-    if (event.target.closest("[data-remove-row]")) row.remove();
+    if (event.target.closest("[data-remove-row]")) {
+      row.remove();
+      return;
+    }
+    const modeButton = event.target.closest("[data-mode]");
+    if (modeButton) setRowMode(row, modeButton.dataset.mode);
   });
   // Safety net for mobile browsers that sometimes fail to focus an
   // <input>/<select> created via innerHTML on the very first tap. Some
@@ -212,7 +252,7 @@
 
   document.getElementById("serviceTemplate").addEventListener("change", () => {
     document.getElementById("description").value = "";
-    applyServiceDescription();
+    renderParts();
   });
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
@@ -259,12 +299,12 @@
       }
 
       showAlert(
-        `${result.emailSent ? "BELM received your request by official business email." : "Request saved in BELM Portal; email delivery needs attention."} Reference: ${result.id}`
+        `Service request saved successfully. Reference: ${result.id}`
         + (partRows.length ? ` · ${partRows.length - partErrors} of ${partRows.length} spare-part request(s) saved.` : "")
       );
       document.getElementById("serviceForm").reset();
       document.getElementById("partRequestRows").innerHTML = "";
-      render({ machine, serviceOptions, selfServiceMode, belmBusiness });
+      render({ machine, serviceOptions });
 
       // Unmistakable "it worked" confirmation right on the button itself
       // — not just the alert banner above — so there's no doubt the tap
@@ -277,14 +317,14 @@
     } finally {
       button.classList.remove("success");
       button.disabled = false;
-      button.textContent = selfServiceMode ? "Send to BELM Technical Support" : "Submit service request to BELM";
+      button.textContent = "Submit service request";
       isSubmittingServiceRequest = false;
     }
   });
 
   if (String(tokenPayload().customerRole || "").toLowerCase() === "viewer") {
     document.getElementById("submitButton").disabled = true;
-    showAlert("Viewer assistants can review service requests but cannot submit new requests.");
+    showAlert("Viewer assistants can review service parts but cannot submit requests.");
   }
 
   async function loadHistory() {

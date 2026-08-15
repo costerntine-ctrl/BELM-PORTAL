@@ -171,8 +171,8 @@
       panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="empty">No proforma invoices yet.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
-      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button></div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
+    panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
+      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button></div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
 
@@ -638,8 +638,6 @@
   async function openProforma(proforma = null) {
     document.getElementById("proformaForm").reset();
     document.getElementById("proformaId").value = proforma?.id || "";
-    document.getElementById("proformaMachineId").value = proforma?.machineId || "";
-    document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || "";
     document.getElementById("proformaTitle").textContent = proforma ? `Re-edit ${proforma.invoiceNo}` : "New proforma";
     document.getElementById("proformaCustomer").innerHTML = customerOptions(proforma?.customer?.id || "");
     document.getElementById("proformaCustomer").disabled = Boolean(proforma);
@@ -698,8 +696,6 @@
           deliveryTime: document.getElementById("proformaDeliveryTime").value.trim(),
           quoteValidity: document.getElementById("proformaQuoteValidity").value.trim(),
           notice: document.getElementById("proformaNotice").value.trim(),
-          machineId: document.getElementById("proformaMachineId").value,
-          sourceSpareRequestId: document.getElementById("proformaSourceSpareRequestId").value,
           items,
           ...editConfirmation,
         }),
@@ -904,16 +900,10 @@
     const edit = event.target.closest("[data-edit-proforma]");
     const reviewButton = event.target.closest("[data-review-proforma]");
     const removeButton = event.target.closest("[data-delete-proforma]");
-    const sendButton = event.target.closest("[data-send-proforma]");
     if (edit) openProforma(proformas.find((item) => item.id === edit.dataset.editProforma));
     if (reviewButton) {
       const proforma = proformas.find((item) => item.id === reviewButton.dataset.reviewProforma);
       if (proforma) openReviewExport("proforma", proforma);
-    }
-    if (sendButton) {
-      const id = sendButton.dataset.sendProforma;
-      sendButton.disabled = true;
-      api(`/proforma-invoices/${id}?action=send`, { method: "PUT" }).then(async (result) => { await load(); showAlert(result.message || "Proforma sent to customer."); }).catch((error) => showAlert(error.message, true)).finally(() => { sendButton.disabled = false; });
     }
     if (removeButton) remove(`/proforma-invoices/${removeButton.dataset.deleteProforma}`, "Delete this proforma? It will move to the Recycle Bin.");
   });
@@ -936,8 +926,6 @@
     await ensureSparePartsLoaded();
     await openProforma();
     if (prefill.customerId) document.getElementById("proformaCustomer").value = prefill.customerId;
-    document.getElementById("proformaMachineId").value = prefill.machineId || "";
-    document.getElementById("proformaSourceSpareRequestId").value = prefill.sourceSpareRequestId || "";
     fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
     const firstRow = document.querySelector("#proformaItems .item-row");
     if (firstRow) {

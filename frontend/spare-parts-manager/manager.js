@@ -4,7 +4,6 @@
   let equivalentsIndex = {};
   let requests = [];
   let activeRequestId = "";
-  let choosingRequestId = "";
   let pendingEditPin = null;
 
   async function confirmThenOpen(title, message, openFn) {
@@ -81,24 +80,17 @@
       const machineName = [request.machineBrand, request.machineModel].filter(Boolean).join(" ") || "Machine";
       const reference = request.serialNumber || request.regNumber || "No serial recorded";
       const purchaseRequired = request.status === "PURCHASE_REQUIRED";
-      const selected = Boolean(request.sparePartId);
-      const stockQty = Number(request.stockQty || 0);
-      const customerRequest = Boolean(request.customerId) && !request.requestedById;
-      const title = selected
-        ? `${request.partNumber || ""} — ${request.partName || request.description || "Spare part"}`
-        : (request.referenceNumber ? `${request.referenceNumber} — ${request.description || ""}` : (request.description || "Spare request"));
-      const badgeText = purchaseRequired
-        ? "PURCHASE REQUIRED"
-        : selected
-          ? (stockQty > 0 ? "BELM SPARE SELECTED · IN STOCK" : "BELM SPARE SELECTED · STOCK 0")
-          : (customerRequest ? "CUSTOMER REQUEST · SELECT SPARE" : "TECHNICIAN REQUEST");
+      const isCustom = !request.sparePartId;
+      const title = isCustom
+        ? (request.referenceNumber ? `${request.referenceNumber} — ${request.description || ""}` : (request.description || "Custom part"))
+        : `${request.partNumber} — ${request.description || request.partName}`;
       return `<article class="request-card${purchaseRequired ? " purchase" : ""}">
         <div class="request-card-head">
           <div>
-            <span class="badge ${purchaseRequired ? "off" : "warn"}">${escapeHtml(badgeText)}</span>
+            <span class="badge ${purchaseRequired ? "off" : "warn"}">${purchaseRequired ? "PURCHASE REQUIRED" : (isCustom ? "NOT IN INVENTORY" : "STOCK 0 · NEW REQUEST")}</span>
             <h3>${escapeHtml(title)}</h3>
           </div>
-          ${selected ? `<strong>Stock ${escapeHtml(stockQty)}</strong>` : ""}
+          ${isCustom ? "" : `<strong>Stock ${escapeHtml(request.stockQty ?? 0)}</strong>`}
         </div>
         <dl>
           <div><dt>Machine</dt><dd>${escapeHtml(machineName)} · ${escapeHtml(reference)}</dd></div>
@@ -106,14 +98,14 @@
           <div><dt>Customer</dt><dd>${escapeHtml(request.customerName || "—")}</dd></div>
           <div><dt>Requested by</dt><dd>${escapeHtml(request.requestedByName || "Customer")}</dd></div>
           <div><dt>Quantity</dt><dd>${escapeHtml(request.quantity ?? 1)}</dd></div>
-          ${selected && request.description ? `<div><dt>Customer asked</dt><dd>${escapeHtml(request.description)}</dd></div>` : ""}
         </dl>
         <div class="row-actions request-actions">
-          ${!selected ? `<button data-choose-request="${escapeHtml(request.id)}">Choose BELM Spare</button>` : ""}
-          ${selected && stockQty <= 0 ? `<button data-add-request="${escapeHtml(request.id)}">Add / Receive Stock</button>` : ""}
-          <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>
-          ${request.customerId && selected ? `<button class="proforma-button" data-generate-proforma="${escapeHtml(request.id)}">Generate Proforma</button>` : ""}
-          ${selected && stockQty > 0 ? `<button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>` : ""}
+          ${isCustom
+            ? `<button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>
+               <button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>`
+            : `<button data-add-request="${escapeHtml(request.id)}">Add to Inventory</button>
+               <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>`}
+          ${request.customerId ? `<button class="proforma-button" data-generate-proforma="${escapeHtml(request.id)}">+ Generate Proforma</button>` : ""}
         </div>
       </article>`;
     }).join("");
@@ -386,58 +378,6 @@
   }
 
 
-  function renderChooseSpareResults() {
-    const query = document.getElementById("chooseSpareSearch").value.trim().toLowerCase();
-    const list = parts.filter((part) => !query || [part.partNumber, part.referenceNumber, part.name, part.category]
-      .some((value) => String(value || "").toLowerCase().includes(query)));
-    const box = document.getElementById("chooseSpareResults");
-    box.innerHTML = list.length ? list.slice(0, 100).map((part) => `
-      <label class="spare-choice">
-        <input type="radio" name="chosenSpare" value="${escapeHtml(part.id)}">
-        <span><strong>${escapeHtml(part.partNumber)} — ${escapeHtml(part.name)}</strong><small>${escapeHtml(part.referenceNumber || "No reference")} · ${money(part.sellingPrice)}</small></span>
-        <span class="badge">Stock ${escapeHtml(part.stockQty ?? 0)}</span>
-      </label>`).join("") : '<div class="empty">No BELM spare matches this search.</div>';
-  }
-
-  function openChooseSpare(requestId) {
-    const request = requests.find((item) => item.id === requestId);
-    if (!request) return;
-    choosingRequestId = requestId;
-    document.getElementById("chooseSpareSearch").value = request.referenceNumber || request.description || "";
-    document.getElementById("chooseSpareContext").textContent =
-      `Customer requested: ${request.description || request.referenceNumber || "Spare part"} · Qty ${request.quantity || 1}. Selection below is internal to BELM.`;
-    renderChooseSpareResults();
-    document.getElementById("chooseSpareDialog").showModal();
-  }
-
-  function closeChooseSpare() {
-    choosingRequestId = "";
-    document.getElementById("chooseSpareDialog").close();
-  }
-
-  document.getElementById("chooseSpareSearch").addEventListener("input", renderChooseSpareResults);
-  document.querySelectorAll("[data-close-choose]").forEach((button) => button.addEventListener("click", closeChooseSpare));
-  document.getElementById("chooseSpareForm").addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const sparePartId = document.querySelector('input[name="chosenSpare"]:checked')?.value || "";
-    if (!sparePartId) { showAlert("Choose the BELM spare that matches this customer request.", true); return; }
-    const button = document.getElementById("chooseSpareSave");
-    button.disabled = true;
-    try {
-      const result = await api(`/spare-parts/requests/${encodeURIComponent(choosingRequestId)}`, {
-        method: "PUT",
-        body: JSON.stringify({ action: "select-spare", sparePartId }),
-      });
-      closeChooseSpare();
-      await loadParts();
-      showAlert(result?.message || "BELM spare selected. Accounts can now prepare the Proforma.");
-    } catch (error) {
-      showAlert(error.message, true);
-    } finally {
-      button.disabled = false;
-    }
-  });
-
   async function deletePart(id) {
     const part = parts.find((item) => item.id === id);
     if (!part) return;
@@ -462,7 +402,7 @@
         body: JSON.stringify({ action: "purchase" }),
       });
       await loadParts();
-      showAlert("Spare request marked Purchase Required.");
+      showAlert("Technician request marked Purchase Required.");
     } catch (error) {
       showAlert(error.message, true);
     }
@@ -646,8 +586,6 @@
     const purchase = event.target.closest("[data-purchase-request]");
     const resolve = event.target.closest("[data-resolve-request]");
     const generateProforma = event.target.closest("[data-generate-proforma]");
-    const choose = event.target.closest("[data-choose-request]");
-    if (choose) openChooseSpare(choose.dataset.chooseRequest);
     if (generateProforma) {
       const request = requests.find((item) => item.id === generateProforma.dataset.generateProforma);
       if (!request) return;
@@ -657,8 +595,6 @@
         description: request.description || request.partName || "Spare part",
         qty: request.quantity || 1,
         unitPrice: request.sellingPrice || 0,
-        sourceSpareRequestId: request.id,
-        machineId: request.machineId || "",
       }));
       window.location.href = "/billing-manager/#new-proforma";
     }

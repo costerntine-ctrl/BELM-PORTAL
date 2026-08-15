@@ -35,11 +35,3 @@ th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacin
 .status-pill.open,.status-pill.assigned,.status-pill.in_progress,.status-pill.on_hold { background:#eef3fb; color:#2a4a7a; }
 .handled-by { color:var(--muted); font-size:11px; }
 @media(max-width:620px){#serviceForm{grid-template-columns:1fr}.wide,.form-actions{grid-column:auto}.form-actions{align-items:stretch;flex-direction:column-reverse}.form-actions button,.form-actions a{width:100%;text-align:center}.part-row{grid-template-columns:1fr 1fr}.part-row > div:first-child{grid-column:1/-1}.panel-head{align-items:start;flex-direction:column}}
-
-/* V191: customer spare requests are free-text only; BELM inventory remains private. */
-.customer-spare-fields { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) 120px; }
-.spare-field { display:grid; gap:6px; min-width:0; }
-.spare-field > span { color:#394d60; font-size:10px; font-weight:850; }
-.spare-field small { color:var(--muted); font-weight:650; }
-.part-request-row-head > strong { color:var(--navy); font-size:12px; }
-@media(max-width:720px){.customer-spare-fields{grid-template-columns:1fr}.qty-field{max-width:180px}}

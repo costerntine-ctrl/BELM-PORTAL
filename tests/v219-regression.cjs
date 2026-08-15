@@ -13,8 +13,16 @@ has('frontend/customers-manager/manager.js', [
   'markCustomerCommunicationsRead(customerId, items)',
   'data-view-communication=',
 ]);
-has('frontend/customers-manager/index.html', ['v=219-read-hide']);
-has('frontend/belm-sw.js', ['belm-app-v222-button-contrast']);
+{
+  const html = fs.readFileSync('frontend/customers-manager/index.html', 'utf8');
+  const m = /customers-manager\/manager\.js\?v=(\d+)-/.exec(html);
+  checks.push(['frontend/customers-manager/index.html: manager.js cache bumped >= v219', !!m && Number(m[1]) >= 219]);
+}
+{
+  const sw = fs.readFileSync('frontend/belm-sw.js', 'utf8');
+  const m = /CACHE='belm-app-v(\d+)-/.exec(sw);
+  checks.push(['frontend/belm-sw.js: cache bumped >= v219', !!m && Number(m[1]) >= 219]);
+}
 const failed = checks.filter(([,ok]) => !ok);
 for (const [name, ok] of checks) console.log(`${ok?'PASS':'FAIL'} ${name}`);
 console.log(`TOTAL ${checks.length-failed.length}/${checks.length} PASS`);

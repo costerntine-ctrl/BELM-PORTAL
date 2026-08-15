@@ -3912,6 +3912,24 @@ html[data-theme="dark"] .belm-lang-toggle {
   line-height: 1.2;
 }
 
+/* V241 - General Analysis button was missing this same treatment, so its
+   label and small subtitle ran together on one line ("General
+   AnalysisFull breakdown..."). */
+.belm-account-tools-actions .belm-general-analysis-button {
+  flex-direction: column;
+  gap: 3px;
+  border-color: rgba(255,212,0,.5);
+  background: linear-gradient(135deg, rgba(255,212,0,.14), rgba(122,79,181,.12));
+  color: #fff;
+}
+.belm-account-tools-actions .belm-general-analysis-button small {
+  display: block;
+  color: #d7deea;
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
 /* V215 - compact latest machine-display reference in Check Up */
 .belm-checkup-display-strip { display:grid; grid-template-columns:140px 110px 120px minmax(150px,1fr); gap:8px; align-items:stretch; margin-bottom:12px; padding:9px; border:1px solid #dbe5ee; border-radius:12px; background:#f8fafc; }
 .belm-checkup-display-photo-wrap { min-height:72px; }

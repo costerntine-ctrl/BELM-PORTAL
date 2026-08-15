@@ -1,3 +1,3 @@
 // Regression baseline: belm-app-v215-petty-checkup
 // Regression baseline: belm-app-v211-bug-audit
-const CACHE='belm-app-v240-service-date-fix';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+const CACHE='belm-app-v241-dup-card-race-fix';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));

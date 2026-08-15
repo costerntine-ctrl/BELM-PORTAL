@@ -1,0 +1,31 @@
+BELM PORTAL V241 - FIXED: DUPLICATE OVERVIEW CARD + SQUISHED BUTTON TEXT
+
+ROOT CAUSE - what the screenshot showed
+- The Customer Dashboard was rendering the entire Status/Petty Cash/
+  More Tools overview TWICE, stacked on top of each other.
+
+FIXED - duplicate card race condition
+- insertCustomerActivityOverview() waits up to ~3 seconds (polling for
+  the machine grid to appear) before it actually builds and inserts
+  its card into the page. The dashboard re-runs this function every
+  1.5 seconds on a timer to keep things in sync.
+- Because 1.5s is shorter than the up-to-3s wait, the timer could call
+  the function again WHILE the first call was still waiting. Both
+  calls would pass the "does the card already exist?" check (it
+  didn't exist yet - the first call hadn't finished waiting), and both
+  would go on to build and insert a full second copy of the whole
+  overview card.
+- Fixed with a simple in-progress flag set the instant the function
+  starts, before any waiting begins, so a second timer-triggered call
+  now sees "a build is already in progress" and exits immediately
+  instead of racing to insert a duplicate.
+
+FIXED - "General AnalysisFull breakdown..." squished text
+- The General Analysis button (added in V234) was missing the same
+  styling the other MORE TOOLS buttons (+USER, Maintenance Process)
+  already had for stacking their subtitle on its own line. Its title
+  and small subtitle were running together as one line of text. Now
+  styled consistently - title on top, subtitle below.
+
+- Browser/PWA cache bumped to V241.
+- No database migration required.

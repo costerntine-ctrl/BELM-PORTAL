@@ -1414,10 +1414,27 @@
   // and above the machine grid. Stays in view while the machine list
   // below it scrolls — a quick-glance summary of what's happening across
   // every machine, not tied to any one of them.
+  let belmOverviewInsertInFlight = false;
   async function insertCustomerActivityOverview() {
     if (isCustomerOperatorRole()) return;
     if (window.location.pathname !== "/portal/dashboard") return;
     if (document.getElementById("belmActivityOverviewCard")) return;
+    // V241 - this function awaits up to ~3s (machineGrid poll below) before
+    // it actually creates+inserts the card with this id. The dashboard's
+    // setInterval re-runs every 1.5s, so a second call could sail past the
+    // getElementById guard above (the id doesn't exist yet) while the first
+    // call is still waiting, and both would go on to insert a full duplicate
+    // card. This synchronous flag closes that race - only one call may be
+    // "in flight" building the card at a time.
+    if (belmOverviewInsertInFlight) return;
+    belmOverviewInsertInFlight = true;
+    try {
+      await insertCustomerActivityOverviewInner();
+    } finally {
+      belmOverviewInsertInFlight = false;
+    }
+  }
+  async function insertCustomerActivityOverviewInner() {
     const heading = Array.from(document.querySelectorAll("h1, h2"))
       .find(element => (element.textContent || "").trim().endsWith("MACHINES") || (element.textContent || "").trim() === "Your machines");
     if (!heading) return;
@@ -1504,7 +1521,7 @@
           data-report-message="BELM Portal account report requested from the dashboard.">
           ${belmT("Management Email")}
         </button>
-        <button type="button" class="belm-email-report-button" data-open-general-analysis>
+        <button type="button" class="belm-email-report-button belm-general-analysis-button" data-open-general-analysis>
           ${belmT("General Analysis")}
           <small>${belmT("Full breakdown of your fleet & activity")}</small>
         </button>

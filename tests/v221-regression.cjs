@@ -20,7 +20,7 @@ const checks=[
  ['focus autosync',js.includes('window.addEventListener("focus", loadReport)')],
  ['visibility autosync',js.includes('visibilitychange')],
  ['60 second autosync',js.includes('60000')],
- ['cache bumped',(sw.includes('belm-app-v221-finance-sync') || sw.includes('belm-app-v222-button-contrast'))],
+ ['cache bumped',/CACHE='belm-app-v(\d+)-/.exec(sw) && Number(/CACHE='belm-app-v(\d+)-/.exec(sw)[1]) >= 221],
 ];
 let bad=0;for(const [name,ok] of checks){console.log(`${ok?'PASS':'FAIL'} ${name}`);if(!ok)bad++;}
 if(bad){console.error(`${bad} V221 checks failed`);process.exit(1)}

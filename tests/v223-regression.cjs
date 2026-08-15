@@ -5,5 +5,9 @@ has('frontend/breakdown-workflow/workflow.js',['loadJobTechnicians','technicians
 has('backend/api/breakdown_workflow.php',["rr.name='Technician'",'user_roles ur','Temporary Technician Override']);
 has('backend/api/engineering.php',["rr.name='Technician'",'user_roles ur']);
 has('backend/api/service_requests.php',["rr.name='Technician'",'user_roles ur']);
-has('frontend/belm-sw.js',['belm-app-v223-technician-sync']);
+{
+  const sw = fs.readFileSync('frontend/belm-sw.js','utf8');
+  const m = /CACHE='belm-app-v(\d+)-/.exec(sw);
+  checks.push(['frontend/belm-sw.js: cache bumped >= v223', !!m && Number(m[1]) >= 223]);
+}
 const bad=checks.filter(x=>!x[1]);for(const [n,ok] of checks)console.log((ok?'PASS':'FAIL')+' '+n);console.log(`TOTAL ${checks.length-bad.length}/${checks.length} PASS`);if(bad.length)process.exit(1);

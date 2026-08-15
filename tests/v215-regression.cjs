@@ -12,7 +12,7 @@ const pettyJs=read('frontend/customer-petty-cash/petty-cash.js');
 const sw=read('frontend/belm-sw.js');
 check('PWA cache is V215', sw.includes('belm-app-v215-petty-checkup'));
 check('Dashboard has Petty Cash account card', portal.includes('belmPettyCashAccountCard'));
-check('Dashboard Petty Cash is in sticky rail stack', portal.includes('overviewStack.appendChild(pettyCashCard)'));
+check('Dashboard Petty Cash is in sticky rail stack', portal.includes('overviewCard.appendChild(pettyCashCard)'));
 check('Petty Cash card permission sync exists', portal.includes('syncPettyCashVisibility'));
 check('Analysis returns customer Petty Cash account', cp.includes("'pettyCashAccount' => ["));
 check('Customer-level Petty Cash API exists', cp.includes("if ($sub === 'petty-cash-account')"));

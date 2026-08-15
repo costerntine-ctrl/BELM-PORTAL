@@ -1,0 +1,14 @@
+BELM PORTAL V229 - MESSAGES FROM BELM: DARK MODE FIX + OK/DISMISS
+
+- Fixed: "Messages from BELM" panel on the Customer Dashboard was
+  hardcoded to a white/light card background with no Dark Mode
+  override, so in Dark Mode the panel was effectively invisible (dark
+  text on... still white). It now matches the same dark card styling
+  used elsewhere in the portal.
+- Added an "OK" button on each message. Clicking it hides that message
+  and remembers it was read (stored per-browser), so it will not
+  reappear on future visits. Once every message on the dashboard has
+  been dismissed, the whole panel disappears until BELM sends a new
+  one.
+- Browser/PWA cache bumped to V229.
+- No database migration required.

@@ -1,0 +1,13 @@
+BELM PORTAL V230 - MACHINE CARD "BREAKDOWN PROCESS" BUTTON COLOR FIX
+
+- Fixed: on a machine's quick-actions row (the per-machine action
+  buttons: Machine Expenses, Fuel Usage, Request BELM Support, Report
+  a Problem, Operator Reports, Check Up, Breakdown Process), every
+  button except "Breakdown Process" had a colored badge/pill style
+  defined in CSS. Breakdown Process was missing from that list, so it
+  fell back to a plain unstyled link with no background color.
+- Added a matching colored style (purple, with a white "WF" icon
+  badge) so Breakdown Process now looks consistent with the rest of
+  the quick-action buttons.
+- Browser/PWA cache bumped to V230.
+- No database migration required.

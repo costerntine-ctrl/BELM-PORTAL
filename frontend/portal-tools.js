@@ -54,7 +54,7 @@
     "Open account": { sw: "Fungua akaunti" },
     "Used": { sw: "Zilizotumika" },
     "Top-up": { sw: "Zilizowekwa" },
-    "BREAKDOWN PROCESS": { sw: "MCHAKATO WA HITILAFU" },
+    "MAINTENANCE PROCESS": { sw: "MCHAKATO WA MATENGENEZO" },
     "Live delays, approvals & Job Cards": { sw: "Ucheleweshaji, idhini na Job Card - moja kwa moja" },
     "MORE TOOLS": { sw: "ZANA ZAIDI" },
     "+USER": { sw: "+MTUMIAJI" },
@@ -1353,16 +1353,12 @@
 
     const breakdownCard = document.createElement("a");
     breakdownCard.id = "belmBreakdownProcessRailCard";
-    breakdownCard.className = "belm-breakdown-process-rail-card";
+    breakdownCard.className = "belm-email-report-button belm-maintenance-process-button";
     breakdownCard.href = `/breakdown-workflow/?actor=${encodeURIComponent(customerWorkflowActor())}`;
     breakdownCard.setAttribute("data-belm-feature", "workflow");
     breakdownCard.innerHTML = `
-      <span class="belm-breakdown-rail-icon">BP</span>
-      <span class="belm-breakdown-rail-copy">
-        <b>${belmT("BREAKDOWN PROCESS")}</b>
-        <small>${belmT("Live delays, approvals & Job Cards")}</small>
-      </span>
-      <span class="belm-breakdown-rail-arrow">›</span>`;
+      ${belmT("MAINTENANCE PROCESS")}
+      <small>${belmT("Live delays, approvals & Job Cards")}</small>`;
 
     const toolsCard = document.createElement("div");
     toolsCard.id = "belmAccountToolsCard";
@@ -1375,6 +1371,7 @@
           ${belmT("+USER")}
           <small>${belmT("Role Manager & Dashboard Access")}</small>
         </button>
+        <span data-belm-maintenance-process-slot></span>
         <button type="button" class="belm-email-report-button" data-belm-feature="service-request" data-contact-belm-support>
           ${belmT("Request BELM Support")}
         </button>
@@ -1384,6 +1381,7 @@
           ${belmT("Management Email")}
         </button>
       </div>`;
+    toolsCard.querySelector("[data-belm-maintenance-process-slot]")?.replaceWith(breakdownCard);
     enforceCustomerFeaturePermissions(toolsCard);
     toolsCard.querySelector("[data-open-role-manager]")?.addEventListener("click", () => { window.location.href = "/customer-users/"; });
     toolsCard.querySelector("[data-contact-belm-support]")?.addEventListener("click", () => openBelmSupportDialog());
@@ -1421,12 +1419,8 @@
       layout.className = "belm-dashboard-layout";
       const overviewStack = document.createElement("div");
       overviewStack.className = "belm-activity-overview-stack";
-      const quickActionsRow = document.createElement("div");
-      quickActionsRow.className = "belm-quick-actions-row";
-      quickActionsRow.appendChild(pettyCashCard);
-      quickActionsRow.appendChild(breakdownCard);
       overviewCard.appendChild(card);
-      overviewCard.appendChild(quickActionsRow);
+      overviewCard.appendChild(pettyCashCard);
       overviewStack.appendChild(overviewCard);
       overviewStack.appendChild(toolsCard);
       machineGrid.insertAdjacentElement("beforebegin", layout);
@@ -1435,12 +1429,8 @@
       enforceCustomerFeaturePermissions(pettyCashCard);
       enforceCustomerFeaturePermissions(breakdownCard);
     } else {
-      const quickActionsRow = document.createElement("div");
-      quickActionsRow.className = "belm-quick-actions-row";
-      quickActionsRow.appendChild(pettyCashCard);
-      quickActionsRow.appendChild(breakdownCard);
       overviewCard.appendChild(card);
-      overviewCard.appendChild(quickActionsRow);
+      overviewCard.appendChild(pettyCashCard);
       rowContainer.insertAdjacentElement("afterend", overviewCard);
       overviewCard.insertAdjacentElement("afterend", toolsCard);
       enforceCustomerFeaturePermissions(pettyCashCard);
@@ -1773,8 +1763,12 @@
     try {
       const response = await fetch("/api/customer-portal/communications", { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) return;
-      const items = await response.json();
-      if (!Array.isArray(items) || !items.length) return;
+      const allItems = await response.json();
+      if (!Array.isArray(allItems) || !allItems.length) return;
+      const dismissedKey = "belm_dismissed_messages";
+      const dismissed = new Set(JSON.parse(localStorage.getItem(dismissedKey) || "[]"));
+      const items = allItems.filter((item) => !dismissed.has(String(item.id)));
+      if (!items.length) return;
       const heading = Array.from(document.querySelectorAll("h1, h2")).find((el) => (el.textContent || "").trim() === "Your machines");
       const anchor = heading?.closest("section") || heading?.parentElement;
       if (!anchor) return;
@@ -1784,12 +1778,26 @@
       panel.innerHTML = `
         <div class="belm-customer-messages-head"><span>MESSAGES FROM BELM</span><small>Saved communication history</small></div>
         <div class="belm-customer-messages-list">${items.slice(0, 8).map((item) => `
-          <article class="belm-customer-message-row">
+          <article class="belm-customer-message-row" data-belm-message-id="${escapeHtml(String(item.id))}">
             <div class="belm-customer-message-title"><strong>${escapeHtml(item.subject || "Message from BELM")}</strong><span>${escapeHtml(formatTanzaniaDateTime(item.createdAt))}</span></div>
             <p>${escapeHtml(item.message || "")}</p>
             <small>${item.machineLabel ? `Machine: ${escapeHtml(item.machineLabel)} · ` : ""}From: ${escapeHtml(item.createdByName || "BELM")}${item.status === "PORTAL_ONLY" ? " · Portal delivery only" : ""}</small>
+            <div class="belm-customer-message-actions"><button type="button" class="belm-customer-message-ok" data-belm-dismiss-message>OK</button></div>
           </article>`).join("")}</div>`;
       anchor.before(panel);
+      panel.querySelectorAll("[data-belm-dismiss-message]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const row = button.closest("[data-belm-message-id]");
+          const id = row?.dataset.belmMessageId;
+          if (id) {
+            const current = new Set(JSON.parse(localStorage.getItem(dismissedKey) || "[]"));
+            current.add(id);
+            localStorage.setItem(dismissedKey, JSON.stringify([...current]));
+          }
+          row?.remove();
+          if (!panel.querySelector("[data-belm-message-id]")) panel.remove();
+        });
+      });
     } catch (_) {}
   }
 

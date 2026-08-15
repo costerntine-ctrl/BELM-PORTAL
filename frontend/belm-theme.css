@@ -3090,7 +3090,41 @@ a[href^="/api/customer-portal/reports/"][href$="/download"] {
 .belm-customer-message-row p { margin:8px 0; white-space:pre-wrap; }
 .belm-customer-message-title { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
 .belm-customer-message-title span { font-size:12px; opacity:.65; white-space:nowrap; }
+.belm-customer-message-actions { display:flex; justify-content:flex-end; margin-top:8px; }
+.belm-customer-message-ok {
+  border: 1px solid #1769c2;
+  border-radius: 8px;
+  padding: 6px 18px;
+  background: #1769c2;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.belm-customer-message-ok:hover { background: #125497; }
 @media (max-width: 640px) { .belm-customer-message-title { flex-direction:column; gap:3px; } }
+
+/* V229 - dark mode support for the Messages from BELM panel; it was
+   hardcoded white/light and became unreadable in Dark Mode. */
+html.dark .belm-customer-messages-panel,
+html[data-theme="dark"] .belm-customer-messages-panel {
+  border-color: #2a394d !important;
+  background: #111b2a !important;
+  color: #e5edf7;
+  box-shadow: 0 14px 34px rgba(0,0,0,.26) !important;
+}
+html.dark .belm-customer-message-row,
+html[data-theme="dark"] .belm-customer-message-row {
+  border-color: #27364a !important;
+  background: #0e1826 !important;
+  color: #e5edf7;
+}
+html.dark .belm-customer-message-title span,
+html[data-theme="dark"] .belm-customer-message-title span,
+html.dark .belm-customer-messages-head small,
+html[data-theme="dark"] .belm-customer-messages-head small {
+  color: #8fa2b9 !important;
+}
 
 /* ========================================================================
    V195 UI REFRESH — BELM brand palette + premium machine-card treatment
@@ -3403,6 +3437,12 @@ body[data-belm-area="portal"]::before {
   background: var(--belm-blue);
 }
 .belm-machine-quick-actions .belm-customer-checkup-button::before { color: #0b4b29; background: #c9f5da; }
+.belm-machine-quick-actions a[href^="/breakdown-workflow/"] {
+  color: #fff;
+  border-color: #7a4fb5;
+  background: #7a4fb5;
+}
+.belm-machine-quick-actions a[href^="/breakdown-workflow/"]::before { color: #fff; background: rgba(255,255,255,.28); }
 .belm-machine-quick-actions a:hover,
 .belm-machine-quick-actions button:hover,
 .belm-customer-checkup-button:hover {
@@ -3826,10 +3866,12 @@ html[data-theme="dark"] .belm-lang-toggle {
   .belm-lang-toggle { left: 10px; bottom: 10px; padding: 8px 10px; }
 }
 
-/* V227 - single unified overview card. Status / Petty Cash / Breakdown
-   Process used to be three separate floating cards; they now live as
-   internal sections inside one shared card (one border, one shadow,
-   one gradient stripe) no matter how many machines the customer has. */
+/* V227/V228 - single unified overview card. Status and Petty Cash used
+   to be separate floating cards; they now live as internal sections
+   inside one shared card (one border, one shadow, one gradient stripe)
+   no matter how many machines the customer has. Maintenance Process
+   (formerly a separate Breakdown Process rail card) moved into the
+   MORE TOOLS card as a button - see .belm-maintenance-process-button. */
 .belm-overview-card {
   position: sticky;
   top: 12px;
@@ -3855,75 +3897,15 @@ html[data-theme="dark"] .belm-lang-toggle {
   box-shadow: none;
   background: transparent;
 }
-.belm-overview-card > .belm-quick-actions-row {
-  border-top: 1px solid rgba(255,255,255,.08);
-}
-.belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card,
-.belm-overview-card > .belm-quick-actions-row > .belm-breakdown-process-rail-card {
+.belm-overview-card > .belm-petty-cash-account-card {
   border: 0;
   border-radius: 0;
   box-shadow: none;
   background: transparent;
   padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,.08);
 }
-.belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card::before,
-.belm-overview-card > .belm-quick-actions-row > .belm-breakdown-process-rail-card::before {
-  display: none;
-}
-.belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card {
-  border-right: 1px solid rgba(255,255,255,.08);
-}
-@media (max-width: 640px) {
-  .belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card {
-    border-right: 0;
-    border-bottom: 1px solid rgba(255,255,255,.08);
-  }
-}
-
-/* Petty Cash and Breakdown Process sit side by side in one row within
-   the shared card (matches the Machine Attention / Service Due pair
-   above). Falls back to a single column on narrow phones. */
-.belm-quick-actions-row {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 0;
-  align-items: stretch;
-}
-.belm-quick-actions-row > .belm-petty-cash-account-card,
-.belm-quick-actions-row > .belm-breakdown-process-rail-card {
-  margin: 0;
-  min-width: 0;
-}
-.belm-quick-actions-row > .belm-breakdown-process-rail-card {
-  grid-template-columns: 38px minmax(0,1fr);
-  min-height: 0;
-}
-.belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-icon {
-  width: 38px;
-  height: 38px;
-  font-size: 11px;
-  border-radius: 10px;
-}
-.belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-arrow {
-  display: none;
-}
-@media (max-width: 640px) {
-  .belm-quick-actions-row { grid-template-columns: 1fr; }
-  .belm-quick-actions-row > .belm-breakdown-process-rail-card {
-    grid-template-columns: 48px minmax(0,1fr) 22px;
-    min-height: 66px;
-  }
-  .belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-icon {
-    width: 48px;
-    height: 48px;
-    font-size: 13px;
-    border-radius: 12px;
-  }
-  .belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-arrow {
-    display: block;
-  }
-}
-.belm-petty-cash-account-card::before { content:""; position:absolute; inset:0 0 auto; height:3px; border-radius:14px 14px 0 0; background:linear-gradient(90deg,#00a651,#ffd400,#1769c2); }
+.belm-overview-card > .belm-petty-cash-account-card::before { display: none; }
 .belm-petty-cash-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .belm-petty-cash-head span { color:#8ee4b6; font-size:10.5px; font-weight:900; letter-spacing:.08em; }
 .belm-petty-cash-head a { color:#dbeafe; font-size:9.5px; font-weight:800; text-decoration:none; }
@@ -3933,6 +3915,23 @@ html[data-theme="dark"] .belm-lang-toggle {
 .belm-petty-cash-meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:11px; }
 .belm-petty-cash-meta span { padding:7px 8px; border:1px solid rgba(255,255,255,.09); border-radius:8px; color:#8fa3bd; font-size:9px; }
 .belm-petty-cash-meta b { display:block; margin-top:2px; color:#fff; font-size:10.5px; }
+
+/* V228 - Maintenance Process (formerly Breakdown Process) is now a
+   button inside MORE TOOLS, between +USER and Request BELM Support. */
+.belm-account-tools-actions .belm-maintenance-process-button {
+  flex-direction: column;
+  gap: 3px;
+  border-color: rgba(23,105,194,.55);
+  background: linear-gradient(135deg, rgba(23,105,194,.16), rgba(0,166,81,.12));
+  color: #fff;
+}
+.belm-account-tools-actions .belm-maintenance-process-button small {
+  display: block;
+  color: #d7deea;
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 1.2;
+}
 
 /* V215 - compact latest machine-display reference in Check Up */
 .belm-checkup-display-strip { display:grid; grid-template-columns:140px 110px 120px minmax(150px,1fr); gap:8px; align-items:stretch; margin-bottom:12px; padding:9px; border:1px solid #dbe5ee; border-radius:12px; background:#f8fafc; }
@@ -3948,76 +3947,4 @@ html[data-theme="dark"] .belm-lang-toggle {
 @media(max-width:720px){ .belm-checkup-display-strip{grid-template-columns:110px 1fr 1fr}.belm-checkup-display-thumb,.belm-checkup-display-placeholder{width:110px;height:64px}.belm-checkup-display-photo-wrap{min-height:64px}.belm-checkup-display-time{grid-column:1/-1} }
 
 
-/* V216 - dedicated Breakdown Process card directly below shared Petty Cash.
-   The parent right rail is already sticky on desktop, so this card follows
-   Petty Cash while the customer scrolls the machine list. */
-.belm-breakdown-process-rail-card {
-  position: relative;
-  display: grid;
-  grid-template-columns: 48px minmax(0,1fr) 22px;
-  align-items: center;
-  gap: 11px;
-  min-height: 74px;
-  padding: 12px 13px;
-  border: 1px solid rgba(255,212,0,.42);
-  border-radius: 14px;
-  background: linear-gradient(145deg,#111b2d,#17304a 62%,#102033);
-  box-shadow: 0 14px 34px rgba(7,14,28,.24);
-  color: #fff;
-  text-decoration: none;
-  overflow: hidden;
-}
-.belm-breakdown-process-rail-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 3px;
-  background: linear-gradient(90deg,#1769c2,#00a651,#ffd400);
-}
-.belm-breakdown-process-rail-card:hover,
-.belm-breakdown-process-rail-card:focus {
-  transform: translateY(-1px);
-  border-color: rgba(255,212,0,.7);
-  box-shadow: 0 18px 38px rgba(7,14,28,.30);
-  outline: none;
-}
-.belm-breakdown-rail-icon {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,.18);
-  background: linear-gradient(145deg,rgba(0,166,81,.28),rgba(23,105,194,.28));
-  color: #fff;
-  font-size: 13px;
-  font-weight: 950;
-  letter-spacing: .05em;
-}
-.belm-breakdown-rail-copy { min-width: 0; }
-.belm-breakdown-rail-copy b {
-  display: block;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 950;
-  letter-spacing: .055em;
-}
-.belm-breakdown-rail-copy small {
-  display: block;
-  margin-top: 4px;
-  color: #aebed0;
-  font-size: 9px;
-  font-weight: 650;
-  line-height: 1.35;
-}
-.belm-breakdown-rail-arrow {
-  color: #ffd400;
-  font-size: 25px;
-  font-weight: 500;
-  line-height: 1;
-  text-align: right;
-}
-.belm-activity-overview-stack > .belm-breakdown-process-rail-card { margin: 0; }
-@media (max-width:979px) {
-  .belm-breakdown-process-rail-card { min-height: 66px; }
-}
+

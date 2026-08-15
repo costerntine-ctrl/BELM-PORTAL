@@ -323,17 +323,21 @@
       if (!body) continue;
       try {
         const items = await api(`/customers/${encodeURIComponent(customer.id)}/communications`);
-        body.innerHTML = items.length
-          ? items.slice(0, 3).map((item) => `
-              <div class="customer-feed-row" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
+        const unreadItems = items.filter((item) => !item.isRead);
+        body.innerHTML = unreadItems.length
+          ? unreadItems.slice(0, 3).map((item) => `
+              <div class="customer-feed-row" data-communication-id="${escapeHtml(item.id)}" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
                 <div class="customer-feed-row-head">
                   <strong>${escapeHtml(item.subject || "Communication")}</strong>
                   ${communicationStatusMarkup(item)}
                 </div>
                 <p>${escapeHtml(item.message || "—")}</p>
                 <small>${escapeHtml(communicationDirectionLabel(item))}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
+                <button type="button" class="view-messages-button" data-view-communication="${escapeHtml(item.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View</button>
               </div>`).join("")
-          : '<p class="customer-feed-empty">No communication history yet.</p>';
+          : (items.length
+              ? '<p class="customer-feed-empty">No new communication. Use <strong>View all</strong> for history.</p>'
+              : '<p class="customer-feed-empty">No communication history yet.</p>');
       } catch (_) {
         body.innerHTML = '<p class="customer-feed-empty">Could not load communication history.</p>';
       }
@@ -351,6 +355,17 @@
     }
   }
 
+  async function markCustomerCommunicationRead(customerId, communicationId) {
+    if (!customerId || !communicationId) return;
+    await api(`/customers/${encodeURIComponent(customerId)}/communications/${encodeURIComponent(communicationId)}/read`, { method: "PUT" });
+  }
+
+  async function markCustomerCommunicationsRead(customerId, items) {
+    const unread = (Array.isArray(items) ? items : []).filter((item) => item?.id && !item.isRead);
+    if (!unread.length) return;
+    await Promise.allSettled(unread.map((item) => markCustomerCommunicationRead(customerId, item.id)));
+  }
+
   async function openCustomerMessages(customerId, customerName) {
     document.getElementById("customerMessagesTitle").textContent = `${customerName} — Communication History`;
     const body = document.getElementById("customerMessagesBody");
@@ -363,12 +378,19 @@
             <article class="customer-message-row" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
               <div class="customer-message-head">
                 <strong>${escapeHtml(item.subject || "Communication")}</strong>
+                <span class="badge">${item.isRead ? "READ" : "NEW"}</span>
                 ${communicationStatusMarkup(item)}
               </div>
               <p>${escapeHtml(item.message || "—")}</p>
               <small>${escapeHtml(communicationDirectionLabel(item))}${item.createdByName ? ` · ${escapeHtml(item.createdByName)}` : ""}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
             </article>`).join("")}</div>`
         : '<p class="muted">No communication history yet.</p>';
+      await markCustomerCommunicationsRead(customerId, items);
+      body.querySelectorAll(".customer-message-head .badge").forEach((badge) => {
+        if (badge.textContent === "NEW") badge.textContent = "READ";
+      });
+      const customer = customers.find((entry) => entry.id === customerId);
+      if (customer) loadCustomerFeeds([customer]);
     } catch (error) {
       body.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load communication history.")}</p>`;
     }
@@ -1468,12 +1490,38 @@
       await load();
       return;
     }
+    const viewCommunication = event.target.closest("[data-view-communication]");
+    if (viewCommunication) {
+      const customerId = viewCommunication.dataset.customerId;
+      const communicationId = viewCommunication.dataset.viewCommunication;
+      const customerName = viewCommunication.dataset.customerName || "Customer";
+      viewCommunication.disabled = true;
+      try {
+        await markCustomerCommunicationRead(customerId, communicationId);
+        const row = viewCommunication.closest(".customer-feed-row");
+        if (row) {
+          row.style.transition = "opacity .2s, transform .2s";
+          row.style.opacity = "0";
+          row.style.transform = "translateY(-4px)";
+          setTimeout(() => row.remove(), 220);
+        }
+        await openCustomerMessages(customerId, customerName);
+      } catch (error) {
+        viewCommunication.disabled = false;
+        showAlert(error.message || "Could not mark this communication as viewed.", true);
+      }
+      return;
+    }
     const resolveMessage = event.target.closest("[data-resolve-message]");
     if (resolveMessage) {
       const row = resolveMessage.closest("[data-message-id]");
       resolveMessage.disabled = true;
       try {
         await resolveCustomerMessage(row.dataset.messageType, row.dataset.messageId);
+        if (row.dataset.communicationId) {
+          const feed = row.closest("[data-customer-id]");
+          if (feed?.dataset.customerId) await markCustomerCommunicationRead(feed.dataset.customerId, row.dataset.communicationId);
+        }
         row.style.transition = "opacity .2s";
         row.style.opacity = "0";
         setTimeout(() => row.remove(), 200);

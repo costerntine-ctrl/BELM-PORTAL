@@ -7,6 +7,7 @@
   });
   const numberFormatter = new Intl.NumberFormat("en-TZ");
   let reportData = null;
+  let reportLoading = false;
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -73,12 +74,19 @@
       `${data.period?.label || "Selected period"} · ${data.period?.from || ""} → ${data.period?.to || ""}`;
 
     document.getElementById("financeMetrics").innerHTML = [
-      metric("Sales invoiced", money(current.sales), `${change(current.sales, previous.sales)} vs previous period`),
-      metric("Revenue received", money(current.revenue), `${change(current.revenue, previous.revenue)} vs previous period`, "green"),
-      metric("Expenses", money(current.expenses), `${change(current.expenses, previous.expenses)} vs previous period`, current.expenses ? "red" : ""),
-      metric("Profit / loss", money(current.profitLoss), `${change(current.profitLoss, previous.profitLoss)} vs previous period`, Number(current.profitLoss) >= 0 ? "green" : "red"),
-      metric("Outstanding", money(current.outstanding), "Total unpaid balance", current.outstanding ? "yellow" : "green"),
+      metric("Sales invoiced", money(current.sales), `${number(current.invoiceCount)} invoice(s) · ${change(current.sales, previous.sales)} vs previous`),
+      metric("Revenue received", money(current.revenue), `${number(current.paymentCount)} payment(s) · ${change(current.revenue, previous.revenue)} vs previous`, "green"),
+      metric("Expenses", money(current.expenses), `${number(current.expenseCount)} expense(s) · ${change(current.expenses, previous.expenses)} vs previous`, current.expenses ? "red" : ""),
+      metric("Profit / loss", money(current.profitLoss), `Received minus expenses · ${change(current.profitLoss, previous.profitLoss)} vs previous`, Number(current.profitLoss) >= 0 ? "green" : "red"),
+      metric("Outstanding", money(current.outstanding), `Balance as of ${data.period?.to || "period end"}`, current.outstanding ? "yellow" : "green"),
     ].join("");
+
+    const syncStatus = document.getElementById("syncStatus");
+    if (syncStatus) {
+      const syncedAt = data.syncedAt ? new Date(data.syncedAt) : new Date();
+      syncStatus.textContent = `SYNCED · Billing invoices + payments + company expenses · ${syncedAt.toLocaleString()}`;
+      syncStatus.className = "sync-status ok";
+    }
 
     const rows = [
       ["Sales invoiced", current.sales, previous.sales],
@@ -134,13 +142,35 @@
   }
 
   async function loadReport() {
+    if (reportLoading) return;
+    reportLoading = true;
     const alert = document.getElementById("pageAlert");
+    const syncStatus = document.getElementById("syncStatus");
+    const syncButton = document.getElementById("applyButton");
     alert.classList.add("hidden");
+    if (syncStatus) {
+      syncStatus.textContent = "SYNCING · Billing invoices + payments + company expenses…";
+      syncStatus.className = "sync-status syncing";
+    }
+    if (syncButton) {
+      syncButton.disabled = true;
+      syncButton.textContent = "Syncing…";
+    }
     try {
-      renderReport(await api(`/reports/analytics?${queryString()}`));
+      renderReport(await api(`/reports/analytics?${queryString()}&_sync=${Date.now()}`));
     } catch (error) {
       alert.textContent = error.message;
       alert.classList.remove("hidden");
+      if (syncStatus) {
+        syncStatus.textContent = `SYNC ERROR · ${error.message}`;
+        syncStatus.className = "sync-status error";
+      }
+    } finally {
+      reportLoading = false;
+      if (syncButton) {
+        syncButton.disabled = false;
+        syncButton.textContent = "Sync report";
+      }
     }
   }
 
@@ -256,6 +286,13 @@
     const custom = document.getElementById("periodSelect").value === "custom";
     document.getElementById("dateFromLabel").classList.toggle("hidden", !custom);
     document.getElementById("dateToLabel").classList.toggle("hidden", !custom);
+    if (!custom) loadReport();
+  });
+  document.getElementById("dateFrom").addEventListener("change", () => {
+    if (document.getElementById("periodSelect").value === "custom" && document.getElementById("dateTo").value) loadReport();
+  });
+  document.getElementById("dateTo").addEventListener("change", () => {
+    if (document.getElementById("periodSelect").value === "custom" && document.getElementById("dateFrom").value) loadReport();
   });
   document.getElementById("applyButton").addEventListener("click", loadReport);
   document.getElementById("attendanceRefreshButton").addEventListener("click", loadAttendance);
@@ -269,4 +306,14 @@
   setDefaultDates();
   loadReport();
   loadAttendance();
+
+  // V221 live reconciliation: refresh when the manager returns to this page
+  // and periodically while it stays open. The API remains no-store.
+  window.addEventListener("focus", loadReport);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) loadReport();
+  });
+  window.setInterval(() => {
+    if (!document.hidden) loadReport();
+  }, 60000);
 })();

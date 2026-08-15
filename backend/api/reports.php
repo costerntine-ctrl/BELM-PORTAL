@@ -84,6 +84,8 @@ function scalar_query(string $sql, array $params = []): float {
 }
 
 function financial_slice(string $from, string $to): array {
+    // V221: Reports & Comparisons uses the exact billing source tables and a
+    // period-end balance. This keeps Billing, Overview and Reports reconciled.
     $timestampFilter = ' >= CAST(? AS DATE) AND %s < (CAST(? AS DATE) + INTERVAL \'1 day\')';
 
     $sales = scalar_query(
@@ -107,15 +109,41 @@ function financial_slice(string $from, string $to): array {
            AND date BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)',
         [$from, $to]
     );
+
+    // Outstanding balance AS OF the selected period end. A payment entered
+    // after that date must not rewrite a historical period comparison.
     $outstanding = scalar_query(
-        "SELECT COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid, 0), 0)), 0)
+        "SELECT COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid_to_date, 0), 0)), 0)
          FROM invoices i
          LEFT JOIN (
-           SELECT invoice_id, SUM(amount) AS paid
-           FROM payments GROUP BY invoice_id
+           SELECT invoice_id, SUM(amount) AS paid_to_date
+           FROM payments
+           WHERE paid_at < (CAST(? AS DATE) + INTERVAL '1 day')
+           GROUP BY invoice_id
          ) p ON p.invoice_id = i.id
          WHERE i.deleted_at IS NULL
-           AND i.status IN ('UNPAID','PARTIALLY_PAID','OVERDUE')"
+           AND i.created_at < (CAST(? AS DATE) + INTERVAL '1 day')",
+        [$to, $to]
+    );
+
+    $invoiceCount = (int)scalar_query(
+        'SELECT COUNT(*) FROM invoices
+         WHERE deleted_at IS NULL
+           AND created_at' . sprintf($timestampFilter, 'created_at'),
+        [$from, $to]
+    );
+    $paymentCount = (int)scalar_query(
+        'SELECT COUNT(*) FROM payments p
+         JOIN invoices i ON i.id = p.invoice_id
+         WHERE i.deleted_at IS NULL
+           AND p.paid_at' . sprintf($timestampFilter, 'p.paid_at'),
+        [$from, $to]
+    );
+    $expenseCount = (int)scalar_query(
+        'SELECT COUNT(*) FROM company_expenses
+         WHERE deleted_at IS NULL
+           AND date BETWEEN CAST(? AS DATE) AND CAST(? AS DATE)',
+        [$from, $to]
     );
 
     return [
@@ -124,6 +152,9 @@ function financial_slice(string $from, string $to): array {
         'expenses' => $expenses,
         'profitLoss' => $revenue - $expenses,
         'outstanding' => $outstanding,
+        'invoiceCount' => $invoiceCount,
+        'paymentCount' => $paymentCount,
+        'expenseCount' => $expenseCount,
     ];
 }
 
@@ -154,6 +185,8 @@ if ($action === 'company-financials' && $method === 'GET') {
     json_out([
         ...financial_slice($bounds['from'], $bounds['to']),
         'period' => $bounds,
+        'syncedAt' => gmdate('c'),
+        'source' => 'Billing invoices + payments + company expenses',
     ]);
 }
 
@@ -324,11 +357,13 @@ if ($action === 'analytics' && $method === 'GET') {
                     WHERE deleted_at IS NULL
                       AND created_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
                     GROUP BY DATE_TRUNC('month', created_at)",
-        'revenue' => "SELECT TO_CHAR(DATE_TRUNC('month', paid_at), 'YYYY-MM') AS month,
-                             COALESCE(SUM(amount),0) AS total
-                      FROM payments
-                      WHERE paid_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
-                      GROUP BY DATE_TRUNC('month', paid_at)",
+        'revenue' => "SELECT TO_CHAR(DATE_TRUNC('month', p.paid_at), 'YYYY-MM') AS month,
+                             COALESCE(SUM(p.amount),0) AS total
+                      FROM payments p
+                      JOIN invoices i ON i.id = p.invoice_id
+                      WHERE i.deleted_at IS NULL
+                        AND p.paid_at >= DATE_TRUNC('month', CURRENT_DATE) - INTERVAL '11 months'
+                      GROUP BY DATE_TRUNC('month', p.paid_at)",
         'expenses' => "SELECT TO_CHAR(DATE_TRUNC('month', date), 'YYYY-MM') AS month,
                               COALESCE(SUM(amount),0) AS total
                        FROM company_expenses
@@ -396,6 +431,8 @@ if ($action === 'analytics' && $method === 'GET') {
             [$bounds['from'], $bounds['to']]
         ),
         'roleActivity' => $roleActivity->fetchAll(),
+        'syncedAt' => gmdate('c'),
+        'source' => 'Billing invoices + payments + company expenses',
     ]);
 }
 

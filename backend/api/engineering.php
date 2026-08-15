@@ -23,7 +23,8 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         "SELECT u.id,u.name,u.email,u.assigned_customer_id,hc.name AS assigned_customer_name
          FROM users u JOIN roles r ON r.id=u.role_id
          LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
-         WHERE r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL
+         WHERE u.is_active=1 AND u.deleted_at IS NULL
+           AND (r.name='Technician' OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL))
            AND u.is_customer_managed=0
          ORDER BY u.name"
     )->fetchAll();
@@ -58,7 +59,8 @@ if ($method === 'POST' && $action === 'dispatch') {
         "SELECT u.id,u.name,u.assigned_customer_id,hc.name AS home_customer_name
          FROM users u JOIN roles r ON r.id=u.role_id
          LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
-         WHERE u.id=? AND r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL AND u.is_customer_managed=0"
+         WHERE u.id=? AND u.is_active=1 AND u.deleted_at IS NULL AND u.is_customer_managed=0
+           AND (r.name='Technician' OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL))"
     );
     $t->execute([$technicianId]); $tech=$t->fetch(); if(!$tech)json_error('Select an active BELM Technician.',422);
     $c=db()->prepare('SELECT id,name FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');

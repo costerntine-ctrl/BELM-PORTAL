@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/management-analytics.css?v=221-finance-sync">
   <link rel="stylesheet" href="/admin-sidebar.css?v=211-bug-audit">
   <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
@@ -47,8 +47,9 @@
         </label>
         <label id="dateFromLabel" class="hidden">From<input id="dateFrom" type="date"></label>
         <label id="dateToLabel" class="hidden">To<input id="dateTo" type="date"></label>
-        <button id="applyButton" class="primary" type="button">Apply report</button>
+        <button id="applyButton" class="primary" type="button">Sync report</button>
         <span id="periodLabel" class="period-note">Loading report…</span>
+        <span id="syncStatus" class="sync-status">Billing sync pending…</span>
       </div>
     </section>
 
@@ -111,6 +112,6 @@
 
   <script src="/admin-access.js"></script>
   <script src="/admin-sidebar.js?v=211-bug-audit"></script>
-  <script src="/reports-manager/app.js"></script>
+  <script src="/reports-manager/app.js?v=221-finance-sync"></script>
 </body>
 </html>

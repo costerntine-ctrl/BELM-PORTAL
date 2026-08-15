@@ -137,6 +137,8 @@ if ($method === 'PUT' && $action === 'operator-reports') {
         'BELM resolved the reported problem: ' . $report['message'],
         'OPERATOR_REPORT', $reportId, (string)($user['name'] ?? 'BELM')
     );
+    // V220: resolving the source report also closes its Breakdown Process case.
+    belm_sync_breakdown_sources((string)$report['customer_id']);
     json_out(['ok' => true]);
 }
 
@@ -176,7 +178,8 @@ if ($method === 'GET' && $action === 'assignees') {
          FROM users u
          JOIN roles r ON r.id = u.role_id
          LEFT JOIN customers c ON c.id = u.assigned_customer_id
-         WHERE r.name = 'Technician' AND u.deleted_at IS NULL AND u.is_active = 1
+         WHERE u.deleted_at IS NULL AND u.is_active = 1
+           AND (r.name='Technician' OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL))
            AND u.is_customer_managed = 0
          ORDER BY u.name ASC"
     );
@@ -393,6 +396,7 @@ if ($method === 'PUT' && $action === 'status') {
             $user
         );
     }
+    belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
     json_out(['ok' => true]);
 }
 
@@ -415,6 +419,7 @@ if ($method === 'PUT' && $action === 'assign') {
         if ($request['assigned_to_id']) {
             log_service_request_history($id, 'ASSIGNMENT', $request['assigned_to_id'], null, $user);
         }
+        belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
         json_out(['ok' => true]);
     }
 
@@ -422,8 +427,9 @@ if ($method === 'PUT' && $action === 'assign') {
         "SELECT u.id, u.name, u.assigned_customer_id, hc.name AS home_customer_name
          FROM users u JOIN roles r ON r.id = u.role_id
          LEFT JOIN customers hc ON hc.id = u.assigned_customer_id
-         WHERE u.id = ? AND r.name = 'Technician'
+         WHERE u.id = ?
            AND u.deleted_at IS NULL AND u.is_active = 1
+           AND (r.name='Technician' OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL))
            AND u.is_customer_managed = 0"
     );
     $stmt->execute([$assignedToId]);
@@ -459,6 +465,7 @@ if ($method === 'PUT' && $action === 'assign') {
         'BELM assigned Technician ' . $technician['name'] . ' to your service request.' . ($isTemporaryOverride ? ' This is a temporary job assignment.' : ''),
         $user
     );
+    belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
     json_out(['ok' => true]);
 }
 

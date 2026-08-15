@@ -244,14 +244,18 @@ if ($method === 'GET' && $action === 'communications') {
     if (!$target) json_error('Customer not found.', 404);
 
     $commStmt = db()->prepare(
-        'SELECT cc.*, m.model AS machine_model, m.machine_type
+        'SELECT cc.*, m.model AS machine_model, m.machine_type,
+                CASE WHEN ccr.communication_id IS NULL THEN 0 ELSE 1 END AS is_read,
+                ccr.read_at
          FROM customer_communications cc
          LEFT JOIN machines m ON m.id = cc.machine_id
+         LEFT JOIN customer_communication_reads ccr
+           ON ccr.communication_id = cc.id AND ccr.user_id = ?
          WHERE cc.customer_id = ?
          ORDER BY cc.created_at DESC
          LIMIT 100'
     );
-    $commStmt->execute([$id]);
+    $commStmt->execute([$user['id'], $id]);
     $rows = $commStmt->fetchAll();
 
     $serviceIds = [];
@@ -308,9 +312,33 @@ if ($method === 'GET' && $action === 'communications') {
             'actionType' => $actionType,
             'actionStatus' => $actionStatus,
             'actionable' => $actionable,
+            'isRead' => !empty($row['is_read']),
+            'readAt' => $row['read_at'] ?? null,
         ];
     }, $rows);
     json_out($out);
+}
+
+// ---- Mark one communication as viewed by the logged-in BELM user ----------
+if (($method === 'PUT' || $method === 'POST') && $action === 'communication-read') {
+    require_page_access($user, 'customers');
+    $communicationId = trim((string)($_GET['communicationId'] ?? ''));
+    if (!$id || $communicationId === '') json_error('Communication not found.', 404);
+
+    $check = db()->prepare(
+        'SELECT id FROM customer_communications WHERE id = ? AND customer_id = ?'
+    );
+    $check->execute([$communicationId, $id]);
+    if (!$check->fetch()) json_error('Communication not found for this customer.', 404);
+
+    db()->prepare(
+        'INSERT INTO customer_communication_reads (communication_id, user_id, read_at)
+         VALUES (?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT (communication_id, user_id)
+         DO UPDATE SET read_at = EXCLUDED.read_at'
+    )->execute([$communicationId, $user['id']]);
+
+    json_out(['ok' => true, 'communicationId' => $communicationId]);
 }
 
 // ---- Direct BELM message to one customer ----------------------------------

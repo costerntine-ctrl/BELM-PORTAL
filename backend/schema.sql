@@ -989,6 +989,15 @@ CREATE INDEX IF NOT EXISTS idx_customer_communications_customer ON customer_comm
 CREATE INDEX IF NOT EXISTS idx_customer_communications_machine ON customer_communications(machine_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_customer_communications_related ON customer_communications(related_type, related_id);
 
+-- V219: per-BELM-user read state for customer communication dashboard summaries.
+CREATE TABLE IF NOT EXISTS customer_communication_reads (
+  communication_id VARCHAR(36) NOT NULL REFERENCES customer_communications(id) ON DELETE CASCADE,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  read_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (communication_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_customer_communication_reads_user ON customer_communication_reads(user_id, read_at DESC);
+
 -- V197 Customer Store Ledger -------------------------------------------------
 -- Customer-owned inventory is deliberately separate from BELM Spare Parts.
 -- It supports Store Keeper style stock balances and an auditable trail of

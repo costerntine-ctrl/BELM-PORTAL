@@ -50,6 +50,10 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'machine_service_parts',
             'service_due_alerts',
             'service_due_alert_items',
+            'breakdown_cases',
+            'breakdown_case_events',
+            'breakdown_spare_requests',
+            'digital_job_cards',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -188,6 +192,9 @@ switch ($resource) {
         }
         if (isset($segments[2]) && $segments[2] === 'message') {
             dispatch('customers.php', ['action' => 'send-message', 'id' => $segments[1]]);
+        }
+        if (isset($segments[2]) && $segments[2] === 'communications' && isset($segments[3]) && ($segments[4] ?? '') === 'read') {
+            dispatch('customers.php', ['action' => 'communication-read', 'id' => $segments[1], 'communicationId' => $segments[3]]);
         }
         if (isset($segments[2]) && $segments[2] === 'communications') {
             dispatch('customers.php', ['action' => 'communications', 'id' => $segments[1]]);

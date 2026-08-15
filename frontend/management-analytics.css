@@ -220,6 +220,17 @@ textarea:focus {
   font-weight: 700;
 }
 
+.sync-status {
+  width: 100%;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sync-status.ok { color: #087443; }
+.sync-status.syncing { color: var(--blue); }
+.sync-status.error { color: #b32636; }
+
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

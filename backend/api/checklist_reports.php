@@ -792,6 +792,9 @@ if ($method === 'PUT' && $action === 'resolve-operator-report') {
         );
     } catch (Throwable $ignored) {}
 
+    // V220: keep the live Breakdown Process aligned when a Technician
+    // resolves the underlying Operator Problem Report.
+    belm_sync_breakdown_sources((string)$machine['customer_id']);
     json_out(['ok' => true, 'resolvedBy' => $user['name'] ?? 'Technician']);
 }
 

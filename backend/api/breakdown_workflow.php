@@ -74,18 +74,25 @@ function bw_case_access(array $ctx, string $caseId): array {
         if ((string)$case['customer_id'] !== $ctx['customerId']) json_error('This machine is not assigned to this Technician.', 403);
         if (empty($case['is_machinery_admin'])) json_error('Customer Technician access is paused while BELM Service Provider is active.', 403);
     } else {
-        // BELM can see customer workflow only while BELM Service Provider is ON.
-        if (!empty($case['is_machinery_admin'])) json_error('This customer is using its own maintenance team.', 403);
-        if (!empty($ctx['isTechnician']) && $ctx['customerId'] !== '' && $ctx['customerId'] !== (string)$case['customer_id']) {
-            // V218: a BELM Technician may temporarily cross customer boundaries
-            // only when a Digital Job Card for THIS case is explicitly assigned
-            // to that Technician. This never changes their permanent customer.
-            $override = db()->prepare(
-                "SELECT 1 FROM digital_job_cards
-                 WHERE case_id=? AND technician_id=? LIMIT 1"
-            );
-            $override->execute([$caseId, $ctx['actorId']]);
-            if (!$override->fetchColumn()) {
+        $officialSupport = (($case['source_type'] ?? '') === 'SERVICE_REQUEST');
+        // Provider-OFF customers remain private to their own workshop, except
+        // for an official BELM Support Request that deliberately invites BELM.
+        if (!empty($case['is_machinery_admin']) && !$officialSupport) {
+            json_error('This customer is using its own maintenance team.', 403);
+        }
+        if (!empty($ctx['isTechnician'])) {
+            $jobAccess = db()->prepare('SELECT 1 FROM digital_job_cards WHERE case_id=? AND technician_id=? LIMIT 1');
+            $jobAccess->execute([$caseId, $ctx['actorId']]);
+            $hasJob = (bool)$jobAccess->fetchColumn();
+            $requestAssigned = false;
+            if ($officialSupport && !empty($case['source_id'])) {
+                $sr = db()->prepare('SELECT 1 FROM service_requests WHERE id=? AND assigned_to_id=? LIMIT 1');
+                $sr->execute([(string)$case['source_id'], $ctx['actorId']]);
+                $requestAssigned = (bool)$sr->fetchColumn();
+            }
+            if (!empty($case['is_machinery_admin'])) {
+                if (!$hasJob && !$requestAssigned) json_error('This BELM Support Request is not assigned to this Technician.', 403);
+            } elseif ($ctx['customerId'] !== '' && $ctx['customerId'] !== (string)$case['customer_id'] && !$hasJob) {
                 json_error('This machine is not assigned to this Technician and no Temporary Override exists for this Job Card.', 403);
             }
         }
@@ -110,6 +117,29 @@ function bw_set_stage(string $caseId, string $stage, ?string $blocker, array $ct
          status=?, updated_at=NOW(), closed_at=CASE WHEN ? THEN NOW() ELSE NULL END WHERE id=?'
     )->execute([$stage, $meta['department'], $blocker ?: null, $closed ? 'COMPLETED' : 'OPEN', $closed ? 1 : 0, $caseId]);
     bw_log($caseId, $stage, $meta['department'], $action, $blocker, $ctx);
+    // V220: closing a synced Breakdown Case closes its official source too.
+    if ($closed) {
+        try {
+            $srcStmt = db()->prepare('SELECT source_type,source_id FROM breakdown_cases WHERE id=?');
+            $srcStmt->execute([$caseId]);
+            $src = $srcStmt->fetch();
+            if ($src && ($src['source_type'] ?? '') === 'SERVICE_REQUEST' && !empty($src['source_id'])) {
+                $sr = db()->prepare("SELECT status FROM service_requests WHERE id=?");
+                $sr->execute([(string)$src['source_id']]);
+                $previous = $sr->fetchColumn();
+                if ($previous && !in_array((string)$previous,['COMPLETED','CANCELLED'],true)) {
+                    db()->prepare("UPDATE service_requests SET status='COMPLETED',completed_at=COALESCE(completed_at,NOW()),updated_at=NOW() WHERE id=?")->execute([(string)$src['source_id']]);
+                    $serviceActorId = $ctx['kind']==='belm' ? ($ctx['actorId'] ?: null) : null;
+                    db()->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
+                        ->execute([uuid(),(string)$src['source_id'],'STATUS',(string)$previous,'COMPLETED',$serviceActorId,$ctx['actorName'],'Completed from Breakdown Process']);
+                }
+            } elseif ($src && ($src['source_type'] ?? '') === 'OPERATOR_REPORT' && !empty($src['source_id'])) {
+                db()->prepare("UPDATE operator_reports SET status='RESOLVED',resolved_at=COALESCE(resolved_at,NOW()) WHERE id=? AND status='OPEN'")->execute([(string)$src['source_id']]);
+            }
+        } catch (Throwable $syncError) {
+            error_log('Breakdown source close sync failed: ' . $syncError->getMessage());
+        }
+    }
 }
 
 function bw_ensure_case_from_report(string $reportId, array $ctx): ?string {
@@ -152,6 +182,7 @@ function bw_case_view(array $row): array {
         'customerName'=>$row['customer_name'] ?? null,'machineLabel'=>trim(($row['brand'] ?? '').' '.($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine'),
         'brand'=>$row['brand'] ?? null,'model'=>$row['model'] ?? null,'machineType'=>$row['machine_type'] ?? null,
         'serialNumber'=>$row['serial_number'] ?? null,'title'=>$row['title'],'description'=>$row['description'],
+        'sourceType'=>$row['source_type'] ?? 'MANUAL','sourceId'=>$row['source_id'] ?? null,
         'status'=>$row['status'],'stage'=>$stage,'department'=>$row['current_department'],'blockerReason'=>$row['blocker_reason'],
         'openedAt'=>$row['opened_at'],'stageStartedAt'=>$row['stage_started_at'],'closedAt'=>$row['closed_at'],
         'breakdownHours'=>$breakdownHours,'breakdownDays'=>round($breakdownHours/24,1),'stageHours'=>$stageHours,
@@ -201,7 +232,7 @@ function bw_report_scope(array $ctx): array {
         $name = (string)($stmt->fetchColumn() ?: 'Customer');
         return ['sql' => 'bc.customer_id=?', 'jobSql' => 'j.customer_id=?', 'params' => [$ctx['customerId']], 'jobParams' => [$ctx['customerId']], 'label' => $name];
     }
-    return ['sql' => 'c.is_machinery_admin=0', 'jobSql' => 'c.is_machinery_admin=0', 'params' => [], 'jobParams' => [], 'label' => 'BELM Service Provider Customers'];
+    return ['sql' => "(c.is_machinery_admin=0 OR bc.source_type='SERVICE_REQUEST')", 'jobSql' => "(c.is_machinery_admin=0 OR bcj.source_type='SERVICE_REQUEST')", 'params' => [], 'jobParams' => [], 'label' => 'BELM Provider + Official Support Work'];
 }
 
 function bw_department_report_data(array $ctx, string $period, string $anchorDate): array {
@@ -210,7 +241,7 @@ function bw_department_report_data(array $ctx, string $period, string $anchorDat
     $scope = bw_report_scope($ctx);
 
     $caseBase = ' FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE ' . $scope['sql'];
-    $jobBase = ' FROM digital_job_cards j JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id WHERE ' . $scope['jobSql'];
+    $jobBase = ' FROM digital_job_cards j JOIN breakdown_cases bcj ON bcj.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id WHERE ' . $scope['jobSql'];
 
     $stmt = db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number' . $caseBase . " AND bc.status='OPEN' ORDER BY bc.opened_at ASC");
     $stmt->execute($scope['params']);
@@ -341,7 +372,11 @@ if ($method === 'GET' && $action === 'technicians') {
             "SELECT u.id,u.name,u.email,u.is_customer_managed,u.assigned_customer_id, hc.name AS assigned_customer_name
              FROM users u JOIN roles r ON r.id=u.role_id
              LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
-             WHERE r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL
+             WHERE u.is_active=1 AND u.deleted_at IS NULL
+               AND (r.name='Technician' OR EXISTS (
+                    SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id
+                    WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL
+               ))
                AND u.is_customer_managed=0
              ORDER BY u.name"
         );
@@ -359,8 +394,14 @@ if ($method === 'GET' && $action === 'technicians') {
     $sql = "SELECT u.id,u.name,u.email,u.is_customer_managed,u.assigned_customer_id, hc.name AS assigned_customer_name
             FROM users u JOIN roles r ON r.id=u.role_id
             LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
-            WHERE r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL AND u.assigned_customer_id=?";
-    if ($selfService) $sql .= ' AND u.is_customer_managed=1'; else $sql .= ' AND u.is_customer_managed=0';
+            WHERE u.is_active=1 AND u.deleted_at IS NULL AND u.assigned_customer_id=?
+              AND (r.name='Technician' OR EXISTS (
+                   SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id
+                   WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL
+              ))";
+    if ($ctx['kind']==='belm') $sql .= ' AND u.is_customer_managed=0';
+    elseif ($selfService) $sql .= ' AND u.is_customer_managed=1';
+    else $sql .= ' AND u.is_customer_managed=0';
     $sql .= ' ORDER BY u.name';
     $stmt=db()->prepare($sql); $stmt->execute([$customerId]);
     $rows=$stmt->fetchAll();
@@ -384,8 +425,8 @@ if ($method === 'GET' && $action === 'performance') {
                     COUNT(*) FILTER (WHERE j.status='COMPLETED') completed_jobs,
                     COUNT(*) FILTER (WHERE j.repeat_issue=1) repeat_jobs,
                     ROUND((AVG(EXTRACT(EPOCH FROM (j.completed_at-j.started_at))/3600.0) FILTER (WHERE j.completed_at IS NOT NULL AND j.started_at IS NOT NULL))::numeric,1) avg_hours
-             FROM digital_job_cards j JOIN customers c ON c.id=j.customer_id
-             WHERE c.is_machinery_admin=0 GROUP BY j.technician_id,j.technician_name ORDER BY completed_jobs DESC,total_jobs DESC"
+             FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id
+             WHERE (c.is_machinery_admin=0 OR bc.source_type='SERVICE_REQUEST') GROUP BY j.technician_id,j.technician_name ORDER BY completed_jobs DESC,total_jobs DESC"
         );
         $stmt->execute();
     } else {
@@ -506,6 +547,16 @@ if ($method === 'GET' && $action === 'case' && $id !== '') {
     json_out(['case'=>bw_case_view($case),'events'=>$events->fetchAll(),'spares'=>$spares->fetchAll(),'jobCards'=>$jobRows]);
 }
 
+if ($method === 'GET' && $action === 'sync') {
+    $scopeCustomer = in_array($ctx['kind'], ['customer','customer-tech'], true) ? $ctx['customerId'] : null;
+    if ($ctx['kind']==='belm' && !empty($ctx['isTechnician'])) {
+        if ($ctx['customerId']==='') json_out(['ok'=>true,'sync'=>['created'=>0,'serviceRequests'=>0,'operatorReports'=>0]]);
+        $scopeCustomer = $ctx['customerId'];
+    }
+    $sync = belm_sync_breakdown_sources($scopeCustomer ?: null);
+    json_out(['ok'=>true,'sync'=>$sync]);
+}
+
 if ($method === 'GET' && $action === 'from-report') {
     $reportId=trim((string)($_GET['reportId'] ?? '')); if($reportId==='') json_error('reportId is required.');
     $caseId=bw_ensure_case_from_report($reportId,$ctx); if(!$caseId) json_error('Report not found.',404);
@@ -514,18 +565,31 @@ if ($method === 'GET' && $action === 'from-report') {
 
 if ($method === 'GET' && $action === '') {
     $params=[]; $where=['1=1'];
-    if(in_array($ctx['kind'],['customer','customer-tech'],true)){ $where[]='bc.customer_id=?'; $params[]=$ctx['customerId']; }
-    else {
-        $where[]='c.is_machinery_admin=0';
+    if($ctx['kind']==='customer'){
+        $where[]='bc.customer_id=?'; $params[]=$ctx['customerId'];
+    } elseif($ctx['kind']==='customer-tech'){
+        $where[]='bc.customer_id=?'; $params[]=$ctx['customerId'];
+        $where[]='c.is_machinery_admin=1';
+    } else {
         if(!empty($ctx['isTechnician'])) {
+            // BELM technicians see provider-ON work for their home customer,
+            // explicit Job Card overrides, or an official support request
+            // assigned to them even when the customer runs its own workshop.
             if($ctx['customerId']!=='') {
-                $where[]='(bc.customer_id=? OR EXISTS (SELECT 1 FROM digital_job_cards tj WHERE tj.case_id=bc.id AND tj.technician_id=?))';
+                $where[]='((c.is_machinery_admin=0 AND bc.customer_id=?) OR EXISTS (SELECT 1 FROM digital_job_cards tj WHERE tj.case_id=bc.id AND tj.technician_id=?) OR (bc.source_type=\'SERVICE_REQUEST\' AND EXISTS (SELECT 1 FROM service_requests sr WHERE sr.id=bc.source_id AND sr.assigned_to_id=?)))';
                 $params[]=$ctx['customerId'];
                 $params[]=$ctx['actorId'];
+                $params[]=$ctx['actorId'];
             } else {
-                $where[]='EXISTS (SELECT 1 FROM digital_job_cards tj WHERE tj.case_id=bc.id AND tj.technician_id=?)';
+                $where[]='(EXISTS (SELECT 1 FROM digital_job_cards tj WHERE tj.case_id=bc.id AND tj.technician_id=?) OR (bc.source_type=\'SERVICE_REQUEST\' AND EXISTS (SELECT 1 FROM service_requests sr WHERE sr.id=bc.source_id AND sr.assigned_to_id=?)))';
+                $params[]=$ctx['actorId'];
                 $params[]=$ctx['actorId'];
             }
+        } else {
+            // BELM Admin/Engineer normally sees provider-ON customers.
+            // Exception: an official BELM Support Request is intentionally
+            // visible even when the customer uses its own maintenance team.
+            $where[]='(c.is_machinery_admin=0 OR bc.source_type=\'SERVICE_REQUEST\')';
         }
     }
     $machineId=trim((string)($_GET['machineId'] ?? '')); if($machineId!==''){ $where[]='bc.machine_id=?'; $params[]=$machineId; }
@@ -553,7 +617,11 @@ if ($method === 'POST' && $action === 'job-card') {
         $t=db()->prepare("SELECT u.name,u.assigned_customer_id,u.is_customer_managed,hc.name AS home_customer_name
                           FROM users u JOIN roles r ON r.id=u.role_id
                           LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
-                          WHERE u.id=? AND r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL");
+                          WHERE u.id=? AND u.is_active=1 AND u.deleted_at IS NULL
+                            AND (r.name='Technician' OR EXISTS (
+                                 SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id
+                                 WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL
+                            ))");
         $t->execute([$techId]); $tech=$t->fetch(); if(!$tech)json_error('Selected Technician is not available.');
         $techName=(string)$tech['name']; $techHomeName=$tech['home_customer_name']??null;
         $temporaryOverride=!empty($tech['assigned_customer_id']) && (string)$tech['assigned_customer_id']!==(string)$case['customer_id'];

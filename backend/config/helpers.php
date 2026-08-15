@@ -1421,3 +1421,161 @@ function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?stri
         return null;
     }
 }
+
+
+// V220 - official BELM Support Requests are part of the same operational
+// breakdown queue. A request linked to a machine gets exactly one case;
+// UNIQUE(source_type, source_id) prevents duplicate cases during refresh.
+function belm_ensure_breakdown_case_from_service_request(string $requestId, ?string $actorName = null): ?string {
+    try {
+        $stmt = db()->prepare(
+            'SELECT sr.id,sr.customer_id,sr.machine_id,sr.description,sr.service_type,sr.priority,sr.status,sr.created_at,
+                    m.brand,m.model,m.machine_type,c.name AS customer_name
+             FROM service_requests sr
+             JOIN customers c ON c.id=sr.customer_id
+             LEFT JOIN machines m ON m.id=sr.machine_id
+             WHERE sr.id=?'
+        );
+        $stmt->execute([$requestId]);
+        $row = $stmt->fetch();
+        if (!$row || empty($row['machine_id']) || in_array((string)$row['status'], ['PENDING_CUSTOMER'], true)) return null;
+
+        $find = db()->prepare("SELECT id FROM breakdown_cases WHERE source_type='SERVICE_REQUEST' AND source_id=?");
+        $find->execute([$requestId]);
+        $existing = $find->fetchColumn();
+        if ($existing) return (string)$existing;
+
+        // Do not create historical closed rows just because an old request
+        // exists; only active official requests become a live breakdown case.
+        if (in_array((string)$row['status'], ['COMPLETED','CANCELLED'], true)) return null;
+
+        $id = uuid();
+        $label = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine');
+        $creator = trim((string)($actorName ?: $row['customer_name'] ?: 'Customer'));
+        $serviceType = trim((string)($row['service_type'] ?? ''));
+        $title = ($serviceType !== '' ? $serviceType : 'BELM Support Request') . ' - ' . $label;
+        $openedAt = $row['created_at'] ?: date('c');
+        db()->prepare(
+            "INSERT INTO breakdown_cases
+             (id,customer_id,machine_id,source_type,source_id,title,description,status,current_stage,current_department,stage_started_at,opened_at,updated_at,created_by_name)
+             VALUES (?,?,?,?,?,?,?,'OPEN','WORKSHOP_REVIEW','Workshop',?,?,NOW(),?)"
+        )->execute([$id,$row['customer_id'],$row['machine_id'],'SERVICE_REQUEST',$requestId,$title,$row['description'],$openedAt,$openedAt,$creator]);
+        db()->prepare(
+            'INSERT INTO breakdown_case_events
+             (id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
+             VALUES (?,?,?,?,?,?,?,?,?)'
+        )->execute([uuid(),$id,'WORKSHOP_REVIEW','Workshop','Official BELM Support Request synced',$row['description'],'customer',$creator,$openedAt]);
+        return $id;
+    } catch (Throwable $error) {
+        error_log('Service Request breakdown sync failed: ' . $error->getMessage());
+        return null;
+    }
+}
+
+// Keep the source request and Breakdown Process aligned without overriding
+// a more advanced Digital Job Card workflow. Assignment can advance a new
+// request to Diagnosis; In Progress can advance it to Repair; final request
+// states close the linked case. This routine is safe to call repeatedly.
+function belm_sync_breakdown_case_from_service_request(string $requestId, ?string $actorName = null): ?string {
+    $caseId = belm_ensure_breakdown_case_from_service_request($requestId, $actorName);
+    try {
+        $stmt = db()->prepare(
+            "SELECT sr.status,sr.assigned_to_id,bc.id AS case_id,bc.status AS case_status,bc.current_stage,bc.current_department,
+                    EXISTS (SELECT 1 FROM digital_job_cards j WHERE j.case_id=bc.id) AS has_job_card
+             FROM service_requests sr
+             LEFT JOIN breakdown_cases bc ON bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
+             WHERE sr.id=?"
+        );
+        $stmt->execute([$requestId]);
+        $row = $stmt->fetch();
+        if (!$row || empty($row['case_id'])) return $caseId;
+        $caseId = (string)$row['case_id'];
+        $status = strtoupper((string)$row['status']);
+        $actor = trim((string)($actorName ?: 'System Sync'));
+        $stage = (string)$row['current_stage'];
+        $caseStatus = (string)$row['case_status'];
+
+        $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
+        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && $stage === 'DIAGNOSIS' && empty($row['has_job_card'])) {
+            $newStage='WORKSHOP_REVIEW'; $department='Workshop'; $action='Service Request returned to open queue';
+        } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && $stage === 'WORKSHOP_REVIEW') {
+            $newStage='DIAGNOSIS'; $department='Technician'; $action='Service Request assigned - technician action';
+        } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','DIAGNOSIS'],true)) {
+            $newStage='REPAIR'; $department='Technician'; $action='Service Request in progress';
+        } elseif ($status === 'ON_HOLD' && $caseStatus !== 'COMPLETED') {
+            $blocker='Service Request is ON HOLD'; $action='Service Request placed on hold';
+        } elseif (in_array($status,['COMPLETED','CANCELLED'],true) && $caseStatus !== 'COMPLETED') {
+            $newStage='COMPLETED'; $department='Completed'; $close=true;
+            $blocker=$status==='CANCELLED' ? 'Official BELM Support Request cancelled.' : null;
+            $action=$status==='CANCELLED' ? 'Service Request cancelled - case closed' : 'Service Request completed - case closed';
+        }
+
+        if ($newStage !== null) {
+            db()->prepare(
+                'UPDATE breakdown_cases SET current_stage=?,current_department=?,blocker_reason=?,stage_started_at=NOW(),status=?,updated_at=NOW(),closed_at=CASE WHEN ? THEN COALESCE(closed_at,NOW()) ELSE closed_at END WHERE id=?'
+            )->execute([$newStage,$department,$blocker,$close?'COMPLETED':'OPEN',$close?1:0,$caseId]);
+        } elseif ($blocker !== null) {
+            db()->prepare('UPDATE breakdown_cases SET blocker_reason=?,updated_at=NOW() WHERE id=?')->execute([$blocker,$caseId]);
+        }
+        if ($action !== null) {
+            $eventStage = $newStage ?: $stage;
+            $eventDepartment = $department ?: (string)$row['current_department'];
+            $dup = db()->prepare('SELECT 1 FROM breakdown_case_events WHERE case_id=? AND action=? ORDER BY created_at DESC LIMIT 1');
+            $dup->execute([$caseId,$action]);
+            if (!$dup->fetchColumn()) {
+                db()->prepare(
+                    'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())'
+                )->execute([uuid(),$caseId,$eventStage,$eventDepartment,$action,$blocker,'system',$actor]);
+            }
+        }
+        return $caseId;
+    } catch (Throwable $error) {
+        error_log('Service Request case state sync failed: ' . $error->getMessage());
+        return $caseId;
+    }
+}
+
+// Backfill/synchronize current operational sources. This is intentionally
+// idempotent so every Breakdown Process load can repair an interrupted sync
+// (for example, an older deployment created the request before V220).
+function belm_sync_breakdown_sources(?string $customerId = null): array {
+    $createdBefore = 0;
+    $createdAfter = 0;
+    $syncedRequests = 0;
+    $syncedReports = 0;
+    try {
+        $countSql = 'SELECT COUNT(*) FROM breakdown_cases';
+        if ($customerId !== null && $customerId !== '') {
+            $c = db()->prepare($countSql . ' WHERE customer_id=?'); $c->execute([$customerId]); $createdBefore=(int)$c->fetchColumn();
+        } else { $createdBefore=(int)db()->query($countSql)->fetchColumn(); }
+
+        $sql = "SELECT o.id,o.status FROM operator_reports o WHERE (o.status='OPEN' OR EXISTS (SELECT 1 FROM breakdown_cases bc WHERE bc.source_type='OPERATOR_REPORT' AND bc.source_id=o.id AND bc.status<>'COMPLETED'))";
+        $params=[];
+        if ($customerId !== null && $customerId !== '') { $sql.=' AND o.customer_id=?'; $params[]=$customerId; }
+        $q=db()->prepare($sql); $q->execute($params);
+        foreach ($q->fetchAll() as $r) {
+            $caseId=belm_ensure_breakdown_case_from_operator_report((string)$r['id'],'System Sync');
+            if ($caseId) {
+                $syncedReports++;
+                if (strtoupper((string)$r['status'])!=='OPEN') {
+                    db()->prepare("UPDATE breakdown_cases SET status='COMPLETED',current_stage='COMPLETED',current_department='Completed',blocker_reason=NULL,closed_at=COALESCE(closed_at,NOW()),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")->execute([$caseId]);
+                }
+            }
+        }
+
+        $sql = "SELECT sr.id FROM service_requests sr WHERE sr.machine_id IS NOT NULL AND sr.status<>'PENDING_CUSTOMER' AND (sr.status NOT IN ('COMPLETED','CANCELLED') OR EXISTS (SELECT 1 FROM breakdown_cases bc WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id AND bc.status<>'COMPLETED'))";
+        $params=[];
+        if ($customerId !== null && $customerId !== '') { $sql.=' AND sr.customer_id=?'; $params[]=$customerId; }
+        $q=db()->prepare($sql); $q->execute($params);
+        foreach ($q->fetchAll() as $r) {
+            if (belm_sync_breakdown_case_from_service_request((string)$r['id'],'System Sync')) $syncedRequests++;
+        }
+
+        if ($customerId !== null && $customerId !== '') {
+            $c = db()->prepare($countSql . ' WHERE customer_id=?'); $c->execute([$customerId]); $createdAfter=(int)$c->fetchColumn();
+        } else { $createdAfter=(int)db()->query($countSql)->fetchColumn(); }
+    } catch (Throwable $error) {
+        error_log('Breakdown source backfill failed: ' . $error->getMessage());
+    }
+    return ['created'=>max(0,$createdAfter-$createdBefore),'serviceRequests'=>$syncedRequests,'operatorReports'=>$syncedReports];
+}

@@ -3283,6 +3283,10 @@ if ($sub === 'service-requests' && $method === 'POST') {
         throw $error;
     }
     $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    // V220: a machine-linked official BELM Support Request enters the same
+    // Breakdown Process automatically. Requests without a machine stay only
+    // in Service Requests because there is no machine workflow to attach.
+    if ($machineId !== '') belm_sync_breakdown_case_from_service_request($newId, $actorName);
     belm_log_customer_communication(
         (string)$customer['id'], $machineId !== '' ? $machineId : null,
         'CUSTOMER_TO_BELM', 'EMAIL', 'Service Request',
@@ -3330,8 +3334,9 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'P
     $req = $stmt->fetch();
     if (!$req) json_error('Not found', 404);
     if (!in_array($req['status'], ['OPEN', 'ASSIGNED'], true)) json_error('Only Open or Assigned requests can be cancelled.');
-    db()->prepare("UPDATE service_requests SET status='CANCELLED', updated_at=NOW() WHERE id=?")->execute([$sub2]);
+    db()->prepare("UPDATE service_requests SET status='CANCELLED', cancelled_at=COALESCE(cancelled_at,NOW()), updated_at=NOW() WHERE id=?")->execute([$sub2]);
     $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    belm_sync_breakdown_case_from_service_request($sub2, $actorName);
     $cancelMessage = 'Customer cancelled service request: ' . ($req['description'] ?? '');
     belm_log_customer_communication(
         (string)$customer['id'], $req['machine_id'] ?: null,

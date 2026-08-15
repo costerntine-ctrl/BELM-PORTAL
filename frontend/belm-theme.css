@@ -3799,6 +3799,53 @@ html[data-theme="dark"] .belm-service-due-head-v210 > div b { color:#e7eef7; }
   color: #fff;
 }
 .belm-activity-overview-stack > .belm-petty-cash-account-card { margin: 0; }
+
+/* V225 - Petty Cash and Breakdown Process sit side by side in one row
+   instead of two separate full-width bars, so the rail reads compact
+   on tablet/small-laptop widths (matches the Machine Attention / Service
+   Due pair above). Falls back to a single column on narrow phones. */
+.belm-quick-actions-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.belm-quick-actions-row > .belm-petty-cash-account-card,
+.belm-quick-actions-row > .belm-breakdown-process-rail-card {
+  margin: 0;
+  min-width: 0;
+}
+.belm-quick-actions-row > .belm-breakdown-process-rail-card {
+  grid-template-columns: 38px minmax(0,1fr);
+  min-height: 0;
+  padding: 11px 12px;
+}
+.belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-icon {
+  width: 38px;
+  height: 38px;
+  font-size: 11px;
+  border-radius: 10px;
+}
+.belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-arrow {
+  display: none;
+}
+@media (max-width: 640px) {
+  .belm-quick-actions-row { grid-template-columns: 1fr; }
+  .belm-quick-actions-row > .belm-breakdown-process-rail-card {
+    grid-template-columns: 48px minmax(0,1fr) 22px;
+    min-height: 66px;
+    padding: 12px 13px;
+  }
+  .belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-icon {
+    width: 48px;
+    height: 48px;
+    font-size: 13px;
+    border-radius: 12px;
+  }
+  .belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-arrow {
+    display: block;
+  }
+}
 .belm-petty-cash-account-card::before { content:""; position:absolute; inset:0 0 auto; height:3px; border-radius:14px 14px 0 0; background:linear-gradient(90deg,#00a651,#ffd400,#1769c2); }
 .belm-petty-cash-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
 .belm-petty-cash-head span { color:#8ee4b6; font-size:10.5px; font-weight:900; letter-spacing:.08em; }

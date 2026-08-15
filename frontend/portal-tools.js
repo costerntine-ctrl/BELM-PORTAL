@@ -1343,9 +1343,12 @@
       layout.className = "belm-dashboard-layout";
       const overviewStack = document.createElement("div");
       overviewStack.className = "belm-activity-overview-stack";
+      const quickActionsRow = document.createElement("div");
+      quickActionsRow.className = "belm-quick-actions-row";
+      quickActionsRow.appendChild(pettyCashCard);
+      quickActionsRow.appendChild(breakdownCard);
       overviewStack.appendChild(card);
-      overviewStack.appendChild(pettyCashCard);
-      overviewStack.appendChild(breakdownCard);
+      overviewStack.appendChild(quickActionsRow);
       overviewStack.appendChild(toolsCard);
       machineGrid.insertAdjacentElement("beforebegin", layout);
       layout.appendChild(machineGrid);
@@ -1353,10 +1356,13 @@
       enforceCustomerFeaturePermissions(pettyCashCard);
       enforceCustomerFeaturePermissions(breakdownCard);
     } else {
+      const quickActionsRow = document.createElement("div");
+      quickActionsRow.className = "belm-quick-actions-row";
+      quickActionsRow.appendChild(pettyCashCard);
+      quickActionsRow.appendChild(breakdownCard);
       rowContainer.insertAdjacentElement("afterend", card);
-      card.insertAdjacentElement("afterend", pettyCashCard);
-      pettyCashCard.insertAdjacentElement("afterend", breakdownCard);
-      breakdownCard.insertAdjacentElement("afterend", toolsCard);
+      card.insertAdjacentElement("afterend", quickActionsRow);
+      quickActionsRow.insertAdjacentElement("afterend", toolsCard);
       enforceCustomerFeaturePermissions(pettyCashCard);
       enforceCustomerFeaturePermissions(breakdownCard);
     }

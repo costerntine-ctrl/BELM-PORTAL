@@ -15,7 +15,7 @@
 .job-override-badge{display:inline-block;margin:7px 0 2px;padding:4px 8px;border:1px solid #f4cf00;border-radius:999px;background:#fff8d6;color:#5c4700;font-size:10.5px;font-weight:800}
 
 /* V220 source sync */
-.sync-status{align-self:center;max-width:440px;color:var(--muted);font-size:10.5px;line-height:1.35}.case-title-line{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.case-title-line h3{margin-right:auto}.source-pill{background:#e7f4ff;color:#075a9a;border:1px solid #c6e2f8}[data-theme="dark"] .source-pill{background:#102b43;color:#9ed1ff;border-color:#244d6e}@media(max-width:760px){.sync-status{width:100%;max-width:none}.case-title-line{align-items:center}}
+.sync-status{align-self:center;max-width:440px;color:var(--muted);font-size:10.5px;line-height:1.35}.case-title-line{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.case-title-line h3{margin-right:auto}.source-pill{background:#e7f4ff;color:#075a9a;border:1px solid #c6e2f8}[data-theme="dark"] .source-pill{background:#102b43;color:#9ed1ff;border-color:#244d6e}[data-theme="dark"] .pill{background:#16283d;color:#c9d5e3}[data-theme="dark"] .pill.red{background:#3a1414;color:#ff9d9d}[data-theme="dark"] .pill.yellow{background:#3a2f00;color:#ffe27a}[data-theme="dark"] .pill.green{background:#0e3322;color:#7fe3ac}@media(max-width:760px){.sync-status{width:100%;max-width:none}.case-title-line{align-items:center}}
 
 /* V222 - Breakdown action button contrast
    Keep Sync / Refresh readable in both light and dark themes. */

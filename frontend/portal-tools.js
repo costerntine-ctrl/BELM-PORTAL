@@ -613,17 +613,9 @@
       <div class="belm-machine-quick-actions">
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Machine Expenses</a>
         <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
-        <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
         <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Request Service</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
-        <a href="/customer-users/" class="belm-assign-users-button" data-belm-owner-admin-only>Assign Users</a>
-        <button type="button" class="belm-assign-users-button" data-open-change-password>Change Password</button>
-        <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
-          data-report-subject="BELM Portal — ${escapeHtml(machineName)} service status"
-          data-report-message="BELM Portal report for ${escapeHtml(machineName)} (${escapeHtml(serial)}): ${escapeHtml(levelLabel)}. Current hour meter: ${Math.round(status.totalHours)} hrs. Remaining to next service: ${remaining <= 0 ? "Overdue" : `${remaining} hrs`}.">
-          Management Email
-        </button>
         <a class="belm-service-whatsapp" data-belm-feature="whatsapp" target="_blank" rel="noopener"
            href="${whatsappShareUrl(`BELM Portal alert: ${machineName} (${serial}) — ${levelLabel}. Current hour meter: ${Math.round(status.totalHours)} hrs, remaining to next service: ${remaining <= 0 ? "overdue" : `${remaining} hrs`}.`)}">
           Send via WhatsApp
@@ -858,19 +850,51 @@
       </div>
       <div class="belm-activity-overview-machines" id="belmActivityOverviewMachines"></div>`;
 
+    // A small "MORE TOOLS" card that sits right under Activity Overview.
+    // Analysis, Assign Users, Change Password and Management Email used
+    // to live inside every single machine card's quick-actions row, but
+    // none of them are actually tied to one specific machine — Analysis
+    // and the account-level email both pull from the same aggregate
+    // /api/customer-portal/analysis data as this Activity Overview card,
+    // and Assign Users / Change Password are account settings. Moving
+    // them here (once) instead of repeating them on every machine card
+    // shortens each machine card down to only what's about that machine.
+    const toolsCard = document.createElement("div");
+    toolsCard.id = "belmAccountToolsCard";
+    toolsCard.className = "belm-account-tools-card";
+    toolsCard.innerHTML = `
+      <div class="belm-account-tools-head">MORE TOOLS</div>
+      <div class="belm-account-tools-actions">
+        <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
+        <a href="/customer-users/" class="belm-assign-users-button" data-belm-owner-admin-only>Assign Users</a>
+        <button type="button" class="belm-assign-users-button" data-open-change-password data-belm-feature="change-password">Change Password</button>
+        <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
+          data-report-subject="BELM Portal — account activity report"
+          data-report-message="BELM Portal account report requested from the dashboard.">
+          Management Email
+        </button>
+      </div>`;
+    enforceCustomerFeaturePermissions(toolsCard);
+
     // On wide (desktop/PC) screens, place this as a right-hand sidebar
     // next to the machine grid rather than a full-width bar above it —
     // on narrow screens it still just sits above the (single-column)
-    // machine list as before.
+    // machine list as before. Either way, the MORE TOOLS card stacks
+    // directly under the Activity Overview card, not beside it.
     if (machineGrid && !document.getElementById("belmDashboardLayout")) {
       const layout = document.createElement("div");
       layout.id = "belmDashboardLayout";
       layout.className = "belm-dashboard-layout";
+      const overviewStack = document.createElement("div");
+      overviewStack.className = "belm-activity-overview-stack";
+      overviewStack.appendChild(card);
+      overviewStack.appendChild(toolsCard);
       machineGrid.insertAdjacentElement("beforebegin", layout);
       layout.appendChild(machineGrid);
-      layout.appendChild(card);
+      layout.appendChild(overviewStack);
     } else {
       rowContainer.insertAdjacentElement("afterend", card);
+      card.insertAdjacentElement("afterend", toolsCard);
     }
 
     try {
@@ -895,6 +919,20 @@
       ];
       grid.innerHTML = items.map(([label, value]) => `
         <div class="belm-activity-overview-item"><span>${label}</span><strong>${value}</strong></div>`).join("");
+
+      // Fill in the MORE TOOLS card's Management Email with a real
+      // account-wide summary now that the aggregate data has loaded,
+      // instead of the generic placeholder it was created with.
+      const toolsEmailButton = document.querySelector("#belmAccountToolsCard [data-email-report]");
+      if (toolsEmailButton) {
+        const needingAttention = (machines.yellow ?? 0) + (machines.red ?? 0);
+        toolsEmailButton.dataset.reportMessage =
+          `BELM Portal account report: ${machines.total ?? "—"} machine(s), ${needingAttention} needing attention. ` +
+          `Open service requests: ${data.serviceRequests?.open ?? "—"}. Checklist reports: ${data.checklistReportsCount ?? "—"}. ` +
+          `Machine expenses total: ${data.machineExpensesTotal != null ? `TZS ${Number(data.machineExpensesTotal).toLocaleString("en-TZ")}` : "—"}. ` +
+          `Fuel top-up total: ${data.fuelCostTotal != null ? `TZS ${Number(data.fuelCostTotal).toLocaleString("en-TZ")}` : "—"}. ` +
+          `Running hrs due for service: ${data.dueForServiceCount ?? "—"}.`;
+      }
 
       const machinesBox = document.getElementById("belmActivityOverviewMachines");
       const perMachine = data.perMachine || [];
@@ -1865,6 +1903,30 @@
       card.dataset.belmMachineExpenseReady = "1";
       card.classList.add("belm-customer-machine-card");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
+      // The whole card is a native <button> that navigates somewhere
+      // broken/blank on click — tapping ANY part of it (even plain text
+      // like "MACHINE STATUS" that was never meant to be clickable)
+      // triggers that. Capture-phase here means we intercept before the
+      // button's own handler ever runs, for every click except a genuine
+      // link (<a href>, like "Machine Expenses"/"Fuel Usage") — those are
+      // real, intended navigation and are left alone.
+      card.addEventListener("click", (event) => {
+        const nestedButton = event.target.closest("button");
+        const nestedLink = event.target.closest("a[href]");
+        // Anything that landed on one of OUR injected buttons/links
+        // (nested inside the card, not the card itself) is real,
+        // intended interaction — let it proceed normally. Only a click
+        // that lands directly on the card's own inert surface (plain
+        // text/divs the card itself renders) gets blocked.
+        if ((nestedButton && nestedButton !== card) || nestedLink) return;
+        // stopImmediatePropagation (not just stopPropagation) matters
+        // here: the card's own native click handler is registered on
+        // this SAME element, so a plain stopPropagation wouldn't stop
+        // that other listener on the same node from still firing.
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        event.preventDefault();
+      }, true);
       customerMachineInfoCard(card, machine);
       customerServiceDuePanel(card, machine);
       customerSpareRecommendationsPanel(card, machine);

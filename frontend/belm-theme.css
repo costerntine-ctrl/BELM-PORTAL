@@ -1233,7 +1233,7 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   box-shadow: 0 20px 50px rgba(7, 14, 28, .35);
   font-family: Inter, system-ui, sans-serif;
 }
-.belm-dashboard-layout > .belm-activity-overview-card { margin: 0; }
+.belm-dashboard-layout > .belm-activity-overview-stack { margin: 0; }
 @media (max-width: 480px) {
   .belm-activity-overview-card { position: static; }
 }
@@ -1322,6 +1322,69 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-weight: 600;
 }
 
+/* Small "MORE TOOLS" card — holds Analysis, Assign Users, Change
+   Password and Management Email, moved out of every machine card
+   since none of those actually belong to one specific machine. Sits
+   directly under the Activity Overview card, styled to match it but
+   shorter. */
+.belm-account-tools-card {
+  margin: 0 0 22px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(165deg, #101b31, #16233d 60%, #101b31);
+  border: 1px solid rgba(255, 212, 0, .35);
+  box-shadow: 0 14px 34px rgba(7, 14, 28, .3);
+  font-family: Inter, system-ui, sans-serif;
+}
+.belm-dashboard-layout .belm-account-tools-card { margin: 0; }
+.belm-account-tools-head {
+  margin-bottom: 10px;
+  color: #ffd400;
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: .08em;
+}
+.belm-account-tools-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.belm-account-tools-actions a,
+.belm-account-tools-actions button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 40px;
+  padding: 6px 4px;
+  border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 9px;
+  color: #fff;
+  background: rgba(255, 255, 255, .06);
+  font-size: 9.5px;
+  line-height: 1.2;
+  font-weight: 800;
+  text-decoration: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+.belm-account-tools-actions a:hover,
+.belm-account-tools-actions button:hover {
+  background: rgba(255, 255, 255, .12);
+}
+@media (max-width: 480px) {
+  .belm-account-tools-actions { grid-template-columns: repeat(2, 1fr); }
+}
+.belm-activity-overview-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.belm-activity-overview-stack > .belm-activity-overview-card,
+.belm-activity-overview-stack > .belm-account-tools-card {
+  margin: 0;
+}
+
 .belm-customer-machine-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 412px));
@@ -1344,33 +1407,33 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   margin: 0;
 }
 @media (min-width: 980px) {
-  .belm-dashboard-layout > .belm-activity-overview-card {
+  .belm-dashboard-layout > .belm-activity-overview-stack {
     flex: 0 0 460px;
     align-self: flex-start;
   }
-  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-grid {
+  .belm-dashboard-layout > .belm-activity-overview-stack .belm-activity-overview-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px 16px;
   }
-  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-item {
+  .belm-dashboard-layout > .belm-activity-overview-stack .belm-activity-overview-item {
     gap: 2px;
   }
-  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-item strong {
+  .belm-dashboard-layout > .belm-activity-overview-stack .belm-activity-overview-item strong {
     font-size: 20px;
   }
-  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-machines {
+  .belm-dashboard-layout > .belm-activity-overview-stack .belm-activity-overview-machines {
     grid-template-columns: repeat(2, 1fr);
     margin-top: 10px;
     padding-top: 10px;
     gap: 8px;
   }
-  .belm-dashboard-layout > .belm-activity-overview-card .belm-activity-overview-submhead {
+  .belm-dashboard-layout > .belm-activity-overview-stack .belm-activity-overview-submhead {
     grid-column: 1 / -1;
   }
 }
 @media (max-width: 979px) {
   .belm-dashboard-layout { flex-direction: column; }
-  .belm-dashboard-layout > .belm-activity-overview-card { width: 100%; order: -1; position: static; }
+  .belm-dashboard-layout > .belm-activity-overview-stack { width: 100%; order: -1; position: static; }
 }
 @media (max-width: 720px) {
   .belm-customer-machine-grid { grid-template-columns: 1fr; justify-content: stretch; }

@@ -21,7 +21,7 @@ function log_customer_activity(array $customer, string $action): void {
 // full access — represented internally as NULL, not an exhaustive list.
 const CUSTOMER_PERMISSION_KEYS = [
     'machine-expenses', 'fuel-usage', 'email', 'whatsapp', 'service-request',
-    'report-problem', 'operator-reports', 'analysis', 'assign-users',
+    'report-problem', 'operator-reports', 'analysis', 'assign-users', 'change-password',
 ];
 
 function customer_permissions_from_body(array $body): ?string {

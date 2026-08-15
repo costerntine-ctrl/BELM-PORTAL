@@ -43,6 +43,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'spare_part_requests',
             'bank_accounts',
             'bank_withdrawals',
+            'customer_communications',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -93,7 +94,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '18-bank-manager',
+            'schemaVersion' => '19-customer-communications',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'adminReady' => $adminReady,
@@ -171,6 +172,12 @@ switch ($resource) {
         }
         if (isset($segments[2]) && $segments[2] === 'portal-access') {
             dispatch('customers.php', ['action' => 'portal-access', 'id' => $segments[1]]);
+        }
+        if (isset($segments[2]) && $segments[2] === 'message') {
+            dispatch('customers.php', ['action' => 'send-message', 'id' => $segments[1]]);
+        }
+        if (isset($segments[2]) && $segments[2] === 'communications') {
+            dispatch('customers.php', ['action' => 'communications', 'id' => $segments[1]]);
         }
         if (isset($segments[2]) && $segments[2] === 'machines') {
             dispatch('customers.php', ['action' => 'add-machine', 'id' => $segments[1]]);

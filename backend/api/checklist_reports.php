@@ -687,6 +687,35 @@ if ($method === 'GET' && $action === 'operator-reports') {
     json_out($stmt->fetchAll());
 }
 
+// PUT ?action=resolve-operator-report&machineId=...  { reportId }
+// Lets the assigned Technician close a problem reported by the customer's
+// own Operator. This is essential for Customer Self-Service mode: internal
+// problems can be handled end-to-end by the customer's own maintenance team
+// without BELM needing to touch the report.
+if ($method === 'PUT' && $action === 'resolve-operator-report') {
+    $machineId = trim((string)($_GET['machineId'] ?? ''));
+    if ($machineId === '') json_error('machineId is required.');
+    require_report_machine_access($user, $machineId);
+    $b = body();
+    $reportId = trim((string)($b['reportId'] ?? ''));
+    if ($reportId === '') json_error('reportId is required.');
+
+    $stmt = db()->prepare(
+        'SELECT id, status FROM operator_reports WHERE id = ? AND machine_id = ?'
+    );
+    $stmt->execute([$reportId, $machineId]);
+    $report = $stmt->fetch();
+    if (!$report) json_error('Operator report not found for this machine.', 404);
+    if (($report['status'] ?? '') === 'RESOLVED') {
+        json_out(['ok' => true, 'alreadyResolved' => true]);
+    }
+
+    db()->prepare(
+        "UPDATE operator_reports SET status='RESOLVED', resolved_at=NOW(), resolved_by_id=? WHERE id=?"
+    )->execute([$user['id'], $reportId]);
+    json_out(['ok' => true, 'resolvedBy' => $user['name'] ?? 'Technician']);
+}
+
 // POST ?action=log-service&machineId=...  { requirementsDone[] }
 if ($method === 'POST' && $action === 'log-service') {
     $machineId = $_GET['machineId'];

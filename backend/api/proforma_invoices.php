@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/table_pdf_helper.php';
 require_once __DIR__ . '/invoice_pdf_helper.php';
+require_once __DIR__ . '/proforma_pdf_helper.php';
+require_once __DIR__ . '/../config/mailer.php';
 
 $user = require_auth();
 require_page_access($user, 'billing');
@@ -43,83 +45,7 @@ function proforma_validate_items(array $items): void {
 
 if ($method === 'GET' && $action === 'export-one') {
     $proformaId = trim((string)($_GET['proformaId'] ?? ''));
-    $stmt = db()->prepare(
-        'SELECT p.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
-                c.address AS customer_address, c.tin_number AS customer_tin, c.vrn AS customer_vrn
-         FROM proforma_invoices p JOIN customers c ON c.id = p.customer_id
-         WHERE p.id = ? AND p.deleted_at IS NULL'
-    );
-    $stmt->execute([$proformaId]);
-    $proforma = $stmt->fetch();
-    if (!$proforma) json_error('Proforma not found.', 404);
-
-    $itemsStmt = db()->prepare('SELECT section, part_number, description, qty, unit, unit_price FROM proforma_invoice_items WHERE proforma_id = ? ORDER BY "order" ASC');
-    $itemsStmt->execute([$proformaId]);
-    $items = $itemsStmt->fetchAll();
-    $totals = compute_totals($items, (float)$proforma['discount'], (string)$proforma['discount_type'], (string)$proforma['vat_mode'], (float)$proforma['vat_rate']);
-    $company = belm_get_company_details();
-
-    $pdfItems = [];
-    foreach ($items as $index => $item) {
-        $pdfItems[] = [
-            'itemNo' => (string)($index + 1),
-            'partNumber' => $item['part_number'] ?: '',
-            'description' => $item['description'],
-            'qty' => (string)$item['qty'],
-            'unit' => (string)$item['unit'],
-            'unitPrice' => number_format((float)$item['unit_price'], 2),
-            'extended' => number_format($item['qty'] * $item['unit_price'], 2),
-        ];
-    }
-
-    $discountLabel = $proforma['discount_type'] === 'PERCENT'
-        ? 'Discount (' . rtrim(rtrim(number_format((float)$proforma['discount'], 2), '0'), '.') . '%)'
-        : 'Discount';
-
-    $bank = [];
-    if ($company['bankAccountName']) $bank[] = ['ACCOUNT NAME', $company['bankAccountName']];
-    if ($company['bankNmbNumber']) $bank[] = ['NMB BANK', $company['bankNmbNumber']];
-    if ($company['bankCrdbNumber']) $bank[] = ['CRDB BANK', $company['bankCrdbNumber']];
-
-    $tradingTerms = array_values(array_filter([
-        $proforma['payment_terms'] ? 'Term of Payment: ' . $proforma['payment_terms'] : ($company['defaultPaymentTerms'] ? 'Term of Payment: ' . $company['defaultPaymentTerms'] : null),
-        $proforma['delivery_time'] ? 'Delivery Time: ' . $proforma['delivery_time'] : ($company['defaultDeliveryTime'] ? 'Delivery Time: ' . $company['defaultDeliveryTime'] : null),
-        $proforma['quote_validity']
-            ? 'Period of validity for the above quoted price: ' . $proforma['quote_validity']
-            : ($company['defaultQuoteValidity'] ? 'Period of validity for the above quoted price: ' . $company['defaultQuoteValidity'] : null),
-    ]));
-
-    output_professional_document_pdf(
-        'Proforma-Invoice-' . $proforma['invoice_no'] . '-' . $proforma['customer_name'] . '.pdf',
-        'Proforma Invoice',
-        $company,
-        [
-            'name' => $proforma['customer_name'],
-            'tin' => $proforma['customer_tin'] ?: null,
-            'vrn' => $proforma['customer_vrn'] ?: null,
-            'address' => $proforma['customer_address'] ?: null,
-        ],
-        [
-            'invoiceNo' => $proforma['invoice_no'],
-            'tin' => $company['companyTin'] ?: null,
-            'vrn' => $company['companyVrn'] ?: null,
-            'date' => display_date_billing((string)$proforma['date']),
-        ],
-        $pdfItems,
-        [
-            'subtotal' => number_format($totals['subtotal'], 2),
-            'discount' => number_format($totals['discount'], 2),
-            'discountLabel' => $discountLabel,
-            'vat' => number_format($totals['vat'], 2),
-            'vatLabel' => $proforma['vat_mode'] === 'VAT' ? 'VAT ' . rtrim(rtrim(number_format((float)$proforma['vat_rate'], 2), '0'), '.') . '%' : 'VAT (not applicable)',
-            'grandTotal' => number_format($totals['grandTotal'], 2),
-        ],
-        (string)($proforma['notice'] ?? ''),
-        $bank,
-        $tradingTerms,
-        is_array($company['whyChooseUs']) ? $company['whyChooseUs'] : [],
-        (string)($company['footerMessage'] ?? 'Thank you for your business')
-    );
+    belm_output_proforma_document_pdf($proformaId);
 }
 
 if ($method === 'GET' && $action === 'export') {
@@ -177,6 +103,8 @@ if ($method === 'POST') {
     $paymentTerms = trim((string)($b['paymentTerms'] ?? ''));
     $deliveryTime = trim((string)($b['deliveryTime'] ?? ''));
     $quoteValidity = trim((string)($b['quoteValidity'] ?? ''));
+    $machineId = trim((string)($b['machineId'] ?? ''));
+    $sourceSpareRequestId = trim((string)($b['sourceSpareRequestId'] ?? ''));
 
     if (!is_array($items)) $items = [];
     proforma_validate_items($items);
@@ -191,6 +119,22 @@ if ($method === 'POST') {
     $stmt = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
     $stmt->execute([$customerId]);
     if (!$stmt->fetch()) json_error('Select an active customer.', 422);
+    if ($machineId !== '') {
+        $machineCheck = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+        $machineCheck->execute([$machineId, $customerId]);
+        if (!$machineCheck->fetch()) json_error('Selected machine does not belong to this customer.', 422);
+    }
+    if ($sourceSpareRequestId !== '') {
+        $requestCheck = db()->prepare(
+            'SELECT spr.machine_id FROM spare_part_requests spr
+             JOIN machines m ON m.id = spr.machine_id
+             WHERE spr.id = ? AND m.customer_id = ?'
+        );
+        $requestCheck->execute([$sourceSpareRequestId, $customerId]);
+        $requestMachine = $requestCheck->fetchColumn();
+        if ($requestMachine === false) json_error('Source spare request was not found for this customer.', 422);
+        if ($machineId === '' && $requestMachine) $machineId = (string)$requestMachine;
+    }
 
     $subtotal = round(array_sum(array_map(fn($i) => (int)$i['qty'] * (float)$i['unitPrice'], $items)), 2);
     $discountAmount = $discountType === 'PERCENT' ? round($subtotal * ($discount / 100), 2) : $discount;
@@ -202,13 +146,14 @@ if ($method === 'POST') {
     $pdo->beginTransaction();
     try {
         $pdo->prepare(
-            'INSERT INTO proforma_invoices
-             (id, customer_id, invoice_no, date, vat_mode, vat_rate, discount, discount_type, notice, payment_terms, delivery_time, quote_validity, created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+            "INSERT INTO proforma_invoices
+             (id, customer_id, invoice_no, date, vat_mode, vat_rate, discount, discount_type, notice, payment_terms, delivery_time, quote_validity, machine_id, source_spare_request_id, delivery_status, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',NOW())"
         )->execute([
             $newId, $customerId, $invoiceNo, $date, $vatMode, $vatRate, $discount, $discountType,
             $notice !== '' ? $notice : null, $paymentTerms !== '' ? $paymentTerms : null,
             $deliveryTime !== '' ? $deliveryTime : null, $quoteValidity !== '' ? $quoteValidity : null,
+            $machineId !== '' ? $machineId : null, $sourceSpareRequestId !== '' ? $sourceSpareRequestId : null,
         ]);
         $itemStmt = $pdo->prepare(
             'INSERT INTO proforma_invoice_items
@@ -231,6 +176,58 @@ if ($method === 'POST') {
     json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
 }
 
+
+if ($method === 'PUT' && $action === 'send') {
+    if (!$id) json_error('Proforma ID is required.');
+    $stmt = db()->prepare(
+        'SELECT p.id, p.invoice_no, p.customer_id, p.machine_id, p.delivery_status,
+                c.name AS customer_name
+         FROM proforma_invoices p JOIN customers c ON c.id = p.customer_id
+         WHERE p.id = ? AND p.deleted_at IS NULL'
+    );
+    $stmt->execute([$id]);
+    $proforma = $stmt->fetch();
+    if (!$proforma) json_error('Proforma not found.', 404);
+
+    [$fullProforma, $items] = belm_load_proforma_document($id);
+    $totals = belm_proforma_totals($fullProforma, $items);
+    $portalUrl = rtrim(portal_base_url(), '/') . '/portal/dashboard';
+    $subject = 'BELM Proforma Ready — ' . $proforma['invoice_no'];
+    $bodyText = "BELM has prepared Proforma {$proforma['invoice_no']} for {$proforma['customer_name']}.\n\n"
+        . 'Total: TZS ' . number_format((float)$totals['grandTotal'], 2) . "\n"
+        . "Open your BELM Customer Portal to view/download the PDF and respond.\n"
+        . $portalUrl . "\n\n"
+        . "You can Accept the Proforma or Request Change from the portal.";
+
+    $delivery = belm_send_customer_alert(
+        (string)$proforma['customer_id'],
+        $proforma['machine_id'] ? (string)$proforma['machine_id'] : null,
+        ['admin', 'accounts'],
+        $subject,
+        $bodyText,
+        'PROFORMA',
+        (string)$id,
+        (string)($user['name'] ?? 'BELM Accounts')
+    );
+    db()->prepare(
+        "UPDATE proforma_invoices
+         SET delivery_status = 'SENT', sent_at = NOW(), sent_by_id = ?, customer_response = NULL,
+             customer_response_message = NULL, customer_responded_at = NULL
+         WHERE id = ?"
+    )->execute([$user['id'], $id]);
+    log_activity($user, 'proforma-sent', 'proforma', $id, ['invoiceNo' => $proforma['invoice_no']]);
+    $emailDelivered = (int)($delivery['sent'] ?? 0) > 0;
+    json_out([
+        'ok' => true,
+        'deliveryStatus' => 'SENT',
+        'emailDelivered' => $emailDelivered,
+        'recipients' => $delivery['recipients'] ?? [],
+        'message' => $emailDelivered
+            ? 'Proforma sent by email and published in the Customer Portal.'
+            : 'Proforma published in the Customer Portal, but email delivery failed. Check customer email/SMTP settings.',
+    ]);
+}
+
 if ($method === 'PUT') {
     $b = body();
     require_edit_confirmation($user, $b);
@@ -243,6 +240,8 @@ if ($method === 'PUT') {
     $paymentTerms = trim((string)($b['paymentTerms'] ?? ''));
     $deliveryTime = trim((string)($b['deliveryTime'] ?? ''));
     $quoteValidity = trim((string)($b['quoteValidity'] ?? ''));
+    $machineId = trim((string)($b['machineId'] ?? ''));
+    $sourceSpareRequestId = trim((string)($b['sourceSpareRequestId'] ?? ''));
 
     if (!is_array($items) || count($items) === 0) json_error('Add at least one proforma item.');
     if (!in_array($vatMode, ['VAT', 'NO_VAT'], true)) json_error('Invalid VAT mode.');
@@ -255,9 +254,11 @@ if ($method === 'PUT') {
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare(
-            'UPDATE proforma_invoices
-             SET vat_mode=?, vat_rate=?, discount=?, discount_type=?, notice=?, payment_terms=?, delivery_time=?, quote_validity=?
-             WHERE id=? AND deleted_at IS NULL'
+            "UPDATE proforma_invoices
+             SET vat_mode=?, vat_rate=?, discount=?, discount_type=?, notice=?, payment_terms=?, delivery_time=?, quote_validity=?,
+                 delivery_status='DRAFT', sent_at=NULL, sent_by_id=NULL, customer_response=NULL,
+                 customer_response_message=NULL, customer_responded_at=NULL
+             WHERE id=? AND deleted_at IS NULL"
         );
         $stmt->execute([
             $vatMode, $vatRate, $discount, $discountType,

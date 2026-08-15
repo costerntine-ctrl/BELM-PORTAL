@@ -77,8 +77,8 @@
         </div>
         <div class="user-limit-panel compact">
           <div class="user-limit-panel-head">
-            <h2>Machinery Admin <small>(self-service)</small></h2>
-            <p>Customer runs their own maintenance.</p>
+            <h2>BELM Service Provider <small>(maintenance control)</small></h2>
+            <p>ON routes machine problems and maintenance to BELM and automatically pauses only the customer Technician role. Fuel, Operators, Workshop, Store, Procurement, Accounts and other customer roles remain active.</p>
           </div>
           <div class="user-limit-panel-row">
             <select id="machineryAdminCustomerSelect"><option value="">Select customer…</option></select>
@@ -199,6 +199,32 @@
       </div>
     </dialog>
 
+    <dialog id="sendCustomerMessageDialog">
+      <form id="sendCustomerMessageForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">BELM → Customer</p><h2 id="sendCustomerMessageTitle">Message Customer</h2></div>
+          <button class="icon-close" data-close="sendCustomerMessageDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="sendCustomerMessageCustomerId" type="hidden">
+        <div class="form-grid">
+          <label>Related machine <small>(optional)</small>
+            <select id="sendCustomerMessageMachine"><option value="">General / customer account</option></select>
+          </label>
+          <label>Subject
+            <input id="sendCustomerMessageSubject" maxlength="160" value="Message from BELM" required>
+          </label>
+          <label class="span-2">Message
+            <textarea id="sendCustomerMessageBody" rows="6" maxlength="2000" placeholder="Write the message the customer should see in the portal and receive by email…" required></textarea>
+          </label>
+        </div>
+        <p class="muted">The message is saved in the customer portal communication history. Email is sent to the customer account owner and active customer Admin users.</p>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="sendCustomerMessageDialog" type="button">Cancel</button>
+          <button id="sendCustomerMessageButton" class="primary" type="submit">Send to Customer</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="machineListDialog">
       <div class="dialog-card">
         <div class="dialog-head">
@@ -293,6 +319,6 @@
     <script src="/admin-sidebar.js?v=30-bank-permission"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js"></script>
+    <script src="/customers-manager/manager.js?v=194-provider-mode"></script>
   </body>
 </html>

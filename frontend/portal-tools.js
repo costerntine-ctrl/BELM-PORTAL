@@ -3,7 +3,8 @@
   const pathname = window.location.pathname;
   let customerExpenseMachines = null;
   let customerExpenseMachinesPromise = null;
-  let belmAnalysisDataCache = null;
+  let customerPortalProfile = null;
+  let customerPortalProfilePromise = null;
   let technicianReportMachines = null;
   let technicianReportMachinesPromise = null;
   let technicianCustomerProfile = null;
@@ -377,7 +378,7 @@
     const link = document.createElement("a");
     link.id = "belm-forgot-password";
     link.href = "/forgot-password/";
-    link.textContent = "Forgot password? Reset it yourself";
+    link.textContent = "Forgot password? Get OTP by email";
     Object.assign(link.style, {
       display: "block",
       margin: "10px 0 4px",
@@ -452,6 +453,28 @@
     }
   }
 
+  async function loadCustomerPortalProfile() {
+    if (customerPortalProfile) return customerPortalProfile;
+    if (customerPortalProfilePromise) return customerPortalProfilePromise;
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return null;
+    customerPortalProfilePromise = fetch("/api/customer-portal/dashboard", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(async response => {
+        if (!response.ok) throw new Error("Could not load customer profile.");
+        const dashboard = await response.json();
+        customerPortalProfile = dashboard.customer || null;
+        if (Array.isArray(dashboard.machines)) customerExpenseMachines = dashboard.machines;
+        return customerPortalProfile;
+      })
+      .catch(() => {
+        customerPortalProfilePromise = null;
+        return null;
+      });
+    return customerPortalProfilePromise;
+  }
+
   async function loadCustomerExpenseMachines() {
     if (customerExpenseMachines) return customerExpenseMachines;
     if (customerExpenseMachinesPromise) return customerExpenseMachinesPromise;
@@ -464,6 +487,7 @@
         if (!response.ok) throw new Error("Could not load machines.");
         const dashboard = await response.json();
         customerExpenseMachines = Array.isArray(dashboard.machines) ? dashboard.machines : [];
+        customerPortalProfile = dashboard.customer || customerPortalProfile;
         return customerExpenseMachines;
       })
       .catch(() => {
@@ -545,14 +569,17 @@
       if (!response.ok) return;
       const allUpdates = await response.json();
       const dismissed = dismissedUpdateIds();
-      const updates = allUpdates.filter((u) => !dismissed.has(u.id));
+      const visibleUpdates = allUpdates.filter((u) => !dismissed.has(u.id));
+      const updates = visibleUpdates.slice(0, 5);
       if (!updates.length) { box.innerHTML = ""; return; }
-      box.innerHTML = `<span class="belm-machine-recent-updates-head">Recent updates</span>`
+      box.innerHTML = `<span class="belm-machine-recent-updates-head">BELM ↔ Customer updates</span>`
         + updates.map((u) => `
           <div class="belm-machine-recent-update-row" data-update-id="${escapeHtml(u.id)}">
-            <span>${escapeHtml(u.text)}</span>
+            <span>${u.direction ? `<small class="belm-comm-direction">${escapeHtml(u.direction === "CUSTOMER_TO_BELM" ? "CUSTOMER → BELM" : "BELM → CUSTOMER")}</small>` : ""}${escapeHtml(u.text)}<small style="display:block;margin-top:3px;opacity:.65">${escapeHtml(formatTanzaniaDateTime(u.createdAt))}</small></span>
+            ${u.relatedType === "PROFORMA" && u.relatedId ? `<button type="button" class="belm-update-ok-button" data-open-customer-proforma="${escapeHtml(u.relatedId)}">View PDF</button>` : ""}
             <button type="button" class="belm-update-ok-button" data-dismiss-update="${escapeHtml(u.id)}">OK</button>
-          </div>`).join("");
+          </div>`).join("")
+        + (visibleUpdates.length > 5 ? `<button type="button" class="belm-show-hidden-requests-link" data-view-all-communications>View all communication</button>` : "");
       box.querySelectorAll("[data-dismiss-update]").forEach((button) => {
         button.addEventListener("click", () => {
           dismissUpdateId(button.dataset.dismissUpdate);
@@ -560,7 +587,46 @@
           if (!box.querySelector(".belm-machine-recent-update-row")) box.innerHTML = "";
         });
       });
+      box.querySelectorAll("[data-open-customer-proforma]").forEach((button) => {
+        button.addEventListener("click", () => customerPdfAction(`/api/customer-portal/proformas/${encodeURIComponent(button.dataset.openCustomerProforma)}/download`, "view", "BELM-Proforma.pdf").catch((error) => alert(error.message)));
+      });
+      box.querySelector("[data-view-all-communications]")?.addEventListener("click", () => openCustomerCommunicationHistory(machineId, visibleUpdates));
     } catch (_) { /* a quiet feed — skip silently on failure */ }
+  }
+
+  function openCustomerCommunicationHistory(machineId, updates) {
+    let dialog = document.getElementById("belmCustomerCommunicationDialog");
+    if (!dialog) {
+      dialog = document.createElement("dialog");
+      dialog.id = "belmCustomerCommunicationDialog";
+      dialog.className = "belm-analysis-dialog";
+      dialog.innerHTML = `
+        <div class="belm-analysis-dialog-card">
+          <div class="belm-analysis-head">
+            <span>BELM ↔ CUSTOMER COMMUNICATION</span>
+            <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+          </div>
+          <div id="belmCustomerCommunicationBody" class="belm-operator-reports-body"></div>
+        </div>`;
+      document.body.appendChild(dialog);
+      dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    }
+    const body = dialog.querySelector("#belmCustomerCommunicationBody");
+    body.innerHTML = updates.length ? updates.map((u) => `
+      <article class="belm-operator-report-row">
+        <div class="belm-operator-report-head">
+          <b>${escapeHtml(u.direction === "CUSTOMER_TO_BELM" ? "Customer → BELM" : u.direction === "BELM_TO_CUSTOMER" ? "BELM → Customer" : "Portal update")}</b>
+          <span>${escapeHtml(u.channel || "PORTAL")}</span>
+        </div>
+        <p>${escapeHtml(u.text)}</p>
+        <small>${escapeHtml(formatTanzaniaDateTime(u.createdAt))}</small>
+        ${u.relatedType === "PROFORMA" && u.relatedId ? `<button type="button" class="belm-hide-request-button" data-history-proforma="${escapeHtml(u.relatedId)}" style="margin-top:8px">View Proforma PDF</button>` : ""}
+      </article>`).join("") : '<p class="muted">No communication history yet.</p>';
+    body.querySelectorAll("[data-history-proforma]").forEach((button) => {
+      button.addEventListener("click", () => customerPdfAction(`/api/customer-portal/proformas/${encodeURIComponent(button.dataset.historyProforma)}/download`, "view", "BELM-Proforma.pdf").catch((error) => alert(error.message)));
+    });
+    dialog.dataset.machineId = machineId;
+    dialog.showModal();
   }
 
   let customerServiceStatusCache = {};
@@ -589,8 +655,9 @@
   async function customerServiceDuePanel(card, machine) {
     if (card.dataset.belmServiceDueReady === "1") return;
     card.dataset.belmServiceDueReady = "1";
-    const status = await loadServiceStatus(machine.id);
+    const [status, profile] = await Promise.all([loadServiceStatus(machine.id), loadCustomerPortalProfile()]);
     if (!status) return;
+    const selfServiceMode = Boolean(profile?.isMachineryAdmin);
 
     const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
     const serial = machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded";
@@ -613,13 +680,12 @@
       <div class="belm-machine-quick-actions">
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Machine Expenses</a>
         <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
-        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Request Service</a>
+        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">${selfServiceMode ? "Request BELM Support" : "Request Service"}</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
-        <a class="belm-service-whatsapp" data-belm-feature="whatsapp" target="_blank" rel="noopener"
-           href="${whatsappShareUrl(`BELM Portal alert: ${machineName} (${serial}) — ${levelLabel}. Current hour meter: ${Math.round(status.totalHours)} hrs, remaining to next service: ${remaining <= 0 ? "overdue" : `${remaining} hrs`}.`)}">
-          Send via WhatsApp
-        </a>
+        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">
+          Check Up
+        </button>
       </div>`;
     card.appendChild(panel);
     // Same "whole card is a native clickable button" issue as
@@ -628,7 +694,260 @@
     // of actually navigating to Machine Expenses, Fuel Usage, etc.
     panel.addEventListener("click", (event) => event.stopPropagation());
     panel.addEventListener("pointerdown", (event) => event.stopPropagation());
+    panel.querySelector("[data-customer-checkup]")?.addEventListener("click", () => openCustomerCheckupDialog(machine));
     enforceCustomerFeaturePermissions(panel);
+  }
+
+
+  function closeCustomerCheckupDialog() {
+    document.getElementById("belmCustomerCheckupModal")?.remove();
+  }
+
+  function customerPdfFilename(disposition, fallback) {
+    const match = String(disposition || "").match(/filename="?([^";]+)"?/i);
+    return match ? match[1] : fallback;
+  }
+
+  async function customerPdfAction(url, mode, fallbackName) {
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) {
+      window.location.href = "/portal/login";
+      return;
+    }
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || "Could not prepare the PDF.");
+    }
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const filename = customerPdfFilename(response.headers.get("Content-Disposition"), fallbackName || "BELM-checklist.pdf");
+
+    if (mode === "download") {
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1200);
+      return;
+    }
+
+    if (mode === "print") {
+      const frame = document.createElement("iframe");
+      frame.style.position = "fixed";
+      frame.style.width = "1px";
+      frame.style.height = "1px";
+      frame.style.opacity = "0";
+      frame.style.pointerEvents = "none";
+      frame.src = objectUrl;
+      frame.onload = () => {
+        window.setTimeout(() => {
+          try { frame.contentWindow?.print(); } catch (_) { window.open(objectUrl, "_blank", "noopener"); }
+          window.setTimeout(() => {
+            frame.remove();
+            URL.revokeObjectURL(objectUrl);
+          }, 30000);
+        }, 300);
+      };
+      document.body.appendChild(frame);
+      return;
+    }
+
+    const popup = window.open(objectUrl, "_blank", "noopener");
+    if (!popup) {
+      URL.revokeObjectURL(objectUrl);
+      throw new Error("Allow pop-ups to view the checklist PDF.");
+    }
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+  }
+
+  async function loadCustomerCheckedReport(reportId) {
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) {
+      window.location.href = "/portal/login";
+      return;
+    }
+    const response = await fetch(`/api/customer-portal/reports/${encodeURIComponent(reportId)}/view`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const report = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(report.error || "Could not load the checked report.");
+    renderCheckedReport(report);
+  }
+
+  function renderDailyChecklistPanel(machine, data, body) {
+    const templates = Array.isArray(data.templates) ? data.templates : [];
+    if (!templates.length) {
+      body.innerHTML = '<div class="belm-report-empty">No active Checklist Template is assigned to this machine type yet.</div>';
+      return;
+    }
+    const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+    body.innerHTML = `
+      <div class="belm-customer-checkup-toolbar">
+        <label>Checklist Template
+          <select data-daily-template-select>
+            ${templates.map((template, index) => `<option value="${escapeHtml(template.id)}" ${index === 0 ? "selected" : ""}>${escapeHtml(template.name)}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+      <div data-daily-template-body></div>`;
+
+    const select = body.querySelector("[data-daily-template-select]");
+    const templateBody = body.querySelector("[data-daily-template-body]");
+    const renderTemplate = () => {
+      const template = templates.find((item) => String(item.id) === String(select.value)) || templates[0];
+      const items = Array.isArray(template.items) ? template.items : [];
+      const todayReport = template.todayReport || null;
+      templateBody.innerHTML = `
+        <div class="belm-daily-checklist-summary">
+          <div><span>Machine</span><strong>${escapeHtml(machineName)}</strong></div>
+          <div><span>Checklist</span><strong>${escapeHtml(template.name)}</strong></div>
+          <div><span>Today</span><strong>${todayReport ? "Checked" : "Pending"}</strong></div>
+          <div><span>Template Sync</span><strong>Live</strong></div>
+        </div>
+        ${todayReport ? `<div class="belm-daily-checklist-complete">Today's checklist has already been completed by ${escapeHtml(todayReport.filledBy || "Technician")} at ${escapeHtml(formatTanzaniaDateTime(todayReport.createdAt))}.</div>` : '<div class="belm-daily-checklist-pending">This is today\'s checklist generated from the current Checklist Template.</div>'}
+        <div class="belm-daily-checklist-items">
+          ${items.length ? items.map((item, index) => `<div class="belm-daily-checklist-item"><b>${index + 1}. ${escapeHtml(item.label)}</b><span>${escapeHtml(item.inputType || "TEXT")}${item.isRequired ? " · Required" : ""}</span></div>`).join("") : '<div class="belm-report-empty">This template has no checklist items.</div>'}
+        </div>
+        <div class="belm-customer-checkup-pdf-actions">
+          <button type="button" data-template-pdf="view">View PDF</button>
+          <button type="button" data-template-pdf="download">Download PDF</button>
+          <button type="button" data-template-pdf="print">Print PDF</button>
+          ${todayReport ? '<button type="button" class="primary" data-view-today-report>View Checked Report</button>' : ""}
+        </div>`;
+      templateBody.querySelectorAll("[data-template-pdf]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const originalText = button.textContent;
+          button.disabled = true;
+          button.textContent = "Preparing…";
+          try {
+            await customerPdfAction(
+              `/api/customer-portal/machines/${encodeURIComponent(machine.id)}/daily-checklist-pdf?templateId=${encodeURIComponent(template.id)}`,
+              button.dataset.templatePdf,
+              `BELM-daily-checklist-${machine.id}.pdf`
+            );
+          } catch (error) {
+            alert(error.message || "Could not prepare the daily checklist PDF.");
+          } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+          }
+        });
+      });
+      templateBody.querySelector("[data-view-today-report]")?.addEventListener("click", async () => {
+        try { await loadCustomerCheckedReport(todayReport.id); }
+        catch (error) { alert(error.message || "Could not load today's checked report."); }
+      });
+    };
+    select.addEventListener("change", renderTemplate);
+    renderTemplate();
+  }
+
+  async function showCustomerDailyChecklist(machine, body) {
+    body.innerHTML = '<p class="belm-analysis-loading">Loading today\'s Checklist Template…</p>';
+    const token = localStorage.getItem("belm_customer_token");
+    try {
+      const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/daily-checklist`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not load the daily checklist.");
+      renderDailyChecklistPanel(machine, data, body);
+    } catch (error) {
+      body.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load the daily checklist.")}</p>`;
+    }
+  }
+
+  async function showCustomerCheckedReports(machine, body) {
+    body.innerHTML = '<p class="belm-analysis-loading">Loading checked reports…</p>';
+    const token = localStorage.getItem("belm_customer_token");
+    try {
+      const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/reports`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const reports = await response.json().catch(() => []);
+      if (!response.ok) throw new Error(reports.error || "Could not load checked reports.");
+      body.innerHTML = Array.isArray(reports) && reports.length ? reports.map((report) => {
+        const status = String(report.overallStatus || "GREEN").toUpperCase();
+        return `<article class="belm-customer-checkup-report-row">
+          <div>
+            <strong>${escapeHtml(report.templateName || "Checked Report")}</strong>
+            <span>${escapeHtml(report.createdAt ? formatTanzaniaDateTime(report.createdAt) : "Date not recorded")}</span>
+            <small>Technician: ${escapeHtml(report.filledBy || "Not recorded")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</small>
+          </div>
+          <span class="belm-report-status status-${escapeHtml(status.toLowerCase())}">${escapeHtml(status)}</span>
+          <div class="belm-customer-report-actions">
+            <button type="button" data-report-view="${escapeHtml(report.id)}">View Checked Report</button>
+            <button type="button" data-report-pdf="view" data-report-id="${escapeHtml(report.id)}">View PDF</button>
+            <button type="button" data-report-pdf="download" data-report-id="${escapeHtml(report.id)}">Download PDF</button>
+            <button type="button" data-report-pdf="print" data-report-id="${escapeHtml(report.id)}">Print PDF</button>
+          </div>
+        </article>`;
+      }).join("") : '<div class="belm-report-empty">No checked reports have been saved for this machine yet.</div>';
+
+      body.querySelectorAll("[data-report-view]").forEach((button) => button.addEventListener("click", async () => {
+        try { await loadCustomerCheckedReport(button.dataset.reportView); }
+        catch (error) { alert(error.message || "Could not load the checked report."); }
+      }));
+      body.querySelectorAll("[data-report-pdf]").forEach((button) => button.addEventListener("click", async () => {
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Preparing…";
+        try {
+          await customerPdfAction(
+            `/api/customer-portal/reports/${encodeURIComponent(button.dataset.reportId)}/download`,
+            button.dataset.reportPdf,
+            `BELM-checklist-${button.dataset.reportId}.pdf`
+          );
+        } catch (error) {
+          alert(error.message || "Could not prepare the report PDF.");
+        } finally {
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      }));
+    } catch (error) {
+      body.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load checked reports.")}</p>`;
+    }
+  }
+
+  function openCustomerCheckupDialog(machine) {
+    closeCustomerCheckupDialog();
+    const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+    const modal = document.createElement("div");
+    modal.id = "belmCustomerCheckupModal";
+    modal.className = "belm-checked-report-modal";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.innerHTML = `<section class="belm-checked-report-card belm-customer-checkup-card">
+      <header class="belm-checked-report-head">
+        <div>
+          <p>BELM machine check-up</p>
+          <h2>${escapeHtml(machineName)}</h2>
+          <span>${escapeHtml(machine.machineType || machine.machine_type || "")} · ${escapeHtml(machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded")}</span>
+        </div>
+        <button type="button" data-close-customer-checkup aria-label="Close Check Up">×</button>
+      </header>
+      <nav class="belm-customer-checkup-tabs">
+        <button type="button" class="active" data-checkup-tab="daily">Checklist ya Siku</button>
+        <button type="button" data-checkup-tab="reports">Checked Reports</button>
+      </nav>
+      <div class="belm-customer-checkup-body" data-customer-checkup-body></div>
+    </section>`;
+    const body = modal.querySelector("[data-customer-checkup-body]");
+    const setTab = (name) => {
+      modal.querySelectorAll("[data-checkup-tab]").forEach((button) => button.classList.toggle("active", button.dataset.checkupTab === name));
+      if (name === "reports") showCustomerCheckedReports(machine, body);
+      else showCustomerDailyChecklist(machine, body);
+    };
+    modal.querySelectorAll("[data-checkup-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.checkupTab)));
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.closest("[data-close-customer-checkup]")) closeCustomerCheckupDialog();
+    });
+    document.body.appendChild(modal);
+    setTab("daily");
   }
 
   // A leaner version of customerServiceDuePanel for the Technician view —
@@ -684,19 +1003,23 @@
     window.fetch = async (...args) => {
       const response = await originalFetch(...args);
       try {
-        if (response.status === 401) {
+        if (response.status === 401 || response.status === 403) {
           const clone = response.clone();
           const text = await clone.text();
-          if (text.includes("assigned customer has changed")) {
+          const assignmentChanged = text.includes("assigned customer has changed");
+          const selfServiceOff = text.includes("BELM Service Provider is active for this customer") || text.includes("Customer Self-Service is currently OFF");
+          if (assignmentChanged || selfServiceOff) {
             localStorage.removeItem("belm_tech_token");
             localStorage.removeItem("belm_tech_user");
             const banner = document.createElement("div");
             banner.style.cssText =
               "position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;" +
               "background:rgba(4,10,20,.9);color:#fff;font:600 14px Inter,system-ui,sans-serif;text-align:center;padding:24px;";
-            banner.innerHTML =
-              '<div><p style="margin:0 0 14px;font-size:16px;font-weight:800;">Your session needs refreshing</p>' +
-              '<p style="margin:0 0 18px;color:#cbd5e1;">Your assigned customer changed since you last logged in. Redirecting to login…</p></div>';
+            banner.innerHTML = selfServiceOff
+              ? '<div><p style="margin:0 0 14px;font-size:16px;font-weight:800;">BELM Service Provider is active</p>' +
+                '<p style="margin:0 0 18px;color:#cbd5e1;">Your Customer Technician access is temporarily paused while BELM handles maintenance. Other customer roles remain active. Redirecting to login…</p></div>'
+              : '<div><p style="margin:0 0 14px;font-size:16px;font-weight:800;">Your session needs refreshing</p>' +
+                '<p style="margin:0 0 18px;color:#cbd5e1;">Your assigned customer changed since you last logged in. Redirecting to login…</p></div>';
             document.body.appendChild(banner);
             setTimeout(() => window.location.href = "/auth/login", 1800);
           }
@@ -851,23 +1174,19 @@
       <div class="belm-activity-overview-machines" id="belmActivityOverviewMachines"></div>`;
 
     // A small "MORE TOOLS" card that sits right under Activity Overview.
-    // Analysis, Assign Users, Change Password and Management Email used
-    // to live inside every single machine card's quick-actions row, but
-    // none of them are actually tied to one specific machine — Analysis
-    // and the account-level email both pull from the same aggregate
-    // /api/customer-portal/analysis data as this Activity Overview card,
-    // and Assign Users / Change Password are account settings. Moving
-    // them here (once) instead of repeating them on every machine card
-    // shortens each machine card down to only what's about that machine.
+    // Management Email is the only account-level action kept here.
+    // Analysis is already represented by Activity Overview above, while
+    // password recovery is handled from the login screen using email OTP.
     const toolsCard = document.createElement("div");
     toolsCard.id = "belmAccountToolsCard";
     toolsCard.className = "belm-account-tools-card";
     toolsCard.innerHTML = `
       <div class="belm-account-tools-head">MORE TOOLS</div>
+      <div id="belmCustomerOperatingMode" style="margin:10px 0 12px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.08);font-size:11px;line-height:1.45">Loading operating mode…</div>
       <div class="belm-account-tools-actions">
-        <button type="button" class="belm-open-analysis" data-open-analysis data-belm-feature="analysis">Analysis</button>
-        <a href="/customer-users/" class="belm-assign-users-button" data-belm-owner-admin-only>Assign Users</a>
-        <button type="button" class="belm-assign-users-button" data-open-change-password data-belm-feature="change-password">Change Password</button>
+        <button type="button" class="belm-email-report-button" data-belm-feature="service-request" data-contact-belm-support>
+          Contact BELM Support
+        </button>
         <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
           data-report-subject="BELM Portal — account activity report"
           data-report-message="BELM Portal account report requested from the dashboard.">
@@ -875,6 +1194,17 @@
         </button>
       </div>`;
     enforceCustomerFeaturePermissions(toolsCard);
+    toolsCard.querySelector("[data-contact-belm-support]")?.addEventListener("click", () => openBelmSupportDialog());
+    loadCustomerPortalProfile().then((profile) => {
+      const modeBox = document.getElementById("belmCustomerOperatingMode");
+      if (!modeBox || !profile) return;
+      modeBox.innerHTML = profile.isMachineryAdmin
+        ? '<b>CUSTOMER MAINTENANCE TEAM</b><br>Your Technicians manage maintenance. BELM Support remains available when assistance is needed.'
+        : '<b>BELM SERVICE PROVIDER ACTIVE</b><br>Machine problems and maintenance route to BELM. Your Fuel, Operators, Workshop, Store, Procurement, Accounts and other portal functions remain under your company; only the Customer Technician role is paused.';
+    });
+    if (![...toolsCard.querySelectorAll("button, a")].some((element) => element.style.display !== "none")) {
+      toolsCard.style.display = "none";
+    }
 
     // On wide (desktop/PC) screens, place this as a right-hand sidebar
     // next to the machine grid rather than a full-width bar above it —
@@ -1141,6 +1471,91 @@
     localStorage.setItem("belm_dismissed_announcements", JSON.stringify(dismissed));
   }
 
+  async function enhanceCustomerDirectMessagesPanel() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    if (document.getElementById("belmCustomerDirectMessagesPanel")) return;
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return;
+    try {
+      const response = await fetch("/api/customer-portal/communications", { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const items = await response.json();
+      if (!Array.isArray(items) || !items.length) return;
+      const heading = Array.from(document.querySelectorAll("h1, h2")).find((el) => (el.textContent || "").trim() === "Your machines");
+      const anchor = heading?.closest("section") || heading?.parentElement;
+      if (!anchor) return;
+      const panel = document.createElement("section");
+      panel.id = "belmCustomerDirectMessagesPanel";
+      panel.className = "belm-customer-messages-panel";
+      panel.innerHTML = `
+        <div class="belm-customer-messages-head"><span>MESSAGES FROM BELM</span><small>Saved communication history</small></div>
+        <div class="belm-customer-messages-list">${items.slice(0, 8).map((item) => `
+          <article class="belm-customer-message-row">
+            <div class="belm-customer-message-title"><strong>${escapeHtml(item.subject || "Message from BELM")}</strong><span>${escapeHtml(formatTanzaniaDateTime(item.createdAt))}</span></div>
+            <p>${escapeHtml(item.message || "")}</p>
+            <small>${item.machineLabel ? `Machine: ${escapeHtml(item.machineLabel)} · ` : ""}From: ${escapeHtml(item.createdByName || "BELM")}${item.status === "PORTAL_ONLY" ? " · Portal delivery only" : ""}</small>
+          </article>`).join("")}</div>`;
+      anchor.before(panel);
+    } catch (_) {}
+  }
+
+  async function enhanceCustomerProformasPanel() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    if (document.getElementById("belmCustomerProformasPanel")) return;
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return;
+    try {
+      const response = await fetch("/api/customer-portal/proformas", { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const items = await response.json();
+      if (!Array.isArray(items) || !items.length) return;
+      const heading = Array.from(document.querySelectorAll("h1, h2")).find((el) => (el.textContent || "").trim() === "Your machines");
+      const anchor = heading?.closest("section") || heading?.parentElement;
+      if (!anchor) return;
+      const panel = document.createElement("section");
+      panel.id = "belmCustomerProformasPanel";
+      panel.className = "belm-customer-proformas-panel";
+      panel.innerHTML = `<div class="belm-customer-proformas-head"><span>PROFORMAS FROM BELM</span><small>Official portal copies</small></div>` + items.map((item) => `
+        <article class="belm-customer-proforma-row" data-proforma-id="${escapeHtml(item.id)}">
+          <div><strong>${escapeHtml(item.invoiceNo)}</strong> · TZS ${Number(item.totals?.grandTotal || 0).toLocaleString("en-TZ")}</div>
+          <div class="belm-customer-proforma-meta"><span>Sent: ${escapeHtml(formatTanzaniaDateTime(item.sentAt || item.createdAt))}</span><span>Status: ${escapeHtml(item.customerResponse || item.deliveryStatus)}</span></div>
+          ${item.customerResponseMessage ? `<small>${escapeHtml(item.customerResponseMessage)}</small>` : ""}
+          <div class="belm-customer-proforma-actions">
+            <button type="button" data-proforma-pdf="view">View PDF</button>
+            <button type="button" data-proforma-pdf="download">Download</button>
+            <button type="button" data-proforma-pdf="print">Print</button>
+            ${!item.customerResponse ? `<button type="button" class="primary" data-proforma-response="ACCEPTED">Accept</button><button type="button" data-proforma-response="CHANGE_REQUESTED">Request Change</button>` : ""}
+          </div>
+        </article>`).join("");
+      anchor.before(panel);
+      panel.querySelectorAll("[data-proforma-pdf]").forEach((button) => button.addEventListener("click", () => {
+        const row = button.closest("[data-proforma-id]");
+        customerPdfAction(`/api/customer-portal/proformas/${encodeURIComponent(row.dataset.proformaId)}/download`, button.dataset.proformaPdf, "BELM-Proforma.pdf").catch((error) => alert(error.message));
+      }));
+      panel.querySelectorAll("[data-proforma-response]").forEach((button) => button.addEventListener("click", async () => {
+        const row = button.closest("[data-proforma-id]");
+        const responseValue = button.dataset.proformaResponse;
+        let message = "";
+        if (responseValue === "CHANGE_REQUESTED") {
+          message = prompt("What should BELM change on this Proforma?") || "";
+          if (!message.trim()) return;
+        } else if (!confirm("Accept this Proforma and notify BELM Accounts?")) return;
+        button.disabled = true;
+        try {
+          const response = await fetch(`/api/customer-portal/proformas/${encodeURIComponent(row.dataset.proformaId)}/respond`, {
+            method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ response: responseValue, message }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || "Could not send your response.");
+          panel.remove();
+          await enhanceCustomerProformasPanel();
+          alert(responseValue === "ACCEPTED" ? "BELM Accounts has been notified that you accepted the Proforma." : "Your requested change has been sent to BELM Accounts.");
+        } catch (error) { alert(error.message); button.disabled = false; }
+      }));
+    } catch (_) {}
+  }
+
   async function enhanceCustomerAnnouncementsPanel() {
     if (window.location.pathname !== "/portal/dashboard") return;
     if (document.getElementById("belmAnnouncementsPanel")) return;
@@ -1205,7 +1620,7 @@
           <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
         </div>
         <div class="belm-email-body">
-          <p class="belm-email-intro">Share this with your boss or management team — for approval, review, or their records.</p>
+          <p class="belm-email-intro">Share this with your boss or management team — customer account emails and active portal users sync here automatically.</p>
           <div id="belmEmailError" class="belm-email-error" hidden></div>
 
           <label>Send to <small>(select one or more)</small></label>
@@ -1382,11 +1797,11 @@
           <div class="belm-email-recipient-row" data-recipient-row="${escapeHtml(entry.id)}">
             <label>
               <input type="checkbox" data-recipient-checkbox value="${escapeHtml(entry.email)}">
-              <span>${escapeHtml(entry.label)} <small>(${escapeHtml(entry.email)})</small></span>
+              <span>${escapeHtml(entry.label)} <small>(${escapeHtml(entry.email)})${entry.synced ? " · synced" : ""}</small></span>
             </label>
-            <button type="button" class="belm-email-edit-btn" data-edit-recipient="${escapeHtml(entry.id)}" aria-label="Edit">✎</button>
+            ${entry.editable === false ? "" : `<button type="button" class="belm-email-edit-btn" data-edit-recipient="${escapeHtml(entry.id)}" aria-label="Edit">✎</button>`}
           </div>`).join("")
-      : '<p class="belm-email-empty-list">No saved emails yet — add one below.</p>';
+      : '<p class="belm-email-empty-list">No management contacts yet — add one below.</p>';
 
     container.querySelectorAll("[data-edit-recipient]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -1483,82 +1898,98 @@
   }
 
 
-  function ensureAnalysisDialog() {
-    let dialog = document.getElementById("belmAnalysisDialog");
+  function ensureBelmSupportDialog() {
+    let dialog = document.getElementById("belmSupportDialog");
     if (dialog) return dialog;
     dialog = document.createElement("dialog");
-    dialog.id = "belmAnalysisDialog";
+    dialog.id = "belmSupportDialog";
     dialog.className = "belm-analysis-dialog";
     dialog.innerHTML = `
-      <div class="belm-analysis-dialog-card">
+      <form class="belm-analysis-dialog-card belm-email-form">
         <div class="belm-analysis-head">
-          <span>YOUR ANALYSIS</span>
+          <span>CONTACT BELM SUPPORT</span>
           <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
         </div>
-        <div class="belm-analysis-body" id="belmAnalysisBody"><p class="belm-analysis-loading">Loading…</p></div>
-      </div>`;
+        <div class="belm-email-body">
+          <p class="belm-email-intro">This message is saved in your portal history and sent to BELM's official Business Email.</p>
+          <div id="belmSupportError" class="belm-email-error" hidden></div>
+          <label>Topic
+            <select id="belmSupportTopic">
+              <option value="TECHNICAL_SUPPORT">Technical support</option>
+              <option value="PORTAL_SUPPORT">Portal / system support</option>
+              <option value="SERVICE_CONTRACT">Service / contract enquiry</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label>Machine <small>(optional)</small>
+            <select id="belmSupportMachine"><option value="">— General / account level —</option></select>
+          </label>
+          <label>Subject
+            <input id="belmSupportSubject" type="text" maxlength="160" placeholder="e.g. Need hydraulic diagnostic support" />
+          </label>
+          <label>Message
+            <textarea id="belmSupportMessage" rows="6" maxlength="3000" placeholder="Describe the assistance you need from BELM." required></textarea>
+          </label>
+          <button type="submit" class="belm-email-send" id="belmSupportSendButton">Send to BELM</button>
+        </div>
+      </form>`;
     document.body.appendChild(dialog);
     dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    dialog.querySelector("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorBox = document.getElementById("belmSupportError");
+      const button = document.getElementById("belmSupportSendButton");
+      const token = localStorage.getItem("belm_customer_token");
+      const message = document.getElementById("belmSupportMessage").value.trim();
+      if (!message) {
+        errorBox.textContent = "Write the message you want to send to BELM.";
+        errorBox.hidden = false;
+        return;
+      }
+      errorBox.hidden = true;
+      button.disabled = true;
+      button.textContent = "Sending…";
+      try {
+        const response = await fetch("/api/customer-portal/belm-support", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            topic: document.getElementById("belmSupportTopic").value,
+            machineId: document.getElementById("belmSupportMachine").value,
+            subject: document.getElementById("belmSupportSubject").value.trim(),
+            message,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not send your message to BELM.");
+        dialog.close();
+        alert(result.message || "Message sent to BELM.");
+        document.getElementById("belmSupportSubject").value = "";
+        document.getElementById("belmSupportMessage").value = "";
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.hidden = false;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Send to BELM";
+      }
+    });
     return dialog;
   }
 
-  async function openCustomerAnalysisDialog() {
-    const dialog = ensureAnalysisDialog();
+  async function openBelmSupportDialog(machineId = "") {
+    const dialog = ensureBelmSupportDialog();
+    const select = document.getElementById("belmSupportMachine");
+    const machines = await loadCustomerExpenseMachines();
+    select.innerHTML = '<option value="">— General / account level —</option>'
+      + machines.map((machine) => {
+        const label = [machine.brand, machine.model, machine.serialNumber || machine.serial_number].filter(Boolean).join(" · ");
+        return `<option value="${escapeHtml(machine.id)}">${escapeHtml(label || machine.machineType || "Machine")}</option>`;
+      }).join("");
+    if (machineId) select.value = machineId;
+    document.getElementById("belmSupportError").hidden = true;
     dialog.showModal();
-    const body = document.getElementById("belmAnalysisBody");
-    if (belmAnalysisDataCache) {
-      renderAnalysisBody(belmAnalysisDataCache);
-      return;
-    }
-    const token = localStorage.getItem("belm_customer_token");
-    if (!token) return;
-    try {
-      const response = await fetch("/api/customer-portal/analysis", { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) throw new Error();
-      belmAnalysisDataCache = await response.json();
-      renderAnalysisBody(belmAnalysisDataCache);
-    } catch (_) {
-      body.innerHTML = '<p class="belm-analysis-loading">Could not load your analysis right now.</p>';
-    }
-  }
-
-  function renderAnalysisBody(data) {
-    const money = (value) => "TZS " + Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 0 });
-    document.getElementById("belmAnalysisBody").innerHTML = `
-      <div class="belm-analysis-block">
-        <span>Machines</span>
-        <strong>${data.machines.total}</strong>
-        <div class="belm-analysis-dots">
-          <em class="green">${data.machines.green} OK</em>
-          <em class="yellow">${data.machines.yellow} Attention</em>
-          <em class="red">${data.machines.red} Critical</em>
-        </div>
-      </div>
-      <div class="belm-analysis-block">
-        <span>Service Requests</span>
-        <strong>${data.serviceRequests.total}</strong>
-        <small>${data.serviceRequests.open} currently open</small>
-      </div>
-      <div class="belm-analysis-block">
-        <span>Checklist Reports</span>
-        <strong>${data.checklistReportsCount}</strong>
-        <small>Inspections completed</small>
-      </div>
-      <div class="belm-analysis-block">
-        <span>Machine Expenses</span>
-        <strong>${money(data.machineExpensesTotal)}</strong>
-        <small>Spare parts logged</small>
-      </div>
-      <div class="belm-analysis-block">
-        <span>Petty Cash</span>
-        <strong>${money(data.pettyCashTotal)}</strong>
-        <small>Total recorded</small>
-      </div>
-      <div class="belm-analysis-block">
-        <span>Invoices</span>
-        <strong>${money(data.invoices.total)}</strong>
-        <small>${money(data.invoices.outstanding)} outstanding</small>
-      </div>`;
+    document.getElementById("belmSupportMessage")?.focus();
   }
 
   function ensureProblemReportDialog() {
@@ -1574,7 +2005,7 @@
           <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
         </div>
         <div class="belm-email-body">
-          <p class="belm-email-intro">This goes straight to your Machine Admin and BELM's engineer/technician team.</p>
+          <p class="belm-email-intro" id="belmProblemIntro">Report this problem to your maintenance team.</p>
           <div id="belmProblemError" class="belm-email-error" hidden></div>
           <label>Who is reporting? <small>(optional — pick from your operators)</small>
             <select id="belmProblemOperator"><option value="">— Myself / Not listed —</option></select>
@@ -1582,11 +2013,22 @@
           <label>What's the problem?
             <textarea id="belmProblemMessage" rows="5" placeholder="e.g. Hydraulic arm making a grinding noise since this morning" required></textarea>
           </label>
-          <button type="submit" class="belm-email-send" id="belmProblemSendButton">Send report</button>
+          <label id="belmProblemBelmSupportRow" style="display:flex;gap:10px;align-items:flex-start">
+            <input id="belmProblemSendToBelm" type="checkbox" style="width:auto;margin-top:3px" />
+            <span><b>Request BELM Technical Support</b><br><small>When selected, BELM receives this report in the portal and by official business email.</small></span>
+          </label>
+          <button type="submit" class="belm-email-send" id="belmProblemSendButton">Save problem report</button>
         </div>
       </form>`;
     document.body.appendChild(dialog);
     dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    document.getElementById("belmProblemSendToBelm")?.addEventListener("change", (event) => {
+      const sendButton = document.getElementById("belmProblemSendButton");
+      if (!sendButton || event.target.disabled) return;
+      sendButton.textContent = event.target.checked
+        ? "Send to BELM Technical Support"
+        : "Save Internal Report";
+    });
 
     dialog.querySelector("form").addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -1609,6 +2051,7 @@
           body: JSON.stringify({
             message,
             operatorId: document.getElementById("belmProblemOperator").value,
+            sendToBelm: document.getElementById("belmProblemSendToBelm").checked,
           }),
         });
         const result = await response.json().catch(() => ({}));
@@ -1620,7 +2063,10 @@
         errorBox.hidden = false;
       } finally {
         button.disabled = false;
-        button.textContent = "Send report";
+        const belmCheckbox = document.getElementById("belmProblemSendToBelm");
+        button.textContent = belmCheckbox?.checked
+          ? "Send to BELM Technical Support"
+          : "Save Internal Report";
       }
     });
     return dialog;
@@ -1629,6 +2075,21 @@
   async function openProblemReportDialog(machineId) {
     const dialog = ensureProblemReportDialog();
     dialog.dataset.machineId = machineId;
+    const profile = await loadCustomerPortalProfile();
+    const selfServiceMode = Boolean(profile?.isMachineryAdmin);
+    const belmCheckbox = document.getElementById("belmProblemSendToBelm");
+    const intro = document.getElementById("belmProblemIntro");
+    if (selfServiceMode) {
+      belmCheckbox.disabled = false;
+      belmCheckbox.checked = false;
+      intro.textContent = "Self-Service Mode: this report stays with your own maintenance team unless you select BELM Technical Support below.";
+      document.getElementById("belmProblemSendButton").textContent = "Save Internal Report";
+    } else {
+      belmCheckbox.checked = true;
+      belmCheckbox.disabled = true;
+      intro.textContent = "BELM Service Provider is active: this machine problem will notify BELM automatically. Your other company operations remain under your own portal roles.";
+      document.getElementById("belmProblemSendButton").textContent = "Send Report to BELM";
+    }
     document.getElementById("belmProblemMessage").value = "";
     document.getElementById("belmProblemError").hidden = true;
     const select = document.getElementById("belmProblemOperator");
@@ -1710,8 +2171,34 @@
               </div>
               <p>${escapeHtml(report.message)}</p>
               <small>${formatTanzaniaDateTime(report.created_at || report.createdAt)}${report.resolved_at || report.resolvedAt ? ` · Resolved ${formatTanzaniaDateTime(report.resolved_at || report.resolvedAt)}` : ""}</small>
+              ${isTechnician && String(report.status || "OPEN").toUpperCase() === "OPEN"
+                ? `<button type="button" class="belm-hide-request-button" data-tech-resolve-operator-report="${escapeHtml(report.id)}" style="margin-top:8px">Mark Resolved</button>`
+                : ""}
             </div>`).join("")
         : '<p class="muted">No operator reports for this machine yet.</p>';
+      if (isTechnician) {
+        body.querySelectorAll("[data-tech-resolve-operator-report]").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const token = localStorage.getItem("belm_tech_token");
+            button.disabled = true;
+            button.textContent = "Resolving…";
+            try {
+              const response = await fetch(`/api/checklist-reports?action=resolve-operator-report&machineId=${encodeURIComponent(machineId)}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                body: JSON.stringify({ reportId: button.dataset.techResolveOperatorReport }),
+              });
+              const result = await response.json().catch(() => ({}));
+              if (!response.ok) throw new Error(result.error || "Could not resolve this report.");
+              await openOperatorReportsDialog(machineId, true);
+            } catch (error) {
+              alert(error.message || "Could not resolve this report.");
+              button.disabled = false;
+              button.textContent = "Mark Resolved";
+            }
+          });
+        });
+      }
     } catch (error) {
       body.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message)}</p>`;
     }
@@ -1725,85 +2212,6 @@
         openOperatorReportsDialog(button.dataset.viewOperatorReports, button.dataset.technicianContext === "1"));
     });
   }
-
-  function ensureChangePasswordDialog() {
-    let dialog = document.getElementById("belmChangePasswordDialog");
-    if (dialog) return dialog;
-    dialog = document.createElement("dialog");
-    dialog.id = "belmChangePasswordDialog";
-    dialog.className = "belm-analysis-dialog";
-    dialog.innerHTML = `
-      <form class="belm-analysis-dialog-card belm-change-password-form">
-        <div class="belm-analysis-head">
-          <span>CHANGE PASSWORD</span>
-          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
-        </div>
-        <div class="belm-change-password-body">
-          <div id="belmChangePasswordError" class="belm-analysis-error" hidden></div>
-          <label>Current password<input type="password" id="belmCurrentPassword" autocomplete="current-password" required></label>
-          <label>New password <small>(at least 8 characters)</small><input type="password" id="belmNewPassword" autocomplete="new-password" minlength="8" required></label>
-          <label>Confirm new password<input type="password" id="belmConfirmNewPassword" autocomplete="new-password" minlength="8" required></label>
-          <button type="submit" class="belm-email-send" id="belmChangePasswordSubmit">Change password</button>
-        </div>
-      </form>`;
-    document.body.appendChild(dialog);
-    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
-    dialog.querySelector("form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const errorBox = document.getElementById("belmChangePasswordError");
-      const button = document.getElementById("belmChangePasswordSubmit");
-      errorBox.hidden = true;
-      const currentPassword = document.getElementById("belmCurrentPassword").value;
-      const newPassword = document.getElementById("belmNewPassword").value;
-      const confirmPassword = document.getElementById("belmConfirmNewPassword").value;
-      if (newPassword !== confirmPassword) {
-        errorBox.textContent = "New password and confirmation do not match.";
-        errorBox.hidden = false;
-        return;
-      }
-      button.disabled = true;
-      button.textContent = "Changing…";
-      try {
-        const token = localStorage.getItem("belm_customer_token");
-        const response = await fetch("/api/customer-portal/change-password", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ currentPassword, newPassword }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || "Could not change password.");
-        dialog.querySelector("form").reset();
-        dialog.close();
-        alert("Password changed successfully.");
-      } catch (error) {
-        errorBox.textContent = error.message;
-        errorBox.hidden = false;
-      } finally {
-        button.disabled = false;
-        button.textContent = "Change password";
-      }
-    });
-    return dialog;
-  }
-
-  function wireChangePasswordButtons() {
-    if (window.location.pathname !== "/portal/dashboard") return;
-    document.querySelectorAll("[data-open-change-password]").forEach((button) => {
-      if (button.dataset.belmWired === "1") return;
-      button.dataset.belmWired = "1";
-      button.addEventListener("click", () => ensureChangePasswordDialog().showModal());
-    });
-  }
-
-  function wireCustomerAnalysisButtons() {
-    if (window.location.pathname !== "/portal/dashboard") return;
-    document.querySelectorAll("[data-open-analysis]").forEach((button) => {
-      if (button.dataset.belmWired === "1") return;
-      button.dataset.belmWired = "1";
-      button.addEventListener("click", openCustomerAnalysisDialog);
-    });
-  }
-
 
   async function loadCustomerSpareRecommendations() {
     if (customerSpareRecommendationsCache) return customerSpareRecommendationsCache;
@@ -3537,7 +3945,7 @@
     document.getElementById("belmSpareRecommendationModal")?.remove();
   }
 
-  function renderTechnicianSpareRecommendation(machines) {
+  function renderTechnicianSpareRecommendation(machines, selfServiceMode = false) {
     closeTechnicianSpareRecommendation();
     const modal = document.createElement("div");
     modal.id = "belmSpareRecommendationModal";
@@ -3548,9 +3956,9 @@
     modal.innerHTML = `<section class="belm-checked-report-card belm-technician-spare-card">
       <header class="belm-checked-report-head">
         <div>
-          <p>BELM Technician · Customer spare recommendation</p>
+          <p>${selfServiceMode ? "Customer Technician · Internal recommendation" : "BELM Technician · Customer spare recommendation"}</p>
           <h2 id="belmSpareRecommendationTitle">Recommend Spare to Customer</h2>
-          <span>The customer will see only the reference number and can press Service Requirements to order it.</span>
+          <span>${selfServiceMode ? "Recommend the spare internally. BELM Inventory stays private; the customer can request BELM support if needed." : "The customer will see only the reference number and can press Service Requirements to order it."}</span>
         </div>
         <button type="button" data-close-spare-recommendation aria-label="Close">×</button>
       </header>
@@ -3573,10 +3981,10 @@
                 `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join("")}
             </select>
           </label>
-          <label class="full">
+          ${selfServiceMode ? "" : `<label class="full">
             <span>Pick from Spare Parts Inventory <small>(auto-fills the fields below — optional)</small></span>
             <select id="belmSpareCatalogPick"><option value="">— Custom item (not in inventory) —</option></select>
-          </label>
+          </label>`}
           <label>
             <span>Spare name</span>
             <input name="spareName" type="text" maxlength="255" placeholder="e.g. Hydraulic return filter" required />
@@ -3688,9 +4096,10 @@
       button.disabled = true;
       button.textContent = "Loading…";
       try {
-        const machines = await loadTechnicianReportMachines();
+        const customer = await loadTechnicianCustomerProfile();
+        const machines = Array.isArray(customer?.machines) ? customer.machines : await loadTechnicianReportMachines();
         if (!machines.length) throw new Error("No assigned machine is available for this Technician.");
-        renderTechnicianSpareRecommendation(machines);
+        renderTechnicianSpareRecommendation(machines, Boolean(customer?.isMachineryAdmin && payload?.isCustomerManaged));
       } catch (error) {
         alert(error.message || "Could not open Recommend Spare.");
       } finally {
@@ -3707,6 +4116,8 @@
     const payload = tokenPayload("belm_tech_token");
     const token = localStorage.getItem("belm_tech_token");
     if (!payload || !token || String(payload.roleName || "").toLowerCase() !== "technician") return;
+    const assignedCustomer = await loadTechnicianCustomerProfile();
+    if (assignedCustomer?.isMachineryAdmin && payload?.isCustomerManaged) return;
 
     const button = document.createElement("button");
     button.id = "belm-tech-spare-shortcut";
@@ -3753,12 +4164,12 @@
   enforceAdminPageAccess();
   enhanceCustomerAssistants();
   enhanceCustomerMachineExpenseCards();
+  enhanceCustomerDirectMessagesPanel();
   enhanceCustomerAnnouncementsPanel();
-  wireCustomerAnalysisButtons();
+  enhanceCustomerProformasPanel();
   wireEmailReportButtons();
   wireProblemReportButtons();
   wireOperatorReportsButtons();
-  wireChangePasswordButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
   insertCustomerActivityOverview();
@@ -3793,12 +4204,12 @@
     enforceAdminPageAccess();
     enhanceCustomerAssistants();
     enhanceCustomerMachineExpenseCards();
+    enhanceCustomerDirectMessagesPanel();
     enhanceCustomerAnnouncementsPanel();
-    wireCustomerAnalysisButtons();
-  wireEmailReportButtons();
+    enhanceCustomerProformasPanel();
+    wireEmailReportButtons();
   wireProblemReportButtons();
   wireOperatorReportsButtons();
-  wireChangePasswordButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
   insertCustomerActivityOverview();

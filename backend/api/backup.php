@@ -17,13 +17,13 @@ $tables = [
     'service_requests', 'service_request_parts', 'spare_parts',
     'spare_part_requests', 'suppliers', 'invoices', 'invoice_payments',
     'company_expenses', 'proforma_invoices', 'usage_logs', 'tasks',
-    'bank_accounts', 'bank_withdrawals', 'admin_announcements',
+    'bank_accounts', 'bank_withdrawals', 'admin_announcements', 'customer_communications',
     'system_settings', 'activity_logs', 'trash_entries',
 ];
 
 $backup = [
     'exportedAt' => date('c'),
-    'schemaVersion' => '18-bank-manager',
+    'schemaVersion' => '19-customer-communications',
     'tables' => [],
 ];
 

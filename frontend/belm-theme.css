@@ -1322,8 +1322,8 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-weight: 600;
 }
 
-/* Small "MORE TOOLS" card — holds Analysis, Assign Users, Change
-   Password and Management Email, moved out of every machine card
+/* Small "MORE TOOLS" card — holds account-level communication tools,
+   moved out of every machine card
    since none of those actually belong to one specific machine. Sits
    directly under the Activity Overview card, styled to match it but
    shorter. */
@@ -2912,3 +2912,182 @@ a[href^="/api/customer-portal/reports/"][href$="/download"] {
 .belm-service-due-grid b.belm-fleet-number-value {
   color: #16a34a !important;
 }
+
+/* V188: keep the account tools/overview rail visible on desktop while the
+   customer scrolls through a long fleet. Mobile remains in normal flow. */
+@media (min-width: 980px) {
+  .belm-dashboard-layout > .belm-activity-overview-stack {
+    position: sticky;
+    top: 18px;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+}
+.belm-account-tools-actions { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 480px) {
+  .belm-account-tools-actions { grid-template-columns: 1fr; }
+}
+
+.belm-customer-checkup-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid #0f62fe;
+  border-radius: 9px;
+  background: #0f62fe;
+  color: #fff;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+.belm-customer-checkup-button:hover { background: #0b52d1; }
+.belm-customer-checkup-card { width: min(920px, calc(100vw - 24px)); }
+.belm-customer-checkup-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.belm-customer-checkup-tabs button {
+  padding: 9px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.belm-customer-checkup-tabs button.active {
+  border-color: #0f62fe;
+  background: #0f62fe;
+  color: #fff;
+}
+.belm-customer-checkup-body { padding: 14px; }
+.belm-customer-checkup-toolbar label {
+  display: grid;
+  gap: 6px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+.belm-customer-checkup-toolbar select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+.belm-daily-checklist-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.belm-daily-checklist-summary > div {
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.belm-daily-checklist-summary span,
+.belm-daily-checklist-summary strong { display: block; }
+.belm-daily-checklist-summary span { color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.belm-daily-checklist-summary strong { margin-top: 3px; color: #0f172a; font-size: 12px; }
+.belm-daily-checklist-complete,
+.belm-daily-checklist-pending {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 750;
+}
+.belm-daily-checklist-complete { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.belm-daily-checklist-pending { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.belm-daily-checklist-items { display: grid; gap: 6px; }
+.belm-daily-checklist-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+}
+.belm-daily-checklist-item b { color: #1e293b; font-size: 11px; }
+.belm-daily-checklist-item span { color: #64748b; font-size: 10px; white-space: nowrap; }
+.belm-customer-checkup-pdf-actions,
+.belm-customer-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.belm-customer-checkup-pdf-actions button,
+.belm-customer-report-actions button {
+  padding: 8px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.belm-customer-checkup-pdf-actions button.primary { border-color: #0f62fe; background: #0f62fe; color: #fff; }
+.belm-customer-checkup-report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #fff;
+}
+.belm-customer-checkup-report-row + .belm-customer-checkup-report-row { margin-top: 8px; }
+.belm-customer-checkup-report-row > div:first-child strong,
+.belm-customer-checkup-report-row > div:first-child span,
+.belm-customer-checkup-report-row > div:first-child small { display: block; }
+.belm-customer-checkup-report-row > div:first-child strong { color: #0f172a; font-size: 12px; }
+.belm-customer-checkup-report-row > div:first-child span { margin-top: 2px; color: #475569; font-size: 10px; }
+.belm-customer-checkup-report-row > div:first-child small { margin-top: 3px; color: #64748b; font-size: 9.5px; }
+.belm-customer-report-actions { grid-column: 1 / -1; margin-top: 2px; }
+@media (max-width: 680px) {
+  .belm-daily-checklist-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .belm-daily-checklist-item { display: grid; }
+  .belm-daily-checklist-item span { white-space: normal; }
+}
+
+/* V192 — synchronized BELM <-> Customer communication */
+.belm-customer-proformas-panel { margin: 16px 0; padding: 18px; border: 1px solid #d9e2ec; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
+.belm-customer-proformas-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.belm-customer-proformas-head span { font-weight:900; letter-spacing:.08em; font-size:12px; }
+.belm-customer-proforma-row { padding:12px 0; border-top:1px solid #e5e7eb; display:grid; gap:8px; }
+.belm-customer-proforma-row:first-child { border-top:0; }
+.belm-customer-proforma-meta { display:flex; flex-wrap:wrap; gap:8px 14px; font-size:12px; color:#475569; }
+.belm-customer-proforma-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.belm-customer-proforma-actions button { border:1px solid #cbd5e1; background:#fff; border-radius:9px; padding:8px 11px; font-weight:800; cursor:pointer; }
+.belm-customer-proforma-actions .primary { background:#0f172a; color:#fff; border-color:#0f172a; }
+.belm-comm-direction { font-size:10px; font-weight:900; opacity:.7; margin-right:6px; }
+
+
+/* V192 — direct BELM <-> customer communication */
+.belm-customer-messages-panel { margin:16px 0; padding:18px; border:1px solid #d9e2ec; border-radius:16px; background:#fff; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+.belm-customer-messages-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.belm-customer-messages-head span { font-weight:900; letter-spacing:.08em; font-size:12px; }
+.belm-customer-messages-head small { opacity:.68; }
+.belm-customer-messages-list { display:grid; gap:10px; }
+.belm-customer-message-row { border:1px solid #e7edf3; border-radius:12px; padding:12px 14px; background:#fbfdff; }
+.belm-customer-message-row p { margin:8px 0; white-space:pre-wrap; }
+.belm-customer-message-title { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.belm-customer-message-title span { font-size:12px; opacity:.65; white-space:nowrap; }
+@media (max-width: 640px) { .belm-customer-message-title { flex-direction:column; gap:3px; } }

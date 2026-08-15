@@ -223,7 +223,8 @@ if ($action === 'unified-login' && $method === 'POST') {
     if (filter_var($rawLoginId, FILTER_VALIDATE_EMAIL)) {
         $stmt = db()->prepare(
             'SELECT u.*, r.name AS role_name, r.allowed_pages,
-                    c.name AS assigned_customer_name
+                    c.name AS assigned_customer_name,
+                    c.is_machinery_admin AS assigned_customer_self_service
              FROM users u
              JOIN roles r ON r.id = u.role_id
              LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -242,6 +243,9 @@ if ($action === 'unified-login' && $method === 'POST') {
                 if (!$user['assigned_customer_name']) {
                     json_error('The customer assigned to this Technician account is not available.', 403);
                 }
+                if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_self_service'])) {
+                    json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
+                }
             }
 
             $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
@@ -254,6 +258,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                 'roleName' => $user['role_name'],
                 'allowedPages' => $allowedPages,
                 'assignedCustomerId' => $user['assigned_customer_id'],
+                'isCustomerManaged' => !empty($user['is_customer_managed']),
             ]);
 
             try {
@@ -275,6 +280,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                     'allowedPages' => $allowedPages,
                     'assignedCustomerId' => $user['assigned_customer_id'],
                     'assignedCustomerName' => $user['assigned_customer_name'],
+                    'isCustomerManaged' => !empty($user['is_customer_managed']),
                 ],
             ]);
         }
@@ -379,7 +385,8 @@ if ($action === 'login' && $method === 'POST') {
 
     $stmt = db()->prepare(
         'SELECT u.*, r.name AS role_name, r.allowed_pages,
-                c.name AS assigned_customer_name
+                c.name AS assigned_customer_name,
+                c.is_machinery_admin AS assigned_customer_self_service
          FROM users u
          JOIN roles r ON r.id = u.role_id
          LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -402,6 +409,9 @@ if ($action === 'login' && $method === 'POST') {
         if (!$user['assigned_customer_name']) {
             json_error('The customer assigned to this Technician account is not available.', 403);
         }
+        if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_self_service'])) {
+            json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
+        }
     }
 
     $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
@@ -415,6 +425,7 @@ if ($action === 'login' && $method === 'POST') {
         'roleName' => $user['role_name'],
         'allowedPages' => $allowedPages,
         'assignedCustomerId' => $user['assigned_customer_id'],
+        'isCustomerManaged' => !empty($user['is_customer_managed']),
     ]);
 
     // Log the login (best-effort — don't fail login if this errors)
@@ -430,6 +441,7 @@ if ($action === 'login' && $method === 'POST') {
             'role' => $user['role_name'], 'allowedPages' => $allowedPages,
             'assignedCustomerId' => $user['assigned_customer_id'],
             'assignedCustomerName' => $user['assigned_customer_name'],
+            'isCustomerManaged' => !empty($user['is_customer_managed']),
         ],
     ]);
 }

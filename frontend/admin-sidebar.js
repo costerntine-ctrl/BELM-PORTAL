@@ -81,13 +81,36 @@
   sidebar.className = "belm-admin-sidebar";
   sidebar.setAttribute("aria-label", "BELM administration sidebar");
 
+  const brand = document.createElement("a");
+  brand.className = "belm-sidebar-brand";
+  brand.href = "/overview-manager/";
+  brand.setAttribute("aria-label", "BELM General Tech home");
+  brand.innerHTML = `
+    <span class="belm-sidebar-brand-mark" aria-hidden="true"><span>B</span></span>
+    <span class="belm-sidebar-brand-copy">
+      <strong>BELM GENERAL TECH</strong>
+      <small>Operations & Service Portal</small>
+      <span class="belm-sidebar-brand-palette" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+    </span>`;
+
   const userCard = document.createElement("div");
   userCard.className = "belm-sidebar-user";
+  const userAvatar = document.createElement("span");
+  userAvatar.className = "belm-sidebar-user-avatar";
+  userAvatar.textContent = String(user.name || "BU")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "BU";
+  const userCopy = document.createElement("span");
+  userCopy.className = "belm-sidebar-user-copy";
   const userName = document.createElement("strong");
   userName.textContent = user.name || "System user";
   const userRole = document.createElement("span");
   userRole.textContent = user.role || "Assigned role";
-  userCard.append(userName, userRole);
+  userCopy.append(userName, userRole);
+  userCard.append(userAvatar, userCopy);
 
   const nav = document.createElement("nav");
   nav.className = "belm-sidebar-nav";
@@ -104,6 +127,7 @@
 
     const link = document.createElement("a");
     link.className = "belm-sidebar-link";
+    link.dataset.section = page.section || "General";
     if (page.priority) link.classList.add("workflow");
     link.href = page.href;
     if (page.paths.some((path) => currentPath === path || currentPath.startsWith(path))) {
@@ -147,7 +171,7 @@
   });
   footer.append(themeToggle, logout);
 
-  sidebar.append(userCard, nav);
+  sidebar.append(brand, userCard, nav);
   sidebar.appendChild(footer);
 
   const toggle = document.createElement("button");

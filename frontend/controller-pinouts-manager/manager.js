@@ -70,6 +70,7 @@
           </div>` : ""}
         <p class="pinout-pin-count">${(p.pins || []).length} pin(s) documented</p>
         <div class="pinout-card-actions">
+          <button type="button" class="pdf" data-pdf="${escapeHtml(p.id)}" data-controller-number="${escapeHtml(p.controllerNumber)}">Download PDF</button>
           <button type="button" data-edit="${escapeHtml(p.id)}">Edit</button>
           <button type="button" class="delete" data-delete="${escapeHtml(p.id)}">Delete</button>
         </div>
@@ -209,6 +210,34 @@
     }
   });
 
+  async function downloadPinoutPdf(id, controllerNumber) {
+    if (!id) return;
+    try {
+      const response = await fetch(`/api/controller-pinouts/${encodeURIComponent(id)}/pdf`, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token || ""}` },
+      });
+      if (!response.ok) {
+        let message = `PDF download failed (${response.status}).`;
+        try { message = (await response.json())?.error || message; } catch (_) {}
+        throw new Error(message);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const safeNumber = String(controllerNumber || "controller").replace(/[^A-Za-z0-9._-]+/g, "-");
+      link.href = url;
+      link.download = `Controller-Pinout-${safeNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1200);
+    } catch (error) {
+      showAlert(error.message);
+    }
+  }
+
   document.getElementById("pinoutGrid").addEventListener("click", (event) => {
     const viewButton = event.target.closest("[data-view-photo]");
     if (viewButton) {
@@ -222,6 +251,8 @@
       }).catch(() => showAlert("Could not load photo.", true));
       return;
     }
+    const pdfButton = event.target.closest("[data-pdf]");
+    if (pdfButton) { downloadPinoutPdf(pdfButton.dataset.pdf, pdfButton.dataset.controllerNumber); return; }
     const editButton = event.target.closest("[data-edit]");
     if (editButton) { openPinout(pinouts.find((p) => p.id === editButton.dataset.edit)); return; }
     const deleteButton = event.target.closest("[data-delete]");

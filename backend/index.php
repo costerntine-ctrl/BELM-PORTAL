@@ -37,12 +37,15 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'customer_applications',
             'user_applications',
             'usage_logs',
+            'customer_store_items',
+            'customer_store_movements',
             'checklist_template_parts',
             'service_request_parts',
             'spare_parts',
             'spare_part_requests',
             'bank_accounts',
             'bank_withdrawals',
+            'customer_communications',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -93,7 +96,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '18-bank-manager',
+            'schemaVersion' => '20-customer-store-audit',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'adminReady' => $adminReady,
@@ -172,6 +175,12 @@ switch ($resource) {
         if (isset($segments[2]) && $segments[2] === 'portal-access') {
             dispatch('customers.php', ['action' => 'portal-access', 'id' => $segments[1]]);
         }
+        if (isset($segments[2]) && $segments[2] === 'message') {
+            dispatch('customers.php', ['action' => 'send-message', 'id' => $segments[1]]);
+        }
+        if (isset($segments[2]) && $segments[2] === 'communications') {
+            dispatch('customers.php', ['action' => 'communications', 'id' => $segments[1]]);
+        }
         if (isset($segments[2]) && $segments[2] === 'machines') {
             dispatch('customers.php', ['action' => 'add-machine', 'id' => $segments[1]]);
         }
@@ -212,9 +221,13 @@ switch ($resource) {
 
     case 'controller-pinouts':
         // GET/POST /controller-pinouts, GET/PUT/DELETE /controller-pinouts/:id
+        // GET /controller-pinouts/:id/pdf -> download one controller record as PDF
         // GET /controller-pinouts/photo?photoId=X, DELETE /controller-pinouts/photo?photoId=X
         if (($segments[1] ?? '') === 'photo') {
             dispatch('controller_pinouts.php', ['action' => 'photo']);
+        }
+        if ($method === 'GET' && isset($segments[1]) && ($segments[2] ?? '') === 'pdf') {
+            dispatch('controller_pinouts.php', ['action' => 'pdf', 'id' => $segments[1]]);
         }
         if (isset($segments[1])) dispatch('controller_pinouts.php', ['action' => $method === 'GET' ? 'one' : '', 'id' => $segments[1]]);
         dispatch('controller_pinouts.php');

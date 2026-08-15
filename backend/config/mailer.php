@@ -47,7 +47,7 @@ function smtp_expect(&$socket, string $command, string $expectedCode): string {
 // $cc: list of extra email addresses to copy in (added to the RCPT TO
 // list at the SMTP level so they genuinely receive the message, and to
 // the visible "Cc:" header so recipients can see who else was copied).
-function send_email(string $to, string $subject, string $textBody, array $attachments = [], array $cc = []): bool {
+function send_email(string $to, string $subject, string $textBody, array $attachments = [], array $cc = [], ?string $replyToOverride = null): bool {
     $config = smtp_config();
     if ($config['host'] === '') {
         throw new RuntimeException('Email is not configured on this server (missing SMTP_HOST). Ask the administrator to set up SMTP_HOST, SMTP_USER, SMTP_PASS.');
@@ -92,10 +92,27 @@ function send_email(string $to, string $subject, string $textBody, array $attach
         }
         smtp_expect($socket, 'DATA', '354');
 
+            // Keep replies synchronized with the Business Email saved in BELM
+        // Settings. SMTP_FROM_EMAIL remains the technical envelope sender
+        // required by the mail provider, while Reply-To follows the portal's
+        // current company contact record automatically.
+        $replyTo = '';
+        $overrideCandidate = trim((string)($replyToOverride ?? ''));
+        if ($overrideCandidate !== '' && filter_var($overrideCandidate, FILTER_VALIDATE_EMAIL)) {
+            $replyTo = $overrideCandidate;
+        } elseif (function_exists('belm_get_company_details')) {
+            try {
+                $company = belm_get_company_details();
+                $candidate = trim((string)($company['companyEmail'] ?? ''));
+                if (filter_var($candidate, FILTER_VALIDATE_EMAIL)) $replyTo = $candidate;
+            } catch (Throwable $ignored) {}
+        }
+
         $headers = [
             'From: ' . $config['fromName'] . ' <' . $config['fromEmail'] . '>',
             'To: <' . $to . '>',
         ];
+        if ($replyTo !== '') $headers[] = 'Reply-To: <' . $replyTo . '>';
         if (!empty($cc)) {
             $headers[] = 'Cc: <' . implode('>, <', $cc) . '>';
         }

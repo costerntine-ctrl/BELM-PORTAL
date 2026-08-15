@@ -2,6 +2,8 @@
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/mailer.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
+require_once __DIR__ . '/proforma_pdf_helper.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 
 $customer = require_customer_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -20,9 +22,84 @@ function log_customer_activity(array $customer, string $action): void {
 // request sends 'all' (or omits permissions entirely), the assistant gets
 // full access — represented internally as NULL, not an exhaustive list.
 const CUSTOMER_PERMISSION_KEYS = [
-    'machine-expenses', 'fuel-usage', 'email', 'whatsapp', 'service-request',
-    'report-problem', 'operator-reports', 'analysis', 'assign-users', 'change-password',
+    'machine-expenses', 'fuel-usage', 'email', 'whatsapp', 'check-up', 'service-request',
+    'report-problem', 'operator-reports', 'assign-users', 'store',
 ];
+
+function customer_can_manage_store(array $customer): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    if (in_array($role, ['operator', 'viewer'], true)) return false;
+    $permissions = $customer['permissions'] ?? null;
+    if (is_array($permissions)) return in_array('store', $permissions, true);
+    return in_array($role, ['admin', 'assistant', 'accounts'], true);
+}
+
+function customer_store_item_rows(string $customerId): array {
+    $stmt = db()->prepare(
+        "SELECT csi.id, csi.part_number, csi.description, csi.unit, csi.qty_on_hand,
+                csi.average_unit_cost, csi.updated_at,
+                COALESCE(SUM(CASE WHEN csm.movement_type = 'RECEIVE' THEN csm.quantity ELSE 0 END), 0) AS total_received,
+                COALESCE(SUM(CASE WHEN csm.movement_type = 'ISSUE' THEN csm.quantity ELSE 0 END), 0) AS total_issued
+         FROM customer_store_items csi
+         LEFT JOIN customer_store_movements csm ON csm.store_item_id = csi.id
+         WHERE csi.customer_id = ?
+         GROUP BY csi.id
+         ORDER BY csi.description ASC, csi.part_number ASC"
+    );
+    $stmt->execute([$customerId]);
+    return $stmt->fetchAll();
+}
+
+function customer_store_audit_rows(string $customerId, string $machineId): array {
+    $stmt = db()->prepare(
+        "SELECT csm.id, csm.movement_type, csm.quantity, csm.unit_cost, csm.balance_after,
+                csm.actor_name, csm.received_by, csm.note, csm.created_at,
+                csi.part_number, csi.description, csi.unit,
+                m.model AS machine_model, m.brand AS machine_brand
+         FROM customer_store_movements csm
+         JOIN customer_store_items csi ON csi.id = csm.store_item_id
+         LEFT JOIN machines m ON m.id = csm.machine_id
+         WHERE csm.customer_id = ?
+           AND (
+             csm.machine_id = ?
+             OR csm.store_item_id IN (
+               SELECT DISTINCT ul.store_item_id
+               FROM usage_logs ul
+               WHERE ul.customer_id = ? AND ul.machine_id = ?
+                 AND ul.store_item_id IS NOT NULL
+             )
+           )
+         ORDER BY csm.created_at DESC
+         LIMIT 150"
+    );
+    $stmt->execute([$customerId, $machineId, $customerId, $machineId]);
+    return $stmt->fetchAll();
+}
+
+function customer_store_summary(string $customerId, string $machineId): array {
+    $items = customer_store_item_rows($customerId);
+    $machineStmt = db()->prepare(
+        "SELECT COUNT(*) AS issue_count, COALESCE(SUM(quantity * unit_cost),0) AS value
+         FROM customer_store_movements
+         WHERE customer_id = ? AND machine_id = ? AND movement_type = 'ISSUE'"
+    );
+    $machineStmt->execute([$customerId, $machineId]);
+    $machineUsage = $machineStmt->fetch() ?: ['issue_count' => 0, 'value' => 0];
+    $stockQty = 0.0;
+    $stockValue = 0.0;
+    foreach ($items as $item) {
+        $stockQty += (float)$item['qty_on_hand'];
+        $stockValue += (float)$item['qty_on_hand'] * (float)$item['average_unit_cost'];
+    }
+    return [
+        'itemCount' => count($items),
+        'stockQty' => round($stockQty, 2),
+        'stockValue' => round($stockValue, 2),
+        'machineIssueCount' => (int)$machineUsage['issue_count'],
+        'machineIssuedValue' => round((float)$machineUsage['value'], 2),
+    ];
+}
 
 function customer_permissions_from_body(array $body): ?string {
     $raw = $body['permissions'] ?? 'all';
@@ -215,17 +292,20 @@ function output_machine_expense_pdf(string $filename, array $lines): void {
 }
 
 function machine_expense_rows(string $customerId, string $machineId, ?string $from = null, ?string $to = null): array {
-    $sql = "SELECT id, date, description, part_number, quantity, unit, unit_price,
-                cost, logged_by, receipt_photo_name,
-                CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data <> ''
+    $sql = "SELECT ul.id, ul.date, ul.description, ul.part_number, ul.quantity, ul.unit, ul.unit_price,
+                ul.cost, ul.logged_by, ul.receipt_photo_name, ul.stock_source, ul.store_item_id,
+                ul.store_balance_after, ul.issued_by, ul.received_by,
+                csi.qty_on_hand AS current_store_balance,
+                CASE WHEN ul.receipt_photo_data IS NOT NULL AND ul.receipt_photo_data <> ''
                      THEN 1 ELSE 0 END AS has_receipt,
-                created_at
-         FROM usage_logs
-         WHERE customer_id = ? AND machine_id = ? AND category = 'SPARE_PART'";
+                ul.created_at
+         FROM usage_logs ul
+         LEFT JOIN customer_store_items csi ON csi.id = ul.store_item_id
+         WHERE ul.customer_id = ? AND ul.machine_id = ? AND ul.category = 'SPARE_PART'";
     $params = [$customerId, $machineId];
-    if ($from !== null) { $sql .= ' AND date >= ?'; $params[] = $from; }
-    if ($to !== null) { $sql .= ' AND date <= ?'; $params[] = $to; }
-    $sql .= ' ORDER BY date DESC, created_at DESC';
+    if ($from !== null) { $sql .= ' AND ul.date >= ?'; $params[] = $from; }
+    if ($to !== null) { $sql .= ' AND ul.date <= ?'; $params[] = $to; }
+    $sql .= ' ORDER BY ul.date DESC, ul.created_at DESC';
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll();
@@ -376,9 +456,62 @@ function customer_request_service_parts(string $requestId): array {
 // ---- Dashboard ------------------------------------------------------------
 // ---- Saved emails (boss / management team) for quick report sharing --------
 if ($sub === 'saved-emails' && $method === 'GET') {
-    $stmt = db()->prepare('SELECT id, label, email FROM customer_saved_emails WHERE customer_id = ? ORDER BY label ASC');
-    $stmt->execute([$customer['id']]);
-    json_out($stmt->fetchAll());
+    // Build one communication directory from the real account records plus
+    // optional manual management contacts. Account/user entries are read-only
+    // here so a change made by BELM Admin or the customer user manager is
+    // reflected automatically instead of creating a second copy to maintain.
+    $directory = [];
+    $seen = [];
+
+    $ownerStmt = db()->prepare('SELECT name, email FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $ownerStmt->execute([$customer['id']]);
+    if ($owner = $ownerStmt->fetch()) {
+        $email = strtolower(trim((string)($owner['email'] ?? '')));
+        if ($email !== '') {
+            $directory[] = [
+                'id' => 'account-owner',
+                'label' => ($owner['name'] ?: 'Customer') . ' — Account Owner',
+                'email' => $email,
+                'source' => 'customer-account',
+                'synced' => true,
+                'editable' => false,
+            ];
+            $seen[$email] = true;
+        }
+    }
+
+    $usersStmt = db()->prepare(
+        'SELECT id, name, email, role FROM customer_users WHERE customer_id = ? AND is_active = 1 ORDER BY name ASC'
+    );
+    $usersStmt->execute([$customer['id']]);
+    foreach ($usersStmt->fetchAll() as $portalUser) {
+        $email = strtolower(trim((string)($portalUser['email'] ?? '')));
+        if ($email === '' || isset($seen[$email])) continue;
+        $role = trim((string)($portalUser['role'] ?? 'user'));
+        $directory[] = [
+            'id' => 'portal-user-' . $portalUser['id'],
+            'label' => ($portalUser['name'] ?: 'Portal User') . ' — ' . ucwords(str_replace('-', ' ', $role)),
+            'email' => $email,
+            'source' => 'portal-user',
+            'synced' => true,
+            'editable' => false,
+        ];
+        $seen[$email] = true;
+    }
+
+    $savedStmt = db()->prepare('SELECT id, label, email FROM customer_saved_emails WHERE customer_id = ? ORDER BY label ASC');
+    $savedStmt->execute([$customer['id']]);
+    foreach ($savedStmt->fetchAll() as $entry) {
+        $email = strtolower(trim((string)($entry['email'] ?? '')));
+        if ($email === '' || isset($seen[$email])) continue;
+        $entry['email'] = $email;
+        $entry['source'] = 'saved';
+        $entry['synced'] = false;
+        $entry['editable'] = true;
+        $directory[] = $entry;
+        $seen[$email] = true;
+    }
+    json_out($directory);
 }
 
 if ($sub === 'saved-emails' && $method === 'POST') {
@@ -388,6 +521,15 @@ if ($sub === 'saved-emails' && $method === 'POST') {
     $email = trim((string)($b['email'] ?? ''));
     if ($label === '') json_error('Enter a label, e.g. "Boss" or "Management Team".');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email address.');
+    $email = strtolower($email);
+    $duplicate = db()->prepare(
+        'SELECT 1 FROM customers WHERE id = ? AND LOWER(email) = LOWER(?) AND deleted_at IS NULL
+         UNION ALL SELECT 1 FROM customer_users WHERE customer_id = ? AND LOWER(email) = LOWER(?) AND is_active = 1
+         UNION ALL SELECT 1 FROM customer_saved_emails WHERE customer_id = ? AND LOWER(email) = LOWER(?)
+         LIMIT 1'
+    );
+    $duplicate->execute([$customer['id'], $email, $customer['id'], $email, $customer['id'], $email]);
+    if ($duplicate->fetch()) json_error('That email is already synchronized in your communication list.', 409);
     $newId = uuid();
     db()->prepare('INSERT INTO customer_saved_emails (id, customer_id, label, email, created_at) VALUES (?,?,?,?,NOW())')
         ->execute([$newId, $customer['id'], $label, $email]);
@@ -401,6 +543,15 @@ if ($sub === 'saved-emails' && $sub2 && $method === 'PUT') {
     $email = trim((string)($b['email'] ?? ''));
     if ($label === '') json_error('Enter a label, e.g. "Boss" or "Management Team".');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email address.');
+    $email = strtolower($email);
+    $duplicate = db()->prepare(
+        'SELECT 1 FROM customers WHERE id = ? AND LOWER(email) = LOWER(?) AND deleted_at IS NULL
+         UNION ALL SELECT 1 FROM customer_users WHERE customer_id = ? AND LOWER(email) = LOWER(?) AND is_active = 1
+         UNION ALL SELECT 1 FROM customer_saved_emails WHERE customer_id = ? AND LOWER(email) = LOWER(?) AND id <> ?
+         LIMIT 1'
+    );
+    $duplicate->execute([$customer['id'], $email, $customer['id'], $email, $customer['id'], $email, $sub2]);
+    if ($duplicate->fetch()) json_error('That email is already synchronized in your communication list.', 409);
     $stmt = db()->prepare(
         'UPDATE customer_saved_emails SET label = ?, email = ? WHERE id = ? AND customer_id = ?'
     );
@@ -502,6 +653,7 @@ if ($sub === 'dashboard') {
     if ($profile) {
         $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
         $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
+        $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
     }
     json_out(['customer' => $profile, 'machines' => $machines]);
 }
@@ -726,10 +878,16 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
     foreach ($templates as &$template) {
         $template['machineType'] = $template['machine_type'];
         $template['serviceType'] = $template['service_type'] ?: 'General Service';
-        $template['serviceParts'] = customer_template_service_parts($template['id']);
+        // Customer portal intentionally does not receive BELM's internal spare
+        // catalog/template-part mapping. Parts matching is handled internally.
         unset($template['machine_type'], $template['service_type']);
     }
     unset($template);
+
+    $modeStmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ?');
+    $modeStmt->execute([$customer['id']]);
+    $selfServiceMode = !empty($modeStmt->fetchColumn());
+    $company = belm_get_company_details();
 
     json_out([
         'machine' => [
@@ -741,7 +899,121 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
             'brand' => $machine['brand'],
         ],
         'serviceOptions' => $templates,
+        'selfServiceMode' => $selfServiceMode,
+        'belmServiceProviderActive' => !$selfServiceMode,
+        'belmBusiness' => [
+            'name' => $company['companyName'] ?? 'BELM GENERAL TECH SERVICE LIMITED',
+            'email' => $company['companyEmail'] ?? '',
+            'phone' => $company['companyPhone'] ?? '',
+        ],
     ]);
+}
+
+// ---- Customer-owned Store Ledger -------------------------------------------
+// Separate from BELM Inventory. Customers can receive their own stock here;
+// Machine Expenses can then issue it to a machine with an auditable balance.
+if ($sub === 'store') {
+    if ($method === 'GET') {
+        $items = customer_store_item_rows((string)$customer['id']);
+        $recentStmt = db()->prepare(
+            "SELECT csm.id, csm.movement_type, csm.quantity, csm.unit_cost, csm.balance_after,
+                    csm.actor_name, csm.received_by, csm.note, csm.created_at,
+                    csi.part_number, csi.description, csi.unit,
+                    m.model AS machine_model, m.brand AS machine_brand
+             FROM customer_store_movements csm
+             JOIN customer_store_items csi ON csi.id = csm.store_item_id
+             LEFT JOIN machines m ON m.id = csm.machine_id
+             WHERE csm.customer_id = ?
+             ORDER BY csm.created_at DESC
+             LIMIT 100"
+        );
+        $recentStmt->execute([$customer['id']]);
+        json_out([
+            'canManageStore' => customer_can_manage_store($customer),
+            'items' => $items,
+            'recentMovements' => $recentStmt->fetchAll(),
+        ]);
+    }
+
+    if ($method === 'POST') {
+        require_customer_write_access($customer);
+        if (!customer_can_manage_store($customer)) {
+            json_error('Your account can view Store balances but cannot receive stock.', 403);
+        }
+        $b = body();
+        $partNumber = strtoupper(trim((string)($b['partNumber'] ?? '')));
+        $description = trim((string)($b['description'] ?? ''));
+        $unit = strtoupper(trim((string)($b['unit'] ?? 'PC')));
+        $quantity = (float)($b['quantity'] ?? 0);
+        $unitCost = (float)($b['unitCost'] ?? 0);
+        $note = trim((string)($b['note'] ?? ''));
+        if ($partNumber === '') json_error('Part number is required.');
+        if ($description === '') json_error('Spare/material description is required.');
+        if ($quantity <= 0) json_error('Received quantity must be greater than zero.');
+        if ($unitCost < 0) json_error('Unit cost cannot be negative.');
+        if ($unit === '' || strlen($unit) > 20) json_error('Enter a valid unit.');
+
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $itemStmt = $pdo->prepare(
+                'SELECT * FROM customer_store_items
+                 WHERE customer_id = ? AND UPPER(part_number) = UPPER(?)
+                 FOR UPDATE'
+            );
+            $itemStmt->execute([$customer['id'], $partNumber]);
+            $item = $itemStmt->fetch();
+            if ($item) {
+                $oldQty = (float)$item['qty_on_hand'];
+                $oldCost = (float)$item['average_unit_cost'];
+                $newQty = $oldQty + $quantity;
+                $newAvg = $newQty > 0
+                    ? (($oldQty * $oldCost) + ($quantity * $unitCost)) / $newQty
+                    : 0;
+                $pdo->prepare(
+                    'UPDATE customer_store_items
+                     SET description = ?, unit = ?, qty_on_hand = ?, average_unit_cost = ?, updated_at = NOW()
+                     WHERE id = ?'
+                )->execute([$description, $unit, $newQty, round($newAvg, 2), $item['id']]);
+                $itemId = $item['id'];
+                $balanceAfter = $newQty;
+            } else {
+                $itemId = uuid();
+                $balanceAfter = $quantity;
+                $pdo->prepare(
+                    'INSERT INTO customer_store_items
+                     (id, customer_id, part_number, description, unit, qty_on_hand, average_unit_cost, created_at, updated_at)
+                     VALUES (?,?,?,?,?,?,?,NOW(),NOW())'
+                )->execute([
+                    $itemId, $customer['id'], $partNumber, $description, $unit,
+                    $quantity, round($unitCost, 2),
+                ]);
+            }
+            $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer Store')) ?: 'Customer Store';
+            $pdo->prepare(
+                'INSERT INTO customer_store_movements
+                 (id, customer_id, store_item_id, machine_id, movement_type, quantity, unit_cost,
+                  balance_after, actor_name, received_by, note, created_at)
+                 VALUES (?,?,?,NULL,\'RECEIVE\',?,?,?,?,NULL,?,NOW())'
+            )->execute([
+                uuid(), $customer['id'], $itemId, $quantity, round($unitCost, 2),
+                round($balanceAfter, 2), $actor, $note !== '' ? $note : null,
+            ]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        log_customer_activity($customer, "Store received {$quantity} {$unit} of {$partNumber} - {$description}.");
+        json_out([
+            'ok' => true,
+            'itemId' => $itemId,
+            'balance' => round($balanceAfter, 2),
+            'message' => 'Stock received and Store balance updated.',
+        ], 201);
+    }
+
+    json_error('Method not allowed.', 405);
 }
 
 // ---- Customer-recorded machine spare-part expenses -------------------------
@@ -783,35 +1055,113 @@ if ($sub === 'machine-expenses' && $sub2) {
             [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
         }
 
-        $cost = round($quantity * $unitPrice, 2);
+        $stockSource = strtoupper(trim((string)($b['stockSource'] ?? 'DIRECT_PURCHASE')));
+        $receivedBy = trim((string)($b['receivedBy'] ?? ''));
+        if (!in_array($stockSource, ['DIRECT_PURCHASE', 'CUSTOMER_STORE'], true)) {
+            json_error('Choose a valid material source.');
+        }
+        if ($stockSource === 'CUSTOMER_STORE' && !customer_can_manage_store($customer)) {
+            json_error('Your account cannot issue stock from the Customer Store.', 403);
+        }
+
         $expenseId = uuid();
-        $loggedBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
-        db()->prepare(
-            "INSERT INTO usage_logs
-             (id, customer_id, machine_id, date, category, description,
-              part_number, quantity, unit, unit_price, cost, logged_by,
-              receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at)
-             VALUES (?,?,?,?,'SPARE_PART',?,?,?,?,?,?,?,?,?,?,NOW())"
-        )->execute([
-            $expenseId,
-            $customer['id'],
-            $machineId,
-            $date,
-            $description,
-            $partNumber,
-            $quantity,
-            $unit,
-            $unitPrice,
-            $cost,
-            $loggedBy !== '' ? $loggedBy : 'Customer',
-            $receiptData,
-            $receiptMime,
-            $receiptName !== '' ? $receiptName : null,
-        ]);
+        $loggedBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        $issuedBy = $stockSource === 'CUSTOMER_STORE' ? $loggedBy : null;
+        $storeItemId = null;
+        $storeBalanceAfter = null;
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            if ($stockSource === 'CUSTOMER_STORE') {
+                $storeStmt = $pdo->prepare(
+                    'SELECT id, description, unit, qty_on_hand, average_unit_cost
+                     FROM customer_store_items
+                     WHERE customer_id = ? AND UPPER(part_number) = UPPER(?)
+                     FOR UPDATE'
+                );
+                $storeStmt->execute([$customer['id'], $partNumber]);
+                $storeItem = $storeStmt->fetch();
+                if (!$storeItem) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    json_error('This part is not in your Customer Store. Receive stock first or choose Direct purchase.', 409);
+                }
+                $available = (float)$storeItem['qty_on_hand'];
+                if ($available + 0.00001 < $quantity) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    json_error(
+                        'Insufficient Customer Store balance. Available: ' .
+                        rtrim(rtrim(number_format($available, 2, '.', ''), '0'), '.') . ' ' . ($storeItem['unit'] ?: $unit) . '.',
+                        409
+                    );
+                }
+                $storeItemId = $storeItem['id'];
+                $storeBalanceAfter = round($available - $quantity, 2);
+                $unitPrice = (float)$storeItem['average_unit_cost'];
+                $unit = strtoupper(trim((string)$storeItem['unit'])) ?: $unit;
+                if ($description === '') $description = (string)$storeItem['description'];
+                $pdo->prepare(
+                    'UPDATE customer_store_items SET qty_on_hand = ?, updated_at = NOW() WHERE id = ?'
+                )->execute([$storeBalanceAfter, $storeItemId]);
+                $pdo->prepare(
+                    'INSERT INTO customer_store_movements
+                     (id, customer_id, store_item_id, machine_id, movement_type, quantity, unit_cost,
+                      balance_after, actor_name, received_by, note, created_at)
+                     VALUES (?,?,?,?,\'ISSUE\',?,?,?,?,?,?,NOW())'
+                )->execute([
+                    uuid(), $customer['id'], $storeItemId, $machineId, $quantity,
+                    round($unitPrice, 2), $storeBalanceAfter, $loggedBy,
+                    $receivedBy !== '' ? $receivedBy : null,
+                    'Issued to ' . (($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model']),
+                ]);
+            }
+
+            $cost = round($quantity * $unitPrice, 2);
+            $pdo->prepare(
+                "INSERT INTO usage_logs
+                 (id, customer_id, machine_id, date, category, description,
+                  part_number, quantity, unit, unit_price, cost, logged_by,
+                  receipt_photo_data, receipt_photo_mime, receipt_photo_name,
+                  store_item_id, stock_source, store_balance_after, issued_by, received_by, created_at)
+                 VALUES (?,?,?,?,'SPARE_PART',?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
+            )->execute([
+                $expenseId,
+                $customer['id'],
+                $machineId,
+                $date,
+                $description,
+                $partNumber,
+                $quantity,
+                $unit,
+                $unitPrice,
+                $cost,
+                $loggedBy,
+                $receiptData,
+                $receiptMime,
+                $receiptName !== '' ? $receiptName : null,
+                $storeItemId,
+                $stockSource,
+                $storeBalanceAfter,
+                $issuedBy,
+                $receivedBy !== '' ? $receivedBy : null,
+            ]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        log_customer_activity(
+            $customer,
+            ($stockSource === 'CUSTOMER_STORE' ? 'Issued from Store' : 'Recorded direct purchase') .
+            " - {$quantity} {$unit} {$partNumber} for " . (($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'])
+        );
         json_out([
             'id' => $expenseId,
             'cost' => $cost,
-            'message' => 'Machine expense saved successfully.',
+            'stockSource' => $stockSource,
+            'storeBalanceAfter' => $storeBalanceAfter,
+            'message' => $stockSource === 'CUSTOMER_STORE'
+                ? 'Material issued to machine and Store balance updated.'
+                : 'Machine expense saved successfully.',
         ], 201);
     }
 
@@ -912,7 +1262,7 @@ if ($sub === 'machine-expenses' && $sub2) {
         fputcsv($output, ['Service provided by', 'BELM General Tech Service Limited']);
         fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
         fputcsv($output, []);
-        fputcsv($output, ['Date', 'Machine', 'Part Number', 'Description', 'Quantity', 'Unit', 'Unit Cost TZS', 'Total TZS', 'Receipt', 'Recorded By']);
+        fputcsv($output, ['Date', 'Machine', 'Source', 'Part Number', 'Description', 'Quantity', 'Unit', 'Unit Cost TZS', 'Total TZS', 'Store Balance After', 'Issued By', 'Received By', 'Receipt', 'Recorded By']);
         foreach ($expenses as $expense) {
             $safeText = static function ($value): string {
                 $text = (string)$value;
@@ -921,18 +1271,102 @@ if ($sub === 'machine-expenses' && $sub2) {
             fputcsv($output, [
                 $expense['date'],
                 $safeText($machine['model']),
+                ($expense['stock_source'] ?? 'DIRECT_PURCHASE') === 'CUSTOMER_STORE' ? 'Customer Store' : 'Direct Purchase',
                 $safeText($expense['part_number'] ?? ''),
                 $safeText($expense['description']),
                 $expense['quantity'],
                 $expense['unit'],
                 $expense['unit_price'],
                 $expense['cost'],
+                $expense['store_balance_after'] !== null ? $expense['store_balance_after'] : '',
+                $safeText($expense['issued_by'] ?? ''),
+                $safeText($expense['received_by'] ?? ''),
                 $expense['has_receipt'] ? 'Attached' : 'No receipt',
                 $safeText($expense['logged_by'] ?? ''),
             ]);
         }
         fclose($output);
         exit;
+    }
+
+    if ($method === 'GET' && $sub3 === 'audit-pdf') {
+        $storeItems = customer_store_item_rows((string)$customer['id']);
+        $storeSummary = customer_store_summary((string)$customer['id'], $machineId);
+        $totalCost = array_reduce(
+            $expenses,
+            static fn(float $sum, array $expense): float => $sum + (float)$expense['cost'],
+            0.0
+        );
+        $auditRows = [
+            ['MACHINE MATERIAL USAGE'],
+            ['Date', 'Source', 'Part', 'Qty', 'Unit', 'Unit Cost', 'Total', 'Bal After'],
+        ];
+        foreach ($expenses as $expense) {
+            $auditRows[] = [
+                display_date($expense['date']),
+                ($expense['stock_source'] ?? 'DIRECT_PURCHASE') === 'CUSTOMER_STORE' ? 'STORE' : 'DIRECT',
+                (string)($expense['part_number'] ?: '-'),
+                rtrim(rtrim(number_format((float)$expense['quantity'], 2, '.', ''), '0'), '.'),
+                (string)($expense['unit'] ?: 'PC'),
+                number_format((float)$expense['unit_price'], 2),
+                number_format((float)$expense['cost'], 2),
+                $expense['store_balance_after'] !== null
+                    ? rtrim(rtrim(number_format((float)$expense['store_balance_after'], 2, '.', ''), '0'), '.')
+                    : '-',
+            ];
+            $auditRows[] = [
+                'Description: ' . substr((string)$expense['description'], 0, 46),
+                'Issued/recorded by: ' . substr((string)($expense['issued_by'] ?: $expense['logged_by'] ?: '-'), 0, 22),
+                'Received/used by: ' . substr((string)($expense['received_by'] ?: '-'), 0, 22),
+            ];
+        }
+        $auditRows[] = ['CUSTOMER STORE BALANCE SNAPSHOT'];
+        $auditRows[] = ['Part', 'Description', 'Unit', 'Received', 'Issued', 'Balance', 'Avg Unit Cost', 'Stock Value'];
+        foreach ($storeItems as $item) {
+            $balance = (float)$item['qty_on_hand'];
+            $avg = (float)$item['average_unit_cost'];
+            $auditRows[] = [
+                (string)$item['part_number'],
+                substr((string)$item['description'], 0, 30),
+                (string)$item['unit'],
+                rtrim(rtrim(number_format((float)$item['total_received'], 2, '.', ''), '0'), '.'),
+                rtrim(rtrim(number_format((float)$item['total_issued'], 2, '.', ''), '0'), '.'),
+                rtrim(rtrim(number_format($balance, 2, '.', ''), '0'), '.'),
+                number_format($avg, 2),
+                number_format($balance * $avg, 2),
+            ];
+        }
+        $auditRows[] = ['STORE MOVEMENT AUDIT - PARTS RELATED TO THIS MACHINE'];
+        $auditRows[] = ['Time', 'Move', 'Part', 'Qty', 'Balance', 'Machine', 'Actor', 'Received By'];
+        foreach (customer_store_audit_rows((string)$customer['id'], $machineId) as $move) {
+            $machineLabel = trim(((string)($move['machine_brand'] ?? '')) . ' ' . ((string)($move['machine_model'] ?? '')));
+            $auditRows[] = [
+                date('d/m/Y H:i', strtotime((string)$move['created_at'])),
+                (string)$move['movement_type'],
+                (string)$move['part_number'],
+                rtrim(rtrim(number_format((float)$move['quantity'], 2, '.', ''), '0'), '.') . ' ' . (string)$move['unit'],
+                rtrim(rtrim(number_format((float)$move['balance_after'], 2, '.', ''), '0'), '.'),
+                $machineLabel !== '' ? substr($machineLabel, 0, 18) : 'STORE',
+                substr((string)$move['actor_name'], 0, 18),
+                substr((string)($move['received_by'] ?: '-'), 0, 18),
+            ];
+        }
+        $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
+        output_table_pdf(
+            'machine-material-audit-' . $safeMachine . '.pdf',
+            strtoupper($customer['name']) . ' - MACHINE MATERIAL & EXPENSE AUDIT',
+            [
+                'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
+                'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+                'Period: ' . ($rangeFrom ? display_date($rangeFrom) . ' to ' . display_date($rangeTo) : 'All time'),
+                'Machine expense total: TZS ' . number_format($totalCost, 2),
+                'Customer Store issues to this machine: ' . (int)$storeSummary['machineIssueCount']
+                    . ' issue record(s) / TZS ' . number_format((float)$storeSummary['machineIssuedValue'], 2),
+                'Customer Store current stock value: TZS ' . number_format((float)$storeSummary['stockValue'], 2),
+                'Generated: ' . date('d/m/Y H:i'),
+            ],
+            $auditRows
+        );
     }
 
     if ($method === 'GET' && $sub3 === 'pdf') {
@@ -952,13 +1386,15 @@ if ($sub === 'machine-expenses' && $sub2) {
         ];
         foreach ($expenses as $expense) {
             $lines[] = sprintf(
-                '%s | Part: %s | Qty: %s %s | Unit: %s | Total: TZS %s | Receipt: %s',
+                '%s | %s | Part: %s | Qty: %s %s | Unit: %s | Total: TZS %s | Balance after: %s | Receipt: %s',
                 display_date($expense['date']),
+                ($expense['stock_source'] ?? 'DIRECT_PURCHASE') === 'CUSTOMER_STORE' ? 'STORE' : 'DIRECT',
                 $expense['part_number'] ?: '-',
                 rtrim(rtrim(number_format((float)$expense['quantity'], 2, '.', ''), '0'), '.'),
                 $expense['unit'] ?: 'PC',
                 number_format((float)$expense['unit_price'], 2),
                 number_format((float)$expense['cost'], 2),
+                $expense['store_balance_after'] !== null ? number_format((float)$expense['store_balance_after'], 2) : '-',
                 $expense['has_receipt'] ? 'Yes' : 'No'
             );
             $descriptionLine = (string)$expense['description'];
@@ -966,6 +1402,7 @@ if ($sub === 'machine-expenses' && $sub2) {
                 ? mb_substr($descriptionLine, 0, 105)
                 : substr($descriptionLine, 0, 105);
             $lines[] = '  ' . $descriptionLine;
+            $lines[] = '  Issued/Recorded by: ' . ($expense['issued_by'] ?: $expense['logged_by'] ?: '-') . ' | Received by: ' . ($expense['received_by'] ?: '-');
         }
         $lines[] = str_repeat('-', 78);
         $lines[] = 'TOTAL MACHINE EXPENSE: TZS ' . number_format($totalCost, 2);
@@ -999,6 +1436,10 @@ if ($sub === 'machine-expenses' && $sub2) {
                 'averageCost' => $recordCount > 0 ? round($totalCost / $recordCount, 2) : 0,
                 'receiptCount' => $receiptCount,
             ],
+            'storeSummary' => customer_store_summary((string)$customer['id'], $machineId),
+            'storeItems' => customer_store_item_rows((string)$customer['id']),
+            'storeMovements' => customer_store_audit_rows((string)$customer['id'], $machineId),
+            'canManageStore' => customer_can_manage_store($customer),
             'expenses' => $expenses,
         ]);
     }
@@ -1483,6 +1924,136 @@ if ($sub === 'machines' && $sub2) {
     $stmt->execute([$machineId, $customer['id']]);
     if (!$stmt->fetch()) json_error('Not found', 404);
 
+    if ($sub3 === 'daily-checklist' && $method === 'GET') {
+        $machineStmt = db()->prepare(
+            'SELECT id, machine_type, model, serial_number, reg_number, brand
+             FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+        );
+        $machineStmt->execute([$machineId, $customer['id']]);
+        $machine = $machineStmt->fetch();
+        if (!$machine) json_error('Machine not found for this customer.', 404);
+
+        $templateStmt = db()->prepare(
+            'SELECT id, name, machine_type, service_type
+             FROM checklist_templates
+             WHERE deleted_at IS NULL AND is_active = 1
+               AND (LOWER(TRIM(machine_type)) = LOWER(TRIM(?)) OR LOWER(TRIM(machine_type)) = LOWER(TRIM(?)))
+             ORDER BY CASE WHEN LOWER(TRIM(machine_type)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END, name ASC'
+        );
+        $templateStmt->execute([$machine['machine_type'], $machine['model'], $machine['machine_type']]);
+        $templates = $templateStmt->fetchAll();
+        $tz = new DateTimeZone('Africa/Dar_es_Salaam');
+        $today = (new DateTimeImmutable('now', $tz))->format('Y-m-d');
+        foreach ($templates as &$template) {
+            $itemStmt = db()->prepare(
+                'SELECT id, label, input_type, is_required, safety_level, "order"
+                 FROM checklist_template_items WHERE template_id = ? ORDER BY "order" ASC'
+            );
+            $itemStmt->execute([$template['id']]);
+            $template['items'] = array_map(static function (array $item): array {
+                return [
+                    'id' => $item['id'],
+                    'label' => $item['label'],
+                    'inputType' => $item['input_type'],
+                    'isRequired' => (bool)$item['is_required'],
+                    'safetyLevel' => $item['safety_level'] ?: 'GREEN',
+                    'order' => (int)$item['order'],
+                ];
+            }, $itemStmt->fetchAll());
+
+            $reportStmt = db()->prepare(
+                'SELECT id, filled_by, created_at, overall_status, hour_meter_reading
+                 FROM checklist_reports WHERE machine_id = ? AND template_id = ? ORDER BY created_at DESC'
+            );
+            $reportStmt->execute([$machineId, $template['id']]);
+            $todayReport = null;
+            foreach ($reportStmt->fetchAll() as $candidate) {
+                try {
+                    $created = new DateTimeImmutable((string)$candidate['created_at'], $tz);
+                    $created = $created->setTimezone($tz);
+                    if ($created->format('Y-m-d') !== $today) continue;
+                } catch (Throwable $e) {
+                    continue;
+                }
+                $todayReport = [
+                    'id' => $candidate['id'],
+                    'filledBy' => $candidate['filled_by'],
+                    'createdAt' => $candidate['created_at'],
+                    'overallStatus' => $candidate['overall_status'],
+                    'hourMeterReading' => (float)$candidate['hour_meter_reading'],
+                ];
+                break;
+            }
+            $template['machineType'] = $template['machine_type'];
+            $template['serviceType'] = $template['service_type'] ?: 'General Inspection';
+            $template['todayReport'] = $todayReport;
+            unset($template['machine_type'], $template['service_type']);
+        }
+        unset($template);
+        json_out([
+            'date' => $today,
+            'machine' => [
+                'id' => $machine['id'],
+                'machineType' => $machine['machine_type'],
+                'model' => $machine['model'],
+                'serialNumber' => $machine['serial_number'],
+                'regNumber' => $machine['reg_number'],
+                'brand' => $machine['brand'],
+            ],
+            'templates' => $templates,
+        ]);
+    }
+
+    if ($sub3 === 'daily-checklist-pdf' && $method === 'GET') {
+        $templateId = trim((string)($_GET['templateId'] ?? ''));
+        if ($templateId === '') json_error('Checklist Template is required.');
+        $machineStmt = db()->prepare(
+            'SELECT id, machine_type, model, serial_number, reg_number, brand
+             FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+        );
+        $machineStmt->execute([$machineId, $customer['id']]);
+        $machine = $machineStmt->fetch();
+        if (!$machine) json_error('Machine not found for this customer.', 404);
+        $templateStmt = db()->prepare(
+            'SELECT id, name, machine_type FROM checklist_templates
+             WHERE id = ? AND deleted_at IS NULL AND is_active = 1
+               AND (LOWER(TRIM(machine_type)) = LOWER(TRIM(?)) OR LOWER(TRIM(machine_type)) = LOWER(TRIM(?)))'
+        );
+        $templateStmt->execute([$templateId, $machine['machine_type'], $machine['model']]);
+        $template = $templateStmt->fetch();
+        if (!$template) json_error('Checklist Template is not assigned to this machine.', 404);
+        $itemStmt = db()->prepare(
+            'SELECT label, input_type, is_required FROM checklist_template_items
+             WHERE template_id = ? ORDER BY "order" ASC'
+        );
+        $itemStmt->execute([$templateId]);
+        $items = $itemStmt->fetchAll();
+        $todayDate = new DateTimeImmutable('now', new DateTimeZone('Africa/Dar_es_Salaam'));
+        $today = $todayDate->format('d/m/Y');
+        $lines = [
+            strtoupper($customer['name'] ?? 'BELM CUSTOMER') . ' - DAILY MACHINE CHECKLIST',
+            'Service system: BELM General Tech Service Limited',
+            'Date: ' . $today,
+            'Template: ' . ($template['name'] ?: 'Checklist'),
+            'Machine: ' . trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')),
+            'Machine type: ' . ($machine['machine_type'] ?? 'Not recorded'),
+            'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+            'Technician / Inspector: __________________________________________',
+            'Hour meter: ____________________________________________________',
+            str_repeat('-', 78),
+        ];
+        foreach ($items as $index => $item) {
+            $required = (bool)$item['is_required'] ? ' [REQUIRED]' : '';
+            $lines[] = ($index + 1) . '. ' . $item['label'] . $required . ' (' . $item['input_type'] . ')';
+            $lines[] = '   Result: _______________________________________________________';
+        }
+        $lines[] = str_repeat('-', 78);
+        $lines[] = 'Inspector signature: _____________________________________________';
+        $lines[] = 'Customer / supervisor acknowledgement: __________________________';
+        $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', trim(($machine['brand'] ?? '') . '-' . ($machine['model'] ?? '')));
+        output_checklist_report_pdf('daily-checklist-' . $safeMachine . '-' . $todayDate->format('Y-m-d') . '.pdf', $lines, []);
+    }
+
     if ($sub3 === 'reports') {
         $stmt = db()->prepare('SELECT * FROM checklist_reports WHERE machine_id = ? ORDER BY created_at DESC');
         $stmt->execute([$machineId]);
@@ -1566,8 +2137,29 @@ if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
         ];
     }
 
+    $commStmt = db()->prepare(
+        'SELECT id, related_type, related_id, direction, channel, subject, message, status, created_by_name, created_at
+         FROM customer_communications WHERE customer_id = ? AND machine_id = ?
+         ORDER BY created_at DESC LIMIT 30'
+    );
+    $commStmt->execute([$customer['id'], $machineId]);
+    $communicationRows = $commStmt->fetchAll();
+    if ($communicationRows) $updates = [];
+    foreach ($communicationRows as $row) {
+        $updates[] = [
+            'id' => 'comm-' . $row['id'],
+            'text' => $row['subject'] . ': ' . $row['message'],
+            'createdAt' => $row['created_at'],
+            'direction' => $row['direction'],
+            'channel' => $row['channel'],
+            'relatedType' => $row['related_type'],
+            'relatedId' => $row['related_id'],
+            'deliveryStatus' => $row['status'],
+        ];
+    }
+
     usort($updates, fn($a, $b) => strcmp($b['createdAt'], $a['createdAt']));
-    json_out(array_slice($updates, 0, 5));
+    json_out(array_slice($updates, 0, 30));
 }
 
 // ---- Customer assistants ---------------------------------------------------
@@ -1635,9 +2227,9 @@ if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'DELETE') {
 }
 
 // ---- Operator problem reports -----------------------------------------------
-// Any operator (or owner/admin) can report a problem. Visible to the
-// customer's own Machine Admin/owner, and to BELM engineer/technician staff
-// on the admin side.
+// In Customer Self-Service mode a problem report stays inside the customer's
+// own maintenance team unless the sender explicitly asks BELM for Technical
+// Support. In BELM-managed mode, problem reports always notify BELM.
 if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
     $machineId = $sub2;
     $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
@@ -1645,11 +2237,17 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
     if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
 
     $stmt = db()->prepare(
-        'SELECT id, operator_name, operator_contact, message, status, created_at, resolved_at
+        'SELECT id, operator_name, operator_contact, message, status, notify_belm, created_at, resolved_at
          FROM operator_reports WHERE machine_id = ? ORDER BY created_at DESC'
     );
     $stmt->execute([$machineId]);
-    json_out($stmt->fetchAll());
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$row) {
+        $row['notifyBelm'] = !empty($row['notify_belm']);
+        unset($row['notify_belm']);
+    }
+    unset($row);
+    json_out($rows);
 }
 
 if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
@@ -1676,17 +2274,71 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
         }
     }
 
+    $modeStmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ?');
+    $modeStmt->execute([$customer['id']]);
+    $selfServiceMode = !empty($modeStmt->fetchColumn());
+    $notifyBelm = !$selfServiceMode || !empty($b['sendToBelm']);
+
     $newId = uuid();
     db()->prepare(
-        'INSERT INTO operator_reports
-            (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, created_at)
-         VALUES (?,?,?,?,?,?,?,\'OPEN\',NOW())'
+        "INSERT INTO operator_reports
+            (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, created_at)
+         VALUES (?,?,?,?,?,?,?,'OPEN',?,NOW())"
     )->execute([
         $newId, $machineId, $customer['id'],
         $operatorId !== '' ? $operatorId : null,
-        $operatorName, $operatorContact, $message,
+        $operatorName, $operatorContact, $message, $notifyBelm ? 1 : 0,
     ]);
-    json_out(['id' => $newId, 'message' => 'Problem reported successfully. BELM has been notified.'], 201);
+
+    if (!$notifyBelm) {
+        log_customer_activity($customer, "Internal machine problem reported by $operatorName: $message");
+        json_out([
+            'id' => $newId,
+            'message' => 'Problem saved for your internal maintenance team. BELM was not notified.',
+            'belmAlertSent' => false,
+            'internalOnly' => true,
+        ], 201);
+    }
+
+    belm_log_customer_communication(
+        (string)$customer['id'], $machineId, 'CUSTOMER_TO_BELM', 'EMAIL',
+        'BELM Technical Support — Problem Report', $message, 'OPERATOR_REPORT', $newId, $operatorName, 'SENT'
+    );
+    $machineInfoStmt = db()->prepare('SELECT brand, model, machine_type, serial_number, reg_number FROM machines WHERE id = ?');
+    $machineInfoStmt->execute([$machineId]);
+    $machineInfo = $machineInfoStmt->fetch() ?: [];
+    $machineLabel = trim(($machineInfo['brand'] ?? '') . ' ' . ($machineInfo['model'] ?? '')) ?: ($machineInfo['machine_type'] ?? 'Machine');
+    $serial = $machineInfo['serial_number'] ?: ($machineInfo['reg_number'] ?: 'Not recorded');
+    $alertResult = belm_send_customer_to_belm_alert(
+        ['service-requests'],
+        'OFFICIAL SUPPORT REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
+        "CUSTOMER TECHNICAL SUPPORT REQUEST
+
+"
+        . "Customer: " . ($customer['name'] ?? 'Unknown') . "
+"
+        . "Reported by: $operatorName
+"
+        . "Machine: $machineLabel
+"
+        . "Serial / Reg: $serial
+"
+        . "Problem: $message
+"
+        . "Report ID: $newId
+
+Open BELM Portal > Service Requests / Customer Communication and take action.",
+        $customer['actorEmail'] ?? null
+    );
+    $businessEmailSent = !empty($alertResult['businessEmailSent']);
+    json_out([
+        'id' => $newId,
+        'message' => $businessEmailSent
+            ? 'Problem sent to BELM Technical Support and the official BELM business email.'
+            : 'Problem saved for BELM support, but official business-email delivery needs attention.',
+        'belmAlertSent' => $businessEmailSent,
+        'internalOnly' => false,
+    ], 201);
 }
 
 // ---- Team analysis: how many active users in each department/role --------
@@ -1762,38 +2414,41 @@ if ($sub === 'users' && !$sub2 && $method === 'GET') {
 
 // A small, separate endpoint (rather than reshaping the array above) so
 // GET /technicians — list this customer's own field Technicians (only
-// meaningful once BELM has turned on Machinery Admin self-service).
+// meaningful once BELM has turned on Customer Self-Service mode).
 if ($sub === 'technicians' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
         "SELECT u.id, u.name, u.email, u.phone, u.is_active, u.created_at
          FROM users u JOIN roles r ON r.id = u.role_id
-         WHERE r.name = 'Technician' AND u.assigned_customer_id = ? AND u.deleted_at IS NULL
+         WHERE r.name = 'Technician' AND u.assigned_customer_id = ?
+           AND u.is_customer_managed = 1 AND u.deleted_at IS NULL
          ORDER BY u.created_at DESC"
     );
     $stmt->execute([$customer['id']]);
     json_out($stmt->fetchAll());
 }
 
-// POST /technicians — a "Machinery Admin" self-service customer adds
+// POST /technicians — a Customer Self-Service account adds
 // their OWN field Technician. This creates a normal staff `users` row
 // (role=Technician, assigned_customer_id=this customer) — the exact
 // same account type BELM's own admin creates, just self-served. Blocked
-// entirely unless BELM has switched Machinery Admin ON for this customer.
+// entirely unless BELM has switched Customer Self-Service ON for this customer.
 if ($sub === 'technicians' && $method === 'POST') {
     require_customer_owner_or_admin($customer);
     $customerRow = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ?');
     $customerRow->execute([$customer['id']]);
     if (empty($customerRow->fetchColumn())) {
-        json_error('Machinery Admin self-service is not enabled for your account. Contact BELM Admin to turn it on.', 403);
+        json_error('Customer Self-Service is not enabled for your account. Contact BELM Admin to turn it on.', 403);
     }
 
     $b = body();
     $name = trim((string)($b['name'] ?? ''));
     $email = strtolower(trim((string)($b['email'] ?? '')));
     $phone = trim((string)($b['phone'] ?? ''));
+    $password = (string)($b['password'] ?? '');
     if ($name === '') json_error('Technician name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email for this Technician.');
+    if (strlen($password) < 8) json_error('Initial Technician password must contain at least 8 characters.');
 
     $emailCheck = db()->prepare(
         'SELECT 1 FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL
@@ -1810,16 +2465,13 @@ if ($sub === 'technicians' && $method === 'POST') {
     if (!$roleId) json_error('The Technician role is not set up yet — contact BELM Admin.', 500);
 
     $newId = uuid();
-    $password = secure_account_secret();
-    $recoveryCode = account_recovery_code();
     db()->prepare(
         'INSERT INTO users
-         (id, name, email, password_hash, recovery_code_hash, phone, role_id, assigned_customer_id, created_at)
-         VALUES (?,?,?,?,?,?,?,?,NOW())'
+         (id, name, email, password_hash, recovery_code_hash, phone, role_id, assigned_customer_id, is_customer_managed, created_at)
+         VALUES (?,?,?,?,NULL,?,?,?,1,NOW())'
     )->execute([
         $newId, $name, $email,
         password_hash($password, PASSWORD_BCRYPT),
-        password_hash($recoveryCode, PASSWORD_BCRYPT),
         $phone !== '' ? $phone : null,
         $roleId,
         $customer['id'],
@@ -1827,8 +2479,6 @@ if ($sub === 'technicians' && $method === 'POST') {
     log_customer_activity($customer, "Added \"$name\" as their own field Technician.");
     json_out([
         'id' => $newId,
-        'temporaryPassword' => $password,
-        'recoveryCode' => $recoveryCode,
         'loginUrl' => portal_base_url() . '/tech',
     ], 201);
 }
@@ -1846,42 +2496,11 @@ if ($sub === 'users' && $sub2 === 'limit' && $method === 'GET') {
     json_out(['limit' => $userLimit, 'used' => (int)$countStmt->fetchColumn()]);
 }
 
-// Self-service password change — works for both the main customer
-// (owner) account and any logged-in assistant, updating whichever table
-// their own login actually lives in.
+// Customer passwords are reset only through the public Forgot Password
+// email-OTP flow. Keeping this route explicit prevents old clients/bookmarks
+// from silently changing credentials by the legacy current-password method.
 if ($sub === 'change-password' && $method === 'PUT') {
-    $b = body();
-    $currentPassword = (string)($b['currentPassword'] ?? '');
-    $newPassword = (string)($b['newPassword'] ?? '');
-    if ($currentPassword === '') json_error('Enter your current password.');
-    if (strlen($newPassword) < 8) json_error('New password must contain at least 8 characters.');
-
-    $rateLimitId = ($customer['actorType'] ?? 'owner') === 'assistant' ? $customer['actorId'] : $customer['id'];
-    assert_not_rate_limited('customer-change-password', $rateLimitId, 8, 15);
-
-    if (($customer['actorType'] ?? 'owner') === 'assistant') {
-        $stmt = db()->prepare('SELECT password FROM customer_users WHERE id = ? AND customer_id = ?');
-        $stmt->execute([$customer['actorId'], $customer['id']]);
-        $hash = $stmt->fetchColumn();
-        if (!$hash || !password_verify($currentPassword, $hash)) {
-            record_failed_attempt('customer-change-password', $rateLimitId);
-            json_error('Your current password is incorrect.', 403);
-        }
-        db()->prepare('UPDATE customer_users SET password = ? WHERE id = ?')
-            ->execute([password_hash($newPassword, PASSWORD_BCRYPT), $customer['actorId']]);
-    } else {
-        $stmt = db()->prepare('SELECT password FROM customers WHERE id = ?');
-        $stmt->execute([$customer['id']]);
-        $hash = $stmt->fetchColumn();
-        if (!$hash || !password_verify($currentPassword, $hash)) {
-            record_failed_attempt('customer-change-password', $rateLimitId);
-            json_error('Your current password is incorrect.', 403);
-        }
-        db()->prepare('UPDATE customers SET password = ? WHERE id = ?')
-            ->execute([password_hash($newPassword, PASSWORD_BCRYPT), $customer['id']]);
-    }
-    clear_rate_limit('customer-change-password', $rateLimitId);
-    json_out(['ok' => true, 'message' => 'Password changed successfully.']);
+    json_error('Use Forgot Password on the login page. A 6-digit OTP will be sent to your account email.', 410);
 }
 
 if ($sub === 'users' && $method === 'POST') {
@@ -1927,18 +2546,16 @@ if ($sub === 'users' && $method === 'POST') {
     if ($emailCheck->fetch()) json_error('This email address is already used by another portal account.', 409);
 
     $newId = uuid();
-    $recoveryCode = account_recovery_code();
     db()->prepare(
         'INSERT INTO customer_users
          (id, customer_id, name, email, password, recovery_code_hash, phone, role, is_active, permissions, created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,?,NOW())'
+         VALUES (?,?,?,?,?,NULL,?,?,?,?,NOW())'
     )->execute([
         $newId,
         $customer['id'],
         $name,
         $email,
         password_hash($password, PASSWORD_BCRYPT),
-        password_hash($recoveryCode, PASSWORD_BCRYPT),
         $phone !== '' ? $phone : null,
         $role,
         1,
@@ -1952,7 +2569,6 @@ if ($sub === 'users' && $method === 'POST') {
         'phone' => $phone !== '' ? $phone : null,
         'role' => $role,
         'isActive' => true,
-        'recoveryCode' => $recoveryCode,
     ], 201);
 }
 
@@ -1969,7 +2585,6 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
     $phone = trim((string)($b['phone'] ?? ($existing['phone'] ?? '')));
     $role = strtolower(trim((string)($b['role'] ?? $existing['role'])));
     $isActive = array_key_exists('isActive', $b) ? ((bool)$b['isActive'] ? 1 : 0) : (int)$existing['is_active'];
-    $newPassword = (string)($b['password'] ?? '');
     $permissionsJson = array_key_exists('permissions', $b)
         ? customer_permissions_from_body($b)
         : $existing['permissions'];
@@ -1977,10 +2592,6 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
     if ($name === '') json_error('Assistant name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
     if (!in_array($role, ['admin', 'assistant', 'accounts', 'operator'], true)) json_error('Assistant role must be Admin, Assistant, Accounts or Operator.');
-    if ($newPassword !== '' && strlen($newPassword) < 8) {
-        json_error('New password must contain at least 8 characters.');
-    }
-
     $emailCheck = db()->prepare(
         'SELECT 1 FROM customers WHERE LOWER(email) = ?
          UNION ALL SELECT 1 FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL
@@ -1990,44 +2601,24 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
     $emailCheck->execute([$email, $email, $email, $sub2]);
     if ($emailCheck->fetch()) json_error('This email address is already used by another portal account.', 409);
 
-    if ($newPassword !== '') {
-        $recoveryCode = account_recovery_code();
-        db()->prepare(
-            'UPDATE customer_users
-             SET name=?, email=?, phone=?, role=?, is_active=?, password=?, recovery_code_hash=?, permissions=?
-             WHERE id=? AND customer_id=?'
-        )->execute([
-            $name,
-            $email,
-            $phone !== '' ? $phone : null,
-            $role,
-            $isActive,
-            password_hash($newPassword, PASSWORD_BCRYPT),
-            password_hash($recoveryCode, PASSWORD_BCRYPT),
-            $permissionsJson,
-            $sub2,
-            $customer['id'],
-        ]);
-    } else {
-        db()->prepare(
-            'UPDATE customer_users
-             SET name=?, email=?, phone=?, role=?, is_active=?, permissions=?
-             WHERE id=? AND customer_id=?'
-        )->execute([
-            $name,
-            $email,
-            $phone !== '' ? $phone : null,
-            $role,
-            $isActive,
-            $permissionsJson,
-            $sub2,
-            $customer['id'],
-        ]);
-    }
-    json_out([
-        'ok' => true,
-        'recoveryCode' => $newPassword !== '' ? $recoveryCode : null,
+    // Customer Admin may edit profile, role, status and permissions, but not the
+    // user's password after account creation. The user owns password recovery
+    // through Forgot Password + email OTP.
+    db()->prepare(
+        'UPDATE customer_users
+         SET name=?, email=?, phone=?, role=?, is_active=?, permissions=?
+         WHERE id=? AND customer_id=?'
+    )->execute([
+        $name,
+        $email,
+        $phone !== '' ? $phone : null,
+        $role,
+        $isActive,
+        $permissionsJson,
+        $sub2,
+        $customer['id'],
     ]);
+    json_out(['ok' => true]);
 }
 
 if ($sub === 'users' && $sub2 && $method === 'DELETE') {
@@ -2040,6 +2631,78 @@ if ($sub === 'users' && $sub2 && $method === 'DELETE') {
     if ($stmt->rowCount() === 0) json_error('Assistant not found.', 404);
     if ($removedName) log_customer_activity($customer, "Removed assistant \"$removedName\".");
     json_out(null, 204);
+}
+
+// ---- Direct BELM support message -------------------------------------------
+// Available in both modes. In Self-Service mode this is the explicit doorway
+// for involving BELM without turning the customer's whole workshop over to
+// BELM. Every message is saved in the portal history AND emailed to the
+// official Business Email from System Settings, with Reply-To set to the
+// customer's login email when available.
+if ($sub === 'belm-support' && $method === 'POST') {
+    require_customer_write_access($customer);
+    $b = body();
+    $topic = strtoupper(trim((string)($b['topic'] ?? 'TECHNICAL_SUPPORT')));
+    $subject = trim((string)($b['subject'] ?? ''));
+    $message = trim((string)($b['message'] ?? ''));
+    $machineId = trim((string)($b['machineId'] ?? ''));
+    $allowedTopics = ['TECHNICAL_SUPPORT', 'PORTAL_SUPPORT', 'SERVICE_CONTRACT', 'OTHER'];
+    if (!in_array($topic, $allowedTopics, true)) $topic = 'OTHER';
+    if ($message === '') json_error('Write the message you want to send to BELM.');
+    if (mb_strlen($message) > 3000) json_error('Message is too long. Keep it under 3000 characters.');
+    if ($subject === '') {
+        $subject = match ($topic) {
+            'PORTAL_SUPPORT' => 'Portal / System Support',
+            'SERVICE_CONTRACT' => 'Service / Contract Enquiry',
+            'OTHER' => 'Customer Message',
+            default => 'Technical Support',
+        };
+    }
+    if (mb_strlen($subject) > 160) json_error('Subject is too long.');
+
+    $machine = null;
+    if ($machineId !== '') {
+        $stmt = db()->prepare(
+            'SELECT id, brand, model, machine_type, serial_number, reg_number
+             FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+        );
+        $stmt->execute([$machineId, $customer['id']]);
+        $machine = $stmt->fetch();
+        if (!$machine) json_error('Selected machine was not found.', 404);
+    }
+
+    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    $communicationId = belm_log_customer_communication(
+        (string)$customer['id'], $machineId !== '' ? $machineId : null,
+        'CUSTOMER_TO_BELM', 'EMAIL', $subject, $message,
+        'DIRECT_SUPPORT', null, $actorName, 'SENT'
+    );
+
+    $machineLabel = $machine
+        ? (trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine'))
+        : 'General / account level';
+    $serial = $machine ? ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')) : 'N/A';
+    $alertResult = belm_send_customer_to_belm_alert(
+        ['service-requests'],
+        'OFFICIAL CUSTOMER MESSAGE — ' . ($customer['name'] ?? 'Customer') . ' — ' . $subject,
+        "OFFICIAL CUSTOMER MESSAGE FROM BELM PORTAL\n\n"
+        . "Customer: " . ($customer['name'] ?? 'Unknown') . "\n"
+        . "Sent by: $actorName\n"
+        . "Topic: " . str_replace('_', ' ', $topic) . "\n"
+        . "Machine: $machineLabel\n"
+        . "Serial / Reg: $serial\n\n"
+        . "Subject: $subject\n\n$message\n\n"
+        . "Communication ID: $communicationId\n\nReply to this email or open Customer Communication in BELM Portal.",
+        $customer['actorEmail'] ?? null
+    );
+
+    json_out([
+        'id' => $communicationId,
+        'message' => !empty($alertResult['businessEmailSent'])
+            ? 'Message sent to BELM official business email and support team.'
+            : 'Message saved in the portal, but email delivery needs attention.',
+        'emailSent' => !empty($alertResult['businessEmailSent']),
+    ], 201);
 }
 
 // ---- Service requests -------------------------------------------------------
@@ -2076,13 +2739,8 @@ if ($sub === 'service-requests' && $method === 'GET') {
         $request['cancelledBy'] = $request['cancelled_by_id'] ? ['name' => $request['cancelled_by_name']] : null;
         $request['cancelledAt'] = $request['cancelled_at'];
         $request['assignedTo'] = $request['assigned_to_id'] ? ['name' => $request['assigned_to_name']] : null;
-        // Strip the internal inventory-match hint here — this is the
-        // customer's OWN view, and that field exists purely for BELM
-        // Admin/Engineer visibility, never for the customer to see.
-        $request['serviceParts'] = array_map(function ($part) {
-            unset($part['inventoryMatch']);
-            return $part;
-        }, customer_request_service_parts($request['id']));
+        // BELM's template-part and inventory matching stays internal.
+        // Customer history contains the service request itself, not BELM stock/catalog data.
         $request['hiddenAt'] = $request['hidden_at'];
         unset($request['machine_model'], $request['machine_type'], $request['completed_by_name'], $request['cancelled_by_name'], $request['assigned_to_name']);
     }
@@ -2202,30 +2860,43 @@ if ($sub === 'service-requests' && $method === 'POST') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
-    // Notify the company inbox by email (best-effort — a failed email
-    // must never block the customer's request from being saved).
+    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    belm_log_customer_communication(
+        (string)$customer['id'], $machineId !== '' ? $machineId : null,
+        'CUSTOMER_TO_BELM', 'EMAIL', 'Service Request',
+        $description, 'SERVICE_REQUEST', $newId, $actorName, 'SENT'
+    );
+    $alertResult = ['sent' => 0];
     try {
-        $company = belm_get_company_details();
-        $adminEmail = trim((string)($company['companyEmail'] ?? ''));
-        if ($adminEmail !== '') {
-            $machineLabel = $machineId !== '' ? " for machine ID $machineId" : '';
-            send_email(
-                $adminEmail,
-                'New Service Request — ' . ($customer['name'] ?? 'Customer'),
-                "A new service request was submitted$machineLabel.\n\n"
-                . "Customer: " . ($customer['name'] ?? 'Unknown') . "\n"
-                . "Submitted by: " . trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) . "\n"
-                . "Priority: $priority\n"
-                . "Service type: " . ($serviceType ?: 'Not specified') . "\n\n"
-                . "Description:\n$description\n\n"
-                . "Open the Service Requests page in BELM Portal to review and assign this."
-            );
-        }
-    } catch (Throwable $error) { /* notification only — never block the request itself */ }
+        $machineLabel = $machine ? trim(($machine['model'] ?? '') . ' ' . ($machine['machine_type'] ?? '')) : 'No machine selected';
+        $alertResult = belm_send_customer_to_belm_alert(
+            ['service-requests'],
+            'OFFICIAL SERVICE REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
+            "CUSTOMER REQUEST FOR BELM TECHNICAL SUPPORT
+
+"
+            . "Customer: " . ($customer['name'] ?? 'Unknown') . "
+"
+            . "Submitted by: $actorName
+"
+            . "Machine: $machineLabel
+Priority: $priority
+"
+            . "Service type: " . ($serviceType ?: 'Not specified') . "
+
+"
+            . "Description:
+$description
+
+Open Service Requests in BELM Portal to review and assign it.",
+            $customer['actorEmail'] ?? null
+        );
+    } catch (Throwable $error) { /* notification only */ }
     json_out([
         'id' => $newId,
         'serviceType' => $serviceType,
-        'serviceParts' => $serviceParts,
+        'belmSupport' => true,
+        'emailSent' => !empty($alertResult['businessEmailSent']),
     ], 201);
 }
 
@@ -2237,82 +2908,228 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'P
     if (!$req) json_error('Not found', 404);
     if (!in_array($req['status'], ['OPEN', 'ASSIGNED'], true)) json_error('Only Open or Assigned requests can be cancelled.');
     db()->prepare("UPDATE service_requests SET status='CANCELLED', updated_at=NOW() WHERE id=?")->execute([$sub2]);
-    json_out(['ok' => true]);
+    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    $cancelMessage = 'Customer cancelled service request: ' . ($req['description'] ?? '');
+    belm_log_customer_communication(
+        (string)$customer['id'], $req['machine_id'] ?: null,
+        'CUSTOMER_TO_BELM', 'EMAIL', 'Service Request Cancelled',
+        $cancelMessage, 'SERVICE_REQUEST', $sub2, $actorName, 'SENT'
+    );
+    $cancelAlert = ['businessEmailSent' => false];
+    try {
+        $cancelAlert = belm_send_customer_to_belm_alert(
+            ['service-requests'],
+            'SERVICE REQUEST CANCELLED — ' . ($customer['name'] ?? 'Customer'),
+            $cancelMessage . "\nCustomer: " . ($customer['name'] ?? 'Unknown') . "\nCancelled by: $actorName\nRequest ID: $sub2",
+            $customer['actorEmail'] ?? null
+        );
+    } catch (Throwable $ignored) {}
+    json_out(['ok' => true, 'emailSent' => !empty($cancelAlert['businessEmailSent'])]);
 }
 
-// ---- Spare parts (read-only, no pricing) -----------------------------------
+// ---- BELM inventory is private to BELM staff -------------------------------
 if ($sub === 'spare-parts' && $method === 'GET') {
-    $stmt = db()->query('SELECT id, part_number, reference_number, name, category, stock_qty FROM spare_parts WHERE deleted_at IS NULL ORDER BY name ASC');
-    json_out($stmt->fetchAll());
+    json_error('BELM spare-parts inventory is private. Submit a spare request and BELM will identify the correct part.', 403);
 }
 
 // ---- Request spare parts ----------------------------------------------------
-// Either sparePartId (pick from BELM's live inventory) OR referenceNumber +
-// description (a custom part not yet in inventory) must be provided.
+// Customer submits only the spare name/reference/quantity. The request stays
+// deliberately unlinked to BELM Inventory until BELM Spare Parts staff choose
+// the correct internal record; the customer never sees stock or pricing.
 if ($sub === 'spare-part-requests' && $method === 'POST') {
     require_customer_write_access($customer);
     $b = body();
-    $sparePartId = trim((string)($b['sparePartId'] ?? ''));
     $referenceNumber = trim((string)($b['referenceNumber'] ?? ''));
     $description = trim((string)($b['description'] ?? ''));
     $serviceRequestId = trim((string)($b['serviceRequestId'] ?? ''));
     $machineId = trim((string)($b['machineId'] ?? ''));
     $quantity = (float)($b['quantity'] ?? 0);
+
+    if ($description === '') json_error('Enter the spare name.');
+    if (strlen($description) > 255) json_error('Spare name is too long.');
+    if (strlen($referenceNumber) > 100) json_error('Reference / part number is too long.');
     if ($quantity <= 0 || floor($quantity) !== $quantity) {
         json_error('Spare-part quantity must be a whole number greater than zero.');
     }
+    if ($machineId === '') json_error('Select the machine that needs this spare.');
 
-    if ($sparePartId !== '') {
-        $stmt = db()->prepare('SELECT 1 FROM spare_parts WHERE id = ? AND deleted_at IS NULL');
-        $stmt->execute([$sparePartId]);
-        if (!$stmt->fetch()) json_error('Spare part not found.', 404);
-    } elseif ($referenceNumber === '' && $description === '') {
-        json_error('Select a spare part from inventory, or enter a reference number / description for a custom part.');
-    } else {
-        // Customer typed a reference number instead of picking from the
-        // dropdown — try to match it against Spare Parts Inventory (by
-        // reference number or part number) so Inventory/Billing see this
-        // request as already synced with stock and pricing, instead of
-        // treating it as a brand-new custom part.
-        if ($referenceNumber !== '') {
-            $matchStmt = db()->prepare(
-                'SELECT id FROM spare_parts
-                 WHERE deleted_at IS NULL
-                   AND (UPPER(reference_number) = UPPER(?) OR UPPER(part_number) = UPPER(?))
-                 LIMIT 1'
-            );
-            $matchStmt->execute([$referenceNumber, $referenceNumber]);
-            $matchedId = $matchStmt->fetchColumn();
-            if ($matchedId) $sparePartId = $matchedId;
-        }
-    }
+    $machineStmt = db()->prepare(
+        'SELECT id, machine_type, model, brand, serial_number, reg_number
+         FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+    );
+    $machineStmt->execute([$machineId, $customer['id']]);
+    $machine = $machineStmt->fetch();
+    if (!$machine) json_error('Machine not found for this customer.', 404);
 
     if ($serviceRequestId !== '') {
-        $stmt = db()->prepare('SELECT 1 FROM service_requests WHERE id = ? AND customer_id = ?');
-        $stmt->execute([$serviceRequestId, $customer['id']]);
-        if (!$stmt->fetch()) json_error('Service request not found for this customer.', 404);
-    }
-    if ($machineId !== '') {
-        $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
-        $stmt->execute([$machineId, $customer['id']]);
-        if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+        $stmt = db()->prepare('SELECT 1 FROM service_requests WHERE id = ? AND customer_id = ? AND machine_id = ?');
+        $stmt->execute([$serviceRequestId, $customer['id'], $machineId]);
+        if (!$stmt->fetch()) json_error('Service request not found for this customer and machine.', 404);
     }
 
+    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
     $newId = uuid();
     db()->prepare(
         "INSERT INTO spare_part_requests
-            (id, spare_part_id, reference_number, description, request_id, machine_id, quantity, status, created_at)
-         VALUES (?,?,?,?,?,?,?,'PENDING',NOW())"
+            (id, spare_part_id, reference_number, description, request_id, machine_id,
+             requested_by_id, requested_by_name, machine_type, quantity, status, created_at)
+         VALUES (?,NULL,?,?,?,?,NULL,?,?,?,'PENDING',NOW())"
     )->execute([
         $newId,
-        $sparePartId !== '' ? $sparePartId : null,
         $referenceNumber !== '' ? $referenceNumber : null,
-        $description !== '' ? $description : null,
+        $description,
         $serviceRequestId !== '' ? $serviceRequestId : null,
-        $machineId !== '' ? $machineId : null,
+        $machineId,
+        $actorName,
+        $machine['machine_type'] ?? null,
         (int)$quantity,
     ]);
-    json_out(['id' => $newId], 201);
+
+    belm_log_customer_communication(
+        (string)$customer['id'], $machineId, 'CUSTOMER_TO_BELM', 'EMAIL',
+        'Spare Request',
+        $description . ($referenceNumber !== '' ? " (Ref: $referenceNumber)" : '') . ' — Qty ' . (int)$quantity,
+        'SPARE_REQUEST', $newId, $actorName, 'SENT'
+    );
+
+    // Official BELM business inbox + internal Spare Parts/Accounts recipients.
+    // Customer never receives or sees BELM inventory data from this notification.
+    $spareAlert = ['businessEmailSent' => false];
+    try {
+        $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+        $serial = $machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded');
+        $spareAlert = belm_send_customer_to_belm_alert(
+            ['spare-parts', 'billing'],
+            'OFFICIAL SPARE REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
+            "CUSTOMER SPARE REQUEST TO BELM
+
+"
+            . "Customer: " . ($customer['name'] ?? 'Unknown') . "
+"
+            . "Requested by: $actorName
+"
+            . "Machine: $machineLabel
+"
+            . "Serial / Reg: $serial
+"
+            . "Spare name: $description
+"
+            . "Reference / part no.: " . ($referenceNumber !== '' ? $referenceNumber : 'Not provided') . "
+"
+            . "Quantity: " . (int)$quantity . "
+"
+            . "Request ID: $newId
+
+"
+            . "Spare Parts: open Spare Parts Manager and choose the correct BELM spare.
+"
+            . "Accounts: prepare the Proforma after the spare is selected.",
+            $customer['actorEmail'] ?? null
+        );
+    } catch (Throwable $error) { /* alert must never block the saved request */ }
+
+    json_out([
+        'id' => $newId,
+        'status' => 'PENDING',
+        'message' => !empty($spareAlert['businessEmailSent'])
+            ? 'Spare request sent to BELM official business email for part selection and Proforma preparation.'
+            : 'Spare request saved in the portal, but BELM business-email delivery needs attention.',
+        'emailSent' => !empty($spareAlert['businessEmailSent']),
+    ], 201);
+}
+
+// ---- Direct messages sent by BELM to this customer -------------------------
+if ($sub === 'communications' && $method === 'GET' && $sub2 === '') {
+    $stmt = db()->prepare(
+        "SELECT cc.id, cc.machine_id, cc.subject, cc.message, cc.status, cc.created_by_name, cc.created_at,
+                m.brand AS machine_brand, m.model AS machine_model, m.machine_type
+         FROM customer_communications cc
+         LEFT JOIN machines m ON m.id = cc.machine_id
+         WHERE cc.customer_id = ? AND cc.direction = 'BELM_TO_CUSTOMER'
+           AND cc.related_type = 'DIRECT_MESSAGE'
+         ORDER BY cc.created_at DESC
+         LIMIT 30"
+    );
+    $stmt->execute([$customer['id']]);
+    $rows = array_map(static function ($row) {
+        $row['machineLabel'] = trim((string)($row['machine_brand'] ?? '') . ' ' . (string)($row['machine_model'] ?? ''))
+            ?: ((string)($row['machine_type'] ?? '') ?: null);
+        unset($row['machine_brand'], $row['machine_model'], $row['machine_type']);
+        return $row;
+    }, $stmt->fetchAll());
+    json_out($rows);
+}
+
+// ---- Proformas published by BELM to this customer --------------------------
+if ($sub === 'proformas' && $method === 'GET' && $sub2 === '') {
+    $stmt = db()->prepare(
+        "SELECT p.* FROM proforma_invoices p
+         WHERE p.customer_id = ? AND p.deleted_at IS NULL
+           AND p.delivery_status IN ('SENT','RESPONDED')
+         ORDER BY COALESCE(p.sent_at, p.created_at) DESC"
+    );
+    $stmt->execute([$customer['id']]);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$row) {
+        $itemsStmt = db()->prepare('SELECT section, part_number, description, qty, unit, unit_price FROM proforma_invoice_items WHERE proforma_id = ? ORDER BY "order" ASC');
+        $itemsStmt->execute([$row['id']]);
+        $row['items'] = $itemsStmt->fetchAll();
+        $row['totals'] = belm_proforma_totals($row, $row['items']);
+        $row['downloadUrl'] = '/api/customer-portal/proformas/' . $row['id'] . '/download';
+    }
+    unset($row);
+    json_out($rows);
+}
+
+if ($sub === 'proformas' && $sub2 && $sub3 === 'download' && $method === 'GET') {
+    $check = db()->prepare(
+        "SELECT 1 FROM proforma_invoices
+         WHERE id = ? AND customer_id = ? AND deleted_at IS NULL
+           AND delivery_status IN ('SENT','RESPONDED')"
+    );
+    $check->execute([$sub2, $customer['id']]);
+    if (!$check->fetch()) json_error('This Proforma is not available to your account.', 404);
+    belm_output_proforma_document_pdf($sub2, (string)$customer['id']);
+}
+
+if ($sub === 'proformas' && $sub2 && $sub3 === 'respond' && $method === 'PUT') {
+    require_customer_write_access($customer);
+    $b = body();
+    $response = strtoupper(trim((string)($b['response'] ?? '')));
+    $responseMessage = trim((string)($b['message'] ?? ''));
+    if (!in_array($response, ['ACCEPTED', 'CHANGE_REQUESTED'], true)) json_error('Choose Accept or Request Change.');
+    if ($response === 'CHANGE_REQUESTED' && $responseMessage === '') json_error('Write the change you want BELM to review.');
+    if (mb_strlen($responseMessage) > 1000) json_error('Response message must be 1000 characters or fewer.');
+
+    $stmt = db()->prepare(
+        "SELECT p.id, p.invoice_no, p.machine_id FROM proforma_invoices p
+         WHERE p.id = ? AND p.customer_id = ? AND p.deleted_at IS NULL
+           AND p.delivery_status IN ('SENT','RESPONDED')"
+    );
+    $stmt->execute([$sub2, $customer['id']]);
+    $proforma = $stmt->fetch();
+    if (!$proforma) json_error('Proforma not found or not yet sent.', 404);
+
+    db()->prepare(
+        "UPDATE proforma_invoices SET delivery_status = 'RESPONDED', customer_response = ?,
+         customer_response_message = ?, customer_responded_at = NOW() WHERE id = ?"
+    )->execute([$response, $responseMessage !== '' ? $responseMessage : null, $sub2]);
+    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    $messageText = $response === 'ACCEPTED'
+        ? 'Customer accepted Proforma ' . $proforma['invoice_no'] . '.'
+        : 'Customer requested a change to Proforma ' . $proforma['invoice_no'] . ': ' . $responseMessage;
+    belm_log_customer_communication(
+        (string)$customer['id'], $proforma['machine_id'] ?: null, 'CUSTOMER_TO_BELM', 'EMAIL',
+        $response === 'ACCEPTED' ? 'Proforma Accepted' : 'Proforma Change Requested',
+        $messageText, 'PROFORMA', $sub2, $actorName, 'SENT'
+    );
+    belm_send_customer_to_belm_alert(
+        ['billing'],
+        ($response === 'ACCEPTED' ? 'Proforma Accepted — ' : 'Proforma Change Requested — ') . $proforma['invoice_no'],
+        $messageText . "\nCustomer: " . ($customer['name'] ?? 'Unknown') . "\nResponded by: $actorName",
+        $customer['actorEmail'] ?? null
+    );
+    json_out(['ok' => true, 'deliveryStatus' => 'RESPONDED', 'customerResponse' => $response]);
 }
 
 // ---- Download a checklist report (JSON for now — swap in a real PDF

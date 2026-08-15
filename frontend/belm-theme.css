@@ -159,23 +159,23 @@ a.bg-belm-blue:hover {
    was written for the dark default card background. Force it dark/readable
    now that the whole card is tinted — but leave our own injected info panel
    and action buttons alone, since those already carry correct colors. */
-.belm-customer-machine-card.status-green *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-green *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-green *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-green *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #14532d !important;
 }
 
-.belm-customer-machine-card.status-yellow *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-yellow *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-yellow *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-yellow *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #713f12 !important;
 }
 
-.belm-customer-machine-card.status-red *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-red *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-red *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-red *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #7f1d1d !important;
 }
 
-.belm-customer-machine-card.status-unknown *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
-.belm-technician-machine-card.status-unknown *:not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
+.belm-customer-machine-card.status-unknown *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *),
+.belm-technician-machine-card.status-unknown *:not(.belm-machine-native-head):not(.belm-machine-native-head *):not(.belm-machine-last-checked):not(.belm-technician-machine-info):not(.belm-technician-machine-info *):not(.belm-machine-action-row):not(.belm-machine-action-row *):not(.belm-technician-card-actions):not(.belm-technician-card-actions *):not(.belm-service-due-panel):not(.belm-service-due-panel *):not(.belm-spare-recommendation-panel):not(.belm-spare-recommendation-panel *) {
   color: #1e293b !important;
 }
 
@@ -1322,8 +1322,8 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   font-weight: 600;
 }
 
-/* Small "MORE TOOLS" card — holds Analysis, Assign Users, Change
-   Password and Management Email, moved out of every machine card
+/* Small "MORE TOOLS" card — holds account-level communication tools,
+   moved out of every machine card
    since none of those actually belong to one specific machine. Sits
    directly under the Activity Overview card, styled to match it but
    shorter. */
@@ -2911,4 +2911,681 @@ a[href^="/api/customer-portal/reports/"][href$="/download"] {
 /* "Fleet Number" (was "Machine ID") always reads green too. */
 .belm-service-due-grid b.belm-fleet-number-value {
   color: #16a34a !important;
+}
+
+/* V188: keep the account tools/overview rail visible on desktop while the
+   customer scrolls through a long fleet. Mobile remains in normal flow. */
+@media (min-width: 980px) {
+  .belm-dashboard-layout > .belm-activity-overview-stack {
+    position: sticky;
+    top: 18px;
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+}
+.belm-account-tools-actions { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 480px) {
+  .belm-account-tools-actions { grid-template-columns: 1fr; }
+}
+
+.belm-customer-checkup-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid #0f62fe;
+  border-radius: 9px;
+  background: #0f62fe;
+  color: #fff;
+  font: inherit;
+  font-weight: 850;
+  cursor: pointer;
+}
+.belm-customer-checkup-button:hover { background: #0b52d1; }
+.belm-customer-checkup-card { width: min(920px, calc(100vw - 24px)); }
+.belm-customer-checkup-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+.belm-customer-checkup-tabs button {
+  padding: 9px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.belm-customer-checkup-tabs button.active {
+  border-color: #0f62fe;
+  background: #0f62fe;
+  color: #fff;
+}
+.belm-customer-checkup-body { padding: 14px; }
+.belm-customer-checkup-toolbar label {
+  display: grid;
+  gap: 6px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+.belm-customer-checkup-toolbar select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+}
+.belm-daily-checklist-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.belm-daily-checklist-summary > div {
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+.belm-daily-checklist-summary span,
+.belm-daily-checklist-summary strong { display: block; }
+.belm-daily-checklist-summary span { color: #64748b; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.belm-daily-checklist-summary strong { margin-top: 3px; color: #0f172a; font-size: 12px; }
+.belm-daily-checklist-complete,
+.belm-daily-checklist-pending {
+  margin: 10px 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 750;
+}
+.belm-daily-checklist-complete { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+.belm-daily-checklist-pending { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+.belm-daily-checklist-items { display: grid; gap: 6px; }
+.belm-daily-checklist-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+  background: #fff;
+}
+.belm-daily-checklist-item b { color: #1e293b; font-size: 11px; }
+.belm-daily-checklist-item span { color: #64748b; font-size: 10px; white-space: nowrap; }
+.belm-customer-checkup-pdf-actions,
+.belm-customer-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+.belm-customer-checkup-pdf-actions button,
+.belm-customer-report-actions button {
+  padding: 8px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.belm-customer-checkup-pdf-actions button.primary { border-color: #0f62fe; background: #0f62fe; color: #fff; }
+.belm-customer-checkup-report-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  background: #fff;
+}
+.belm-customer-checkup-report-row + .belm-customer-checkup-report-row { margin-top: 8px; }
+.belm-customer-checkup-report-row > div:first-child strong,
+.belm-customer-checkup-report-row > div:first-child span,
+.belm-customer-checkup-report-row > div:first-child small { display: block; }
+.belm-customer-checkup-report-row > div:first-child strong { color: #0f172a; font-size: 12px; }
+.belm-customer-checkup-report-row > div:first-child span { margin-top: 2px; color: #475569; font-size: 10px; }
+.belm-customer-checkup-report-row > div:first-child small { margin-top: 3px; color: #64748b; font-size: 9.5px; }
+.belm-customer-report-actions { grid-column: 1 / -1; margin-top: 2px; }
+@media (max-width: 680px) {
+  .belm-daily-checklist-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .belm-daily-checklist-item { display: grid; }
+  .belm-daily-checklist-item span { white-space: normal; }
+}
+
+/* V192 — synchronized BELM <-> Customer communication */
+.belm-customer-proformas-panel { margin: 16px 0; padding: 18px; border: 1px solid #d9e2ec; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(15,23,42,.06); }
+.belm-customer-proformas-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.belm-customer-proformas-head span { font-weight:900; letter-spacing:.08em; font-size:12px; }
+.belm-customer-proforma-row { padding:12px 0; border-top:1px solid #e5e7eb; display:grid; gap:8px; }
+.belm-customer-proforma-row:first-child { border-top:0; }
+.belm-customer-proforma-meta { display:flex; flex-wrap:wrap; gap:8px 14px; font-size:12px; color:#475569; }
+.belm-customer-proforma-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.belm-customer-proforma-actions button { border:1px solid #cbd5e1; background:#fff; border-radius:9px; padding:8px 11px; font-weight:800; cursor:pointer; }
+.belm-customer-proforma-actions .primary { background:#0f172a; color:#fff; border-color:#0f172a; }
+.belm-comm-direction { font-size:10px; font-weight:900; opacity:.7; margin-right:6px; }
+
+
+/* V192 — direct BELM <-> customer communication */
+.belm-customer-messages-panel { margin:16px 0; padding:18px; border:1px solid #d9e2ec; border-radius:16px; background:#fff; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+.belm-customer-messages-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.belm-customer-messages-head span { font-weight:900; letter-spacing:.08em; font-size:12px; }
+.belm-customer-messages-head small { opacity:.68; }
+.belm-customer-messages-list { display:grid; gap:10px; }
+.belm-customer-message-row { border:1px solid #e7edf3; border-radius:12px; padding:12px 14px; background:#fbfdff; }
+.belm-customer-message-row p { margin:8px 0; white-space:pre-wrap; }
+.belm-customer-message-title { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.belm-customer-message-title span { font-size:12px; opacity:.65; white-space:nowrap; }
+@media (max-width: 640px) { .belm-customer-message-title { flex-direction:column; gap:3px; } }
+
+/* ========================================================================
+   V195 UI REFRESH — BELM brand palette + premium machine-card treatment
+   ======================================================================== */
+:root {
+  --belm-blue: #1769c2;
+  --belm-blue-dark: #0f4f96;
+  --belm-green: #00a651;
+  --belm-green-dark: #007d3c;
+  --belm-yellow: #ffd400;
+  --belm-black: #090d13;
+  --belm-navy: #101b2e;
+  --belm-line: #dce5ed;
+}
+
+/* Keep the brand colourful but disciplined: blue/navy structure, green for
+   operational actions, yellow for attention/service, black for authority. */
+body[data-belm-area="portal"] {
+  background:
+    radial-gradient(circle at 95% 0, rgba(23,105,194,.07), transparent 28rem),
+    radial-gradient(circle at 3% 12%, rgba(0,166,81,.055), transparent 25rem),
+    #f5f7fa !important;
+}
+body[data-belm-area="portal"]::before {
+  height: 5px;
+  background: linear-gradient(90deg,
+    var(--belm-blue) 0 28%,
+    var(--belm-green) 28% 56%,
+    var(--belm-yellow) 56% 82%,
+    var(--belm-black) 82% 100%);
+}
+
+/* Customer machine grid: enough breathing room for operational information. */
+.belm-customer-machine-grid {
+  grid-template-columns: repeat(auto-fill, minmax(350px, 430px));
+  gap: 20px;
+}
+
+/* Machine cards now stay mostly neutral; condition colour is an accent rather
+   than painting the whole card. This improves scan speed and readability. */
+.belm-customer-machine-card {
+  position: relative !important;
+  min-height: 0 !important;
+  padding: 22px !important;
+  overflow: hidden !important;
+  border: 1px solid #dbe4ed !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  box-shadow: 0 12px 34px rgba(15, 27, 46, .09) !important;
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease !important;
+}
+.belm-customer-machine-card:hover {
+  transform: translateY(-3px);
+  border-color: #b9c9d8 !important;
+  box-shadow: 0 20px 48px rgba(15, 27, 46, .14) !important;
+}
+.belm-customer-machine-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  height: 5px;
+  background: #94a3b8;
+}
+.belm-customer-machine-card.status-green::before { background: var(--belm-green); }
+.belm-customer-machine-card.status-yellow::before { background: var(--belm-yellow); }
+.belm-customer-machine-card.status-red::before { background: #e5484d; }
+.belm-customer-machine-card.status-unknown::before { background: #7f8da1; }
+
+.belm-customer-machine-card.status-green,
+.belm-customer-machine-card.status-yellow,
+.belm-customer-machine-card.status-red,
+.belm-customer-machine-card.status-unknown {
+  background: #fff !important;
+  border-width: 1px !important;
+  box-shadow: 0 12px 34px rgba(15, 27, 46, .09) !important;
+}
+
+/* Native React card heading: turns into a compact industrial nameplate. */
+.belm-customer-machine-card > .belm-machine-native-head {
+  position: relative;
+  margin: -22px -22px 0 !important;
+  padding: 24px 22px 18px !important;
+  color: #fff !important;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+  background:
+    radial-gradient(circle at 94% 0, rgba(23,105,194,.28), transparent 12rem),
+    linear-gradient(135deg, #111f35, #0a111d) !important;
+}
+.belm-customer-machine-card > .belm-machine-native-head::after {
+  content: "";
+  position: absolute;
+  right: 21px;
+  bottom: 0;
+  left: 21px;
+  height: 2px;
+  opacity: .8;
+  background: linear-gradient(90deg, var(--belm-blue), var(--belm-green), var(--belm-yellow));
+}
+.belm-customer-machine-card > .belm-machine-native-head,
+.belm-customer-machine-card > .belm-machine-native-head * {
+  color: #fff !important;
+}
+.belm-customer-machine-card > .belm-machine-native-head > div:first-child > div:first-child,
+.belm-customer-machine-card > .belm-machine-native-head .font-medium {
+  font: 800 18px/1.15 "Space Grotesk", Inter, system-ui, sans-serif !important;
+  letter-spacing: -.015em;
+}
+.belm-customer-machine-card > .belm-machine-native-head .text-slate-500,
+.belm-customer-machine-card > .belm-machine-native-head .text-xs {
+  color: #aebdd0 !important;
+}
+
+.belm-customer-machine-card > .belm-machine-last-checked {
+  margin: 0 -22px 12px !important;
+  padding: 9px 22px !important;
+  color: #66768a !important;
+  border-bottom: 1px solid #e8eef4;
+  background: #f8fafc;
+  font-size: 9.5px !important;
+  font-weight: 750 !important;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+
+/* Override old status-wide inherited text colours. */
+.belm-customer-machine-card.status-green .belm-machine-native-head *,
+.belm-customer-machine-card.status-yellow .belm-machine-native-head *,
+.belm-customer-machine-card.status-red .belm-machine-native-head *,
+.belm-customer-machine-card.status-unknown .belm-machine-native-head * { color: #fff !important; }
+.belm-customer-machine-card.status-green > .belm-machine-last-checked,
+.belm-customer-machine-card.status-yellow > .belm-machine-last-checked,
+.belm-customer-machine-card.status-red > .belm-machine-last-checked,
+.belm-customer-machine-card.status-unknown > .belm-machine-last-checked { color: #66768a !important; }
+
+.belm-technician-machine-info {
+  gap: 12px;
+  margin-top: 0;
+}
+.belm-technician-machine-data {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+.belm-technician-machine-data > div {
+  min-height: 52px;
+  padding: 9px 10px;
+  border-color: #e5ebf1;
+  border-radius: 11px;
+  background: #f8fafc;
+}
+.belm-technician-machine-data span {
+  color: #7a899b !important;
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+.belm-technician-machine-data b {
+  margin-top: 4px;
+  color: #142033 !important;
+  font-size: 10.5px;
+  font-weight: 850;
+}
+
+.belm-technician-machine-health {
+  position: relative;
+  grid-template-columns: .72fr 1.28fr;
+  gap: 10px;
+  padding: 13px 14px 13px 17px;
+  overflow: hidden;
+  border: 1px solid #cdebd9;
+  border-radius: 13px;
+  background: #f0fbf5;
+  animation: none !important;
+}
+.belm-technician-machine-health::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--belm-green);
+}
+.belm-technician-machine-health.status-yellow { border-color: #eadb85; background: #fffbed; }
+.belm-technician-machine-health.status-yellow::before { background: var(--belm-yellow); }
+.belm-technician-machine-health.status-red { border-color: #efc7c8; background: #fff5f5; }
+.belm-technician-machine-health.status-red::before { background: #e5484d; }
+.belm-technician-machine-health.status-unknown { border-color: #d9e0e8; background: #f7f9fb; }
+.belm-technician-machine-health.status-unknown::before { background: #7f8da1; }
+.belm-technician-machine-health span { font-size: 8px !important; letter-spacing: .075em; text-transform: uppercase; }
+.belm-technician-machine-health strong { margin-top: 3px; font-size: 12px !important; font-weight: 900; }
+.belm-technician-machine-health small { font-size: 8.5px !important; }
+
+.belm-customer-op-status {
+  margin-top: 0;
+  padding: 11px 13px;
+  border: 1px solid #e2e8ef;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: inset 3px 0 0 var(--belm-blue);
+}
+.belm-customer-op-status span { color: #7a899b; font-size: 8px; letter-spacing: .075em; }
+.belm-customer-op-status strong { color: #142033; font-size: 11px; }
+.belm-customer-op-status.op-SERVICE_IN_PROGRESS,
+.belm-customer-op-status.op-CHECKUP_IN_PROGRESS,
+.belm-customer-op-status.op-MAINTENANCE_IN_PROGRESS {
+  border-color: #eadb85;
+  background: #fffdf3;
+  box-shadow: inset 3px 0 0 var(--belm-yellow);
+}
+.belm-customer-op-status.op-GROUNDED {
+  border-color: #efc7c8;
+  background: #fff6f6;
+  box-shadow: inset 3px 0 0 #e5484d;
+  animation: none;
+}
+
+.belm-service-due-panel,
+.belm-service-due-panel.status-yellow,
+.belm-service-due-panel.status-red,
+.belm-service-due-panel.status-unknown {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #dfe7ef;
+  border-radius: 15px;
+  background: #f8fafc;
+  animation: none !important;
+  box-shadow: none;
+}
+.belm-service-due-panel.status-green { box-shadow: inset 0 3px 0 var(--belm-green); }
+.belm-service-due-panel.status-yellow { box-shadow: inset 0 3px 0 var(--belm-yellow); }
+.belm-service-due-panel.status-red { box-shadow: inset 0 3px 0 #e5484d; }
+.belm-service-due-panel.status-unknown { box-shadow: inset 0 3px 0 #7f8da1; }
+.belm-service-due-head { margin-bottom: 9px; }
+.belm-service-due-head span { color: #69788c; font-size: 8.5px; }
+.belm-service-due-head strong { color: #152238; font-size: 13px; }
+.belm-service-due-grid { gap: 7px; }
+.belm-service-due-grid > div {
+  padding: 9px 10px;
+  border: 1px solid #e6ebf1;
+  border-radius: 10px;
+  background: #fff;
+}
+.belm-service-due-grid span { color: #8190a2; font-size: 7.5px; }
+.belm-service-due-grid b { color: #18253a; font-size: 13px; }
+.belm-service-due-grid b.belm-current-hrs-value,
+.belm-service-due-grid b.belm-fleet-number-value { color: var(--belm-green-dark) !important; }
+
+/* Operational actions are semantic, not rainbow decoration. */
+.belm-machine-quick-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 10px;
+}
+.belm-machine-quick-actions a,
+.belm-machine-quick-actions button,
+.belm-customer-checkup-button {
+  justify-content: flex-start;
+  gap: 7px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 1.15;
+  box-shadow: none;
+}
+.belm-machine-quick-actions [data-ui-icon]::before {
+  content: attr(data-ui-icon);
+  display: grid;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: -.02em;
+}
+.belm-machine-quick-actions a[href^="/customer-machine-expenses/"] {
+  color: #fff;
+  border-color: #15243a;
+  background: #15243a;
+}
+.belm-machine-quick-actions a[href^="/customer-machine-expenses/"]::before { color: #fff; background: rgba(23,105,194,.75); }
+.belm-machine-quick-actions a[href^="/customer-fuel-usage/"] {
+  color: #fff;
+  border-color: var(--belm-green-dark);
+  background: var(--belm-green-dark);
+}
+.belm-machine-quick-actions a[href^="/customer-fuel-usage/"]::before { color: #0c3d24; background: #baf0cf; }
+.belm-machine-quick-actions a[href^="/customer-service-request/"] {
+  color: #161b22;
+  border-color: #e5bd00;
+  background: var(--belm-yellow);
+}
+.belm-machine-quick-actions a[href^="/customer-service-request/"]::before { color: #fff; background: #181d24; }
+.belm-machine-quick-actions .belm-report-problem-button[data-belm-feature="report-problem"] {
+  color: #a42c31;
+  border-color: #efc6c8;
+  background: #fff8f8;
+}
+.belm-machine-quick-actions .belm-report-problem-button[data-belm-feature="report-problem"]::before { color: #fff; background: #d83b40; }
+.belm-machine-quick-actions [data-belm-feature="operator-reports"] {
+  color: #21486e;
+  border-color: #c9daec;
+  background: #f6faff;
+}
+.belm-machine-quick-actions [data-belm-feature="operator-reports"]::before { color: #fff; background: var(--belm-blue); }
+.belm-machine-quick-actions .belm-customer-checkup-button {
+  color: #fff;
+  border-color: var(--belm-blue);
+  background: var(--belm-blue);
+}
+.belm-machine-quick-actions .belm-customer-checkup-button::before { color: #0b4b29; background: #c9f5da; }
+.belm-machine-quick-actions a:hover,
+.belm-machine-quick-actions button:hover,
+.belm-customer-checkup-button:hover {
+  filter: brightness(.96);
+  transform: translateY(-1px);
+  box-shadow: 0 7px 15px rgba(15,27,46,.10);
+}
+
+.belm-machine-recent-updates {
+  padding: 10px 11px;
+  border-color: #dbe6f1;
+  border-radius: 11px;
+  background: #f6f9fc;
+}
+.belm-machine-recent-updates-head { color: #4b6381; }
+
+/* Right rail harmonises with the same four-colour identity. */
+.belm-activity-overview-card,
+.belm-account-tools-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(23,105,194,.30);
+  background:
+    radial-gradient(circle at 96% 0, rgba(23,105,194,.26), transparent 15rem),
+    linear-gradient(160deg, #111f35, #0b1422 66%, #080d15);
+  box-shadow: 0 16px 38px rgba(7,14,28,.22);
+}
+.belm-activity-overview-card::before,
+.belm-account-tools-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--belm-blue), var(--belm-green), var(--belm-yellow), #111);
+}
+.belm-activity-overview-head,
+.belm-account-tools-head { color: #fff; }
+.belm-activity-overview-head::after,
+.belm-account-tools-head::after {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  margin-left: 7px;
+  border-radius: 999px;
+  vertical-align: middle;
+  background: var(--belm-yellow);
+}
+.belm-account-tools-actions a,
+.belm-account-tools-actions button {
+  border-color: rgba(143,192,255,.14);
+  background: rgba(23,105,194,.08);
+}
+.belm-account-tools-actions a:hover,
+.belm-account-tools-actions button:hover {
+  border-color: rgba(0,166,81,.34);
+  background: rgba(0,166,81,.10);
+}
+
+/* Dark mode: keep the same hierarchy instead of reverting to washed-out cards. */
+html.dark .belm-customer-machine-card,
+html[data-theme="dark"] .belm-customer-machine-card {
+  border-color: #2a394d !important;
+  background: #111b2a !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.26) !important;
+}
+html.dark .belm-customer-machine-card > .belm-machine-last-checked,
+html[data-theme="dark"] .belm-customer-machine-card > .belm-machine-last-checked {
+  color: #8fa2b9 !important;
+  border-color: #27364a;
+  background: #0e1724;
+}
+html.dark .belm-technician-machine-data > div,
+html[data-theme="dark"] .belm-technician-machine-data > div,
+html.dark .belm-service-due-grid > div,
+html[data-theme="dark"] .belm-service-due-grid > div {
+  border-color: #2a394c;
+  background: #101b29;
+}
+html.dark .belm-technician-machine-data b,
+html[data-theme="dark"] .belm-technician-machine-data b,
+html.dark .belm-service-due-grid b,
+html[data-theme="dark"] .belm-service-due-grid b { color: #e5edf7 !important; }
+html.dark .belm-service-due-panel,
+html[data-theme="dark"] .belm-service-due-panel {
+  border-color: #2a394c;
+  background: #0d1724;
+}
+html.dark .belm-customer-op-status,
+html[data-theme="dark"] .belm-customer-op-status,
+html.dark .belm-machine-recent-updates,
+html[data-theme="dark"] .belm-machine-recent-updates {
+  border-color: #2a394c;
+  background: #0e1927;
+}
+
+@media (max-width: 720px) {
+  .belm-customer-machine-grid { grid-template-columns: 1fr; gap: 15px; }
+  .belm-customer-machine-card { padding: 18px !important; border-radius: 17px !important; }
+  .belm-customer-machine-card > .belm-machine-native-head { margin: -18px -18px 0 !important; padding: 22px 18px 16px !important; }
+  .belm-customer-machine-card > .belm-machine-last-checked { margin: 0 -18px 10px !important; padding: 8px 18px !important; }
+}
+@media (max-width: 390px) {
+  .belm-machine-quick-actions { grid-template-columns: 1fr; }
+  .belm-technician-machine-data { grid-template-columns: 1fr 1fr; }
+}
+
+/* Technician machine cards share the same visual language while keeping their
+   technician-specific actions and workflow intact. */
+.belm-technician-machine-card {
+  min-height: 0 !important;
+  padding: 20px !important;
+  overflow: hidden !important;
+  border: 1px solid #dbe4ed !important;
+  border-radius: 18px !important;
+  background: #fff !important;
+  box-shadow: 0 12px 30px rgba(15,27,46,.085) !important;
+}
+.belm-technician-machine-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 3;
+  height: 4px;
+  background: #7f8da1;
+}
+.belm-technician-machine-card.status-green::before { background: var(--belm-green); }
+.belm-technician-machine-card.status-yellow::before { background: var(--belm-yellow); }
+.belm-technician-machine-card.status-red::before { background: #e5484d; }
+.belm-technician-machine-card.status-unknown::before { background: #7f8da1; }
+.belm-technician-machine-card.status-green,
+.belm-technician-machine-card.status-yellow,
+.belm-technician-machine-card.status-red,
+.belm-technician-machine-card.status-unknown {
+  border-width: 1px !important;
+  background: #fff !important;
+  box-shadow: 0 12px 30px rgba(15,27,46,.085) !important;
+}
+.belm-technician-machine-card > .belm-machine-native-head {
+  margin: -20px -20px 0 !important;
+  padding: 22px 20px 16px !important;
+  color: #fff !important;
+  background:
+    radial-gradient(circle at 94% 0, rgba(23,105,194,.26), transparent 11rem),
+    linear-gradient(135deg, #111f35, #0a111d) !important;
+}
+.belm-technician-machine-card > .belm-machine-native-head,
+.belm-technician-machine-card > .belm-machine-native-head * { color: #fff !important; }
+.belm-technician-machine-card > .belm-machine-last-checked {
+  margin: 0 -20px 11px !important;
+  padding: 8px 20px !important;
+  color: #66768a !important;
+  border-bottom: 1px solid #e8eef4;
+  background: #f8fafc;
+  font-size: 9px !important;
+  font-weight: 750 !important;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+.belm-technician-card-actions {
+  gap: 8px;
+  margin-top: 12px;
+}
+.belm-technician-report-link,
+.belm-technician-checkup-button {
+  min-height: 42px;
+  border-radius: 10px !important;
+  font-size: 10px !important;
+  font-weight: 850 !important;
+}
+.belm-technician-report-link {
+  color: #21486e !important;
+  border-color: #c9daec !important;
+  background: #f6faff !important;
+}
+.belm-technician-checkup-button {
+  color: #fff !important;
+  border-color: var(--belm-blue) !important;
+  background: var(--belm-blue) !important;
+}
+html.dark .belm-technician-machine-card,
+html[data-theme="dark"] .belm-technician-machine-card {
+  border-color: #2a394d !important;
+  background: #111b2a !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.26) !important;
 }

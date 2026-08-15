@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/controller_pinout_pdf_helper.php';
 
 $user = require_auth();
 require_page_access($user, 'checklist-templates');
@@ -20,6 +21,13 @@ function fetch_pinout_pins(string $pinoutId): array {
     $stmt = db()->prepare('SELECT id, pin_label, pin_function, sort_order FROM controller_pinout_pins WHERE pinout_id = ? ORDER BY sort_order ASC, created_at ASC');
     $stmt->execute([$pinoutId]);
     return $stmt->fetchAll();
+}
+
+
+if ($method === 'GET' && $action === 'pdf') {
+    if (!$id) json_error('Controller pinout ID is required.');
+    log_activity($user, 'controller-pinout-pdf-downloaded', 'controllerPinout', $id, []);
+    belm_output_controller_pinout_pdf($id);
 }
 
 // GET ?action=photo&photoId=X[&download=1] — serves one stored photo.

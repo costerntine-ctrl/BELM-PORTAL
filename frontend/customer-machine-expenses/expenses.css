@@ -64,3 +64,30 @@ input,select { width:100%; min-height:42px; padding:10px 11px; border:1px solid 
 dialog { width:min(760px,calc(100% - 24px)); padding:0; border:0; border-radius:16px; box-shadow:0 25px 80px rgba(8,15,27,.4); }dialog::backdrop { background:rgba(9,16,29,.72); }.receipt-dialog-head { display:flex; justify-content:space-between; align-items:center; padding:15px 18px; color:#fff; background:var(--navy); }.receipt-dialog-head button { border:0; color:#fff; background:none; cursor:pointer; font-size:26px; }.receipt-image-wrap { display:grid; place-items:center; max-height:76vh; padding:14px; overflow:auto; background:#eef2ef; }.receipt-image-wrap img { max-width:100%; max-height:72vh; object-fit:contain; }
 @media(max-width:900px){#expenseForm{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:620px){.heading{align-items:start;flex-direction:column}#expenseForm{grid-template-columns:1fr}.wide{grid-column:auto}.download-actions{width:100%}.download-actions button{flex:1}}
+
+/* V197 - Customer Store + machine material audit */
+main { width:min(1180px,calc(100% - 28px)); }
+.audit-button { border-color:#b7c7f6; color:#173e8d; background:#f5f8ff; }
+.audit-button:hover { border-color:#173e8d; color:#102d69; }
+.store-issue-hint { padding:10px 12px; border:1px solid #b8d9c7; border-radius:9px; background:#f0fbf5; color:#315746; font-size:11px; line-height:1.45; }
+.store-issue-hint .negative { color:var(--red); }
+#unitPrice[readonly] { color:#536779; background:#f2f5f3; cursor:not-allowed; }
+.store-panel::before { background:linear-gradient(90deg,var(--green) 0 68%,var(--yellow) 68% 100%); }
+.store-summary-strip { display:flex; flex-wrap:wrap; gap:10px 22px; padding:12px 20px; border-bottom:1px solid #edf2ef; background:#f8fbf9; color:var(--muted); font-size:11px; }
+.store-summary-strip b { color:var(--navy); font-size:13px; }
+.store-table { min-width:900px; }
+.audit-table { min-width:1500px; }
+.stock-ok { color:var(--green2); }
+.stock-zero { color:var(--red); }
+.source-badge { display:inline-flex; align-items:center; min-height:24px; padding:4px 8px; border-radius:999px; font-size:9px; font-weight:900; text-transform:uppercase; white-space:nowrap; }
+.source-badge.store { color:#087039; border:1px solid #b7dfc9; background:#effaf4; }
+.source-badge.direct { color:#7c5600; border:1px solid #f1d78f; background:#fff9e8; }
+.dialog-note { margin:0; padding:14px 20px 0; color:var(--muted); font-size:11px; line-height:1.5; }
+.dialog-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.dialog-actions-inline { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media(max-width:760px){ .dialog-grid{grid-template-columns:1fr}.store-summary-strip{display:grid;grid-template-columns:1fr 1fr}.audit-table{min-width:1360px} }
+.movement-panel::before { background:linear-gradient(90deg,#173e8d 0 72%,var(--green) 72% 100%); }
+.movement-table { min-width:1250px; }
+.movement-badge { display:inline-flex; min-width:58px; justify-content:center; padding:4px 8px; border-radius:999px; font-size:9px; font-weight:900; }
+.movement-badge.receive { color:#087039; background:#effaf4; border:1px solid #b7dfc9; }
+.movement-badge.issue { color:#173e8d; background:#f0f4ff; border:1px solid #bfd0fa; }

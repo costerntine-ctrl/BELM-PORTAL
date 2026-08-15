@@ -22,7 +22,7 @@
     <section class="heading">
       <div>
         <p class="eyebrow">CUSTOMER ACCOUNT SECURITY</p>
-        <h1>Manage users</h1>
+        <h1>Manage assistants</h1>
         <p class="lead">Create separate email and password logins for your Machinery Admin team, Accounts staff, or Machine Operators. Every assistant remains limited to your company and machines.</p>
       </div>
       <button class="primary compact" id="addButton" type="button">+ Add assistant</button>
@@ -46,16 +46,15 @@
       <aside class="access-legend">
         <strong>Access permissions</strong>
         <ul>
-          <li><b>Machine Expenses</b> — log and view spare-part costs</li>
+          <li><b>Machine Expenses</b> — log and view spare/material costs</li>
+          <li><b>Customer Store</b> — receive stock, issue materials and view balances/audit</li>
           <li><b>Fuel Usage</b> — log and view fuel top-ups</li>
           <li><b>Management Email</b> — send reports to your bosses/team</li>
-          <li><b>Send via WhatsApp</b> — share machine status by WhatsApp</li>
+          <li><b>Check Up / Checklist Reports</b> — view the daily checklist and checked-report PDFs</li>
           <li><b>Service Request</b> — request BELM service visits</li>
           <li><b>Report a Problem</b> — flag an issue with a machine</li>
           <li><b>Operator Reports</b> — view reports from machine operators</li>
-          <li><b>Analysis</b> — view usage &amp; cost summaries</li>
-          <li><b>Manage Users</b> — manage other assistants</li>
-          <li><b>Change Password</b> — change their own login password</li>
+          <li><b>Assign Users</b> — manage other assistants</li>
         </ul>
       </aside>
     </div>
@@ -104,15 +103,21 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Assistant accounts</h2><p>Use Edit to change a role, reset a password or deactivate access.</p></div>
+        <div><h2>Assistant accounts</h2><p>Use Edit to change a role or deactivate access. Password recovery is self-service through Forgot Password + email OTP.</p></div>
         <button class="secondary" id="refreshButton" type="button">Refresh</button>
       </div>
       <div id="userList" class="user-list"><div class="loading">Loading assistants…</div></div>
     </section>
 
+    <section id="belmProviderNotice" class="panel hidden">
+      <div class="panel-head">
+        <div><h2>BELM Service Provider Active</h2><p>Only the Customer Technician role is temporarily paused while BELM handles machine problems and maintenance. Machinery Admin, Accounts, Machine Operators, Fuel Consumption, Workshop, Store, Procurement and other permitted functions remain available.</p></div>
+      </div>
+    </section>
+
     <section id="technicianSection" class="panel hidden">
       <div class="panel-head">
-        <div><h2>Your Field Technicians</h2><p>Machinery Admin self-service is ON for your account. Use "+ Add assistant" above and pick "Technician" as the Access role.</p></div>
+        <div><h2>Your Field Technicians</h2><p>BELM Service Provider is OFF. You can manage your own field Technicians for normal maintenance. Use “Add assistant” and choose Technician to add a field technician.</p></div>
       </div>
       <div id="technicianList" class="user-list"></div>
     </section>
@@ -139,22 +144,21 @@
           </select>
         </label>
         <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>
-        <label>Password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">At least 8 characters</small></label>
-        <label>Confirm password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
+        <label id="passwordWrap">Initial password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">Customer Admin sets the first password and gives it to the user securely.</small></label>
+        <label id="confirmPasswordWrap">Confirm initial password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
       </div>
       <div class="field-block" id="accessRoleWrap">Access to
         <label class="check-option access-all"><input type="checkbox" id="accessAll" checked> <b>Access All</b></label>
         <div id="accessOptions" class="access-options">
           <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Machine Expenses</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="store"> Customer Store / Materials</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="whatsapp"> Send via WhatsApp</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="check-up"> Check Up / Checklist Reports</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Service Request</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report a Problem</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="operator-reports"> Operator Reports</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="analysis"> Analysis</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Manage Users</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="change-password"> Change Password</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Assign Users</label>
         </div>
       </div>
       <div id="formError" class="alert error hidden" role="alert"></div>
@@ -165,6 +169,6 @@
     </form>
   </dialog>
 
-  <script src="/customer-users/users.js"></script>
+  <script src="/customer-users/users.js?v=194-provider-mode"></script>
 </body>
 </html>

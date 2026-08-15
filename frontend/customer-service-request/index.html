@@ -10,7 +10,7 @@
   <header>
     <a class="brand" href="/portal/dashboard">
       <span class="mark">B</span>
-      <span><b>BELM Customer Portal</b><small>Machine-aware Service Request</small></span>
+      <span><b>BELM Customer Portal</b><small id="portalModeSubtitle">Machine-aware Service Request</small></span>
     </a>
     <nav>
       <a href="/portal/dashboard">← Customer dashboard</a>
@@ -28,10 +28,11 @@
     </section>
 
     <div id="alertBox" class="alert hidden" role="alert"></div>
+    <div id="supportModeNotice" class="alert hidden" role="status"></div>
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Service request details</h2><p>The selected service type automatically synchronizes its spare-parts list.</p></div>
+        <div><h2 id="servicePanelTitle">Service request details</h2><p id="servicePanelIntro">Select the service required for this machine. BELM handles internal parts matching separately.</p></div>
         <span id="matchStatus">Checking machine…</span>
       </div>
       <form id="serviceForm">
@@ -51,32 +52,23 @@
         </label>
         <div class="form-actions">
           <a href="/portal/dashboard">Cancel</a>
-          <button class="primary" id="submitButton" type="submit">Submit service request</button>
+          <button class="primary" id="submitButton" type="submit">Send to BELM</button>
         </div>
       </form>
     </section>
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Spare parts needed</h2><p>Describe the part you need, or — if this machine's service type has a parts list attached — pick straight from that list.</p></div>
+        <div><h2>Request spare parts from BELM</h2><p>Type the spare name yourself. Your company does not see BELM inventory; BELM will identify the correct internal spare, prepare the Proforma and follow up.</p></div>
         <button class="secondary" id="addPartRowButton" type="button">+ Add spare part</button>
       </div>
       <div id="partRequestRows"></div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head">
-        <div><h2>Synchronized parts list</h2><p>Parts configured by Admin in the matching Checklist Template.</p></div>
-        <strong id="partCount">0 parts</strong>
-      </div>
-      <div id="partsList" class="parts-list">
-        <div class="empty">Choose a service type to see its spare parts.</div>
-      </div>
-    </section>
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Your service requests</h2><p>History for your machines — completed or cancelled requests show who handled them.</p></div>
+        <div><h2 id="historyTitle">Your BELM support requests</h2><p>History of requests that were sent to BELM — completed or cancelled requests show who handled them.</p></div>
         <button class="secondary" id="refreshHistoryButton" type="button">Refresh</button>
       </div>
       <div class="table-wrap">
@@ -88,6 +80,6 @@
     </section>
   </main>
 
-  <script src="/customer-service-request/request.js"></script>
+  <script src="/customer-service-request/request.js?v=194-provider-mode"></script>
 </body>
 </html>

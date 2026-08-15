@@ -35,3 +35,5 @@
   .pin-row { grid-template-columns: 1fr; }
   .photo-row { grid-template-columns: 1fr; }
 }
+.pinout-card-actions { flex-wrap: wrap; }
+.pinout-card-actions button.pdf { border-color: rgba(20, 91, 170, .28); background: rgba(20, 91, 170, .08); color: #145baa; }

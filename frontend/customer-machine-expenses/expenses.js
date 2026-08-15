@@ -5,6 +5,8 @@
   let receiptPhotoData = "";
   let receiptPhotoName = "";
   let openReceiptUrl = "";
+  let storeItemsCache = [];
+  let canManageStore = false;
   const money = new Intl.NumberFormat("en-TZ", {
     style: "currency",
     currency: "TZS",
@@ -48,7 +50,7 @@
       document.getElementById("clearPettyCashError").classList.add("hidden");
       document.getElementById("clearPettyCashDialog").showModal();
     });
-    document.querySelectorAll("[data-close-dialog]").forEach((button) => {
+    document.querySelectorAll('[data-close-dialog="depositPettyCashDialog"], [data-close-dialog="clearPettyCashDialog"]').forEach((button) => {
       button.addEventListener("click", () => document.getElementById(button.dataset.closeDialog).close());
     });
 
@@ -127,6 +129,13 @@
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     return `${day}/${month}/${date.getFullYear()}`;
+  }
+
+  function formatDateTime(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return `${formatDate(value)} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
   }
 
   function escapeHtml(value) {
@@ -249,6 +258,71 @@
       `Total: ${money.format(quantity * unitPrice)}`;
   }
 
+  function storeItemForPart(partNumber) {
+    const key = String(partNumber || "").trim().toUpperCase();
+    return storeItemsCache.find(item => String(item.partNumber || "").trim().toUpperCase() === key) || null;
+  }
+
+  function syncStoreIssueForm() {
+    const source = document.getElementById("stockSource").value;
+    const unitPrice = document.getElementById("unitPrice");
+    const hint = document.getElementById("storeIssueHint");
+    if (source !== "CUSTOMER_STORE") {
+      unitPrice.readOnly = false;
+      hint.classList.add("hidden");
+      calculateTotal();
+      return;
+    }
+    const item = storeItemForPart(document.getElementById("partNumber").value);
+    unitPrice.readOnly = true;
+    if (!item) {
+      hint.innerHTML = '<b>Customer Store:</b> Part number not found. Receive stock first or choose Direct purchase.';
+      hint.classList.remove("hidden");
+      unitPrice.value = "0";
+      calculateTotal();
+      return;
+    }
+    document.getElementById("description").value = item.description || document.getElementById("description").value.trim();
+    document.getElementById("unit").value = ["PC", "SET", "L", "KG"].includes(item.unit) ? item.unit : "PC";
+    unitPrice.value = Number(item.averageUnitCost || 0).toFixed(2);
+    const requested = Number(document.getElementById("quantity").value || 0);
+    const balance = Number(item.qtyOnHand || 0);
+    const after = balance - requested;
+    hint.innerHTML = `<b>Customer Store balance:</b> ${balance.toLocaleString("en-TZ")} ${escapeHtml(item.unit || "PC")} available · after this issue: <b class="${after < 0 ? "negative" : ""}">${after.toLocaleString("en-TZ")} ${escapeHtml(item.unit || "PC")}</b>`;
+    hint.classList.remove("hidden");
+    calculateTotal();
+  }
+
+  function renderStore(items, summary) {
+    storeItemsCache = Array.isArray(items) ? items : [];
+    const datalist = document.getElementById("storePartOptions");
+    datalist.innerHTML = storeItemsCache.map(item =>
+      `<option value="${escapeHtml(item.partNumber)}">${escapeHtml(item.description)} · Balance ${Number(item.qtyOnHand || 0).toLocaleString("en-TZ")} ${escapeHtml(item.unit || "PC")}</option>`
+    ).join("");
+    document.getElementById("storeItemCount").textContent = Number(summary?.itemCount || 0).toLocaleString("en-TZ");
+    document.getElementById("storeIssueCount").textContent = Number(summary?.machineIssueCount || 0).toLocaleString("en-TZ");
+    document.getElementById("storeStockValueStrip").textContent = money.format(Number(summary?.stockValue || 0));
+    document.getElementById("machineStoreIssued").textContent = money.format(Number(summary?.machineIssuedValue || 0));
+    document.getElementById("customerStoreValue").textContent = money.format(Number(summary?.stockValue || 0));
+    document.getElementById("storeRows").innerHTML = storeItemsCache.length
+      ? storeItemsCache.map(item => {
+          const balance = Number(item.qtyOnHand || 0);
+          const avg = Number(item.averageUnitCost || 0);
+          return `<tr>
+            <td><strong>${escapeHtml(item.partNumber || "-")}</strong></td>
+            <td>${escapeHtml(item.description || "-")}</td>
+            <td>${escapeHtml(item.unit || "PC")}</td>
+            <td>${Number(item.totalReceived || 0).toLocaleString("en-TZ")}</td>
+            <td>${Number(item.totalIssued || 0).toLocaleString("en-TZ")}</td>
+            <td><strong class="${balance <= 0 ? "stock-zero" : "stock-ok"}">${balance.toLocaleString("en-TZ")}</strong></td>
+            <td>${money.format(avg)}</td>
+            <td>${money.format(balance * avg)}</td>
+          </tr>`;
+        }).join("")
+      : '<tr><td colspan="8" class="empty">Customer Store is empty. Receive stock to start the ledger.</td></tr>';
+    syncStoreIssueForm();
+  }
+
   function render(data) {
     const machine = data.machine || {};
     const summary = data.summary || {};
@@ -268,16 +342,44 @@
       money.format(Number(summary.averageCost || 0));
     document.getElementById("receiptCount").textContent =
       Number(summary.receiptCount || 0).toLocaleString("en-TZ");
+    canManageStore = Boolean(data.canManageStore);
+    document.getElementById("receiveStockButton").classList.toggle("hidden", !canManageStore);
+    const storeOption = document.querySelector('#stockSource option[value="CUSTOMER_STORE"]');
+    if (storeOption) storeOption.disabled = !canManageStore;
+    if (!canManageStore && document.getElementById("stockSource").value === "CUSTOMER_STORE") document.getElementById("stockSource").value = "DIRECT_PURCHASE";
+    renderStore(data.storeItems || [], data.storeSummary || {});
+    const movements = Array.isArray(data.storeMovements) ? data.storeMovements : [];
+    document.getElementById("storeMovementRows").innerHTML = movements.length
+      ? movements.map(move => {
+          const machineLabel = [move.machineBrand, move.machineModel].filter(Boolean).join(" ") || "STORE";
+          return `<tr>
+            <td>${formatDateTime(move.createdAt)}</td>
+            <td><span class="movement-badge ${String(move.movementType || "").toLowerCase()}">${escapeHtml(move.movementType || "-")}</span></td>
+            <td><strong>${escapeHtml(move.partNumber || "-")}</strong></td>
+            <td>${escapeHtml(move.description || "-")}</td>
+            <td>${Number(move.quantity || 0).toLocaleString("en-TZ")} ${escapeHtml(move.unit || "PC")}</td>
+            <td><strong>${Number(move.balanceAfter || 0).toLocaleString("en-TZ")} ${escapeHtml(move.unit || "PC")}</strong></td>
+            <td>${escapeHtml(machineLabel)}</td>
+            <td>${escapeHtml(move.actorName || "-")}</td>
+            <td>${escapeHtml(move.receivedBy || "-")}</td>
+            <td>${escapeHtml(move.note || "-")}</td>
+          </tr>`;
+        }).join("")
+      : '<tr><td colspan="10" class="empty">No Store movements are linked to this machine yet.</td></tr>';
 
     const rows = Array.isArray(data.expenses) ? data.expenses : [];
     document.getElementById("expenseRows").innerHTML = rows.length
       ? rows.map(expense => `<tr>
           <td>${formatDate(expense.date)}</td>
+          <td><span class="source-badge ${expense.stockSource === "CUSTOMER_STORE" ? "store" : "direct"}">${expense.stockSource === "CUSTOMER_STORE" ? "Customer Store" : "Direct Purchase"}</span></td>
           <td><strong>${escapeHtml(expense.partNumber || "-")}</strong></td>
           <td>${escapeHtml(expense.description)}</td>
           <td>${Number(expense.quantity || 0).toLocaleString("en-TZ")} ${escapeHtml(expense.unit || "PC")}</td>
           <td>${money.format(Number(expense.unitPrice || 0))}</td>
           <td><strong>${money.format(Number(expense.cost || 0))}</strong></td>
+          <td>${expense.storeBalanceAfter === null || expense.storeBalanceAfter === undefined ? "—" : `<strong>${Number(expense.storeBalanceAfter).toLocaleString("en-TZ")} ${escapeHtml(expense.unit || "PC")}</strong>`}</td>
+          <td>${escapeHtml(expense.issuedBy || expense.loggedBy || "Customer")}</td>
+          <td>${escapeHtml(expense.receivedBy || "—")}</td>
           <td>${hasReceipt(expense.hasReceipt)
             ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(expense.id)}">View</button>
                <button class="receipt-button" type="button" data-download-receipt="${escapeHtml(expense.id)}">Download</button>
@@ -286,9 +388,8 @@
                  <span class="receipt-button">Upload</span>
                  <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-attach-receipt="${escapeHtml(expense.id)}" hidden>
                </label>`}</td>
-          <td>${escapeHtml(expense.loggedBy || "Customer")}</td>
         </tr>`).join("")
-      : '<tr><td colspan="8" class="empty">No machine expenses recorded yet.</td></tr>';
+      : '<tr><td colspan="11" class="empty">No machine material/expense records yet.</td></tr>';
   }
 
   function currentRangeQuery() {
@@ -342,8 +443,8 @@
     }
   }
 
-  async function download(format) {
-    const button = document.getElementById(`${format}Button`);
+  async function download(format, buttonId = "") {
+    const button = document.getElementById(buttonId || `${format}Button`);
     const original = button.textContent;
     button.disabled = true;
     button.textContent = "Preparing…";
@@ -366,7 +467,7 @@
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = matchedName?.[1] || `machine-expenses.${format}`;
+      link.download = matchedName?.[1] || `machine-expenses.${format === "audit-pdf" ? "pdf" : format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -470,8 +571,11 @@
   document.getElementById("pettyCashLink").href = `/customer-petty-cash/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("serviceRequestLink").href = `/customer-service-request/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
-  document.getElementById("quantity").addEventListener("input", calculateTotal);
+  document.getElementById("quantity").addEventListener("input", () => { calculateTotal(); syncStoreIssueForm(); });
   document.getElementById("unitPrice").addEventListener("input", calculateTotal);
+  document.getElementById("stockSource").addEventListener("change", syncStoreIssueForm);
+  document.getElementById("partNumber").addEventListener("input", syncStoreIssueForm);
+  document.getElementById("partNumber").addEventListener("change", syncStoreIssueForm);
   document.getElementById("receiptPhoto").addEventListener("change", async event => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -537,6 +641,7 @@
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("csvButton").addEventListener("click", () => download("csv"));
   document.getElementById("pdfButton").addEventListener("click", () => download("pdf"));
+  document.getElementById("auditPdfButton").addEventListener("click", () => download("audit-pdf", "auditPdfButton"));
   document.getElementById("receiptsButton").addEventListener("click", downloadAllReceipts);
 
   async function downloadAllReceipts() {
@@ -576,6 +681,47 @@
       button.textContent = "Download Receipts";
     }
   }
+  document.querySelectorAll('[data-close-dialog="receiveStockDialog"]').forEach(button => {
+    button.addEventListener("click", () => document.getElementById("receiveStockDialog").close());
+  });
+  document.getElementById("receiveStockButton").addEventListener("click", () => {
+    if (!canManageStore) return;
+    document.getElementById("receiveStockForm").reset();
+    document.getElementById("receiveUnitCost").value = "0";
+    document.getElementById("receiveStockError").classList.add("hidden");
+    document.getElementById("receiveStockDialog").showModal();
+  });
+  document.getElementById("receiveStockForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = document.getElementById("saveReceiveStockButton");
+    const errorBox = document.getElementById("receiveStockError");
+    errorBox.classList.add("hidden");
+    button.disabled = true;
+    button.textContent = "Receiving…";
+    try {
+      const result = await api("/store", {
+        method: "POST",
+        body: JSON.stringify({
+          partNumber: document.getElementById("receivePartNumber").value.trim(),
+          description: document.getElementById("receiveDescription").value.trim(),
+          quantity: Number(document.getElementById("receiveQuantity").value),
+          unit: document.getElementById("receiveUnit").value,
+          unitCost: Number(document.getElementById("receiveUnitCost").value),
+          note: document.getElementById("receiveNote").value.trim(),
+        }),
+      });
+      document.getElementById("receiveStockDialog").close();
+      await load();
+      showAlert(result.message || "Stock received and Store balance updated.");
+    } catch (error) {
+      errorBox.textContent = error.message || "Could not receive stock.";
+      errorBox.classList.remove("hidden");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Receive into Store";
+    }
+  });
+
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
     window.location.href = "/portal/login";
@@ -588,15 +734,17 @@
     saveButton.disabled = true;
     saveButton.textContent = "Saving…";
     try {
-      await api(`/machine-expenses/${encodeURIComponent(machineId)}`, {
+      const saveResult = await api(`/machine-expenses/${encodeURIComponent(machineId)}`, {
         method: "POST",
         body: JSON.stringify({
           date: document.getElementById("expenseDate").value,
           description: document.getElementById("description").value.trim(),
           partNumber: document.getElementById("partNumber").value.trim(),
+          stockSource: document.getElementById("stockSource").value,
           quantity: Number(document.getElementById("quantity").value),
           unit: document.getElementById("unit").value,
           unitPrice: Number(document.getElementById("unitPrice").value),
+          receivedBy: document.getElementById("receivedBy").value.trim(),
           receiptPhoto: receiptPhotoData,
           receiptName: receiptPhotoName,
         }),
@@ -606,9 +754,12 @@
       document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
       document.getElementById("quantity").value = "1";
       document.getElementById("unitPrice").value = "0";
+      document.getElementById("stockSource").value = "DIRECT_PURCHASE";
+      document.getElementById("unitPrice").readOnly = false;
+      document.getElementById("storeIssueHint").classList.add("hidden");
       calculateTotal();
       await load();
-      showAlert("Machine expense saved successfully.");
+      showAlert(saveResult.message || "Machine expense saved successfully.");
     } catch (error) {
       showAlert(error.message || "Could not save machine expense.", true);
     } finally {

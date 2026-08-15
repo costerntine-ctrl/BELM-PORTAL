@@ -108,11 +108,30 @@
           <div class="eng-row">
             <div>
               <b>${escapeHtml(item.machine)}</b>
-              <span class="eng-row-sub">${escapeHtml(item.customer || "—")} · ${escapeHtml(item.intervalHours)}-Hour Service</span>
+              <span class="eng-row-sub">${escapeHtml(item.customer || "—")} · ${escapeHtml(item.machineType || "Machine")} · Due ${escapeHtml(item.dueHour || "—")} hrs · ${escapeHtml(item.serviceIntervalHours || item.intervalHours)}-Hour Service${item.draftProformaNo ? ` · ${escapeHtml(item.draftProformaNo)}` : ""}</span>
+              <span class="eng-row-sub">Owner alert: Email ${escapeHtml(item.ownerEmailStatus || "NOT SENT")} · WhatsApp ${escapeHtml(item.ownerWhatsAppStatus || "NOT SENT")}</span>
             </div>
             <span class="eng-badge status-${escapeHtml(item.level.toLowerCase())}">${item.hoursRemaining <= 0 ? "Overdue" : `${item.hoursRemaining} hrs left`}</span>
           </div>`).join("")
       : '<p class="muted">Nothing due soon.</p>';
+  }
+
+
+  function renderServicePreparations(items) {
+    document.getElementById("servicePrepCount").textContent = items.length;
+    document.getElementById("servicePrepList").innerHTML = items.length
+      ? items.map((item) => `
+          <div class="eng-row">
+            <div>
+              <b>${escapeHtml(item.draftProformaNo || "Service kit review")}</b>
+              <span class="eng-row-sub">${escapeHtml(item.customer || "—")} · ${escapeHtml(item.machine)} · ${escapeHtml(item.machineType || "Machine")} · ${escapeHtml(item.serviceIntervalHours)}-Hour Service @ ${escapeHtml(item.dueHour)} hrs</span>
+              <span class="eng-row-sub">Inventory: ${escapeHtml(item.inventoryStatus || "NOT CHECKED")} · Current hours: ${escapeHtml(item.currentHours)}</span>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              ${item.draftProformaId ? '<a class="eng-badge" href="/billing-manager/">Review PI</a>' : '<span class="eng-badge status-yellow">Add service parts</span>'}
+            </div>
+          </div>`).join("")
+      : '<p class="muted">No automatic service preparations waiting for review.</p>';
   }
 
   function renderSpareRequests(items) {
@@ -136,6 +155,7 @@
       renderOperatorMessages(data.operatorMessages || []);
       renderStatusSummary(data.machineStatus || {});
       renderReminders(data.serviceReminders || []);
+      renderServicePreparations(data.servicePreparations || []);
       renderSpareRequests(data.spareRequests || []);
     } catch (error) {
       if (error.status === 401 || error.status === 403) {

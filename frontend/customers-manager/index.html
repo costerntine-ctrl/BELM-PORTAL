@@ -10,7 +10,9 @@
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/customers-manager/manager.css">
     <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
-  </head>
+    <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
+  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+</head>
   <body>
     <header class="topbar">
       <a class="brand" href="/overview-manager/">
@@ -166,6 +168,39 @@
           <button id="saveMachineButton" class="primary" type="submit">Save machine</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="servicePartsDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Preventive Maintenance</p><h2 id="servicePartsTitle">Machine Service Parts</h2></div>
+          <button class="icon-close" data-close="servicePartsDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="servicePartsMachineId" type="hidden">
+        <div id="servicePartsAlert" class="alert hidden"></div>
+        <div class="form-grid">
+          <label>Service interval
+            <select id="servicePartsInterval">
+              <option value="250">250 hrs Service</option>
+              <option value="500">500 hrs Service</option>
+              <option value="1000">1000 hrs Service</option>
+              <option value="2000">2000 hrs Service</option>
+            </select>
+          </label>
+          <div class="full">
+            <p class="muted">These are the exact spares BELM should prepare for this registered machine. Part numbers are matched silently to BELM Spare Inventory when a service alert is created.</p>
+          </div>
+        </div>
+        <div class="dialog-actions" style="justify-content:flex-start;border-top:0;padding-top:0;">
+          <button id="servicePartsUseTemplateButton" class="secondary" type="button">Use Checklist Template Parts</button>
+          <button id="servicePartsAddButton" class="ghost" type="button">+ Add Spare</button>
+        </div>
+        <div id="servicePartsRows" class="reports-list"></div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="servicePartsDialog" type="button">Cancel</button>
+          <button id="servicePartsSaveButton" class="primary" type="button">Save Service Parts</button>
+        </div>
+      </div>
     </dialog>
 
     <dialog id="credentialsDialog">

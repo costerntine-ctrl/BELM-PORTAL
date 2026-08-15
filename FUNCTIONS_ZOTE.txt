@@ -364,3 +364,24 @@ BELM PORTAL - FUNCTIONS ZOTE
 - /api/health endpoint.
 - Custom domain:
   https://portal.belmgeneraltech.co.tz/
+
+V200 PREVENTIVE SERVICE PREPARATION
+- 250/500/1000/2000-hour milestone schedule with 60-hour warning window.
+- BELM Service Provider customers: automatic BELM Admin/Spare Parts/Billing alert.
+- Alert includes Customer, Machine Type, Brand, Model, Serial, Current Hours, Due Hours and inventory readiness.
+- Registered machines can store exact machine-specific service parts per 250/500/1000/2000-hour service.
+- New machines auto-seed service parts from matching Checklist Template service parts when available.
+- Service parts silently match BELM Spare Parts Inventory by part/reference number.
+- Automatic inventory snapshot: READY / LOW_STOCK / OUT_OF_STOCK / PART_NOT_MAPPED / NO_SERVICE_PARTS.
+- Automatic Draft PI is prepared from required service parts and inventory selling prices for BELM review.
+- Draft PI is NEVER auto-sent to customer and inventory is NEVER auto-decremented by the reminder.
+- Engineering dashboard shows Service PI Review queue; Billing labels automatic PIs as AUTO SERVICE.
+- Completed service closes the matching service-due alert while preserving audit/PI history.
+
+V202 Breakdown Workflow:
+- Live breakdown queue with department/SLA delay tracking
+- Boss-only spare approval
+- Store -> Procurement -> Accounts -> Parts Ready process
+- Digital Job Cards with technician reports
+- Technician completion / first-time-fix / repeat-work metrics
+- Downloadable Job Card PDF

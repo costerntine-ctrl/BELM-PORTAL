@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Customer Assistants — BELM Portal</title>
+  <title>Role Manager — BELM Customer Portal</title>
   <link rel="stylesheet" href="/customer-users/users.css">
+  <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
+  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
 </head>
 <body>
   <header>
     <a class="brand" href="/portal/dashboard">
       <span class="mark">B</span>
-      <span><b>BELM Customer Portal</b><small>Assistant User Management</small></span>
+      <span><b>BELM Customer Portal</b><small>Role Manager</small></span>
     </a>
     <nav>
       <a href="/portal/dashboard">← Customer dashboard</a>
@@ -21,40 +23,39 @@
   <main>
     <section class="heading">
       <div>
-        <p class="eyebrow">CUSTOMER ACCOUNT SECURITY</p>
-        <h1>Manage assistants</h1>
-        <p class="lead">Create separate email and password logins for your Machinery Admin team, Accounts staff, or Machine Operators. Every assistant remains limited to your company and machines.</p>
+        <p class="eyebrow">CUSTOMER TEAM & ACCESS CONTROL</p>
+        <h1>Role Manager</h1>
+        <p class="lead">Create users for your company, choose their work role, and control exactly which dashboard functions they can open. Every user remains limited to your company and machines.</p>
       </div>
-      <button class="primary compact" id="addButton" type="button">+ Add assistant</button>
+      <button class="primary compact" id="addButton" type="button">+ USER</button>
     </section>
     <p id="userLimitInfo" class="user-limit-info"></p>
 
     <div id="alertBox" class="alert hidden" role="alert"></div>
 
     <section class="summary-grid">
-      <article><strong id="totalCount">0</strong><span>Total assistants</span></article>
+      <article><strong id="totalCount">0</strong><span>Total portal users</span></article>
       <article><strong id="activeCount">0</strong><span>Active accounts</span></article>
-      <article><strong>4</strong><span>Admin / Assistant / Accounts / Operator roles</span></article>
+      <article><strong>6</strong><span>Operational roles + custom dashboard access</span></article>
     </section>
 
     <div class="share-link-row">
       <section class="share-link">
-        <div><strong>One customer portal link</strong><span>Share this same link with your assistants. Each person uses their own email and password.</span></div>
+        <div><strong>One customer portal link</strong><span>Share this same login link with your team. Each person uses their own email and initial password, then Forgot Password + OTP if needed.</span></div>
         <code id="customerPortalUrl">Loading link…</code>
         <button class="secondary" id="copyLinkButton" type="button">Copy link</button>
       </section>
       <aside class="access-legend">
-        <strong>Access permissions</strong>
+        <strong>Dashboard Access</strong>
         <ul>
-          <li><b>Machine Expenses</b> — log and view spare/material costs</li>
-          <li><b>Customer Store</b> — receive stock, issue materials and view balances/audit</li>
-          <li><b>Fuel Usage</b> — log and view fuel top-ups</li>
-          <li><b>Management Email</b> — send reports to your bosses/team</li>
-          <li><b>Check Up / Checklist Reports</b> — view the daily checklist and checked-report PDFs</li>
-          <li><b>Service Request</b> — request BELM service visits</li>
-          <li><b>Report a Problem</b> — flag an issue with a machine</li>
-          <li><b>Operator Reports</b> — view reports from machine operators</li>
-          <li><b>Assign Users</b> — manage other assistants</li>
+          <li><b>Machine Expenses</b> — machine costs and material usage</li>
+          <li><b>Fuel Usage</b> — fuel top-ups and consumption records</li>
+          <li><b>Operator Reports</b> — machine operator reports and alerts</li>
+          <li><b>Request BELM Support</b> — official technical-support request to BELM</li>
+          <li><b>Report Problem</b> — report a machine problem</li>
+          <li><b>Check Up</b> — daily checklist and checked reports</li>
+          <li><b>Breakdown Process</b> — approvals, delays and Digital Job Cards</li>
+          <li><b>Store Keeper</b> — customer store, materials, balances and audit</li>
         </ul>
       </aside>
     </div>
@@ -103,10 +104,10 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Assistant accounts</h2><p>Use Edit to change a role or deactivate access. Password recovery is self-service through Forgot Password + email OTP.</p></div>
+        <div><h2>Portal user accounts</h2><p>Use Edit to change a role, dashboard access or deactivate an account. Password recovery is self-service through Forgot Password + email OTP.</p></div>
         <button class="secondary" id="refreshButton" type="button">Refresh</button>
       </div>
-      <div id="userList" class="user-list"><div class="loading">Loading assistants…</div></div>
+      <div id="userList" class="user-list"><div class="loading">Loading users…</div></div>
     </section>
 
     <section id="belmProviderNotice" class="panel hidden">
@@ -117,7 +118,7 @@
 
     <section id="technicianSection" class="panel hidden">
       <div class="panel-head">
-        <div><h2>Your Field Technicians</h2><p>BELM Service Provider is OFF. You can manage your own field Technicians for normal maintenance. Use “Add assistant” and choose Technician to add a field technician.</p></div>
+        <div><h2>Your Field Technicians</h2><p>BELM Service Provider is OFF. You can manage your own field Technicians for normal maintenance. Use “+ USER” and choose Technician to add a field technician.</p></div>
       </div>
       <div id="technicianList" class="user-list"></div>
     </section>
@@ -126,7 +127,7 @@
   <dialog id="userDialog">
     <form id="userForm">
       <div class="dialog-head">
-        <div><p class="eyebrow">CUSTOMER ASSISTANT</p><h2 id="dialogTitle">Add assistant</h2></div>
+        <div><p class="eyebrow">ROLE MANAGER</p><h2 id="dialogTitle">Add user</h2></div>
         <button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">×</button>
       </div>
       <input id="userId" type="hidden">
@@ -134,41 +135,46 @@
         <label class="wide">Full name<input id="name" maxlength="255" required autocomplete="name"></label>
         <label>Email address<input id="email" type="email" maxlength="255" required autocomplete="email"></label>
         <label>Phone number<input id="phone" maxlength="50" autocomplete="tel"></label>
-        <label>Access role
+        <label>Role
           <select id="role" required>
-            <option value="admin">Machinery Admin — full access, can manage the team</option>
-            <option value="assistant">Machinery Admin Assistant</option>
-            <option value="accounts">Accounts</option>
-            <option value="operator">Machine Operator</option>
-            <option value="technician">Technician — runs check-ups in the BELM Technician app</option>
+            <option value="workshop_manager">Workshop Manager</option>
+            <option value="store_keeper">Store Keeper</option>
+            <option value="accounts">Muhasibu / Accountant</option>
+            <option value="procurement">Procurement</option>
+            <option value="operator">Operator</option>
+            <option value="technician">Fundi / Technician — uses the Technician workspace</option>
           </select>
         </label>
         <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>
         <label id="passwordWrap">Initial password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">Customer Admin sets the first password and gives it to the user securely.</small></label>
         <label id="confirmPasswordWrap">Confirm initial password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
       </div>
-      <div class="field-block" id="accessRoleWrap">Access to
-        <label class="check-option access-all"><input type="checkbox" id="accessAll" checked> <b>Access All</b></label>
+      <div class="field-block" id="accessRoleWrap">
+        <div class="dashboard-access-title"><b>Dashboard Access</b><small>Select what this user can open. Role presets are applied automatically, then you can adjust them.</small></div>
+        <label class="check-option access-all"><input type="checkbox" id="accessAll"> <b>Access All Dashboard Functions</b></label>
         <div id="accessOptions" class="access-options">
           <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Machine Expenses</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="store"> Customer Store / Materials</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="check-up"> Check Up / Checklist Reports</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Service Request</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report a Problem</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="operator-reports"> Operator Reports</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Assign Users</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Request BELM Support</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report Problem</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="check-up"> Check Up</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="store"> Store Keeper / Materials</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="workflow"> Breakdown Process / Job Cards</label>
+        </div>
+        <div class="secondary-access">
+          <label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Manage Users (+USER)</label>
         </div>
       </div>
       <div id="formError" class="alert error hidden" role="alert"></div>
       <div class="dialog-actions">
         <button class="secondary" id="cancelButton" type="button">Cancel</button>
-        <button class="primary" id="saveButton" type="submit">Save assistant</button>
+        <button class="primary" id="saveButton" type="submit">Save user</button>
       </div>
     </form>
   </dialog>
 
-  <script src="/customer-users/users.js?v=194-provider-mode"></script>
+  <script src="/customer-users/users.js?v=199-role-manager"></script>
 </body>
 </html>

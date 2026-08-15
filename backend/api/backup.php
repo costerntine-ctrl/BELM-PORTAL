@@ -16,14 +16,16 @@ $tables = [
     'checklist_template_parts', 'checklist_reports', 'checklist_answers',
     'service_requests', 'service_request_parts', 'spare_parts',
     'spare_part_requests', 'suppliers', 'invoices', 'invoice_payments',
-    'company_expenses', 'proforma_invoices', 'usage_logs', 'customer_store_items', 'customer_store_movements', 'tasks',
+    'company_expenses', 'proforma_invoices', 'usage_logs', 'customer_store_items', 'customer_store_movements',
+    'machine_service_parts', 'service_due_alerts', 'service_due_alert_items', 'tasks',
     'bank_accounts', 'bank_withdrawals', 'admin_announcements', 'customer_communications',
-    'system_settings', 'activity_logs', 'trash_entries',
+    'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
+    'system_settings', 'user_preferences', 'activity_logs', 'trash_entries',
 ];
 
 $backup = [
     'exportedAt' => date('c'),
-    'schemaVersion' => '20-customer-store-audit',
+    'schemaVersion' => '22-breakdown-workflow-job-cards',
     'tables' => [],
 ];
 

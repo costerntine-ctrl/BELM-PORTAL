@@ -499,6 +499,303 @@ function calculated_invoice_status(float $total, float $paid, ?string $dueDate):
 }
 
 
+
+// ---- Customer team role/permission alerts ---------------------------------
+// New Role Manager accounts use explicit dashboard permissions. For older
+// accounts that still have permissions=NULL, these defaults preserve sensible
+// department access without treating every role as a full-access admin.
+function customer_role_default_dashboard_permissions(string $role): array {
+    $role = strtolower(trim($role));
+    return match ($role) {
+        'workshop_manager' => ['machine-expenses', 'fuel-usage', 'operator-reports', 'service-request', 'report-problem', 'check-up', 'store', 'workflow'],
+        'store_keeper' => ['machine-expenses', 'store', 'workflow'],
+        'accounts' => ['machine-expenses', 'fuel-usage', 'email', 'workflow'],
+        'procurement' => ['machine-expenses', 'store', 'service-request', 'workflow'],
+        'operator' => ['fuel-usage', 'operator-reports', 'report-problem'],
+        'admin', 'assistant' => ['*'],
+        default => [],
+    };
+}
+
+function customer_team_recipients_for_permissions(
+    string $customerId,
+    array $permissionKeys,
+    bool $includeOwner = true
+): array {
+    $wanted = array_values(array_unique(array_filter(array_map('strval', $permissionKeys))));
+    $byEmail = [];
+
+    if ($includeOwner) {
+        $stmt = db()->prepare('SELECT name, email FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+        $stmt->execute([$customerId]);
+        $owner = $stmt->fetch();
+        if ($owner) {
+            $email = strtolower(trim((string)($owner['email'] ?? '')));
+            if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $byEmail[$email] = ['email' => $email, 'name' => (string)($owner['name'] ?? 'Customer Admin'), 'role' => 'owner'];
+            }
+        }
+    }
+
+    $stmt = db()->prepare(
+        'SELECT name, email, role, permissions FROM customer_users
+         WHERE customer_id = ? AND is_active = 1 ORDER BY created_at ASC'
+    );
+    $stmt->execute([$customerId]);
+    foreach ($stmt->fetchAll() as $row) {
+        $email = strtolower(trim((string)($row['email'] ?? '')));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+        $permissions = null;
+        if ($row['permissions'] !== null && trim((string)$row['permissions']) !== '') {
+            $decoded = json_decode((string)$row['permissions'], true);
+            $permissions = is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : [];
+        }
+        // permissions=NULL is the portal's long-standing 'Access All' value.
+        // New Role Manager presets are stored explicitly, so full-access users
+        // should also receive all role-aware operational alerts.
+        if ($permissions === null) $permissions = ['*'];
+        $matches = in_array('*', $permissions, true)
+            || !$wanted
+            || (bool)array_intersect($wanted, $permissions);
+        if (!$matches) continue;
+        $byEmail[$email] = [
+            'email' => $email,
+            'name' => (string)($row['name'] ?? ''),
+            'role' => (string)($row['role'] ?? ''),
+        ];
+    }
+    return array_values($byEmail);
+}
+
+function customer_send_team_alert(
+    string $customerId,
+    array $permissionKeys,
+    string $subject,
+    string $body,
+    bool $includeOwner = true
+): array {
+    if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
+    $result = ['sent' => 0, 'failed' => 0, 'recipients' => []];
+    foreach (customer_team_recipients_for_permissions($customerId, $permissionKeys, $includeOwner) as $recipient) {
+        $email = (string)$recipient['email'];
+        $status = 'SENT';
+        try {
+            send_email($email, $subject, $body);
+            $result['sent']++;
+            $result['recipients'][] = $email;
+        } catch (Throwable $error) {
+            $status = 'FAILED';
+            $result['failed']++;
+            error_log('BELM customer team alert failed for ' . $email . ': ' . $error->getMessage());
+        }
+        try {
+            db()->prepare(
+                'INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at)
+                 VALUES (?,?,?,?,?,?,NOW())'
+            )->execute([uuid(), 'EMAIL', $email, $subject, $body, $status]);
+        } catch (Throwable $ignored) {}
+    }
+    return $result;
+}
+
+// ---- WhatsApp transport + machine-owner preventive service alerts --------
+// Auto WhatsApp delivery is intentionally provider-neutral. Configure:
+//   BELM_WHATSAPP_API_URL   HTTPS endpoint accepting {to,message}
+//   BELM_WHATSAPP_API_TOKEN optional Bearer token
+// If no endpoint is configured, the portal records PENDING_PROVIDER rather
+// than claiming that WhatsApp was sent. This keeps the audit trail truthful.
+function belm_whatsapp_api_is_configured(): bool {
+    $url = trim((string)(getenv('BELM_WHATSAPP_API_URL') ?: ''));
+    return $url !== '' && filter_var($url, FILTER_VALIDATE_URL) !== false;
+}
+
+function belm_normalize_whatsapp_number(string $phone): string {
+    $digits = preg_replace('/[^0-9]+/', '', trim($phone));
+    if (!$digits) return '';
+    // Tanzania-friendly normalization for locally stored 0XXXXXXXXX numbers.
+    if (strlen($digits) === 10 && str_starts_with($digits, '0')) {
+        $digits = '255' . substr($digits, 1);
+    } elseif (strlen($digits) === 9 && preg_match('/^[67]/', $digits)) {
+        $digits = '255' . $digits;
+    }
+    return $digits;
+}
+
+function belm_send_whatsapp_text(string $phone, string $message): array {
+    $to = belm_normalize_whatsapp_number($phone);
+    if ($to === '') return ['sent' => false, 'status' => 'NO_PHONE'];
+    try {
+        $toggle = db()->prepare('SELECT "value" FROM system_settings WHERE "key" = ?');
+        $toggle->execute(['whatsappAlertsEnabled']);
+        $raw = $toggle->fetchColumn();
+        if ($raw !== false && json_decode((string)$raw, true) === false) {
+            return ['sent' => false, 'status' => 'DISABLED', 'to' => $to];
+        }
+    } catch (Throwable $ignored) {}
+    $url = trim((string)(getenv('BELM_WHATSAPP_API_URL') ?: ''));
+    if (!belm_whatsapp_api_is_configured()) {
+        return ['sent' => false, 'status' => 'PENDING_PROVIDER', 'to' => $to];
+    }
+    if (!function_exists('curl_init')) {
+        return ['sent' => false, 'status' => 'CURL_UNAVAILABLE', 'to' => $to];
+    }
+    $payload = json_encode(['to' => $to, 'message' => $message], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $headers = ['Content-Type: application/json', 'Accept: application/json'];
+    $token = trim((string)(getenv('BELM_WHATSAPP_API_TOKEN') ?: ''));
+    if ($token !== '') $headers[] = 'Authorization: Bearer ' . $token;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 8,
+        CURLOPT_TIMEOUT => 15,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+    $ok = $error === '' && $httpCode >= 200 && $httpCode < 300;
+    return [
+        'sent' => $ok,
+        'status' => $ok ? 'SENT' : 'FAILED',
+        'to' => $to,
+        'httpCode' => $httpCode,
+        'error' => $error,
+        'response' => is_string($response) ? substr($response, 0, 500) : '',
+    ];
+}
+
+function belm_notify_machine_owner_service_status(array $serviceStatus, array $machine): array {
+    $remaining = (float)($serviceStatus['hoursRemaining'] ?? 0);
+    // Customer owner notifications start in the same 60-hour warning window
+    // used by the portal. GREEN machines do not generate reminder traffic.
+    if ($remaining > 60) return ['skipped' => 'NOT_DUE_SOON'];
+
+    $machineId = (string)($machine['id'] ?? '');
+    $customerId = (string)($machine['customer_id'] ?? '');
+    if ($machineId === '' || $customerId === '') return ['skipped' => 'MISSING_IDS'];
+
+    $ownerStmt = db()->prepare('SELECT name, email, phone FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $ownerStmt->execute([$customerId]);
+    $owner = $ownerStmt->fetch();
+    if (!$owner) return ['skipped' => 'OWNER_NOT_FOUND'];
+
+    $dueHour = (int)($serviceStatus['dueHour'] ?? 0);
+    $interval = (int)($serviceStatus['intervalHours'] ?? 250);
+    $kind = $remaining <= 0 ? 'OVERDUE' : 'DUE_SOON';
+    $ownerEmail = trim((string)($owner['email'] ?? ''));
+    $ownerPhone = trim((string)($owner['phone'] ?? ''));
+
+    $existingStmt = db()->prepare(
+        'SELECT * FROM machine_service_owner_notifications WHERE machine_id = ? AND due_hour = ? AND notification_kind = ? LIMIT 1'
+    );
+    $existingStmt->execute([$machineId, $dueHour, $kind]);
+    $row = $existingStmt->fetch();
+    if (!$row) {
+        $id = uuid();
+        db()->prepare(
+            'INSERT INTO machine_service_owner_notifications
+             (id, machine_id, customer_id, due_hour, service_interval_hours, notification_kind,
+              owner_email, owner_phone, email_status, whatsapp_status, created_at, updated_at)
+             VALUES (?,?,?,?,?,?,?,?,' . "'PENDING','PENDING',NOW(),NOW())"
+        )->execute([$id, $machineId, $customerId, $dueHour, $interval, $kind, $ownerEmail ?: null, $ownerPhone ?: null]);
+        $row = [
+            'id' => $id, 'email_status' => 'PENDING', 'whatsapp_status' => 'PENDING',
+            'owner_email' => $ownerEmail, 'owner_phone' => $ownerPhone,
+        ];
+    }
+
+    $machineName = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''))
+        ?: ((string)($machine['machine_type'] ?? 'Machine'));
+    $serial = (string)($machine['serial_number'] ?? ($machine['reg_number'] ?? 'Not recorded'));
+    $current = (float)($serviceStatus['totalHours'] ?? 0);
+    $remainingAbs = abs($remaining);
+    $serviceType = $interval . '-Hour Service';
+    $stateLine = $remaining < 0
+        ? 'OVERDUE by ' . rtrim(rtrim(number_format($remainingAbs, 2, '.', ''), '0'), '.') . ' hrs'
+        : ($remaining == 0 ? 'DUE NOW' : rtrim(rtrim(number_format($remaining, 2, '.', ''), '0'), '.') . ' hrs remaining');
+    $subject = ($kind === 'OVERDUE' ? 'SERVICE OVERDUE' : 'SERVICE DUE SOON') . ' - ' . $machineName;
+    $body = "PREVENTIVE MAINTENANCE ALERT\n\n"
+        . "Machine: $machineName\n"
+        . "Machine Type: " . (($machine['machine_type'] ?? '') ?: 'Not recorded') . "\n"
+        . "Brand: " . (($machine['brand'] ?? '') ?: 'Not recorded') . "\n"
+        . "Model: " . (($machine['model'] ?? '') ?: 'Not recorded') . "\n"
+        . "Serial / Reg: $serial\n"
+        . "Current Hours: " . rtrim(rtrim(number_format($current, 2, '.', ''), '0'), '.') . "\n"
+        . "Service Type: $serviceType\n"
+        . "Next Service At: $dueHour hrs\n"
+        . "Status: $stateLine\n\n"
+        . "Open the BELM Customer Portal to review the machine and arrange service.";
+
+    $emailStatus = (string)($row['email_status'] ?? 'PENDING');
+    if ($emailStatus !== 'SENT') {
+        if ($ownerEmail !== '' && filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)) {
+            try {
+                if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
+                send_email($ownerEmail, $subject, $body);
+                $emailStatus = 'SENT';
+                db()->prepare('UPDATE machine_service_owner_notifications SET email_status = ?, email_sent_at = NOW(), owner_email = ?, last_attempt_at = NOW(), updated_at = NOW() WHERE id = ?')
+                    ->execute([$emailStatus, $ownerEmail, $row['id']]);
+                try {
+                    db()->prepare('INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at) VALUES (?,?,?,?,?,?,NOW())')
+                        ->execute([uuid(), 'EMAIL', $ownerEmail, $subject, $body, 'SENT']);
+                } catch (Throwable $ignored) {}
+            } catch (Throwable $error) {
+                $emailStatus = 'FAILED';
+                db()->prepare('UPDATE machine_service_owner_notifications SET email_status = ?, last_attempt_at = NOW(), updated_at = NOW() WHERE id = ?')
+                    ->execute([$emailStatus, $row['id']]);
+                error_log('BELM owner service email failed: ' . $error->getMessage());
+            }
+        } else {
+            $emailStatus = 'NO_EMAIL';
+            db()->prepare('UPDATE machine_service_owner_notifications SET email_status = ?, last_attempt_at = NOW(), updated_at = NOW() WHERE id = ?')
+                ->execute([$emailStatus, $row['id']]);
+        }
+    }
+
+    $whatsappStatus = (string)($row['whatsapp_status'] ?? 'PENDING');
+    $shouldAttemptWhatsApp = $whatsappStatus !== 'SENT';
+    if ($whatsappStatus === 'PENDING_PROVIDER' && !belm_whatsapp_api_is_configured()) {
+        $shouldAttemptWhatsApp = false;
+    }
+    if ($shouldAttemptWhatsApp) {
+        $wa = belm_send_whatsapp_text($ownerPhone, $body);
+        $whatsappStatus = (string)($wa['status'] ?? 'FAILED');
+        db()->prepare(
+            "UPDATE machine_service_owner_notifications
+             SET whatsapp_status = ?, whatsapp_sent_at = CASE WHEN ? = 'SENT' THEN NOW() ELSE whatsapp_sent_at END,
+                 owner_phone = ?, last_attempt_at = NOW(), updated_at = NOW() WHERE id = ?"
+        )->execute([$whatsappStatus, $whatsappStatus, $ownerPhone ?: null, $row['id']]);
+        try {
+            db()->prepare('INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at) VALUES (?,?,?,?,?,?,NOW())')
+                ->execute([uuid(), 'WHATSAPP', belm_normalize_whatsapp_number($ownerPhone), $subject, $body, $whatsappStatus]);
+        } catch (Throwable $ignored) {}
+    }
+
+    // Keep the same message visible inside the customer's communication
+    // history even if one external channel is temporarily unavailable.
+    try {
+        $communicationExists = db()->prepare(
+            "SELECT 1 FROM customer_communications
+             WHERE customer_id = ? AND machine_id = ? AND related_type = 'SERVICE_MILESTONE'
+               AND related_id = ? AND subject = ? LIMIT 1"
+        );
+        $relatedId = (string)$row['id'];
+        $communicationExists->execute([$customerId, $machineId, $relatedId, $subject]);
+        if (!$communicationExists->fetch()) {
+            belm_log_customer_communication(
+                $customerId, $machineId, 'BELM_TO_CUSTOMER', 'SYSTEM',
+                $subject, $body, 'SERVICE_MILESTONE', $relatedId, 'BELM Service Auto Calculate',
+                $emailStatus === 'SENT' || $whatsappStatus === 'SENT' ? 'SENT' : 'PORTAL_ONLY'
+            );
+        }
+    } catch (Throwable $ignored) {}
+
+    return ['emailStatus' => $emailStatus, 'whatsappStatus' => $whatsappStatus, 'kind' => $kind];
+}
+
 // ---- Machine safety/service alert emails --------------------------------
 // Sends a "Don't operate" (RED), "Attention needed" (YELLOW), or "Service
 // reminder" (service due soon/overdue) email to both the company inbox
@@ -506,7 +803,12 @@ function calculated_invoice_status(float $total, float $paid, ?string $dueDate):
 // result crosses into one of those states. Best-effort — a failed email
 // must never block the checklist submission itself.
 function send_machine_alert_email(
-    string $overallStatus, ?array $serviceStatus, array $machine, string $customerEmail, string $customerName
+    string $overallStatus,
+    ?array $serviceStatus,
+    array $machine,
+    string $customerEmail,
+    string $customerName,
+    bool $notifyBelm = true
 ): void {
     try {
         $company = belm_get_company_details();
@@ -527,16 +829,17 @@ function send_machine_alert_email(
             ];
         }
         if ($serviceStatus && in_array($serviceStatus['level'] ?? '', ['YELLOW', 'RED'], true)) {
-            $remaining = round($serviceStatus['hoursRemaining'] ?? 0);
-            $dueText = $remaining <= 0 ? 'is OVERDUE' : "has $remaining hrs remaining";
-            $alerts[] = [
-                'subject' => "Service reminder — $machineName ($customerName)",
-                'body' => "$machineName ($serial) for $customerName $dueText until its next {$serviceStatus['intervalHours']}-hour service.\n\nOpen BELM Portal to schedule the service.",
-            ];
+            // Service reminder has its own milestone/state deduplication so a
+            // daily check-up cannot spam the owner. It also handles WhatsApp.
+            try {
+                belm_notify_machine_owner_service_status($serviceStatus, $machine);
+            } catch (Throwable $serviceNotifyError) {
+                error_log('BELM owner service notification failed: ' . $serviceNotifyError->getMessage());
+            }
         }
 
         foreach ($alerts as $alert) {
-            if ($adminEmail !== '') send_email($adminEmail, $alert['subject'], $alert['body']);
+            if ($notifyBelm && $adminEmail !== '') send_email($adminEmail, $alert['subject'], $alert['body']);
             if ($customerEmail !== '') send_email($customerEmail, $alert['subject'], $alert['body']);
         }
     } catch (Throwable $error) { /* alerts are best-effort — never break the caller */ }
@@ -757,7 +1060,7 @@ function require_customer_auth(): array {
 
     if ($actorType === 'assistant') {
         $stmt = db()->prepare(
-            'SELECT id, name, email, role FROM customer_users
+            'SELECT id, name, email, role, permissions FROM customer_users
              WHERE id = ? AND customer_id = ? AND is_active = 1'
         );
         $stmt->execute([$payload['actorId'] ?? '', $payload['id'] ?? '']);
@@ -766,6 +1069,9 @@ function require_customer_auth(): array {
         $payload['actorName'] = $assistant['name'];
         $payload['actorEmail'] = $assistant['email'] ?? null;
         $payload['customerRole'] = $assistant['role'];
+        $payload['permissions'] = $assistant['permissions'] !== null
+            ? (json_decode((string)$assistant['permissions'], true) ?: [])
+            : null;
     }
     return $payload;
 }
@@ -936,4 +1242,42 @@ function belm_send_customer_alert(
         $auditStatus
     );
     return ['sent' => $sent, 'failed' => $failed, 'recipients' => $recipientEmails];
+}
+
+// V202 - create one live breakdown-process record from an Operator Problem Report.
+// Kept in helpers so reports created from the customer portal and from the
+// operator shift screen enter the same workflow automatically.
+function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?string $actorName = null): ?string {
+    try {
+        $stmt = db()->prepare(
+            'SELECT o.id,o.customer_id,o.machine_id,o.message,o.operator_name,m.brand,m.model,m.machine_type
+             FROM operator_reports o JOIN machines m ON m.id=o.machine_id WHERE o.id=?'
+        );
+        $stmt->execute([$reportId]);
+        $row = $stmt->fetch();
+        if (!$row) return null;
+        $find = db()->prepare("SELECT id FROM breakdown_cases WHERE source_type='OPERATOR_REPORT' AND source_id=?");
+        $find->execute([$reportId]);
+        $existing = $find->fetchColumn();
+        if ($existing) return (string)$existing;
+        $id = uuid();
+        $label = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine');
+        $creator = trim((string)($actorName ?: $row['operator_name'] ?: 'Operator'));
+        db()->prepare(
+            "INSERT INTO breakdown_cases
+             (id,customer_id,machine_id,source_type,source_id,title,description,status,current_stage,current_department,stage_started_at,opened_at,updated_at,created_by_name)
+             VALUES (?,?,?,?,?,?,?,'OPEN','WORKSHOP_REVIEW','Workshop',NOW(),NOW(),NOW(),?)"
+        )->execute([$id,$row['customer_id'],$row['machine_id'],'OPERATOR_REPORT',$reportId,'Breakdown - '.$label,$row['message'],$creator]);
+        db()->prepare(
+            'INSERT INTO breakdown_case_events
+             (id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
+             VALUES (?,?,?,?,?,?,?,?,NOW())'
+        )->execute([uuid(),$id,'WORKSHOP_REVIEW','Workshop','Breakdown reported',$row['message'],'customer',$creator]);
+        return $id;
+    } catch (Throwable $error) {
+        // Older deployments can briefly run before schema migration; never
+        // block the original problem report because the workflow table is new.
+        error_log('Breakdown case auto-create failed: ' . $error->getMessage());
+        return null;
+    }
 }

@@ -478,3 +478,10 @@ USALAMA
 ORODHA KAMILI YA FUNCTIONS
 --------------------------
 Fungua FUNCTIONS_ZOTE.txt iliyopo kwenye root ya ZIP.
+
+V201 SERVICE AUTO CALCULATE + OWNER NOTIFICATIONS
+- Every hour-meter check-up calculates Service Type, Next Service At, Remaining/Overdue automatically.
+- Customer/machine owner receives one DUE SOON email (<=60 hrs) and one OVERDUE email per milestone; duplicates are suppressed.
+- WhatsApp auto-send is available when BELM_WHATSAPP_API_URL is configured. The endpoint must accept JSON {"to":"255...","message":"..."}; optional Bearer token: BELM_WHATSAPP_API_TOKEN.
+- Without a configured WhatsApp provider, WhatsApp is logged as PENDING_PROVIDER; the portal never falsely marks it sent.
+- Run backend/schema.sql after deployment.

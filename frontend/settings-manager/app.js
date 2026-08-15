@@ -1,25 +1,15 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
 
-  // Dark/light mode is a personal, per-admin preference — same storage key
-  // admin-sidebar.js uses, so the toggle here and the one in the sidebar
-  // always agree. It is never saved to System Settings (which is shared
-  // by the whole company), so one admin's choice never affects another's.
-  let currentAdminId = "default";
-  try {
-    currentAdminId = JSON.parse(localStorage.getItem("belm_admin_user") || "null")?.id || "default";
-  } catch (_) {}
-  const themeStorageKey = `belm_theme_admin_${currentAdminId}`;
-
-  function applyTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = safeTheme;
-    document.documentElement.classList.toggle("dark", safeTheme === "dark");
-    localStorage.setItem(themeStorageKey, safeTheme);
+  // V198: one personal theme follows this exact login throughout the portal.
+  function syncThemeControls() {
+    const theme = window.BELMTheme?.get?.() || (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
     document.querySelectorAll("[data-theme-choice]").forEach((button) => {
-      button.classList.toggle("active", button.dataset.themeChoice === safeTheme);
+      button.classList.toggle("active", button.dataset.themeChoice === theme);
     });
   }
+  window.addEventListener("belm-theme-change", syncThemeControls);
+
 
   async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
@@ -98,7 +88,7 @@
       document.getElementById("adminAlertsToggle").checked = settings.adminAlertsEnabled !== false;
       document.getElementById("technicianAlertsToggle").checked = settings.technicianAlertsEnabled !== false;
       document.getElementById("whatsappAlertsToggle").checked = settings.whatsappAlertsEnabled !== false;
-      applyTheme(localStorage.getItem(themeStorageKey) || "light");
+      syncThemeControls();
       await loadAnnouncements();
     } catch (error) {
       message(error.message, true);
@@ -197,9 +187,15 @@
   });
 
   document.querySelectorAll("[data-theme-choice]").forEach((button) => {
-    button.addEventListener("click", () => {
-      applyTheme(button.dataset.themeChoice);
-      message(`${button.dataset.themeChoice === "dark" ? "Dark" : "Light"} mode set for your account on this device.`);
+    button.addEventListener("click", async () => {
+      const theme = button.dataset.themeChoice === "dark" ? "dark" : "light";
+      if (window.BELMTheme) await window.BELMTheme.set(theme);
+      else {
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.classList.toggle("dark", theme === "dark");
+      }
+      syncThemeControls();
+      message(`${theme === "dark" ? "Dark" : "Light"} mode saved for your account across the whole portal.`);
     });
   });
 
@@ -229,7 +225,7 @@
     }
   });
 
-  applyTheme(localStorage.getItem(themeStorageKey) || "light");
+  syncThemeControls();
   load();
 
   document.getElementById("adminAlertsToggle").addEventListener("change", async (event) => {
@@ -251,7 +247,7 @@
   document.getElementById("whatsappAlertsToggle").addEventListener("change", async (event) => {
     try {
       await saveSettings({ whatsappAlertsEnabled: event.target.checked });
-      message(`WhatsApp alert buttons ${event.target.checked ? "enabled" : "disabled"}.`);
+      message(`WhatsApp service alerts ${event.target.checked ? "enabled" : "disabled"}.`);
     } catch (error) {
       message(error.message, true);
     }

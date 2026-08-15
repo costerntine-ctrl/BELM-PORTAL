@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
+require_once __DIR__ . '/service_due_helper.php';
 
 $user = require_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -57,7 +58,7 @@ function validated_checklist_photo_url(string $photoUrl): string {
 function require_report_machine_access(array $user, string $machineId, ?string $templateId = null): array {
     $sql = 'SELECT m.id, m.customer_id, m.machine_type, m.model, m.serial_number,
                    m.reg_number, m.brand, m.deleted_at, c.name AS customer_name,
-                   c.deleted_at AS customer_deleted_at, c.is_active';
+                   c.deleted_at AS customer_deleted_at, c.is_active, c.is_machinery_admin';
     $params = [];
     if ($templateId !== null) {
         $sql .= ', t.id AS template_id, t.machine_type AS template_machine_type,
@@ -317,8 +318,21 @@ if ($method === 'POST' && $action === 'submit') {
             ]);
         }
 
-        $pdo->prepare('UPDATE machines SET status=?, last_checked_at=NOW() WHERE id=?')
-            ->execute([$worst, $b['machineId']]);
+        // First checklist on an already-used machine establishes a neutral
+        // 250-hour schedule baseline without pretending a historical service
+        // was completed. Example: first reading 810 hrs => baseline 750 =>
+        // next planned milestone 1000 hrs; if 1000 is then missed it remains
+        // overdue until a real service is recorded.
+        $baselineHours = max(0, floor(max(0, $newHourMeterReading - 0.000001) / 250) * 250);
+        $pdo->prepare(
+            'UPDATE machines
+             SET status=?, last_checked_at=NOW(),
+                 service_schedule_baseline_hours = CASE
+                   WHEN service_schedule_baseline_hours IS NULL AND COALESCE(last_service_hours, 0) = 0 THEN ?
+                   ELSE service_schedule_baseline_hours
+                 END
+             WHERE id=?'
+        )->execute([$worst, $baselineHours, $b['machineId']]);
 
         if ($isServiceDay) {
             $historyStmt = $pdo->prepare('SELECT service_history, service_interval_hours FROM machines WHERE id = ?');
@@ -365,6 +379,18 @@ if ($method === 'POST' && $action === 'submit') {
             $b['machineId'],
             json_encode(['serviceType' => $serviceIntervals[$serviceType]['label'], 'serviceDate' => $serviceDate]),
         ]);
+        // Close any 250/500/1000/2000-hour preparation alert already covered
+        // by this completed service. Its Draft PI remains in Billing history.
+        belm_complete_due_service_alerts($b['machineId'], (float)$b['hourMeterReading']);
+    }
+
+    // Hour-meter submission is the authoritative trigger for preventive
+    // maintenance. At <=60 hours to the next milestone, BELM Service Provider
+    // customers get one deduplicated alert, inventory snapshot and Draft PI.
+    try {
+        belm_prepare_service_due_alert($b['machineId'], (float)$b['hourMeterReading'], true);
+    } catch (Throwable $error) {
+        error_log('BELM preventive service preparation failed: ' . $error->getMessage());
     }
 
     $reportStmt = db()->prepare(
@@ -379,19 +405,53 @@ if ($method === 'POST' && $action === 'submit') {
         json_error('Checklist was saved, but the Checked Report could not be loaded.', 500);
     }
 
-    // Best-effort safety/service alert email — RED ("Don't operate"),
-    // YELLOW ("Attention needed"), and/or a service-due reminder — to the
-    // company inbox and the customer's own registered email.
+    // Role-aware customer alert after EVERY technician check-up. The customer
+    // owner and users who have Check Up dashboard access receive the report
+    // summary. This keeps Workshop Manager / delegated users in sync without
+    // emailing unrelated roles such as Procurement or Accounts.
+    try {
+        $machineName = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+        $serial = $machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded');
+        $statusLabel = strtoupper((string)$worst);
+        $subject = "CHECK UP REPORT - $machineName - $statusLabel";
+        $bodyText = "TECHNICIAN CHECK UP SUBMITTED
+
+"
+            . "Customer: " . ($machine['customer_name'] ?? 'Customer') . "
+"
+            . "Machine: $machineName
+"
+            . "Serial / Reg: $serial
+"
+            . "Filled by: $filledBy
+"
+            . "Hour meter: " . $b['hourMeterReading'] . "
+"
+            . "Overall status: $statusLabel
+"
+            . ($isServiceDay ? "Service recorded: " . ($serviceIntervals[$serviceType]['label'] ?? $serviceType) . " on $serviceDate
+" : '')
+            . "
+Open the Customer Portal > Check Up to view the full report/PDF.";
+        customer_send_team_alert((string)$machine['customer_id'], ['check-up'], $subject, $bodyText, true);
+    } catch (Throwable $error) { /* alerts are best-effort */ }
+
+    // Urgent RED/YELLOW/service-due alert. BELM receives it only when BELM is
+    // the active Service Provider OR the report was submitted by a BELM-owned
+    // Technician. A customer's own independent Technician report stays inside
+    // the customer's business unless BELM support was explicitly requested.
     try {
         $customerEmailStmt = db()->prepare('SELECT email FROM customers WHERE id = ?');
         $customerEmailStmt->execute([$machine['customer_id']]);
         $customerEmail = trim((string)($customerEmailStmt->fetchColumn() ?: ''));
+        $notifyBelm = empty($machine['is_machinery_admin']) || empty($user['isCustomerManaged']);
         send_machine_alert_email(
             $worst,
             compute_service_status_helper($b['machineId']),
             $machine,
             $customerEmail,
-            $machine['customer_name'] ?? 'Customer'
+            $machine['customer_name'] ?? 'Customer',
+            $notifyBelm
         );
     } catch (Throwable $error) { /* alerts are best-effort */ }
     $answerStmt = db()->prepare(
@@ -641,7 +701,7 @@ if ($method === 'PUT' && $action === 'update') {
     // same three triggers as a fresh submission.
     try {
         $machineStmt = db()->prepare(
-            'SELECT m.brand, m.model, m.serial_number, m.reg_number, m.customer_id,
+            'SELECT m.id, m.machine_type, m.brand, m.model, m.serial_number, m.reg_number, m.customer_id,
                     c.name AS customer_name, c.email AS customer_email
              FROM machines m JOIN customers c ON c.id = m.customer_id
              WHERE m.id = ?'
@@ -695,13 +755,13 @@ if ($method === 'GET' && $action === 'operator-reports') {
 if ($method === 'PUT' && $action === 'resolve-operator-report') {
     $machineId = trim((string)($_GET['machineId'] ?? ''));
     if ($machineId === '') json_error('machineId is required.');
-    require_report_machine_access($user, $machineId);
+    $machine = require_report_machine_access($user, $machineId);
     $b = body();
     $reportId = trim((string)($b['reportId'] ?? ''));
     if ($reportId === '') json_error('reportId is required.');
 
     $stmt = db()->prepare(
-        'SELECT id, status FROM operator_reports WHERE id = ? AND machine_id = ?'
+        'SELECT id, status, operator_name, message FROM operator_reports WHERE id = ? AND machine_id = ?'
     );
     $stmt->execute([$reportId, $machineId]);
     $report = $stmt->fetch();
@@ -713,6 +773,25 @@ if ($method === 'PUT' && $action === 'resolve-operator-report') {
     db()->prepare(
         "UPDATE operator_reports SET status='RESOLVED', resolved_at=NOW(), resolved_by_id=? WHERE id=?"
     )->execute([$user['id'], $reportId]);
+
+    try {
+        $machineName = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+        $resolvedBy = trim((string)($user['name'] ?? 'Technician'));
+        customer_send_team_alert(
+            (string)$machine['customer_id'],
+            ['operator-reports', 'report-problem'],
+            'MACHINE PROBLEM RESOLVED - ' . $machineName,
+            "MACHINE PROBLEM RESOLVED\n\n"
+            . 'Customer: ' . ($machine['customer_name'] ?? 'Customer') . "\n"
+            . "Machine: $machineName\n"
+            . 'Reported by: ' . ($report['operator_name'] ?: 'Operator') . "\n"
+            . 'Problem: ' . ($report['message'] ?? '') . "\n"
+            . "Resolved by: $resolvedBy\n\n"
+            . 'Open the Customer Portal > Operator Reports to review the history.',
+            true
+        );
+    } catch (Throwable $ignored) {}
+
     json_out(['ok' => true, 'resolvedBy' => $user['name'] ?? 'Technician']);
 }
 
@@ -731,6 +810,7 @@ if ($method === 'POST' && $action === 'log-service') {
 
     db()->prepare('UPDATE machines SET last_service_hours=?, service_history=? WHERE id=?')
         ->execute([$status['totalHours'], json_encode($history), $machineId]);
+    belm_complete_due_service_alerts($machineId, (float)$status['totalHours']);
 
     json_out(['ok' => true]);
 }

@@ -2,6 +2,7 @@
   const token = localStorage.getItem("belm_admin_token");
   let customers = [];
   let pendingEditPin = null;
+  let servicePartsState = null;
   let isSuperAdmin = false;
   try {
     const currentUser = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
@@ -138,6 +139,7 @@
         <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Reports</button>
         <button data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Check-up</button>
         <button data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Expense Receipts</button>
+        <button data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Service Parts</button>
         <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
         <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
       </div>
@@ -155,8 +157,12 @@
         const status = await api(`/checklist-reports/service-status/${machineId}`);
         const remaining = Math.round(status.hoursRemaining);
         const level = String(status.level || "GREEN").toUpperCase();
-        const label = level === "RED" ? "Service due now" : level === "YELLOW" ? "Service due soon" : "On schedule";
-        badge.textContent = `${status.intervalHours}-Hr Service — ${remaining <= 0 ? "Overdue" : `${remaining} hrs left`} (${label})`;
+        const overdueBy = Math.max(0, Math.abs(Math.min(0, remaining)));
+        const serviceType = status.serviceType || `${status.intervalHours}-Hour Service`;
+        const state = remaining < 0
+          ? `OVERDUE BY ${overdueBy} HRS`
+          : remaining === 0 ? 'DUE NOW' : `NEXT ${status.dueHour} HRS · ${remaining} HRS LEFT`;
+        badge.textContent = `${serviceType} · ${state}`;
         badge.className = `service-due-badge ${level}`;
       } catch (_) {
         badge.textContent = "Service due: not available";
@@ -520,6 +526,95 @@
   document.getElementById("machineType").addEventListener("change", (event) => {
     document.getElementById("machineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
   });
+
+
+  function servicePartRow(part = {}) {
+    const stock = part.stockQty ?? part.stock_qty;
+    const matched = Boolean(part.sparePartId || part.spare_part_id || part.inventoryName || part.inventory_name);
+    const badge = matched
+      ? `<span class="badge on">Inventory: ${escapeHtml(stock ?? 0)} available</span>`
+      : '<span class="badge off">Not matched in BELM Inventory</span>';
+    return `<div class="report-row service-part-edit-row" data-service-part-row>
+      <div class="form-grid" style="width:100%;">
+        <label>Spare name<input data-service-field="spareName" value="${escapeHtml(part.spareName || part.spare_name || "")}" placeholder="Engine oil filter"></label>
+        <label>Part number / reference<input data-service-field="partNumber" value="${escapeHtml(part.partNumber || part.part_number || "")}" placeholder="P/N"></label>
+        <label>Required qty<input data-service-field="quantity" type="number" min="0.01" step="0.01" value="${escapeHtml(part.quantity || 1)}"></label>
+        <label>Unit<input data-service-field="unit" maxlength="20" value="${escapeHtml(part.unit || "PC")}" placeholder="PC / L / SET"></label>
+        <div class="full" style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          ${badge}
+          <button class="delete" type="button" data-remove-service-part>Remove</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function servicePartsForInterval(interval, useTemplateFallback = true) {
+    if (!servicePartsState) return [];
+    const own = (servicePartsState.parts || []).filter((part) => Number(part.serviceIntervalHours || part.service_interval_hours) === Number(interval));
+    if (own.length || !useTemplateFallback) return own;
+    const template = servicePartsState.templateParts?.[String(interval)] || [];
+    return template.map((part) => ({ ...part, _templateSuggestion: true }));
+  }
+
+  function renderServicePartsEditor(forceTemplate = false) {
+    const interval = Number(document.getElementById("servicePartsInterval").value || 250);
+    let parts = servicePartsForInterval(interval, !forceTemplate);
+    if (forceTemplate) {
+      parts = (servicePartsState?.templateParts?.[String(interval)] || []).map((part) => ({ ...part, _templateSuggestion: true }));
+    }
+    const rows = document.getElementById("servicePartsRows");
+    rows.innerHTML = parts.length ? parts.map(servicePartRow).join("") : '<div class="empty">No service parts configured for this interval. Add parts or load them from the matching Checklist Template.</div>';
+    const ownCount = servicePartsForInterval(interval, false).length;
+    const alert = document.getElementById("servicePartsAlert");
+    if (!ownCount && parts.length) {
+      alert.textContent = "Template parts are shown as a starting point. Click Save Service Parts to make them specific to this machine.";
+      alert.className = "alert";
+    } else {
+      alert.className = "alert hidden";
+    }
+  }
+
+  async function openServiceParts(machineId, machineName) {
+    try {
+      servicePartsState = await api(`/customers/machines/${encodeURIComponent(machineId)}/service-parts`);
+      document.getElementById("servicePartsMachineId").value = machineId;
+      document.getElementById("servicePartsTitle").textContent = `${machineName || "Machine"} — Service Parts`;
+      document.getElementById("servicePartsInterval").value = "250";
+      renderServicePartsEditor();
+      document.getElementById("servicePartsDialog").showModal();
+    } catch (error) {
+      showAlert(error.message || "Could not load machine service parts.", true);
+    }
+  }
+
+  async function saveServiceParts() {
+    const machineId = document.getElementById("servicePartsMachineId").value;
+    const intervalHours = Number(document.getElementById("servicePartsInterval").value || 250);
+    const rows = [...document.querySelectorAll("#servicePartsRows [data-service-part-row]")];
+    const parts = rows.map((row) => ({
+      spareName: row.querySelector('[data-service-field="spareName"]').value.trim(),
+      partNumber: row.querySelector('[data-service-field="partNumber"]').value.trim(),
+      quantity: Number(row.querySelector('[data-service-field="quantity"]').value || 0),
+      unit: row.querySelector('[data-service-field="unit"]').value.trim() || "PC",
+    })).filter((part) => part.spareName || part.partNumber);
+    const button = document.getElementById("servicePartsSaveButton");
+    button.disabled = true;
+    try {
+      await api(`/customers/machines/${encodeURIComponent(machineId)}/service-parts`, {
+        method: "PUT",
+        body: JSON.stringify({ intervalHours, parts }),
+      });
+      servicePartsState = await api(`/customers/machines/${encodeURIComponent(machineId)}/service-parts`);
+      renderServicePartsEditor();
+      showAlert(`${intervalHours}-hour service parts saved. They will be used for the automatic service alert, inventory check and Draft PI.`);
+    } catch (error) {
+      const alert = document.getElementById("servicePartsAlert");
+      alert.textContent = error.message || "Could not save service parts.";
+      alert.className = "alert error";
+    } finally {
+      button.disabled = false;
+    }
+  }
 
   function openMachine(customer, machine = null) {
     document.getElementById("machineForm").reset();
@@ -1292,6 +1387,19 @@
     }
   });
 
+  document.getElementById("servicePartsInterval").addEventListener("change", () => renderServicePartsEditor());
+  document.getElementById("servicePartsUseTemplateButton").addEventListener("click", () => renderServicePartsEditor(true));
+  document.getElementById("servicePartsAddButton").addEventListener("click", () => {
+    const rows = document.getElementById("servicePartsRows");
+    if (rows.querySelector(".empty")) rows.innerHTML = "";
+    rows.insertAdjacentHTML("beforeend", servicePartRow({ quantity: 1, unit: "PC" }));
+  });
+  document.getElementById("servicePartsRows").addEventListener("click", (event) => {
+    const remove = event.target.closest("[data-remove-service-part]");
+    if (remove) remove.closest("[data-service-part-row]")?.remove();
+  });
+  document.getElementById("servicePartsSaveButton").addEventListener("click", saveServiceParts);
+
   document.getElementById("statusFilter").addEventListener("change", renderCustomers);
   document.getElementById("customerForm").addEventListener("submit", saveCustomer);
   document.getElementById("machineForm").addEventListener("submit", saveMachine);
@@ -1359,9 +1467,11 @@
     const viewReports = event.target.closest("[data-view-reports]");
     const doCheckup = event.target.closest("[data-checkup]");
     const viewExpenseReceipts = event.target.closest("[data-view-expense-receipts]");
+    const serviceParts = event.target.closest("[data-service-parts]");
     if (viewReports) openMachineReports(viewReports.dataset.viewReports, viewReports.dataset.machineName);
     if (doCheckup) openMachineCheckup(doCheckup.dataset.checkup, doCheckup.dataset.machineType, doCheckup.dataset.machineName);
     if (viewExpenseReceipts) openExpenseReceipts(viewExpenseReceipts.dataset.viewExpenseReceipts, viewExpenseReceipts.dataset.machineName);
+    if (serviceParts) openServiceParts(serviceParts.dataset.serviceParts, serviceParts.dataset.machineName);
     if (addMachine) openMachine(customers.find((customer) => customer.id === addMachine.dataset.addMachine));
     if (editMachine) {
       const customer = customers.find((item) => item.id === editMachine.dataset.customer);

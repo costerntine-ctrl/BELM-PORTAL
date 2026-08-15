@@ -39,24 +39,23 @@
     return;
   }
 
-  // Dark/light mode is a personal, per-admin preference kept purely in this
-  // browser's storage — keyed by this admin's own account id so it never
-  // leaks between different staff accounts sharing a computer, and never
-  // affects the separate Customer Portal / Technician app themes (which
-  // use their own keys entirely).
-  const themeStorageKey = `belm_theme_admin_${user.id || "default"}`;
+  // V198: theme is owned by the global personal-theme manager. The same
+  // preference follows this exact login across every page and device.
   function applyAdminTheme(theme) {
+    if (window.BELMTheme) return window.BELMTheme.set(theme);
     const safeTheme = theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem(themeStorageKey, safeTheme);
+    document.documentElement.classList.toggle("dark", safeTheme === "dark");
+    return Promise.resolve(safeTheme);
   }
-  applyAdminTheme(localStorage.getItem(themeStorageKey) || "light");
+
 
   const pages = [
     { section: "Main workflow", key: "overview", label: "All Overview", short: "AO", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
     { section: "Main workflow", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
     { section: "Main workflow", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
     { section: "Main workflow", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
+    { section: "Main workflow", key: "service-requests", label: "Breakdown Process", short: "BP", href: "/breakdown-workflow/", paths: ["/breakdown-workflow/"], priority: true },
     { section: "Customers & maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Customers & maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
     { section: "Customers & maintenance", key: "roles", label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
@@ -150,16 +149,18 @@
   const themeToggle = document.createElement("button");
   themeToggle.className = "belm-sidebar-theme-toggle";
   themeToggle.type = "button";
+  themeToggle.dataset.belmThemeToggle = "1";
   const updateThemeToggleLabel = () => {
     const isDark = document.documentElement.dataset.theme === "dark";
     themeToggle.textContent = isDark ? "☀ Light mode" : "☾ Dark mode";
   };
   updateThemeToggleLabel();
-  themeToggle.addEventListener("click", () => {
+  themeToggle.addEventListener("click", async () => {
     const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
-    applyAdminTheme(next);
+    await applyAdminTheme(next);
     updateThemeToggleLabel();
   });
+  window.addEventListener("belm-theme-change", updateThemeToggleLabel);
   const logout = document.createElement("button");
   logout.className = "belm-sidebar-logout";
   logout.type = "button";

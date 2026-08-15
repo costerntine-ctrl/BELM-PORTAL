@@ -93,3 +93,15 @@ input,select { width:100%; padding:11px 12px; border:1px solid #cad6d0; border-r
 #formError { margin:12px 26px 0; }.dialog-actions { display:flex; justify-content:flex-end; gap:9px; padding:15px 26px 0; }.dialog-actions button { min-width:120px; }
 @media(max-width:850px){.user-card{grid-template-columns:1fr 1fr}.actions{justify-content:start}.created{display:none}.share-link-row{flex-direction:column}.share-link{grid-template-columns:1fr}.share-link button{width:max-content}}
 @media(max-width:620px){.heading{align-items:start;flex-direction:column}.summary-grid{grid-template-columns:1fr}.user-card{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.form-grid .wide{grid-column:auto}.dialog-actions{flex-direction:column-reverse}.dialog-actions button{width:100%}}
+
+/* V199 Role Manager */
+.badge.workshop_manager { color:#0b4a6f; background:#e5f3fb; }
+.badge.store_keeper { color:#0b6b3a; background:#e8f8ef; }
+.badge.procurement { color:#725b00; background:#fff7cc; }
+.dashboard-access-title { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom:8px; }
+.dashboard-access-title b { color:var(--navy); font-size:13px; }
+.dashboard-access-title small { max-width:390px; color:var(--muted); font-size:10.5px; font-weight:600; line-height:1.45; text-align:right; }
+.secondary-access { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:7px; margin-top:8px; padding-top:8px; border-top:1px dashed var(--line); }
+.secondary-access.hidden { display:none; }
+@media(max-width:620px){ .dashboard-access-title{flex-direction:column}.dashboard-access-title small{text-align:left} }
+.badge.technician { color:#2f4b7c; background:#eaf0fb; }

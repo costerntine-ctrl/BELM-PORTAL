@@ -1,0 +1,144 @@
+/* V198 - Global Personal Theme
+   One user preference follows the authenticated account across every BELM
+   area. Existing page-specific dark styles keep priority where they exist;
+   these rules fill the gaps on standalone customer/technician/operator pages. */
+html[data-theme="light"] { color-scheme: light; }
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #09111f;
+  --line: #2a3950;
+  --muted: #98a8bb;
+  --navy: #101a2d;
+  --navy2: #16243b;
+}
+
+.belm-global-theme-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9997;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: #111b2f;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(4, 12, 25, .24);
+  font: 800 11px/1.1 Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.belm-global-theme-toggle:hover { transform: translateY(-1px); }
+html[data-theme="dark"] .belm-global-theme-toggle {
+  border-color: #3d4d66;
+  background: #f8fafc;
+  color: #111827;
+}
+
+html[data-theme="dark"] body {
+  color: #e6edf7 !important;
+  background-color: #09111f !important;
+}
+html[data-theme="dark"] h1,
+html[data-theme="dark"] h2,
+html[data-theme="dark"] h3,
+html[data-theme="dark"] h4,
+html[data-theme="dark"] .heading h1,
+html[data-theme="dark"] .task h2,
+html[data-theme="dark"] td strong,
+html[data-theme="dark"] .analysis-row b,
+html[data-theme="dark"] .summary-grid strong,
+html[data-theme="dark"] .part-request-row-head > strong {
+  color: #eef4fb !important;
+}
+html[data-theme="dark"] .lead,
+html[data-theme="dark"] .meta,
+html[data-theme="dark"] .empty,
+html[data-theme="dark"] .handled-by,
+html[data-theme="dark"] .op-hint,
+html[data-theme="dark"] .due,
+html[data-theme="dark"] .sidebar-card-label,
+html[data-theme="dark"] .summary-grid span,
+html[data-theme="dark"] .analysis-row span {
+  color: #9aaabd !important;
+}
+
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .sidebar-card:not(.petty-cash-card):not(.balance-card),
+html[data-theme="dark"] .summary-grid article:not(.balance-card),
+html[data-theme="dark"] .op-card,
+html[data-theme="dark"] .task,
+html[data-theme="dark"] .loading,
+html[data-theme="dark"] .empty,
+html[data-theme="dark"] .locked,
+html[data-theme="dark"] .receipt-preview,
+html[data-theme="dark"] dialog,
+html[data-theme="dark"] .customer-card,
+html[data-theme="dark"] .machine-card,
+html[data-theme="dark"] .card {
+  border-color: #2a3950 !important;
+  background: #111b2e !important;
+  color: #e6edf7 !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .18) !important;
+}
+
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  border-color: #3a4a61 !important;
+  background: #0c1626 !important;
+  color: #edf4fb !important;
+}
+html[data-theme="dark"] input::placeholder,
+html[data-theme="dark"] textarea::placeholder { color: #75869b !important; }
+html[data-theme="dark"] label,
+html[data-theme="dark"] #expenseForm label,
+html[data-theme="dark"] #loginForm label,
+html[data-theme="dark"] #problemLabel,
+html[data-theme="dark"] .spare-field > span { color: #c7d2df !important; }
+
+html[data-theme="dark"] table { color: #dce6f1 !important; }
+html[data-theme="dark"] th {
+  border-color: #2a3950 !important;
+  background: #0d1728 !important;
+  color: #93a4b8 !important;
+}
+html[data-theme="dark"] td { border-color: #26354a !important; }
+
+html[data-theme="dark"] .secondary,
+html[data-theme="dark"] .op-secondary,
+html[data-theme="dark"] .tabs button,
+html[data-theme="dark"] .heading button,
+html[data-theme="dark"] .op-toggle {
+  border-color: #3a4a61 !important;
+  background: #152238 !important;
+  color: #dce7f3 !important;
+}
+html[data-theme="dark"] .op-toggle.active,
+html[data-theme="dark"] .op-counter-card {
+  background: #10291f !important;
+}
+html[data-theme="dark"] #reportProblemButton.active { background: #32290d !important; }
+html[data-theme="dark"] .panel-head,
+html[data-theme="dark"] .task-actions { border-color: #2a3950 !important; }
+html[data-theme="dark"] .receipt-image-wrap { background: #08111f !important; }
+html[data-theme="dark"] .alert:not(.error),
+html[data-theme="dark"] .op-alert:not(.error) {
+  border-color: #285d46 !important;
+  background: #10291f !important;
+  color: #8fe4b7 !important;
+}
+html[data-theme="dark"] .alert.error,
+html[data-theme="dark"] .op-alert.error {
+  border-color: #6b3942 !important;
+  background: #331a20 !important;
+  color: #ffb4b4 !important;
+}
+
+@media (max-width: 640px) {
+  .belm-global-theme-toggle { right: 10px; bottom: 10px; padding: 8px 10px; }
+}
+
+@media print {
+  .belm-global-theme-toggle { display: none !important; }
+  html, body { color-scheme: light !important; }
+}

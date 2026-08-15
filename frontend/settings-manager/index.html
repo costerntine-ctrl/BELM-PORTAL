@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css">
   <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
+  <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
+  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
 </head>
 <body class="management-page">
   <header class="management-topbar">
@@ -158,7 +160,7 @@
       </article>
 
       <article class="panel">
-        <div class="section-head"><div><h2>Display theme</h2><p>Your own light/dark preference for this device — it doesn't affect other admins.</p></div></div>
+        <div class="section-head"><div><h2>Display theme</h2><p>Your personal light/dark preference follows your login across the whole BELM portal and does not affect other users.</p></div></div>
         <div class="theme-picker">
           <button id="lightTheme" class="theme-choice" data-theme-choice="light" type="button">☀<br>Light mode</button>
           <button id="darkTheme" class="theme-choice" data-theme-choice="dark" type="button">☾<br>Dark mode</button>
@@ -176,11 +178,11 @@
       </article>
 
       <article class="panel">
-        <div class="section-head"><div><h2>Alerts</h2><p>Turn alert delivery on or off. WhatsApp alerts open a pre-filled WhatsApp message using the recipient's saved phone number — BELM Portal does not send WhatsApp messages automatically without a connected WhatsApp Business API.</p></div></div>
+        <div class="section-head"><div><h2>Alerts</h2><p>Turn alert delivery on or off. Service alerts can send WhatsApp automatically when a WhatsApp Business/API webhook is connected; without a provider, WhatsApp delivery is recorded as Pending Provider instead of falsely marked sent.</p></div></div>
         <div class="settings-form">
           <label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label>
           <label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label>
-          <label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp alert buttons enabled</label>
+          <label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp service alerts enabled</label>
         </div>
       </article>
 

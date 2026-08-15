@@ -37,6 +37,12 @@ services:
         value: BELM General Tech
       - key: SMTP_SECURE
         value: tls
+      # Optional automatic WhatsApp service-alert provider. The endpoint must
+      # accept JSON {to,message}. Leave blank to keep WhatsApp as PENDING_PROVIDER.
+      - key: BELM_WHATSAPP_API_URL
+        value: ""
+      - key: BELM_WHATSAPP_API_TOKEN
+        value: ""
 
 databases:
   - name: belm-portal-db

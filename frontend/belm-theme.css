@@ -3589,3 +3589,19 @@ html[data-theme="dark"] .belm-technician-machine-card {
   background: #111b2a !important;
   box-shadow: 0 14px 34px rgba(0,0,0,.26) !important;
 }
+
+/* V199: user management belongs in MORE TOOLS, not the dashboard heading. */
+.belm-account-tools-actions .belm-user-manager-button {
+  flex-direction: column;
+  gap: 3px;
+  border-color: rgba(255, 212, 0, .55);
+  background: linear-gradient(135deg, rgba(255,212,0,.16), rgba(0,166,81,.12));
+  color: #fff;
+}
+.belm-account-tools-actions .belm-user-manager-button small {
+  display: block;
+  color: #d7deea;
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 1.2;
+}

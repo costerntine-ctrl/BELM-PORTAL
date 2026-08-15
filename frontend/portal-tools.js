@@ -5,6 +5,7 @@
   let customerExpenseMachinesPromise = null;
   let customerPortalProfile = null;
   let customerPortalProfilePromise = null;
+  let customerCurrentPermissions;
   let technicianReportMachines = null;
   let technicianReportMachinesPromise = null;
   let technicianCustomerProfile = null;
@@ -26,104 +27,31 @@
         ? "portal"
         : "public";
 
+  // V198: all pages share one personal theme manager. These small wrappers
+  // keep older portal hooks compatible without falling back to the former
+  // company-wide displayTheme setting or the shared customer-id storage key.
   function applyTheme(theme) {
+    if (window.BELMTheme) return window.BELMTheme.set(theme);
     const safeTheme = theme === "dark" ? "dark" : "light";
     document.documentElement.classList.toggle("dark", safeTheme === "dark");
     document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem("belm_theme", safeTheme);
+    return Promise.resolve(safeTheme);
   }
 
   async function syncSavedTheme() {
-    const token = localStorage.getItem("belm_admin_token");
-    if (!token || !window.location.pathname.startsWith("/admin")) return;
-    try {
-      const response = await fetch("/api/settings", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) return;
-      const settings = await response.json();
-      if (settings.displayTheme === "light" || settings.displayTheme === "dark") {
-        applyTheme(settings.displayTheme);
-      }
-    } catch (_) {}
+    if (window.BELMTheme) await window.BELMTheme.refresh();
   }
 
   function installThemeSaving() {
-    if (document.documentElement.dataset.belmThemeSaving === "ready") return;
-    document.documentElement.dataset.belmThemeSaving = "ready";
-    applyTheme(localStorage.getItem("belm_theme") || "light");
-
-    document.addEventListener("click", async (event) => {
-      if (window.location.pathname !== "/admin/settings") return;
-      const button = event.target.closest("button");
-      if (!button) return;
-      const label = (button.textContent || "").trim().toLowerCase();
-      const theme = label.includes("light") ? "light" : label.includes("dark") ? "dark" : null;
-      if (!theme) return;
-
-      applyTheme(theme);
-      const token = localStorage.getItem("belm_admin_token");
-      if (!token) return;
-      try {
-        const response = await fetch("/api/settings/displayTheme", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ value: theme }),
-        });
-        if (!response.ok) throw new Error("Theme could not be saved.");
-        button.title = "Theme saved";
-      } catch (error) {
-        alert(error.message || "Theme could not be saved.");
-      }
-    }, true);
-  }
-
-  function customerThemeKey() {
-    const payload = tokenPayload("belm_customer_token");
-    const userId = payload?.id || payload?.userId || "default";
-    return `belm_customer_theme_${userId}`;
+    if (window.BELMTheme) window.BELMTheme.refresh();
   }
 
   function applyCustomerTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.classList.toggle("dark", safeTheme === "dark");
-    document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem(customerThemeKey(), safeTheme);
-    const button = document.getElementById("belm-customer-theme-toggle");
-    if (button) {
-      button.textContent = safeTheme === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
-    }
+    return applyTheme(theme);
   }
 
   function installCustomerThemeToggle() {
-    if (!window.location.pathname.startsWith("/portal")) return;
-    if (document.getElementById("belm-customer-theme-toggle")) return;
-    const header = Array.from(document.querySelectorAll("div, header"))
-      .find(element => Array.from(element.children).some(
-        child => (child.textContent || "").trim() === "BELM Customer Portal"
-      ));
-    const logOut = Array.from(document.querySelectorAll("button, a"))
-      .find(element => (element.textContent || "").trim().toLowerCase().includes("log out"));
-    const anchor = logOut?.parentElement || header;
-    if (!anchor) return;
-
-    const saved = localStorage.getItem(customerThemeKey()) || "light";
-    const button = document.createElement("button");
-    button.id = "belm-customer-theme-toggle";
-    button.type = "button";
-    button.textContent = saved === "dark" ? "☀️ Light mode" : "🌙 Dark mode";
-    button.style.cssText =
-      "margin-right:10px;padding:8px 14px;border:1px solid #d5dae2;border-radius:8px;" +
-      "background:#fff;color:#101b31;font:700 12px Inter,system-ui,sans-serif;cursor:pointer;";
-    button.addEventListener("click", () => {
-      const current = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
-      applyCustomerTheme(current === "dark" ? "light" : "dark");
-    });
-    anchor.insertBefore(button, anchor.firstChild);
-    applyCustomerTheme(saved);
+    if (window.BELMTheme) window.BELMTheme.refresh();
   }
 
   function tokenPayload(storageKey) {
@@ -435,21 +363,15 @@
 
   function enhanceCustomerAssistants() {
     if (!window.location.pathname.startsWith("/portal/dashboard")) return;
-    const payload = tokenPayload("belm_customer_token");
+    // The native React dashboard places "+ Add user" in the top-right.
+    // User management now lives under MORE TOOLS as +USER so the machine
+    // heading stays clean and every customer starts from one Role Manager.
     for (const button of document.querySelectorAll("button")) {
-      if (!["+ Add user", "+ Manage assistants"].includes(button.textContent.trim())) continue;
-      if (payload?.actorType === "assistant") {
-        button.style.display = "none";
-        continue;
-      }
-      button.textContent = "+ Manage assistants";
-      if (button.dataset.belmAssistantsReady === "1") continue;
-      button.dataset.belmAssistantsReady = "1";
-      button.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        window.location.href = "/customer-users/";
-      });
+      if (!["+ Add user", "+ Manage assistants", "+ USER", "+USER"].includes(button.textContent.trim())) continue;
+      button.dataset.belmNativeAddUser = "1";
+      button.style.display = "none";
+      button.setAttribute("aria-hidden", "true");
+      button.tabIndex = -1;
     }
   }
 
@@ -465,6 +387,7 @@
         if (!response.ok) throw new Error("Could not load customer profile.");
         const dashboard = await response.json();
         customerPortalProfile = dashboard.customer || null;
+        customerCurrentPermissions = dashboard.customer?.actorPermissions;
         if (Array.isArray(dashboard.machines)) customerExpenseMachines = dashboard.machines;
         return customerPortalProfile;
       })
@@ -488,6 +411,7 @@
         const dashboard = await response.json();
         customerExpenseMachines = Array.isArray(dashboard.machines) ? dashboard.machines : [];
         customerPortalProfile = dashboard.customer || customerPortalProfile;
+        customerCurrentPermissions = dashboard.customer?.actorPermissions;
         return customerExpenseMachines;
       })
       .catch(() => {
@@ -662,7 +586,9 @@
     const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
     const serial = machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded";
     const remaining = Math.round(status.hoursRemaining);
-    const levelLabel = status.level === "RED" ? "Service due now" : status.level === "YELLOW" ? "Service due soon" : "On schedule";
+    const overdueBy = Math.max(0, Math.round(Math.abs(Math.min(0, status.hoursRemaining || 0))));
+    const levelLabel = status.level === "RED" ? (overdueBy ? `OVERDUE BY ${overdueBy} HRS` : "DUE NOW") : status.level === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
+    const serviceTypeLabel = status.serviceType || `${status.intervalHours}-Hour Service`;
 
     const panel = document.createElement("div");
     panel.className = `belm-service-due-panel status-${String(status.level || "GREEN").toLowerCase()}`;
@@ -673,9 +599,11 @@
       </div>
       <div class="belm-service-due-grid">
         <div><span>Fleet Number</span><b class="belm-fleet-number-value">${escapeHtml(machine.fleetNumber || machine.fleet_number || serial)}</b></div>
-        <div><span>Type of service</span><b>${escapeHtml(status.intervalHours)}-Hour Service</b></div>
+        <div><span>Type of Service</span><b>${escapeHtml(serviceTypeLabel)}</b></div>
         <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
-        <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
+        <div><span>Next Service At</span><b>${escapeHtml(status.dueHour)} Hrs</b></div>
+        <div><span>Service Status</span><b>${escapeHtml(levelLabel)}</b></div>
+        <div><span>${remaining < 0 ? "Overdue By" : remaining === 0 ? "Service Due" : "Remaining Hrs"}</span><b>${remaining < 0 ? `${overdueBy} Hrs` : remaining === 0 ? "Now" : escapeHtml(remaining)}</b></div>
       </div>
       <div class="belm-machine-quick-actions">
         <a href="/customer-machine-expenses/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Machine Expenses</a>
@@ -686,6 +614,7 @@
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">
           Check Up
         </button>
+        <a href="/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="workflow">Breakdown Process</a>
       </div>`;
     card.appendChild(panel);
     // Same "whole card is a native clickable button" issue as
@@ -963,7 +892,9 @@
 
     const serial = machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded";
     const remaining = Math.round(status.hoursRemaining);
-    const levelLabel = status.level === "RED" ? "Service due now" : status.level === "YELLOW" ? "Service due soon" : "On schedule";
+    const overdueBy = Math.max(0, Math.round(Math.abs(Math.min(0, status.hoursRemaining || 0))));
+    const levelLabel = status.level === "RED" ? (overdueBy ? `OVERDUE BY ${overdueBy} HRS` : "DUE NOW") : status.level === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
+    const serviceTypeLabel = status.serviceType || `${status.intervalHours}-Hour Service`;
 
     const panel = document.createElement("div");
     panel.className = `belm-service-due-panel status-${String(status.level || "GREEN").toLowerCase()}`;
@@ -974,9 +905,11 @@
       </div>
       <div class="belm-service-due-grid">
         <div><span>Fleet Number</span><b class="belm-fleet-number-value">${escapeHtml(machine.fleetNumber || machine.fleet_number || serial)}</b></div>
-        <div><span>Type of service</span><b>${escapeHtml(status.intervalHours)}-Hour Service</b></div>
+        <div><span>Type of Service</span><b>${escapeHtml(serviceTypeLabel)}</b></div>
         <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
-        <div><span>Remaining Hrs</span><b>${remaining <= 0 ? "Overdue" : escapeHtml(remaining)}</b></div>
+        <div><span>Next Service At</span><b>${escapeHtml(status.dueHour)} Hrs</b></div>
+        <div><span>Service Status</span><b>${escapeHtml(levelLabel)}</b></div>
+        <div><span>${remaining < 0 ? "Overdue By" : remaining === 0 ? "Service Due" : "Remaining Hrs"}</span><b>${remaining < 0 ? `${overdueBy} Hrs` : remaining === 0 ? "Now" : escapeHtml(remaining)}</b></div>
       </div>
       <button type="button" class="belm-technician-operator-reports-button" data-view-operator-reports="${escapeHtml(machine.id)}" data-technician-context="1">Operator Reports</button>`;
     // Insert before the Checked Reports/Check-up buttons row (which is
@@ -1144,11 +1077,13 @@
     const heading = Array.from(document.querySelectorAll("h1, h2"))
       .find(element => (element.textContent || "").trim().endsWith("MACHINES") || (element.textContent || "").trim() === "Your machines");
     if (!heading) return;
-    // Walk up to the row that also holds the "Manage assistants" button,
-    // so the new card lands directly under that whole header row.
+    // Walk up to the original dashboard heading/action row. The native
+    // + Add user button is intentionally hidden, but it remains a reliable
+    // DOM anchor for placing the Activity Overview / MORE TOOLS stack.
     let rowContainer = heading.parentElement;
     for (let level = 0; level < 4 && rowContainer; level++) {
-      if (Array.from(rowContainer.querySelectorAll("button, a")).some(el => (el.textContent || "").trim() === "+ Manage assistants")) break;
+      if (rowContainer.querySelector("[data-belm-native-add-user='1']") ||
+          Array.from(rowContainer.querySelectorAll("button, a")).some(el => ["+ Add user", "+ Manage assistants"].includes((el.textContent || "").trim()))) break;
       rowContainer = rowContainer.parentElement;
     }
     if (!rowContainer || !rowContainer.parentElement) return;
@@ -1184,9 +1119,17 @@
       <div class="belm-account-tools-head">MORE TOOLS</div>
       <div id="belmCustomerOperatingMode" style="margin:10px 0 12px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.08);font-size:11px;line-height:1.45">Loading operating mode…</div>
       <div class="belm-account-tools-actions">
-        <button type="button" class="belm-email-report-button" data-belm-feature="service-request" data-contact-belm-support>
-          Contact BELM Support
+        <button type="button" class="belm-email-report-button belm-user-manager-button" data-belm-owner-admin-only data-belm-feature="assign-users" data-open-role-manager>
+          +USER
+          <small>Role Manager & Dashboard Access</small>
         </button>
+        <button type="button" class="belm-email-report-button" data-belm-feature="service-request" data-contact-belm-support>
+          Request BELM Support
+        </button>
+        <a class="belm-email-report-button" href="/breakdown-workflow/" data-belm-feature="workflow">
+          Breakdown Process
+          <small>Live delays, approvals & Job Cards</small>
+        </a>
         <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
           data-report-subject="BELM Portal — account activity report"
           data-report-message="BELM Portal account report requested from the dashboard.">
@@ -1194,6 +1137,7 @@
         </button>
       </div>`;
     enforceCustomerFeaturePermissions(toolsCard);
+    toolsCard.querySelector("[data-open-role-manager]")?.addEventListener("click", () => { window.location.href = "/customer-users/"; });
     toolsCard.querySelector("[data-contact-belm-support]")?.addEventListener("click", () => openBelmSupportDialog());
     loadCustomerPortalProfile().then((profile) => {
       const modeBox = document.getElementById("belmCustomerOperatingMode");
@@ -1440,7 +1384,7 @@
 
   function enforceCustomerFeaturePermissions(scope) {
     const payload = tokenPayload("belm_customer_token");
-    const permissions = payload?.permissions;
+    const permissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
     if (Array.isArray(permissions)) {
       scope.querySelectorAll("[data-belm-feature]").forEach((element) => {
         if (!permissions.includes(element.dataset.belmFeature)) {
@@ -2706,8 +2650,21 @@
         card.click();
       });
 
+      const workflowButton = document.createElement("button");
+      workflowButton.type = "button";
+      workflowButton.className = "belm-technician-checkup-button";
+      workflowButton.textContent = "Job Card / Process";
+      workflowButton.title = `Open breakdown workflow for ${model}`;
+      workflowButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+        window.location.href = `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}`;
+      });
+
       actionsRow.appendChild(reportLink);
       actionsRow.appendChild(checkupButton);
+      actionsRow.appendChild(workflowButton);
       card.appendChild(actionsRow);
     });
   }
@@ -4164,8 +4121,7 @@
   installAuthenticatedReportDownloads();
   installTechnicianSavedReportViewer();
   installServiceDayInjector();
-  installThemeSaving();
-  syncSavedTheme();
+  if (window.BELMTheme) window.BELMTheme.refresh();
   refreshShortcut();
   addTechnicianTasksShortcut();
   addTechnicianSpareShortcut();
@@ -4247,7 +4203,7 @@
     enhanceCheckedReportButtons();
     installStaleTechSessionDetector();
     watchForStuckTechLoading();
-    installCustomerThemeToggle();
+    if (window.BELMTheme) window.BELMTheme.refresh();
     installTechChecklistSubmitInterceptor();
     hideCheckedMachinesFromTechList();
   }, 1500);

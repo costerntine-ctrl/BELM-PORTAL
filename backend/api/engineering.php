@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
+require_once __DIR__ . '/service_due_helper.php';
 
 // GET /api/engineering?action=dashboard
 // One combined response for the Engineering page: recent machine
@@ -13,6 +14,10 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
 if ($method === 'GET' && $action === 'dashboard') {
+    // Catch-up scan: checklist submission normally creates the alert instantly,
+    // but this also prepares any missed alert when Engineering opens the page
+    // after a deployment/email outage. UNIQUE(machine_id, due_hour) prevents duplicates.
+    belm_scan_service_due_alerts();
     // Recent activity tied to a specific machine (checklist submissions,
     // status/operational changes) — most recent first.
     $activity = db()->query(
@@ -81,13 +86,42 @@ if ($method === 'GET' && $action === 'dashboard') {
     foreach ($machines as $machine) {
         $status = compute_service_status_helper($machine['id']);
         if (!$status || !in_array($status['level'], ['YELLOW', 'RED'], true)) continue;
+        $nextDue = (int)($status['dueHour'] ?? belm_next_due_hour_from_last_service((float)$status['lastServiceHours'], (float)$status['totalHours']));
+        $prepStmt = db()->prepare(
+            'SELECT sda.id, sda.due_hour, sda.service_interval_hours, sda.inventory_status,
+                    sda.status, sda.draft_proforma_id, pi.invoice_no AS draft_proforma_no
+             FROM service_due_alerts sda
+             LEFT JOIN proforma_invoices pi ON pi.id = sda.draft_proforma_id
+             WHERE sda.machine_id = ? AND sda.due_hour = ? LIMIT 1'
+        );
+        $prepStmt->execute([$machine['id'], $nextDue]);
+        $prep = $prepStmt->fetch() ?: null;
+        $ownerNotify = null;
+        try {
+            $kind = ($status['hoursRemaining'] ?? 0) <= 0 ? 'OVERDUE' : 'DUE_SOON';
+            $ownerNotifyStmt = db()->prepare(
+                'SELECT email_status, whatsapp_status FROM machine_service_owner_notifications
+                 WHERE machine_id = ? AND due_hour = ? AND notification_kind = ? LIMIT 1'
+            );
+            $ownerNotifyStmt->execute([$machine['id'], $nextDue, $kind]);
+            $ownerNotify = $ownerNotifyStmt->fetch() ?: null;
+        } catch (Throwable $ignored) {}
         $reminders[] = [
             'machineId' => $machine['id'],
             'machine' => trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: 'Machine',
+            'machineType' => $machine['machine_type'],
             'customer' => $machine['customer_name'],
             'level' => $status['level'],
             'hoursRemaining' => round($status['hoursRemaining']),
             'intervalHours' => $status['intervalHours'],
+            'dueHour' => $nextDue,
+            'serviceIntervalHours' => $prep ? (int)$prep['service_interval_hours'] : belm_service_interval_for_due_hour($nextDue),
+            'inventoryStatus' => $prep['inventory_status'] ?? null,
+            'draftProformaId' => $prep['draft_proforma_id'] ?? null,
+            'draftProformaNo' => $prep['draft_proforma_no'] ?? null,
+            'preparationStatus' => $prep['status'] ?? null,
+            'ownerEmailStatus' => $ownerNotify['email_status'] ?? 'NOT_SENT',
+            'ownerWhatsAppStatus' => $ownerNotify['whatsapp_status'] ?? 'NOT_SENT',
         ];
     }
     usort($reminders, fn($a, $b) => $a['level'] === $b['level'] ? 0 : ($a['level'] === 'RED' ? -1 : 1));
@@ -118,11 +152,43 @@ if ($method === 'GET' && $action === 'dashboard') {
         ];
     }, $spareRequests);
 
+    // Service-preparation review queue: one row per generated milestone.
+    $prepRows = db()->query(
+        "SELECT sda.id, sda.due_hour, sda.service_interval_hours, sda.current_hours,
+                sda.status, sda.inventory_status, sda.created_at,
+                m.id AS machine_id, m.machine_type, m.brand, m.model,
+                c.name AS customer_name,
+                pi.id AS proforma_id, pi.invoice_no AS proforma_no
+         FROM service_due_alerts sda
+         JOIN machines m ON m.id = sda.machine_id
+         JOIN customers c ON c.id = sda.customer_id
+         LEFT JOIN proforma_invoices pi ON pi.id = sda.draft_proforma_id
+         WHERE sda.status = 'REVIEW'
+         ORDER BY sda.created_at DESC
+         LIMIT 20"
+    )->fetchAll();
+    $servicePreparations = array_map(static fn(array $row): array => [
+        'id' => $row['id'],
+        'dueHour' => (int)$row['due_hour'],
+        'serviceIntervalHours' => (int)$row['service_interval_hours'],
+        'currentHours' => (float)$row['current_hours'],
+        'status' => $row['status'],
+        'inventoryStatus' => $row['inventory_status'],
+        'machineId' => $row['machine_id'],
+        'machineType' => $row['machine_type'],
+        'machine' => trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: $row['machine_type'],
+        'customer' => $row['customer_name'],
+        'draftProformaId' => $row['proforma_id'],
+        'draftProformaNo' => $row['proforma_no'],
+        'createdAt' => $row['created_at'],
+    ], $prepRows);
+
     json_out([
         'activity' => $activityCards,
         'operatorMessages' => $operatorCards,
         'machineStatus' => $statusSummary,
         'serviceReminders' => $reminders,
+        'servicePreparations' => $servicePreparations,
         'spareRequests' => $spareCards,
     ]);
 }

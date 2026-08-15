@@ -9,21 +9,15 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <script>
-      (function () {
-        var theme = localStorage.getItem("belm_theme");
-        if (theme !== "dark" && theme !== "light") theme = "light";
-        document.documentElement.classList.toggle("dark", theme === "dark");
-        document.documentElement.dataset.theme = theme;
-      })();
-    </script>
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
     <script defer src="/portal-tools.js?v=195-brand-ui"></script>
     <script defer src="/admin-sidebar.js?v=195-brand-ui"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BHFQaDFg.css">
     <link rel="stylesheet" href="/belm-theme.css?v=195-brand-ui">
     <link rel="stylesheet" href="/admin-sidebar.css?v=195-brand-ui">
-  </head>
+    <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
+  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+</head>
   <body class="bg-slate-50">
     <div id="root"></div>
   </body>

@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/service_due_helper.php';
 
 $user = require_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -597,8 +598,146 @@ if ($method === 'POST' && $action === 'add-machine') {
             $machine['serviceKit'],
             'NOT_CHECKED',
         ]);
-    log_activity($user, 'machine-added', 'machine', $newId, ['model' => $machine['model'], 'customerId' => $id]);
-    json_out(['id' => $newId], 201);
+    // If matching 250/500/1000/2000-hour templates already contain service
+    // parts, seed this machine with its own editable service-kit copy. BELM can
+    // then fine-tune part numbers for the exact model/serial without changing
+    // every other machine of the same type.
+    $seededServiceParts = belm_seed_machine_service_parts_from_templates($newId, $machine['machineType']);
+    log_activity($user, 'machine-added', 'machine', $newId, [
+        'model' => $machine['model'],
+        'customerId' => $id,
+        'servicePartsSeeded' => $seededServiceParts,
+    ]);
+    json_out(['id' => $newId, 'servicePartsSeeded' => $seededServiceParts], 201);
+}
+
+
+// ---- Machine-specific preventive-service parts -----------------------------
+// GET  /customers/machines/:machineId/service-parts
+// PUT  /customers/machines/:machineId/service-parts { intervalHours, parts[] }
+// BELM maintains exact service kits per registered machine. The checklist
+// template is only a seed/fallback; this machine-specific list wins at alert
+// time and is silently matched against BELM Spare Parts Inventory.
+if ($action === 'service-parts') {
+    require_page_access($user, 'customers');
+    $machineId = trim((string)($_GET['machineId'] ?? ''));
+    if ($machineId === '') json_error('Machine ID is required.');
+    $machineStmt = db()->prepare(
+        'SELECT m.id, m.customer_id, m.machine_type, m.model, m.brand, c.name AS customer_name
+         FROM machines m JOIN customers c ON c.id = m.customer_id
+         WHERE m.id = ? AND m.deleted_at IS NULL AND c.deleted_at IS NULL'
+    );
+    $machineStmt->execute([$machineId]);
+    $serviceMachine = $machineStmt->fetch();
+    if (!$serviceMachine) json_error('Machine not found.', 404);
+
+    if ($method === 'GET') {
+        $rows = db()->prepare(
+            'SELECT msp.id, msp.service_interval_hours, msp.spare_part_id, msp.spare_name,
+                    msp.part_number, msp.quantity, msp.unit,
+                    sp.name AS inventory_name, sp.stock_qty, sp.selling_price
+             FROM machine_service_parts msp
+             LEFT JOIN spare_parts sp ON sp.id = msp.spare_part_id AND sp.deleted_at IS NULL
+             WHERE msp.machine_id = ?
+             ORDER BY msp.service_interval_hours ASC, msp.spare_name ASC'
+        );
+        $rows->execute([$machineId]);
+        $parts = $rows->fetchAll();
+        foreach ($parts as &$part) {
+            // Re-match old rows whose inventory link was not known at setup.
+            if (empty($part['spare_part_id'])) {
+                $matched = belm_inventory_match_for_service_part(null, (string)$part['part_number']);
+                if ($matched) {
+                    $part['spare_part_id'] = $matched['id'];
+                    $part['inventory_name'] = $matched['name'];
+                    $part['stock_qty'] = $matched['stock_qty'];
+                    $part['selling_price'] = $matched['selling_price'];
+                }
+            }
+        }
+        unset($part);
+        $templateParts = [];
+        foreach ([250, 500, 1000, 2000] as $interval) {
+            $templateParts[(string)$interval] = belm_template_service_parts((string)$serviceMachine['machine_type'], $interval);
+        }
+        json_out([
+            'machine' => [
+                'id' => $serviceMachine['id'],
+                'customerId' => $serviceMachine['customer_id'],
+                'customerName' => $serviceMachine['customer_name'],
+                'machineType' => $serviceMachine['machine_type'],
+                'brand' => $serviceMachine['brand'],
+                'model' => $serviceMachine['model'],
+            ],
+            'parts' => $parts,
+            'templateParts' => $templateParts,
+        ]);
+    }
+
+    if ($method === 'PUT') {
+        $b = body();
+        $interval = (int)($b['intervalHours'] ?? 0);
+        if (!in_array($interval, [250, 500, 1000, 2000], true)) {
+            json_error('Service interval must be 250, 500, 1000 or 2000 hours.');
+        }
+        $parts = $b['parts'] ?? [];
+        if (!is_array($parts)) json_error('Service parts must be a list.');
+        $normalized = [];
+        $seen = [];
+        foreach ($parts as $part) {
+            if (!is_array($part)) continue;
+            $name = trim((string)($part['spareName'] ?? $part['name'] ?? ''));
+            $number = strtoupper(trim((string)($part['partNumber'] ?? '')));
+            $qty = (float)($part['quantity'] ?? 0);
+            $unit = strtoupper(trim((string)($part['unit'] ?? 'PC'))) ?: 'PC';
+            if ($name === '' && $number === '') continue;
+            if ($name === '') json_error('Every service spare needs a name.');
+            if ($number === '') json_error('Every service spare needs a part number/reference.');
+            if ($qty <= 0) json_error("Quantity for $name must be greater than zero.");
+            $key = strtolower($number);
+            if (isset($seen[$key])) json_error("Part number $number is duplicated in this service kit.");
+            $seen[$key] = true;
+            $inventory = belm_inventory_match_for_service_part(
+                trim((string)($part['sparePartId'] ?? '')) ?: null,
+                $number
+            );
+            $normalized[] = [
+                'sparePartId' => $inventory['id'] ?? null,
+                'spareName' => $name,
+                'partNumber' => $number,
+                'quantity' => $qty,
+                'unit' => mb_substr($unit, 0, 20),
+            ];
+        }
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('DELETE FROM machine_service_parts WHERE machine_id = ? AND service_interval_hours = ?')
+                ->execute([$machineId, $interval]);
+            $ins = $pdo->prepare(
+                'INSERT INTO machine_service_parts
+                 (id, machine_id, service_interval_hours, spare_part_id, spare_name, part_number, quantity, unit, created_at, updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())'
+            );
+            foreach ($normalized as $part) {
+                $ins->execute([
+                    uuid(), $machineId, $interval, $part['sparePartId'], $part['spareName'],
+                    $part['partNumber'], $part['quantity'], $part['unit'],
+                ]);
+            }
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        log_activity($user, 'machine-service-parts-updated', 'machine', $machineId, [
+            'serviceIntervalHours' => $interval,
+            'partsCount' => count($normalized),
+        ]);
+        json_out(['ok' => true, 'partsCount' => count($normalized)]);
+    }
+
+    json_error('Unsupported service-parts request.', 405);
 }
 
 const MACHINE_OPERATIONAL_STATUSES = ['NORMAL', 'SERVICE_IN_PROGRESS', 'CHECKUP_IN_PROGRESS', 'MAINTENANCE_IN_PROGRESS', 'GROUNDED'];

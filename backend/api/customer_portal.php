@@ -23,16 +23,42 @@ function log_customer_activity(array $customer, string $action): void {
 // full access — represented internally as NULL, not an exhaustive list.
 const CUSTOMER_PERMISSION_KEYS = [
     'machine-expenses', 'fuel-usage', 'email', 'whatsapp', 'check-up', 'service-request',
-    'report-problem', 'operator-reports', 'assign-users', 'store',
+    'report-problem', 'operator-reports', 'assign-users', 'store', 'workflow',
 ];
+
+// Role Manager roles for customer-owned portal users. Legacy admin/assistant
+// values remain accepted so existing accounts keep working after upgrade.
+const CUSTOMER_PORTAL_USER_ROLES = [
+    'workshop_manager', 'store_keeper', 'accounts', 'procurement', 'operator',
+    'admin', 'assistant',
+];
+
+function customer_has_feature_access(array $customer, string $permissionKey): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    $permissions = $customer['permissions'] ?? null;
+    if ($permissions === null) return true;
+    return is_array($permissions) && in_array($permissionKey, $permissions, true);
+}
+
+function require_customer_feature_access(array $customer, string $permissionKey, string $label = 'this section'): void {
+    if (!customer_has_feature_access($customer, $permissionKey)) {
+        json_error('Your Role Manager access does not include ' . $label . '.', 403);
+    }
+}
+
+function require_customer_any_feature_access(array $customer, array $permissionKeys, string $label = 'this section'): void {
+    foreach ($permissionKeys as $permissionKey) {
+        if (customer_has_feature_access($customer, (string)$permissionKey)) return;
+    }
+    json_error('Your Role Manager access does not include ' . $label . '.', 403);
+}
 
 function customer_can_manage_store(array $customer): bool {
     if (($customer['actorType'] ?? '') === 'owner') return true;
     $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
-    if (in_array($role, ['operator', 'viewer'], true)) return false;
     $permissions = $customer['permissions'] ?? null;
     if (is_array($permissions)) return in_array('store', $permissions, true);
-    return in_array($role, ['admin', 'assistant', 'accounts'], true);
+    return in_array($role, ['admin', 'assistant', 'accounts', 'workshop_manager', 'store_keeper', 'procurement'], true);
 }
 
 function customer_store_item_rows(string $customerId): array {
@@ -105,9 +131,24 @@ function customer_permissions_from_body(array $body): ?string {
     $raw = $body['permissions'] ?? 'all';
     if ($raw === 'all' || $raw === null) return null;
     if (!is_array($raw)) return null;
-    $clean = array_values(array_intersect(array_map('strval', $raw), CUSTOMER_PERMISSION_KEYS));
-    if (count($clean) === 0 || count($clean) === count(CUSTOMER_PERMISSION_KEYS)) return null;
+    $clean = array_values(array_unique(array_intersect(array_map('strval', $raw), CUSTOMER_PERMISSION_KEYS)));
+    // NULL means full access. An intentionally empty selection must remain []
+    // instead of silently becoming full access.
+    if (count($clean) === count(CUSTOMER_PERMISSION_KEYS)) return null;
     return json_encode($clean);
+}
+
+function customer_portal_user_count(string $customerId): int {
+    $stmt = db()->prepare(
+        "SELECT
+           (SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1)
+           +
+           (SELECT COUNT(*) FROM users u JOIN roles r ON r.id = u.role_id
+            WHERE u.assigned_customer_id = ? AND u.is_customer_managed = 1
+              AND u.is_active = 1 AND u.deleted_at IS NULL AND r.name = 'Technician') AS total"
+    );
+    $stmt->execute([$customerId, $customerId]);
+    return (int)$stmt->fetchColumn();
 }
 
 // Validates a base64 receipt upload (image OR pdf). Returns [data, mime, name]
@@ -456,6 +497,7 @@ function customer_request_service_parts(string $requestId): array {
 // ---- Dashboard ------------------------------------------------------------
 // ---- Saved emails (boss / management team) for quick report sharing --------
 if ($sub === 'saved-emails' && $method === 'GET') {
+    require_customer_feature_access($customer, 'email', 'Management Email');
     // Build one communication directory from the real account records plus
     // optional manual management contacts. Account/user entries are read-only
     // here so a change made by BELM Admin or the customer user manager is
@@ -515,6 +557,7 @@ if ($sub === 'saved-emails' && $method === 'GET') {
 }
 
 if ($sub === 'saved-emails' && $method === 'POST') {
+    require_customer_feature_access($customer, 'email', 'Management Email');
     require_customer_write_access($customer);
     $b = body();
     $label = trim((string)($b['label'] ?? ''));
@@ -537,6 +580,7 @@ if ($sub === 'saved-emails' && $method === 'POST') {
 }
 
 if ($sub === 'saved-emails' && $sub2 && $method === 'PUT') {
+    require_customer_feature_access($customer, 'email', 'Management Email');
     require_customer_write_access($customer);
     $b = body();
     $label = trim((string)($b['label'] ?? ''));
@@ -561,6 +605,7 @@ if ($sub === 'saved-emails' && $sub2 && $method === 'PUT') {
 }
 
 if ($sub === 'saved-emails' && $sub2 && $method === 'DELETE') {
+    require_customer_feature_access($customer, 'email', 'Management Email');
     require_customer_write_access($customer);
     db()->prepare('DELETE FROM customer_saved_emails WHERE id = ? AND customer_id = ?')->execute([$sub2, $customer['id']]);
     json_out(null, 204);
@@ -568,6 +613,7 @@ if ($sub === 'saved-emails' && $sub2 && $method === 'DELETE') {
 
 // ---- Email a report to the customer's boss / management team ---------------
 if ($sub === 'email-report' && $method === 'POST') {
+    require_customer_feature_access($customer, 'email', 'Management Email');
     require_customer_write_access($customer);
     $b = body();
     $to = trim((string)($b['to'] ?? ''));
@@ -654,6 +700,9 @@ if ($sub === 'dashboard') {
         $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
         $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
         $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
+        $profile['actorType'] = $customer['actorType'] ?? 'owner';
+        $profile['actorRole'] = $customer['customerRole'] ?? 'owner';
+        $profile['actorPermissions'] = $customer['permissions'] ?? null;
     }
     json_out(['customer' => $profile, 'machines' => $machines]);
 }
@@ -854,6 +903,7 @@ if ($sub === 'analysis') {
 
 // ---- Machine-aware service types and their synchronized parts ---------------
 if ($sub === 'service-options' && $sub2 && $method === 'GET') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     $stmt = db()->prepare(
         'SELECT id, machine_type, model, serial_number, reg_number, brand
          FROM machines
@@ -913,6 +963,7 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
 // Separate from BELM Inventory. Customers can receive their own stock here;
 // Machine Expenses can then issue it to a machine with an auditable balance.
 if ($sub === 'store') {
+    require_customer_feature_access($customer, 'store', 'Store Keeper');
     if ($method === 'GET') {
         $items = customer_store_item_rows((string)$customer['id']);
         $recentStmt = db()->prepare(
@@ -1018,6 +1069,7 @@ if ($sub === 'store') {
 
 // ---- Customer-recorded machine spare-part expenses -------------------------
 if ($sub === 'machine-expenses' && $sub2) {
+    require_customer_feature_access($customer, 'machine-expenses', 'Machine Expenses');
     $machineId = $sub2;
     $stmt = db()->prepare(
         'SELECT id, machine_type, model, serial_number, reg_number, brand
@@ -1447,6 +1499,7 @@ if ($sub === 'machine-expenses' && $sub2) {
 
 // ---- Customer-recorded daily fuel usage per machine ------------------------
 if ($sub === 'fuel-usage' && $sub2) {
+    require_customer_feature_access($customer, 'fuel-usage', 'Fuel Usage');
     $machineId = $sub2;
     $stmt = db()->prepare(
         'SELECT id, machine_type, model, serial_number, reg_number, brand
@@ -1925,6 +1978,7 @@ if ($sub === 'machines' && $sub2) {
     if (!$stmt->fetch()) json_error('Not found', 404);
 
     if ($sub3 === 'daily-checklist' && $method === 'GET') {
+        require_customer_feature_access($customer, 'check-up', 'Check Up');
         $machineStmt = db()->prepare(
             'SELECT id, machine_type, model, serial_number, reg_number, brand
              FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
@@ -2005,6 +2059,7 @@ if ($sub === 'machines' && $sub2) {
     }
 
     if ($sub3 === 'daily-checklist-pdf' && $method === 'GET') {
+        require_customer_feature_access($customer, 'check-up', 'Check Up');
         $templateId = trim((string)($_GET['templateId'] ?? ''));
         if ($templateId === '') json_error('Checklist Template is required.');
         $machineStmt = db()->prepare(
@@ -2055,6 +2110,7 @@ if ($sub === 'machines' && $sub2) {
     }
 
     if ($sub3 === 'reports') {
+        require_customer_feature_access($customer, 'check-up', 'Check Up');
         $stmt = db()->prepare('SELECT * FROM checklist_reports WHERE machine_id = ? ORDER BY created_at DESC');
         $stmt->execute([$machineId]);
         $reports = array_map('customer_checklist_report_view', $stmt->fetchAll());
@@ -2137,6 +2193,33 @@ if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
         ];
     }
 
+    $openOpStmt = db()->prepare(
+        "SELECT id, operator_name, message, created_at
+         FROM operator_reports WHERE machine_id = ? AND status = 'OPEN'
+         ORDER BY created_at DESC LIMIT 5"
+    );
+    $openOpStmt->execute([$machineId]);
+    foreach ($openOpStmt->fetchAll() as $row) {
+        $updates[] = [
+            'id' => 'op-open-' . $row['id'],
+            'text' => 'New problem report by ' . ($row['operator_name'] ?: 'Operator') . ': ' . $row['message'],
+            'createdAt' => $row['created_at'],
+        ];
+    }
+
+    $checkStmt = db()->prepare(
+        'SELECT id, filled_by, overall_status, created_at
+         FROM checklist_reports WHERE machine_id = ? ORDER BY created_at DESC LIMIT 5'
+    );
+    $checkStmt->execute([$machineId]);
+    foreach ($checkStmt->fetchAll() as $row) {
+        $updates[] = [
+            'id' => 'check-' . $row['id'],
+            'text' => 'Check Up submitted by ' . ($row['filled_by'] ?: 'Technician') . ' - ' . strtoupper((string)$row['overall_status']),
+            'createdAt' => $row['created_at'],
+        ];
+    }
+
     $commStmt = db()->prepare(
         'SELECT id, related_type, related_id, direction, channel, subject, message, status, created_by_name, created_at
          FROM customer_communications WHERE customer_id = ? AND machine_id = ?
@@ -2144,7 +2227,6 @@ if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
     );
     $commStmt->execute([$customer['id'], $machineId]);
     $communicationRows = $commStmt->fetchAll();
-    if ($communicationRows) $updates = [];
     foreach ($communicationRows as $row) {
         $updates[] = [
             'id' => 'comm-' . $row['id'],
@@ -2231,6 +2313,7 @@ if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'DELETE') {
 // own maintenance team unless the sender explicitly asks BELM for Technical
 // Support. In BELM-managed mode, problem reports always notify BELM.
 if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
+    require_customer_feature_access($customer, 'operator-reports', 'Operator Reports');
     $machineId = $sub2;
     $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
     $stmt->execute([$machineId, $customer['id']]);
@@ -2251,6 +2334,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
 }
 
 if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
+    require_customer_feature_access($customer, 'report-problem', 'Report Problem');
     require_customer_write_access($customer);
     $machineId = $sub2;
     $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
@@ -2290,6 +2374,41 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
         $operatorName, $operatorContact, $message, $notifyBelm ? 1 : 0,
     ]);
 
+    belm_ensure_breakdown_case_from_operator_report($newId, $operatorName);
+
+    $machineInfoStmt = db()->prepare('SELECT brand, model, machine_type, serial_number, reg_number FROM machines WHERE id = ?');
+    $machineInfoStmt->execute([$machineId]);
+    $machineInfo = $machineInfoStmt->fetch() ?: [];
+    $machineLabel = trim(($machineInfo['brand'] ?? '') . ' ' . ($machineInfo['model'] ?? '')) ?: ($machineInfo['machine_type'] ?? 'Machine');
+    $serial = $machineInfo['serial_number'] ?: ($machineInfo['reg_number'] ?: 'Not recorded');
+
+    // Internal customer-team alert is always sent to the owner and users who
+    // have Operator Reports / Report Problem dashboard access. BELM is added
+    // separately only when Service Provider mode or explicit support is used.
+    try {
+        customer_send_team_alert(
+            (string)$customer['id'],
+            ['operator-reports', 'report-problem'],
+            'MACHINE PROBLEM REPORT - ' . $machineLabel,
+            "MACHINE PROBLEM REPORTED
+
+"
+                . "Customer: " . ($customer['name'] ?? 'Customer') . "
+"
+                . "Reported by: $operatorName
+"
+                . "Machine: $machineLabel
+"
+                . "Serial / Reg: $serial
+"
+                . "Problem: $message
+
+"
+                . "Open the Customer Portal > Operator Reports to review and act.",
+            true
+        );
+    } catch (Throwable $ignored) {}
+
     if (!$notifyBelm) {
         log_customer_activity($customer, "Internal machine problem reported by $operatorName: $message");
         json_out([
@@ -2304,11 +2423,6 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
         (string)$customer['id'], $machineId, 'CUSTOMER_TO_BELM', 'EMAIL',
         'BELM Technical Support — Problem Report', $message, 'OPERATOR_REPORT', $newId, $operatorName, 'SENT'
     );
-    $machineInfoStmt = db()->prepare('SELECT brand, model, machine_type, serial_number, reg_number FROM machines WHERE id = ?');
-    $machineInfoStmt->execute([$machineId]);
-    $machineInfo = $machineInfoStmt->fetch() ?: [];
-    $machineLabel = trim(($machineInfo['brand'] ?? '') . ' ' . ($machineInfo['model'] ?? '')) ?: ($machineInfo['machine_type'] ?? 'Machine');
-    $serial = $machineInfo['serial_number'] ?: ($machineInfo['reg_number'] ?: 'Not recorded');
     $alertResult = belm_send_customer_to_belm_alert(
         ['service-requests'],
         'OFFICIAL SUPPORT REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
@@ -2350,14 +2464,26 @@ if ($sub === 'users' && $sub2 === 'analysis' && $method === 'GET') {
     );
     $stmt->execute([$customer['id']]);
     $rows = $stmt->fetchAll();
-    $byRole = ['admin' => 0, 'assistant' => 0, 'accounts' => 0, 'operator' => 0];
-    $totalByRole = ['admin' => 0, 'assistant' => 0, 'accounts' => 0, 'operator' => 0];
+    $trackedRoles = ['workshop_manager', 'store_keeper', 'accounts', 'procurement', 'operator', 'admin', 'assistant'];
+    $byRole = array_fill_keys($trackedRoles, 0);
+    $totalByRole = array_fill_keys($trackedRoles, 0);
     foreach ($rows as $row) {
         if (isset($byRole[$row['role']])) {
             $byRole[$row['role']] = (int)$row['active_count'];
             $totalByRole[$row['role']] = (int)$row['total_count'];
         }
     }
+    $techStmt = db()->prepare(
+        "SELECT COUNT(*) FILTER (WHERE u.is_active = 1) AS active_count, COUNT(*) AS total_count
+         FROM users u JOIN roles r ON r.id = u.role_id
+         WHERE r.name = 'Technician' AND u.assigned_customer_id = ?
+           AND u.is_customer_managed = 1 AND u.deleted_at IS NULL"
+    );
+    $techStmt->execute([$customer['id']]);
+    $techCounts = $techStmt->fetch() ?: ['active_count' => 0, 'total_count' => 0];
+    $technicianActive = (int)$techCounts['active_count'];
+    $technicianTotal = (int)$techCounts['total_count'];
+
     $machineStmt = db()->prepare(
         'SELECT COUNT(*) FROM machine_operators mo
          JOIN machines m ON m.id = mo.machine_id
@@ -2368,13 +2494,17 @@ if ($sub === 'users' && $sub2 === 'analysis' && $method === 'GET') {
 
     json_out([
         'departments' => [
-            ['key' => 'admin', 'label' => 'Machinery Admin', 'active' => $byRole['admin'], 'total' => $totalByRole['admin']],
-            ['key' => 'assistant', 'label' => 'Machinery Admin Assistant', 'active' => $byRole['assistant'], 'total' => $totalByRole['assistant']],
-            ['key' => 'accounts', 'label' => 'Accounts', 'active' => $byRole['accounts'], 'total' => $totalByRole['accounts']],
-            ['key' => 'operator', 'label' => 'Machine Operator (portal login)', 'active' => $byRole['operator'], 'total' => $totalByRole['operator']],
+            ['key' => 'workshop_manager', 'label' => 'Workshop Manager', 'active' => $byRole['workshop_manager'], 'total' => $totalByRole['workshop_manager']],
+            ['key' => 'store_keeper', 'label' => 'Store Keeper', 'active' => $byRole['store_keeper'], 'total' => $totalByRole['store_keeper']],
+            ['key' => 'accounts', 'label' => 'Muhasibu / Accountant', 'active' => $byRole['accounts'], 'total' => $totalByRole['accounts']],
+            ['key' => 'procurement', 'label' => 'Procurement', 'active' => $byRole['procurement'], 'total' => $totalByRole['procurement']],
+            ['key' => 'operator', 'label' => 'Operator (portal login)', 'active' => $byRole['operator'], 'total' => $totalByRole['operator']],
+            ['key' => 'technician', 'label' => 'Fundi / Technician', 'active' => $technicianActive, 'total' => $technicianTotal],
+            ['key' => 'admin', 'label' => 'Legacy Company Admin', 'active' => $byRole['admin'], 'total' => $totalByRole['admin']],
+            ['key' => 'assistant', 'label' => 'Legacy Assistant', 'active' => $byRole['assistant'], 'total' => $totalByRole['assistant']],
         ],
         'machineOperatorRosterCount' => $machineOperatorCount,
-        'totalUsers' => array_sum($totalByRole),
+        'totalUsers' => array_sum($totalByRole) + $technicianTotal,
     ]);
 }
 
@@ -2446,6 +2576,15 @@ if ($sub === 'technicians' && $method === 'POST') {
     $email = strtolower(trim((string)($b['email'] ?? '')));
     $phone = trim((string)($b['phone'] ?? ''));
     $password = (string)($b['password'] ?? '');
+
+    $limitStmt = db()->prepare('SELECT user_limit FROM customers WHERE id = ?');
+    $limitStmt->execute([$customer['id']]);
+    $userLimit = $limitStmt->fetchColumn();
+    $userLimit = $userLimit !== false && $userLimit !== null ? (int)$userLimit : DEFAULT_CUSTOMER_USER_LIMIT;
+    if (customer_portal_user_count((string)$customer['id']) >= $userLimit) {
+        json_error("You've reached your limit of $userLimit portal user(s). Contact BELM Admin to request additional users.", 403);
+    }
+
     if ($name === '') json_error('Technician name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email for this Technician.');
     if (strlen($password) < 8) json_error('Initial Technician password must contain at least 8 characters.');
@@ -2491,9 +2630,7 @@ if ($sub === 'users' && $sub2 === 'limit' && $method === 'GET') {
     $limitStmt->execute([$customer['id']]);
     $userLimit = $limitStmt->fetchColumn();
     $userLimit = $userLimit !== false && $userLimit !== null ? (int)$userLimit : DEFAULT_CUSTOMER_USER_LIMIT;
-    $countStmt = db()->prepare('SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1');
-    $countStmt->execute([$customer['id']]);
-    json_out(['limit' => $userLimit, 'used' => (int)$countStmt->fetchColumn()]);
+    json_out(['limit' => $userLimit, 'used' => customer_portal_user_count((string)$customer['id'])]);
 }
 
 // Customer passwords are reset only through the public Forgot Password
@@ -2521,9 +2658,7 @@ if ($sub === 'users' && $method === 'POST') {
     $limitStmt->execute([$customer['id']]);
     $userLimit = $limitStmt->fetchColumn();
     $userLimit = $userLimit !== false && $userLimit !== null ? (int)$userLimit : DEFAULT_CUSTOMER_USER_LIMIT;
-    $countStmt = db()->prepare('SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1');
-    $countStmt->execute([$customer['id']]);
-    $currentUserCount = (int)$countStmt->fetchColumn();
+    $currentUserCount = customer_portal_user_count((string)$customer['id']);
     if ($currentUserCount >= $userLimit) {
         json_error(
             "You've reached your limit of $userLimit portal user(s). Contact BELM Admin to request additional users.",
@@ -2531,10 +2666,10 @@ if ($sub === 'users' && $method === 'POST') {
         );
     }
 
-    if ($name === '') json_error('Assistant name is required.');
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
-    if (strlen($password) < 8) json_error('Assistant password must contain at least 8 characters.');
-    if (!in_array($role, ['admin', 'assistant', 'accounts', 'operator'], true)) json_error('Assistant role must be Admin, Assistant, Accounts or Operator.');
+    if ($name === '') json_error('User name is required.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
+    if (strlen($password) < 8) json_error('Initial password must contain at least 8 characters.');
+    if (!in_array($role, CUSTOMER_PORTAL_USER_ROLES, true)) json_error('Select a valid Role Manager role.');
 
     $emailCheck = db()->prepare(
         'SELECT 1 FROM customers WHERE LOWER(email) = ?
@@ -2589,9 +2724,9 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
         ? customer_permissions_from_body($b)
         : $existing['permissions'];
 
-    if ($name === '') json_error('Assistant name is required.');
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid assistant email address.');
-    if (!in_array($role, ['admin', 'assistant', 'accounts', 'operator'], true)) json_error('Assistant role must be Admin, Assistant, Accounts or Operator.');
+    if ($name === '') json_error('User name is required.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
+    if (!in_array($role, CUSTOMER_PORTAL_USER_ROLES, true)) json_error('Select a valid Role Manager role.');
     $emailCheck = db()->prepare(
         'SELECT 1 FROM customers WHERE LOWER(email) = ?
          UNION ALL SELECT 1 FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL
@@ -2640,6 +2775,7 @@ if ($sub === 'users' && $sub2 && $method === 'DELETE') {
 // official Business Email from System Settings, with Reply-To set to the
 // customer's login email when available.
 if ($sub === 'belm-support' && $method === 'POST') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     require_customer_write_access($customer);
     $b = body();
     $topic = strtoupper(trim((string)($b['topic'] ?? 'TECHNICAL_SUPPORT')));
@@ -2707,6 +2843,7 @@ if ($sub === 'belm-support' && $method === 'POST') {
 
 // ---- Service requests -------------------------------------------------------
 if ($sub === 'service-requests' && $method === 'GET') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     $showHidden = !empty($_GET['hidden']);
     $stmt = db()->prepare(
         'SELECT sr.*, m.model AS machine_model, m.machine_type,
@@ -2752,6 +2889,7 @@ if ($sub === 'service-requests' && $method === 'GET') {
 // can — hide a COMPLETED/CANCELLED request from the default list without
 // deleting anything (still fully intact, retrievable via ?hidden=1).
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     $stmt = db()->prepare(
         "SELECT status FROM service_requests WHERE id = ? AND customer_id = ?"
     );
@@ -2766,6 +2904,7 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT
 }
 
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'unhide' && $method === 'PUT') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     $stmt = db()->prepare('UPDATE service_requests SET hidden_at = NULL WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
     if ($stmt->rowCount() === 0) json_error('Service request not found.', 404);
@@ -2773,6 +2912,7 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'unhide' && $method === 'P
 }
 
 if ($sub === 'service-requests' && $method === 'POST') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     require_customer_write_access($customer);
     $b = body();
     $description = trim((string)($b['description'] ?? ''));
@@ -2901,6 +3041,7 @@ Open Service Requests in BELM Portal to review and assign it.",
 }
 
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'PUT') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     require_customer_write_access($customer);
     $stmt = db()->prepare('SELECT * FROM service_requests WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
@@ -2937,6 +3078,7 @@ if ($sub === 'spare-parts' && $method === 'GET') {
 // deliberately unlinked to BELM Inventory until BELM Spare Parts staff choose
 // the correct internal record; the customer never sees stock or pricing.
 if ($sub === 'spare-part-requests' && $method === 'POST') {
+    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
     require_customer_write_access($customer);
     $b = body();
     $referenceNumber = trim((string)($b['referenceNumber'] ?? ''));
@@ -3138,6 +3280,7 @@ if ($sub === 'proformas' && $sub2 && $sub3 === 'respond' && $method === 'PUT') {
 // separate from /download (which returns a PDF file) — these serve two
 // different purposes and must not share a URL.
 if ($sub === 'reports' && $sub2 && $sub3 === 'view' && $method === 'GET') {
+    require_customer_feature_access($customer, 'check-up', 'Check Up');
     $stmt = db()->prepare(
         'SELECT cr.*, m.customer_id, m.model AS machine_model, m.machine_type,
                 m.serial_number, m.reg_number, m.brand,
@@ -3159,6 +3302,7 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'view' && $method === 'GET') {
 }
 
 if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
+    require_customer_feature_access($customer, 'check-up', 'Check Up');
     $stmt = db()->prepare(
         'SELECT cr.*, m.customer_id, m.model AS machine_model, m.machine_type,
                 m.serial_number, m.reg_number, m.brand,

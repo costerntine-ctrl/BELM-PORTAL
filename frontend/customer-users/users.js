@@ -5,6 +5,7 @@
   const dialog = document.getElementById("userDialog");
   const form = document.getElementById("userForm");
   let users = [];
+  let technicians = [];
 
   function tokenPayload() {
     if (!token) return null;
@@ -55,17 +56,32 @@
   }
 
   const roleLabels = {
-    admin: "Machinery Admin",
-    assistant: "Machinery Admin Assistant",
-    accounts: "Accounts",
-    operator: "Machine Operator",
+    workshop_manager: "Workshop Manager",
+    store_keeper: "Store Keeper",
+    accounts: "Muhasibu / Accountant",
+    procurement: "Procurement",
+    operator: "Operator",
+    technician: "Fundi / Technician",
+    admin: "Legacy Company Admin",
+    assistant: "Legacy Assistant",
+  };
+
+  const ROLE_ACCESS_PRESETS = {
+    workshop_manager: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store", "workflow"],
+    store_keeper: ["machine-expenses", "store", "workflow"],
+    accounts: ["machine-expenses", "fuel-usage", "email", "workflow"],
+    procurement: ["machine-expenses", "store", "service-request", "workflow"],
+    operator: ["fuel-usage", "operator-reports", "report-problem"],
+    admin: "all",
+    assistant: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store"],
   };
 
   function render() {
-    document.getElementById("totalCount").textContent = users.length;
-    document.getElementById("activeCount").textContent = users.filter((user) => user.isActive).length;
+    const technicianActive = technicians.filter((tech) => Boolean(tech.is_active ?? tech.isActive)).length;
+    document.getElementById("totalCount").textContent = users.length + technicians.length;
+    document.getElementById("activeCount").textContent = users.filter((user) => user.isActive).length + technicianActive;
     if (users.length === 0) {
-      userList.innerHTML = '<div class="empty">No assistants yet. Use “Add assistant” to create the first login.</div>';
+      userList.innerHTML = '<div class="empty">No portal users yet. Use “+ USER” to create the first login.</div>';
     } else {
       userList.innerHTML = users.map((user) => `
         <article class="user-card">
@@ -85,9 +101,11 @@
 
   function renderRoleCards() {
     const container = document.getElementById("roleCards");
-    const roles = ["admin", "assistant", "accounts", "operator"];
+    const roles = ["workshop_manager", "store_keeper", "accounts", "procurement", "operator", "technician"];
     container.innerHTML = roles.map((roleKey) => {
-      const members = users.filter((user) => user.role === roleKey);
+      const members = roleKey === "technician"
+        ? technicians.map((tech) => ({ ...tech, isActive: Boolean(tech.is_active ?? tech.isActive) }))
+        : users.filter((user) => user.role === roleKey);
       return `
         <article class="role-card">
           <div class="role-card-head">
@@ -177,7 +195,7 @@
 
   async function loadUsers() {
     clearAlert();
-    userList.innerHTML = '<div class="loading">Loading assistants…</div>';
+    userList.innerHTML = '<div class="loading">Loading users…</div>';
     if (!token) {
       userList.innerHTML = '<div class="locked"><strong>Customer login required</strong>Please log in using the main customer account.<br><a href="/portal/login">Go to portal login</a></div>';
       return;
@@ -191,7 +209,7 @@
         userList.innerHTML = `<div class="locked"><strong>Owner access required</strong>${escapeHtml(error.message)}<br><a href="/portal/login">Log in as main customer</a></div>`;
         document.getElementById("addButton").disabled = true;
       } else {
-        userList.innerHTML = '<div class="empty">Could not load assistant accounts.</div>';
+        userList.innerHTML = '<div class="empty">Could not load portal user accounts.</div>';
         showAlert(error.message, true);
       }
     }
@@ -228,7 +246,7 @@
       document.getElementById("belmProviderNotice")?.classList.toggle("hidden", customerTechEnabled);
       const technicianOption = document.getElementById("role").querySelector('option[value="technician"]');
       if (technicianOption) technicianOption.disabled = !customerTechEnabled;
-      if (customerTechEnabled) loadTechnicians();
+      loadTechnicians();
     } catch {
       // The user list already shows the actionable authentication error.
     }
@@ -238,7 +256,8 @@
     const list = document.getElementById("technicianList");
     list.innerHTML = '<div class="loading">Loading your Technicians…</div>';
     try {
-      const technicians = await api("/technicians");
+      technicians = await api("/technicians");
+      render();
       list.innerHTML = technicians.length
         ? technicians.map((tech) => `
             <div class="roster-item">
@@ -252,23 +271,45 @@
     }
   }
 
+  function setAccessDetailsVisible(visible) {
+    document.getElementById("accessOptions")?.classList.toggle("hidden", !visible);
+    document.querySelector(".secondary-access")?.classList.toggle("hidden", !visible);
+  }
+
   function setAccessUI(permissions) {
     const accessAll = document.getElementById("accessAll");
     const items = document.querySelectorAll(".access-item");
-    if (!permissions) {
+    if (permissions === null || permissions === undefined || permissions === "all") {
       accessAll.checked = true;
-      document.getElementById("accessOptions").classList.add("hidden");
+      setAccessDetailsVisible(false);
       items.forEach((item) => { item.checked = false; });
     } else {
       accessAll.checked = false;
-      document.getElementById("accessOptions").classList.remove("hidden");
-      items.forEach((item) => { item.checked = permissions.includes(item.value); });
+      setAccessDetailsVisible(true);
+      const list = Array.isArray(permissions) ? permissions : [];
+      items.forEach((item) => { item.checked = list.includes(item.value); });
     }
   }
 
   function readAccessPayload() {
     if (document.getElementById("accessAll").checked) return "all";
     return [...document.querySelectorAll(".access-item:checked")].map((item) => item.value);
+  }
+
+  function applyRolePreset(role) {
+    const preset = ROLE_ACCESS_PRESETS[role];
+    if (preset === "all") setAccessUI("all");
+    else setAccessUI(Array.isArray(preset) ? preset : []);
+  }
+
+  function ensureLegacyRoleOption(role) {
+    if (!role || document.querySelector(`#role option[value="${role}"]`)) return;
+    if (!["admin", "assistant"].includes(role)) return;
+    const option = document.createElement("option");
+    option.value = role;
+    option.textContent = roleLabels[role] || role;
+    option.dataset.legacy = "1";
+    document.getElementById("role").appendChild(option);
   }
 
   function toggleFieldsForRole() {
@@ -282,18 +323,23 @@
     document.getElementById("password").required = !isEdit;
     document.getElementById("confirmPassword").required = !isEdit;
   }
-  document.getElementById("role").addEventListener("change", toggleFieldsForRole);
+  document.getElementById("role").addEventListener("change", (event) => {
+    if (!document.getElementById("userId").value) applyRolePreset(event.target.value);
+    toggleFieldsForRole();
+  });
 
   function openCreate() {
     form.reset();
     document.getElementById("userId").value = "";
-    document.getElementById("dialogTitle").textContent = "Add assistant";
+    document.getElementById("dialogTitle").textContent = "Add user";
     document.getElementById("password").required = true;
     document.getElementById("confirmPassword").required = true;
     document.getElementById("passwordHint").textContent = "Required · at least 8 characters. Give this first password to the user securely.";
     document.getElementById("statusWrap").classList.add("hidden");
     document.getElementById("formError").className = "alert error hidden";
-    setAccessUI(null);
+    document.querySelectorAll("#role option[data-legacy='1']").forEach((option) => option.remove());
+    document.getElementById("role").value = "workshop_manager";
+    applyRolePreset("workshop_manager");
     toggleFieldsForRole();
     dialog.showModal();
   }
@@ -306,22 +352,23 @@
     document.getElementById("name").value = user.name || "";
     document.getElementById("email").value = user.email || "";
     document.getElementById("phone").value = user.phone || "";
+    ensureLegacyRoleOption(user.role);
     document.getElementById("role").value = user.role || "operator";
     document.getElementById("isActive").checked = Boolean(user.isActive);
-    document.getElementById("dialogTitle").textContent = "Edit assistant";
+    document.getElementById("dialogTitle").textContent = "Edit user";
     document.getElementById("password").required = false;
     document.getElementById("confirmPassword").required = false;
     document.getElementById("password").value = "";
     document.getElementById("confirmPassword").value = "";
     document.getElementById("statusWrap").classList.remove("hidden");
     document.getElementById("formError").className = "alert error hidden";
-    setAccessUI(user.permissions || null);
+    setAccessUI(user.permissions ?? null);
     toggleFieldsForRole();
     dialog.showModal();
   }
 
   document.getElementById("accessAll").addEventListener("change", (event) => {
-    document.getElementById("accessOptions").classList.toggle("hidden", event.target.checked);
+    setAccessDetailsVisible(!event.target.checked);
   });
 
   async function saveUser(event) {
@@ -338,10 +385,9 @@
       return;
     }
 
-    // Technician is a different account type entirely under the hood (a
-    // real BELM staff Technician login, not a customer_users assistant),
-    // so it saves through its own endpoint — but shares this same "Add
-    // assistant" form for a single, unified experience.
+    // Technician is a different account type under the hood because it uses
+    // the dedicated Technician workspace. Role Manager still creates it from
+    // this same +USER flow so the customer has one place to manage people.
     if (role === "technician") {
       if (id) {
         errorBox.textContent = "Technicians can't be edited from here yet — remove and re-add if details change.";
@@ -373,7 +419,7 @@
         errorBox.className = "alert error";
       } finally {
         saveButton.disabled = false;
-        saveButton.textContent = "Save assistant";
+        saveButton.textContent = "Save user";
       }
       return;
     }
@@ -403,8 +449,8 @@
       await loadUsers();
       showAlert(
         id
-          ? "Assistant account updated. Password changes are self-service through Forgot Password + email OTP."
-          : "Assistant created. Give the user the email and initial password you entered; future password recovery uses Forgot Password + email OTP.",
+          ? "User account updated. Password changes are self-service through Forgot Password + email OTP."
+          : "User created. Give the user the email and initial password you entered; future password recovery uses Forgot Password + email OTP.",
         false
       );
     } catch (error) {
@@ -412,17 +458,17 @@
       errorBox.className = "alert error";
     } finally {
       saveButton.disabled = false;
-      saveButton.textContent = "Save assistant";
+      saveButton.textContent = "Save user";
     }
   }
 
   async function deleteUser(id) {
     const user = users.find((item) => item.id === id);
-    if (!user || !confirm(`Delete assistant ${user.name}? Their login will stop working immediately.`)) return;
+    if (!user || !confirm(`Delete user ${user.name}? Their login will stop working immediately.`)) return;
     try {
       await api(`/users/${id}`, { method: "DELETE" });
       await loadUsers();
-      showAlert("Assistant deleted successfully.", false);
+      showAlert("User deleted successfully.", false);
     } catch (error) {
       showAlert(error.message, true);
     }

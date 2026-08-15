@@ -131,17 +131,75 @@ if ($action === 'sign-out' && $method === 'POST') {
     )->execute([$hasProblem ? 1 : 0, $hasProblem ? $problemDescription : null, $shift['id']]);
 
     // A reported challenge also becomes a normal Operator Report, so it
-    // shows up everywhere BELM/Engineer/Technician/Customer already look
-    // for operator problem reports — one single source of truth.
+    // shows up everywhere the customer/BELM team already reviews problems.
+    // The report now follows the same Service Provider switch and role-aware
+    // alert rules as reports created from the Customer Portal.
     if ($hasProblem) {
+        $contextStmt = db()->prepare(
+            'SELECT c.name AS customer_name, c.email AS customer_email, c.is_machinery_admin,
+                    m.brand, m.model, m.machine_type, m.serial_number, m.reg_number
+             FROM customers c JOIN machines m ON m.customer_id = c.id
+             WHERE c.id = ? AND m.id = ? AND c.deleted_at IS NULL AND m.deleted_at IS NULL'
+        );
+        $contextStmt->execute([$payload['customerId'], $machineId]);
+        $context = $contextStmt->fetch() ?: [];
+        $selfServiceMode = !empty($context['is_machinery_admin']);
+        $notifyBelm = !$selfServiceMode;
+        $reportId = uuid();
+        $operatorName = (string)($payload['name'] ?? 'Operator');
+        $reportMessage = "End-of-shift report: $problemDescription (Containers handled: {$shift['container_count']})";
         db()->prepare(
             "INSERT INTO operator_reports
-             (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, created_at)
-             VALUES (?,?,?,?,?,?,?,'OPEN',NOW())"
+             (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, created_at)
+             VALUES (?,?,?,?,?,?,?,'OPEN',?,NOW())"
         )->execute([
-            uuid(), $machineId, $payload['customerId'], $operatorId, $payload['name'] ?? 'Operator',
-            null, "End-of-shift report: $problemDescription (Containers handled: {$shift['container_count']})",
+            $reportId, $machineId, $payload['customerId'], $operatorId, $operatorName,
+            null, $reportMessage, $notifyBelm ? 1 : 0,
         ]);
+
+        belm_ensure_breakdown_case_from_operator_report($reportId, $operatorName);
+
+        $machineLabel = trim(($context['brand'] ?? '') . ' ' . ($context['model'] ?? '')) ?: ($context['machine_type'] ?? 'Machine');
+        $serial = $context['serial_number'] ?: ($context['reg_number'] ?: 'Not recorded');
+        $subject = "OPERATOR PROBLEM REPORT - $machineLabel";
+        $bodyText = "OPERATOR PROBLEM REPORTED
+
+"
+            . "Customer: " . ($context['customer_name'] ?? 'Customer') . "
+"
+            . "Operator: $operatorName
+"
+            . "Machine: $machineLabel
+"
+            . "Serial / Reg: $serial
+"
+            . "Containers handled: {$shift['container_count']}
+"
+            . "Problem: $problemDescription
+
+"
+            . "Open the Customer Portal > Operator Reports to review and act.";
+        try {
+            customer_send_team_alert((string)$payload['customerId'], ['operator-reports', 'report-problem'], $subject, $bodyText, true);
+        } catch (Throwable $ignored) {}
+
+        if ($notifyBelm) {
+            belm_log_customer_communication(
+                (string)$payload['customerId'], $machineId, 'CUSTOMER_TO_BELM', 'EMAIL',
+                'BELM Technical Support - Operator Problem Report', $reportMessage,
+                'OPERATOR_REPORT', $reportId, $operatorName, 'SENT'
+            );
+            try {
+                belm_send_customer_to_belm_alert(
+                    ['service-requests'],
+                    'OFFICIAL OPERATOR REPORT - ' . ($context['customer_name'] ?? 'Customer') . ' - ' . $machineLabel,
+                    $bodyText . "
+
+BELM Service Provider is active for this customer.",
+                    $context['customer_email'] ?? null
+                );
+            } catch (Throwable $ignored) {}
+        }
     }
     json_out(['ok' => true, 'containerCount' => (int)$shift['container_count']]);
 }

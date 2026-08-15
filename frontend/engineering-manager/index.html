@@ -10,7 +10,9 @@
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
     <link rel="stylesheet" href="/engineering-manager/manager.css">
-  </head>
+    <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
+  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+</head>
   <body>
     <header class="topbar">
       <a class="brand" href="/overview-manager/">
@@ -80,6 +82,11 @@
         <article class="panel eng-card">
           <div class="panel-head"><h2>Service reminders</h2><span id="reminderCount" class="eng-count">0</span></div>
           <div id="reminderList" class="eng-card-body"><p class="muted">Loading…</p></div>
+        </article>
+
+        <article class="panel eng-card eng-card-wide">
+          <div class="panel-head"><h2>Service PI review</h2><span id="servicePrepCount" class="eng-count">0</span></div>
+          <div id="servicePrepList" class="eng-card-body"><p class="muted">Loading…</p></div>
         </article>
 
         <article class="panel eng-card eng-card-wide">

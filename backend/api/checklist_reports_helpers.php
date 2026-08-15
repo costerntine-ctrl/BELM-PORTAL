@@ -170,7 +170,7 @@ function output_checklist_report_pdf(string $filename, array $lines, array $phot
 }
 
 function compute_service_status_helper(string $machineId): array {
-    $stmt = db()->prepare('SELECT service_interval_hours, last_service_hours FROM machines WHERE id = ?');
+    $stmt = db()->prepare('SELECT last_service_hours, service_schedule_baseline_hours FROM machines WHERE id = ?');
     $stmt->execute([$machineId]);
     $machine = $stmt->fetch();
     if (!$machine) json_error('Machine not found', 404);
@@ -179,19 +179,49 @@ function compute_service_status_helper(string $machineId): array {
     $stmt->execute([$machineId]);
     $latest = $stmt->fetch();
 
-    $intervalHours = $machine['service_interval_hours'] ?: 250;
     $totalHours = $latest ? (float)$latest['hour_meter_reading'] : 0;
     $lastServiceHours = (float)($machine['last_service_hours'] ?? 0);
-    $hoursSinceService = max(0, $totalHours - $lastServiceHours);
-    $hoursRemaining = $intervalHours - $hoursSinceService;
-    $pct = min(100, round(($hoursSinceService / $intervalHours) * 100));
+    // Preventive maintenance always advances in 250-hour milestones. The
+    // service TYPE at each milestone is hierarchical: 500 replaces 250,
+    // 1000 replaces 500, and 2000 replaces 1000 at those exact hours.
+    $scheduleBaselineHours = $machine['service_schedule_baseline_hours'] !== null
+        ? (float)$machine['service_schedule_baseline_hours'] : null;
+    if ($lastServiceHours > 0) {
+        $baseMilestone = max(0, (int)floor($lastServiceHours / 250) * 250);
+        $dueHour = max(250, $baseMilestone + 250);
+    } elseif ($scheduleBaselineHours !== null) {
+        $dueHour = max(250, (int)floor(max(0, $scheduleBaselineHours) / 250) * 250 + 250);
+    } elseif ($totalHours > 0) {
+        $dueHour = max(250, (int)(ceil($totalHours / 250) * 250));
+    } else {
+        $dueHour = 250;
+    }
+    if ($dueHour % 2000 === 0) $intervalHours = 2000;
+    elseif ($dueHour % 1000 === 0) $intervalHours = 1000;
+    elseif ($dueHour % 500 === 0) $intervalHours = 500;
+    else $intervalHours = 250;
 
-    // Reminder window is a flat 60 hours before the service is due,
-    // regardless of the interval length (250/500/1000/2000 hrs).
+    $hoursSinceService = max(0, $totalHours - $lastServiceHours);
+    $hoursRemaining = $dueHour - $totalHours;
+    $serviceSpan = max(1.0, $dueHour - $lastServiceHours);
+    $pct = min(100, max(0, round(($hoursSinceService / $serviceSpan) * 100)));
+
+    // One consistent warning window across 250/500/1000/2000 milestones.
     $reminderWindowHours = 60;
     $level = 'GREEN';
     if ($hoursRemaining <= 0) $level = 'RED';
     elseif ($hoursRemaining <= $reminderWindowHours) $level = 'YELLOW';
 
-    return compact('intervalHours', 'totalHours', 'lastServiceHours', 'hoursSinceService', 'hoursRemaining', 'pct', 'level');
+    $serviceType = $intervalHours . '-Hour Service';
+    $serviceState = $hoursRemaining < 0 ? 'OVERDUE' : ($hoursRemaining == 0 ? 'DUE_NOW' : 'NEXT');
+    $overdueHours = $hoursRemaining < 0 ? abs($hoursRemaining) : 0;
+    $statusText = $serviceState === 'OVERDUE'
+        ? 'OVERDUE BY ' . rtrim(rtrim(number_format($overdueHours, 2, '.', ''), '0'), '.') . ' HRS'
+        : ($serviceState === 'DUE_NOW' ? 'DUE NOW' : 'NEXT AT ' . $dueHour . ' HRS');
+
+    return compact(
+        'intervalHours', 'serviceType', 'serviceState', 'statusText',
+        'totalHours', 'lastServiceHours', 'hoursSinceService',
+        'hoursRemaining', 'overdueHours', 'pct', 'level', 'dueHour'
+    );
 }

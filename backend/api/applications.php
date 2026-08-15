@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/service_due_helper.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
@@ -363,6 +364,11 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 $application['brand'],
                 'UNKNOWN',
             ]);
+
+            // Seed the registered machine with its 250/500/1000/2000-hour
+            // service parts from matching Checklist Templates. BELM can edit
+            // the machine-specific copy later from Customers > Service Parts.
+            belm_seed_machine_service_parts_from_templates($machineId, $checklist['machineType']);
 
             $pdo->prepare(
                 "UPDATE customer_applications

@@ -46,6 +46,10 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'bank_accounts',
             'bank_withdrawals',
             'customer_communications',
+            'user_preferences',
+            'machine_service_parts',
+            'service_due_alerts',
+            'service_due_alert_items',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -96,7 +100,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '20-customer-store-audit',
+            'schemaVersion' => '21-global-personal-theme',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'adminReady' => $adminReady,
@@ -142,6 +146,9 @@ switch ($resource) {
         // DELETE /customers/machines/:machineId  -> delete-machine
         // POST /customers/:id/users              -> add-user
         // DELETE /customers/users/:subUserId     -> remove-user
+        if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'service-parts') {
+            dispatch('customers.php', ['action' => 'service-parts', 'machineId' => $segments[2]]);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'status') {
             dispatch('customers.php', ['action' => 'operational-status', 'machineId' => $segments[2]]);
         }
@@ -252,6 +259,9 @@ switch ($resource) {
         }
         dispatch('checklist_reports.php', ['action' => 'submit']);
 
+    case 'breakdown-workflow':
+        dispatch('breakdown_workflow.php', ['action' => $segments[1] ?? '', 'id' => $segments[2] ?? '']);
+
     case 'engineering':
         dispatch('engineering.php');
 
@@ -326,6 +336,11 @@ switch ($resource) {
 
     case 'announcements':
         dispatch('announcements.php', ['id' => $segments[1] ?? '']);
+
+    case 'preferences':
+        // GET/PUT /preferences -> personal light/dark preference for the current login.
+        // Available to staff, customer owners/assistants, technicians and operators.
+        dispatch('preferences.php');
 
     case 'settings':
         // GET/PUT /settings, PUT /settings/:key

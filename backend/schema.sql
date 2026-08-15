@@ -1031,3 +1031,190 @@ ALTER TABLE usage_logs
 ALTER TABLE usage_logs
   ADD COLUMN IF NOT EXISTS received_by VARCHAR(255) NULL;
 CREATE INDEX IF NOT EXISTS idx_usage_logs_store_item ON usage_logs(store_item_id);
+
+-- V198: one personal display-theme preference per authenticated account.
+-- It deliberately uses a polymorphic account key because BELM staff,
+-- customer owners, customer assistants and machine operators live in
+-- different account tables.
+CREATE TABLE IF NOT EXISTS user_preferences (
+  account_type VARCHAR(32) NOT NULL,
+  account_id VARCHAR(36) NOT NULL,
+  display_theme VARCHAR(10) NOT NULL DEFAULT 'light',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (account_type, account_id)
+);
+
+-- =====================================================================
+-- V201 MACHINE OWNER SERVICE NOTIFICATIONS
+-- One deduplicated notification per service milestone/state. Email is sent
+-- automatically to the registered customer/machine owner. WhatsApp can be
+-- delivered automatically when BELM_WHATSAPP_API_URL is configured; otherwise
+-- the attempt is retained as PENDING_PROVIDER for audit/follow-up.
+CREATE TABLE IF NOT EXISTS machine_service_owner_notifications (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  due_hour INTEGER NOT NULL,
+  service_interval_hours INTEGER NOT NULL,
+  notification_kind VARCHAR(20) NOT NULL,
+  owner_email VARCHAR(255),
+  owner_phone VARCHAR(50),
+  email_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+  whatsapp_status VARCHAR(30) NOT NULL DEFAULT 'PENDING',
+  email_sent_at TIMESTAMPTZ NULL,
+  whatsapp_sent_at TIMESTAMPTZ NULL,
+  last_attempt_at TIMESTAMPTZ NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(machine_id, due_hour, notification_kind)
+);
+CREATE INDEX IF NOT EXISTS idx_machine_service_owner_notifications_machine
+  ON machine_service_owner_notifications(machine_id, due_hour);
+
+-- V200 PREVENTIVE SERVICE PREPARATION
+-- Machine-specific service kits + due-hour alerts + inventory snapshots.
+-- Alerts prepare a DRAFT Proforma only; they never issue/decrement stock and
+-- never send the draft to the customer until BELM reviews it manually.
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS machine_service_parts (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  service_interval_hours INTEGER NOT NULL,
+  spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id) ON DELETE SET NULL,
+  spare_name VARCHAR(255) NOT NULL,
+  part_number VARCHAR(100) NOT NULL,
+  quantity NUMERIC(12,2) NOT NULL DEFAULT 1,
+  unit VARCHAR(20) NOT NULL DEFAULT 'PC',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(machine_id, service_interval_hours, part_number)
+);
+CREATE INDEX IF NOT EXISTS idx_machine_service_parts_machine_interval
+  ON machine_service_parts(machine_id, service_interval_hours);
+
+CREATE TABLE IF NOT EXISTS service_due_alerts (
+  id VARCHAR(36) PRIMARY KEY,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  due_hour INTEGER NOT NULL,
+  service_interval_hours INTEGER NOT NULL,
+  service_type VARCHAR(50) NOT NULL,
+  current_hours NUMERIC(12,2) NOT NULL DEFAULT 0,
+  status VARCHAR(20) NOT NULL DEFAULT 'REVIEW',
+  inventory_status VARCHAR(30) NOT NULL DEFAULT 'NOT_CHECKED',
+  draft_proforma_id VARCHAR(36) NULL REFERENCES proforma_invoices(id) ON DELETE SET NULL,
+  notified_at TIMESTAMPTZ NULL,
+  reviewed_at TIMESTAMPTZ NULL,
+  completed_at TIMESTAMPTZ NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(machine_id, due_hour)
+);
+CREATE INDEX IF NOT EXISTS idx_service_due_alerts_status ON service_due_alerts(status, created_at);
+
+CREATE TABLE IF NOT EXISTS service_due_alert_items (
+  id VARCHAR(36) PRIMARY KEY,
+  service_alert_id VARCHAR(36) NOT NULL REFERENCES service_due_alerts(id) ON DELETE CASCADE,
+  spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id) ON DELETE SET NULL,
+  part_number VARCHAR(100) NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity_required NUMERIC(12,2) NOT NULL,
+  unit VARCHAR(20) NOT NULL DEFAULT 'PC',
+  stock_qty_snapshot NUMERIC(12,2) NOT NULL DEFAULT 0,
+  selling_price_snapshot NUMERIC(12,2) NOT NULL DEFAULT 0,
+  availability VARCHAR(30) NOT NULL DEFAULT 'NOT_IN_INVENTORY',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_service_due_alert_items_alert ON service_due_alert_items(service_alert_id);
+
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_service_due_alert_id VARCHAR(36) NULL;
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS auto_prepared SMALLINT NOT NULL DEFAULT 0;
+-- Service fluids can be quoted in decimal units (e.g. 18.5 L), so Draft PI
+-- quantities must not be restricted to whole pieces only.
+ALTER TABLE proforma_invoice_items ALTER COLUMN qty TYPE NUMERIC(12,2) USING qty::numeric;
+ALTER TABLE machines ADD COLUMN IF NOT EXISTS service_schedule_baseline_hours DOUBLE PRECISION NULL;
+
+-- V202 - live breakdown workflow, spare approval and digital job cards.
+CREATE SEQUENCE IF NOT EXISTS breakdown_job_card_seq START 1;
+
+CREATE TABLE IF NOT EXISTS breakdown_cases (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  source_type VARCHAR(40) NOT NULL DEFAULT 'MANUAL',
+  source_id VARCHAR(36) NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+  current_stage VARCHAR(40) NOT NULL DEFAULT 'WORKSHOP_REVIEW',
+  current_department VARCHAR(60) NOT NULL DEFAULT 'Workshop',
+  blocker_reason VARCHAR(500) NULL,
+  stage_started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  opened_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  closed_at TIMESTAMPTZ NULL,
+  created_by_name VARCHAR(255) NULL,
+  UNIQUE(source_type, source_id)
+);
+CREATE INDEX IF NOT EXISTS idx_breakdown_cases_customer ON breakdown_cases(customer_id, status, opened_at DESC);
+CREATE INDEX IF NOT EXISTS idx_breakdown_cases_machine ON breakdown_cases(machine_id, opened_at DESC);
+
+CREATE TABLE IF NOT EXISTS breakdown_case_events (
+  id VARCHAR(36) PRIMARY KEY,
+  case_id VARCHAR(36) NOT NULL REFERENCES breakdown_cases(id) ON DELETE CASCADE,
+  stage VARCHAR(40) NOT NULL,
+  department VARCHAR(60) NOT NULL,
+  action VARCHAR(120) NOT NULL,
+  note VARCHAR(1000) NULL,
+  actor_type VARCHAR(30) NULL,
+  actor_id VARCHAR(36) NULL,
+  actor_name VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_breakdown_case_events_case ON breakdown_case_events(case_id, created_at ASC);
+
+CREATE TABLE IF NOT EXISTS breakdown_spare_requests (
+  id VARCHAR(36) PRIMARY KEY,
+  case_id VARCHAR(36) NOT NULL REFERENCES breakdown_cases(id) ON DELETE CASCADE,
+  job_card_id VARCHAR(36) NULL,
+  spare_name VARCHAR(255) NOT NULL,
+  part_number VARCHAR(120) NULL,
+  quantity NUMERIC(12,2) NOT NULL DEFAULT 1,
+  unit VARCHAR(30) NOT NULL DEFAULT 'pcs',
+  reason VARCHAR(500) NULL,
+  status VARCHAR(30) NOT NULL DEFAULT 'WAITING_BOSS_APPROVAL',
+  requested_by_name VARCHAR(255) NULL,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  approved_by_name VARCHAR(255) NULL,
+  approved_at TIMESTAMPTZ NULL,
+  approval_note VARCHAR(500) NULL,
+  fulfilled_by_name VARCHAR(255) NULL,
+  fulfilled_at TIMESTAMPTZ NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_breakdown_spares_case ON breakdown_spare_requests(case_id, status, requested_at DESC);
+
+CREATE TABLE IF NOT EXISTS digital_job_cards (
+  id VARCHAR(36) PRIMARY KEY,
+  case_id VARCHAR(36) NOT NULL REFERENCES breakdown_cases(id) ON DELETE CASCADE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  job_card_no VARCHAR(40) NOT NULL UNIQUE,
+  title VARCHAR(255) NOT NULL,
+  fault_description TEXT NOT NULL,
+  technician_id VARCHAR(36) NULL REFERENCES users(id),
+  technician_name VARCHAR(255) NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+  diagnosis TEXT NULL,
+  work_done TEXT NULL,
+  test_result TEXT NULL,
+  completion_note TEXT NULL,
+  repeat_issue SMALLINT NOT NULL DEFAULT 0,
+  started_at TIMESTAMPTZ NULL,
+  completed_at TIMESTAMPTZ NULL,
+  generated_by_name VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_job_cards_customer ON digital_job_cards(customer_id, status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_job_cards_technician ON digital_job_cards(technician_id, status, created_at DESC);

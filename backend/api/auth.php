@@ -5,6 +5,24 @@ require_once __DIR__ . '/../config/mailer.php';
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
+// GET /api/auth/customer-context?customer=company-slug
+// Public, minimal context used only to brand the friendly /app/{customer} login.
+if ($action === 'customer-context' && $method === 'GET') {
+    $slug = strtolower(trim((string)($_GET['customer'] ?? '')));
+    if ($slug === '' || !preg_match('/^[a-z0-9][a-z0-9-]{0,35}$/', $slug)) {
+        json_error('Customer app link is invalid.', 404);
+    }
+    $stmt = db()->prepare('SELECT name, portal_link FROM customers WHERE portal_link = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([$slug]);
+    $row = $stmt->fetch();
+    if (!$row) json_error('Customer app link was not found.', 404);
+    json_out([
+        'name' => $row['name'],
+        'slug' => $row['portal_link'],
+        'appUrl' => customer_portal_url($row['portal_link']),
+    ]);
+}
+
 // POST /api/auth/forgot-password  { email }
 // Sends a 6-digit verification code to the account's email, valid for 10
 // minutes. Always responds the same way whether or not the email exists,
@@ -211,6 +229,10 @@ if ($action === 'unified-login' && $method === 'POST') {
     $b = body();
     $rawLoginId = trim((string)($b['email'] ?? $b['loginId'] ?? $b['portalLink'] ?? ''));
     $password = (string)($b['password'] ?? '');
+    $contextSlug = strtolower(trim((string)($b['customerSlug'] ?? $b['customer'] ?? '')));
+    if ($contextSlug !== '' && $contextSlug !== 'belm' && !preg_match('/^[a-z0-9][a-z0-9-]{0,35}$/', $contextSlug)) {
+        json_error('Customer app link is invalid.', 400);
+    }
 
     if ($rawLoginId === '' || $password === '') {
         json_error('Enter your email or Customer Portal ID and password.');
@@ -224,6 +246,7 @@ if ($action === 'unified-login' && $method === 'POST') {
         $stmt = db()->prepare(
             'SELECT u.*, r.name AS role_name, r.allowed_pages,
                     c.name AS assigned_customer_name,
+                    c.portal_link AS assigned_customer_portal_link,
                     c.is_machinery_admin AS assigned_customer_self_service
              FROM users u
              JOIN roles r ON r.id = u.role_id
@@ -236,6 +259,14 @@ if ($action === 'unified-login' && $method === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password_hash'])) {
+            if ($contextSlug !== '' && $contextSlug !== 'belm') {
+                if ($user['role_name'] !== 'Technician') {
+                    json_error('This customer app link is for the customer team. BELM staff should use /app/belm.', 403);
+                }
+                if (strtolower((string)($user['assigned_customer_portal_link'] ?? '')) !== $contextSlug) {
+                    json_error('This Technician account is assigned to a different customer.', 403);
+                }
+            }
             if ($user['role_name'] === 'Technician') {
                 if (!$user['assigned_customer_id']) {
                     json_error('This Technician account has not been assigned to a customer. Contact the administrator.', 403);
@@ -258,6 +289,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                 'roleName' => $user['role_name'],
                 'allowedPages' => $allowedPages,
                 'assignedCustomerId' => $user['assigned_customer_id'],
+                'assignedCustomerPortalLink' => $user['assigned_customer_portal_link'] ?? null,
                 'isCustomerManaged' => !empty($user['is_customer_managed']),
             ]);
 
@@ -280,6 +312,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                     'allowedPages' => $allowedPages,
                     'assignedCustomerId' => $user['assigned_customer_id'],
                     'assignedCustomerName' => $user['assigned_customer_name'],
+                    'assignedCustomerPortalLink' => $user['assigned_customer_portal_link'] ?? null,
                     'isCustomerManaged' => !empty($user['is_customer_managed']),
                 ],
             ]);
@@ -294,14 +327,27 @@ if ($action === 'unified-login' && $method === 'POST') {
         $query = [];
         parse_str(parse_url($rawLoginId, PHP_URL_QUERY) ?: '', $query);
         $portalId = trim((string)($query['customer'] ?? ''));
+        if ($portalId === '') {
+            $path = (string)(parse_url($rawLoginId, PHP_URL_PATH) ?: '');
+            if (preg_match('#/app/([a-zA-Z0-9-]+)/?$#', $path, $match)) $portalId = strtolower($match[1]);
+        }
     }
 
-    $stmt = db()->prepare(
-        'SELECT * FROM customers
-         WHERE (LOWER(email) = ? OR portal_link = ?)
-           AND deleted_at IS NULL AND is_active = 1'
-    );
-    $stmt->execute([$loginId, $portalId]);
+    if ($contextSlug !== '' && $contextSlug !== 'belm') {
+        $stmt = db()->prepare(
+            'SELECT * FROM customers
+             WHERE portal_link = ? AND (LOWER(email) = ? OR portal_link = ?)
+               AND deleted_at IS NULL AND is_active = 1'
+        );
+        $stmt->execute([$contextSlug, $loginId, $portalId]);
+    } else {
+        $stmt = db()->prepare(
+            'SELECT * FROM customers
+             WHERE (LOWER(email) = ? OR portal_link = ?)
+               AND deleted_at IS NULL AND is_active = 1'
+        );
+        $stmt->execute([$loginId, $portalId]);
+    }
     $customer = $stmt->fetch();
     $loggedInAs = null;
     $actorType = null;
@@ -317,14 +363,25 @@ if ($action === 'unified-login' && $method === 'POST') {
     } else {
         $customer = null;
         if (filter_var($rawLoginId, FILTER_VALIDATE_EMAIL)) {
-            $stmt = db()->prepare(
-                'SELECT cu.*, c.name AS customer_name, c.portal_link
-                 FROM customer_users cu
-                 JOIN customers c ON c.id = cu.customer_id
-                 WHERE LOWER(cu.email) = ? AND cu.is_active = 1
-                   AND c.deleted_at IS NULL AND c.is_active = 1'
-            );
-            $stmt->execute([$loginId]);
+            if ($contextSlug !== '' && $contextSlug !== 'belm') {
+                $stmt = db()->prepare(
+                    'SELECT cu.*, c.name AS customer_name, c.portal_link
+                     FROM customer_users cu
+                     JOIN customers c ON c.id = cu.customer_id
+                     WHERE LOWER(cu.email) = ? AND c.portal_link = ? AND cu.is_active = 1
+                       AND c.deleted_at IS NULL AND c.is_active = 1'
+                );
+                $stmt->execute([$loginId, $contextSlug]);
+            } else {
+                $stmt = db()->prepare(
+                    'SELECT cu.*, c.name AS customer_name, c.portal_link
+                     FROM customer_users cu
+                     JOIN customers c ON c.id = cu.customer_id
+                     WHERE LOWER(cu.email) = ? AND cu.is_active = 1
+                       AND c.deleted_at IS NULL AND c.is_active = 1'
+                );
+                $stmt->execute([$loginId]);
+            }
             $subUser = $stmt->fetch();
             if ($subUser && password_verify($password, $subUser['password'])) {
                 $stmt = db()->prepare(
@@ -360,10 +417,14 @@ if ($action === 'unified-login' && $method === 'POST') {
         'permissions' => $permissions,
     ], 30 * 24 * 3600);
 
+    $customerDestination = $customerRole === 'workshop_manager'
+        ? '/breakdown-workflow/?actor=customer'
+        : '/portal/dashboard';
+
     json_out([
         'token' => $token,
         'accountType' => 'customer',
-        'destination' => '/portal/dashboard',
+        'destination' => $customerDestination,
         'customer' => [
             'id' => $customer['id'],
             'name' => $customer['name'],
@@ -456,6 +517,10 @@ if ($action === 'customer-login' && $method === 'POST') {
         $query = [];
         parse_str(parse_url($rawLoginId, PHP_URL_QUERY) ?: '', $query);
         $portalId = trim((string)($query['customer'] ?? ''));
+        if ($portalId === '') {
+            $path = (string)(parse_url($rawLoginId, PHP_URL_PATH) ?: '');
+            if (preg_match('#/app/([a-zA-Z0-9-]+)/?$#', $path, $match)) $portalId = strtolower($match[1]);
+        }
     }
     $password = $b['password'] ?? '';
 

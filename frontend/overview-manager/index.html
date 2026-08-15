@@ -3,14 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>All Overview — BELM Admin</title>
+  <title>Operations Action Center — BELM Admin</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/management-analytics.css?v=18-sidebar-activity">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
+  <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=211-bug-audit">
   <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body class="management-page">
   <header class="management-topbar">
@@ -24,8 +26,8 @@
     <section class="management-hero">
       <div>
         <p class="eyebrow">Business, people and operations</p>
-        <h1>All Overview</h1>
-        <p>One card-based view of customers, staff roles, finance, service work, machines and attendance.</p>
+        <h1>Operations Action Center</h1>
+        <p>Start with what needs action now, then open the deeper business and fleet analysis only when needed.</p>
       </div>
       <a class="button secondary" href="/reports-manager/">Open Detailed Reports</a>
     </section>
@@ -45,8 +47,18 @@
     </section>
 
     <div id="pageAlert" class="alert hidden"></div>
-    <section id="primaryMetrics" class="metrics-grid" aria-label="Main overview totals"></section>
-    <section id="financeMetrics" class="metrics-grid" aria-label="Finance overview"></section>
+    <section class="panel admin-action-center">
+      <div class="section-head"><div><h2>Action Required</h2><p>Items that can stop work, delay customers or require a management decision.</p></div></div>
+      <section id="actionMetrics" class="metrics-grid" aria-label="Items requiring action"></section>
+    </section>
+
+    <details class="panel overview-disclosure">
+      <summary><div><strong>Business & Fleet Snapshot</strong><span>Customers, staff, machines and finance</span></div><b>+</b></summary>
+      <div class="overview-disclosure-body">
+        <section id="primaryMetrics" class="metrics-grid" aria-label="Main overview totals"></section>
+        <section id="financeMetrics" class="metrics-grid" aria-label="Finance overview"></section>
+      </div>
+    </details>
 
     <section class="panel inventory-panel">
       <div class="section-head">
@@ -98,7 +110,7 @@
   </main>
 
   <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=30-bank-permission"></script>
-  <script src="/overview-manager/app.js?v=18-sidebar-activity"></script>
+  <script src="/admin-sidebar.js?v=211-bug-audit"></script>
+  <script src="/overview-manager/app.js?v=211-bug-audit"></script>
 </body>
 </html>

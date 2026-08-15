@@ -90,6 +90,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- Distinguishes a Technician created by a customer's Self-Service admin from
 -- a BELM Technician temporarily assigned to that customer for support.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_customer_managed SMALLINT NOT NULL DEFAULT 0;
+-- Dashboard permissions granted by the customer's Administration to a customer-managed Technician.
+-- NULL means full customer-dashboard control; JSON [] means Technician workspace only.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_permissions TEXT NULL;
 -- Backfill technicians created by the customer-portal flow used in recent
 -- releases. Those accounts were created with no recovery_code_hash; BELM Admin
 -- created technicians receive a recovery code. Restrict the heuristic to

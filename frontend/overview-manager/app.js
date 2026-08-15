@@ -53,13 +53,15 @@
     const totals = data.totals || {};
     document.getElementById("periodLabel").textContent =
       `${data.period?.label || "Selected period"} · ${data.period?.from || ""} → ${data.period?.to || ""}`;
+    document.getElementById("actionMetrics").innerHTML = [
+      metric("Registration approvals", number.format(totals.pendingApplications || 0), "Waiting for Administration decision", totals.pendingApplications ? "yellow" : "green"),
+      metric("Open service requests", number.format(totals.openRequests || 0), "Customer work still open", totals.openRequests ? "yellow" : "green"),
+      metric("Pending tasks", number.format(totals.pendingTasks || 0), "Work waiting for completion", totals.pendingTasks ? "yellow" : "green"),
+      metric("Low stock parts", number.format(totals.lowStockParts || 0), "At or below reorder point", totals.lowStockParts ? "red" : "green"),
+    ].join("");
     document.getElementById("primaryMetrics").innerHTML = [
       metric("Customers", number.format(totals.customers || 0), `${number.format(totals.machines || 0)} registered machines`, "green"),
       metric("Employees", number.format(totals.employees || 0), `${number.format(totals.activeEmployees || 0)} active accounts`),
-      metric("Registration requests", number.format(totals.pendingApplications || 0), "Waiting for admin approval", totals.pendingApplications ? "yellow" : "green"),
-      metric("Open service requests", number.format(totals.openRequests || 0), "Open, assigned, in progress or on hold", totals.openRequests ? "yellow" : "green"),
-      metric("Pending tasks", number.format(totals.pendingTasks || 0), `${number.format(totals.completedTasks || 0)} completed`, totals.pendingTasks ? "yellow" : "green"),
-      metric("Low stock parts", number.format(totals.lowStockParts || 0), "At or below reorder point", totals.lowStockParts ? "red" : "green"),
       metric("Machines", number.format(totals.machines || 0), "Entire customer fleet"),
       metric("Completed work", number.format(totals.completedTasks || 0), "Tasks marked done", "green"),
     ].join("");

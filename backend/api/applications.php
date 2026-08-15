@@ -489,7 +489,9 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             ]),
         ]);
 
-        $loginPath = $assignment['roleName'] === 'Technician' ? '/tech' : '/admin/login';
+        // V208: all BELM staff use the same app-like entry link. The verified
+        // role decides whether the user lands in Admin or Technician workspace.
+        $staffLoginUrl = public_app_base_url() . '/app/belm';
         $pdo->commit();
         json_out([
             'ok' => true,
@@ -503,7 +505,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             'loginEmail' => $staffApplication['email'],
             'temporaryPassword' => $temporaryPassword,
             'recoveryCode' => $recoveryCode,
-            'loginUrl' => portal_base_url() . $loginPath,
+            'loginUrl' => $staffLoginUrl,
             'message' => 'System user was activated with only the assigned role access.',
         ]);
     } catch (Throwable $error) {

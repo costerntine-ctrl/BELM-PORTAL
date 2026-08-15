@@ -187,6 +187,36 @@ if ($method === 'GET' && $action === 'equivalents') {
     json_out(fetch_equivalents($id));
 }
 
+
+// GET ?action=equivalent-links — structured, unique cross-reference pairs
+// used by the visible Equivalent Spares sidebar view. The relationship is
+// still stored bidirectionally; this endpoint returns each pair only once.
+if ($method === 'GET' && $action === 'equivalent-links') {
+    $stmt = db()->query(
+        'SELECT a.id AS part_a_id, a.part_number AS part_a_number, a.reference_number AS part_a_reference,
+                a.name AS part_a_name, a.stock_qty AS part_a_stock,
+                b.id AS part_b_id, b.part_number AS part_b_number, b.reference_number AS part_b_reference,
+                b.name AS part_b_name, b.stock_qty AS part_b_stock
+         FROM spare_part_equivalents e
+         JOIN spare_parts a ON a.id = e.spare_part_id AND a.deleted_at IS NULL
+         JOIN spare_parts b ON b.id = e.equivalent_part_id AND b.deleted_at IS NULL
+         WHERE e.spare_part_id < e.equivalent_part_id
+         ORDER BY a.part_number ASC, b.part_number ASC'
+    );
+    json_out(array_map(fn($row) => [
+        'partAId' => $row['part_a_id'],
+        'partANumber' => $row['part_a_number'],
+        'partAReference' => $row['part_a_reference'],
+        'partAName' => $row['part_a_name'],
+        'partAStock' => (int)$row['part_a_stock'],
+        'partBId' => $row['part_b_id'],
+        'partBNumber' => $row['part_b_number'],
+        'partBReference' => $row['part_b_reference'],
+        'partBName' => $row['part_b_name'],
+        'partBStock' => (int)$row['part_b_stock'],
+    ], $stmt->fetchAll()));
+}
+
 // GET ?action=all-equivalents — the whole equivalence graph in one call
 // (part_id => [equivalent part_number, ...]), fetched once when the
 // inventory list loads so the search box can match "670" against any

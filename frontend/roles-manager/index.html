@@ -3,14 +3,16 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BELM Roles & System Users</title>
+    <title>BELM Staff Access</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=211-bug-audit">
     <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
   <body>
     <header class="topbar">
@@ -28,8 +30,8 @@
       <section class="hero">
         <div>
           <p class="eyebrow">Security & Access</p>
-          <h1>Roles & System Users</h1>
-          <p>Add system users, change roles and control customer assignment.</p>
+          <h1>BELM Staff Access</h1>
+          <p>Manage BELM staff roles, access and customer assignment. Customer team roles are managed inside each customer portal.</p>
         </div>
         <div class="actions">
           <button id="addRoleButton" class="secondary" type="button">+ Add role</button>
@@ -74,7 +76,7 @@
           <label>Name<input id="userName" required maxlength="255"></label>
           <label>Phone<input id="userPhone" maxlength="50"></label>
           <label id="emailField">Email<input id="userEmail" required type="email"></label>
-          <label id="passwordField">Temporary password<input id="userPassword" type="text" minlength="8"><button id="generatePassword" class="ghost" style="width:100%;margin-top:6px;min-height:34px" type="button">Generate secure password</button></label>
+          <label id="passwordField">Temporary password<input id="userPassword" type="password" autocomplete="new-password" minlength="8"><button id="generatePassword" class="ghost" style="width:100%;margin-top:6px;min-height:34px" type="button">Generate secure password</button></label>
           <div class="field-block">Roles <small>(select one or more)</small><div id="userRoles" class="check-list"></div></div>
           <label id="customerField">Assigned customer<select id="assignedCustomer"></select></label>
           <label class="full"><span class="check-option"><input id="userActive" type="checkbox" checked> User account is active</span></label>
@@ -113,7 +115,7 @@
         <p class="muted">Copy these credentials now and send them securely to the assigned user.</p>
         <div class="credentials">
           <label>Email<input id="systemCredentialEmail" readonly></label>
-          <label>Temporary password<input id="systemCredentialPassword" readonly></label>
+          <label>Temporary password<input id="systemCredentialPassword" type="password" readonly></label>
           <label>Recovery code<input id="systemCredentialRecovery" readonly></label>
           <label>Unified login link<input id="systemCredentialLink" readonly></label>
         </div>
@@ -126,7 +128,7 @@
     </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+    <script src="/admin-sidebar.js?v=211-bug-audit"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
     <script src="/roles-manager/manager.js"></script>

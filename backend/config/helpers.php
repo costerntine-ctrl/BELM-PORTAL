@@ -145,8 +145,16 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
     }
 }
 
+function public_app_base_url(): string {
+    $configured = trim((string)(getenv('PUBLIC_APP_URL') ?: ''));
+    if ($configured !== '') return rtrim($configured, '/');
+    return portal_base_url();
+}
+
 function customer_portal_url(string $portalSlug, ?string $email = null): string {
-    return portal_base_url() . '/portal/login?customer=' . rawurlencode($portalSlug);
+    // V208: customer links are human-readable and app-like. Example:
+    // https://belmgeneraltech.co.tz/app/ecls-icd
+    return public_app_base_url() . '/app/' . rawurlencode($portalSlug);
 }
 
 function document_number(string $prefix): string {
@@ -512,6 +520,7 @@ function customer_role_default_dashboard_permissions(string $role): array {
         'accounts' => ['machine-expenses', 'fuel-usage', 'email', 'workflow'],
         'procurement' => ['machine-expenses', 'store', 'service-request', 'workflow'],
         'operator' => ['fuel-usage', 'operator-reports', 'report-problem'],
+        'technician' => ['operator-reports', 'report-problem', 'check-up', 'workflow'],
         'admin', 'assistant' => ['*'],
         default => [],
     };
@@ -564,6 +573,41 @@ function customer_team_recipients_for_permissions(
             'role' => (string)($row['role'] ?? ''),
         ];
     }
+
+
+    // Customer-managed Technicians can now receive the same role-aware team
+    // alerts when Administration grants the relevant dashboard permission.
+    // No BELM staff Technician is included here.
+    try {
+        $techStmt = db()->prepare(
+            "SELECT u.name, u.email, u.customer_permissions
+             FROM users u JOIN roles r ON r.id=u.role_id
+             WHERE u.assigned_customer_id=? AND u.is_customer_managed=1
+               AND u.is_active=1 AND u.deleted_at IS NULL AND r.name='Technician'"
+        );
+        $techStmt->execute([$customerId]);
+        foreach ($techStmt->fetchAll() as $tech) {
+            $email = strtolower(trim((string)($tech['email'] ?? '')));
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+            $raw = (string)($tech['customer_permissions'] ?? '');
+            if ($raw === '__ALL__') {
+                $permissions = ['*'];
+            } else {
+                $decoded = json_decode($raw !== '' ? $raw : '[]', true);
+                $permissions = is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : [];
+            }
+            $matches = in_array('*', $permissions, true)
+                || !$wanted
+                || (bool)array_intersect($wanted, $permissions);
+            if (!$matches) continue;
+            $byEmail[$email] = [
+                'email' => $email,
+                'name' => (string)($tech['name'] ?? ''),
+                'role' => 'technician',
+            ];
+        }
+    } catch (Throwable $ignored) {}
+
     return array_values($byEmail);
 }
 
@@ -1045,7 +1089,59 @@ function require_edit_confirmation(array $user, array $body): void {
 // ---- Customer portal auth ---------------------------------------------------
 function require_customer_auth(): array {
     $payload = current_token_payload();
-    if (!$payload || ($payload['type'] ?? '') !== 'customer') json_error('Not authenticated', 401);
+    if (!$payload) json_error('Not authenticated', 401);
+
+    // V207: a customer-managed Technician may also be granted customer-dashboard
+    // permissions by that customer's Administration. The same Technician login
+    // can therefore open /tech for field work and /portal/dashboard for any
+    // explicitly granted company functions. BELM internal/admin permissions are
+    // never inherited here.
+    if (($payload['type'] ?? '') === 'staff'
+        && ($payload['roleName'] ?? '') === 'Technician'
+        && !empty($payload['isCustomerManaged'])
+        && !empty($payload['assignedCustomerId'])) {
+        $stmt = db()->prepare(
+            "SELECT u.id AS user_id, u.name AS user_name, u.email AS user_email,
+                    u.customer_permissions, u.is_active,
+                    c.id AS customer_id, c.email AS customer_email,
+                    c.is_active AS customer_active, c.is_machinery_admin
+             FROM users u
+             JOIN customers c ON c.id = u.assigned_customer_id
+             JOIN roles r ON r.id = u.role_id
+             WHERE u.id = ? AND u.assigned_customer_id = ?
+               AND u.is_customer_managed = 1 AND r.name = 'Technician'
+               AND u.deleted_at IS NULL AND c.deleted_at IS NULL"
+        );
+        $stmt->execute([$payload['id'] ?? '', $payload['assignedCustomerId'] ?? '']);
+        $live = $stmt->fetch();
+        if (!$live || empty($live['is_active']) || empty($live['customer_active'])) {
+            json_error('This Technician or customer account is no longer active.', 401);
+        }
+        if (empty($live['is_machinery_admin'])) {
+            json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
+        }
+        $rawTechnicianPermissions = (string)($live['customer_permissions'] ?? '');
+        if ($rawTechnicianPermissions === '__ALL__') {
+            $permissions = null;
+        } else {
+            $decoded = json_decode($rawTechnicianPermissions !== '' ? $rawTechnicianPermissions : '[]', true);
+            $permissions = is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : [];
+        }
+        // Re-shape the staff token into the same customer context used by the
+        // customer portal APIs. `id` intentionally becomes the customer id;
+        // `actorId` keeps the Technician user id for audit attribution.
+        $payload['type'] = 'customer';
+        $payload['id'] = (string)$live['customer_id'];
+        $payload['actorType'] = 'technician';
+        $payload['actorId'] = (string)$live['user_id'];
+        $payload['actorName'] = (string)$live['user_name'];
+        $payload['actorEmail'] = (string)$live['user_email'];
+        $payload['customerRole'] = 'technician';
+        $payload['permissions'] = $permissions;
+        return $payload;
+    }
+
+    if (($payload['type'] ?? '') !== 'customer') json_error('Not authenticated', 401);
 
     $actorType = $payload['actorType'] ?? null;
     if (!in_array($actorType, ['owner', 'assistant'], true)) {
@@ -1072,6 +1168,27 @@ function require_customer_auth(): array {
         $payload['permissions'] = $assistant['permissions'] !== null
             ? (json_decode((string)$assistant['permissions'], true) ?: [])
             : null;
+
+        // Operator portal users are intentionally machine-card-only. Even a
+        // legacy Operator account that previously had NULL (= full access)
+        // is restricted here at request time so account-level tools such as
+        // Store, Management Email and Role Manager can never be reached by
+        // typing a URL manually. Role Manager may still choose which of the
+        // machine-card actions below the Operator can use.
+        if (strtolower(trim((string)$assistant['role'])) === 'operator') {
+            $operatorCardPermissions = [
+                'machine-expenses', 'fuel-usage', 'operator-reports',
+                'service-request', 'report-problem', 'check-up', 'workflow',
+            ];
+            if ($payload['permissions'] === null) {
+                $payload['permissions'] = $operatorCardPermissions;
+            } else {
+                $payload['permissions'] = array_values(array_intersect(
+                    array_map('strval', (array)$payload['permissions']),
+                    $operatorCardPermissions
+                ));
+            }
+        }
     }
     return $payload;
 }
@@ -1091,7 +1208,7 @@ function require_customer_owner_or_admin(array $customer): void {
     $isOwner = ($customer['actorType'] ?? '') === 'owner';
     $isAdminAssistant = ($customer['actorType'] ?? '') === 'assistant' && ($customer['customerRole'] ?? '') === 'admin';
     $permissions = $customer['permissions'] ?? null;
-    $hasAssignUsersPermission = is_array($permissions) && in_array('assign-users', $permissions, true);
+    $hasAssignUsersPermission = $permissions === null || (is_array($permissions) && in_array('assign-users', $permissions, true));
     if (!$isOwner && !$isAdminAssistant && !$hasAssignUsersPermission) {
         json_error('Only the main customer account, a Company Admin, or someone granted "Assign Users" access can manage assistants.', 403);
     }

@@ -9,9 +9,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/customers-manager/manager.css">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=30-bank-permission">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=211-bug-audit">
     <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
   <body>
     <header class="topbar">
@@ -211,7 +213,7 @@
         </div>
         <div class="credentials">
           <label>Email<input id="credentialEmail" readonly></label>
-          <label>Temporary password<input id="credentialPassword" readonly></label>
+          <label>Temporary password<input id="credentialPassword" type="password" readonly></label>
           <label>Recovery code<input id="credentialRecovery" readonly></label>
           <label>Customer portal link<input id="credentialLink" readonly></label>
         </div>
@@ -351,7 +353,7 @@
     </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=30-bank-permission"></script>
+    <script src="/admin-sidebar.js?v=211-bug-audit"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
     <script src="/customers-manager/manager.js?v=194-provider-mode"></script>

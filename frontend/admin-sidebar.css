@@ -640,3 +640,23 @@
   background: linear-gradient(145deg, #13243b, #080f19);
   box-shadow: 0 10px 26px rgba(5,10,20,.25);
 }
+
+/* ========================================================================
+   V210 UX CLEANUP - collapsible task-oriented navigation groups
+   ======================================================================== */
+.belm-sidebar-group { flex:0 0 auto; margin:2px 0 4px; }
+.belm-sidebar-group > summary { list-style:none; cursor:pointer; user-select:none; }
+.belm-sidebar-group > summary::-webkit-details-marker { display:none; }
+.belm-sidebar-group .belm-sidebar-section {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin:8px 6px 4px; padding:7px 8px; border-radius:8px;
+  color:#8fa0b5; transition:.15s ease;
+}
+.belm-sidebar-group .belm-sidebar-section:hover { color:#d8e4f2; background:rgba(255,255,255,.045); }
+.belm-sidebar-section-chevron { color:var(--belm-sidebar-yellow); font-size:13px; transition:transform .18s ease; }
+.belm-sidebar-group[open] .belm-sidebar-section-chevron { transform:rotate(180deg); }
+.belm-sidebar-group-links { display:grid; gap:1px; padding-bottom:3px; }
+.belm-sidebar-group:not([open]) .belm-sidebar-group-links { display:none; }
+.belm-sidebar-link.workflow { font-weight:850; }
+.belm-sidebar-link.workflow .belm-sidebar-icon { background:rgba(0,169,88,.16); }
+.belm-sidebar-group:has(.belm-sidebar-link.active) > .belm-sidebar-section { color:#fff; }

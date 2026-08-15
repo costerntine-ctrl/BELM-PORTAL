@@ -1,0 +1,30 @@
+BELM PORTAL V211 - V210 BUG AUDIT & STABILITY FIX
+Date: 2026-08-15
+
+This build is a stability patch over V210. No database migration is required by V211 itself.
+
+FIXED DURING AUDIT
+1. Admin sidebar CSS cache mismatch in the main SPA entry (V210 JS + old V195 CSS URL).
+2. Operations Action Center CSS cache mismatch (new HTML could load old v18 CSS).
+3. Mobile admin sidebar no longer closes when a section summary is expanded/collapsed; it closes only after a real page link is chosen.
+4. Shared Breakdown Workflow now receives an explicit actor (admin/customer/tech), preventing stale browser tokens from selecting the wrong role/session.
+5. Smart app login clears stale role sessions before saving the newly authenticated account and records the active account type.
+6. Admin Breakdown page now loads the grouped admin sidebar only in Admin actor mode; Customer/Technician use the same shared page without being redirected to Admin login.
+7. Workshop Manager smart-login destination now uses actor=customer.
+8. Technician Job Card/Process links now use actor=tech.
+9. Customer Breakdown links use the correct actor; Technician Full-Control accounts use tech actor.
+10. Machine-card action icons are applied after the async service/action panel is actually created. Workflow icon added.
+11. Operator cards also use compact More Actions when Administration grants more than four card functions.
+12. Customer role detection now recognizes Technician staff tokens used for Full Customer Control.
+13. More Tools permissions are re-applied after the authoritative dashboard profile loads, preventing stale token permissions from leaving wrong buttons visible/hidden.
+14. Permission rendering is idempotent so newly-authorized actions can reappear after refresh.
+15. PWA/customer-app cache version bumped to V211 so an offline/installed app does not fall back to the V208/V209 shell after upgrade.
+16. Removed duplicate customer machine-grid class assignment.
+
+QA COMPLETED
+- PHP syntax lint: 47/47 PASS
+- JavaScript syntax check: 35/35 PASS
+- CSS parser: 26/26 PASS
+- HTML files checked: 29; duplicate IDs: 0; missing local static assets: 0
+- V211 targeted regression checks: 18/18 PASS (rerun before packaging)
+- Browser automation is not certified in this build environment because headless Chromium cannot complete a page run here. Perform a short live browser smoke test after deployment, especially on one phone and one PC.

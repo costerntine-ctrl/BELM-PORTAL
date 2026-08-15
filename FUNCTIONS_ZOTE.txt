@@ -380,8 +380,15 @@ V200 PREVENTIVE SERVICE PREPARATION
 
 V202 Breakdown Workflow:
 - Live breakdown queue with department/SLA delay tracking
-- Boss-only spare approval
+- Administration-only spare approval
 - Store -> Procurement -> Accounts -> Parts Ready process
 - Digital Job Cards with technician reports
 - Technician completion / first-time-fix / repeat-work metrics
 - Downloadable Job Card PDF
+
+V205 Workshop Department Reports:
+- Workshop Manager / Administration: Daily and Monthly department analysis in Breakdown Workflow
+- KPI: new breakdowns, completed jobs, open/delayed work, waiting Administration/parts, first-time-fix, average repair time
+- Bottleneck analysis by responsible department and waiting time
+- Technician period performance and repeat/rework analysis
+- Downloadable Workshop Department Report PDF

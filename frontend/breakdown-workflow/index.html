@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BELM Breakdown Workflow</title>
-  <link rel="stylesheet" href="/theme-global.css"><link rel="stylesheet" href="/belm-theme.css">
-  <link rel="stylesheet" href="/breakdown-workflow/workflow.css">
+  <link rel="stylesheet" href="/theme-global.css"><link rel="stylesheet" href="/belm-theme.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/breakdown-workflow/workflow.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body>
   <header class="topbar">
@@ -23,13 +26,25 @@
       <div class="panel"><div class="panel-head"><div><h2>Live Breakdown Queue</h2><p>Open cases first. Red means the current department is over its stage SLA.</p></div></div><div id="caseList" class="case-list"><div class="empty">Loading...</div></div></div>
       <div class="panel detail-panel"><div id="caseDetail" class="empty">Select a breakdown case to see the full process.</div></div>
     </section>
+    <section class="panel workshop-report-panel" id="workshopReportPanel">
+      <div class="panel-head report-head">
+        <div><h2>Workshop Department Analysis</h2><p>Daily or monthly operational analysis from breakdown cases and Digital Job Cards.</p></div>
+        <div class="report-controls">
+          <label>Period<select id="reportPeriod"><option value="daily">Daily</option><option value="monthly">Monthly</option></select></label>
+          <label>Report date<input id="reportDate" type="date"></label>
+          <button id="reportRefresh" type="button">Refresh Analysis</button>
+          <button id="reportPdf" type="button" class="primary">Download PDF</button>
+        </div>
+      </div>
+      <div id="departmentReport"><div class="empty">Loading Workshop analysis...</div></div>
+    </section>
     <section class="panel performance-panel"><div class="panel-head"><div><h2>Technician Performance</h2><p>Completion, repeat work, first-time-fix and average resolution time from Digital Job Cards.</p></div></div><div id="performanceGrid" class="performance-grid"></div></section>
   </main>
 
   <dialog id="caseDialog"><form id="caseForm"><h2>Open Breakdown Case</h2><label>Machine<select id="caseMachine" required></select></label><label>Problem / breakdown<textarea id="caseDescription" required rows="4"></textarea></label><div class="dialog-actions"><button type="button" data-close="caseDialog">Cancel</button><button class="primary" type="submit">Open Case</button></div></form></dialog>
   <dialog id="jobDialog"><form id="jobForm"><h2>Generate Digital Job Card</h2><input id="jobCaseId" type="hidden"><label>Job title<input id="jobTitle" required></label><label>Assign Technician<select id="jobTechnician"><option value="">Unassigned</option></select></label><div class="dialog-actions"><button type="button" data-close="jobDialog">Cancel</button><button class="primary" type="submit">Generate Job Card</button></div></form></dialog>
-  <dialog id="spareDialog"><form id="spareForm"><h2>Request Spare - Boss Approval Required</h2><input id="spareCaseId" type="hidden"><label>Spare name<input id="spareName" required></label><label>Part number / reference<input id="sparePart"></label><div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div><label>Why required<textarea id="spareReason" rows="3"></textarea></label><div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send for Boss Approval</button></div></form></dialog>
+  <dialog id="spareDialog"><form id="spareForm"><h2>Request Spare - Administration Approval Required</h2><input id="spareCaseId" type="hidden"><label>Spare name<input id="spareName" required></label><label>Part number / reference<input id="sparePart"></label><div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div><label>Why required<textarea id="spareReason" rows="3"></textarea></label><div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send for Administration Approval</button></div></form></dialog>
   <dialog id="techReportDialog"><form id="techReportForm"><h2>Technician Job Card Report</h2><input id="techJobId" type="hidden"><label>Diagnosis<textarea id="techDiagnosis" required rows="3"></textarea></label><label>Work done<textarea id="techWork" required rows="4"></textarea></label><label>Test result<textarea id="techTest" rows="2"></textarea></label><label>Completion note<textarea id="techNote" rows="2"></textarea></label><label class="check"><input id="techRepeat" type="checkbox"> This is repeat/rework of the same fault</label><label class="check"><input id="techComplete" type="checkbox"> Repair work completed - send to Workshop testing</label><div class="dialog-actions"><button type="button" data-close="techReportDialog">Cancel</button><button class="primary" type="submit">Save Job Report</button></div></form></dialog>
 
-  <script src="/theme-manager.js"></script><script src="/breakdown-workflow/workflow.js"></script>
+  <script src="/theme-manager.js"></script><script src="/admin-sidebar.js?v=211-bug-audit"></script><script src="/breakdown-workflow/workflow.js?v=211-bug-audit"></script>
 </body></html>

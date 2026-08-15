@@ -1,0 +1,10 @@
+BELM PORTAL V205 - WORKSHOP DEPARTMENT REPORTS
+
+- Workshop Manager / Administration can view Daily or Monthly department analysis in Breakdown Workflow.
+- KPI summary: new breakdowns, completed jobs, open/delayed cases, waiting parts, first-time-fix, average repair time.
+- Live bottleneck table shows which department currently holds open work and delay counts.
+- Technician period analysis: completed jobs, first-time-fix, average resolution time and repeat/rework.
+- Repeat/common fault analysis from completed Digital Job Cards.
+- Download Workshop Department Report PDF for selected day/month.
+- BELM Admin can view aggregated analysis for Service Provider customers; Customer Technicians cannot access management reports.
+- No schema migration required for V205.

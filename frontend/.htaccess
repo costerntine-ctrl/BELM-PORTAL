@@ -6,8 +6,14 @@
   RewriteRule ^portal-home\.html$ - [L]
   RewriteRule ^index\.html$ - [L]
   RewriteRule ^admin-menu/?$ /overview-manager/ [R=302,L]
+  # V208 app-like login links: /app/customer-name or /app/belm
+  RewriteRule ^app(?:/[a-zA-Z0-9-]+)?/?$ /customer-app.html [END]
   RewriteRule ^(?:admin/login|portal/login|tech)(?:/.*)?$ /index.html [END]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [END]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "frame-ancestors 'self' https://belmgeneraltech.co.tz https://www.belmgeneraltech.co.tz"
 </IfModule>

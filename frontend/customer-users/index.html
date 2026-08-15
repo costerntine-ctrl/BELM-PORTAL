@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/customer-users/users.css">
   <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body>
   <header>
@@ -131,6 +133,7 @@
         <button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">×</button>
       </div>
       <input id="userId" type="hidden">
+      <input id="accountKind" type="hidden" value="new">
       <div class="form-grid">
         <label class="wide">Full name<input id="name" maxlength="255" required autocomplete="name"></label>
         <label>Email address<input id="email" type="email" maxlength="255" required autocomplete="email"></label>
@@ -142,7 +145,7 @@
             <option value="accounts">Muhasibu / Accountant</option>
             <option value="procurement">Procurement</option>
             <option value="operator">Operator</option>
-            <option value="technician">Fundi / Technician — uses the Technician workspace</option>
+            <option value="technician">Fundi / Technician — Technician Workspace + optional Customer Dashboard</option>
           </select>
         </label>
         <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>
@@ -151,7 +154,9 @@
       </div>
       <div class="field-block" id="accessRoleWrap">
         <div class="dashboard-access-title"><b>Dashboard Access</b><small>Select what this user can open. Role presets are applied automatically, then you can adjust them.</small></div>
-        <label class="check-option access-all"><input type="checkbox" id="accessAll"> <b>Access All Dashboard Functions</b></label>
+        <label class="check-option access-all"><input type="checkbox" id="accessAll"> <b id="accessAllLabelText">Access All Dashboard Functions</b></label>
+        <div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator ataona machine cards pekee. Dashboard Access hapa inachagua buttons/functions zinazoonekana ndani ya kila machine card; account-level tools, Store, Management Email na +USER hazipatikani kwa Operator.</span></div>
+        <div id="technicianAccessNote" class="operator-card-only-note hidden"><b>Fundi / Technician Access</b><span>Fundi anaendelea kuwa na Technician Workspace kwa kazi za field. Administration anaweza pia kumpa Dashboard Access maalum au Full Customer Control. Hii haimpi BELM Admin/Inventory internal access.</span></div>
         <div id="accessOptions" class="access-options">
           <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Machine Expenses</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label>
@@ -175,6 +180,6 @@
     </form>
   </dialog>
 
-  <script src="/customer-users/users.js?v=199-role-manager"></script>
+  <script src="/customer-users/users.js?v=207-technician-full-control"></script>
 </body>
 </html>

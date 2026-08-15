@@ -105,3 +105,10 @@ input,select { width:100%; padding:11px 12px; border:1px solid #cad6d0; border-r
 .secondary-access.hidden { display:none; }
 @media(max-width:620px){ .dashboard-access-title{flex-direction:column}.dashboard-access-title small{text-align:left} }
 .badge.technician { color:#2f4b7c; background:#eaf0fb; }
+
+
+/* V206 - Operator role is a machine-card-only workspace. */
+.operator-card-only-note { margin:10px 0 12px; padding:11px 12px; border:1px solid rgba(24,119,242,.24); border-left:4px solid #1877f2; border-radius:10px; background:rgba(24,119,242,.07); display:flex; flex-direction:column; gap:4px; font-size:12px; line-height:1.45; }
+.operator-card-only-note b { color:var(--text,#101828); }
+.operator-card-only-note span { color:var(--muted,#667085); }
+.operator-card-only-note.hidden { display:none !important; }

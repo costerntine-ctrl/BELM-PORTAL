@@ -66,12 +66,15 @@
     assistant: "Legacy Assistant",
   };
 
+  const OPERATOR_CARD_PERMISSIONS = ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "workflow"];
+
   const ROLE_ACCESS_PRESETS = {
     workshop_manager: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store", "workflow"],
     store_keeper: ["machine-expenses", "store", "workflow"],
     accounts: ["machine-expenses", "fuel-usage", "email", "workflow"],
     procurement: ["machine-expenses", "store", "service-request", "workflow"],
     operator: ["fuel-usage", "operator-reports", "report-problem"],
+    technician: ["operator-reports", "report-problem", "check-up", "workflow"],
     admin: "all",
     assistant: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store"],
   };
@@ -262,8 +265,10 @@
         ? technicians.map((tech) => `
             <div class="roster-item">
               <span><strong>${escapeHtml(tech.name)}</strong> · ${escapeHtml(tech.email)}${tech.phone ? ` · ${escapeHtml(tech.phone)}` : ""}
-                ${tech.is_active ? '<em class="roster-pin-set">Active</em>' : '<em class="roster-pin-missing">Inactive</em>'}
+                ${(tech.isActive ?? tech.is_active) ? '<em class="roster-pin-set">Active</em>' : '<em class="roster-pin-missing">Inactive</em>'}
+                <em class="${tech.permissions === null ? 'roster-pin-set' : 'roster-pin-missing'}">${tech.permissions === null ? 'Full Customer Control' : `${Array.isArray(tech.permissions) ? tech.permissions.length : 0} dashboard access`}</em>
               </span>
+              <button type="button" class="edit" data-edit-technician="${escapeHtml(tech.id)}">Edit access</button>
             </div>`).join("")
         : '<p class="empty-role">No Technicians added yet.</p>';
     } catch (error) {
@@ -292,8 +297,36 @@
   }
 
   function readAccessPayload() {
+    const role = document.getElementById("role").value;
+    if (role === "operator") {
+      if (document.getElementById("accessAll").checked) return [...OPERATOR_CARD_PERMISSIONS];
+      return [...document.querySelectorAll(".access-item:checked")]
+        .map((item) => item.value)
+        .filter((value) => OPERATOR_CARD_PERMISSIONS.includes(value));
+    }
     if (document.getElementById("accessAll").checked) return "all";
     return [...document.querySelectorAll(".access-item:checked")].map((item) => item.value);
+  }
+
+  function applyRoleAccessVisibility() {
+    const role = document.getElementById("role").value;
+    const operatorOnly = role === "operator";
+    document.getElementById("operatorCardOnlyNote")?.classList.toggle("hidden", !operatorOnly);
+    document.querySelectorAll(".access-item").forEach((item) => {
+      const label = item.closest("label");
+      if (!label) return;
+      const allowed = !operatorOnly || OPERATOR_CARD_PERMISSIONS.includes(item.value);
+      label.classList.toggle("hidden", !allowed);
+      if (!allowed) item.checked = false;
+    });
+    const accessAllText = document.getElementById("accessAllLabelText");
+    if (accessAllText) {
+      accessAllText.textContent = operatorOnly
+        ? "All Machine Card Functions"
+        : role === "technician"
+          ? "Full Customer Control"
+          : "Access All Dashboard Functions";
+    }
   }
 
   function applyRolePreset(role) {
@@ -315,11 +348,13 @@
   function toggleFieldsForRole() {
     const isTechnician = document.getElementById("role").value === "technician";
     const isEdit = Boolean(document.getElementById("userId").value);
+    applyRoleAccessVisibility();
     // Customer Admin sets the initial password only when creating an account.
     // After creation, password recovery belongs to the user through Forgot Password + email OTP.
     document.getElementById("passwordWrap")?.classList.toggle("hidden", isEdit);
     document.getElementById("confirmPasswordWrap")?.classList.toggle("hidden", isEdit);
-    document.getElementById("accessRoleWrap")?.classList.toggle("hidden", isTechnician);
+    document.getElementById("accessRoleWrap")?.classList.remove("hidden");
+    document.getElementById("technicianAccessNote")?.classList.toggle("hidden", !isTechnician);
     document.getElementById("password").required = !isEdit;
     document.getElementById("confirmPassword").required = !isEdit;
   }
@@ -331,6 +366,8 @@
   function openCreate() {
     form.reset();
     document.getElementById("userId").value = "";
+    document.getElementById("accountKind").value = "new";
+    document.getElementById("role").disabled = false;
     document.getElementById("dialogTitle").textContent = "Add user";
     document.getElementById("password").required = true;
     document.getElementById("confirmPassword").required = true;
@@ -349,6 +386,8 @@
     if (!user) return;
     form.reset();
     document.getElementById("userId").value = user.id;
+    document.getElementById("accountKind").value = "customer";
+    document.getElementById("role").disabled = false;
     document.getElementById("name").value = user.name || "";
     document.getElementById("email").value = user.email || "";
     document.getElementById("phone").value = user.phone || "";
@@ -363,6 +402,30 @@
     document.getElementById("statusWrap").classList.remove("hidden");
     document.getElementById("formError").className = "alert error hidden";
     setAccessUI(user.permissions ?? null);
+    toggleFieldsForRole();
+    dialog.showModal();
+  }
+
+  function openEditTechnician(id) {
+    const tech = technicians.find((item) => item.id === id);
+    if (!tech) return;
+    form.reset();
+    document.getElementById("userId").value = tech.id;
+    document.getElementById("accountKind").value = "technician";
+    document.getElementById("name").value = tech.name || "";
+    document.getElementById("email").value = tech.email || "";
+    document.getElementById("phone").value = tech.phone || "";
+    document.getElementById("role").value = "technician";
+    document.getElementById("role").disabled = true;
+    document.getElementById("isActive").checked = Boolean(tech.isActive ?? tech.is_active);
+    document.getElementById("dialogTitle").textContent = "Edit Fundi / Technician";
+    document.getElementById("password").required = false;
+    document.getElementById("confirmPassword").required = false;
+    document.getElementById("password").value = "";
+    document.getElementById("confirmPassword").value = "";
+    document.getElementById("statusWrap").classList.remove("hidden");
+    document.getElementById("formError").className = "alert error hidden";
+    setAccessUI(tech.permissions);
     toggleFieldsForRole();
     dialog.showModal();
   }
@@ -385,41 +448,54 @@
       return;
     }
 
-    // Technician is a different account type under the hood because it uses
-    // the dedicated Technician workspace. Role Manager still creates it from
-    // this same +USER flow so the customer has one place to manage people.
-    if (role === "technician") {
-      if (id) {
-        errorBox.textContent = "Technicians can't be edited from here yet — remove and re-add if details change.";
+    // Technician uses the dedicated field workspace, but V207 also allows
+    // Administration to grant selected customer-dashboard functions or Full Control.
+    const accountKind = document.getElementById("accountKind").value;
+    if (role === "technician" || accountKind === "technician") {
+      if (accountKind === "customer" && id) {
+        errorBox.textContent = "An existing customer user can't be converted into a Technician. Create a Technician account instead.";
         errorBox.className = "alert error";
         return;
       }
+      if (accountKind === "technician" && role !== "technician") {
+        errorBox.textContent = "A Technician account must remain Technician. Create another portal user if a different role is required.";
+        errorBox.className = "alert error";
+        return;
+      }
+      const techPayload = {
+        name: document.getElementById("name").value.trim(),
+        email: document.getElementById("email").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        permissions: readAccessPayload(),
+      };
+      if (id) techPayload.isActive = document.getElementById("isActive").checked;
+      else techPayload.password = document.getElementById("password").value;
+
       const saveButton = document.getElementById("saveButton");
       saveButton.disabled = true;
       saveButton.textContent = "Saving…";
       try {
-        const result = await api("/technicians", {
-          method: "POST",
-          body: JSON.stringify({
-            name: document.getElementById("name").value.trim(),
-            email: document.getElementById("email").value.trim(),
-            phone: document.getElementById("phone").value.trim(),
-            password: document.getElementById("password").value,
-          }),
+        const result = await api(id ? `/technicians/${id}` : "/technicians", {
+          method: id ? "PUT" : "POST",
+          body: JSON.stringify(techPayload),
         });
         dialog.close();
         await loadUsers();
         await loadTechnicians();
-        alert(
-          `Technician added. Share the email and the initial password you entered securely.\n\nLogin: ${result.loginUrl || "/tech"}`
-        );
-        showAlert("Technician added successfully.", false);
+        if (!id) {
+          alert(`Technician added. Share the email and initial password securely.
+
+Technician workspace: ${result.loginUrl || "/tech"}
+Customer Dashboard access follows Role Manager permissions.`);
+        }
+        showAlert(id ? "Technician profile and dashboard access updated." : "Technician added successfully.", false);
       } catch (error) {
         errorBox.textContent = error.message;
         errorBox.className = "alert error";
       } finally {
         saveButton.disabled = false;
         saveButton.textContent = "Save user";
+        document.getElementById("role").disabled = false;
       }
       return;
     }
@@ -497,6 +573,11 @@
     const remove = event.target.closest("[data-delete]");
     if (edit) openEdit(edit.dataset.edit);
     if (remove) deleteUser(remove.dataset.delete);
+  });
+
+  document.getElementById("technicianList")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-edit-technician]");
+    if (button) openEditTechnician(button.dataset.editTechnician);
   });
   form.addEventListener("submit", saveUser);
   document.getElementById("rosterMachineSelect").addEventListener("change", (event) => {

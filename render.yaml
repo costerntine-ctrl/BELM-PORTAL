@@ -15,6 +15,10 @@ services:
         value: production
       - key: PORTAL_URL
         value: https://portal.belmgeneraltech.co.tz
+      # Friendly links shared with customers. The main website routes /app/*
+      # to the portal wrapper included in public_website_patch/.
+      - key: PUBLIC_APP_URL
+        value: https://belmgeneraltech.co.tz
       - key: ALLOWED_ORIGINS
         value: https://belmgeneraltech.co.tz,https://www.belmgeneraltech.co.tz,https://portal.belmgeneraltech.co.tz
       - key: DATABASE_URL

@@ -2,6 +2,7 @@
   const token = localStorage.getItem("belm_admin_token");
   let parts = [];
   let equivalentsIndex = {};
+  let equivalentLinks = [];
   let requests = [];
   let activeRequestId = "";
   let choosingRequestId = "";
@@ -126,6 +127,40 @@
     document.getElementById("exportSelectedButton").disabled = selectedPartIds.size === 0;
   }
 
+
+  function renderEquivalentSummary() {
+    const panel = document.getElementById("equivalentSummaryPanel");
+    const count = document.getElementById("equivalentPairCount");
+    if (!panel || !count) return;
+    count.textContent = `${equivalentLinks.length.toLocaleString()} link${equivalentLinks.length === 1 ? "" : "s"}`;
+    if (!equivalentLinks.length) {
+      panel.className = "empty";
+      panel.innerHTML = 'No equivalent spare links yet. Open <strong>Spare Parts Inventory</strong>, edit a spare, then use <strong>Equivalent spare parts</strong> to link an approved alternative.';
+      return;
+    }
+    panel.className = "equivalent-summary-grid";
+    panel.innerHTML = equivalentLinks.map((link) => `
+      <article class="equivalent-summary-card">
+        <div class="equivalent-summary-link">
+          <div class="equivalent-summary-part">
+            <strong>${escapeHtml(link.partANumber)} — ${escapeHtml(link.partAName)}</strong>
+            <span>${escapeHtml(link.partAReference || "No reference number")}</span>
+            <small>Stock ${escapeHtml(link.partAStock ?? 0)}</small>
+          </div>
+          <div class="equivalent-summary-symbol" aria-label="Equivalent to">≈</div>
+          <div class="equivalent-summary-part">
+            <strong>${escapeHtml(link.partBNumber)} — ${escapeHtml(link.partBName)}</strong>
+            <span>${escapeHtml(link.partBReference || "No reference number")}</span>
+            <small>Stock ${escapeHtml(link.partBStock ?? 0)}</small>
+          </div>
+        </div>
+        <div class="equivalent-summary-actions">
+          <button type="button" data-equivalent-edit="${escapeHtml(link.partAId)}">Open ${escapeHtml(link.partANumber)}</button>
+          <button type="button" data-equivalent-edit="${escapeHtml(link.partBId)}">Open ${escapeHtml(link.partBNumber)}</button>
+        </div>
+      </article>`).join("");
+  }
+
   function renderParts() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filtered = parts.filter((part) => {
@@ -179,9 +214,14 @@
       parts = await api("/spare-parts");
       requests = await api("/spare-parts/requests");
       try { equivalentsIndex = await api("/spare-parts?action=all-equivalents"); } catch (_) { equivalentsIndex = {}; }
+      try { equivalentLinks = await api("/spare-parts?action=equivalent-links"); } catch (_) { equivalentLinks = []; }
       updateMetrics();
       renderParts();
       renderRequests();
+      renderEquivalentSummary();
+      if (window.location.hash === "#equivalent-spares-panel") {
+        requestAnimationFrame(() => document.getElementById("equivalent-spares-panel")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
     } catch (error) {
       document.getElementById("partsPanel").className = "empty";
       document.getElementById("partsPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;
@@ -673,6 +713,21 @@
       confirmThenOpen("Edit spare part?", `Confirm you want to edit ${part.name}.`, () => openPart(part, request.id));
     }
     if (purchase) markPurchaseRequired(purchase.dataset.purchaseRequest);
+  });
+
+
+  document.getElementById("equivalentSummaryPanel")?.addEventListener("click", (event) => {
+    const edit = event.target.closest("[data-equivalent-edit]");
+    if (!edit) return;
+    const part = parts.find((item) => item.id === edit.dataset.equivalentEdit);
+    if (!part) { showAlert("That spare-part record could not be opened.", true); return; }
+    confirmThenOpen("Review equivalent spare?", `Open ${part.partNumber} — ${part.name} to review its equivalent links.`, () => openPart(part));
+  });
+
+  window.addEventListener("hashchange", () => {
+    if (window.location.hash === "#equivalent-spares-panel") {
+      document.getElementById("equivalent-spares-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   });
 
   loadParts();

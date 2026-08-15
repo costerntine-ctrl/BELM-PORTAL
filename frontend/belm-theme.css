@@ -3605,3 +3605,94 @@ html[data-theme="dark"] .belm-technician-machine-card {
   font-weight: 650;
   line-height: 1.2;
 }
+
+
+/* V206 - Customer Role Manager: Operator sees machine cards only. */
+.belm-operator-card-only-banner { margin:0 0 16px; padding:12px 14px; border-radius:12px; border:1px solid rgba(25,104,211,.22); border-left:4px solid var(--belm-blue,#1968d3); background:linear-gradient(135deg,rgba(25,104,211,.09),rgba(0,169,88,.06)); display:flex; flex-direction:column; gap:3px; }
+.belm-operator-card-only-banner b { font-size:12px; letter-spacing:.08em; }
+.belm-operator-card-only-banner span { font-size:12px; opacity:.78; line-height:1.45; }
+body.belm-operator-card-only .belm-customer-machine-grid { width:100% !important; max-width:none !important; }
+
+/* ========================================================================
+   V210 UX CLEANUP - scan-first cards, role-first actions, Action Center
+   ======================================================================== */
+.belm-machine-info-v210 { gap:9px; }
+.belm-machine-state-row { display:grid; grid-template-columns:1.12fr .88fr; gap:8px; }
+.belm-machine-state-row .belm-technician-machine-health,
+.belm-machine-state-row .belm-customer-op-status { margin:0; min-height:72px; }
+.belm-machine-details-disclosure {
+  border:1px solid #e1e8ef; border-radius:11px; background:#fbfcfe; overflow:hidden;
+}
+.belm-machine-details-disclosure > summary {
+  display:flex; align-items:center; justify-content:space-between; gap:10px; list-style:none;
+  padding:10px 12px; cursor:pointer; color:#25364d; font-size:10px; font-weight:900;
+  text-transform:uppercase; letter-spacing:.05em;
+}
+.belm-machine-details-disclosure > summary::-webkit-details-marker { display:none; }
+.belm-machine-details-disclosure > summary::after { content:"+"; color:var(--belm-blue); font-size:16px; line-height:1; }
+.belm-machine-details-disclosure[open] > summary::after { content:"-"; }
+.belm-machine-details-disclosure > summary span { flex:1; color:#7b8a9e; font-size:8px; font-weight:650; text-transform:none; letter-spacing:0; }
+.belm-machine-details-disclosure .belm-technician-machine-data { padding:0 10px 10px; }
+
+.belm-service-due-head-v210 { align-items:center; gap:12px; }
+.belm-service-due-head-v210 > div { min-width:0; }
+.belm-service-due-head-v210 > div span { display:block; margin-bottom:2px; }
+.belm-service-due-head-v210 > div b { display:block; color:#17253a; font-size:14px; font-weight:900; }
+.belm-service-due-head-v210 > strong { flex:0 0 auto; padding:5px 8px; border-radius:999px; background:#fff; font-size:9px; letter-spacing:.04em; }
+.belm-service-due-panel.status-red .belm-service-due-head-v210 > strong { color:#a52d34; background:#fff0f0; }
+.belm-service-due-panel.status-yellow .belm-service-due-head-v210 > strong { color:#705900; background:#fff7cf; }
+.belm-service-due-panel.status-green .belm-service-due-head-v210 > strong { color:#08713d; background:#e7f8ef; }
+.belm-service-due-grid-v210 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+
+.belm-machine-more-actions { margin-top:8px; border:1px solid #dce5ed; border-radius:10px; background:#fff; overflow:hidden; }
+.belm-machine-more-actions > summary { display:flex; align-items:center; justify-content:space-between; list-style:none; padding:9px 11px; cursor:pointer; color:#52647a; font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.06em; }
+.belm-machine-more-actions > summary::-webkit-details-marker { display:none; }
+.belm-machine-more-actions > summary span { display:grid; place-items:center; width:21px; height:21px; border-radius:6px; color:#fff; background:var(--belm-blue); font-size:13px; }
+.belm-machine-more-actions[open] > summary span { transform:rotate(45deg); }
+.belm-machine-more-actions-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; padding:0 8px 8px; }
+.belm-machine-more-actions-grid a,
+.belm-machine-more-actions-grid button { display:flex!important; width:100%; min-height:38px; align-items:center; justify-content:flex-start; padding:8px 9px; border:1px solid #dce5ed!important; border-radius:8px!important; color:#263951!important; background:#f8fafc!important; font-size:9px!important; font-weight:800!important; text-decoration:none; box-shadow:none!important; }
+
+.belm-action-center-intro { margin:-2px 14px 10px; color:#9fb0c8; font-size:10px; line-height:1.4; }
+.belm-activity-overview-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.belm-activity-overview-item { position:relative; min-height:70px; padding:11px 12px; overflow:hidden; }
+.belm-activity-overview-item::before { content:""; position:absolute; inset:0 auto 0 0; width:3px; background:#6f83a0; }
+.belm-action-item-attention::before { background:#e5484d; }
+.belm-action-item-service::before { background:var(--belm-yellow); }
+.belm-action-item-requests::before { background:var(--belm-blue); }
+.belm-action-item-checklists::before { background:var(--belm-green); }
+.belm-action-center-snapshot { margin:10px 12px 0; border:1px solid rgba(255,255,255,.10); border-radius:10px; background:rgba(255,255,255,.035); overflow:hidden; }
+.belm-action-center-snapshot > summary { display:flex; justify-content:space-between; align-items:center; padding:9px 10px; list-style:none; cursor:pointer; color:#d9e4f2; font-size:9px; font-weight:850; text-transform:uppercase; letter-spacing:.06em; }
+.belm-action-center-snapshot > summary::-webkit-details-marker { display:none; }
+.belm-action-center-snapshot > summary span { color:var(--belm-yellow); font-size:13px; }
+.belm-action-center-snapshot-grid { display:grid; gap:1px; padding:0 8px 8px; }
+.belm-action-center-snapshot-grid > div { display:flex; justify-content:space-between; gap:10px; padding:7px 8px; border-radius:7px; background:rgba(255,255,255,.04); }
+.belm-action-center-snapshot-grid span { color:#93a6bd; font-size:8px; }
+.belm-action-center-snapshot-grid b { color:#fff; font-size:9px; text-align:right; }
+.belm-action-center-clear { margin:10px 12px 0; padding:11px; border:1px solid rgba(0,166,81,.22); border-radius:10px; background:rgba(0,166,81,.08); }
+.belm-action-center-clear b,.belm-action-center-clear span { display:block; }
+.belm-action-center-clear b { color:#8de2b3; font-size:9px; letter-spacing:.05em; }
+.belm-action-center-clear span { margin-top:3px; color:#aab8ca; font-size:8px; line-height:1.4; }
+
+html.dark .belm-machine-details-disclosure,
+html[data-theme="dark"] .belm-machine-details-disclosure,
+html.dark .belm-machine-more-actions,
+html[data-theme="dark"] .belm-machine-more-actions { border-color:#293a4e; background:#0e1826; }
+html.dark .belm-machine-details-disclosure > summary,
+html[data-theme="dark"] .belm-machine-details-disclosure > summary { color:#dce6f2; }
+html.dark .belm-machine-more-actions-grid a,
+html.dark .belm-machine-more-actions-grid button,
+html[data-theme="dark"] .belm-machine-more-actions-grid a,
+html[data-theme="dark"] .belm-machine-more-actions-grid button { border-color:#2a3a4e!important; color:#dce6f2!important; background:#111d2c!important; }
+html.dark .belm-service-due-head-v210 > div b,
+html[data-theme="dark"] .belm-service-due-head-v210 > div b { color:#e7eef7; }
+
+@media (max-width:720px) {
+  .belm-machine-state-row { grid-template-columns:1fr; }
+  .belm-service-due-grid-v210 { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .belm-machine-more-actions-grid { grid-template-columns:1fr; }
+}
+@media (max-width:420px) {
+  .belm-service-due-grid-v210 { grid-template-columns:1fr 1fr; }
+  .belm-service-due-grid-v210 > div:last-child { grid-column:1/-1; }
+}

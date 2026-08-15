@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#071827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BELM" />
+  <title>BELM Operations App</title>
+  <link rel="manifest" href="/belm-app.webmanifest" />
+  <link rel="apple-touch-icon" href="/app-icon-192.png" />
+  <link rel="stylesheet" href="/customer-app.css?v=211-bug-audit" />
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="brand-panel">
+      <div class="brand-stripe"><span></span><span></span><span></span><span></span></div>
+      <img src="/belm-watermark.jpg" alt="BELM General Tech" class="brand-logo" />
+      <div class="eyebrow">BELM OPERATIONS PLATFORM</div>
+      <h1 id="companyName">Secure Operations App</h1>
+      <p id="companyNote">One link. Your role. Your workspace.</p>
+      <div class="role-flow">
+        <span>Administration</span><span>Workshop</span><span>Technician</span><span>Operator</span>
+      </div>
+    </section>
+
+    <section class="login-panel">
+      <div class="customer-chip" id="customerChip" hidden></div>
+      <h2>Sign in</h2>
+      <p class="subtext" id="loginHint">Use the email and password provided for your account.</p>
+      <form id="loginForm" autocomplete="on">
+        <label>Email</label>
+        <input id="email" type="email" inputmode="email" autocomplete="username" required placeholder="name@company.com" />
+        <label>Password</label>
+        <input id="password" type="password" autocomplete="current-password" required placeholder="Password" />
+        <button id="loginButton" class="primary" type="submit">Open My Workspace</button>
+      </form>
+      <div id="errorBox" class="error" hidden></div>
+      <div class="actions">
+        <a href="/forgot-password/">Forgot password? Get OTP</a>
+        <button type="button" id="installButton" class="text-button" hidden>Install as App</button>
+      </div>
+      <p class="privacy">After sign-in, the system opens the workspace allowed for your role automatically.</p>
+    </section>
+  </main>
+  <script src="/customer-app.js?v=211-bug-audit"></script>
+</body>
+</html>

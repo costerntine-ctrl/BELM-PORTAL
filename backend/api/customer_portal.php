@@ -57,6 +57,7 @@ function customer_can_manage_store(array $customer): bool {
     if (($customer['actorType'] ?? '') === 'owner') return true;
     $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
     $permissions = $customer['permissions'] ?? null;
+    if ($permissions === null) return true;
     if (is_array($permissions)) return in_array('store', $permissions, true);
     return in_array($role, ['admin', 'assistant', 'accounts', 'workshop_manager', 'store_keeper', 'procurement'], true);
 }
@@ -136,6 +137,28 @@ function customer_permissions_from_body(array $body): ?string {
     // instead of silently becoming full access.
     if (count($clean) === count(CUSTOMER_PERMISSION_KEYS)) return null;
     return json_encode($clean);
+}
+
+
+function technician_permissions_from_body(array $body): string {
+    $raw = $body['permissions'] ?? [];
+    if ($raw === 'all' || $raw === null) return '__ALL__';
+    if (!is_array($raw)) return '[]';
+    $clean = array_values(array_unique(array_intersect(array_map('strval', $raw), CUSTOMER_PERMISSION_KEYS)));
+    if (count($clean) === count(CUSTOMER_PERMISSION_KEYS)) return '__ALL__';
+    return json_encode($clean);
+}
+
+function customer_role_permissions_json(string $role, ?string $permissionsJson): ?string {
+    if ($role !== 'operator') return $permissionsJson;
+    $operatorCardPermissions = [
+        'machine-expenses', 'fuel-usage', 'operator-reports',
+        'service-request', 'report-problem', 'check-up', 'workflow',
+    ];
+    if ($permissionsJson === null) return json_encode($operatorCardPermissions);
+    $decoded = json_decode($permissionsJson, true);
+    if (!is_array($decoded)) $decoded = [];
+    return json_encode(array_values(array_intersect(array_map('strval', $decoded), $operatorCardPermissions)));
 }
 
 function customer_portal_user_count(string $customerId): int {
@@ -495,7 +518,7 @@ function customer_request_service_parts(string $requestId): array {
 }
 
 // ---- Dashboard ------------------------------------------------------------
-// ---- Saved emails (boss / management team) for quick report sharing --------
+// ---- Saved emails (administration / management team) for quick report sharing --------
 if ($sub === 'saved-emails' && $method === 'GET') {
     require_customer_feature_access($customer, 'email', 'Management Email');
     // Build one communication directory from the real account records plus
@@ -562,7 +585,7 @@ if ($sub === 'saved-emails' && $method === 'POST') {
     $b = body();
     $label = trim((string)($b['label'] ?? ''));
     $email = trim((string)($b['email'] ?? ''));
-    if ($label === '') json_error('Enter a label, e.g. "Boss" or "Management Team".');
+    if ($label === '') json_error('Enter a label, e.g. "Administration" or "Management Team".');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email address.');
     $email = strtolower($email);
     $duplicate = db()->prepare(
@@ -585,7 +608,7 @@ if ($sub === 'saved-emails' && $sub2 && $method === 'PUT') {
     $b = body();
     $label = trim((string)($b['label'] ?? ''));
     $email = trim((string)($b['email'] ?? ''));
-    if ($label === '') json_error('Enter a label, e.g. "Boss" or "Management Team".');
+    if ($label === '') json_error('Enter a label, e.g. "Administration" or "Management Team".');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email address.');
     $email = strtolower($email);
     $duplicate = db()->prepare(
@@ -611,7 +634,7 @@ if ($sub === 'saved-emails' && $sub2 && $method === 'DELETE') {
     json_out(null, 204);
 }
 
-// ---- Email a report to the customer's boss / management team ---------------
+// ---- Email a report to the customer's administration / management team ---------------
 if ($sub === 'email-report' && $method === 'POST') {
     require_customer_feature_access($customer, 'email', 'Management Email');
     require_customer_write_access($customer);
@@ -837,7 +860,7 @@ if ($sub === 'analysis') {
 
     // A per-machine breakdown — each machine's own quick activity
     // snapshot, listed inside the same Activity Overview card so the
-    // boss/owner can scan every machine at a glance before drilling into
+    // administration/owner can scan every machine at a glance before drilling into
     // any one of them.
     $perMachineStmt = db()->prepare(
         'SELECT id, brand, model, machine_type, status FROM machines
@@ -2548,14 +2571,26 @@ if ($sub === 'users' && !$sub2 && $method === 'GET') {
 if ($sub === 'technicians' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
-        "SELECT u.id, u.name, u.email, u.phone, u.is_active, u.created_at
+        "SELECT u.id, u.name, u.email, u.phone, u.is_active, u.customer_permissions, u.created_at
          FROM users u JOIN roles r ON r.id = u.role_id
          WHERE r.name = 'Technician' AND u.assigned_customer_id = ?
            AND u.is_customer_managed = 1 AND u.deleted_at IS NULL
          ORDER BY u.created_at DESC"
     );
     $stmt->execute([$customer['id']]);
-    json_out($stmt->fetchAll());
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$row) {
+        $row['isActive'] = (bool)$row['is_active'];
+        if ((string)($row['customer_permissions'] ?? '') === '__ALL__') {
+            $row['permissions'] = null;
+        } else {
+            $decoded = json_decode((string)($row['customer_permissions'] ?? '[]'), true);
+            $row['permissions'] = is_array($decoded) ? $decoded : [];
+        }
+        unset($row['is_active'], $row['customer_permissions']);
+    }
+    unset($row);
+    json_out($rows);
 }
 
 // POST /technicians — a Customer Self-Service account adds
@@ -2576,6 +2611,7 @@ if ($sub === 'technicians' && $method === 'POST') {
     $email = strtolower(trim((string)($b['email'] ?? '')));
     $phone = trim((string)($b['phone'] ?? ''));
     $password = (string)($b['password'] ?? '');
+    $permissionsJson = technician_permissions_from_body($b);
 
     $limitStmt = db()->prepare('SELECT user_limit FROM customers WHERE id = ?');
     $limitStmt->execute([$customer['id']]);
@@ -2606,20 +2642,69 @@ if ($sub === 'technicians' && $method === 'POST') {
     $newId = uuid();
     db()->prepare(
         'INSERT INTO users
-         (id, name, email, password_hash, recovery_code_hash, phone, role_id, assigned_customer_id, is_customer_managed, created_at)
-         VALUES (?,?,?,?,NULL,?,?,?,1,NOW())'
+         (id, name, email, password_hash, recovery_code_hash, phone, role_id, assigned_customer_id, is_customer_managed, customer_permissions, created_at)
+         VALUES (?,?,?,?,NULL,?,?,?,1,?,NOW())'
     )->execute([
         $newId, $name, $email,
         password_hash($password, PASSWORD_BCRYPT),
         $phone !== '' ? $phone : null,
         $roleId,
         $customer['id'],
+        $permissionsJson,
     ]);
     log_customer_activity($customer, "Added \"$name\" as their own field Technician.");
+    $slugStmt = db()->prepare('SELECT portal_link FROM customers WHERE id = ?');
+    $slugStmt->execute([$customer['id']]);
+    $customerSlug = (string)$slugStmt->fetchColumn();
     json_out([
         'id' => $newId,
-        'loginUrl' => portal_base_url() . '/tech',
+        'loginUrl' => customer_portal_url($customerSlug),
     ], 201);
+}
+
+// PUT /technicians/{id} — Administration may update a customer's own
+// Technician profile, status and dashboard access. Password changes remain
+// self-service through Forgot Password + OTP.
+if ($sub === 'technicians' && $sub2 && $method === 'PUT') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare(
+        "SELECT u.* FROM users u JOIN roles r ON r.id=u.role_id
+         WHERE u.id=? AND u.assigned_customer_id=? AND u.is_customer_managed=1
+           AND r.name='Technician' AND u.deleted_at IS NULL"
+    );
+    $stmt->execute([$sub2, $customer['id']]);
+    $existing = $stmt->fetch();
+    if (!$existing) json_error('Technician not found.', 404);
+
+    $b = body();
+    $name = trim((string)($b['name'] ?? $existing['name']));
+    $email = strtolower(trim((string)($b['email'] ?? $existing['email'])));
+    $phone = trim((string)($b['phone'] ?? ($existing['phone'] ?? '')));
+    $isActive = array_key_exists('isActive', $b) ? ((bool)$b['isActive'] ? 1 : 0) : (int)$existing['is_active'];
+    $permissionsJson = array_key_exists('permissions', $b)
+        ? technician_permissions_from_body($b)
+        : $existing['customer_permissions'];
+
+    if ($name === '') json_error('Technician name is required.');
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid Technician email address.');
+    $emailCheck = db()->prepare(
+        'SELECT 1 FROM customers WHERE LOWER(email)=?
+         UNION ALL SELECT 1 FROM customer_users WHERE LOWER(email)=?
+         UNION ALL SELECT 1 FROM users WHERE LOWER(email)=? AND id<>? AND deleted_at IS NULL
+         LIMIT 1'
+    );
+    $emailCheck->execute([$email, $email, $email, $sub2]);
+    if ($emailCheck->fetch()) json_error('This email address is already used by another portal account.', 409);
+
+    db()->prepare(
+        'UPDATE users SET name=?, email=?, phone=?, is_active=?, customer_permissions=?
+         WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1'
+    )->execute([
+        $name, $email, $phone !== '' ? $phone : null, $isActive,
+        $permissionsJson, $sub2, $customer['id'],
+    ]);
+    log_customer_activity($customer, "Updated Technician access for \"$name\".");
+    json_out(['ok' => true]);
 }
 
 // the frontend can show "2 of 3 users used" before the customer even
@@ -2670,6 +2755,7 @@ if ($sub === 'users' && $method === 'POST') {
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
     if (strlen($password) < 8) json_error('Initial password must contain at least 8 characters.');
     if (!in_array($role, CUSTOMER_PORTAL_USER_ROLES, true)) json_error('Select a valid Role Manager role.');
+    $permissionsJson = customer_role_permissions_json($role, $permissionsJson);
 
     $emailCheck = db()->prepare(
         'SELECT 1 FROM customers WHERE LOWER(email) = ?
@@ -2727,6 +2813,7 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
     if ($name === '') json_error('User name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
     if (!in_array($role, CUSTOMER_PORTAL_USER_ROLES, true)) json_error('Select a valid Role Manager role.');
+    $permissionsJson = customer_role_permissions_json($role, $permissionsJson);
     $emailCheck = db()->prepare(
         'SELECT 1 FROM customers WHERE LOWER(email) = ?
          UNION ALL SELECT 1 FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL

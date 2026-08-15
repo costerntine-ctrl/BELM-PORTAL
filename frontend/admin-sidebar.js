@@ -2,6 +2,11 @@
   if (document.getElementById("belmAdminSidebar")) return;
 
   const pathname = window.location.pathname;
+  const query = new URLSearchParams(window.location.search);
+  const requestedActor = String(query.get("actor") || query.get("source") || "").toLowerCase();
+  const activeAccountType = String(localStorage.getItem("belm_active_account_type") || "").toLowerCase();
+  const sharedBreakdownAdmin = pathname.startsWith("/breakdown-workflow/")
+    && (requestedActor === "admin" || (!requestedActor && activeAccountType === "admin"));
   const standaloneAdminPaths = [
     "/overview-manager/",
     "/customers-manager/",
@@ -20,7 +25,8 @@
     "/engineering-manager/",
   ];
   const isAdminArea = pathname.startsWith("/admin/")
-    || standaloneAdminPaths.some((path) => pathname === path || pathname.startsWith(path));
+    || standaloneAdminPaths.some((path) => pathname === path || pathname.startsWith(path))
+    || sharedBreakdownAdmin;
   if (!isAdminArea || pathname === "/admin/login") return;
 
   const token = localStorage.getItem("belm_admin_token");
@@ -51,22 +57,23 @@
 
 
   const pages = [
-    { section: "Main workflow", key: "overview", label: "All Overview", short: "AO", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
-    { section: "Main workflow", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
-    { section: "Main workflow", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
-    { section: "Main workflow", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
-    { section: "Main workflow", key: "service-requests", label: "Breakdown Process", short: "BP", href: "/breakdown-workflow/", paths: ["/breakdown-workflow/"], priority: true },
-    { section: "Customers & maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
-    { section: "Customers & maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    { section: "Customers & maintenance", key: "roles", label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
-    { section: "Customers & maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Customers & maintenance", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"] },
-    { section: "Customers & maintenance", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
-    { section: "Finance & administration", key: "bank-manager", label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
-    { section: "Finance & administration", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
-    { section: "Finance & administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
-    { section: "Finance & administration", key: "roles", label: "Roles & System Users", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
-    { section: "Finance & administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
+    { section: "Operations", key: "overview", label: "Overview", short: "OV", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
+    { section: "Operations", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
+    { section: "Operations", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
+    { section: "Operations", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
+    { section: "Operations", key: "service-requests", label: "Breakdown Process", short: "BP", href: "/breakdown-workflow/?actor=admin", paths: ["/breakdown-workflow/"], priority: true },
+    { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
+    { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
+    { section: "Maintenance", key: "roles", label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
+    { section: "Maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
+    { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
+    { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
+    { section: "Finance", key: "bank-manager", label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
+    { section: "Finance", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
+    { section: "Administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
+    { section: "Administration", key: "roles", label: "BELM Staff Access", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
+    { section: "Administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
   ];
 
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
@@ -113,35 +120,60 @@
 
   const nav = document.createElement("nav");
   nav.className = "belm-sidebar-nav";
-  let lastSection = null;
   const currentPath = pathname;
-  visiblePages.forEach((page) => {
-    if (page.section && page.section !== lastSection) {
-      const heading = document.createElement("div");
-      heading.className = "belm-sidebar-section";
-      heading.textContent = page.section;
-      nav.appendChild(heading);
-      lastSection = page.section;
-    }
+  const currentHash = window.location.hash || "";
+  const groupedPages = visiblePages.reduce((groups, page) => {
+    const section = page.section || "General";
+    if (!groups.has(section)) groups.set(section, []);
+    groups.get(section).push(page);
+    return groups;
+  }, new Map());
 
-    const link = document.createElement("a");
-    link.className = "belm-sidebar-link";
-    link.dataset.section = page.section || "General";
-    if (page.priority) link.classList.add("workflow");
-    link.href = page.href;
-    if (page.paths.some((path) => currentPath === path || currentPath.startsWith(path))) {
-      link.classList.add("active");
-      link.setAttribute("aria-current", "page");
-    }
-    const icon = document.createElement("span");
-    icon.className = "belm-sidebar-icon";
-    icon.textContent = page.short;
-    const label = document.createElement("span");
-    label.textContent = page.label;
-    label.title = page.label;
-    link.append(icon, label);
-    if (page.applications) link.id = "belmSidebarApplications";
-    nav.appendChild(link);
+  groupedPages.forEach((sectionPages, sectionName) => {
+    const group = document.createElement("details");
+    group.className = "belm-sidebar-group";
+    const hasActivePage = sectionPages.some((page) => {
+      const pathMatches = page.paths.some((path) => currentPath === path || currentPath.startsWith(path));
+      const hashMatches = page.hash ? currentHash === page.hash : (page.hashNot ? currentHash !== page.hashNot : true);
+      return pathMatches && hashMatches;
+    });
+    const stored = localStorage.getItem(`belm-sidebar-group:${sectionName}`);
+    group.open = hasActivePage || stored !== "closed";
+
+    const heading = document.createElement("summary");
+    heading.className = "belm-sidebar-section";
+    heading.innerHTML = `<span>${sectionName}</span><span class="belm-sidebar-section-chevron" aria-hidden="true">⌄</span>`;
+    group.appendChild(heading);
+
+    const groupLinks = document.createElement("div");
+    groupLinks.className = "belm-sidebar-group-links";
+    sectionPages.forEach((page) => {
+      const link = document.createElement("a");
+      link.className = "belm-sidebar-link";
+      link.dataset.section = sectionName;
+      if (page.priority) link.classList.add("workflow");
+      link.href = page.href;
+      const pathMatches = page.paths.some((path) => currentPath === path || currentPath.startsWith(path));
+      const hashMatches = page.hash ? currentHash === page.hash : (page.hashNot ? currentHash !== page.hashNot : true);
+      if (pathMatches && hashMatches) {
+        link.classList.add("active");
+        link.setAttribute("aria-current", "page");
+      }
+      const icon = document.createElement("span");
+      icon.className = "belm-sidebar-icon";
+      icon.textContent = page.short;
+      const label = document.createElement("span");
+      label.textContent = page.label;
+      label.title = page.label;
+      link.append(icon, label);
+      if (page.applications) link.id = "belmSidebarApplications";
+      groupLinks.appendChild(link);
+    });
+    group.appendChild(groupLinks);
+    group.addEventListener("toggle", () => {
+      localStorage.setItem(`belm-sidebar-group:${sectionName}`, group.open ? "open" : "closed");
+    });
+    nav.appendChild(group);
   });
 
   const footer = document.createElement("div");
@@ -187,7 +219,9 @@
   const close = () => document.body.classList.remove("belm-sidebar-open");
   toggle.addEventListener("click", () => document.body.classList.toggle("belm-sidebar-open"));
   scrim.addEventListener("click", close);
-  nav.addEventListener("click", close);
+  nav.addEventListener("click", (event) => {
+    if (event.target.closest("a.belm-sidebar-link")) close();
+  });
 
   document.body.prepend(scrim);
   document.body.prepend(sidebar);

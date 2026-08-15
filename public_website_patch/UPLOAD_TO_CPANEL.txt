@@ -19,3 +19,25 @@ buttons to:
   https://portal.belmgeneraltech.co.tz
 
 No database settings are required in these files.
+
+
+V208 FRIENDLY APP LINKS
+-----------------------
+Also upload:
+  belm_app.php
+  belm_manifest.php
+  belm-sw.js
+  belm-app-icon-192.png
+  belm-app-icon-512.png
+
+Then add the two RewriteRule lines from HTACCESS_APP_RULES.txt to the existing
+public_html/.htaccess BEFORE the website/WordPress catch-all rules.
+
+Customer links will look like:
+  https://belmgeneraltech.co.tz/app/customer-name
+BELM staff app:
+  https://belmgeneraltech.co.tz/app/belm
+
+The main-domain wrapper keeps the readable URL visible and opens the secure
+portal full-screen. On supported phones, Install App adds the current customer
+link to the home screen.

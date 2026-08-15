@@ -728,3 +728,6 @@ td select {
   .panel,
   .metric-card { break-inside: avoid; box-shadow: none; }
 }
+
+/* V210 UX CLEANUP - action first on the Admin overview */
+.admin-action-center{margin-bottom:14px;overflow:hidden;border-left:4px solid #f2c318}.admin-action-center .metrics-grid{padding:14px;margin:0}.admin-action-center .metric-card{min-height:112px}.overview-disclosure{margin-bottom:14px;overflow:hidden}.overview-disclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;padding:15px 17px;cursor:pointer}.overview-disclosure>summary::-webkit-details-marker{display:none}.overview-disclosure>summary div strong,.overview-disclosure>summary div span{display:block}.overview-disclosure>summary div strong{font-size:15px}.overview-disclosure>summary div span{margin-top:3px;color:var(--muted);font-size:11px}.overview-disclosure>summary>b{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#101b31;color:#ffd400}.overview-disclosure[open]>summary>b{transform:rotate(45deg)}.overview-disclosure-body{padding:0 14px 14px}.overview-disclosure-body .metrics-grid{margin-top:10px}

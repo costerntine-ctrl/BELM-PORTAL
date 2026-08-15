@@ -1,0 +1,16 @@
+BELM PORTAL V208 - SMART CUSTOMER APP LOGIN
+==========================================
+
+- Friendly customer links: https://belmgeneraltech.co.tz/app/customer-name
+- BELM staff link: https://belmgeneraltech.co.tz/app/belm
+- One smart login verifies the account and routes by role automatically.
+- Operator -> customer machine-card dashboard.
+- Technician -> Technician Workspace.
+- Workshop Manager -> Breakdown / Digital Job Card workflow.
+- Other customer roles -> Customer Dashboard with their Role Manager permissions.
+- BELM staff -> Administration Overview.
+- Existing valid session resumes directly from the app link without a second login.
+- Customer link is validated against the account so a user cannot use another company's friendly URL.
+- PWA manifest, service worker and app icons included.
+- public_website_patch contains a full-screen main-domain wrapper and .htaccess rules so the main website URL can remain visible.
+- Generated customer links now use PUBLIC_APP_URL.

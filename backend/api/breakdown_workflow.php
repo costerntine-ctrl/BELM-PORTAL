@@ -12,7 +12,7 @@ if (!$payload) json_error('Not authenticated', 401);
 const BREAKDOWN_STAGE_META = [
     'WORKSHOP_REVIEW' => ['department' => 'Workshop', 'slaHours' => 4],
     'DIAGNOSIS' => ['department' => 'Technician', 'slaHours' => 8],
-    'BOSS_APPROVAL' => ['department' => 'Boss Approval', 'slaHours' => 4],
+    'BOSS_APPROVAL' => ['department' => 'Administration Approval', 'slaHours' => 4],
     'STORE_CHECK' => ['department' => 'Store Keeper', 'slaHours' => 6],
     'PROCUREMENT' => ['department' => 'Procurement', 'slaHours' => 24],
     'ACCOUNTS' => ['department' => 'Accounts', 'slaHours' => 8],
@@ -149,6 +149,172 @@ function bw_case_view(array $row): array {
 
 $ctx = bw_context($payload);
 
+
+function bw_report_access(array $ctx): void {
+    if ($ctx['kind'] === 'customer-tech') json_error('Workshop Department Report is available to Workshop Manager / Administration.', 403);
+    if ($ctx['kind'] === 'customer') {
+        if (!$ctx['isOwner'] && !in_array($ctx['role'], ['workshop_manager','admin'], true)) {
+            json_error('Only Workshop Manager or Administration can view the Workshop Department Report.', 403);
+        }
+        return;
+    }
+    if ($ctx['kind'] === 'belm' && !empty($ctx['isTechnician'])) {
+        json_error('Technicians use Job Cards; department analysis is for Workshop Manager / Administration.', 403);
+    }
+}
+
+function bw_report_range(string $period, string $anchorDate): array {
+    $period = strtolower(trim($period));
+    if (!in_array($period, ['daily','monthly'], true)) $period = 'daily';
+    $anchorDate = trim($anchorDate);
+    if (!preg_match('/^\\d{4}-\\d{2}-\\d{2}$/', $anchorDate)) $anchorDate = date('Y-m-d');
+    $ts = strtotime($anchorDate . ' 00:00:00');
+    if ($ts === false) $ts = time();
+    if ($period === 'monthly') {
+        $start = date('Y-m-01 00:00:00', $ts);
+        $end = date('Y-m-01 00:00:00', strtotime('+1 month', strtotime($start)));
+        $label = date('F Y', strtotime($start));
+    } else {
+        $start = date('Y-m-d 00:00:00', $ts);
+        $end = date('Y-m-d 00:00:00', strtotime('+1 day', strtotime($start)));
+        $label = date('d M Y', strtotime($start));
+    }
+    return [$period, $start, $end, $label];
+}
+
+function bw_report_scope(array $ctx): array {
+    if ($ctx['kind'] === 'customer') {
+        $stmt = db()->prepare('SELECT name FROM customers WHERE id=? AND deleted_at IS NULL');
+        $stmt->execute([$ctx['customerId']]);
+        $name = (string)($stmt->fetchColumn() ?: 'Customer');
+        return ['sql' => 'bc.customer_id=?', 'jobSql' => 'j.customer_id=?', 'params' => [$ctx['customerId']], 'jobParams' => [$ctx['customerId']], 'label' => $name];
+    }
+    return ['sql' => 'c.is_machinery_admin=0', 'jobSql' => 'c.is_machinery_admin=0', 'params' => [], 'jobParams' => [], 'label' => 'BELM Service Provider Customers'];
+}
+
+function bw_department_report_data(array $ctx, string $period, string $anchorDate): array {
+    bw_report_access($ctx);
+    [$period, $start, $end, $periodLabel] = bw_report_range($period, $anchorDate);
+    $scope = bw_report_scope($ctx);
+
+    $caseBase = ' FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE ' . $scope['sql'];
+    $jobBase = ' FROM digital_job_cards j JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id WHERE ' . $scope['jobSql'];
+
+    $stmt = db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number' . $caseBase . " AND bc.status='OPEN' ORDER BY bc.opened_at ASC");
+    $stmt->execute($scope['params']);
+    $openRows = $stmt->fetchAll();
+    $openCases = [];
+    $delayed = 0;
+    $bottleneckMap = [];
+    foreach ($openRows as $row) {
+        $view = bw_case_view($row);
+        $openCases[] = $view;
+        if ($view['delayed']) $delayed++;
+        $dept = (string)($view['department'] ?: 'Unknown');
+        if (!isset($bottleneckMap[$dept])) $bottleneckMap[$dept] = ['department'=>$dept,'openCases'=>0,'delayedCases'=>0,'totalWaitHours'=>0.0,'oldestWaitHours'=>0.0];
+        $bottleneckMap[$dept]['openCases']++;
+        if ($view['delayed']) $bottleneckMap[$dept]['delayedCases']++;
+        $bottleneckMap[$dept]['totalWaitHours'] += (float)$view['stageHours'];
+        $bottleneckMap[$dept]['oldestWaitHours'] = max($bottleneckMap[$dept]['oldestWaitHours'], (float)$view['stageHours']);
+    }
+    $bottlenecks = [];
+    foreach ($bottleneckMap as $b) {
+        $b['avgWaitHours'] = $b['openCases'] ? round($b['totalWaitHours'] / $b['openCases'], 1) : 0;
+        unset($b['totalWaitHours']);
+        $b['oldestWaitHours'] = round($b['oldestWaitHours'], 1);
+        $bottlenecks[] = $b;
+    }
+    usort($bottlenecks, fn($a,$b) => ($b['delayedCases'] <=> $a['delayedCases']) ?: ($b['openCases'] <=> $a['openCases']) ?: ($b['oldestWaitHours'] <=> $a['oldestWaitHours']));
+
+    $countCase = function(string $extra, array $extraParams=[]) use ($caseBase,$scope): int {
+        $q = db()->prepare('SELECT COUNT(*)' . $caseBase . $extra);
+        $q->execute(array_merge($scope['params'], $extraParams));
+        return (int)$q->fetchColumn();
+    };
+    $newBreakdowns = $countCase(' AND bc.opened_at>=? AND bc.opened_at<?', [$start,$end]);
+    $closedBreakdowns = $countCase(' AND bc.closed_at>=? AND bc.closed_at<?', [$start,$end]);
+
+    $jobStmt = db()->prepare('SELECT j.*,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number' . $jobBase . ' AND ((j.created_at>=? AND j.created_at<?) OR (j.completed_at>=? AND j.completed_at<?)) ORDER BY COALESCE(j.completed_at,j.updated_at,j.created_at) DESC');
+    $jobStmt->execute(array_merge($scope['jobParams'], [$start,$end,$start,$end]));
+    $jobRows = $jobStmt->fetchAll();
+
+    $createdJobs = 0; $completedJobs = 0; $repeatJobs = 0; $resolutionTotal = 0.0; $resolutionCount = 0;
+    $tech = []; $faults = [];
+    $recentJobs = [];
+    foreach ($jobRows as $j) {
+        $startTs = strtotime($start); $endTs = strtotime($end);
+        $createdTs = !empty($j['created_at']) ? strtotime((string)$j['created_at']) : false;
+        $completedTs = !empty($j['completed_at']) ? strtotime((string)$j['completed_at']) : false;
+        $createdIn = $createdTs !== false && $createdTs >= $startTs && $createdTs < $endTs;
+        $completedIn = $completedTs !== false && $completedTs >= $startTs && $completedTs < $endTs;
+        if ($createdIn) $createdJobs++;
+        if ($completedIn) {
+            $completedJobs++;
+            if (!empty($j['repeat_issue'])) $repeatJobs++;
+            if (!empty($j['started_at'])) {
+                $h = max(0, (strtotime((string)$j['completed_at']) - strtotime((string)$j['started_at'])) / 3600);
+                $resolutionTotal += $h; $resolutionCount++;
+            }
+            $faultKey = strtolower(trim((string)$j['title']));
+            if ($faultKey !== '') {
+                if (!isset($faults[$faultKey])) $faults[$faultKey] = ['title'=>$j['title'],'count'=>0,'repeatCount'=>0];
+                $faults[$faultKey]['count']++;
+                if (!empty($j['repeat_issue'])) $faults[$faultKey]['repeatCount']++;
+            }
+        }
+        $name = trim((string)($j['technician_name'] ?? '')) ?: 'Unassigned';
+        if (!isset($tech[$name])) $tech[$name] = ['technicianName'=>$name,'totalJobs'=>0,'completedJobs'=>0,'repeatJobs'=>0,'resolutionTotal'=>0.0,'resolutionCount'=>0];
+        if ($createdIn) $tech[$name]['totalJobs']++;
+        if ($completedIn) {
+            $tech[$name]['completedJobs']++;
+            if (!empty($j['repeat_issue'])) $tech[$name]['repeatJobs']++;
+            if (!empty($j['started_at'])) {
+                $h = max(0, (strtotime((string)$j['completed_at']) - strtotime((string)$j['started_at'])) / 3600);
+                $tech[$name]['resolutionTotal'] += $h; $tech[$name]['resolutionCount']++;
+            }
+        }
+        if (count($recentJobs) < 40) {
+            $resolution = null;
+            if (!empty($j['completed_at']) && !empty($j['started_at'])) $resolution = round(max(0,(strtotime((string)$j['completed_at'])-strtotime((string)$j['started_at']))/3600),1);
+            $recentJobs[] = [
+                'jobCardNo'=>$j['job_card_no'],'machine'=>trim(($j['brand']??'').' '.($j['model']??'')) ?: ($j['machine_type']??'Machine'),
+                'title'=>$j['title'],'technician'=>$name,'status'=>$j['status'],'repeatIssue'=>!empty($j['repeat_issue']),
+                'createdAt'=>$j['created_at'],'completedAt'=>$j['completed_at'],'resolutionHours'=>$resolution,
+            ];
+        }
+    }
+    $techRows = [];
+    foreach ($tech as $t) {
+        if ($t['totalJobs']===0 && $t['completedJobs']===0) continue;
+        $completionBase = max($t['totalJobs'], $t['completedJobs']);
+        $t['completionRate'] = $completionBase ? round($t['completedJobs'] * 100 / $completionBase, 1) : 0;
+        $t['firstTimeFixRate'] = $t['completedJobs'] ? round(max(0,$t['completedJobs']-$t['repeatJobs']) * 100 / $t['completedJobs'], 1) : 0;
+        $t['avgResolutionHours'] = $t['resolutionCount'] ? round($t['resolutionTotal'] / $t['resolutionCount'], 1) : 0;
+        unset($t['resolutionTotal'],$t['resolutionCount']);
+        $techRows[] = $t;
+    }
+    usort($techRows, fn($a,$b) => ($b['completedJobs'] <=> $a['completedJobs']) ?: ($a['repeatJobs'] <=> $b['repeatJobs']));
+
+    $faultRows = array_values($faults);
+    usort($faultRows, fn($a,$b) => ($b['count'] <=> $a['count']) ?: ($b['repeatCount'] <=> $a['repeatCount']));
+    $faultRows = array_slice($faultRows, 0, 8);
+
+    $waitingAdministration = count(array_filter($openCases, fn($c) => $c['stage']==='BOSS_APPROVAL'));
+    $waitingParts = count(array_filter($openCases, fn($c) => in_array($c['stage'], ['STORE_CHECK','PROCUREMENT','ACCOUNTS','PARTS_READY'], true)));
+    $avgResolution = $resolutionCount ? round($resolutionTotal/$resolutionCount,1) : 0;
+    $firstTimeFix = $completedJobs ? round(max(0,$completedJobs-$repeatJobs)*100/$completedJobs,1) : 0;
+
+    return [
+        'period'=>$period,'periodLabel'=>$periodLabel,'start'=>$start,'end'=>$end,'scopeLabel'=>$scope['label'],'generatedAt'=>date('c'),
+        'summary'=>[
+            'newBreakdowns'=>$newBreakdowns,'closedBreakdowns'=>$closedBreakdowns,'jobCardsCreated'=>$createdJobs,'completedJobs'=>$completedJobs,
+            'openBreakdowns'=>count($openCases),'delayedBreakdowns'=>$delayed,'waitingAdministration'=>$waitingAdministration,'waitingParts'=>$waitingParts,
+            'repeatJobs'=>$repeatJobs,'firstTimeFixRate'=>$firstTimeFix,'avgResolutionHours'=>$avgResolution,
+        ],
+        'bottlenecks'=>$bottlenecks,'technicians'=>$techRows,'repeatFaults'=>$faultRows,'recentJobs'=>$recentJobs,
+    ];
+}
+
 if ($method === 'GET' && $action === 'technicians') {
     $customerId = trim((string)($_GET['customerId'] ?? $ctx['customerId']));
     if (in_array($ctx['kind'],['customer','customer-tech'],true) && $customerId !== $ctx['customerId']) json_error('Not allowed.',403);
@@ -195,6 +361,54 @@ if ($method === 'GET' && $action === 'performance') {
             'firstTimeFixRate'=>$completed?round(max(0,$completed-$repeat)*100/$completed,1):0,'avgResolutionHours'=>(float)($r['avg_hours'] ?? 0)];
     }
     json_out($rows);
+}
+
+
+if ($method === 'GET' && $action === 'department-report') {
+    $period = (string)($_GET['period'] ?? 'daily');
+    $date = (string)($_GET['date'] ?? date('Y-m-d'));
+    json_out(bw_department_report_data($ctx, $period, $date));
+}
+
+if ($method === 'GET' && $action === 'department-report-pdf') {
+    $period = (string)($_GET['period'] ?? 'daily');
+    $date = (string)($_GET['date'] ?? date('Y-m-d'));
+    $r = bw_department_report_data($ctx, $period, $date);
+    $s = $r['summary'];
+    $rows = [
+        ['WORKSHOP SUMMARY'],
+        ['New breakdowns', (string)$s['newBreakdowns']],
+        ['Breakdowns closed', (string)$s['closedBreakdowns']],
+        ['Job Cards created', (string)$s['jobCardsCreated']],
+        ['Jobs completed', (string)$s['completedJobs']],
+        ['Open breakdowns now', (string)$s['openBreakdowns']],
+        ['Delayed / SLA exceeded', (string)$s['delayedBreakdowns']],
+        ['Waiting Administration approval', (string)$s['waitingAdministration']],
+        ['Waiting Store / Procurement / Accounts', (string)$s['waitingParts']],
+        ['First-time-fix rate', $s['firstTimeFixRate'].'%'],
+        ['Repeat / rework jobs', (string)$s['repeatJobs']],
+        ['Average repair resolution', $s['avgResolutionHours'].' hrs'],
+        [''],
+        ['CURRENT BOTTLENECKS'],
+        ['Department','Open','Delayed','Avg wait','Oldest wait'],
+    ];
+    foreach ($r['bottlenecks'] as $b) $rows[] = [$b['department'],(string)$b['openCases'],(string)$b['delayedCases'],$b['avgWaitHours'].' hrs',$b['oldestWaitHours'].' hrs'];
+    $rows[]=['']; $rows[]=['TECHNICIAN PERFORMANCE'];
+    $rows[]=['Technician','Jobs','Completed','Completion','First-time fix','Avg hrs','Repeat'];
+    foreach ($r['technicians'] as $t) $rows[] = [$t['technicianName'],(string)$t['totalJobs'],(string)$t['completedJobs'],$t['completionRate'].'%',$t['firstTimeFixRate'].'%',$t['avgResolutionHours'].' hrs',(string)$t['repeatJobs']];
+    $rows[]=['']; $rows[]=['REPEAT / COMMON FAULTS'];
+    $rows[]=['Fault / Job','Completed','Repeat'];
+    foreach ($r['repeatFaults'] as $f) $rows[] = [$f['title'],(string)$f['count'],(string)$f['repeatCount']];
+    $rows[]=['']; $rows[]=['JOB CARD ACTIVITY'];
+    $rows[]=['Job Card','Machine','Technician','Status','Resolution','Repeat'];
+    foreach ($r['recentJobs'] as $j) $rows[] = [$j['jobCardNo'],$j['machine'],$j['technician'],$j['status'],$j['resolutionHours']===null?'-':$j['resolutionHours'].' hrs',$j['repeatIssue']?'YES':'NO'];
+    $filePeriod = $r['period']==='monthly' ? date('Y-m', strtotime($r['start'])) : date('Y-m-d', strtotime($r['start']));
+    output_table_pdf('Workshop-Department-Report-'.$filePeriod.'.pdf','WORKSHOP DEPARTMENT REPORT',[
+        'Company / scope: '.$r['scopeLabel'],
+        'Period: '.$r['periodLabel'].' ('.strtoupper($r['period']).')',
+        'Generated: '.date('d/m/Y H:i'),
+        'Operational analysis from Breakdown Workflow and Digital Job Cards',
+    ],$rows);
 }
 
 if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
@@ -252,7 +466,7 @@ if ($method === 'GET' && $action === '') {
 
 if ($method === 'POST' && $action === 'case') {
     if($ctx['kind']!=='customer') json_error('Create the case from the customer workflow or problem report.',403);
-    if(!$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only the Boss/Customer Admin or Workshop Manager can open a manual Breakdown Case. Operators should use Report Problem.',403);
+    if(!$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Administration/Customer Admin or Workshop Manager can open a manual Breakdown Case. Operators should use Report Problem.',403);
     $b=body(); $machineId=trim((string)($b['machineId']??'')); $desc=trim((string)($b['description']??'')); $title=trim((string)($b['title']??'Machine Breakdown'));
     if($machineId===''||$desc==='') json_error('Machine and problem description are required.');
     $m=db()->prepare('SELECT 1 FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL'); $m->execute([$machineId,$ctx['customerId']]); if(!$m->fetch())json_error('Machine not found.',404);
@@ -262,7 +476,7 @@ if ($method === 'POST' && $action === 'case') {
 
 if ($method === 'POST' && $action === 'job-card') {
     $b=body(); $caseId=trim((string)($b['caseId']??'')); $case=bw_case_access($ctx,$caseId);
-    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only the Boss/Customer Admin or Workshop Manager can generate a Job Card.',403);
+    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Administration/Customer Admin or Workshop Manager can generate a Job Card.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate Job Cards. Workshop Manager must issue the Job Card.',403);
     if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('BELM is not the active service provider.',403);
     $techId=trim((string)($b['technicianId']??'')); $techName=null;
@@ -281,26 +495,26 @@ if ($method === 'POST' && $action === 'spare') {
     $b=body(); $caseId=trim((string)($b['caseId']??'')); $case=bw_case_access($ctx,$caseId);
     $name=trim((string)($b['spareName']??'')); $qty=(float)($b['quantity']??1); if($name===''||$qty<=0)json_error('Spare name and quantity are required.');
     $spareId=uuid(); db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'WAITING_BOSS_APPROVAL',?,NOW(),NOW())")->execute([$spareId,$caseId,trim((string)($b['jobCardId']??''))?:null,$name,trim((string)($b['partNumber']??''))?:null,$qty,trim((string)($b['unit']??'pcs'))?:'pcs',trim((string)($b['reason']??''))?:null,$ctx['actorName']]);
-    bw_set_stage($caseId,'BOSS_APPROVAL','Waiting for Boss approval of spare request',$ctx,'Spare requested - waiting Boss approval');
+    bw_set_stage($caseId,'BOSS_APPROVAL','Waiting for Administration approval of spare request',$ctx,'Spare requested - waiting Administration approval');
     try {
         $owner = db()->prepare('SELECT email FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
         $owner->execute([(string)$case['customer_id']]);
         $ownerEmail = trim((string)$owner->fetchColumn());
         if (filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)) {
             send_email($ownerEmail, 'SPARE APPROVAL REQUIRED - '.$case['model'],
-                "Boss approval required\nMachine: ".$case['brand'].' '.$case['model']."\nSpare: $name\nQty: $qty\nRequested by: ".$ctx['actorName']."\nOpen Breakdown Workflow to approve or reject.");
+                "Administration approval required\nMachine: ".$case['brand'].' '.$case['model']."\nSpare: $name\nQty: $qty\nRequested by: ".$ctx['actorName']."\nOpen Breakdown Workflow to approve or reject.");
         }
     } catch(Throwable $e) {}
     json_out(['id'=>$spareId],201);
 }
 
 if ($method === 'PUT' && $action === 'approve-spare' && $id !== '') {
-    if($ctx['kind']!=='customer'||!$ctx['isOwner']) json_error('Only the main Customer Boss/Owner can approve spare requests.',403);
+    if($ctx['kind']!=='customer'||!$ctx['isOwner']) json_error('Only the main Customer Administration/Owner can approve spare requests.',403);
     $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?'); $stmt->execute([$id]); $s=$stmt->fetch(); if(!$s||$s['customer_id']!==$ctx['customerId'])json_error('Spare request not found.',404);
     $b=body(); $approve=!empty($b['approve']); $status=$approve?'APPROVED':'REJECTED';
     db()->prepare('UPDATE breakdown_spare_requests SET status=?,approved_by_name=?,approved_at=NOW(),approval_note=?,updated_at=NOW() WHERE id=?')->execute([$status,$ctx['actorName'],trim((string)($b['note']??''))?:null,$id]);
-    bw_set_stage($s['case_id'],$approve?'STORE_CHECK':'DIAGNOSIS',$approve?null:'Spare rejected by Boss',$ctx,$approve?'Spare approved by Boss':'Spare rejected by Boss');
-    if ($approve) { try { customer_send_team_alert($ctx['customerId'],['store'],'SPARE APPROVED - STORE ACTION REQUIRED',"Boss approved spare: {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {} }
+    bw_set_stage($s['case_id'],$approve?'STORE_CHECK':'DIAGNOSIS',$approve?null:'Spare rejected by Administration',$ctx,$approve?'Spare approved by Administration':'Spare rejected by Administration');
+    if ($approve) { try { customer_send_team_alert($ctx['customerId'],['store'],'SPARE APPROVED - STORE ACTION REQUIRED',"Administration approved spare: {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {} }
     json_out(['ok'=>true,'status'=>$status]);
 }
 
@@ -345,7 +559,7 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
 
 if ($method === 'PUT' && $action === 'stage' && $id !== '') {
     $case=bw_case_access($ctx,$id); $b=body(); $stage=strtoupper(trim((string)($b['stage']??''))); $note=trim((string)($b['note']??''));
-    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Workshop Manager or Boss can move the main breakdown stage.',403);
+    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Workshop Manager or Administration can move the main breakdown stage.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians update the process through their Digital Job Card report.',403);
     bw_set_stage($id,$stage,$note?:null,$ctx,$stage==='COMPLETED'?'Machine returned to service':'Workflow stage updated'); json_out(['ok'=>true]);
 }

@@ -248,6 +248,29 @@ function require_super_admin(array $user): void {
     }
 }
 
+// V218: Cross-customer technician overrides are intentionally narrow.
+// A Technician keeps one permanent/home customer, while BELM Super Admin or
+// Engineer can temporarily assign a specific task/service request/job card
+// for another customer without changing that home assignment.
+function belm_user_has_named_role(array $user, array $roleNames): bool {
+    $wanted = array_values(array_unique(array_map('strval', $roleNames)));
+    if (!$wanted) return false;
+    if (in_array((string)($user['roleName'] ?? ''), $wanted, true)) return true;
+    $userId = trim((string)($user['id'] ?? ''));
+    if ($userId === '') return false;
+    $marks = implode(',', array_fill(0, count($wanted), '?'));
+    $stmt = db()->prepare(
+        "SELECT 1 FROM user_roles ur JOIN roles r ON r.id=ur.role_id
+         WHERE ur.user_id=? AND r.name IN ($marks) AND r.deleted_at IS NULL LIMIT 1"
+    );
+    $stmt->execute(array_merge([$userId], $wanted));
+    return (bool)$stmt->fetchColumn();
+}
+
+function belm_can_override_technician_customer(array $user): bool {
+    return belm_user_has_named_role($user, ['Super Admin', 'Engineer']);
+}
+
 // ---- Multi-role support -----------------------------------------------------
 // A user has one primary role (users.role_id) and may have additional roles
 // via the user_roles table. Their effective permissions are the union of

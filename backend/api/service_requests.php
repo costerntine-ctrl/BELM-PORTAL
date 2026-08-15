@@ -277,12 +277,14 @@ if ($method === 'GET' && !$action) {
     $status = $_GET['status'] ?? null;
     $onlyHidden = !empty($_GET['hidden']);
     $sql = 'SELECT sr.*, c.name AS customer_name, c.phone AS customer_phone, m.model AS machine_model,
-                   m.machine_type, u.name AS assigned_to_name,
+                   m.machine_type, u.name AS assigned_to_name, u.assigned_customer_id AS assigned_home_customer_id,
+                   hc.name AS assigned_home_customer_name,
                    cu.name AS completed_by_name, xu.name AS cancelled_by_name
             FROM service_requests sr
             LEFT JOIN customers c ON c.id = sr.customer_id
             LEFT JOIN machines m ON m.id = sr.machine_id
             LEFT JOIN users u ON u.id = sr.assigned_to_id
+            LEFT JOIN customers hc ON hc.id = u.assigned_customer_id
             LEFT JOIN users cu ON cu.id = sr.completed_by_id
             LEFT JOIN users xu ON xu.id = sr.cancelled_by_id';
     if ($onlyHidden) {
@@ -306,7 +308,14 @@ if ($method === 'GET' && !$action) {
             ]
             : null;
         $r['assignedTo'] = $r['assigned_to_id']
-            ? ['id' => $r['assigned_to_id'], 'name' => $r['assigned_to_name']]
+            ? [
+                'id' => $r['assigned_to_id'],
+                'name' => $r['assigned_to_name'],
+                'homeCustomerId' => $r['assigned_home_customer_id'] ?? null,
+                'homeCustomerName' => $r['assigned_home_customer_name'] ?? null,
+                'temporaryOverride' => !empty($r['customer_id']) && !empty($r['assigned_home_customer_id'])
+                    && (string)$r['customer_id'] !== (string)$r['assigned_home_customer_id'],
+              ]
             : null;
         $r['completedBy'] = $r['completed_by_id']
             ? ['id' => $r['completed_by_id'], 'name' => $r['completed_by_name']]
@@ -328,6 +337,8 @@ if ($method === 'GET' && !$action) {
             $r['machine_model'],
             $r['machine_type'],
             $r['assigned_to_name'],
+            $r['assigned_home_customer_id'],
+            $r['assigned_home_customer_name'],
             $r['completed_by_name'],
             $r['cancelled_by_name']
         );
@@ -408,8 +419,9 @@ if ($method === 'PUT' && $action === 'assign') {
     }
 
     $stmt = db()->prepare(
-        "SELECT u.id, u.name, u.assigned_customer_id
+        "SELECT u.id, u.name, u.assigned_customer_id, hc.name AS home_customer_name
          FROM users u JOIN roles r ON r.id = u.role_id
+         LEFT JOIN customers hc ON hc.id = u.assigned_customer_id
          WHERE u.id = ? AND r.name = 'Technician'
            AND u.deleted_at IS NULL AND u.is_active = 1
            AND u.is_customer_managed = 0"
@@ -417,8 +429,16 @@ if ($method === 'PUT' && $action === 'assign') {
     $stmt->execute([$assignedToId]);
     $technician = $stmt->fetch();
     if (!$technician) json_error('Select an active Technician.', 422);
-    if ($request['customer_id'] && $technician['assigned_customer_id'] !== $request['customer_id']) {
-        json_error('This Technician is assigned to a different customer.', 422);
+    $isTemporaryOverride = $request['customer_id']
+        && !empty($technician['assigned_customer_id'])
+        && (string)$technician['assigned_customer_id'] !== (string)$request['customer_id'];
+    if ($isTemporaryOverride) {
+        if (empty($b['temporaryOverride'])) {
+            json_error('This Technician belongs to another customer. Confirm Temporary Override to assign this specific job.', 409);
+        }
+        if (!belm_can_override_technician_customer($user)) {
+            json_error('Only BELM Super Admin or Engineer can use a Temporary Technician Override.', 403);
+        }
     }
 
     db()->prepare(
@@ -426,14 +446,17 @@ if ($method === 'PUT' && $action === 'assign') {
          SET assigned_to_id=?, assigned_by_id=?, status='ASSIGNED', updated_at=NOW()
          WHERE id=?"
     )->execute([$assignedToId, $user['id'], $id]);
-    log_service_request_history($id, 'ASSIGNMENT', $request['assigned_to_id'], $technician['name'], $user);
+    $overrideNote = $isTemporaryOverride
+        ? 'TEMPORARY OVERRIDE - Technician home customer: ' . ($technician['home_customer_name'] ?: 'Unassigned') . '. This override applies to this service request only.'
+        : null;
+    log_service_request_history($id, 'ASSIGNMENT', $request['assigned_to_id'], $technician['name'], $user, $overrideNote);
     if ($request['status'] !== 'ASSIGNED') {
         log_service_request_history($id, 'STATUS', $request['status'], 'ASSIGNED', $user);
     }
     notify_service_request_customer(
         (string)$id,
         'Technician Assigned — ' . $technician['name'],
-        'BELM assigned Technician ' . $technician['name'] . ' to your service request.',
+        'BELM assigned Technician ' . $technician['name'] . ' to your service request.' . ($isTemporaryOverride ? ' This is a temporary job assignment.' : ''),
         $user
     );
     json_out(['ok' => true]);

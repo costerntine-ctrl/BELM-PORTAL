@@ -66,6 +66,24 @@
     box.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
+  async function showCustomerDataDiagnostic() {
+    const grid = document.getElementById("customerGrid");
+    try {
+      const info = await api("/customers/diagnostics");
+      if (Number(info.visibleCustomers || 0) > 0) {
+        grid.innerHTML = `<div class="empty"><strong>${Number(info.visibleCustomers).toLocaleString()} customer record(s) exist in the connected database.</strong><br>The current screen did not render them. Click <b>Refresh customers</b>; if needed use <b>Clear filters</b>.</div>`;
+        return;
+      }
+      if (Number(info.deletedCustomers || 0) > 0) {
+        grid.innerHTML = `<div class="empty"><strong>No active customer records are visible.</strong><br>${Number(info.deletedCustomers).toLocaleString()} customer record(s) are in the Recycle Bin. <a href="/recycle-bin/">Open Recycle Bin</a>.</div>`;
+        return;
+      }
+      grid.innerHTML = `<div class="empty"><strong>The connected database currently contains 0 customer records.</strong><br>If customers existed before the latest deployment, do not register replacements yet. Check Render <b>DATABASE_URL</b> and confirm this service is connected to the original BELM PostgreSQL database.</div>`;
+    } catch (error) {
+      grid.innerHTML = `<div class="empty"><strong>Customer data check failed.</strong><br>${escapeHtml(error.message || "Could not read customer diagnostics.")}</div>`;
+    }
+  }
+
   function formError(id, message) {
     const box = document.getElementById(id);
     box.textContent = message;
@@ -234,7 +252,11 @@
 
     const grid = document.getElementById("customerGrid");
     if (!filtered.length) {
-      grid.innerHTML = '<div class="empty">No customer cards match this search. Register a customer to begin.</div>';
+      if (customers.length) {
+        grid.innerHTML = `<div class="empty"><strong>${customers.length.toLocaleString()} registered customer(s) are loaded but hidden by the current search/filter.</strong><br><button type="button" class="secondary" data-clear-customer-filters>Clear filters and show all</button></div>`;
+      } else {
+        grid.innerHTML = '<div class="empty">No customer records returned. Checking the connected database…</div>';
+      }
       return;
     }
     grid.innerHTML = filtered.map((customer) => {
@@ -408,9 +430,14 @@
       populateUserLimitDropdown();
       populateMachineryAdminDropdown();
       populatePortalAccessDropdown();
+      if (!customers.length) await showCustomerDataDiagnostic();
     } catch (error) {
-      document.getElementById("customerGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
-      showAlert(error.message, true);
+      const message = String(error.message || "Could not load customers.");
+      const permissionHint = /access|permission|403/i.test(message)
+        ? '<br>This login may not have <b>Customers & Machines</b> permission.'
+        : '';
+      document.getElementById("customerGrid").innerHTML = `<div class="empty"><strong>Could not load registered customers.</strong><br>${escapeHtml(message)}${permissionHint}<br><button type="button" class="secondary" data-retry-customers>Retry</button></div>`;
+      showAlert(message, true);
     }
   }
 
@@ -1237,6 +1264,20 @@
     window.location.href = "/admin/login";
   });
   document.getElementById("searchInput").addEventListener("input", renderCustomers);
+  document.getElementById("clearCustomerFiltersButton")?.addEventListener("click", () => {
+    document.getElementById("searchInput").value = "";
+    document.getElementById("statusFilter").value = "";
+    renderCustomers();
+  });
+  document.getElementById("refreshCustomersButton")?.addEventListener("click", async () => {
+    const button = document.getElementById("refreshCustomersButton");
+    button.disabled = true;
+    try {
+      await load();
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   document.getElementById("userLimitCustomerSelect")?.addEventListener("change", (event) => {
     const customer = customers.find((item) => item.id === event.target.value);
@@ -1417,6 +1458,16 @@
     copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
   });
   document.getElementById("customerGrid").addEventListener("click", async (event) => {
+    if (event.target.closest("[data-clear-customer-filters]")) {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("statusFilter").value = "";
+      renderCustomers();
+      return;
+    }
+    if (event.target.closest("[data-retry-customers]")) {
+      await load();
+      return;
+    }
     const resolveMessage = event.target.closest("[data-resolve-message]");
     if (resolveMessage) {
       const row = resolveMessage.closest("[data-message-id]");

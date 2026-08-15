@@ -3696,3 +3696,204 @@ html[data-theme="dark"] .belm-service-due-head-v210 > div b { color:#e7eef7; }
   .belm-service-due-grid-v210 { grid-template-columns:1fr 1fr; }
   .belm-service-due-grid-v210 > div:last-child { grid-column:1/-1; }
 }
+
+
+/* ========================================================================
+   V213 - Compact Action Center
+   Show only actionable counts; collapse to a single healthy-status row
+   when no machine/service/request requires attention.
+   ======================================================================== */
+.belm-activity-overview-card.is-clear {
+  padding: 13px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 12px 28px rgba(7,14,28,.24);
+}
+.belm-activity-overview-card.is-clear .belm-activity-overview-head {
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+.belm-activity-overview-card.is-clear .belm-action-center-intro {
+  margin: 0 0 7px;
+  font-size: 8px;
+}
+.belm-activity-overview-card.is-clear .belm-activity-overview-grid {
+  display: block;
+}
+.belm-action-center-clear-main {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 10px 12px;
+}
+.belm-activity-overview-card.is-clear .belm-action-center-snapshot {
+  margin: 7px 0 0;
+}
+.belm-activity-overview-card.is-clear .belm-activity-overview-machines {
+  display: none;
+}
+.belm-activity-overview-card:not(.is-clear) .belm-activity-overview-grid {
+  grid-template-columns: repeat(auto-fit,minmax(120px,1fr));
+  gap: 8px;
+}
+.belm-activity-overview-card:not(.is-clear) .belm-activity-overview-item {
+  appearance: none;
+  width: 100%;
+  min-height: 62px;
+  padding: 10px 11px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.belm-activity-overview-card:not(.is-clear) .belm-activity-overview-item:hover,
+.belm-activity-overview-card:not(.is-clear) .belm-activity-overview-item:focus-visible {
+  border-color: rgba(255,212,0,.52);
+  background: rgba(255,255,255,.07);
+  outline: none;
+}
+.belm-activity-overview-item small {
+  margin-top: auto;
+  color: #ffd400;
+  font-size: 8px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.belm-activity-overview-machine {
+  appearance: none;
+  display: block;
+  width: 100%;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+.belm-activity-overview-machine:hover,
+.belm-activity-overview-machine:focus-visible {
+  border-color: rgba(255,212,0,.48);
+  background: rgba(255,255,255,.075);
+  outline: none;
+}
+.belm-machine-focus-pulse {
+  animation: belmMachineFocusPulse .9s ease-in-out 2;
+}
+@keyframes belmMachineFocusPulse {
+  0%,100% { box-shadow: inherit; }
+  50% { box-shadow: 0 0 0 4px rgba(255,212,0,.32), 0 18px 42px rgba(7,14,28,.22); }
+}
+@media (max-width:720px) {
+  .belm-activity-overview-card.is-clear { padding: 11px 12px; }
+  .belm-activity-overview-card:not(.is-clear) .belm-activity-overview-grid { grid-template-columns: 1fr; }
+}
+
+
+/* V215 - customer-wide Petty Cash account on the sticky dashboard rail */
+.belm-petty-cash-account-card {
+  position: relative;
+  padding: 15px 16px;
+  border: 1px solid rgba(0,166,81,.34);
+  border-radius: 14px;
+  background: linear-gradient(145deg,#0d1728,#12233a 62%,#0d1728);
+  box-shadow: 0 14px 34px rgba(7,14,28,.26);
+  color: #fff;
+}
+.belm-activity-overview-stack > .belm-petty-cash-account-card { margin: 0; }
+.belm-petty-cash-account-card::before { content:""; position:absolute; inset:0 0 auto; height:3px; border-radius:14px 14px 0 0; background:linear-gradient(90deg,#00a651,#ffd400,#1769c2); }
+.belm-petty-cash-head { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.belm-petty-cash-head span { color:#8ee4b6; font-size:10.5px; font-weight:900; letter-spacing:.08em; }
+.belm-petty-cash-head a { color:#dbeafe; font-size:9.5px; font-weight:800; text-decoration:none; }
+.belm-petty-cash-head a:hover { color:#fff; text-decoration:underline; }
+.belm-petty-cash-account-card > strong { display:block; margin-top:7px; color:#fff; font-size:26px; line-height:1; }
+.belm-petty-cash-account-card > strong.is-debt { color:#ff8a80; }
+.belm-petty-cash-meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:11px; }
+.belm-petty-cash-meta span { padding:7px 8px; border:1px solid rgba(255,255,255,.09); border-radius:8px; color:#8fa3bd; font-size:9px; }
+.belm-petty-cash-meta b { display:block; margin-top:2px; color:#fff; font-size:10.5px; }
+
+/* V215 - compact latest machine-display reference in Check Up */
+.belm-checkup-display-strip { display:grid; grid-template-columns:140px 110px 120px minmax(150px,1fr); gap:8px; align-items:stretch; margin-bottom:12px; padding:9px; border:1px solid #dbe5ee; border-radius:12px; background:#f8fafc; }
+.belm-checkup-display-photo-wrap { min-height:72px; }
+.belm-checkup-display-thumb, .belm-checkup-display-placeholder { width:140px; height:72px; border-radius:9px; border:1px solid #cbd5e1; background:#e8eef5; }
+.belm-checkup-display-thumb { display:block; object-fit:cover; cursor:zoom-in; }
+.belm-checkup-display-placeholder { display:grid; place-items:center; align-content:center; color:#64748b; font-size:9px; font-weight:900; text-align:center; letter-spacing:.06em; }
+.belm-checkup-display-placeholder small { margin-top:3px; font-size:8px; font-weight:700; letter-spacing:0; }
+.belm-checkup-display-stat { display:flex; flex-direction:column; justify-content:center; padding:8px 10px; border:1px solid #e2e8f0; border-radius:9px; background:#fff; }
+.belm-checkup-display-stat span { color:#64748b; font-size:8.5px; font-weight:850; text-transform:uppercase; letter-spacing:.04em; }
+.belm-checkup-display-stat strong { margin-top:4px; color:#0f172a; font-size:13px; line-height:1.25; }
+.belm-checkup-display-stat:first-of-type strong { color:#0b7a3c; }
+@media(max-width:720px){ .belm-checkup-display-strip{grid-template-columns:110px 1fr 1fr}.belm-checkup-display-thumb,.belm-checkup-display-placeholder{width:110px;height:64px}.belm-checkup-display-photo-wrap{min-height:64px}.belm-checkup-display-time{grid-column:1/-1} }
+
+
+/* V216 - dedicated Breakdown Process card directly below shared Petty Cash.
+   The parent right rail is already sticky on desktop, so this card follows
+   Petty Cash while the customer scrolls the machine list. */
+.belm-breakdown-process-rail-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 48px minmax(0,1fr) 22px;
+  align-items: center;
+  gap: 11px;
+  min-height: 74px;
+  padding: 12px 13px;
+  border: 1px solid rgba(255,212,0,.42);
+  border-radius: 14px;
+  background: linear-gradient(145deg,#111b2d,#17304a 62%,#102033);
+  box-shadow: 0 14px 34px rgba(7,14,28,.24);
+  color: #fff;
+  text-decoration: none;
+  overflow: hidden;
+}
+.belm-breakdown-process-rail-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg,#1769c2,#00a651,#ffd400);
+}
+.belm-breakdown-process-rail-card:hover,
+.belm-breakdown-process-rail-card:focus {
+  transform: translateY(-1px);
+  border-color: rgba(255,212,0,.7);
+  box-shadow: 0 18px 38px rgba(7,14,28,.30);
+  outline: none;
+}
+.belm-breakdown-rail-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: linear-gradient(145deg,rgba(0,166,81,.28),rgba(23,105,194,.28));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: .05em;
+}
+.belm-breakdown-rail-copy { min-width: 0; }
+.belm-breakdown-rail-copy b {
+  display: block;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .055em;
+}
+.belm-breakdown-rail-copy small {
+  display: block;
+  margin-top: 4px;
+  color: #aebed0;
+  font-size: 9px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.belm-breakdown-rail-arrow {
+  color: #ffd400;
+  font-size: 25px;
+  font-weight: 500;
+  line-height: 1;
+  text-align: right;
+}
+.belm-activity-overview-stack > .belm-breakdown-process-rail-card { margin: 0; }
+@media (max-width:979px) {
+  .belm-breakdown-process-rail-card { min-height: 66px; }
+}

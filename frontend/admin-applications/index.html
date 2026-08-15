@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Access Applications — BELM Admin</title>
-  <link rel="stylesheet" href="/admin-applications/admin.css">
+  <link rel="stylesheet" href="/admin-applications/admin.css?v=217-user-list">
   <link rel="stylesheet" href="/admin-sidebar.css?v=211-bug-audit">
   <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
@@ -40,6 +40,23 @@
     <div id="alertBox" class="alert hidden"></div>
     <section id="applicationList" class="application-list">
       <div class="loading">Loading applications…</div>
+    </section>
+
+    <section class="registered-users-section" aria-labelledby="registeredUsersTitle">
+      <div class="registered-users-head">
+        <div>
+          <p>ACTIVE PORTAL ACCOUNTS</p>
+          <h2 id="registeredUsersTitle">Registered users <span id="registeredUsersCount">0</span></h2>
+          <span>Users already created in BELM. Edit access or remove an account from this list.</span>
+        </div>
+        <div class="registered-users-tools">
+          <input id="registeredUsersSearch" type="search" placeholder="Search name, email, role or customer" aria-label="Search registered users">
+          <button class="refresh" id="refreshUsersButton" type="button">Refresh users</button>
+        </div>
+      </div>
+      <div id="registeredUsersList" class="registered-users-list">
+        <div class="loading">Loading registered users…</div>
+      </div>
     </section>
   </main>
 
@@ -168,6 +185,33 @@
     </form>
   </dialog>
 
+  <dialog id="editRegisteredUserDialog">
+    <button class="dialog-close" id="closeEditRegisteredUser" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">REGISTERED USER</p>
+      <h2 id="editRegisteredUserTitle">Edit user</h2>
+      <p>Change the user role, assigned customer or account status. Email/login identity is not changed here.</p>
+    </div>
+    <form id="editRegisteredUserForm" class="assignment-form">
+      <input id="editRegisteredUserId" type="hidden">
+      <label>Name<input id="editRegisteredUserName" required maxlength="255"></label>
+      <label>Email<input id="editRegisteredUserEmail" type="email" readonly></label>
+      <label>Phone<input id="editRegisteredUserPhone" maxlength="50"></label>
+      <div class="field-block">
+        <span class="field-title">Roles <small>(select one or more)</small></span>
+        <div id="editRegisteredUserRoles" class="user-role-options"></div>
+      </div>
+      <label id="editRegisteredUserCustomerWrap" class="hidden">Customer served by Technician
+        <select id="editRegisteredUserCustomer"></select>
+      </label>
+      <div class="field-block">
+        <span class="check-option"><input id="editRegisteredUserActive" type="checkbox"> User account is active</span>
+      </div>
+      <div id="editRegisteredUserError" class="alert hidden"></div>
+      <button id="saveEditRegisteredUser" class="primary" type="submit">Save user</button>
+    </form>
+  </dialog>
+
   <dialog id="registerCredentialsDialog">
     <button class="dialog-close" id="closeRegisterCredentials" aria-label="Close">×</button>
     <div class="check">✓</div>
@@ -186,6 +230,8 @@
 
   <script src="/admin-access.js"></script>
   <script src="/admin-sidebar.js?v=211-bug-audit"></script>
-  <script src="/admin-applications/admin.js"></script>
+  <script src="/delete-confirm.js?v=217-user-list"></script>
+  <script src="/edit-confirm.js?v=217-user-list"></script>
+  <script src="/admin-applications/admin.js?v=217-user-list"></script>
 </body>
 </html>

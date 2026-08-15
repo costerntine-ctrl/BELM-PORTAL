@@ -62,3 +62,5 @@ dialog { width:min(600px,calc(100% - 28px)); padding:0; border:0; border-radius:
 .history-entry small { display:block; margin:2px 0 5px; color:#7a8782; font-size:10.5px; }
 .history-entry p { margin:0; color:#425565; }
 @media(max-width:700px){.heading{align-items:start;flex-direction:column}.control-grid{grid-template-columns:1fr}.request-head{align-items:start}.dialog-actions{flex-direction:column-reverse}.dialog-actions button{width:100%}}
+
+.temporary-override-banner{margin:10px 0;padding:9px 11px;border:1px solid #f4cf00;background:#fff8d6;color:#5c4700;border-radius:10px;font-size:12px}.temporary-override-banner b{letter-spacing:.04em}

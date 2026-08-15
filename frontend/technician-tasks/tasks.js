@@ -47,7 +47,7 @@
     }
     taskList.innerHTML = visible.map((task) => `
       <article class="task ${escapeHtml(task.priority)} ${escapeHtml(task.status)}">
-        <div class="task-head"><div><h2>${escapeHtml(task.title)}</h2><div class="meta">${escapeHtml(task.customerName || "General BELM task")} · Assigned by ${escapeHtml(task.createdBy || "BELM Admin")}</div></div><span class="priority">${escapeHtml(task.priority)}</span></div>
+        <div class="task-head"><div><h2>${escapeHtml(task.title)}</h2><div class="meta">${escapeHtml(task.customerName || "General BELM task")} · Assigned by ${escapeHtml(task.createdBy || "BELM Admin")}</div>${task.temporaryOverride ? `<div class="temporary-override">TEMPORARY OVERRIDE · Home: ${escapeHtml(task.homeCustomerName || "Assigned customer")}</div>` : ""}</div><span class="priority">${escapeHtml(task.priority)}</span></div>
         <p>${escapeHtml(task.description || "No additional details.")}</p>
         <div class="task-actions"><span class="due">${task.dueDate ? `Due ${new Date(task.dueDate).toLocaleDateString()}` : "No due date"}</span>${task.status !== "DONE" ? `<button class="complete" type="button" data-done="${escapeHtml(task.id)}">Mark completed</button>` : "<span class=\"due\">Completed</span>"}</div>
       </article>

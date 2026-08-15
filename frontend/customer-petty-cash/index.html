@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Petty Cash — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=16-service-sync">
+  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=215-shared-petty">
   <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -14,7 +14,7 @@
   <header>
     <a class="brand" href="/portal/dashboard">
       <span class="mark">B</span>
-      <span><b>BELM Customer Portal</b><small>Machine Petty Cash</small></span>
+      <span><b>BELM Customer Portal</b><small>Company Petty Cash Account</small></span>
     </a>
     <nav>
       <a href="/portal/dashboard">← Customer dashboard</a>
@@ -25,9 +25,9 @@
   <main>
     <section class="heading">
       <div>
-        <p class="eyebrow">MACHINE COST TRACKING</p>
-        <h1 id="pageTitle">Petty cash</h1>
-        <p id="machineDetails" class="lead">Loading machine information…</p>
+        <p class="eyebrow">COMPANY CASH CONTROL</p>
+        <h1 id="pageTitle">Petty Cash Account</h1>
+        <p id="machineDetails" class="lead">One shared Petty Cash account for all registered machines.</p>
       </div>
       <div class="download-actions">
         <label class="print-options">Print options
@@ -61,7 +61,7 @@
     </section>
 
     <section class="panel" id="topupHistoryPanel">
-      <div class="panel-head"><div><h2>Top-up history</h2><p>Funds added to this machine's petty cash by BELM.</p></div></div>
+      <div class="panel-head"><div><h2>Top-up history</h2><p>Funds added to the company Petty Cash account.</p></div></div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Date</th><th>Amount</th><th>Note</th><th>Added by</th></tr></thead>
@@ -70,13 +70,23 @@
       </div>
     </section>
 
+    <section id="topupPanel" class="panel entry-panel hidden">
+      <div class="panel-head"><div><h2>Add Petty Cash funds</h2><p>Administration/Accounts can replenish the shared company float.</p></div><strong id="topupCalculated">Top-up: TZS 0</strong></div>
+      <form id="topupForm">
+        <label>Amount (TZS)<input id="topupAmount" type="number" min="1" step="0.01" required></label>
+        <label class="wide">Note <input id="topupNote" maxlength="255" placeholder="e.g. Monthly petty cash float"></label>
+        <div class="form-actions"><button class="primary" id="topupButton" type="submit">Add funds</button></div>
+      </form>
+    </section>
+
     <section id="entryPanel" class="panel entry-panel">
       <div class="panel-head">
-        <div><h2>Add petty cash entry</h2><p>Record a small day-to-day cash cost for this machine (fuel top-up, transport, minor labour, etc).</p></div>
+        <div><h2>Add petty cash entry</h2><p>Record a small cash cost and select the machine that used it.</p></div>
         <strong id="calculatedTotal">Amount: TZS 0</strong>
       </div>
       <form id="expenseForm">
         <label>Date<input id="expenseDate" type="date" required></label>
+        <label>Machine<select id="machineSelect" required><option value="">Select machine…</option></select></label>
         <label class="wide">Receipt for<input id="description" maxlength="500" required placeholder="e.g. Transport for technician visit"></label>
         <label>Amount (TZS)<input id="amount" type="number" min="0.01" step="0.01" required></label>
         <label class="receipt-field">Receipt photo <small>(optional)</small>
@@ -93,13 +103,13 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Petty cash history</h2><p>Saved day-to-day cash entries for this machine.</p></div>
+        <div><h2>Petty cash history</h2><p>Company-wide spending history, with the machine that used each amount.</p></div>
         <button class="secondary compact" id="refreshButton" type="button">Refresh</button>
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Receipt</th><th>Recorded by</th></tr></thead>
-          <tbody id="expenseRows"><tr><td colspan="5" class="empty">Loading entries…</td></tr></tbody>
+          <thead><tr><th>Date</th><th>Machine</th><th>Description</th><th>Amount</th><th>Receipt</th><th>Recorded by</th></tr></thead>
+          <tbody id="expenseRows"><tr><td colspan="6" class="empty">Loading entries…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -110,6 +120,6 @@
     <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
   </dialog>
 
-  <script src="/customer-petty-cash/petty-cash.js?v=1"></script>
+  <script src="/customer-petty-cash/petty-cash.js?v=215-account"></script>
 </body>
 </html>

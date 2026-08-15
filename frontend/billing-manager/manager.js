@@ -228,12 +228,19 @@
       return;
     }
     try {
-      [invoices, expenses, proformas, customers] = await Promise.all([
+      [invoices, expenses, proformas] = await Promise.all([
         api("/billing/invoices"),
         api("/company-expenses"),
         api("/proforma-invoices"),
-        api("/customers"),
       ]);
+      // Customer lookup is part of Billing itself. Billing staff should not
+      // need the separate Customers Manager permission just to issue an invoice.
+      try {
+        customers = await api("/billing?action=customer-lookup");
+      } catch (lookupError) {
+        customers = [];
+        showAlert(`Customer list could not load: ${lookupError.message}`, true);
+      }
       try {
         receipts = await api("/receipts");
       } catch (_) {
@@ -591,7 +598,7 @@
   async function ensureSparePartsLoaded() {
     if (!sparePartsCache) {
       try {
-        sparePartsCache = await api("/spare-parts");
+        sparePartsCache = await api("/billing?action=spare-lookup");
       } catch (_) {
         sparePartsCache = [];
       }

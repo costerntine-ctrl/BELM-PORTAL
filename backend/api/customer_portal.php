@@ -391,6 +391,30 @@ function petty_cash_rows(string $customerId, string $machineId, ?string $from = 
     return $stmt->fetchAll();
 }
 
+function petty_cash_account_rows(string $customerId, ?string $from = null, ?string $to = null): array {
+    $sql = "SELECT ul.id, ul.machine_id, ul.date, ul.description, ul.cost, ul.logged_by, ul.receipt_photo_name,
+                CASE WHEN ul.receipt_photo_data IS NOT NULL AND ul.receipt_photo_data <> '' THEN 1 ELSE 0 END AS has_receipt,
+                ul.created_at, m.brand, m.model, m.machine_type, m.serial_number, m.reg_number
+         FROM usage_logs ul
+         JOIN machines m ON m.id = ul.machine_id
+         WHERE ul.customer_id = ? AND ul.category = 'PETTY_CASH'";
+    $params = [$customerId];
+    if ($from !== null) { $sql .= ' AND ul.date >= ?'; $params[] = $from; }
+    if ($to !== null) { $sql .= ' AND ul.date <= ?'; $params[] = $to; }
+    $sql .= ' ORDER BY ul.date DESC, ul.created_at DESC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll();
+}
+
+function customer_can_manage_petty_cash(array $customer): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    $permissions = $customer['permissions'] ?? null;
+    if ($permissions === null) return true;
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    return in_array($role, ['admin', 'accounts'], true);
+}
+
 // Daily fuel usage — same usage_logs table, its own category. quantity is
 // litres, unit_price is price/litre, cost is the total for that day's
 // fill-up, mirroring the same shape as Machine Expenses / Petty Cash so
@@ -815,6 +839,10 @@ if ($sub === 'analysis') {
     $pettyCashStmt->execute([$custId]);
     $totalPettyCash = (float)$pettyCashStmt->fetchColumn();
 
+    $pettyTopupStmt = db()->prepare('SELECT COALESCE(SUM(amount), 0) FROM petty_cash_topups WHERE customer_id = ?');
+    $pettyTopupStmt->execute([$custId]);
+    $totalPettyCashTopups = (float)$pettyTopupStmt->fetchColumn();
+
     $reportStmt = db()->prepare(
         "SELECT COUNT(*) FROM checklist_reports cr
          JOIN machines m ON m.id = cr.machine_id
@@ -916,6 +944,11 @@ if ($sub === 'analysis') {
         ],
         'machineExpensesTotal' => $totalExpenses,
         'pettyCashTotal' => $totalPettyCash,
+        'pettyCashAccount' => [
+            'totalToppedUp' => round($totalPettyCashTopups, 2),
+            'totalUsed' => round($totalPettyCash, 2),
+            'balance' => round($totalPettyCashTopups - $totalPettyCash, 2),
+        ],
         'checklistReportsCount' => $totalReports,
         'invoices' => [
             'total' => (float)$invoiceStats['total'],
@@ -1745,6 +1778,144 @@ if ($sub === 'fuel-usage' && $sub2) {
     }
 }
 
+// ---- Customer-level petty cash account ------------------------------------
+// One float/account is shared by all machines. Spending remains tied to the
+// machine that consumed the cash, while top-ups belong to the customer account.
+if ($sub === 'petty-cash-account') {
+    require_customer_feature_access($customer, 'machine-expenses', 'Petty Cash');
+    [$rangeFrom, $rangeTo] = usage_log_date_range_from_query();
+
+    if ($method === 'POST' && $sub2 === 'topup') {
+        require_customer_write_access($customer);
+        if (!customer_can_manage_petty_cash($customer)) {
+            json_error('Only Administration/Accounts with full customer control can add Petty Cash funds.', 403);
+        }
+        $b = body();
+        $amount = (float)($b['amount'] ?? 0);
+        $note = trim((string)($b['note'] ?? ''));
+        if ($amount <= 0) json_error('Top-up amount must be greater than zero.');
+        if (strlen($note) > 255) json_error('Top-up note is too long.');
+        $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Administration'));
+        $id = uuid();
+        db()->prepare(
+            'INSERT INTO petty_cash_topups (id, machine_id, customer_id, amount, note, added_by, added_by_name, created_at) VALUES (?,NULL,?,?,?,?,?,NOW())'
+        )->execute([$id, $customer['id'], round($amount, 2), $note !== '' ? $note : null, null, $actorName ?: 'Administration']);
+        log_customer_activity($customer, 'Added Petty Cash funds: TZS ' . number_format($amount, 2));
+        json_out(['id' => $id, 'message' => 'Petty Cash funds added successfully.'], 201);
+    }
+
+    if ($method === 'POST' && $sub2 === 'entry') {
+        require_customer_write_access($customer);
+        $b = body();
+        $machineId = trim((string)($b['machineId'] ?? ''));
+        $date = trim((string)($b['date'] ?? date('Y-m-d')));
+        $description = trim((string)($b['description'] ?? ''));
+        $amount = (float)($b['amount'] ?? 0);
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        $receiptData = null; $receiptMime = null;
+        $parsedDate = DateTime::createFromFormat('!Y-m-d', $date);
+        if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date) json_error('Enter a valid date.');
+        if ($description === '') json_error('Description is required.');
+        if ($amount <= 0) json_error('Amount must be greater than zero.');
+        $machineStmt = db()->prepare('SELECT id FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+        $machineStmt->execute([$machineId, $customer['id']]);
+        if (!$machineStmt->fetch()) json_error('Choose a valid machine for this Petty Cash entry.');
+        if ($receiptPhoto !== '') [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
+        $entryId = uuid();
+        $loggedBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+        db()->prepare(
+            "INSERT INTO usage_logs (id, customer_id, machine_id, date, category, description, cost, logged_by, receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at)
+             VALUES (?,?,?,?,'PETTY_CASH',?,?,?,?,?,?,NOW())"
+        )->execute([$entryId, $customer['id'], $machineId, $date, $description, round($amount, 2), $loggedBy ?: 'Customer', $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null]);
+        log_customer_activity($customer, 'Recorded Petty Cash expense: TZS ' . number_format($amount, 2));
+        json_out(['id' => $entryId, 'message' => 'Petty Cash entry saved successfully.'], 201);
+    }
+
+    if ($method === 'GET' && $sub2 === 'receipt') {
+        $entryId = trim((string)($_GET['expenseId'] ?? ''));
+        if ($entryId === '') json_error('Petty Cash receipt was not specified.');
+        $stmt = db()->prepare("SELECT receipt_photo_data, receipt_photo_mime, receipt_photo_name FROM usage_logs WHERE id = ? AND customer_id = ? AND category = 'PETTY_CASH'");
+        $stmt->execute([$entryId, $customer['id']]);
+        $receipt = $stmt->fetch();
+        if (!$receipt || !$receipt['receipt_photo_data']) json_error('Receipt photo was not found.', 404);
+        $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
+        if ($binary === false) json_error('Receipt photo is damaged.', 500);
+        $mime = in_array($receipt['receipt_photo_mime'], ['image/jpeg','image/png','image/webp','application/pdf'], true) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . strlen($binary));
+        header('Content-Disposition: inline; filename="' . preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($receipt['receipt_photo_name'] ?: 'petty-cash-receipt')) . '"');
+        echo $binary; exit;
+    }
+
+    $entries = petty_cash_account_rows($customer['id'], $rangeFrom, $rangeTo);
+
+    if ($method === 'GET' && $sub2 === 'receipts-list') {
+        $result = [];
+        foreach ($entries as $row) {
+            if (empty($row['has_receipt'])) continue;
+            $name = $row['receipt_photo_name'] ?: ('petty-cash-receipt-' . $row['id']);
+            $result[] = ['id' => $row['id'], 'name' => $name, 'downloadUrl' => '/customer-portal/petty-cash-account/receipt?expenseId=' . rawurlencode($row['id'])];
+        }
+        json_out($result);
+    }
+
+    if ($method === 'GET' && $sub2 === 'csv') {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="petty-cash-account.csv"');
+        $output = fopen('php://output', 'wb');
+        fputcsv($output, [strtoupper($customer['name']) . ' - PETTY CASH ACCOUNT REPORT']);
+        fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
+        fputcsv($output, []);
+        fputcsv($output, ['Date','Machine','Description','Amount TZS','Receipt','Recorded By']);
+        foreach ($entries as $entry) {
+            fputcsv($output, [$entry['date'], trim(($entry['brand'] ?? '') . ' ' . ($entry['model'] ?? '')), $entry['description'], $entry['cost'], $entry['has_receipt'] ? 'Yes' : 'No', $entry['logged_by']]);
+        }
+        fclose($output); exit;
+    }
+
+    if ($method === 'GET' && $sub2 === 'pdf') {
+        $total = array_reduce($entries, static fn(float $sum, array $entry): float => $sum + (float)$entry['cost'], 0.0);
+        $lines = [strtoupper($customer['name']) . ' - PETTY CASH ACCOUNT REPORT', 'Service system: BELM General Tech Service Limited', 'Period: ' . ($rangeFrom ? display_date($rangeFrom) . ' to ' . display_date($rangeTo) : 'All time'), 'Generated: ' . date('d/m/Y H:i'), str_repeat('-', 78)];
+        foreach ($entries as $entry) {
+            $machineName = trim(($entry['brand'] ?? '') . ' ' . ($entry['model'] ?? '')) ?: ($entry['machine_type'] ?? 'Machine');
+            $lines[] = sprintf('%s | %s | TZS %s | %s', display_date($entry['date']), $machineName, number_format((float)$entry['cost'], 2), $entry['description']);
+        }
+        $lines[] = str_repeat('-', 78);
+        $lines[] = 'TOTAL USED: TZS ' . number_format($total, 2);
+        output_machine_expense_pdf('petty-cash-account.pdf', $lines);
+    }
+
+    if ($method === 'GET' && $sub2 === '') {
+        $topupStmt = db()->prepare(
+            "SELECT pct.id, pct.amount, pct.note, pct.created_at, COALESCE(pct.added_by_name, u.name, 'Administration') AS added_by_name
+             FROM petty_cash_topups pct LEFT JOIN users u ON u.id = pct.added_by
+             WHERE pct.customer_id = ? ORDER BY pct.created_at DESC"
+        );
+        $topupStmt->execute([$customer['id']]);
+        $topups = $topupStmt->fetchAll();
+        $totalToppedUp = array_reduce($topups, static fn(float $sum, array $t): float => $sum + (float)$t['amount'], 0.0);
+        $usedStmt = db()->prepare("SELECT COALESCE(SUM(cost),0) FROM usage_logs WHERE customer_id = ? AND category = 'PETTY_CASH'");
+        $usedStmt->execute([$customer['id']]);
+        $totalUsed = (float)$usedStmt->fetchColumn();
+        $machineStmt = db()->prepare('SELECT id, brand, model, machine_type, serial_number, reg_number FROM machines WHERE customer_id = ? AND deleted_at IS NULL ORDER BY brand, model');
+        $machineStmt->execute([$customer['id']]);
+        $machines = array_map(static fn(array $m): array => ['id'=>$m['id'], 'name'=>trim(($m['brand'] ?? '') . ' ' . ($m['model'] ?? '')) ?: ($m['machine_type'] ?? 'Machine'), 'serialNumber'=>$m['serial_number'], 'regNumber'=>$m['reg_number']], $machineStmt->fetchAll());
+        $mappedEntries = array_map(static fn(array $e): array => [
+            'id'=>$e['id'], 'machineId'=>$e['machine_id'], 'machineName'=>trim(($e['brand'] ?? '') . ' ' . ($e['model'] ?? '')) ?: ($e['machine_type'] ?? 'Machine'),
+            'date'=>$e['date'], 'description'=>$e['description'], 'cost'=>(float)$e['cost'], 'loggedBy'=>$e['logged_by'], 'hasReceipt'=>(bool)$e['has_receipt'], 'createdAt'=>$e['created_at']
+        ], $entries);
+        $filteredTotal = array_reduce($mappedEntries, static fn(float $sum, array $e): float => $sum + (float)$e['cost'], 0.0);
+        json_out([
+            'account'=>['totalToppedUp'=>round($totalToppedUp,2), 'totalUsed'=>round($totalUsed,2), 'balance'=>round($totalToppedUp-$totalUsed,2), 'canTopUp'=>customer_can_manage_petty_cash($customer),
+                'topups'=>array_map(static fn(array $t): array => ['id'=>$t['id'], 'amount'=>(float)$t['amount'], 'note'=>$t['note'], 'addedBy'=>$t['added_by_name'], 'createdAt'=>$t['created_at']], $topups)],
+            'summary'=>['recordCount'=>count($mappedEntries), 'totalCost'=>round($filteredTotal,2), 'averageCost'=>count($mappedEntries) ? round($filteredTotal/count($mappedEntries),2) : 0, 'receiptCount'=>count(array_filter($mappedEntries, static fn(array $e): bool => $e['hasReceipt']))],
+            'machines'=>$machines, 'entries'=>$mappedEntries,
+        ]);
+    }
+}
+
+// ---- Legacy machine-specific Petty Cash route (kept for old bookmarks) -----
 // ---- Customer-recorded petty cash (small day-to-day machine costs) --------
 if ($sub === 'petty-cash' && $sub2) {
     $machineId = $sub2;
@@ -2019,6 +2190,29 @@ if ($sub === 'machines' && $sub2) {
         );
         $templateStmt->execute([$machine['machine_type'], $machine['model'], $machine['machine_type']]);
         $templates = $templateStmt->fetchAll();
+
+        $latestDisplayStmt = db()->prepare(
+            'SELECT id, hour_meter_reading, display_photo_url, created_at FROM checklist_reports WHERE machine_id = ? ORDER BY created_at DESC LIMIT 1'
+        );
+        $latestDisplayStmt->execute([$machineId]);
+        $latestDisplay = $latestDisplayStmt->fetch() ?: null;
+        $fuelLevel = null;
+        if ($latestDisplay) {
+            $fuelAnswerStmt = db()->prepare(
+                "SELECT value FROM checklist_answers WHERE report_id = ? AND LOWER(label) LIKE '%fuel%' AND LOWER(label) LIKE '%level%' ORDER BY id LIMIT 1"
+            );
+            $fuelAnswerStmt->execute([$latestDisplay['id']]);
+            $fuelLevelValue = $fuelAnswerStmt->fetchColumn();
+            if ($fuelLevelValue !== false && trim((string)$fuelLevelValue) !== '') $fuelLevel = trim((string)$fuelLevelValue);
+        }
+        $serviceStatusForDisplay = compute_service_status_helper($machineId);
+        $displayTelemetry = [
+            'displayPhotoUrl' => $latestDisplay['display_photo_url'] ?? null,
+            'hourMeterReading' => $latestDisplay ? (float)$latestDisplay['hour_meter_reading'] : (float)($serviceStatusForDisplay['totalHours'] ?? 0),
+            'fuelLevel' => $fuelLevel,
+            'capturedAt' => $latestDisplay['created_at'] ?? null,
+        ];
+
         $tz = new DateTimeZone('Africa/Dar_es_Salaam');
         $today = (new DateTimeImmutable('now', $tz))->format('Y-m-d');
         foreach ($templates as &$template) {
@@ -2077,6 +2271,7 @@ if ($sub === 'machines' && $sub2) {
                 'regNumber' => $machine['reg_number'],
                 'brand' => $machine['brand'],
             ],
+            'telemetry' => $displayTelemetry,
             'templates' => $templates,
         ]);
     }

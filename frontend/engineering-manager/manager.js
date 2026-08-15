@@ -15,6 +15,8 @@
     ["activity-log", "Activity log"],
   ];
   let rolesCache = [];
+  let dispatchTechnicians = [];
+  let dispatchCustomers = [];
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -148,6 +150,70 @@
       : '<p class="muted">No pending spare-part requests.</p>';
   }
 
+  function updateDispatchNote() {
+    const techId = document.getElementById("dispatchTechnician")?.value || "";
+    const customerId = document.getElementById("dispatchCustomer")?.value || "";
+    const tech = dispatchTechnicians.find((item) => String(item.id) === String(techId));
+    const customer = dispatchCustomers.find((item) => String(item.id) === String(customerId));
+    const note = document.getElementById("dispatchNote");
+    if (!note) return;
+    if (tech && customer && tech.assignedCustomerId && String(tech.assignedCustomerId) !== String(customer.id)) {
+      note.innerHTML = `<b>TEMPORARY OVERRIDE:</b> ${escapeHtml(tech.name)} stays permanently attached to ${escapeHtml(tech.assignedCustomerName || "their home customer")}. Only this job is for ${escapeHtml(customer.name)}.`;
+      note.classList.add("override");
+    } else if (tech && customer) {
+      note.textContent = `${tech.name} is already attached to ${customer.name}; this is a normal assignment.`;
+      note.classList.remove("override");
+    } else {
+      note.textContent = "Select a Technician and customer. If they differ from the Technician's home customer, the task is marked Temporary Override.";
+      note.classList.remove("override");
+    }
+  }
+
+  async function loadDispatchOptions() {
+    const panel = document.getElementById("dispatchPanel");
+    try {
+      const data = await api("/engineering?action=dispatch-options");
+      dispatchTechnicians = data.technicians || [];
+      dispatchCustomers = data.customers || [];
+      document.getElementById("dispatchTechnician").innerHTML = '<option value="">Select Technician...</option>' + dispatchTechnicians.map((tech) => {
+        const home = tech.assignedCustomerName ? ` · Home: ${tech.assignedCustomerName}` : " · No home customer";
+        return `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name + home)}</option>`;
+      }).join("");
+      document.getElementById("dispatchCustomer").innerHTML = '<option value="">Select Customer...</option>' + dispatchCustomers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join("");
+      panel?.classList.remove("hidden");
+      updateDispatchNote();
+    } catch (error) {
+      if (error.status !== 403) showAlert(error.message || "Could not load Technician Dispatch.");
+      panel?.classList.add("hidden");
+    }
+  }
+
+  async function dispatchTechnician(event) {
+    event.preventDefault();
+    const technicianId = document.getElementById("dispatchTechnician").value;
+    const customerId = document.getElementById("dispatchCustomer").value;
+    const tech = dispatchTechnicians.find((item) => String(item.id) === String(technicianId));
+    const customer = dispatchCustomers.find((item) => String(item.id) === String(customerId));
+    const temporary = Boolean(tech?.assignedCustomerId && customerId && String(tech.assignedCustomerId) !== String(customerId));
+    if (temporary && !confirm(`${tech.name} is attached to ${tech.assignedCustomerName || "another customer"}. Assign this temporary job to ${customer?.name || "the selected customer"} without changing the permanent assignment?`)) return;
+    try {
+      const result = await api("/engineering?action=dispatch", {
+        method: "POST",
+        body: JSON.stringify({
+          technicianId, customerId,
+          title: document.getElementById("dispatchTitle").value.trim(),
+          description: document.getElementById("dispatchDescription").value.trim(),
+          priority: document.getElementById("dispatchPriority").value,
+          dueDate: document.getElementById("dispatchDueDate").value || null,
+        }),
+      });
+      showAlert(result.temporaryOverride ? "Temporary Technician Override assigned. Permanent customer was not changed." : "Technician job assigned.", false);
+      document.getElementById("dispatchTitle").value = "";
+      document.getElementById("dispatchDescription").value = "";
+      document.getElementById("dispatchDueDate").value = "";
+    } catch (error) { showAlert(error.message || "Could not assign the Technician."); }
+  }
+
   async function load() {
     try {
       const data = await api("/engineering?action=dashboard");
@@ -247,7 +313,11 @@
   if (!token) {
     showAlert("Administrator login required.");
   } else {
-    load();
+    document.getElementById("dispatchTechnician")?.addEventListener("change", updateDispatchNote);
+  document.getElementById("dispatchCustomer")?.addEventListener("change", updateDispatchNote);
+  document.getElementById("dispatchForm")?.addEventListener("submit", dispatchTechnician);
+  loadDispatchOptions();
+  load();
     loadEngineerRoleSummary();
   }
 })();

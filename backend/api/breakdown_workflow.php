@@ -34,6 +34,7 @@ function bw_context(array $payload): array {
             'kind' => 'customer', 'customerId' => (string)$customer['id'], 'isOwner' => $isOwner,
             'role' => $role, 'actorId' => (string)($customer['actorId'] ?? $customer['id']),
             'actorName' => (string)($customer['actorName'] ?? $customer['name'] ?? 'Customer User'),
+            'canOverrideTechnician' => false,
         ];
     }
     $user = require_auth();
@@ -51,6 +52,7 @@ function bw_context(array $payload): array {
         'isOwner' => false, 'role' => strtolower((string)($user['roleName'] ?? 'staff')),
         'actorId' => (string)($user['id'] ?? ''), 'actorName' => (string)($user['name'] ?? 'BELM'),
         'isTechnician' => $isTech, 'isCustomerManaged' => $isCustomerManaged,
+        'canOverrideTechnician' => !$isTech && belm_can_override_technician_customer($user),
     ];
 }
 
@@ -75,7 +77,17 @@ function bw_case_access(array $ctx, string $caseId): array {
         // BELM can see customer workflow only while BELM Service Provider is ON.
         if (!empty($case['is_machinery_admin'])) json_error('This customer is using its own maintenance team.', 403);
         if (!empty($ctx['isTechnician']) && $ctx['customerId'] !== '' && $ctx['customerId'] !== (string)$case['customer_id']) {
-            json_error('This machine is not assigned to this Technician.', 403);
+            // V218: a BELM Technician may temporarily cross customer boundaries
+            // only when a Digital Job Card for THIS case is explicitly assigned
+            // to that Technician. This never changes their permanent customer.
+            $override = db()->prepare(
+                "SELECT 1 FROM digital_job_cards
+                 WHERE case_id=? AND technician_id=? LIMIT 1"
+            );
+            $override->execute([$caseId, $ctx['actorId']]);
+            if (!$override->fetchColumn()) {
+                json_error('This machine is not assigned to this Technician and no Temporary Override exists for this Job Card.', 403);
+            }
         }
     }
     return $case;
@@ -320,12 +332,46 @@ if ($method === 'GET' && $action === 'technicians') {
     if (in_array($ctx['kind'],['customer','customer-tech'],true) && $customerId !== $ctx['customerId']) json_error('Not allowed.',403);
     $mode = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id=?'); $mode->execute([$customerId]);
     $selfService = !empty($mode->fetchColumn());
-    $sql = "SELECT u.id,u.name,u.email,u.is_customer_managed FROM users u JOIN roles r ON r.id=u.role_id
+
+    if ($ctx['kind']==='belm' && empty($ctx['isTechnician']) && !empty($ctx['canOverrideTechnician'])) {
+        // Super Admin / Engineer sees every active BELM-owned Technician.
+        // Home-customer labels let them intentionally pick a cross-customer
+        // technician and confirm a Temporary Override in the Job Card dialog.
+        $stmt = db()->query(
+            "SELECT u.id,u.name,u.email,u.is_customer_managed,u.assigned_customer_id, hc.name AS assigned_customer_name
+             FROM users u JOIN roles r ON r.id=u.role_id
+             LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
+             WHERE r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL
+               AND u.is_customer_managed=0
+             ORDER BY u.name"
+        );
+        $rows=$stmt->fetchAll();
+        foreach($rows as &$row){
+            $row['assignedCustomerId']=$row['assigned_customer_id'];
+            $row['assignedCustomerName']=$row['assigned_customer_name'];
+            $row['temporaryForCustomer']=!empty($row['assigned_customer_id']) && $customerId!=='' && (string)$row['assigned_customer_id']!==$customerId;
+            unset($row['assigned_customer_id'],$row['assigned_customer_name']);
+        }
+        unset($row);
+        json_out($rows);
+    }
+
+    $sql = "SELECT u.id,u.name,u.email,u.is_customer_managed,u.assigned_customer_id, hc.name AS assigned_customer_name
+            FROM users u JOIN roles r ON r.id=u.role_id
+            LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
             WHERE r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL AND u.assigned_customer_id=?";
     if ($selfService) $sql .= ' AND u.is_customer_managed=1'; else $sql .= ' AND u.is_customer_managed=0';
     $sql .= ' ORDER BY u.name';
     $stmt=db()->prepare($sql); $stmt->execute([$customerId]);
-    json_out($stmt->fetchAll());
+    $rows=$stmt->fetchAll();
+    foreach($rows as &$row){
+        $row['assignedCustomerId']=$row['assigned_customer_id'];
+        $row['assignedCustomerName']=$row['assigned_customer_name'];
+        $row['temporaryForCustomer']=false;
+        unset($row['assigned_customer_id'],$row['assigned_customer_name']);
+    }
+    unset($row);
+    json_out($rows);
 }
 
 if ($method === 'GET' && $action === 'performance') {
@@ -412,7 +458,10 @@ if ($method === 'GET' && $action === 'department-report-pdf') {
 }
 
 if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
-    $stmt=db()->prepare('SELECT j.*,bc.customer_id,bc.current_stage,c.name customer_name,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id WHERE j.id=?');
+    $stmt=db()->prepare('SELECT j.*,bc.customer_id,bc.current_stage,c.name customer_name,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
+        u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name
+        FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id
+        LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN customers hc ON hc.id=u.assigned_customer_id WHERE j.id=?');
     $stmt->execute([$id]); $job=$stmt->fetch(); if(!$job)json_error('Job Card not found.',404); bw_case_access($ctx,$job['case_id']);
     $rows=[
         ['Job Card', $job['job_card_no']],
@@ -422,6 +471,9 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Serial / Reg', $job['serial_number'] ?: ($job['reg_number'] ?: '-')],
         ['Status', $job['status']],
         ['Technician', $job['technician_name'] ?: 'Unassigned'],
+        ['Assignment', !empty($job['technician_id']) && !empty($job['technician_home_customer_id']) && (string)$job['technician_home_customer_id'] !== (string)$job['customer_id']
+            ? 'TEMPORARY OVERRIDE - Home: '.($job['technician_home_customer_name'] ?: 'Other customer')
+            : 'Normal / home-customer assignment'],
         ['Fault', $job['fault_description']],
         ['Diagnosis', $job['diagnosis'] ?: '-'],
         ['Work Done', $job['work_done'] ?: '-'],
@@ -442,8 +494,16 @@ if ($method === 'GET' && $action === 'case' && $id !== '') {
     $events=db()->prepare('SELECT stage,department,action,note,actor_name,created_at FROM breakdown_case_events WHERE case_id=? ORDER BY created_at ASC');
     $events->execute([$id]);
     $spares=db()->prepare('SELECT * FROM breakdown_spare_requests WHERE case_id=? ORDER BY requested_at ASC'); $spares->execute([$id]);
-    $jobs=db()->prepare('SELECT * FROM digital_job_cards WHERE case_id=? ORDER BY created_at DESC'); $jobs->execute([$id]);
-    json_out(['case'=>bw_case_view($case),'events'=>$events->fetchAll(),'spares'=>$spares->fetchAll(),'jobCards'=>$jobs->fetchAll()]);
+    $jobs=db()->prepare('SELECT j.*,u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name
+        FROM digital_job_cards j LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
+        WHERE j.case_id=? ORDER BY j.created_at DESC'); $jobs->execute([$id]);
+    $jobRows=$jobs->fetchAll();
+    foreach($jobRows as &$jobRow){
+        $jobRow['temporary_override']=!empty($jobRow['technician_id']) && !empty($jobRow['technician_home_customer_id'])
+            && (string)$jobRow['technician_home_customer_id'] !== (string)$jobRow['customer_id'];
+    }
+    unset($jobRow);
+    json_out(['case'=>bw_case_view($case),'events'=>$events->fetchAll(),'spares'=>$spares->fetchAll(),'jobCards'=>$jobRows]);
 }
 
 if ($method === 'GET' && $action === 'from-report') {
@@ -457,7 +517,16 @@ if ($method === 'GET' && $action === '') {
     if(in_array($ctx['kind'],['customer','customer-tech'],true)){ $where[]='bc.customer_id=?'; $params[]=$ctx['customerId']; }
     else {
         $where[]='c.is_machinery_admin=0';
-        if(!empty($ctx['isTechnician']) && $ctx['customerId']!==''){ $where[]='bc.customer_id=?'; $params[]=$ctx['customerId']; }
+        if(!empty($ctx['isTechnician'])) {
+            if($ctx['customerId']!=='') {
+                $where[]='(bc.customer_id=? OR EXISTS (SELECT 1 FROM digital_job_cards tj WHERE tj.case_id=bc.id AND tj.technician_id=?))';
+                $params[]=$ctx['customerId'];
+                $params[]=$ctx['actorId'];
+            } else {
+                $where[]='EXISTS (SELECT 1 FROM digital_job_cards tj WHERE tj.case_id=bc.id AND tj.technician_id=?)';
+                $params[]=$ctx['actorId'];
+            }
+        }
     }
     $machineId=trim((string)($_GET['machineId'] ?? '')); if($machineId!==''){ $where[]='bc.machine_id=?'; $params[]=$machineId; }
     $stmt=db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE '.implode(' AND ',$where).' ORDER BY CASE WHEN bc.status=\'OPEN\' THEN 0 ELSE 1 END, bc.opened_at DESC');
@@ -479,14 +548,35 @@ if ($method === 'POST' && $action === 'job-card') {
     if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Administration/Customer Admin or Workshop Manager can generate a Job Card.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate Job Cards. Workshop Manager must issue the Job Card.',403);
     if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('BELM is not the active service provider.',403);
-    $techId=trim((string)($b['technicianId']??'')); $techName=null;
-    if($techId!==''){ $t=db()->prepare("SELECT u.name FROM users u JOIN roles r ON r.id=u.role_id WHERE u.id=? AND r.name='Technician' AND u.assigned_customer_id=? AND u.is_active=1 AND u.deleted_at IS NULL"); $t->execute([$techId,$case['customer_id']]); $techName=$t->fetchColumn(); if(!$techName)json_error('Selected Technician is not available for this customer.'); }
+    $techId=trim((string)($b['technicianId']??'')); $techName=null; $temporaryOverride=false; $techHomeName=null;
+    if($techId!==''){
+        $t=db()->prepare("SELECT u.name,u.assigned_customer_id,u.is_customer_managed,hc.name AS home_customer_name
+                          FROM users u JOIN roles r ON r.id=u.role_id
+                          LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
+                          WHERE u.id=? AND r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL");
+        $t->execute([$techId]); $tech=$t->fetch(); if(!$tech)json_error('Selected Technician is not available.');
+        $techName=(string)$tech['name']; $techHomeName=$tech['home_customer_name']??null;
+        $temporaryOverride=!empty($tech['assigned_customer_id']) && (string)$tech['assigned_customer_id']!==(string)$case['customer_id'];
+        if($ctx['kind']==='belm') {
+            if(!empty($tech['is_customer_managed'])) json_error('Customer-managed Technicians cannot be borrowed by BELM. Select a BELM Technician.',403);
+            if($temporaryOverride) {
+                if(empty($b['temporaryOverride'])) json_error('Selected Technician belongs to another customer. Confirm Temporary Override for this Job Card.',409);
+                if(empty($ctx['canOverrideTechnician'])) json_error('Only BELM Super Admin or Engineer can use a Temporary Technician Override.',403);
+            }
+        } else {
+            if($temporaryOverride || (string)$tech['assigned_customer_id']!==(string)$case['customer_id']) json_error('Selected Technician is not available for this customer.',403);
+        }
+    }
     $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
     $jobId=uuid(); $title=trim((string)($b['title']??$case['title']));
     db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$ctx['actorName']]);
     bw_set_stage($caseId,'DIAGNOSIS',null,$ctx,'Digital Job Card '.$num.' generated');
+    if ($temporaryOverride && $techId!=='') {
+        bw_log($caseId,'DIAGNOSIS','Technician','Temporary Technician Override - '.$techName,
+            'Home customer: '.($techHomeName ?: 'Unassigned').'. Override applies only to Job Card '.$num.'.', $ctx);
+    }
     if ($techId!=='') {
-        try { $te=db()->prepare('SELECT email FROM users WHERE id=?'); $te->execute([$techId]); $email=trim((string)$te->fetchColumn()); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.\nMachine: ".$case['brand'].' '.$case['model']."\nFault: ".$case['description']."\nOpen Technician > Job Card / Process."); } catch(Throwable $e) {}
+        try { $te=db()->prepare('SELECT email FROM users WHERE id=?'); $te->execute([$techId]); $email=trim((string)$te->fetchColumn()); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":"")."\nMachine: ".$case['brand'].' '.$case['model']."\nFault: ".$case['description']."\nOpen Technician > Job Card / Process."); } catch(Throwable $e) {}
     }
     json_out(['id'=>$jobId,'jobCardNo'=>$num],201);
 }

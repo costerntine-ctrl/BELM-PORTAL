@@ -1,400 +1,84 @@
 (function () {
   const token = localStorage.getItem("belm_customer_token");
-  const machineId = new URLSearchParams(window.location.search).get("machine") || "";
   const alertBox = document.getElementById("alertBox");
   let receiptPhotoData = "";
   let receiptPhotoName = "";
   let openReceiptUrl = "";
-  const money = new Intl.NumberFormat("en-TZ", {
-    style: "currency",
-    currency: "TZS",
-    maximumFractionDigits: 2,
-  });
+  const money = new Intl.NumberFormat("en-TZ", { style: "currency", currency: "TZS", maximumFractionDigits: 2 });
 
-  if (!token) {
-    window.location.replace("/portal/login");
-    return;
-  }
-  if (!machineId) {
-    showAlert("Choose a machine from the Customer dashboard.", true);
-    document.getElementById("entryPanel").classList.add("hidden");
-    return;
-  }
+  if (!token) { window.location.replace("/portal/login"); return; }
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, character => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
-    })[character]);
-  }
+  function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]); }
+  function formatDate(value) { if (!value) return "—"; const d = new Date(value); if (Number.isNaN(d.getTime())) return "—"; return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; }
+  function showAlert(message, isError=false) { alertBox.textContent = message; alertBox.className = `alert${isError ? " error" : ""}`; }
+  function clearAlert() { alertBox.textContent = ""; alertBox.className = "alert hidden"; }
+  function hasReceipt(value) { return value === true || value === 1 || value === "1" || value === "t" || value === "true"; }
 
-  function formatDate(value) {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    return `${day}/${month}/${date.getFullYear()}`;
-  }
-
-  function tokenPayload() {
-    try {
-      const encoded = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-      const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
-      return JSON.parse(decodeURIComponent(Array.from(atob(padded))
-        .map(character => `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`)
-        .join("")));
-    } catch (_) {
-      return {};
-    }
-  }
-
-  function showAlert(message, isError = false) {
-    alertBox.textContent = message;
-    alertBox.className = `alert${isError ? " error" : ""}`;
-  }
-
-  function clearAlert() {
-    alertBox.textContent = "";
-    alertBox.className = "alert hidden";
-  }
-
-  function hasReceipt(value) {
-    return value === true || value === 1 || value === "1" || value === "t" || value === "true";
-  }
-
-  function clearReceiptInput() {
-    receiptPhotoData = "";
-    receiptPhotoName = "";
-    document.getElementById("receiptPhoto").value = "";
-    document.getElementById("receiptPreview").removeAttribute("src");
-    document.getElementById("receiptPreviewWrap").classList.add("hidden");
-  }
-
-  function compressReceipt(file) {
-    return new Promise((resolve, reject) => {
-      if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) {
-        reject(new Error("Receipt must be a JPG, PNG or WebP image."));
-        return;
-      }
-      const reader = new FileReader();
-      reader.onerror = () => reject(new Error("Could not read the receipt photo."));
-      reader.onload = () => {
-        const image = new Image();
-        image.onerror = () => reject(new Error("Receipt photo is not a valid image."));
-        image.onload = () => {
-          const maximum = 1280;
-          const scale = Math.min(1, maximum / Math.max(image.width, image.height));
-          const canvas = document.createElement("canvas");
-          canvas.width = Math.max(1, Math.round(image.width * scale));
-          canvas.height = Math.max(1, Math.round(image.height * scale));
-          const context = canvas.getContext("2d");
-          context.drawImage(image, 0, 0, canvas.width, canvas.height);
-          const compressed = canvas.toDataURL("image/jpeg", 0.78);
-          if (compressed.length > 2.8 * 1024 * 1024) {
-            reject(new Error("Receipt photo is too large. Choose a smaller or clearer crop."));
-            return;
-          }
-          resolve(compressed);
-        };
-        image.src = reader.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function api(path, options = {}) {
-    const response = await fetch(`/api/customer-portal${path}`, {
-      ...options,
-      cache: "no-store",
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    });
-    if (!response.ok) {
-      let message = "Request failed.";
-      try {
-        const error = await response.json();
-        message = error.error || message;
-      } catch (_) {}
-      if (response.status === 401) {
-        localStorage.removeItem("belm_customer_token");
-        window.location.replace("/portal/login");
-      }
-      throw new Error(message);
-    }
-    return response.status === 204 ? null : response.json();
-  }
-
-  function calculateTotal() {
-    const amount = Number(document.getElementById("amount").value || 0);
-    document.getElementById("calculatedTotal").textContent = `Amount: ${money.format(amount)}`;
-  }
-
-  function render(data) {
-    const machine = data.machine || {};
-    const summary = data.summary || {};
-    const account = data.account || {};
-    document.getElementById("pageTitle").textContent =
-      `${machine.brand ? `${machine.brand} ` : ""}${machine.model || "Machine"} petty cash`;
-    document.getElementById("machineDetails").textContent = [
-      machine.machineType,
-      machine.serialNumber ? `Serial: ${machine.serialNumber}` : "",
-      machine.regNumber ? `Registration: ${machine.regNumber}` : "",
-    ].filter(Boolean).join(" · ");
-    document.getElementById("balanceAmount").textContent = money.format(Number(account.balance || 0));
-    document.getElementById("totalToppedUp").textContent = money.format(Number(account.totalToppedUp || 0));
-    document.getElementById("totalUsed").textContent = money.format(Number(account.totalUsed || 0));
-    document.getElementById("totalCost").textContent = money.format(Number(summary.totalCost || 0));
-    document.getElementById("recordCount").textContent =
-      Number(summary.recordCount || 0).toLocaleString("en-TZ");
-    document.getElementById("averageCost").textContent =
-      money.format(Number(summary.averageCost || 0));
-    document.getElementById("receiptCount").textContent =
-      Number(summary.receiptCount || 0).toLocaleString("en-TZ");
-
-    const topups = Array.isArray(account.topups) ? account.topups : [];
-    document.getElementById("topupRows").innerHTML = topups.length
-      ? topups.map(topup => `<tr>
-          <td>${formatDate(topup.createdAt)}</td>
-          <td><strong>${money.format(Number(topup.amount || 0))}</strong></td>
-          <td>${escapeHtml(topup.note || "—")}</td>
-          <td>${escapeHtml(topup.addedBy || "BELM Admin")}</td>
-        </tr>`).join("")
-      : '<tr><td colspan="4" class="empty">No top-ups yet.</td></tr>';
-
-    const rows = Array.isArray(data.entries) ? data.entries : [];
-    document.getElementById("expenseRows").innerHTML = rows.length
-      ? rows.map(entry => `<tr>
-          <td>${formatDate(entry.date)}</td>
-          <td>${escapeHtml(entry.description)}</td>
-          <td><strong>${money.format(Number(entry.cost || 0))}</strong></td>
-          <td>${hasReceipt(entry.hasReceipt)
-            ? `<button class="receipt-button" type="button" data-receipt="${escapeHtml(entry.id)}">View photo</button>
-               <button class="receipt-button" type="button" data-print-receipt="${escapeHtml(entry.id)}">Print</button>`
-            : "—"}</td>
-          <td>${escapeHtml(entry.loggedBy || "Customer")}</td>
-        </tr>`).join("")
-      : '<tr><td colspan="5" class="empty">No petty cash entries recorded yet.</td></tr>';
+  async function api(path, options={}) {
+    const response = await fetch(`/api/customer-portal${path}`, { ...options, cache:"no-store", headers:{ ...(options.body ? {"Content-Type":"application/json"}:{}), Authorization:`Bearer ${token}`, ...(options.headers||{}) } });
+    if (!response.ok) { let message="Request failed."; try { const e=await response.json(); message=e.error||message; } catch(_){} if(response.status===401){ localStorage.removeItem("belm_customer_token"); window.location.replace("/portal/login"); } throw new Error(message); }
+    return response.status===204 ? null : response.json();
   }
 
   function currentRangeQuery() {
     const scope = document.getElementById("printScope").value;
-    if (scope === "date") {
-      const value = document.getElementById("printDateInput").value;
-      return value ? `?date=${encodeURIComponent(value)}` : "";
-    }
-    if (scope === "month") {
-      const value = document.getElementById("printMonthInput").value;
-      return value ? `?month=${encodeURIComponent(value)}` : "";
-    }
+    if (scope === "date") { const v=document.getElementById("printDateInput").value; return v ? `?date=${encodeURIComponent(v)}` : ""; }
+    if (scope === "month") { const v=document.getElementById("printMonthInput").value; return v ? `?month=${encodeURIComponent(v)}` : ""; }
     return "";
   }
 
-  async function load() {
-    clearAlert();
-    try {
-      render(await api(`/petty-cash/${encodeURIComponent(machineId)}${currentRangeQuery()}`));
-    } catch (error) {
-      showAlert(error.message || "Could not load petty cash.", true);
-    }
+  function render(data) {
+    const account=data.account||{}, summary=data.summary||{};
+    const balance=Number(account.balance||0);
+    const balanceEl=document.getElementById("balanceAmount");
+    balanceEl.textContent=money.format(Math.abs(balance));
+    balanceEl.classList.toggle("is-debt", balance<0);
+    document.querySelector(".balance-card")?.classList.toggle("has-debt", balance<0);
+    document.querySelector(".balance-card span").textContent = balance < 0 ? "Petty Cash Debt" : "Petty Cash Balance";
+    document.getElementById("totalToppedUp").textContent=money.format(Number(account.totalToppedUp||0));
+    document.getElementById("totalUsed").textContent=money.format(Number(account.totalUsed||0));
+    document.getElementById("totalCost").textContent=money.format(Number(summary.totalCost||0));
+    document.getElementById("recordCount").textContent=Number(summary.recordCount||0).toLocaleString("en-TZ");
+    document.getElementById("averageCost").textContent=money.format(Number(summary.averageCost||0));
+    document.getElementById("receiptCount").textContent=Number(summary.receiptCount||0).toLocaleString("en-TZ");
+
+    const machines=Array.isArray(data.machines)?data.machines:[];
+    const select=document.getElementById("machineSelect");
+    const current=select.value;
+    select.innerHTML='<option value="">Select machine…</option>'+machines.map(m=>`<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}${m.serialNumber?` · ${escapeHtml(m.serialNumber)}`:""}</option>`).join("");
+    if (machines.some(m=>String(m.id)===String(current))) select.value=current;
+
+    document.getElementById("topupPanel").classList.toggle("hidden", !account.canTopUp);
+    const topups=Array.isArray(account.topups)?account.topups:[];
+    document.getElementById("topupRows").innerHTML=topups.length?topups.map(t=>`<tr><td>${formatDate(t.createdAt)}</td><td><strong>${money.format(Number(t.amount||0))}</strong></td><td>${escapeHtml(t.note||"—")}</td><td>${escapeHtml(t.addedBy||"Administration")}</td></tr>`).join(""):'<tr><td colspan="4" class="empty">No top-ups yet.</td></tr>';
+
+    const rows=Array.isArray(data.entries)?data.entries:[];
+    document.getElementById("expenseRows").innerHTML=rows.length?rows.map(e=>`<tr><td>${formatDate(e.date)}</td><td><strong>${escapeHtml(e.machineName||"Machine")}</strong></td><td>${escapeHtml(e.description)}</td><td><strong>${money.format(Number(e.cost||0))}</strong></td><td>${hasReceipt(e.hasReceipt)?`<button class="receipt-button" type="button" data-receipt="${escapeHtml(e.id)}">View</button> <button class="receipt-button" type="button" data-print-receipt="${escapeHtml(e.id)}">Print</button>`:"—"}</td><td>${escapeHtml(e.loggedBy||"Customer")}</td></tr>`).join(""):'<tr><td colspan="6" class="empty">No Petty Cash entries recorded yet.</td></tr>';
   }
 
-  async function download(format) {
-    const button = document.getElementById(`${format}Button`);
-    const original = button.textContent;
-    button.disabled = true;
-    button.textContent = "Preparing…";
-    try {
-      const response = await fetch(
-        `/api/customer-portal/petty-cash/${encodeURIComponent(machineId)}/${format}${currentRangeQuery()}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!response.ok) {
-        let message = `Could not download ${format.toUpperCase()}.`;
-        try {
-          const error = await response.json();
-          message = error.error || message;
-        } catch (_) {}
-        throw new Error(message);
-      }
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") || "";
-      const matchedName = disposition.match(/filename="([^"]+)"/i);
-      const objectUrl = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = matchedName?.[1] || `petty-cash.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(objectUrl);
-    } catch (error) {
-      showAlert(error.message, true);
-    } finally {
-      button.disabled = false;
-      button.textContent = original;
-    }
-  }
+  function clearReceiptInput(){ receiptPhotoData=""; receiptPhotoName=""; document.getElementById("receiptPhoto").value=""; document.getElementById("receiptPreview").removeAttribute("src"); document.getElementById("receiptPreviewWrap").classList.add("hidden"); }
+  function compressReceipt(file){ return new Promise((resolve,reject)=>{ if(!/^image\/(jpeg|png|webp)$/i.test(file.type)){reject(new Error("Receipt must be JPG, PNG or WebP."));return;} const r=new FileReader(); r.onerror=()=>reject(new Error("Could not read receipt.")); r.onload=()=>{const im=new Image(); im.onerror=()=>reject(new Error("Receipt photo is invalid.")); im.onload=()=>{const max=1280, scale=Math.min(1,max/Math.max(im.width,im.height)); const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*scale)); c.height=Math.max(1,Math.round(im.height*scale)); c.getContext("2d").drawImage(im,0,0,c.width,c.height); const data=c.toDataURL("image/jpeg",.78); if(data.length>2.8*1024*1024){reject(new Error("Receipt photo is too large."));return;} resolve(data);}; im.src=r.result;}; r.readAsDataURL(file); }); }
 
-  async function viewReceipt(entryId) {
-    try {
-      const response = await fetch(
-        `/api/customer-portal/petty-cash/${encodeURIComponent(machineId)}/receipt?expenseId=${encodeURIComponent(entryId)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!response.ok) throw new Error("Could not load receipt photo.");
-      const blob = await response.blob();
-      if (openReceiptUrl) URL.revokeObjectURL(openReceiptUrl);
-      openReceiptUrl = URL.createObjectURL(blob);
-      document.getElementById("receiptImage").src = openReceiptUrl;
-      document.getElementById("receiptDialog").showModal();
-    } catch (error) {
-      showAlert(error.message, true);
-    }
-  }
+  async function load(){ clearAlert(); try{ render(await api(`/petty-cash-account${currentRangeQuery()}`)); }catch(e){showAlert(e.message||"Could not load Petty Cash.",true);} }
 
-  async function printReceipt(entryId) {
-    try {
-      const response = await fetch(
-        `/api/customer-portal/petty-cash/${encodeURIComponent(machineId)}/receipt?expenseId=${encodeURIComponent(entryId)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (!response.ok) throw new Error("Could not load receipt photo.");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const printWindow = window.open("", "_blank");
-      printWindow.document.write(`<!doctype html><html><head><title>Receipt</title>
-        <style>body{margin:0;display:flex;justify-content:center;padding:20px;font-family:sans-serif}
-        img{max-width:100%;height:auto}</style></head>
-        <body><img src="${url}" onload="window.print()"></body></html>`);
-      printWindow.document.close();
-    } catch (error) {
-      showAlert(error.message, true);
-    }
-  }
+  async function download(format){ const button=document.getElementById(`${format}Button`), original=button.textContent; button.disabled=true; button.textContent="Preparing…"; try{ const sep=currentRangeQuery(); const response=await fetch(`/api/customer-portal/petty-cash-account/${format}${sep}`,{headers:{Authorization:`Bearer ${token}`}}); if(!response.ok) throw new Error(`Could not download ${format.toUpperCase()}.`); const blob=await response.blob(), url=URL.createObjectURL(blob), a=document.createElement("a"); const disposition=response.headers.get("Content-Disposition")||"", m=disposition.match(/filename="?([^";]+)"?/i); a.href=url; a.download=m?.[1]||`petty-cash-account.${format}`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);}catch(e){showAlert(e.message,true);}finally{button.disabled=false;button.textContent=original;} }
 
-  document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
-  document.getElementById("amount").addEventListener("input", calculateTotal);
-  document.getElementById("receiptPhoto").addEventListener("change", async event => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      clearReceiptInput();
-      return;
-    }
-    try {
-      showAlert("Preparing and compressing receipt photo…");
-      receiptPhotoData = await compressReceipt(file);
-      receiptPhotoName = file.name || "receipt-photo.jpg";
-      document.getElementById("receiptPreview").src = receiptPhotoData;
-      document.getElementById("receiptPreviewWrap").classList.remove("hidden");
-      clearAlert();
-    } catch (error) {
-      clearReceiptInput();
-      showAlert(error.message, true);
-    }
-  });
-  document.getElementById("removeReceiptButton").addEventListener("click", clearReceiptInput);
-  document.getElementById("expenseRows").addEventListener("click", event => {
-    const button = event.target.closest("[data-receipt]");
-    const printButton = event.target.closest("[data-print-receipt]");
-    if (button) viewReceipt(button.dataset.receipt);
-    if (printButton) printReceipt(printButton.dataset.printReceipt);
-  });
-  document.getElementById("closeReceiptButton").addEventListener("click", () => {
-    document.getElementById("receiptDialog").close();
-  });
-  document.getElementById("printScope").addEventListener("change", event => {
-    document.getElementById("printDateInput").classList.toggle("hidden", event.target.value !== "date");
-    document.getElementById("printMonthInput").classList.toggle("hidden", event.target.value !== "month");
-    if (event.target.value === "all") load();
-  });
-  document.getElementById("printDateInput").addEventListener("change", load);
-  document.getElementById("printMonthInput").addEventListener("change", load);
-  document.getElementById("refreshButton").addEventListener("click", load);
-  document.getElementById("csvButton").addEventListener("click", () => download("csv"));
-  document.getElementById("pdfButton").addEventListener("click", () => download("pdf"));
+  async function viewReceipt(id, print=false){ try{ const response=await fetch(`/api/customer-portal/petty-cash-account/receipt?expenseId=${encodeURIComponent(id)}`,{headers:{Authorization:`Bearer ${token}`}}); if(!response.ok) throw new Error("Could not load receipt."); const blob=await response.blob(); if(openReceiptUrl) URL.revokeObjectURL(openReceiptUrl); openReceiptUrl=URL.createObjectURL(blob); if(print){ const w=window.open(openReceiptUrl,"_blank","noopener"); if(w) setTimeout(()=>{try{w.print();}catch(_){}},700); return;} document.getElementById("receiptImage").src=openReceiptUrl; document.getElementById("receiptDialog").showModal(); }catch(e){showAlert(e.message,true);} }
 
-  document.getElementById("receiptsButton").addEventListener("click", downloadAllReceipts);
-  async function downloadAllReceipts() {
-    const button = document.getElementById("receiptsButton");
-    button.disabled = true;
-    button.textContent = "Finding receipts…";
-    try {
-      const list = await api(`/petty-cash/${encodeURIComponent(machineId)}/receipts-list${currentRangeQuery()}`);
-      if (!list.length) {
-        showAlert("No receipts found for the selected range.", true);
-        return;
-      }
-      button.textContent = `Downloading 0/${list.length}…`;
-      for (let i = 0; i < list.length; i++) {
-        const item = list[i];
-        const response = await fetch(`/api${item.downloadUrl}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!response.ok) continue;
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = objectUrl;
-        link.download = item.name;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(objectUrl);
-        button.textContent = `Downloading ${i + 1}/${list.length}…`;
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      }
-      showAlert(`Downloaded ${list.length} receipt(s).`);
-    } catch (error) {
-      showAlert(error.message || "Could not download receipts.", true);
-    } finally {
-      button.disabled = false;
-      button.textContent = "Download Receipts";
-    }
-  }
+  async function downloadAllReceipts(){ const button=document.getElementById("receiptsButton"); button.disabled=true; const original=button.textContent; try{ const list=await api(`/petty-cash-account/receipts-list${currentRangeQuery()}`); if(!list.length){showAlert("No receipts found for selected range.",true);return;} for(let i=0;i<list.length;i++){button.textContent=`Downloading ${i+1}/${list.length}…`; const r=await fetch(`/api${list[i].downloadUrl}`,{headers:{Authorization:`Bearer ${token}`}}); if(!r.ok) continue; const b=await r.blob(), u=URL.createObjectURL(b), a=document.createElement("a"); a.href=u;a.download=list[i].name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u); await new Promise(res=>setTimeout(res,250));} showAlert(`Downloaded ${list.length} receipt(s).`);}catch(e){showAlert(e.message,true);}finally{button.disabled=false;button.textContent=original;} }
 
-  document.getElementById("logoutButton").addEventListener("click", () => {
-    localStorage.removeItem("belm_customer_token");
-    window.location.href = "/portal/login";
-  });
-
-  document.getElementById("expenseForm").addEventListener("submit", async event => {
-    event.preventDefault();
-    clearAlert();
-    const saveButton = document.getElementById("saveButton");
-    saveButton.disabled = true;
-    saveButton.textContent = "Saving…";
-    try {
-      await api(`/petty-cash/${encodeURIComponent(machineId)}`, {
-        method: "POST",
-        body: JSON.stringify({
-          date: document.getElementById("expenseDate").value,
-          description: document.getElementById("description").value.trim(),
-          amount: Number(document.getElementById("amount").value),
-          receiptPhoto: receiptPhotoData,
-          receiptName: receiptPhotoName,
-        }),
-      });
-      event.target.reset();
-      clearReceiptInput();
-      document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
-      calculateTotal();
-      await load();
-      showAlert("Petty cash entry saved successfully.");
-    } catch (error) {
-      showAlert(error.message || "Could not save petty cash entry.", true);
-    } finally {
-      saveButton.disabled = false;
-      saveButton.textContent = "Save petty cash entry";
-    }
-  });
-
-  if (String(tokenPayload().customerRole || "").toLowerCase() === "viewer") {
-    document.getElementById("entryPanel").classList.add("hidden");
-  }
-
-  calculateTotal();
+  document.getElementById("expenseDate").value=new Date().toISOString().slice(0,10);
+  document.getElementById("amount").addEventListener("input",()=>document.getElementById("calculatedTotal").textContent=`Amount: ${money.format(Number(document.getElementById("amount").value||0))}`);
+  document.getElementById("topupAmount").addEventListener("input",()=>document.getElementById("topupCalculated").textContent=`Top-up: ${money.format(Number(document.getElementById("topupAmount").value||0))}`);
+  document.getElementById("receiptPhoto").addEventListener("change",async e=>{const file=e.target.files?.[0]; if(!file){clearReceiptInput();return;} try{receiptPhotoData=await compressReceipt(file);receiptPhotoName=file.name;document.getElementById("receiptPreview").src=receiptPhotoData;document.getElementById("receiptPreviewWrap").classList.remove("hidden");}catch(err){clearReceiptInput();showAlert(err.message,true);}});
+  document.getElementById("removeReceiptButton").addEventListener("click",clearReceiptInput);
+  document.getElementById("expenseForm").addEventListener("submit",async e=>{e.preventDefault(); const b=document.getElementById("saveButton");b.disabled=true;try{await api('/petty-cash-account/entry',{method:'POST',body:JSON.stringify({machineId:document.getElementById("machineSelect").value,date:document.getElementById("expenseDate").value,description:document.getElementById("description").value.trim(),amount:Number(document.getElementById("amount").value),receiptPhoto:receiptPhotoData,receiptName:receiptPhotoName})});e.target.reset();document.getElementById("expenseDate").value=new Date().toISOString().slice(0,10);clearReceiptInput();await load();showAlert("Petty Cash entry saved successfully.");}catch(err){showAlert(err.message,true);}finally{b.disabled=false;}});
+  document.getElementById("topupForm").addEventListener("submit",async e=>{e.preventDefault(); const b=document.getElementById("topupButton");b.disabled=true;try{await api('/petty-cash-account/topup',{method:'POST',body:JSON.stringify({amount:Number(document.getElementById("topupAmount").value),note:document.getElementById("topupNote").value.trim()})});e.target.reset();await load();showAlert("Petty Cash funds added successfully.");}catch(err){showAlert(err.message,true);}finally{b.disabled=false;}});
+  document.getElementById("expenseRows").addEventListener("click",e=>{const v=e.target.closest('[data-receipt]'),p=e.target.closest('[data-print-receipt]'); if(v)viewReceipt(v.dataset.receipt); if(p)viewReceipt(p.dataset.printReceipt,true);});
+  document.getElementById("closeReceiptButton").addEventListener("click",()=>document.getElementById("receiptDialog").close());
+  document.getElementById("printScope").addEventListener("change",e=>{document.getElementById("printDateInput").classList.toggle("hidden",e.target.value!=="date");document.getElementById("printMonthInput").classList.toggle("hidden",e.target.value!=="month"); if(e.target.value==="all")load();});
+  document.getElementById("printDateInput").addEventListener("change",load); document.getElementById("printMonthInput").addEventListener("change",load);
+  document.getElementById("refreshButton").addEventListener("click",load); document.getElementById("csvButton").addEventListener("click",()=>download("csv")); document.getElementById("pdfButton").addEventListener("click",()=>download("pdf")); document.getElementById("receiptsButton").addEventListener("click",downloadAllReceipts);
+  document.getElementById("logoutButton").addEventListener("click",()=>{localStorage.removeItem("belm_customer_token");window.location.href="/portal/login";});
   load();
 })();

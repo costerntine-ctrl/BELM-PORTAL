@@ -9,6 +9,12 @@ let lastApproval = null;
 let pendingStaffApplication = null;
 let roles = [];
 let customers = [];
+let registeredUsers = [];
+let registeredUserRoles = [];
+let registeredUserCustomers = [];
+const currentAdminUser = (() => {
+  try { return JSON.parse(localStorage.getItem("belm_admin_user") || "{}"); } catch (_) { return {}; }
+})();
 
 function showAlert(message) {
   alertBox.textContent = message;
@@ -155,6 +161,177 @@ async function loadApplications() {
   }
 }
 
+
+function registeredUserRoleLabel(user) {
+  const names = Array.isArray(user.roleNames) && user.roleNames.length
+    ? user.roleNames
+    : [user.role?.name || "—"];
+  return names.join(", ");
+}
+
+function registeredUserCustomerLabel(user) {
+  if (user.assignedCustomer?.name) return user.assignedCustomer.name;
+  return (user.roleNames || [user.role?.name]).includes("Technician") ? "Not assigned" : "All customers";
+}
+
+function renderRegisteredUsers() {
+  const panel = document.getElementById("registeredUsersList");
+  const count = document.getElementById("registeredUsersCount");
+  const search = document.getElementById("registeredUsersSearch").value.trim().toLowerCase();
+  count.textContent = String(registeredUsers.length);
+  const rows = registeredUsers.filter(user => [
+    user.name,
+    user.email,
+    user.phone,
+    registeredUserRoleLabel(user),
+    registeredUserCustomerLabel(user),
+  ].some(value => String(value || "").toLowerCase().includes(search)));
+
+  if (!rows.length) {
+    panel.innerHTML = `<div class="empty">${search ? "No registered users match this search." : "No registered users found."}</div>`;
+    return;
+  }
+
+  panel.innerHTML = `<div class="registered-users-table-wrap"><table class="registered-users-table">
+    <thead><tr><th>User</th><th>Role</th><th>Customer</th><th>Status</th><th>Actions</th></tr></thead>
+    <tbody>${rows.map(user => {
+      const isSelf = user.id === currentAdminUser.id;
+      const active = Number(user.isActive) === 1;
+      return `<tr>
+        <td><strong>${escapeHtml(user.name)}</strong><small>${escapeHtml(user.email)}</small><small>${escapeHtml(user.phone || "—")}</small></td>
+        <td>${escapeHtml(registeredUserRoleLabel(user))}</td>
+        <td>${escapeHtml(registeredUserCustomerLabel(user))}</td>
+        <td><span class="user-status ${active ? "active" : "inactive"}">${active ? "Active" : "Inactive"}</span></td>
+        <td><div class="user-row-actions">
+          <button class="user-edit" type="button" data-edit-registered-user="${escapeHtml(user.id)}">Edit</button>
+          ${isSelf ? '<span class="you-badge">You</span>' : `<button class="user-delete" type="button" data-delete-registered-user="${escapeHtml(user.id)}">Delete</button>`}
+        </div></td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table></div>`;
+}
+
+async function loadRegisteredUsers() {
+  const panel = document.getElementById("registeredUsersList");
+  panel.innerHTML = '<div class="loading">Loading registered users…</div>';
+  try {
+    const [userList, roleList, customerList] = await Promise.all([
+      api("/api/users"),
+      api("/api/users/roles"),
+      api("/api/customers"),
+    ]);
+    registeredUsers = Array.isArray(userList) ? userList : [];
+    registeredUserRoles = Array.isArray(roleList) ? roleList : [];
+    registeredUserCustomers = Array.isArray(customerList) ? customerList : [];
+    registeredUsers.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    renderRegisteredUsers();
+  } catch (error) {
+    document.getElementById("registeredUsersCount").textContent = "—";
+    panel.innerHTML = `<div class="empty">Could not load registered users. ${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function selectedRegisteredUserRoleIds() {
+  return [...document.querySelectorAll('#editRegisteredUserRoles input[type="checkbox"]:checked')].map(input => input.value);
+}
+
+function updateRegisteredUserCustomerField() {
+  const selected = selectedRegisteredUserRoleIds();
+  const technicianRole = registeredUserRoles.find(role => role.name === "Technician");
+  const needsCustomer = Boolean(technicianRole && selected.includes(technicianRole.id));
+  const wrap = document.getElementById("editRegisteredUserCustomerWrap");
+  const select = document.getElementById("editRegisteredUserCustomer");
+  wrap.classList.toggle("hidden", !needsCustomer);
+  select.required = needsCustomer;
+  if (!needsCustomer) select.value = "";
+}
+
+function openRegisteredUserEditor(user) {
+  if (!user) return;
+  document.getElementById("editRegisteredUserForm").reset();
+  document.getElementById("editRegisteredUserError").classList.add("hidden");
+  document.getElementById("editRegisteredUserId").value = user.id;
+  document.getElementById("editRegisteredUserTitle").textContent = `Edit ${user.name}`;
+  document.getElementById("editRegisteredUserName").value = user.name || "";
+  document.getElementById("editRegisteredUserEmail").value = user.email || "";
+  document.getElementById("editRegisteredUserPhone").value = user.phone || "";
+  document.getElementById("editRegisteredUserActive").checked = Number(user.isActive) === 1;
+  const selectedRoles = new Set(user.roleIds || (user.role?.id ? [user.role.id] : []));
+  document.getElementById("editRegisteredUserRoles").innerHTML = registeredUserRoles.map(role => `
+    <label class="user-role-option"><input type="checkbox" value="${escapeHtml(role.id)}" ${selectedRoles.has(role.id) ? "checked" : ""}> <span>${escapeHtml(role.name)}</span></label>
+  `).join("");
+  document.getElementById("editRegisteredUserCustomer").innerHTML =
+    '<option value="">Select customer…</option>' + registeredUserCustomers.map(customer =>
+      `<option value="${escapeHtml(customer.id)}" ${user.assignedCustomer?.id === customer.id ? "selected" : ""}>${escapeHtml(customer.name)}</option>`
+    ).join("");
+  updateRegisteredUserCustomerField();
+  document.getElementById("editRegisteredUserDialog").showModal();
+}
+
+async function saveRegisteredUser(event) {
+  event.preventDefault();
+  const id = document.getElementById("editRegisteredUserId").value;
+  const user = registeredUsers.find(item => item.id === id);
+  if (!user) return;
+  const payload = {
+    name: document.getElementById("editRegisteredUserName").value.trim(),
+    phone: document.getElementById("editRegisteredUserPhone").value.trim(),
+    roleIds: selectedRegisteredUserRoleIds(),
+    assignedCustomerId: document.getElementById("editRegisteredUserCustomer").value || null,
+    isActive: document.getElementById("editRegisteredUserActive").checked,
+  };
+  const errorBox = document.getElementById("editRegisteredUserError");
+  errorBox.classList.add("hidden");
+  if (!payload.name) {
+    errorBox.textContent = "User name is required.";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  if (!payload.roleIds.length) {
+    errorBox.textContent = "Select at least one role.";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  const confirmation = await window.belmConfirmEdit({
+    title: "Save user changes?",
+    message: `Confirm changes to ${payload.name}.`,
+  });
+  if (!confirmation) return;
+  Object.assign(payload, confirmation);
+  const button = document.getElementById("saveEditRegisteredUser");
+  button.disabled = true;
+  button.textContent = "Saving…";
+  try {
+    await api(`/api/users/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+    document.getElementById("editRegisteredUserDialog").close();
+    await loadRegisteredUsers();
+    showAlert("User updated successfully.");
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove("hidden");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save user";
+  }
+}
+
+async function deleteRegisteredUser(id) {
+  const user = registeredUsers.find(item => item.id === id);
+  if (!user || user.id === currentAdminUser.id) return;
+  const confirmation = await window.belmConfirmDelete({
+    title: "Delete registered user?",
+    message: `Delete ${user.name}? The account will move to the Recycle Bin.`,
+  });
+  if (!confirmation) return;
+  try {
+    await api(`/api/users/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
+    await loadRegisteredUsers();
+    showAlert("User moved to the Recycle Bin.");
+  } catch (error) {
+    showAlert(error.message);
+  }
+}
+
 async function approveApplication(application) {
   if (application.applicationType === "SYSTEM_USER") {
     await openAssignment(application);
@@ -245,7 +422,9 @@ tabs.forEach(tab => tab.addEventListener("click", () => {
   loadApplications();
 }));
 
-document.getElementById("refreshButton").addEventListener("click", loadApplications);
+document.getElementById("refreshButton").addEventListener("click", async () => {
+  await Promise.all([loadApplications(), loadRegisteredUsers()]);
+});
 document.getElementById("logoutButton").addEventListener("click", () => {
   localStorage.removeItem("belm_admin_token");
   localStorage.removeItem("belm_admin_user");
@@ -295,7 +474,20 @@ document.getElementById("copyApprovedPasswordButton").addEventListener("click", 
   document.getElementById("copyApprovedPasswordButton").textContent = "Password copied";
 });
 
+document.getElementById("registeredUsersSearch").addEventListener("input", renderRegisteredUsers);
+document.getElementById("refreshUsersButton").addEventListener("click", loadRegisteredUsers);
+document.getElementById("registeredUsersList").addEventListener("click", event => {
+  const editButton = event.target.closest("[data-edit-registered-user]");
+  const deleteButton = event.target.closest("[data-delete-registered-user]");
+  if (editButton) openRegisteredUserEditor(registeredUsers.find(user => user.id === editButton.dataset.editRegisteredUser));
+  if (deleteButton) deleteRegisteredUser(deleteButton.dataset.deleteRegisteredUser);
+});
+document.getElementById("editRegisteredUserRoles").addEventListener("change", updateRegisteredUserCustomerField);
+document.getElementById("editRegisteredUserForm").addEventListener("submit", saveRegisteredUser);
+document.getElementById("closeEditRegisteredUser").addEventListener("click", () => document.getElementById("editRegisteredUserDialog").close());
+
 loadApplications();
+loadRegisteredUsers();
 
 // ---------------------------------------------------------------------
 // MANUAL REGISTRATION — Register Customer (+ optional first machine) and
@@ -488,6 +680,7 @@ document.getElementById("registerTechnicianForm").addEventListener("submit", asy
       })
     });
     registerTechnicianDialog.close();
+    await loadRegisteredUsers();
     openRegisterCredentials({
       name: document.getElementById("regUserName").value.trim(),
       role: role ? role.name : "System user",

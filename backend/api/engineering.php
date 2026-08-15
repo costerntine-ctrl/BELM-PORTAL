@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
 require_once __DIR__ . '/service_due_helper.php';
+require_once __DIR__ . '/../config/mailer.php';
 
 // GET /api/engineering?action=dashboard
 // One combined response for the Engineering page: recent machine
@@ -12,6 +13,73 @@ $user = require_auth();
 require_page_access($user, 'roles');
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
+
+
+if ($method === 'GET' && $action === 'dispatch-options') {
+    if (!belm_can_override_technician_customer($user)) {
+        json_error('Only BELM Super Admin or Engineer can use Technician Dispatch.', 403);
+    }
+    $technicians = db()->query(
+        "SELECT u.id,u.name,u.email,u.assigned_customer_id,hc.name AS assigned_customer_name
+         FROM users u JOIN roles r ON r.id=u.role_id
+         LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
+         WHERE r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL
+           AND u.is_customer_managed=0
+         ORDER BY u.name"
+    )->fetchAll();
+    foreach ($technicians as &$tech) {
+        $tech['assignedCustomerId'] = $tech['assigned_customer_id'];
+        $tech['assignedCustomerName'] = $tech['assigned_customer_name'];
+        unset($tech['assigned_customer_id'],$tech['assigned_customer_name']);
+    }
+    unset($tech);
+    $customers = db()->query(
+        "SELECT id,name,is_machinery_admin FROM customers
+         WHERE is_active=1 AND deleted_at IS NULL ORDER BY name"
+    )->fetchAll();
+    json_out(['technicians'=>$technicians,'customers'=>$customers]);
+}
+
+if ($method === 'POST' && $action === 'dispatch') {
+    if (!belm_can_override_technician_customer($user)) {
+        json_error('Only BELM Super Admin or Engineer can use Technician Dispatch.', 403);
+    }
+    $b=body();
+    $technicianId=trim((string)($b['technicianId']??''));
+    $customerId=trim((string)($b['customerId']??''));
+    $title=trim((string)($b['title']??''));
+    $description=trim((string)($b['description']??''));
+    $priority=strtoupper(trim((string)($b['priority']??'NORMAL')));
+    $dueDate=trim((string)($b['dueDate']??''));
+    if($technicianId===''||$customerId===''||$title==='') json_error('Technician, customer and job title are required.');
+    if(!in_array($priority,['LOW','NORMAL','HIGH','URGENT'],true)) json_error('Invalid priority.');
+    if($dueDate!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}$/',$dueDate)) json_error('Invalid due date.');
+    $t=db()->prepare(
+        "SELECT u.id,u.name,u.assigned_customer_id,hc.name AS home_customer_name
+         FROM users u JOIN roles r ON r.id=u.role_id
+         LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
+         WHERE u.id=? AND r.name='Technician' AND u.is_active=1 AND u.deleted_at IS NULL AND u.is_customer_managed=0"
+    );
+    $t->execute([$technicianId]); $tech=$t->fetch(); if(!$tech)json_error('Select an active BELM Technician.',422);
+    $c=db()->prepare('SELECT id,name FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
+    $c->execute([$customerId]); $customer=$c->fetch(); if(!$customer)json_error('Selected customer is not available.',422);
+    $temporary=!empty($tech['assigned_customer_id']) && (string)$tech['assigned_customer_id']!==$customerId;
+    $id=uuid();
+    db()->prepare("INSERT INTO tasks(id,assigned_to_id,customer_id,title,description,due_date,priority,status,created_by,created_at) VALUES(?,?,?,?,?,?,?,'PENDING',?,NOW())")
+        ->execute([$id,$technicianId,$customerId,$title,$description?:null,$dueDate?:null,$priority,$user['name']]);
+    log_activity($user,'technician-dispatch','task',$id,[
+        'technician'=>$tech['name'],'customer'=>$customer['name'],'temporaryOverride'=>$temporary,
+        'homeCustomer'=>$tech['home_customer_name']??null,'title'=>$title,
+    ]);
+    try {
+        $mail=db()->prepare('SELECT email FROM users WHERE id=?'); $mail->execute([$technicianId]); $email=trim((string)$mail->fetchColumn());
+        if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'BELM TECHNICIAN DISPATCH - '.$title,
+            "Job assigned by {$user['name']}\nCustomer: {$customer['name']}\nJob: $title\nPriority: $priority".
+            ($temporary?"\nAssignment: TEMPORARY OVERRIDE - your permanent customer has not changed.":'').
+            ($description!==''?"\nDetails: $description":'')."\nOpen Technician > My Tasks.");
+    } catch(Throwable $e) {}
+    json_out(['id'=>$id,'temporaryOverride'=>$temporary,'homeCustomerName'=>$tech['home_customer_name']??null,'customerName'=>$customer['name']],201);
+}
 
 if ($method === 'GET' && $action === 'dashboard') {
     // Catch-up scan: checklist submission normally creates the alert instantly,

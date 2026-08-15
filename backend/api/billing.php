@@ -10,6 +10,43 @@ $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 $paymentId = $_GET['paymentId'] ?? null;
 
+
+// V212: Billing-only staff need a small, read-only lookup of customers and
+// inventory items to prepare invoices/proformas. Do NOT make Billing depend on
+// the separate Customers Manager or Spare Parts Manager permissions.
+if ($method === 'GET' && $action === 'customer-lookup') {
+    $stmt = db()->query(
+        'SELECT id, name, email, phone, address, tin_number, vrn
+         FROM customers
+         WHERE deleted_at IS NULL AND is_active = 1
+         ORDER BY name ASC'
+    );
+    $customers = $stmt->fetchAll();
+
+    $machineStmt = db()->prepare(
+        'SELECT id, machine_type, brand, model, serial_number, reg_number, fleet_number
+         FROM machines
+         WHERE customer_id = ? AND deleted_at IS NULL
+         ORDER BY model ASC, created_at ASC'
+    );
+    foreach ($customers as &$customer) {
+        $machineStmt->execute([$customer['id']]);
+        $customer['machines'] = $machineStmt->fetchAll();
+    }
+    unset($customer);
+    json_out($customers);
+}
+
+if ($method === 'GET' && $action === 'spare-lookup') {
+    $stmt = db()->query(
+        'SELECT id, part_number, reference_number, name, stock_qty, selling_price
+         FROM spare_parts
+         WHERE deleted_at IS NULL
+         ORDER BY part_number ASC, name ASC'
+    );
+    json_out($stmt->fetchAll());
+}
+
 if ($method === 'GET' && $action === 'export-invoice') {
     $invoiceId = trim((string)($_GET['id'] ?? ''));
     $stmt = db()->prepare(

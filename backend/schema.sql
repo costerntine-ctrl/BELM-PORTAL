@@ -697,13 +697,17 @@ ALTER TABLE operator_reports ADD COLUMN IF NOT EXISTS notify_belm SMALLINT NOT N
 
 CREATE TABLE IF NOT EXISTS petty_cash_topups (
   id VARCHAR(36) PRIMARY KEY,
-  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id),
+  machine_id VARCHAR(36) NULL REFERENCES machines(id),
   customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
   amount NUMERIC(12,2) NOT NULL,
   note VARCHAR(255) NULL,
   added_by VARCHAR(36) NULL REFERENCES users(id),
+  added_by_name VARCHAR(255) NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE petty_cash_topups ALTER COLUMN machine_id DROP NOT NULL;
+ALTER TABLE petty_cash_topups ADD COLUMN IF NOT EXISTS added_by_name VARCHAR(255) NULL;
+CREATE INDEX IF NOT EXISTS idx_petty_cash_topups_customer ON petty_cash_topups(customer_id);
 
 CREATE TABLE IF NOT EXISTS customer_saved_emails (
   id VARCHAR(36) PRIMARY KEY,

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Machine Expenses — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=197-store-audit">
+  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=215-shared-petty">
   <link rel="stylesheet" href="/theme-global.css?v=198-global-user-theme">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -34,7 +34,6 @@
         <button class="secondary" id="pdfButton" type="button">Expense PDF</button>
         <button class="secondary audit-button" id="auditPdfButton" type="button">Audit PDF</button>
         <button class="secondary" id="receiptsButton" type="button">Download Receipts</button>
-        <a class="secondary" id="pettyCashLink" href="/customer-petty-cash/">Petty Cash</a>
         <a class="secondary" id="serviceRequestLink" href="/customer-service-request/">Service / Spare Request</a>
       </div>
     </section>
@@ -104,21 +103,9 @@
           <article><span>Customer Store stock value</span><strong id="customerStoreValue">TZS 0</strong></article>
         </section>
 
-        <article class="sidebar-card petty-cash-card">
-          <span class="sidebar-card-label" id="sidebarPettyCashLabel">Petty Cash Balance</span>
-          <strong id="sidebarPettyCashBalance">TZS 0</strong>
-          <small id="sidebarPettyCashSub">Synced with expenses used</small>
-          <div id="pettyCashAdminActions" class="petty-cash-admin-actions hidden">
-            <button type="button" id="depositPettyCashButton">Deposit Petty Cash</button>
-            <button type="button" id="settleDebtButton">Settle Debt (bring balance to 0)</button>
-            <button type="button" id="clearPettyCashButton">Clear Deposits Only</button>
-          </div>
-        </article>
-
         <article class="sidebar-card analysis-card">
           <div class="sidebar-card-head"><span class="sidebar-card-label">Machine Analysis</span></div>
           <div class="analysis-row"><span>Total Expenses</span><b id="sidebarTotalExpenses">TZS 0</b></div>
-          <div class="analysis-row"><span>Petty Cash Used</span><b id="sidebarPettyCashUsed">TZS 0</b></div>
           <div class="analysis-row"><span>Service Requests</span><b id="sidebarServiceRequests">0</b></div>
           <div class="analysis-row"><span>Checklist Reports</span><b id="sidebarChecklistReports">0</b></div>
         </article>
@@ -169,34 +156,6 @@
     </section>
   </main>
 
-  <dialog id="depositPettyCashDialog">
-    <form id="depositPettyCashForm" class="dialog-form">
-      <div class="receipt-dialog-head"><b>Deposit Petty Cash</b><button type="button" data-close-dialog="depositPettyCashDialog" aria-label="Close">×</button></div>
-      <div id="depositPettyCashError" class="alert error hidden"></div>
-      <label>Amount (TZS)<input id="depositAmount" type="number" min="1" step="0.01" required></label>
-      <label>Note <small>(optional)</small><input id="depositNote" maxlength="255" placeholder="e.g. Monthly float replenishment"></label>
-      <div class="form-actions">
-        <button type="button" class="secondary" data-close-dialog="depositPettyCashDialog">Cancel</button>
-        <button type="submit" class="primary" id="saveDepositButton">Deposit</button>
-      </div>
-    </form>
-  </dialog>
-
-  <dialog id="clearPettyCashDialog">
-    <form id="clearPettyCashForm" class="dialog-form">
-      <div class="receipt-dialog-head"><b>Clear Petty Cash Deposits</b><button type="button" data-close-dialog="clearPettyCashDialog" aria-label="Close">×</button></div>
-      <p class="lead">This clears only the deposits (top-ups) for this machine. Spending history is kept for reports.</p>
-      <div id="clearPettyCashError" class="alert error hidden"></div>
-      <label>Admin PIN<input id="clearPin" type="password" inputmode="numeric" required></label>
-      <label>Admin Password<input id="clearAdminPassword" type="password" required></label>
-      <label>Reason<input id="clearReason" maxlength="255" required placeholder="e.g. Starting a new month"></label>
-      <div class="form-actions">
-        <button type="button" class="secondary" data-close-dialog="clearPettyCashDialog">Cancel</button>
-        <button type="submit" class="primary" id="saveClearButton">Clear deposits</button>
-      </div>
-    </form>
-  </dialog>
-
   <dialog id="receiveStockDialog">
     <form id="receiveStockForm" class="dialog-form">
       <div class="receipt-dialog-head"><b>Receive Customer Store stock</b><button type="button" data-close-dialog="receiveStockDialog" aria-label="Close">×</button></div>
@@ -222,6 +181,6 @@
     <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
   </dialog>
 
-  <script src="/customer-machine-expenses/expenses.js?v=197-store-audit"></script>
+  <script src="/customer-machine-expenses/expenses.js?v=215-shared-petty"></script>
 </body>
 </html>

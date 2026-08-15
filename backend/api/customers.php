@@ -52,6 +52,9 @@ function belm_forget_customer_permanently(PDO $pdo, string $customerId): void {
         $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($machines);
     }
 
+    // V215: Petty Cash is customer-level, so account top-ups can have no machine_id.
+    $pdo->prepare('DELETE FROM petty_cash_topups WHERE customer_id = ?')->execute([$customerId]);
+
     if ($requests) {
         $in = belm_in_clause($requests);
         $pdo->prepare("DELETE FROM service_notes WHERE request_id IN ($in)")->execute($requests);
@@ -142,6 +145,39 @@ function normalized_machine_details(array $body): array {
         'brand' => $brand !== '' ? $brand : null,
         'serviceKit' => trim((string)($body['serviceKit'] ?? 'OK')) ?: 'OK',
     ];
+}
+
+// ---- Admin-only data visibility diagnostic ----------------------------
+// Helps distinguish UI/filter problems from a deployment that is connected
+// to an empty/new PostgreSQL database. No database name, URL or credentials
+// are returned to the browser.
+if ($method === 'GET' && $action === 'diagnostics') {
+    require_page_access($user, 'customers');
+
+    $counts = db()->query(
+        "SELECT
+            COUNT(*) FILTER (WHERE deleted_at IS NULL) AS visible_customers,
+            COUNT(*) FILTER (WHERE deleted_at IS NOT NULL) AS deleted_customers,
+            COUNT(*) FILTER (WHERE deleted_at IS NULL AND is_active = 1) AS active_customers,
+            COUNT(*) FILTER (WHERE deleted_at IS NULL AND is_active <> 1) AS inactive_customers,
+            MIN(created_at) FILTER (WHERE deleted_at IS NULL) AS first_customer_created_at,
+            MAX(created_at) FILTER (WHERE deleted_at IS NULL) AS latest_customer_created_at
+         FROM customers"
+    )->fetch();
+
+    $machineCount = (int)db()->query('SELECT COUNT(*) FROM machines WHERE deleted_at IS NULL')->fetchColumn();
+    $portalUserCount = (int)db()->query('SELECT COUNT(*) FROM customer_users')->fetchColumn();
+
+    json_out([
+        'visibleCustomers' => (int)($counts['visible_customers'] ?? 0),
+        'deletedCustomers' => (int)($counts['deleted_customers'] ?? 0),
+        'activeCustomers' => (int)($counts['active_customers'] ?? 0),
+        'inactiveCustomers' => (int)($counts['inactive_customers'] ?? 0),
+        'machines' => $machineCount,
+        'portalUsers' => $portalUserCount,
+        'firstCustomerCreatedAt' => $counts['first_customer_created_at'] ?? null,
+        'latestCustomerCreatedAt' => $counts['latest_customer_created_at'] ?? null,
+    ]);
 }
 
 // ---- List / search ----------------------------------------------------

@@ -91,3 +91,8 @@ main { width:min(1180px,calc(100% - 28px)); }
 .movement-badge { display:inline-flex; min-width:58px; justify-content:center; padding:4px 8px; border-radius:999px; font-size:9px; font-weight:900; }
 .movement-badge.receive { color:#087039; background:#effaf4; border:1px solid #b7dfc9; }
 .movement-badge.issue { color:#173e8d; background:#f0f4ff; border:1px solid #bfd0fa; }
+
+/* V215 - shared customer Petty Cash account */
+#topupForm { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:16px; }
+#topupForm label { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:800; }
+@media(max-width:620px){#topupForm{grid-template-columns:1fr}}

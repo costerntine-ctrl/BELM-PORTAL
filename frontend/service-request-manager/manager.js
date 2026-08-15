@@ -110,6 +110,7 @@
         ${request.customer?.phone ? `<a class="whatsapp-link" target="_blank" rel="noopener" href="https://wa.me/${escapeHtml(String(request.customer.phone).replace(/[^0-9]/g, ""))}?text=${encodeURIComponent(`Hello, this is BELM regarding your service request for ${request.machine?.model || "your machine"}.`)}">💬 WhatsApp ${escapeHtml(request.customer.name || "customer")}</a>` : ""}
         ${request.serviceType ? `<div class="service-type"><b>Service type:</b> ${escapeHtml(request.serviceType)}</div>` : ""}
         <div class="description">${escapeHtml(request.description)}</div>
+        ${request.assignedTo?.temporaryOverride ? `<div class="temporary-override-banner"><b>TEMPORARY OVERRIDE</b> · ${escapeHtml(request.assignedTo.name)} remains attached to ${escapeHtml(request.assignedTo.homeCustomerName || "their home customer")}; this assignment is for this request only.</div>` : ""}
         ${(request.serviceParts || []).length ? `
           <div class="request-parts">
             <b>Synchronized service parts</b>
@@ -163,12 +164,25 @@
 
   async function assign(requestId, assignedToId) {
     try {
+      const request = requests.find((item) => item.id === requestId);
+      const technician = technicians.find((item) => item.id === assignedToId);
+      const temporaryOverride = Boolean(
+        request?.customer?.id && technician?.assignedCustomerId
+        && String(request.customer.id) !== String(technician.assignedCustomerId)
+      );
+      if (temporaryOverride) {
+        const ok = confirm(
+          `${technician.name} is permanently attached to ${technician.assignedCustomerName || "another customer"}.\n\n` +
+          `Use TEMPORARY OVERRIDE for this service request only? Their permanent customer will not change.`
+        );
+        if (!ok) { await load(); return; }
+      }
       await api(`/service-requests/${requestId}/assign`, {
         method: "PUT",
-        body: JSON.stringify({ assignedToId }),
+        body: JSON.stringify({ assignedToId, temporaryOverride }),
       });
       await load();
-      showAlert(assignedToId ? "Technician assigned successfully." : "Service request is now unassigned.", false);
+      showAlert(assignedToId ? (temporaryOverride ? "Temporary Technician Override assigned successfully." : "Technician assigned successfully.") : "Service request is now unassigned.", false);
     } catch (error) {
       showAlert(error.message, true);
       await load();

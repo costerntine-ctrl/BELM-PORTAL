@@ -12,7 +12,7 @@
   if(!source || !actorToken[source]) source=customerToken?'customer':techToken?'tech':'admin';
   const token=actorToken[source]||null;
 
-  let cases=[],selected=null,machines=[];
+  let cases=[],selected=null,machines=[],jobTechnicians=[];
   const machineFilter=params.get('machine')||'';
   const payload=parseToken(token);
   const customerRole=payload?.customerRole||payload?.role||'';
@@ -65,7 +65,7 @@
     const focusClass=c.delayed?'delayed':c.status==='COMPLETED'?'complete':'';
     const focusTitle=c.status==='COMPLETED'?'COMPLETED - MACHINE RETURNED TO SERVICE':`${c.delayed?'DELAYED - ':''}${esc(c.department)} OWNS THE NEXT ACTION`;
     const sparesHtml=d.spares.length?d.spares.map(s=>`<div class="spare"><div class="spare-head"><b>${esc(s.spare_name)} x ${esc(s.quantity)} ${esc(s.unit)}</b><span class="pill">${esc(s.status.replaceAll('_',' '))}</span></div><small>${esc(s.part_number||'No part number')} · Requested by ${esc(s.requested_by_name||'-')} · ${fmtDate(s.requested_at)}</small>${s.approved_by_name?`<div><small>Administration: ${esc(s.approved_by_name)} · ${fmtDate(s.approved_at)}</small></div>`:''}<div class="actions">${spareActions(s)}</div></div>`).join(''):'<div class="empty">No spare request on this case.</div>';
-    const jobsHtml=d.jobCards.length?d.jobCards.map(j=>`<div class="job"><div class="job-head"><b>${esc(j.job_card_no)} - ${esc(j.title)}</b><span class="pill">${esc(j.status)}</span></div><small>Technician: ${esc(j.technician_name||'Unassigned')} · Created ${fmtDate(j.created_at)}</small>${j.diagnosis?`<p><b>Diagnosis:</b> ${esc(j.diagnosis)}</p><p><b>Work done:</b> ${esc(j.work_done)}</p>${j.test_result?`<p><b>Test:</b> ${esc(j.test_result)}</p>`:''}`:''}<div class="actions"><button class="blue" data-job-pdf="${j.id}">Download Job Card PDF</button>${isTechnician&&j.status!=='COMPLETED'?`<button class="blue" data-tech-report="${j.id}">Open / Save Job Report</button>`:''}</div></div>`).join(''):'<div class="empty">No Job Card yet.</div>';
+    const jobsHtml=d.jobCards.length?d.jobCards.map(j=>`<div class="job"><div class="job-head"><b>${esc(j.job_card_no)} - ${esc(j.title)}</b><span class="pill">${esc(j.status)}</span></div><small>Technician: ${esc(j.technician_name||'Unassigned')} · Created ${fmtDate(j.created_at)}</small>${j.temporary_override?`<div class="job-override-badge">TEMPORARY OVERRIDE · Home: ${esc(j.technician_home_customer_name||'Other customer')}</div>`:''}${j.diagnosis?`<p><b>Diagnosis:</b> ${esc(j.diagnosis)}</p><p><b>Work done:</b> ${esc(j.work_done)}</p>${j.test_result?`<p><b>Test:</b> ${esc(j.test_result)}</p>`:''}`:''}<div class="actions"><button class="blue" data-job-pdf="${j.id}">Download Job Card PDF</button>${isTechnician&&j.status!=='COMPLETED'?`<button class="blue" data-tech-report="${j.id}">Open / Save Job Report</button>`:''}</div></div>`).join(''):'<div class="empty">No Job Card yet.</div>';
     const timelineHtml=d.events.length?`<div class="timeline">${d.events.map(e=>`<div class="event"><b>${esc(e.action)} - ${esc(e.department)}</b><div>${esc(e.note||'')}</div><small>${esc(e.actor_name||'System')} · ${fmtDate(e.created_at)}</small></div>`).join('')}</div>`:'<div class="empty">No process event recorded.</div>';
     document.getElementById('caseDetail').innerHTML=`<div class="detail">
       <div class="detail-title-row"><div><h2>${esc(c.machineLabel)}</h2><div class="detail-sub">${esc(c.title)} · ${esc(c.machineType||'')} · ${esc(c.serialNumber||'No serial')}</div></div><span class="pill ${c.status==='COMPLETED'?'green':c.delayed?'red':'yellow'}">${esc(c.status)}</span></div>
@@ -82,8 +82,43 @@
   }
 
   function wireDetail(){document.querySelectorAll('[data-workflow-tab]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-workflow-tab]').forEach(x=>x.classList.toggle('active',x===button));document.querySelectorAll('[data-workflow-panel]').forEach(panel=>panel.classList.toggle('active',panel.dataset.workflowPanel===button.dataset.workflowTab))}));document.getElementById('generateJob')?.addEventListener('click',openJob);document.getElementById('requestSpare')?.addEventListener('click',()=>{document.getElementById('spareCaseId').value=selected.case.id;document.getElementById('spareDialog').showModal()});document.getElementById('completeCase')?.addEventListener('click',async()=>{await api(`/stage/${selected.case.id}`,{method:'PUT',body:JSON.stringify({stage:'COMPLETED',note:'Workshop test passed; machine returned to service.'})});show('Machine returned to service.');await load();await openCase(selected.case.id)});document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.approve,true));document.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.reject,false));document.querySelectorAll('[data-spare-status]').forEach(b=>b.onclick=async()=>{const [id,status]=b.dataset.spareStatus.split('|');const note=prompt('Process note / reason (optional):')||'';try{await api(`/spare-status/${id}`,{method:'PUT',body:JSON.stringify({status,note})});await openCase(selected.case.id);await load()}catch(x){show(x.message,true)}});document.querySelectorAll('[data-tech-report]').forEach(b=>b.onclick=()=>{document.getElementById('techJobId').value=b.dataset.techReport;document.getElementById('techReportDialog').showModal()});document.querySelectorAll('[data-job-pdf]').forEach(b=>b.onclick=async()=>{try{const r=await fetch(`/api/breakdown-workflow/job-card-pdf/${encodeURIComponent(b.dataset.jobPdf)}`,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Could not prepare Job Card PDF.')}const blob=await r.blob();const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`BELM-Job-Card-${b.dataset.jobPdf}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}catch(x){show(x.message,true)}})}
-  async function openJob(){document.getElementById('jobCaseId').value=selected.case.id;document.getElementById('jobTitle').value=selected.case.title;try{const t=await api(`/technicians?customerId=${encodeURIComponent(selected.case.customerId)}`);document.getElementById('jobTechnician').innerHTML='<option value="">Unassigned</option>'+t.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}catch{}document.getElementById('jobDialog').showModal()}
-  document.getElementById('jobForm').onsubmit=async e=>{e.preventDefault();try{const r=await api('/job-card',{method:'POST',body:JSON.stringify({caseId:document.getElementById('jobCaseId').value,title:document.getElementById('jobTitle').value,technicianId:document.getElementById('jobTechnician').value})});document.getElementById('jobDialog').close();show(`Job Card ${r.jobCardNo} generated.`);await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
+  async function openJob(){
+    document.getElementById('jobCaseId').value=selected.case.id;
+    document.getElementById('jobTitle').value=selected.case.title;
+    const note=document.getElementById('jobOverrideNote');
+    if(note){note.classList.add('hidden');note.textContent='';}
+    try{
+      jobTechnicians=await api(`/technicians?customerId=${encodeURIComponent(selected.case.customerId)}`);
+      document.getElementById('jobTechnician').innerHTML='<option value="">Unassigned</option>'+jobTechnicians.map(x=>{
+        const home=x.assignedCustomerName?` · Home: ${x.assignedCustomerName}`:'';
+        const tag=x.temporaryForCustomer?' · TEMP OVERRIDE':'';
+        return `<option value="${esc(x.id)}">${esc(x.name+home+tag)}</option>`;
+      }).join('');
+    }catch{jobTechnicians=[]}
+    document.getElementById('jobDialog').showModal();
+  }
+  document.getElementById('jobTechnician')?.addEventListener('change',e=>{
+    const tech=jobTechnicians.find(x=>String(x.id)===String(e.target.value));
+    const note=document.getElementById('jobOverrideNote');
+    if(!note)return;
+    if(tech?.temporaryForCustomer){
+      note.textContent=`Temporary Override: ${tech.name} remains attached to ${tech.assignedCustomerName||'their home customer'}. This Job Card only will be shared.`;
+      note.classList.remove('hidden');
+    }else{note.classList.add('hidden');note.textContent='';}
+  });
+  document.getElementById('jobForm').onsubmit=async e=>{
+    e.preventDefault();
+    try{
+      const techId=document.getElementById('jobTechnician').value;
+      const tech=jobTechnicians.find(x=>String(x.id)===String(techId));
+      const temporaryOverride=Boolean(tech?.temporaryForCustomer);
+      if(temporaryOverride&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Use Temporary Override for this Job Card only?`))return;
+      const r=await api('/job-card',{method:'POST',body:JSON.stringify({caseId:document.getElementById('jobCaseId').value,title:document.getElementById('jobTitle').value,technicianId:techId,temporaryOverride})});
+      document.getElementById('jobDialog').close();
+      show(`Job Card ${r.jobCardNo} generated${temporaryOverride?' with Temporary Override':''}.`);
+      await load();await openCase(selected.case.id);
+    }catch(x){show(x.message,true)}
+  };
   document.getElementById('spareForm').onsubmit=async e=>{e.preventDefault();try{await api('/spare',{method:'POST',body:JSON.stringify({caseId:document.getElementById('spareCaseId').value,spareName:document.getElementById('spareName').value,partNumber:document.getElementById('sparePart').value,quantity:Number(document.getElementById('spareQty').value),unit:document.getElementById('spareUnit').value,reason:document.getElementById('spareReason').value})});document.getElementById('spareDialog').close();show('Spare request sent to Administration for approval.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function approveSpare(id,approve){const note=prompt(approve?'Administration approval note (optional):':'Reason for rejection:')||'';try{await api(`/approve-spare/${id}`,{method:'PUT',body:JSON.stringify({approve,note})});show(approve?'Spare approved by Administration.':'Spare request rejected.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}}
   document.getElementById('techReportForm').onsubmit=async e=>{e.preventDefault();try{await api(`/job-report/${document.getElementById('techJobId').value}`,{method:'PUT',body:JSON.stringify({diagnosis:document.getElementById('techDiagnosis').value,workDone:document.getElementById('techWork').value,testResult:document.getElementById('techTest').value,completionNote:document.getElementById('techNote').value,repeatIssue:document.getElementById('techRepeat').checked,complete:document.getElementById('techComplete').checked})});document.getElementById('techReportDialog').close();show('Digital Job Card report saved.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};

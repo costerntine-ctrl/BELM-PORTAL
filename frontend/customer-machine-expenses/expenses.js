@@ -13,105 +13,6 @@
     maximumFractionDigits: 2,
   });
 
-  const adminToken = localStorage.getItem("belm_admin_token");
-
-  function setupPettyCashAdminActions() {
-    if (!adminToken) return;
-    document.getElementById("pettyCashAdminActions").classList.remove("hidden");
-
-    document.getElementById("depositPettyCashButton").addEventListener("click", () => {
-      document.getElementById("depositPettyCashForm").reset();
-      document.getElementById("depositPettyCashError").classList.add("hidden");
-      document.getElementById("depositPettyCashDialog").showModal();
-    });
-    document.getElementById("settleDebtButton").addEventListener("click", async () => {
-      if (!confirm("Deposit exactly enough to bring this machine's petty cash balance to zero? Spending history stays untouched.")) return;
-      const button = document.getElementById("settleDebtButton");
-      button.disabled = true;
-      button.textContent = "Settling…";
-      try {
-        const response = await fetch(`/api/customers/machines/${encodeURIComponent(machineId)}/settle-petty-cash-debt`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${adminToken}` },
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || "Could not settle the debt.");
-        showAlert(result.message || "Debt settled successfully.");
-        loadSidebarAnalysis();
-      } catch (error) {
-        showAlert(error.message, true);
-      } finally {
-        button.disabled = false;
-        button.textContent = "Settle Debt (bring balance to 0)";
-      }
-    });
-    document.getElementById("clearPettyCashButton").addEventListener("click", () => {
-      document.getElementById("clearPettyCashForm").reset();
-      document.getElementById("clearPettyCashError").classList.add("hidden");
-      document.getElementById("clearPettyCashDialog").showModal();
-    });
-    document.querySelectorAll('[data-close-dialog="depositPettyCashDialog"], [data-close-dialog="clearPettyCashDialog"]').forEach((button) => {
-      button.addEventListener("click", () => document.getElementById(button.dataset.closeDialog).close());
-    });
-
-    document.getElementById("depositPettyCashForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const errorBox = document.getElementById("depositPettyCashError");
-      const button = document.getElementById("saveDepositButton");
-      errorBox.classList.add("hidden");
-      button.disabled = true;
-      try {
-        const response = await fetch(`/api/customers/machines/${encodeURIComponent(machineId)}/petty-cash-topup`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
-          body: JSON.stringify({
-            amount: Number(document.getElementById("depositAmount").value),
-            note: document.getElementById("depositNote").value.trim(),
-          }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || "Could not deposit petty cash.");
-        document.getElementById("depositPettyCashDialog").close();
-        showAlert(result.message || "Petty cash deposited successfully.");
-        loadSidebarAnalysis();
-      } catch (error) {
-        errorBox.textContent = error.message;
-        errorBox.classList.remove("hidden");
-      } finally {
-        button.disabled = false;
-      }
-    });
-
-    document.getElementById("clearPettyCashForm").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const errorBox = document.getElementById("clearPettyCashError");
-      const button = document.getElementById("saveClearButton");
-      errorBox.classList.add("hidden");
-      button.disabled = true;
-      try {
-        const response = await fetch(`/api/customers/machines/${encodeURIComponent(machineId)}/petty-cash-topup`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
-          body: JSON.stringify({
-            pin: document.getElementById("clearPin").value,
-            adminPassword: document.getElementById("clearAdminPassword").value,
-            reason: document.getElementById("clearReason").value.trim(),
-          }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.error || "Could not clear petty cash deposits.");
-        document.getElementById("clearPettyCashDialog").close();
-        showAlert(result.message || "Petty cash deposits cleared successfully.");
-        loadSidebarAnalysis();
-      } catch (error) {
-        errorBox.textContent = error.message;
-        errorBox.classList.remove("hidden");
-      } finally {
-        button.disabled = false;
-      }
-    });
-  }
-
   if (!token) {
     window.location.replace("/portal/login");
     return;
@@ -408,25 +309,7 @@
   async function loadSidebarAnalysis() {
     try {
       const data = await api(`/machine-analysis/${encodeURIComponent(machineId)}`);
-      const balanceEl = document.getElementById("sidebarPettyCashBalance");
-      const balanceLabelEl = document.getElementById("sidebarPettyCashLabel");
-      const balanceCardEl = document.querySelector(".petty-cash-card");
-      const balance = Number(data.pettyCash.balance || 0);
-      if (balance < 0) {
-        balanceLabelEl.textContent = "Petty Cash Debt";
-        balanceEl.textContent = money.format(Math.abs(balance));
-        balanceEl.classList.add("is-debt");
-        balanceCardEl?.classList.add("has-debt");
-      } else {
-        balanceLabelEl.textContent = "Petty Cash Balance";
-        balanceEl.textContent = money.format(balance);
-        balanceEl.classList.remove("is-debt");
-        balanceCardEl?.classList.remove("has-debt");
-      }
-      document.getElementById("sidebarPettyCashSub").textContent =
-        `Topped up ${money.format(Number(data.pettyCash.totalToppedUp || 0))} · Used ${money.format(Number(data.pettyCash.totalUsed || 0))}`;
       document.getElementById("sidebarTotalExpenses").textContent = money.format(Number(data.machineExpensesTotal || 0));
-      document.getElementById("sidebarPettyCashUsed").textContent = money.format(Number(data.pettyCash.totalUsed || 0));
       document.getElementById("sidebarServiceRequests").textContent =
         `${data.serviceRequests.total} (${data.serviceRequests.open} open)`;
       document.getElementById("sidebarChecklistReports").textContent = data.checklistReportsCount;
@@ -568,7 +451,6 @@
     }
   }
 
-  document.getElementById("pettyCashLink").href = `/customer-petty-cash/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("serviceRequestLink").href = `/customer-service-request/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
   document.getElementById("quantity").addEventListener("input", () => { calculateTotal(); syncStoreIssueForm(); });
@@ -773,6 +655,5 @@
   }
 
   calculateTotal();
-  setupPettyCashAdminActions();
   load();
 })();

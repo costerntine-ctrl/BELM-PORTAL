@@ -25,9 +25,25 @@ if ($isTechnician) {
 }
 
 if ($method === 'GET') {
-    $stmt = db()->prepare('SELECT t.*, c.name AS customer_name FROM tasks t LEFT JOIN customers c ON c.id = t.customer_id WHERE t.assigned_to_id = ? ORDER BY t.created_at DESC');
+    $stmt = db()->prepare(
+        'SELECT t.*, c.name AS customer_name, u.assigned_customer_id AS home_customer_id, hc.name AS home_customer_name
+         FROM tasks t
+         LEFT JOIN customers c ON c.id = t.customer_id
+         JOIN users u ON u.id = t.assigned_to_id
+         LEFT JOIN customers hc ON hc.id = u.assigned_customer_id
+         WHERE t.assigned_to_id = ? ORDER BY t.created_at DESC'
+    );
     $stmt->execute([$_GET['userId']]);
-    json_out($stmt->fetchAll());
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$row) {
+        $row['temporaryOverride'] = !empty($row['customer_id'])
+            && !empty($row['home_customer_id'])
+            && (string)$row['customer_id'] !== (string)$row['home_customer_id'];
+        $row['homeCustomerName'] = $row['home_customer_name'] ?? null;
+        unset($row['home_customer_id'], $row['home_customer_name']);
+    }
+    unset($row);
+    json_out($rows);
 }
 
 if ($method === 'POST') {
@@ -41,7 +57,7 @@ if ($method === 'POST') {
         json_error('Invalid task priority.');
     }
     $stmt = db()->prepare(
-        'SELECT u.assigned_customer_id, r.name AS role_name
+        'SELECT u.assigned_customer_id, u.is_customer_managed, r.name AS role_name
          FROM users u JOIN roles r ON r.id = u.role_id
          WHERE u.id = ? AND u.deleted_at IS NULL AND u.is_active = 1'
     );
@@ -55,11 +71,19 @@ if ($method === 'POST') {
     }
     if ($assignee['role_name'] === 'Technician') {
         if (!$assignee['assigned_customer_id']) {
-            json_error('This Technician does not have an assigned customer.', 422);
+            json_error('This Technician does not have a permanent/home customer.', 422);
         }
-        // A Technician task always follows the customer assigned on that
-        // Technician account, even if the legacy admin form sends another ID.
-        $customerId = $assignee['assigned_customer_id'];
+        $homeCustomerId = (string)$assignee['assigned_customer_id'];
+        if ($customerId === '') {
+            $customerId = $homeCustomerId;
+        } elseif ($customerId !== $homeCustomerId) {
+            if (!empty($assignee['is_customer_managed'])) {
+                json_error('Customer-managed Technicians cannot be borrowed for another customer.', 403);
+            }
+            if (!belm_can_override_technician_customer($user)) {
+                json_error('Only BELM Super Admin or Engineer can temporarily assign this Technician to another customer.', 403);
+            }
+        }
     }
     $newId = uuid();
     db()->prepare("INSERT INTO tasks (id, assigned_to_id, customer_id, title, description, due_date, priority, status, created_by, created_at) VALUES (?,?,?,?,?,?,?,'PENDING',?,NOW())")

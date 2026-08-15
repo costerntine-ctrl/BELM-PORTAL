@@ -138,6 +138,7 @@ switch ($resource) {
         ]);
 
     case 'customers':
+        // GET /customers/diagnostics     -> non-sensitive customer data counts for troubleshooting
         // GET/POST /customers            -> list / create
         // GET/PUT/DELETE /customers/:id  -> one / update / delete
         // POST /customers/:id/machines           -> add-machine
@@ -146,6 +147,9 @@ switch ($resource) {
         // DELETE /customers/machines/:machineId  -> delete-machine
         // POST /customers/:id/users              -> add-user
         // DELETE /customers/users/:subUserId     -> remove-user
+        if (($segments[1] ?? '') === 'diagnostics') {
+            dispatch('customers.php', ['action' => 'diagnostics']);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'service-parts') {
             dispatch('customers.php', ['action' => 'service-parts', 'machineId' => $segments[2]]);
         }

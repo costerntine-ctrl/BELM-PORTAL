@@ -846,7 +846,19 @@
       return;
     }
     const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+    const telemetry = data.telemetry || {};
+    const displayPhoto = safeReportPhotoUrl(telemetry.displayPhotoUrl || "");
+    const fuelLevel = String(telemetry.fuelLevel || "").trim();
+    const displayCaptured = telemetry.capturedAt ? formatTanzaniaDateTime(telemetry.capturedAt) : "No display photo yet";
     body.innerHTML = `
+      <div class="belm-checkup-display-strip">
+        <div class="belm-checkup-display-photo-wrap">
+          ${displayPhoto ? `<img src="${escapeHtml(displayPhoto)}" alt="Latest machine display" class="belm-checkup-display-thumb" data-checkup-display-photo>` : `<div class="belm-checkup-display-placeholder">DISPLAY PHOTO<br><small>Not captured yet</small></div>`}
+        </div>
+        <div class="belm-checkup-display-stat"><span>Hrs</span><strong>${escapeHtml(Number(telemetry.hourMeterReading || 0).toLocaleString("en-TZ"))}</strong></div>
+        <div class="belm-checkup-display-stat"><span>Fuel Level</span><strong>${escapeHtml(fuelLevel || (displayPhoto ? "See display" : "—"))}</strong></div>
+        <div class="belm-checkup-display-stat belm-checkup-display-time"><span>Display captured</span><strong>${escapeHtml(displayCaptured)}</strong></div>
+      </div>
       <div class="belm-customer-checkup-toolbar">
         <label>Checklist Template
           <select data-daily-template-select>
@@ -903,6 +915,7 @@
         catch (error) { alert(error.message || "Could not load today's checked report."); }
       });
     };
+    body.querySelector("[data-checkup-display-photo]")?.addEventListener("click", () => openReportPhotoLightbox(displayPhoto));
     select.addEventListener("change", renderTemplate);
     renderTemplate();
   }
@@ -1251,6 +1264,28 @@
     // Management Email is the only account-level action kept here.
     // Analysis is already represented by Activity Overview above, while
     // password recovery is handled from the login screen using email OTP.
+    const pettyCashCard = document.createElement("div");
+    pettyCashCard.id = "belmPettyCashAccountCard";
+    pettyCashCard.className = "belm-petty-cash-account-card";
+    pettyCashCard.setAttribute("data-belm-feature", "machine-expenses");
+    pettyCashCard.innerHTML = `
+      <div class="belm-petty-cash-head"><span>PETTY CASH</span><a href="/customer-petty-cash/">Open account</a></div>
+      <strong id="belmPettyCashBalance">TZS —</strong>
+      <div class="belm-petty-cash-meta"><span>Used <b id="belmPettyCashUsed">—</b></span><span>Top-up <b id="belmPettyCashTopup">—</b></span></div>`;
+
+    const breakdownCard = document.createElement("a");
+    breakdownCard.id = "belmBreakdownProcessRailCard";
+    breakdownCard.className = "belm-breakdown-process-rail-card";
+    breakdownCard.href = `/breakdown-workflow/?actor=${encodeURIComponent(customerWorkflowActor())}`;
+    breakdownCard.setAttribute("data-belm-feature", "workflow");
+    breakdownCard.innerHTML = `
+      <span class="belm-breakdown-rail-icon">BP</span>
+      <span class="belm-breakdown-rail-copy">
+        <b>BREAKDOWN PROCESS</b>
+        <small>Live delays, approvals & Job Cards</small>
+      </span>
+      <span class="belm-breakdown-rail-arrow">›</span>`;
+
     const toolsCard = document.createElement("div");
     toolsCard.id = "belmAccountToolsCard";
     toolsCard.className = "belm-account-tools-card";
@@ -1265,10 +1300,6 @@
         <button type="button" class="belm-email-report-button" data-belm-feature="service-request" data-contact-belm-support>
           Request BELM Support
         </button>
-        <a class="belm-email-report-button" href="/breakdown-workflow/?actor=${encodeURIComponent(customerWorkflowActor())}" data-belm-feature="workflow">
-          Breakdown Process
-          <small>Live delays, approvals & Job Cards</small>
-        </a>
         <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
           data-report-subject="BELM Portal — account activity report"
           data-report-message="BELM Portal account report requested from the dashboard.">
@@ -1278,8 +1309,17 @@
     enforceCustomerFeaturePermissions(toolsCard);
     toolsCard.querySelector("[data-open-role-manager]")?.addEventListener("click", () => { window.location.href = "/customer-users/"; });
     toolsCard.querySelector("[data-contact-belm-support]")?.addEventListener("click", () => openBelmSupportDialog());
+    const syncPettyCashVisibility = () => {
+      const payload = tokenPayload("belm_customer_token");
+      const permissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
+      pettyCashCard.style.display = Array.isArray(permissions) && !permissions.includes("machine-expenses") ? "none" : "";
+      breakdownCard.style.display = Array.isArray(permissions) && !permissions.includes("workflow") ? "none" : "";
+    };
+    syncPettyCashVisibility();
+
     loadCustomerPortalProfile().then((profile) => {
       enforceCustomerFeaturePermissions(toolsCard);
+      syncPettyCashVisibility();
       const hasVisibleTool = [...toolsCard.querySelectorAll("button, a")].some((element) => element.style.display !== "none");
       toolsCard.style.display = hasVisibleTool ? "" : "none";
       const modeBox = document.getElementById("belmCustomerOperatingMode");
@@ -1304,13 +1344,21 @@
       const overviewStack = document.createElement("div");
       overviewStack.className = "belm-activity-overview-stack";
       overviewStack.appendChild(card);
+      overviewStack.appendChild(pettyCashCard);
+      overviewStack.appendChild(breakdownCard);
       overviewStack.appendChild(toolsCard);
       machineGrid.insertAdjacentElement("beforebegin", layout);
       layout.appendChild(machineGrid);
       layout.appendChild(overviewStack);
+      enforceCustomerFeaturePermissions(pettyCashCard);
+      enforceCustomerFeaturePermissions(breakdownCard);
     } else {
       rowContainer.insertAdjacentElement("afterend", card);
-      card.insertAdjacentElement("afterend", toolsCard);
+      card.insertAdjacentElement("afterend", pettyCashCard);
+      pettyCashCard.insertAdjacentElement("afterend", breakdownCard);
+      breakdownCard.insertAdjacentElement("afterend", toolsCard);
+      enforceCustomerFeaturePermissions(pettyCashCard);
+      enforceCustomerFeaturePermissions(breakdownCard);
     }
 
     try {
@@ -1322,20 +1370,57 @@
       const data = await response.json();
       const grid = document.getElementById("belmActivityOverviewGrid");
       const machines = data.machines || {};
+      const actionValues = {
+        attention: Number((machines.yellow ?? 0) + (machines.red ?? 0)) || 0,
+        service: Number(data.dueForServiceCount ?? 0) || 0,
+        requests: Number(data.serviceRequests?.open ?? 0) || 0,
+      };
       const items = [
-        ["Need attention", (machines.yellow ?? 0) + (machines.red ?? 0), "attention"],
-        ["Service due", data.dueForServiceCount ?? "—", "service"],
-        ["Open requests", data.serviceRequests?.open ?? "—", "requests"],
-        ["Checklist reports", data.checklistReportsCount ?? "—", "checklists"],
+        ["Machine attention", actionValues.attention, "attention"],
+        ["Service due", actionValues.service, "service"],
+        ["Open requests", actionValues.requests, "requests"],
       ];
-      grid.innerHTML = items.map(([label, value, key]) => `
-        <div class="belm-activity-overview-item belm-action-item-${key}"><span>${label}</span><strong>${value}</strong></div>`).join("");
+      const activeItems = items.filter(([, value]) => Number(value) > 0);
+      const activityCard = document.getElementById("belmActivityOverviewCard");
+      const activityHead = activityCard?.querySelector(".belm-activity-overview-head");
+      const activityIntro = activityCard?.querySelector(".belm-action-center-intro");
+      if (activeItems.length === 0) {
+        activityCard?.classList.add("is-clear");
+        if (activityHead) activityHead.textContent = "STATUS";
+        if (activityIntro) activityIntro.textContent = "Only active issues appear here.";
+        const hasMachines = Number(machines.total ?? 0) > 0;
+        grid.innerHTML = `
+          <div class="belm-action-center-clear belm-action-center-clear-main">
+            <b>${hasMachines ? "ALL MACHINES UNDER CONTROL" : "NO ACTIVE MACHINE ACTIONS"}</b>
+            <span>${hasMachines ? "No breakdown, service or open request needs action now." : "No machine action requires attention right now."}</span>
+          </div>`;
+      } else {
+        activityCard?.classList.remove("is-clear");
+        if (activityHead) activityHead.textContent = "ACTION REQUIRED";
+        if (activityIntro) activityIntro.textContent = "Only items that need attention are shown.";
+        grid.innerHTML = activeItems.map(([label, value, key]) => `
+          <button type="button" class="belm-activity-overview-item belm-action-item-${key}" data-belm-action-center-target="${key}">
+            <span>${label}</span><strong>${value}</strong><small>Open</small>
+          </button>`).join("");
+      }
+      const pettyAccount = data.pettyCashAccount || {};
+      const pettyBalance = Number(pettyAccount.balance || 0);
+      const pettyBalanceEl = document.getElementById("belmPettyCashBalance");
+      if (pettyBalanceEl) {
+        pettyBalanceEl.textContent = `TZS ${Math.abs(pettyBalance).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
+        pettyBalanceEl.classList.toggle("is-debt", pettyBalance < 0);
+      }
+      const pettyUsedEl = document.getElementById("belmPettyCashUsed");
+      const pettyTopupEl = document.getElementById("belmPettyCashTopup");
+      if (pettyUsedEl) pettyUsedEl.textContent = `TZS ${Number(pettyAccount.totalUsed || 0).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
+      if (pettyTopupEl) pettyTopupEl.textContent = `TZS ${Number(pettyAccount.totalToppedUp || 0).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
+      enforceCustomerFeaturePermissions(pettyCashCard);
+
       const snapshot = document.getElementById("belmActionCenterSnapshotGrid");
       if (snapshot) {
         const snapshotItems = [
           ["Machines", machines.total ?? "—"],
           ["Machine expenses", data.machineExpensesTotal != null ? `TZS ${Number(data.machineExpensesTotal).toLocaleString("en-TZ")}` : "—"],
-          ["Petty cash used", data.pettyCashTotal != null ? `TZS ${Number(data.pettyCashTotal).toLocaleString("en-TZ")}` : "—"],
           ["Fuel top-up", data.fuelCostTotal != null ? `TZS ${Number(data.fuelCostTotal).toLocaleString("en-TZ")}` : "—"],
           ["Containers handled", data.totalContainersHandled ?? "—"],
         ];
@@ -1371,7 +1456,7 @@
             const serviceNote = m.serviceLevel === "RED" ? "Service overdue"
               : m.serviceLevel === "YELLOW" ? "Service due soon" : "Service on schedule";
             return `
-              <div class="belm-activity-overview-machine">
+              <button type="button" class="belm-activity-overview-machine" data-belm-machine-focus="${escapeHtml(String(m.id || ""))}">
                 <div class="belm-activity-overview-machine-head">
                   <b>${escapeHtml(m.name)}</b>
                   <span class="belm-activity-overview-machine-status status-${statusKey}">${escapeHtml((m.status || "-").replace("_", " "))}</span>
@@ -1380,9 +1465,34 @@
                   ${Number(m.openServiceRequests || 0) ? `<span>${m.openServiceRequests} open request(s)</span>` : ""}
                   <span>${escapeHtml(serviceNote)}</span>
                 </div>
-              </div>`;
-          }).join("")}` : '<div class="belm-action-center-clear"><b>NO URGENT MACHINE ACTION</b><span>Service and operating status are currently under control.</span></div>';
+              </button>`;
+          }).join("")}` : '';
       }
+
+      card.addEventListener("click", (event) => {
+        const actionButton = event.target.closest("[data-belm-action-center-target]");
+        if (actionButton) {
+          const target = actionButton.dataset.belmActionCenterTarget;
+          if (target === "requests") {
+            const requestsHeading = Array.from(document.querySelectorAll("h1,h2,h3"))
+              .find((el) => /service requests/i.test(el.textContent || ""));
+            requestsHeading?.scrollIntoView({ behavior: "smooth", block: "start" });
+            return;
+          }
+          const machineGrid = document.querySelector(".belm-customer-machine-grid");
+          machineGrid?.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+        const machineButton = event.target.closest("[data-belm-machine-focus]");
+        if (machineButton) {
+          const targetCard = document.querySelector(`.belm-customer-machine-card[data-belm-machine-id="${CSS.escape(machineButton.dataset.belmMachineFocus || "")}"]`);
+          if (targetCard) {
+            targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
+            targetCard.classList.add("belm-machine-focus-pulse");
+            setTimeout(() => targetCard.classList.remove("belm-machine-focus-pulse"), 1800);
+          }
+        }
+      });
     } catch (_) {
       const grid = document.getElementById("belmActivityOverviewGrid");
       if (grid) grid.innerHTML = '<p class="belm-activity-overview-loading">Could not load activity overview.</p>';
@@ -2410,6 +2520,7 @@
 
       card.dataset.belmMachineExpenseReady = "1";
       card.classList.add("belm-customer-machine-card");
+      card.dataset.belmMachineId = String(machine.id || "");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       card.firstElementChild?.classList.add("belm-machine-native-head");
       if (card.children[1]) card.children[1].classList.add("belm-machine-last-checked");
@@ -3657,6 +3768,32 @@
     } catch (_) {}
   }
 
+  async function addTechnicianJobCardsShortcut() {
+    if (window.location.pathname !== "/tech") return;
+    if (document.getElementById("belm-tech-jobcards-shortcut")) return;
+    const payload = tokenPayload("belm_tech_token");
+    const token = localStorage.getItem("belm_tech_token");
+    if (!payload || !token || String(payload.roleName || "").toLowerCase() !== "technician") return;
+    const link = document.createElement("a");
+    link.id = "belm-tech-jobcards-shortcut";
+    link.href = "/breakdown-workflow/?actor=tech";
+    link.textContent = "Job Cards / Process";
+    Object.assign(link.style, {
+      position: "fixed", right: "20px", bottom: "138px", zIndex: "1000",
+      padding: "12px 18px", borderRadius: "999px", background: "#0b4f9c",
+      color: "#fff", fontWeight: "800", textDecoration: "none",
+      boxShadow: "0 12px 30px rgba(11, 79, 156, .28)", border: "2px solid #f4cf00",
+    });
+    document.body.appendChild(link);
+    try {
+      const response = await fetch('/api/breakdown-workflow', { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const rows = await response.json();
+      const active = Array.isArray(rows) ? rows.filter((item) => item.status !== 'COMPLETED').length : 0;
+      if (active > 0) link.textContent = `Job Cards / Process (${active})`;
+    } catch (_) {}
+  }
+
   function closeTechnicianSpareRequest() {
     document.getElementById("belmTechnicianSpareModal")?.remove();
   }
@@ -4312,6 +4449,7 @@
   setInterval(() => {
     refreshShortcut();
     addTechnicianTasksShortcut();
+    addTechnicianJobCardsShortcut();
     addTechnicianSpareShortcut();
     addTechnicianSpareRecommendationShortcut();
     addTechnicianCustomerDashboardShortcut();

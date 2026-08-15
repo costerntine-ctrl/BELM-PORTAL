@@ -3800,14 +3800,93 @@ html[data-theme="dark"] .belm-service-due-head-v210 > div b { color:#e7eef7; }
 }
 .belm-activity-overview-stack > .belm-petty-cash-account-card { margin: 0; }
 
-/* V225 - Petty Cash and Breakdown Process sit side by side in one row
-   instead of two separate full-width bars, so the rail reads compact
-   on tablet/small-laptop widths (matches the Machine Attention / Service
-   Due pair above). Falls back to a single column on narrow phones. */
+/* V226 - Customer Dashboard language toggle (English default / Kiswahili) */
+.belm-lang-toggle {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 9997;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  background: #111b2f;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(4, 12, 25, .24);
+  font: 800 11px/1.1 Inter, system-ui, sans-serif;
+  cursor: pointer;
+}
+.belm-lang-toggle:hover { transform: translateY(-1px); }
+html[data-theme="dark"] .belm-lang-toggle {
+  border-color: #3d4d66;
+  background: #f8fafc;
+  color: #111827;
+}
+@media (max-width: 480px) {
+  .belm-lang-toggle { left: 10px; bottom: 10px; padding: 8px 10px; }
+}
+
+/* V227 - single unified overview card. Status / Petty Cash / Breakdown
+   Process used to be three separate floating cards; they now live as
+   internal sections inside one shared card (one border, one shadow,
+   one gradient stripe) no matter how many machines the customer has. */
+.belm-overview-card {
+  position: sticky;
+  top: 12px;
+  z-index: 5;
+  margin: 14px 0 22px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, #101b31, #16233d 60%, #101b31);
+  border: 1px solid rgba(255, 212, 0, .35);
+  box-shadow: 0 20px 50px rgba(7, 14, 28, .35);
+  overflow: hidden;
+  font-family: Inter, system-ui, sans-serif;
+}
+.belm-dashboard-layout > .belm-activity-overview-stack .belm-overview-card { margin: 0; }
+@media (max-width: 480px) {
+  .belm-overview-card { position: static; }
+}
+.belm-overview-card > .belm-activity-overview-card {
+  position: static;
+  margin: 0;
+  padding: 20px 22px 18px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.belm-overview-card > .belm-quick-actions-row {
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card,
+.belm-overview-card > .belm-quick-actions-row > .belm-breakdown-process-rail-card {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 16px 20px;
+}
+.belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card::before,
+.belm-overview-card > .belm-quick-actions-row > .belm-breakdown-process-rail-card::before {
+  display: none;
+}
+.belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card {
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+@media (max-width: 640px) {
+  .belm-overview-card > .belm-quick-actions-row > .belm-petty-cash-account-card {
+    border-right: 0;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+  }
+}
+
+/* Petty Cash and Breakdown Process sit side by side in one row within
+   the shared card (matches the Machine Attention / Service Due pair
+   above). Falls back to a single column on narrow phones. */
 .belm-quick-actions-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 12px;
+  gap: 0;
   align-items: stretch;
 }
 .belm-quick-actions-row > .belm-petty-cash-account-card,
@@ -3818,7 +3897,6 @@ html[data-theme="dark"] .belm-service-due-head-v210 > div b { color:#e7eef7; }
 .belm-quick-actions-row > .belm-breakdown-process-rail-card {
   grid-template-columns: 38px minmax(0,1fr);
   min-height: 0;
-  padding: 11px 12px;
 }
 .belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-icon {
   width: 38px;
@@ -3834,7 +3912,6 @@ html[data-theme="dark"] .belm-service-due-head-v210 > div b { color:#e7eef7; }
   .belm-quick-actions-row > .belm-breakdown-process-rail-card {
     grid-template-columns: 48px minmax(0,1fr) 22px;
     min-height: 66px;
-    padding: 12px 13px;
   }
   .belm-quick-actions-row > .belm-breakdown-process-rail-card .belm-breakdown-rail-icon {
     width: 48px;

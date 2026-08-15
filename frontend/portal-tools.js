@@ -19,6 +19,79 @@
     "'": "&#039;",
   })[character]);
 
+  // V226 - Customer Dashboard language toggle (English / Kiswahili).
+  // Default is English. Preference is stored per-browser and only affects
+  // the Customer Dashboard overlay text that this file itself renders
+  // (Action Required / Petty Cash / Breakdown Process / More Tools cards
+  // and the renamed machines heading) - not the underlying app shell.
+  const BELM_LANG_KEY = "belm_dashboard_lang";
+  const belmLangDict = {
+    "Machine attention": { sw: "Mashine zinazohitaji hatua" },
+    "Service due": { sw: "Huduma inahitajika" },
+    "Open requests": { sw: "Maombi wazi" },
+    "Open": { sw: "Wazi" },
+    "STATUS": { sw: "HALI" },
+    "Only active issues appear here.": { sw: "Matatizo yanayoendelea pekee yanaonekana hapa." },
+    "ALL MACHINES UNDER CONTROL": { sw: "MASHINE ZOTE ZIKO SALAMA" },
+    "NO ACTIVE MACHINE ACTIONS": { sw: "HAKUNA HATUA INAYOHITAJIKA" },
+    "No breakdown, service or open request needs action now.": { sw: "Hakuna hitilafu, huduma au ombi wazi linalohitaji hatua sasa." },
+    "No machine action requires attention right now.": { sw: "Hakuna hatua ya mashine inayohitajika kwa sasa." },
+    "ACTION REQUIRED": { sw: "HATUA INAHITAJIKA" },
+    "Only items that need attention are shown.": { sw: "Vitu vinavyohitaji hatua pekee ndivyo vinavyoonyeshwa." },
+    "MACHINES NEEDING ACTION": { sw: "MASHINE ZINAZOHITAJI HATUA" },
+    "Service overdue": { sw: "Huduma imechelewa" },
+    "Service due soon": { sw: "Huduma inakaribia" },
+    "Service on schedule": { sw: "Huduma iko sawa" },
+    "open request(s)": { sw: "ombi/maombi wazi" },
+    "Machines": { sw: "Mashine" },
+    "Machine expenses": { sw: "Matumizi ya mashine" },
+    "Fuel top-up": { sw: "Mafuta yaliyowekwa" },
+    "Containers handled": { sw: "Makontena yaliyoshughulikiwa" },
+    "Business snapshot": { sw: "Muhtasari wa biashara" },
+    "ACTION CENTER": { sw: "KITUO CHA HATUA" },
+    "What needs attention now across your machines.": { sw: "Kinachohitaji hatua sasa kwenye mashine zako." },
+    "PETTY CASH": { sw: "FEDHA NDOGO (PETTY CASH)" },
+    "Open account": { sw: "Fungua akaunti" },
+    "Used": { sw: "Zilizotumika" },
+    "Top-up": { sw: "Zilizowekwa" },
+    "BREAKDOWN PROCESS": { sw: "MCHAKATO WA HITILAFU" },
+    "Live delays, approvals & Job Cards": { sw: "Ucheleweshaji, idhini na Job Card - moja kwa moja" },
+    "MORE TOOLS": { sw: "ZANA ZAIDI" },
+    "+USER": { sw: "+MTUMIAJI" },
+    "Role Manager & Dashboard Access": { sw: "Meneja wa Majukumu na Ufikiaji wa Dashibodi" },
+    "Request BELM Support": { sw: "Omba Msaada wa BELM" },
+    "Management Email": { sw: "Barua pepe ya Uongozi" },
+    "Loading operating mode…": { sw: "Inapakia hali ya uendeshaji…" },
+    "CUSTOMER MAINTENANCE TEAM": { sw: "TIMU YA MATENGENEZO YA MTEJA" },
+    "Your Technicians manage maintenance. BELM Support remains available when assistance is needed.": { sw: "Mafundi wako ndio wanaosimamia matengenezo. Msaada wa BELM upo endapo utahitajika." },
+    "BELM SERVICE PROVIDER ACTIVE": { sw: "MTOA HUDUMA BELM ANAFANYA KAZI" },
+    "Machine problems and maintenance route to BELM. Your Fuel, Operators, Workshop, Store, Procurement, Accounts and other portal functions remain under your company; only the Customer Technician role is paused.": { sw: "Matatizo na matengenezo ya mashine yanaelekezwa BELM. Mafuta, Waendeshaji, Karakana, Ghala, Ununuzi, Hesabu na sehemu nyingine za mfumo zinabaki chini ya kampuni yako; ni jukumu la Fundi wa Mteja pekee lililosimamishwa." },
+    "MACHINES": { sw: "MASHINE" },
+  };
+  const belmLang = () => (localStorage.getItem(BELM_LANG_KEY) === "sw" ? "sw" : "en");
+  const belmT = (text) => {
+    if (belmLang() !== "sw") return text;
+    return belmLangDict[text]?.sw ?? text;
+  };
+  const belmSetLang = (lang) => {
+    localStorage.setItem(BELM_LANG_KEY, lang === "sw" ? "sw" : "en");
+    window.location.reload();
+  };
+  function insertCustomerLangToggle() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    if (document.getElementById("belmLangToggle")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "belmLangToggle";
+    btn.className = "belm-lang-toggle";
+    const current = belmLang();
+    btn.textContent = current === "sw" ? "🌐 Kiswahili" : "🌐 English";
+    btn.title = "Switch dashboard language / Badilisha lugha ya dashibodi";
+    btn.addEventListener("click", () => belmSetLang(current === "sw" ? "en" : "sw"));
+    document.body.appendChild(btn);
+  }
+
+
   document.body.dataset.belmArea = pathname.startsWith("/admin")
     ? "admin"
     : pathname.startsWith("/tech")
@@ -1209,7 +1282,7 @@
     const name = payload?.name;
     if (!name) return;
     heading.dataset.belmNamed = "1";
-    heading.textContent = `${String(name).toUpperCase()} MACHINES`;
+    heading.textContent = `${String(name).toUpperCase()} ${belmT("MACHINES")}`;
   }
 
   // A sticky "Activity Overview" card, styled like the dark Petty Cash
@@ -1249,29 +1322,34 @@
     card.id = "belmActivityOverviewCard";
     card.className = "belm-activity-overview-card";
     card.innerHTML = `
-      <div class="belm-activity-overview-head">ACTION CENTER</div>
-      <p class="belm-action-center-intro">What needs attention now across your machines.</p>
+      <div class="belm-activity-overview-head">${belmT("ACTION CENTER")}</div>
+      <p class="belm-action-center-intro">${belmT("What needs attention now across your machines.")}</p>
       <div class="belm-activity-overview-grid" id="belmActivityOverviewGrid">
         <p class="belm-activity-overview-loading">Loading...</p>
       </div>
       <details class="belm-action-center-snapshot" id="belmActionCenterSnapshot">
-        <summary>Business snapshot <span>+</span></summary>
+        <summary>${belmT("Business snapshot")} <span>+</span></summary>
         <div class="belm-action-center-snapshot-grid" id="belmActionCenterSnapshotGrid"></div>
       </details>
       <div class="belm-activity-overview-machines" id="belmActivityOverviewMachines"></div>`;
 
-    // A small "MORE TOOLS" card that sits right under Activity Overview.
-    // Management Email is the only account-level action kept here.
-    // Analysis is already represented by Activity Overview above, while
-    // password recovery is handled from the login screen using email OTP.
+    // V227 - Status / Petty Cash / Breakdown Process used to be three
+    // separate floating cards, which reads as visual clutter once a
+    // customer has several machines. They now live inside one shared
+    // card (belmOverviewCard) as internal sections separated by a thin
+    // divider, so there is a single card border/shadow no matter how
+    // many machines exist.
+    const overviewCard = document.createElement("div");
+    overviewCard.id = "belmOverviewCard";
+    overviewCard.className = "belm-overview-card";
     const pettyCashCard = document.createElement("div");
     pettyCashCard.id = "belmPettyCashAccountCard";
     pettyCashCard.className = "belm-petty-cash-account-card";
     pettyCashCard.setAttribute("data-belm-feature", "machine-expenses");
     pettyCashCard.innerHTML = `
-      <div class="belm-petty-cash-head"><span>PETTY CASH</span><a href="/customer-petty-cash/">Open account</a></div>
+      <div class="belm-petty-cash-head"><span>${belmT("PETTY CASH")}</span><a href="/customer-petty-cash/">${belmT("Open account")}</a></div>
       <strong id="belmPettyCashBalance">TZS —</strong>
-      <div class="belm-petty-cash-meta"><span>Used <b id="belmPettyCashUsed">—</b></span><span>Top-up <b id="belmPettyCashTopup">—</b></span></div>`;
+      <div class="belm-petty-cash-meta"><span>${belmT("Used")} <b id="belmPettyCashUsed">—</b></span><span>${belmT("Top-up")} <b id="belmPettyCashTopup">—</b></span></div>`;
 
     const breakdownCard = document.createElement("a");
     breakdownCard.id = "belmBreakdownProcessRailCard";
@@ -1281,8 +1359,8 @@
     breakdownCard.innerHTML = `
       <span class="belm-breakdown-rail-icon">BP</span>
       <span class="belm-breakdown-rail-copy">
-        <b>BREAKDOWN PROCESS</b>
-        <small>Live delays, approvals & Job Cards</small>
+        <b>${belmT("BREAKDOWN PROCESS")}</b>
+        <small>${belmT("Live delays, approvals & Job Cards")}</small>
       </span>
       <span class="belm-breakdown-rail-arrow">›</span>`;
 
@@ -1290,20 +1368,20 @@
     toolsCard.id = "belmAccountToolsCard";
     toolsCard.className = "belm-account-tools-card";
     toolsCard.innerHTML = `
-      <div class="belm-account-tools-head">MORE TOOLS</div>
-      <div id="belmCustomerOperatingMode" style="margin:10px 0 12px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.08);font-size:11px;line-height:1.45">Loading operating mode…</div>
+      <div class="belm-account-tools-head">${belmT("MORE TOOLS")}</div>
+      <div id="belmCustomerOperatingMode" style="margin:10px 0 12px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.08);font-size:11px;line-height:1.45">${belmT("Loading operating mode…")}</div>
       <div class="belm-account-tools-actions">
         <button type="button" class="belm-email-report-button belm-user-manager-button" data-belm-owner-admin-only data-belm-feature="assign-users" data-open-role-manager>
-          +USER
-          <small>Role Manager & Dashboard Access</small>
+          ${belmT("+USER")}
+          <small>${belmT("Role Manager & Dashboard Access")}</small>
         </button>
         <button type="button" class="belm-email-report-button" data-belm-feature="service-request" data-contact-belm-support>
-          Request BELM Support
+          ${belmT("Request BELM Support")}
         </button>
         <button type="button" class="belm-email-report-button" data-belm-feature="email" data-email-report
           data-report-subject="BELM Portal — account activity report"
           data-report-message="BELM Portal account report requested from the dashboard.">
-          Management Email
+          ${belmT("Management Email")}
         </button>
       </div>`;
     enforceCustomerFeaturePermissions(toolsCard);
@@ -1325,8 +1403,8 @@
       const modeBox = document.getElementById("belmCustomerOperatingMode");
       if (!modeBox || !profile) return;
       modeBox.innerHTML = profile.isMachineryAdmin
-        ? '<b>CUSTOMER MAINTENANCE TEAM</b><br>Your Technicians manage maintenance. BELM Support remains available when assistance is needed.'
-        : '<b>BELM SERVICE PROVIDER ACTIVE</b><br>Machine problems and maintenance route to BELM. Your Fuel, Operators, Workshop, Store, Procurement, Accounts and other portal functions remain under your company; only the Customer Technician role is paused.';
+        ? `<b>${belmT("CUSTOMER MAINTENANCE TEAM")}</b><br>${belmT("Your Technicians manage maintenance. BELM Support remains available when assistance is needed.")}`
+        : `<b>${belmT("BELM SERVICE PROVIDER ACTIVE")}</b><br>${belmT("Machine problems and maintenance route to BELM. Your Fuel, Operators, Workshop, Store, Procurement, Accounts and other portal functions remain under your company; only the Customer Technician role is paused.")}`;
     });
     if (![...toolsCard.querySelectorAll("button, a")].some((element) => element.style.display !== "none")) {
       toolsCard.style.display = "none";
@@ -1347,8 +1425,9 @@
       quickActionsRow.className = "belm-quick-actions-row";
       quickActionsRow.appendChild(pettyCashCard);
       quickActionsRow.appendChild(breakdownCard);
-      overviewStack.appendChild(card);
-      overviewStack.appendChild(quickActionsRow);
+      overviewCard.appendChild(card);
+      overviewCard.appendChild(quickActionsRow);
+      overviewStack.appendChild(overviewCard);
       overviewStack.appendChild(toolsCard);
       machineGrid.insertAdjacentElement("beforebegin", layout);
       layout.appendChild(machineGrid);
@@ -1360,9 +1439,10 @@
       quickActionsRow.className = "belm-quick-actions-row";
       quickActionsRow.appendChild(pettyCashCard);
       quickActionsRow.appendChild(breakdownCard);
-      rowContainer.insertAdjacentElement("afterend", card);
-      card.insertAdjacentElement("afterend", quickActionsRow);
-      quickActionsRow.insertAdjacentElement("afterend", toolsCard);
+      overviewCard.appendChild(card);
+      overviewCard.appendChild(quickActionsRow);
+      rowContainer.insertAdjacentElement("afterend", overviewCard);
+      overviewCard.insertAdjacentElement("afterend", toolsCard);
       enforceCustomerFeaturePermissions(pettyCashCard);
       enforceCustomerFeaturePermissions(breakdownCard);
     }
@@ -1382,9 +1462,9 @@
         requests: Number(data.serviceRequests?.open ?? 0) || 0,
       };
       const items = [
-        ["Machine attention", actionValues.attention, "attention"],
-        ["Service due", actionValues.service, "service"],
-        ["Open requests", actionValues.requests, "requests"],
+        [belmT("Machine attention"), actionValues.attention, "attention"],
+        [belmT("Service due"), actionValues.service, "service"],
+        [belmT("Open requests"), actionValues.requests, "requests"],
       ];
       const activeItems = items.filter(([, value]) => Number(value) > 0);
       const activityCard = document.getElementById("belmActivityOverviewCard");
@@ -1392,21 +1472,21 @@
       const activityIntro = activityCard?.querySelector(".belm-action-center-intro");
       if (activeItems.length === 0) {
         activityCard?.classList.add("is-clear");
-        if (activityHead) activityHead.textContent = "STATUS";
-        if (activityIntro) activityIntro.textContent = "Only active issues appear here.";
+        if (activityHead) activityHead.textContent = belmT("STATUS");
+        if (activityIntro) activityIntro.textContent = belmT("Only active issues appear here.");
         const hasMachines = Number(machines.total ?? 0) > 0;
         grid.innerHTML = `
           <div class="belm-action-center-clear belm-action-center-clear-main">
-            <b>${hasMachines ? "ALL MACHINES UNDER CONTROL" : "NO ACTIVE MACHINE ACTIONS"}</b>
-            <span>${hasMachines ? "No breakdown, service or open request needs action now." : "No machine action requires attention right now."}</span>
+            <b>${hasMachines ? belmT("ALL MACHINES UNDER CONTROL") : belmT("NO ACTIVE MACHINE ACTIONS")}</b>
+            <span>${hasMachines ? belmT("No breakdown, service or open request needs action now.") : belmT("No machine action requires attention right now.")}</span>
           </div>`;
       } else {
         activityCard?.classList.remove("is-clear");
-        if (activityHead) activityHead.textContent = "ACTION REQUIRED";
-        if (activityIntro) activityIntro.textContent = "Only items that need attention are shown.";
+        if (activityHead) activityHead.textContent = belmT("ACTION REQUIRED");
+        if (activityIntro) activityIntro.textContent = belmT("Only items that need attention are shown.");
         grid.innerHTML = activeItems.map(([label, value, key]) => `
           <button type="button" class="belm-activity-overview-item belm-action-item-${key}" data-belm-action-center-target="${key}">
-            <span>${label}</span><strong>${value}</strong><small>Open</small>
+            <span>${label}</span><strong>${value}</strong><small>${belmT("Open")}</small>
           </button>`).join("");
       }
       const pettyAccount = data.pettyCashAccount || {};
@@ -1425,10 +1505,10 @@
       const snapshot = document.getElementById("belmActionCenterSnapshotGrid");
       if (snapshot) {
         const snapshotItems = [
-          ["Machines", machines.total ?? "—"],
-          ["Machine expenses", data.machineExpensesTotal != null ? `TZS ${Number(data.machineExpensesTotal).toLocaleString("en-TZ")}` : "—"],
-          ["Fuel top-up", data.fuelCostTotal != null ? `TZS ${Number(data.fuelCostTotal).toLocaleString("en-TZ")}` : "—"],
-          ["Containers handled", data.totalContainersHandled ?? "—"],
+          [belmT("Machines"), machines.total ?? "—"],
+          [belmT("Machine expenses"), data.machineExpensesTotal != null ? `TZS ${Number(data.machineExpensesTotal).toLocaleString("en-TZ")}` : "—"],
+          [belmT("Fuel top-up"), data.fuelCostTotal != null ? `TZS ${Number(data.fuelCostTotal).toLocaleString("en-TZ")}` : "—"],
+          [belmT("Containers handled"), data.totalContainersHandled ?? "—"],
         ];
         snapshot.innerHTML = snapshotItems.map(([label, value]) => `<div><span>${label}</span><b>${value}</b></div>`).join("");
       }
@@ -1456,11 +1536,11 @@
           Number(m.openServiceRequests || 0) > 0
         );
         machinesBox.innerHTML = actionable.length ? `
-          <div class="belm-activity-overview-submhead">MACHINES NEEDING ACTION</div>
+          <div class="belm-activity-overview-submhead">${belmT("MACHINES NEEDING ACTION")}</div>
           ${actionable.slice(0, 6).map((m) => {
             const statusKey = String(m.status || "not_checked").toLowerCase();
-            const serviceNote = m.serviceLevel === "RED" ? "Service overdue"
-              : m.serviceLevel === "YELLOW" ? "Service due soon" : "Service on schedule";
+            const serviceNote = m.serviceLevel === "RED" ? belmT("Service overdue")
+              : m.serviceLevel === "YELLOW" ? belmT("Service due soon") : belmT("Service on schedule");
             return `
               <button type="button" class="belm-activity-overview-machine" data-belm-machine-focus="${escapeHtml(String(m.id || ""))}">
                 <div class="belm-activity-overview-machine-head">
@@ -1468,7 +1548,7 @@
                   <span class="belm-activity-overview-machine-status status-${statusKey}">${escapeHtml((m.status || "-").replace("_", " "))}</span>
                 </div>
                 <div class="belm-activity-overview-machine-stats">
-                  ${Number(m.openServiceRequests || 0) ? `<span>${m.openServiceRequests} open request(s)</span>` : ""}
+                  ${Number(m.openServiceRequests || 0) ? `<span>${m.openServiceRequests} ${belmT("open request(s)")}</span>` : ""}
                   <span>${escapeHtml(serviceNote)}</span>
                 </div>
               </button>`;
@@ -4435,6 +4515,7 @@
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
   insertCustomerActivityOverview();
+  insertCustomerLangToggle();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -4478,6 +4559,7 @@
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
   insertCustomerActivityOverview();
+  insertCustomerLangToggle();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

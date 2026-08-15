@@ -326,6 +326,7 @@
           <select id="checkupTemplate"></select>
         </label>
         <label>Running HRS <small id="checkupLastHourMeter">(loading last recorded hours…)</small><input id="checkupHourMeter" type="number" min="0" step="0.1" required placeholder="Enter today's hour meter reading"></label>
+        <label>Technician / Inspector <small>(who actually performed this check-up — leave blank to use your own name)</small><input id="checkupFilledBy" type="text" placeholder="Technician or Inspector's name"></label>
         <label class="toggle-row"><input id="checkupIsServiceDay" type="checkbox"> Is this a service day?</label>
         <div id="checkupServiceFields" class="two-column hidden">
           <label>Service date<input id="checkupServiceDate" type="date"></label>
@@ -358,6 +359,6 @@
     <script src="/admin-sidebar.js?v=211-bug-audit"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=219-read-hide"></script>
+    <script src="/customers-manager/manager.js?v=240-service-date-fix"></script>
   </body>
 </html>

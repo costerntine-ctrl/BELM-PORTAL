@@ -927,6 +927,27 @@ if ($sub === 'analysis') {
         ];
     }
 
+    // The frontend only visually hides the Petty Cash / Machine Expenses /
+    // Invoices figures from a customer sub-user without the relevant Role
+    // Manager permission (a DOM/CSS-level hide). That is not real access
+    // control - the raw numbers were still returned in this JSON response
+    // to any authenticated customer token, so a restricted sub-user (e.g.
+    // an Operator) could read the full Petty Cash balance or outstanding
+    // invoices straight from the API/Network tab even though the UI never
+    // shows them. Redact server-side too, based on the same permission
+    // keys the frontend already uses to hide these cards.
+    $canSeeExpenses = customer_has_feature_access($customer, 'machine-expenses');
+    $canSeeFuel = customer_has_feature_access($customer, 'fuel-usage');
+    if (!$canSeeExpenses) {
+        $totalExpenses = 0.0;
+        $totalPettyCash = 0.0;
+        $totalPettyCashTopups = 0.0;
+        $invoiceStats = ['total' => 0.0, 'outstanding' => 0.0];
+        foreach ($perMachine as &$pm) { $pm['expensesTotal'] = 0.0; }
+        unset($pm);
+    }
+    if (!$canSeeFuel) $totalFuelCost = 0.0;
+
     json_out([
         'machines' => [
             'total' => (int)$machineStats['total'],

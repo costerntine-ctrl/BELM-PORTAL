@@ -1,0 +1,18 @@
+BELM PORTAL V235 - MACHINE CARD BUTTON LABELS (ADMIN VIEW MACHINES)
+
+On the admin side (Customers Manager -> View Machines -> a machine
+card's action row), the two buttons are now clearly:
+
+- "Check Up" - lets BELM Admin submit a real checklist/check-up for
+  that machine (same form as before, just relabeled from "Check-up"
+  for clarity/consistency).
+- "Report" - opens that machine's Checklist Reports history with PDF
+  downloads (same feature as before, relabeled from "Reports").
+
+No functional changes - both buttons already existed and worked as
+described; this update only makes their labels match what BELM Admin
+expects to see, so it's clear at a glance which one submits a new
+check-up and which one shows past reports.
+
+- Browser/PWA cache bumped to V235.
+- No database migration required.

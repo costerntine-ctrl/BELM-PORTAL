@@ -55,6 +55,40 @@
     "Used": { sw: "Zilizotumika" },
     "Top-up": { sw: "Zilizowekwa" },
     "MAINTENANCE PROCESS": { sw: "MCHAKATO WA MATENGENEZO" },
+    "General Analysis": { sw: "Uchambuzi wa Jumla" },
+    "Full breakdown of your fleet & activity": { sw: "Uchambuzi kamili wa mashine na shughuli zako" },
+    "GENERAL ANALYSIS": { sw: "UCHAMBUZI WA JUMLA" },
+    "Full breakdown of your machines and account activity.": { sw: "Uchambuzi kamili wa mashine zako na shughuli za akaunti." },
+    "Loading analysis…": { sw: "Inapakia uchambuzi…" },
+    "Could not load analysis.": { sw: "Imeshindwa kupakia uchambuzi." },
+    "Close": { sw: "Funga" },
+    "FLEET OVERVIEW": { sw: "MUHTASARI WA MASHINE" },
+    "Total machines": { sw: "Jumla ya mashine" },
+    "Green": { sw: "Salama (Green)" },
+    "Yellow": { sw: "Onyo (Yellow)" },
+    "Red": { sw: "Hatari (Red)" },
+    "Due for service": { sw: "Zinazohitaji huduma" },
+    "FINANCIALS": { sw: "FEDHA" },
+    "Machine expenses total": { sw: "Jumla ya matumizi ya mashine" },
+    "Fuel cost total": { sw: "Jumla ya gharama za mafuta" },
+    "Petty Cash topped up": { sw: "Petty Cash iliyowekwa" },
+    "Petty Cash used": { sw: "Petty Cash iliyotumika" },
+    "Petty Cash balance": { sw: "Salio la Petty Cash" },
+    "Invoices total": { sw: "Jumla ya ankara" },
+    "Invoices outstanding": { sw: "Ankara zisizolipwa" },
+    "SERVICE & SUPPORT": { sw: "HUDUMA NA MSAADA" },
+    "Total service requests": { sw: "Jumla ya maombi ya huduma" },
+    "Open service requests": { sw: "Maombi wazi ya huduma" },
+    "Checklist reports": { sw: "Ripoti za ukaguzi" },
+    "Containers handled": { sw: "Makontena yaliyoshughulikiwa" },
+    "PER-MACHINE BREAKDOWN": { sw: "UCHAMBUZI WA KILA MASHINE" },
+    "Machine": { sw: "Mashine" },
+    "Status": { sw: "Hali" },
+    "Requests": { sw: "Maombi" },
+    "Reports": { sw: "Ripoti" },
+    "Expenses": { sw: "Matumizi" },
+    "Service level": { sw: "Kiwango cha huduma" },
+    "No machines registered yet.": { sw: "Hakuna mashine zilizosajiliwa bado." },
     "Live delays, approvals & Job Cards": { sw: "Ucheleweshaji, idhini na Job Card - moja kwa moja" },
     "MORE TOOLS": { sw: "ZANA ZAIDI" },
     "+USER": { sw: "+MTUMIAJI" },
@@ -89,6 +123,96 @@
     btn.title = "Switch dashboard language / Badilisha lugha ya dashibodi";
     btn.addEventListener("click", () => belmSetLang(current === "sw" ? "en" : "sw"));
     document.body.appendChild(btn);
+  }
+
+  // V234 - General Analysis dialog: reuses /api/customer-portal/analysis
+  // (the same data that powers the dashboard's Action Center card) but
+  // presents it as a full, organized breakdown across Fleet, Financials,
+  // Service & Support, and a per-machine table - opened from MORE TOOLS.
+  function closeCustomerGeneralAnalysisDialog() {
+    document.getElementById("belmGeneralAnalysisDialog")?.remove();
+  }
+  async function openCustomerGeneralAnalysisDialog() {
+    closeCustomerGeneralAnalysisDialog();
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmGeneralAnalysisDialog";
+    dialog.className = "belm-general-analysis-dialog";
+    dialog.innerHTML = `
+      <div class="belm-general-analysis-head">
+        <div><h2>${belmT("GENERAL ANALYSIS")}</h2><p>${belmT("Full breakdown of your machines and account activity.")}</p></div>
+        <button type="button" data-close-general-analysis>${belmT("Close")}</button>
+      </div>
+      <div class="belm-general-analysis-body" id="belmGeneralAnalysisBody">
+        <p class="belm-general-analysis-loading">${belmT("Loading analysis…")}</p>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-general-analysis]").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+
+    const body = dialog.querySelector("#belmGeneralAnalysisBody");
+    try {
+      const token = localStorage.getItem("belm_customer_token");
+      const response = await fetch("/api/customer-portal/analysis", { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      const m = data.machines || {};
+      const pc = data.pettyCashAccount || {};
+      const inv = data.invoices || {};
+      const sr = data.serviceRequests || {};
+      const tzs = (v) => `TZS ${Number(v || 0).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
+      const perMachine = data.perMachine || [];
+      body.innerHTML = `
+        <section class="belm-analysis-section">
+          <h3>${belmT("FLEET OVERVIEW")}</h3>
+          <div class="belm-analysis-grid">
+            <div><span>${belmT("Total machines")}</span><b>${m.total ?? 0}</b></div>
+            <div><span>${belmT("Green")}</span><b class="green">${m.green ?? 0}</b></div>
+            <div><span>${belmT("Yellow")}</span><b class="yellow">${m.yellow ?? 0}</b></div>
+            <div><span>${belmT("Red")}</span><b class="red">${m.red ?? 0}</b></div>
+            <div><span>${belmT("Due for service")}</span><b>${data.dueForServiceCount ?? 0}</b></div>
+          </div>
+        </section>
+        <section class="belm-analysis-section">
+          <h3>${belmT("FINANCIALS")}</h3>
+          <div class="belm-analysis-grid">
+            <div><span>${belmT("Machine expenses total")}</span><b>${tzs(data.machineExpensesTotal)}</b></div>
+            <div><span>${belmT("Fuel cost total")}</span><b>${tzs(data.fuelCostTotal)}</b></div>
+            <div><span>${belmT("Petty Cash topped up")}</span><b>${tzs(pc.totalToppedUp)}</b></div>
+            <div><span>${belmT("Petty Cash used")}</span><b>${tzs(pc.totalUsed)}</b></div>
+            <div><span>${belmT("Petty Cash balance")}</span><b>${tzs(pc.balance)}</b></div>
+            <div><span>${belmT("Invoices total")}</span><b>${tzs(inv.total)}</b></div>
+            <div><span>${belmT("Invoices outstanding")}</span><b>${tzs(inv.outstanding)}</b></div>
+          </div>
+        </section>
+        <section class="belm-analysis-section">
+          <h3>${belmT("SERVICE & SUPPORT")}</h3>
+          <div class="belm-analysis-grid">
+            <div><span>${belmT("Total service requests")}</span><b>${sr.total ?? 0}</b></div>
+            <div><span>${belmT("Open service requests")}</span><b>${sr.open ?? 0}</b></div>
+            <div><span>${belmT("Checklist reports")}</span><b>${data.checklistReportsCount ?? 0}</b></div>
+            <div><span>${belmT("Containers handled")}</span><b>${data.totalContainersHandled ?? 0}</b></div>
+          </div>
+        </section>
+        <section class="belm-analysis-section">
+          <h3>${belmT("PER-MACHINE BREAKDOWN")}</h3>
+          ${perMachine.length ? `
+          <table class="belm-analysis-table">
+            <thead><tr><th>${belmT("Machine")}</th><th>${belmT("Status")}</th><th>${belmT("Requests")}</th><th>${belmT("Reports")}</th><th>${belmT("Expenses")}</th><th>${belmT("Service level")}</th></tr></thead>
+            <tbody>${perMachine.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.name)}</td>
+                <td><span class="belm-analysis-pill status-${String(row.status || "").toLowerCase()}">${escapeHtml(row.status || "-")}</span></td>
+                <td>${row.openServiceRequests ?? 0}</td>
+                <td>${row.checklistReportsCount ?? 0}</td>
+                <td>${tzs(row.expensesTotal)}</td>
+                <td><span class="belm-analysis-pill status-${String(row.serviceLevel || "").toLowerCase()}">${escapeHtml(row.serviceLevel || "-")}</span></td>
+              </tr>`).join("")}</tbody>
+          </table>` : `<p class="belm-general-analysis-loading">${belmT("No machines registered yet.")}</p>`}
+        </section>`;
+    } catch (_) {
+      body.innerHTML = `<p class="belm-general-analysis-loading">${belmT("Could not load analysis.")}</p>`;
+    }
   }
 
 
@@ -822,7 +946,7 @@
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Check Up</button>
-        <a href="/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}" data-belm-feature="workflow">Breakdown Process</a>
+        <a href="/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}" data-belm-feature="workflow">Maintenance Process</a>
       </div>`;
     card.appendChild(panel);
     panel.addEventListener("click", (event) => event.stopPropagation());
@@ -1380,11 +1504,16 @@
           data-report-message="BELM Portal account report requested from the dashboard.">
           ${belmT("Management Email")}
         </button>
+        <button type="button" class="belm-email-report-button" data-open-general-analysis>
+          ${belmT("General Analysis")}
+          <small>${belmT("Full breakdown of your fleet & activity")}</small>
+        </button>
       </div>`;
     toolsCard.querySelector("[data-belm-maintenance-process-slot]")?.replaceWith(breakdownCard);
     enforceCustomerFeaturePermissions(toolsCard);
     toolsCard.querySelector("[data-open-role-manager]")?.addEventListener("click", () => { window.location.href = "/customer-users/"; });
     toolsCard.querySelector("[data-contact-belm-support]")?.addEventListener("click", () => openBelmSupportDialog());
+    toolsCard.querySelector("[data-open-general-analysis]")?.addEventListener("click", () => openCustomerGeneralAnalysisDialog());
     const syncPettyCashVisibility = () => {
       const payload = tokenPayload("belm_customer_token");
       const permissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
@@ -1528,14 +1657,18 @@
         machinesBox.innerHTML = actionable.length ? `
           <div class="belm-activity-overview-submhead">${belmT("MACHINES NEEDING ACTION")}</div>
           ${actionable.slice(0, 6).map((m) => {
-            const statusKey = String(m.status || "not_checked").toLowerCase();
+            const rank = { RED: 2, YELLOW: 1, GREEN: 0 };
+            const statusUp = String(m.status || "GREEN").toUpperCase();
+            const levelUp = String(m.serviceLevel || "GREEN").toUpperCase();
+            const effectiveLevel = (rank[levelUp] ?? 0) > (rank[statusUp] ?? 0) ? levelUp : statusUp;
+            const statusKey = effectiveLevel.toLowerCase();
             const serviceNote = m.serviceLevel === "RED" ? belmT("Service overdue")
               : m.serviceLevel === "YELLOW" ? belmT("Service due soon") : belmT("Service on schedule");
             return `
-              <button type="button" class="belm-activity-overview-machine" data-belm-machine-focus="${escapeHtml(String(m.id || ""))}">
+              <button type="button" class="belm-activity-overview-machine ${effectiveLevel === "RED" ? "belm-machine-urgent-blink" : ""}" data-belm-machine-focus="${escapeHtml(String(m.id || ""))}">
                 <div class="belm-activity-overview-machine-head">
                   <b>${escapeHtml(m.name)}</b>
-                  <span class="belm-activity-overview-machine-status status-${statusKey}">${escapeHtml((m.status || "-").replace("_", " "))}</span>
+                  <span class="belm-activity-overview-machine-status status-${statusKey}">${escapeHtml(effectiveLevel.replace("_", " "))}</span>
                 </div>
                 <div class="belm-activity-overview-machine-stats">
                   ${Number(m.openServiceRequests || 0) ? `<span>${m.openServiceRequests} ${belmT("open request(s)")}</span>` : ""}
@@ -4212,6 +4345,7 @@
     anchor.insertAdjacentElement("afterend", block);
 
     document.getElementById("belmServiceDate").value = new Date().toISOString().slice(0, 10);
+    document.getElementById("belmServiceDate").max = new Date().toISOString().slice(0, 10);
     document.getElementById("belmIsServiceDay").addEventListener("change", (event) => {
       document.getElementById("belmServiceDayFields").classList.toggle("hidden", !event.target.checked);
     });

@@ -3401,48 +3401,27 @@ body[data-belm-area="portal"]::before {
   font-weight: 950;
   letter-spacing: -.02em;
 }
-.belm-machine-quick-actions a[href^="/customer-machine-expenses/"] {
+.belm-machine-quick-actions a[href^="/customer-machine-expenses/"],
+.belm-machine-quick-actions a[href^="/customer-fuel-usage/"],
+.belm-machine-quick-actions a[href^="/customer-service-request/"],
+.belm-machine-quick-actions .belm-report-problem-button[data-belm-feature="report-problem"],
+.belm-machine-quick-actions [data-belm-feature="operator-reports"],
+.belm-machine-quick-actions .belm-customer-checkup-button,
+.belm-machine-quick-actions a[href^="/breakdown-workflow/"] {
   color: #fff;
   border-color: #15243a;
   background: #15243a;
 }
-.belm-machine-quick-actions a[href^="/customer-machine-expenses/"]::before { color: #fff; background: rgba(23,105,194,.75); }
-.belm-machine-quick-actions a[href^="/customer-fuel-usage/"] {
+.belm-machine-quick-actions a[href^="/customer-machine-expenses/"]::before,
+.belm-machine-quick-actions a[href^="/customer-fuel-usage/"]::before,
+.belm-machine-quick-actions a[href^="/customer-service-request/"]::before,
+.belm-machine-quick-actions .belm-report-problem-button[data-belm-feature="report-problem"]::before,
+.belm-machine-quick-actions [data-belm-feature="operator-reports"]::before,
+.belm-machine-quick-actions .belm-customer-checkup-button::before,
+.belm-machine-quick-actions a[href^="/breakdown-workflow/"]::before {
   color: #fff;
-  border-color: var(--belm-green-dark);
-  background: var(--belm-green-dark);
+  background: rgba(23,105,194,.75);
 }
-.belm-machine-quick-actions a[href^="/customer-fuel-usage/"]::before { color: #0c3d24; background: #baf0cf; }
-.belm-machine-quick-actions a[href^="/customer-service-request/"] {
-  color: #161b22;
-  border-color: #e5bd00;
-  background: var(--belm-yellow);
-}
-.belm-machine-quick-actions a[href^="/customer-service-request/"]::before { color: #fff; background: #181d24; }
-.belm-machine-quick-actions .belm-report-problem-button[data-belm-feature="report-problem"] {
-  color: #a42c31;
-  border-color: #efc6c8;
-  background: #fff8f8;
-}
-.belm-machine-quick-actions .belm-report-problem-button[data-belm-feature="report-problem"]::before { color: #fff; background: #d83b40; }
-.belm-machine-quick-actions [data-belm-feature="operator-reports"] {
-  color: #21486e;
-  border-color: #c9daec;
-  background: #f6faff;
-}
-.belm-machine-quick-actions [data-belm-feature="operator-reports"]::before { color: #fff; background: var(--belm-blue); }
-.belm-machine-quick-actions .belm-customer-checkup-button {
-  color: #fff;
-  border-color: var(--belm-blue);
-  background: var(--belm-blue);
-}
-.belm-machine-quick-actions .belm-customer-checkup-button::before { color: #0b4b29; background: #c9f5da; }
-.belm-machine-quick-actions a[href^="/breakdown-workflow/"] {
-  color: #fff;
-  border-color: #7a4fb5;
-  background: #7a4fb5;
-}
-.belm-machine-quick-actions a[href^="/breakdown-workflow/"]::before { color: #fff; background: rgba(255,255,255,.28); }
 .belm-machine-quick-actions a:hover,
 .belm-machine-quick-actions button:hover,
 .belm-customer-checkup-button:hover {
@@ -3948,3 +3927,112 @@ html[data-theme="dark"] .belm-lang-toggle {
 
 
 
+
+/* V234 - General Analysis dialog (Customer Dashboard, MORE TOOLS) */
+.belm-general-analysis-dialog {
+  border: 0;
+  border-radius: 16px;
+  padding: 0;
+  width: min(720px, calc(100% - 30px));
+  max-height: calc(100vh - 60px);
+  color: #e5edf7;
+  background: linear-gradient(165deg, #101b31, #16233d 60%, #101b31);
+  box-shadow: 0 24px 80px rgba(0,0,0,.4);
+}
+.belm-general-analysis-dialog::backdrop { background: rgba(7,14,28,.65); }
+.belm-general-analysis-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  position: sticky;
+  top: 0;
+  background: #101b31;
+  z-index: 1;
+}
+.belm-general-analysis-head h2 { margin: 0; font-size: 14px; letter-spacing: .06em; color: #ffd400; }
+.belm-general-analysis-head p { margin: 4px 0 0; font-size: 11px; color: #9fb0c8; }
+.belm-general-analysis-head button {
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 8px;
+  padding: 7px 14px;
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  font-weight: 800;
+  font-size: 11px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.belm-general-analysis-head button:hover { background: rgba(255,255,255,.12); }
+.belm-general-analysis-body { padding: 18px 20px 22px; overflow-y: auto; max-height: calc(100vh - 130px); }
+.belm-general-analysis-loading { text-align: center; color: #9fb0c8; padding: 24px 0; }
+.belm-analysis-section { margin-bottom: 20px; }
+.belm-analysis-section h3 {
+  margin: 0 0 10px;
+  font-size: 11.5px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: #ffd400;
+}
+.belm-analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.belm-analysis-grid > div {
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 10px;
+  background: rgba(255,255,255,.04);
+}
+.belm-analysis-grid span { display: block; color: #9fb0c8; font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.belm-analysis-grid b { display: block; margin-top: 4px; font-size: 15px; color: #fff; }
+.belm-analysis-grid b.green { color: #7fe3ac; }
+.belm-analysis-grid b.yellow { color: #ffe27a; }
+.belm-analysis-grid b.red { color: #ff9d9d; }
+.belm-analysis-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.belm-analysis-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: #9fb0c8;
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+}
+.belm-analysis-table td { padding: 9px 10px; border-bottom: 1px solid rgba(255,255,255,.06); color: #e5edf7; }
+.belm-analysis-pill {
+  display: inline-flex;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  background: rgba(255,255,255,.1);
+  color: #dce6f2;
+}
+.belm-analysis-pill.status-green, .belm-analysis-pill.status-ok { background: rgba(0,166,81,.18); color: #7fe3ac; }
+.belm-analysis-pill.status-yellow, .belm-analysis-pill.status-attention { background: rgba(255,212,0,.18); color: #ffe27a; }
+.belm-analysis-pill.status-red, .belm-analysis-pill.status-critical { background: rgba(216,59,64,.2); color: #ff9d9d; }
+@media (max-width: 640px) {
+  .belm-general-analysis-body { padding: 14px; }
+  .belm-analysis-table { font-size: 10px; }
+  .belm-analysis-table th, .belm-analysis-table td { padding: 7px 6px; }
+}
+
+/* V236 - Machine Attention/Service badges now reflect whichever is
+   worse: the machine's general status or its service level (a GREEN
+   machine that is overdue for service no longer shows a misleading
+   GREEN badge). RED items also blink gently for extra attention. */
+@keyframes belmUrgentBlink {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220,62,77,.55); border-color: rgba(220,62,77,.55); }
+  50% { box-shadow: 0 0 0 5px rgba(220,62,77,0); border-color: rgba(220,62,77,.9); }
+}
+.belm-machine-urgent-blink {
+  animation: belmUrgentBlink 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .belm-machine-urgent-blink { animation: none; border-color: rgba(220,62,77,.9); }
+}

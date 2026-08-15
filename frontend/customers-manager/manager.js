@@ -135,7 +135,7 @@
     GROUNDED: "Grounded (not operational)",
   };
 
-  function machineCard(customerId, machine) {
+  function machineCard(customerId, machine, belmServiceProviderActive) {
     const status = String(machine.status || "NOT_CHECKED").toUpperCase();
     const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
     const opStatus = String(machine.operationalStatus || "NORMAL").toUpperCase();
@@ -154,10 +154,11 @@
         </label>
       </div>
       <div class="machine-actions">
-        <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Reports</button>
-        <button data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Check-up</button>
+        <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Report</button>
+        <button data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Check Up</button>
         <button data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Expense Receipts</button>
         <button data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Service Parts</button>
+        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/breakdown-workflow/?machine=${escapeHtml(machine.id)}&actor=admin">Maintenance Process</a>` : ""}
         <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
         <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
       </div>
@@ -434,7 +435,7 @@
     document.getElementById("machineListTitle").textContent = `${customer.name} — Machines (${machines.length})`;
     document.getElementById("machineListAddButton").dataset.addMachine = customer.id;
     document.getElementById("machineListBody").innerHTML = machines.length
-      ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine)).join("")}</div>`
+      ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine, customer.belmServiceProviderActive)).join("")}</div>`
       : '<div class="empty">No machines registered for this customer yet.</div>';
     document.getElementById("machineListDialog").showModal();
     if (machines.length) loadServiceDueBadges();
@@ -1149,9 +1150,10 @@
 
   async function openMachineCheckup(machineId, machineType, machineName) {
     document.getElementById("machineListDialog").close();
-    document.getElementById("checkupDialogTitle").textContent = `${machineName} — Check-up`;
+    document.getElementById("checkupDialogTitle").textContent = `${machineName} — Check Up`;
     document.getElementById("checkupMachineId").value = machineId;
     document.getElementById("checkupForm").reset();
+    document.getElementById("checkupFilledBy").value = "";
     document.getElementById("checkupFormAlert").classList.add("hidden");
     document.getElementById("checkupServiceFields").classList.add("hidden");
     document.getElementById("checkupDisplayPhotoValue").value = "";
@@ -1159,6 +1161,10 @@
     document.getElementById("checkupDisplayPhotoPreview").classList.add("hidden");
     document.getElementById("checkupItems").innerHTML = '<p class="muted">Loading checklist template…</p>';
     document.getElementById("checkupLastHourMeter").textContent = "(loading last recorded hours…)";
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const serviceDateInput = document.getElementById("checkupServiceDate");
+    serviceDateInput.max = todayIso;
+    serviceDateInput.value = todayIso;
     document.getElementById("checkupDialog").showModal();
     api(`/checklist-reports?action=service-status&machineId=${encodeURIComponent(machineId)}`)
       .then((status) => {
@@ -1261,6 +1267,7 @@
           serviceDate: isServiceDay ? document.getElementById("checkupServiceDate").value : undefined,
           serviceType: isServiceDay ? document.getElementById("checkupServiceType").value : undefined,
           displayPhotoUrl: document.getElementById("checkupDisplayPhotoValue").value || undefined,
+          filledBy: document.getElementById("checkupFilledBy").value.trim() || undefined,
         }),
       });
       await showButtonSuccess(button);

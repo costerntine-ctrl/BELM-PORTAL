@@ -1,0 +1,10 @@
+BELM PORTAL V232 - MACHINE CARD QUICK ACTIONS: ONE UNIFORM BUTTON COLOR
+
+- All 7 per-machine quick-action buttons (Machine Expenses, Fuel Usage,
+  Request BELM Support / Request Service, Report a Problem, Operator
+  Reports, Check Up, Breakdown Process) now use the same dark navy /
+  blue style that "Machine Expenses" already had, instead of each
+  button having its own color (green, yellow, red, light blue,
+  purple, etc.).
+- Browser/PWA cache bumped to V232.
+- No database migration required.

@@ -34,8 +34,10 @@ function proforma_validate_items(array $items): void {
     if (count($items) === 0) json_error('Add at least one proforma item.');
     foreach ($items as $item) {
         if (trim((string)($item['description'] ?? '')) === '') json_error('Every proforma item needs a description.');
-        if (!is_numeric($item['qty'] ?? null) || (float)$item['qty'] <= 0) {
-            json_error('Proforma quantity must be greater than zero.');
+        if (!is_numeric($item['qty'] ?? null)
+            || (float)$item['qty'] <= 0
+            || floor((float)$item['qty']) !== (float)$item['qty']) {
+            json_error('Proforma quantity must be a whole number greater than zero.');
         }
         if (!is_numeric($item['unitPrice'] ?? null) || (float)$item['unitPrice'] < 0) {
             json_error('Proforma price cannot be negative.');
@@ -136,7 +138,7 @@ if ($method === 'POST') {
         if ($machineId === '' && $requestMachine) $machineId = (string)$requestMachine;
     }
 
-    $subtotal = round(array_sum(array_map(fn($i) => (float)$i['qty'] * (float)$i['unitPrice'], $items)), 2);
+    $subtotal = round(array_sum(array_map(fn($i) => (int)$i['qty'] * (float)$i['unitPrice'], $items)), 2);
     $discountAmount = $discountType === 'PERCENT' ? round($subtotal * ($discount / 100), 2) : $discount;
     if ($discountAmount > $subtotal) json_error('Discount cannot be greater than the subtotal.');
 
@@ -163,7 +165,7 @@ if ($method === 'POST') {
         foreach ($items as $order => $item) {
             $itemStmt->execute([
                 uuid(), $newId, $item['section'] ?? null, $item['partNumber'] ?? '',
-                trim((string)$item['description']), (float)$item['qty'],
+                trim((string)$item['description']), (int)$item['qty'],
                 $item['unit'] ?? 'PC', (float)$item['unitPrice'], $order,
             ]);
         }

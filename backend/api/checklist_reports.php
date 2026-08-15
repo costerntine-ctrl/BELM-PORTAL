@@ -278,6 +278,10 @@ if ($method === 'POST' && $action === 'submit') {
         if (!$parsedServiceDate || $parsedServiceDate->format('Y-m-d') !== $serviceDate) {
             json_error('Enter a valid service date.');
         }
+        $todayLocal = new DateTimeImmutable('now', new DateTimeZone('Africa/Dar_es_Salaam'));
+        if ($parsedServiceDate->format('Y-m-d') > $todayLocal->format('Y-m-d')) {
+            json_error('Service date cannot be in the future.');
+        }
         if (!isset($serviceIntervals[$serviceType])) json_error('Select a valid service type.');
     }
 

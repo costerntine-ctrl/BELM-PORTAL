@@ -2817,7 +2817,7 @@
     // every other machine card too, not just assuming the immediate
     // parent is shared.
     const allCards = Array.from(document.querySelectorAll(".belm-customer-machine-card"));
-    if (allCards.length > 1) {
+    if (allCards.length >= 1) {
       let ancestor = allCards[0].parentElement;
       while (ancestor && !allCards.every(c => ancestor.contains(c))) {
         ancestor = ancestor.parentElement;

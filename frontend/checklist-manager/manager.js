@@ -421,6 +421,102 @@
     items.push(emptyItem());
     renderItems();
   });
+
+  // CSV upload: an alternate, second way to build the same items list —
+  // it doesn't save anything by itself, it just appends parsed rows into
+  // the same `items` array the manual "+ Add item" button uses, so every
+  // normal editing/review/Save-template path afterwards works identically
+  // either way.
+  function parseCsvLine(line) {
+    const cells = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (inQuotes) {
+        if (char === '"' && line[i + 1] === '"') { current += '"'; i++; }
+        else if (char === '"') { inQuotes = false; }
+        else { current += char; }
+      } else if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        cells.push(current);
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    cells.push(current);
+    return cells.map((cell) => cell.trim());
+  }
+  const SAFE_LEVELS = new Set(["NONE", "GREEN", "YELLOW", "RED"]);
+  const SAFE_INPUT_TYPES = new Set(["TEXT", "NUMBER", "YES_NO", "DROPDOWN", "DATE", "PHOTO"]);
+  function parseChecklistCsv(text) {
+    const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "");
+    if (!lines.length) return { rows: [], errors: ["The CSV file is empty."] };
+    const header = parseCsvLine(lines[0]).map((cell) => cell.toLowerCase());
+    const hasHeader = header[0]?.includes("item") || header[0]?.includes("label");
+    const dataLines = hasHeader ? lines.slice(1) : lines;
+    const rows = [];
+    const errors = [];
+    dataLines.forEach((line, index) => {
+      const rowNumber = index + (hasHeader ? 2 : 1);
+      const cells = parseCsvLine(line);
+      const [label, inputTypeRaw, safetyRaw, requiredRaw, optionsRaw] = cells;
+      if (!label) { errors.push(`Row ${rowNumber}: missing item label — skipped.`); return; }
+      const inputType = String(inputTypeRaw || "TEXT").toUpperCase().replace(/[\s-]/g, "_");
+      if (!SAFE_INPUT_TYPES.has(inputType)) {
+        errors.push(`Row ${rowNumber} ("${label}"): unknown input type "${inputTypeRaw}" — defaulted to TEXT.`);
+      }
+      const resolvedType = SAFE_INPUT_TYPES.has(inputType) ? inputType : "TEXT";
+      const safetyLevel = String(safetyRaw || "GREEN").toUpperCase();
+      const isRequired = String(requiredRaw ?? "YES").trim().toUpperCase() !== "NO";
+      const pairs = String(optionsRaw || "").split("|").map((pair) => pair.trim()).filter(Boolean).map((pair) => {
+        const [value, color] = pair.split(":").map((part) => (part || "").trim());
+        const safeColor = SAFE_LEVELS.has((color || "").toUpperCase()) ? color.toUpperCase() : "GREEN";
+        return { value, safetyLevel: safeColor };
+      });
+      const item = emptyItem();
+      item.label = label;
+      item.inputType = resolvedType;
+      item.safetyLevel = resolvedType === "PHOTO" ? "NONE" : (SAFE_LEVELS.has(safetyLevel) ? safetyLevel : "GREEN");
+      item.isRequired = isRequired;
+      if (resolvedType === "DROPDOWN") {
+        item.dropdownOptions = pairs.filter((pair) => pair.value);
+        if (!item.dropdownOptions.length) errors.push(`Row ${rowNumber} ("${label}"): DROPDOWN with no valid "Value:COLOR" entries in Dropdown Values.`);
+      } else if (resolvedType === "YES_NO") {
+        const yes = pairs.find((pair) => pair.value.toUpperCase() === "YES");
+        const no = pairs.find((pair) => pair.value.toUpperCase() === "NO");
+        item.yesNoSafety = { YES: yes?.safetyLevel || "GREEN", NO: no?.safetyLevel || "RED" };
+      }
+      rows.push(item);
+    });
+    return { rows, errors };
+  }
+  document.getElementById("uploadItemsCsvButton").addEventListener("click", () => {
+    document.getElementById("itemsCsvInput").click();
+  });
+  document.getElementById("itemsCsvInput").addEventListener("change", async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const { rows, errors } = parseChecklistCsv(text);
+      if (!rows.length) {
+        showAlert(errors.length ? errors.join(" ") : "No usable rows found in that CSV file.", true);
+        return;
+      }
+      items.push(...rows);
+      renderItems();
+      showAlert(errors.length
+        ? `Added ${rows.length} item(s) from CSV, with ${errors.length} warning(s): ${errors.join(" ")} Review the list below, then click Save template.`
+        : `Added ${rows.length} item(s) from CSV. Review the list below, then click Save template.`, errors.length > 0);
+    } catch (error) {
+      showAlert(`Could not read that CSV file: ${error.message}`, true);
+    }
+  });
+
   document.getElementById("addServicePartButton").addEventListener("click", () => {
     serviceParts.push(emptyServicePart());
     renderServiceParts();

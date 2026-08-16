@@ -1,0 +1,19 @@
+BELM PORTAL V270 - QUICK "EDIT MACHINE" / "DELETE MACHINE" ON CUSTOMER CARD
+
+Added two buttons right on each customer card (in the space between
+the customer name/registered date and the Active badge):
+"✎ Edit Machine" and "🗑 Delete Machine".
+
+BEHAVIOR (a customer can have 0, 1, or several machines, so this had
+to handle all three sensibly rather than guessing):
+- Exactly one machine -> acts on it directly (opens the same Edit
+  Machine dialog / same Delete confirmation already used elsewhere -
+  no new logic, just a shortcut to reach it).
+- No machines yet -> a message explains there's nothing to edit/delete
+  and points to View Machines to add one.
+- More than one machine -> there's no way to know which one was
+  meant, so it opens View Machines so Admin can pick the right one -
+  same as clicking "View Machines (N)" already does.
+
+- Browser/PWA cache bumped to V270.
+- No database migration required.

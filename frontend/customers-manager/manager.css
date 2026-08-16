@@ -106,6 +106,9 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .customer-card-actions button { padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .customer-card-actions button.delete { color: var(--red); }
 .customer-card-actions .view-machines-inline { margin-right: auto; color: var(--green-dark, #087039); border-color: var(--green); background: color-mix(in srgb, var(--green) 8%, var(--paper)); }
+.customer-card-machine-quick-actions { display: flex; gap: 8px; padding: 0 20px 14px; }
+.customer-card-machine-quick-actions button { flex: 1; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 800; cursor: pointer; }
+.customer-card-machine-quick-actions button.delete { color: var(--red); border-color: #f2cbc7; }
 .credentials { display: grid; gap: 12px; }
 .credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 880px) { .customer-card { width: 100%; } }

@@ -268,6 +268,10 @@
           <div><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
         </div>
+        <div class="customer-card-machine-quick-actions">
+          <button type="button" class="secondary" data-quick-edit-machine="${escapeHtml(customer.id)}">✎ Edit Machine</button>
+          <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
+        </div>
         ${customer.belmServiceProviderActive || !customer.isMachineryAdmin ? '<span class="badge machinery-admin-badge">🔧 BELM Service Provider ON</span>' : '<span class="badge machinery-admin-badge">⚙ Customer Maintenance Team</span>'}
         <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
           <div class="customer-feed-head">
@@ -1605,6 +1609,8 @@
     const deleteCustomer = event.target.closest("[data-delete-customer]");
     const forgetCustomerButton = event.target.closest("[data-forget-customer]");
     const copyLink = event.target.closest("[data-copy-link]");
+    const quickEditMachine = event.target.closest("[data-quick-edit-machine]");
+    const quickDeleteMachine = event.target.closest("[data-quick-delete-machine]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
     if (messageCustomer) openSendCustomerMessage(customers.find((customer) => customer.id === messageCustomer.dataset.messageCustomer));
@@ -1618,6 +1624,32 @@
     if (copyLink) {
       const customer = customers.find((item) => item.id === copyLink.dataset.copyLink);
       if (customer) copyText(customerPortalUrl(customer), "Customer portal link copied.");
+    }
+    // V270 - quick Edit/Delete Machine shortcuts right on the customer
+    // card. A customer with exactly one machine acts on it directly; with
+    // none there's nothing to act on; with more than one, we can't guess
+    // which machine was meant, so it opens View Machines to pick.
+    if (quickEditMachine) {
+      const customer = customers.find((item) => item.id === quickEditMachine.dataset.quickEditMachine);
+      const machines = customer?.machines || [];
+      if (!machines.length) {
+        showAlert("This customer has no machines yet. Use View Machines to add one.", true);
+      } else if (machines.length === 1) {
+        confirmThenOpen("Edit machine?", `Confirm you want to edit ${machines[0].model || "this machine"}.`, () => openMachine(customer, machines[0]));
+      } else {
+        openMachineList(customer);
+      }
+    }
+    if (quickDeleteMachine) {
+      const customer = customers.find((item) => item.id === quickDeleteMachine.dataset.quickDeleteMachine);
+      const machines = customer?.machines || [];
+      if (!machines.length) {
+        showAlert("This customer has no machines yet.", true);
+      } else if (machines.length === 1) {
+        removeMachine(machines[0].id);
+      } else {
+        openMachineList(customer);
+      }
     }
   });
 

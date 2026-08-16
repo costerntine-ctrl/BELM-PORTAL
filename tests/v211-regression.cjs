@@ -20,7 +20,10 @@ check('Admin Breakdown link declares actor', sidebar.includes('/breakdown-workfl
 check('Mobile sidebar closes only on actual link', sidebar.includes('event.target.closest("a.belm-sidebar-link")'));
 check('Shared Breakdown accepts explicit actor', workflow.includes("params.get('actor')||params.get('source')"));
 check('Explicit actor without matching token redirects', workflow.includes("if(source && !actorToken[source])"));
-check('Shared Breakdown loads Admin sidebar safely', workflowHtml.includes('/admin-sidebar.js?v=211-bug-audit'));
+{
+  const m = /admin-sidebar\.js\?v=(\d+)-/.exec(workflowHtml);
+  check('Shared Breakdown loads Admin sidebar safely', !!m && Number(m[1]) >= 211);
+}
 check('Customer machine Breakdown link declares actor', portal.includes('&actor=${encodeURIComponent(customerWorkflowActor())}'));
 check('Technician Breakdown link declares actor=tech', portal.includes('&actor=tech`'));
 check('Workshop login destination declares customer actor', auth.includes("'/breakdown-workflow/?actor=customer'"));

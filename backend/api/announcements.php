@@ -71,13 +71,13 @@ if ($method === 'POST') {
         'INSERT INTO admin_announcements (id, message, created_by, is_active, created_at)
          VALUES (?,?,?,1,NOW())'
     )->execute([$newId, $message, $user['id']]);
-    log_activity($user['id'], 'created', 'announcement', $newId, ['message' => $message]);
+    log_activity($user, 'created', 'announcement', $newId, ['message' => $message]);
     json_out(['id' => $newId], 201);
 }
 
 if ($method === 'DELETE' && $id) {
     db()->prepare('UPDATE admin_announcements SET is_active = 0 WHERE id = ?')->execute([$id]);
-    log_activity($user['id'], 'deleted', 'announcement', $id);
+    log_activity($user, 'deleted', 'announcement', $id);
     json_out(null, 204);
 }
 

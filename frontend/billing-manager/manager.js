@@ -295,11 +295,32 @@
     document.getElementById("invoiceItems").appendChild(invoiceItemRow(item));
   }
 
+  async function ensureCustomersLoaded() {
+    // V257 - mirrors ensureSparePartsLoaded(), but also RETRIES if the
+    // list came back empty (not just "never fetched"). Customers were
+    // previously only fetched once, at page load() time - if that single
+    // attempt failed (or simply ran before a brand-new customer existed
+    // yet), the New Invoice dropdown stayed empty for the rest of the
+    // session with no way to recover short of a full page reload. Now
+    // every time the invoice dialog opens, it tries again if the cached
+    // list is still empty.
+    if (!Array.isArray(customers) || customers.length === 0) {
+      try {
+        customers = await api("/billing?action=customer-lookup");
+      } catch (error) {
+        customers = [];
+        showAlert(`Customer list could not load: ${error.message}`, true);
+      }
+    }
+    return customers;
+  }
+
   async function openInvoice(id = "") {
     const invoice = invoices.find((item) => item.id === id);
     document.getElementById("invoiceForm").reset();
     document.getElementById("invoiceId").value = invoice?.id || "";
     document.getElementById("invoiceTitle").textContent = invoice ? `Re-edit · ${invoice.invoiceNo}` : "New invoice";
+    await ensureCustomersLoaded();
     document.getElementById("invoiceCustomer").innerHTML = customerOptions(invoice?.customer?.id || invoice?.customerId || "");
     document.getElementById("invoiceMachine").innerHTML = '<option value="">No machine / general</option>';
     document.getElementById("invoiceItems").replaceChildren();
@@ -648,6 +669,7 @@
     document.getElementById("proformaMachineId").value = proforma?.machineId || "";
     document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || "";
     document.getElementById("proformaTitle").textContent = proforma ? `Re-edit ${proforma.invoiceNo}` : "New proforma";
+    await ensureCustomersLoaded();
     document.getElementById("proformaCustomer").innerHTML = customerOptions(proforma?.customer?.id || "");
     document.getElementById("proformaCustomer").disabled = Boolean(proforma);
     document.getElementById("proformaDate").value = proforma?.date || today();

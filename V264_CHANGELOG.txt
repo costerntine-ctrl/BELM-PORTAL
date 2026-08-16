@@ -1,0 +1,17 @@
+BELM PORTAL V264 - GENERATE JOB CARD: SHOWS "SENT" + RESETS
+
+- Clicking "Generate Job Card" now shows clear feedback right on the
+  button itself: it becomes "Generating…" while the request is in
+  flight, then "✓ Sent" for a moment on success, before the dialog
+  closes.
+- Added a duplicate-submission guard: a second fast click/tap while
+  the first request is still in flight is now ignored instead of
+  creating a second, duplicate Job Card for the same breakdown case.
+- The form is properly reset after a successful send, so the dialog
+  starts clean the next time it's opened rather than carrying over
+  the previous job's typed values.
+- The button (and Cancel) now visually show a disabled/waiting state
+  while a request is in progress.
+
+- Browser/PWA cache bumped to V264.
+- No database migration required.

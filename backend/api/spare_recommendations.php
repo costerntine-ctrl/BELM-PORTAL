@@ -126,7 +126,7 @@ if ($method === 'POST') {
         throw $error;
     }
 
-    log_activity($payload['id'], 'created', 'spareRecommendation', $requestId, ['referenceNumber' => $referenceNumber]);
+    log_activity($payload, 'created', 'spareRecommendation', $requestId, ['referenceNumber' => $referenceNumber]);
     json_out([
         'id' => $requestId,
         'message' => 'Spare-part recommendation sent. The customer will see the reference number and can order it.',

@@ -1,0 +1,24 @@
+BELM PORTAL V262 - ADMIN SIDEBAR: "BREAKDOWN PROCESS" -> "MAINTENANCE PROCESS"
+
+Renamed "Breakdown Process" to "Maintenance Process" everywhere it was
+still showing on the BELM Admin side (the customer-facing side was
+already renamed in earlier versions):
+
+- Admin sidebar navigation item (BP icon) - the one in the screenshot.
+- Breakdown Workflow page heading ("Maintenance Process & Digital Job
+  Cards").
+- Role Manager (Customers -> +USER) permission list and checkbox label,
+  where BELM/Customer Owners assign a sub-user the "workflow"
+  permission.
+
+Same link/destination and same permission key ("workflow") throughout
+- label only, nothing else changed.
+
+ALSO FIXED (found while bumping the version)
+- tests/v211-regression.cjs still checked for the old exact
+  "admin-sidebar.js?v=211-bug-audit" string in the Breakdown Workflow
+  page. Same brittle-test issue fixed the same way as V242/V245/V255 -
+  now checks the version number is >= 211 instead of an exact string.
+
+- Browser/PWA cache bumped to V262.
+- No database migration required.

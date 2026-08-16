@@ -48,9 +48,20 @@ function belm_forget_customer_permanently(PDO $pdo, string $customerId): void {
         $pdo->prepare("DELETE FROM checklist_answers WHERE report_id IN (SELECT id FROM checklist_reports WHERE machine_id IN ($in))")->execute($machines);
         $pdo->prepare("DELETE FROM checklist_reports WHERE machine_id IN ($in)")->execute($machines);
         $pdo->prepare("DELETE FROM petty_cash_topups WHERE machine_id IN ($in)")->execute($machines);
+        $pdo->prepare("DELETE FROM machine_operator_shifts WHERE machine_id IN ($in)")->execute($machines);
         $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($machines);
         $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($machines);
     }
+
+    // V266 - these two tables reference customers(id) directly with no
+    // ON DELETE CASCADE and were never being cleared here. Left in place,
+    // any customer who ever had a cash Payment/Receipt recorded, or any
+    // operator shift sign-in/sign-out history, would make the final
+    // DELETE FROM customers below fail on a foreign-key violation - the
+    // whole "Forget permanently" transaction would silently roll back,
+    // leaving the customer (and everything else) still in the database
+    // despite the confirmation message implying it was gone.
+    $pdo->prepare('DELETE FROM receipts WHERE customer_id = ?')->execute([$customerId]);
 
     // V215: Petty Cash is customer-level, so account top-ups can have no machine_id.
     $pdo->prepare('DELETE FROM petty_cash_topups WHERE customer_id = ?')->execute([$customerId]);
@@ -565,7 +576,7 @@ if ($method === 'PUT' && !$action) {
 // ---- Delete (soft, -> Recycle Bin, OR permanent "Forget") ------------------
 if ($method === 'DELETE' && !$action) {
     require_page_access($user, 'customers');
-    $stmt = db()->prepare('SELECT name FROM customers WHERE id = ?');
+    $stmt = db()->prepare('SELECT name, email FROM customers WHERE id = ?');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
@@ -584,6 +595,28 @@ if ($method === 'DELETE' && !$action) {
             throw $error;
         }
         log_activity($user, 'customer-forgotten-permanently', 'customer', $id, ['name' => $row['name'], 'reason' => $reason]);
+        // V266 - the customer requested confirmation that a permanent
+        // deletion actually happened, in writing, once it's truly done.
+        // This can only be a plain email (not an in-portal message) since
+        // the customer's account, login, and every record about it -
+        // including customer_communications - no longer exist by this
+        // point. Sent best-effort; a delivery failure here must never
+        // undo or block the deletion that already completed successfully.
+        if (!empty($row['email'])) {
+            try {
+                send_email(
+                    $row['email'],
+                    'Your BELM Portal account has been permanently deleted',
+                    "This confirms that the BELM Portal account for \"{$row['name']}\" has been permanently deleted, "
+                    . "as requested.\n\nEverything associated with this account has been completely removed from "
+                    . "BELM's systems - login access, machines, checklist/check-up reports, service requests, job "
+                    . "cards, invoices, receipts, proforma invoices, petty cash records, operator and shift history, "
+                    . "and saved communications. Nothing was kept as a backup and none of it can be recovered or "
+                    . "restored.\n\nIf you did not request this, or believe this was done in error, please contact "
+                    . "BELM General Tech Service Limited immediately."
+                );
+            } catch (Throwable $ignored) { /* deletion already succeeded; email delivery is best-effort */ }
+        }
         json_out(['ok' => true, 'message' => "\"{$row['name']}\" has been permanently forgotten — it will not appear in the Recycle Bin and cannot be restored."]);
     }
 

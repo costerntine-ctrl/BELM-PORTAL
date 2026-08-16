@@ -1,0 +1,41 @@
+BELM PORTAL V266 - COMPLETE ACCOUNT DELETION + CONFIRMATION EMAIL
+
+Requested: when a customer account is permanently deleted, they
+should receive a confirmation message, and no backup/history record
+of their machines or other usage should remain in the system.
+
+FOUND & FIXED - "Forget permanently" was incomplete
+- belm_forget_customer_permanently() was missing cleanup for two
+  tables that reference customers(id) directly with no
+  ON DELETE CASCADE: `receipts` (cash payment receipts) and
+  `machine_operator_shifts` (operator sign-in/sign-out history).
+- Because the whole deletion runs inside one transaction, any customer
+  who ever had a cash Payment/Receipt recorded, or any operator shift
+  history, would make the final DELETE FROM customers fail on a
+  foreign-key violation - the entire "Forget permanently" transaction
+  silently rolled back, leaving the customer (and everything else)
+  still fully in the database despite BELM Admin seeing a success
+  message. Both tables are now cleared as part of the same permanent
+  deletion, so nothing is left behind for any customer, regardless of
+  their payment or operator-shift history.
+
+ADDED - confirmation email
+- Once a permanent deletion fully completes, BELM now sends a plain
+  email (not an in-portal message - the account and all its records,
+  including saved communications, no longer exist at that point) to
+  the customer's last known email address, confirming the account and
+  everything associated with it (machines, checklist/check-up reports,
+  service requests, job cards, invoices, receipts, proforma invoices,
+  petty cash records, operator/shift history, communications) has been
+  completely removed with no backup kept and no way to restore it.
+- Sent best-effort after the deletion has already committed - a
+  delivery failure here never blocks or reverses the deletion itself.
+
+UPDATED - Privacy Policy (English + Kiswahili)
+- Section 6.4 (User Rights) now accurately describes this: requesting
+  permanent deletion removes every associated record with no backup
+  retained, and BELM confirms in writing once it's done.
+
+- Browser/PWA cache bumped to V266.
+- No database migration required (no schema change - only cleaning up
+  existing tables more completely).

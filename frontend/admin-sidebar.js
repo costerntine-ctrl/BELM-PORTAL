@@ -61,7 +61,7 @@
     { section: "Operations", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
     { section: "Operations", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
     { section: "Operations", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
-    { section: "Operations", key: "service-requests", label: "Breakdown Process", short: "BP", href: "/breakdown-workflow/?actor=admin", paths: ["/breakdown-workflow/"], priority: true },
+    { section: "Operations", key: "service-requests", label: "Maintenance Process", short: "BP", href: "/breakdown-workflow/?actor=admin", paths: ["/breakdown-workflow/"], priority: true },
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
     { section: "Maintenance", key: "roles", label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },

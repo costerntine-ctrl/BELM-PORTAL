@@ -111,6 +111,12 @@
     document.getElementById('jobTitle').value=selected.case.title;
     const note=document.getElementById('jobOverrideNote');
     if(note){note.classList.add('hidden');note.textContent='';}
+    // V263 - "Send to BELM instead" only makes sense for an actual
+    // Customer actor requesting BELM's help. It was showing up
+    // unconditionally, including on BELM's own Admin/Workshop
+    // dashboard - nonsensical there, since BELM Admin IS BELM.
+    const sendRow=document.getElementById('jobSendToBelm')?.closest('.belm-send-row');
+    if(sendRow) sendRow.classList.toggle('hidden', source!=='customer');
     document.getElementById('jobDialog').showModal();
     await loadJobTechnicians(false);
   }
@@ -130,18 +136,34 @@
       note.classList.remove('hidden');
     }else{note.classList.add('hidden');note.textContent='';}
   });
+  let isGeneratingJobCard=false;
   document.getElementById('jobForm').onsubmit=async e=>{
     e.preventDefault();
+    // V264 - guard against a fast double-click/tap firing this twice and
+    // creating a duplicate Job Card, and give clear "Sent" feedback on
+    // the button itself before resetting the form for the next use.
+    if(isGeneratingJobCard)return;
+    isGeneratingJobCard=true;
+    const submitBtn=document.getElementById('jobGenerateSubmit');
+    const originalLabel=submitBtn.textContent;
+    submitBtn.disabled=true;
+    submitBtn.textContent='Generating…';
     try{
       const techId=document.getElementById('jobTechnician').value;
       const tech=jobTechnicians.find(x=>String(x.id)===String(techId));
       const temporaryOverride=Boolean(tech?.temporaryForCustomer);
-      if(temporaryOverride&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Use Temporary Override for this Job Card only?`))return;
+      if(temporaryOverride&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Use Temporary Override for this Job Card only?`)){
+        submitBtn.disabled=false;submitBtn.textContent=originalLabel;isGeneratingJobCard=false;return;
+      }
       const r=await api('/job-card',{method:'POST',body:JSON.stringify({caseId:document.getElementById('jobCaseId').value,title:document.getElementById('jobTitle').value,technicianId:techId,temporaryOverride})});
+      submitBtn.textContent='✓ Sent';
+      await new Promise(resolve=>setTimeout(resolve,900));
+      document.getElementById('jobForm').reset();
       document.getElementById('jobDialog').close();
       show(`Job Card ${r.jobCardNo} generated${temporaryOverride?' with Temporary Override':''}.`);
       await load();await openCase(selected.case.id);
     }catch(x){show(x.message,true)}
+    finally{submitBtn.disabled=false;submitBtn.textContent=originalLabel;isGeneratingJobCard=false;}
   };
   document.getElementById('spareForm').onsubmit=async e=>{e.preventDefault();try{await api('/spare',{method:'POST',body:JSON.stringify({caseId:document.getElementById('spareCaseId').value,spareName:document.getElementById('spareName').value,partNumber:document.getElementById('sparePart').value,quantity:Number(document.getElementById('spareQty').value),unit:document.getElementById('spareUnit').value,reason:document.getElementById('spareReason').value})});document.getElementById('spareDialog').close();show('Spare request sent to Administration for approval.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function approveSpare(id,approve){const note=prompt(approve?'Administration approval note (optional):':'Reason for rejection:')||'';try{await api(`/approve-spare/${id}`,{method:'PUT',body:JSON.stringify({approve,note})});show(approve?'Spare approved by Administration.':'Spare request rejected.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}}

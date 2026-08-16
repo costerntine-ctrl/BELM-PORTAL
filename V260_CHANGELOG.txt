@@ -1,0 +1,20 @@
+BELM PORTAL V260 - LEGAL PAGES: ENGLISH + KISWAHILI
+
+Both legal pages (/legal/privacy-policy.html and /legal/terms.html)
+are now bilingual, with a 🌐 language toggle button (matches the
+dashboard's language toggle style), default English.
+
+- Full Kiswahili translation of every section in both pages: the
+  Privacy Policy (9 sections) and Terms & Definitions (13 sections,
+  including the new Purpose, No-tampering, and Governing law clauses
+  added in V259, and the full Definitions table).
+- Toggling switches the page title, "Last updated" line, nav labels,
+  the entire article body, and the legal-draft notice at the bottom -
+  everything on the page, not just partial text.
+- Preference is remembered per-browser (localStorage), separate from
+  the dashboard's own language setting.
+- New shared file: frontend/legal/legal.js handles the toggle logic
+  for both pages.
+
+- Browser/PWA cache bumped to V260.
+- No database migration required.

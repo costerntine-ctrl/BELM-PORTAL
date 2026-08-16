@@ -30,6 +30,7 @@ input,select,textarea { width:100%; border:1px solid #c9d5e1; background:#fff; c
 input:focus,select:focus,textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(0,166,81,.14); }
 select:disabled { background:#eef2f5; color:#8995a2; }
 .hint,.privacy { color:#7b8997; font-size:11px; font-weight:400; margin:0; }
+.privacy a { color:#5c6b7d; }
 .consent { display:flex; grid-template-columns:auto 1fr; align-items:flex-start; gap:9px; margin:20px 0; line-height:1.45; font-weight:500; }
 .consent input { width:16px; height:16px; margin-top:2px; }
 button,.secondary-button { display:inline-flex; justify-content:center; align-items:center; width:100%; min-height:48px; border:0; border-radius:10px; background:var(--green); color:#fff; font-weight:800; text-decoration:none; cursor:pointer; box-shadow:0 8px 20px rgba(0,166,81,.2); transition:.16s ease; }

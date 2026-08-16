@@ -1,5 +1,5 @@
 :root {
-  --belm-sidebar-width: 296px;
+  --belm-sidebar-width: 281px;
   --belm-sidebar-navy: #111a2d;
   --belm-sidebar-navy-soft: #1b2943;
   --belm-sidebar-green: #00a958;
@@ -124,7 +124,7 @@
   color: #aebacc;
   border: 1px solid transparent;
   border-radius: 10px;
-  font-size: 11px;
+  font-size: 13.5px;
   font-weight: 750;
   text-decoration: none;
   transition: .15s ease;
@@ -375,7 +375,7 @@
 
 /* V195 UI refresh: BELM industrial palette and cleaner navigation hierarchy. */
 :root {
-  --belm-sidebar-width: 286px;
+  --belm-sidebar-width: 271px;
   --belm-sidebar-blue: #1769c2;
   --belm-sidebar-green: #00a651;
   --belm-sidebar-yellow: #ffd400;
@@ -549,7 +549,7 @@
   gap: 10px;
   color: #aebcd0;
   border-radius: 11px;
-  font-size: 10.5px;
+  font-size: 13.5px;
   font-weight: 760;
 }
 .belm-sidebar-link:hover {

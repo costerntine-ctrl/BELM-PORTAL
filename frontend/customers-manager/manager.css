@@ -178,6 +178,9 @@ img#checkupDisplayPhotoPreview.checkup-photo-preview.hidden { display: none; }
 .badge-resolve { border: 0; cursor: pointer; }
 .badge-resolve:hover { filter: brightness(1.1); }
 .badge-resolve:disabled { opacity: .5; cursor: wait; }
+.message-checkup-jump { grid-column: 1 / -1; margin-top: -6px; }
+.message-checkup-jump button { width: 100%; }
+.message-checkup-jump button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Printed Checked Report must always come out as a clean white document,
    matching what Customer and Technician get from the same report data —

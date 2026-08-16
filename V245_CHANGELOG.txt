@@ -1,0 +1,29 @@
+BELM PORTAL V245 - ADMIN SIDEBAR: NARROWER + BIGGER TEXT
+
+- Admin sidebar (BELM GENERAL TECH nav) narrowed by ~4mm (~15px):
+  296px -> 281px at the default breakpoint, 286px -> 271px at the
+  refreshed-palette breakpoint that was actually the one in effect
+  (there were two --belm-sidebar-width declarations in the file; both
+  updated so the change takes effect everywhere).
+- Sidebar menu item text (Reports & Analysis, Service Requests,
+  Breakdown Process, Checklist Templates, Controller Pin Out,
+  Engineering, Customers & Machines, etc.) increased from 10.5px/11px
+  to 13.5px for readability (there were also two competing font-size
+  declarations for this text - both updated).
+- Labels still truncate gracefully with "..." if a name is ever too
+  long for the space, so nothing overflows or breaks layout with the
+  larger text in the narrower sidebar.
+- Icon badges (RA/SR/BP/etc.) and everything else in the sidebar left
+  unchanged, per request.
+- admin-sidebar.css is shared by 17 admin pages - bumped its
+  cache-busting version on all of them so the fix loads everywhere.
+
+- Browser/PWA cache bumped to V245.
+- No database migration required.
+
+ALSO FIXED (found while bumping the version)
+- tests/v211-regression.cjs still checked for the old exact
+  "admin-sidebar.css?v=211-bug-audit" string. Updated it the same way
+  as the other brittle-test fixes in V242/V243 (checks the version
+  number is >= 211 instead of an exact string). Full suite: 15/15
+  regression files all passing again.

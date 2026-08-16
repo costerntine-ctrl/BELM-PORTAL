@@ -74,11 +74,27 @@ html[data-theme="dark"] .receipt-preview,
 html[data-theme="dark"] dialog,
 html[data-theme="dark"] .customer-card,
 html[data-theme="dark"] .machine-card,
+html[data-theme="dark"] .part-request-row,
 html[data-theme="dark"] .card {
   border-color: #2a3950 !important;
   background: #111b2e !important;
   color: #e6edf7 !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, .18) !important;
+}
+html[data-theme="dark"] .remove-part-row {
+  border-color: #6b3942 !important;
+  background: #331a20 !important;
+  color: #ffb4b4 !important;
+}
+html[data-theme="dark"] .part-source-toggle button {
+  border-color: #3a4a61 !important;
+  background: #152238 !important;
+  color: #dce7f3 !important;
+}
+html[data-theme="dark"] .part-source-toggle button.active {
+  background: #0f6b3a !important;
+  border-color: #0f6b3a !important;
+  color: #fff !important;
 }
 
 html[data-theme="dark"] input,
@@ -94,6 +110,7 @@ html[data-theme="dark"] label,
 html[data-theme="dark"] #expenseForm label,
 html[data-theme="dark"] #loginForm label,
 html[data-theme="dark"] #problemLabel,
+html[data-theme="dark"] .spare-catalog-label,
 html[data-theme="dark"] .spare-field > span { color: #c7d2df !important; }
 
 html[data-theme="dark"] table { color: #dce6f1 !important; }

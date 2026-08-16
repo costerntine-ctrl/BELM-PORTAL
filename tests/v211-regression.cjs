@@ -12,7 +12,10 @@ const workflowHtml=read('frontend/breakdown-workflow/index.html');
 const app=read('frontend/customer-app.js');
 const sw=read('frontend/belm-sw.js');
 const auth=read('backend/api/auth.php');
-check('SPA sidebar CSS cache version bumped', index.includes('/admin-sidebar.css?v=211-bug-audit'));
+{
+  const m = /admin-sidebar\.css\?v=(\d+)-/.exec(index);
+  check('SPA sidebar CSS cache version bumped', !!m && Number(m[1]) >= 211);
+}
 check('Admin Breakdown link declares actor', sidebar.includes('/breakdown-workflow/?actor=admin'));
 check('Mobile sidebar closes only on actual link', sidebar.includes('event.target.closest("a.belm-sidebar-link")'));
 check('Shared Breakdown accepts explicit actor', workflow.includes("params.get('actor')||params.get('source')"));

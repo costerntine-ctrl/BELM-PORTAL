@@ -406,8 +406,18 @@
     const machineSelect = document.getElementById("sendCustomerMessageMachine");
     machineSelect.innerHTML = '<option value="">General / customer account</option>' + (customer.machines || []).map((machine) => {
       const label = [machine.brand, machine.model, machine.machineType].filter(Boolean).join(" ") || "Machine";
-      return `<option value="${escapeHtml(machine.id)}">${escapeHtml(label)}</option>`;
+      return `<option value="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType || "")}" data-machine-name="${escapeHtml(label)}">${escapeHtml(label)}</option>`;
     }).join("");
+    const checkupJumpButton = document.getElementById("sendCustomerMessageCheckup");
+    const syncCheckupJumpButton = () => { checkupJumpButton.disabled = !machineSelect.value; };
+    machineSelect.onchange = syncCheckupJumpButton;
+    syncCheckupJumpButton();
+    checkupJumpButton.onclick = () => {
+      const option = machineSelect.selectedOptions[0];
+      if (!option || !option.value) return;
+      document.getElementById("sendCustomerMessageDialog").close();
+      openMachineCheckup(option.value, option.dataset.machineType || "", option.dataset.machineName || "Machine");
+    };
     document.getElementById("sendCustomerMessageDialog").showModal();
     setTimeout(() => document.getElementById("sendCustomerMessageBody").focus(), 0);
   }

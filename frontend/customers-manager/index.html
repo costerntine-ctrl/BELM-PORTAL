@@ -57,6 +57,15 @@
       </section>
 
       <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section class="panel machine-type-sync-panel" id="machineTypeSyncPanel">
+        <div class="panel-head">
+          <div><h2>Machine Type ↔ Checklist Template Sync</h2><p>Finds machines whose type doesn't exactly match any active Checklist Template (e.g. a spelling difference), so Check Up quietly fails to find that machine's template.</p></div>
+          <button class="secondary" id="machineTypeSyncRefresh" type="button">↻ Refresh</button>
+        </div>
+        <div id="machineTypeSyncBody"><p class="empty">Click Refresh to check.</p></div>
+      </section>
+
       <section class="customer-toolbar">
         <input id="searchInput" placeholder="Search company, email, phone, TIN, VRN or machine" aria-label="Search customers">
         <select id="statusFilter" aria-label="Filter customers">
@@ -367,6 +376,6 @@
     <script src="/admin-sidebar.js?v=262-maintenance-process-label"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=267-machine-type-catalog"></script>
+    <script src="/customers-manager/manager.js?v=269-machine-type-sync"></script>
   </body>
 </html>

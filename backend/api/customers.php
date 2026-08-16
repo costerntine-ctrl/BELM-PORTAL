@@ -158,6 +158,73 @@ function normalized_machine_details(array $body): array {
     ];
 }
 
+// ---- Machine type <-> Checklist Template sync audit -------------------
+// Existing machines can have their machine_type stored with slightly
+// different spelling/casing than the Checklist Template meant for that
+// type (e.g. "REACH STAKER" vs the correct "Reach Stacker") - Check Up
+// looks up a template by an exact (case-insensitive) match, so a small
+// spelling drift silently breaks it for every machine of that type,
+// with no obvious error pointing at the real cause. This endpoint finds
+// every machine_type currently in use that does NOT exactly match any
+// active Checklist Template, and suggests the closest real template
+// name using simple string similarity, so Admin can fix the drift in
+// bulk instead of one machine at a time.
+if ($method === 'GET' && $action === 'machine-type-sync') {
+    require_page_access($user, 'customers');
+    $machineTypes = db()->query(
+        "SELECT machine_type, COUNT(*) AS machine_count
+         FROM machines WHERE deleted_at IS NULL AND machine_type IS NOT NULL AND machine_type <> ''
+         GROUP BY machine_type ORDER BY machine_type ASC"
+    )->fetchAll();
+    $templateTypes = db()->query(
+        "SELECT DISTINCT machine_type FROM checklist_templates WHERE is_active = 1 AND machine_type IS NOT NULL AND machine_type <> ''"
+    )->fetchAll(PDO::FETCH_COLUMN);
+
+    $mismatches = [];
+    $matched = 0;
+    foreach ($machineTypes as $row) {
+        $type = $row['machine_type'];
+        $exact = null;
+        foreach ($templateTypes as $templateType) {
+            if (strcasecmp($templateType, $type) === 0) { $exact = $templateType; break; }
+        }
+        if ($exact !== null) { $matched += (int)$row['machine_count']; continue; }
+
+        $bestMatch = null;
+        $bestScore = 0;
+        foreach ($templateTypes as $templateType) {
+            similar_text(strtoupper($type), strtoupper($templateType), $percent);
+            if ($percent > $bestScore) { $bestScore = $percent; $bestMatch = $templateType; }
+        }
+        $mismatches[] = [
+            'machineType' => $type,
+            'machineCount' => (int)$row['machine_count'],
+            'suggestedTemplate' => $bestScore >= 55 ? $bestMatch : null,
+            'similarity' => round($bestScore, 1),
+            'hasAnyTemplate' => count($templateTypes) > 0,
+        ];
+    }
+    json_out([
+        'templateTypes' => $templateTypes,
+        'matchedMachineCount' => $matched,
+        'mismatches' => $mismatches,
+    ]);
+}
+
+// ---- Apply a machine-type sync fix (bulk rename) ------------------------
+if ($method === 'POST' && $action === 'machine-type-sync') {
+    require_page_access($user, 'customers');
+    $b = body();
+    $from = trim((string)($b['from'] ?? ''));
+    $to = trim((string)($b['to'] ?? ''));
+    if ($from === '' || $to === '') json_error('Both the current and correct machine type are required.');
+    $stmt = db()->prepare('UPDATE machines SET machine_type = ?, updated_at = NOW() WHERE machine_type = ? AND deleted_at IS NULL');
+    $stmt->execute([$to, $from]);
+    $count = $stmt->rowCount();
+    log_activity($user, 'machine-type-synced', 'machine', null, ['from' => $from, 'to' => $to, 'count' => $count]);
+    json_out(['ok' => true, 'updated' => $count, 'message' => "Updated $count machine(s) from \"$from\" to \"$to\"."]);
+}
+
 // ---- Admin-only data visibility diagnostic ----------------------------
 // Helps distinguish UI/filter problems from a deployment that is connected
 // to an empty/new PostgreSQL database. No database name, URL or credentials

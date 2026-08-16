@@ -1667,5 +1667,62 @@
     }
   });
 
+  // V269 - Machine Type <-> Checklist Template sync check.
+  async function loadMachineTypeSync() {
+    const body = document.getElementById("machineTypeSyncBody");
+    const refreshBtn = document.getElementById("machineTypeSyncRefresh");
+    if (!body) return;
+    refreshBtn.disabled = true;
+    body.innerHTML = '<p class="empty">Checking…</p>';
+    try {
+      const data = await api("/customers?action=machine-type-sync");
+      const mismatches = data.mismatches || [];
+      if (!mismatches.length) {
+        body.innerHTML = `<p class="empty">✓ All ${data.matchedMachineCount} machine(s) match an active Checklist Template exactly. Nothing to sync.</p>`;
+        return;
+      }
+      body.innerHTML = mismatches.map((row) => `
+        <div class="machine-type-sync-row">
+          <div>
+            <strong>${escapeHtml(row.machineType)}</strong>
+            <span>${row.machineCount} machine${row.machineCount === 1 ? "" : "s"} — no exact Checklist Template match</span>
+          </div>
+          ${row.suggestedTemplate
+            ? `<button type="button" class="primary" data-sync-from="${escapeHtml(row.machineType)}" data-sync-to="${escapeHtml(row.suggestedTemplate)}">
+                 Fix → "${escapeHtml(row.suggestedTemplate)}" (${row.similarity}% match)
+               </button>`
+            : row.hasAnyTemplate
+              ? `<span class="machine-type-sync-none">No close template match found — add a Checklist Template for this type, or fix the spelling by hand in each machine.</span>`
+              : `<span class="machine-type-sync-none">No Checklist Templates exist yet.</span>`}
+        </div>`).join("");
+    } catch (error) {
+      body.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
+    } finally {
+      refreshBtn.disabled = false;
+    }
+  }
+  document.getElementById("machineTypeSyncRefresh")?.addEventListener("click", loadMachineTypeSync);
+  document.getElementById("machineTypeSyncBody")?.addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-sync-from]");
+    if (!button) return;
+    const from = button.dataset.syncFrom;
+    const to = button.dataset.syncTo;
+    if (!confirm(`Update every machine currently typed "${from}" to "${to}"? This cannot be undone automatically.`)) return;
+    button.disabled = true;
+    button.textContent = "Applying…";
+    try {
+      const result = await api("/customers?action=machine-type-sync", { method: "POST", body: JSON.stringify({ from, to }) });
+      showAlert(result.message);
+      machineTypesCache = null;
+      await loadMachineTypeSync();
+      await load();
+    } catch (error) {
+      showAlert(error.message, true);
+      button.disabled = false;
+      button.textContent = "Retry";
+    }
+  });
+  loadMachineTypeSync();
+
   load();
 })();

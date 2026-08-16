@@ -808,6 +808,71 @@ if ($sub === 'machine-analysis' && $sub2) {
 // dashboard's "UPDATE" button: BELM messages, Technician daily check-up
 // activity across every machine the customer owns, and a small 7-day
 // checklist-activity graph. Read-only; does not touch anything else.
+// POST /api/customer-portal?sub=spare-part-request — customer submits a
+// spare-part request directly, independent of any Service Request. This
+// is what /customer-service-request/'s "Request spare parts from BELM"
+// panel actually needs: it was previously calling /api/spare-part-requests,
+// which is staff-only (require_auth() rejects any non-staff token with
+// 401) - so every spare-part row a customer submitted there silently
+// failed to save, no matter what the service request itself did. This
+// endpoint creates its own spare_part_requests row with no request_id,
+// so a spare-part request can be sent on its own without also requiring
+// a Service Request to exist.
+if ($sub === 'spare-part-request' && $method === 'POST') {
+    require_customer_write_access($customer);
+    $b = body();
+    $machineId = trim((string)($b['machineId'] ?? ''));
+    $spareName = trim((string)($b['spareName'] ?? ''));
+    $referenceNumber = trim((string)($b['referenceNumber'] ?? ($b['partNumber'] ?? '')));
+    $quantity = isset($b['quantity']) ? (int)$b['quantity'] : 1;
+
+    if ($machineId === '') json_error('Select the machine that needs this spare part.');
+    if ($spareName === '') json_error('Spare name is required.');
+    if (strlen($spareName) > 255) json_error('Spare name is too long.');
+    if ($quantity < 1) $quantity = 1;
+
+    $machineStmt = db()->prepare(
+        'SELECT id, machine_type, brand, model FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+    );
+    $machineStmt->execute([$machineId, $customer['id']]);
+    $machine = $machineStmt->fetch();
+    if (!$machine) json_error('Machine not found for this customer.', 404);
+
+    $description = $spareName . ($referenceNumber !== '' ? " (Ref: $referenceNumber)" : '');
+    $requestId = uuid();
+    db()->prepare(
+        "INSERT INTO spare_part_requests
+         (id, spare_part_id, request_id, machine_id, requested_by_id, requested_by_name,
+          description, machine_type, quantity, status, created_at)
+         VALUES (?,NULL,NULL,?,NULL,?,?,?,?,'PENDING',NOW())"
+    )->execute([
+        $requestId,
+        $machineId,
+        trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')),
+        $description,
+        $machine['machine_type'],
+        $quantity,
+    ]);
+
+    $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    $alertText = "Customer requested a spare part directly (not tied to a Service Request).\n"
+        . "Customer: " . ($customer['name'] ?? 'Unknown') . "\n"
+        . "Requested by: $actorName\n"
+        . "Machine: $machineLabel\n"
+        . "Spare: $spareName" . ($referenceNumber !== '' ? " (Ref: $referenceNumber)" : '') . "\n"
+        . "Quantity: $quantity\n"
+        . "Request ID: $requestId";
+    try {
+        belm_send_customer_to_belm_alert(['spare-parts'], 'SPARE PART REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel, $alertText, $customer['actorEmail'] ?? null);
+    } catch (Throwable $ignored) {}
+    try {
+        belm_log_customer_communication((string)$customer['id'], $machineId, 'CUSTOMER_TO_BELM', 'EMAIL', 'Spare Part Requested', $alertText, 'SPARE_REQUEST', $requestId, $actorName, 'SENT');
+    } catch (Throwable $ignored) {}
+
+    json_out(['id' => $requestId, 'message' => 'Spare-part request sent to BELM.'], 201);
+}
+
 if ($sub === 'recent-activity' && $method === 'GET') {
     $custId = $customer['id'];
 

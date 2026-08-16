@@ -63,14 +63,16 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Request spare parts from BELM</h2><p>Type the spare name yourself. Your company does not see BELM inventory; BELM will identify the correct internal spare, prepare the Proforma and follow up.</p></div>
+        <div><h2>Request spare parts from BELM</h2><p>Type the spare name yourself. Your company does not see BELM inventory; BELM will identify the correct internal spare, prepare the Proforma and follow up. This is independent of the Service Request above — you can send one, the other, or both.</p></div>
         <button class="secondary" id="addPartRowButton" type="button">+ Add spare part</button>
       </div>
-      <div id="partRequestRows"></div>
-      <div class="form-actions spare-section-actions">
-        <a href="/portal/dashboard">Cancel</a>
-        <button class="primary" form="serviceForm" id="submitButtonBottom" type="submit">Send to BELM</button>
-      </div>
+      <form id="sparePartsForm">
+        <div id="partRequestRows"></div>
+        <div class="form-actions spare-section-actions">
+          <a href="/portal/dashboard">Cancel</a>
+          <button class="primary" id="submitSparePartsButton" type="submit">Send Spare Parts Request to BELM</button>
+        </div>
+      </form>
     </section>
 
 
@@ -88,6 +90,6 @@
     </section>
   </main>
 
-  <script src="/customer-service-request/request.js?v=253-second-send-button"></script>
+  <script src="/customer-service-request/request.js?v=268-independent-spare-submit"></script>
 </body>
 </html>

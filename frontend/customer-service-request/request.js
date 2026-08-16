@@ -15,7 +15,7 @@
   // once someone has added spare part rows. Both buttons must always
   // mirror each other's label/disabled state.
   function submitButtons() {
-    return [document.getElementById("submitButton"), document.getElementById("submitButtonBottom")].filter(Boolean);
+    return [document.getElementById("submitButton")].filter(Boolean);
   }
   function setSubmitButtonsText(text) {
     submitButtons().forEach((button) => { button.textContent = text; });
@@ -260,25 +260,10 @@
         }),
       });
 
-      const partRows = collectPartRows();
-      let partErrors = 0;
-      for (const part of partRows) {
-        try {
-          await api("/spare-part-requests", {
-            method: "POST",
-            body: JSON.stringify({ ...part, serviceRequestId: result.id, machineId }),
-          });
-        } catch (_) {
-          partErrors += 1;
-        }
-      }
-
       showAlert(
         `${result.emailSent ? "BELM received your request by official business email." : "Request saved in BELM Portal; email delivery needs attention."} Reference: ${result.id}`
-        + (partRows.length ? ` · ${partRows.length - partErrors} of ${partRows.length} spare-part request(s) saved.` : "")
       );
       document.getElementById("serviceForm").reset();
-      document.getElementById("partRequestRows").innerHTML = "";
       render({ machine, serviceOptions, selfServiceMode, belmBusiness });
 
       // Unmistakable "it worked" confirmation right on the button itself
@@ -294,6 +279,69 @@
       setSubmitButtonsDisabled(false);
       setSubmitButtonsText(selfServiceMode ? "Send to BELM Technical Support" : "Submit service request to BELM");
       isSubmittingServiceRequest = false;
+    }
+  });
+
+  // V268 - Spare Parts requests are fully independent of the Service
+  // Request above (each stands alone - sending one never requires the
+  // other). This also fixes a real bug: spare-part rows used to be
+  // submitted via /api/spare-part-requests, which only accepts a BELM
+  // staff/Technician token - a customer token was always rejected
+  // (401), so every spare-part row a customer ever "sent" here silently
+  // failed to actually save. This now posts to the customer-portal's
+  // own endpoint instead.
+  let isSubmittingSpareParts = false;
+  document.getElementById("sparePartsForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (isSubmittingSpareParts) return;
+    let partRows;
+    try {
+      partRows = collectPartRows();
+    } catch (error) {
+      showAlert(error.message, true);
+      return;
+    }
+    if (!partRows.length) {
+      showAlert("Add at least one spare part before sending.", true);
+      return;
+    }
+    isSubmittingSpareParts = true;
+    clearAlert();
+    const submitBtn = document.getElementById("submitSparePartsButton");
+    submitBtn.classList.remove("success");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting…";
+    try {
+      let saved = 0;
+      for (const part of partRows) {
+        try {
+          await api("/customer-portal?sub=spare-part-request", {
+            method: "POST",
+            body: JSON.stringify({
+              machineId,
+              spareName: part.description,
+              referenceNumber: part.referenceNumber,
+              quantity: part.quantity,
+            }),
+          });
+          saved += 1;
+        } catch (_) { /* keep going, report the count below */ }
+      }
+      if (saved === 0) throw new Error("Could not send the spare-part request(s). Try again.");
+      showAlert(`${saved} of ${partRows.length} spare-part request(s) sent to BELM.`);
+      document.getElementById("sparePartsForm").reset();
+      document.getElementById("partRequestRows").innerHTML = "";
+      addPartRow();
+      submitBtn.classList.add("success");
+      submitBtn.textContent = "✓ Sent";
+      await new Promise(resolve => setTimeout(resolve, 1600));
+    } catch (error) {
+      showAlert(error.message || "Could not send the spare-part request.", true);
+    } finally {
+      submitBtn.classList.remove("success");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Send Spare Parts Request to BELM";
+      isSubmittingSpareParts = false;
     }
   });
 

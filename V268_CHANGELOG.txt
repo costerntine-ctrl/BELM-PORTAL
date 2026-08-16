@@ -1,0 +1,32 @@
+BELM PORTAL V268 - SERVICE REQUEST & SPARE PARTS: NOW TRULY INDEPENDENT
+
+Confirmed and fixed the deeper bug behind this: Spare Parts requests
+from a customer were secretly bundled into the Service Request submit,
+AND the endpoint they were sent to (/api/spare-part-requests) only
+accepts a BELM staff/Technician login token - a customer token was
+always rejected with 401. So every spare-part row a customer ever
+submitted from this page silently failed to save, no matter what
+happened with the Service Request itself.
+
+FIXED - real bug
+- Added a proper customer-facing endpoint:
+  POST /api/customer-portal?sub=spare-part-request. It creates its own
+  spare_part_requests row (no service_request_id needed), verifies the
+  machine belongs to the customer, and alerts BELM's Spare Parts team
+  + logs it in the customer's communication history - the same pattern
+  used elsewhere in the portal.
+
+CHANGED - as requested: each stands alone
+- "Request spare parts from BELM" now has its own form and its own
+  "Send Spare Parts Request to BELM" button, completely separate from
+  the Service Request form above. Sending one never requires or
+  triggers the other - you can send a Service Request only, Spare
+  Parts only, or both, in either order.
+- Removed the shared "second Send button" wiring from V253 (it
+  reused the Service Request's form/submit, which is exactly the
+  coupling being removed here).
+
+- Browser/PWA cache bumped to V268.
+- No database migration required (reuses the existing
+  spare_part_requests table, which already supported a NULL
+  request_id).

@@ -544,6 +544,19 @@
 
   let machineTypesCache = null;
 
+  // V267 - the same canonical machine-type list used on the public
+  // registration form (/apply/), so a customer self-registering and
+  // BELM Admin adding/editing a machine here always pick from the same
+  // set of names. Picking a matching name here is what lets a Checklist
+  // Template "sync" with the machine (Check Up looks up templates by
+  // exact machineType match) - typing something slightly different by
+  // hand was the easiest way to accidentally break that match.
+  const BELM_MACHINE_TYPE_CATALOG = [
+    "Reach Stacker", "Forklift", "Mobile Crane", "Crawler Crane", "Excavator",
+    "Wheel Loader", "Bulldozer", "Motor Grader", "Road Roller", "Dump Truck",
+    "Concrete Pump", "Truck", "Generator", "Compressor",
+  ];
+
   async function ensureMachineTypesLoaded(force) {
     if (force) machineTypesCache = null;
     if (machineTypesCache) return machineTypesCache;
@@ -572,19 +585,51 @@
     select.innerHTML = '<option value="">Select machine type…</option>' +
       types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("") +
       '<option value="__other__">+ New machine type…</option>';
+
+    // The "New machine type" dropdown: standard catalog types not
+    // already covered by an existing Checklist Template, plus a
+    // "Custom" option for anything genuinely outside the catalog.
+    const otherSelect = document.getElementById("machineTypeOther");
+    const catalogRemaining = BELM_MACHINE_TYPE_CATALOG.filter(
+      (type) => !types.some((existing) => existing.toLowerCase() === type.toLowerCase())
+    );
+    otherSelect.innerHTML = '<option value="">Select machine type…</option>' +
+      catalogRemaining.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`).join("") +
+      '<option value="__custom__">— Custom (not listed) —</option>';
+
+    const matchesCatalog = BELM_MACHINE_TYPE_CATALOG.some((type) => type.toLowerCase() === String(selectedType || "").trim().toLowerCase());
     if (selectedType && !matchesExisting) {
       select.value = "__other__";
       document.getElementById("machineTypeOtherWrap").classList.remove("hidden");
-      document.getElementById("machineTypeOther").value = selectedType;
+      if (matchesCatalog) {
+        otherSelect.value = catalogRemaining.some((type) => type.toLowerCase() === selectedType.toLowerCase()) ? selectedType : "";
+        document.getElementById("machineTypeCustomWrap").classList.add("hidden");
+        document.getElementById("machineTypeCustom").value = "";
+      } else {
+        otherSelect.value = "__custom__";
+        document.getElementById("machineTypeCustomWrap").classList.remove("hidden");
+        document.getElementById("machineTypeCustom").value = selectedType;
+      }
     } else {
       select.value = selectedType || "";
       document.getElementById("machineTypeOtherWrap").classList.add("hidden");
-      document.getElementById("machineTypeOther").value = "";
+      document.getElementById("machineTypeCustomWrap").classList.add("hidden");
+      otherSelect.value = "";
+      document.getElementById("machineTypeCustom").value = "";
     }
   }
 
   document.getElementById("machineType").addEventListener("change", (event) => {
     document.getElementById("machineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
+    if (event.target.value !== "__other__") {
+      document.getElementById("machineTypeCustomWrap").classList.add("hidden");
+      document.getElementById("machineTypeOther").value = "";
+      document.getElementById("machineTypeCustom").value = "";
+    }
+  });
+  document.getElementById("machineTypeOther").addEventListener("change", (event) => {
+    document.getElementById("machineTypeCustomWrap").classList.toggle("hidden", event.target.value !== "__custom__");
+    if (event.target.value !== "__custom__") document.getElementById("machineTypeCustom").value = "";
   });
 
 
@@ -708,9 +753,13 @@
     const customerId = document.getElementById("machineCustomerId").value;
     const id = document.getElementById("machineId").value;
     const typeSelectValue = document.getElementById("machineType").value;
-    const machineTypeValue = typeSelectValue === "__other__"
-      ? document.getElementById("machineTypeOther").value.trim()
-      : typeSelectValue;
+    let machineTypeValue = typeSelectValue;
+    if (typeSelectValue === "__other__") {
+      const otherValue = document.getElementById("machineTypeOther").value;
+      machineTypeValue = otherValue === "__custom__"
+        ? document.getElementById("machineTypeCustom").value.trim()
+        : otherValue;
+    }
     const payload = {
       machineType: machineTypeValue,
       brand: document.getElementById("machineBrand").value.trim(),

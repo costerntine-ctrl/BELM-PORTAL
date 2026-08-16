@@ -158,7 +158,12 @@
             </select>
           </label>
           <label id="machineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet — add a matching template later so check-ups work)</small>
-            <input id="machineTypeOther" maxlength="100" placeholder="Type the new machine type">
+            <select id="machineTypeOther">
+              <option value="">Select machine type…</option>
+            </select>
+          </label>
+          <label id="machineTypeCustomWrap" class="hidden">Custom machine type <small>(type it exactly — this becomes the name a matching Checklist Template must use)</small>
+            <input id="machineTypeCustom" maxlength="100" placeholder="Type the new machine type">
           </label>
           <label>Brand<input id="machineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
           <label>Model<input id="machineModel" required maxlength="255"></label>
@@ -362,6 +367,6 @@
     <script src="/admin-sidebar.js?v=262-maintenance-process-label"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=246-checkup-jump"></script>
+    <script src="/customers-manager/manager.js?v=267-machine-type-catalog"></script>
   </body>
 </html>

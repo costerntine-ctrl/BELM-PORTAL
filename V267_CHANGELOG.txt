@@ -1,0 +1,27 @@
+BELM PORTAL V267 - MACHINE TYPE: DROPDOWN INSTEAD OF FREE TEXT
+
+- The "New machine type" field (Customers Manager -> Add/Edit Machine,
+  when the type isn't in any Checklist Template yet) was a free-text
+  box. It's now a dropdown, using the same 14-item canonical machine
+  type list already used on the public registration form (/apply/):
+  Reach Stacker, Forklift, Mobile Crane, Crawler Crane, Excavator,
+  Wheel Loader, Bulldozer, Motor Grader, Road Roller, Dump Truck,
+  Concrete Pump, Truck, Generator, Compressor.
+- A "— Custom (not listed) —" option still opens a free-text field for
+  a genuinely one-off machine type outside that list.
+- Types that already have a Checklist Template don't show up again in
+  this "new type" list (they already belong in the main Machine type
+  dropdown above it), keeping the two lists from overlapping.
+
+WHY THIS MATTERS FOR SYNC
+- Check Up looks up a Checklist Template by an exact match on machine
+  type. Free-typing left room for a customer's self-registration
+  ("Reach Stacker") and an Admin's manually-typed entry ("reach
+  stacker", "Reachstacker", etc.) to drift apart, breaking that match.
+  Since both places now draw from the same fixed list of names, a
+  machine's type and its matching Checklist Template stay in sync
+  automatically as long as the same catalog entry is picked either
+  side.
+
+- Browser/PWA cache bumped to V267.
+- No database migration required.

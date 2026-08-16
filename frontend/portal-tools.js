@@ -1525,7 +1525,6 @@
     toolsCard.className = "belm-account-tools-card";
     toolsCard.innerHTML = `
       <div class="belm-account-tools-head">${belmT("MORE TOOLS")}</div>
-      <div id="belmCustomerOperatingMode" style="margin:10px 0 12px;padding:9px 10px;border-radius:9px;background:rgba(255,255,255,.08);font-size:11px;line-height:1.45">${belmT("Loading operating mode…")}</div>
       <div class="belm-account-tools-actions">
         <button type="button" class="belm-email-report-button belm-user-manager-button" data-belm-owner-admin-only data-belm-feature="assign-users" data-open-role-manager>
           ${belmT("+USER")}
@@ -1563,11 +1562,6 @@
       syncPettyCashVisibility();
       const hasVisibleTool = [...toolsCard.querySelectorAll("button, a")].some((element) => element.style.display !== "none");
       toolsCard.style.display = hasVisibleTool ? "" : "none";
-      const modeBox = document.getElementById("belmCustomerOperatingMode");
-      if (!modeBox || !profile) return;
-      modeBox.innerHTML = profile.isMachineryAdmin
-        ? `<b>${belmT("CUSTOMER MAINTENANCE TEAM")}</b><br>${belmT("Your Technicians manage maintenance. BELM Support remains available when assistance is needed.")}`
-        : `<b>${belmT("BELM SERVICE PROVIDER ACTIVE")}</b><br>${belmT("Machine problems and maintenance route to BELM. Your Fuel, Operators, Workshop, Store, Procurement, Accounts and other portal functions remain under your company; only the Customer Technician role is paused.")}`;
     });
     if (![...toolsCard.querySelectorAll("button, a")].some((element) => element.style.display !== "none")) {
       toolsCard.style.display = "none";

@@ -1,0 +1,25 @@
+BELM PORTAL V253 - SECOND "SEND TO BELM" BUTTON NEAR SPARE PARTS
+
+ROOT CAUSE
+- "Send to BELM" / "Submit service request to BELM" only existed at
+  the very top of the page (inside the first panel). It DOES already
+  submit the spare-part rows too (they're bundled into the same
+  request), but the "Request spare parts from BELM" panel below has
+  its own separate "+ Add spare part" button and no submit action of
+  its own - once someone scrolls down to add parts, the only way to
+  actually send anything is scrolled out of view above, and it isn't
+  obvious that button also covers the spare parts. That's what read as
+  "the send button is missing."
+
+FIXED
+- Added a second "Send to BELM" button (with Cancel) right at the
+  bottom of the Spare Parts panel. It submits the exact same form as
+  the top button (via the HTML `form` attribute) - same request, same
+  validation, same behavior - just reachable without scrolling back up.
+  Both buttons always show the same label/loading/success/disabled
+  state in sync.
+- Also tightened the Quantity field (centered text, capped width) so
+  that part of the row reads less bulky/elongated.
+
+- Browser/PWA cache bumped to V253.
+- No database migration required.

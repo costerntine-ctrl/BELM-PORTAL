@@ -58,6 +58,18 @@
     "General Analysis": { sw: "Uchambuzi wa Jumla" },
     "Full breakdown of your fleet & activity": { sw: "Uchambuzi kamili wa mashine na shughuli zako" },
     "GENERAL ANALYSIS": { sw: "UCHAMBUZI WA JUMLA" },
+    "UPDATE": { sw: "TAARIFA MPYA" },
+    "BELM, Technician & machine activity": { sw: "Taarifa za BELM, Fundi, na shughuli za mashine" },
+    "UPDATES": { sw: "TAARIFA MPYA" },
+    "Latest messages from BELM, Technician daily activity, and machine activity — all in one place.": { sw: "Ujumbe wa hivi karibuni kutoka BELM, shughuli za kila siku za Fundi, na shughuli za mashine — mahali pamoja." },
+    "FROM BELM": { sw: "KUTOKA BELM" },
+    "No messages from BELM yet.": { sw: "Hakuna ujumbe kutoka BELM bado." },
+    "FROM TECHNICIAN (DAILY ACTIVITY)": { sw: "KUTOKA FUNDI (SHUGHULI ZA KILA SIKU)" },
+    "No checkup activity recorded yet.": { sw: "Hakuna shughuli ya ukaguzi iliyorekodiwa bado." },
+    "CHECKUP ACTIVITY — LAST 7 DAYS": { sw: "SHUGHULI ZA UKAGUZI — SIKU 7 ZILIZOPITA" },
+    "Filled by": { sw: "Ilijazwa na" },
+    "Loading updates…": { sw: "Inapakia taarifa…" },
+    "Could not load updates.": { sw: "Imeshindwa kupakia taarifa." },
     "Full breakdown of your machines and account activity.": { sw: "Uchambuzi kamili wa mashine zako na shughuli za akaunti." },
     "Loading analysis…": { sw: "Inapakia uchambuzi…" },
     "Could not load analysis.": { sw: "Imeshindwa kupakia uchambuzi." },
@@ -212,6 +224,94 @@
         </section>`;
     } catch (_) {
       body.innerHTML = `<p class="belm-general-analysis-loading">${belmT("Could not load analysis.")}</p>`;
+    }
+  }
+
+  // V254 - "UPDATE" button in MORE TOOLS: a single place to see recent
+  // BELM messages, Technician daily check-up activity, and a small 7-day
+  // activity graph. The button itself keeps a gentle red blink whenever
+  // any machine is currently RED, using the same blink animation as the
+  // Action Center's urgent machines (V236) - so it stays a persistent,
+  // at-a-glance signal that something needs attention, without changing
+  // anything else already on the dashboard.
+  async function refreshBelmUpdatesBlink() {
+    const button = document.getElementById("belmUpdatesButton");
+    if (!button) return;
+    try {
+      const token = localStorage.getItem("belm_customer_token");
+      const response = await fetch("/api/customer-portal/recent-activity", { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) return;
+      const data = await response.json();
+      button.classList.toggle("belm-machine-urgent-blink", Number(data.redMachineCount || 0) > 0);
+    } catch (_) {}
+  }
+  function closeCustomerUpdatesDialog() {
+    document.getElementById("belmUpdatesDialog")?.remove();
+  }
+  async function openCustomerUpdatesDialog() {
+    closeCustomerUpdatesDialog();
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmUpdatesDialog";
+    dialog.className = "belm-general-analysis-dialog";
+    dialog.innerHTML = `
+      <div class="belm-general-analysis-head">
+        <div><h2>${belmT("UPDATES")}</h2><p>${belmT("Latest messages from BELM, Technician daily activity, and machine activity — all in one place.")}</p></div>
+        <button type="button" data-close-general-analysis>${belmT("Close")}</button>
+      </div>
+      <div class="belm-general-analysis-body" id="belmUpdatesBody">
+        <p class="belm-general-analysis-loading">${belmT("Loading updates…")}</p>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-general-analysis]").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+
+    const body = dialog.querySelector("#belmUpdatesBody");
+    try {
+      const token = localStorage.getItem("belm_customer_token");
+      const response = await fetch("/api/customer-portal/recent-activity", { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      const graph = Array.isArray(data.sevenDayGraph) ? data.sevenDayGraph : [];
+      const maxTotal = Math.max(1, ...graph.map((day) => day.total));
+      const dayLabel = (iso) => new Date(iso + "T00:00:00").toLocaleDateString(belmLang() === "sw" ? "sw-TZ" : "en-GB", { weekday: "short" });
+      body.innerHTML = `
+        <section class="belm-analysis-section">
+          <h3>${belmT("CHECKUP ACTIVITY — LAST 7 DAYS")}</h3>
+          <div class="belm-updates-graph">
+            ${graph.map((day) => {
+              const height = Math.round((day.total / maxTotal) * 100);
+              const barColor = day.red > 0 ? "#ff6b6b" : day.yellow > 0 ? "#ffd400" : "#00c46a";
+              return `<div class="belm-updates-graph-col">
+                <div class="belm-updates-graph-bar" style="height:${Math.max(height, day.total ? 6 : 2)}%;background:${day.total ? barColor : "rgba(255,255,255,.12)"}" title="${escapeHtml(String(day.total))}"></div>
+                <span>${escapeHtml(dayLabel(day.day))}</span>
+              </div>`;
+            }).join("")}
+          </div>
+        </section>
+        <section class="belm-analysis-section">
+          <h3>${belmT("FROM BELM")}</h3>
+          ${data.belmMessages?.length ? `<div class="belm-updates-list">${data.belmMessages.map((msg) => `
+            <article class="belm-updates-row">
+              <div class="belm-updates-row-head"><strong>${escapeHtml(msg.subject || "Message from BELM")}</strong><span>${escapeHtml(formatTanzaniaDateTime(msg.createdAt))}</span></div>
+              <p>${escapeHtml(msg.message || "")}</p>
+              ${msg.machineLabel ? `<small>${escapeHtml(msg.machineLabel)}</small>` : ""}
+            </article>`).join("")}</div>` : `<p class="belm-general-analysis-loading">${belmT("No messages from BELM yet.")}</p>`}
+        </section>
+        <section class="belm-analysis-section">
+          <h3>${belmT("FROM TECHNICIAN (DAILY ACTIVITY)")}</h3>
+          ${data.technicianActivity?.length ? `<div class="belm-updates-list">${data.technicianActivity.map((row) => `
+            <article class="belm-updates-row">
+              <div class="belm-updates-row-head">
+                <strong>${escapeHtml(row.machineLabel || "Machine")}</strong>
+                <span class="belm-analysis-pill status-${String(row.status || "").toLowerCase()}">${escapeHtml(row.status || "-")}</span>
+              </div>
+              <small>${belmT("Filled by")}: ${escapeHtml(row.filledBy || "-")} · ${escapeHtml(formatTanzaniaDateTime(row.createdAt))}</small>
+            </article>`).join("")}</div>` : `<p class="belm-general-analysis-loading">${belmT("No checkup activity recorded yet.")}</p>`}
+        </section>`;
+      document.getElementById("belmUpdatesButton")?.classList.toggle("belm-machine-urgent-blink", Number(data.redMachineCount || 0) > 0);
+    } catch (_) {
+      body.innerHTML = `<p class="belm-general-analysis-loading">${belmT("Could not load updates.")}</p>`;
     }
   }
 
@@ -1543,12 +1643,17 @@
           ${belmT("General Analysis")}
           <small>${belmT("Full breakdown of your fleet & activity")}</small>
         </button>
+        <button type="button" class="belm-email-report-button belm-updates-button" id="belmUpdatesButton" data-open-belm-updates>
+          ${belmT("UPDATE")}
+          <small>${belmT("BELM, Technician & machine activity")}</small>
+        </button>
       </div>`;
     toolsCard.querySelector("[data-belm-maintenance-process-slot]")?.replaceWith(breakdownCard);
     enforceCustomerFeaturePermissions(toolsCard);
     toolsCard.querySelector("[data-open-role-manager]")?.addEventListener("click", () => { window.location.href = "/customer-users/"; });
     toolsCard.querySelector("[data-contact-belm-support]")?.addEventListener("click", () => openBelmSupportDialog());
     toolsCard.querySelector("[data-open-general-analysis]")?.addEventListener("click", () => openCustomerGeneralAnalysisDialog());
+    toolsCard.querySelector("[data-open-belm-updates]")?.addEventListener("click", () => openCustomerUpdatesDialog());
     const syncPettyCashVisibility = () => {
       const payload = tokenPayload("belm_customer_token");
       const permissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
@@ -4688,6 +4793,7 @@
   addCustomerNameToMachinesHeading();
   insertCustomerActivityOverview();
   insertCustomerLangToggle();
+  refreshBelmUpdatesBlink();
   enhanceTechnicianReportCards();
   redirectChecklistManager();
   redirectServiceRequestManager();
@@ -4732,6 +4838,7 @@
   addCustomerNameToMachinesHeading();
   insertCustomerActivityOverview();
   insertCustomerLangToggle();
+  refreshBelmUpdatesBlink();
     enhanceTechnicianReportCards();
     redirectChecklistManager();
     redirectServiceRequestManager();

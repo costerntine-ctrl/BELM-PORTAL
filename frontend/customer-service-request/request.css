@@ -37,7 +37,9 @@ th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacin
 @media(max-width:620px){#serviceForm{grid-template-columns:1fr}.wide,.form-actions{grid-column:auto}.form-actions{align-items:stretch;flex-direction:column-reverse}.form-actions button,.form-actions a{width:100%;text-align:center}.part-row{grid-template-columns:1fr 1fr}.part-row > div:first-child{grid-column:1/-1}.panel-head{align-items:start;flex-direction:column}}
 
 /* V191: customer spare requests are free-text only; BELM inventory remains private. */
+.spare-section-actions { padding: 16px 20px 20px; }
 .customer-spare-fields { grid-template-columns: minmax(0,1.5fr) minmax(0,1fr) 120px; }
+.qty-field input { max-width: 100%; text-align: center; }
 .spare-field { display:grid; gap:6px; min-width:0; }
 .spare-field > span { color:#394d60; font-size:10px; font-weight:850; }
 .spare-field small { color:var(--muted); font-weight:650; }

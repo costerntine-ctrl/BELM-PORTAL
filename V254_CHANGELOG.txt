@@ -1,0 +1,35 @@
+BELM PORTAL V254 - "UPDATE" BUTTON: BELM + TECHNICIAN + MACHINE ACTIVITY
+
+Added a new "UPDATE" button in MORE TOOLS (fills the empty grid slot
+next to General Analysis). Nothing else on the dashboard was changed -
+this is purely additive, plus one small new read-only backend endpoint
+to feed it real data (no existing endpoint or table touched).
+
+WHAT IT SHOWS (opens a dialog)
+- CHECKUP ACTIVITY — LAST 7 DAYS: a simple bar graph of how many
+  Technician check-ups were filled per day this week, colored by the
+  worst safety level recorded that day (green/yellow/red).
+- FROM BELM: the customer's recent messages from BELM (same
+  communication history already used elsewhere on the dashboard).
+- FROM TECHNICIAN (DAILY ACTIVITY): the most recent check-ups filled
+  in across every machine the customer owns - who filled it, which
+  machine, and the resulting status.
+
+THE "BLINKING" BEHAVIOR
+- The UPDATE button itself keeps a gentle red blink (reusing the same
+  blink animation already used for RED machines in the Action Center,
+  V236) for as long as at least one of the customer's machines is
+  currently RED - a persistent, at-a-glance signal, independent of
+  whether the dialog is open. It re-checks automatically every 1.5
+  seconds like the rest of the dashboard, and turns off on its own
+  once nothing is RED anymore.
+
+BACKEND
+- New: GET /api/customer-portal?sub=recent-activity - read-only,
+  scoped to the logged-in customer's own data only (same auth as
+  everything else on this page). Pulls from customer_communications
+  and checklist_reports, both already-existing tables - no schema
+  change, no other endpoint touched.
+
+- Browser/PWA cache bumped to V254.
+- No database migration required.

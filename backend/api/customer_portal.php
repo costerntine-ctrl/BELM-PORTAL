@@ -804,6 +804,92 @@ if ($sub === 'machine-analysis' && $sub2) {
     ]);
 }
 
+// GET /api/customer-portal?sub=recent-activity — powers the customer
+// dashboard's "UPDATE" button: BELM messages, Technician daily check-up
+// activity across every machine the customer owns, and a small 7-day
+// checklist-activity graph. Read-only; does not touch anything else.
+if ($sub === 'recent-activity' && $method === 'GET') {
+    $custId = $customer['id'];
+
+    $belmMsgStmt = db()->prepare(
+        "SELECT cc.id, cc.subject, cc.message, cc.created_at, cc.status,
+                m.brand, m.model, m.machine_type
+         FROM customer_communications cc
+         LEFT JOIN machines m ON m.id = cc.machine_id
+         WHERE cc.customer_id = ?
+         ORDER BY cc.created_at DESC LIMIT 10"
+    );
+    $belmMsgStmt->execute([$custId]);
+    $belmMessages = array_map(function ($row) {
+        return [
+            'id' => $row['id'],
+            'subject' => $row['subject'],
+            'message' => $row['message'],
+            'createdAt' => $row['created_at'],
+            'status' => $row['status'],
+            'machineLabel' => trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: ($row['machine_type'] ?? null),
+        ];
+    }, $belmMsgStmt->fetchAll());
+
+    $techStmt = db()->prepare(
+        "SELECT cr.id, cr.filled_by, cr.overall_status, cr.hour_meter_reading, cr.created_at,
+                m.brand, m.model, m.machine_type
+         FROM checklist_reports cr
+         JOIN machines m ON m.id = cr.machine_id
+         WHERE m.customer_id = ? AND m.deleted_at IS NULL
+         ORDER BY cr.created_at DESC LIMIT 10"
+    );
+    $techStmt->execute([$custId]);
+    $technicianActivity = array_map(function ($row) {
+        return [
+            'id' => $row['id'],
+            'filledBy' => $row['filled_by'],
+            'status' => $row['overall_status'],
+            'hourMeterReading' => $row['hour_meter_reading'],
+            'createdAt' => $row['created_at'],
+            'machineLabel' => trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: ($row['machine_type'] ?? null),
+        ];
+    }, $techStmt->fetchAll());
+
+    $graphStmt = db()->prepare(
+        "SELECT to_char(cr.created_at, 'YYYY-MM-DD') AS day, COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE cr.overall_status = 'RED') AS red,
+                COUNT(*) FILTER (WHERE cr.overall_status = 'YELLOW') AS yellow
+         FROM checklist_reports cr
+         JOIN machines m ON m.id = cr.machine_id
+         WHERE m.customer_id = ? AND m.deleted_at IS NULL AND cr.created_at >= NOW() - INTERVAL '7 days'
+         GROUP BY day ORDER BY day ASC"
+    );
+    $graphStmt->execute([$custId]);
+    $graphRows = $graphStmt->fetchAll();
+    $graphByDay = [];
+    foreach ($graphRows as $row) $graphByDay[$row['day']] = $row;
+    $sevenDayGraph = [];
+    for ($i = 6; $i >= 0; $i--) {
+        $day = date('Y-m-d', strtotime("-$i days"));
+        $row = $graphByDay[$day] ?? null;
+        $sevenDayGraph[] = [
+            'day' => $day,
+            'total' => (int)($row['total'] ?? 0),
+            'red' => (int)($row['red'] ?? 0),
+            'yellow' => (int)($row['yellow'] ?? 0),
+        ];
+    }
+
+    $redMachineStmt = db()->prepare(
+        "SELECT COUNT(*) FROM machines WHERE customer_id = ? AND deleted_at IS NULL AND status = 'RED'"
+    );
+    $redMachineStmt->execute([$custId]);
+    $redMachineCount = (int)$redMachineStmt->fetchColumn();
+
+    json_out([
+        'belmMessages' => $belmMessages,
+        'technicianActivity' => $technicianActivity,
+        'sevenDayGraph' => $sevenDayGraph,
+        'redMachineCount' => $redMachineCount,
+    ]);
+}
+
 if ($sub === 'analysis') {
     $custId = $customer['id'];
 

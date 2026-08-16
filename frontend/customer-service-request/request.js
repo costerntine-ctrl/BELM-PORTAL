@@ -9,13 +9,28 @@
   let selfServiceMode = false;
   let belmBusiness = {};
 
+  // V253 - a second "Send to BELM" button lives at the bottom of the
+  // Spare Parts panel (submits the same #serviceForm via the `form`
+  // attribute) so it's reachable without scrolling all the way back up
+  // once someone has added spare part rows. Both buttons must always
+  // mirror each other's label/disabled state.
+  function submitButtons() {
+    return [document.getElementById("submitButton"), document.getElementById("submitButtonBottom")].filter(Boolean);
+  }
+  function setSubmitButtonsText(text) {
+    submitButtons().forEach((button) => { button.textContent = text; });
+  }
+  function setSubmitButtonsDisabled(disabled) {
+    submitButtons().forEach((button) => { button.disabled = disabled; });
+  }
+
   if (!token) {
     window.location.replace("/portal/login");
     return;
   }
   if (!machineId) {
     showAlert("Choose a machine from the Customer dashboard.", true);
-    document.getElementById("submitButton").disabled = true;
+    setSubmitButtonsDisabled(true);
     return;
   }
 
@@ -106,13 +121,13 @@
       document.getElementById("portalModeSubtitle").textContent = "Customer Self-Service · BELM Support Gateway";
       document.getElementById("servicePanelTitle").textContent = "Request BELM Technical Support";
       document.getElementById("servicePanelIntro").textContent = "Describe the technical assistance you want BELM to provide. Your internal maintenance work remains with your own team.";
-      document.getElementById("submitButton").textContent = "Send to BELM Technical Support";
+      setSubmitButtonsText("Send to BELM Technical Support");
     } else {
       notice.textContent = `BELM SERVICE PROVIDER ACTIVE: Maintenance/service requests are handled by BELM and sent to ${belmBusiness.email || "the BELM Business Email"}. Your other customer portal operations remain under your company.`;
       document.getElementById("portalModeSubtitle").textContent = "BELM Managed Service Request";
       document.getElementById("servicePanelTitle").textContent = "Service request details";
       document.getElementById("servicePanelIntro").textContent = "Select the service required for this machine. BELM handles internal parts matching separately.";
-      document.getElementById("submitButton").textContent = "Submit service request to BELM";
+      setSubmitButtonsText("Submit service request to BELM");
     }
     document.getElementById("machineDetails").textContent = [
       machine.machineType,
@@ -140,7 +155,7 @@
       render(await api(`/service-options/${encodeURIComponent(machineId)}`));
     } catch (error) {
       showAlert(error.message || "Could not detect machine service options.", true);
-      document.getElementById("submitButton").disabled = true;
+      setSubmitButtonsDisabled(true);
     }
   }
 
@@ -229,11 +244,10 @@
     if (isSubmittingServiceRequest) return;
     isSubmittingServiceRequest = true;
     clearAlert();
-    const button = document.getElementById("submitButton");
     const option = selectedOption();
-    button.disabled = true;
-    button.classList.remove("success");
-    button.textContent = "Submitting…";
+    setSubmitButtonsDisabled(true);
+    submitButtons().forEach((btn) => btn.classList.remove("success"));
+    setSubmitButtonsText("Submitting…");
     try {
       const result = await api("/service-requests", {
         method: "POST",
@@ -270,21 +284,21 @@
       // Unmistakable "it worked" confirmation right on the button itself
       // — not just the alert banner above — so there's no doubt the tap
       // registered, before the button returns to its normal state.
-      button.classList.add("success");
-      button.textContent = "✓ Sent";
+      submitButtons().forEach((btn) => btn.classList.add("success"));
+      setSubmitButtonsText("✓ Sent");
       await new Promise(resolve => setTimeout(resolve, 1600));
     } catch (error) {
       showAlert(error.message || "Could not submit service request.", true);
     } finally {
-      button.classList.remove("success");
-      button.disabled = false;
-      button.textContent = selfServiceMode ? "Send to BELM Technical Support" : "Submit service request to BELM";
+      submitButtons().forEach((btn) => btn.classList.remove("success"));
+      setSubmitButtonsDisabled(false);
+      setSubmitButtonsText(selfServiceMode ? "Send to BELM Technical Support" : "Submit service request to BELM");
       isSubmittingServiceRequest = false;
     }
   });
 
   if (String(tokenPayload().customerRole || "").toLowerCase() === "viewer") {
-    document.getElementById("submitButton").disabled = true;
+    setSubmitButtonsDisabled(true);
     showAlert("Viewer assistants can review service requests but cannot submit new requests.");
   }
 

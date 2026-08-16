@@ -523,10 +523,14 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Repeat / Rework', !empty($job['repeat_issue']) ? 'YES' : 'NO'],
         ['Started', display_date_billing($job['started_at'])],
         ['Completed', display_date_billing($job['completed_at'])],
+        ['', ''],
+        ['Technician Signature', '_________________________  Date: ______________'],
+        ['Customer / Supervisor Signature', '_________________________  Date: ______________'],
     ];
     output_table_pdf('BELM-'.$job['job_card_no'].'.pdf','DIGITAL JOB CARD',[
         'Generated: '.date('d/m/Y H:i'),
         'Breakdown process record - BELM Operations Portal',
+        'Print, sign, and keep this copy for office records.',
     ],$rows);
 }
 

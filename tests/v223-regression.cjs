@@ -1,6 +1,11 @@
 const fs=require('fs');
 const checks=[];function has(p,ns){const s=fs.readFileSync(p,'utf8');for(const n of ns)checks.push([p+': '+n,s.includes(n)])}
-has('frontend/breakdown-workflow/index.html',['Sync Technicians','jobTechSyncStatus','v=223-tech-sync']);
+has('frontend/breakdown-workflow/index.html',['Sync Technicians','jobTechSyncStatus']);
+{
+  const html = fs.readFileSync('frontend/breakdown-workflow/index.html','utf8');
+  const m = /workflow\.js\?v=(\d+)-/.exec(html);
+  checks.push(['frontend/breakdown-workflow/index.html: workflow.js cache bumped >= v223', !!m && Number(m[1]) >= 223]);
+}
 has('frontend/breakdown-workflow/workflow.js',['loadJobTechnicians','technicians synced','Technician sync failed','Date.now()']);
 has('backend/api/breakdown_workflow.php',["rr.name='Technician'",'user_roles ur','Temporary Technician Override']);
 has('backend/api/engineering.php',["rr.name='Technician'",'user_roles ur']);

@@ -115,6 +115,12 @@
     await loadJobTechnicians(false);
   }
   document.getElementById('jobTechSync')?.addEventListener('click',()=>loadJobTechnicians(true));
+  document.getElementById('jobSendToBelm')?.addEventListener('click',()=>{
+    const machineId=selected?.case?.machineId||'';
+    const description=selected?.case?.description||selected?.case?.title||'';
+    const url=`/customer-service-request/?machine=${encodeURIComponent(machineId)}${description?`&note=${encodeURIComponent(description)}`:''}`;
+    location.href=url;
+  });
   document.getElementById('jobTechnician')?.addEventListener('change',e=>{
     const tech=jobTechnicians.find(x=>String(x.id)===String(e.target.value));
     const note=document.getElementById('jobOverrideNote');

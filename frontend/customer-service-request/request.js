@@ -1,6 +1,7 @@
 (function () {
   const token = localStorage.getItem("belm_customer_token");
   const machineId = new URLSearchParams(window.location.search).get("machine") || "";
+  const prefillNote = new URLSearchParams(window.location.search).get("note") || "";
   const alertBox = document.getElementById("alertBox");
   let serviceOptions = [];
   let machine = null;
@@ -317,6 +318,11 @@
 
   document.getElementById("refreshHistoryButton").addEventListener("click", loadHistory);
 
-  load().then(addPartRow);
+  load().then(addPartRow).then(() => {
+    if (prefillNote) {
+      const descriptionField = document.getElementById("description");
+      if (descriptionField && !descriptionField.value.trim()) descriptionField.value = prefillNote;
+    }
+  });
   loadHistory();
 })();

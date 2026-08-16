@@ -1,3 +1,3 @@
 // Regression baseline: belm-app-v215-petty-checkup
 // Regression baseline: belm-app-v211-bug-audit
-const CACHE='belm-app-v247-checkup-report-label';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+const CACHE='belm-app-v249-app-shortcut';self.addEventListener('install',e=>{self.skipWaiting()});self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));

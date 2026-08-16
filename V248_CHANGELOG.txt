@@ -1,0 +1,37 @@
+BELM PORTAL V248 - FIX: DIFFERENT CUSTOMER LINKS OPENING THE SAME ACCOUNT
+
+ROOT CAUSE (confirmed real bug, not a design choice)
+- Each customer's "Working Customer Portal Link" looks like
+  /portal/login?customer=<unique-slug>, uniquely identifying ONE
+  customer. Slug generation is correctly unique (checked against the
+  database, with a UNIQUE constraint as a backstop) - that part was
+  never the problem.
+- The bug was in what happens when that link is OPENED: the portal
+  checked "is there already ANY valid customer session token in this
+  browser?" and, if yes, skipped the login form entirely and jumped
+  straight to /portal/dashboard - without ever checking whether that
+  cached token actually belonged to the customer named in the link's
+  ?customer= slug.
+- Practical effect: open Customer A's link in a browser and log in ->
+  their token is cached. Later open Customer B's DIFFERENT link in the
+  same browser (still holding Customer A's valid token) -> instantly
+  lands on Customer A's dashboard again, no login prompt shown at all.
+  It looks like "different links open the same customer" and like
+  "the password doesn't even matter" - because the password screen
+  never appears; the stale session is reused silently.
+
+FIXED
+- Before auto-skipping the login form, the cached token's own
+  portalLink claim is now compared against the ?customer= slug in the
+  URL being opened.
+  - Match -> same customer, safe to skip straight to the dashboard as
+    before.
+  - Mismatch -> the stale token is cleared and the normal login form
+    is shown, so the correct customer (or their password) can actually
+    be entered.
+- This fixes it for both the account owner and any of their
+  sub-user/assistant logins, since they share the same portalLink
+  claim.
+
+- Browser/PWA cache bumped to V248.
+- No database migration required.

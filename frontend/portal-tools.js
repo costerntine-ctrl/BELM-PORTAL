@@ -279,8 +279,27 @@
       return true;
     }
     if (pathname === "/portal/login" && isValid("belm_customer_token")) {
-      window.location.replace("/portal/dashboard");
-      return true;
+      // V248 - a customer portal link looks like
+      // /portal/login?customer=<slug>, uniquely identifying ONE customer.
+      // This used to skip straight to /portal/dashboard as long as ANY
+      // valid customer token was already sitting in localStorage, with no
+      // check that the cached token actually belonged to the customer the
+      // link points to. Opening a second, different customer's link in the
+      // same browser (still holding the first customer's token from an
+      // earlier session) silently landed on the FIRST customer's dashboard
+      // instead - "different links open the same account". Now the token's
+      // own portalLink claim must match the ?customer= slug in the URL
+      // before we skip the login form; otherwise the stale token is
+      // cleared so the correct customer can actually log in.
+      const requestedSlug = new URLSearchParams(window.location.search).get("customer") || "";
+      const payload = tokenPayload("belm_customer_token");
+      const tokenSlug = String(payload?.portalLink || "").toLowerCase();
+      if (!requestedSlug || tokenSlug === requestedSlug.toLowerCase()) {
+        window.location.replace("/portal/dashboard");
+        return true;
+      }
+      localStorage.removeItem("belm_customer_token");
+      return false;
     }
     return false;
   }

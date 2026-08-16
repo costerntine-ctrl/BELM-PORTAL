@@ -242,7 +242,13 @@
       const response = await fetch("/api/customer-portal/recent-activity", { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) return;
       const data = await response.json();
-      button.classList.toggle("belm-machine-urgent-blink", Number(data.redMachineCount || 0) > 0);
+      // V271 - blink for either a RED machine OR any BELM message the
+      // customer hasn't dismissed yet (same "OK" dismissal tracking the
+      // Messages from BELM panel itself already uses) - a new message is
+      // just as urgent a signal as a machine going red.
+      const dismissed = new Set(JSON.parse(localStorage.getItem("belm_dismissed_messages") || "[]"));
+      const hasUnreadMessage = (data.belmMessages || []).some((msg) => !dismissed.has(String(msg.id)));
+      button.classList.toggle("belm-machine-urgent-blink", Number(data.redMachineCount || 0) > 0 || hasUnreadMessage);
     } catch (_) {}
   }
   function closeCustomerUpdatesDialog() {
@@ -309,7 +315,9 @@
               <small>${belmT("Filled by")}: ${escapeHtml(row.filledBy || "-")} · ${escapeHtml(formatTanzaniaDateTime(row.createdAt))}</small>
             </article>`).join("")}</div>` : `<p class="belm-general-analysis-loading">${belmT("No checkup activity recorded yet.")}</p>`}
         </section>`;
-      document.getElementById("belmUpdatesButton")?.classList.toggle("belm-machine-urgent-blink", Number(data.redMachineCount || 0) > 0);
+      const dismissedNow = new Set(JSON.parse(localStorage.getItem("belm_dismissed_messages") || "[]"));
+      const stillUnread = (data.belmMessages || []).some((msg) => !dismissedNow.has(String(msg.id)));
+      document.getElementById("belmUpdatesButton")?.classList.toggle("belm-machine-urgent-blink", Number(data.redMachineCount || 0) > 0 || stillUnread);
     } catch (_) {
       body.innerHTML = `<p class="belm-general-analysis-loading">${belmT("Could not load updates.")}</p>`;
     }

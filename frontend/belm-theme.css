@@ -3110,20 +3110,41 @@ a[href^="/api/customer-portal/reports/"][href$="/download"] {
 .belm-customer-message-ok:hover { background: #125497; }
 @media (max-width: 640px) { .belm-customer-message-title { flex-direction:column; gap:3px; } }
 
+/* V271 - every unread message from BELM alerts the customer with a red
+   border/glow that blinks until they dismiss it (OK button), so a new
+   message is impossible to miss instead of blending into the page. */
+@keyframes belmMessageAlertBlink {
+  0%, 100% { border-color: #d83b40; box-shadow: 0 0 0 0 rgba(216,59,64,.45); }
+  50% { border-color: #ff7a7e; box-shadow: 0 0 0 6px rgba(216,59,64,0); }
+}
+.belm-customer-messages-panel { border-color: #d83b40 !important; }
+.belm-customer-message-row {
+  border-color: #d83b40;
+  border-width: 2px !important;
+  animation: belmMessageAlertBlink 1.4s ease-in-out infinite;
+}
+.belm-customer-message-title strong { color: #b3241f; }
+@media (prefers-reduced-motion: reduce) {
+  .belm-customer-message-row { animation: none; }
+}
+
 /* V229 - dark mode support for the Messages from BELM panel; it was
    hardcoded white/light and became unreadable in Dark Mode. */
 html.dark .belm-customer-messages-panel,
 html[data-theme="dark"] .belm-customer-messages-panel {
-  border-color: #2a394d !important;
+  border-color: #d83b40 !important;
   background: #111b2a !important;
   color: #e5edf7;
   box-shadow: 0 14px 34px rgba(0,0,0,.26) !important;
 }
 html.dark .belm-customer-message-row,
 html[data-theme="dark"] .belm-customer-message-row {
-  border-color: #27364a !important;
-  background: #0e1826 !important;
+  background: #240f10 !important;
   color: #e5edf7;
+}
+html.dark .belm-customer-message-title strong,
+html[data-theme="dark"] .belm-customer-message-title strong {
+  color: #ff9d9d !important;
 }
 html.dark .belm-customer-message-title span,
 html[data-theme="dark"] .belm-customer-message-title span,

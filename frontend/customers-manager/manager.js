@@ -268,18 +268,7 @@
           <div><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
         </div>
-        <div class="customer-card-machine-quick-actions">
-          <button type="button" class="secondary" data-quick-edit-machine="${escapeHtml(customer.id)}">✎ Edit Machine</button>
-          <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
-        </div>
         ${customer.belmServiceProviderActive || !customer.isMachineryAdmin ? '<span class="badge machinery-admin-badge">🔧 BELM Service Provider ON</span>' : '<span class="badge machinery-admin-badge">⚙ Customer Maintenance Team</span>'}
-        <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
-          <div class="customer-feed-head">
-            <strong>Communication history</strong>
-            <button type="button" class="view-messages-button" data-view-messages="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View all</button>
-          </div>
-          <div class="customer-feed-body">Loading recent updates…</div>
-        </div>
         <div class="customer-info-grid">
           <div><span>Email</span><strong>${escapeHtml(customer.email)}</strong></div>
           <div><span>Phone</span><strong>${escapeHtml(customer.phone)}</strong></div>
@@ -293,6 +282,17 @@
             <button data-copy-link="${escapeHtml(customer.id)}">Copy link</button>
             <a href="${escapeHtml(portalUrl)}" target="_blank" rel="noopener">Open customer login</a>
           </div>
+        </div>
+        <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
+          <div class="customer-feed-head">
+            <strong>Communication history</strong>
+            <button type="button" class="view-messages-button" data-view-messages="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View all</button>
+          </div>
+          <div class="customer-feed-body">Loading recent updates…</div>
+        </div>
+        <div class="customer-card-machine-quick-actions">
+          <button type="button" class="secondary" data-quick-edit-machine="${escapeHtml(customer.id)}">✎ Edit Machine</button>
+          <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
         </div>
         <div class="customer-card-actions">
           <button class="view-machines-inline" data-view-machines="${escapeHtml(customer.id)}">

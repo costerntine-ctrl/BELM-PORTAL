@@ -1,0 +1,19 @@
+BELM PORTAL V272 - CUSTOMER CARD: REORDERED PER YOUR NUMBERING
+
+The customer card (Customers Manager) now reads top to bottom in the
+order marked in the screenshot:
+
+1. Customer name / Active badge / Registered date (unchanged - top)
+2. Email / Phone / Address / TIN-VRN
+3. Working Customer Portal Link (Copy link / Open customer login)
+4. Communication history
+5. Edit Machine / Delete Machine
+
+The "BELM Service Provider ON / Customer Maintenance Team" status
+badge stays right under the header (it wasn't numbered, so it's kept
+next to the name it describes), and the bottom action row (View
+Machines, Message Customer, Edit customer, Reset login, Delete,
+Forget permanently) stays at the very bottom, unchanged.
+
+- Browser/PWA cache bumped to V272.
+- No database migration required.

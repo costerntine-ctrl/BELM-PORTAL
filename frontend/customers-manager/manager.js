@@ -306,7 +306,17 @@
     grid.innerHTML = filtered.map((customer) => {
       const portalUrl = customerPortalUrl(customer);
       const machines = customer.machines || [];
-      return `<article class="customer-card ${Number(customer.isActive) === 1 ? "" : "inactive"}">
+      // V282 - the card itself blinks to match the worst machine status
+      // that customer has, so trouble is visible while scrolling the
+      // list without opening View Machines for every card.
+      const worstStatus = machines.reduce((worst, m) => {
+        const rank = { RED: 3, CRITICAL: 3, YELLOW: 2, ATTENTION: 2, GREEN: 1 };
+        const level = rank[String(m.status || "").toUpperCase()] || 0;
+        return level > worst.level ? { level, status: String(m.status || "").toUpperCase() } : worst;
+      }, { level: 0, status: "" }).status;
+      const blinkClass = ["RED", "CRITICAL"].includes(worstStatus) ? "customer-card-blink-red"
+        : ["YELLOW", "ATTENTION"].includes(worstStatus) ? "customer-card-blink-yellow" : "";
+      return `<article class="customer-card ${Number(customer.isActive) === 1 ? "" : "inactive"} ${blinkClass}">
         <div class="customer-card-head">
           <div><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
@@ -333,14 +343,11 @@
           </div>
           <div class="customer-feed-body">Loading recent updates…</div>
         </div>
-        <div class="customer-card-machine-quick-actions">
-          <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
-        </div>
         <div class="customer-card-actions">
           <button class="view-machines-inline" data-view-machines="${escapeHtml(customer.id)}">
             View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">!</span>' : ""}
           </button>
-          <button type="button" class="secondary" data-quick-edit-machine="${escapeHtml(customer.id)}">✎ Edit Machine</button>
+          <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
           <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
           <button class="delete" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
@@ -1676,7 +1683,6 @@
     const deleteCustomer = event.target.closest("[data-delete-customer]");
     const forgetCustomerButton = event.target.closest("[data-forget-customer]");
     const copyLink = event.target.closest("[data-copy-link]");
-    const quickEditMachine = event.target.closest("[data-quick-edit-machine]");
     const quickDeleteMachine = event.target.closest("[data-quick-delete-machine]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
@@ -1691,21 +1697,11 @@
       const customer = customers.find((item) => item.id === copyLink.dataset.copyLink);
       if (customer) copyText(customerPortalUrl(customer), "Customer portal link copied.");
     }
-    // V270 - quick Edit/Delete Machine shortcuts right on the customer
-    // card. A customer with exactly one machine acts on it directly; with
-    // none there's nothing to act on; with more than one, we can't guess
-    // which machine was meant, so it opens View Machines to pick.
-    if (quickEditMachine) {
-      const customer = customers.find((item) => item.id === quickEditMachine.dataset.quickEditMachine);
-      const machines = customer?.machines || [];
-      if (!machines.length) {
-        showAlert("This customer has no machines yet. Use View Machines to add one.", true);
-      } else if (machines.length === 1) {
-        confirmThenOpen("Edit machine?", `Confirm you want to edit ${machines[0].model || "this machine"}.`, () => openMachine(customer, machines[0]));
-      } else {
-        openMachineList(customer);
-      }
-    }
+    // V281 - "Edit Machine" shortcut removed entirely (V270/277/278) -
+    // editing a machine is already one click away inside View Machines,
+    // so keeping a second copy of that button here just made the card
+    // taller for no benefit. "Delete Machine" stays as a shortcut since
+    // it wasn't asked to be removed.
     if (quickDeleteMachine) {
       const customer = customers.find((item) => item.id === quickDeleteMachine.dataset.quickDeleteMachine);
       const machines = customer?.machines || [];

@@ -31,6 +31,30 @@
 .customer-card { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); box-shadow: var(--shadow); }
 .customer-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: var(--green); }
 .customer-card.inactive::before { background: #9aa6b5; }
+
+/* V282 - customer card blinks to flag the worst machine status it
+   has, without needing to open View Machines to notice. */
+@keyframes belmCustomerCardBlinkRed {
+  0%, 100% { border-color: #d83b40; box-shadow: 0 0 0 0 rgba(216,59,64,.4); }
+  50% { border-color: #ff8a8e; box-shadow: 0 0 0 5px rgba(216,59,64,0); }
+}
+@keyframes belmCustomerCardBlinkYellow {
+  0%, 100% { border-color: #e5bd00; box-shadow: 0 0 0 0 rgba(229,189,0,.35); }
+  50% { border-color: #ffe27a; box-shadow: 0 0 0 5px rgba(229,189,0,0); }
+}
+.customer-card-blink-red {
+  border-width: 2px;
+  animation: belmCustomerCardBlinkRed 1.4s ease-in-out infinite;
+}
+.customer-card-blink-yellow {
+  border-width: 2px;
+  animation: belmCustomerCardBlinkYellow 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .customer-card-blink-red, .customer-card-blink-yellow { animation: none; }
+  .customer-card-blink-red { border-color: #d83b40; }
+  .customer-card-blink-yellow { border-color: #e5bd00; }
+}
 .customer-card-head { display: flex; align-items: start; justify-content: space-between; gap: 15px; padding: 20px 20px 14px; }
 .customer-card-head h2 { margin: 4px 0 5px; font: 750 21px "Space Grotesk", sans-serif; }
 .customer-card-head p { margin: 0; color: var(--muted); font-size: 11px; }
@@ -106,9 +130,6 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .customer-card-actions button { padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .customer-card-actions button.delete { color: var(--red); }
 .customer-card-actions .view-machines-inline { margin-right: auto; color: var(--green-dark, #087039); border-color: var(--green); background: color-mix(in srgb, var(--green) 8%, var(--paper)); }
-.customer-card-machine-quick-actions { display: flex; gap: 8px; padding: 0 20px 14px; }
-.customer-card-machine-quick-actions button { flex: 1; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 800; cursor: pointer; }
-.customer-card-machine-quick-actions button.delete { color: var(--red); border-color: #f2cbc7; }
 .credentials { display: grid; gap: 12px; }
 .credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 880px) { .customer-card { width: 100%; } }
@@ -178,6 +199,34 @@ img#checkupDisplayPhotoPreview.checkup-photo-preview.hidden { display: none; }
 .customer-feed-row p { margin: 6px 0 4px; color: #33475a; font-size: 13px; line-height: 1.5; }
 .customer-feed-row small { color: var(--muted); font-size: 10.5px; }
 .customer-feed-empty { margin: 0; padding: 10px; color: var(--muted); font-size: 12px; text-align: center; }
+
+/* V282 - Communication history had no Dark Mode styling at all, so it
+   stayed on its light blue/white background+border even when
+   everything around it was dark - that stuck-out brightness is what
+   read as a "glow". Given a proper black/dark tint instead. */
+html[data-theme="dark"] .customer-feed {
+  border-color: #1c2a3f !important;
+  background: #0e1826 !important;
+}
+html[data-theme="dark"] .customer-feed-head strong,
+html[data-theme="dark"] .customer-feed-row-head strong {
+  color: #dce6f2 !important;
+}
+html[data-theme="dark"] .customer-feed-head .view-messages-button {
+  border-color: #2a3950 !important;
+  background: #16233d !important;
+  color: #dce6f2 !important;
+}
+html[data-theme="dark"] .customer-feed-row {
+  border-color: #1c2a3f !important;
+  background: #111b2a !important;
+}
+html[data-theme="dark"] .customer-feed-row p {
+  color: #c7d2df !important;
+}
+html[data-theme="dark"] .customer-feed-empty {
+  color: #8fa2b9 !important;
+}
 .badge-resolve { border: 0; cursor: pointer; }
 .badge-resolve:hover { filter: brightness(1.1); }
 .badge-resolve:disabled { opacity: .5; cursor: wait; }

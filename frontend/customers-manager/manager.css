@@ -148,6 +148,19 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .customer-card-actions button { padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .customer-card-actions button.delete { color: var(--red); }
 .customer-card-actions .view-machines-inline { margin-right: auto; color: var(--green-dark, #087039); border-color: var(--green); background: color-mix(in srgb, var(--green) 8%, var(--paper)); }
+
+.customer-card-actions button.action-blue {
+  color: #fff;
+  border-color: #2f7cf5;
+  background: #2f7cf5;
+}
+.customer-card-actions button.action-blue:hover { background: #1f69dd; border-color: #1f69dd; }
+.customer-card-actions button.action-yellow {
+  color: #3d2b00;
+  border-color: #e5bd00;
+  background: #f6cf2f;
+}
+.customer-card-actions button.action-yellow:hover { background: #ebc10d; border-color: #d9af00; }
 .credentials { display: grid; gap: 12px; }
 .credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 @media (max-width: 880px) { .customer-card { width: 100%; } }
@@ -329,3 +342,85 @@ html[data-theme="dark"] .customer-feed-empty {
    sections inside the Reports dialog */
 .dialog-section-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 10px; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .dialog-section-divider::before, .dialog-section-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* V285 - Uniform customer cards.
+   Long customer names must not push the portal/feed/actions lower than
+   neighbouring cards. Keep the same visual rhythm while preserving the
+   complete name in the DOM/title tooltip. */
+.customer-card-head {
+  min-height: 126px;
+  box-sizing: border-box;
+}
+.customer-card-title h2,
+.customer-card-head h2 {
+  display: -webkit-box;
+  min-height: 49px;
+  max-height: 49px;
+  overflow: hidden;
+  line-height: 1.16;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.customer-info-grid {
+  min-height: 112px;
+  box-sizing: border-box;
+  align-content: start;
+}
+.portal-link-box {
+  min-height: 112px;
+  box-sizing: border-box;
+}
+.customer-feed {
+  display: flex;
+  flex-direction: column;
+  height: 154px;
+  min-height: 154px;
+  margin: 0 20px 16px;
+  box-sizing: border-box;
+}
+.customer-feed-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.customer-card-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 7px;
+  min-height: 115px;
+  box-sizing: border-box;
+}
+.customer-card-actions button {
+  width: 100%;
+  min-height: 36px;
+  white-space: normal;
+  line-height: 1.15;
+}
+.customer-card-actions .view-machines-inline {
+  grid-column: span 3;
+  margin-right: 0;
+}
+.customer-card-actions [data-quick-delete-machine] { grid-column: span 3; }
+.customer-card-actions [data-edit-customer],
+.customer-card-actions [data-reset-customer],
+.customer-card-actions [data-delete-customer] { grid-column: span 2; }
+.customer-card-actions [data-forget-customer] { grid-column: 1 / -1; }
+
+@media (max-width: 620px) {
+  .customer-card-head { min-height: auto; }
+  .customer-card-title h2,
+  .customer-card-head h2 { min-height: 46px; max-height: 46px; }
+  .customer-info-grid { min-height: 0; }
+  .portal-link-box { min-height: 0; }
+  .customer-feed { height: 160px; min-height: 160px; }
+  .customer-card-actions { grid-template-columns: 1fr 1fr; min-height: 0; }
+  .customer-card-actions .view-machines-inline,
+  .customer-card-actions [data-quick-delete-machine],
+  .customer-card-actions [data-edit-customer],
+  .customer-card-actions [data-reset-customer],
+  .customer-card-actions [data-delete-customer] { grid-column: span 1; }
+  .customer-card-actions [data-forget-customer] { grid-column: 1 / -1; }
+}

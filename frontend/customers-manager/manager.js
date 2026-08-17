@@ -321,7 +321,7 @@
         : !Boolean(customer.isMachineryAdmin);
       return `<article class="customer-card ${Number(customer.isActive) === 1 ? "" : "inactive"} ${blinkClass}">
         <div class="customer-card-head">
-          <div class="customer-card-title"><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
+          <div class="customer-card-title"><p class="eyebrow">Customer</p><h2 title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <div class="customer-card-head-controls">
             <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
             <div class="customer-provider-control ${belmProviderActive ? "belm-on" : "customer-on"}" title="Switch maintenance control between Customer and BELM">
@@ -361,8 +361,8 @@
             View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">!</span>' : ""}
           </button>
           <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
-          <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
-          <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
+          <button class="action-yellow" data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
+          <button class="action-blue" data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
           <button class="delete" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
           ${isSuperAdmin ? `<button class="delete" data-forget-customer="${escapeHtml(customer.id)}" title="Permanently erase — skips the Recycle Bin, cannot be undone or restored">Forget permanently</button>` : ""}
         </div>

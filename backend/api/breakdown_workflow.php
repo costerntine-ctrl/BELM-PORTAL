@@ -225,6 +225,55 @@ function bw_report_range(string $period, string $anchorDate): array {
     return [$period, $start, $end, $label];
 }
 
+function bw_machine_report_range(string $from = '', string $to = ''): array {
+    $from = trim($from); $to = trim($to);
+    if ($from === '' && $to === '') return [null, null, 'All time'];
+    if ($from === '') $from = $to;
+    if ($to === '') $to = $from;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+        json_error('Report dates must use YYYY-MM-DD.', 400);
+    }
+    $tz = new DateTimeZone('Africa/Dar_es_Salaam');
+    try {
+        $start = new DateTimeImmutable($from . ' 00:00:00', $tz);
+        $endDay = new DateTimeImmutable($to . ' 00:00:00', $tz);
+    } catch (Throwable $error) {
+        json_error('Report date is invalid.', 400);
+    }
+    if ($endDay < $start) json_error('Report end date cannot be before start date.', 400);
+    return [$start->format(DateTimeInterface::ATOM), $endDay->modify('+1 day')->format(DateTimeInterface::ATOM), $from === $to ? $from : ($from . ' to ' . $to)];
+}
+
+function bw_machine_report_access(array $ctx, string $machineId): array {
+    $stmt = db()->prepare('SELECT m.id,m.customer_id,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,c.name AS customer_name,c.is_machinery_admin
+                           FROM machines m JOIN customers c ON c.id=m.customer_id
+                           WHERE m.id=? AND m.deleted_at IS NULL AND c.deleted_at IS NULL AND c.is_active=1');
+    $stmt->execute([$machineId]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found.', 404);
+    if ($ctx['kind'] === 'customer') {
+        if ((string)$machine['customer_id'] !== (string)$ctx['customerId']) json_error('Not allowed.', 403);
+        return $machine;
+    }
+    if ($ctx['kind'] === 'customer-tech') {
+        if ((string)$machine['customer_id'] !== (string)$ctx['customerId']) json_error('This machine is not assigned to this Technician.', 403);
+        if (empty($machine['is_machinery_admin'])) json_error('Customer Technician access is paused while BELM Service Provider is active.', 403);
+        return $machine;
+    }
+    require_belm_customer_privacy((string)$machine['customer_id'], 'maintenanceRecords', 'internal maintenance and Job Card reports', $machineId);
+    if (!empty($ctx['isTechnician'])) {
+        $assigned = (string)($ctx['customerId'] ?? '');
+        $hasJob = false;
+        if (!empty($ctx['actorId'])) {
+            $job = db()->prepare('SELECT 1 FROM digital_job_cards WHERE machine_id=? AND technician_id=? LIMIT 1');
+            $job->execute([$machineId, (string)$ctx['actorId']]);
+            $hasJob = (bool)$job->fetchColumn();
+        }
+        if ($assigned !== (string)$machine['customer_id'] && !$hasJob) json_error('You are not assigned to this machine.', 403);
+    }
+    return $machine;
+}
+
 function bw_report_scope(array $ctx): array {
     if ($ctx['kind'] === 'customer') {
         $stmt = db()->prepare('SELECT name FROM customers WHERE id=? AND deleted_at IS NULL');
@@ -504,15 +553,53 @@ if ($method === 'GET' && $action === 'department-report-pdf') {
 // digging through Breakdown Workflow case by case. Read-only, never
 // deletes or hides anything.
 if ($method === 'GET' && $action === 'machine-job-cards' && !empty($_GET['machineId'])) {
-    $staffUser = require_auth();
-    if (($staffUser['roleName'] ?? '') !== 'Technician') require_page_access($staffUser, 'service-requests');
     $machineId = trim((string)$_GET['machineId']);
-    $stmt = db()->prepare(
-        'SELECT id, job_card_no, title, status, technician_name, started_at, completed_at, created_at
-         FROM digital_job_cards WHERE machine_id = ? ORDER BY created_at DESC LIMIT 100'
-    );
-    $stmt->execute([$machineId]);
+    bw_machine_report_access($ctx, $machineId);
+    [$fromTs, $toTs] = bw_machine_report_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
+    $sql = 'SELECT id, job_card_no, title, fault_description, status, technician_name,
+                   diagnosis, work_done, test_result, completion_note, repeat_issue,
+                   started_at, completed_at, created_at
+            FROM digital_job_cards WHERE machine_id = ?';
+    $params = [$machineId];
+    if ($fromTs !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromTs; }
+    if ($toTs !== null) { $sql .= ' AND created_at < ?'; $params[] = $toTs; }
+    $sql .= ' ORDER BY created_at DESC LIMIT 250';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
     json_out($stmt->fetchAll());
+}
+
+if ($method === 'GET' && $action === 'machine-job-cards-pdf' && !empty($_GET['machineId'])) {
+    $machineId = trim((string)$_GET['machineId']);
+    $machine = bw_machine_report_access($ctx, $machineId);
+    [$fromTs, $toTs, $periodLabel] = bw_machine_report_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
+    $sql = 'SELECT job_card_no,title,status,technician_name,created_at,completed_at
+            FROM digital_job_cards WHERE machine_id=?';
+    $params = [$machineId];
+    if ($fromTs !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromTs; }
+    if ($toTs !== null) { $sql .= ' AND created_at < ?'; $params[] = $toTs; }
+    $sql .= ' ORDER BY created_at DESC';
+    $stmt = db()->prepare($sql); $stmt->execute($params); $jobCards = $stmt->fetchAll();
+    $rows = array_map(static fn(array $jc): array => [
+        (string)$jc['job_card_no'],
+        (string)$jc['title'],
+        (string)$jc['status'],
+        (string)($jc['technician_name'] ?: 'Unassigned'),
+        display_date_billing($jc['created_at']),
+    ], $jobCards);
+    $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? '')) ?: 'Machine';
+    output_table_pdf(
+        'BELM-job-card-report-history.pdf',
+        'JOB CARD REPORTS',
+        [
+            'Customer: ' . (string)($machine['customer_name'] ?? 'Customer'),
+            'Machine: ' . $machineLabel,
+            'Serial / Registration: ' . (string)($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+            'Period: ' . $periodLabel,
+            'Job Card  |  Title  |  Status  |  Technician  |  Date',
+        ],
+        $rows
+    );
 }
 
 if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {

@@ -1010,6 +1010,12 @@
   }
 
   let cachedMachineReports = [];
+  let cachedMachineReportsKey = "";
+  let cachedMachineJobCards = [];
+  let cachedMachineJobCardsKey = "";
+  let currentReportMachineId = "";
+  let currentReportMachineName = "";
+  let currentReportTab = "checklist";
 
   let currentExpenseReceipts = [];
 
@@ -1104,50 +1110,258 @@
     }
   });
 
-  async function openMachineReports(machineId, machineName) {
-    document.getElementById("machineListDialog").close();
-    document.getElementById("reportsDialogTitle").textContent =
-      `${currentMachineListCustomerName ? currentMachineListCustomerName.toUpperCase() + " — " : ""}${machineName} Checklist Reports`;
+  function tanzaniaReportDateKey(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Dar_es_Salaam", year: "numeric", month: "2-digit", day: "2-digit",
+    }).formatToParts(date).reduce((acc, part) => { acc[part.type] = part.value; return acc; }, {});
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  }
+
+  function reportFilterRange() {
+    const mode = document.getElementById("machineReportFilterMode")?.value || "all";
+    if (mode === "day") {
+      const value = document.getElementById("machineReportDay")?.value || "";
+      return { from: value, to: value, label: value ? `Date: ${value}` : "Select a date" };
+    }
+    if (mode === "month") {
+      const value = document.getElementById("machineReportMonth")?.value || "";
+      if (!/^\d{4}-\d{2}$/.test(value)) return { from: "", to: "", label: "Select a month", invalid: true };
+      const [year, month] = value.split("-").map(Number);
+      const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      return { from: `${value}-01`, to: `${value}-${String(lastDay).padStart(2, "0")}`, label: `Month: ${value}` };
+    }
+    if (mode === "year") {
+      const value = String(document.getElementById("machineReportYear")?.value || "").trim();
+      if (!/^\d{4}$/.test(value)) return { from: "", to: "", label: "Enter a valid year", invalid: true };
+      return { from: `${value}-01-01`, to: `${value}-12-31`, label: `Year: ${value}` };
+    }
+    return { from: "", to: "", label: "All time" };
+  }
+
+  function syncMachineReportFilterFields() {
+    const mode = document.getElementById("machineReportFilterMode")?.value || "all";
+    document.getElementById("machineReportDayField")?.classList.toggle("hidden", mode !== "day");
+    document.getElementById("machineReportMonthField")?.classList.toggle("hidden", mode !== "month");
+    document.getElementById("machineReportYearField")?.classList.toggle("hidden", mode !== "year");
+  }
+
+  function machineReportQuery(range) {
+    const params = new URLSearchParams();
+    if (range?.from) params.set("from", range.from);
+    if (range?.to) params.set("to", range.to);
+    return params.toString();
+  }
+
+  function machineReportRangeKey(machineId, range) {
+    return `${machineId}|${range?.from || ""}|${range?.to || ""}`;
+  }
+
+  async function getChecklistReportsForRange(range) {
+    const key = machineReportRangeKey(currentReportMachineId, range);
+    if (cachedMachineReportsKey === key) return cachedMachineReports;
+    const qs = machineReportQuery(range);
+    cachedMachineReports = await api(`/checklist-reports/machine/${encodeURIComponent(currentReportMachineId)}${qs ? `?${qs}` : ""}`);
+    cachedMachineReportsKey = key;
+    return cachedMachineReports;
+  }
+
+  async function getJobCardsForRange(range) {
+    const key = machineReportRangeKey(currentReportMachineId, range);
+    if (cachedMachineJobCardsKey === key) return cachedMachineJobCards;
+    const qs = new URLSearchParams({ machineId: currentReportMachineId });
+    if (range?.from) qs.set("from", range.from);
+    if (range?.to) qs.set("to", range.to);
+    cachedMachineJobCards = await api(`/breakdown-workflow/machine-job-cards?${qs.toString()}`);
+    cachedMachineJobCardsKey = key;
+    return cachedMachineJobCards;
+  }
+
+  function reportDownloadHref(path, range) {
+    const qs = new URLSearchParams();
+    if (range?.from) qs.set("from", range.from);
+    if (range?.to) qs.set("to", range.to);
+    if (token) qs.set("token", token);
+    return `${path}${path.includes("?") ? "&" : "?"}${qs.toString()}`;
+  }
+
+  async function renderMachineReportCenter() {
+    const range = reportFilterRange();
     const list = document.getElementById("reportsList");
-    const jobCardsList = document.getElementById("machineJobCardsList");
+    const periodLabel = document.getElementById("machineReportPeriodLabel");
+    if (range.invalid || ((document.getElementById("machineReportFilterMode")?.value || "all") !== "all" && !range.from)) {
+      list.innerHTML = '<p class="alert error">Choose a valid Date, Month or Year, then click View Reports.</p>';
+      periodLabel.textContent = range.label || "Choose a reporting period.";
+      return;
+    }
+    periodLabel.textContent = `Showing ${range.label.toLowerCase()} · ${currentReportTab === "jobcard" ? "Job Card Reports" : currentReportTab === "daily" ? "Daily Reports" : "Checklist Reports"}.`;
+    document.querySelectorAll("[data-report-tab]").forEach((button) => button.classList.toggle("active", button.dataset.reportTab === currentReportTab));
     list.innerHTML = '<p class="muted">Loading reports…</p>';
-    jobCardsList.innerHTML = '<p class="muted">Loading Job Card / Daily Report history…</p>';
-    document.getElementById("reportsDialog").showModal();
+
     try {
-      cachedMachineReports = await api(`/checklist-reports/machine/${encodeURIComponent(machineId)}`);
-      list.innerHTML = cachedMachineReports.length ? cachedMachineReports.map((report) => `
+      if (currentReportTab === "jobcard") {
+        const jobCards = await getJobCardsForRange(range);
+        list.innerHTML = Array.isArray(jobCards) && jobCards.length ? jobCards.map((jc) => `
+          <article class="report-item">
+            <div>
+              <strong>${escapeHtml(jc.jobCardNo || jc.job_card_no || "Job Card")}${jc.title ? ` — ${escapeHtml(jc.title)}` : ""}</strong>
+              <span>${formatDateTime(jc.createdAt || jc.created_at)} · Technician: ${escapeHtml(jc.technicianName || jc.technician_name || "Unassigned")}</span>
+            </div>
+            <span class="machine-status ${escapeHtml(String(jc.status || "").toUpperCase())}">${escapeHtml(jc.status || "")}</span>
+            <div class="report-center-actions">
+              <button type="button" data-view-job-card-report="${escapeHtml(jc.id)}">View Report</button>
+              <a class="report-download-link" href="/api/breakdown-workflow/job-card-pdf/${encodeURIComponent(jc.id)}?token=${encodeURIComponent(token || "")}" target="_blank" rel="noopener">Download Report</a>
+            </div>
+          </article>`).join("") : '<p class="muted">No Job Card reports found for this period.</p>';
+        return;
+      }
+
+      const reports = await getChecklistReportsForRange(range);
+      if (currentReportTab === "daily") {
+        const groups = new Map();
+        (Array.isArray(reports) ? reports : []).forEach((report) => {
+          const key = tanzaniaReportDateKey(report.createdAt);
+          if (!key) return;
+          if (!groups.has(key)) groups.set(key, []);
+          groups.get(key).push(report);
+        });
+        const dailyGroups = [...groups.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+        list.innerHTML = dailyGroups.length ? dailyGroups.map(([dateKey, dayReports]) => {
+          const rank = { GREEN: 0, YELLOW: 1, RED: 2 };
+          const worst = dayReports.reduce((value, report) => rank[String(report.overallStatus || "GREEN").toUpperCase()] > rank[value] ? String(report.overallStatus || "GREEN").toUpperCase() : value, "GREEN");
+          const technicians = [...new Set(dayReports.map((report) => report.filledBy).filter(Boolean))];
+          return `<article class="report-item">
+            <div class="daily-report-summary">
+              <strong>Daily Report — ${escapeHtml(dateKey)}</strong>
+              <span>${dayReports.length} checklist report${dayReports.length === 1 ? "" : "s"} recorded</span>
+              <small>Technician(s): ${escapeHtml(technicians.join(", ") || "Not recorded")}</small>
+            </div>
+            <span class="machine-status ${escapeHtml(worst)}">${escapeHtml(statusLabel(worst))}</span>
+            <div class="report-center-actions">
+              <button type="button" data-view-daily-report="${escapeHtml(dateKey)}">View Report</button>
+              <a class="report-download-link" href="${escapeHtml(reportDownloadHref(`/api/checklist-reports/machine/${encodeURIComponent(currentReportMachineId)}/history-pdf`, { from: dateKey, to: dateKey }))}" target="_blank" rel="noopener">Download Report</a>
+            </div>
+          </article>`;
+        }).join("") : '<p class="muted">No Daily Reports found for this period.</p>';
+        return;
+      }
+
+      list.innerHTML = Array.isArray(reports) && reports.length ? reports.map((report) => `
         <article class="report-item">
           <div>
-            <strong>${escapeHtml(report.templateName || "Checklist report")}</strong>
-            <span>${formatDateTime(report.createdAt)} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</span>
+            <strong>${escapeHtml(report.templateName || "Checklist Report")}</strong>
+            <span>${formatDateTime(report.createdAt)} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")} · ${escapeHtml(report.filledBy || "Not recorded")}</span>
           </div>
           <span class="machine-status ${escapeHtml(String(report.overallStatus || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(report.overallStatus))}</span>
-          <button type="button" data-view-report="${escapeHtml(report.id)}">View</button>
-          <a class="report-download-link" href="/api/checklist-reports/${escapeHtml(report.id)}/pdf?token=${encodeURIComponent(token)}" target="_blank" rel="noopener">Download</a>
-        </article>`).join("") : '<p class="muted">No checklist reports recorded for this machine yet.</p>';
-    } catch (error) {
-      list.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
-    }
-    try {
-      const jobCards = await api(`/breakdown-workflow?action=machine-job-cards&machineId=${encodeURIComponent(machineId)}`);
-      jobCardsList.innerHTML = Array.isArray(jobCards) && jobCards.length ? jobCards.map((jc) => `
-        <article class="report-item">
-          <div>
-            <strong>${escapeHtml(jc.jobCardNo || "Job Card")} — ${escapeHtml(jc.title || "")}</strong>
-            <span>${formatDateTime(jc.createdAt)} · ${escapeHtml(jc.technicianName || "Unassigned")}</span>
+          <div class="report-center-actions">
+            <button type="button" data-view-report="${escapeHtml(report.id)}">View Report</button>
+            <a class="report-download-link" href="/api/checklist-reports/${escapeHtml(report.id)}/pdf?token=${encodeURIComponent(token || "")}" target="_blank" rel="noopener">Download Report</a>
           </div>
-          <span class="machine-status ${escapeHtml(String(jc.status || "").toUpperCase())}">${escapeHtml(jc.status || "")}</span>
-          <a class="report-download-link" href="/api/breakdown-workflow?action=job-card-pdf&id=${encodeURIComponent(jc.id)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">Download</a>
-        </article>`).join("") : '<p class="muted">No Job Card / Daily Report history recorded for this machine yet.</p>';
+        </article>`).join("") : '<p class="muted">No Checklist Reports found for this period.</p>';
     } catch (error) {
-      jobCardsList.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+      list.innerHTML = `<p class="alert error">${escapeHtml(error.message || "Could not load reports.")}</p>`;
     }
+  }
+
+  async function openMachineReports(machineId, machineName) {
+    document.getElementById("machineListDialog").close();
+    currentReportMachineId = String(machineId || "");
+    currentReportMachineName = machineName || "Machine";
+    currentReportTab = "checklist";
+    cachedMachineReportsKey = "";
+    cachedMachineJobCardsKey = "";
+    document.getElementById("reportsDialogTitle").textContent =
+      `${currentMachineListCustomerName ? currentMachineListCustomerName.toUpperCase() + " — " : ""}${currentReportMachineName} Reports`;
+    const mode = document.getElementById("machineReportFilterMode");
+    if (mode) mode.value = "all";
+    syncMachineReportFilterFields();
+    document.getElementById("reportsDialog").showModal();
+    await renderMachineReportCenter();
+  }
+
+  function viewJobCardReport(jobCardId) {
+    const job = cachedMachineJobCards.find((item) => String(item.id) === String(jobCardId));
+    const body = document.getElementById("reportViewBody");
+    document.getElementById("reportViewDialog").showModal();
+    document.getElementById("reportViewEyebrow").textContent = "Job Card Report";
+    if (!job) {
+      document.getElementById("reportViewTitle").textContent = "Job Card Report";
+      body.innerHTML = '<p class="muted">Job Card report not found.</p>';
+      return;
+    }
+    document.getElementById("reportViewTitle").textContent = `${job.jobCardNo || job.job_card_no || "Job Card"} — ${job.title || currentReportMachineName}`;
+    document.getElementById("reportViewDownloadLink").href = `/api/breakdown-workflow/job-card-pdf/${encodeURIComponent(job.id)}?token=${encodeURIComponent(token || "")}`;
+    body.innerHTML = `<div class="report-top-summary">
+      <div class="report-top-fact"><span>Status</span><strong>${escapeHtml(job.status || "—")}</strong></div>
+      <div class="report-top-fact"><span>Technician</span><strong>${escapeHtml(job.technicianName || job.technician_name || "Unassigned")}</strong></div>
+      <div class="report-top-fact"><span>Created</span><strong>${formatDateTime(job.createdAt || job.created_at)}</strong></div>
+      <div class="report-top-fact"><span>Completed</span><strong>${formatDateTime(job.completedAt || job.completed_at)}</strong></div>
+    </div>
+    <table><tbody>
+      <tr><th>Fault / Job</th><td>${escapeHtml(job.faultDescription || job.fault_description || job.title || "—")}</td></tr>
+      <tr><th>Diagnosis</th><td>${escapeHtml(job.diagnosis || "—")}</td></tr>
+      <tr><th>Work done</th><td>${escapeHtml(job.workDone || job.work_done || "—")}</td></tr>
+      <tr><th>Test result</th><td>${escapeHtml(job.testResult || job.test_result || "—")}</td></tr>
+      <tr><th>Completion note</th><td>${escapeHtml(job.completionNote || job.completion_note || "—")}</td></tr>
+      <tr><th>Repeat / Rework</th><td>${Number(job.repeatIssue ?? job.repeat_issue ?? 0) ? "YES" : "NO"}</td></tr>
+    </tbody></table>`;
+  }
+
+  function viewDailyReport(dateKey) {
+    const reports = cachedMachineReports.filter((report) => tanzaniaReportDateKey(report.createdAt) === dateKey);
+    const body = document.getElementById("reportViewBody");
+    document.getElementById("reportViewDialog").showModal();
+    document.getElementById("reportViewEyebrow").textContent = "Daily Report";
+    document.getElementById("reportViewTitle").textContent = `${currentReportMachineName} — ${dateKey}`;
+    document.getElementById("reportViewDownloadLink").href = reportDownloadHref(
+      `/api/checklist-reports/machine/${encodeURIComponent(currentReportMachineId)}/history-pdf`,
+      { from: dateKey, to: dateKey }
+    );
+    if (!reports.length) {
+      body.innerHTML = '<p class="muted">No Daily Report records found.</p>';
+      return;
+    }
+    body.innerHTML = `<div class="report-top-summary">
+      <div class="report-top-fact"><span>Date</span><strong>${escapeHtml(dateKey)}</strong></div>
+      <div class="report-top-fact"><span>Reports</span><strong>${reports.length}</strong></div>
+      <div class="report-top-fact"><span>Machine</span><strong>${escapeHtml(currentReportMachineName)}</strong></div>
+    </div>
+    <table><thead><tr><th>Time</th><th>Checklist</th><th>Technician</th><th>Hour meter</th><th>Status</th></tr></thead><tbody>
+      ${reports.map((report) => `<tr>
+        <td>${formatDateTime(report.createdAt)}</td>
+        <td>${escapeHtml(report.templateName || "Checklist Report")}</td>
+        <td>${escapeHtml(report.filledBy || "—")}</td>
+        <td>${escapeHtml(report.hourMeterReading ?? "—")}</td>
+        <td><span class="machine-status ${escapeHtml(String(report.overallStatus || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(report.overallStatus))}</span></td>
+      </tr>`).join("")}
+    </tbody></table>`;
+  }
+
+  function downloadMachineReportPeriod() {
+    const range = reportFilterRange();
+    if (range.invalid || ((document.getElementById("machineReportFilterMode")?.value || "all") !== "all" && !range.from)) {
+      showAlert("Choose a valid Date, Month or Year before downloading.", true);
+      return;
+    }
+    const path = currentReportTab === "jobcard"
+      ? `/api/breakdown-workflow/machine-job-cards-pdf?machineId=${encodeURIComponent(currentReportMachineId)}`
+      : `/api/checklist-reports/machine/${encodeURIComponent(currentReportMachineId)}/history-pdf`;
+    const href = reportDownloadHref(path, range);
+    const link = document.createElement("a");
+    link.href = href;
+    link.target = "_blank";
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
 
   function viewReport(reportId) {
     const report = cachedMachineReports.find((item) => String(item.id) === String(reportId));
     const body = document.getElementById("reportViewBody");
     document.getElementById("reportViewDialog").showModal();
+    document.getElementById("reportViewEyebrow").textContent = "Checklist Report";
     if (!report) {
       body.innerHTML = '<p class="muted">Report not found.</p>';
       return;
@@ -1492,9 +1706,23 @@
   });
 
   document.getElementById("reportsList")?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-view-report]");
-    if (button) viewReport(button.dataset.viewReport);
+    const checklistButton = event.target.closest("[data-view-report]");
+    const jobCardButton = event.target.closest("[data-view-job-card-report]");
+    const dailyButton = event.target.closest("[data-view-daily-report]");
+    if (checklistButton) viewReport(checklistButton.dataset.viewReport);
+    if (jobCardButton) viewJobCardReport(jobCardButton.dataset.viewJobCardReport);
+    if (dailyButton) viewDailyReport(dailyButton.dataset.viewDailyReport);
   });
+
+  document.querySelectorAll("[data-report-tab]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      currentReportTab = button.dataset.reportTab || "checklist";
+      await renderMachineReportCenter();
+    });
+  });
+  document.getElementById("machineReportFilterMode")?.addEventListener("change", syncMachineReportFilterFields);
+  document.getElementById("machineReportApplyFilter")?.addEventListener("click", renderMachineReportCenter);
+  document.getElementById("machineReportDownloadButton")?.addEventListener("click", downloadMachineReportPeriod);
 
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");

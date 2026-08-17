@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
 require_once __DIR__ . '/service_due_helper.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 
 $user = require_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -9,6 +10,27 @@ $action = $_GET['action'] ?? '';
 
 const SAFETY_RANK = ['NONE' => -1, 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2];
 const CHECKLIST_REPORT_TIMEZONE = 'Africa/Dar_es_Salaam';
+
+
+function checklist_staff_report_range(string $from = '', string $to = ''): array {
+    $from = trim($from); $to = trim($to);
+    if ($from === '' && $to === '') return [null, null, 'All time'];
+    if ($from === '') $from = $to;
+    if ($to === '') $to = $from;
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $to)) {
+        json_error('Report dates must use YYYY-MM-DD.', 400);
+    }
+    $tz = new DateTimeZone(CHECKLIST_REPORT_TIMEZONE);
+    try {
+        $start = (new DateTimeImmutable($from . ' 00:00:00', $tz));
+        $endDay = (new DateTimeImmutable($to . ' 00:00:00', $tz));
+    } catch (Throwable $error) {
+        json_error('Report date is invalid.', 400);
+    }
+    if ($endDay < $start) json_error('Report end date cannot be before start date.', 400);
+    $endExclusive = $endDay->modify('+1 day');
+    return [$start->format(DateTimeInterface::ATOM), $endExclusive->format(DateTimeInterface::ATOM), $from === $to ? $from : ($from . ' to ' . $to)];
+}
 
 function checklist_report_expiry(string $createdAt): DateTimeImmutable {
     try {
@@ -493,17 +515,21 @@ Open the Customer Portal > Check Up to view the full report/PDF.";
     json_out($savedReport, 201);
 }
 
-// GET ?action=for-machine&machineId=...
+// GET ?action=for-machine&machineId=... [&from=YYYY-MM-DD&to=YYYY-MM-DD]
 if ($method === 'GET' && $action === 'for-machine') {
-    $machine = require_report_machine_access($user, $_GET['machineId']);
-    $stmt = db()->prepare(
-        'SELECT cr.*, ct.name AS template_name
-         FROM checklist_reports cr
-         LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
-         WHERE cr.machine_id = ?
-         ORDER BY cr.created_at DESC'
-    );
-    $stmt->execute([$_GET['machineId']]);
+    $machineId = trim((string)($_GET['machineId'] ?? ''));
+    $machine = require_report_machine_access($user, $machineId);
+    [$fromTs, $toTs] = checklist_staff_report_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
+    $sql = 'SELECT cr.*, ct.name AS template_name
+            FROM checklist_reports cr
+            LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
+            WHERE cr.machine_id = ?';
+    $params = [$machineId];
+    if ($fromTs !== null) { $sql .= ' AND cr.created_at >= ?'; $params[] = $fromTs; }
+    if ($toTs !== null) { $sql .= ' AND cr.created_at < ?'; $params[] = $toTs; }
+    $sql .= ' ORDER BY cr.created_at DESC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
     $reports = $stmt->fetchAll();
     foreach ($reports as &$r) {
         $stmt2 = db()->prepare(
@@ -524,6 +550,46 @@ if ($method === 'GET' && $action === 'for-machine') {
     }
     unset($r);
     json_out($reports);
+}
+
+// GET ?action=machine-history-pdf&machineId=... — period summary for Checklist / Daily Report Center
+if ($method === 'GET' && $action === 'machine-history-pdf') {
+    $machineId = trim((string)($_GET['machineId'] ?? ''));
+    if ($machineId === '') json_error('Machine ID is required.', 400);
+    $machine = require_report_machine_access($user, $machineId);
+    [$fromTs, $toTs, $periodLabel] = checklist_staff_report_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
+    $sql = 'SELECT cr.filled_by, cr.overall_status, cr.hour_meter_reading, cr.created_at, ct.name AS template_name
+            FROM checklist_reports cr
+            LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
+            WHERE cr.machine_id = ?';
+    $params = [$machineId];
+    if ($fromTs !== null) { $sql .= ' AND cr.created_at >= ?'; $params[] = $fromTs; }
+    if ($toTs !== null) { $sql .= ' AND cr.created_at < ?'; $params[] = $toTs; }
+    $sql .= ' ORDER BY cr.created_at DESC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    $reports = $stmt->fetchAll();
+    $rows = array_map(static fn(array $r): array => [
+        display_date_billing($r['created_at']),
+        (string)($r['template_name'] ?: 'Checklist Report'),
+        (string)($r['filled_by'] ?: 'Not recorded'),
+        (string)($r['overall_status'] ?: 'GREEN'),
+        'Hrs: ' . (string)($r['hour_meter_reading'] ?? '—'),
+    ], $reports);
+    $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? '')) ?: 'Machine';
+    $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', $machineLabel);
+    output_table_pdf(
+        'BELM-daily-report-' . $safeMachine . '.pdf',
+        'CHECKLIST / DAILY REPORT',
+        [
+            'Customer: ' . (string)($machine['customer_name'] ?? 'Customer'),
+            'Machine: ' . $machineLabel,
+            'Serial / Registration: ' . (string)($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
+            'Period: ' . $periodLabel,
+            'Date  |  Checklist  |  Technician  |  Status  |  Hour meter',
+        ],
+        $rows
+    );
 }
 
 // GET ?action=pdf&id=... — download a single checklist report as PDF

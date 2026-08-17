@@ -258,6 +258,9 @@ switch ($resource) {
         // PUT /checklist-reports/:id -> update until 00:00 Tanzania time
         // GET /checklist-reports/machine/:machineId -> for-machine
         // GET/POST /checklist-reports/service-status/:machineId[/log-service]
+        if (($segments[1] ?? '') === 'machine' && isset($segments[2]) && ($segments[3] ?? '') === 'history-pdf') {
+            dispatch('checklist_reports.php', ['action' => 'machine-history-pdf', 'machineId' => $segments[2]]);
+        }
         if (($segments[1] ?? '') === 'machine' && isset($segments[2])) {
             dispatch('checklist_reports.php', ['action' => 'for-machine', 'machineId' => $segments[2]]);
         }

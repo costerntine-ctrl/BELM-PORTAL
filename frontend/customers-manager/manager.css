@@ -427,3 +427,33 @@ html[data-theme="dark"] .customer-feed-empty {
   .customer-card-actions [data-delete-customer] { grid-column: span 1; }
   .customer-card-actions [data-forget-customer] { grid-column: 1 / -1; }
 }
+
+/* V290 - machine Report Center: Checklist, Job Card and Daily reports
+   share one date/month/year filter and consistent View/Download actions. */
+.report-center-dialog-card { width: min(980px, 94vw); }
+.machine-report-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--paper) 82%, var(--canvas)); }
+.machine-report-tabs button { flex: 1 1 180px; padding: 9px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 850; cursor: pointer; }
+.machine-report-tabs button.active { color: #fff; border-color: #2f7cf5; background: #2f7cf5; }
+.machine-report-filter { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto auto; gap: 8px; align-items: end; margin-bottom: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--paper) 88%, var(--canvas)); }
+.machine-report-filter label { display: grid; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+.machine-report-filter select,.machine-report-filter input { min-width: 0; margin: 0; padding: 8px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font: inherit; font-size: 11px; text-transform: none; }
+.machine-report-filter button { min-height: 35px; padding: 8px 12px; font-size: 10.5px; font-weight: 850; }
+.machine-report-period-label { margin: 0 0 10px; color: var(--muted); font-size: 10.5px; }
+.report-center-list .report-item { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; }
+.report-center-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.report-center-actions button,.report-center-actions a { padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 10px; font-weight: 850; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.report-center-actions button:first-child { color: #1a4fb0; border-color: #8bb7ff; background: color-mix(in srgb, #2f7cf5 8%, var(--paper)); }
+.report-center-actions .report-download-link { color: #fff; border-color: var(--green); background: var(--green); }
+.daily-report-summary { display: grid; gap: 3px; }
+.daily-report-summary small { color: var(--muted); font-size: 10px; }
+html[data-theme="dark"] .machine-report-tabs,
+html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
+@media (max-width: 720px) {
+  .machine-report-filter { grid-template-columns: 1fr 1fr; }
+  .machine-report-filter button { width: 100%; }
+  .report-center-list .report-item { grid-template-columns: 1fr; }
+  .report-center-actions { justify-content: flex-start; }
+}
+@media (max-width: 460px) {
+  .machine-report-filter { grid-template-columns: 1fr; }
+}

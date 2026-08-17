@@ -17,7 +17,7 @@
   });
 
   if (!token) {
-    window.location.replace("/portal/login");
+    window.location.replace("/login");
     return;
   }
   if (!machineId) {
@@ -148,7 +148,7 @@
       } catch (_) {}
       if (response.status === 401) {
         localStorage.removeItem("belm_customer_token");
-        window.location.replace("/portal/login");
+        window.location.replace("/login");
       }
       throw new Error(message);
     }
@@ -872,7 +872,7 @@
 
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
-    window.location.href = "/portal/login";
+    window.location.href = "/login";
   });
 
   document.getElementById("expenseForm").addEventListener("submit", async event => {

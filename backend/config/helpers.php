@@ -151,10 +151,18 @@ function public_app_base_url(): string {
     return portal_base_url();
 }
 
+function public_login_url(): string {
+    // V303: one canonical sign-in link for every email/password portal account.
+    // Account type, role, company and permissions are resolved only after the
+    // credentials are verified by /api/auth/unified-login.
+    return public_app_base_url() . '/login';
+}
+
 function customer_portal_url(string $portalSlug, ?string $email = null): string {
-    // V208: customer links are human-readable and app-like. Example:
-    // https://belmgeneraltech.co.tz/app/ecls-icd
-    return public_app_base_url() . '/app/' . rawurlencode($portalSlug);
+    // Keep the customer portal slug in the database for identity, scoping and
+    // compatibility with legacy /app/<company> bookmarks, but new credentials
+    // always publish the same canonical login link.
+    return public_login_url();
 }
 
 
@@ -175,9 +183,9 @@ function belm_staff_login_slug(string $name, string $roleName): string {
 }
 
 function belm_staff_login_url(string $name, string $roleName): string {
-    // @ is intentionally kept readable in the path: /app/tech@belm.
-    $slug = belm_staff_login_slug($name, $roleName);
-    return public_app_base_url() . '/app/' . str_replace('%40', '@', rawurlencode($slug));
+    // V303: staff and Technicians receive the same canonical login URL as
+    // customers. Friendly @BELM slugs remain recognized only for old links.
+    return public_login_url();
 }
 
 function document_number(string $prefix): string {

@@ -64,3 +64,28 @@ dialog { width:min(600px,calc(100% - 28px)); padding:0; border:0; border-radius:
 @media(max-width:700px){.heading{align-items:start;flex-direction:column}.control-grid{grid-template-columns:1fr}.request-head{align-items:start}.dialog-actions{flex-direction:column-reverse}.dialog-actions button{width:100%}}
 
 .temporary-override-banner{margin:10px 0;padding:9px 11px;border:1px solid #f4cf00;background:#fff8d6;color:#5c4700;border-radius:10px;font-size:12px}.temporary-override-banner b{letter-spacing:.04em}
+
+
+/* V304 - Job Card top action. Refresh remains the last action on the right. */
+.top-actions .job-card-button {
+  color: #fff;
+  border-color: #2563eb;
+  background: #2563eb;
+}
+.top-actions .job-card-button:hover {
+  color: #fff;
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+.top-actions .refresh-button {
+  margin-left: 10px;
+}
+html[data-theme="dark"] .top-actions .job-card-button {
+  color: #fff;
+  border-color: #3b82f6;
+  background: #2563eb;
+}
+@media(max-width:700px){
+  .top-actions{width:100%;flex-wrap:wrap;}
+  .top-actions .refresh-button{margin-left:auto;}
+}

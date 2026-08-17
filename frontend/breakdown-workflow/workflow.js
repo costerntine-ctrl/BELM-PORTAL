@@ -7,7 +7,7 @@
   const activeAccountType=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
   const actorToken={customer:customerToken,tech:techToken,technician:techToken,admin:adminToken};
   let source=['customer','tech','technician','admin'].includes(requestedActor)?(requestedActor==='technician'?'tech':requestedActor):'';
-  if(source && !actorToken[source]){location.replace(source==='admin'?'/admin/login':source==='tech'?'/tech':'/portal/login');return}
+  if(source && !actorToken[source]){location.replace(source==='admin'?'/login':source==='tech'?'/tech':'/login');return}
   if(!source && ['customer','technician','admin'].includes(activeAccountType)){source=activeAccountType==='technician'?'tech':activeAccountType}
   if(!source || !actorToken[source]) source=customerToken?'customer':techToken?'tech':'admin';
   const token=actorToken[source]||null;
@@ -23,6 +23,12 @@
   const isProcurement=isBelmAdmin||isOwner||customerRole==='procurement';
   const isAccounts=isBelmAdmin||isOwner||customerRole==='accounts';
   const isTechnician=source==='tech';
+
+  if(isTechnician){
+    const q=machineFilter?`?machine=${encodeURIComponent(machineFilter)}`:'';
+    location.replace(`/technician-job-cards/${q}`);
+    return;
+  }
 
   function parseToken(t){if(!t)return null;try{const x=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(decodeURIComponent(Array.from(atob(x)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')))}catch{return null}}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>My Job Cards — BELM Technician</title>
+  <link rel="stylesheet" href="/theme-global.css?v=305-tech-jobcards">
+  <link rel="stylesheet" href="/technician-job-cards/job-cards.css?v=305-tech-jobcards">
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/tech" class="brand"><span class="mark">B</span><span><b>BELM Technician</b><small>Job Card Workspace</small></span></a>
+    <nav><a href="/tech">← Check-up</a><button type="button" id="themeButton" data-belm-theme-toggle>Light / Dark</button><button type="button" id="refreshButton">Refresh</button></nav>
+  </header>
+  <main>
+    <section class="hero"><p>TECHNICIAN WORK</p><h1>My Job Cards</h1><span>Only the information you need to do the work, update your report and keep a PDF reference.</span></section>
+    <div id="alertBox" class="alert hidden"></div>
+    <section class="summary" id="summary"></section>
+    <section class="toolbar">
+      <div class="tabs"><button class="active" data-tab="active">Active Job Cards</button><button data-tab="reports">My Reports</button></div>
+      <input id="searchBox" placeholder="Search Job Card, machine, customer...">
+    </section>
+    <section id="jobList" class="job-list"><div class="empty">Loading your Job Cards…</div></section>
+  </main>
+
+  <dialog id="reportDialog"><form id="reportForm">
+    <div class="dialog-head"><div><small>TECHNICIAN JOB REPORT</small><h2 id="reportTitle">Job Card</h2></div><button type="button" data-close="reportDialog">×</button></div>
+    <input type="hidden" id="reportJobId">
+    <label>Diagnosis<textarea id="reportDiagnosis" rows="3" required></textarea></label>
+    <label>Work done<textarea id="reportWork" rows="4" required></textarea></label>
+    <label>Test result<textarea id="reportTest" rows="2"></textarea></label>
+    <label>Completion note<textarea id="reportNote" rows="2"></textarea></label>
+    <label class="check"><input id="reportRepeat" type="checkbox"> Repeat / rework of the same fault</label>
+    <label class="check"><input id="reportComplete" type="checkbox"> My repair work is completed — send to Workshop testing</label>
+    <div class="dialog-actions"><button type="button" data-close="reportDialog">Cancel</button><button class="primary" type="submit">Save Job Report</button></div>
+  </form></dialog>
+
+  <dialog id="spareDialog"><form id="spareForm">
+    <div class="dialog-head"><div><small>JOB CARD SPARE</small><h2>Request Spare</h2></div><button type="button" data-close="spareDialog">×</button></div>
+    <input type="hidden" id="spareJobId"><input type="hidden" id="spareCaseId">
+    <label>Spare name<input id="spareName" required></label>
+    <label>Part / reference number<input id="sparePart"></label>
+    <div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div>
+    <label>Why required<textarea id="spareReason" rows="3"></textarea></label>
+    <div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send Spare Request</button></div>
+  </form></dialog>
+
+  <script src="/technician-job-cards/job-cards.js?v=305-tech-jobcards"></script>
+</body>
+</html>

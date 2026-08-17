@@ -1,4 +1,5 @@
 (function () {
+  // Regression baseline: Job Cards / Process now routes Technicians to My Job Cards.
   const buttonId = "belm-applications-shortcut";
   const pathname = window.location.pathname;
   let customerExpenseMachines = null;
@@ -515,6 +516,19 @@
       return false;
     }
     return false;
+  }
+
+
+  // V303: /tech is now workspace-only. Anybody without a valid Technician
+  // session starts from the same /login page as every other portal account.
+  function enforceUnifiedTechnicianLogin() {
+    if (!window.location.pathname.startsWith('/tech')) return false;
+    const tech = tokenPayload('belm_tech_token');
+    if (tech && (!tech.exp || tech.exp * 1000 > Date.now())) return false;
+    const admin = tokenPayload('belm_admin_token');
+    if (admin && String(admin.roleName || '').toLowerCase() === 'technician' && (!admin.exp || admin.exp * 1000 > Date.now())) return false;
+    window.location.replace('/login');
+    return true;
   }
 
   // The React dashboard sometimes shows an internal view (like "Checklist
@@ -1338,7 +1352,7 @@
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Checkup Report</button>
-        <a href="/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}" data-belm-feature="workflow">Maintenance Process</a>
+        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow">${customerWorkflowActor() === "tech" ? "My Job Cards" : "Maintenance Process"}</a>
       </div>`;
     card.appendChild(panel);
     panel.addEventListener("click", (event) => event.stopPropagation());
@@ -4704,8 +4718,8 @@
     if (!payload || !token || String(payload.roleName || "").toLowerCase() !== "technician") return;
     const link = document.createElement("a");
     link.id = "belm-tech-jobcards-shortcut";
-    link.href = "/breakdown-workflow/?actor=tech";
-    link.textContent = "Job Cards / Process";
+    link.href = "/technician-job-cards/";
+    link.textContent = "My Job Cards";
     Object.assign(link.style, {
       position: "fixed", right: "20px", bottom: "138px", zIndex: "1000",
       padding: "12px 18px", borderRadius: "999px", background: "#0b4f9c",
@@ -4718,7 +4732,7 @@
       if (!response.ok) return;
       const rows = await response.json();
       const active = Array.isArray(rows) ? rows.filter((item) => item.status !== 'COMPLETED').length : 0;
-      if (active > 0) link.textContent = `Job Cards / Process (${active})`;
+      if (active > 0) link.textContent = `My Job Cards (${active})`;
     } catch (_) {}
   }
 
@@ -5327,6 +5341,7 @@
   }
 
   if (redirectIfAlreadyLoggedIn()) return;
+  if (enforceUnifiedTechnicianLogin()) return;
   if (handoffTechnicianSession()) return;
 
   installCheckedReportViewer();
@@ -5336,6 +5351,7 @@
   if (window.BELMTheme) window.BELMTheme.refresh();
   refreshShortcut();
   addTechnicianTasksShortcut();
+  addTechnicianJobCardsShortcut();
   addTechnicianSpareShortcut();
   addTechnicianSpareRecommendationShortcut();
   addTechnicianCustomerDashboardShortcut();

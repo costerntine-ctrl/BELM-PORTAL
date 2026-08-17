@@ -224,7 +224,7 @@
 
   async function load() {
     if (!token) {
-      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/admin/login">Go to admin login</a></div>';
+      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/login">Go to admin login</a></div>';
       return;
     }
     try {
@@ -263,7 +263,7 @@
       renderReceipts();
       updateMetrics();
     } catch (error) {
-      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
+      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
     }
   }
@@ -953,7 +953,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.href = "/login";
   });
 
   async function applyProformaPrefillFromSparePartRequest() {

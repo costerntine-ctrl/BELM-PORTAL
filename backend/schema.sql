@@ -1348,6 +1348,8 @@ ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_copy_name VARCHAR(
 ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_uploaded_by_name VARCHAR(255) NULL;
 ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_uploaded_at TIMESTAMPTZ NULL;
 ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS billing_status VARCHAR(40) NOT NULL DEFAULT 'NOT_READY';
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT NULL DEFAULT 'NORMAL';
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS due_date DATE NULL;
 ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_proforma_source_job_card ON proforma_invoices(source_job_card_id);

@@ -27,7 +27,7 @@
   const isAdminArea = pathname.startsWith("/admin/")
     || standaloneAdminPaths.some((path) => pathname === path || pathname.startsWith(path))
     || sharedBreakdownAdmin;
-  if (!isAdminArea || pathname === "/admin/login") return;
+  if (!isAdminArea || pathname === "/login") return;
 
   const token = localStorage.getItem("belm_admin_token");
   let user = null;
@@ -36,7 +36,7 @@
   } catch (_) {}
 
   if (!token || !user) {
-    window.location.replace("/admin/login");
+    window.location.replace("/login");
     return;
   }
 
@@ -200,7 +200,7 @@
   logout.addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.href = "/login";
   });
   footer.append(themeToggle, logout);
 

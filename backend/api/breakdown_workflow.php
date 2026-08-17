@@ -627,6 +627,8 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Machine Type', $job['machine_type']??''],
         ['Serial / Reg', $job['serial_number'] ?: ($job['reg_number'] ?: '-')],
         ['Status', $job['status']],
+        ['Priority', $job['priority'] ?: 'NORMAL'],
+        ['Due Date', !empty($job['due_date']) ? display_date_billing($job['due_date']) : '-'],
         ['Issued By', $job['issued_by_name'] ?: ($job['generated_by_name'] ?: $job['customer_name'])],
         ['Issued At', display_date_billing($job['issued_at'] ?: $job['created_at'])],
         ['Technician', $job['technician_name'] ?: 'Unassigned'],
@@ -703,6 +705,38 @@ if ($method === 'GET' && $action === 'signed-job-card-file' && $id !== '') {
     header('Content-Length: '.strlen($binary));
     header('Content-Disposition: '.(!empty($_GET['download'])?'attachment':'inline').'; filename="'.$name.'"');
     echo $binary; exit;
+}
+
+if ($method === 'GET' && $action === 'technician-jobs') {
+    $isTechActor = !empty($ctx['isTechnician']) || ($ctx['kind']==='customer' && $ctx['role']==='technician');
+    if(!$isTechActor) json_error('Technician login required.',403);
+    $params=[$ctx['actorId']];
+    $where=['j.technician_id=?'];
+    if($ctx['kind']==='customer') { $where[]='j.customer_id=?'; $params[]=$ctx['customerId']; }
+    $machineId=trim((string)($_GET['machineId']??''));
+    if($machineId!==''){ $where[]='j.machine_id=?'; $params[]=$machineId; }
+    $stmt=db()->prepare(
+        "SELECT j.id,j.case_id,j.customer_id,j.machine_id,j.job_card_no,j.title,j.fault_description,j.status,
+                j.priority,j.due_date,j.diagnosis,j.work_done,j.test_result,j.completion_note,j.repeat_issue,
+                j.issued_by_name,j.issued_by_type,j.issued_at,j.started_at,j.completed_at,j.created_at,j.updated_at,
+                bc.status AS case_status,bc.current_stage,bc.current_department,bc.blocker_reason,bc.source_type,bc.source_id,
+                c.name AS customer_name,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
+                (SELECT COUNT(*) FROM breakdown_spare_requests sr WHERE sr.job_card_id=j.id AND sr.status NOT IN ('REJECTED','PARTS_READY')) AS open_spare_requests
+         FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id
+         JOIN customers c ON c.id=j.customer_id
+         JOIN machines m ON m.id=j.machine_id
+         WHERE ".implode(' AND ',$where)."
+         ORDER BY CASE WHEN j.status='COMPLETED' THEN 1 ELSE 0 END, COALESCE(j.due_date,DATE '9999-12-31'), j.created_at DESC"
+    );
+    $stmt->execute($params); $rows=$stmt->fetchAll();
+    foreach($rows as &$row){
+        $row['machineLabel']=trim(($row['brand']??'').' '.($row['model']??'')) ?: ($row['machine_type']??'Machine');
+        $row['openSpareRequests']=(int)($row['open_spare_requests']??0);
+        unset($row['open_spare_requests']);
+    }
+    unset($row);
+    json_out($rows);
 }
 
 if ($method === 'GET' && $action === 'case' && $id !== '') {
@@ -874,8 +908,9 @@ if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
 
 if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
     $stmt=db()->prepare('SELECT jc.* FROM digital_job_cards jc JOIN breakdown_cases bc ON bc.id=jc.case_id WHERE jc.id=?'); $stmt->execute([$id]); $job=$stmt->fetch(); if(!$job)json_error('Job Card not found.',404); $case=bw_case_access($ctx,$job['case_id']);
-    if($ctx['kind']==='customer') json_error('Technician report must be saved from a Technician login.',403);
-    if(empty($ctx['isTechnician'])) json_error('Only a Technician can save the technical Job Card report.',403);
+    if($ctx['kind']==='customer' && $ctx['role']!=='technician') json_error('Technician report must be saved from a Technician login.',403);
+    $isTechActor=!empty($ctx['isTechnician']) || ($ctx['kind']==='customer' && $ctx['role']==='technician');
+    if(!$isTechActor) json_error('Only a Technician can save the technical Job Card report.',403);
     if($job['technician_id'] && $job['technician_id']!==$ctx['actorId']) json_error('This Job Card is assigned to another Technician.',403);
     $b=body(); $complete=!empty($b['complete']);
     $diagnosis=trim((string)($b['diagnosis']??'')); $work=trim((string)($b['workDone']??'')); if($diagnosis===''||$work==='')json_error('Diagnosis and work done are required.');

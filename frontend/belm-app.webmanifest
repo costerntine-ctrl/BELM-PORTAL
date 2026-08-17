@@ -2,7 +2,7 @@
   "name": "BELM Operations Platform",
   "short_name": "BELM",
   "description": "Machine operations, maintenance and service workflow",
-  "start_url": "/app/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "background_color": "#071827",

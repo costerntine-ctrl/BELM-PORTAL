@@ -484,3 +484,12 @@ V201 SERVICE AUTO CALCULATE + OWNER NOTIFICATIONS
 - WhatsApp auto-send is available when BELM_WHATSAPP_API_URL is configured. The endpoint must accept JSON {"to":"255...","message":"..."}; optional Bearer token: BELM_WHATSAPP_API_TOKEN.
 - Without a configured WhatsApp provider, WhatsApp is logged as PENDING_PROVIDER; the portal never falsely marks it sent.
 - Run backend/schema.sql after deployment.
+
+V303 - ONE CANONICAL LOGIN
+--------------------------
+Publish one login URL for all BELM portal email/password accounts:
+  https://<your-portal-domain>/login
+
+The unified login endpoint verifies the credentials first, then routes the user to the correct workspace based on the verified account type, role, tenant and permissions.
+Legacy /app/<company>, /app/*@BELM, /admin/login and /portal/login links redirect to /login for compatibility.
+The Technician workspace remains /tech after successful sign-in.

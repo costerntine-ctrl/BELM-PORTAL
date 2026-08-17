@@ -425,6 +425,9 @@
     }
   });
 
+  document.getElementById("jobCardButton")?.addEventListener("click", () => {
+    window.location.href = "/breakdown-workflow/?source=admin";
+  });
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");

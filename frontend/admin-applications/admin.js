@@ -71,7 +71,7 @@ async function api(path, options = {}) {
   const data = await response.json().catch(() => ({}));
   if (response.status === 401) {
     localStorage.removeItem("belm_admin_token");
-    location.href = "/admin/login";
+    location.href = "/login";
     throw new Error("Your session has expired.");
   }
   if (!response.ok) throw new Error(data.error || "Request failed.");
@@ -136,7 +136,7 @@ function renderCard(application) {
 
 async function loadApplications() {
   if (!token) {
-    location.href = "/admin/login";
+    location.href = "/login";
     return;
   }
   alertBox.classList.add("hidden");
@@ -428,7 +428,7 @@ document.getElementById("refreshButton").addEventListener("click", async () => {
 document.getElementById("logoutButton").addEventListener("click", () => {
   localStorage.removeItem("belm_admin_token");
   localStorage.removeItem("belm_admin_user");
-  location.href = "/admin/login";
+  location.href = "/login";
 });
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 document.querySelector(".assignment-close").addEventListener("click", () => assignmentDialog.close());

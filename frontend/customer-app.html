@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="BELM" />
-  <title>BELM Operations App</title>
+  <title>BELM Portal — Sign in</title>
   <link rel="manifest" href="/belm-app.webmanifest" />
   <link rel="apple-touch-icon" href="/app-icon-192.png" />
   <link rel="stylesheet" href="/customer-app.css?v=211-bug-audit" />
@@ -20,8 +20,8 @@
       <div class="brand-stripe"><span></span><span></span><span></span><span></span></div>
       <img src="/belm-watermark.jpg" alt="BELM General Tech" class="brand-logo" />
       <div class="eyebrow">BELM OPERATIONS PLATFORM</div>
-      <h1 id="companyName">Secure Operations App</h1>
-      <p id="companyNote">One link. Your role. Your workspace.</p>
+      <h1 id="companyName">BELM Portal Login</h1>
+      <p id="companyNote">One secure login for BELM staff, Technicians and customer teams.</p>
       <div class="role-flow">
         <span>Administration</span><span>Workshop</span><span>Technician</span><span>Operator</span>
       </div>
@@ -32,8 +32,8 @@
       <h2>Sign in</h2>
       <p class="subtext" id="loginHint">Use the email and password provided for your account.</p>
       <form id="loginForm" autocomplete="on">
-        <label>Email</label>
-        <input id="email" type="email" inputmode="email" autocomplete="username" required placeholder="name@company.com" />
+        <label>Email / Customer Portal ID</label>
+        <input id="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="name@company.com or company-id" />
         <label>Password</label>
         <input id="password" type="password" autocomplete="current-password" required placeholder="Password" />
         <button id="loginButton" class="primary" type="submit">Open My Workspace</button>
@@ -46,6 +46,6 @@
       <p class="privacy">After sign-in, the system opens the workspace allowed for your role automatically.</p>
     </section>
   </main>
-  <script src="/customer-app.js?v=297-procurement-first"></script>
+  <script src="/customer-app.js?v=303-unified-login"></script>
 </body>
 </html>

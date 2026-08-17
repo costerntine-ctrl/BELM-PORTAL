@@ -6,9 +6,13 @@
   RewriteRule ^portal-home\.html$ - [L]
   RewriteRule ^index\.html$ - [L]
   RewriteRule ^admin-menu/?$ /overview-manager/ [R=302,L]
-  # V289 app-like login links: /app/customer-name, /app/tech@belm or /app/name@belm
-  RewriteRule ^app(?:/[a-zA-Z0-9@-]+)?/?$ /customer-app.html [END]
-  RewriteRule ^(?:admin/login|portal/login|tech)(?:/.*)?$ /index.html [END]
+  # V303 one canonical login for all email/password portal accounts.
+  RewriteRule ^login/?$ /customer-app.html [END]
+  # Old friendly and role-specific login bookmarks converge on /login.
+  RewriteRule ^app(?:/[a-zA-Z0-9@-]+)?/?$ /login [R=302,L]
+  RewriteRule ^(?:admin/login|portal/login)/?$ /login [R=302,L]
+  # /tech remains the authenticated Technician workspace.
+  RewriteRule ^tech(?:/.*)?$ /index.html [END]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [END]

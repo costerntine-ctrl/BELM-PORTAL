@@ -24,6 +24,7 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
+// Regression baseline: 301-customer-job-billing
 // Health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
@@ -73,6 +74,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             ['digital_job_cards', 'issued_by_name'],
             ['digital_job_cards', 'signed_copy_data'],
             ['digital_job_cards', 'billing_status'],
+            ['digital_job_cards', 'priority'],
+            ['digital_job_cards', 'due_date'],
             ['invoices', 'source_job_card_id'],
             ['proforma_invoices', 'source_job_card_id'],
         ];
@@ -127,7 +130,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '301-customer-job-billing',
+            'schemaVersion' => '305-technician-job-cards',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

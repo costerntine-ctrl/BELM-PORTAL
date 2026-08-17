@@ -64,7 +64,7 @@
       tasks = await api(`/tasks/user/${payload.id}`);
       render();
     } catch (error) {
-      taskList.innerHTML = '<div class="locked">Could not load your tasks.<br><a href="/tech">Log in again</a></div>';
+      taskList.innerHTML = '<div class="locked">Could not load your tasks.<br><a href="/login">Log in again</a></div>';
       alertBox.textContent = error.message;
       alertBox.className = "alert error";
     }
@@ -94,7 +94,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_tech_token");
     localStorage.removeItem("belm_tech_user");
-    window.location.href = "/tech";
+    window.location.href = "/login";
   });
   load();
 })();

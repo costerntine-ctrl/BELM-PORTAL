@@ -22,7 +22,7 @@
     if (response.status === 401) {
       localStorage.removeItem("belm_admin_token");
       localStorage.removeItem("belm_admin_user");
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       throw new Error("Your login session has expired.");
     }
     if (!response.ok) throw new Error(result.error || "Request failed.");
@@ -151,7 +151,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       return;
     }
     try {

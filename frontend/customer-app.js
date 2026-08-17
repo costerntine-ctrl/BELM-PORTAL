@@ -19,11 +19,23 @@
     try{const part=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(decodeURIComponent(Array.from(atob(part)).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('')))}catch(_){return null}
   }
   function validToken(key){const t=localStorage.getItem(key);if(!t)return null;const p=decodeToken(t);if(!p||p.exp*1000<=Date.now())return null;return p}
-  function clearRoleSessions(){['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user'].forEach(k=>localStorage.removeItem(k))}
+  function clearRoleSessions(){['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token'].forEach(k=>localStorage.removeItem(k))}
   function setActiveAccount(type){localStorage.setItem('belm_active_account_type',type)}
   function customerDestination(role){return role==='workshop_manager'?'/breakdown-workflow/?actor=customer':'/portal/dashboard'}
   function quickResume(){
     const active=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
+    // V303 canonical /login has no role/company slug. Resume the last valid
+    // account first, then fall back to any valid saved session. The URL never
+    // decides access; the signed token still decides the destination.
+    if(!slug){
+      if(active==='customer'){const customer=validToken('belm_customer_token');if(customer){location.replace(customerDestination(customer.customerRole));return true}}
+      if(active==='technician'){const tech=validToken('belm_tech_token');if(tech){location.replace('/tech');return true}}
+      if(active==='admin'){const admin=validToken('belm_admin_token');if(admin){location.replace('/overview-manager/');return true}}
+      const customer=validToken('belm_customer_token'); if(customer){setActiveAccount('customer');location.replace(customerDestination(customer.customerRole));return true}
+      const tech=validToken('belm_tech_token'); if(tech){setActiveAccount('technician');location.replace('/tech');return true}
+      const admin=validToken('belm_admin_token'); if(admin){setActiveAccount('admin');location.replace('/overview-manager/');return true}
+      return false;
+    }
     if(isBelm){
       if(active==='admin'){const admin=validToken('belm_admin_token');if(admin){location.replace('/overview-manager/');return true}}
       if(active==='technician'){const tech=validToken('belm_tech_token');if(tech){location.replace('/tech');return true}}
@@ -44,7 +56,7 @@
 
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
-    if(!slug){companyName.textContent='BELM Operations';companyNote.textContent='Secure role-based operations portal.';hint.textContent='Enter the email and password for your BELM portal account.';return}
+    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account email or Customer Portal ID and password. Your workspace opens automatically.';return}
     try{
       const res=await fetch('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'});
       if(!res.ok)throw new Error('Customer app link was not found.');

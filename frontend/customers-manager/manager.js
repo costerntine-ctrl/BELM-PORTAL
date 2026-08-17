@@ -145,7 +145,7 @@
   }
 
   function customerPortalUrl(customer) {
-    return new URL(`/portal/login?customer=${encodeURIComponent(customer.portalLink || "")}`, window.location.origin).href;
+    return new URL('/login', window.location.origin).href;
   }
 
   async function copyText(text, successMessage = "Copied.") {
@@ -578,7 +578,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       return;
     }
     try {
@@ -1727,7 +1727,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.href = "/login";
   });
   document.getElementById("searchInput").addEventListener("input", renderCustomers);
   document.getElementById("clearCustomerFiltersButton")?.addEventListener("click", () => {

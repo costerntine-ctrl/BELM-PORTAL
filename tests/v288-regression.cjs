@@ -36,8 +36,8 @@ check('privacy policy EN section', /4A\. Customer Privacy &amp; BELM Access Cont
 check('privacy policy SW section', /4A\. Udhibiti wa Faragha ya Mteja na Ufikiaji wa BELM/.test(privacy));
 check('terms privacy definition', /Privacy &amp; BELM Access/.test(terms) && /Faragha na Ufikiaji wa BELM/.test(terms));
 check('legal date updated', /17 August 2026/.test(privacy) && /17 August 2026/.test(terms));
-check('portal cache bust', (() => { const m1 = /portal-tools\.js\?v=(\d+)-/.exec(index); const m2 = /belm-theme\.css\?v=(\d+)-/.exec(index); return m1 && m2 && Number(m1[1]) >= 288 && Number(m2[1]) >= 288; })());
-check('manager cache bust', (() => { const m1 = /customers-manager\/manager\.js\?v=(\d+)-/.exec(mgrIndex); const m2 = /manager\.css\?v=(\d+)-/.exec(mgrIndex); return m1 && m2 && Number(m1[1]) >= 288 && Number(m2[1]) >= 288; })());
-check('service worker cache bump', (() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(sw); return m && Number(m[1]) >= 288; })());
+check('portal cache bust', /portal-tools\.js[^\"']*288-customer-privacy/.test(index) && /belm-theme\.css[^\"']*288-customer-privacy/.test(index));
+check('manager cache bust', /manager\.js[^\"']*288-customer-privacy/.test(mgrIndex) && /manager\.css[^\"']*288-customer-privacy/.test(mgrIndex));
+check('service worker cache bump', /belm-app-v288-customer-privacy/.test(sw));
 console.log(`${pass}/${pass+fail} V288 checks passed`);
 if(fail) process.exit(1);

@@ -12,7 +12,7 @@ const checks = [
   ['customer report download preserved contextually', portal.includes('/api/customer-portal/reports/${encodeURIComponent(id)}/download')],
   ['summary watermark preserved', helper.includes('/Wm Do')],
   ['photo pages include watermark resource', helper.includes('$photoXObjects .= " /Wm {$watermarkObject} 0 R"')],
-  ['portal tools cache busted', /portal-tools\.js\?v=(\d+)-/.exec(index) && Number(/portal-tools\.js\?v=(\d+)-/.exec(index)[1]) >= 287],
+  ['portal tools cache busted', index.includes('portal-tools.js?v=287-tech-report-watermark')],
 ];
 let failed = 0;
 for (const [name, ok] of checks) {

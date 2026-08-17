@@ -361,11 +361,70 @@ if ($method === 'PUT' && $action === 'status') {
     $status = strtoupper(trim((string)($b['status'] ?? '')));
     if (!in_array($status, $allowedStatuses, true)) json_error('Invalid service request status.');
 
-    $stmt = db()->prepare('SELECT status FROM service_requests WHERE id = ?');
+    $stmt = db()->prepare('SELECT status,machine_id,assigned_to_id FROM service_requests WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) json_error('Service request not found.', 404);
     $previousStatus = $existing['status'];
+    if (in_array($previousStatus, ['COMPLETED','CANCELLED'], true) && $status !== $previousStatus) {
+        json_error('A completed/cancelled Service Request cannot be reopened from this status control.', 409);
+    }
+    if ($status === 'OPEN' && !empty($existing['assigned_to_id'])) {
+        json_error('Unassign the Technician first before returning this Service Request to OPEN.', 409);
+    }
+    if (in_array($status, ['ASSIGNED','IN_PROGRESS'], true) && empty($existing['assigned_to_id'])) {
+        json_error('Assign a Technician before setting this Service Request to ' . str_replace('_', ' ', $status) . '.', 409);
+    }
+    if (!empty($existing['machine_id']) && in_array($status, ['OPEN','ASSIGNED','IN_PROGRESS'], true)) {
+        $jobStateStmt = db()->prepare(
+            "SELECT j.status,j.technician_id FROM digital_job_cards j
+             JOIN breakdown_cases bc ON bc.id=j.case_id
+             WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=?
+             ORDER BY j.created_at ASC LIMIT 1"
+        );
+        $jobStateStmt->execute([$id]);
+        $jobState = $jobStateStmt->fetch();
+        if ($jobState) {
+            $jobStatus = strtoupper((string)($jobState['status'] ?? ''));
+            if ($previousStatus !== $status && in_array($status, ['OPEN','ASSIGNED'], true) && $jobStatus !== 'OPEN') {
+                json_error('The linked Job Card has already started. Keep the Service Request in progress and manage the work from Job Card Dispatch.', 409);
+            }
+            if ($status === 'IN_PROGRESS' && empty($jobState['technician_id'])) {
+                json_error('Assign the linked Job Card to a Technician before starting work.', 409);
+            }
+        }
+    }
+    if ($status === 'COMPLETED' && !empty($existing['machine_id'])) {
+        // Official machine Service Requests are one operational record with
+        // their Job Card. Ensure legacy requests receive a Job Card too, then
+        // refuse completion until the technician has completed that card.
+        belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
+        $jobCheck = db()->prepare(
+            "SELECT j.status FROM digital_job_cards j
+             JOIN breakdown_cases bc ON bc.id=j.case_id
+             WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=?
+             ORDER BY j.created_at ASC LIMIT 1"
+        );
+        $jobCheck->execute([$id]);
+        $jobStatus = strtoupper((string)($jobCheck->fetchColumn() ?: ''));
+        if ($jobStatus !== 'COMPLETED') {
+            json_error('Complete the Technician Job Card before closing this Service Request.', 409);
+        }
+        // V307: Technician completion only advances the operational case to
+        // TESTING. The Service Request must not be closed manually until the
+        // Workshop has actually accepted the test and closed the synced case.
+        $caseCheck = db()->prepare(
+            "SELECT status,current_stage FROM breakdown_cases
+             WHERE source_type='SERVICE_REQUEST' AND source_id=? LIMIT 1"
+        );
+        $caseCheck->execute([$id]);
+        $caseState = $caseCheck->fetch();
+        if (!$caseState
+            || strtoupper((string)$caseState['status']) !== 'COMPLETED'
+            || strtoupper((string)$caseState['current_stage']) !== 'COMPLETED') {
+            json_error('Workshop test is still pending. Complete the Maintenance Process test before closing this Service Request.', 409);
+        }
+    }
 
     if ($status === 'COMPLETED') {
         $stmt = db()->prepare(
@@ -408,7 +467,26 @@ if ($method === 'PUT' && $action === 'assign') {
     $request = $stmt->fetch();
     if (!$request) json_error('Service request not found.', 404);
 
+    if (in_array((string)$request['status'], ['COMPLETED','CANCELLED'], true)) {
+        json_error('A completed/cancelled Service Request cannot be assigned again.', 409);
+    }
+
+    $linkedJobStmt = db()->prepare(
+        "SELECT j.status FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id
+         WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=?
+         ORDER BY j.created_at ASC LIMIT 1"
+    );
+    $linkedJobStmt->execute([$id]);
+    $linkedJobStatus = strtoupper((string)($linkedJobStmt->fetchColumn() ?: ''));
+    if ($linkedJobStatus !== '' && $linkedJobStatus !== 'OPEN') {
+        json_error('This Service Request Job Card has already started. Change Technician assignment from Job Card Dispatch so the work history remains auditable.', 409);
+    }
+
     if ($assignedToId === '') {
+        if (!in_array((string)$request['status'], ['OPEN','ASSIGNED'], true)) {
+            json_error('Only an Open/Assigned Service Request can be unassigned. Put active work back through the Job Card/Workshop flow.', 409);
+        }
         db()->prepare(
             "UPDATE service_requests
              SET assigned_to_id=NULL,
@@ -447,17 +525,18 @@ if ($method === 'PUT' && $action === 'assign') {
         }
     }
 
+    $nextRequestStatus = (string)$request['status'] === 'OPEN' ? 'ASSIGNED' : (string)$request['status'];
     db()->prepare(
         "UPDATE service_requests
-         SET assigned_to_id=?, assigned_by_id=?, status='ASSIGNED', updated_at=NOW()
+         SET assigned_to_id=?, assigned_by_id=?, status=?, updated_at=NOW()
          WHERE id=?"
-    )->execute([$assignedToId, $user['id'], $id]);
+    )->execute([$assignedToId, $user['id'], $nextRequestStatus, $id]);
     $overrideNote = $isTemporaryOverride
         ? 'TEMPORARY OVERRIDE - Technician home customer: ' . ($technician['home_customer_name'] ?: 'Unassigned') . '. This override applies to this service request only.'
         : null;
     log_service_request_history($id, 'ASSIGNMENT', $request['assigned_to_id'], $technician['name'], $user, $overrideNote);
-    if ($request['status'] !== 'ASSIGNED') {
-        log_service_request_history($id, 'STATUS', $request['status'], 'ASSIGNED', $user);
+    if ((string)$request['status'] !== $nextRequestStatus) {
+        log_service_request_history($id, 'STATUS', (string)$request['status'], $nextRequestStatus, $user);
     }
     notify_service_request_customer(
         (string)$id,

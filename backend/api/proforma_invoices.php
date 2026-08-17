@@ -107,6 +107,7 @@ if ($method === 'POST') {
     $quoteValidity = trim((string)($b['quoteValidity'] ?? ''));
     $machineId = trim((string)($b['machineId'] ?? ''));
     $sourceSpareRequestId = trim((string)($b['sourceSpareRequestId'] ?? ''));
+    $sourceJobCardId = trim((string)($b['sourceJobCardId'] ?? ''));
 
     if (!is_array($items)) $items = [];
     proforma_validate_items($items);
@@ -135,7 +136,32 @@ if ($method === 'POST') {
         $requestCheck->execute([$sourceSpareRequestId, $customerId]);
         $requestMachine = $requestCheck->fetchColumn();
         if ($requestMachine === false) json_error('Source spare request was not found for this customer.', 422);
+        if ($machineId !== '' && $requestMachine && (string)$requestMachine !== $machineId) {
+            json_error('Selected machine does not match the source spare request.', 422);
+        }
         if ($machineId === '' && $requestMachine) $machineId = (string)$requestMachine;
+    }
+
+    if ($sourceJobCardId !== '') {
+        $jobCheck=db()->prepare(
+            "SELECT j.machine_id,j.status,j.signed_copy_data,bc.source_type,bc.status AS case_status
+             FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id
+             WHERE j.id=? AND j.customer_id=?"
+        );
+        $jobCheck->execute([$sourceJobCardId,$customerId]);
+        $sourceJob=$jobCheck->fetch();
+        if(!$sourceJob) json_error('Source Job Card was not found for this customer.',422);
+        if($machineId!=='' && (string)$sourceJob['machine_id']!==$machineId) json_error('Selected machine does not match the source Job Card.',422);
+        if($machineId==='' && !empty($sourceJob['machine_id'])) $machineId=(string)$sourceJob['machine_id'];
+        if(strtoupper((string)$sourceJob['source_type'])==='SERVICE_REQUEST') {
+            if(strtoupper((string)$sourceJob['status'])!=='COMPLETED' || strtoupper((string)$sourceJob['case_status'])!=='COMPLETED' || empty($sourceJob['signed_copy_data'])) {
+                json_error('Complete the Service Job Card, Workshop test and customer signed-copy upload before preparing a Proforma.',409);
+            }
+        }
+        $duplicate=db()->prepare('SELECT invoice_no FROM proforma_invoices WHERE source_job_card_id=? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1');
+        $duplicate->execute([$sourceJobCardId]);
+        $duplicateNo=$duplicate->fetchColumn();
+        if($duplicateNo) json_error('An active Proforma already exists for this Job Card: '.$duplicateNo.'. Open/edit that Proforma instead of creating a duplicate.',409);
     }
 
     $subtotal = round(array_sum(array_map(fn($i) => (int)$i['qty'] * (float)$i['unitPrice'], $items)), 2);
@@ -149,13 +175,14 @@ if ($method === 'POST') {
     try {
         $pdo->prepare(
             "INSERT INTO proforma_invoices
-             (id, customer_id, invoice_no, date, vat_mode, vat_rate, discount, discount_type, notice, payment_terms, delivery_time, quote_validity, machine_id, source_spare_request_id, delivery_status, created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',NOW())"
+             (id, customer_id, invoice_no, date, vat_mode, vat_rate, discount, discount_type, notice, payment_terms, delivery_time, quote_validity, machine_id, source_spare_request_id, source_job_card_id, delivery_status, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',NOW())"
         )->execute([
             $newId, $customerId, $invoiceNo, $date, $vatMode, $vatRate, $discount, $discountType,
             $notice !== '' ? $notice : null, $paymentTerms !== '' ? $paymentTerms : null,
             $deliveryTime !== '' ? $deliveryTime : null, $quoteValidity !== '' ? $quoteValidity : null,
             $machineId !== '' ? $machineId : null, $sourceSpareRequestId !== '' ? $sourceSpareRequestId : null,
+            $sourceJobCardId !== '' ? $sourceJobCardId : null,
         ]);
         $itemStmt = $pdo->prepare(
             'INSERT INTO proforma_invoice_items
@@ -174,6 +201,7 @@ if ($method === 'POST') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    if ($sourceJobCardId !== '') { belm_recompute_job_billing_status($sourceJobCardId); }
     log_activity($user, 'proforma-created', 'proforma', $newId, ['invoiceNo' => $invoiceNo]);
     json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
 }
@@ -221,6 +249,10 @@ if ($method === 'PUT' && $action === 'send') {
         "UPDATE service_due_alerts SET status = 'PI_SENT', reviewed_at = NOW(), updated_at = NOW()
          WHERE draft_proforma_id = ? AND status = 'REVIEW'"
     )->execute([$id]);
+    $jobLink=db()->prepare('SELECT source_job_card_id FROM proforma_invoices WHERE id=? AND deleted_at IS NULL');
+    $jobLink->execute([$id]);
+    $linkedJobId=(string)($jobLink->fetchColumn() ?: '');
+    if ($linkedJobId !== '') belm_recompute_job_billing_status($linkedJobId);
     log_activity($user, 'proforma-sent', 'proforma', $id, ['invoiceNo' => $proforma['invoice_no']]);
     $emailDelivered = (int)($delivery['sent'] ?? 0) > 0;
     json_out([
@@ -319,13 +351,18 @@ if ($method === 'PUT') {
 }
 
 if ($method === 'DELETE') {
-    $stmt = db()->prepare('SELECT invoice_no FROM proforma_invoices WHERE id = ?');
+    $stmt = db()->prepare('SELECT invoice_no,source_job_card_id FROM proforma_invoices WHERE id = ?');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
     $reason = require_delete_confirmation($user, body());
     send_to_trash('proformaInvoice', $id, $row['invoice_no'], $user['id'], $reason);
     soft_delete('proforma_invoices', $id);
+    if (!empty($row['source_job_card_id'])) {
+        $invoiceCheck=db()->prepare('SELECT 1 FROM invoices WHERE source_job_card_id=? AND deleted_at IS NULL LIMIT 1');
+        $invoiceCheck->execute([(string)$row['source_job_card_id']]);
+        belm_recompute_job_billing_status((string)$row['source_job_card_id']);
+    }
     json_out(null, 204);
 }
 

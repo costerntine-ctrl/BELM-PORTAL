@@ -151,10 +151,18 @@ function public_app_base_url(): string {
     return portal_base_url();
 }
 
+function public_login_url(): string {
+    // V303: one canonical sign-in link for every email/password portal account.
+    // Account type, role, company and permissions are resolved only after the
+    // credentials are verified by /api/auth/unified-login.
+    return public_app_base_url() . '/login';
+}
+
 function customer_portal_url(string $portalSlug, ?string $email = null): string {
-    // V208: customer links are human-readable and app-like. Example:
-    // https://belmgeneraltech.co.tz/app/ecls-icd
-    return public_app_base_url() . '/app/' . rawurlencode($portalSlug);
+    // Keep the customer portal slug in the database for identity, scoping and
+    // compatibility with legacy /app/<company> bookmarks, but new credentials
+    // always publish the same canonical login link.
+    return public_login_url();
 }
 
 
@@ -175,9 +183,9 @@ function belm_staff_login_slug(string $name, string $roleName): string {
 }
 
 function belm_staff_login_url(string $name, string $roleName): string {
-    // @ is intentionally kept readable in the path: /app/tech@belm.
-    $slug = belm_staff_login_slug($name, $roleName);
-    return public_app_base_url() . '/app/' . str_replace('%40', '@', rawurlencode($slug));
+    // V303: staff and Technicians receive the same canonical login URL as
+    // customers. Friendly @BELM slugs remain recognized only for old links.
+    return public_login_url();
 }
 
 function document_number(string $prefix): string {
@@ -588,7 +596,8 @@ function require_delete_confirmation(array $user, array $body): string {
 
     assert_not_rate_limited('delete-pin', $user['id'], 8, 15);
 
-    $currentPin = belm_read_stored_pin('adminDeletePin', '1234');
+    $currentPin = belm_read_stored_pin('adminDeletePin', '');
+    if ($currentPin === '') json_error('Delete PIN is not configured. Super Admin must set it in System Settings.', 409);
     if (!hash_equals($currentPin, $pin)) {
         record_failed_attempt('delete-pin', $user['id']);
         json_error('Incorrect delete PIN.', 403);
@@ -1152,7 +1161,7 @@ function match_spare_part_by_text(?string $reference, ?string $description): ?st
 
 // Validates a base64 data-URL receipt upload (JPG/PNG/WebP image or PDF)
 // and returns [base64Data, mimeType, safeFileName] — shared by both the
-// customer's own Machine Expenses uploads and BELM's own Company
+// customer's own Procurement uploads and BELM's own Company
 // Expenses uploads, so both sides store/validate receipts identically.
 function validate_receipt_upload(string $receiptPhoto, string $receiptName): array {
     if (!preg_match('#^data:(image/(?:jpeg|png|webp)|application/pdf);base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {
@@ -1209,7 +1218,8 @@ function require_edit_confirmation(array $user, array $body): void {
 
     assert_not_rate_limited('edit-pin', $user['id'], 8, 15);
 
-    $currentPin = belm_read_stored_pin('adminEditPin', '2026');
+    $currentPin = belm_read_stored_pin('adminEditPin', '');
+    if ($currentPin === '') json_error('Edit PIN is not configured. Super Admin must set it in System Settings.', 409);
     if (!hash_equals($currentPin, $pin)) {
         record_failed_attempt('edit-pin', $user['id']);
         json_error('Incorrect edit PIN.', 403);
@@ -1580,17 +1590,75 @@ function belm_ensure_breakdown_case_from_service_request(string $requestId, ?str
     }
 }
 
+// V301 - an official machine Service Request IS the customer-issued Job Card.
+// It is created once, with the customer/requesting user recorded as Issued By.
+// BELM later assigns a Technician to this same Job Card instead of generating
+// a duplicate card in Workshop. Safe to call repeatedly.
+function belm_ensure_service_request_job_card(string $requestId, ?string $actorName = null): ?string {
+    try {
+        $stmt = db()->prepare(
+            "SELECT sr.id,sr.customer_id,sr.machine_id,sr.service_type,sr.description,sr.created_at,
+                    bc.id AS case_id,bc.created_by_name,c.name AS customer_name
+             FROM service_requests sr
+             JOIN customers c ON c.id=sr.customer_id
+             JOIN breakdown_cases bc ON bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
+             WHERE sr.id=? AND sr.machine_id IS NOT NULL"
+        );
+        $stmt->execute([$requestId]);
+        $row = $stmt->fetch();
+        if (!$row || empty($row['case_id'])) return null;
+
+        $find = db()->prepare('SELECT id FROM digital_job_cards WHERE case_id=? ORDER BY created_at ASC LIMIT 1');
+        $find->execute([(string)$row['case_id']]);
+        $existing = $find->fetchColumn();
+        $issuer = trim((string)($actorName ?: $row['created_by_name'] ?: $row['customer_name'] ?: 'Customer'));
+        if ($existing) {
+            db()->prepare(
+                "UPDATE digital_job_cards
+                 SET issued_by_name=COALESCE(NULLIF(issued_by_name,''),?),
+                     issued_by_type=COALESCE(NULLIF(issued_by_type,''),'CUSTOMER'),
+                     issued_at=COALESCE(issued_at,created_at),updated_at=NOW()
+                 WHERE id=?"
+            )->execute([$issuer,(string)$existing]);
+            return (string)$existing;
+        }
+
+        $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
+        $jobId=uuid();
+        $title=trim((string)($row['service_type'] ?: 'BELM Service Request'));
+        db()->prepare(
+            "INSERT INTO digital_job_cards
+             (id,case_id,customer_id,machine_id,job_card_no,title,fault_description,status,generated_by_name,
+              issued_by_name,issued_by_type,issued_at,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,'OPEN',?,?,'CUSTOMER',?,NOW(),NOW())"
+        )->execute([
+            $jobId,(string)$row['case_id'],(string)$row['customer_id'],(string)$row['machine_id'],$num,
+            $title,(string)$row['description'],$issuer,$issuer,$row['created_at'] ?: date('c')
+        ]);
+        db()->prepare(
+            'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
+             VALUES(?,?,?,?,?,?,?,?,NOW())'
+        )->execute([uuid(),(string)$row['case_id'],'WORKSHOP_REVIEW','Workshop','Customer-issued Job Card '.$num,'Issued by '.$issuer,'customer',$issuer]);
+        return $jobId;
+    } catch (Throwable $error) {
+        error_log('Service Request Job Card auto-create failed: ' . $error->getMessage());
+        return null;
+    }
+}
+
 // Keep the source request and Breakdown Process aligned without overriding
 // a more advanced Digital Job Card workflow. Assignment can advance a new
 // request to Diagnosis; In Progress can advance it to Repair; final request
 // states close the linked case. This routine is safe to call repeatedly.
 function belm_sync_breakdown_case_from_service_request(string $requestId, ?string $actorName = null): ?string {
     $caseId = belm_ensure_breakdown_case_from_service_request($requestId, $actorName);
+    $jobId = $caseId ? belm_ensure_service_request_job_card($requestId, $actorName) : null;
     try {
         $stmt = db()->prepare(
-            "SELECT sr.status,sr.assigned_to_id,bc.id AS case_id,bc.status AS case_status,bc.current_stage,bc.current_department,
+            "SELECT sr.status,sr.assigned_to_id,u.name AS assigned_to_name,bc.id AS case_id,bc.status AS case_status,bc.current_stage,bc.current_department,
                     EXISTS (SELECT 1 FROM digital_job_cards j WHERE j.case_id=bc.id) AS has_job_card
              FROM service_requests sr
+             LEFT JOIN users u ON u.id=sr.assigned_to_id
              LEFT JOIN breakdown_cases bc ON bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
              WHERE sr.id=?"
         );
@@ -1603,8 +1671,21 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         $stage = (string)$row['current_stage'];
         $caseStatus = (string)$row['case_status'];
 
+        // Keep the customer-issued Job Card and BELM Service Request assignment
+        // synchronized. This makes one operational record from request to repair.
+        if ($jobId && !empty($row['assigned_to_id'])) {
+            db()->prepare(
+                "UPDATE digital_job_cards SET technician_id=?,technician_name=?,updated_at=NOW()
+                 WHERE id=? AND status NOT IN ('COMPLETED','CANCELLED')"
+            )->execute([(string)$row['assigned_to_id'],(string)($row['assigned_to_name'] ?: 'Technician'),$jobId]);
+        } elseif ($jobId && empty($row['assigned_to_id'])) {
+            db()->prepare(
+                "UPDATE digital_job_cards SET technician_id=NULL,technician_name=NULL,updated_at=NOW() WHERE id=? AND status='OPEN'"
+            )->execute([$jobId]);
+        }
+
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
-        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && $stage === 'DIAGNOSIS' && empty($row['has_job_card'])) {
+        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && $stage === 'DIAGNOSIS' && empty($row['assigned_to_id'])) {
             $newStage='WORKSHOP_REVIEW'; $department='Workshop'; $action='Service Request returned to open queue';
         } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && $stage === 'WORKSHOP_REVIEW') {
             $newStage='DIAGNOSIS'; $department='Technician'; $action='Service Request assigned - technician action';
@@ -1625,6 +1706,19 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         } elseif ($blocker !== null) {
             db()->prepare('UPDATE breakdown_cases SET blocker_reason=?,updated_at=NOW() WHERE id=?')->execute([$blocker,$caseId]);
         }
+        // A cancelled official request must not remain as an active Technician Job Card.
+        // Keep completed technical reports intact, but close any unfinished linked Job Card.
+        if ($jobId && $status === 'CANCELLED') {
+            db()->prepare(
+                "UPDATE digital_job_cards
+                 SET status=CASE WHEN status='COMPLETED' THEN status ELSE 'CANCELLED' END,
+                     technician_id=CASE WHEN status='COMPLETED' THEN technician_id ELSE NULL END,
+                     technician_name=CASE WHEN status='COMPLETED' THEN technician_name ELSE NULL END,
+                     updated_at=NOW()
+                 WHERE id=?"
+            )->execute([$jobId]);
+        }
+
         if ($action !== null) {
             $eventStage = $newStage ?: $stage;
             $eventDepartment = $department ?: (string)$row['current_department'];
@@ -1686,4 +1780,50 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
         error_log('Breakdown source backfill failed: ' . $error->getMessage());
     }
     return ['created'=>max(0,$createdAfter-$createdBefore),'serviceRequests'=>$syncedRequests,'operatorReports'=>$syncedReports];
+}
+
+
+// V306: derive one authoritative Job Card billing status from the currently
+// active billing documents. Invoice state always wins over Proforma state;
+// when neither exists, the signed Job Card determines readiness.
+function belm_recompute_job_billing_status(string $jobId): string {
+    $jobId = trim($jobId);
+    if ($jobId === '') return '';
+
+    $invoice = db()->prepare(
+        "SELECT status FROM invoices
+         WHERE source_job_card_id=? AND deleted_at IS NULL AND status<>'CANCELLED'
+         ORDER BY created_at DESC LIMIT 1"
+    );
+    $invoice->execute([$jobId]);
+    $invoiceStatus = $invoice->fetchColumn();
+    if ($invoiceStatus !== false) {
+        $status = strtoupper((string)$invoiceStatus) === 'PAID' ? 'PAID' : 'INVOICE_OUTSTANDING';
+        db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+            ->execute([$status, $jobId]);
+        return $status;
+    }
+
+    $proforma = db()->prepare(
+        'SELECT delivery_status FROM proforma_invoices
+         WHERE source_job_card_id=? AND deleted_at IS NULL
+         ORDER BY created_at DESC LIMIT 1'
+    );
+    $proforma->execute([$jobId]);
+    $delivery = $proforma->fetchColumn();
+    if ($delivery !== false) {
+        $deliveryStatus = strtoupper((string)$delivery);
+        $status = in_array($deliveryStatus, ['SENT','RESPONDED'], true) ? 'PROFORMA_SENT' : 'PROFORMA_READY';
+        db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+            ->execute([$status, $jobId]);
+        return $status;
+    }
+
+    $job = db()->prepare('SELECT signed_copy_data FROM digital_job_cards WHERE id=?');
+    $job->execute([$jobId]);
+    $signed = $job->fetchColumn();
+    $status = $signed ? 'READY_FOR_PROCUREMENT' : 'NOT_READY';
+    db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+        ->execute([$status, $jobId]);
+    return $status;
 }

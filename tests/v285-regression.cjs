@@ -15,8 +15,8 @@ const checks = [
   ['full customer name retained in tooltip', js.includes('<h2 title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</h2>')],
   ['BELM customer switch preserved', js.includes('data-card-provider-toggle=')],
   ['V284 batched communication preserved', js.includes('/customers/communication-feed?ids=')],
-  ['V285 CSS cache bust', /manager\.css\?v=(\d+)-/.exec(html) && Number(/manager\.css\?v=(\d+)-/.exec(html)[1]) >= 285],
-  ['V285 JS cache bust', /customers-manager\/manager\.js\?v=(\d+)-/.exec(html) && Number(/customers-manager\/manager\.js\?v=(\d+)-/.exec(html)[1]) >= 285],
+  ['V285 CSS cache bust', html.includes('manager.css?v=285-uniform-cards')],
+  ['V285 JS cache bust', html.includes('manager.js?v=285-uniform-cards')],
 ];
 let failed = 0;
 for (const [name, ok] of checks) {

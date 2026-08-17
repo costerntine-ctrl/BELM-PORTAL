@@ -147,7 +147,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       return;
     }
     try {

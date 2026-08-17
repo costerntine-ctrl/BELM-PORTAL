@@ -115,16 +115,15 @@
       panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="empty">No invoices yet. Select “New invoice” to create one.</div>`;
       return;
     }
-    const statuses = ["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
     panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
       <tr>
-        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong><div class="muted">${(invoice.items || []).length} item(s)</div></td>
+        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong> <span class="invoice-sync-badge ${invoice.status === "PAID" ? "paid" : invoice.status === "CANCELLED" ? "cancelled" : "outstanding"}">${invoice.status === "PAID" ? "PAID" : invoice.status === "CANCELLED" ? "CANCELLED" : "OUTSTANDING"}</span><div class="muted">${(invoice.items || []).length} item(s)</div></td>
         <td>${escapeHtml(invoice.customer?.name || "—")}</td>
         <td class="money">${money(invoice.total)}</td>
         <td class="money">${money(invoice.paidAmount)}</td>
         <td class="money">${money(invoice.balance)}</td>
         <td>${invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</td>
-        <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}">${statuses.map((status) => `<option value="${status}" ${status === invoice.status ? "selected" : ""} ${["PAID", "PARTIALLY_PAID"].includes(status) ? "disabled" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select></td>
+        <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}" ${invoice.status === "CANCELLED" ? "disabled" : ""}><option value="${escapeHtml(invoice.status)}" selected>${escapeHtml(invoice.status.replaceAll("_", " "))}</option>${invoice.status !== "CANCELLED" ? '<option value="CANCELLED">CANCEL INVOICE</option>' : ""}</select></td>
         <td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><button class="export-row-button" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</button><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
@@ -150,7 +149,7 @@
         <td>${escapeHtml(payment.bankName || "Unallocated")}</td>
         <td>${escapeHtml(payment.reference || "No reference")}</td>
         <td class="money">${money(payment.amount)}</td>
-        <td><div class="row-actions"><button class="edit" data-edit-payment="${escapeHtml(payment.id)}" data-payment-invoice="${escapeHtml(payment.invoiceId)}">Re-edit</button></div></td>
+        <td><div class="row-actions"><button class="edit" data-edit-payment="${escapeHtml(payment.id)}" data-payment-invoice="${escapeHtml(payment.invoiceId)}">Re-edit</button>${payment.receipt_id ? '<span class="muted">Receipt linked</span>' : `<button class="delete" data-delete-payment="${escapeHtml(payment.id)}" data-payment-invoice="${escapeHtml(payment.invoiceId)}">Reverse</button>`}</div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
@@ -224,7 +223,7 @@
 
   async function load() {
     if (!token) {
-      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/admin/login">Go to admin login</a></div>';
+      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/login">Go to admin login</a></div>';
       return;
     }
     try {
@@ -263,7 +262,7 @@
       renderReceipts();
       updateMetrics();
     } catch (error) {
-      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
+      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
     }
   }
@@ -319,6 +318,7 @@
     const invoice = invoices.find((item) => item.id === id);
     document.getElementById("invoiceForm").reset();
     document.getElementById("invoiceId").value = invoice?.id || "";
+    document.getElementById("invoiceSourceJobCardId").value = invoice?.sourceJobCardId || invoice?.source_job_card_id || "";
     document.getElementById("invoiceTitle").textContent = invoice ? `Re-edit · ${invoice.invoiceNo}` : "New invoice";
     await ensureCustomersLoaded();
     document.getElementById("invoiceCustomer").innerHTML = customerOptions(invoice?.customer?.id || invoice?.customerId || "");
@@ -382,6 +382,7 @@
           action: id ? "edit" : undefined,
           customerId: document.getElementById("invoiceCustomer").value,
           machineId: document.getElementById("invoiceMachine").value || null,
+          sourceJobCardId: document.getElementById("invoiceSourceJobCardId").value || null,
           dueDate: document.getElementById("invoiceDueDate").value || null,
           tax: Number(document.getElementById("invoiceTax").value || 0),
           items,
@@ -667,7 +668,8 @@
     document.getElementById("proformaForm").reset();
     document.getElementById("proformaId").value = proforma?.id || "";
     document.getElementById("proformaMachineId").value = proforma?.machineId || "";
-    document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || "";
+    document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || proforma?.source_spare_request_id || "";
+    document.getElementById("proformaSourceJobCardId").value = proforma?.sourceJobCardId || proforma?.source_job_card_id || "";
     document.getElementById("proformaTitle").textContent = proforma ? `Re-edit ${proforma.invoiceNo}` : "New proforma";
     await ensureCustomersLoaded();
     document.getElementById("proformaCustomer").innerHTML = customerOptions(proforma?.customer?.id || "");
@@ -729,6 +731,7 @@
           notice: document.getElementById("proformaNotice").value.trim(),
           machineId: document.getElementById("proformaMachineId").value,
           sourceSpareRequestId: document.getElementById("proformaSourceSpareRequestId").value,
+          sourceJobCardId: document.getElementById("proformaSourceJobCardId").value,
           items,
           ...editConfirmation,
         }),
@@ -885,9 +888,25 @@
     }
     if (removeButton) remove(`/billing/invoices/${removeButton.dataset.deleteInvoice}`, "Delete this invoice? It will move to the Recycle Bin.");
   });
-  document.getElementById("paymentsPanel").addEventListener("click", (event) => {
+  document.getElementById("paymentsPanel").addEventListener("click", async (event) => {
     const editPayment = event.target.closest("[data-edit-payment]");
+    const deletePayment = event.target.closest("[data-delete-payment]");
     if (editPayment) openPayment(editPayment.dataset.paymentInvoice, editPayment.dataset.editPayment);
+    if (deletePayment) {
+      const confirmation = await window.belmConfirmDelete({
+        title: "Reverse this payment?",
+        message: "This removes the mistaken manual payment and recalculates the invoice balance. Receipt-linked payments must be reversed from Receipts instead.",
+      });
+      if (!confirmation) return;
+      try {
+        await api(`/billing/invoices/${deletePayment.dataset.paymentInvoice}/payments/${deletePayment.dataset.deletePayment}`, {
+          method: "DELETE",
+          body: JSON.stringify(confirmation),
+        });
+        await load();
+        showAlert("Payment reversed and invoice balance recalculated.");
+      } catch (error) { showAlert(error.message, true); }
+    }
   });
   document.getElementById("receiptsPanel").addEventListener("click", (event) => {
     const removeButton = event.target.closest("[data-delete-receipt]");
@@ -949,7 +968,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.href = "/login";
   });
 
   async function applyProformaPrefillFromSparePartRequest() {
@@ -967,6 +986,7 @@
     if (prefill.customerId) document.getElementById("proformaCustomer").value = prefill.customerId;
     document.getElementById("proformaMachineId").value = prefill.machineId || "";
     document.getElementById("proformaSourceSpareRequestId").value = prefill.sourceSpareRequestId || "";
+    document.getElementById("proformaSourceJobCardId").value = prefill.sourceJobCardId || "";
     fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
     const firstRow = document.querySelector("#proformaItems .item-row");
     if (firstRow) {
@@ -978,5 +998,18 @@
     showAlert(`Proforma pre-filled from the spare-part request — check the customer and pricing, then Save.`);
   }
 
-  load().then(applyProformaPrefillFromSparePartRequest);
+  async function applyInvoicePrefillFromJobCard() {
+    const raw=sessionStorage.getItem("belm_prefill_invoice");if(!raw)return;
+    sessionStorage.removeItem("belm_prefill_invoice");let prefill;try{prefill=JSON.parse(raw)}catch(_){return}
+    await openInvoice();
+    if(prefill.customerId) document.getElementById("invoiceCustomer").value=prefill.customerId;
+    updateMachineOptions(prefill.machineId||"");
+    document.getElementById("invoiceSourceJobCardId").value=prefill.sourceJobCardId||"";
+    fillCustomerInformation("invoiceCustomer","invoiceCustomerInfo");
+    const firstRow=document.querySelector("#invoiceItems .item-row");
+    if(firstRow){firstRow.querySelector('[data-field="description"]').value=prefill.description||"BELM service work";firstRow.querySelector('[data-field="quantity"]').value=prefill.qty||1;firstRow.querySelector('[data-field="unitPrice"]').value=prefill.unitPrice||0;}
+    showAlert("Invoice pre-filled from the customer-signed Job Card — enter the agreed price/tax, then Save.");
+  }
+
+  load().then(async()=>{await applyProformaPrefillFromSparePartRequest();await applyInvoicePrefillFromJobCard();});
 })();

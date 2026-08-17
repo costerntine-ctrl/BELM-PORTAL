@@ -17,6 +17,8 @@
   let rolesCache = [];
   let dispatchTechnicians = [];
   let dispatchCustomers = [];
+  let dispatchMachines = [];
+  let dispatchJobCards = [];
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -150,6 +152,47 @@
       : '<p class="muted">No pending spare-part requests.</p>';
   }
 
+  function dispatchMode() {
+    return document.querySelector('input[name="jobCardMode"]:checked')?.value || "existing";
+  }
+
+  function renderDispatchMachines() {
+    const customerId=document.getElementById("dispatchCustomer")?.value||"";
+    const select=document.getElementById("dispatchMachine");
+    if(!select)return;
+    const rows=dispatchMachines.filter((m)=>!customerId||String(m.customer_id)===String(customerId));
+    select.innerHTML='<option value="">Select Machine...</option>'+rows.map((m)=>{
+      const label=[m.brand,m.model].filter(Boolean).join(" ")||m.machine_type||"Machine";
+      return `<option value="${escapeHtml(m.id)}">${escapeHtml(label)}</option>`;
+    }).join("");
+  }
+
+  function renderReceivedJobCards() {
+    const select=document.getElementById("dispatchJobCard"); if(!select)return;
+    select.innerHTML='<option value="">Select received Job Card...</option>'+dispatchJobCards.map((job)=>{
+      const assigned=job.technicianName?` · Assigned: ${job.technicianName}`:" · Unassigned";
+      return `<option value="${escapeHtml(job.id)}">${escapeHtml(`${job.jobCardNo} · ${job.customerName} · ${job.machineLabel} · ${job.title}${assigned}`)}</option>`;
+    }).join("");
+  }
+
+  function syncJobCardSource() {
+    const mode=dispatchMode(); const existing=mode==="existing";
+    document.getElementById("receivedJobCardField")?.classList.toggle("hidden",!existing);
+    document.getElementById("dispatchMachineField")?.classList.toggle("hidden",existing);
+    document.getElementById("dispatchTitleField")?.classList.toggle("hidden",existing);
+    document.getElementById("dispatchDescriptionField")?.classList.toggle("hidden",existing);
+    const customer=document.getElementById("dispatchCustomer");
+    if(customer) customer.disabled=existing;
+    if(existing){
+      const job=dispatchJobCards.find((x)=>String(x.id)===String(document.getElementById("dispatchJobCard")?.value||""));
+      if(job){ customer.value=job.customerId||""; document.getElementById("dispatchPriority").value=job.priority||"NORMAL"; document.getElementById("dispatchDueDate").value=job.due_date||""; }
+    } else {
+      if(customer) customer.disabled=false;
+      renderDispatchMachines();
+    }
+    updateDispatchNote();
+  }
+
   function updateDispatchNote() {
     const techId = document.getElementById("dispatchTechnician")?.value || "";
     const customerId = document.getElementById("dispatchCustomer")?.value || "";
@@ -158,13 +201,13 @@
     const note = document.getElementById("dispatchNote");
     if (!note) return;
     if (tech && customer && tech.assignedCustomerId && String(tech.assignedCustomerId) !== String(customer.id)) {
-      note.innerHTML = `<b>TEMPORARY OVERRIDE:</b> ${escapeHtml(tech.name)} stays permanently attached to ${escapeHtml(tech.assignedCustomerName || "their home customer")}. Only this job is for ${escapeHtml(customer.name)}.`;
+      note.innerHTML = `<b>TEMPORARY OVERRIDE:</b> ${escapeHtml(tech.name)} stays permanently attached to ${escapeHtml(tech.assignedCustomerName || "their home customer")}. Only this Job Card is for ${escapeHtml(customer.name)}.`;
       note.classList.add("override");
     } else if (tech && customer) {
-      note.textContent = `${tech.name} is already attached to ${customer.name}; this is a normal assignment.`;
+      note.textContent = `${tech.name} is already attached to ${customer.name}; this Job Card is a normal assignment.`;
       note.classList.remove("override");
     } else {
-      note.textContent = "Select a Technician and customer. If they differ from the Technician's home customer, the task is marked Temporary Override.";
+      note.textContent = dispatchMode()==="existing" ? "Select a received Job Card and Technician." : "Select a Technician, customer and machine to create a Job Card.";
       note.classList.remove("override");
     }
   }
@@ -175,13 +218,15 @@
       const data = await api("/engineering?action=dispatch-options");
       dispatchTechnicians = data.technicians || [];
       dispatchCustomers = data.customers || [];
+      dispatchMachines = data.machines || [];
+      dispatchJobCards = data.receivedJobCards || [];
       document.getElementById("dispatchTechnician").innerHTML = '<option value="">Select Technician...</option>' + dispatchTechnicians.map((tech) => {
         const home = tech.assignedCustomerName ? ` · Home: ${tech.assignedCustomerName}` : " · No home customer";
         return `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name + home)}</option>`;
       }).join("");
       document.getElementById("dispatchCustomer").innerHTML = '<option value="">Select Customer...</option>' + dispatchCustomers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join("");
+      renderReceivedJobCards(); renderDispatchMachines(); syncJobCardSource();
       panel?.classList.remove("hidden");
-      updateDispatchNote();
     } catch (error) {
       if (error.status !== 403) showAlert(error.message || "Could not load Technician Dispatch.");
       panel?.classList.add("hidden");
@@ -190,28 +235,37 @@
 
   async function dispatchTechnician(event) {
     event.preventDefault();
+    const mode=dispatchMode();
     const technicianId = document.getElementById("dispatchTechnician").value;
-    const customerId = document.getElementById("dispatchCustomer").value;
+    const jobCardId=document.getElementById("dispatchJobCard")?.value||"";
+    const existingJob=dispatchJobCards.find((x)=>String(x.id)===String(jobCardId));
+    let customerId = mode==="existing" ? (existingJob?.customerId||"") : document.getElementById("dispatchCustomer").value;
     const tech = dispatchTechnicians.find((item) => String(item.id) === String(technicianId));
     const customer = dispatchCustomers.find((item) => String(item.id) === String(customerId));
+    if(!technicianId){showAlert("Select Technician.");return;}
+    if(mode==="existing"&&!jobCardId){showAlert("Select a received Job Card.");return;}
+    if(mode==="create"&&(!customerId||!document.getElementById("dispatchMachine").value||!document.getElementById("dispatchTitle").value.trim())){showAlert("Customer, machine and Job Card title are required.");return;}
     const temporary = Boolean(tech?.assignedCustomerId && customerId && String(tech.assignedCustomerId) !== String(customerId));
-    if (temporary && !confirm(`${tech.name} is attached to ${tech.assignedCustomerName || "another customer"}. Assign this temporary job to ${customer?.name || "the selected customer"} without changing the permanent assignment?`)) return;
+    if (temporary && !confirm(`${tech.name} is attached to ${tech.assignedCustomerName || "another customer"}. Assign this Job Card to ${customer?.name || "the selected customer"} as a Temporary Override?`)) return;
     try {
       const result = await api("/engineering?action=dispatch", {
         method: "POST",
         body: JSON.stringify({
-          technicianId, customerId,
-          title: document.getElementById("dispatchTitle").value.trim(),
-          description: document.getElementById("dispatchDescription").value.trim(),
+          jobCardMode:mode, jobCardId, technicianId, customerId,
+          machineId:document.getElementById("dispatchMachine")?.value||"",
+          title: document.getElementById("dispatchTitle")?.value.trim()||"",
+          description: document.getElementById("dispatchDescription")?.value.trim()||"",
           priority: document.getElementById("dispatchPriority").value,
           dueDate: document.getElementById("dispatchDueDate").value || null,
+          temporaryOverride:temporary,
         }),
       });
-      showAlert(result.temporaryOverride ? "Temporary Technician Override assigned. Permanent customer was not changed." : "Technician job assigned.", false);
+      showAlert(`${result.jobCardNo || "Job Card"} assigned to Technician${result.temporaryOverride ? " as Temporary Override" : ""}.`, false);
       document.getElementById("dispatchTitle").value = "";
       document.getElementById("dispatchDescription").value = "";
       document.getElementById("dispatchDueDate").value = "";
-    } catch (error) { showAlert(error.message || "Could not assign the Technician."); }
+      await loadDispatchOptions();
+    } catch (error) { showAlert(error.message || "Could not assign the Job Card."); }
   }
 
   async function load() {
@@ -314,7 +368,9 @@
     showAlert("Administrator login required.");
   } else {
     document.getElementById("dispatchTechnician")?.addEventListener("change", updateDispatchNote);
-  document.getElementById("dispatchCustomer")?.addEventListener("change", updateDispatchNote);
+  document.getElementById("dispatchCustomer")?.addEventListener("change", ()=>{renderDispatchMachines();updateDispatchNote();});
+  document.getElementById("dispatchJobCard")?.addEventListener("change", syncJobCardSource);
+  document.querySelectorAll('input[name="jobCardMode"]').forEach((input)=>input.addEventListener("change",syncJobCardSource));
   document.getElementById("dispatchForm")?.addEventListener("submit", dispatchTechnician);
   loadDispatchOptions();
   load();

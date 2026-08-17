@@ -22,6 +22,6 @@ check('checklist history PDF', checklist.includes("$action === 'machine-history-
 check('job card date range API', breakdown.includes('bw_machine_report_range')&&breakdown.includes("$action === 'machine-job-cards'"));
 check('job card history PDF', breakdown.includes("$action === 'machine-job-cards-pdf'"));
 check('privacy kept for report access', breakdown.includes("require_belm_customer_privacy")&&checklist.includes("require_belm_customer_privacy"));
-check('V290 manager cache bust', (() => { const m1 = /customers-manager\/manager\.js\?v=(\d+)-/.exec(html); const m2 = /customers-manager\/manager\.css\?v=(\d+)-/.exec(html); return m1 && m2 && Number(m1[1]) >= 290 && Number(m2[1]) >= 290; })());
+check('V290 manager cache bust', html.includes('manager.js?v=290-report-center')&&html.includes('manager.css?v=290-report-center'));
 check('report center responsive CSS', css.includes('.machine-report-tabs')&&css.includes('.machine-report-filter')&&css.includes('.report-center-actions'));
 console.log(`${pass}/${pass+fail} V290 checks passed`);if(fail)process.exit(1);

@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/mailer.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
 require_once __DIR__ . '/proforma_pdf_helper.php';
+require_once __DIR__ . '/invoice_pdf_helper.php';
 require_once __DIR__ . '/table_pdf_helper.php';
 
 $customer = require_customer_auth();
@@ -165,6 +166,269 @@ function customer_store_summary(string $customerId, string $machineId): array {
     ];
 }
 
+function customer_can_approve_store_issue(array $customer): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    if (!customer_has_feature_access($customer, 'machine-expenses')) return false;
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    return in_array($role, ['accounts', 'admin'], true);
+}
+
+function customer_machine_for_action(string $customerId, string $machineId): array {
+    $stmt = db()->prepare(
+        'SELECT id, machine_type, model, serial_number, reg_number, brand
+         FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+    );
+    $stmt->execute([$machineId, $customerId]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found for this customer.', 404);
+    return $machine;
+}
+
+function customer_match_store_item(string $customerId, string $referenceNumber, string $description): ?array {
+    $referenceNumber = trim($referenceNumber);
+    $description = trim($description);
+    if ($referenceNumber === '' && $description === '') return null;
+    if ($referenceNumber !== '') {
+        $stmt = db()->prepare(
+            'SELECT id, part_number, description, unit, qty_on_hand, average_unit_cost
+             FROM customer_store_items
+             WHERE customer_id = ? AND UPPER(TRIM(part_number)) = UPPER(TRIM(?))
+             LIMIT 1'
+        );
+        $stmt->execute([$customerId, $referenceNumber]);
+        $row = $stmt->fetch();
+        if ($row) {
+            $row['matched_by'] = 'PART_NUMBER';
+            return $row;
+        }
+    }
+    if ($description !== '') {
+        $stmt = db()->prepare(
+            'SELECT id, part_number, description, unit, qty_on_hand, average_unit_cost
+             FROM customer_store_items
+             WHERE customer_id = ? AND LOWER(TRIM(description)) = LOWER(TRIM(?))
+             ORDER BY qty_on_hand DESC
+             LIMIT 1'
+        );
+        $stmt->execute([$customerId, $description]);
+        $row = $stmt->fetch();
+        if ($row) {
+            $row['matched_by'] = 'DESCRIPTION';
+            return $row;
+        }
+    }
+    return null;
+}
+
+function customer_spare_store_check_rows(string $customerId, array $items): array {
+    $result = [];
+    foreach ($items as $index => $raw) {
+        if (!is_array($raw)) continue;
+        $referenceNumber = trim((string)($raw['referenceNumber'] ?? ''));
+        $description = trim((string)($raw['description'] ?? ''));
+        $quantity = max(0, (float)($raw['quantity'] ?? 0));
+        $store = customer_match_store_item($customerId, $referenceNumber, $description);
+        $available = $store ? (float)$store['qty_on_hand'] : 0.0;
+        $shortage = max(0.0, $quantity - $available);
+        $result[] = [
+            'inputIndex' => (int)$index,
+            'referenceNumber' => $referenceNumber,
+            'description' => $description,
+            'quantity' => $quantity,
+            'storeItemId' => $store['id'] ?? null,
+            'storePartNumber' => $store['part_number'] ?? null,
+            'storeDescription' => $store['description'] ?? null,
+            'unit' => $store['unit'] ?? 'PC',
+            'available' => round($available, 2),
+            'shortage' => round($shortage, 2),
+            'unitCost' => round((float)($store['average_unit_cost'] ?? 0), 2),
+            'matchedBy' => $store['matched_by'] ?? null,
+            'inStore' => $store !== null,
+            'enough' => $store !== null && $available + 0.00001 >= $quantity && $quantity > 0,
+        ];
+    }
+    return $result;
+}
+
+function customer_store_issue_request_rows(string $customerId, string $machineId): array {
+    $stmt = db()->prepare(
+        "SELECT csir.*, csi.qty_on_hand AS current_store_balance, csi.average_unit_cost AS current_unit_cost
+         FROM customer_store_issue_requests csir
+         JOIN customer_store_items csi ON csi.id = csir.store_item_id
+         WHERE csir.customer_id = ? AND csir.machine_id = ?
+         ORDER BY CASE WHEN csir.status = 'PENDING_APPROVAL' THEN 0 ELSE 1 END,
+                  csir.requested_at DESC
+         LIMIT 100"
+    );
+    $stmt->execute([$customerId, $machineId]);
+    return $stmt->fetchAll();
+}
+
+// V297 - unified Procurement queue. Every spare requirement enters this
+// queue first; Procurement decides Store issue vs external purchase.
+function customer_can_manage_procurement(array $customer): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    if (!customer_has_feature_access($customer, 'machine-expenses')) return false;
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    return in_array($role, ['procurement', 'admin'], true);
+}
+
+function customer_procurement_request_rows(string $customerId, string $machineId): array {
+    $stmt = db()->prepare(
+        "SELECT cpr.*, csi.id AS current_store_item_id, csi.qty_on_hand AS current_store_balance,
+                csi.average_unit_cost AS current_store_unit_cost,
+                bsr.status AS maintenance_spare_status
+         FROM customer_procurement_requests cpr
+         LEFT JOIN LATERAL (
+             SELECT si.id,si.qty_on_hand,si.average_unit_cost
+             FROM customer_store_items si
+             WHERE si.customer_id=cpr.customer_id
+               AND (
+                    si.id=cpr.store_item_id
+                    OR (COALESCE(TRIM(cpr.part_number),'')<>'' AND UPPER(TRIM(si.part_number))=UPPER(TRIM(cpr.part_number)))
+                    OR LOWER(TRIM(si.description))=LOWER(TRIM(cpr.description))
+               )
+             ORDER BY CASE WHEN si.id=cpr.store_item_id THEN 0
+                           WHEN COALESCE(TRIM(cpr.part_number),'')<>'' AND UPPER(TRIM(si.part_number))=UPPER(TRIM(cpr.part_number)) THEN 1
+                           ELSE 2 END,
+                      si.updated_at DESC
+             LIMIT 1
+         ) csi ON TRUE
+         LEFT JOIN breakdown_spare_requests bsr ON bsr.procurement_request_id = cpr.id
+         WHERE cpr.customer_id = ? AND cpr.machine_id = ?
+         ORDER BY CASE cpr.status
+                    WHEN 'PENDING_PROCUREMENT' THEN 0
+                    WHEN 'BELM_REQUESTED' THEN 1
+                    WHEN 'PURCHASE_REQUIRED' THEN 2
+                    WHEN 'ORDERED' THEN 3
+                    ELSE 4 END,
+                  cpr.requested_at DESC
+         LIMIT 150"
+    );
+    $stmt->execute([$customerId, $machineId]);
+    return $stmt->fetchAll();
+}
+
+function customer_service_job_billing_rows(string $customerId, string $machineId): array {
+    $stmt=db()->prepare(
+        "SELECT j.id,j.job_card_no,j.title,j.status,j.issued_by_name,j.issued_at,j.customer_signed_by_name,j.customer_signed_at,
+                j.signed_copy_name,j.billing_status,j.completed_at,
+                p.id AS proforma_id,p.invoice_no AS proforma_no,p.delivery_status AS proforma_status,
+                i.id AS invoice_id,i.invoice_no AS invoice_no,i.status AS invoice_status,i.total AS invoice_total,i.due_date,
+                COALESCE(pay.paid_amount,0) AS paid_amount,
+                GREATEST(0,COALESCE(i.total,0)-COALESCE(pay.paid_amount,0)) AS balance
+         FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id AND bc.source_type='SERVICE_REQUEST'
+         LEFT JOIN LATERAL (
+             SELECT pp.id,pp.invoice_no,pp.delivery_status FROM proforma_invoices pp
+             WHERE pp.source_job_card_id=j.id AND pp.deleted_at IS NULL ORDER BY pp.created_at DESC LIMIT 1
+         ) p ON TRUE
+         LEFT JOIN LATERAL (
+             SELECT ii.id,ii.invoice_no,ii.status,ii.total,ii.due_date FROM invoices ii
+             WHERE ii.source_job_card_id=j.id AND ii.deleted_at IS NULL AND ii.status<>'CANCELLED' ORDER BY ii.created_at DESC LIMIT 1
+         ) i ON TRUE
+         LEFT JOIN LATERAL (
+             SELECT COALESCE(SUM(py.amount),0) AS paid_amount FROM payments py WHERE py.invoice_id=i.id
+         ) pay ON TRUE
+         WHERE j.customer_id=? AND j.machine_id=?
+         ORDER BY COALESCE(j.completed_at,j.created_at) DESC LIMIT 100"
+    );
+    $stmt->execute([$customerId,$machineId]);
+    $rows=$stmt->fetchAll();
+    foreach($rows as &$row){$row['hasSignedCopy']=!empty($row['signed_copy_name']);}
+    unset($row);return $rows;
+}
+
+function customer_procurement_case_for_machine(array $customer, array $machine, string $batchId): string {
+    $pdo = db();
+    $stmt = $pdo->prepare(
+        "SELECT id FROM breakdown_cases
+         WHERE customer_id = ? AND machine_id = ? AND status <> 'COMPLETED'
+         ORDER BY opened_at DESC LIMIT 1"
+    );
+    $stmt->execute([$customer['id'], $machine['id']]);
+    $caseId = (string)($stmt->fetchColumn() ?: '');
+    $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+    $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? '')) ?: ((string)($machine['machine_type'] ?? 'Machine'));
+    if ($caseId === '') {
+        $caseId = uuid();
+        $pdo->prepare(
+            "INSERT INTO breakdown_cases
+             (id,customer_id,machine_id,source_type,source_id,title,description,status,current_stage,current_department,
+              blocker_reason,stage_started_at,opened_at,updated_at,created_by_name)
+             VALUES (?,?,?,?,?,?,?,'OPEN','PROCUREMENT','Procurement',?,NOW(),NOW(),NOW(),?)"
+        )->execute([
+            $caseId, $customer['id'], $machine['id'], 'PROCUREMENT', $batchId,
+            'Spare Procurement Request', 'Spare/material requested for ' . $machineLabel,
+            'Waiting Procurement to source or issue requested spare(s).', $actor,
+        ]);
+    } else {
+        $pdo->prepare(
+            "UPDATE breakdown_cases SET current_stage='PROCUREMENT', current_department='Procurement',
+                    blocker_reason='Waiting Procurement to source or issue requested spare(s).',
+                    stage_started_at=NOW(), updated_at=NOW()
+             WHERE id=? AND status <> 'COMPLETED'"
+        )->execute([$caseId]);
+    }
+    $pdo->prepare(
+        "INSERT INTO breakdown_case_events
+         (id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at)
+         VALUES (?,?,'PROCUREMENT','Procurement','Procurement request submitted',?, 'customer', NULL, ?, NOW())"
+    )->execute([uuid(), $caseId, 'Spare requirement sent to Procurement for Store/source decision.', $actor]);
+    return $caseId;
+}
+
+function customer_refresh_procurement_case(string $caseId, array $customer, string $action, string $note = ''): void {
+    $pdo = db();
+    $stmt = $pdo->prepare(
+        "SELECT
+           COUNT(*) FILTER (WHERE status NOT IN ('PARTS_READY','REJECTED')) AS pending_count,
+           COUNT(*) FILTER (WHERE status = 'BELM_REQUESTED') AS belm_count,
+           COUNT(*) FILTER (WHERE status = 'PARTS_READY') AS ready_count,
+           COUNT(*) FILTER (WHERE status = 'REJECTED') AS rejected_count
+         FROM breakdown_spare_requests
+         WHERE case_id = ? AND procurement_request_id IS NOT NULL"
+    );
+    $stmt->execute([$caseId]);
+    $counts = $stmt->fetch() ?: ['pending_count'=>0,'belm_count'=>0,'ready_count'=>0,'rejected_count'=>0];
+    $pending = (int)$counts['pending_count'];
+    $belmPending = (int)$counts['belm_count'];
+    $ready = (int)$counts['ready_count'];
+    if ($pending > 0) {
+        $stage = 'PROCUREMENT';
+        $department = 'Procurement';
+        $blocker = $belmPending > 0
+            ? 'Waiting BELM supply via Procurement on ' . $belmPending . ' spare item(s).'
+            : 'Waiting Procurement action on ' . $pending . ' spare item(s).';
+    } elseif ($ready > 0) {
+        $stage = 'PARTS_READY';
+        $department = 'Workshop';
+        $blocker = null;
+    } else {
+        $stage = 'DIAGNOSIS';
+        $department = 'Workshop';
+        $blocker = 'Procurement request closed without parts issued.';
+    }
+    $pdo->prepare(
+        "UPDATE breakdown_cases SET current_stage=?, current_department=?, blocker_reason=?, stage_started_at=NOW(), updated_at=NOW() WHERE id=? AND status <> 'COMPLETED'"
+    )->execute([$stage, $department, $blocker, $caseId]);
+    $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+    $pdo->prepare(
+        'INSERT INTO breakdown_case_events (id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())'
+    )->execute([uuid(), $caseId, $stage, $department, $action, $note !== '' ? $note : null, 'customer', null, $actor]);
+}
+
+function customer_machine_spare_list_rows(string $customerId, string $machineId): array {
+    $stmt = db()->prepare(
+        'SELECT id, reference_number, description, quantity, selected, created_by_name, created_at, updated_at
+         FROM customer_machine_spare_list_items
+         WHERE customer_id = ? AND machine_id = ?
+         ORDER BY created_at ASC, id ASC'
+    );
+    $stmt->execute([$customerId, $machineId]);
+    return $stmt->fetchAll();
+}
+
 function customer_permissions_from_body(array $body): ?string {
     $raw = $body['permissions'] ?? 'all';
     if ($raw === 'all' || $raw === null) return null;
@@ -306,7 +570,7 @@ function output_single_receipt_pdf(string $filename, array $captionLines, string
 
 function output_machine_expense_pdf(string $filename, array $lines): void {
     $pages = array_chunk($lines, 48);
-    if (!$pages) $pages = [['No machine expenses recorded.']];
+    if (!$pages) $pages = [['No procurement records recorded.']];
 
     $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
     $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
@@ -454,7 +718,7 @@ function customer_can_manage_petty_cash(array $customer): bool {
 
 // Daily fuel usage — same usage_logs table, its own category. quantity is
 // litres, unit_price is price/litre, cost is the total for that day's
-// fill-up, mirroring the same shape as Machine Expenses / Petty Cash so
+// fill-up, mirroring the same shape as Procurement / Petty Cash so
 // the same CSV/PDF/receipt pattern applies consistently.
 function fuel_usage_rows(string $customerId, string $machineId, ?string $from = null, ?string $to = null): array {
     $sql = "SELECT id, date, description, quantity, unit, unit_price,
@@ -782,7 +1046,7 @@ if ($sub === 'privacy') {
             'alwaysShared' => [
                 'Basic company identity and contact details',
                 'Registered machine identity and operational status',
-                'Official support/service/spare requests sent to BELM',
+                'Official support/service requests sent to BELM and customer-owned Procurement spare requests',
                 'BELM <-> Customer communications',
             ],
             'serviceProviderException' => 'While BELM Service Provider is ON, maintenance/check-up and service-kit records required to perform the service remain accessible. An open official support request also grants temporary machine-scoped maintenance/service-kit access.',
@@ -845,7 +1109,7 @@ if ($sub === 'dashboard') {
 }
 
 // ---- Analysis summary for the dashboard's right-side card -------------------
-// ---- Analysis for ONE specific machine (Machine Expenses page sidebar) -----
+// ---- Analysis for ONE specific machine (Procurement page sidebar) -----
 if ($sub === 'machine-analysis' && $sub2) {
     $machineId = $sub2;
     $stmt = db()->prepare('SELECT id, model FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
@@ -898,69 +1162,10 @@ if ($sub === 'machine-analysis' && $sub2) {
 // dashboard's "UPDATE" button: BELM messages, Technician daily check-up
 // activity across every machine the customer owns, and a small 7-day
 // checklist-activity graph. Read-only; does not touch anything else.
-// POST /api/customer-portal?sub=spare-part-request — customer submits a
-// spare-part request directly, independent of any Service Request. This
-// is what /customer-service-request/'s "Request spare parts from BELM"
-// panel actually needs: it was previously calling /api/spare-part-requests,
-// which is staff-only (require_auth() rejects any non-staff token with
-// 401) - so every spare-part row a customer submitted there silently
-// failed to save, no matter what the service request itself did. This
-// endpoint creates its own spare_part_requests row with no request_id,
-// so a spare-part request can be sent on its own without also requiring
-// a Service Request to exist.
-if ($sub === 'spare-part-request' && $method === 'POST') {
-    require_customer_write_access($customer);
-    $b = body();
-    $machineId = trim((string)($b['machineId'] ?? ''));
-    $spareName = trim((string)($b['spareName'] ?? ''));
-    $referenceNumber = trim((string)($b['referenceNumber'] ?? ($b['partNumber'] ?? '')));
-    $quantity = isset($b['quantity']) ? (int)$b['quantity'] : 1;
-
-    if ($machineId === '') json_error('Select the machine that needs this spare part.');
-    if ($spareName === '') json_error('Spare name is required.');
-    if (strlen($spareName) > 255) json_error('Spare name is too long.');
-    if ($quantity < 1) $quantity = 1;
-
-    $machineStmt = db()->prepare(
-        'SELECT id, machine_type, brand, model FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
-    );
-    $machineStmt->execute([$machineId, $customer['id']]);
-    $machine = $machineStmt->fetch();
-    if (!$machine) json_error('Machine not found for this customer.', 404);
-
-    $description = $spareName . ($referenceNumber !== '' ? " (Ref: $referenceNumber)" : '');
-    $requestId = uuid();
-    db()->prepare(
-        "INSERT INTO spare_part_requests
-         (id, spare_part_id, request_id, machine_id, requested_by_id, requested_by_name,
-          description, machine_type, quantity, status, created_at)
-         VALUES (?,NULL,NULL,?,NULL,?,?,?,?,'PENDING',NOW())"
-    )->execute([
-        $requestId,
-        $machineId,
-        trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')),
-        $description,
-        $machine['machine_type'],
-        $quantity,
-    ]);
-
-    $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
-    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
-    $alertText = "Customer requested a spare part directly (not tied to a Service Request).\n"
-        . "Customer: " . ($customer['name'] ?? 'Unknown') . "\n"
-        . "Requested by: $actorName\n"
-        . "Machine: $machineLabel\n"
-        . "Spare: $spareName" . ($referenceNumber !== '' ? " (Ref: $referenceNumber)" : '') . "\n"
-        . "Quantity: $quantity\n"
-        . "Request ID: $requestId";
-    try {
-        belm_send_customer_to_belm_alert(['spare-parts'], 'SPARE PART REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel, $alertText, $customer['actorEmail'] ?? null);
-    } catch (Throwable $ignored) {}
-    try {
-        belm_log_customer_communication((string)$customer['id'], $machineId, 'CUSTOMER_TO_BELM', 'EMAIL', 'Spare Part Requested', $alertText, 'SPARE_REQUEST', $requestId, $actorName, 'SENT');
-    } catch (Throwable $ignored) {}
-
-    json_out(['id' => $requestId, 'message' => 'Spare-part request sent to BELM.'], 201);
+// Legacy direct-to-BELM spare endpoints are deliberately blocked in V297.
+// Customer spare requirements must enter the Procurement queue first.
+if (in_array($sub, ['spare-part-request','spare-part-requests'], true) && $method === 'POST') {
+    json_error('Direct spare requests from the request screen are disabled. Send requirements to Procurement; Procurement can then download selected shortage CSV or send selected shortage to BELM.', 409);
 }
 
 if ($sub === 'recent-activity' && $method === 'GET') {
@@ -1093,9 +1298,13 @@ if ($sub === 'analysis') {
     $totalReports = (int)$reportStmt->fetchColumn();
 
     $invoiceStmt = db()->prepare(
-        "SELECT COALESCE(SUM(total), 0) AS total,
-                COALESCE(SUM(total) FILTER (WHERE status <> 'PAID'), 0) AS outstanding
-         FROM invoices WHERE customer_id = ?"
+        "SELECT COALESCE(SUM(i.total),0) AS total,
+                COALESCE(SUM(GREATEST(i.total-COALESCE(pay.paid,0),0)),0) AS outstanding
+         FROM invoices i
+         LEFT JOIN (
+             SELECT invoice_id,SUM(amount) AS paid FROM payments GROUP BY invoice_id
+         ) pay ON pay.invoice_id=i.id
+         WHERE i.customer_id=? AND i.deleted_at IS NULL AND i.status<>'CANCELLED'"
     );
     $invoiceStmt->execute([$custId]);
     $invoiceStats = $invoiceStmt->fetch();
@@ -1168,7 +1377,7 @@ if ($sub === 'analysis') {
         ];
     }
 
-    // The frontend only visually hides the Petty Cash / Machine Expenses /
+    // The frontend only visually hides the Petty Cash / Procurement /
     // Invoices figures from a customer sub-user without the relevant Role
     // Manager permission (a DOM/CSS-level hide). That is not real access
     // control - the raw numbers were still returned in this JSON response
@@ -1279,7 +1488,7 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
 
 // ---- Customer-owned Store Ledger -------------------------------------------
 // Separate from BELM Inventory. Customers can receive their own stock here;
-// Machine Expenses can then issue it to a machine with an auditable balance.
+// Procurement can then issue it to a machine with an auditable balance.
 if ($sub === 'store') {
     require_customer_feature_access($customer, 'store', 'Store Keeper');
     if ($method === 'GET') {
@@ -1385,9 +1594,780 @@ if ($sub === 'store') {
     json_error('Method not allowed.', 405);
 }
 
+// ---- V297 Procurement-first spare workflow ---------------------------------
+// Customer searches its own Store and submits the requirement to Procurement.
+// The request screen never sends a spare directly to BELM Inventory or a
+// supplier. Procurement owns the sourcing decision and Maintenance Process
+// mirrors each status until the part is ready.
+if ($sub === 'spare-search' && $sub2 && $method === 'GET') {
+    require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+    customer_machine_for_action((string)$customer['id'], (string)$sub2);
+    $q = trim((string)($_GET['q'] ?? ''));
+    if ($q === '') json_out(['items' => []]);
+    if (strlen($q) > 120) json_error('Spare search is too long.');
+    $like = '%' . $q . '%';
+    $stmt = db()->prepare(
+        "SELECT id, part_number, description, unit, qty_on_hand, average_unit_cost
+         FROM customer_store_items
+         WHERE customer_id = ?
+           AND (part_number ILIKE ? OR description ILIKE ?)
+         ORDER BY
+           CASE WHEN UPPER(TRIM(part_number)) = UPPER(TRIM(?)) THEN 0
+                WHEN LOWER(TRIM(description)) = LOWER(TRIM(?)) THEN 1 ELSE 2 END,
+           qty_on_hand DESC, description ASC
+         LIMIT 15"
+    );
+    $stmt->execute([$customer['id'], $like, $like, $q, $q]);
+    json_out(['items' => $stmt->fetchAll()]);
+}
+
+// V298 - Procurement may hand selected shortage quantities to BELM.
+// Customer Store balance remains the source of truth; only the shortage is sent.
+if ($sub === 'procurement-belm-supply' && $sub2 && $method === 'POST') {
+    require_customer_feature_access($customer, 'machine-expenses', 'Procurement');
+    require_customer_write_access($customer);
+    if (!customer_can_manage_procurement($customer)) {
+        json_error('Only Customer Procurement, Admin or Owner can send shortage items to BELM.', 403);
+    }
+    $machine = customer_machine_for_action((string)$customer['id'], (string)$sub2);
+    $b = body();
+    $requestIds = $b['requestIds'] ?? [];
+    if (!is_array($requestIds) || !$requestIds) json_error('Select at least one shortage item to send to BELM.');
+    $requestIds = array_values(array_unique(array_filter(array_map(static fn($v) => trim((string)$v), $requestIds))));
+    if (!$requestIds) json_error('Select at least one shortage item to send to BELM.');
+    if (count($requestIds) > 100) json_error('A maximum of 100 shortage items can be sent at once.');
+
+    $pdo = db();
+    $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Procurement')) ?: 'Procurement';
+    $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+    $created = [];
+    $duplicates = [];
+    $skipped = [];
+    $caseIds = [];
+    $pdo->beginTransaction();
+    try {
+        $getReq = $pdo->prepare(
+            "SELECT * FROM customer_procurement_requests
+             WHERE id=? AND customer_id=? AND machine_id=? FOR UPDATE"
+        );
+        $findBelmPart = $pdo->prepare(
+            "SELECT id FROM spare_parts
+             WHERE deleted_at IS NULL AND UPPER(TRIM(part_number))=UPPER(TRIM(?)) LIMIT 1"
+        );
+        $findDuplicate = $pdo->prepare(
+            "SELECT id FROM spare_part_requests
+             WHERE procurement_request_id=? AND status IN ('PENDING','PURCHASE_REQUIRED') LIMIT 1"
+        );
+        $insertBelm = $pdo->prepare(
+            "INSERT INTO spare_part_requests
+             (id,spare_part_id,request_id,machine_id,requested_by_id,requested_by_name,description,machine_type,
+              quantity,status,created_at,reference_number,procurement_request_id)
+             VALUES (?,?,NULL,?,NULL,?,?,?,?, 'PENDING',NOW(),?,?)"
+        );
+        foreach ($requestIds as $requestId) {
+            $getReq->execute([$requestId, $customer['id'], $sub2]);
+            $req = $getReq->fetch();
+            if (!$req) { $skipped[] = ['id'=>$requestId,'reason'=>'Not found']; continue; }
+            if (!in_array((string)$req['status'], ['PENDING_PROCUREMENT','PURCHASE_REQUIRED','BELM_REQUESTED'], true)) {
+                $skipped[] = ['id'=>$requestId,'reason'=>'Status ' . $req['status'] . ' cannot be sent'];
+                continue;
+            }
+
+            $store = customer_match_store_item((string)$customer['id'], (string)($req['part_number'] ?? ''), (string)$req['description']);
+            $available = $store ? max(0.0, (float)$store['qty_on_hand']) : 0.0;
+            $required = max(0.0, (float)$req['quantity']);
+            $shortage = max(0.0, $required - $available);
+            if ($shortage <= 0.00001) {
+                $skipped[] = ['id'=>$requestId,'reason'=>'Customer Store now has enough stock'];
+                continue;
+            }
+
+            $findDuplicate->execute([$requestId]);
+            if ($existing = $findDuplicate->fetchColumn()) {
+                $duplicates[] = ['id'=>$requestId,'belmRequestId'=>$existing];
+                continue;
+            }
+
+            $partNumber = trim((string)($req['part_number'] ?? ''));
+            $belmPartId = null;
+            if ($partNumber !== '') {
+                $findBelmPart->execute([$partNumber]);
+                $belmPartId = $findBelmPart->fetchColumn() ?: null;
+            }
+            $belmRequestId = uuid();
+            $shortageQty = max(1, (int)ceil($shortage));
+            $insertBelm->execute([
+                $belmRequestId, $belmPartId, $sub2,
+                $actor . ' @ ' . ($customer['name'] ?? 'Customer'),
+                (string)$req['description'], (string)($machine['machine_type'] ?? 'Machine'),
+                $shortageQty, $partNumber !== '' ? $partNumber : null, $requestId,
+            ]);
+            $note = 'Shortage ' . $shortageQty . ' ' . ($req['unit'] ?: 'PC') . ' sent to BELM for supply by Procurement.';
+            $pdo->prepare(
+                "UPDATE customer_procurement_requests
+                 SET status='BELM_REQUESTED', handled_by_name=?, handled_at=NOW(), decision_note=?, updated_at=NOW()
+                 WHERE id=?"
+            )->execute([$actor, $note, $requestId]);
+            $pdo->prepare(
+                "UPDATE breakdown_spare_requests
+                 SET status='BELM_REQUESTED', approval_note=?, updated_at=NOW()
+                 WHERE procurement_request_id=?"
+            )->execute([$note, $requestId]);
+            if (!empty($req['workflow_case_id'])) $caseIds[(string)$req['workflow_case_id']] = true;
+            $created[] = [
+                'id'=>$requestId,'belmRequestId'=>$belmRequestId,'partNumber'=>$partNumber,
+                'description'=>$req['description'],'shortage'=>$shortageQty,'unit'=>$req['unit'] ?: 'PC',
+            ];
+        }
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+
+    foreach (array_keys($caseIds) as $caseId) {
+        customer_refresh_procurement_case($caseId, $customer, 'Selected shortage sent to BELM', 'Procurement chose BELM supply for selected shortage item(s).');
+    }
+    if ($created) {
+        $lines = [];
+        foreach ($created as $item) {
+            $lines[] = ($item['partNumber'] ?: 'No part number') . ' - ' . $item['description'] . ' x ' . $item['shortage'] . ' ' . $item['unit'];
+        }
+        try {
+            belm_send_staff_page_alert(
+                ['spare-parts'],
+                'CUSTOMER PROCUREMENT - BELM SUPPLY REQUEST - ' . $machineLabel,
+                "Customer: " . ($customer['name'] ?? 'Customer') . "\nMachine: $machineLabel\nRequested by: $actor\n\n" . implode("\n", $lines) . "\n\nOpen Spare Parts Inventory to process."
+            );
+        } catch (Throwable $ignored) {}
+        try {
+            belm_log_customer_communication(
+                (string)$customer['id'], (string)$sub2, 'CUSTOMER_TO_BELM', 'PORTAL',
+                'Procurement Spare Supply Request',
+                'Procurement sent ' . count($created) . ' selected shortage item(s) to BELM for supply.',
+                'PROCUREMENT', null, $actor, 'SENT'
+            );
+        } catch (Throwable $ignored) {}
+        log_customer_activity($customer, 'Procurement sent ' . count($created) . ' shortage item(s) to BELM for ' . $machineLabel . '.');
+    }
+    json_out([
+        'ok'=>true,'createdCount'=>count($created),'created'=>$created,'alreadySent'=>$duplicates,'skipped'=>$skipped,
+        'requests'=>customer_procurement_request_rows((string)$customer['id'], (string)$sub2),
+        'message'=>count($created) . ' selected shortage item(s) sent to BELM. Maintenance Process now shows waiting BELM supply via Procurement.'
+    ], $created ? 201 : 200);
+}
+
+if ($sub === 'procurement-requests' && $sub2) {
+    if ($method === 'GET') {
+        require_customer_any_feature_access($customer, ['machine-expenses', 'service-request'], 'Procurement requests');
+        customer_machine_for_action((string)$customer['id'], (string)$sub2);
+        json_out([
+            'items' => customer_procurement_request_rows((string)$customer['id'], (string)$sub2),
+            'canManage' => customer_can_manage_procurement($customer),
+        ]);
+    }
+
+    if ($method === 'POST') {
+        require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+        require_customer_write_access($customer);
+        $machine = customer_machine_for_action((string)$customer['id'], (string)$sub2);
+        $b = body();
+        $items = $b['items'] ?? [];
+        if (!is_array($items) || !$items) json_error('Select at least one spare to send to Procurement.');
+        if (count($items) > 100) json_error('A maximum of 100 spare items can be submitted at once.');
+        $clean = [];
+        foreach ($items as $raw) {
+            if (!is_array($raw)) continue;
+            $referenceNumber = trim((string)($raw['referenceNumber'] ?? ''));
+            $description = trim((string)($raw['description'] ?? ''));
+            $quantity = (float)($raw['quantity'] ?? 0);
+            if ($referenceNumber === '' && $description === '') continue;
+            if ($description === '') $description = $referenceNumber;
+            if ($quantity <= 0 || floor($quantity) !== $quantity) json_error('Spare quantity must be a whole number above zero.');
+            if (strlen($description) > 255 || strlen($referenceNumber) > 120) json_error('Spare name or part number is too long.');
+            $clean[] = ['referenceNumber'=>$referenceNumber,'description'=>$description,'quantity'=>(int)$quantity];
+        }
+        if (!$clean) json_error('Add at least one spare before sending to Procurement.');
+
+        // V298 - every spare submitted as a requirement also becomes/remains
+        // part of the machine's reusable spare master list. This is enforced
+        // server-side as well as by the UI Save Spare List step.
+        $listPdo = db();
+        $listActor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        foreach ($clean as $listItem) {
+            $ref = trim((string)$listItem['referenceNumber']);
+            $desc = trim((string)$listItem['description']);
+            if ($ref !== '') {
+                $findList = $listPdo->prepare(
+                    "SELECT id FROM customer_machine_spare_list_items
+                     WHERE customer_id=? AND machine_id=? AND UPPER(TRIM(COALESCE(reference_number,'')))=UPPER(TRIM(?))
+                     ORDER BY updated_at DESC LIMIT 1"
+                );
+                $findList->execute([$customer['id'],$sub2,$ref]);
+            } else {
+                $findList = $listPdo->prepare(
+                    "SELECT id FROM customer_machine_spare_list_items
+                     WHERE customer_id=? AND machine_id=? AND LOWER(TRIM(description))=LOWER(TRIM(?))
+                     ORDER BY updated_at DESC LIMIT 1"
+                );
+                $findList->execute([$customer['id'],$sub2,$desc]);
+            }
+            $existingListId = $findList->fetchColumn();
+            if ($existingListId) {
+                $listPdo->prepare(
+                    'UPDATE customer_machine_spare_list_items SET reference_number=?,description=?,quantity=?,selected=1,updated_at=NOW() WHERE id=?'
+                )->execute([$ref !== '' ? $ref : null,$desc,(int)$listItem['quantity'],$existingListId]);
+            } else {
+                $listPdo->prepare(
+                    'INSERT INTO customer_machine_spare_list_items (id,customer_id,machine_id,reference_number,description,quantity,selected,created_by_name,created_at,updated_at) VALUES (?,?,?,?,?,?,1,?,NOW(),NOW())'
+                )->execute([uuid(),$customer['id'],$sub2,$ref !== '' ? $ref : null,$desc,(int)$listItem['quantity'],$listActor]);
+            }
+        }
+        $checks = customer_spare_store_check_rows((string)$customer['id'], $clean);
+        $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        $batchId = uuid();
+        $pdo = db();
+        $created = [];
+        $duplicates = [];
+        $pdo->beginTransaction();
+        try {
+            $caseId = customer_procurement_case_for_machine($customer, $machine, $batchId);
+            $insertReq = $pdo->prepare(
+                "INSERT INTO customer_procurement_requests
+                 (id,customer_id,machine_id,store_item_id,workflow_case_id,part_number,description,quantity,unit,
+                  store_available_at_request,store_unit_cost,store_match_status,status,requested_by_name,requested_at,updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING_PROCUREMENT', ?,NOW(),NOW())"
+            );
+            $insertSpare = $pdo->prepare(
+                "INSERT INTO breakdown_spare_requests
+                 (id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,updated_at,procurement_request_id)
+                 VALUES (?,?,NULL,?,?,?,?,?,'PROCUREMENT_REVIEW',?,NOW(),NOW(),?)"
+            );
+            foreach ($checks as $check) {
+                $partNumber = trim((string)($check['storePartNumber'] ?: $check['referenceNumber']));
+                $description = trim((string)($check['storeDescription'] ?: $check['description']));
+                $quantity = (float)$check['quantity'];
+                $storeMatch = !empty($check['enough']) ? 'IN_STORE' : (!empty($check['inStore']) ? 'STORE_SHORTAGE' : 'NOT_IN_STORE');
+                $dup = $pdo->prepare(
+                    "SELECT id FROM customer_procurement_requests
+                     WHERE customer_id=? AND machine_id=?
+                       AND status IN ('PENDING_PROCUREMENT','BELM_REQUESTED','PURCHASE_REQUIRED','ORDERED')
+                       AND COALESCE(UPPER(TRIM(part_number)),'') = ?
+                       AND LOWER(TRIM(description)) = ?
+                     LIMIT 1"
+                );
+                $dup->execute([$customer['id'], $sub2, strtoupper($partNumber), strtolower($description)]);
+                if ($existing = $dup->fetchColumn()) {
+                    $duplicates[] = ['id'=>$existing,'partNumber'=>$partNumber,'description'=>$description,'quantity'=>$quantity];
+                    continue;
+                }
+                $requestId = uuid();
+                $insertReq->execute([
+                    $requestId, $customer['id'], $sub2, $check['storeItemId'] ?: null, $caseId,
+                    $partNumber !== '' ? $partNumber : null, $description, $quantity, $check['unit'] ?: 'PC',
+                    (float)$check['available'], (float)$check['unitCost'], $storeMatch, $actor,
+                ]);
+                $spareId = uuid();
+                $insertSpare->execute([
+                    $spareId, $caseId, $description, $partNumber !== '' ? $partNumber : null,
+                    $quantity, $check['unit'] ?: 'PC',
+                    'Procurement request. Store at request: ' . (float)$check['available'] . ' ' . ($check['unit'] ?: 'PC'),
+                    $actor, $requestId,
+                ]);
+                $created[] = ['id'=>$requestId,'spareId'=>$spareId,'description'=>$description,'storeMatchStatus'=>$storeMatch];
+            }
+            if (!$created && $duplicates) {
+                $pdo->commit();
+                json_out([
+                    'ok'=>true,'createdCount'=>0,'created'=>[],'alreadyPending'=>$duplicates,
+                    'requests'=>customer_procurement_request_rows((string)$customer['id'], (string)$sub2),
+                    'message'=>'Selected spare(s) are already in the Procurement queue.'
+                ]);
+            }
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        try {
+            $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+            customer_send_team_alert(
+                (string)$customer['id'], ['machine-expenses'],
+                'PROCUREMENT REQUEST - ' . $machineLabel,
+                count($created) . " spare item(s) are waiting for Procurement.\nMachine: $machineLabel\nRequested by: $actor\nOpen Procurement to check Store and source the items.",
+                true
+            );
+        } catch (Throwable $ignored) {}
+        log_customer_activity($customer, 'Sent ' . count($created) . ' spare item(s) to Procurement for machine ' . (($machine['model'] ?? '') ?: $sub2) . '.');
+        json_out([
+            'ok'=>true,'createdCount'=>count($created),'created'=>$created,'alreadyPending'=>$duplicates,
+            'requests'=>customer_procurement_request_rows((string)$customer['id'], (string)$sub2),
+            'message'=>count($created) . ' spare item(s) sent to Procurement. Maintenance Process now shows Procurement status.'
+        ], 201);
+    }
+
+    if ($method === 'PUT') {
+        require_customer_feature_access($customer, 'machine-expenses', 'Procurement');
+        require_customer_write_access($customer);
+        if (!customer_can_manage_procurement($customer)) {
+            json_error('Only Customer Procurement, Admin or Owner can process spare sourcing requests.', 403);
+        }
+        $b = body();
+        $action = strtoupper(trim((string)($b['action'] ?? '')));
+        $note = trim((string)($b['note'] ?? ''));
+        if (!in_array($action, ['ISSUE_STORE','PURCHASE_REQUIRED','ORDERED','PARTS_READY','REJECT'], true)) {
+            json_error('Choose a valid Procurement action.');
+        }
+        if (strlen($note) > 500) json_error('Procurement note is too long.');
+        $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Procurement')) ?: 'Procurement';
+        $pdo = db();
+        $pdo->beginTransaction();
+        $expenseId = null;
+        $balanceAfter = null;
+        try {
+            $stmt = $pdo->prepare('SELECT * FROM customer_procurement_requests WHERE id=? AND customer_id=? FOR UPDATE');
+            $stmt->execute([$sub2, $customer['id']]);
+            $req = $stmt->fetch();
+            if (!$req) {
+                $pdo->rollBack();
+                json_error('Procurement request not found.', 404);
+            }
+            if (in_array($req['status'], ['PARTS_READY','REJECTED'], true)) {
+                $pdo->rollBack();
+                json_error('This Procurement request is already closed.', 409);
+            }
+            $newStatus = $req['status'];
+            $spareStatus = 'PROCUREMENT_REVIEW';
+            if ($action === 'REJECT') {
+                $newStatus = 'REJECTED';
+                $spareStatus = 'REJECTED';
+            } elseif ($action === 'PURCHASE_REQUIRED') {
+                $newStatus = 'PURCHASE_REQUIRED';
+                $spareStatus = 'PROCUREMENT_REQUIRED';
+            } elseif ($action === 'ORDERED') {
+                $newStatus = 'ORDERED';
+                $spareStatus = 'ORDERED';
+            } elseif ($action === 'PARTS_READY') {
+                $newStatus = 'PARTS_READY';
+                $spareStatus = 'PARTS_READY';
+            } elseif ($action === 'ISSUE_STORE') {
+                $storeId = trim((string)($req['store_item_id'] ?? ''));
+                if ($storeId === '') {
+                    $matchedStore = customer_match_store_item((string)$customer['id'], (string)($req['part_number'] ?? ''), (string)$req['description']);
+                    $storeId = trim((string)($matchedStore['id'] ?? ''));
+                    if ($storeId !== '') {
+                        $pdo->prepare('UPDATE customer_procurement_requests SET store_item_id=?, updated_at=NOW() WHERE id=?')->execute([$storeId,$sub2]);
+                    }
+                }
+                if ($storeId === '') {
+                    $pdo->rollBack();
+                    json_error('This spare is not matched to Customer Store. Choose Purchase Required, CSV sourcing, or Send to BELM.', 409);
+                }
+                $storeStmt = $pdo->prepare(
+                    'SELECT id,part_number,description,unit,qty_on_hand,average_unit_cost FROM customer_store_items WHERE id=? AND customer_id=? FOR UPDATE'
+                );
+                $storeStmt->execute([$storeId, $customer['id']]);
+                $store = $storeStmt->fetch();
+                if (!$store) {
+                    $pdo->rollBack();
+                    json_error('Customer Store item no longer exists.', 409);
+                }
+                $quantity = (float)$req['quantity'];
+                $available = (float)$store['qty_on_hand'];
+                if ($available + 0.00001 < $quantity) {
+                    $pdo->rollBack();
+                    json_error('Store balance is insufficient. Available: ' . rtrim(rtrim(number_format($available,2,'.',''),'0'),'.') . ' ' . ($store['unit'] ?: $req['unit']) . '. Choose Purchase Required or replenish Store.', 409);
+                }
+                $balanceAfter = round($available - $quantity, 2);
+                $unitCost = round((float)$store['average_unit_cost'], 2);
+                $unit = strtoupper(trim((string)$store['unit'])) ?: strtoupper(trim((string)$req['unit'])) ?: 'PC';
+                $description = trim((string)$store['description']) ?: trim((string)$req['description']);
+                $partNumber = strtoupper(trim((string)$store['part_number'])) ?: strtoupper(trim((string)$req['part_number']));
+                $expenseId = uuid();
+                $pdo->prepare('UPDATE customer_store_items SET qty_on_hand=?, updated_at=NOW() WHERE id=?')->execute([$balanceAfter,$store['id']]);
+                $machine = customer_machine_for_action((string)$customer['id'], (string)$req['machine_id']);
+                $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+                $pdo->prepare(
+                    "INSERT INTO customer_store_movements
+                     (id,customer_id,store_item_id,machine_id,movement_type,quantity,unit_cost,balance_after,actor_name,received_by,note,created_at)
+                     VALUES (?,?,?,?, 'ISSUE', ?,?,?,?,?,?,NOW())"
+                )->execute([
+                    uuid(),$customer['id'],$store['id'],$req['machine_id'],$quantity,$unitCost,$balanceAfter,$actor,
+                    $req['requested_by_name'] ?: null,'Procurement issued to ' . $machineLabel . ($note !== '' ? ' - ' . $note : '')
+                ]);
+                $cost = round($quantity * $unitCost, 2);
+                $pdo->prepare(
+                    "INSERT INTO usage_logs
+                     (id,customer_id,machine_id,date,category,description,part_number,quantity,unit,unit_price,cost,logged_by,
+                      store_item_id,stock_source,store_balance_after,issued_by,received_by,created_at)
+                     VALUES (?,?,?,CURRENT_DATE,'SPARE_PART',?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
+                )->execute([
+                    $expenseId,$customer['id'],$req['machine_id'],$description,$partNumber,$quantity,$unit,$unitCost,$cost,$actor,
+                    $store['id'],'CUSTOMER_STORE',$balanceAfter,$actor,$req['requested_by_name'] ?: null
+                ]);
+                $newStatus = 'PARTS_READY';
+                $spareStatus = 'PARTS_READY';
+            }
+            $pdo->prepare(
+                'UPDATE customer_procurement_requests SET status=?, handled_by_name=?, handled_at=NOW(), decision_note=?, expense_id=COALESCE(?,expense_id), updated_at=NOW() WHERE id=?'
+            )->execute([$newStatus,$actor,$note !== '' ? $note : null,$expenseId,$sub2]);
+            if ($spareStatus === 'PARTS_READY') {
+                $pdo->prepare(
+                    "UPDATE breakdown_spare_requests SET status='PARTS_READY', fulfilled_by_name=?, fulfilled_at=NOW(), approval_note=?, updated_at=NOW() WHERE procurement_request_id=?"
+                )->execute([$actor,$note !== '' ? $note : null,$sub2]);
+            } else {
+                $pdo->prepare(
+                    'UPDATE breakdown_spare_requests SET status=?, approval_note=?, updated_at=NOW() WHERE procurement_request_id=?'
+                )->execute([$spareStatus,$note !== '' ? $note : null,$sub2]);
+            }
+            $caseId = (string)($req['workflow_case_id'] ?? '');
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        if ($caseId !== '') customer_refresh_procurement_case($caseId, $customer, 'Procurement: ' . str_replace('_',' ',$newStatus), $note);
+        if ($newStatus === 'PARTS_READY') {
+            try { customer_send_team_alert((string)$customer['id'], ['workflow','service-request'], 'PARTS READY - MAINTENANCE CAN CONTINUE', 'Procurement has made the requested spare ready for the machine. Open Maintenance Process for status.', true); } catch (Throwable $ignored) {}
+        }
+        log_customer_activity($customer, 'Procurement request ' . $sub2 . ' changed to ' . $newStatus . '.');
+        json_out([
+            'ok'=>true,'status'=>$newStatus,'expenseId'=>$expenseId,'storeBalanceAfter'=>$balanceAfter,
+            'message'=>$newStatus === 'PARTS_READY' ? 'Spare is ready. Maintenance Process updated.' : 'Procurement status updated.'
+        ]);
+    }
+
+    json_error('Method not allowed.', 405);
+}
+
+// ---- V295 Machine spare list + Customer Store approval ----------------------
+// This workflow remains fully customer-owned. It never exposes BELM Inventory.
+// Saved lists can be reused, exported for outside procurement, or checked
+// against the Customer Store. Store stock is deducted only after an explicit
+// Accounts/Owner/Admin approval.
+if ($sub === 'spare-store-check' && $sub2 && $method === 'POST') {
+    require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+    customer_machine_for_action((string)$customer['id'], (string)$sub2);
+    $b = body();
+    $items = $b['items'] ?? [];
+    if (!is_array($items)) json_error('Spare items are required.');
+    if (count($items) > 100) json_error('A maximum of 100 spare items can be checked at once.');
+    json_out(['items' => customer_spare_store_check_rows((string)$customer['id'], $items)]);
+}
+
+if ($sub === 'spare-workspace' && $sub2) {
+    require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+    $machine = customer_machine_for_action((string)$customer['id'], (string)$sub2);
+
+    if ($method === 'GET') {
+        $saved = customer_machine_spare_list_rows((string)$customer['id'], (string)$sub2);
+        $checkInput = array_map(static function ($row) {
+            return [
+                'referenceNumber' => $row['reference_number'] ?? '',
+                'description' => $row['description'] ?? '',
+                'quantity' => (float)($row['quantity'] ?? 0),
+            ];
+        }, $saved);
+        json_out([
+            'machine' => $machine,
+            'items' => $saved,
+            'storeChecks' => customer_spare_store_check_rows((string)$customer['id'], $checkInput),
+            'approvalRequests' => customer_store_issue_request_rows((string)$customer['id'], (string)$sub2),
+            'procurementRequests' => customer_procurement_request_rows((string)$customer['id'], (string)$sub2),
+            'canApproveStoreIssue' => customer_can_approve_store_issue($customer),
+            'canManageProcurement' => customer_can_manage_procurement($customer),
+        ]);
+    }
+
+    if ($method === 'PUT') {
+        require_customer_write_access($customer);
+        $b = body();
+        $items = $b['items'] ?? [];
+        if (!is_array($items)) json_error('Spare list is required.');
+        if (count($items) > 100) json_error('A maximum of 100 spare items can be saved per machine list.');
+        $clean = [];
+        foreach ($items as $raw) {
+            if (!is_array($raw)) continue;
+            $referenceNumber = trim((string)($raw['referenceNumber'] ?? ''));
+            $description = trim((string)($raw['description'] ?? ''));
+            $quantity = (float)($raw['quantity'] ?? 0);
+            $selected = !array_key_exists('selected', $raw) || !empty($raw['selected']);
+            if ($description === '' && $referenceNumber === '') continue;
+            if ($description === '') json_error('Every saved spare must have a spare name.');
+            if (strlen($description) > 255) json_error('Spare name is too long.');
+            if (strlen($referenceNumber) > 100) json_error('Reference / part number is too long.');
+            if ($quantity <= 0 || floor($quantity) !== $quantity) json_error('Saved spare quantity must be a whole number above zero.');
+            $clean[] = [
+                'referenceNumber' => $referenceNumber,
+                'description' => $description,
+                'quantity' => (int)$quantity,
+                'selected' => $selected,
+            ];
+        }
+        if (!$clean) json_error('Add at least one spare before saving the machine list.');
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $pdo->prepare('DELETE FROM customer_machine_spare_list_items WHERE customer_id = ? AND machine_id = ?')
+                ->execute([$customer['id'], $sub2]);
+            $insert = $pdo->prepare(
+                'INSERT INTO customer_machine_spare_list_items
+                 (id, customer_id, machine_id, reference_number, description, quantity, selected,
+                  created_by_name, created_at, updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())'
+            );
+            $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+            foreach ($clean as $item) {
+                $insert->execute([
+                    uuid(), $customer['id'], $sub2,
+                    $item['referenceNumber'] !== '' ? $item['referenceNumber'] : null,
+                    $item['description'], $item['quantity'], $item['selected'] ? 1 : 0, $actor,
+                ]);
+            }
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        log_customer_activity($customer, 'Saved machine spare list with ' . count($clean) . ' item(s) for ' . (($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model']) . '.');
+        json_out([
+            'ok' => true,
+            'message' => 'Spare list saved for this machine.',
+            'items' => customer_machine_spare_list_rows((string)$customer['id'], (string)$sub2),
+            'storeChecks' => customer_spare_store_check_rows((string)$customer['id'], $clean),
+        ]);
+    }
+
+    json_error('Method not allowed.', 405);
+}
+
+if ($sub === 'store-issue-requests' && $sub2) {
+    // GET/POST sub2 is a machine ID. PUT sub2 is an approval-request ID.
+    if ($method === 'GET') {
+        require_customer_any_feature_access($customer, ['machine-expenses', 'service-request'], 'Procurement approvals');
+        customer_machine_for_action((string)$customer['id'], (string)$sub2);
+        json_out([
+            'items' => customer_store_issue_request_rows((string)$customer['id'], (string)$sub2),
+            'canApprove' => customer_can_approve_store_issue($customer),
+        ]);
+    }
+
+    if ($method === 'POST') {
+        require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+        require_customer_write_access($customer);
+        $machine = customer_machine_for_action((string)$customer['id'], (string)$sub2);
+        $b = body();
+        $items = $b['items'] ?? [];
+        if (!is_array($items) || !$items) json_error('Select at least one spare to send for Procurement approval.');
+        if (count($items) > 100) json_error('A maximum of 100 spare items can be submitted at once.');
+        $checks = customer_spare_store_check_rows((string)$customer['id'], $items);
+        $created = [];
+        $procurement = [];
+        $duplicates = [];
+        $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        $pdo = db();
+        // Group duplicate list rows that resolve to the same Store item so one
+        // approval represents the total requested quantity and cannot
+        // accidentally over-reserve the same balance in separate rows.
+        $grouped = [];
+        foreach ($checks as $check) {
+            if (empty($check['storeItemId'])) {
+                $procurement[] = $check;
+                continue;
+            }
+            $key = (string)$check['storeItemId'];
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = $check;
+                $grouped[$key]['quantity'] = 0.0;
+            }
+            $grouped[$key]['quantity'] += (float)$check['quantity'];
+        }
+        foreach ($grouped as $check) {
+            $requestedQty = round((float)$check['quantity'], 2);
+            $availableQty = round(max(0.0, (float)$check['available']), 2);
+            $issueQty = round(min($requestedQty, $availableQty), 2);
+            $shortageQty = round(max(0.0, $requestedQty - $issueQty), 2);
+            if ($shortageQty > 0) {
+                $procurementRow = $check;
+                $procurementRow['requestedQuantity'] = $requestedQty;
+                $procurementRow['quantity'] = $shortageQty;
+                $procurementRow['shortage'] = $shortageQty;
+                $procurementRow['availableForApproval'] = $issueQty;
+                $procurementRow['enough'] = false;
+                $procurement[] = $procurementRow;
+            }
+            // Partial Store balance is useful too: send the available portion
+            // to Procurement approval and leave only the shortage for outside procurement.
+            if ($issueQty <= 0) continue;
+            $check['requestedQuantity'] = $requestedQty;
+            $check['quantity'] = $issueQty;
+            $check['shortage'] = $shortageQty;
+            $check['enough'] = true;
+            $dup = $pdo->prepare(
+                "SELECT id FROM customer_store_issue_requests
+                 WHERE customer_id = ? AND machine_id = ? AND store_item_id = ?
+                   AND status = 'PENDING_APPROVAL'
+                 LIMIT 1"
+            );
+            $dup->execute([$customer['id'], $sub2, $check['storeItemId']]);
+            if ($existing = $dup->fetchColumn()) {
+                $check['existingRequestId'] = $existing;
+                $duplicates[] = $check;
+                continue;
+            }
+            $requestId = uuid();
+            $pdo->prepare(
+                "INSERT INTO customer_store_issue_requests
+                 (id, customer_id, machine_id, store_item_id, part_number, description,
+                  quantity, unit, unit_cost, balance_at_request, requested_by_name,
+                  requested_at, status, updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),'PENDING_APPROVAL',NOW())"
+            )->execute([
+                $requestId, $customer['id'], $sub2, $check['storeItemId'],
+                $check['storePartNumber'] ?: ($check['referenceNumber'] ?: 'STORE-ITEM'),
+                $check['storeDescription'] ?: $check['description'],
+                $check['quantity'], $check['unit'] ?: 'PC', $check['unitCost'], $check['available'], $actor,
+            ]);
+            $created[] = $requestId;
+        }
+        if ($created) {
+            try {
+                $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+                customer_send_team_alert(
+                    (string)$customer['id'], ['machine-expenses'],
+                    'STORE ISSUE APPROVAL REQUIRED - ' . $machineLabel,
+                    count($created) . " Customer Store item(s) are waiting for Procurement approval.\nMachine: $machineLabel\nRequested by: $actor\nOpen Procurement to approve or reject.",
+                    true
+                );
+            } catch (Throwable $ignored) {}
+            log_customer_activity($customer, 'Sent ' . count($created) . ' Customer Store issue request(s) to Procurement approval.');
+        }
+        json_out([
+            'ok' => true,
+            'createdCount' => count($created),
+            'createdIds' => $created,
+            'procurementRequired' => $procurement,
+            'alreadyPending' => $duplicates,
+            'approvalRequests' => customer_store_issue_request_rows((string)$customer['id'], (string)$sub2),
+            'message' => count($created) . ' Store item(s) sent to Procurement approval. Stock has not been deducted yet.',
+        ], $created ? 201 : 200);
+    }
+
+    if ($method === 'PUT') {
+        require_customer_feature_access($customer, 'machine-expenses', 'Procurement');
+        require_customer_write_access($customer);
+        if (!customer_can_approve_store_issue($customer)) {
+            json_error('Only Customer Owner, Admin or Accounts can approve Store issues in Procurement.', 403);
+        }
+        $b = body();
+        $action = strtoupper(trim((string)($b['action'] ?? '')));
+        $note = trim((string)($b['note'] ?? ''));
+        if (!in_array($action, ['APPROVE', 'REJECT'], true)) json_error('Choose APPROVE or REJECT.');
+        if (strlen($note) > 500) json_error('Decision note is too long.');
+        $approver = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $reqStmt = $pdo->prepare(
+                'SELECT * FROM customer_store_issue_requests
+                 WHERE id = ? AND customer_id = ? FOR UPDATE'
+            );
+            $reqStmt->execute([$sub2, $customer['id']]);
+            $req = $reqStmt->fetch();
+            if (!$req) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                json_error('Store issue approval request not found.', 404);
+            }
+            if ($req['status'] !== 'PENDING_APPROVAL') {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                json_error('This Store issue request has already been decided.', 409);
+            }
+            if ($action === 'REJECT') {
+                $pdo->prepare(
+                    "UPDATE customer_store_issue_requests
+                     SET status='REJECTED', rejected_by_name=?, rejected_at=NOW(), decision_note=?, updated_at=NOW()
+                     WHERE id=?"
+                )->execute([$approver, $note !== '' ? $note : null, $sub2]);
+                $pdo->commit();
+                log_customer_activity($customer, 'Rejected Customer Store issue request ' . $sub2 . '.');
+                json_out(['ok' => true, 'status' => 'REJECTED', 'message' => 'Store issue request rejected.']);
+            }
+
+            $machine = customer_machine_for_action((string)$customer['id'], (string)$req['machine_id']);
+            $storeStmt = $pdo->prepare(
+                'SELECT id, part_number, description, unit, qty_on_hand, average_unit_cost
+                 FROM customer_store_items WHERE id = ? AND customer_id = ? FOR UPDATE'
+            );
+            $storeStmt->execute([$req['store_item_id'], $customer['id']]);
+            $store = $storeStmt->fetch();
+            if (!$store) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                json_error('Customer Store item no longer exists.', 409);
+            }
+            $quantity = (float)$req['quantity'];
+            $available = (float)$store['qty_on_hand'];
+            if ($available + 0.00001 < $quantity) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                json_error('Store balance changed and is now insufficient. Available: ' . rtrim(rtrim(number_format($available, 2, '.', ''), '0'), '.') . ' ' . ($store['unit'] ?: $req['unit']) . '.', 409);
+            }
+            $balanceAfter = round($available - $quantity, 2);
+            $unitCost = round((float)$store['average_unit_cost'], 2);
+            $unit = strtoupper(trim((string)$store['unit'])) ?: strtoupper(trim((string)$req['unit'])) ?: 'PC';
+            $description = trim((string)$store['description']) ?: trim((string)$req['description']);
+            $partNumber = strtoupper(trim((string)$store['part_number'])) ?: strtoupper(trim((string)$req['part_number']));
+            $expenseId = uuid();
+            $pdo->prepare('UPDATE customer_store_items SET qty_on_hand = ?, updated_at = NOW() WHERE id = ?')
+                ->execute([$balanceAfter, $store['id']]);
+            $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+            $pdo->prepare(
+                "INSERT INTO customer_store_movements
+                 (id, customer_id, store_item_id, machine_id, movement_type, quantity, unit_cost,
+                  balance_after, actor_name, received_by, note, created_at)
+                 VALUES (?,?,?,?, 'ISSUE', ?,?,?,?,?,?,NOW())"
+            )->execute([
+                uuid(), $customer['id'], $store['id'], $req['machine_id'], $quantity, $unitCost,
+                $balanceAfter, $approver, $req['requested_by_name'] ?: null,
+                'Approved Expenses issue to ' . $machineLabel . ($note !== '' ? ' - ' . $note : ''),
+            ]);
+            $cost = round($quantity * $unitCost, 2);
+            $pdo->prepare(
+                "INSERT INTO usage_logs
+                 (id, customer_id, machine_id, date, category, description,
+                  part_number, quantity, unit, unit_price, cost, logged_by,
+                  store_item_id, stock_source, store_balance_after, issued_by, received_by, created_at)
+                 VALUES (?,?,?,CURRENT_DATE,'SPARE_PART',?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
+            )->execute([
+                $expenseId, $customer['id'], $req['machine_id'], $description, $partNumber,
+                $quantity, $unit, $unitCost, $cost, $approver,
+                $store['id'], 'CUSTOMER_STORE', $balanceAfter, $approver, $req['requested_by_name'] ?: null,
+            ]);
+            $pdo->prepare(
+                "UPDATE customer_store_issue_requests
+                 SET status='APPROVED', approved_by_name=?, approved_at=NOW(), decision_note=?,
+                     expense_id=?, unit_cost=?, updated_at=NOW()
+                 WHERE id=?"
+            )->execute([$approver, $note !== '' ? $note : null, $expenseId, $unitCost, $sub2]);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        log_customer_activity($customer, 'Approved Customer Store issue ' . $partNumber . ' x ' . $quantity . ' for ' . $machineLabel . '. Balance: ' . $balanceAfter . ' ' . $unit . '.');
+        json_out([
+            'ok' => true,
+            'status' => 'APPROVED',
+            'expenseId' => $expenseId,
+            'storeBalanceAfter' => $balanceAfter,
+            'message' => 'Approved. Store balance deducted and Procurement record created.',
+        ]);
+    }
+
+    json_error('Method not allowed.', 405);
+}
+
 // ---- Customer-recorded machine spare-part expenses -------------------------
 if ($sub === 'machine-expenses' && $sub2) {
-    require_customer_feature_access($customer, 'machine-expenses', 'Machine Expenses');
+    require_customer_feature_access($customer, 'machine-expenses', 'Procurement');
     $machineId = $sub2;
     $stmt = db()->prepare(
         'SELECT id, machine_type, model, serial_number, reg_number, brand
@@ -1531,7 +2511,7 @@ if ($sub === 'machine-expenses' && $sub2) {
             'storeBalanceAfter' => $storeBalanceAfter,
             'message' => $stockSource === 'CUSTOMER_STORE'
                 ? 'Material issued to machine and Store balance updated.'
-                : 'Machine expense saved successfully.',
+                : 'Procurement record saved successfully.',
         ], 201);
     }
 
@@ -1626,9 +2606,9 @@ if ($sub === 'machine-expenses' && $sub2) {
     if ($method === 'GET' && $sub3 === 'csv') {
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
         header('Content-Type: text/csv; charset=utf-8');
-        header('Content-Disposition: attachment; filename="machine-expenses-' . $safeMachine . '.csv"');
+        header('Content-Disposition: attachment; filename="procurement-' . $safeMachine . '.csv"');
         $output = fopen('php://output', 'wb');
-        fputcsv($output, [strtoupper($customer['name']) . ' - MACHINE EXPENSE REPORT']);
+        fputcsv($output, [strtoupper($customer['name']) . ' - MACHINE PROCUREMENT REPORT']);
         fputcsv($output, ['Service provided by', 'BELM General Tech Service Limited']);
         fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
         fputcsv($output, []);
@@ -1724,12 +2704,12 @@ if ($sub === 'machine-expenses' && $sub2) {
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
         output_table_pdf(
             'machine-material-audit-' . $safeMachine . '.pdf',
-            strtoupper($customer['name']) . ' - MACHINE MATERIAL & EXPENSE AUDIT',
+            strtoupper($customer['name']) . ' - MACHINE PROCUREMENT & MATERIAL AUDIT',
             [
                 'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
                 'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
                 'Period: ' . ($rangeFrom ? display_date($rangeFrom) . ' to ' . display_date($rangeTo) : 'All time'),
-                'Machine expense total: TZS ' . number_format($totalCost, 2),
+                'Procurement total: TZS ' . number_format($totalCost, 2),
                 'Customer Store issues to this machine: ' . (int)$storeSummary['machineIssueCount']
                     . ' issue record(s) / TZS ' . number_format((float)$storeSummary['machineIssuedValue'], 2),
                 'Customer Store current stock value: TZS ' . number_format((float)$storeSummary['stockValue'], 2),
@@ -1746,7 +2726,7 @@ if ($sub === 'machine-expenses' && $sub2) {
             0.0
         );
         $lines = [
-            strtoupper($customer['name']) . ' - MACHINE EXPENSE REPORT',
+            strtoupper($customer['name']) . ' - MACHINE PROCUREMENT REPORT',
             'Service provided by: BELM General Tech Service Limited',
             'Machine: ' . ($machine['brand'] ? $machine['brand'] . ' ' : '') . $machine['model'],
             'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
@@ -1775,9 +2755,9 @@ if ($sub === 'machine-expenses' && $sub2) {
             $lines[] = '  Issued/Recorded by: ' . ($expense['issued_by'] ?: $expense['logged_by'] ?: '-') . ' | Received by: ' . ($expense['received_by'] ?: '-');
         }
         $lines[] = str_repeat('-', 78);
-        $lines[] = 'TOTAL MACHINE EXPENSE: TZS ' . number_format($totalCost, 2);
+        $lines[] = 'TOTAL PROCUREMENT: TZS ' . number_format($totalCost, 2);
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
-        output_machine_expense_pdf('machine-expenses-' . $safeMachine . '.pdf', $lines);
+        output_machine_expense_pdf('procurement-' . $safeMachine . '.pdf', $lines);
     }
 
     if ($method === 'GET' && $sub3 === '') {
@@ -1810,6 +2790,11 @@ if ($sub === 'machine-expenses' && $sub2) {
             'storeItems' => customer_store_item_rows((string)$customer['id']),
             'storeMovements' => customer_store_audit_rows((string)$customer['id'], $machineId),
             'canManageStore' => customer_can_manage_store($customer),
+            'storeIssueRequests' => customer_store_issue_request_rows((string)$customer['id'], $machineId),
+            'canApproveStoreIssue' => customer_can_approve_store_issue($customer),
+            'procurementRequests' => customer_procurement_request_rows((string)$customer['id'], $machineId),
+            'canManageProcurement' => customer_can_manage_procurement($customer),
+            'serviceJobBilling' => customer_service_job_billing_rows((string)$customer['id'], $machineId),
             'expenses' => $expenses,
         ]);
     }
@@ -3697,115 +4682,11 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'P
 
 // ---- BELM inventory is private to BELM staff -------------------------------
 if ($sub === 'spare-parts' && $method === 'GET') {
-    json_error('BELM spare-parts inventory is private. Submit a spare request and BELM will identify the correct part.', 403);
+    json_error('BELM spare-parts inventory is private. Customer spare requirements are handled by Procurement.', 403);
 }
 
-// ---- Request spare parts ----------------------------------------------------
-// Customer submits only the spare name/reference/quantity. The request stays
-// deliberately unlinked to BELM Inventory until BELM Spare Parts staff choose
-// the correct internal record; the customer never sees stock or pricing.
-if ($sub === 'spare-part-requests' && $method === 'POST') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
-    require_customer_write_access($customer);
-    $b = body();
-    $referenceNumber = trim((string)($b['referenceNumber'] ?? ''));
-    $description = trim((string)($b['description'] ?? ''));
-    $serviceRequestId = trim((string)($b['serviceRequestId'] ?? ''));
-    $machineId = trim((string)($b['machineId'] ?? ''));
-    $quantity = (float)($b['quantity'] ?? 0);
-
-    if ($description === '') json_error('Enter the spare name.');
-    if (strlen($description) > 255) json_error('Spare name is too long.');
-    if (strlen($referenceNumber) > 100) json_error('Reference / part number is too long.');
-    if ($quantity <= 0 || floor($quantity) !== $quantity) {
-        json_error('Spare-part quantity must be a whole number greater than zero.');
-    }
-    if ($machineId === '') json_error('Select the machine that needs this spare.');
-
-    $machineStmt = db()->prepare(
-        'SELECT id, machine_type, model, brand, serial_number, reg_number
-         FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
-    );
-    $machineStmt->execute([$machineId, $customer['id']]);
-    $machine = $machineStmt->fetch();
-    if (!$machine) json_error('Machine not found for this customer.', 404);
-
-    if ($serviceRequestId !== '') {
-        $stmt = db()->prepare('SELECT 1 FROM service_requests WHERE id = ? AND customer_id = ? AND machine_id = ?');
-        $stmt->execute([$serviceRequestId, $customer['id'], $machineId]);
-        if (!$stmt->fetch()) json_error('Service request not found for this customer and machine.', 404);
-    }
-
-    $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
-    $newId = uuid();
-    db()->prepare(
-        "INSERT INTO spare_part_requests
-            (id, spare_part_id, reference_number, description, request_id, machine_id,
-             requested_by_id, requested_by_name, machine_type, quantity, status, created_at)
-         VALUES (?,NULL,?,?,?,?,NULL,?,?,?,'PENDING',NOW())"
-    )->execute([
-        $newId,
-        $referenceNumber !== '' ? $referenceNumber : null,
-        $description,
-        $serviceRequestId !== '' ? $serviceRequestId : null,
-        $machineId,
-        $actorName,
-        $machine['machine_type'] ?? null,
-        (int)$quantity,
-    ]);
-
-    belm_log_customer_communication(
-        (string)$customer['id'], $machineId, 'CUSTOMER_TO_BELM', 'EMAIL',
-        'Spare Request',
-        $description . ($referenceNumber !== '' ? " (Ref: $referenceNumber)" : '') . ' — Qty ' . (int)$quantity,
-        'SPARE_REQUEST', $newId, $actorName, 'SENT'
-    );
-
-    // Official BELM business inbox + internal Spare Parts/Accounts recipients.
-    // Customer never receives or sees BELM inventory data from this notification.
-    $spareAlert = ['businessEmailSent' => false];
-    try {
-        $machineLabel = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
-        $serial = $machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded');
-        $spareAlert = belm_send_customer_to_belm_alert(
-            ['spare-parts', 'billing'],
-            'OFFICIAL SPARE REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
-            "CUSTOMER SPARE REQUEST TO BELM
-
-"
-            . "Customer: " . ($customer['name'] ?? 'Unknown') . "
-"
-            . "Requested by: $actorName
-"
-            . "Machine: $machineLabel
-"
-            . "Serial / Reg: $serial
-"
-            . "Spare name: $description
-"
-            . "Reference / part no.: " . ($referenceNumber !== '' ? $referenceNumber : 'Not provided') . "
-"
-            . "Quantity: " . (int)$quantity . "
-"
-            . "Request ID: $newId
-
-"
-            . "Spare Parts: open Spare Parts Manager and choose the correct BELM spare.
-"
-            . "Accounts: prepare the Proforma after the spare is selected.",
-            $customer['actorEmail'] ?? null
-        );
-    } catch (Throwable $error) { /* alert must never block the saved request */ }
-
-    json_out([
-        'id' => $newId,
-        'status' => 'PENDING',
-        'message' => !empty($spareAlert['businessEmailSent'])
-            ? 'Spare request sent to BELM official business email for part selection and Proforma preparation.'
-            : 'Spare request saved in the portal, but BELM business-email delivery needs attention.',
-        'emailSent' => !empty($spareAlert['businessEmailSent']),
-    ], 201);
-}
+// ---- Legacy direct spare request route -------------------------------------
+// Blocked above by the Procurement-first compatibility guard.
 
 // ---- Direct messages sent by BELM to this customer -------------------------
 if ($sub === 'communications' && $method === 'GET' && $sub2 === '') {
@@ -3827,6 +4708,22 @@ if ($sub === 'communications' && $method === 'GET' && $sub2 === '') {
         return $row;
     }, $stmt->fetchAll());
     json_out($rows);
+}
+
+// ---- BELM invoices synchronized to the Customer Procurement/Billing view ---
+if ($sub === 'invoices' && $method === 'GET' && $sub2 === '') {
+    $stmt=db()->prepare(
+        "SELECT i.id,i.invoice_no,i.machine_id,i.source_job_card_id,i.total,i.status,i.due_date,i.created_at,
+                COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.invoice_id=i.id),0) AS paid_amount
+         FROM invoices i WHERE i.customer_id=? AND i.deleted_at IS NULL ORDER BY i.created_at DESC"
+    );
+    $stmt->execute([$customer['id']]);$rows=$stmt->fetchAll();
+    foreach($rows as &$row){$row['balance']=max(0,(float)$row['total']-(float)$row['paid_amount']);$row['downloadUrl']='/api/customer-portal/invoices/'.$row['id'].'/download';}
+    unset($row);json_out($rows);
+}
+
+if ($sub === 'invoices' && $sub2 && $sub3 === 'download' && $method === 'GET') {
+    belm_output_invoice_document_pdf((string)$sub2,(string)$customer['id']);
 }
 
 // ---- Proformas published by BELM to this customer --------------------------

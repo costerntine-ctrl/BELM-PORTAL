@@ -38,7 +38,40 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         "SELECT id,name,is_machinery_admin FROM customers
          WHERE is_active=1 AND deleted_at IS NULL ORDER BY name"
     )->fetchAll();
-    json_out(['technicians'=>$technicians,'customers'=>$customers]);
+    $machines = db()->query(
+        "SELECT m.id,m.customer_id,m.brand,m.model,m.machine_type,m.serial_number,c.name AS customer_name
+         FROM machines m JOIN customers c ON c.id=m.customer_id
+         WHERE m.deleted_at IS NULL AND c.is_active=1 AND c.deleted_at IS NULL
+         ORDER BY c.name,m.brand,m.model"
+    )->fetchAll();
+    $receivedJobCards = db()->query(
+        "SELECT j.id,j.job_card_no,j.title,j.customer_id,j.machine_id,j.status,j.priority,j.due_date,
+                j.technician_id,j.technician_name,j.issued_by_name,j.issued_at,
+                bc.source_type,bc.source_id,c.name AS customer_name,m.brand,m.model,m.machine_type
+         FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id
+         JOIN customers c ON c.id=j.customer_id
+         JOIN machines m ON m.id=j.machine_id
+         WHERE j.status NOT IN ('COMPLETED','CANCELLED')
+           AND bc.status <> 'COMPLETED'
+           AND (bc.source_type='SERVICE_REQUEST' OR (c.is_machinery_admin=0 AND UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER'))
+         ORDER BY j.created_at DESC
+         LIMIT 250"
+    )->fetchAll();
+    foreach ($receivedJobCards as &$job) {
+        $job['jobCardNo']=$job['job_card_no'];
+        $job['customerId']=$job['customer_id'];
+        $job['machineId']=$job['machine_id'];
+        $job['technicianId']=$job['technician_id'];
+        $job['technicianName']=$job['technician_name'];
+        $job['customerName']=$job['customer_name'];
+        $job['machineLabel']=trim(($job['brand']??'').' '.($job['model']??'')) ?: ($job['machine_type']??'Machine');
+        $job['sourceType']=$job['source_type'];
+        $job['issuedByName']=$job['issued_by_name'];
+        $job['issuedAt']=$job['issued_at'];
+    }
+    unset($job);
+    json_out(['technicians'=>$technicians,'customers'=>$customers,'machines'=>$machines,'receivedJobCards'=>$receivedJobCards]);
 }
 
 if ($method === 'POST' && $action === 'dispatch') {
@@ -46,13 +79,13 @@ if ($method === 'POST' && $action === 'dispatch') {
         json_error('Only BELM Super Admin or Engineer can use Technician Dispatch.', 403);
     }
     $b=body();
+    $mode=strtolower(trim((string)($b['jobCardMode']??'existing')));
+    if(!in_array($mode,['existing','create'],true)) json_error('Select Received Job Card or Create Job Card.');
     $technicianId=trim((string)($b['technicianId']??''));
     $customerId=trim((string)($b['customerId']??''));
-    $title=trim((string)($b['title']??''));
-    $description=trim((string)($b['description']??''));
     $priority=strtoupper(trim((string)($b['priority']??'NORMAL')));
     $dueDate=trim((string)($b['dueDate']??''));
-    if($technicianId===''||$customerId===''||$title==='') json_error('Technician, customer and job title are required.');
+    if($technicianId==='') json_error('Technician is required.');
     if(!in_array($priority,['LOW','NORMAL','HIGH','URGENT'],true)) json_error('Invalid priority.');
     if($dueDate!==''&&!preg_match('/^\d{4}-\d{2}-\d{2}$/',$dueDate)) json_error('Invalid due date.');
     $t=db()->prepare(
@@ -63,24 +96,94 @@ if ($method === 'POST' && $action === 'dispatch') {
            AND (r.name='Technician' OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL))"
     );
     $t->execute([$technicianId]); $tech=$t->fetch(); if(!$tech)json_error('Select an active BELM Technician.',422);
-    $c=db()->prepare('SELECT id,name FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
-    $c->execute([$customerId]); $customer=$c->fetch(); if(!$customer)json_error('Selected customer is not available.',422);
-    $temporary=!empty($tech['assigned_customer_id']) && (string)$tech['assigned_customer_id']!==$customerId;
-    $id=uuid();
-    db()->prepare("INSERT INTO tasks(id,assigned_to_id,customer_id,title,description,due_date,priority,status,created_by,created_at) VALUES(?,?,?,?,?,?,?,'PENDING',?,NOW())")
-        ->execute([$id,$technicianId,$customerId,$title,$description?:null,$dueDate?:null,$priority,$user['name']]);
-    log_activity($user,'technician-dispatch','task',$id,[
-        'technician'=>$tech['name'],'customer'=>$customer['name'],'temporaryOverride'=>$temporary,
-        'homeCustomer'=>$tech['home_customer_name']??null,'title'=>$title,
-    ]);
+
+    $pdo=db();
+    $pdo->beginTransaction();
     try {
-        $mail=db()->prepare('SELECT email FROM users WHERE id=?'); $mail->execute([$technicianId]); $email=trim((string)$mail->fetchColumn());
-        if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'BELM TECHNICIAN DISPATCH - '.$title,
-            "Job assigned by {$user['name']}\nCustomer: {$customer['name']}\nJob: $title\nPriority: $priority".
-            ($temporary?"\nAssignment: TEMPORARY OVERRIDE - your permanent customer has not changed.":'').
-            ($description!==''?"\nDetails: $description":'')."\nOpen Technician > My Tasks.");
-    } catch(Throwable $e) {}
-    json_out(['id'=>$id,'temporaryOverride'=>$temporary,'homeCustomerName'=>$tech['home_customer_name']??null,'customerName'=>$customer['name']],201);
+        $jobId=''; $jobNo=''; $title=''; $description=''; $sourceRequestId=null; $caseId=''; $machineLabel='Machine';
+        if($mode==='existing') {
+            $jobId=trim((string)($b['jobCardId']??''));
+            if($jobId==='') throw new RuntimeException('Select a received Job Card.');
+            $j=$pdo->prepare(
+                "SELECT j.*,bc.source_type,bc.source_id,bc.status AS case_status,c.name AS customer_name,c.is_machinery_admin,m.brand,m.model
+                 FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id
+                 JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id
+                 WHERE j.id=? FOR UPDATE"
+            );
+            $j->execute([$jobId]); $job=$j->fetch();
+            if(!$job) throw new RuntimeException('Selected Job Card was not found.');
+            if(in_array(strtoupper((string)$job['status']),['COMPLETED','CANCELLED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('Completed/cancelled Job Cards cannot be dispatched again.');
+            if((string)$job['source_type']!=='SERVICE_REQUEST' && !empty($job['is_machinery_admin'])) throw new RuntimeException('This Job Card belongs to a customer-managed workshop and was not received by BELM.');
+            $customerId=(string)$job['customer_id']; $caseId=(string)$job['case_id'];
+            $jobNo=(string)$job['job_card_no']; $title=(string)$job['title']; $description=(string)$job['fault_description'];
+            $sourceRequestId=(string)($job['source_type']==='SERVICE_REQUEST' ? ($job['source_id']??'') : '');
+            $machineLabel=trim(($job['brand']??'').' '.($job['model']??'')) ?: 'Machine';
+            $pdo->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,priority=?,due_date=?,updated_at=NOW() WHERE id=?")
+                ->execute([$technicianId,$tech['name'],$priority,$dueDate?:null,$jobId]);
+            $pdo->prepare("UPDATE breakdown_cases SET current_stage='DIAGNOSIS',current_department='Technician',blocker_reason=NULL,stage_started_at=NOW(),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")
+                ->execute([$caseId]);
+            $pdo->prepare("INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at)
+                           SELECT ?,id,current_stage,current_department,?,?, 'belm',?,?,NOW() FROM breakdown_cases WHERE id=?")
+                ->execute([uuid(),'Job Card '.$jobNo.' assigned to '.$tech['name'],'Technician dispatch from received Job Card',$user['id']??null,$user['name'],$caseId]);
+            if($sourceRequestId!=='') {
+                $sr=$pdo->prepare('SELECT status,assigned_to_id FROM service_requests WHERE id=? FOR UPDATE');
+                $sr->execute([$sourceRequestId]); $old=$sr->fetch();
+                if($old) {
+                    $newStatus=in_array((string)$old['status'],['OPEN','ASSIGNED'],true)?'ASSIGNED':(string)$old['status'];
+                    $pdo->prepare('UPDATE service_requests SET assigned_to_id=?,assigned_by_id=?,status=?,updated_at=NOW() WHERE id=?')
+                        ->execute([$technicianId,$user['id']??null,$newStatus,$sourceRequestId]);
+                    $pdo->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
+                        ->execute([uuid(),$sourceRequestId,'ASSIGNMENT',(string)($old['assigned_to_id']??''),$technicianId,$user['id']??null,$user['name'],'Assigned through received Job Card '.$jobNo]);
+                }
+            }
+        } else {
+            $machineId=trim((string)($b['machineId']??''));
+            $title=trim((string)($b['title']??''));
+            $description=trim((string)($b['description']??''));
+            if($customerId===''||$machineId===''||$title==='') throw new RuntimeException('Customer, machine and Job Card title are required.');
+            $c=$pdo->prepare('SELECT id,name FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
+            $c->execute([$customerId]); $customer=$c->fetch(); if(!$customer) throw new RuntimeException('Selected customer is not available.');
+            $m=$pdo->prepare('SELECT id,brand,model,machine_type FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL');
+            $m->execute([$machineId,$customerId]); $machine=$m->fetch(); if(!$machine) throw new RuntimeException('Selected machine is not available for this customer.');
+            $machineLabel=trim(($machine['brand']??'').' '.($machine['model']??'')) ?: ($machine['machine_type']??'Machine');
+            $caseId=uuid();
+            $pdo->prepare("INSERT INTO breakdown_cases(id,customer_id,machine_id,source_type,title,description,status,current_stage,current_department,opened_at,stage_started_at,updated_at,created_by_name)
+                           VALUES(?,?,?,'MANUAL',?,?,'OPEN','DIAGNOSIS','Technician',NOW(),NOW(),NOW(),?)")
+                ->execute([$caseId,$customerId,$machineId,$title,$description?:$title,$user['name']]);
+            $jobNo='JC-'.date('ym').'-'.str_pad((string)$pdo->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
+            $jobId=uuid();
+            $pdo->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,priority,due_date,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at)
+                           VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,?,?,?,? ,NOW(),NOW(),NOW())")
+                ->execute([$jobId,$caseId,$customerId,$machineId,$jobNo,$title,$description?:$title,$technicianId,$tech['name'],$priority,$dueDate?:null,$user['name'],$user['name'],'BELM']);
+            $pdo->prepare("INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,NOW())")
+                ->execute([uuid(),$caseId,'DIAGNOSIS','Technician','Digital Job Card '.$jobNo.' created and assigned',$description?:$title,'belm',$user['id']??null,$user['name']]);
+        }
+
+        $temporary=!empty($tech['assigned_customer_id']) && (string)$tech['assigned_customer_id']!==$customerId;
+        if($temporary && empty($b['temporaryOverride'])) throw new RuntimeException('Selected Technician belongs to another customer. Confirm Temporary Override for this Job Card.');
+        if($temporary) {
+            $pdo->prepare("INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at)
+                           SELECT ?,id,current_stage,current_department,?,?, 'belm',?,?,NOW() FROM breakdown_cases WHERE id=?")
+                ->execute([uuid(),'Temporary Technician Override - '.$tech['name'],'Home customer: '.($tech['home_customer_name']?:'Unassigned').'. Override applies only to Job Card '.$jobNo,$user['id']??null,$user['name'],$caseId]);
+        }
+        $pdo->commit();
+        log_activity($user,'technician-dispatch','job-card',$jobId,[
+            'jobCardNo'=>$jobNo,'mode'=>$mode,'technician'=>$tech['name'],'customerId'=>$customerId,
+            'temporaryOverride'=>$temporary,'homeCustomer'=>$tech['home_customer_name']??null,'title'=>$title,
+        ]);
+        try {
+            $mail=db()->prepare('SELECT email FROM users WHERE id=?'); $mail->execute([$technicianId]); $email=trim((string)$mail->fetchColumn());
+            if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$jobNo,
+                "Job Card $jobNo has been assigned to you by {$user['name']}\nMachine: $machineLabel\nJob: $title\nPriority: $priority".
+                ($dueDate!==''?"\nDue date: $dueDate":'').
+                ($temporary?"\nAssignment: TEMPORARY OVERRIDE - your permanent customer has not changed.":'').
+                ($description!==''?"\nDetails: $description":'')."\nOpen Technician > My Job Cards.");
+        } catch(Throwable $e) {}
+        json_out(['id'=>$jobId,'jobCardNo'=>$jobNo,'mode'=>$mode,'temporaryOverride'=>$temporary,'homeCustomerName'=>$tech['home_customer_name']??null],201);
+    } catch(Throwable $e) {
+        if($pdo->inTransaction()) $pdo->rollBack();
+        json_error($e->getMessage(),422);
+    }
 }
 
 if ($method === 'GET' && $action === 'dashboard') {

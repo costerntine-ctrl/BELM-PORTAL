@@ -31,81 +31,82 @@ function belm_in_clause(array $ids): string {
 // hard-delete used by Danger Zone > Reset Database, exposed here as a
 // direct "Forget" action on the Customers & Machines page.
 function belm_forget_customer_permanently(PDO $pdo, string $customerId): void {
-    $machineIds = $pdo->prepare('SELECT id FROM machines WHERE customer_id = ?');
-    $machineIds->execute([$customerId]);
-    $machines = $machineIds->fetchAll(PDO::FETCH_COLUMN);
+    $machineStmt = $pdo->prepare('SELECT id FROM machines WHERE customer_id=?');
+    $machineStmt->execute([$customerId]);
+    $machines = $machineStmt->fetchAll(PDO::FETCH_COLUMN);
+    $requestStmt = $pdo->prepare('SELECT id FROM service_requests WHERE customer_id=?');
+    $requestStmt->execute([$customerId]);
+    $requests = $requestStmt->fetchAll(PDO::FETCH_COLUMN);
+    $invoiceStmt = $pdo->prepare('SELECT id FROM invoices WHERE customer_id=?');
+    $invoiceStmt->execute([$customerId]);
+    $invoices = $invoiceStmt->fetchAll(PDO::FETCH_COLUMN);
+    $proformaStmt = $pdo->prepare('SELECT id FROM proforma_invoices WHERE customer_id=?');
+    $proformaStmt->execute([$customerId]);
+    $proformas = $proformaStmt->fetchAll(PDO::FETCH_COLUMN);
 
-    $requestIds = $pdo->prepare('SELECT id FROM service_requests WHERE customer_id = ?');
-    $requestIds->execute([$customerId]);
-    $requests = $requestIds->fetchAll(PDO::FETCH_COLUMN);
-
-    $invoiceIds = $pdo->prepare('SELECT id FROM invoices WHERE customer_id = ?');
-    $invoiceIds->execute([$customerId]);
-    $invoices = $invoiceIds->fetchAll(PDO::FETCH_COLUMN);
-
+    // V307: clear every non-cascading child before the parent. Newer operational
+    // tables that declare ON DELETE CASCADE (breakdown/job cards/store etc.) are
+    // intentionally left to PostgreSQL so this stays safe as those rows grow.
     if ($machines) {
         $in = belm_in_clause($machines);
         $pdo->prepare("DELETE FROM checklist_answers WHERE report_id IN (SELECT id FROM checklist_reports WHERE machine_id IN ($in))")->execute($machines);
         $pdo->prepare("DELETE FROM checklist_reports WHERE machine_id IN ($in)")->execute($machines);
-        $pdo->prepare("DELETE FROM petty_cash_topups WHERE machine_id IN ($in)")->execute($machines);
-        $pdo->prepare("DELETE FROM machine_operator_shifts WHERE machine_id IN ($in)")->execute($machines);
-        $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($machines);
-        $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($machines);
+        // An application can retain a machine FK even if its customer field was
+        // never populated by an older build.
+        $pdo->prepare("DELETE FROM customer_applications WHERE machine_id IN ($in)")->execute($machines);
     }
-
-    // V266 - these two tables reference customers(id) directly with no
-    // ON DELETE CASCADE and were never being cleared here. Left in place,
-    // any customer who ever had a cash Payment/Receipt recorded, or any
-    // operator shift sign-in/sign-out history, would make the final
-    // DELETE FROM customers below fail on a foreign-key violation - the
-    // whole "Forget permanently" transaction would silently roll back,
-    // leaving the customer (and everything else) still in the database
-    // despite the confirmation message implying it was gone.
-    $pdo->prepare('DELETE FROM receipts WHERE customer_id = ?')->execute([$customerId]);
-
-    // V215: Petty Cash is customer-level, so account top-ups can have no machine_id.
-    $pdo->prepare('DELETE FROM petty_cash_topups WHERE customer_id = ?')->execute([$customerId]);
-
     if ($requests) {
         $in = belm_in_clause($requests);
+        $pdo->prepare("DELETE FROM service_request_history WHERE request_id IN ($in)")->execute($requests);
         $pdo->prepare("DELETE FROM service_notes WHERE request_id IN ($in)")->execute($requests);
         $pdo->prepare("DELETE FROM service_request_parts WHERE request_id IN ($in)")->execute($requests);
     }
-
     if ($machines || $requests) {
-        $conditions = [];
-        $params = [];
-        if ($machines) { $conditions[] = 'machine_id IN (' . belm_in_clause($machines) . ')'; $params = array_merge($params, $machines); }
-        if ($requests) { $conditions[] = 'request_id IN (' . belm_in_clause($requests) . ')'; $params = array_merge($params, $requests); }
-        $pdo->prepare('DELETE FROM spare_part_requests WHERE ' . implode(' OR ', $conditions))->execute($params);
+        $conditions=[]; $params=[];
+        if ($machines) { $conditions[]='machine_id IN ('.belm_in_clause($machines).')'; $params=array_merge($params,$machines); }
+        if ($requests) { $conditions[]='request_id IN ('.belm_in_clause($requests).')'; $params=array_merge($params,$requests); }
+        $pdo->prepare('DELETE FROM spare_part_requests WHERE '.implode(' OR ',$conditions))->execute($params);
     }
+    $pdo->prepare('DELETE FROM service_requests WHERE customer_id=?')->execute([$customerId]);
 
-    $pdo->prepare('DELETE FROM service_requests WHERE customer_id = ?')->execute([$customerId]);
-
+    // Receipts must be removed before their invoices; payments/items before the
+    // invoice itself. Proforma items similarly have a non-cascading FK.
+    $pdo->prepare('DELETE FROM receipts WHERE customer_id=?')->execute([$customerId]);
     if ($invoices) {
-        $in = belm_in_clause($invoices);
+        $in=belm_in_clause($invoices);
         $pdo->prepare("DELETE FROM invoice_items WHERE invoice_id IN ($in)")->execute($invoices);
         $pdo->prepare("DELETE FROM payments WHERE invoice_id IN ($in)")->execute($invoices);
     }
-    $pdo->prepare('DELETE FROM invoices WHERE customer_id = ?')->execute([$customerId]);
-
-    $pdo->prepare('DELETE FROM proforma_invoices WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM usage_logs WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM tasks WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_applications WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_users WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_saved_emails WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_activity_logs WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM machines WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('UPDATE users SET assigned_customer_id = NULL WHERE assigned_customer_id = ?')->execute([$customerId]);
-    // Also purge any Recycle Bin entry so "Restore" can never bring this
-    // customer or its machines back after a permanent Forget.
-    $pdo->prepare("DELETE FROM trash_entries WHERE entity_type = 'customer' AND entity_id = ?")->execute([$customerId]);
-    if ($machines) {
-        $in = belm_in_clause($machines);
-        $pdo->prepare("DELETE FROM trash_entries WHERE entity_type = 'machine' AND entity_id IN ($in)")->execute($machines);
+    $pdo->prepare('DELETE FROM invoices WHERE customer_id=?')->execute([$customerId]);
+    if ($proformas) {
+        $in=belm_in_clause($proformas);
+        $pdo->prepare("DELETE FROM proforma_invoice_items WHERE proforma_id IN ($in)")->execute($proformas);
     }
-    $pdo->prepare('DELETE FROM customers WHERE id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM proforma_invoices WHERE customer_id=?')->execute([$customerId]);
+
+    // Operator hierarchy must be removed child-first.
+    $pdo->prepare('DELETE FROM machine_operator_shifts WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM operator_reports WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM machine_operators WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM petty_cash_topups WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM usage_logs WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM tasks WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_applications WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('UPDATE user_applications SET assigned_customer_id=NULL WHERE assigned_customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_saved_emails WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_activity_logs WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_users WHERE customer_id=?')->execute([$customerId]);
+
+    // All remaining machine/customer-owned workflow/store rows are cascading.
+    $pdo->prepare('DELETE FROM machines WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('UPDATE users SET assigned_customer_id=NULL WHERE assigned_customer_id=?')->execute([$customerId]);
+
+    $pdo->prepare("DELETE FROM trash_entries WHERE entity_type='customer' AND entity_id=?")->execute([$customerId]);
+    if ($machines) {
+        $in=belm_in_clause($machines);
+        $pdo->prepare("DELETE FROM trash_entries WHERE entity_type='machine' AND entity_id IN ($in)")->execute($machines);
+    }
+    $pdo->prepare('DELETE FROM customers WHERE id=?')->execute([$customerId]);
 }
 
 function validate_customer_details(array $body, ?string $excludeCustomerId = null): array {
@@ -1111,7 +1112,7 @@ const MACHINE_OPERATIONAL_STATUSES = ['NORMAL', 'SERVICE_IN_PROGRESS', 'CHECKUP_
 // meant to be updated in the moment work starts/stops, not a formal
 // record edit. Requires only normal page access to the customer/machine.
 // ---- Admin visibility into customer-uploaded expense receipts -------------
-// The customer uploads these from their own Machine Expenses page; BELM
+// The customer uploads these from their own Procurement page; BELM
 // Admin/Engineer need to be able to see and download the same receipts
 // for bookkeeping — this was previously only reachable from the
 // customer's own portal, with no admin-side view at all.
@@ -1123,7 +1124,7 @@ if ($method === 'GET' && $action === 'expense-receipts') {
     $privacyMachineStmt->execute([$machineId]);
     $privacyCustomerId = (string)($privacyMachineStmt->fetchColumn() ?: '');
     if ($privacyCustomerId === '') json_error('Machine not found.', 404);
-    require_belm_customer_privacy($privacyCustomerId, 'expenseReceipts', 'machine expenses and receipt photos', $machineId);
+    require_belm_customer_privacy($privacyCustomerId, 'expenseReceipts', 'machine procurement records and receipt photos', $machineId);
     $stmt = db()->prepare(
         "SELECT id, date, description, part_number, quantity, unit, cost,
                 receipt_photo_name, receipt_photo_mime, recorded_by
@@ -1157,7 +1158,7 @@ if ($method === 'GET' && $action === 'expense-receipt') {
     );
     $stmt->execute([$expenseId]);
     $receipt = $stmt->fetch();
-    if ($receipt) require_belm_customer_privacy((string)$receipt['customer_id'], 'expenseReceipts', 'machine expenses and receipt photos', (string)$receipt['machine_id']);
+    if ($receipt) require_belm_customer_privacy((string)$receipt['customer_id'], 'expenseReceipts', 'machine procurement records and receipt photos', (string)$receipt['machine_id']);
     if (!$receipt || !$receipt['receipt_photo_data']) json_error('Receipt photo was not found.', 404);
     $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
     if ($binary === false) json_error('Receipt photo is damaged.', 500);
@@ -1452,34 +1453,71 @@ if ($method === 'POST' && $action === 'merge') {
     foreach ($rows as $row) $names[$row['id']] = $row['name'];
 
     $pdo = db();
+
+    // V307: Customer Store part numbers are unique per customer. Refuse a
+    // merge that would silently combine two physically different stock cards;
+    // the Store Keeper must reconcile those few duplicate part numbers first.
+    $storeConflict = $pdo->prepare(
+        "SELECT s.part_number
+         FROM customer_store_items s
+         JOIN customer_store_items t
+           ON t.customer_id=? AND UPPER(TRIM(t.part_number))=UPPER(TRIM(s.part_number))
+         WHERE s.customer_id=? LIMIT 1"
+    );
+    $storeConflict->execute([$targetId,$sourceId]);
+    if ($conflictPart = $storeConflict->fetchColumn()) {
+        json_error('Merge blocked: both customers have Customer Store stock for part '.$conflictPart.'. Reconcile that Store item first, then merge again.',409);
+    }
+
     $pdo->beginTransaction();
     try {
-        $pdo->prepare('UPDATE machines SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
-        $pdo->prepare('UPDATE service_requests SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
-        $pdo->prepare('UPDATE invoices SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
-        $pdo->prepare('UPDATE proforma_invoices SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
-        $pdo->prepare('UPDATE usage_logs SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
-        $pdo->prepare('UPDATE tasks SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
-        $pdo->prepare('UPDATE customer_applications SET customer_id = ? WHERE customer_id = ?')->execute([$targetId, $sourceId]);
+        // Move every current customer-owned table, including newer Store,
+        // Procurement, Breakdown and Job Card modules. Keeping redundant
+        // customer_id columns aligned with the moved machine is important for
+        // privacy checks and reporting.
+        foreach ([
+            'machines','service_requests','invoices','proforma_invoices','receipts','usage_logs',
+            'customer_activity_logs','machine_operators','machine_operator_shifts','operator_reports',
+            'petty_cash_topups','customer_saved_emails','tasks','customer_applications',
+            'customer_communications','customer_store_items','customer_store_movements',
+            'customer_machine_spare_list_items','customer_store_issue_requests',
+            'machine_service_owner_notifications','service_due_alerts','breakdown_cases',
+            'customer_procurement_requests','digital_job_cards'
+        ] as $table) {
+            $pdo->prepare("UPDATE \"$table\" SET customer_id=? WHERE customer_id=?")->execute([$targetId,$sourceId]);
+        }
+        $pdo->prepare('UPDATE user_applications SET assigned_customer_id=? WHERE assigned_customer_id=?')->execute([$targetId,$sourceId]);
         $pdo->prepare(
-            "UPDATE customer_users SET customer_id = ?
-             WHERE customer_id = ?
-               AND LOWER(email) NOT IN (SELECT LOWER(email) FROM customer_users WHERE customer_id = ?)"
-        )->execute([$targetId, $sourceId, $targetId]);
-        $pdo->prepare('DELETE FROM customer_users WHERE customer_id = ?')->execute([$sourceId]);
-        $pdo->prepare('UPDATE users SET assigned_customer_id = ? WHERE assigned_customer_id = ?')->execute([$targetId, $sourceId]);
-        $pdo->prepare("UPDATE customers SET deleted_at = NOW() WHERE id = ?")->execute([$sourceId]);
+            "UPDATE customer_users SET customer_id=?
+             WHERE customer_id=?
+               AND LOWER(email) NOT IN (
+                   SELECT LOWER(email) FROM customer_users WHERE customer_id=?
+                   UNION SELECT LOWER(email) FROM customers WHERE id=?
+               )"
+        )->execute([$targetId,$sourceId,$targetId,$targetId]);
+        // Duplicate assistant emails are already represented on the kept
+        // customer, so only the redundant source login is discarded.
+        $pdo->prepare('DELETE FROM customer_users WHERE customer_id=?')->execute([$sourceId]);
+        $pdo->prepare('UPDATE users SET assigned_customer_id=? WHERE assigned_customer_id=?')->execute([$targetId,$sourceId]);
+
+        // Merge is documented as permanent. Hard-delete the now-empty source
+        // rather than placing a restorable empty shell in Recycle Bin.
+        belm_forget_customer_permanently($pdo,$sourceId);
         $pdo->commit();
     } catch (Throwable $error) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
 
-    send_to_trash('customer', $sourceId, $names[$sourceId], $user['id'], $reason . ' (merged into ' . $names[$targetId] . ')');
-
+    log_activity($user,'customer-merged','customer',$targetId,[
+        'sourceCustomerId'=>$sourceId,
+        'sourceName'=>$names[$sourceId],
+        'targetName'=>$names[$targetId],
+        'reason'=>$reason,
+    ]);
     json_out([
         'ok' => true,
-        'message' => "\"{$names[$sourceId]}\" has been merged into \"{$names[$targetId]}\". All machines, invoices and reports moved successfully.",
+        'message' => "\"{$names[$sourceId]}\" has been permanently merged into \"{$names[$targetId]}\". Machines, workflow, Store, Procurement, billing and reports now belong to the kept customer.",
     ]);
 }
 

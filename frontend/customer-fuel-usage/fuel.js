@@ -12,7 +12,7 @@
   });
 
   if (!token) {
-    window.location.replace("/portal/login");
+    window.location.replace("/login");
     return;
   }
   if (!machineId) {
@@ -109,7 +109,7 @@
       } catch (_) {}
       if (response.status === 401) {
         localStorage.removeItem("belm_customer_token");
-        window.location.replace("/portal/login");
+        window.location.replace("/login");
       }
       throw new Error(message);
     }
@@ -372,11 +372,11 @@
     }
   }
 
-  document.getElementById("machineExpensesLink").href = `/customer-machine-expenses/?machine=${encodeURIComponent(machineId)}`;
+  document.getElementById("machineExpensesLink").href = `/customer-procurement/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
-    window.location.href = "/portal/login";
+    window.location.href = "/login";
   });
 
   calculateTotal();

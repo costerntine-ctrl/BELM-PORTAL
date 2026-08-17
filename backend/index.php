@@ -24,6 +24,7 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
+// Regression baseline: 307-second-pass-hardening
 // Health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
@@ -39,6 +40,9 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'usage_logs',
             'customer_store_items',
             'customer_store_movements',
+            'customer_machine_spare_list_items',
+            'customer_store_issue_requests',
+            'customer_procurement_requests',
             'checklist_template_parts',
             'service_request_parts',
             'spare_parts',
@@ -54,6 +58,11 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'breakdown_case_events',
             'breakdown_spare_requests',
             'digital_job_cards',
+            'invoices',
+            'payments',
+            'receipts',
+            'proforma_invoices',
+            'proforma_invoice_items',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -62,6 +71,27 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             $tableStatement->execute(['public.' . $table]);
             $tableChecks[$table] = (bool)$tableStatement->fetchColumn();
             if (!$tableChecks[$table]) $schemaReady = false;
+        }
+        $requiredColumns = [
+            ['digital_job_cards', 'issued_by_name'],
+            ['digital_job_cards', 'signed_copy_data'],
+            ['digital_job_cards', 'billing_status'],
+            ['digital_job_cards', 'priority'],
+            ['digital_job_cards', 'due_date'],
+            ['invoices', 'source_job_card_id'],
+            ['proforma_invoices', 'source_job_card_id'],
+            ['password_reset_codes', 'account_id'],
+            ['payments', 'receipt_id'],
+        ];
+        $columnChecks = [];
+        $columnStatement = db()->prepare(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND column_name=?)"
+        );
+        foreach ($requiredColumns as [$table, $column]) {
+            $columnStatement->execute([$table, $column]);
+            $key = $table . '.' . $column;
+            $columnChecks[$key] = (bool)$columnStatement->fetchColumn();
+            if (!$columnChecks[$key]) $schemaReady = false;
         }
 
         $adminChecks = [
@@ -77,13 +107,13 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
                         COUNT(*) OVER () AS matching_accounts
                  FROM users u
                  LEFT JOIN roles r ON r.id = u.role_id
-                 WHERE LOWER(u.email) = LOWER(?)
+                 WHERE u.id = ?
                  ORDER BY
                    CASE WHEN u.deleted_at IS NULL AND u.is_active = 1 THEN 0 ELSE 1 END,
                    u.created_at ASC
                  LIMIT 1"
             );
-            $stmt->execute(['admin@belmgeneraltech.co.tz']);
+            $stmt->execute(['00000000-0000-4000-8000-000000000003']);
             $admin = $stmt->fetch();
             if ($admin) {
                 $hash = (string)($admin['password_hash'] ?? '');
@@ -99,21 +129,24 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
         }
         $adminReady = !in_array(false, $adminChecks, true);
 
+        $healthReady = $schemaReady && $adminReady;
         json_out([
-            'ok' => true,
+            'ok' => $healthReady,
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '22-customer-privacy-controls',
+            'schemaVersion' => '307-second-pass-hardening',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
+            'columns' => $columnChecks,
             'adminReady' => $adminReady,
             'adminChecks' => $adminChecks,
             'loginEndpoints' => [
-                'staff' => '/api/auth/login',
-                'customer' => '/api/auth/customer-login',
+                'unified' => '/api/auth/unified-login',
+                'legacyStaff' => '/api/auth/login',
+                'legacyCustomer' => '/api/auth/customer-login',
             ],
-        ]);
+        ] , $healthReady ? 200 : 503);
     } catch (Throwable $e) {
         json_out([
             'ok' => false,

@@ -123,10 +123,10 @@ BELM PORTAL - FUNCTIONS ZOTE
 - Machine ina service interval/history.
 
 
-7A. CUSTOMER MACHINE EXPENSES
+7A. CUSTOMER PROCUREMENT
 -----------------------------
 - Customer Dashboard machine cards zimeongezwa ukubwa.
-- Kila machine card ina button ya Machine Expenses.
+- Kila machine card ina button ya Procurement.
 - Customer ana-fill tarehe, spare description, part number, quantity, unit
   na unit cost.
 - Mfumo unakokotoa na kuhifadhi total cost ya machine husika.

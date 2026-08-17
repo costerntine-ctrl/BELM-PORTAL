@@ -13,7 +13,7 @@ const PAYMENT_METHODS = ['CASH', 'BANK', 'MOBILE', 'CHEQUE', 'OTHER'];
 
 function receipt_invoice_summary(?string $invoiceId): array {
     if (!$invoiceId) return ['invoiceTotal' => null, 'previousPayments' => 0.0, 'invoiceNo' => null];
-    $stmt = db()->prepare('SELECT invoice_no, total FROM invoices WHERE id = ? AND deleted_at IS NULL');
+    $stmt = db()->prepare('SELECT invoice_no, total, customer_id, status FROM invoices WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$invoiceId]);
     $invoice = $stmt->fetch();
     if (!$invoice) json_error('Selected invoice was not found.', 404);
@@ -24,7 +24,7 @@ function receipt_invoice_summary(?string $invoiceId): array {
     $stmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM payments WHERE invoice_id = ?');
     $stmt->execute([$invoiceId]);
     $previousPayments = (float)$stmt->fetchColumn();
-    return ['invoiceTotal' => (float)$invoice['total'], 'previousPayments' => $previousPayments, 'invoiceNo' => $invoice['invoice_no']];
+    return ['invoiceTotal' => (float)$invoice['total'], 'previousPayments' => $previousPayments, 'invoiceNo' => $invoice['invoice_no'], 'customerId' => (string)$invoice['customer_id'], 'invoiceStatus' => (string)$invoice['status']];
 }
 
 if ($method === 'GET' && $action === 'export-one') {
@@ -165,6 +165,12 @@ if ($method === 'POST' && !$action) {
 
     if ($invoiceId !== null) {
         $summary = receipt_invoice_summary($invoiceId);
+        if (($summary['customerId'] ?? '') !== $customerId) {
+            json_error('Selected invoice does not belong to the selected customer.', 422);
+        }
+        if (strtoupper((string)($summary['invoiceStatus'] ?? '')) === 'CANCELLED') {
+            json_error('A cancelled invoice cannot receive a Receipt/payment.', 422);
+        }
         if ($summary['invoiceTotal'] !== null) {
             $balance = $summary['invoiceTotal'] - $summary['previousPayments'];
             $allowOverpayment = !empty($b['allowOverpayment']);
@@ -200,14 +206,14 @@ if ($method === 'POST' && !$action) {
         // itself.
         if ($invoiceId !== null) {
             $pdo->prepare(
-                'INSERT INTO payments (id, invoice_id, bank_account_id, amount, method, reference, paid_at)
-                 VALUES (?,?,?,?,?,?,?)'
+                'INSERT INTO payments (id, invoice_id, bank_account_id, amount, method, reference, paid_at, receipt_id)
+                 VALUES (?,?,?,?,?,?,?,?)'
             )->execute([
                 uuid(), $invoiceId, $bankAccountId, $amount, $paymentMethod,
-                $paymentReference !== '' ? $paymentReference : ('Receipt ' . $receiptNo), $paidAt,
+                $paymentReference !== '' ? $paymentReference : ('Receipt ' . $receiptNo), $paidAt, $newId,
             ]);
 
-            $stmt = $pdo->prepare('SELECT total, due_date, status FROM invoices WHERE id = ? FOR UPDATE');
+            $stmt = $pdo->prepare('SELECT total, due_date, status, source_job_card_id FROM invoices WHERE id = ? FOR UPDATE');
             $stmt->execute([$invoiceId]);
             $invoiceRow = $stmt->fetch();
             if ($invoiceRow && $invoiceRow['status'] !== 'CANCELLED') {
@@ -216,6 +222,14 @@ if ($method === 'POST' && !$action) {
                 $totalPaid = (float)$stmt->fetchColumn();
                 $newStatus = calculated_invoice_status((float)$invoiceRow['total'], $totalPaid, $invoiceRow['due_date']);
                 $pdo->prepare('UPDATE invoices SET status = ? WHERE id = ?')->execute([$newStatus, $invoiceId]);
+                // V301: Receipts are one of BELM's payment entry points. Keep the
+                // service Job Card billing state in the same transaction so the
+                // Customer Procurement view and BELM Job Card never disagree.
+                if (!empty($invoiceRow['source_job_card_id'])) {
+                    $jobBillingStatus = $newStatus === 'PAID' ? 'PAID' : 'INVOICE_OUTSTANDING';
+                    $pdo->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+                        ->execute([$jobBillingStatus, (string)$invoiceRow['source_job_card_id']]);
+                }
             }
         }
         $pdo->commit();
@@ -228,13 +242,65 @@ if ($method === 'POST' && !$action) {
 }
 
 if ($method === 'DELETE') {
-    $stmt = db()->prepare('SELECT receipt_no FROM receipts WHERE id = ?');
+    $pdo = db();
+    $stmt = $pdo->prepare(
+        'SELECT id,receipt_no,invoice_id,amount,payment_method,payment_reference,paid_at
+         FROM receipts WHERE id = ? AND deleted_at IS NULL'
+    );
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
     $reason = require_delete_confirmation($user, body());
-    send_to_trash('receipt', $id, $row['receipt_no'], $user['id'], $reason);
-    soft_delete('receipts', $id);
+    $invoiceId = (string)($row['invoice_id'] ?? '');
+    $linkedJobId = '';
+    $pdo->beginTransaction();
+    try {
+        send_to_trash('receipt', $id, $row['receipt_no'], $user['id'], $reason);
+        if ($invoiceId !== '') {
+            // New V307 receipts have an explicit receipt_id link. For legacy
+            // receipts created before V307, remove only an unambiguous exact
+            // payment match so a genuine manual payment is never guessed away.
+            $deletePayment = $pdo->prepare('DELETE FROM payments WHERE receipt_id=?');
+            $deletePayment->execute([$id]);
+            if ($deletePayment->rowCount() === 0) {
+                $legacyReference = trim((string)($row['payment_reference'] ?? ''));
+                if ($legacyReference === '') $legacyReference = 'Receipt ' . $row['receipt_no'];
+                $match = $pdo->prepare(
+                    "SELECT id FROM payments
+                     WHERE invoice_id=? AND ABS(amount-?) < 0.005
+                       AND UPPER(COALESCE(method,''))=UPPER(?)
+                       AND COALESCE(reference,'')=?
+                       AND paid_at::date=?::date
+                     LIMIT 2"
+                );
+                $match->execute([$invoiceId,$row['amount'],$row['payment_method'],$legacyReference,$row['paid_at']]);
+                $matches = $match->fetchAll(PDO::FETCH_COLUMN);
+                if (count($matches) === 1) {
+                    $pdo->prepare('DELETE FROM payments WHERE id=?')->execute([$matches[0]]);
+                }
+            }
+        }
+        $pdo->prepare('UPDATE receipts SET deleted_at=NOW() WHERE id=?')->execute([$id]);
+        if ($invoiceId !== '') {
+            $invoiceStmt = $pdo->prepare('SELECT total,due_date,status,source_job_card_id FROM invoices WHERE id=? FOR UPDATE');
+            $invoiceStmt->execute([$invoiceId]);
+            $invoice = $invoiceStmt->fetch();
+            if ($invoice) {
+                $linkedJobId = (string)($invoice['source_job_card_id'] ?? '');
+                if (strtoupper((string)$invoice['status']) !== 'CANCELLED') {
+                    $paidStmt = $pdo->prepare('SELECT COALESCE(SUM(amount),0) FROM payments WHERE invoice_id=?');
+                    $paidStmt->execute([$invoiceId]);
+                    $status = calculated_invoice_status((float)$invoice['total'], (float)$paidStmt->fetchColumn(), $invoice['due_date']);
+                    $pdo->prepare('UPDATE invoices SET status=? WHERE id=?')->execute([$status,$invoiceId]);
+                }
+            }
+        }
+        if ($linkedJobId !== '') belm_recompute_job_billing_status($linkedJobId);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
     json_out(null, 204);
 }
 

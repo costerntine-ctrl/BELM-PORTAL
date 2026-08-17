@@ -114,7 +114,7 @@
           ${selected && stockQty <= 0 ? `<button data-add-request="${escapeHtml(request.id)}">Add / Receive Stock</button>` : ""}
           <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>
           ${request.customerId && selected ? `<button class="proforma-button" data-generate-proforma="${escapeHtml(request.id)}">Generate Proforma</button>` : ""}
-          ${selected && stockQty > 0 ? `<button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>` : ""}
+          ${selected && stockQty >= Number(request.quantity || 1) ? `<button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>` : ""}
         </div>
       </article>`;
     }).join("");
@@ -207,7 +207,7 @@
 
   async function loadParts() {
     if (!token) {
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       return;
     }
     try {
@@ -224,7 +224,7 @@
       }
     } catch (error) {
       document.getElementById("partsPanel").className = "empty";
-      document.getElementById("partsPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;
+      document.getElementById("partsPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/login">Go to admin login</a>`;
       showAlert(error.message, true);
     }
   }

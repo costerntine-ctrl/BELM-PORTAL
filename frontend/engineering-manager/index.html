@@ -9,9 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
-    <link rel="stylesheet" href="/engineering-manager/manager.css?v=218-tech-override">
+    <link rel="stylesheet" href="/engineering-manager/manager.css?v=305-job-card-dispatch">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -55,13 +55,16 @@
         <div class="panel-head"><div><h2>Technician Dispatch</h2><p>Super Admin / Engineer can temporarily assign a BELM Technician to another customer without changing the Technician's permanent customer.</p></div><span class="eng-badge status-yellow">Temporary Override</span></div>
         <form id="dispatchForm" class="eng-dispatch-form">
           <label>Technician<select id="dispatchTechnician" required><option value="">Select Technician...</option></select></label>
-          <label>Customer for this job<select id="dispatchCustomer" required><option value="">Select Customer...</option></select></label>
-          <label class="wide">Job title<input id="dispatchTitle" required placeholder="e.g. Hydraulic pressure diagnosis"></label>
-          <label class="wide">Job details<textarea id="dispatchDescription" rows="3" placeholder="Scope / symptoms / instructions"></textarea></label>
+          <fieldset class="wide eng-job-source"><legend>Job Card Source</legend><label><input type="radio" name="jobCardMode" value="existing" checked> Select Received Job Card</label><label><input type="radio" name="jobCardMode" value="create"> Create Job Card</label></fieldset>
+          <label class="wide" id="receivedJobCardField">Received Job Card<select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><small>Customer-issued / Service Request Job Cards waiting for Technician work.</small></label>
+          <label id="dispatchCustomerField">Customer for this job<select id="dispatchCustomer"><option value="">Select Customer...</option></select></label>
+          <label id="dispatchMachineField" class="hidden">Machine<select id="dispatchMachine"><option value="">Select Machine...</option></select></label>
+          <label class="wide hidden" id="dispatchTitleField">Job title<input id="dispatchTitle" placeholder="e.g. Hydraulic pressure diagnosis"></label>
+          <label class="wide hidden" id="dispatchDescriptionField">Job details<textarea id="dispatchDescription" rows="3" placeholder="Scope / symptoms / instructions"></textarea></label>
           <label>Priority<select id="dispatchPriority"><option>NORMAL</option><option>HIGH</option><option>URGENT</option><option>LOW</option></select></label>
           <label>Due date<input id="dispatchDueDate" type="date"></label>
           <div id="dispatchNote" class="eng-dispatch-note wide">Select a Technician and customer. If they differ from the Technician's home customer, the task is marked Temporary Override.</div>
-          <div class="wide eng-dispatch-actions"><button class="primary" type="submit">Assign Temporary Job</button></div>
+          <div class="wide eng-dispatch-actions"><button class="primary" type="submit">Assign Job Card</button></div>
         </form>
       </section>
 
@@ -115,6 +118,6 @@
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/engineering-manager/manager.js?v=218-tech-override"></script>
+    <script src="/engineering-manager/manager.js?v=305-job-card-dispatch"></script>
   </body>
 </html>

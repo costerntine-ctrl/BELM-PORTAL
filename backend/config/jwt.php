@@ -9,7 +9,7 @@ function base64url_decode(string $data): string {
     return base64_decode(strtr($data, '-_', '+/') . str_repeat('=', (4 - strlen($data) % 4) % 4));
 }
 
-function jwt_encode(array $payload, int $expiresInSeconds = 7 * 24 * 3600): string {
+function jwt_encode(array $payload, int $expiresInSeconds = 30 * 24 * 3600): string {
     $header = ['typ' => 'JWT', 'alg' => 'HS256'];
     $payload['iat'] = time();
     $payload['exp'] = time() + $expiresInSeconds;

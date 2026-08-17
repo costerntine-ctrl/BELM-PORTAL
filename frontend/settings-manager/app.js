@@ -25,7 +25,7 @@
     if (response.status === 401) {
       localStorage.removeItem("belm_admin_token");
       localStorage.removeItem("belm_admin_user");
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       throw new Error("Your login session has expired.");
     }
     if (!response.ok) throw new Error(data.error || "Could not save settings.");
@@ -50,7 +50,7 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       return;
     }
     try {
@@ -516,7 +516,7 @@
         alert(result.message || "Database reset successfully. You will be logged out now.");
         localStorage.removeItem("belm_admin_token");
         localStorage.removeItem("belm_admin_user");
-        window.location.href = "/admin/login";
+        window.location.href = "/login";
         return;
       }
       message(result.message || `${categoryLabel} cleared successfully.`);

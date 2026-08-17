@@ -370,6 +370,8 @@ ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_name VARCH
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS description TEXT NULL;
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS machine_type VARCHAR(100) NULL;
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_request_id VARCHAR(36) NULL;
+CREATE INDEX IF NOT EXISTS idx_spare_part_requests_procurement ON spare_part_requests(procurement_request_id);
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_status ON spare_part_requests(status);
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_machine ON spare_part_requests(machine_id);
 
@@ -576,6 +578,14 @@ CREATE TABLE IF NOT EXISTS receipts (
 CREATE INDEX IF NOT EXISTS idx_receipts_invoice ON receipts(invoice_id);
 CREATE INDEX IF NOT EXISTS idx_receipts_customer ON receipts(customer_id);
 
+-- V307: a receipt-linked payment must remain auditable as one accounting
+-- event. This link lets Receipt delete/restore and Payment edits keep both
+-- records synchronized instead of leaving an invoice balance out of step.
+ALTER TABLE payments
+  ADD COLUMN IF NOT EXISTS receipt_id VARCHAR(36) NULL REFERENCES receipts(id) ON DELETE SET NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_receipt_unique
+  ON payments(receipt_id) WHERE receipt_id IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS proforma_invoice_items (
   id VARCHAR(36) PRIMARY KEY,
   proforma_id VARCHAR(36) NOT NULL REFERENCES proforma_invoices(id),
@@ -626,7 +636,9 @@ CREATE TABLE IF NOT EXISTS password_reset_codes (
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE password_reset_codes ADD COLUMN IF NOT EXISTS account_id VARCHAR(36) NULL;
 CREATE INDEX IF NOT EXISTS idx_password_reset_codes_email ON password_reset_codes(LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_password_reset_codes_account ON password_reset_codes(account_type, account_id);
 
 -- Tracks failed login/PIN attempts so they can be rate-limited. A generic
 -- table (not per-feature) so the same guard protects staff login, customer
@@ -895,7 +907,7 @@ SELECT
   '00000000-0000-4000-8000-000000000003',
   'BELM Admin',
   'info@belmgeneral.co.tz',
-  '$2y$10$uXo8bDdT3YV7BlM7V4oOR.ybSIUrBtG0x/bwydGsmf98C0IBBWtme',
+  '$2y$12$mLP95q9gTllhw8LFyLjavuv/f8/qY8kfEGmAy.l9dKCNs084SvFNS',
   id
 FROM roles
 WHERE name = 'Super Admin'
@@ -904,8 +916,9 @@ ON CONFLICT (id) DO UPDATE SET
   is_active = 1,
   role_id = EXCLUDED.role_id,
   deleted_at = NULL,
-  -- Preserve a password the Administrator has already changed. Only repair a
-  -- clearly invalid/empty legacy hash with the documented temporary password.
+  -- Preserve a password the Administrator has already changed. A newly seeded
+  -- account receives a locked placeholder hash here; migrate.php replaces that
+  -- placeholder from INITIAL_ADMIN_PASSWORD before Apache starts.
   password_hash = CASE
     WHEN users.password_hash LIKE '$2%' OR users.password_hash LIKE '$argon2%'
       THEN users.password_hash
@@ -958,13 +971,8 @@ CREATE TABLE IF NOT EXISTS controller_pinout_pins (
 );
 CREATE INDEX IF NOT EXISTS idx_controller_pinout_pins_pinout ON controller_pinout_pins(pinout_id);
 
-INSERT INTO system_settings (id, "key", "value")
-VALUES (
-  '00000000-0000-4000-8000-000000000004',
-  'adminDeletePin',
-  '"1234"'::jsonb
-)
-ON CONFLICT ("key") DO NOTHING;
+-- V306: security action PINs are intentionally NOT seeded with public/default values.
+-- backend/scripts/migrate.php provisions missing/legacy PINs from INITIAL_ADMIN_ACTION_PIN.
 
 -- V192: synchronized BELM <-> Customer communication and Proforma delivery.
 ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL;
@@ -1043,6 +1051,57 @@ CREATE INDEX IF NOT EXISTS idx_customer_store_movements_customer
   ON customer_store_movements(customer_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_customer_store_movements_machine
   ON customer_store_movements(machine_id, created_at DESC);
+
+-- V295 Customer machine spare lists + Store issue approval ------------------
+-- Saved spare lists belong to a customer machine. They are independent of
+-- BELM inventory and can be reused for Customer Store issue or outside
+-- procurement CSV export.
+CREATE TABLE IF NOT EXISTS customer_machine_spare_list_items (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  reference_number VARCHAR(100) NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL DEFAULT 1,
+  selected SMALLINT NOT NULL DEFAULT 1,
+  created_by_name VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_machine_spare_list
+  ON customer_machine_spare_list_items(customer_id, machine_id, updated_at DESC);
+
+-- A Customer Store issue is never deducted at request time. Accounts / Owner /
+-- Admin approve it first; approval atomically creates the procurement record and
+-- Store ISSUE movement, preventing partial balance updates.
+CREATE TABLE IF NOT EXISTS customer_store_issue_requests (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  store_item_id VARCHAR(36) NOT NULL REFERENCES customer_store_items(id) ON DELETE CASCADE,
+  part_number VARCHAR(100) NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL,
+  unit VARCHAR(20) NOT NULL DEFAULT 'PC',
+  unit_cost NUMERIC(14,2) NOT NULL DEFAULT 0,
+  balance_at_request NUMERIC(14,2) NOT NULL DEFAULT 0,
+  requested_by_name VARCHAR(255) NOT NULL,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(30) NOT NULL DEFAULT 'PENDING_APPROVAL',
+  approved_by_name VARCHAR(255) NULL,
+  approved_at TIMESTAMPTZ NULL,
+  rejected_by_name VARCHAR(255) NULL,
+  rejected_at TIMESTAMPTZ NULL,
+  decision_note VARCHAR(500) NULL,
+  expense_id VARCHAR(36) NULL REFERENCES usage_logs(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_store_issue_requests_customer
+  ON customer_store_issue_requests(customer_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_store_issue_requests_machine
+  ON customer_store_issue_requests(machine_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_store_issue_requests_item
+  ON customer_store_issue_requests(store_item_id, status);
 
 ALTER TABLE usage_logs
   ADD COLUMN IF NOT EXISTS store_item_id VARCHAR(36) NULL REFERENCES customer_store_items(id) ON DELETE SET NULL;
@@ -1218,6 +1277,44 @@ CREATE TABLE IF NOT EXISTS breakdown_spare_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_breakdown_spares_case ON breakdown_spare_requests(case_id, status, requested_at DESC);
 
+-- V297: all customer spare requirements enter one Procurement queue first.
+-- Procurement decides whether the item is issued from Customer Store or
+-- purchased externally; customers never send a spare request directly to
+-- BELM Inventory or a supplier from the request screen.
+CREATE TABLE IF NOT EXISTS customer_procurement_requests (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  store_item_id VARCHAR(36) NULL REFERENCES customer_store_items(id) ON DELETE SET NULL,
+  workflow_case_id VARCHAR(36) NULL REFERENCES breakdown_cases(id) ON DELETE SET NULL,
+  part_number VARCHAR(120) NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL,
+  unit VARCHAR(30) NOT NULL DEFAULT 'PC',
+  store_available_at_request NUMERIC(14,2) NOT NULL DEFAULT 0,
+  store_unit_cost NUMERIC(14,2) NOT NULL DEFAULT 0,
+  store_match_status VARCHAR(30) NOT NULL DEFAULT 'NOT_IN_STORE',
+  status VARCHAR(30) NOT NULL DEFAULT 'PENDING_PROCUREMENT',
+  requested_by_name VARCHAR(255) NOT NULL,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  handled_by_name VARCHAR(255) NULL,
+  handled_at TIMESTAMPTZ NULL,
+  decision_note VARCHAR(500) NULL,
+  expense_id VARCHAR(36) NULL REFERENCES usage_logs(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_procurement_requests_customer
+  ON customer_procurement_requests(customer_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_procurement_requests_machine
+  ON customer_procurement_requests(machine_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_procurement_requests_case
+  ON customer_procurement_requests(workflow_case_id, status);
+
+ALTER TABLE breakdown_spare_requests
+  ADD COLUMN IF NOT EXISTS procurement_request_id VARCHAR(36) NULL REFERENCES customer_procurement_requests(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_breakdown_spares_procurement_request
+  ON breakdown_spare_requests(procurement_request_id);
+
 CREATE TABLE IF NOT EXISTS digital_job_cards (
   id VARCHAR(36) PRIMARY KEY,
   case_id VARCHAR(36) NOT NULL REFERENCES breakdown_cases(id) ON DELETE CASCADE,
@@ -1242,3 +1339,24 @@ CREATE TABLE IF NOT EXISTS digital_job_cards (
 );
 CREATE INDEX IF NOT EXISTS idx_job_cards_customer ON digital_job_cards(customer_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_job_cards_technician ON digital_job_cards(technician_id, status, created_at DESC);
+
+
+-- V301 - Customer-issued service Job Cards, signed completion copy and billing sync.
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS issued_by_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS issued_by_type VARCHAR(30) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS customer_signed_by_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS customer_signed_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_copy_data TEXT NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_copy_mime VARCHAR(50) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_copy_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_uploaded_by_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_uploaded_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS billing_status VARCHAR(40) NOT NULL DEFAULT 'NOT_READY';
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT NULL DEFAULT 'NORMAL';
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS due_date DATE NULL;
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_proforma_source_job_card ON proforma_invoices(source_job_card_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_source_job_card ON invoices(source_job_card_id);
+CREATE INDEX IF NOT EXISTS idx_job_cards_billing_status ON digital_job_cards(customer_id, billing_status, completed_at DESC);

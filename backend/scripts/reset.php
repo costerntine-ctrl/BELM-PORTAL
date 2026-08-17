@@ -25,12 +25,12 @@ $categories = [
     'checklists' => ['label' => 'Checklist Templates & Reports', 'tables' => []],
     'spare-parts' => ['label' => 'Spare Parts & Requests', 'tables' => ['spare_parts', 'spare_part_requests']],
     'suppliers' => ['label' => 'Suppliers', 'tables' => ['suppliers']],
-    'billing' => ['label' => 'Billing & Finance', 'tables' => ['invoice_items', 'payments', 'invoices', 'proforma_invoice_items', 'proforma_invoices', 'company_expenses']],
+    'billing' => ['label' => 'Billing & Finance', 'tables' => ['invoice_items', 'payments', 'receipts', 'invoices', 'proforma_invoice_items', 'proforma_invoices', 'company_expenses']],
     'service-requests' => ['label' => 'Service Requests', 'tables' => []],
     'bank' => ['label' => 'Bank Manager', 'tables' => []],
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
-    'machine-expenses' => ['label' => 'Machine Expenses logs', 'tables' => []],
+    'machine-expenses' => ['label' => 'Procurement logs', 'tables' => []],
     'petty-cash' => ['label' => 'Petty Cash deposits (top-ups) — keeps spending history', 'tables' => ['petty_cash_topups']],
 ];
 
@@ -62,12 +62,15 @@ function belm_hard_delete_machines(PDO $pdo, array $machineIds): void {
     $pdo->prepare("DELETE FROM checklist_reports WHERE machine_id IN ($in)")->execute($machineIds);
     $pdo->prepare("DELETE FROM usage_logs WHERE machine_id IN ($in)")->execute($machineIds);
     $pdo->prepare("DELETE FROM petty_cash_topups WHERE machine_id IN ($in)")->execute($machineIds);
-    $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($machineIds);
+    // Child rows reference both the machine and operator without CASCADE.
+    $pdo->prepare("DELETE FROM machine_operator_shifts WHERE machine_id IN ($in)")->execute($machineIds);
     $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($machineIds);
+    $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($machineIds);
     $pdo->prepare("DELETE FROM spare_part_requests WHERE machine_id IN ($in)")->execute($machineIds);
-    $pdo->prepare("UPDATE service_requests SET machine_id = NULL WHERE machine_id IN ($in)")->execute($machineIds);
-    $pdo->prepare("UPDATE invoices SET machine_id = NULL WHERE machine_id IN ($in)")->execute($machineIds);
-    $pdo->prepare("UPDATE customer_applications SET machine_id = NULL WHERE machine_id IN ($in)")->execute($machineIds);
+    $pdo->prepare("UPDATE service_requests SET machine_id=NULL WHERE machine_id IN ($in)")->execute($machineIds);
+    $pdo->prepare("UPDATE invoices SET machine_id=NULL WHERE machine_id IN ($in)")->execute($machineIds);
+    $pdo->prepare("UPDATE proforma_invoices SET machine_id=NULL WHERE machine_id IN ($in)")->execute($machineIds);
+    $pdo->prepare("UPDATE customer_applications SET machine_id=NULL WHERE machine_id IN ($in)")->execute($machineIds);
     $pdo->prepare("DELETE FROM machines WHERE id IN ($in)")->execute($machineIds);
 }
 
@@ -95,60 +98,82 @@ function belm_clear_machine_log(PDO $pdo, string $machineId): void {
 // their context. Users/technicians are never touched.
 // ---------------------------------------------------------------------
 function belm_hard_delete_customer(PDO $pdo, string $customerId): void {
-    $machineIds = $pdo->prepare('SELECT id FROM machines WHERE customer_id = ?');
-    $machineIds->execute([$customerId]);
-    $machines = $machineIds->fetchAll(PDO::FETCH_COLUMN);
+    $machineStmt = $pdo->prepare('SELECT id FROM machines WHERE customer_id=?');
+    $machineStmt->execute([$customerId]);
+    $machines = $machineStmt->fetchAll(PDO::FETCH_COLUMN);
+    $requestStmt = $pdo->prepare('SELECT id FROM service_requests WHERE customer_id=?');
+    $requestStmt->execute([$customerId]);
+    $requests = $requestStmt->fetchAll(PDO::FETCH_COLUMN);
+    $invoiceStmt = $pdo->prepare('SELECT id FROM invoices WHERE customer_id=?');
+    $invoiceStmt->execute([$customerId]);
+    $invoices = $invoiceStmt->fetchAll(PDO::FETCH_COLUMN);
+    $proformaStmt = $pdo->prepare('SELECT id FROM proforma_invoices WHERE customer_id=?');
+    $proformaStmt->execute([$customerId]);
+    $proformas = $proformaStmt->fetchAll(PDO::FETCH_COLUMN);
 
-    $requestIds = $pdo->prepare('SELECT id FROM service_requests WHERE customer_id = ?');
-    $requestIds->execute([$customerId]);
-    $requests = $requestIds->fetchAll(PDO::FETCH_COLUMN);
-
-    $invoiceIds = $pdo->prepare('SELECT id FROM invoices WHERE customer_id = ?');
-    $invoiceIds->execute([$customerId]);
-    $invoices = $invoiceIds->fetchAll(PDO::FETCH_COLUMN);
-
+    // V307: clear every non-cascading child before the parent. Newer operational
+    // tables that declare ON DELETE CASCADE (breakdown/job cards/store etc.) are
+    // intentionally left to PostgreSQL so this stays safe as those rows grow.
     if ($machines) {
         $in = belm_in_clause($machines);
         $pdo->prepare("DELETE FROM checklist_answers WHERE report_id IN (SELECT id FROM checklist_reports WHERE machine_id IN ($in))")->execute($machines);
         $pdo->prepare("DELETE FROM checklist_reports WHERE machine_id IN ($in)")->execute($machines);
-        $pdo->prepare("DELETE FROM petty_cash_topups WHERE machine_id IN ($in)")->execute($machines);
-        $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($machines);
-        $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($machines);
+        // An application can retain a machine FK even if its customer field was
+        // never populated by an older build.
+        $pdo->prepare("DELETE FROM customer_applications WHERE machine_id IN ($in)")->execute($machines);
     }
-
     if ($requests) {
         $in = belm_in_clause($requests);
+        $pdo->prepare("DELETE FROM service_request_history WHERE request_id IN ($in)")->execute($requests);
         $pdo->prepare("DELETE FROM service_notes WHERE request_id IN ($in)")->execute($requests);
         $pdo->prepare("DELETE FROM service_request_parts WHERE request_id IN ($in)")->execute($requests);
     }
-
     if ($machines || $requests) {
-        $conditions = [];
-        $params = [];
-        if ($machines) { $conditions[] = 'machine_id IN (' . belm_in_clause($machines) . ')'; $params = array_merge($params, $machines); }
-        if ($requests) { $conditions[] = 'request_id IN (' . belm_in_clause($requests) . ')'; $params = array_merge($params, $requests); }
-        $pdo->prepare('DELETE FROM spare_part_requests WHERE ' . implode(' OR ', $conditions))->execute($params);
+        $conditions=[]; $params=[];
+        if ($machines) { $conditions[]='machine_id IN ('.belm_in_clause($machines).')'; $params=array_merge($params,$machines); }
+        if ($requests) { $conditions[]='request_id IN ('.belm_in_clause($requests).')'; $params=array_merge($params,$requests); }
+        $pdo->prepare('DELETE FROM spare_part_requests WHERE '.implode(' OR ',$conditions))->execute($params);
     }
+    $pdo->prepare('DELETE FROM service_requests WHERE customer_id=?')->execute([$customerId]);
 
-    $pdo->prepare('DELETE FROM service_requests WHERE customer_id = ?')->execute([$customerId]);
-
+    // Receipts must be removed before their invoices; payments/items before the
+    // invoice itself. Proforma items similarly have a non-cascading FK.
+    $pdo->prepare('DELETE FROM receipts WHERE customer_id=?')->execute([$customerId]);
     if ($invoices) {
-        $in = belm_in_clause($invoices);
+        $in=belm_in_clause($invoices);
         $pdo->prepare("DELETE FROM invoice_items WHERE invoice_id IN ($in)")->execute($invoices);
         $pdo->prepare("DELETE FROM payments WHERE invoice_id IN ($in)")->execute($invoices);
     }
-    $pdo->prepare('DELETE FROM invoices WHERE customer_id = ?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM invoices WHERE customer_id=?')->execute([$customerId]);
+    if ($proformas) {
+        $in=belm_in_clause($proformas);
+        $pdo->prepare("DELETE FROM proforma_invoice_items WHERE proforma_id IN ($in)")->execute($proformas);
+    }
+    $pdo->prepare('DELETE FROM proforma_invoices WHERE customer_id=?')->execute([$customerId]);
 
-    $pdo->prepare('DELETE FROM proforma_invoices WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM usage_logs WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM tasks WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_applications WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_users WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_saved_emails WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customer_activity_logs WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM machines WHERE customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('UPDATE users SET assigned_customer_id = NULL WHERE assigned_customer_id = ?')->execute([$customerId]);
-    $pdo->prepare('DELETE FROM customers WHERE id = ?')->execute([$customerId]);
+    // Operator hierarchy must be removed child-first.
+    $pdo->prepare('DELETE FROM machine_operator_shifts WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM operator_reports WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM machine_operators WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM petty_cash_topups WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM usage_logs WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM tasks WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_applications WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('UPDATE user_applications SET assigned_customer_id=NULL WHERE assigned_customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_saved_emails WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_activity_logs WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('DELETE FROM customer_users WHERE customer_id=?')->execute([$customerId]);
+
+    // All remaining machine/customer-owned workflow/store rows are cascading.
+    $pdo->prepare('DELETE FROM machines WHERE customer_id=?')->execute([$customerId]);
+    $pdo->prepare('UPDATE users SET assigned_customer_id=NULL WHERE assigned_customer_id=?')->execute([$customerId]);
+
+    $pdo->prepare("DELETE FROM trash_entries WHERE entity_type='customer' AND entity_id=?")->execute([$customerId]);
+    if ($machines) {
+        $in=belm_in_clause($machines);
+        $pdo->prepare("DELETE FROM trash_entries WHERE entity_type='machine' AND entity_id IN ($in)")->execute($machines);
+    }
+    $pdo->prepare('DELETE FROM customers WHERE id=?')->execute([$customerId]);
 }
 
 // ---------------------------------------------------------------------
@@ -163,17 +188,22 @@ function belm_delete_users(PDO $pdo, array $userIds): void {
     $pdo->prepare("DELETE FROM tasks WHERE assigned_to_id IN ($in)")->execute($userIds);
     $pdo->prepare("DELETE FROM attendance_records WHERE user_id IN ($in)")->execute($userIds);
     $pdo->prepare("DELETE FROM activity_logs WHERE user_id IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE attendance_records SET recorded_by = NULL WHERE recorded_by IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE service_requests SET assigned_to_id = NULL WHERE assigned_to_id IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE service_requests SET completed_by_id = NULL WHERE completed_by_id IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE service_requests SET cancelled_by_id = NULL WHERE cancelled_by_id IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE spare_part_requests SET requested_by_id = NULL WHERE requested_by_id IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE admin_announcements SET created_by = NULL WHERE created_by IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE operator_reports SET resolved_by_id = NULL WHERE resolved_by_id IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE petty_cash_topups SET added_by = NULL WHERE added_by IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE customer_applications SET reviewed_by = NULL WHERE reviewed_by IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE user_applications SET reviewed_by = NULL WHERE reviewed_by IN ($in)")->execute($userIds);
-    $pdo->prepare("UPDATE user_applications SET user_id = NULL WHERE user_id IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE attendance_records SET recorded_by=NULL WHERE recorded_by IN ($in)")->execute($userIds);
+    foreach (['assigned_to_id','completed_by_id','cancelled_by_id','hidden_by_id','assigned_by_id','started_by_id'] as $column) {
+        $pdo->prepare("UPDATE service_requests SET $column=NULL WHERE $column IN ($in)")->execute($userIds);
+    }
+    $pdo->prepare("UPDATE service_request_history SET actor_id=NULL WHERE actor_id IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE spare_part_requests SET requested_by_id=NULL WHERE requested_by_id IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE admin_announcements SET created_by=NULL WHERE created_by IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE operator_reports SET resolved_by_id=NULL WHERE resolved_by_id IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE petty_cash_topups SET added_by=NULL WHERE added_by IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE customer_applications SET reviewed_by=NULL WHERE reviewed_by IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE user_applications SET reviewed_by=NULL WHERE reviewed_by IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE user_applications SET user_id=NULL WHERE user_id IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE receipts SET received_by=NULL WHERE received_by IN ($in)")->execute($userIds);
+    $pdo->prepare("UPDATE controller_pinouts SET created_by_id=NULL WHERE created_by_id IN ($in)")->execute($userIds);
+    // Keep historical technician name/report text, but detach the deleted login.
+    $pdo->prepare("UPDATE digital_job_cards SET technician_id=NULL WHERE technician_id IN ($in)")->execute($userIds);
     $pdo->prepare("DELETE FROM users WHERE id IN ($in)")->execute($userIds);
 }
 
@@ -196,7 +226,11 @@ function belm_clear_checklists(PDO $pdo): void {
 // that merely referenced a service request, so Spare Parts is untouched.
 // ---------------------------------------------------------------------
 function belm_clear_service_requests(PDO $pdo): void {
-    $pdo->exec('UPDATE spare_part_requests SET request_id = NULL WHERE request_id IS NOT NULL');
+    $pdo->exec('UPDATE spare_part_requests SET request_id=NULL WHERE request_id IS NOT NULL');
+    // Linked Maintenance Process/Job Cards are operational children of the
+    // Service Request category and must not be left orphaned by source_id.
+    $pdo->exec("DELETE FROM breakdown_cases WHERE source_type='SERVICE_REQUEST'");
+    $pdo->exec('DELETE FROM service_request_history');
     $pdo->exec('DELETE FROM service_notes');
     $pdo->exec('DELETE FROM service_request_parts');
     $pdo->exec('DELETE FROM service_requests');
@@ -207,8 +241,9 @@ function belm_clear_service_requests(PDO $pdo): void {
 // that merely referenced a bank account, so Billing & Finance is untouched.
 // ---------------------------------------------------------------------
 function belm_clear_bank(PDO $pdo): void {
-    $pdo->exec('UPDATE payments SET bank_account_id = NULL WHERE bank_account_id IS NOT NULL');
-    $pdo->exec('UPDATE company_expenses SET bank_account_id = NULL WHERE bank_account_id IS NOT NULL');
+    $pdo->exec('UPDATE payments SET bank_account_id=NULL WHERE bank_account_id IS NOT NULL');
+    $pdo->exec('UPDATE receipts SET bank_account_id=NULL WHERE bank_account_id IS NOT NULL');
+    $pdo->exec('UPDATE company_expenses SET bank_account_id=NULL WHERE bank_account_id IS NOT NULL');
     $pdo->exec('DELETE FROM bank_withdrawals');
     $pdo->exec('DELETE FROM bank_accounts');
 }
@@ -217,6 +252,20 @@ try {
     $pdo = db();
 
     if ($category === 'all') {
+        // Preserve the Administrator who is performing the reset. The old
+        // implementation silently restored public/default credentials.
+        $adminIdentityStmt = $pdo->prepare('SELECT name,email,password_hash FROM users WHERE id=? AND deleted_at IS NULL');
+        $adminIdentityStmt->execute([$user['id']]);
+        $adminIdentity = $adminIdentityStmt->fetch() ?: [];
+        $preservedAdminName = trim((string)($adminIdentity['name'] ?? $user['name'] ?? 'BELM Admin'));
+        $preservedAdminEmail = trim((string)($adminIdentity['email'] ?? $user['email'] ?? 'info@belmgeneral.co.tz'));
+        $preservedAdminPasswordHash = (string)($adminIdentity['password_hash'] ?? '');
+        if ($preservedAdminPasswordHash === '') {
+            throw new RuntimeException('Current Admin password hash could not be preserved. Reset cancelled.');
+        }
+        $preservedDeletePin = belm_read_stored_pin('adminDeletePin', (string)($body['pin'] ?? ''));
+        $preservedEditPin = belm_read_stored_pin('adminEditPin', $preservedDeletePin);
+
         $tables = $pdo->query(
             "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
         )->fetchAll(PDO::FETCH_COLUMN);
@@ -239,9 +288,19 @@ try {
         }
         $pdo->exec($schema);
 
+        $seedAdminId = '00000000-0000-4000-8000-000000000003';
+        $pdo->prepare('UPDATE users SET name=?,email=?,password_hash=?,is_active=1,deleted_at=NULL WHERE id=?')
+            ->execute([$preservedAdminName,$preservedAdminEmail,$preservedAdminPasswordHash,$seedAdminId]);
+        $settingStmt = $pdo->prepare(
+            "INSERT INTO system_settings(id,\"key\",\"value\",updated_at) VALUES(?,?,?::jsonb,NOW()) " .
+            "ON CONFLICT (\"key\") DO UPDATE SET \"value\"=EXCLUDED.\"value\",updated_at=NOW()"
+        );
+        $settingStmt->execute([uuid(),'adminDeletePin',json_encode($preservedDeletePin)]);
+        $settingStmt->execute([uuid(),'adminEditPin',json_encode($preservedEditPin)]);
+
         json_out([
             'ok' => true,
-            'message' => 'Database wiped and reseeded. Admin login: admin@belmgeneraltech.co.tz / ChangeMe123! — change the password immediately.',
+            'message' => 'Database wiped and reseeded. Your current Admin email/password and edit/delete PINs were preserved.',
         ]);
     }
 
@@ -490,6 +549,7 @@ try {
 
     if ($category === 'machine-expenses') {
         $pdo->exec("DELETE FROM usage_logs WHERE category = 'SPARE_PART'");
+        $pdo->exec("DELETE FROM customer_procurement_requests");
     }
     // Note: 'petty-cash' category intentionally does NOT touch usage_logs here —
     // only the petty_cash_topups table (deposits) is truncated below, so all

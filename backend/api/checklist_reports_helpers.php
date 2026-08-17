@@ -114,16 +114,25 @@ function output_checklist_report_pdf(string $filename, array $lines, array $phot
         $drawX = (595 - $drawW) / 2;
         $drawY = 792 - $drawH; // leave room for the label line at the top
 
-        $content = "BT\n/F1 12 Tf\n50 810 Td\n";
+        $content = '';
+        if ($watermarkObject !== null) {
+            $content .= sprintf(
+                "q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Wm Do\nQ\n",
+                $wmDrawWidth, $wmDrawHeight, $wmX, $wmY
+            );
+        }
+        $content .= "BT\n/F1 12 Tf\n50 810 Td\n";
         $content .= '(' . checklist_report_pdf_escape('Evidence photo — ' . $photo['label']) . ") Tj\nET\n";
         $content .= sprintf(
             "q\n%.2F 0 0 %.2F %.2F %.2F cm\n/Ph{$index} Do\nQ\n",
             $drawW, $drawH, $drawX, $drawY
         );
 
+        $photoXObjects = "/Ph{$index} {$imageObject} 0 R";
+        if ($watermarkObject !== null) $photoXObjects .= " /Wm {$watermarkObject} 0 R";
         $objects[$pageObject] =
             "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
-            . "/Resources << /Font << /F1 {$fontObject} 0 R >> /XObject << /Ph{$index} {$imageObject} 0 R >> >> "
+            . "/Resources << /Font << /F1 {$fontObject} 0 R >> /XObject << {$photoXObjects} >> >> "
             . "/Contents {$contentObject} 0 R >>";
         $objects[$contentObject] =
             "<< /Length " . strlen($content) . " >>\nstream\n{$content}endstream";

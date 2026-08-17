@@ -230,7 +230,8 @@ if ($action === 'unified-login' && $method === 'POST') {
     $rawLoginId = trim((string)($b['email'] ?? $b['loginId'] ?? $b['portalLink'] ?? ''));
     $password = (string)($b['password'] ?? '');
     $contextSlug = strtolower(trim((string)($b['customerSlug'] ?? $b['customer'] ?? '')));
-    if ($contextSlug !== '' && $contextSlug !== 'belm' && !preg_match('/^[a-z0-9][a-z0-9-]{0,35}$/', $contextSlug)) {
+    $isBelmContext = $contextSlug === 'belm' || (bool)preg_match('/^[a-z0-9][a-z0-9-]{0,24}@belm$/', $contextSlug);
+    if ($contextSlug !== '' && !$isBelmContext && !preg_match('/^[a-z0-9][a-z0-9-]{0,35}$/', $contextSlug)) {
         json_error('Customer app link is invalid.', 400);
     }
 
@@ -259,9 +260,9 @@ if ($action === 'unified-login' && $method === 'POST') {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password_hash'])) {
-            if ($contextSlug !== '' && $contextSlug !== 'belm') {
+            if ($contextSlug !== '' && !$isBelmContext) {
                 if ($user['role_name'] !== 'Technician') {
-                    json_error('This customer app link is for the customer team. BELM staff should use /app/belm.', 403);
+                    json_error('This customer app link is for the customer team. BELM staff should use their @BELM app link.', 403);
                 }
                 if (strtolower((string)($user['assigned_customer_portal_link'] ?? '')) !== $contextSlug) {
                     json_error('This Technician account is assigned to a different customer.', 403);
@@ -329,11 +330,11 @@ if ($action === 'unified-login' && $method === 'POST') {
         $portalId = trim((string)($query['customer'] ?? ''));
         if ($portalId === '') {
             $path = (string)(parse_url($rawLoginId, PHP_URL_PATH) ?: '');
-            if (preg_match('#/app/([a-zA-Z0-9-]+)/?$#', $path, $match)) $portalId = strtolower($match[1]);
+            if (preg_match('#/app/([a-zA-Z0-9@-]+)/?$#', $path, $match)) $portalId = strtolower($match[1]);
         }
     }
 
-    if ($contextSlug !== '' && $contextSlug !== 'belm') {
+    if ($contextSlug !== '' && !$isBelmContext) {
         $stmt = db()->prepare(
             'SELECT * FROM customers
              WHERE portal_link = ? AND (LOWER(email) = ? OR portal_link = ?)
@@ -363,7 +364,7 @@ if ($action === 'unified-login' && $method === 'POST') {
     } else {
         $customer = null;
         if (filter_var($rawLoginId, FILTER_VALIDATE_EMAIL)) {
-            if ($contextSlug !== '' && $contextSlug !== 'belm') {
+            if ($contextSlug !== '' && !$isBelmContext) {
                 $stmt = db()->prepare(
                     'SELECT cu.*, c.name AS customer_name, c.portal_link
                      FROM customer_users cu
@@ -519,7 +520,7 @@ if ($action === 'customer-login' && $method === 'POST') {
         $portalId = trim((string)($query['customer'] ?? ''));
         if ($portalId === '') {
             $path = (string)(parse_url($rawLoginId, PHP_URL_PATH) ?: '');
-            if (preg_match('#/app/([a-zA-Z0-9-]+)/?$#', $path, $match)) $portalId = strtolower($match[1]);
+            if (preg_match('#/app/([a-zA-Z0-9@-]+)/?$#', $path, $match)) $portalId = strtolower($match[1]);
         }
     }
     $password = $b['password'] ?? '';

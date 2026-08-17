@@ -104,7 +104,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '21-global-personal-theme',
+            'schemaVersion' => '22-customer-privacy-controls',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'adminReady' => $adminReady,

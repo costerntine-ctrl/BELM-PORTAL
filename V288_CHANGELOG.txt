@@ -1,0 +1,49 @@
+BELM Portal V288 - Customer Privacy Controls + Policy Update
+Date: 17 August 2026
+
+CUSTOMER PRIVACY CONTROLS
+- Added "Privacy & BELM Access" to Customer Dashboard > MORE TOOLS.
+- Customer Owner / Company Admin / trusted Assign Users role can control four data-sharing switches:
+  1. Check-up & maintenance records
+  2. Expenses, petty cash & receipt photos
+  3. Store & service-parts/service-kit records
+  4. Customer team/user directory
+- Optional internal data is PRIVATE by default for the new privacy field.
+
+ALWAYS AVAILABLE TO BELM
+- Basic company identity/contact details.
+- Registered machine identity and operational status.
+- Official support/service/spare requests intentionally sent to BELM.
+- Direct BELM <-> Customer communications.
+
+SERVICE / SUPPORT EXCEPTIONS
+- If BELM Service Provider is ON, maintenance/check-up and service-kit records needed to perform the active service remain accessible.
+- An OPEN official support request gives temporary machine-scoped maintenance/service-kit access for that machine.
+- Expense receipts and Customer team directory still require their own privacy switches.
+
+BACKEND ENFORCEMENT
+- Checklist/report/service-status access respects Customer privacy.
+- Expense/receipt and petty-cash staff endpoints respect Customer privacy.
+- Service-parts staff endpoints respect Customer privacy.
+- BELM staff team-directory read/add/remove respects Customer privacy.
+- Sensitive maintenance fields are removed from BELM customer API payloads when access is not allowed.
+- Customer-managed Technicians remain internal Customer users and are not blocked from their own company data.
+- Password/recovery hashes are no longer returned in the Customers Overview API payload.
+
+BELM ADMIN UI
+- Report / Check Up / Expense Receipts / Service Parts show as locked when Customer privacy blocks BELM.
+- Service-due polling is skipped for privacy-locked machines.
+
+LEGAL UPDATE
+- Privacy Policy updated in English + Kiswahili with new Section 4A.
+- Terms & Definitions updated in English + Kiswahili with Privacy & BELM Access definition and access-control terms.
+- Legal date updated to 17 August 2026.
+
+PERFORMANCE / REGRESSION
+- Open support-request privacy exceptions are resolved in one batched query, preserving V284 performance behavior.
+- V285 uniform customer cards remain intact.
+- V286 button colors remain intact.
+- V287 Technician PDF watermark fix remains intact.
+- PHP and JavaScript syntax checks passed.
+- V211/V215/V217/V218/V219/V220/V221/V222/V223/V285/V287 regressions passed.
+- V288 privacy regression checks: 23/23 passed.

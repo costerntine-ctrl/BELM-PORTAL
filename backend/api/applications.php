@@ -489,9 +489,10 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             ]),
         ]);
 
-        // V208: all BELM staff use the same app-like entry link. The verified
-        // role decides whether the user lands in Admin or Technician workspace.
-        $staffLoginUrl = public_app_base_url() . '/app/belm';
+        // V289: friendly staff aliases. Technician -> TECH@BELM;
+        // every other BELM user -> <name>@BELM. The account's own credentials
+        // and assigned role still determine actual access after sign-in.
+        $staffLoginUrl = belm_staff_login_url($staffApplication['full_name'], $assignment['roleName']);
         $pdo->commit();
         json_out([
             'ok' => true,

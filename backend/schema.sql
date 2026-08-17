@@ -86,6 +86,12 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS user_limit INTEGER NULL;
 -- BELM support action (technical support, spare request, proforma, etc.).
 -- The mode does NOT block BELM from responding when support is requested.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_machinery_admin SMALLINT NOT NULL DEFAULT 0;
+-- V288: Customer-controlled BELM data-sharing preferences. These switches
+-- protect internal Customer records while preserving the minimum data BELM
+-- needs to identify the account/machines and receive explicit support requests.
+-- Maintenance/service-kit access is automatically available while BELM is the
+-- active Service Provider, or for a machine with an open official support request.
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NULL DEFAULT '{"maintenanceRecords":false,"expenseReceipts":false,"teamDirectory":false,"storeAndParts":false}'::jsonb;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- Distinguishes a Technician created by a customer's Self-Service admin from
 -- a BELM Technician temporarily assigned to that customer for support.

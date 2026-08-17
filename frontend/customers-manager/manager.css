@@ -62,6 +62,7 @@
 .customer-card-head-controls { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end; gap: 8px; }
 .customer-provider-control { display: grid; grid-template-columns: auto 30px auto auto; align-items: center; gap: 5px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--canvas) 72%, var(--paper)); white-space: nowrap; }
 .customer-provider-side { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .02em; text-transform: uppercase; }
+.customer-provider-control .customer-provider-side:first-child { max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
 .customer-provider-control.customer-on .customer-provider-side:first-child,
 .customer-provider-control.belm-on .customer-provider-side:nth-of-type(2) { color: var(--ink); }
 .customer-provider-switch { position: relative; display: inline-flex; width: 30px; height: 17px; cursor: pointer; }
@@ -131,6 +132,8 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .machine-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
 .machine-actions button { padding: 6px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .machine-actions button.delete { color: var(--red); }
+.machine-actions button.privacy-locked { color:#8b95a5; border-style:dashed; background:color-mix(in srgb, var(--canvas) 78%, var(--paper)); opacity:.82; cursor:not-allowed; }
+
 .machine-actions .belm-maintenance-process-link {
   display: inline-flex;
   align-items: center;

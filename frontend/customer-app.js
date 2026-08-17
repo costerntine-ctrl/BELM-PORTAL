@@ -1,7 +1,8 @@
 (function(){
   const parts=location.pathname.split('/').filter(Boolean);
   const slug=(parts[0]==='app' && parts[1] ? decodeURIComponent(parts[1]) : '').toLowerCase();
-  const isBelm=slug==='belm';
+  const isBelm=slug==='belm'||/@belm$/i.test(slug);
+  const isTechBelm=slug==='tech@belm';
   const companyName=document.getElementById('companyName');
   const companyNote=document.getElementById('companyNote');
   const chip=document.getElementById('customerChip');
@@ -42,7 +43,7 @@
   }
 
   async function loadContext(){
-    if(isBelm){companyName.textContent='BELM General Tech';companyNote.textContent='Administration and technical operations.';chip.textContent='BELM STAFF APP';chip.hidden=false;return}
+    if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
     if(!slug){companyName.textContent='BELM Operations';companyNote.textContent='Secure role-based operations portal.';hint.textContent='Enter the email and password for your BELM portal account.';return}
     try{
       const res=await fetch('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'});

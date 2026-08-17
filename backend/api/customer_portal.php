@@ -761,6 +761,57 @@ if ($sub === 'email-report' && $method === 'POST') {
     json_out(['ok' => true, 'message' => "Report emailed to $to" . ($cc ? ' (cc: ' . implode(', ', $cc) . ')' : '') . " successfully."]);
 }
 
+// V288 - Customer-controlled BELM data sharing. Only the primary Customer
+// account, Company Admin, or a user explicitly trusted with Assign Users can
+// change these company-level privacy choices.
+if ($sub === 'privacy') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare(
+        'SELECT is_machinery_admin, privacy_preferences
+         FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+    );
+    $stmt->execute([$customer['id']]);
+    $row = $stmt->fetch();
+    if (!$row) json_error('Customer account is not available.', 404);
+
+    $preferences = belm_customer_privacy_normalize($row['privacy_preferences'] ?? null);
+    if ($method === 'GET') {
+        json_out([
+            'preferences' => $preferences,
+            'belmServiceProviderActive' => empty($row['is_machinery_admin']),
+            'alwaysShared' => [
+                'Basic company identity and contact details',
+                'Registered machine identity and operational status',
+                'Official support/service/spare requests sent to BELM',
+                'BELM <-> Customer communications',
+            ],
+            'serviceProviderException' => 'While BELM Service Provider is ON, maintenance/check-up and service-kit records required to perform the service remain accessible. An open official support request also grants temporary machine-scoped maintenance/service-kit access.',
+        ]);
+    }
+
+    if ($method === 'PUT') {
+        require_customer_write_access($customer);
+        $b = body();
+        $incoming = $b['preferences'] ?? $b;
+        if (!is_array($incoming)) json_error('Privacy preferences must be an object.');
+        foreach (array_keys(BELM_CUSTOMER_PRIVACY_DEFAULTS) as $key) {
+            if (array_key_exists($key, $incoming)) $preferences[$key] = !empty($incoming[$key]);
+        }
+        db()->prepare(
+            'UPDATE customers SET privacy_preferences = ?::jsonb, updated_at = NOW() WHERE id = ?'
+        )->execute([json_encode($preferences), $customer['id']]);
+        log_customer_activity($customer, 'Updated BELM privacy/data-sharing settings');
+        json_out([
+            'ok' => true,
+            'preferences' => $preferences,
+            'belmServiceProviderActive' => empty($row['is_machinery_admin']),
+            'message' => 'Privacy settings saved.',
+        ]);
+    }
+
+    json_error('Unsupported privacy request.', 405);
+}
+
 if ($sub === 'dashboard') {
     $stmt = db()->prepare('SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL');
     $stmt->execute([$customer['id']]);
@@ -775,7 +826,7 @@ if ($sub === 'dashboard') {
     }
     unset($machine);
     $stmt = db()->prepare(
-        'SELECT id, name, email, phone, portal_link, is_machinery_admin
+        'SELECT id, name, email, phone, portal_link, is_machinery_admin, privacy_preferences
          FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
     );
     $stmt->execute([$customer['id']]);
@@ -784,6 +835,8 @@ if ($sub === 'dashboard') {
         $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
         $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
         $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
+        $profile['privacyPreferences'] = belm_customer_privacy_normalize($profile['privacy_preferences'] ?? null);
+        unset($profile['privacy_preferences']);
         $profile['actorType'] = $customer['actorType'] ?? 'owner';
         $profile['actorRole'] = $customer['customerRole'] ?? 'owner';
         $profile['actorPermissions'] = $customer['permissions'] ?? null;

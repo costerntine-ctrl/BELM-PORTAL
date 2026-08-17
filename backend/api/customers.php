@@ -267,7 +267,7 @@ if ($method === 'GET' && !$action) {
         : null;
     if (($user['roleName'] ?? '') === 'Technician') {
         $stmt = db()->prepare(
-            'SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin
+            'SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin, privacy_preferences
              FROM customers
              WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
         );
@@ -290,19 +290,57 @@ if ($method === 'GET' && !$action) {
         $customers
     )));
     $machinesByCustomer = fetch_machines_for_customers($customerIds);
-    $usersByCustomer = (($user['roleName'] ?? '') !== 'Technician')
-        ? fetch_customer_users_for_customers($customerIds)
-        : [];
+    $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
+    $teamVisibleCustomerIds = [];
+    if (($user['roleName'] ?? '') !== 'Technician') {
+        foreach ($customers as $row) {
+            $prefs = belm_customer_privacy_normalize($row['privacy_preferences'] ?? null);
+            if (!empty($prefs['teamDirectory'])) $teamVisibleCustomerIds[] = (string)$row['id'];
+        }
+    }
+    $usersByCustomer = $teamVisibleCustomerIds ? fetch_customer_users_for_customers($teamVisibleCustomerIds) : [];
 
     foreach ($customers as &$c) {
         $customerId = (string)$c['id'];
+        $prefs = belm_customer_privacy_normalize($c['privacy_preferences'] ?? null);
+        $providerActive = empty($c['is_machinery_admin']);
+        $maintenanceVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['maintenanceRecords']);
+        $partsVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['storeAndParts']);
+        $expenseVisible = $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
+        $teamVisible = $isCustomerManagedTechnician || !empty($prefs['teamDirectory']);
         $c['machines'] = $machinesByCustomer[$customerId] ?? [];
+        foreach ($c['machines'] as &$privacyMachine) {
+            $machineSupportAccess = !empty($privacyMachine['supportAccessActive']);
+            $privacyMachine['privacyMaintenanceAccess'] = $maintenanceVisible || $machineSupportAccess;
+            $privacyMachine['privacyPartsAccess'] = $partsVisible || $machineSupportAccess;
+            $privacyMachine['privacyExpenseAccess'] = $expenseVisible;
+            if (!$privacyMachine['privacyMaintenanceAccess']) {
+                $privacyMachine['alertReasons'] = [];
+                unset(
+                    $privacyMachine['last_checked_at'],
+                    $privacyMachine['last_service_hours'],
+                    $privacyMachine['service_history'],
+                    $privacyMachine['service_interval_hours'],
+                    $privacyMachine['service_schedule_baseline_hours'],
+                    $privacyMachine['service_kit']
+                );
+            }
+        }
+        unset($privacyMachine);
         $c['isMachineryAdmin'] = !empty($c['is_machinery_admin']);
-        $c['belmServiceProviderActive'] = empty($c['is_machinery_admin']);
+        $c['belmServiceProviderActive'] = $providerActive;
+        $c['privacyPreferences'] = $prefs;
+        $c['privacyAccess'] = [
+            'maintenanceRecords' => $maintenanceVisible,
+            'expenseReceipts' => $expenseVisible,
+            'teamDirectory' => $teamVisible,
+            'storeAndParts' => $partsVisible,
+        ];
         if (($user['roleName'] ?? '') !== 'Technician') {
-            $c['users'] = $usersByCustomer[$customerId] ?? [];
+            $c['users'] = $teamVisible ? ($usersByCustomer[$customerId] ?? []) : [];
             $c['userLimit'] = isset($c['user_limit']) ? (int)$c['user_limit'] : null;
         }
+        unset($c['privacy_preferences'], $c['password'], $c['recovery_code_hash']);
     }
     unset($c);
     json_out($customers);
@@ -312,7 +350,7 @@ if ($method === 'GET' && !$action) {
 if ($method === 'GET' && $action === 'one') {
     require_customer_read_access($user, $id);
     $sql = ($user['roleName'] ?? '') === 'Technician'
-        ? 'SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin
+        ? 'SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin, privacy_preferences
            FROM customers
            WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
         : 'SELECT * FROM customers WHERE id = ? AND deleted_at IS NULL';
@@ -321,11 +359,41 @@ if ($method === 'GET' && $action === 'one') {
     $customer = $stmt->fetch();
     if (!$customer) json_error('Not found', 404);
     $customer['machines'] = fetch_machines($customer['id']);
-    $customer['isMachineryAdmin'] = !empty($customer['is_machinery_admin']);
-    $customer['belmServiceProviderActive'] = empty($customer['is_machinery_admin']);
-    if (($user['roleName'] ?? '') !== 'Technician') {
-        $customer['users'] = fetch_customer_users($customer['id']);
+    $prefs = belm_customer_privacy_normalize($customer['privacy_preferences'] ?? null);
+    $providerActive = empty($customer['is_machinery_admin']);
+    $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
+    $maintenanceVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['maintenanceRecords']);
+    foreach ($customer['machines'] as &$privacyMachine) {
+        $machineSupportAccess = !empty($privacyMachine['supportAccessActive']);
+        $privacyMachine['privacyMaintenanceAccess'] = $maintenanceVisible || $machineSupportAccess;
+        $privacyMachine['privacyPartsAccess'] = $isCustomerManagedTechnician || $providerActive || !empty($prefs['storeAndParts']) || $machineSupportAccess;
+        $privacyMachine['privacyExpenseAccess'] = $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
+        if (!$privacyMachine['privacyMaintenanceAccess']) {
+            $privacyMachine['alertReasons'] = [];
+            unset(
+                $privacyMachine['last_checked_at'],
+                $privacyMachine['last_service_hours'],
+                $privacyMachine['service_history'],
+                $privacyMachine['service_interval_hours'],
+                $privacyMachine['service_schedule_baseline_hours'],
+                $privacyMachine['service_kit']
+            );
+        }
     }
+    unset($privacyMachine);
+    $customer['isMachineryAdmin'] = !empty($customer['is_machinery_admin']);
+    $customer['belmServiceProviderActive'] = $providerActive;
+    $customer['privacyPreferences'] = $prefs;
+    $customer['privacyAccess'] = [
+        'maintenanceRecords' => $maintenanceVisible,
+        'expenseReceipts' => $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']),
+        'teamDirectory' => $isCustomerManagedTechnician || !empty($prefs['teamDirectory']),
+        'storeAndParts' => $isCustomerManagedTechnician || $providerActive || !empty($prefs['storeAndParts']),
+    ];
+    if (($user['roleName'] ?? '') !== 'Technician') {
+        $customer['users'] = !empty($prefs['teamDirectory']) ? fetch_customer_users($customer['id']) : [];
+    }
+    unset($customer['privacy_preferences'], $customer['password'], $customer['recovery_code_hash']);
     json_out($customer);
 }
 
@@ -818,6 +886,7 @@ if ($method === 'DELETE' && !$action) {
 // ---- Sub-users ("+ Add user") ----------------------------------------------
 if ($method === 'POST' && $action === 'add-user') {
     require_page_access($user, 'customers');
+    require_belm_customer_privacy((string)$id, 'teamDirectory', 'the Customer team/user directory');
     $b = body();
     $name = trim((string)($b['name'] ?? ''));
     $email = strtolower(trim((string)($b['email'] ?? '')));
@@ -856,6 +925,11 @@ if ($method === 'POST' && $action === 'add-user') {
 
 if ($method === 'DELETE' && $action === 'remove-user') {
     require_page_access($user, 'customers');
+    $privacyUserStmt = db()->prepare('SELECT customer_id FROM customer_users WHERE id = ?');
+    $privacyUserStmt->execute([$_GET['subUserId']]);
+    $privacyCustomerId = (string)($privacyUserStmt->fetchColumn() ?: '');
+    if ($privacyCustomerId === '') json_error('Assistant not found.', 404);
+    require_belm_customer_privacy($privacyCustomerId, 'teamDirectory', 'the Customer team/user directory');
     $stmt = db()->prepare('DELETE FROM customer_users WHERE id = ?');
     $stmt->execute([$_GET['subUserId']]);
     if ($stmt->rowCount() === 0) json_error('Assistant not found.', 404);
@@ -916,6 +990,10 @@ if ($action === 'service-parts') {
     $machineStmt->execute([$machineId]);
     $serviceMachine = $machineStmt->fetch();
     if (!$serviceMachine) json_error('Machine not found.', 404);
+    $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
+    if (!$isCustomerManagedTechnician) {
+        require_belm_customer_privacy((string)$serviceMachine['customer_id'], 'storeAndParts', 'internal service-parts/store records', $machineId);
+    }
 
     if ($method === 'GET') {
         $rows = db()->prepare(
@@ -1041,6 +1119,11 @@ if ($method === 'GET' && $action === 'expense-receipts') {
     require_page_access($user, 'customers');
     $machineId = $_GET['machineId'] ?? '';
     if ($machineId === '') json_error('machineId is required.');
+    $privacyMachineStmt = db()->prepare('SELECT customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $privacyMachineStmt->execute([$machineId]);
+    $privacyCustomerId = (string)($privacyMachineStmt->fetchColumn() ?: '');
+    if ($privacyCustomerId === '') json_error('Machine not found.', 404);
+    require_belm_customer_privacy($privacyCustomerId, 'expenseReceipts', 'machine expenses and receipt photos', $machineId);
     $stmt = db()->prepare(
         "SELECT id, date, description, part_number, quantity, unit, cost,
                 receipt_photo_name, receipt_photo_mime, recorded_by
@@ -1069,11 +1152,12 @@ if ($method === 'GET' && $action === 'expense-receipt') {
     $expenseId = $_GET['expenseId'] ?? '';
     if ($expenseId === '') json_error('expenseId is required.');
     $stmt = db()->prepare(
-        "SELECT receipt_photo_data, receipt_photo_mime, receipt_photo_name
+        "SELECT customer_id, machine_id, receipt_photo_data, receipt_photo_mime, receipt_photo_name
          FROM usage_logs WHERE id = ? AND category = 'SPARE_PART'"
     );
     $stmt->execute([$expenseId]);
     $receipt = $stmt->fetch();
+    if ($receipt) require_belm_customer_privacy((string)$receipt['customer_id'], 'expenseReceipts', 'machine expenses and receipt photos', (string)$receipt['machine_id']);
     if (!$receipt || !$receipt['receipt_photo_data']) json_error('Receipt photo was not found.', 404);
     $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
     if ($binary === false) json_error('Receipt photo is damaged.', 500);
@@ -1103,6 +1187,10 @@ if ($method === 'PUT' && $action === 'operational-status') {
     $machine = $stmt->fetch();
     if (!$machine) json_error('Machine not found.', 404);
     require_customer_read_access($user, $machine['customer_id']);
+    $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
+    if (!$isCustomerManagedTechnician) {
+        require_belm_customer_privacy((string)$machine['customer_id'], 'maintenanceRecords', 'internal machine maintenance/activity updates', (string)$_GET['machineId']);
+    }
 
     db()->prepare('UPDATE machines SET operational_status = ?, operational_status_note = ?, operational_status_updated_at = NOW() WHERE id = ?')
         ->execute([$status, $note !== '' ? $note : null, $_GET['machineId']]);
@@ -1168,6 +1256,7 @@ if ($method === 'POST' && $action === 'settle-petty-cash-debt') {
     $stmt->execute([$machineId]);
     $machine = $stmt->fetch();
     if (!$machine) json_error('Machine not found.', 404);
+    require_belm_customer_privacy((string)$machine['customer_id'], 'expenseReceipts', 'Customer financial/expense records', $machineId);
 
     $toppedUpStmt = db()->prepare('SELECT COALESCE(SUM(amount), 0) FROM petty_cash_topups WHERE machine_id = ?');
     $toppedUpStmt->execute([$machineId]);
@@ -1205,10 +1294,11 @@ if ($method === 'DELETE' && $action === 'petty-cash-topup') {
     $b = body();
     $reason = require_delete_confirmation($user, $b);
 
-    $stmt = db()->prepare('SELECT model FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $stmt = db()->prepare('SELECT model, customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$machineId]);
     $machine = $stmt->fetch();
     if (!$machine) json_error('Machine not found.', 404);
+    require_belm_customer_privacy((string)$machine['customer_id'], 'expenseReceipts', 'Customer financial/expense records', $machineId);
 
     db()->prepare('DELETE FROM petty_cash_topups WHERE machine_id = ?')->execute([$machineId]);
 
@@ -1228,6 +1318,7 @@ if ($method === 'POST' && $action === 'petty-cash-topup') {
     $stmt->execute([$machineId]);
     $machine = $stmt->fetch();
     if (!$machine) json_error('Machine not found.', 404);
+    require_belm_customer_privacy((string)$machine['customer_id'], 'expenseReceipts', 'Customer financial/expense records', $machineId);
 
     $newId = uuid();
     db()->prepare(
@@ -1259,6 +1350,17 @@ function fetch_machines_for_customers(array $customerIds): array {
     ));
     $machineIn = belm_in_clause($machineIds);
 
+    // V288: one batched lookup marks machines with an open official BELM
+    // support request. That request grants temporary machine-scoped access to
+    // maintenance/service-kit records even if the Customer's general sharing
+    // switch is OFF. Keeping this batched preserves the V284 performance fix.
+    $supportStmt = db()->prepare(
+        "SELECT DISTINCT machine_id FROM service_requests
+         WHERE machine_id IN ($machineIn) AND status NOT IN ('COMPLETED','CANCELLED')"
+    );
+    $supportStmt->execute($machineIds);
+    $supportMachines = array_fill_keys(array_map('strval', $supportStmt->fetchAll(PDO::FETCH_COLUMN)), true);
+
     // One query gets warning/critical reasons for the latest checklist of
     // every machine. DISTINCT ON is supported by PostgreSQL (the portal DB).
     $reasonStmt = db()->prepare(
@@ -1288,6 +1390,7 @@ function fetch_machines_for_customers(array $customerIds): array {
         $machineId = (string)$machine['id'];
         $customerId = (string)$machine['customer_id'];
         $machine['alertReasons'] = $reasonsByMachine[$machineId] ?? [];
+        $machine['supportAccessActive'] = !empty($supportMachines[$machineId]);
         $grouped[$customerId][] = $machine;
     }
     return $grouped;

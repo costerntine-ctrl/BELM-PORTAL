@@ -1,0 +1,10 @@
+BELM Portal V287 - Technician Checklist PDF Watermark Fix
+
+Changes:
+- Fixed Technician Checked Report -> Download so it uses the staff checklist PDF endpoint with the Technician Bearer token.
+- Admin checked-report downloads also use the staff checklist PDF endpoint.
+- Customer checked-report downloads continue to use the customer portal endpoint.
+- Downloaded checklist PDFs use the server-side BELM branded PDF generator with the BELM watermark/logo background.
+- Added watermark XObject to checklist evidence-photo PDF pages as well as summary/text pages.
+- Added cache-bust version for portal-tools.js so browsers do not keep the old V286 download behavior.
+- V284 performance fixes, V285 uniform cards, and V286 button colors remain unchanged.

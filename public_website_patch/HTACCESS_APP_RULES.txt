@@ -1,10 +1,11 @@
 Add these rules inside the existing public_html/.htaccess RewriteEngine On section, BEFORE the WordPress/website catch-all rules:
 
 RewriteRule ^app/?$ /belm_app.php [L,QSA]
-RewriteRule ^app/([A-Za-z0-9-]+)/?$ /belm_app.php?customer=$1 [L,QSA]
+RewriteRule ^app/([A-Za-z0-9@-]+)/?$ /belm_app.php?customer=$1 [L,QSA]
 
 This makes customer links stay readable on the main website, for example:
 https://belmgeneraltech.co.tz/app/ecls-icd
-https://belmgeneraltech.co.tz/app/belm
+https://belmgeneraltech.co.tz/app/TECH@BELM
+https://belmgeneraltech.co.tz/app/john-doe@BELM
 
 The wrapper opens the secure portal full-screen and can be installed to the phone home screen as an app shortcut.

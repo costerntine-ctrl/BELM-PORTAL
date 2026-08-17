@@ -157,6 +157,29 @@ function customer_portal_url(string $portalSlug, ?string $email = null): string 
     return public_app_base_url() . '/app/' . rawurlencode($portalSlug);
 }
 
+
+/**
+ * Friendly BELM staff entry aliases.
+ * Technician always receives TECH@BELM. Other BELM staff receive a readable
+ * <name>@BELM alias. These aliases are entry links only; authentication still
+ * uses the staff member's own email/password and role permissions.
+ */
+function belm_staff_login_slug(string $name, string $roleName): string {
+    if (strcasecmp(trim($roleName), 'Technician') === 0) return 'TECH@BELM';
+    $ascii = function_exists('iconv') ? iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name) : $name;
+    if ($ascii === false) $ascii = $name;
+    $base = strtolower(trim((string)preg_replace('/[^a-zA-Z0-9]+/', '-', (string)$ascii), '-'));
+    if ($base === '') $base = 'staff';
+    $base = substr($base, 0, 24);
+    return $base . '@BELM';
+}
+
+function belm_staff_login_url(string $name, string $roleName): string {
+    // @ is intentionally kept readable in the path: /app/tech@belm.
+    $slug = belm_staff_login_slug($name, $roleName);
+    return public_app_base_url() . '/app/' . str_replace('%40', '@', rawurlencode($slug));
+}
+
 function document_number(string $prefix): string {
     $suffix = strtoupper(substr(str_replace('-', '', uuid()), 0, 6));
     return $prefix . '-' . date('Ymd-His') . '-' . $suffix;
@@ -183,6 +206,91 @@ function account_recovery_code(): string {
         $parts[] = $part;
     }
     return 'BELM-' . implode('-', $parts);
+}
+
+// ---- Customer-controlled BELM privacy --------------------------------------
+// Optional internal data is private by default. Basic company/machine identity,
+// official support requests and direct BELM<->Customer communications remain
+// available because they are required to operate the account and honor requests.
+const BELM_CUSTOMER_PRIVACY_DEFAULTS = [
+    'maintenanceRecords' => false,
+    'expenseReceipts' => false,
+    'teamDirectory' => false,
+    'storeAndParts' => false,
+];
+
+function belm_customer_privacy_normalize($raw): array {
+    if (is_string($raw)) {
+        $decoded = json_decode($raw, true);
+        $raw = is_array($decoded) ? $decoded : [];
+    }
+    if (!is_array($raw)) $raw = [];
+    $out = BELM_CUSTOMER_PRIVACY_DEFAULTS;
+    foreach ($out as $key => $default) {
+        if (array_key_exists($key, $raw)) $out[$key] = !empty($raw[$key]);
+    }
+    return $out;
+}
+
+function belm_customer_privacy_row(string $customerId): ?array {
+    static $cache = [];
+    if (array_key_exists($customerId, $cache)) return $cache[$customerId];
+    $stmt = db()->prepare(
+        'SELECT id, is_machinery_admin, privacy_preferences
+         FROM customers WHERE id = ? AND deleted_at IS NULL'
+    );
+    $stmt->execute([$customerId]);
+    $row = $stmt->fetch();
+    if (!$row) return $cache[$customerId] = null;
+    $row['privacyPreferences'] = belm_customer_privacy_normalize($row['privacy_preferences'] ?? null);
+    return $cache[$customerId] = $row;
+}
+
+function belm_customer_has_open_support(string $customerId, ?string $machineId = null): bool {
+    if ($machineId !== null && $machineId !== '') {
+        $stmt = db()->prepare(
+            "SELECT 1 FROM service_requests
+             WHERE customer_id = ? AND machine_id = ?
+               AND status NOT IN ('COMPLETED','CANCELLED')
+             LIMIT 1"
+        );
+        $stmt->execute([$customerId, $machineId]);
+    } else {
+        $stmt = db()->prepare(
+            "SELECT 1 FROM service_requests
+             WHERE customer_id = ? AND status NOT IN ('COMPLETED','CANCELLED')
+             LIMIT 1"
+        );
+        $stmt->execute([$customerId]);
+    }
+    return (bool)$stmt->fetchColumn();
+}
+
+function belm_customer_privacy_allows(string $customerId, string $key, ?string $machineId = null): bool {
+    if (!array_key_exists($key, BELM_CUSTOMER_PRIVACY_DEFAULTS)) return false;
+    $row = belm_customer_privacy_row($customerId);
+    if (!$row) return false;
+    $prefs = $row['privacyPreferences'];
+    if (!empty($prefs[$key])) return true;
+
+    // When BELM is the active service provider, maintenance/service-kit data is
+    // necessary to perform the contracted work. Financial receipts and the
+    // Customer's own staff directory stay optional even in provider mode.
+    $providerActive = empty($row['is_machinery_admin']);
+    if ($providerActive && in_array($key, ['maintenanceRecords', 'storeAndParts'], true)) return true;
+
+    // An official open support request grants temporary machine-scoped access to
+    // maintenance/service-kit records required to respond to that request.
+    if ($machineId && in_array($key, ['maintenanceRecords', 'storeAndParts'], true)) {
+        if (belm_customer_has_open_support($customerId, $machineId)) return true;
+    }
+    return false;
+}
+
+function require_belm_customer_privacy(string $customerId, string $key, string $label, ?string $machineId = null): void {
+    if (!belm_customer_privacy_allows($customerId, $key, $machineId)) {
+        json_error("Customer privacy settings do not allow BELM to access $label. The Customer Owner/Admin can change this in Privacy & BELM Access.", 403);
+    }
 }
 
 // ---- Staff auth ------------------------------------------------------------

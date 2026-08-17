@@ -1,0 +1,10 @@
+BELM PORTAL V289 - FRIENDLY ACCOUNT LINKS & CUSTOMER-NAME LABELS
+
+- Technician generated login link uses /app/tech@belm (display identity TECH@BELM).
+- Other BELM staff generated login links use /app/<staff-name>@belm.
+- Existing /app/belm remains supported for backward compatibility.
+- Customer links remain /app/<customer-name> using the company-name slug.
+- Customer/Technician context screens replace generic CUSTOMER labels with the actual customer/company name.
+- Customer card BELM-provider switch now shows the actual customer name instead of the word CUSTOMER.
+- Authentication remains email/password + role permissions; friendly links do not bypass security.
+- V288 privacy controls and all earlier fixes remain in place.

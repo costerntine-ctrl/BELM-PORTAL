@@ -247,13 +247,13 @@ if ($method === 'POST' && !$action) {
         $assignedCustomerId,
     ]);
     sync_extra_user_roles($newId, $roleId, $roleIds);
-    $loginPath = role_name($roleId) === 'Technician' ? '/tech' : '/admin/login';
+    $roleName = role_name($roleId);
     log_activity($user, 'system-user-created', 'user', $newId, ['name' => $name, 'email' => $email]);
     json_out([
         'id' => $newId,
         'temporaryPassword' => $password,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . $loginPath,
+        'loginUrl' => belm_staff_login_url($name, $roleName),
     ], 201);
 }
 
@@ -293,7 +293,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
         'UPDATE users
          SET password_hash = ?, recovery_code_hash = ?
          WHERE id = ? AND deleted_at IS NULL
-         RETURNING email, role_id'
+         RETURNING name, email, role_id'
     );
     $stmt->execute([
         password_hash($newPassword, PASSWORD_BCRYPT),
@@ -302,12 +302,12 @@ if ($method === 'PUT' && $action === 'reset-password') {
     ]);
     $resetUser = $stmt->fetch();
     if (!$resetUser) json_error('User not found.', 404);
-    $loginPath = role_name((string)$resetUser['role_id']) === 'Technician' ? '/tech' : '/admin/login';
+    $roleName = role_name((string)$resetUser['role_id']);
     log_activity($user, 'system-user-login-reset', 'user', $id);
     json_out([
         'newPassword' => $newPassword,
         'recoveryCode' => $recoveryCode,
-        'loginUrl' => portal_base_url() . $loginPath,
+        'loginUrl' => belm_staff_login_url((string)$resetUser['name'], $roleName),
     ]);
 }
 

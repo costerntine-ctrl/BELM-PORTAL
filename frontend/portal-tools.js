@@ -105,6 +105,21 @@
     "MORE TOOLS": { sw: "ZANA ZAIDI" },
     "+USER": { sw: "+MTUMIAJI" },
     "Role Manager & Dashboard Access": { sw: "Meneja wa Majukumu na Ufikiaji wa Dashibodi" },
+    "Privacy & BELM Access": { sw: "Faragha na Ufikiaji wa BELM" },
+    "Choose what internal company data BELM may access": { sw: "Chagua data za ndani za kampuni ambazo BELM anaweza kuona" },
+    "PRIVACY & BELM ACCESS": { sw: "FARAGHA NA UFIKIAJI WA BELM" },
+    "Customer-controlled data sharing": { sw: "Ushirikishaji wa data unaodhibitiwa na mteja" },
+    "Check-up & maintenance records": { sw: "Rekodi za ukaguzi na matengenezo" },
+    "Expenses & receipt photos": { sw: "Matumizi na picha za risiti" },
+    "Store & service-parts records": { sw: "Rekodi za ghala na spare za service" },
+    "Customer team/user directory": { sw: "Orodha ya timu/watumiaji wa mteja" },
+    "Save privacy": { sw: "Hifadhi faragha" },
+    "Privacy settings saved.": { sw: "Mipangilio ya faragha imehifadhiwa." },
+    "Always shared with BELM": { sw: "Data inayoshirikishwa na BELM kila wakati" },
+    "Basic company/machine identity, official support requests, and direct BELM communications remain available.": { sw: "Taarifa za msingi za kampuni/mashine, maombi rasmi ya msaada, na mawasiliano ya moja kwa moja na BELM hubaki yakipatikana." },
+    "Service Provider exception": { sw: "Isipokuwa ya Service Provider" },
+    "When BELM Service Provider is ON, maintenance/check-up and service-kit data needed to perform the service remains accessible. An open official support request also grants temporary access for that machine.": { sw: "BELM Service Provider akiwa ON, data za matengenezo/ukaguzi na service-kit zinazohitajika kufanya huduma hubaki zikionekana. Ombi rasmi la msaada lililo wazi pia hutoa ufikiaji wa muda kwa mashine hiyo." },
+    "Open Privacy Policy": { sw: "Fungua Sera ya Faragha" },
     "Request BELM Support": { sw: "Omba Msaada wa BELM" },
     "Management Email": { sw: "Barua pepe ya Uongozi" },
     "Loading operating mode…": { sw: "Inapakia hali ya uendeshaji…" },
@@ -224,6 +239,96 @@
         </section>`;
     } catch (_) {
       body.innerHTML = `<p class="belm-general-analysis-loading">${belmT("Could not load analysis.")}</p>`;
+    }
+  }
+
+  function closeCustomerPrivacyDialog() {
+    const existing = document.getElementById("belmCustomerPrivacyDialog");
+    if (existing) existing.remove();
+  }
+
+  async function openCustomerPrivacyDialog() {
+    closeCustomerPrivacyDialog();
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmCustomerPrivacyDialog";
+    dialog.className = "belm-privacy-dialog";
+    dialog.innerHTML = `
+      <div class="belm-privacy-head">
+        <div><h2>${belmT("PRIVACY & BELM ACCESS")}</h2><p>${belmT("Customer-controlled data sharing")}</p></div>
+        <button type="button" data-close-privacy>${belmT("Close")}</button>
+      </div>
+      <div class="belm-privacy-body">
+        <p class="belm-privacy-loading">Loading privacy settings…</p>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-privacy]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+
+    const body = dialog.querySelector(".belm-privacy-body");
+    const token = localStorage.getItem("belm_customer_token");
+    try {
+      const response = await fetch("/api/customer-portal/privacy", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Could not load privacy settings.");
+      const prefs = data.preferences || {};
+      const option = (key, title, detail) => `
+        <label class="belm-privacy-option">
+          <span><b>${belmT(title)}</b><small>${belmT(detail)}</small></span>
+          <span class="belm-privacy-switch">
+            <input type="checkbox" data-privacy-key="${key}" ${prefs[key] ? "checked" : ""}>
+            <i aria-hidden="true"></i>
+          </span>
+        </label>`;
+      body.innerHTML = `
+        <div class="belm-privacy-note">
+          <b>${belmT("Always shared with BELM")}</b>
+          <span>${belmT("Basic company/machine identity, official support requests, and direct BELM communications remain available.")}</span>
+        </div>
+        <div class="belm-privacy-options">
+          ${option("maintenanceRecords", "Check-up & maintenance records", "Allow BELM to view internal checklist, check-up and maintenance history when not otherwise required for active service/support.")}
+          ${option("expenseReceipts", "Expenses & receipt photos", "Allow BELM to view machine expense entries, petty-cash records and uploaded receipt images.")}
+          ${option("storeAndParts", "Store & service-parts records", "Allow BELM to view internal service-part/service-kit and store-related records when not otherwise required for active service/support.")}
+          ${option("teamDirectory", "Customer team/user directory", "Allow BELM to view and manage the Customer Portal team/user directory.")}
+        </div>
+        <div class="belm-privacy-provider-note ${data.belmServiceProviderActive ? "active" : ""}">
+          <b>${belmT("Service Provider exception")}</b>
+          <span>${belmT("When BELM Service Provider is ON, maintenance/check-up and service-kit data needed to perform the service remains accessible. An open official support request also grants temporary access for that machine.")}</span>
+        </div>
+        <div class="belm-privacy-actions">
+          <a href="/legal/privacy-policy.html" target="_blank" rel="noopener">${belmT("Open Privacy Policy")}</a>
+          <button type="button" data-save-privacy>${belmT("Save privacy")}</button>
+        </div>
+        <p class="belm-privacy-status" aria-live="polite"></p>`;
+
+      body.querySelector("[data-save-privacy]")?.addEventListener("click", async (event) => {
+        const button = event.currentTarget;
+        const status = body.querySelector(".belm-privacy-status");
+        button.disabled = true;
+        status.textContent = "Saving…";
+        const preferences = {};
+        body.querySelectorAll("[data-privacy-key]").forEach((input) => {
+          preferences[input.dataset.privacyKey] = input.checked;
+        });
+        try {
+          const save = await fetch("/api/customer-portal/privacy", {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ preferences }),
+          });
+          const saved = await save.json().catch(() => ({}));
+          if (!save.ok) throw new Error(saved.error || "Could not save privacy settings.");
+          status.textContent = belmT("Privacy settings saved.");
+          customerPortalProfile = null;
+          customerPortalProfilePromise = null;
+        } catch (error) {
+          status.textContent = error.message || "Could not save privacy settings.";
+        } finally {
+          button.disabled = false;
+        }
+      });
+    } catch (error) {
+      body.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load privacy settings.")}</p>`;
     }
   }
 
@@ -577,7 +682,8 @@
       const button = document.createElement("button");
       button.id = "belm-tech-customer-dashboard";
       button.type = "button";
-      button.textContent = permissions === null ? "Customer Dashboard - Full Control" : "Customer Dashboard";
+      const companyName = data?.customer?.name || roleContextCustomerName() || "Customer";
+      button.textContent = permissions === null ? `${companyName} Dashboard - Full Control` : `${companyName} Dashboard`;
       Object.assign(button.style, {
         position: "fixed",
         right: "18px",
@@ -1703,6 +1809,54 @@
     heading.textContent = `${String(name).toUpperCase()} ${belmT("MACHINES")}`;
   }
 
+  // V289 - a role-specific screen must name the actual company instead of
+  // showing the generic word CUSTOMER. Customer portal uses the JWT company
+  // name; Technician workspace uses the Technician's assigned company name.
+  function roleContextCustomerName() {
+    if (window.location.pathname.startsWith("/portal")) {
+      return String(tokenPayload("belm_customer_token")?.name || "").trim();
+    }
+    if (window.location.pathname.startsWith("/tech")) {
+      try {
+        const tech = JSON.parse(localStorage.getItem("belm_tech_user") || "{}");
+        return String(tech.assignedCustomerName || "").trim();
+      } catch (_) { return ""; }
+    }
+    return "";
+  }
+
+  function replaceGenericCustomerLabels(root = document.body) {
+    const companyName = roleContextCustomerName();
+    if (!companyName || !root) return;
+    const upperName = companyName.toUpperCase();
+    const replaceText = (value) => {
+      let text = String(value || "");
+      if (!/\bcustomer\b/i.test(text)) return text;
+      if (text.includes(companyName) || text.includes(upperName)) return text;
+      text = text.replace(/\bCUSTOMER\b/g, upperName);
+      text = text.replace(/\bCustomer\b/g, companyName);
+      text = text.replace(/\bcustomer\b/g, companyName);
+      return text;
+    };
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach((node) => {
+      const parent = node.parentElement;
+      if (!parent || parent.closest("script,style,noscript,textarea,code,pre")) return;
+      const next = replaceText(node.nodeValue);
+      if (next !== node.nodeValue) node.nodeValue = next;
+    });
+    root.querySelectorAll?.("[title],[aria-label],[placeholder]").forEach((element) => {
+      ["title", "aria-label", "placeholder"].forEach((attr) => {
+        if (!element.hasAttribute(attr)) return;
+        const value = element.getAttribute(attr);
+        const next = replaceText(value);
+        if (next !== value) element.setAttribute(attr, next);
+      });
+    });
+  }
+
   // A sticky "Activity Overview" card, styled like the dark Petty Cash
   // Balance card, placed right under the heading/"Manage assistants" row
   // and above the machine grid. Stays in view while the machine list
@@ -1805,6 +1959,10 @@
           ${belmT("+USER")}
           <small>${belmT("Role Manager & Dashboard Access")}</small>
         </button>
+        <button type="button" class="belm-email-report-button belm-privacy-button" data-belm-owner-admin-only data-open-privacy>
+          ${belmT("Privacy & BELM Access")}
+          <small>${belmT("Choose what internal company data BELM may access")}</small>
+        </button>
         <span data-belm-maintenance-process-slot></span>
         <button type="button" class="belm-email-report-button" data-belm-feature="service-request" data-contact-belm-support>
           ${belmT("Request BELM Support")}
@@ -1826,6 +1984,7 @@
     toolsCard.querySelector("[data-belm-maintenance-process-slot]")?.replaceWith(breakdownCard);
     enforceCustomerFeaturePermissions(toolsCard);
     toolsCard.querySelector("[data-open-role-manager]")?.addEventListener("click", () => { window.location.href = "/customer-users/"; });
+    toolsCard.querySelector("[data-open-privacy]")?.addEventListener("click", () => openCustomerPrivacyDialog());
     toolsCard.querySelector("[data-contact-belm-support]")?.addEventListener("click", () => openBelmSupportDialog());
     toolsCard.querySelector("[data-open-general-analysis]")?.addEventListener("click", () => openCustomerGeneralAnalysisDialog());
     toolsCard.querySelector("[data-open-belm-updates]")?.addEventListener("click", () => openCustomerUpdatesDialog());
@@ -4036,6 +4195,71 @@
     modal.querySelector('[name="hourMeterReading"]')?.focus();
   }
 
+  async function downloadCheckedReportPdf(reportId, trigger) {
+    const id = String(reportId || "").trim();
+    if (!id) throw new Error("Checklist report ID is missing.");
+
+    // Technician/Admin reports must use the staff checklist endpoint so the
+    // request carries the correct Bearer token and the server-side branded
+    // PDF generator (including the BELM background watermark) is used.
+    const techToken = localStorage.getItem("belm_tech_token");
+    const adminToken = localStorage.getItem("belm_admin_token");
+    const customerToken = localStorage.getItem("belm_customer_token");
+    const onTechnicianPortal = window.location.pathname.startsWith("/tech");
+    const onCustomerPortal = window.location.pathname.startsWith("/portal");
+
+    let token = null;
+    let url = null;
+    if (onTechnicianPortal && techToken) {
+      token = techToken;
+      url = `/api/checklist-reports/${encodeURIComponent(id)}/pdf`;
+    } else if (!onCustomerPortal && adminToken) {
+      token = adminToken;
+      url = `/api/checklist-reports/${encodeURIComponent(id)}/pdf`;
+    } else if (customerToken) {
+      token = customerToken;
+      url = `/api/customer-portal/reports/${encodeURIComponent(id)}/download`;
+    } else if (techToken || adminToken) {
+      token = techToken || adminToken;
+      url = `/api/checklist-reports/${encodeURIComponent(id)}/pdf`;
+    }
+
+    if (!token || !url) throw new Error("Your report session has expired. Sign in again and retry.");
+
+    const originalText = trigger?.textContent || "Download";
+    if (trigger) {
+      trigger.textContent = "Preparing...";
+      trigger.setAttribute("aria-disabled", "true");
+    }
+    try {
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || "Could not prepare the checklist PDF.");
+      }
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const filename = customerPdfFilename(
+        response.headers.get("Content-Disposition"),
+        `BELM-checklist-report-${id}.pdf`
+      );
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    } finally {
+      if (trigger) {
+        trigger.textContent = originalText;
+        trigger.removeAttribute("aria-disabled");
+      }
+    }
+  }
+
   function renderCheckedReport(report) {
     closeCheckedReport();
     const machine = report.machine || {};
@@ -4105,13 +4329,21 @@
       </div>
       <footer class="belm-checked-report-actions">
         <button type="button" data-print-checked-report>Print Report</button>
-        <a href="/api/customer-portal/reports/${escapeHtml(report.id)}/download" data-checked-report-download>Download</a>
+        <a href="#" data-checked-report-download data-report-id="${escapeHtml(report.id)}">Download</a>
         ${report.canEdit && !report.isExpired ? '<button type="button" data-edit-checked-report>Edit Checklist</button>' : ""}
         <button type="button" class="primary" data-close-checked-report>Close</button>
       </footer>
     </section>`;
 
     modal.addEventListener("click", (event) => {
+      const downloadLink = event.target.closest("[data-checked-report-download]");
+      if (downloadLink) {
+        event.preventDefault();
+        if (downloadLink.getAttribute("aria-disabled") === "true") return;
+        downloadCheckedReportPdf(downloadLink.dataset.reportId || report.id, downloadLink)
+          .catch((error) => alert(error.message || "Could not download the checklist report."));
+        return;
+      }
       const photoThumb = event.target.closest("[data-view-report-photo]");
       if (photoThumb) {
         openReportPhotoLightbox(photoThumb.dataset.viewReportPhoto);
@@ -4966,6 +5198,7 @@
   wireOperatorReportsButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
+  replaceGenericCustomerLabels();
   insertCustomerActivityOverview();
   insertCustomerLangToggle();
   refreshBelmUpdatesBlink();
@@ -5011,6 +5244,7 @@
   wireOperatorReportsButtons();
   enhanceServiceRequestHistory();
   addCustomerNameToMachinesHeading();
+  replaceGenericCustomerLabels();
   insertCustomerActivityOverview();
   insertCustomerLangToggle();
   refreshBelmUpdatesBlink();

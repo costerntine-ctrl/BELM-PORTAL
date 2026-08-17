@@ -89,6 +89,20 @@ function require_report_machine_access(array $user, string $machineId, ?string $
         require_page_access($user, 'customers');
     }
 
+    // V288: a Customer's own Technician is internal to that Customer and is
+    // not restricted by BELM-sharing preferences. BELM staff must respect the
+    // Customer's maintenance-record privacy switch unless BELM is the active
+    // provider or this machine has an open official support request.
+    $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
+    if (!$isCustomerManagedTechnician) {
+        require_belm_customer_privacy(
+            (string)$machine['customer_id'],
+            'maintenanceRecords',
+            'internal checklist/check-up and maintenance records',
+            $machineId
+        );
+    }
+
     if ($templateId !== null) {
         if (!$machine['template_id'] || $machine['template_deleted_at'] || !$machine['template_is_active']) {
             json_error('Checklist template not found or inactive.', 404);

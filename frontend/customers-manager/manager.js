@@ -178,17 +178,23 @@
     GROUNDED: "Grounded (not operational)",
   };
 
-  function machineCard(customerId, machine, belmServiceProviderActive) {
+  function machineCard(customerId, machine, belmServiceProviderActive, privacyAccess = {}) {
     const status = String(machine.status || "NOT_CHECKED").toUpperCase();
     const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
     const opStatus = String(machine.operationalStatus || "NORMAL").toUpperCase();
+    const canMaintenance = machine.privacyMaintenanceAccess ?? (privacyAccess.maintenanceRecords !== false);
+    const canExpenses = machine.privacyExpenseAccess ?? (privacyAccess.expenseReceipts !== false);
+    const canParts = machine.privacyPartsAccess ?? (privacyAccess.storeAndParts !== false);
+    const privacyButton = (label, allowed, attrs) => allowed
+      ? `<button ${attrs}>${label}</button>`
+      : `<button type="button" class="privacy-locked" disabled title="Customer privacy setting blocks BELM access">🔒 ${label}</button>`;
     return `<article class="machine-card ${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <h4>${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}</h4>
         <p>${escapeHtml(machine.machineType)} · Reg: ${escapeHtml(machine.regNumber || "—")} · Serial: ${escapeHtml(machine.serialNumber || "—")}</p>
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
         ${reasons.length ? `<span class="machine-alert-reason">${escapeHtml(reasons[0])}</span>` : '<span class="machine-alert-reason"></span>'}
-        <span class="service-due-badge" data-service-due-badge="${escapeHtml(machine.id)}">Service due: checking…</span>
+        <span class="service-due-badge" ${canMaintenance ? `data-service-due-badge="${escapeHtml(machine.id)}"` : ""}>${canMaintenance ? "Service due: checking…" : "Service due: 🔒 Customer private"}</span>
         <label class="operational-status-picker op-${escapeHtml(opStatus)}">Activity status
           <select data-operational-status="${escapeHtml(machine.id)}">
             ${Object.entries(OPERATIONAL_STATUS_LABELS).map(([value, label]) =>
@@ -197,10 +203,10 @@
         </label>
       </div>
       <div class="machine-actions">
-        <button data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Report</button>
-        <button data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Check Up</button>
-        <button data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Expense Receipts</button>
-        <button data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}">Service Parts</button>
+        ${privacyButton("Report", canMaintenance, `data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
+        ${privacyButton("Check Up", canMaintenance, `data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
+        ${privacyButton("Expense Receipts", canExpenses, `data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
+        ${privacyButton("Service Parts", canParts, `data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/breakdown-workflow/?machine=${escapeHtml(machine.id)}&actor=admin">Maintenance Process</a>` : ""}
         <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
         <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
@@ -324,8 +330,8 @@
           <div class="customer-card-title"><p class="eyebrow">Customer</p><h2 title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
           <div class="customer-card-head-controls">
             <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
-            <div class="customer-provider-control ${belmProviderActive ? "belm-on" : "customer-on"}" title="Switch maintenance control between Customer and BELM">
-              <span class="customer-provider-side">Customer</span>
+            <div class="customer-provider-control ${belmProviderActive ? "belm-on" : "customer-on"}" title="Switch maintenance control between ${escapeHtml(customer.name)} and BELM">
+              <span class="customer-provider-side" title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</span>
               <label class="customer-provider-switch">
                 <input type="checkbox" data-card-provider-toggle="${escapeHtml(customer.id)}" ${belmProviderActive ? "checked" : ""} aria-label="BELM service provider for ${escapeHtml(customer.name)}">
                 <span class="customer-provider-slider" aria-hidden="true"></span>
@@ -373,15 +379,16 @@
 
   let currentMachineListCustomerName = "";
 
-  function communicationDirectionLabel(item) {
-    return item.direction === "CUSTOMER_TO_BELM" ? "Customer → BELM" : "BELM → Customer";
+  function communicationDirectionLabel(item, fallbackCustomerName = "Customer") {
+    const customerName = item.customerName || item.customer || item.companyName || fallbackCustomerName || "Customer";
+    return item.direction === "CUSTOMER_TO_BELM" ? `${customerName} → BELM` : `BELM → ${customerName}`;
   }
 
-  function communicationStatusMarkup(item) {
+  function communicationStatusMarkup(item, fallbackCustomerName = "Customer") {
     if (item.actionable) {
       return `<button type="button" class="badge badge-resolve" data-resolve-message>${escapeHtml(item.actionStatus || "OPEN")}</button>`;
     }
-    return `<span class="badge">${escapeHtml(communicationDirectionLabel(item))}</span>`;
+    return `<span class="badge">${escapeHtml(communicationDirectionLabel(item, fallbackCustomerName))}</span>`;
   }
 
   // V284 - cache the compact card feed and fetch every visible customer's
@@ -399,10 +406,10 @@
           <div class="customer-feed-row" data-communication-id="${escapeHtml(item.id)}" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
             <div class="customer-feed-row-head">
               <strong>${escapeHtml(item.subject || "Communication")}</strong>
-              ${communicationStatusMarkup(item)}
+              ${communicationStatusMarkup(item, customer.name)}
             </div>
             <p>${escapeHtml(item.message || "—")}</p>
-            <small>${escapeHtml(communicationDirectionLabel(item))}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
+            <small>${escapeHtml(communicationDirectionLabel(item, customer.name))}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
             <button type="button" class="view-messages-button" data-view-communication="${escapeHtml(item.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View</button>
           </div>`).join("")
       : '<p class="customer-feed-empty">No new communication. Use <strong>View all</strong> for history.</p>';
@@ -497,10 +504,10 @@
               <div class="customer-message-head">
                 <strong>${escapeHtml(item.subject || "Communication")}</strong>
                 <span class="badge">${item.isRead ? "READ" : "NEW"}</span>
-                ${communicationStatusMarkup(item)}
+                ${communicationStatusMarkup(item, customerName)}
               </div>
               <p>${escapeHtml(item.message || "—")}</p>
-              <small>${escapeHtml(communicationDirectionLabel(item))}${item.createdByName ? ` · ${escapeHtml(item.createdByName)}` : ""}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
+              <small>${escapeHtml(communicationDirectionLabel(item, customerName))}${item.createdByName ? ` · ${escapeHtml(item.createdByName)}` : ""}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
             </article>`).join("")}</div>`
         : '<p class="muted">No communication history yet.</p>';
       await markCustomerCommunicationsRead(customerId, items);
@@ -563,7 +570,7 @@
     document.getElementById("machineListTitle").textContent = `${customer.name} — Machines (${machines.length})`;
     document.getElementById("machineListAddButton").dataset.addMachine = customer.id;
     document.getElementById("machineListBody").innerHTML = machines.length
-      ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine, customer.belmServiceProviderActive)).join("")}</div>`
+      ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {})).join("")}</div>`
       : '<div class="empty">No machines registered for this customer yet.</div>';
     document.getElementById("machineListDialog").showModal();
     if (machines.length) loadServiceDueBadges();

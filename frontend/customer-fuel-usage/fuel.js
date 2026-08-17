@@ -372,7 +372,7 @@
     }
   }
 
-  document.getElementById("machineExpensesLink").href = `/customer-machine-expenses/?machine=${encodeURIComponent(machineId)}`;
+  document.getElementById("machineExpensesLink").href = `/customer-procurement/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");

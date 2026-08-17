@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Request Machine Service — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-service-request/request.css">
+  <title>Spare &amp; Service Request — BELM Customer Portal</title>
+  <link rel="stylesheet" href="/customer-service-request/request.css?v=298-spare-service">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -14,7 +14,7 @@
   <header>
     <a class="brand" href="/portal/dashboard">
       <span class="mark">B</span>
-      <span><b>BELM Customer Portal</b><small id="portalModeSubtitle">Machine-aware Service Request</small></span>
+      <span><b>BELM Customer Portal</b><small id="portalModeSubtitle">Machine Spare &amp; Service Request</small></span>
     </a>
     <nav>
       <a href="/portal/dashboard">← Customer dashboard</a>
@@ -26,7 +26,7 @@
     <section class="heading">
       <div>
         <p class="eyebrow">MODEL-MATCHED SERVICE</p>
-        <h1 id="pageTitle">Request machine service</h1>
+        <h1 id="pageTitle">Spare &amp; Service Request</h1>
         <p id="machineDetails" class="lead">Detecting machine model and service types…</p>
       </div>
     </section>
@@ -36,7 +36,7 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2 id="servicePanelTitle">Service request details</h2><p id="servicePanelIntro">Select the service required for this machine. BELM handles internal parts matching separately.</p></div>
+        <div><h2 id="servicePanelTitle">Service request details</h2><p id="servicePanelIntro">Request technical/service work here. Spare requirements for this machine are kept below as its reusable spare list and routed through Procurement.</p></div>
         <span id="matchStatus">Checking machine…</span>
       </div>
       <form id="serviceForm">
@@ -61,16 +61,33 @@
       </form>
     </section>
 
-    <section class="panel">
+    <section class="panel spare-workspace-panel">
       <div class="panel-head">
-        <div><h2>Request spare parts from BELM</h2><p>Type the spare name yourself. Your company does not see BELM inventory; BELM will identify the correct internal spare, prepare the Proforma and follow up. This is independent of the Service Request above — you can send one, the other, or both.</p></div>
-        <button class="secondary" id="addPartRowButton" type="button">+ Add spare part</button>
+        <div>
+          <h2>Machine Spare List → Procurement</h2>
+          <p>Search by spare name or reference / part number. Saved items remain as the machine's reusable spare list. Procurement checks Customer Store first, then can issue available stock, download shortage CSV, or send selected shortage to BELM when BELM supply is preferred. Maintenance Process shows the live status.</p>
+        </div>
+        <button class="secondary" id="addPartRowButton" type="button">+ Add manually</button>
+      </div>
+      <div class="spare-search-box">
+        <label>Search spare / part number
+          <div class="spare-search-line"><input id="spareSearchInput" type="search" placeholder="e.g. Hydraulic filter or 923855.0996" maxlength="120"><button class="secondary action-store" id="searchSpareButton" type="button">Search Store</button></div>
+        </label>
+        <div id="spareSearchResults" class="spare-search-results hidden"></div>
       </div>
       <form id="sparePartsForm">
+        <div class="spare-workspace-toolbar">
+          <button class="secondary action-save" id="saveSpareListButton" type="button">Save Spare List</button>
+          <button class="secondary action-store" id="checkStoreButton" type="button">Check Store Balance</button>
+          <label class="select-all-spares"><input id="selectAllSpares" type="checkbox" checked> Select all</label>
+        </div>
         <div id="partRequestRows"></div>
+        <div id="spareWorkflowNote" class="workflow-note"><b>PROCUREMENT-FIRST:</b> Submit selected items to Procurement. Procurement will issue from Store when available or handle purchasing when unavailable. Maintenance Process will show PENDING PROCUREMENT → PURCHASE REQUIRED / ORDERED → PARTS READY.</div>
         <div class="form-actions spare-section-actions">
           <a href="/portal/dashboard">Cancel</a>
-          <button class="primary" id="submitSparePartsButton" type="submit">Send Spare Parts Request to BELM</button>
+          <a class="secondary hidden" id="openExpensesApprovalLink" href="#">Open Procurement</a>
+          <a class="secondary" id="openMaintenanceStatusLink" href="#">Maintenance Status</a>
+          <button class="primary" id="submitSparePartsButton" type="submit">Send Requirements to Procurement</button>
         </div>
       </form>
     </section>
@@ -90,6 +107,6 @@
     </section>
   </main>
 
-  <script src="/customer-service-request/request.js?v=268-independent-spare-submit"></script>
+  <script src="/customer-service-request/request.js?v=298-spare-service"></script>
 </body>
 </html>

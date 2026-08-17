@@ -30,7 +30,7 @@ $categories = [
     'bank' => ['label' => 'Bank Manager', 'tables' => []],
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
-    'machine-expenses' => ['label' => 'Machine Expenses logs', 'tables' => []],
+    'machine-expenses' => ['label' => 'Procurement logs', 'tables' => []],
     'petty-cash' => ['label' => 'Petty Cash deposits (top-ups) — keeps spending history', 'tables' => ['petty_cash_topups']],
 ];
 
@@ -490,6 +490,7 @@ try {
 
     if ($category === 'machine-expenses') {
         $pdo->exec("DELETE FROM usage_logs WHERE category = 'SPARE_PART'");
+        $pdo->exec("DELETE FROM customer_procurement_requests");
     }
     // Note: 'petty-cash' category intentionally does NOT touch usage_logs here —
     // only the petty_cash_topups table (deposits) is truncated below, so all

@@ -1111,7 +1111,7 @@ const MACHINE_OPERATIONAL_STATUSES = ['NORMAL', 'SERVICE_IN_PROGRESS', 'CHECKUP_
 // meant to be updated in the moment work starts/stops, not a formal
 // record edit. Requires only normal page access to the customer/machine.
 // ---- Admin visibility into customer-uploaded expense receipts -------------
-// The customer uploads these from their own Machine Expenses page; BELM
+// The customer uploads these from their own Procurement page; BELM
 // Admin/Engineer need to be able to see and download the same receipts
 // for bookkeeping — this was previously only reachable from the
 // customer's own portal, with no admin-side view at all.
@@ -1123,7 +1123,7 @@ if ($method === 'GET' && $action === 'expense-receipts') {
     $privacyMachineStmt->execute([$machineId]);
     $privacyCustomerId = (string)($privacyMachineStmt->fetchColumn() ?: '');
     if ($privacyCustomerId === '') json_error('Machine not found.', 404);
-    require_belm_customer_privacy($privacyCustomerId, 'expenseReceipts', 'machine expenses and receipt photos', $machineId);
+    require_belm_customer_privacy($privacyCustomerId, 'expenseReceipts', 'machine procurement records and receipt photos', $machineId);
     $stmt = db()->prepare(
         "SELECT id, date, description, part_number, quantity, unit, cost,
                 receipt_photo_name, receipt_photo_mime, recorded_by
@@ -1157,7 +1157,7 @@ if ($method === 'GET' && $action === 'expense-receipt') {
     );
     $stmt->execute([$expenseId]);
     $receipt = $stmt->fetch();
-    if ($receipt) require_belm_customer_privacy((string)$receipt['customer_id'], 'expenseReceipts', 'machine expenses and receipt photos', (string)$receipt['machine_id']);
+    if ($receipt) require_belm_customer_privacy((string)$receipt['customer_id'], 'expenseReceipts', 'machine procurement records and receipt photos', (string)$receipt['machine_id']);
     if (!$receipt || !$receipt['receipt_photo_data']) json_error('Receipt photo was not found.', 404);
     $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
     if ($binary === false) json_error('Receipt photo is damaged.', 500);

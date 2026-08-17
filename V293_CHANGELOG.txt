@@ -1,0 +1,16 @@
+BELM Portal V293 - Rotating Machine Live Updates
+
+Changes:
+- Customer machine card now shows one live update at a time instead of stacking multiple messages.
+- Updates rotate automatically every 5.5 seconds.
+- Always-available operational updates are generated from the machine's live Condition, Current Activity and Service Plan.
+- Existing real events remain in the rotation: service-request status/assignment, operator problems/resolutions, check-up results, and BELM <-> Customer communications.
+- Update types are visually identified as CONDITION, ACTIVITY, SERVICE PLAN, SERVICE, PROBLEM, RESOLVED, CHECK-UP, TO BELM, or FROM BELM.
+- HIDE dismisses only the current update and the next visible update appears immediately.
+- Hidden update IDs remain persistent across refresh/login, preserving V292 one-time message behavior.
+- If condition/activity/service status changes, its changed status gets a new update identity so the customer can see the new information.
+- View PDF remains available for Proforma-related updates.
+- View all updates opens the existing full machine updates/communication history.
+- Rotation pauses while the user hovers/focuses the update card.
+- One global timer drives all machine cards to avoid adding a timer per machine.
+- Dark mode and reduced-motion styling included.

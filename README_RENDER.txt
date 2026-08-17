@@ -84,15 +84,15 @@ Settings:
 - Company details, business defaults, light/dark theme and protected PIN save.
 
 
-CUSTOMER MACHINE EXPENSES
+CUSTOMER PROCUREMENT
 -------------------------
-- Machine cards on Customer Dashboard are larger and include Machine Expenses.
+- Machine cards on Customer Dashboard are larger and include Procurement.
 - Customer records expense date, spare description, part number, quantity,
   unit and unit cost for the selected machine.
 - Total cost is calculated and saved against that customer and machine only.
 - Customer can take or upload a receipt photo; the browser compresses it and
   the database stores it with the calculated expense.
-- Analysis cards show total machine expense, total spare quantity, number of
+- Analysis cards show total procurement cost, total spare quantity, number of
   records, average cost and attached receipt count.
 - Expense history can be downloaded as authenticated PDF or CSV.
 - Customer Viewer accounts remain read-only.

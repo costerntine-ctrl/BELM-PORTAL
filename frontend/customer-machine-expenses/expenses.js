@@ -7,6 +7,9 @@
   let openReceiptUrl = "";
   let storeItemsCache = [];
   let canManageStore = false;
+  let canApproveStoreIssue = false;
+  let canManageProcurement = false;
+  let procurementRequestsCache = [];
   const money = new Intl.NumberFormat("en-TZ", {
     style: "currency",
     currency: "TZS",
@@ -194,6 +197,100 @@
     calculateTotal();
   }
 
+  function procurementShortage(item) {
+    const required = Number(item.quantity || 0);
+    const current = Number(item.currentStoreBalance ?? item.storeAvailableAtRequest ?? 0);
+    return Math.max(0, required - Math.max(0, current));
+  }
+
+  function selectedProcurementRequests() {
+    const ids = new Set([...document.querySelectorAll("[data-procurement-select]:checked")].map(input => input.dataset.procurementSelect));
+    return procurementRequestsCache.filter(item => ids.has(String(item.id)));
+  }
+
+  function renderProcurementRequests(items) {
+    procurementRequestsCache = Array.isArray(items) ? items : [];
+    const open = procurementRequestsCache.filter(item => !["PARTS_READY","REJECTED"].includes(String(item.status || "")));
+    document.getElementById("procurementRequestCount").textContent = `${open.length} open`;
+    document.getElementById("procurementRequestRows").innerHTML = procurementRequestsCache.length
+      ? procurementRequestsCache.map(item => {
+          const status = String(item.status || "PENDING_PROCUREMENT");
+          const current = Number(item.currentStoreBalance ?? item.storeAvailableAtRequest ?? 0);
+          const qty = Number(item.quantity || 0);
+          const shortage = procurementShortage(item);
+          const inStore = Boolean(item.currentStoreItemId || item.storeItemId);
+          const enough = inStore && shortage <= 0.00001 && qty > 0;
+          const selectable = canManageProcurement && shortage > 0.00001 && ["PENDING_PROCUREMENT","PURCHASE_REQUIRED"].includes(status);
+          let storeText = "NOT IN STORE";
+          if (inStore && enough) storeText = `${current.toLocaleString("en-TZ")} ${item.unit || "PC"} AVAILABLE`;
+          else if (inStore) storeText = `${current.toLocaleString("en-TZ")} ${item.unit || "PC"} IN STOCK`;
+          let actions = "—";
+          if (canManageProcurement && !["PARTS_READY","REJECTED"].includes(status)) {
+            const buttons = [];
+            if (status === "PENDING_PROCUREMENT") {
+              if (enough) buttons.push(`<button class="store-action" type="button" data-procurement-action="ISSUE_STORE" data-procurement-id="${escapeHtml(item.id)}">Issue from Store</button>`);
+              if (shortage > 0) buttons.push(`<button class="purchase-action" type="button" data-procurement-action="PURCHASE_REQUIRED" data-procurement-id="${escapeHtml(item.id)}">Purchase Required</button>`);
+              buttons.push(`<button class="reject-action" type="button" data-procurement-action="REJECT" data-procurement-id="${escapeHtml(item.id)}">Reject</button>`);
+            } else if (status === "PURCHASE_REQUIRED") {
+              buttons.push(`<button class="purchase-action" type="button" data-procurement-action="ORDERED" data-procurement-id="${escapeHtml(item.id)}">Mark Ordered</button>`);
+              buttons.push(`<button class="ready-action" type="button" data-procurement-action="PARTS_READY" data-procurement-id="${escapeHtml(item.id)}">Parts Ready</button>`);
+              buttons.push(`<button class="reject-action" type="button" data-procurement-action="REJECT" data-procurement-id="${escapeHtml(item.id)}">Reject</button>`);
+            } else if (status === "ORDERED") {
+              buttons.push(`<button class="ready-action" type="button" data-procurement-action="PARTS_READY" data-procurement-id="${escapeHtml(item.id)}">Parts Received / Ready</button>`);
+              buttons.push(`<button class="reject-action" type="button" data-procurement-action="REJECT" data-procurement-id="${escapeHtml(item.id)}">Reject</button>`);
+            } else if (status === "BELM_REQUESTED") {
+              buttons.push(`<button class="ready-action" type="button" data-procurement-action="PARTS_READY" data-procurement-id="${escapeHtml(item.id)}">BELM Parts Received / Ready</button>`);
+            }
+            actions = `<div class="procurement-actions">${buttons.join("")}</div>`;
+          } else if (item.decisionNote || item.handledByName) {
+            actions = escapeHtml(item.decisionNote || item.handledByName);
+          }
+          return `<tr>
+            <td class="procurement-select-cell"><input type="checkbox" data-procurement-select="${escapeHtml(item.id)}" aria-label="Select ${escapeHtml(item.partNumber || item.description || "spare")}" ${selectable ? "" : "disabled"}></td>
+            <td>${formatDateTime(item.requestedAt)}</td>
+            <td><strong>${escapeHtml(item.partNumber || "-")}</strong><br><small>${escapeHtml(item.description || "-")}</small></td>
+            <td>${qty.toLocaleString("en-TZ")} ${escapeHtml(item.unit || "PC")}</td>
+            <td><div class="procurement-store-state"><b class="${enough ? "stock-ok" : "stock-zero"}">${escapeHtml(storeText)}</b><small>${enough ? "IN STORE" : inStore ? "STORE SHORTAGE" : "NOT IN STORE"}</small><span class="shortage-value ${shortage <= 0 ? "zero" : ""}">Shortage: ${shortage.toLocaleString("en-TZ")} ${escapeHtml(item.unit || "PC")}</span></div></td>
+            <td>${escapeHtml(String(item.maintenanceSpareStatus || "PROCUREMENT REVIEW").replaceAll("_"," "))}</td>
+            <td><span class="procurement-status ${status.toLowerCase()}">${escapeHtml(status.replaceAll("_"," "))}</span></td>
+            <td>${escapeHtml(item.requestedByName || "Customer")}</td>
+            <td class="procurement-action-cell">${actions}</td>
+          </tr>`;
+        }).join("")
+      : '<tr><td colspan="9" class="empty">No Procurement requests for this machine yet.</td></tr>';
+  }
+
+  function renderStoreApprovals(items) {
+    const rows = Array.isArray(items) ? items : [];
+    const pending = rows.filter(item => item.status === "PENDING_APPROVAL");
+    document.getElementById("storeApprovalPanel").classList.toggle("hidden", rows.length === 0);
+    document.getElementById("storeApprovalCount").textContent = `${pending.length} pending`;
+    document.getElementById("storeApprovalRows").innerHTML = rows.length
+      ? rows.map(item => {
+          const status = String(item.status || "PENDING_APPROVAL");
+          const current = Number(item.currentStoreBalance || 0);
+          const qty = Number(item.quantity || 0);
+          const enough = current + 0.00001 >= qty;
+          const decision = status === "PENDING_APPROVAL" && canApproveStoreIssue
+            ? `<div class="approval-actions">
+                 <button type="button" class="approve-store-issue" data-approve-store-issue="${escapeHtml(item.id)}" ${enough ? "" : "disabled"}>Approve</button>
+                 <button type="button" class="reject-store-issue" data-reject-store-issue="${escapeHtml(item.id)}">Reject</button>
+               </div>${enough ? "" : '<small class="stock-warning">Insufficient balance now</small>'}`
+            : escapeHtml(item.decisionNote || item.approvedByName || item.rejectedByName || "—");
+          return `<tr>
+            <td>${formatDateTime(item.requestedAt)}</td>
+            <td><strong>${escapeHtml(item.partNumber || "-")}</strong></td>
+            <td>${escapeHtml(item.description || "-")}</td>
+            <td>${qty.toLocaleString("en-TZ")} ${escapeHtml(item.unit || "PC")}</td>
+            <td><strong class="${enough ? "stock-ok" : "stock-zero"}">${current.toLocaleString("en-TZ")} ${escapeHtml(item.unit || "PC")}</strong></td>
+            <td>${escapeHtml(item.requestedByName || "Customer")}</td>
+            <td><span class="approval-status ${status.toLowerCase()}">${escapeHtml(status.replaceAll("_", " "))}</span></td>
+            <td>${decision}</td>
+          </tr>`;
+        }).join("")
+      : '<tr><td colspan="8" class="empty">No Customer Store issue approvals for this machine.</td></tr>';
+  }
+
   function renderStore(items, summary) {
     storeItemsCache = Array.isArray(items) ? items : [];
     const datalist = document.getElementById("storePartOptions");
@@ -228,7 +325,7 @@
     const machine = data.machine || {};
     const summary = data.summary || {};
     document.getElementById("pageTitle").textContent =
-      `${machine.brand ? `${machine.brand} ` : ""}${machine.model || "Machine"} expenses`;
+      `${machine.brand ? `${machine.brand} ` : ""}${machine.model || "Machine"} procurement`;
     document.getElementById("machineDetails").textContent = [
       machine.machineType,
       machine.serialNumber ? `Serial: ${machine.serialNumber}` : "",
@@ -244,6 +341,14 @@
     document.getElementById("receiptCount").textContent =
       Number(summary.receiptCount || 0).toLocaleString("en-TZ");
     canManageStore = Boolean(data.canManageStore);
+    canApproveStoreIssue = Boolean(data.canApproveStoreIssue);
+    canManageProcurement = Boolean(data.canManageProcurement);
+    ["selectShortageButton", "downloadPurchaseCsvButton", "sendBelmSupplyButton"].forEach(id => {
+      const control = document.getElementById(id);
+      if (control) control.classList.toggle("hidden", !canManageProcurement);
+    });
+    renderProcurementRequests(data.procurementRequests || []);
+    renderStoreApprovals(data.storeIssueRequests || []);
     document.getElementById("receiveStockButton").classList.toggle("hidden", !canManageStore);
     const storeOption = document.querySelector('#stockSource option[value="CUSTOMER_STORE"]');
     if (storeOption) storeOption.disabled = !canManageStore;
@@ -290,7 +395,7 @@
                  <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" data-attach-receipt="${escapeHtml(expense.id)}" hidden>
                </label>`}</td>
         </tr>`).join("")
-      : '<tr><td colspan="11" class="empty">No machine material/expense records yet.</td></tr>';
+      : '<tr><td colspan="11" class="empty">No machine procurement/material records yet.</td></tr>';
   }
 
   function currentRangeQuery() {
@@ -322,7 +427,7 @@
       render(await api(`/machine-expenses/${encodeURIComponent(machineId)}${currentRangeQuery()}`));
       loadSidebarAnalysis();
     } catch (error) {
-      showAlert(error.message || "Could not load machine expenses.", true);
+      showAlert(error.message || "Could not load procurement records.", true);
     }
   }
 
@@ -350,7 +455,7 @@
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = objectUrl;
-      link.download = matchedName?.[1] || `machine-expenses.${format === "audit-pdf" ? "pdf" : format}`;
+      link.download = matchedName?.[1] || `procurement.${format === "audit-pdf" ? "pdf" : format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -604,6 +709,133 @@
     }
   });
 
+  document.getElementById("procurementRequestRows").addEventListener("click", async event => {
+    const button = event.target.closest("[data-procurement-action]");
+    if (!button) return;
+    const id = button.dataset.procurementId;
+    const action = button.dataset.procurementAction;
+    const prompts = {
+      ISSUE_STORE: "Store issue note / receiver (optional):",
+      PURCHASE_REQUIRED: "Purchase/source note (optional):",
+      ORDERED: "Order / PO reference (optional):",
+      PARTS_READY: "Receiving / parts-ready note (optional):",
+      REJECT: "Reason for rejection (optional):",
+    };
+    const note = window.prompt(prompts[action] || "Procurement note (optional):", "");
+    if (note === null) return;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "Updating…";
+    try {
+      const result = await api(`/procurement-requests/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ action, note: note.trim() }),
+      });
+      await load();
+      showAlert(result.message || "Procurement status updated. Maintenance Process has been synchronized.");
+    } catch (error) {
+      showAlert(error.message || "Could not update Procurement request.", true);
+      button.disabled = false;
+      button.textContent = original;
+    }
+  });
+
+  function safeCsvCell(value) {
+    let text = String(value ?? "");
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  document.getElementById("selectShortageButton").addEventListener("click", () => {
+    let selected = 0;
+    document.querySelectorAll("[data-procurement-select]").forEach(input => {
+      const item = procurementRequestsCache.find(row => String(row.id) === String(input.dataset.procurementSelect));
+      const choose = !input.disabled && item && procurementShortage(item) > 0.00001;
+      input.checked = Boolean(choose);
+      if (choose) selected += 1;
+    });
+    showAlert(selected ? `${selected} shortage item(s) selected automatically.` : "No open spare shortage is available to select.", selected === 0);
+  });
+
+  document.getElementById("downloadPurchaseCsvButton").addEventListener("click", () => {
+    const rows = selectedProcurementRequests().filter(item => procurementShortage(item) > 0.00001);
+    if (!rows.length) {
+      showAlert("Select at least one shortage item first. You can use Select Shortage.", true);
+      return;
+    }
+    const lines = [["Part Number","Description","Required Qty","In Stock","Shortage Qty","Unit","Status","Requested By","Requested At"]];
+    rows.forEach(item => {
+      const inStock = Number(item.currentStoreBalance ?? item.storeAvailableAtRequest ?? 0);
+      lines.push([
+        item.partNumber || "", item.description || "", item.quantity || 0, inStock,
+        procurementShortage(item), item.unit || "PC", item.status || "", item.requestedByName || "", formatDateTime(item.requestedAt),
+      ]);
+    });
+    const csv = lines.map(row => row.map(safeCsvCell).join(",")).join("\r\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `procurement-shortage-${machineId.slice(0,8)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showAlert(`${rows.length} selected shortage item(s) downloaded for Procurement sourcing.`);
+  });
+
+  document.getElementById("sendBelmSupplyButton").addEventListener("click", async () => {
+    const rows = selectedProcurementRequests().filter(item => procurementShortage(item) > 0.00001);
+    if (!rows.length) {
+      showAlert("Select at least one shortage item first. You can use Select Shortage.", true);
+      return;
+    }
+    if (!window.confirm(`Send ${rows.length} selected shortage item(s) to BELM for supply? Only the shortage quantities will be sent.`)) return;
+    const button = document.getElementById("sendBelmSupplyButton");
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = "Sending…";
+    try {
+      const result = await api(`/procurement-belm-supply/${encodeURIComponent(machineId)}`, {
+        method: "POST",
+        body: JSON.stringify({ requestIds: rows.map(item => item.id) }),
+      });
+      await load();
+      showAlert(result.message || `${result.createdCount || 0} shortage item(s) sent to BELM.`);
+    } catch (error) {
+      showAlert(error.message || "Could not send selected shortage to BELM.", true);
+    } finally {
+      button.disabled = false;
+      button.textContent = original;
+    }
+  });
+
+  document.getElementById("storeApprovalRows").addEventListener("click", async event => {
+    const approve = event.target.closest("[data-approve-store-issue]");
+    const reject = event.target.closest("[data-reject-store-issue]");
+    const target = approve || reject;
+    if (!target) return;
+    const id = approve ? approve.dataset.approveStoreIssue : reject.dataset.rejectStoreIssue;
+    const action = approve ? "APPROVE" : "REJECT";
+    const note = window.prompt(approve ? "Approval note (optional):" : "Reason for rejection (optional):", "");
+    if (note === null) return;
+    target.disabled = true;
+    const original = target.textContent;
+    target.textContent = approve ? "Approving…" : "Rejecting…";
+    try {
+      const result = await api(`/store-issue-requests/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        body: JSON.stringify({ action, note: note.trim() }),
+      });
+      await load();
+      showAlert(result.message || (approve ? "Store issue approved." : "Store issue rejected."));
+    } catch (error) {
+      showAlert(error.message || "Could not process Store issue approval.", true);
+      target.disabled = false;
+      target.textContent = original;
+    }
+  });
+
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
     window.location.href = "/portal/login";
@@ -641,12 +873,12 @@
       document.getElementById("storeIssueHint").classList.add("hidden");
       calculateTotal();
       await load();
-      showAlert(saveResult.message || "Machine expense saved successfully.");
+      showAlert(saveResult.message || "Procurement record saved successfully.");
     } catch (error) {
-      showAlert(error.message || "Could not save machine expense.", true);
+      showAlert(error.message || "Could not save procurement record.", true);
     } finally {
       saveButton.disabled = false;
-      saveButton.textContent = "Save expense";
+      saveButton.textContent = "Save procurement";
     }
   });
 

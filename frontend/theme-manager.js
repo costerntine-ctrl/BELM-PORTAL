@@ -5,6 +5,141 @@
   let activeToken = null;
   let syncGeneration = 0;
 
+  // V299 - rolling session stability. Keep valid users signed in and recover
+  // from a stale JWT before individual pages interpret one 401 as a logout.
+  const nativeFetch = window.fetch.bind(window);
+  const sessionRefreshes = new Map();
+  const SESSION_KEYS = ["belm_admin_token", "belm_customer_token", "belm_tech_token", "belm_operator_token"];
+  const SESSION_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  const SESSION_REFRESH_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
+  function tokenStorageKey(token) {
+    if (!token) return null;
+    for (const key of SESSION_KEYS) {
+      if (localStorage.getItem(key) === token) return key;
+    }
+    const payload = decodeJwt(token);
+    if (!payload) return null;
+    if (payload.type === "operator") return "belm_operator_token";
+    if (payload.type === "customer") return "belm_customer_token";
+    if (payload.type === "staff" && String(payload.roleName || "").toLowerCase() === "technician") return "belm_tech_token";
+    if (payload.type === "staff") return "belm_admin_token";
+    return null;
+  }
+
+  function sessionLastRefreshKey(tokenKey) {
+    return `belm_session_refreshed_${tokenKey}`;
+  }
+
+  async function refreshSessionToken(tokenKey, force = false) {
+    if (!tokenKey) return null;
+    if (sessionRefreshes.has(tokenKey)) return sessionRefreshes.get(tokenKey);
+    const token = localStorage.getItem(tokenKey);
+    const payload = decodeJwt(token);
+    if (!token || !payload || (typeof payload.exp === "number" && payload.exp * 1000 <= Date.now())) return null;
+
+    const last = Number(localStorage.getItem(sessionLastRefreshKey(tokenKey)) || 0);
+    const remaining = typeof payload.exp === "number" ? payload.exp * 1000 - Date.now() : 0;
+    if (!force && remaining > SESSION_REFRESH_WINDOW_MS && Date.now() - last < SESSION_REFRESH_INTERVAL_MS) return token;
+
+    const promise = (async () => {
+      try {
+        const response = await nativeFetch("/api/auth/refresh", {
+          method: "POST",
+          cache: "no-store",
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) return null;
+        const data = await response.json().catch(() => ({}));
+        if (!data.token) return null;
+        // Do not overwrite a newer login that happened while refresh was in flight.
+        if (localStorage.getItem(tokenKey) === token) {
+          localStorage.setItem(tokenKey, data.token);
+          localStorage.setItem(sessionLastRefreshKey(tokenKey), String(Date.now()));
+        }
+        return localStorage.getItem(tokenKey) || data.token;
+      } catch (_) {
+        return null;
+      } finally {
+        sessionRefreshes.delete(tokenKey);
+      }
+    })();
+    sessionRefreshes.set(tokenKey, promise);
+    return promise;
+  }
+
+  function authTokenFromHeaders(headers) {
+    try {
+      const h = new Headers(headers || {});
+      const value = h.get("Authorization") || "";
+      return value.startsWith("Bearer ") ? value.slice(7) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function requestUrl(input) {
+    try { return new URL(input instanceof Request ? input.url : String(input), location.origin); }
+    catch (_) { return null; }
+  }
+
+  async function fetchWithStableSession(input, init = {}) {
+    const url = requestUrl(input);
+    const originalHeaders = init.headers || (input instanceof Request ? input.headers : undefined);
+    const suppliedToken = authTokenFromHeaders(originalHeaders);
+    const tokenKey = tokenStorageKey(suppliedToken);
+    const latestToken = tokenKey ? localStorage.getItem(tokenKey) : null;
+    const headers = new Headers(originalHeaders || {});
+    if (tokenKey && latestToken) headers.set("Authorization", `Bearer ${latestToken}`);
+
+    const firstInit = { ...init, headers };
+    const firstInput = input instanceof Request ? new Request(input, firstInit) : input;
+    let response = await nativeFetch(firstInput, input instanceof Request ? undefined : firstInit);
+
+    const isRefreshCall = url && url.pathname === "/api/auth/refresh";
+    if (response.status !== 401 || !tokenKey || isRefreshCall) return response;
+
+    const refreshed = await refreshSessionToken(tokenKey, true);
+    if (!refreshed) return response;
+
+    // Session was proven valid by /auth/refresh. Retry the original request once
+    // with the fresh token. This also fixes pages that captured an old token in
+    // a const when the page first loaded.
+    const retryHeaders = new Headers(originalHeaders || {});
+    retryHeaders.set("Authorization", `Bearer ${refreshed}`);
+    const retryInit = { ...init, headers: retryHeaders };
+    const retryInput = input instanceof Request ? new Request(input, retryInit) : input;
+    const retry = await nativeFetch(retryInput, input instanceof Request ? undefined : retryInit);
+
+    if (retry.status !== 401) return retry;
+
+    // A fresh, database-validated session receiving 401 from one endpoint means
+    // that endpoint rejected this account type/route, not that the whole login
+    // is dead. Surface it as forbidden so page-level code does not delete a
+    // perfectly valid session token.
+    const body = await retry.blob();
+    return new Response(body, {
+      status: 403,
+      statusText: "Forbidden",
+      headers: retry.headers,
+    });
+  }
+
+  window.fetch = fetchWithStableSession;
+
+  async function maintainSessions() {
+    for (const key of SESSION_KEYS) {
+      const token = localStorage.getItem(key);
+      const payload = decodeJwt(token);
+      if (!token || !payload) continue;
+      const remaining = typeof payload.exp === "number" ? payload.exp * 1000 - Date.now() : 0;
+      const last = Number(localStorage.getItem(sessionLastRefreshKey(key)) || 0);
+      if (remaining <= SESSION_REFRESH_WINDOW_MS || Date.now() - last >= SESSION_REFRESH_INTERVAL_MS) {
+        await refreshSessionToken(key, false);
+      }
+    }
+  }
+
   function decodeJwt(token) {
     if (!token) return null;
     try {
@@ -229,9 +364,12 @@
 
   function boot() {
     initializeForSession();
+    maintainSessions();
     setTimeout(injectPersonalToggle, 450);
     // SPA logins/routes can create a token without a full page reload.
     setInterval(initializeForSession, 1200);
+    // Keep active sessions rolling without generating frequent API traffic.
+    setInterval(maintainSessions, 5 * 60 * 1000);
   }
 
   if (document.readyState === "loading") {

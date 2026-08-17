@@ -205,7 +205,7 @@
       <div class="machine-actions">
         ${privacyButton("Report", canMaintenance, `data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Check Up", canMaintenance, `data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
-        ${privacyButton("Expense Receipts", canExpenses, `data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
+        ${privacyButton("Procurement Receipts", canExpenses, `data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Service Parts", canParts, `data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/breakdown-workflow/?machine=${escapeHtml(machine.id)}&actor=admin">Maintenance Process</a>` : ""}
         <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
@@ -1020,7 +1020,7 @@
   let currentExpenseReceipts = [];
 
   async function openExpenseReceipts(machineId, machineName) {
-    document.getElementById("expenseReceiptsTitle").textContent = `Expense receipts — ${machineName || "Machine"}`;
+    document.getElementById("expenseReceiptsTitle").textContent = `Procurement receipts — ${machineName || "Machine"}`;
     const body = document.getElementById("expenseReceiptsBody");
     body.innerHTML = '<p class="muted">Loading…</p>';
     currentExpenseReceipts = [];

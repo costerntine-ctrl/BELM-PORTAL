@@ -6,7 +6,7 @@
   <title>Role Manager — BELM Customer Portal</title>
   <link rel="stylesheet" href="/customer-users/users.css">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -50,7 +50,7 @@
       <aside class="access-legend">
         <strong>Dashboard Access</strong>
         <ul>
-          <li><b>Machine Expenses</b> — machine costs and material usage</li>
+          <li><b>Procurement</b> — machine spare/material purchasing, Store issues and cost records</li>
           <li><b>Fuel Usage</b> — fuel top-ups and consumption records</li>
           <li><b>Operator Reports</b> — machine operator reports and alerts</li>
           <li><b>Request BELM Support</b> — official technical-support request to BELM</li>
@@ -158,10 +158,10 @@
         <div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator ataona machine cards pekee. Dashboard Access hapa inachagua buttons/functions zinazoonekana ndani ya kila machine card; account-level tools, Store, Management Email na +USER hazipatikani kwa Operator.</span></div>
         <div id="technicianAccessNote" class="operator-card-only-note hidden"><b>Fundi / Technician Access</b><span>Fundi anaendelea kuwa na Technician Workspace kwa kazi za field. Administration anaweza pia kumpa Dashboard Access maalum au Full Customer Control. Hii haimpi BELM Admin/Inventory internal access.</span></div>
         <div id="accessOptions" class="access-options">
-          <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Machine Expenses</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Procurement</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="operator-reports"> Operator Reports</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Request BELM Support</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Spare &amp; Service Request</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report Problem</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="check-up"> Check Up</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="store"> Store Keeper / Materials</label>
@@ -180,6 +180,6 @@
     </form>
   </dialog>
 
-  <script src="/customer-users/users.js?v=207-technician-full-control"></script>
+  <script src="/customer-users/users.js?v=296-procurement-label"></script>
 </body>
 </html>

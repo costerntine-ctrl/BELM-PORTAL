@@ -1152,7 +1152,7 @@ function match_spare_part_by_text(?string $reference, ?string $description): ?st
 
 // Validates a base64 data-URL receipt upload (JPG/PNG/WebP image or PDF)
 // and returns [base64Data, mimeType, safeFileName] — shared by both the
-// customer's own Machine Expenses uploads and BELM's own Company
+// customer's own Procurement uploads and BELM's own Company
 // Expenses uploads, so both sides store/validate receipts identically.
 function validate_receipt_upload(string $receiptPhoto, string $receiptName): array {
     if (!preg_match('#^data:(image/(?:jpeg|png|webp)|application/pdf);base64,([A-Za-z0-9+/=\r\n]+)$#', $receiptPhoto, $matches)) {

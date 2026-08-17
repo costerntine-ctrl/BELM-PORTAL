@@ -370,6 +370,8 @@ ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS requested_by_name VARCH
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS description TEXT NULL;
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS machine_type VARCHAR(100) NULL;
 ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_request_id VARCHAR(36) NULL;
+CREATE INDEX IF NOT EXISTS idx_spare_part_requests_procurement ON spare_part_requests(procurement_request_id);
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_status ON spare_part_requests(status);
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_machine ON spare_part_requests(machine_id);
 
@@ -1044,6 +1046,57 @@ CREATE INDEX IF NOT EXISTS idx_customer_store_movements_customer
 CREATE INDEX IF NOT EXISTS idx_customer_store_movements_machine
   ON customer_store_movements(machine_id, created_at DESC);
 
+-- V295 Customer machine spare lists + Store issue approval ------------------
+-- Saved spare lists belong to a customer machine. They are independent of
+-- BELM inventory and can be reused for Customer Store issue or outside
+-- procurement CSV export.
+CREATE TABLE IF NOT EXISTS customer_machine_spare_list_items (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  reference_number VARCHAR(100) NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL DEFAULT 1,
+  selected SMALLINT NOT NULL DEFAULT 1,
+  created_by_name VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_machine_spare_list
+  ON customer_machine_spare_list_items(customer_id, machine_id, updated_at DESC);
+
+-- A Customer Store issue is never deducted at request time. Accounts / Owner /
+-- Admin approve it first; approval atomically creates the procurement record and
+-- Store ISSUE movement, preventing partial balance updates.
+CREATE TABLE IF NOT EXISTS customer_store_issue_requests (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  store_item_id VARCHAR(36) NOT NULL REFERENCES customer_store_items(id) ON DELETE CASCADE,
+  part_number VARCHAR(100) NOT NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL,
+  unit VARCHAR(20) NOT NULL DEFAULT 'PC',
+  unit_cost NUMERIC(14,2) NOT NULL DEFAULT 0,
+  balance_at_request NUMERIC(14,2) NOT NULL DEFAULT 0,
+  requested_by_name VARCHAR(255) NOT NULL,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(30) NOT NULL DEFAULT 'PENDING_APPROVAL',
+  approved_by_name VARCHAR(255) NULL,
+  approved_at TIMESTAMPTZ NULL,
+  rejected_by_name VARCHAR(255) NULL,
+  rejected_at TIMESTAMPTZ NULL,
+  decision_note VARCHAR(500) NULL,
+  expense_id VARCHAR(36) NULL REFERENCES usage_logs(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_store_issue_requests_customer
+  ON customer_store_issue_requests(customer_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_store_issue_requests_machine
+  ON customer_store_issue_requests(machine_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_store_issue_requests_item
+  ON customer_store_issue_requests(store_item_id, status);
+
 ALTER TABLE usage_logs
   ADD COLUMN IF NOT EXISTS store_item_id VARCHAR(36) NULL REFERENCES customer_store_items(id) ON DELETE SET NULL;
 ALTER TABLE usage_logs
@@ -1217,6 +1270,44 @@ CREATE TABLE IF NOT EXISTS breakdown_spare_requests (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_breakdown_spares_case ON breakdown_spare_requests(case_id, status, requested_at DESC);
+
+-- V297: all customer spare requirements enter one Procurement queue first.
+-- Procurement decides whether the item is issued from Customer Store or
+-- purchased externally; customers never send a spare request directly to
+-- BELM Inventory or a supplier from the request screen.
+CREATE TABLE IF NOT EXISTS customer_procurement_requests (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  store_item_id VARCHAR(36) NULL REFERENCES customer_store_items(id) ON DELETE SET NULL,
+  workflow_case_id VARCHAR(36) NULL REFERENCES breakdown_cases(id) ON DELETE SET NULL,
+  part_number VARCHAR(120) NULL,
+  description VARCHAR(255) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL,
+  unit VARCHAR(30) NOT NULL DEFAULT 'PC',
+  store_available_at_request NUMERIC(14,2) NOT NULL DEFAULT 0,
+  store_unit_cost NUMERIC(14,2) NOT NULL DEFAULT 0,
+  store_match_status VARCHAR(30) NOT NULL DEFAULT 'NOT_IN_STORE',
+  status VARCHAR(30) NOT NULL DEFAULT 'PENDING_PROCUREMENT',
+  requested_by_name VARCHAR(255) NOT NULL,
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  handled_by_name VARCHAR(255) NULL,
+  handled_at TIMESTAMPTZ NULL,
+  decision_note VARCHAR(500) NULL,
+  expense_id VARCHAR(36) NULL REFERENCES usage_logs(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_procurement_requests_customer
+  ON customer_procurement_requests(customer_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_procurement_requests_machine
+  ON customer_procurement_requests(machine_id, status, requested_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_procurement_requests_case
+  ON customer_procurement_requests(workflow_case_id, status);
+
+ALTER TABLE breakdown_spare_requests
+  ADD COLUMN IF NOT EXISTS procurement_request_id VARCHAR(36) NULL REFERENCES customer_procurement_requests(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_breakdown_spares_procurement_request
+  ON breakdown_spare_requests(procurement_request_id);
 
 CREATE TABLE IF NOT EXISTS digital_job_cards (
   id VARCHAR(36) PRIMARY KEY,

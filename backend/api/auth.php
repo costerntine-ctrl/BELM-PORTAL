@@ -5,6 +5,127 @@ require_once __DIR__ . '/../config/mailer.php';
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
+// V299: rolling authenticated sessions. A valid session can be renewed without
+// asking the user to log in again. Every refresh re-checks the live account in
+// the database, so disabled/deleted accounts still stop immediately.
+if ($action === 'refresh' && $method === 'POST') {
+    $current = current_token_payload();
+    if (!$current) json_error('Session expired. Please sign in again.', 401);
+
+    $type = (string)($current['type'] ?? '');
+    $freshPayload = null;
+
+    if ($type === 'staff') {
+        $stmt = db()->prepare(
+            "SELECT u.id, u.name, u.email, u.assigned_customer_id, u.is_customer_managed,
+                    r.id AS role_id, r.name AS role_name, r.allowed_pages,
+                    c.name AS assigned_customer_name, c.portal_link AS assigned_customer_portal_link,
+                    c.deleted_at AS customer_deleted_at, c.is_active AS customer_active
+             FROM users u
+             JOIN roles r ON r.id = u.role_id
+             LEFT JOIN customers c ON c.id = u.assigned_customer_id
+             WHERE u.id = ? AND u.deleted_at IS NULL AND u.is_active = 1"
+        );
+        $stmt->execute([(string)($current['id'] ?? '')]);
+        $user = $stmt->fetch();
+        if (!$user) json_error('This staff account is no longer active.', 401);
+
+        if ($user['role_name'] === 'Technician' && $user['assigned_customer_id']) {
+            if (!$user['assigned_customer_name'] || $user['customer_deleted_at'] !== null || empty($user['customer_active'])) {
+                json_error('The customer assigned to this Technician account is no longer available.', 401);
+            }
+        }
+
+        $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
+        $freshPayload = [
+            'type' => 'staff',
+            'id' => $user['id'],
+            'email' => $user['email'],
+            'name' => $user['name'],
+            'roleId' => $user['role_id'],
+            'roleName' => $user['role_name'],
+            'allowedPages' => $allowedPages,
+            'assignedCustomerId' => $user['assigned_customer_id'],
+            'assignedCustomerPortalLink' => $user['assigned_customer_portal_link'] ?? null,
+            'isCustomerManaged' => !empty($user['is_customer_managed']),
+        ];
+    } elseif ($type === 'customer') {
+        $customerId = (string)($current['id'] ?? '');
+        $stmt = db()->prepare(
+            'SELECT id, name, email, portal_link FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+        );
+        $stmt->execute([$customerId]);
+        $customer = $stmt->fetch();
+        if (!$customer) json_error('Customer account is no longer active.', 401);
+
+        $actorType = (string)($current['actorType'] ?? 'owner');
+        $actorId = $current['actorId'] ?? null;
+        $actorName = $current['actorName'] ?? $customer['name'];
+        $customerRole = $current['customerRole'] ?? 'owner';
+        $permissions = $current['permissions'] ?? null;
+
+        if ($actorType === 'assistant') {
+            $stmt = db()->prepare(
+                'SELECT id, name, email, role, permissions FROM customer_users WHERE id = ? AND customer_id = ? AND is_active = 1'
+            );
+            $stmt->execute([(string)$actorId, $customerId]);
+            $assistant = $stmt->fetch();
+            if (!$assistant) json_error('This customer user is no longer active.', 401);
+            $actorId = $assistant['id'];
+            $actorName = $assistant['name'];
+            $customerRole = $assistant['role'];
+            $permissions = $assistant['permissions'] !== null
+                ? (json_decode((string)$assistant['permissions'], true) ?: [])
+                : null;
+        } else {
+            $actorType = 'owner';
+            $actorId = null;
+            $actorName = $customer['name'];
+            $customerRole = 'owner';
+            $permissions = null;
+        }
+
+        $freshPayload = [
+            'type' => 'customer',
+            'id' => $customer['id'],
+            'name' => $customer['name'],
+            'portalLink' => $customer['portal_link'],
+            'actorType' => $actorType,
+            'actorId' => $actorId,
+            'actorName' => $actorName,
+            'customerRole' => $customerRole,
+            'permissions' => $permissions,
+        ];
+    } elseif ($type === 'operator') {
+        $stmt = db()->prepare(
+            'SELECT o.id, o.name, o.customer_id, o.machine_id
+             FROM machine_operators o
+             JOIN machines m ON m.id = o.machine_id
+             JOIN customers c ON c.id = o.customer_id
+             WHERE o.id = ? AND m.id = ?
+               AND m.deleted_at IS NULL AND c.deleted_at IS NULL AND c.is_active = 1'
+        );
+        $stmt->execute([(string)($current['id'] ?? ''), (string)($current['machineId'] ?? '')]);
+        $operator = $stmt->fetch();
+        if (!$operator) json_error('This Operator session is no longer active.', 401);
+        $freshPayload = [
+            'type' => 'operator',
+            'id' => $operator['id'],
+            'name' => $operator['name'],
+            'machineId' => $operator['machine_id'],
+            'customerId' => $operator['customer_id'],
+        ];
+    } else {
+        json_error('Session type is not supported.', 401);
+    }
+
+    json_out([
+        'ok' => true,
+        'token' => jwt_encode($freshPayload, 30 * 24 * 3600),
+        'expiresIn' => 30 * 24 * 3600,
+    ]);
+}
+
 // GET /api/auth/customer-context?customer=company-slug
 // Public, minimal context used only to brand the friendly /app/{customer} login.
 if ($action === 'customer-context' && $method === 'GET') {

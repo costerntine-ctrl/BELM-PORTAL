@@ -897,7 +897,7 @@ SELECT
   '00000000-0000-4000-8000-000000000003',
   'BELM Admin',
   'info@belmgeneral.co.tz',
-  '$2y$10$uXo8bDdT3YV7BlM7V4oOR.ybSIUrBtG0x/bwydGsmf98C0IBBWtme',
+  '$2y$12$mLP95q9gTllhw8LFyLjavuv/f8/qY8kfEGmAy.l9dKCNs084SvFNS',
   id
 FROM roles
 WHERE name = 'Super Admin'
@@ -906,8 +906,9 @@ ON CONFLICT (id) DO UPDATE SET
   is_active = 1,
   role_id = EXCLUDED.role_id,
   deleted_at = NULL,
-  -- Preserve a password the Administrator has already changed. Only repair a
-  -- clearly invalid/empty legacy hash with the documented temporary password.
+  -- Preserve a password the Administrator has already changed. A newly seeded
+  -- account receives a locked placeholder hash here; migrate.php replaces that
+  -- placeholder from INITIAL_ADMIN_PASSWORD before Apache starts.
   password_hash = CASE
     WHEN users.password_hash LIKE '$2%' OR users.password_hash LIKE '$argon2%'
       THEN users.password_hash
@@ -1333,3 +1334,22 @@ CREATE TABLE IF NOT EXISTS digital_job_cards (
 );
 CREATE INDEX IF NOT EXISTS idx_job_cards_customer ON digital_job_cards(customer_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_job_cards_technician ON digital_job_cards(technician_id, status, created_at DESC);
+
+
+-- V301 - Customer-issued service Job Cards, signed completion copy and billing sync.
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS issued_by_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS issued_by_type VARCHAR(30) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS issued_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS customer_signed_by_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS customer_signed_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_copy_data TEXT NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_copy_mime VARCHAR(50) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_copy_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_uploaded_by_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS signed_uploaded_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS billing_status VARCHAR(40) NOT NULL DEFAULT 'NOT_READY';
+ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_proforma_source_job_card ON proforma_invoices(source_job_card_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_source_job_card ON invoices(source_job_card_id);
+CREATE INDEX IF NOT EXISTS idx_job_cards_billing_status ON digital_job_cards(customer_id, billing_status, completed_at DESC);

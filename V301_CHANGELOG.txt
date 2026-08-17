@@ -1,0 +1,31 @@
+BELM Portal V301 - Customer Service Job Card + Billing Sync
+
+Operational flow
+- An official customer Service Request linked to a machine automatically creates/uses one Digital Job Card.
+- The Job Card records Issued By / Issued At and follows assignment to the same technician as the Service Request.
+- Duplicate manual Job Card generation is blocked when the customer-issued Job Card already exists.
+- Job Card PDF includes issuer, technician, customer sign-off, billing state and signature lines.
+
+Customer sign-off
+- After repair/workshop completion, BELM can upload the customer-signed Job Card (PDF/JPG/PNG/WebP, max 5 MB).
+- Signed copy is viewable/downloadable by authorized BELM/customer users.
+- Signed upload marks the Job Card READY FOR PROCUREMENT/BILLING.
+
+Procurement / Billing
+- From the completed signed Job Card, BELM can prepare a linked Proforma or Invoice.
+- Customer Procurement displays the service Job Card, signed-copy state, linked Proforma, linked Invoice, balance and payment state.
+- Customer can download sent Proforma and linked Invoice PDF.
+- Invoice status indicators: yellow OUTSTANDING, green PAID.
+- BELM Billing uses matching outstanding/paid indicators.
+
+Synchronization
+- Proforma and Invoice records keep source_job_card_id.
+- Invoice create/edit/status/payment updates the Job Card billing state.
+- Receipt-based invoice payments also update the linked Job Card in the same transaction.
+- Deleted linked invoices/proformas reset the Job Card billing state when appropriate.
+- Customer and BELM read the same invoice/payment records, preventing duplicate debt ledgers.
+
+Preserved
+- V299 rolling-session stability.
+- V300 check-up/report button colors and night-friendly styling.
+- Previous Procurement, privacy, watermark, communication and performance changes.

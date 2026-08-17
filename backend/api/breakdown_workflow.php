@@ -167,6 +167,18 @@ function bw_ensure_case_from_report(string $reportId, array $ctx): ?string {
     return $caseId;
 }
 
+function bw_signed_copy_upload(string $dataUrl, string $name): array {
+    $dataUrl = trim($dataUrl);
+    if (!preg_match('#^data:(application/pdf|image/jpeg|image/png|image/webp);base64,(.+)$#s', $dataUrl, $m)) {
+        json_error('Signed Job Card must be a PDF, JPG, PNG or WebP file.', 422);
+    }
+    $binary = base64_decode($m[2], true);
+    if ($binary === false) json_error('Signed Job Card file is damaged.', 422);
+    if (strlen($binary) > 5 * 1024 * 1024) json_error('Signed Job Card is too large (max 5MB).', 422);
+    $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '-', trim($name)) ?: 'signed-job-card';
+    return [base64_encode($binary), $m[1], $safeName];
+}
+
 function bw_case_view(array $row): array {
     $stage = (string)$row['current_stage'];
     $meta = BREAKDOWN_STAGE_META[$stage] ?? ['slaHours'=>0];
@@ -615,6 +627,8 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Machine Type', $job['machine_type']??''],
         ['Serial / Reg', $job['serial_number'] ?: ($job['reg_number'] ?: '-')],
         ['Status', $job['status']],
+        ['Issued By', $job['issued_by_name'] ?: ($job['generated_by_name'] ?: $job['customer_name'])],
+        ['Issued At', display_date_billing($job['issued_at'] ?: $job['created_at'])],
         ['Technician', $job['technician_name'] ?: 'Unassigned'],
         ['Assignment', !empty($job['technician_id']) && !empty($job['technician_home_customer_id']) && (string)$job['technician_home_customer_id'] !== (string)$job['customer_id']
             ? 'TEMPORARY OVERRIDE - Home: '.($job['technician_home_customer_name'] ?: 'Other customer')
@@ -627,15 +641,68 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Repeat / Rework', !empty($job['repeat_issue']) ? 'YES' : 'NO'],
         ['Started', display_date_billing($job['started_at'])],
         ['Completed', display_date_billing($job['completed_at'])],
+        ['Customer Sign-Off', !empty($job['signed_copy_data']) ? 'SIGNED COPY UPLOADED - '.($job['customer_signed_by_name'] ?: 'Customer') : 'WAITING CUSTOMER SIGNATURE'],
+        ['Billing / Procurement', $job['billing_status'] ?: 'NOT_READY'],
         ['', ''],
         ['Technician Signature', '_________________________  Date: ______________'],
         ['Customer / Supervisor Signature', '_________________________  Date: ______________'],
+        ['Issued By', ($job['issued_by_name'] ?: ($job['generated_by_name'] ?: $job['customer_name'])) . '  Date: ' . display_date_billing($job['issued_at'] ?: $job['created_at'])],
     ];
     output_table_pdf('BELM-'.$job['job_card_no'].'.pdf','DIGITAL JOB CARD',[
         'Generated: '.date('d/m/Y H:i'),
         'Breakdown process record - BELM Operations Portal',
         'Print, sign, and keep this copy for office records.',
     ],$rows);
+}
+
+if ($method === 'PUT' && $action === 'signed-job-card' && $id !== '') {
+    if ($ctx['kind'] !== 'belm' || !empty($ctx['isTechnician'])) {
+        json_error('BELM Workshop / Administration must upload the customer-signed Job Card.', 403);
+    }
+    $stmt=db()->prepare('SELECT * FROM digital_job_cards WHERE id=?');
+    $stmt->execute([$id]);
+    $job=$stmt->fetch();
+    if(!$job) json_error('Job Card not found.',404);
+    $case=bw_case_access($ctx,(string)$job['case_id']);
+    if (($case['source_type'] ?? '') !== 'SERVICE_REQUEST') {
+        json_error('Customer signed-copy upload is used for BELM Service Request Job Cards.', 422);
+    }
+    if (strtoupper((string)$job['status']) !== 'COMPLETED') {
+        json_error('Complete the Technician Job Card before uploading the customer-signed copy.', 409);
+    }
+    $b=body();
+    $signedBy=trim((string)($b['signedByName']??''));
+    $fileData=trim((string)($b['fileData']??''));
+    $fileName=trim((string)($b['fileName']??''));
+    if($signedBy==='') json_error('Enter the customer / supervisor name who signed the Job Card.');
+    if($fileData==='') json_error('Choose the signed Job Card PDF or photo.');
+    [$copyData,$copyMime,$copyName]=bw_signed_copy_upload($fileData,$fileName);
+    db()->prepare(
+        "UPDATE digital_job_cards SET customer_signed_by_name=?,customer_signed_at=NOW(),signed_copy_data=?,signed_copy_mime=?,signed_copy_name=?,signed_uploaded_by_name=?,signed_uploaded_at=NOW(),billing_status='READY_FOR_PROCUREMENT',updated_at=NOW() WHERE id=?"
+    )->execute([$signedBy,$copyData,$copyMime,$copyName,$ctx['actorName'],$id]);
+    bw_log((string)$job['case_id'],'COMPLETED','Procurement','Customer-signed Job Card uploaded - ready for Proforma / Invoice','Signed by '.$signedBy.'; uploaded by '.$ctx['actorName'],$ctx);
+    try {
+        customer_send_team_alert((string)$job['customer_id'],['machine-expenses'], 'SIGNED JOB CARD READY FOR PROCUREMENT - '.$job['job_card_no'],
+            "Job Card {$job['job_card_no']} is complete and the customer-signed copy has been uploaded. Procurement can now follow Proforma / Invoice status.", true);
+    } catch(Throwable $ignored) {}
+    json_out(['ok'=>true,'billingStatus'=>'READY_FOR_PROCUREMENT','message'=>'Signed Job Card uploaded. Procurement / Billing follow-up is now active.']);
+}
+
+if ($method === 'GET' && $action === 'signed-job-card-file' && $id !== '') {
+    $stmt=db()->prepare('SELECT id,case_id,job_card_no,signed_copy_data,signed_copy_mime,signed_copy_name FROM digital_job_cards WHERE id=?');
+    $stmt->execute([$id]);
+    $job=$stmt->fetch();
+    if(!$job) json_error('Job Card not found.',404);
+    bw_case_access($ctx,(string)$job['case_id']);
+    if(empty($job['signed_copy_data'])) json_error('Signed Job Card has not been uploaded yet.',404);
+    $binary=base64_decode((string)$job['signed_copy_data'],true);
+    if($binary===false) json_error('Signed Job Card file is damaged.',500);
+    $mime=in_array((string)$job['signed_copy_mime'],['application/pdf','image/jpeg','image/png','image/webp'],true)?(string)$job['signed_copy_mime']:'application/pdf';
+    $name=preg_replace('/[^A-Za-z0-9._-]+/','-',(string)($job['signed_copy_name']?:('Signed-'.$job['job_card_no'].'.pdf')));
+    header('Content-Type: '.$mime);
+    header('Content-Length: '.strlen($binary));
+    header('Content-Disposition: '.(!empty($_GET['download'])?'attachment':'inline').'; filename="'.$name.'"');
+    echo $binary; exit;
 }
 
 if ($method === 'GET' && $action === 'case' && $id !== '') {
@@ -650,6 +717,8 @@ if ($method === 'GET' && $action === 'case' && $id !== '') {
     foreach($jobRows as &$jobRow){
         $jobRow['temporary_override']=!empty($jobRow['technician_id']) && !empty($jobRow['technician_home_customer_id'])
             && (string)$jobRow['technician_home_customer_id'] !== (string)$jobRow['customer_id'];
+        $jobRow['has_signed_copy']=!empty($jobRow['signed_copy_data']);
+        unset($jobRow['signed_copy_data']);
     }
     unset($jobRow);
     json_out(['case'=>bw_case_view($case),'events'=>$events->fetchAll(),'spares'=>$spares->fetchAll(),'jobCards'=>$jobRows]);
@@ -745,7 +814,7 @@ if ($method === 'POST' && $action === 'job-card') {
     }
     $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
     $jobId=uuid(); $title=trim((string)($b['title']??$case['title']));
-    db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$ctx['actorName']]);
+    db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,?,?,NOW(),NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind'])]);
     bw_set_stage($caseId,'DIAGNOSIS',null,$ctx,'Digital Job Card '.$num.' generated');
     if ($temporaryOverride && $techId!=='') {
         bw_log($caseId,'DIAGNOSIS','Technician','Temporary Technician Override - '.$techName,

@@ -57,6 +57,9 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'breakdown_case_events',
             'breakdown_spare_requests',
             'digital_job_cards',
+            'invoices',
+            'payments',
+            'proforma_invoices',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -65,6 +68,23 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             $tableStatement->execute(['public.' . $table]);
             $tableChecks[$table] = (bool)$tableStatement->fetchColumn();
             if (!$tableChecks[$table]) $schemaReady = false;
+        }
+        $requiredColumns = [
+            ['digital_job_cards', 'issued_by_name'],
+            ['digital_job_cards', 'signed_copy_data'],
+            ['digital_job_cards', 'billing_status'],
+            ['invoices', 'source_job_card_id'],
+            ['proforma_invoices', 'source_job_card_id'],
+        ];
+        $columnChecks = [];
+        $columnStatement = db()->prepare(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND column_name=?)"
+        );
+        foreach ($requiredColumns as [$table, $column]) {
+            $columnStatement->execute([$table, $column]);
+            $key = $table . '.' . $column;
+            $columnChecks[$key] = (bool)$columnStatement->fetchColumn();
+            if (!$columnChecks[$key]) $schemaReady = false;
         }
 
         $adminChecks = [
@@ -80,13 +100,13 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
                         COUNT(*) OVER () AS matching_accounts
                  FROM users u
                  LEFT JOIN roles r ON r.id = u.role_id
-                 WHERE LOWER(u.email) = LOWER(?)
+                 WHERE u.id = ?
                  ORDER BY
                    CASE WHEN u.deleted_at IS NULL AND u.is_active = 1 THEN 0 ELSE 1 END,
                    u.created_at ASC
                  LIMIT 1"
             );
-            $stmt->execute(['admin@belmgeneraltech.co.tz']);
+            $stmt->execute(['00000000-0000-4000-8000-000000000003']);
             $admin = $stmt->fetch();
             if ($admin) {
                 $hash = (string)($admin['password_hash'] ?? '');
@@ -107,16 +127,17 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '24-procurement-first-spare-workflow',
+            'schemaVersion' => '301-customer-job-billing',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
+            'columns' => $columnChecks,
             'adminReady' => $adminReady,
             'adminChecks' => $adminChecks,
             'loginEndpoints' => [
                 'staff' => '/api/auth/login',
                 'customer' => '/api/auth/customer-login',
             ],
-        ]);
+        ], $schemaReady ? 200 : 503);
     } catch (Throwable $e) {
         json_out([
             'ok' => false,

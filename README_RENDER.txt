@@ -145,16 +145,15 @@ hata kama hosting environment haitumii nested .htaccess rewrite.
 
 LOGIN YA KWANZA
 ---------------
-Email:
-  admin@belmgeneraltech.co.tz
+Email ya seeded Super Admin:
+  info@belmgeneral.co.tz
 
-Temporary password:
-  ChangeMe123!
+Kabla ya fresh/default-password deploy, weka Render secret:
+  INITIAL_ADMIN_PASSWORD = password yako salama (angalau characters 12)
 
-Default delete PIN:
-  1234
-
-Badilisha password na PIN baada ya kuingia.
+Hakuna public/default Admin password inayoruhusiwa na V302 migration.
+Kwa database iliyopo yenye password iliyokwisha badilishwa, password hiyo inabaki.
+Full database reset pia inahifadhi Admin email/password na edit/delete PIN zilizotumika kabla ya reset.
 
 
 ROLE LOGIN & ADMIN APPROVAL

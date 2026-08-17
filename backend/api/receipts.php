@@ -207,7 +207,7 @@ if ($method === 'POST' && !$action) {
                 $paymentReference !== '' ? $paymentReference : ('Receipt ' . $receiptNo), $paidAt,
             ]);
 
-            $stmt = $pdo->prepare('SELECT total, due_date, status FROM invoices WHERE id = ? FOR UPDATE');
+            $stmt = $pdo->prepare('SELECT total, due_date, status, source_job_card_id FROM invoices WHERE id = ? FOR UPDATE');
             $stmt->execute([$invoiceId]);
             $invoiceRow = $stmt->fetch();
             if ($invoiceRow && $invoiceRow['status'] !== 'CANCELLED') {
@@ -216,6 +216,14 @@ if ($method === 'POST' && !$action) {
                 $totalPaid = (float)$stmt->fetchColumn();
                 $newStatus = calculated_invoice_status((float)$invoiceRow['total'], $totalPaid, $invoiceRow['due_date']);
                 $pdo->prepare('UPDATE invoices SET status = ? WHERE id = ?')->execute([$newStatus, $invoiceId]);
+                // V301: Receipts are one of BELM's payment entry points. Keep the
+                // service Job Card billing state in the same transaction so the
+                // Customer Procurement view and BELM Job Card never disagree.
+                if (!empty($invoiceRow['source_job_card_id'])) {
+                    $jobBillingStatus = $newStatus === 'PAID' ? 'PAID' : 'INVOICE_OUTSTANDING';
+                    $pdo->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+                        ->execute([$jobBillingStatus, (string)$invoiceRow['source_job_card_id']]);
+                }
             }
         }
         $pdo->commit();

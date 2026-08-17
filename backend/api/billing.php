@@ -10,6 +10,18 @@ $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 $paymentId = $_GET['paymentId'] ?? null;
 
+function belm_sync_invoice_job_card(string $invoiceId): void {
+    try {
+        $stmt=db()->prepare('SELECT source_job_card_id,status FROM invoices WHERE id=? AND deleted_at IS NULL');
+        $stmt->execute([$invoiceId]);
+        $row=$stmt->fetch();
+        if(!$row || empty($row['source_job_card_id'])) return;
+        $status=strtoupper((string)$row['status']);
+        $jobStatus=$status==='PAID'?'PAID':($status==='CANCELLED'?'READY_FOR_PROCUREMENT':'INVOICE_OUTSTANDING');
+        db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')->execute([$jobStatus,(string)$row['source_job_card_id']]);
+    } catch(Throwable $ignored) {}
+}
+
 
 // V212: Billing-only staff need a small, read-only lookup of customers and
 // inventory items to prepare invoices/proformas. Do NOT make Billing depend on
@@ -200,6 +212,7 @@ function validate_invoice_input(array $payload): array {
     if (!is_array($items) || count($items) === 0) json_error('Add at least one invoice item.');
     $customerId = trim((string)($payload['customerId'] ?? ''));
     $machineId = trim((string)($payload['machineId'] ?? ''));
+    $sourceJobCardId = trim((string)($payload['sourceJobCardId'] ?? ''));
     $stmt = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
     $stmt->execute([$customerId]);
     if (!$stmt->fetch()) json_error('Select an active customer.', 422);
@@ -210,6 +223,13 @@ function validate_invoice_input(array $payload): array {
         );
         $stmt->execute([$machineId, $customerId]);
         if (!$stmt->fetch()) json_error('Selected machine does not belong to this customer.', 422);
+    }
+    if ($sourceJobCardId !== '') {
+        $jobCheck=db()->prepare('SELECT machine_id,billing_status FROM digital_job_cards WHERE id=? AND customer_id=?');
+        $jobCheck->execute([$sourceJobCardId,$customerId]);
+        $sourceJob=$jobCheck->fetch();
+        if(!$sourceJob) json_error('Source Job Card was not found for this customer.',422);
+        if($machineId==='' && !empty($sourceJob['machine_id'])) $machineId=(string)$sourceJob['machine_id'];
     }
     $normalizedItems = [];
     $subtotal = 0.0;
@@ -250,6 +270,7 @@ function validate_invoice_input(array $payload): array {
     return [
         'customerId' => $customerId,
         'machineId' => $machineId !== '' ? $machineId : null,
+        'sourceJobCardId' => $sourceJobCardId !== '' ? $sourceJobCardId : null,
         'dueDate' => $dueDate !== '' ? $dueDate : null,
         'notice' => $notice !== '' ? $notice : null,
         'paymentTerms' => $paymentTerms !== '' ? $paymentTerms : null,
@@ -316,11 +337,12 @@ if ($method === 'POST' && !$action) {
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->prepare("INSERT INTO invoices (id, customer_id, machine_id, invoice_no, subtotal, tax, total, status, due_date, notice, payment_terms, created_at) VALUES (?,?,?,?,?,?,?,'UNPAID',?,?,?,NOW())")
+        $pdo->prepare("INSERT INTO invoices (id, customer_id, machine_id, source_job_card_id, invoice_no, subtotal, tax, total, status, due_date, notice, payment_terms, created_at) VALUES (?,?,?,?,?,?,?,?,'UNPAID',?,?,?,NOW())")
             ->execute([
                 $newId,
                 $invoice['customerId'],
                 $invoice['machineId'],
+                $invoice['sourceJobCardId'],
                 $invoiceNo,
                 $invoice['subtotal'],
                 $invoice['tax'],
@@ -350,6 +372,7 @@ if ($method === 'POST' && !$action) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    belm_sync_invoice_job_card($newId);
     log_activity($user, 'invoice-created', 'invoice', $newId, ['invoiceNo' => $invoiceNo, 'total' => $invoice['total']]);
     json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
 }
@@ -386,12 +409,13 @@ if ($method === 'PUT' && !$action) {
                 : calculated_invoice_status($invoice['total'], $paid, $invoice['dueDate']);
             $pdo->prepare(
                 'UPDATE invoices
-                 SET customer_id=?, machine_id=?, subtotal=?, tax=?, total=?,
+                 SET customer_id=?, machine_id=?, source_job_card_id=?, subtotal=?, tax=?, total=?,
                      status=?, due_date=?, notice=?, payment_terms=?
                  WHERE id=? AND deleted_at IS NULL'
             )->execute([
                 $invoice['customerId'],
                 $invoice['machineId'],
+                $invoice['sourceJobCardId'],
                 $invoice['subtotal'],
                 $invoice['tax'],
                 $invoice['total'],
@@ -423,6 +447,7 @@ if ($method === 'PUT' && !$action) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             throw $error;
         }
+        belm_sync_invoice_job_card((string)$id);
         log_activity($user, 'invoice-edited', 'invoice', $id, ['status' => $status]);
         json_out(['ok' => true, 'status' => $status]);
     }
@@ -445,18 +470,23 @@ if ($method === 'PUT' && !$action) {
     $stmt = db()->prepare('UPDATE invoices SET status=?, due_date=?, machine_id=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([$status, $b['dueDate'] ?? null, $machineId !== '' ? $machineId : null, $id]);
     if ($stmt->rowCount() === 0) json_error('Invoice not found.', 404);
+    belm_sync_invoice_job_card((string)$id);
     log_activity($user, 'invoice-status-changed', 'invoice', $id, ['status' => $status]);
     json_out(['ok' => true]);
 }
 
 if ($method === 'DELETE' && !$action) {
-    $stmt = db()->prepare('SELECT invoice_no FROM invoices WHERE id = ?');
+    $stmt = db()->prepare('SELECT invoice_no,source_job_card_id FROM invoices WHERE id = ?');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
     $reason = require_delete_confirmation($user, body());
     send_to_trash('invoice', $id, $row['invoice_no'], $user['id'], $reason);
     soft_delete('invoices', $id);
+    if (!empty($row['source_job_card_id'])) {
+        db()->prepare("UPDATE digital_job_cards SET billing_status='READY_FOR_PROCUREMENT',updated_at=NOW() WHERE id=?")
+            ->execute([(string)$row['source_job_card_id']]);
+    }
     json_out(null, 204);
 }
 
@@ -527,6 +557,7 @@ if ($method === 'PUT' && $action === 'payment') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    belm_sync_invoice_job_card((string)$id);
     json_out(['ok' => true, 'status' => $status]);
 }
 
@@ -569,6 +600,7 @@ if ($method === 'POST' && $action === 'payment') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    belm_sync_invoice_job_card((string)$id);
     log_activity($user, 'payment-recorded', 'invoice', $id, ['amount' => $amount]);
     json_out(['ok' => true], 201);
 }

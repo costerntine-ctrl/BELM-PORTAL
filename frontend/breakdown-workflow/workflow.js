@@ -60,19 +60,85 @@
 
   async function openCase(id){try{selected=await api(`/case/${encodeURIComponent(id)}`);renderDetail()}catch(x){show(x.message,true)}}
   function spareActions(s){if(s.procurementRequestId||s.procurement_request_id)return `<span class="pill yellow">Managed in Procurement</span>`;if(s.status==='WAITING_BOSS_APPROVAL'&&isOwner)return `<button class="approve" data-approve="${s.id}">Administration Approve</button><button class="reject" data-reject="${s.id}">Reject</button>`;if(s.status==='APPROVED'&&isStore)return `<button class="approve" data-spare-status="${s.id}|STORE_AVAILABLE">Available in Store</button><button class="yellow" data-spare-status="${s.id}|PROCUREMENT_REQUIRED">Send Procurement</button>`;if(['PROCUREMENT_REQUIRED','ORDERED'].includes(s.status)&&isProcurement)return `<button class="yellow" data-spare-status="${s.id}|PI_WAITING_ACCOUNTS">Send to Accounts / PI</button><button class="blue" data-spare-status="${s.id}|ORDERED">Mark Ordered</button>`;if(s.status==='PI_WAITING_ACCOUNTS'&&isAccounts)return `<button class="blue" data-spare-status="${s.id}|ORDERED">Accounts cleared / Ordered</button>`;if(['STORE_AVAILABLE','ORDERED'].includes(s.status)&&(isStore||isWorkshop))return `<button class="approve" data-spare-status="${s.id}|PARTS_READY">Parts Ready for Repair</button>`;return ''}
+  function serviceJobCardActions(j,c){
+    const isService=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST';
+    const signed=Boolean(j.has_signed_copy);
+    const finished=String(j.status||'').toUpperCase()==='COMPLETED';
+    const caseClosed=String(c.status||'').toUpperCase()==='COMPLETED';
+    let html='';
+    if(isService && finished){
+      html+=`<span class="pill ${signed?'green':'yellow'}">${signed?'CUSTOMER SIGNED':'WAITING SIGNED COPY'}</span>`;
+      if(signed){
+        html+=`<button class="approve" data-signed-job-view="${esc(j.id)}">View Signed Copy</button><button class="blue" data-signed-job-download="${esc(j.id)}">Download Signed Copy</button>`;
+      }
+      if(isBelmAdmin && caseClosed){
+        html+=`<button class="yellow" data-signed-job-upload="${esc(j.id)}">${signed?'Replace Signed Copy':'Upload Customer-Signed Job Card'}</button><input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" data-signed-job-file="${esc(j.id)}" hidden>`;
+        if(signed){
+          html+=`<button class="approve" data-job-billing="proforma" data-job-id="${esc(j.id)}">Prepare Proforma</button><button class="blue" data-job-billing="invoice" data-job-id="${esc(j.id)}">Prepare Invoice</button>`;
+        }
+      }
+      if(source==='customer' && caseClosed && !signed){
+        html+=`<span class="job-signoff-note">Print/download the Job Card, sign it, then give the signed copy to BELM for upload.</span>`;
+      }
+    }
+    return html;
+  }
+
+  function renderJobCard(j,c){
+    return `<div class="job"><div class="job-head"><b>${esc(j.job_card_no)} - ${esc(j.title)}</b><span class="pill">${esc(j.status)}</span></div>
+      <small>Issued by: <b>${esc(j.issued_by_name||j.generated_by_name||c.customerName||'Customer')}</b> · ${fmtDate(j.issued_at||j.created_at)}</small>
+      <small>Technician: ${esc(j.technician_name||'Unassigned')} · Created ${fmtDate(j.created_at)}</small>
+      ${j.temporary_override?`<div class="job-override-badge">TEMPORARY OVERRIDE · Home: ${esc(j.technician_home_customer_name||'Other customer')}</div>`:''}
+      ${j.diagnosis?`<p><b>Diagnosis:</b> ${esc(j.diagnosis)}</p><p><b>Work done:</b> ${esc(j.work_done)}</p>${j.test_result?`<p><b>Test:</b> ${esc(j.test_result)}</p>`:''}`:''}
+      ${j.billing_status&&j.billing_status!=='NOT_READY'?`<div class="job-billing-status"><b>Procurement / Billing:</b> ${esc(String(j.billing_status).replaceAll('_',' '))}</div>`:''}
+      <div class="actions"><button class="blue" data-job-pdf="${esc(j.id)}">Download Job Card PDF</button>${isTechnician&&j.status!=='COMPLETED'?`<button class="blue" data-tech-report="${esc(j.id)}">Open / Save Job Report</button>`:''}${serviceJobCardActions(j,c)}</div></div>`;
+  }
+
+  async function signedJobFile(jobId, download=false){
+    try{
+      const r=await fetch(`/api/breakdown-workflow/signed-job-card-file/${encodeURIComponent(jobId)}${download?'?download=1':''}`,{headers:{Authorization:`Bearer ${token}`}});
+      if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Could not open signed Job Card.');}
+      const blob=await r.blob();const u=URL.createObjectURL(blob);
+      if(download){const a=document.createElement('a');a.href=u;a.download=`Signed-Job-Card-${jobId}`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1500);}
+      else{window.open(u,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(u),60000);}
+    }catch(x){show(x.message,true)}
+  }
+
+  async function uploadSignedJobCard(jobId,file){
+    if(!file)return;
+    if(file.size>5*1024*1024){show('Signed Job Card is too large (max 5MB).',true);return;}
+    if(!['application/pdf','image/jpeg','image/png','image/webp'].includes(file.type)){show('Use PDF, JPG, PNG or WebP for the signed Job Card.',true);return;}
+    const signedBy=prompt('Customer / supervisor name who signed this Job Card:','');
+    if(!signedBy||!signedBy.trim())return;
+    try{
+      const fileData=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Could not read signed Job Card.'));reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file)});
+      await api(`/signed-job-card/${encodeURIComponent(jobId)}`,{method:'PUT',body:JSON.stringify({signedByName:signedBy.trim(),fileName:file.name,fileData})});
+      show('Customer-signed Job Card uploaded. Procurement / Billing can now prepare Proforma or Invoice.');
+      await openCase(selected.case.id);
+    }catch(x){show(x.message,true)}
+  }
+
+  function openJobBilling(kind,jobId){
+    const job=(selected?.jobCards||[]).find(x=>String(x.id)===String(jobId));
+    const c=selected?.case;if(!job||!c)return;
+    const prefill={customerId:c.customerId,machineId:c.machineId,sourceJobCardId:job.id,description:`Service ${job.job_card_no} - ${job.title}`,qty:1,unitPrice:0};
+    sessionStorage.setItem(kind==='proforma'?'belm_prefill_proforma':'belm_prefill_invoice',JSON.stringify(prefill));
+    location.href=`/billing-manager/?tab=${kind==='proforma'?'proformas':'invoices'}`;
+  }
+
   function renderDetail(){
     const d=selected,c=d.case;
     const blockerText=c.blockerReason?esc(c.blockerReason):'No blocker reason recorded.';
     const focusClass=c.delayed?'delayed':c.status==='COMPLETED'?'complete':'';
     const focusTitle=c.status==='COMPLETED'?'COMPLETED - MACHINE RETURNED TO SERVICE':`${c.delayed?'DELAYED - ':''}${esc(c.department)} OWNS THE NEXT ACTION`;
     const sparesHtml=d.spares.length?d.spares.map(s=>{const spareName=s.spareName??s.spare_name??'Spare';const partNumber=s.partNumber??s.part_number??'';const requestedBy=s.requestedByName??s.requested_by_name??'-';const requestedAt=s.requestedAt??s.requested_at;const approvedBy=s.approvedByName??s.approved_by_name;const approvedAt=s.approvedAt??s.approved_at;return `<div class="spare"><div class="spare-head"><b>${esc(spareName)} x ${esc(s.quantity)} ${esc(s.unit)}</b><span class="pill">${esc(String(s.status||'').replaceAll('_',' '))}</span></div><small>${esc(partNumber||'No part number')} · Requested by ${esc(requestedBy)} · ${fmtDate(requestedAt)}</small>${approvedBy?`<div><small>Administration: ${esc(approvedBy)} · ${fmtDate(approvedAt)}</small></div>`:''}<div class="actions">${spareActions(s)}</div></div>`}).join(''):'<div class="empty">No spare request on this case.</div>';
-    const jobsHtml=d.jobCards.length?d.jobCards.map(j=>`<div class="job"><div class="job-head"><b>${esc(j.job_card_no)} - ${esc(j.title)}</b><span class="pill">${esc(j.status)}</span></div><small>Technician: ${esc(j.technician_name||'Unassigned')} · Created ${fmtDate(j.created_at)}</small>${j.temporary_override?`<div class="job-override-badge">TEMPORARY OVERRIDE · Home: ${esc(j.technician_home_customer_name||'Other customer')}</div>`:''}${j.diagnosis?`<p><b>Diagnosis:</b> ${esc(j.diagnosis)}</p><p><b>Work done:</b> ${esc(j.work_done)}</p>${j.test_result?`<p><b>Test:</b> ${esc(j.test_result)}</p>`:''}`:''}<div class="actions"><button class="blue" data-job-pdf="${j.id}">Download Job Card PDF</button>${isTechnician&&j.status!=='COMPLETED'?`<button class="blue" data-tech-report="${j.id}">Open / Save Job Report</button>`:''}</div></div>`).join(''):'<div class="empty">No Job Card yet.</div>';
+    const jobsHtml=d.jobCards.length?d.jobCards.map(j=>renderJobCard(j,c)).join(''):'<div class="empty">No Job Card yet.</div>';
     const timelineHtml=d.events.length?`<div class="timeline">${d.events.map(e=>`<div class="event"><b>${esc(e.action)} - ${esc(e.department)}</b><div>${esc(e.note||'')}</div><small>${esc(e.actor_name||'System')} · ${fmtDate(e.created_at)}</small></div>`).join('')}</div>`:'<div class="empty">No process event recorded.</div>';
     document.getElementById('caseDetail').innerHTML=`<div class="detail">
       <div class="detail-title-row"><div><h2>${esc(c.machineLabel)}</h2><div class="detail-sub">${esc(c.title)} · ${esc(c.machineType||'')} · ${esc(c.serialNumber||'No serial')} · <b>${esc(sourceLabel(c))}</b></div></div><span class="pill ${c.status==='COMPLETED'?'green':c.delayed?'red':'yellow'}">${esc(c.status)}</span></div>
       <div class="workflow-focus ${focusClass}"><div><span>CURRENT PROCESS OWNER</span><strong>${focusTitle}</strong><small>Waiting here: ${esc(duration(c.stageHours))}${c.delayed?` · SLA exceeded by ${esc(duration(c.delayHours))}`:''}</small></div><div class="workflow-focus-reason"><span>WHY / BLOCKER</span><b>${blockerText}</b></div></div>
       <div class="status-box"><div><span>Breakdown Time</span><b>${esc(duration(c.breakdownHours))}</b></div><div><span>Current Stage</span><b>${esc(c.stage.replaceAll('_',' '))}</b></div><div><span>Department</span><b>${esc(c.department)}</b></div><div><span>Waiting Here</span><b>${esc(duration(c.stageHours))}</b></div></div>
-      <div class="actions workflow-primary-actions">${isWorkshop&&c.status!=='COMPLETED'?'<button class="blue" id="generateJob">+ Digital Job Card</button>':''}${(isWorkshop||isTechnician)&&c.status!=='COMPLETED'?'<button class="yellow" id="requestSpare">Request Spare</button>':''}${isWorkshop&&c.stage==='TESTING'?'<button class="approve" id="completeCase">Test Passed - Return to Service</button>':''}</div>
+      <div class="actions workflow-primary-actions">${isWorkshop&&c.status!=='COMPLETED'&&d.jobCards.length===0?'<button class="blue" id="generateJob">+ Digital Job Card</button>':''}${(isWorkshop||isTechnician)&&c.status!=='COMPLETED'?'<button class="yellow" id="requestSpare">Request Spare</button>':''}${isWorkshop&&c.stage==='TESTING'?'<button class="approve" id="completeCase">Test Passed - Return to Service</button>':''}</div>
       <div class="workflow-tabs" role="tablist"><button type="button" class="active" data-workflow-tab="overview">Overview</button><button type="button" data-workflow-tab="jobs">Job Cards <span>${d.jobCards.length}</span></button><button type="button" data-workflow-tab="spares">Spares <span>${d.spares.length}</span></button><button type="button" data-workflow-tab="timeline">Timeline <span>${d.events.length}</span></button></div>
       <section class="workflow-tab-panel active" data-workflow-panel="overview"><div class="workflow-overview-grid"><div><span>Reported issue</span><b>${esc(c.description||c.title||'-')}</b></div><div><span>Next responsible team</span><b>${esc(c.department)}</b></div><div><span>Open Job Cards</span><b>${d.jobCards.filter(j=>j.status!=='COMPLETED').length}</b></div><div><span>Open Spare Requests</span><b>${d.spares.filter(s=>!['REJECTED','PARTS_READY'].includes(s.status)).length}</b></div></div></section>
       <section class="workflow-tab-panel" data-workflow-panel="jobs"><div class="section tab-section collapsible-section" data-collapsible-section="jobs"><div class="section-head"><h3>Digital Job Cards</h3><button type="button" class="section-toggle" data-collapse-panel="jobs" aria-expanded="true">Hide</button></div><div class="section-content" data-collapse-content="jobs">${jobsHtml}</div></div></section>
@@ -82,7 +148,35 @@
     wireDetail();
   }
 
-  function wireDetail(){document.querySelectorAll('[data-workflow-tab]').forEach(button=>button.addEventListener('click',()=>{document.querySelectorAll('[data-workflow-tab]').forEach(x=>x.classList.toggle('active',x===button));document.querySelectorAll('[data-workflow-panel]').forEach(panel=>panel.classList.toggle('active',panel.dataset.workflowPanel===button.dataset.workflowTab))}));document.querySelectorAll('[data-collapse-panel]').forEach(button=>button.addEventListener('click',()=>{const key=button.dataset.collapsePanel;const content=document.querySelector(`[data-collapse-content="${key}"]`);const section=document.querySelector(`[data-collapsible-section="${key}"]`);if(!content)return;const hidden=content.classList.toggle('hidden');if(section)section.classList.toggle('collapsed',hidden);button.textContent=hidden?'Show':'Hide';button.setAttribute('aria-expanded', hidden ? 'false' : 'true');}));document.getElementById('generateJob')?.addEventListener('click',openJob);document.getElementById('requestSpare')?.addEventListener('click',()=>{if(source==='customer'){location.href=`/customer-service-request/?machine=${encodeURIComponent(selected.case.machineId||selected.case.machine_id||machineFilter)}#procurement-spares`;return;}document.getElementById('spareCaseId').value=selected.case.id;document.getElementById('spareDialog').showModal()});document.getElementById('completeCase')?.addEventListener('click',async()=>{await api(`/stage/${selected.case.id}`,{method:'PUT',body:JSON.stringify({stage:'COMPLETED',note:'Workshop test passed; machine returned to service.'})});show('Machine returned to service.');await load();await openCase(selected.case.id)});document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.approve,true));document.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.reject,false));document.querySelectorAll('[data-spare-status]').forEach(b=>b.onclick=async()=>{const [id,status]=b.dataset.spareStatus.split('|');const note=prompt('Process note / reason (optional):')||'';try{await api(`/spare-status/${id}`,{method:'PUT',body:JSON.stringify({status,note})});await openCase(selected.case.id);await load()}catch(x){show(x.message,true)}});document.querySelectorAll('[data-tech-report]').forEach(b=>b.onclick=()=>{document.getElementById('techJobId').value=b.dataset.techReport;document.getElementById('techReportDialog').showModal()});document.querySelectorAll('[data-job-pdf]').forEach(b=>b.onclick=async()=>{try{const r=await fetch(`/api/breakdown-workflow/job-card-pdf/${encodeURIComponent(b.dataset.jobPdf)}`,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Could not prepare Job Card PDF.')}const blob=await r.blob();const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`BELM-Job-Card-${b.dataset.jobPdf}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}catch(x){show(x.message,true)}})}
+  function wireDetail(){
+    document.querySelectorAll('[data-workflow-tab]').forEach(button=>button.addEventListener('click',()=>{
+      document.querySelectorAll('[data-workflow-tab]').forEach(x=>x.classList.toggle('active',x===button));
+      document.querySelectorAll('[data-workflow-panel]').forEach(panel=>panel.classList.toggle('active',panel.dataset.workflowPanel===button.dataset.workflowTab));
+    }));
+    document.querySelectorAll('[data-collapse-panel]').forEach(button=>button.addEventListener('click',()=>{
+      const key=button.dataset.collapsePanel;const content=document.querySelector(`[data-collapse-content="${key}"]`);const section=document.querySelector(`[data-collapsible-section="${key}"]`);if(!content)return;
+      const hidden=content.classList.toggle('hidden');if(section)section.classList.toggle('collapsed',hidden);button.textContent=hidden?'Show':'Hide';button.setAttribute('aria-expanded',hidden?'false':'true');
+    }));
+    document.getElementById('generateJob')?.addEventListener('click',openJob);
+    document.getElementById('requestSpare')?.addEventListener('click',()=>{
+      if(source==='customer'){location.href=`/customer-service-request/?machine=${encodeURIComponent(selected.case.machineId||selected.case.machine_id||machineFilter)}#procurement-spares`;return;}
+      document.getElementById('spareCaseId').value=selected.case.id;document.getElementById('spareDialog').showModal();
+    });
+    document.getElementById('completeCase')?.addEventListener('click',async()=>{
+      await api(`/stage/${selected.case.id}`,{method:'PUT',body:JSON.stringify({stage:'COMPLETED',note:'Workshop test passed; machine returned to service. Customer signature is required on BELM Service Job Cards before billing follow-up.'})});
+      show('Machine returned to service. For BELM Service Jobs, collect the customer signature and upload the signed Job Card.');await load();await openCase(selected.case.id);
+    });
+    document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.approve,true));
+    document.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.reject,false));
+    document.querySelectorAll('[data-spare-status]').forEach(b=>b.onclick=async()=>{const [id,status]=b.dataset.spareStatus.split('|');const note=prompt('Process note / reason (optional):')||'';try{await api(`/spare-status/${id}`,{method:'PUT',body:JSON.stringify({status,note})});await openCase(selected.case.id);await load()}catch(x){show(x.message,true)}});
+    document.querySelectorAll('[data-tech-report]').forEach(b=>b.onclick=()=>{document.getElementById('techJobId').value=b.dataset.techReport;document.getElementById('techReportDialog').showModal()});
+    document.querySelectorAll('[data-job-pdf]').forEach(b=>b.onclick=async()=>{try{const r=await fetch(`/api/breakdown-workflow/job-card-pdf/${encodeURIComponent(b.dataset.jobPdf)}`,{headers:{Authorization:`Bearer ${token}`}});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||'Could not prepare Job Card PDF.')}const blob=await r.blob();const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=`BELM-Job-Card-${b.dataset.jobPdf}.pdf`;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)}catch(x){show(x.message,true)}});
+    document.querySelectorAll('[data-signed-job-view]').forEach(b=>b.onclick=()=>signedJobFile(b.dataset.signedJobView,false));
+    document.querySelectorAll('[data-signed-job-download]').forEach(b=>b.onclick=()=>signedJobFile(b.dataset.signedJobDownload,true));
+    document.querySelectorAll('[data-signed-job-upload]').forEach(b=>b.onclick=()=>document.querySelector(`[data-signed-job-file="${b.dataset.signedJobUpload}"]`)?.click());
+    document.querySelectorAll('[data-signed-job-file]').forEach(input=>input.onchange=()=>{const file=input.files?.[0];uploadSignedJobCard(input.dataset.signedJobFile,file);input.value='';});
+    document.querySelectorAll('[data-job-billing]').forEach(b=>b.onclick=()=>openJobBilling(b.dataset.jobBilling,b.dataset.jobId));
+  }
   async function loadJobTechnicians(showToast=false){
     const select=document.getElementById('jobTechnician');
     const status=document.getElementById('jobTechSyncStatus');

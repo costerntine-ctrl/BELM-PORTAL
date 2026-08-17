@@ -1580,17 +1580,75 @@ function belm_ensure_breakdown_case_from_service_request(string $requestId, ?str
     }
 }
 
+// V301 - an official machine Service Request IS the customer-issued Job Card.
+// It is created once, with the customer/requesting user recorded as Issued By.
+// BELM later assigns a Technician to this same Job Card instead of generating
+// a duplicate card in Workshop. Safe to call repeatedly.
+function belm_ensure_service_request_job_card(string $requestId, ?string $actorName = null): ?string {
+    try {
+        $stmt = db()->prepare(
+            "SELECT sr.id,sr.customer_id,sr.machine_id,sr.service_type,sr.description,sr.created_at,
+                    bc.id AS case_id,bc.created_by_name,c.name AS customer_name
+             FROM service_requests sr
+             JOIN customers c ON c.id=sr.customer_id
+             JOIN breakdown_cases bc ON bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
+             WHERE sr.id=? AND sr.machine_id IS NOT NULL"
+        );
+        $stmt->execute([$requestId]);
+        $row = $stmt->fetch();
+        if (!$row || empty($row['case_id'])) return null;
+
+        $find = db()->prepare('SELECT id FROM digital_job_cards WHERE case_id=? ORDER BY created_at ASC LIMIT 1');
+        $find->execute([(string)$row['case_id']]);
+        $existing = $find->fetchColumn();
+        $issuer = trim((string)($actorName ?: $row['created_by_name'] ?: $row['customer_name'] ?: 'Customer'));
+        if ($existing) {
+            db()->prepare(
+                "UPDATE digital_job_cards
+                 SET issued_by_name=COALESCE(NULLIF(issued_by_name,''),?),
+                     issued_by_type=COALESCE(NULLIF(issued_by_type,''),'CUSTOMER'),
+                     issued_at=COALESCE(issued_at,created_at),updated_at=NOW()
+                 WHERE id=?"
+            )->execute([$issuer,(string)$existing]);
+            return (string)$existing;
+        }
+
+        $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
+        $jobId=uuid();
+        $title=trim((string)($row['service_type'] ?: 'BELM Service Request'));
+        db()->prepare(
+            "INSERT INTO digital_job_cards
+             (id,case_id,customer_id,machine_id,job_card_no,title,fault_description,status,generated_by_name,
+              issued_by_name,issued_by_type,issued_at,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,'OPEN',?,?,'CUSTOMER',?,NOW(),NOW())"
+        )->execute([
+            $jobId,(string)$row['case_id'],(string)$row['customer_id'],(string)$row['machine_id'],$num,
+            $title,(string)$row['description'],$issuer,$issuer,$row['created_at'] ?: date('c')
+        ]);
+        db()->prepare(
+            'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
+             VALUES(?,?,?,?,?,?,?,?,NOW())'
+        )->execute([uuid(),(string)$row['case_id'],'WORKSHOP_REVIEW','Workshop','Customer-issued Job Card '.$num,'Issued by '.$issuer,'customer',$issuer]);
+        return $jobId;
+    } catch (Throwable $error) {
+        error_log('Service Request Job Card auto-create failed: ' . $error->getMessage());
+        return null;
+    }
+}
+
 // Keep the source request and Breakdown Process aligned without overriding
 // a more advanced Digital Job Card workflow. Assignment can advance a new
 // request to Diagnosis; In Progress can advance it to Repair; final request
 // states close the linked case. This routine is safe to call repeatedly.
 function belm_sync_breakdown_case_from_service_request(string $requestId, ?string $actorName = null): ?string {
     $caseId = belm_ensure_breakdown_case_from_service_request($requestId, $actorName);
+    $jobId = $caseId ? belm_ensure_service_request_job_card($requestId, $actorName) : null;
     try {
         $stmt = db()->prepare(
-            "SELECT sr.status,sr.assigned_to_id,bc.id AS case_id,bc.status AS case_status,bc.current_stage,bc.current_department,
+            "SELECT sr.status,sr.assigned_to_id,u.name AS assigned_to_name,bc.id AS case_id,bc.status AS case_status,bc.current_stage,bc.current_department,
                     EXISTS (SELECT 1 FROM digital_job_cards j WHERE j.case_id=bc.id) AS has_job_card
              FROM service_requests sr
+             LEFT JOIN users u ON u.id=sr.assigned_to_id
              LEFT JOIN breakdown_cases bc ON bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
              WHERE sr.id=?"
         );
@@ -1602,6 +1660,18 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         $actor = trim((string)($actorName ?: 'System Sync'));
         $stage = (string)$row['current_stage'];
         $caseStatus = (string)$row['case_status'];
+
+        // Keep the customer-issued Job Card and BELM Service Request assignment
+        // synchronized. This makes one operational record from request to repair.
+        if ($jobId && !empty($row['assigned_to_id'])) {
+            db()->prepare(
+                'UPDATE digital_job_cards SET technician_id=?,technician_name=?,updated_at=NOW() WHERE id=?'
+            )->execute([(string)$row['assigned_to_id'],(string)($row['assigned_to_name'] ?: 'Technician'),$jobId]);
+        } elseif ($jobId && empty($row['assigned_to_id'])) {
+            db()->prepare(
+                "UPDATE digital_job_cards SET technician_id=NULL,technician_name=NULL,updated_at=NOW() WHERE id=? AND status='OPEN'"
+            )->execute([$jobId]);
+        }
 
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
         if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && $stage === 'DIAGNOSIS' && empty($row['has_job_card'])) {

@@ -107,6 +107,7 @@ if ($method === 'POST') {
     $quoteValidity = trim((string)($b['quoteValidity'] ?? ''));
     $machineId = trim((string)($b['machineId'] ?? ''));
     $sourceSpareRequestId = trim((string)($b['sourceSpareRequestId'] ?? ''));
+    $sourceJobCardId = trim((string)($b['sourceJobCardId'] ?? ''));
 
     if (!is_array($items)) $items = [];
     proforma_validate_items($items);
@@ -138,6 +139,14 @@ if ($method === 'POST') {
         if ($machineId === '' && $requestMachine) $machineId = (string)$requestMachine;
     }
 
+    if ($sourceJobCardId !== '') {
+        $jobCheck=db()->prepare('SELECT machine_id FROM digital_job_cards WHERE id=? AND customer_id=?');
+        $jobCheck->execute([$sourceJobCardId,$customerId]);
+        $jobMachine=$jobCheck->fetchColumn();
+        if($jobMachine===false) json_error('Source Job Card was not found for this customer.',422);
+        if($machineId==='' && $jobMachine) $machineId=(string)$jobMachine;
+    }
+
     $subtotal = round(array_sum(array_map(fn($i) => (int)$i['qty'] * (float)$i['unitPrice'], $items)), 2);
     $discountAmount = $discountType === 'PERCENT' ? round($subtotal * ($discount / 100), 2) : $discount;
     if ($discountAmount > $subtotal) json_error('Discount cannot be greater than the subtotal.');
@@ -149,13 +158,14 @@ if ($method === 'POST') {
     try {
         $pdo->prepare(
             "INSERT INTO proforma_invoices
-             (id, customer_id, invoice_no, date, vat_mode, vat_rate, discount, discount_type, notice, payment_terms, delivery_time, quote_validity, machine_id, source_spare_request_id, delivery_status, created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',NOW())"
+             (id, customer_id, invoice_no, date, vat_mode, vat_rate, discount, discount_type, notice, payment_terms, delivery_time, quote_validity, machine_id, source_spare_request_id, source_job_card_id, delivery_status, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'DRAFT',NOW())"
         )->execute([
             $newId, $customerId, $invoiceNo, $date, $vatMode, $vatRate, $discount, $discountType,
             $notice !== '' ? $notice : null, $paymentTerms !== '' ? $paymentTerms : null,
             $deliveryTime !== '' ? $deliveryTime : null, $quoteValidity !== '' ? $quoteValidity : null,
             $machineId !== '' ? $machineId : null, $sourceSpareRequestId !== '' ? $sourceSpareRequestId : null,
+            $sourceJobCardId !== '' ? $sourceJobCardId : null,
         ]);
         $itemStmt = $pdo->prepare(
             'INSERT INTO proforma_invoice_items
@@ -174,6 +184,7 @@ if ($method === 'POST') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    if ($sourceJobCardId !== '') { try { db()->prepare("UPDATE digital_job_cards SET billing_status='PROFORMA_READY',updated_at=NOW() WHERE id=?")->execute([$sourceJobCardId]); } catch(Throwable $ignored) {} }
     log_activity($user, 'proforma-created', 'proforma', $newId, ['invoiceNo' => $invoiceNo]);
     json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
 }
@@ -221,6 +232,7 @@ if ($method === 'PUT' && $action === 'send') {
         "UPDATE service_due_alerts SET status = 'PI_SENT', reviewed_at = NOW(), updated_at = NOW()
          WHERE draft_proforma_id = ? AND status = 'REVIEW'"
     )->execute([$id]);
+    try { db()->prepare("UPDATE digital_job_cards SET billing_status='PROFORMA_SENT',updated_at=NOW() WHERE id=(SELECT source_job_card_id FROM proforma_invoices WHERE id=?) AND source_job_card_id IS NOT NULL")->execute([$id]); } catch(Throwable $ignored) {}
     log_activity($user, 'proforma-sent', 'proforma', $id, ['invoiceNo' => $proforma['invoice_no']]);
     $emailDelivered = (int)($delivery['sent'] ?? 0) > 0;
     json_out([
@@ -319,13 +331,21 @@ if ($method === 'PUT') {
 }
 
 if ($method === 'DELETE') {
-    $stmt = db()->prepare('SELECT invoice_no FROM proforma_invoices WHERE id = ?');
+    $stmt = db()->prepare('SELECT invoice_no,source_job_card_id FROM proforma_invoices WHERE id = ?');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
     $reason = require_delete_confirmation($user, body());
     send_to_trash('proformaInvoice', $id, $row['invoice_no'], $user['id'], $reason);
     soft_delete('proforma_invoices', $id);
+    if (!empty($row['source_job_card_id'])) {
+        $invoiceCheck=db()->prepare('SELECT 1 FROM invoices WHERE source_job_card_id=? AND deleted_at IS NULL LIMIT 1');
+        $invoiceCheck->execute([(string)$row['source_job_card_id']]);
+        if (!$invoiceCheck->fetchColumn()) {
+            db()->prepare("UPDATE digital_job_cards SET billing_status='READY_FOR_PROCUREMENT',updated_at=NOW() WHERE id=?")
+                ->execute([(string)$row['source_job_card_id']]);
+        }
+    }
     json_out(null, 204);
 }
 

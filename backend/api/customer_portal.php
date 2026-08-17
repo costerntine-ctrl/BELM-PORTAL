@@ -3,6 +3,7 @@ require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/mailer.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
 require_once __DIR__ . '/proforma_pdf_helper.php';
+require_once __DIR__ . '/invoice_pdf_helper.php';
 require_once __DIR__ . '/table_pdf_helper.php';
 
 $customer = require_customer_auth();
@@ -306,6 +307,36 @@ function customer_procurement_request_rows(string $customerId, string $machineId
     );
     $stmt->execute([$customerId, $machineId]);
     return $stmt->fetchAll();
+}
+
+function customer_service_job_billing_rows(string $customerId, string $machineId): array {
+    $stmt=db()->prepare(
+        "SELECT j.id,j.job_card_no,j.title,j.status,j.issued_by_name,j.issued_at,j.customer_signed_by_name,j.customer_signed_at,
+                j.signed_copy_name,j.billing_status,j.completed_at,
+                p.id AS proforma_id,p.invoice_no AS proforma_no,p.delivery_status AS proforma_status,
+                i.id AS invoice_id,i.invoice_no AS invoice_no,i.status AS invoice_status,i.total AS invoice_total,i.due_date,
+                COALESCE(pay.paid_amount,0) AS paid_amount,
+                GREATEST(0,COALESCE(i.total,0)-COALESCE(pay.paid_amount,0)) AS balance
+         FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id AND bc.source_type='SERVICE_REQUEST'
+         LEFT JOIN LATERAL (
+             SELECT pp.id,pp.invoice_no,pp.delivery_status FROM proforma_invoices pp
+             WHERE pp.source_job_card_id=j.id AND pp.deleted_at IS NULL ORDER BY pp.created_at DESC LIMIT 1
+         ) p ON TRUE
+         LEFT JOIN LATERAL (
+             SELECT ii.id,ii.invoice_no,ii.status,ii.total,ii.due_date FROM invoices ii
+             WHERE ii.source_job_card_id=j.id AND ii.deleted_at IS NULL ORDER BY ii.created_at DESC LIMIT 1
+         ) i ON TRUE
+         LEFT JOIN LATERAL (
+             SELECT COALESCE(SUM(py.amount),0) AS paid_amount FROM payments py WHERE py.invoice_id=i.id
+         ) pay ON TRUE
+         WHERE j.customer_id=? AND j.machine_id=?
+         ORDER BY COALESCE(j.completed_at,j.created_at) DESC LIMIT 100"
+    );
+    $stmt->execute([$customerId,$machineId]);
+    $rows=$stmt->fetchAll();
+    foreach($rows as &$row){$row['hasSignedCopy']=!empty($row['signed_copy_name']);}
+    unset($row);return $rows;
 }
 
 function customer_procurement_case_for_machine(array $customer, array $machine, string $batchId): string {
@@ -2759,6 +2790,7 @@ if ($sub === 'machine-expenses' && $sub2) {
             'canApproveStoreIssue' => customer_can_approve_store_issue($customer),
             'procurementRequests' => customer_procurement_request_rows((string)$customer['id'], $machineId),
             'canManageProcurement' => customer_can_manage_procurement($customer),
+            'serviceJobBilling' => customer_service_job_billing_rows((string)$customer['id'], $machineId),
             'expenses' => $expenses,
         ]);
     }
@@ -4672,6 +4704,22 @@ if ($sub === 'communications' && $method === 'GET' && $sub2 === '') {
         return $row;
     }, $stmt->fetchAll());
     json_out($rows);
+}
+
+// ---- BELM invoices synchronized to the Customer Procurement/Billing view ---
+if ($sub === 'invoices' && $method === 'GET' && $sub2 === '') {
+    $stmt=db()->prepare(
+        "SELECT i.id,i.invoice_no,i.machine_id,i.source_job_card_id,i.total,i.status,i.due_date,i.created_at,
+                COALESCE((SELECT SUM(p.amount) FROM payments p WHERE p.invoice_id=i.id),0) AS paid_amount
+         FROM invoices i WHERE i.customer_id=? AND i.deleted_at IS NULL ORDER BY i.created_at DESC"
+    );
+    $stmt->execute([$customer['id']]);$rows=$stmt->fetchAll();
+    foreach($rows as &$row){$row['balance']=max(0,(float)$row['total']-(float)$row['paid_amount']);$row['downloadUrl']='/api/customer-portal/invoices/'.$row['id'].'/download';}
+    unset($row);json_out($rows);
+}
+
+if ($sub === 'invoices' && $sub2 && $sub3 === 'download' && $method === 'GET') {
+    belm_output_invoice_document_pdf((string)$sub2,(string)$customer['id']);
 }
 
 // ---- Proformas published by BELM to this customer --------------------------

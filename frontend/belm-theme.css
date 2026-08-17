@@ -4378,3 +4378,259 @@ html[data-theme="dark"] .belm-machine-update-progress { background: #26384d; }
 @media (prefers-reduced-motion: reduce) {
   .belm-machine-update-slide { animation: none; }
 }
+
+
+/* V300 - Customer checkup/report button colors + night-comfort styling */
+.belm-checked-report-modal {
+  background: linear-gradient(180deg, #dfe7f2 0%, #edf3f8 100%);
+}
+.belm-checked-report-card {
+  background: #edf3f8;
+}
+.belm-customer-checkup-card .belm-customer-checkup-body {
+  background: transparent;
+}
+.belm-customer-checkup-tabs {
+  background: #e9f0f7;
+  border-bottom-color: #d5dee9;
+}
+.belm-customer-checkup-tabs button {
+  box-shadow: 0 3px 10px rgba(15, 23, 42, 0.06);
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
+}
+.belm-customer-checkup-tabs button:hover,
+.belm-customer-checkup-pdf-actions button:hover,
+.belm-customer-report-actions button:hover,
+.belm-report-date-filter [data-jc-apply]:hover,
+.belm-report-date-filter [data-dr-apply]:hover,
+.belm-report-date-download:hover {
+  transform: translateY(-1px);
+  filter: brightness(.97);
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="daily"] {
+  border-color: #60a5fa;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="daily"].active {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: #fff;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="reports"] {
+  border-color: #6ee7b7;
+  background: #ecfdf5;
+  color: #047857;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="reports"].active {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="jobcards"] {
+  border-color: #374151;
+  background: #1f2937;
+  color: #fff;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="jobcards"].active {
+  border-color: #111827;
+  background: #111827;
+  color: #fff;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="dailyreport"] {
+  border-color: #facc15;
+  background: #fef3c7;
+  color: #854d0e;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="dailyreport"].active {
+  border-color: #facc15;
+  background: #facc15;
+  color: #111827;
+}
+.belm-checkup-display-strip,
+.belm-report-date-filter,
+.belm-daily-checklist-summary > div,
+.belm-daily-checklist-item,
+.belm-customer-checkup-report-row,
+.belm-checkup-display-stat,
+.belm-customer-checkup-toolbar select {
+  background: #f8fbff;
+  border-color: #d6e1ec;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+.belm-customer-checkup-pdf-actions button,
+.belm-customer-report-actions button,
+.belm-report-date-filter [data-jc-apply],
+.belm-report-date-filter [data-dr-apply],
+.belm-report-date-download {
+  min-height: 36px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+}
+.belm-customer-checkup-pdf-actions [data-template-pdf="view"],
+.belm-customer-report-actions [data-report-pdf="view"] {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: #fff;
+}
+.belm-customer-checkup-pdf-actions [data-template-pdf="download"],
+.belm-customer-report-actions [data-report-pdf="download"],
+.belm-report-date-download {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+.belm-customer-checkup-pdf-actions [data-template-pdf="print"],
+.belm-customer-report-actions [data-report-pdf="print"] {
+  border-color: #111827;
+  background: #111827;
+  color: #fff;
+}
+.belm-customer-checkup-pdf-actions [data-view-today-report],
+.belm-customer-report-actions [data-report-view] {
+  border-color: #facc15;
+  background: #facc15;
+  color: #111827;
+}
+.belm-report-date-filter [data-jc-apply],
+.belm-report-date-filter [data-dr-apply] {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: #fff;
+}
+.belm-customer-checkup-report-row > div:first-child strong,
+.belm-checkup-display-stat strong,
+.belm-daily-checklist-summary strong,
+.belm-daily-checklist-item b {
+  color: #122033;
+}
+.belm-customer-checkup-report-row > div:first-child span,
+.belm-customer-checkup-report-row > div:first-child small,
+.belm-daily-checklist-summary span,
+.belm-daily-checklist-item span,
+.belm-checkup-display-stat span,
+.belm-report-date-filter label {
+  color: #516378;
+}
+
+html.dark .belm-checked-report-modal,
+html[data-theme="dark"] .belm-checked-report-modal {
+  background: linear-gradient(180deg, #050b15 0%, #0b1423 100%);
+}
+html.dark .belm-checked-report-card,
+html[data-theme="dark"] .belm-checked-report-card,
+html.dark .belm-customer-checkup-body,
+html[data-theme="dark"] .belm-customer-checkup-body {
+  background: #0b1423;
+  color: #e5edf7;
+}
+html.dark .belm-customer-checkup-tabs,
+html[data-theme="dark"] .belm-customer-checkup-tabs {
+  background: #101b2d;
+  border-bottom-color: #243247;
+}
+html.dark .belm-checkup-display-strip,
+html[data-theme="dark"] .belm-checkup-display-strip,
+html.dark .belm-report-date-filter,
+html[data-theme="dark"] .belm-report-date-filter,
+html.dark .belm-daily-checklist-summary > div,
+html[data-theme="dark"] .belm-daily-checklist-summary > div,
+html.dark .belm-daily-checklist-item,
+html[data-theme="dark"] .belm-daily-checklist-item,
+html.dark .belm-customer-checkup-report-row,
+html[data-theme="dark"] .belm-customer-checkup-report-row,
+html.dark .belm-checkup-display-stat,
+html[data-theme="dark"] .belm-checkup-display-stat,
+html.dark .belm-customer-checkup-toolbar select,
+html[data-theme="dark"] .belm-customer-checkup-toolbar select {
+  background: #111c2f;
+  border-color: #26354a;
+  box-shadow: none;
+}
+html.dark .belm-checkup-display-thumb,
+html[data-theme="dark"] .belm-checkup-display-thumb,
+html.dark .belm-checkup-display-placeholder,
+html[data-theme="dark"] .belm-checkup-display-placeholder {
+  border-color: #334155;
+  background: #162338;
+}
+html.dark .belm-customer-checkup-report-row > div:first-child strong,
+html[data-theme="dark"] .belm-customer-checkup-report-row > div:first-child strong,
+html.dark .belm-checkup-display-stat strong,
+html[data-theme="dark"] .belm-checkup-display-stat strong,
+html.dark .belm-daily-checklist-summary strong,
+html[data-theme="dark"] .belm-daily-checklist-summary strong,
+html.dark .belm-daily-checklist-item b,
+html[data-theme="dark"] .belm-daily-checklist-item b {
+  color: #f8fafc;
+}
+html.dark .belm-customer-checkup-report-row > div:first-child span,
+html[data-theme="dark"] .belm-customer-checkup-report-row > div:first-child span,
+html.dark .belm-customer-checkup-report-row > div:first-child small,
+html[data-theme="dark"] .belm-customer-checkup-report-row > div:first-child small,
+html.dark .belm-daily-checklist-summary span,
+html[data-theme="dark"] .belm-daily-checklist-summary span,
+html.dark .belm-daily-checklist-item span,
+html[data-theme="dark"] .belm-daily-checklist-item span,
+html.dark .belm-checkup-display-stat span,
+html[data-theme="dark"] .belm-checkup-display-stat span,
+html.dark .belm-report-date-filter label,
+html[data-theme="dark"] .belm-report-date-filter label {
+  color: #9fb0c8;
+}
+html.dark .belm-report-date-filter input,
+html[data-theme="dark"] .belm-report-date-filter input,
+html.dark .belm-report-date-filter select,
+html[data-theme="dark"] .belm-report-date-filter select,
+html.dark .belm-customer-checkup-toolbar select,
+html[data-theme="dark"] .belm-customer-checkup-toolbar select {
+  background: #0d1727 !important;
+  border-color: #2a3950 !important;
+  color: #e5edf7 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.dark):not([data-theme="light"]) .belm-checked-report-modal {
+    background: linear-gradient(180deg, #050b15 0%, #0b1423 100%);
+  }
+  html:not(.dark):not([data-theme="light"]) .belm-checked-report-card,
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-body {
+    background: #0b1423;
+    color: #e5edf7;
+  }
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-tabs {
+    background: #101b2d;
+    border-bottom-color: #243247;
+  }
+  html:not(.dark):not([data-theme="light"]) .belm-checkup-display-strip,
+  html:not(.dark):not([data-theme="light"]) .belm-report-date-filter,
+  html:not(.dark):not([data-theme="light"]) .belm-daily-checklist-summary > div,
+  html:not(.dark):not([data-theme="light"]) .belm-daily-checklist-item,
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-report-row,
+  html:not(.dark):not([data-theme="light"]) .belm-checkup-display-stat,
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-toolbar select {
+    background: #111c2f;
+    border-color: #26354a;
+    box-shadow: none;
+  }
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-report-row > div:first-child strong,
+  html:not(.dark):not([data-theme="light"]) .belm-checkup-display-stat strong,
+  html:not(.dark):not([data-theme="light"]) .belm-daily-checklist-summary strong,
+  html:not(.dark):not([data-theme="light"]) .belm-daily-checklist-item b {
+    color: #f8fafc;
+  }
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-report-row > div:first-child span,
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-report-row > div:first-child small,
+  html:not(.dark):not([data-theme="light"]) .belm-daily-checklist-summary span,
+  html:not(.dark):not([data-theme="light"]) .belm-daily-checklist-item span,
+  html:not(.dark):not([data-theme="light"]) .belm-checkup-display-stat span,
+  html:not(.dark):not([data-theme="light"]) .belm-report-date-filter label {
+    color: #9fb0c8;
+  }
+  html:not(.dark):not([data-theme="light"]) .belm-report-date-filter input,
+  html:not(.dark):not([data-theme="light"]) .belm-report-date-filter select,
+  html:not(.dark):not([data-theme="light"]) .belm-customer-checkup-toolbar select {
+    background: #0d1727;
+    border-color: #2a3950;
+    color: #e5edf7;
+  }
+}

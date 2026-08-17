@@ -1298,9 +1298,13 @@ if ($sub === 'analysis') {
     $totalReports = (int)$reportStmt->fetchColumn();
 
     $invoiceStmt = db()->prepare(
-        "SELECT COALESCE(SUM(total), 0) AS total,
-                COALESCE(SUM(total) FILTER (WHERE status <> 'PAID'), 0) AS outstanding
-         FROM invoices WHERE customer_id = ?"
+        "SELECT COALESCE(SUM(i.total),0) AS total,
+                COALESCE(SUM(GREATEST(i.total-COALESCE(pay.paid,0),0)),0) AS outstanding
+         FROM invoices i
+         LEFT JOIN (
+             SELECT invoice_id,SUM(amount) AS paid FROM payments GROUP BY invoice_id
+         ) pay ON pay.invoice_id=i.id
+         WHERE i.customer_id=? AND i.deleted_at IS NULL AND i.status<>'CANCELLED'"
     );
     $invoiceStmt->execute([$custId]);
     $invoiceStats = $invoiceStmt->fetch();

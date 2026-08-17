@@ -17,6 +17,7 @@ $TABLE_MAP = [
     'customer' => 'customers', 'machine' => 'machines', 'role' => 'roles', 'user' => 'users',
     'sparePart' => 'spare_parts', 'invoice' => 'invoices', 'proformaInvoice' => 'proforma_invoices',
     'companyExpense' => 'company_expenses', 'template' => 'checklist_templates', 'supplier' => 'suppliers',
+    'receipt' => 'receipts', 'controllerPinout' => 'controller_pinouts',
 ];
 
 if ($method === 'GET') {
@@ -29,10 +30,48 @@ if ($method === 'POST') { // restore
     $entry = $stmt->fetch();
     if (!$entry) json_error('Not found', 404);
     $table = $TABLE_MAP[$entry['entity_type']] ?? null;
-    if ($table) {
-        db()->prepare("UPDATE \"$table\" SET deleted_at = NULL WHERE id = ?")->execute([$entry['entity_id']]);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $linkedJobId = '';
+        if ($table) {
+            if ($entry['entity_type'] === 'invoice') {
+                $source = $pdo->prepare('SELECT source_job_card_id,status FROM invoices WHERE id=?');
+                $source->execute([$entry['entity_id']]);
+                $document = $source->fetch();
+                $linkedJobId = (string)($document['source_job_card_id'] ?? '');
+                if ($linkedJobId !== '' && strtoupper((string)($document['status'] ?? '')) !== 'CANCELLED') {
+                    $duplicate = $pdo->prepare("SELECT invoice_no FROM invoices WHERE source_job_card_id=? AND id<>? AND deleted_at IS NULL AND status<>'CANCELLED' LIMIT 1");
+                    $duplicate->execute([$linkedJobId, $entry['entity_id']]);
+                    if ($duplicateNo = $duplicate->fetchColumn()) {
+                        throw new DomainException('Cannot restore this Invoice because another active Invoice already exists for the linked Job Card: '.$duplicateNo.'.');
+                    }
+                }
+            } elseif ($entry['entity_type'] === 'proformaInvoice') {
+                $source = $pdo->prepare('SELECT source_job_card_id FROM proforma_invoices WHERE id=?');
+                $source->execute([$entry['entity_id']]);
+                $linkedJobId = (string)($source->fetchColumn() ?: '');
+                if ($linkedJobId !== '') {
+                    $duplicate = $pdo->prepare('SELECT invoice_no FROM proforma_invoices WHERE source_job_card_id=? AND id<>? AND deleted_at IS NULL LIMIT 1');
+                    $duplicate->execute([$linkedJobId, $entry['entity_id']]);
+                    if ($duplicateNo = $duplicate->fetchColumn()) {
+                        throw new DomainException('Cannot restore this Proforma because another active Proforma already exists for the linked Job Card: '.$duplicateNo.'.');
+                    }
+                }
+            }
+
+            $pdo->prepare("UPDATE \"$table\" SET deleted_at = NULL WHERE id = ?")->execute([$entry['entity_id']]);
+            if ($linkedJobId !== '') belm_recompute_job_billing_status($linkedJobId);
+        }
+        $pdo->prepare('DELETE FROM trash_entries WHERE id = ?')->execute([$id]);
+        $pdo->commit();
+    } catch (DomainException $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        json_error($error->getMessage(), 409);
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
     }
-    db()->prepare('DELETE FROM trash_entries WHERE id = ?')->execute([$id]);
     json_out(['ok' => true]);
 }
 

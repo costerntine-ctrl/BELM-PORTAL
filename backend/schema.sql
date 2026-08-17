@@ -628,7 +628,9 @@ CREATE TABLE IF NOT EXISTS password_reset_codes (
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE password_reset_codes ADD COLUMN IF NOT EXISTS account_id VARCHAR(36) NULL;
 CREATE INDEX IF NOT EXISTS idx_password_reset_codes_email ON password_reset_codes(LOWER(email));
+CREATE INDEX IF NOT EXISTS idx_password_reset_codes_account ON password_reset_codes(account_type, account_id);
 
 -- Tracks failed login/PIN attempts so they can be rate-limited. A generic
 -- table (not per-feature) so the same guard protects staff login, customer
@@ -961,13 +963,8 @@ CREATE TABLE IF NOT EXISTS controller_pinout_pins (
 );
 CREATE INDEX IF NOT EXISTS idx_controller_pinout_pins_pinout ON controller_pinout_pins(pinout_id);
 
-INSERT INTO system_settings (id, "key", "value")
-VALUES (
-  '00000000-0000-4000-8000-000000000004',
-  'adminDeletePin',
-  '"1234"'::jsonb
-)
-ON CONFLICT ("key") DO NOTHING;
+-- V306: security action PINs are intentionally NOT seeded with public/default values.
+-- backend/scripts/migrate.php provisions missing/legacy PINs from INITIAL_ADMIN_ACTION_PIN.
 
 -- V192: synchronized BELM <-> Customer communication and Proforma delivery.
 ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS machine_id VARCHAR(36) NULL;

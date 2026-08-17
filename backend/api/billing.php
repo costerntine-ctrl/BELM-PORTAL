@@ -12,14 +12,13 @@ $paymentId = $_GET['paymentId'] ?? null;
 
 function belm_sync_invoice_job_card(string $invoiceId): void {
     try {
-        $stmt=db()->prepare('SELECT source_job_card_id,status FROM invoices WHERE id=? AND deleted_at IS NULL');
+        $stmt=db()->prepare('SELECT source_job_card_id FROM invoices WHERE id=?');
         $stmt->execute([$invoiceId]);
-        $row=$stmt->fetch();
-        if(!$row || empty($row['source_job_card_id'])) return;
-        $status=strtoupper((string)$row['status']);
-        $jobStatus=$status==='PAID'?'PAID':($status==='CANCELLED'?'READY_FOR_PROCUREMENT':'INVOICE_OUTSTANDING');
-        db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')->execute([$jobStatus,(string)$row['source_job_card_id']]);
-    } catch(Throwable $ignored) {}
+        $jobId=(string)($stmt->fetchColumn() ?: '');
+        if($jobId !== '') belm_recompute_job_billing_status($jobId);
+    } catch(Throwable $error) {
+        error_log('Invoice to Job Card billing sync failed: '.$error->getMessage());
+    }
 }
 
 
@@ -225,11 +224,21 @@ function validate_invoice_input(array $payload): array {
         if (!$stmt->fetch()) json_error('Selected machine does not belong to this customer.', 422);
     }
     if ($sourceJobCardId !== '') {
-        $jobCheck=db()->prepare('SELECT machine_id,billing_status FROM digital_job_cards WHERE id=? AND customer_id=?');
+        $jobCheck=db()->prepare(
+            "SELECT j.machine_id,j.status,j.billing_status,j.signed_copy_data,bc.source_type,bc.status AS case_status
+             FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id
+             WHERE j.id=? AND j.customer_id=?"
+        );
         $jobCheck->execute([$sourceJobCardId,$customerId]);
         $sourceJob=$jobCheck->fetch();
         if(!$sourceJob) json_error('Source Job Card was not found for this customer.',422);
+        if($machineId!=='' && (string)$sourceJob['machine_id']!==$machineId) json_error('Selected machine does not match the source Job Card.',422);
         if($machineId==='' && !empty($sourceJob['machine_id'])) $machineId=(string)$sourceJob['machine_id'];
+        if(strtoupper((string)$sourceJob['source_type'])==='SERVICE_REQUEST') {
+            if(strtoupper((string)$sourceJob['status'])!=='COMPLETED' || strtoupper((string)$sourceJob['case_status'])!=='COMPLETED' || empty($sourceJob['signed_copy_data'])) {
+                json_error('Complete the Service Job Card, Workshop test and customer signed-copy upload before invoicing.',409);
+            }
+        }
     }
     $normalizedItems = [];
     $subtotal = 0.0;
@@ -332,6 +341,12 @@ if ($method === 'GET' && !$action) {
 if ($method === 'POST' && !$action) {
     $b = body();
     $invoice = validate_invoice_input($b);
+    if (!empty($invoice['sourceJobCardId'])) {
+        $existingInvoice=db()->prepare("SELECT invoice_no FROM invoices WHERE source_job_card_id=? AND deleted_at IS NULL AND status<>'CANCELLED' ORDER BY created_at DESC LIMIT 1");
+        $existingInvoice->execute([$invoice['sourceJobCardId']]);
+        $existingNo=$existingInvoice->fetchColumn();
+        if($existingNo) json_error('An active Invoice already exists for this Job Card: '.$existingNo.'. Open/edit that Invoice instead of creating a duplicate.',409);
+    }
     $invoiceNo = belm_next_document_number('INV', 'invoice_number_seq');
     $newId = uuid();
     $pdo = db();
@@ -382,6 +397,12 @@ if ($method === 'PUT' && !$action) {
     if (($b['action'] ?? '') === 'edit') {
         require_edit_confirmation($user, $b);
         $invoice = validate_invoice_input($b);
+        if (!empty($invoice['sourceJobCardId'])) {
+            $duplicateInvoice = db()->prepare("SELECT invoice_no FROM invoices WHERE source_job_card_id=? AND id<>? AND deleted_at IS NULL AND status<>'CANCELLED' ORDER BY created_at DESC LIMIT 1");
+            $duplicateInvoice->execute([$invoice['sourceJobCardId'], $id]);
+            $duplicateNo = $duplicateInvoice->fetchColumn();
+            if ($duplicateNo) json_error('Another active Invoice already exists for this Job Card: '.$duplicateNo.'.',409);
+        }
         $pdo = db();
         $pdo->beginTransaction();
         try {
@@ -484,8 +505,7 @@ if ($method === 'DELETE' && !$action) {
     send_to_trash('invoice', $id, $row['invoice_no'], $user['id'], $reason);
     soft_delete('invoices', $id);
     if (!empty($row['source_job_card_id'])) {
-        db()->prepare("UPDATE digital_job_cards SET billing_status='READY_FOR_PROCUREMENT',updated_at=NOW() WHERE id=?")
-            ->execute([(string)$row['source_job_card_id']]);
+        belm_recompute_job_billing_status((string)$row['source_job_card_id']);
     }
     json_out(null, 204);
 }

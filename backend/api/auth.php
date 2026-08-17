@@ -155,35 +155,50 @@ if ($action === 'forgot-password' && $method === 'POST') {
         json_error('Enter the email address used for your BELM account.');
     }
 
+    // Limit reset-email generation whether or not the address exists, so this
+    // endpoint cannot be used to spam a known BELM user or probe at high rate.
+    assert_not_rate_limited('forgot-password', $email, 5, 15);
+    record_failed_attempt('forgot-password', $email);
+
     $accountType = null;
-    $stmt = db()->prepare('SELECT id FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
-    $stmt->execute([$email]);
-    if ($stmt->fetch()) $accountType = 'staff';
-
-    if (!$accountType) {
-        $stmt = db()->prepare('SELECT id FROM customers WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
-        $stmt->execute([$email]);
-        if ($stmt->fetch()) $accountType = 'customer';
+    $accountId = null;
+    // The unified login requires one globally unique active portal email. New
+    // account creation already enforces that rule; for legacy data, refuse to
+    // guess if the same email still belongs to more than one active account.
+    $stmt = db()->prepare(
+        "SELECT account_type,account_id FROM (
+            SELECT 'staff' AS account_type,id AS account_id FROM users
+             WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
+            UNION ALL
+            SELECT 'customer' AS account_type,id AS account_id FROM customers
+             WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
+            UNION ALL
+            SELECT 'customer-assistant' AS account_type,cu.id AS account_id
+             FROM customer_users cu JOIN customers c ON c.id=cu.customer_id
+             WHERE LOWER(cu.email)=? AND cu.is_active=1
+               AND c.deleted_at IS NULL AND c.is_active=1
+        ) matches LIMIT 2"
+    );
+    $stmt->execute([$email, $email, $email]);
+    $matches = $stmt->fetchAll();
+    if (count($matches) === 1) {
+        $accountType = (string)$matches[0]['account_type'];
+        $accountId = (string)$matches[0]['account_id'];
     }
 
-    if (!$accountType) {
-        $stmt = db()->prepare('SELECT id FROM customer_users WHERE LOWER(email) = ? AND is_active = 1');
-        $stmt->execute([$email]);
-        if ($stmt->fetch()) $accountType = 'customer-assistant';
-    }
-
-    // Same response either way — do not reveal whether the email exists.
+    // Same response either way — do not reveal whether the email exists or is
+    // an ambiguous legacy address.
     $genericResponse = ['ok' => true, 'message' => "If $email has a BELM account, a verification code has been sent to it."];
 
-    if (!$accountType) json_out($genericResponse);
+    if (!$accountType || !$accountId) json_out($genericResponse);
 
     db()->prepare('DELETE FROM password_reset_codes WHERE LOWER(email) = ?')->execute([$email]);
 
     $code = (string)random_int(100000, 999999);
     db()->prepare(
-        'INSERT INTO password_reset_codes (id, email, code_hash, account_type, expires_at, created_at)
-         VALUES (?,?,?,?, NOW() + INTERVAL \'10 minutes\', NOW())'
-    )->execute([uuid(), $email, password_hash($code, PASSWORD_BCRYPT), $accountType]);
+        'INSERT INTO password_reset_codes (id, email, code_hash, account_type, account_id, expires_at, created_at)
+         VALUES (?,?,?,?,?, NOW() + INTERVAL \'10 minutes\', NOW())'
+    )->execute([uuid(), $email, password_hash($code, PASSWORD_BCRYPT), $accountType, $accountId]);
 
     try {
         send_email(
@@ -229,16 +244,26 @@ if ($action === 'reset-with-code' && $method === 'POST') {
     }
 
     $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-    $accountType = $entry['account_type'];
+    $accountType = (string)$entry['account_type'];
+    $accountId = trim((string)($entry['account_id'] ?? ''));
+    if ($accountId === '') {
+        db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
+        json_error('This reset code was issued by an older portal version. Request a new verification code.', 409);
+    }
 
     if ($accountType === 'staff') {
-        db()->prepare('UPDATE users SET password_hash = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
+        $update = db()->prepare('UPDATE users SET password_hash = ? WHERE id = ? AND LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
     } elseif ($accountType === 'customer') {
-        db()->prepare('UPDATE customers SET password = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
+        $update = db()->prepare('UPDATE customers SET password = ? WHERE id = ? AND LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
     } elseif ($accountType === 'customer-assistant') {
-        db()->prepare('UPDATE customer_users SET password = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
+        $update = db()->prepare('UPDATE customer_users SET password = ? WHERE id = ? AND LOWER(email) = ? AND is_active = 1');
     } else {
         json_error('Unknown account type.', 500);
+    }
+    $update->execute([$newHash, $accountId, $email]);
+    if ($update->rowCount() !== 1) {
+        db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
+        json_error('This account is no longer active. Request a new code or contact the administrator.', 409);
     }
 
     db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
@@ -268,51 +293,33 @@ if ($action === 'recover' && $method === 'POST') {
 
     $account = null;
     $accountType = null;
+    $candidates = [];
 
     $stmt = db()->prepare(
-        'SELECT id, recovery_code_hash
-         FROM users
-         WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1'
+        "SELECT 'staff' AS account_type,id,recovery_code_hash FROM users
+         WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
+         UNION ALL
+         SELECT 'customer' AS account_type,id,recovery_code_hash FROM customers
+         WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
+         UNION ALL
+         SELECT 'assistant' AS account_type,cu.id,cu.recovery_code_hash
+         FROM customer_users cu JOIN customers c ON c.id=cu.customer_id
+         WHERE LOWER(cu.email)=? AND cu.is_active=1
+           AND c.deleted_at IS NULL AND c.is_active=1"
     );
-    $stmt->execute([$email]);
-    if ($row = $stmt->fetch()) {
-        $account = $row;
-        $accountType = 'staff';
+    $stmt->execute([$email, $email, $email]);
+    foreach ($stmt->fetchAll() as $candidate) {
+        if (!empty($candidate['recovery_code_hash'])
+            && password_verify($recoveryCode, (string)$candidate['recovery_code_hash'])) {
+            $candidates[] = $candidate;
+        }
+    }
+    if (count($candidates) === 1) {
+        $account = $candidates[0];
+        $accountType = (string)$account['account_type'];
     }
 
     if (!$account) {
-        $stmt = db()->prepare(
-            'SELECT id, recovery_code_hash
-             FROM customers
-             WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1'
-        );
-        $stmt->execute([$email]);
-        if ($row = $stmt->fetch()) {
-            $account = $row;
-            $accountType = 'customer';
-        }
-    }
-
-    if (!$account) {
-        $stmt = db()->prepare(
-            'SELECT cu.id, cu.recovery_code_hash
-             FROM customer_users cu
-             JOIN customers c ON c.id = cu.customer_id
-             WHERE LOWER(cu.email) = ? AND cu.is_active = 1
-               AND c.deleted_at IS NULL AND c.is_active = 1'
-        );
-        $stmt->execute([$email]);
-        if ($row = $stmt->fetch()) {
-            $account = $row;
-            $accountType = 'assistant';
-        }
-    }
-
-    if (
-        !$account
-        || !$account['recovery_code_hash']
-        || !password_verify($recoveryCode, $account['recovery_code_hash'])
-    ) {
         record_failed_attempt('recovery-code', $email);
         json_error('Email or recovery code is incorrect. Ask the account administrator for a new recovery code.', 401);
     }

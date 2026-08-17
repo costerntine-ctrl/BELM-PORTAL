@@ -57,7 +57,7 @@
   async function load() {
     const payload = tokenPayload();
     if (!token || payload?.roleName !== "Technician" || !payload?.id) {
-      taskList.innerHTML = '<div class="locked">Technician login required.<br><a href="/tech">Go to Technician login</a></div>';
+      taskList.innerHTML = '<div class="locked">Technician login required.<br><a href="/login">Go to login</a></div>';
       return;
     }
     try {

@@ -361,11 +361,31 @@ if ($method === 'PUT' && $action === 'status') {
     $status = strtoupper(trim((string)($b['status'] ?? '')));
     if (!in_array($status, $allowedStatuses, true)) json_error('Invalid service request status.');
 
-    $stmt = db()->prepare('SELECT status FROM service_requests WHERE id = ?');
+    $stmt = db()->prepare('SELECT status,machine_id FROM service_requests WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
     if (!$existing) json_error('Service request not found.', 404);
     $previousStatus = $existing['status'];
+    if (in_array($previousStatus, ['COMPLETED','CANCELLED'], true) && $status !== $previousStatus) {
+        json_error('A completed/cancelled Service Request cannot be reopened from this status control.', 409);
+    }
+    if ($status === 'COMPLETED' && !empty($existing['machine_id'])) {
+        // Official machine Service Requests are one operational record with
+        // their Job Card. Ensure legacy requests receive a Job Card too, then
+        // refuse completion until the technician has completed that card.
+        belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
+        $jobCheck = db()->prepare(
+            "SELECT j.status FROM digital_job_cards j
+             JOIN breakdown_cases bc ON bc.id=j.case_id
+             WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=?
+             ORDER BY j.created_at ASC LIMIT 1"
+        );
+        $jobCheck->execute([$id]);
+        $jobStatus = strtoupper((string)($jobCheck->fetchColumn() ?: ''));
+        if ($jobStatus !== 'COMPLETED') {
+            json_error('Complete the Technician Job Card and Workshop test before closing this Service Request.', 409);
+        }
+    }
 
     if ($status === 'COMPLETED') {
         $stmt = db()->prepare(
@@ -409,6 +429,9 @@ if ($method === 'PUT' && $action === 'assign') {
     if (!$request) json_error('Service request not found.', 404);
 
     if ($assignedToId === '') {
+        if (!in_array((string)$request['status'], ['OPEN','ASSIGNED'], true)) {
+            json_error('Only an Open/Assigned Service Request can be unassigned. Put active work back through the Job Card/Workshop flow.', 409);
+        }
         db()->prepare(
             "UPDATE service_requests
              SET assigned_to_id=NULL,

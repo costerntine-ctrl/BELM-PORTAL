@@ -596,7 +596,8 @@ function require_delete_confirmation(array $user, array $body): string {
 
     assert_not_rate_limited('delete-pin', $user['id'], 8, 15);
 
-    $currentPin = belm_read_stored_pin('adminDeletePin', '1234');
+    $currentPin = belm_read_stored_pin('adminDeletePin', '');
+    if ($currentPin === '') json_error('Delete PIN is not configured. Super Admin must set it in System Settings.', 409);
     if (!hash_equals($currentPin, $pin)) {
         record_failed_attempt('delete-pin', $user['id']);
         json_error('Incorrect delete PIN.', 403);
@@ -1217,7 +1218,8 @@ function require_edit_confirmation(array $user, array $body): void {
 
     assert_not_rate_limited('edit-pin', $user['id'], 8, 15);
 
-    $currentPin = belm_read_stored_pin('adminEditPin', '2026');
+    $currentPin = belm_read_stored_pin('adminEditPin', '');
+    if ($currentPin === '') json_error('Edit PIN is not configured. Super Admin must set it in System Settings.', 409);
     if (!hash_equals($currentPin, $pin)) {
         record_failed_attempt('edit-pin', $user['id']);
         json_error('Incorrect edit PIN.', 403);
@@ -1682,7 +1684,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         }
 
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
-        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && $stage === 'DIAGNOSIS' && empty($row['has_job_card'])) {
+        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && $stage === 'DIAGNOSIS' && empty($row['assigned_to_id'])) {
             $newStage='WORKSHOP_REVIEW'; $department='Workshop'; $action='Service Request returned to open queue';
         } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && $stage === 'WORKSHOP_REVIEW') {
             $newStage='DIAGNOSIS'; $department='Technician'; $action='Service Request assigned - technician action';
@@ -1703,6 +1705,19 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         } elseif ($blocker !== null) {
             db()->prepare('UPDATE breakdown_cases SET blocker_reason=?,updated_at=NOW() WHERE id=?')->execute([$blocker,$caseId]);
         }
+        // A cancelled official request must not remain as an active Technician Job Card.
+        // Keep completed technical reports intact, but close any unfinished linked Job Card.
+        if ($jobId && $status === 'CANCELLED') {
+            db()->prepare(
+                "UPDATE digital_job_cards
+                 SET status=CASE WHEN status='COMPLETED' THEN status ELSE 'CANCELLED' END,
+                     technician_id=CASE WHEN status='COMPLETED' THEN technician_id ELSE NULL END,
+                     technician_name=CASE WHEN status='COMPLETED' THEN technician_name ELSE NULL END,
+                     updated_at=NOW()
+                 WHERE id=?"
+            )->execute([$jobId]);
+        }
+
         if ($action !== null) {
             $eventStage = $newStage ?: $stage;
             $eventDepartment = $department ?: (string)$row['current_department'];
@@ -1764,4 +1779,49 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
         error_log('Breakdown source backfill failed: ' . $error->getMessage());
     }
     return ['created'=>max(0,$createdAfter-$createdBefore),'serviceRequests'=>$syncedRequests,'operatorReports'=>$syncedReports];
+}
+
+
+// V306: derive one authoritative Job Card billing status from the currently
+// active billing documents. Invoice state always wins over Proforma state;
+// when neither exists, the signed Job Card determines readiness.
+function belm_recompute_job_billing_status(string $jobId): string {
+    $jobId = trim($jobId);
+    if ($jobId === '') return '';
+
+    $invoice = db()->prepare(
+        "SELECT status FROM invoices
+         WHERE source_job_card_id=? AND deleted_at IS NULL AND status<>'CANCELLED'
+         ORDER BY created_at DESC LIMIT 1"
+    );
+    $invoice->execute([$jobId]);
+    $invoiceStatus = $invoice->fetchColumn();
+    if ($invoiceStatus !== false) {
+        $status = strtoupper((string)$invoiceStatus) === 'PAID' ? 'PAID' : 'INVOICE_OUTSTANDING';
+        db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+            ->execute([$status, $jobId]);
+        return $status;
+    }
+
+    $proforma = db()->prepare(
+        'SELECT delivery_status FROM proforma_invoices
+         WHERE source_job_card_id=? AND deleted_at IS NULL
+         ORDER BY created_at DESC LIMIT 1'
+    );
+    $proforma->execute([$jobId]);
+    $delivery = $proforma->fetchColumn();
+    if ($delivery !== false) {
+        $status = strtoupper((string)$delivery) === 'SENT' ? 'PROFORMA_SENT' : 'PROFORMA_READY';
+        db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+            ->execute([$status, $jobId]);
+        return $status;
+    }
+
+    $job = db()->prepare('SELECT signed_copy_data FROM digital_job_cards WHERE id=?');
+    $job->execute([$jobId]);
+    $signed = $job->fetchColumn();
+    $status = $signed ? 'READY_FOR_PROCUREMENT' : 'NOT_READY';
+    db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
+        ->execute([$status, $jobId]);
+    return $status;
 }

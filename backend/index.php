@@ -24,7 +24,7 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
-// Regression baseline: 301-customer-job-billing
+// Regression baseline: 306-regression-hardening
 // Health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
@@ -78,6 +78,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             ['digital_job_cards', 'due_date'],
             ['invoices', 'source_job_card_id'],
             ['proforma_invoices', 'source_job_card_id'],
+            ['password_reset_codes', 'account_id'],
         ];
         $columnChecks = [];
         $columnStatement = db()->prepare(
@@ -130,7 +131,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '305-technician-job-cards',
+            'schemaVersion' => '306-regression-hardening',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,
@@ -140,7 +141,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
                 'staff' => '/api/auth/login',
                 'customer' => '/api/auth/customer-login',
             ],
-        ], $schemaReady ? 200 : 503);
+        ], ($schemaReady && $adminReady) ? 200 : 503);
     } catch (Throwable $e) {
         json_out([
             'ok' => false,

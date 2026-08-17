@@ -3779,13 +3779,13 @@
       const workflowButton = document.createElement("button");
       workflowButton.type = "button";
       workflowButton.className = "belm-technician-checkup-button";
-      workflowButton.textContent = "Job Card / Process";
-      workflowButton.title = `Open breakdown workflow for ${model}`;
+      workflowButton.textContent = "My Job Cards";
+      workflowButton.title = `Open your assigned Job Cards for ${model}`;
       workflowButton.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();
         if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
-        window.location.href = `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=tech`;
+        window.location.href = `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}`;
       });
 
       actionsRow.appendChild(reportLink);
@@ -4728,10 +4728,10 @@
     });
     document.body.appendChild(link);
     try {
-      const response = await fetch('/api/breakdown-workflow', { headers: { Authorization: `Bearer ${token}` } });
+      const response = await fetch('/api/breakdown-workflow/technician-jobs', { headers: { Authorization: `Bearer ${token}` } });
       if (!response.ok) return;
       const rows = await response.json();
-      const active = Array.isArray(rows) ? rows.filter((item) => item.status !== 'COMPLETED').length : 0;
+      const active = Array.isArray(rows) ? rows.filter((item) => !['COMPLETED','CANCELLED'].includes(String(item.status || '').toUpperCase())).length : 0;
       if (active > 0) link.textContent = `My Job Cards (${active})`;
     } catch (_) {}
   }

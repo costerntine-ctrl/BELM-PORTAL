@@ -226,7 +226,7 @@ try {
         $preservedAdminEmail = trim((string)($adminIdentity['email'] ?? $user['email'] ?? 'info@belmgeneral.co.tz'));
         $preservedAdminPassword = (string)($body['adminPassword'] ?? '');
         $preservedDeletePin = belm_read_stored_pin('adminDeletePin', (string)($body['pin'] ?? ''));
-        $preservedEditPin = belm_read_stored_pin('adminEditPin', '2026');
+        $preservedEditPin = belm_read_stored_pin('adminEditPin', '');
 
         $tables = $pdo->query(
             "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"

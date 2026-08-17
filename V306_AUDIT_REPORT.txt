@@ -1,0 +1,41 @@
+BELM PORTAL V306 - FULL REGRESSION HARDENING AUDIT
+
+Final validation summary
+- All project PHP files: lint PASS
+- All frontend/test JavaScript files: syntax PASS
+- V299 session regression: 15/15 PASS
+- V301 Job Card/Billing regression: 23/23 PASS
+- V303 One Login regression: 20/20 PASS
+- V306 deep regression: 49/49 PASS
+- Frontend HTML files checked: 33
+- Static references checked: 256; missing: 0
+- Duplicate HTML IDs: 0
+- PHP static includes checked: 72; missing: 0
+- Intentional dynamic include: backend/index.php -> /api/$file
+- Recycle Bin entity mappings: complete
+- render.yaml parse: PASS
+- docker/start-render.sh shell syntax: PASS
+- Git conflict markers: 0
+- README deploy/migration guidance: PASS
+
+Important bugs fixed during this audit
+1. Service Request unassign/cancel/completion could leave Job Card or workflow in an invalid state.
+2. Technician direct-ID access was too broad for Job Cards, reports, signed copies and spare requests.
+3. Technician could potentially self-claim an unassigned Job Card through report submission.
+4. Dispatch could offer completed/cancelled Job Cards.
+5. Customer outstanding debt used full invoice totals instead of remaining balances after partial payments.
+6. Invoice/Proforma source machine, completed work and signed Job Card integrity were incomplete.
+7. Duplicate active Invoice/Proforma documents could be attached to the same Job Card.
+8. Receipt could be attached to an invoice belonging to another customer.
+9. Recycle Bin was missing Receipt/Controller Pinout restoration mappings.
+10. Invoice/Proforma delete/restore could leave Job Card billing status stale or roll it backwards.
+11. Predictable legacy action PIN fallbacks were removed; Settings no longer exposes/writes PIN keys generically.
+12. Forgot Password is now bound to an exact account ID and fails closed for ambiguous legacy duplicate emails.
+13. Forgot Password email generation and action-PIN verification are rate-limited.
+14. Deployment health now requires both the current schema and the Super Admin account to be ready.
+
+Deployment note
+If an existing database still has a missing/legacy action PIN (old 1234/2026), set Render secret INITIAL_ADMIN_ACTION_PIN to a private 4-digit value before deployment. Existing custom PINs are preserved.
+
+Environment limitation
+This source audit does not run a live PostgreSQL/Render deployment or browser jsdom smoke test because those services/dependencies are not available in this container. Source-level routing, schema/migration logic, PHP/JS syntax, assets/includes and regression assertions were checked.

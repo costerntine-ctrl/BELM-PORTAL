@@ -483,7 +483,7 @@ V201 SERVICE AUTO CALCULATE + OWNER NOTIFICATIONS
 - Customer/machine owner receives one DUE SOON email (<=60 hrs) and one OVERDUE email per milestone; duplicates are suppressed.
 - WhatsApp auto-send is available when BELM_WHATSAPP_API_URL is configured. The endpoint must accept JSON {"to":"255...","message":"..."}; optional Bearer token: BELM_WHATSAPP_API_TOKEN.
 - Without a configured WhatsApp provider, WhatsApp is logged as PENDING_PROVIDER; the portal never falsely marks it sent.
-- Run backend/schema.sql after deployment.
+- Render runs backend/scripts/migrate.php automatically at startup; do not manually re-import schema.sql on every deploy.
 
 V303 - ONE CANONICAL LOGIN
 --------------------------

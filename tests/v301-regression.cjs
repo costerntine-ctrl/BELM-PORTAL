@@ -36,9 +36,9 @@ test('customer Procurement colors paid/outstanding',procJs.includes('PAID')&&pro
 test('customer API supplies service Job Card billing rows',customerApi.includes('customer_service_job_billing_rows')&&customerApi.includes("'serviceJobBilling'"));
 test('customer invoice download endpoint exists',customerApi.includes("$sub === 'invoices'")&&customerApi.includes('belm_output_invoice_document_pdf'));
 test('reusable invoice PDF helper exists',invoicePdf.includes('function belm_output_invoice_document_pdf'));
-test('BELM invoice links source Job Card and syncs status',billingApi.includes('sourceJobCardId')&&billingApi.includes('function belm_sync_invoice_job_card')&&billingApi.includes('INVOICE_OUTSTANDING'));
+test('BELM invoice links source Job Card and syncs status',billingApi.includes('sourceJobCardId')&&billingApi.includes('function belm_sync_invoice_job_card')&&helpers.includes('function belm_recompute_job_billing_status')&&helpers.includes('INVOICE_OUTSTANDING'));
 test('BELM Billing shows yellow outstanding and green paid',billingJs.includes('invoice-sync-badge')&&billingCss.includes('.invoice-sync-badge.outstanding')&&billingCss.includes('.invoice-sync-badge.paid'));
-test('Proforma syncs source Job Card state',proformaApi.includes('sourceJobCardId')&&proformaApi.includes('PROFORMA_READY')&&proformaApi.includes('PROFORMA_SENT'));
+test('Proforma syncs source Job Card state',proformaApi.includes('sourceJobCardId')&&proformaApi.includes('belm_recompute_job_billing_status')&&helpers.includes('PROFORMA_READY')&&helpers.includes('PROFORMA_SENT'));
 test('receipt payment syncs linked Job Card',receiptsApi.includes('source_job_card_id')&&receiptsApi.includes("$jobBillingStatus = $newStatus === 'PAID' ? 'PAID' : 'INVOICE_OUTSTANDING'"));
 test('workflow assets cache-busted to V301',workflowHtml.includes('301-job-signoff'));
 test('procurement assets cache-busted to V301',procHtml.includes('301-service-billing'));

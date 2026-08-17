@@ -31,6 +31,38 @@ try {
         fwrite(STDOUT, "Initial Super Admin password secured from INITIAL_ADMIN_PASSWORD.\n");
     }
 
+    // V306: old builds exposed predictable Edit/Delete PIN fallbacks (2026/1234).
+    // Preserve custom PINs, but require a deploy-time secret to replace any
+    // missing or known legacy value. This fails closed rather than deploying
+    // with a public action PIN.
+    $initialActionPin = trim((string)(getenv('INITIAL_ADMIN_ACTION_PIN') ?: ''));
+    $pinRows = [];
+    $pinStmt = db()->prepare("SELECT \"key\",\"value\" FROM system_settings WHERE \"key\" IN ('adminEditPin','adminDeletePin')");
+    $pinStmt->execute();
+    foreach ($pinStmt->fetchAll() as $row) {
+        $decoded = json_decode((string)$row['value'], true);
+        $pinRows[(string)$row['key']] = trim((string)($decoded ?? trim((string)$row['value'], "\" \t\n\r\0\x0B")));
+    }
+    $needsPinBootstrap = !isset($pinRows['adminEditPin']) || !isset($pinRows['adminDeletePin'])
+        || in_array($pinRows['adminEditPin'] ?? '', ['', '2026'], true)
+        || in_array($pinRows['adminDeletePin'] ?? '', ['', '1234'], true);
+    if ($needsPinBootstrap) {
+        if (!preg_match('/^\d{4}$/', $initialActionPin)) {
+            throw new RuntimeException('INITIAL_ADMIN_ACTION_PIN must be set to exactly 4 digits to replace missing/legacy Edit/Delete PINs.');
+        }
+        $upsertPin = db()->prepare(
+            'INSERT INTO system_settings(id,"key","value",updated_at) VALUES(?,?,?::jsonb,NOW()) '
+            . 'ON CONFLICT ("key") DO UPDATE SET "value"=EXCLUDED."value",updated_at=NOW()'
+        );
+        foreach (['adminEditPin' => '2026', 'adminDeletePin' => '1234'] as $key => $legacy) {
+            $current = $pinRows[$key] ?? '';
+            if ($current === '' || $current === $legacy) {
+                $upsertPin->execute([bin2hex(random_bytes(16)), $key, json_encode($initialActionPin)]);
+            }
+        }
+        fwrite(STDOUT, "Admin action PINs secured from INITIAL_ADMIN_ACTION_PIN.\n");
+    }
+
     fwrite(STDOUT, "BELM database migration completed.\n");
 } catch (Throwable $error) {
     fwrite(STDERR, "BELM database migration failed: {$error->getMessage()}\n");

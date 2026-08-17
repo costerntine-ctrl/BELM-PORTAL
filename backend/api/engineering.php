@@ -52,7 +52,8 @@ if ($method === 'GET' && $action === 'dispatch-options') {
          JOIN breakdown_cases bc ON bc.id=j.case_id
          JOIN customers c ON c.id=j.customer_id
          JOIN machines m ON m.id=j.machine_id
-         WHERE j.status <> 'COMPLETED'
+         WHERE j.status NOT IN ('COMPLETED','CANCELLED')
+           AND bc.status <> 'COMPLETED'
            AND (bc.source_type='SERVICE_REQUEST' OR (c.is_machinery_admin=0 AND UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER'))
          ORDER BY j.created_at DESC
          LIMIT 250"
@@ -111,7 +112,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             );
             $j->execute([$jobId]); $job=$j->fetch();
             if(!$job) throw new RuntimeException('Selected Job Card was not found.');
-            if((string)$job['status']==='COMPLETED') throw new RuntimeException('Completed Job Cards cannot be dispatched again.');
+            if(in_array(strtoupper((string)$job['status']),['COMPLETED','CANCELLED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('Completed/cancelled Job Cards cannot be dispatched again.');
             if((string)$job['source_type']!=='SERVICE_REQUEST' && !empty($job['is_machinery_admin'])) throw new RuntimeException('This Job Card belongs to a customer-managed workshop and was not received by BELM.');
             $customerId=(string)$job['customer_id']; $caseId=(string)$job['case_id'];
             $jobNo=(string)$job['job_card_no']; $title=(string)$job['title']; $description=(string)$job['fault_description'];

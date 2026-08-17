@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/customers-manager/manager.css">
+    <link rel="stylesheet" href="/customers-manager/manager.css?v=283-card-provider-switch">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
@@ -94,21 +94,6 @@
             <button id="userLimitSaveButton" class="secondary" type="button">Save</button>
           </div>
           <p id="userLimitCurrentInfo" class="muted"></p>
-        </div>
-        <div class="user-limit-panel compact">
-          <div class="user-limit-panel-head">
-            <h2>BELM Service Provider <small>(maintenance control)</small></h2>
-            <p>ON routes machine problems and maintenance to BELM and automatically pauses only the customer Technician role. Fuel, Operators, Workshop, Store, Procurement, Accounts and other customer roles remain active.</p>
-          </div>
-          <div class="user-limit-panel-row">
-            <select id="machineryAdminCustomerSelect"><option value="">Select customer…</option></select>
-            <label class="machinery-admin-switch">
-              <input id="machineryAdminToggle" type="checkbox">
-              <span>ON</span>
-            </label>
-            <button id="machineryAdminSaveButton" class="secondary" type="button">Save</button>
-          </div>
-          <p id="machineryAdminCurrentInfo" class="muted"></p>
         </div>
         <div class="user-limit-panel compact">
           <div class="user-limit-panel-head">
@@ -384,6 +369,6 @@
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=282-card-blink-dark-feed"></script>
+    <script src="/customers-manager/manager.js?v=284-performance"></script>
   </body>
 </html>

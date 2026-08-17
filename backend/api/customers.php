@@ -280,15 +280,31 @@ if ($method === 'GET' && !$action) {
         $stmt = db()->query('SELECT * FROM customers WHERE deleted_at IS NULL ORDER BY created_at DESC');
     }
     $customers = $stmt->fetchAll();
+
+    // V284 performance: load related data in batches instead of doing one
+    // machines query per customer + one checklist query per machine + one
+    // users query per customer.  The Customers Overview now needs a fixed
+    // handful of queries regardless of how many customer cards are shown.
+    $customerIds = array_values(array_filter(array_map(
+        static fn(array $customer): string => (string)($customer['id'] ?? ''),
+        $customers
+    )));
+    $machinesByCustomer = fetch_machines_for_customers($customerIds);
+    $usersByCustomer = (($user['roleName'] ?? '') !== 'Technician')
+        ? fetch_customer_users_for_customers($customerIds)
+        : [];
+
     foreach ($customers as &$c) {
-        $c['machines'] = fetch_machines($c['id']);
+        $customerId = (string)$c['id'];
+        $c['machines'] = $machinesByCustomer[$customerId] ?? [];
         $c['isMachineryAdmin'] = !empty($c['is_machinery_admin']);
         $c['belmServiceProviderActive'] = empty($c['is_machinery_admin']);
         if (($user['roleName'] ?? '') !== 'Technician') {
-            $c['users'] = fetch_customer_users($c['id']);
+            $c['users'] = $usersByCustomer[$customerId] ?? [];
             $c['userLimit'] = isset($c['user_limit']) ? (int)$c['user_limit'] : null;
         }
     }
+    unset($c);
     json_out($customers);
 }
 
@@ -311,6 +327,112 @@ if ($method === 'GET' && $action === 'one') {
         $customer['users'] = fetch_customer_users($customer['id']);
     }
     json_out($customer);
+}
+
+// ---- Customers Overview communication feed (batched) ----------------------
+// V284: the card grid only needs the newest three UNREAD items per customer.
+// Previously the browser made one /communications request per card, each of
+// which could also perform extra status lookups.  This endpoint returns all
+// visible-card feeds in one request and resolves action status with joins.
+if ($method === 'GET' && $action === 'communication-feed') {
+    require_page_access($user, 'customers');
+
+    $requestedIds = array_values(array_filter(array_unique(array_map(
+        'trim',
+        explode(',', (string)($_GET['ids'] ?? ''))
+    ))));
+    // Keep the endpoint bounded even if a malformed client sends thousands.
+    if (count($requestedIds) > 250) $requestedIds = array_slice($requestedIds, 0, 250);
+    if (!$requestedIds) json_out([]);
+
+    $in = belm_in_clause($requestedIds);
+    $sql = "
+        SELECT *
+        FROM (
+            SELECT
+                cc.id,
+                cc.customer_id,
+                cc.direction,
+                cc.channel,
+                cc.subject,
+                cc.message,
+                cc.status AS delivery_status,
+                cc.created_by_name,
+                cc.created_at,
+                cc.machine_id,
+                cc.related_type,
+                cc.related_id,
+                m.model AS machine_model,
+                m.machine_type,
+                sr.status AS service_request_status,
+                opr.status AS operator_report_status,
+                ROW_NUMBER() OVER (
+                    PARTITION BY cc.customer_id
+                    ORDER BY cc.created_at DESC, cc.id DESC
+                ) AS feed_rank
+            FROM customer_communications cc
+            JOIN customers c
+              ON c.id = cc.customer_id AND c.deleted_at IS NULL
+            LEFT JOIN machines m ON m.id = cc.machine_id
+            LEFT JOIN customer_communication_reads ccr
+              ON ccr.communication_id = cc.id AND ccr.user_id = ?
+            LEFT JOIN service_requests sr
+              ON cc.related_type = 'SERVICE_REQUEST' AND sr.id = cc.related_id
+            LEFT JOIN operator_reports opr
+              ON cc.related_type = 'OPERATOR_REPORT' AND opr.id = cc.related_id
+            WHERE cc.customer_id IN ($in)
+              AND ccr.communication_id IS NULL
+        ) feed
+        WHERE feed_rank <= 3
+        ORDER BY customer_id, created_at DESC, id DESC";
+
+    $stmt = db()->prepare($sql);
+    $stmt->execute(array_merge([(string)$user['id']], $requestedIds));
+    $rows = $stmt->fetchAll();
+
+    $grouped = [];
+    foreach ($requestedIds as $customerId) $grouped[$customerId] = [];
+    foreach ($rows as $row) {
+        $customerId = (string)$row['customer_id'];
+        $relatedType = (string)($row['related_type'] ?? '');
+        $relatedId = (string)($row['related_id'] ?? '');
+        $actionType = null;
+        $actionStatus = null;
+        $actionable = false;
+
+        if ($relatedType === 'SERVICE_REQUEST' && $relatedId !== '') {
+            $actionType = 'service-request';
+            $actionStatus = $row['service_request_status'] ?? null;
+            $actionable = $actionStatus !== null
+                && !in_array($actionStatus, ['COMPLETED', 'CANCELLED'], true);
+        } elseif ($relatedType === 'OPERATOR_REPORT' && $relatedId !== '') {
+            $actionType = 'operator-report';
+            $actionStatus = $row['operator_report_status'] ?? null;
+            $actionable = $actionStatus === 'OPEN';
+        }
+
+        $grouped[$customerId][] = [
+            'id' => $row['id'],
+            'direction' => $row['direction'],
+            'channel' => $row['channel'],
+            'subject' => $row['subject'],
+            'message' => $row['message'],
+            'deliveryStatus' => $row['delivery_status'],
+            'createdByName' => $row['created_by_name'],
+            'createdAt' => $row['created_at'],
+            'machineId' => $row['machine_id'],
+            'machineLabel' => trim((string)($row['machine_model'] ?? '') . ' ' . (string)($row['machine_type'] ?? '')),
+            'relatedType' => $relatedType,
+            'relatedId' => $relatedId ?: null,
+            'actionType' => $actionType,
+            'actionStatus' => $actionStatus,
+            'actionable' => $actionable,
+            'isRead' => false,
+            'readAt' => null,
+        ];
+    }
+
+    json_out($grouped);
 }
 
 // ---- BELM <-> Customer communication history -----------------------------
@@ -1115,37 +1237,92 @@ if ($method === 'POST' && $action === 'petty-cash-topup') {
 
     json_out(['id' => $newId, 'message' => "Petty cash topped up by TZS " . number_format($amount, 2) . " for {$machine['model']}."], 201);
 }
-function fetch_machines(string $customerId): array {
-    $stmt = db()->prepare('SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at ASC');
-    $stmt->execute([$customerId]);
-    $machines = $stmt->fetchAll();
+function fetch_machines_for_customers(array $customerIds): array {
+    $customerIds = array_values(array_filter(array_unique(array_map('strval', $customerIds))));
+    $grouped = [];
+    foreach ($customerIds as $customerId) $grouped[$customerId] = [];
+    if (!$customerIds) return $grouped;
 
-    $reasonStmt = db()->prepare(
-        "SELECT ca.label, ca.value, ca.safety_level
-         FROM checklist_answers ca
-         WHERE ca.report_id = (
-           SELECT id FROM checklist_reports
-           WHERE machine_id = ? ORDER BY created_at DESC LIMIT 1
-         )
-         AND ca.safety_level IN ('YELLOW', 'RED')
-         ORDER BY CASE ca.safety_level WHEN 'RED' THEN 0 ELSE 1 END, ca.label ASC"
+    $in = belm_in_clause($customerIds);
+    $stmt = db()->prepare(
+        "SELECT * FROM machines
+         WHERE customer_id IN ($in) AND deleted_at IS NULL
+         ORDER BY customer_id ASC, created_at ASC"
     );
-    foreach ($machines as &$machine) {
-        $reasonStmt->execute([$machine['id']]);
-        $flags = $reasonStmt->fetchAll();
-        $machine['alertReasons'] = array_map(
-            static fn(array $flag): string => trim($flag['label'] . ($flag['value'] !== '' ? ': ' . $flag['value'] : '')),
-            $flags
+    $stmt->execute($customerIds);
+    $machines = $stmt->fetchAll();
+    if (!$machines) return $grouped;
+
+    $machineIds = array_values(array_map(
+        static fn(array $machine): string => (string)$machine['id'],
+        $machines
+    ));
+    $machineIn = belm_in_clause($machineIds);
+
+    // One query gets warning/critical reasons for the latest checklist of
+    // every machine. DISTINCT ON is supported by PostgreSQL (the portal DB).
+    $reasonStmt = db()->prepare(
+        "SELECT latest.machine_id, ca.label, ca.value, ca.safety_level
+         FROM (
+           SELECT DISTINCT ON (machine_id) id, machine_id
+           FROM checklist_reports
+           WHERE machine_id IN ($machineIn)
+           ORDER BY machine_id, created_at DESC, id DESC
+         ) latest
+         JOIN checklist_answers ca ON ca.report_id = latest.id
+         WHERE ca.safety_level IN ('YELLOW', 'RED')
+         ORDER BY latest.machine_id,
+                  CASE ca.safety_level WHEN 'RED' THEN 0 ELSE 1 END,
+                  ca.label ASC"
+    );
+    $reasonStmt->execute($machineIds);
+    $reasonsByMachine = [];
+    foreach ($reasonStmt->fetchAll() as $flag) {
+        $machineId = (string)$flag['machine_id'];
+        $reasonsByMachine[$machineId][] = trim(
+            (string)$flag['label'] . ((string)$flag['value'] !== '' ? ': ' . (string)$flag['value'] : '')
         );
     }
-    unset($machine);
 
-    return $machines;
+    foreach ($machines as $machine) {
+        $machineId = (string)$machine['id'];
+        $customerId = (string)$machine['customer_id'];
+        $machine['alertReasons'] = $reasonsByMachine[$machineId] ?? [];
+        $grouped[$customerId][] = $machine;
+    }
+    return $grouped;
 }
+
+function fetch_machines(string $customerId): array {
+    $grouped = fetch_machines_for_customers([$customerId]);
+    return $grouped[$customerId] ?? [];
+}
+
+function fetch_customer_users_for_customers(array $customerIds): array {
+    $customerIds = array_values(array_filter(array_unique(array_map('strval', $customerIds))));
+    $grouped = [];
+    foreach ($customerIds as $customerId) $grouped[$customerId] = [];
+    if (!$customerIds) return $grouped;
+
+    $in = belm_in_clause($customerIds);
+    $stmt = db()->prepare(
+        "SELECT id, customer_id, name, email, phone, role, is_active, created_at
+         FROM customer_users
+         WHERE customer_id IN ($in)
+         ORDER BY customer_id ASC, created_at ASC"
+    );
+    $stmt->execute($customerIds);
+    foreach ($stmt->fetchAll() as $portalUser) {
+        $customerId = (string)$portalUser['customer_id'];
+        unset($portalUser['customer_id']);
+        $grouped[$customerId][] = $portalUser;
+    }
+    return $grouped;
+}
+
 function fetch_customer_users(string $customerId): array {
-    $stmt = db()->prepare('SELECT id, name, email, phone, role, is_active, created_at FROM customer_users WHERE customer_id = ?');
-    $stmt->execute([$customerId]);
-    return $stmt->fetchAll();
+    $grouped = fetch_customer_users_for_customers([$customerId]);
+    return $grouped[$customerId] ?? [];
 }
 
 // ---- Merge two customer records into one -----------------------------------

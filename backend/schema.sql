@@ -790,6 +790,8 @@ ALTER TABLE machines ALTER COLUMN serial_number DROP NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_machine_customer ON machines(customer_id);
 CREATE INDEX IF NOT EXISTS idx_report_machine ON checklist_reports(machine_id);
+CREATE INDEX IF NOT EXISTS idx_report_machine_created ON checklist_reports(machine_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_checklist_answers_report_safety ON checklist_answers(report_id, safety_level);
 CREATE INDEX IF NOT EXISTS idx_report_filledby ON checklist_reports(filled_by);
 CREATE INDEX IF NOT EXISTS idx_sr_customer ON service_requests(customer_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_customer ON invoices(customer_id);

@@ -1,0 +1,8 @@
+BELM Portal V283 - Customer Card BELM/Customer Switch
+
+- Moved BELM Service Provider maintenance control from the top settings panel into every customer card.
+- Added a compact Customer <-> BELM toggle on each card with visible ON/OFF state.
+- Reused the existing edit confirmation, API endpoint, permissions, and audit logging.
+- Removed the duplicate top BELM Service Provider panel so the card switch is the single maintenance-control UI.
+- Customer cards now use a column layout with the action bar pinned to the bottom, keeping cards aligned more consistently in each row.
+- Preserved V282 red/yellow machine-status card blinking and dark-mode communication-feed styling.

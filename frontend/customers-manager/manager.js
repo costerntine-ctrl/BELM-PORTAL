@@ -316,12 +316,25 @@
       }, { level: 0, status: "" }).status;
       const blinkClass = ["RED", "CRITICAL"].includes(worstStatus) ? "customer-card-blink-red"
         : ["YELLOW", "ATTENTION"].includes(worstStatus) ? "customer-card-blink-yellow" : "";
+      const belmProviderActive = typeof customer.belmServiceProviderActive === "boolean"
+        ? customer.belmServiceProviderActive
+        : !Boolean(customer.isMachineryAdmin);
       return `<article class="customer-card ${Number(customer.isActive) === 1 ? "" : "inactive"} ${blinkClass}">
         <div class="customer-card-head">
-          <div><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
-          <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
+          <div class="customer-card-title"><p class="eyebrow">Customer</p><h2>${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
+          <div class="customer-card-head-controls">
+            <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
+            <div class="customer-provider-control ${belmProviderActive ? "belm-on" : "customer-on"}" title="Switch maintenance control between Customer and BELM">
+              <span class="customer-provider-side">Customer</span>
+              <label class="customer-provider-switch">
+                <input type="checkbox" data-card-provider-toggle="${escapeHtml(customer.id)}" ${belmProviderActive ? "checked" : ""} aria-label="BELM service provider for ${escapeHtml(customer.name)}">
+                <span class="customer-provider-slider" aria-hidden="true"></span>
+              </label>
+              <span class="customer-provider-side">BELM</span>
+              <strong class="customer-provider-state">${belmProviderActive ? "ON" : "OFF"}</strong>
+            </div>
+          </div>
         </div>
-        ${customer.belmServiceProviderActive || !customer.isMachineryAdmin ? '<span class="badge machinery-admin-badge">🔧 BELM Service Provider ON</span>' : '<span class="badge machinery-admin-badge">⚙ Customer Maintenance Team</span>'}
         <div class="customer-info-grid">
           <div><span>Email</span><strong>${escapeHtml(customer.email)}</strong></div>
           <div><span>Phone</span><strong>${escapeHtml(customer.phone)}</strong></div>
@@ -371,30 +384,81 @@
     return `<span class="badge">${escapeHtml(communicationDirectionLabel(item))}</span>`;
   }
 
-  async function loadCustomerFeeds(customerList) {
-    for (const customer of customerList) {
-      const body = document.querySelector(`#feed-${customer.id} .customer-feed-body`);
-      if (!body) continue;
-      try {
-        const items = await api(`/customers/${encodeURIComponent(customer.id)}/communications`);
-        const unreadItems = items.filter((item) => !item.isRead);
-        body.innerHTML = unreadItems.length
-          ? unreadItems.slice(0, 3).map((item) => `
-              <div class="customer-feed-row" data-communication-id="${escapeHtml(item.id)}" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
-                <div class="customer-feed-row-head">
-                  <strong>${escapeHtml(item.subject || "Communication")}</strong>
-                  ${communicationStatusMarkup(item)}
-                </div>
-                <p>${escapeHtml(item.message || "—")}</p>
-                <small>${escapeHtml(communicationDirectionLabel(item))}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
-                <button type="button" class="view-messages-button" data-view-communication="${escapeHtml(item.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View</button>
-              </div>`).join("")
-          : (items.length
-              ? '<p class="customer-feed-empty">No new communication. Use <strong>View all</strong> for history.</p>'
-              : '<p class="customer-feed-empty">No communication history yet.</p>');
-      } catch (_) {
-        body.innerHTML = '<p class="customer-feed-empty">Could not load communication history.</p>';
+  // V284 - cache the compact card feed and fetch every visible customer's
+  // newest unread messages in ONE request. Re-rendering cards while the
+  // admin types in Search no longer starts a request per customer/key press.
+  const customerFeedCache = new Map();
+  const customerFeedPending = new Set();
+  const customerFeedGeneration = new Map();
+
+  function renderCustomerFeed(customer, items) {
+    const body = document.getElementById(`feed-${customer.id}`)?.querySelector(".customer-feed-body");
+    if (!body) return;
+    body.innerHTML = items.length
+      ? items.slice(0, 3).map((item) => `
+          <div class="customer-feed-row" data-communication-id="${escapeHtml(item.id)}" ${item.actionable ? `data-message-type="${escapeHtml(item.actionType)}" data-message-id="${escapeHtml(item.relatedId)}"` : ""}>
+            <div class="customer-feed-row-head">
+              <strong>${escapeHtml(item.subject || "Communication")}</strong>
+              ${communicationStatusMarkup(item)}
+            </div>
+            <p>${escapeHtml(item.message || "—")}</p>
+            <small>${escapeHtml(communicationDirectionLabel(item))}${item.machineLabel ? ` · ${escapeHtml(item.machineLabel)}` : ""} · ${formatDateTime(item.createdAt)}</small>
+            <button type="button" class="view-messages-button" data-view-communication="${escapeHtml(item.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">View</button>
+          </div>`).join("")
+      : '<p class="customer-feed-empty">No new communication. Use <strong>View all</strong> for history.</p>';
+  }
+
+  async function loadCustomerFeeds(customerList, force = false) {
+    const uniqueCustomers = Array.from(new Map(
+      customerList.filter((customer) => customer?.id).map((customer) => [customer.id, customer])
+    ).values());
+
+    uniqueCustomers.forEach((customer) => {
+      if (!force && customerFeedCache.has(customer.id)) {
+        renderCustomerFeed(customer, customerFeedCache.get(customer.id));
       }
+    });
+
+    const needsFetch = force
+      ? uniqueCustomers
+      : uniqueCustomers.filter((customer) => !customerFeedCache.has(customer.id) && !customerFeedPending.has(customer.id));
+    if (!needsFetch.length) return;
+
+    const requestGenerations = new Map();
+    needsFetch.forEach((customer) => {
+      const generation = (customerFeedGeneration.get(customer.id) || 0) + 1;
+      customerFeedGeneration.set(customer.id, generation);
+      requestGenerations.set(customer.id, generation);
+      customerFeedPending.add(customer.id);
+    });
+    const chunks = [];
+    for (let index = 0; index < needsFetch.length; index += 75) {
+      chunks.push(needsFetch.slice(index, index + 75));
+    }
+    try {
+      const responses = await Promise.all(chunks.map((chunk) => {
+        const ids = chunk.map((customer) => customer.id).join(",");
+        return api(`/customers/communication-feed?ids=${encodeURIComponent(ids)}`);
+      }));
+      const grouped = Object.assign({}, ...responses);
+      needsFetch.forEach((customer) => {
+        if (customerFeedGeneration.get(customer.id) !== requestGenerations.get(customer.id)) return;
+        const items = Array.isArray(grouped?.[customer.id]) ? grouped[customer.id] : [];
+        const unreadItems = items.filter((item) => !item.isRead);
+        customerFeedCache.set(customer.id, unreadItems);
+        renderCustomerFeed(customer, unreadItems);
+      });
+    } catch (error) {
+      needsFetch.forEach((customer) => {
+        const body = document.getElementById(`feed-${customer.id}`)?.querySelector(".customer-feed-body");
+        if (body) body.innerHTML = `<p class="customer-feed-empty">${escapeHtml(error.message || "Could not load communication history.")}</p>`;
+      });
+    } finally {
+      needsFetch.forEach((customer) => {
+        if (customerFeedGeneration.get(customer.id) === requestGenerations.get(customer.id)) {
+          customerFeedPending.delete(customer.id);
+        }
+      });
     }
   }
 
@@ -444,7 +508,7 @@
         if (badge.textContent === "NEW") badge.textContent = "READ";
       });
       const customer = customers.find((entry) => entry.id === customerId);
-      if (customer) loadCustomerFeeds([customer]);
+      if (customer) loadCustomerFeeds([customer], true);
     } catch (error) {
       body.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load communication history.")}</p>`;
     }
@@ -1587,7 +1651,7 @@
       });
       document.getElementById("sendCustomerMessageDialog").close();
       showAlert(result.message || "Message sent to customer.", !result.emailDelivered);
-      await loadCustomerFeeds(customers.filter((item) => item.id === customerId));
+      await loadCustomerFeeds(customers.filter((item) => item.id === customerId), true);
     } catch (error) {
       showAlert(error.message || "Could not send customer message.", true);
     } finally {
@@ -1624,6 +1688,57 @@
   document.getElementById("copyCredentialPasswordButton").addEventListener("click", () => {
     copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
   });
+  // V283 - compact per-customer BELM <-> Customer maintenance switch.
+  // Checked means BELM Service Provider is ON; unchecked hands maintenance
+  // back to the customer's own Technician team. The existing API and edit
+  // confirmation are reused so permissions/audit behavior remain unchanged.
+  document.getElementById("customerGrid").addEventListener("change", async (event) => {
+    const toggle = event.target.closest("[data-card-provider-toggle]");
+    if (!toggle) return;
+
+    const customerId = toggle.dataset.cardProviderToggle;
+    const customer = customers.find((item) => item.id === customerId);
+    if (!customer) {
+      toggle.checked = !toggle.checked;
+      showAlert("Customer record was not found. Refresh customers and try again.", true);
+      return;
+    }
+
+    const serviceProviderEnabled = toggle.checked;
+    toggle.disabled = true;
+    try {
+      const confirmation = await window.belmConfirmEdit({
+        title: serviceProviderEnabled ? "Turn ON BELM Service Provider?" : "Turn OFF BELM Service Provider?",
+        message: serviceProviderEnabled
+          ? "BELM will take over machine-problem and maintenance workflows. Only the customer's Technician role will be paused automatically; the customer's other portal roles remain active."
+          : "Maintenance control will return to the customer's own Technicians. BELM support and spare requests remain available when explicitly requested.",
+      });
+      if (!confirmation) {
+        toggle.checked = !serviceProviderEnabled;
+        return;
+      }
+
+      const result = await api(`/customers/${customerId}/machinery-admin`, {
+        method: "PUT",
+        body: JSON.stringify({ serviceProviderEnabled, ...confirmation }),
+      });
+      customer.belmServiceProviderActive = Boolean(result?.belmServiceProviderActive ?? serviceProviderEnabled);
+      customer.isMachineryAdmin = Boolean(result?.isMachineryAdmin ?? !serviceProviderEnabled);
+      showAlert(
+        serviceProviderEnabled
+          ? `${customer.name}: BELM Service Provider is ON.`
+          : `${customer.name}: BELM Service Provider is OFF; Customer maintenance team is active.`,
+        false,
+      );
+      await load();
+    } catch (error) {
+      toggle.checked = !serviceProviderEnabled;
+      showAlert(error.message || "Could not change maintenance control.", true);
+    } finally {
+      toggle.disabled = false;
+    }
+  });
+
   document.getElementById("customerGrid").addEventListener("click", async (event) => {
     if (event.target.closest("[data-clear-customer-filters]")) {
       document.getElementById("searchInput").value = "";

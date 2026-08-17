@@ -154,6 +154,9 @@ switch ($resource) {
         if (($segments[1] ?? '') === 'diagnostics') {
             dispatch('customers.php', ['action' => 'diagnostics']);
         }
+        if (($segments[1] ?? '') === 'communication-feed') {
+            dispatch('customers.php', ['action' => 'communication-feed']);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'service-parts') {
             dispatch('customers.php', ['action' => 'service-parts', 'machineId' => $segments[2]]);
         }

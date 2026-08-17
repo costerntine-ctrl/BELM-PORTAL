@@ -2975,6 +2975,73 @@ a[href^="/api/customer-portal/reports/"][href$="/download"] {
   color: #fff;
 }
 .belm-customer-checkup-body { padding: 14px; }
+
+/* V273 - Job Card Reports / Daily Report date filter bar */
+.belm-customer-checkup-tabs { flex-wrap: wrap; }
+.belm-report-date-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.belm-report-date-filter label {
+  display: grid;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #475569;
+}
+.belm-report-date-filter input,
+.belm-report-date-filter select {
+  padding: 7px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+}
+.belm-report-date-filter [data-jc-apply],
+.belm-report-date-filter [data-dr-apply] {
+  padding: 8px 14px;
+  border: 1px solid #0f62fe;
+  border-radius: 8px;
+  background: #0f62fe;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+}
+.belm-report-date-download {
+  margin-left: auto;
+  padding: 8px 14px;
+  border: 1px solid #00a651;
+  border-radius: 8px;
+  background: #00a651;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+  cursor: pointer;
+}
+.belm-report-date-download:disabled { opacity: .6; cursor: wait; }
+html[data-theme="dark"] .belm-report-date-filter {
+  background: #16233d !important;
+  border-color: #2a3950 !important;
+}
+html[data-theme="dark"] .belm-report-date-filter label { color: #9fb0c8 !important; }
+html[data-theme="dark"] .belm-report-date-filter input,
+html[data-theme="dark"] .belm-report-date-filter select {
+  background: #0e1826 !important;
+  border-color: #2a3950 !important;
+  color: #e5edf7 !important;
+}
+@media (max-width: 640px) {
+  .belm-report-date-filter { flex-direction: column; align-items: stretch; }
+  .belm-report-date-download { margin-left: 0; }
+}
 .belm-customer-checkup-toolbar label {
   display: grid;
   gap: 6px;

@@ -498,6 +498,23 @@ if ($method === 'GET' && $action === 'department-report-pdf') {
     ],$rows);
 }
 
+// V274 - staff-side "Job Card / Daily Report" list for one machine, used
+// by the "Checkup Report" button on the Message Customer dialog and
+// anywhere else BELM Admin wants a machine's Job Card history without
+// digging through Breakdown Workflow case by case. Read-only, never
+// deletes or hides anything.
+if ($method === 'GET' && $action === 'machine-job-cards' && !empty($_GET['machineId'])) {
+    $staffUser = require_auth();
+    if (($staffUser['roleName'] ?? '') !== 'Technician') require_page_access($staffUser, 'service-requests');
+    $machineId = trim((string)$_GET['machineId']);
+    $stmt = db()->prepare(
+        'SELECT id, job_card_no, title, status, technician_name, started_at, completed_at, created_at
+         FROM digital_job_cards WHERE machine_id = ? ORDER BY created_at DESC LIMIT 100'
+    );
+    $stmt->execute([$machineId]);
+    json_out($stmt->fetchAll());
+}
+
 if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
     $stmt=db()->prepare('SELECT j.*,bc.customer_id,bc.current_stage,c.name customer_name,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
         u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name

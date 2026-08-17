@@ -1259,6 +1259,169 @@
     }
   }
 
+  // V273 - shared date/month/year filter bar + PDF download, used by
+  // both "Job Card Reports" and "Daily Report" tabs. These records are
+  // never deleted or hidden by anything on this page - this is purely a
+  // read/export view on top of data that already stays permanently
+  // (see the Forget-Permanently audit in V266 for the one deliberate
+  // exception, which only ever runs when a whole account is removed).
+  function belmDateFilterBarHtml(prefix) {
+    return `<div class="belm-report-date-filter">
+      <label>Mode
+        <select data-${prefix}-mode>
+          <option value="all">All time</option>
+          <option value="day">Specific date</option>
+          <option value="month">Month</option>
+          <option value="year">Year</option>
+          <option value="range">Custom range</option>
+        </select>
+      </label>
+      <label class="hidden" data-${prefix}-field="day">Date<input type="date" data-${prefix}-day></label>
+      <label class="hidden" data-${prefix}-field="month">Month<input type="month" data-${prefix}-month></label>
+      <label class="hidden" data-${prefix}-field="year">Year<input type="number" min="2000" max="2100" step="1" placeholder="e.g. 2026" data-${prefix}-year></label>
+      <label class="hidden" data-${prefix}-field="range">From<input type="date" data-${prefix}-from></label>
+      <label class="hidden" data-${prefix}-field="range">To<input type="date" data-${prefix}-to></label>
+      <button type="button" data-${prefix}-apply>Apply</button>
+      <button type="button" class="belm-report-date-download" data-${prefix}-download>⭳ Download PDF</button>
+    </div>`;
+  }
+  function wireBelmDateFilterBar(container, prefix, onChange) {
+    const modeSelect = container.querySelector(`[data-${prefix}-mode]`);
+    const syncFields = () => {
+      container.querySelectorAll(`[data-${prefix}-field]`).forEach((field) => {
+        field.classList.toggle("hidden", field.dataset[`${prefix}Field`] !== modeSelect.value);
+      });
+    };
+    modeSelect.addEventListener("change", syncFields);
+    syncFields();
+    const readRange = () => {
+      const mode = modeSelect.value;
+      if (mode === "day") { const v = container.querySelector(`[data-${prefix}-day]`).value; return { from: v, to: v }; }
+      if (mode === "month") { const v = container.querySelector(`[data-${prefix}-month]`).value; return { from: v, to: v }; }
+      if (mode === "year") { const v = container.querySelector(`[data-${prefix}-year]`).value; return { from: v, to: v }; }
+      if (mode === "range") return { from: container.querySelector(`[data-${prefix}-from]`).value, to: container.querySelector(`[data-${prefix}-to]`).value };
+      return { from: "", to: "" };
+    };
+    container.querySelector(`[data-${prefix}-apply]`).addEventListener("click", () => onChange(readRange()));
+    return { readRange };
+  }
+
+  async function showCustomerJobCardReports(machine, body) {
+    body.innerHTML = `${belmDateFilterBarHtml("jc")}<div class="belm-customer-report-list"><p class="belm-analysis-loading">Loading job card reports…</p></div>`;
+    const token = localStorage.getItem("belm_customer_token");
+    const list = body.querySelector(".belm-customer-report-list");
+    async function render(range) {
+      list.innerHTML = '<p class="belm-analysis-loading">Loading job card reports…</p>';
+      try {
+        const qs = new URLSearchParams();
+        if (range?.from) qs.set("from", range.from);
+        if (range?.to) qs.set("to", range.to);
+        const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/job-cards${qs.toString() ? `?${qs}` : ""}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const jobCards = await response.json().catch(() => []);
+        if (!response.ok) throw new Error(jobCards.error || "Could not load Job Card reports.");
+        list.innerHTML = Array.isArray(jobCards) && jobCards.length ? jobCards.map((jc) => `
+          <article class="belm-customer-checkup-report-row">
+            <div>
+              <strong>${escapeHtml(jc.jobCardNo || jc.job_card_no || "Job Card")}</strong>
+              <span>${escapeHtml(jc.title || "")}</span>
+              <small>${escapeHtml(jc.technicianName || jc.technician_name || "Unassigned")} · ${escapeHtml(formatTanzaniaDateTime(jc.createdAt || jc.created_at))}</small>
+            </div>
+            <span class="belm-report-status status-${String(jc.status || "").toLowerCase()}">${escapeHtml(jc.status || "")}</span>
+          </article>`).join("") : '<div class="belm-report-empty">No Job Card reports found for this period. Nothing is ever deleted — try widening the date range or switch to All time.</div>';
+      } catch (error) {
+        list.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load Job Card reports.")}</p>`;
+      }
+    }
+    const { readRange } = wireBelmDateFilterBar(body, "jc", render);
+    body.querySelector("[data-jc-download]").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Preparing…";
+      try {
+        const range = readRange();
+        const qs = new URLSearchParams();
+        if (range.from) qs.set("from", range.from);
+        if (range.to) qs.set("to", range.to);
+        await customerPdfAction(
+          `/api/customer-portal/machines/${encodeURIComponent(machine.id)}/job-cards-pdf${qs.toString() ? `?${qs}` : ""}`,
+          "download",
+          "BELM-job-card-history.pdf"
+        );
+      } catch (error) {
+        alert(error.message || "Could not prepare the Job Card PDF.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+    render(null);
+  }
+
+  async function showCustomerDailyReportHistory(machine, body) {
+    body.innerHTML = `${belmDateFilterBarHtml("dr")}<div class="belm-customer-report-list"><p class="belm-analysis-loading">Loading daily reports…</p></div>`;
+    const token = localStorage.getItem("belm_customer_token");
+    const list = body.querySelector(".belm-customer-report-list");
+    async function render(range) {
+      list.innerHTML = '<p class="belm-analysis-loading">Loading daily reports…</p>';
+      try {
+        const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/reports`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const reports = await response.json().catch(() => []);
+        if (!response.ok) throw new Error(reports.error || "Could not load daily reports.");
+        const from = range?.from ? new Date(range.from.length === 4 ? `${range.from}-01-01` : range.from.length === 7 ? `${range.from}-01` : range.from) : null;
+        const to = range?.to ? new Date(range.to.length === 4 ? `${range.to}-12-31T23:59:59` : range.to.length === 7 ? `${range.to}-28T23:59:59` : `${range.to}T23:59:59`) : null;
+        const filtered = (Array.isArray(reports) ? reports : []).filter((r) => {
+          if (!from && !to) return true;
+          const created = new Date(r.createdAt);
+          if (from && created < from) return false;
+          if (to && created > to) return false;
+          return true;
+        });
+        list.innerHTML = filtered.length ? filtered.map((report) => {
+          const status = String(report.overallStatus || "GREEN").toUpperCase();
+          return `<article class="belm-customer-checkup-report-row">
+            <div>
+              <strong>${escapeHtml(report.templateName || "Daily Report")}</strong>
+              <span>${escapeHtml(report.createdAt ? formatTanzaniaDateTime(report.createdAt) : "Date not recorded")}</span>
+              <small>Technician: ${escapeHtml(report.filledBy || "Not recorded")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</small>
+            </div>
+            <span class="belm-report-status status-${escapeHtml(status.toLowerCase())}">${escapeHtml(status)}</span>
+          </article>`;
+        }).join("") : '<div class="belm-report-empty">No daily reports found for this period. Nothing is ever deleted — try widening the date range or switch to All time.</div>';
+      } catch (error) {
+        list.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load daily reports.")}</p>`;
+      }
+    }
+    const { readRange } = wireBelmDateFilterBar(body, "dr", render);
+    body.querySelector("[data-dr-download]").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Preparing…";
+      try {
+        const range = readRange();
+        const qs = new URLSearchParams();
+        if (range.from) qs.set("from", range.from);
+        if (range.to) qs.set("to", range.to);
+        await customerPdfAction(
+          `/api/customer-portal/machines/${encodeURIComponent(machine.id)}/reports-pdf${qs.toString() ? `?${qs}` : ""}`,
+          "download",
+          "BELM-daily-report-history.pdf"
+        );
+      } catch (error) {
+        alert(error.message || "Could not prepare the Daily Report PDF.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+    render(null);
+  }
+
   async function showCustomerCheckedReports(machine, body) {
     body.innerHTML = '<p class="belm-analysis-loading">Loading checked reports…</p>';
     const token = localStorage.getItem("belm_customer_token");
@@ -1332,6 +1495,8 @@
       <nav class="belm-customer-checkup-tabs">
         <button type="button" class="active" data-checkup-tab="daily">Checklist ya Siku</button>
         <button type="button" data-checkup-tab="reports">Checked Reports</button>
+        <button type="button" data-checkup-tab="jobcards">Job Card Reports</button>
+        <button type="button" data-checkup-tab="dailyreport">Daily Report</button>
       </nav>
       <div class="belm-customer-checkup-body" data-customer-checkup-body></div>
     </section>`;
@@ -1339,6 +1504,8 @@
     const setTab = (name) => {
       modal.querySelectorAll("[data-checkup-tab]").forEach((button) => button.classList.toggle("active", button.dataset.checkupTab === name));
       if (name === "reports") showCustomerCheckedReports(machine, body);
+      else if (name === "jobcards") showCustomerJobCardReports(machine, body);
+      else if (name === "dailyreport") showCustomerDailyReportHistory(machine, body);
       else showCustomerDailyChecklist(machine, body);
     };
     modal.querySelectorAll("[data-checkup-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.checkupTab)));

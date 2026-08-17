@@ -181,8 +181,8 @@ img#checkupDisplayPhotoPreview.checkup-photo-preview.hidden { display: none; }
 .badge-resolve { border: 0; cursor: pointer; }
 .badge-resolve:hover { filter: brightness(1.1); }
 .badge-resolve:disabled { opacity: .5; cursor: wait; }
-.message-checkup-jump { grid-column: 1 / -1; margin-top: -6px; }
-.message-checkup-jump button { width: 100%; }
+.message-checkup-jump { grid-column: 1 / -1; margin-top: -6px; display: flex; gap: 8px; }
+.message-checkup-jump button { flex: 1; }
 .message-checkup-jump button:disabled { opacity: .5; cursor: not-allowed; }
 
 /* Printed Checked Report must always come out as a clean white document,
@@ -221,9 +221,39 @@ img#checkupDisplayPhotoPreview.checkup-photo-preview.hidden { display: none; }
 }
 
 /* V269 - Machine Type <-> Checklist Template sync panel */
-.machine-type-sync-panel { margin-bottom: 18px; }
+.machine-type-sync-panel { margin-bottom: 18px; padding: 0; overflow: hidden; }
 .machine-type-sync-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 18px; border-bottom:1px solid var(--line); }
 .machine-type-sync-row:last-child { border-bottom:0; }
 .machine-type-sync-row strong { display:block; font-size:13px; }
 .machine-type-sync-row span { color:var(--muted); font-size:11.5px; }
 .machine-type-sync-none { color:var(--muted); font-size:11.5px; text-align:right; max-width:320px; }
+
+/* V275 - collapsed by default: a single compact toggle row instead of a
+   large always-open card, since this is an occasional check rather
+   than something needed on every visit. */
+.machine-type-sync-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 18px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.machine-type-sync-toggle span:first-child { font-weight: 800; font-size: 13px; color: var(--ink); }
+.machine-type-sync-toggle-status { margin-left: auto; color: var(--muted); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.machine-type-sync-toggle-arrow { color: var(--muted); font-size: 11px; transition: transform .15s ease; }
+.machine-type-sync-panel.collapsed .machine-type-sync-toggle-arrow { transform: rotate(-90deg); }
+.machine-type-sync-panel.collapsed .machine-type-sync-content { display: none; }
+.machine-type-sync-content { padding: 0 18px 16px; }
+.machine-type-sync-content > p.muted { margin: 0 0 12px; color: var(--muted); font-size: 11.5px; }
+.machine-type-sync-content #machineTypeSyncBody { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+.machine-type-sync-content #machineTypeSyncBody p.empty { padding: 12px 18px; margin: 0; color: var(--muted); font-size: 12px; }
+
+/* V274 - divider between Checklist Reports and Job Card/Daily Report
+   sections inside the Reports dialog */
+.dialog-section-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 10px; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.dialog-section-divider::before, .dialog-section-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }

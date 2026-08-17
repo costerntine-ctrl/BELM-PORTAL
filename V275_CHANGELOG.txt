@@ -1,0 +1,18 @@
+BELM PORTAL V275 - MACHINE TYPE SYNC PANEL: COMPACT & COLLAPSED BY DEFAULT
+
+The "Machine Type ↔ Checklist Template Sync" panel (V269) was a large
+always-open card sitting right at the top of Customers Manager. Now:
+
+- It starts COLLAPSED - a single compact row: "⇄ Machine Type ↔
+  Checklist Template Sync" with a live status on the right
+  ("✓ All synced" or "⚠ N machine(s) need attention") and an arrow to
+  expand it. Tap the row to open/close.
+- A check still runs automatically in the background on page load, so
+  the status label is accurate immediately - you don't have to open
+  the panel first just to see whether anything needs attention.
+- Opening it shows the same detail and "Fix" buttons as before -
+  nothing about what it does changed, only how much space it takes up
+  when you're not using it.
+
+- Browser/PWA cache bumped to V275.
+- No database migration required.

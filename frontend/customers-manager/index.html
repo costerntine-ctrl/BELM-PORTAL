@@ -58,12 +58,17 @@
 
       <div id="pageAlert" class="alert hidden" role="status"></div>
 
-      <section class="panel machine-type-sync-panel" id="machineTypeSyncPanel">
-        <div class="panel-head">
-          <div><h2>Machine Type ↔ Checklist Template Sync</h2><p>Finds machines whose type doesn't exactly match any active Checklist Template (e.g. a spelling difference), so Check Up quietly fails to find that machine's template.</p></div>
+      <section class="panel machine-type-sync-panel collapsed" id="machineTypeSyncPanel">
+        <button type="button" class="machine-type-sync-toggle" id="machineTypeSyncToggle">
+          <span>⇄ Machine Type ↔ Checklist Template Sync</span>
+          <span class="machine-type-sync-toggle-status" id="machineTypeSyncToggleStatus">Not checked yet</span>
+          <span class="machine-type-sync-toggle-arrow">▾</span>
+        </button>
+        <div class="machine-type-sync-content" id="machineTypeSyncContent">
+          <p class="muted">Finds machines whose type doesn't exactly match any active Checklist Template (e.g. a spelling difference), so Check Up quietly fails to find that machine's template.</p>
+          <div id="machineTypeSyncBody"><p class="empty">Click Refresh to check.</p></div>
           <button class="secondary" id="machineTypeSyncRefresh" type="button">↻ Refresh</button>
         </div>
-        <div id="machineTypeSyncBody"><p class="empty">Click Refresh to check.</p></div>
       </section>
 
       <section class="customer-toolbar">
@@ -267,7 +272,8 @@
             <input id="sendCustomerMessageSubject" maxlength="160" value="Message from BELM" required>
           </label>
           <div class="message-checkup-jump">
-            <button type="button" id="sendCustomerMessageCheckup" class="ghost" disabled>Check Up → Fill checklist for this machine</button>
+            <button type="button" id="sendCustomerMessageCheckup" class="ghost" disabled>Check Up → Fill checklist</button>
+            <button type="button" id="sendCustomerMessageCheckupReport" class="ghost" disabled>Checkup Report</button>
           </div>
           <label class="span-2">Message
             <textarea id="sendCustomerMessageBody" rows="6" maxlength="2000" placeholder="Write the message the customer should see in the portal and receive by email…" required></textarea>
@@ -301,6 +307,8 @@
           <button class="icon-close" data-close="reportsDialog" type="button" aria-label="Close">×</button>
         </div>
         <div id="reportsList" class="reports-list"></div>
+        <div class="dialog-section-divider"><span>Job Card / Daily Report</span></div>
+        <div id="machineJobCardsList" class="reports-list"></div>
       </div>
     </dialog>
 
@@ -376,6 +384,6 @@
     <script src="/admin-sidebar.js?v=262-maintenance-process-label"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=272-card-reorder"></script>
+    <script src="/customers-manager/manager.js?v=275-sync-panel-collapse"></script>
   </body>
 </html>

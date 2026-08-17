@@ -11,6 +11,43 @@ $sub = $_GET['sub'] ?? '';
 $sub2 = $_GET['sub2'] ?? '';
 $sub3 = $_GET['sub3'] ?? '';
 
+// V273 - turns a day/month/year (or explicit date) filter from the
+// "Job Card Reports" / "Daily Report" tabs into an inclusive [from, to)
+// timestamp range for a SQL query. Accepts either a full date
+// (YYYY-MM-DD) or a partial one (YYYY-MM or YYYY) for a whole-month or
+// whole-year selection. Returns [null, null] when nothing was chosen,
+// meaning "all time" - callers skip the date condition entirely then.
+function customer_portal_date_range(string $from, string $to): array {
+    $normalize = function (string $value, bool $isEnd): ?string {
+        $value = trim($value);
+        if ($value === '') return null;
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+            $dt = DateTimeImmutable::createFromFormat('!Y-m-d', $value, new DateTimeZone('Africa/Dar_es_Salaam'));
+            if (!$dt) return null;
+            return $isEnd ? $dt->modify('+1 day')->format('Y-m-d') : $dt->format('Y-m-d');
+        }
+        if (preg_match('/^\d{4}-\d{2}$/', $value)) {
+            $dt = DateTimeImmutable::createFromFormat('!Y-m', $value, new DateTimeZone('Africa/Dar_es_Salaam'));
+            if (!$dt) return null;
+            return $isEnd ? $dt->modify('+1 month')->format('Y-m-d') : $dt->format('Y-m-d');
+        }
+        if (preg_match('/^\d{4}$/', $value)) {
+            $dt = DateTimeImmutable::createFromFormat('!Y', $value, new DateTimeZone('Africa/Dar_es_Salaam'));
+            if (!$dt) return null;
+            return $isEnd ? $dt->modify('+1 year')->format('Y-m-d') : $dt->format('Y-m-d');
+        }
+        return null;
+    };
+    $fromResolved = $normalize($from, false);
+    $toResolved = $to !== '' ? $normalize($to, true) : ($fromResolved !== null && $from === $to ? $fromResolved : null);
+    // If only "from" is given (e.g. picking a single month/year), treat
+    // it as that whole period: recompute the end as one unit after start.
+    if ($fromResolved !== null && $toResolved === null && trim($to) === '') {
+        $toResolved = $normalize($from, true);
+    }
+    return [$fromResolved, $toResolved];
+}
+
 function log_customer_activity(array $customer, string $action): void {
     $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Someone'));
     db()->prepare(
@@ -2505,6 +2542,84 @@ if ($sub === 'machines' && $sub2) {
         $stmt->execute([$machineId]);
         $reports = array_map('customer_checklist_report_view', $stmt->fetchAll());
         json_out($reports);
+    }
+
+    // V273 - "Job Card Reports" and "Daily Report" tabs on the Check Up
+    // dialog: these never delete or hide anything (Job Cards and
+    // Checklist Reports already stay in the database permanently, the
+    // same as every other record - see V266's "Forget permanently" audit
+    // for the one place records are ever truly removed, and that only
+    // runs when a whole customer account is deleted on purpose). What
+    // was missing was a per-machine, date-filterable view with a single
+    // combined PDF download - this adds exactly that, for both.
+    if ($sub3 === 'job-cards') {
+        require_customer_feature_access($customer, 'workflow', 'Maintenance Process');
+        [$fromDate, $toDate] = customer_portal_date_range($_GET['from'] ?? '', $_GET['to'] ?? '');
+        $sql = "SELECT id, job_card_no, title, status, technician_name, started_at, completed_at, created_at
+                FROM digital_job_cards WHERE machine_id = ?";
+        $params = [$machineId];
+        if ($fromDate !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromDate; }
+        if ($toDate !== null) { $sql .= ' AND created_at < ?'; $params[] = $toDate; }
+        $sql .= ' ORDER BY created_at DESC';
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+        json_out($stmt->fetchAll());
+    }
+
+    if ($sub3 === 'job-cards-pdf') {
+        require_customer_feature_access($customer, 'workflow', 'Maintenance Process');
+        [$fromDate, $toDate] = customer_portal_date_range($_GET['from'] ?? '', $_GET['to'] ?? '');
+        $sql = "SELECT job_card_no, title, status, technician_name, started_at, completed_at, created_at
+                FROM digital_job_cards WHERE machine_id = ?";
+        $params = [$machineId];
+        if ($fromDate !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromDate; }
+        if ($toDate !== null) { $sql .= ' AND created_at < ?'; $params[] = $toDate; }
+        $sql .= ' ORDER BY created_at DESC';
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+        $jobCards = $stmt->fetchAll();
+        $rows = array_map(fn($jc) => [
+            $jc['job_card_no'], $jc['title'], $jc['status'],
+            $jc['technician_name'] ?: 'Unassigned', display_date_billing($jc['created_at']),
+        ], $jobCards);
+        output_table_pdf(
+            'BELM-job-card-history.pdf',
+            'JOB CARD REPORTS',
+            [
+                'Machine ID: ' . $machineId,
+                'Period: ' . ($fromDate ?? 'All time') . ' to ' . ($toDate ?? 'now'),
+                'Job Card No  |  Title  |  Status  |  Technician  |  Date',
+            ],
+            $rows
+        );
+    }
+
+    if ($sub3 === 'reports-pdf') {
+        require_customer_feature_access($customer, 'check-up', 'Check Up');
+        [$fromDate, $toDate] = customer_portal_date_range($_GET['from'] ?? '', $_GET['to'] ?? '');
+        $sql = "SELECT filled_by, overall_status, hour_meter_reading, created_at
+                FROM checklist_reports WHERE machine_id = ?";
+        $params = [$machineId];
+        if ($fromDate !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromDate; }
+        if ($toDate !== null) { $sql .= ' AND created_at < ?'; $params[] = $toDate; }
+        $sql .= ' ORDER BY created_at DESC';
+        $stmt = db()->prepare($sql);
+        $stmt->execute($params);
+        $reports = $stmt->fetchAll();
+        $rows = array_map(fn($r) => [
+            display_date_billing($r['created_at']), $r['filled_by'] ?: 'Not recorded',
+            $r['overall_status'], 'Hrs: ' . $r['hour_meter_reading'],
+        ], $reports);
+        output_table_pdf(
+            'BELM-daily-report-history.pdf',
+            'DAILY REPORT HISTORY',
+            [
+                'Machine ID: ' . $machineId,
+                'Period: ' . ($fromDate ?? 'All time') . ' to ' . ($toDate ?? 'now'),
+                'Date  |  Filled by  |  Status  |  Hour meter',
+            ],
+            $rows
+        );
     }
 
     if ($sub3 === 'service-status') {

@@ -413,7 +413,11 @@
       return `<option value="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType || "")}" data-machine-name="${escapeHtml(label)}">${escapeHtml(label)}</option>`;
     }).join("");
     const checkupJumpButton = document.getElementById("sendCustomerMessageCheckup");
-    const syncCheckupJumpButton = () => { checkupJumpButton.disabled = !machineSelect.value; };
+    const checkupReportButton = document.getElementById("sendCustomerMessageCheckupReport");
+    const syncCheckupJumpButton = () => {
+      checkupJumpButton.disabled = !machineSelect.value;
+      checkupReportButton.disabled = !machineSelect.value;
+    };
     machineSelect.onchange = syncCheckupJumpButton;
     syncCheckupJumpButton();
     checkupJumpButton.onclick = () => {
@@ -421,6 +425,12 @@
       if (!option || !option.value) return;
       document.getElementById("sendCustomerMessageDialog").close();
       openMachineCheckup(option.value, option.dataset.machineType || "", option.dataset.machineName || "Machine");
+    };
+    checkupReportButton.onclick = () => {
+      const option = machineSelect.selectedOptions[0];
+      if (!option || !option.value) return;
+      document.getElementById("sendCustomerMessageDialog").close();
+      openMachineReports(option.value, option.dataset.machineName || "Machine");
     };
     document.getElementById("sendCustomerMessageDialog").showModal();
     setTimeout(() => document.getElementById("sendCustomerMessageBody").focus(), 0);
@@ -979,7 +989,9 @@
     document.getElementById("reportsDialogTitle").textContent =
       `${currentMachineListCustomerName ? currentMachineListCustomerName.toUpperCase() + " — " : ""}${machineName} Checklist Reports`;
     const list = document.getElementById("reportsList");
+    const jobCardsList = document.getElementById("machineJobCardsList");
     list.innerHTML = '<p class="muted">Loading reports…</p>';
+    jobCardsList.innerHTML = '<p class="muted">Loading Job Card / Daily Report history…</p>';
     document.getElementById("reportsDialog").showModal();
     try {
       cachedMachineReports = await api(`/checklist-reports/machine/${encodeURIComponent(machineId)}`);
@@ -995,6 +1007,20 @@
         </article>`).join("") : '<p class="muted">No checklist reports recorded for this machine yet.</p>';
     } catch (error) {
       list.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
+    }
+    try {
+      const jobCards = await api(`/breakdown-workflow?action=machine-job-cards&machineId=${encodeURIComponent(machineId)}`);
+      jobCardsList.innerHTML = Array.isArray(jobCards) && jobCards.length ? jobCards.map((jc) => `
+        <article class="report-item">
+          <div>
+            <strong>${escapeHtml(jc.jobCardNo || "Job Card")} — ${escapeHtml(jc.title || "")}</strong>
+            <span>${formatDateTime(jc.createdAt)} · ${escapeHtml(jc.technicianName || "Unassigned")}</span>
+          </div>
+          <span class="machine-status ${escapeHtml(String(jc.status || "").toUpperCase())}">${escapeHtml(jc.status || "")}</span>
+          <a class="report-download-link" href="/api/breakdown-workflow?action=job-card-pdf&id=${encodeURIComponent(jc.id)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">Download</a>
+        </article>`).join("") : '<p class="muted">No Job Card / Daily Report history recorded for this machine yet.</p>';
+    } catch (error) {
+      jobCardsList.innerHTML = `<p class="muted">${escapeHtml(error.message)}</p>`;
     }
   }
 
@@ -1703,16 +1729,21 @@
   async function loadMachineTypeSync() {
     const body = document.getElementById("machineTypeSyncBody");
     const refreshBtn = document.getElementById("machineTypeSyncRefresh");
+    const statusLabelEl = document.getElementById("machineTypeSyncToggleStatus");
     if (!body) return;
     refreshBtn.disabled = true;
     body.innerHTML = '<p class="empty">Checking…</p>';
+    if (statusLabelEl) statusLabelEl.textContent = "Checking…";
     try {
       const data = await api("/customers?action=machine-type-sync");
       const mismatches = data.mismatches || [];
       if (!mismatches.length) {
         body.innerHTML = `<p class="empty">✓ All ${data.matchedMachineCount} machine(s) match an active Checklist Template exactly. Nothing to sync.</p>`;
+        if (statusLabelEl) statusLabelEl.textContent = "✓ All synced";
         return;
       }
+      const mismatchedMachineCount = mismatches.reduce((sum, row) => sum + row.machineCount, 0);
+      if (statusLabelEl) statusLabelEl.textContent = `⚠ ${mismatchedMachineCount} machine(s) need attention`;
       body.innerHTML = mismatches.map((row) => `
         <div class="machine-type-sync-row">
           <div>
@@ -1729,6 +1760,7 @@
         </div>`).join("");
     } catch (error) {
       body.innerHTML = `<p class="empty">${escapeHtml(error.message)}</p>`;
+      if (statusLabelEl) statusLabelEl.textContent = "Check failed";
     } finally {
       refreshBtn.disabled = false;
     }
@@ -1753,6 +1785,15 @@
       button.disabled = false;
       button.textContent = "Retry";
     }
+  });
+  // V275 - the panel starts collapsed (just a one-line toggle showing a
+  // quick status), since this is an occasional maintenance check, not
+  // something that needs a large block of screen space on every visit.
+  // A background check still runs once so the toggle line shows a real
+  // status ("✓ All synced" / "⚠ N machine(s) need attention") without
+  // anyone having to open it first.
+  document.getElementById("machineTypeSyncToggle")?.addEventListener("click", () => {
+    document.getElementById("machineTypeSyncPanel")?.classList.toggle("collapsed");
   });
   loadMachineTypeSync();
 

@@ -49,7 +49,7 @@ if ($action === 'login' && $method === 'POST') {
         'name' => $operator['name'],
         'machineId' => $operator['machine_id'],
         'customerId' => $operator['customer_id'],
-    ], 30 * 24 * 3600);
+    ], 12 * 3600);
 
     json_out([
         'token' => $token,

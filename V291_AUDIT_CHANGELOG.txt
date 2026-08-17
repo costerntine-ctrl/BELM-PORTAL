@@ -1,0 +1,69 @@
+BELM PORTAL V291 - AUDIT OF UPLOADED V290 BUILD ("MACHINE REPORT CENTER")
+
+You asked me to check this separately-developed build (V284-V290, built
+in a different conversation) for the same kind of issues fixed
+earlier in this one. Full audit results:
+
+FOUND & FIXED - real bug (not slowness, but a genuinely broken feature)
+- The "Machinery Admin" panel (a quick BELM Service Provider ON/OFF
+  toggle for any customer) had fully working JavaScript AND a working
+  backend endpoint (PUT /customers/{id}/machinery-admin), but its HTML
+  markup was completely missing from customers-manager/index.html -
+  the whole panel was invisible, silently doing nothing (the JS used
+  `?.` optional chaining so it never crashed, it just never appeared).
+  Confirmed by CSS that already had a targeted rule
+  (#machineryAdminCurrentInfo) waiting for an element that didn't
+  exist - strong evidence this was accidentally deleted, not
+  intentionally removed.
+- Rebuilt the panel to match its two siblings ("Customer user limit",
+  "Portal service") exactly - same layout, same classes, reusing the
+  existing .machinery-admin-switch toggle style. It now sits as the
+  third panel in that row.
+- Widened .settings-panels-row from a fixed 2-column grid to
+  responsive auto-fit columns so three panels sit evenly instead of
+  the third one being stranded alone under an empty gap.
+
+PERFORMANCE - checked thoroughly, nothing wrong here
+- loadCustomerFeeds (the function I fixed for slowness in my own
+  earlier V283) is, in this build, already significantly MORE
+  optimized than my own fix: a single batched endpoint
+  (/customers/communication-feed?ids=...) with client-side caching,
+  chunking, and stale-request protection, backed by one SQL query
+  using a window function (ROW_NUMBER) instead of one query per
+  customer.
+- The main customer listing (GET /customers) already batches its
+  machines/users lookups (comments reference this exact fix at V284
+  and V288) - not a per-customer query loop.
+- Checked every other for/foreach loop containing an await api()/
+  fetch() call across all 36 frontend JS files - the only sequential
+  ones remaining are intentional "download all files one at a time"
+  loops (Petty Cash, Fuel, Expenses receipts) with a deliberate delay
+  between downloads, which is correct behavior (simultaneous
+  programmatic downloads get blocked by browsers) - not a bug.
+
+FOUND & FIXED - stale test assertions (same recurring class of issue
+fixed at V242/V245/V255/V262/V269 earlier this session)
+- tests/v285-regression.cjs, v287, v288, v289, v290 all had exact-
+  string cache-version checks that broke the moment a later version
+  bumped the same file again. Replaced with the same "extract the
+  number, check >= N" pattern used throughout this session. One test
+  (v290) needed its regex tightened further - it was accidentally
+  matching "theme-manager.js" as if it were "manager.js".
+- Along the way, found and fixed one actually-inconsistent cache-bust
+  string: belm-theme.css was linked as
+  "?v=273-job-daily-reports&rev=288-customer-privacy" - a bolted-on
+  &rev= parameter instead of bumping the primary v= number like every
+  other asset in the codebase. Normalized to "?v=291-...".
+
+VERIFIED CLEAN
+- All 36 JS files pass syntax check; all CSS/PHP files brace-balanced;
+  no duplicate HTML ids anywhere; cross-checked every getElementById()
+  call across every major page against its HTML - only the one
+  genuine gap (Machinery Admin, now fixed) was found.
+- Full regression suite: 30+13+21+15+8+15+12+8+23+14+13 checks, all
+  passing (ui-smoke.cjs excluded - it requires a BELM_JS_TOOLS
+  environment variable pointing to a jsdom install that isn't
+  available in this environment; not a defect in your code).
+
+- Browser/PWA cache bumped to V291.
+- No database migration required.

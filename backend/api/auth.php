@@ -5,127 +5,6 @@ require_once __DIR__ . '/../config/mailer.php';
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
-// V299: rolling authenticated sessions. A valid session can be renewed without
-// asking the user to log in again. Every refresh re-checks the live account in
-// the database, so disabled/deleted accounts still stop immediately.
-if ($action === 'refresh' && $method === 'POST') {
-    $current = current_token_payload();
-    if (!$current) json_error('Session expired. Please sign in again.', 401);
-
-    $type = (string)($current['type'] ?? '');
-    $freshPayload = null;
-
-    if ($type === 'staff') {
-        $stmt = db()->prepare(
-            "SELECT u.id, u.name, u.email, u.assigned_customer_id, u.is_customer_managed,
-                    r.id AS role_id, r.name AS role_name, r.allowed_pages,
-                    c.name AS assigned_customer_name, c.portal_link AS assigned_customer_portal_link,
-                    c.deleted_at AS customer_deleted_at, c.is_active AS customer_active
-             FROM users u
-             JOIN roles r ON r.id = u.role_id
-             LEFT JOIN customers c ON c.id = u.assigned_customer_id
-             WHERE u.id = ? AND u.deleted_at IS NULL AND u.is_active = 1"
-        );
-        $stmt->execute([(string)($current['id'] ?? '')]);
-        $user = $stmt->fetch();
-        if (!$user) json_error('This staff account is no longer active.', 401);
-
-        if ($user['role_name'] === 'Technician' && $user['assigned_customer_id']) {
-            if (!$user['assigned_customer_name'] || $user['customer_deleted_at'] !== null || empty($user['customer_active'])) {
-                json_error('The customer assigned to this Technician account is no longer available.', 401);
-            }
-        }
-
-        $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
-        $freshPayload = [
-            'type' => 'staff',
-            'id' => $user['id'],
-            'email' => $user['email'],
-            'name' => $user['name'],
-            'roleId' => $user['role_id'],
-            'roleName' => $user['role_name'],
-            'allowedPages' => $allowedPages,
-            'assignedCustomerId' => $user['assigned_customer_id'],
-            'assignedCustomerPortalLink' => $user['assigned_customer_portal_link'] ?? null,
-            'isCustomerManaged' => !empty($user['is_customer_managed']),
-        ];
-    } elseif ($type === 'customer') {
-        $customerId = (string)($current['id'] ?? '');
-        $stmt = db()->prepare(
-            'SELECT id, name, email, portal_link FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
-        );
-        $stmt->execute([$customerId]);
-        $customer = $stmt->fetch();
-        if (!$customer) json_error('Customer account is no longer active.', 401);
-
-        $actorType = (string)($current['actorType'] ?? 'owner');
-        $actorId = $current['actorId'] ?? null;
-        $actorName = $current['actorName'] ?? $customer['name'];
-        $customerRole = $current['customerRole'] ?? 'owner';
-        $permissions = $current['permissions'] ?? null;
-
-        if ($actorType === 'assistant') {
-            $stmt = db()->prepare(
-                'SELECT id, name, email, role, permissions FROM customer_users WHERE id = ? AND customer_id = ? AND is_active = 1'
-            );
-            $stmt->execute([(string)$actorId, $customerId]);
-            $assistant = $stmt->fetch();
-            if (!$assistant) json_error('This customer user is no longer active.', 401);
-            $actorId = $assistant['id'];
-            $actorName = $assistant['name'];
-            $customerRole = $assistant['role'];
-            $permissions = $assistant['permissions'] !== null
-                ? (json_decode((string)$assistant['permissions'], true) ?: [])
-                : null;
-        } else {
-            $actorType = 'owner';
-            $actorId = null;
-            $actorName = $customer['name'];
-            $customerRole = 'owner';
-            $permissions = null;
-        }
-
-        $freshPayload = [
-            'type' => 'customer',
-            'id' => $customer['id'],
-            'name' => $customer['name'],
-            'portalLink' => $customer['portal_link'],
-            'actorType' => $actorType,
-            'actorId' => $actorId,
-            'actorName' => $actorName,
-            'customerRole' => $customerRole,
-            'permissions' => $permissions,
-        ];
-    } elseif ($type === 'operator') {
-        $stmt = db()->prepare(
-            'SELECT o.id, o.name, o.customer_id, o.machine_id
-             FROM machine_operators o
-             JOIN machines m ON m.id = o.machine_id
-             JOIN customers c ON c.id = o.customer_id
-             WHERE o.id = ? AND m.id = ?
-               AND m.deleted_at IS NULL AND c.deleted_at IS NULL AND c.is_active = 1'
-        );
-        $stmt->execute([(string)($current['id'] ?? ''), (string)($current['machineId'] ?? '')]);
-        $operator = $stmt->fetch();
-        if (!$operator) json_error('This Operator session is no longer active.', 401);
-        $freshPayload = [
-            'type' => 'operator',
-            'id' => $operator['id'],
-            'name' => $operator['name'],
-            'machineId' => $operator['machine_id'],
-            'customerId' => $operator['customer_id'],
-        ];
-    } else {
-        json_error('Session type is not supported.', 401);
-    }
-
-    json_out([
-        'ok' => true,
-        'token' => jwt_encode($freshPayload, 30 * 24 * 3600),
-        'expiresIn' => 30 * 24 * 3600,
-    ]);
-}
-
 // GET /api/auth/customer-context?customer=company-slug
 // Public, minimal context used only to brand the friendly /app/{customer} login.
 if ($action === 'customer-context' && $method === 'GET') {
@@ -155,50 +34,35 @@ if ($action === 'forgot-password' && $method === 'POST') {
         json_error('Enter the email address used for your BELM account.');
     }
 
-    // Limit reset-email generation whether or not the address exists, so this
-    // endpoint cannot be used to spam a known BELM user or probe at high rate.
-    assert_not_rate_limited('forgot-password', $email, 5, 15);
-    record_failed_attempt('forgot-password', $email);
-
     $accountType = null;
-    $accountId = null;
-    // The unified login requires one globally unique active portal email. New
-    // account creation already enforces that rule; for legacy data, refuse to
-    // guess if the same email still belongs to more than one active account.
-    $stmt = db()->prepare(
-        "SELECT account_type,account_id FROM (
-            SELECT 'staff' AS account_type,id AS account_id FROM users
-             WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
-            UNION ALL
-            SELECT 'customer' AS account_type,id AS account_id FROM customers
-             WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
-            UNION ALL
-            SELECT 'customer-assistant' AS account_type,cu.id AS account_id
-             FROM customer_users cu JOIN customers c ON c.id=cu.customer_id
-             WHERE LOWER(cu.email)=? AND cu.is_active=1
-               AND c.deleted_at IS NULL AND c.is_active=1
-        ) matches LIMIT 2"
-    );
-    $stmt->execute([$email, $email, $email]);
-    $matches = $stmt->fetchAll();
-    if (count($matches) === 1) {
-        $accountType = (string)$matches[0]['account_type'];
-        $accountId = (string)$matches[0]['account_id'];
+    $stmt = db()->prepare('SELECT id FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([$email]);
+    if ($stmt->fetch()) $accountType = 'staff';
+
+    if (!$accountType) {
+        $stmt = db()->prepare('SELECT id FROM customers WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) $accountType = 'customer';
     }
 
-    // Same response either way — do not reveal whether the email exists or is
-    // an ambiguous legacy address.
+    if (!$accountType) {
+        $stmt = db()->prepare('SELECT id FROM customer_users WHERE LOWER(email) = ? AND is_active = 1');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) $accountType = 'customer-assistant';
+    }
+
+    // Same response either way — do not reveal whether the email exists.
     $genericResponse = ['ok' => true, 'message' => "If $email has a BELM account, a verification code has been sent to it."];
 
-    if (!$accountType || !$accountId) json_out($genericResponse);
+    if (!$accountType) json_out($genericResponse);
 
     db()->prepare('DELETE FROM password_reset_codes WHERE LOWER(email) = ?')->execute([$email]);
 
     $code = (string)random_int(100000, 999999);
     db()->prepare(
-        'INSERT INTO password_reset_codes (id, email, code_hash, account_type, account_id, expires_at, created_at)
-         VALUES (?,?,?,?,?, NOW() + INTERVAL \'10 minutes\', NOW())'
-    )->execute([uuid(), $email, password_hash($code, PASSWORD_BCRYPT), $accountType, $accountId]);
+        'INSERT INTO password_reset_codes (id, email, code_hash, account_type, expires_at, created_at)
+         VALUES (?,?,?,?, NOW() + INTERVAL \'10 minutes\', NOW())'
+    )->execute([uuid(), $email, password_hash($code, PASSWORD_BCRYPT), $accountType]);
 
     try {
         send_email(
@@ -244,26 +108,16 @@ if ($action === 'reset-with-code' && $method === 'POST') {
     }
 
     $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-    $accountType = (string)$entry['account_type'];
-    $accountId = trim((string)($entry['account_id'] ?? ''));
-    if ($accountId === '') {
-        db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
-        json_error('This reset code was issued by an older portal version. Request a new verification code.', 409);
-    }
+    $accountType = $entry['account_type'];
 
     if ($accountType === 'staff') {
-        $update = db()->prepare('UPDATE users SET password_hash = ? WHERE id = ? AND LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
+        db()->prepare('UPDATE users SET password_hash = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
     } elseif ($accountType === 'customer') {
-        $update = db()->prepare('UPDATE customers SET password = ? WHERE id = ? AND LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
+        db()->prepare('UPDATE customers SET password = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
     } elseif ($accountType === 'customer-assistant') {
-        $update = db()->prepare('UPDATE customer_users SET password = ? WHERE id = ? AND LOWER(email) = ? AND is_active = 1');
+        db()->prepare('UPDATE customer_users SET password = ? WHERE LOWER(email) = ?')->execute([$newHash, $email]);
     } else {
         json_error('Unknown account type.', 500);
-    }
-    $update->execute([$newHash, $accountId, $email]);
-    if ($update->rowCount() !== 1) {
-        db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
-        json_error('This account is no longer active. Request a new code or contact the administrator.', 409);
     }
 
     db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
@@ -293,33 +147,51 @@ if ($action === 'recover' && $method === 'POST') {
 
     $account = null;
     $accountType = null;
-    $candidates = [];
 
     $stmt = db()->prepare(
-        "SELECT 'staff' AS account_type,id,recovery_code_hash FROM users
-         WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
-         UNION ALL
-         SELECT 'customer' AS account_type,id,recovery_code_hash FROM customers
-         WHERE LOWER(email)=? AND deleted_at IS NULL AND is_active=1
-         UNION ALL
-         SELECT 'assistant' AS account_type,cu.id,cu.recovery_code_hash
-         FROM customer_users cu JOIN customers c ON c.id=cu.customer_id
-         WHERE LOWER(cu.email)=? AND cu.is_active=1
-           AND c.deleted_at IS NULL AND c.is_active=1"
+        'SELECT id, recovery_code_hash
+         FROM users
+         WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1'
     );
-    $stmt->execute([$email, $email, $email]);
-    foreach ($stmt->fetchAll() as $candidate) {
-        if (!empty($candidate['recovery_code_hash'])
-            && password_verify($recoveryCode, (string)$candidate['recovery_code_hash'])) {
-            $candidates[] = $candidate;
-        }
-    }
-    if (count($candidates) === 1) {
-        $account = $candidates[0];
-        $accountType = (string)$account['account_type'];
+    $stmt->execute([$email]);
+    if ($row = $stmt->fetch()) {
+        $account = $row;
+        $accountType = 'staff';
     }
 
     if (!$account) {
+        $stmt = db()->prepare(
+            'SELECT id, recovery_code_hash
+             FROM customers
+             WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1'
+        );
+        $stmt->execute([$email]);
+        if ($row = $stmt->fetch()) {
+            $account = $row;
+            $accountType = 'customer';
+        }
+    }
+
+    if (!$account) {
+        $stmt = db()->prepare(
+            'SELECT cu.id, cu.recovery_code_hash
+             FROM customer_users cu
+             JOIN customers c ON c.id = cu.customer_id
+             WHERE LOWER(cu.email) = ? AND cu.is_active = 1
+               AND c.deleted_at IS NULL AND c.is_active = 1'
+        );
+        $stmt->execute([$email]);
+        if ($row = $stmt->fetch()) {
+            $account = $row;
+            $accountType = 'assistant';
+        }
+    }
+
+    if (
+        !$account
+        || !$account['recovery_code_hash']
+        || !password_verify($recoveryCode, $account['recovery_code_hash'])
+    ) {
         record_failed_attempt('recovery-code', $email);
         json_error('Email or recovery code is incorrect. Ask the account administrator for a new recovery code.', 401);
     }

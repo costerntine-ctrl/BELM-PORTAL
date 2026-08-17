@@ -30,7 +30,7 @@ $categories = [
     'bank' => ['label' => 'Bank Manager', 'tables' => []],
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
-    'machine-expenses' => ['label' => 'Procurement logs', 'tables' => []],
+    'machine-expenses' => ['label' => 'Machine Expenses logs', 'tables' => []],
     'petty-cash' => ['label' => 'Petty Cash deposits (top-ups) — keeps spending history', 'tables' => ['petty_cash_topups']],
 ];
 
@@ -217,17 +217,6 @@ try {
     $pdo = db();
 
     if ($category === 'all') {
-        // Preserve the Administrator who is performing the reset. The old
-        // implementation silently restored public/default credentials.
-        $adminIdentityStmt = $pdo->prepare('SELECT name,email FROM users WHERE id=? AND deleted_at IS NULL');
-        $adminIdentityStmt->execute([$user['id']]);
-        $adminIdentity = $adminIdentityStmt->fetch() ?: [];
-        $preservedAdminName = trim((string)($adminIdentity['name'] ?? $user['name'] ?? 'BELM Admin'));
-        $preservedAdminEmail = trim((string)($adminIdentity['email'] ?? $user['email'] ?? 'info@belmgeneral.co.tz'));
-        $preservedAdminPassword = (string)($body['adminPassword'] ?? '');
-        $preservedDeletePin = belm_read_stored_pin('adminDeletePin', (string)($body['pin'] ?? ''));
-        $preservedEditPin = belm_read_stored_pin('adminEditPin', '');
-
         $tables = $pdo->query(
             "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
         )->fetchAll(PDO::FETCH_COLUMN);
@@ -250,19 +239,9 @@ try {
         }
         $pdo->exec($schema);
 
-        $seedAdminId = '00000000-0000-4000-8000-000000000003';
-        $pdo->prepare('UPDATE users SET name=?,email=?,password_hash=?,is_active=1,deleted_at=NULL WHERE id=?')
-            ->execute([$preservedAdminName,$preservedAdminEmail,password_hash($preservedAdminPassword,PASSWORD_DEFAULT),$seedAdminId]);
-        $settingStmt = $pdo->prepare(
-            "INSERT INTO system_settings(id,\"key\",\"value\",updated_at) VALUES(?,?,?::jsonb,NOW()) " .
-            "ON CONFLICT (\"key\") DO UPDATE SET \"value\"=EXCLUDED.\"value\",updated_at=NOW()"
-        );
-        $settingStmt->execute([uuid(),'adminDeletePin',json_encode($preservedDeletePin)]);
-        $settingStmt->execute([uuid(),'adminEditPin',json_encode($preservedEditPin)]);
-
         json_out([
             'ok' => true,
-            'message' => 'Database wiped and reseeded. Your current Admin email/password and edit/delete PINs were preserved.',
+            'message' => 'Database wiped and reseeded. Admin login: admin@belmgeneraltech.co.tz / ChangeMe123! — change the password immediately.',
         ]);
     }
 
@@ -511,7 +490,6 @@ try {
 
     if ($category === 'machine-expenses') {
         $pdo->exec("DELETE FROM usage_logs WHERE category = 'SPARE_PART'");
-        $pdo->exec("DELETE FROM customer_procurement_requests");
     }
     // Note: 'petty-cash' category intentionally does NOT touch usage_logs here —
     // only the petty_cash_topups table (deposits) is truncated below, so all

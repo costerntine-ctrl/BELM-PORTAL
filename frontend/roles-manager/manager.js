@@ -236,7 +236,7 @@
   }
 
   function showUserCredentials(user, credentials) {
-    const loginUrl = credentials.loginUrl || `${window.location.origin}/login`;
+    const loginUrl = credentials.loginUrl || `${window.location.origin}/admin/login`;
     document.getElementById("credentialsTitle").textContent = `Copy login — ${user.name}`;
     document.getElementById("systemCredentialEmail").value = user.email;
     document.getElementById("systemCredentialPassword").value = credentials.temporaryPassword || credentials.newPassword || "";

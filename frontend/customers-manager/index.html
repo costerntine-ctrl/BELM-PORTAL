@@ -8,10 +8,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/customers-manager/manager.css?v=290-report-center">
+    <link rel="stylesheet" href="/customers-manager/manager.css?v=291-machinery-admin-panel">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -109,6 +109,21 @@
             <button id="portalAccessSaveButton" class="secondary" type="button">Save</button>
           </div>
           <p id="portalAccessCurrentInfo" class="muted"></p>
+        </div>
+        <div class="user-limit-panel compact">
+          <div class="user-limit-panel-head">
+            <h2>Machinery Admin <small>(BELM Service Provider)</small></h2>
+            <p>Switch who handles this customer's machine problems and maintenance.</p>
+          </div>
+          <div class="user-limit-panel-row">
+            <select id="machineryAdminCustomerSelect"><option value="">Select customer…</option></select>
+            <label class="machinery-admin-switch">
+              <input id="machineryAdminToggle" type="checkbox">
+              <span>ON</span>
+            </label>
+            <button id="machineryAdminSaveButton" class="secondary" type="button">Save</button>
+          </div>
+          <p id="machineryAdminCurrentInfo" class="muted"></p>
         </div>
       </section>
       <section id="customerGrid" class="customer-grid"><div class="loading">Loading customers…</div></section>
@@ -319,7 +334,7 @@
     <dialog id="expenseReceiptsDialog">
       <div class="dialog-card">
         <div class="dialog-head">
-          <div><p class="eyebrow">Bookkeeping</p><h2 id="expenseReceiptsTitle">Procurement receipts</h2></div>
+          <div><p class="eyebrow">Bookkeeping</p><h2 id="expenseReceiptsTitle">Expense receipts</h2></div>
           <div class="dialog-head-actions">
             <button class="ghost" id="downloadAllExpenseReceiptsButton" type="button">Download All</button>
             <button class="icon-close" data-close="expenseReceiptsDialog" type="button" aria-label="Close">×</button>
@@ -388,6 +403,6 @@
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=296-procurement-label"></script>
+    <script src="/customers-manager/manager.js?v=291-machinery-admin-panel"></script>
   </body>
 </html>

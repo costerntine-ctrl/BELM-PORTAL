@@ -45,36 +45,3 @@ th { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacin
 .spare-field small { color:var(--muted); font-weight:650; }
 .part-request-row-head > strong { color:var(--navy); font-size:12px; }
 @media(max-width:720px){.customer-spare-fields{grid-template-columns:1fr}.qty-field{max-width:180px}}
-
-/* V295 - machine spare list / Customer Store / procurement workflow */
-.spare-workspace-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:14px 20px 0; }
-.spare-workspace-toolbar .secondary { min-height:36px; }
-.spare-workspace-toolbar .action-save { border-color:#2f7cf5; color:#1a4fb0; background:#f2f7ff; }
-.spare-workspace-toolbar .action-store { border-color:#00a651; color:#087039; background:#eefaf3; }
-.spare-workspace-toolbar .action-csv { border-color:#805ad5; color:#553c9a; background:#f7f2ff; }
-.select-all-spares { display:flex; grid-auto-flow:column; align-items:center; gap:6px; margin-left:auto; color:#526273; font-size:11px; font-weight:850; }
-.select-all-spares input,.part-select input { width:16px; height:16px; margin:0; accent-color:var(--green); }
-.part-select { display:flex; align-items:center; gap:8px; color:var(--navy); font-size:12px; }
-.part-select strong { color:inherit; }
-.store-match-status { padding:9px 11px; border-radius:9px; font-size:11px; line-height:1.45; border:1px solid var(--line); background:#f6f8fb; color:#526273; }
-.store-match-status.available { border-color:#a9dfc0; background:#eefaf3; color:#08683b; }
-.store-match-status.shortage { border-color:#ead36a; background:#fffbea; color:#775b00; }
-.store-match-status.not-found { border-color:#f0b7b2; background:#fff4f3; color:#8e2a22; }
-.store-match-status.pending { border-color:#c9d9ea; background:#f5f9fe; color:#42617e; }
-.workflow-note { margin:0 20px 8px; padding:10px 12px; border:1px dashed #c8d6cf; border-radius:9px; color:#5b6b64; background:#fbfdfc; font-size:11px; line-height:1.5; }
-.spare-section-actions { flex-wrap:wrap; }
-.spare-section-actions .action-approval { border-color:#e5bd00; color:#6c5500; background:#fffbea; }
-.spare-section-actions #openExpensesApprovalLink { display:inline-flex; align-items:center; justify-content:center; }
-html[data-theme="dark"] .spare-workspace-toolbar .action-save { background:#152846; color:#a9ccff; border-color:#2f5f9e; }
-html[data-theme="dark"] .spare-workspace-toolbar .action-store { background:#102a21; color:#8fe5b4; border-color:#285f45; }
-html[data-theme="dark"] .spare-workspace-toolbar .action-csv { background:#241a38; color:#d4c2ff; border-color:#5e4a83; }
-html[data-theme="dark"] .store-match-status.pending { background:#101f31; color:#aac0d6; border-color:#28405b; }
-html[data-theme="dark"] .store-match-status.available { background:#102a21; color:#8fe5b4; border-color:#285f45; }
-html[data-theme="dark"] .store-match-status.shortage { background:#30280d; color:#ffe581; border-color:#66591e; }
-html[data-theme="dark"] .store-match-status.not-found { background:#32191b; color:#ffb0aa; border-color:#66363a; }
-html[data-theme="dark"] .workflow-note { background:#111b2a; color:#aebdcb; border-color:#314154; }
-html[data-theme="dark"] .spare-section-actions .action-approval { background:#30280d; color:#ffe581; border-color:#66591e; }
-@media(max-width:720px){.select-all-spares{width:100%;margin-left:0}.spare-workspace-toolbar .secondary{flex:1;min-width:145px}.spare-section-actions .secondary,.spare-section-actions .primary{width:100%}}
-
-/* V297 Procurement-first spare search */
-.spare-search-box{margin:0 18px 14px;padding:14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--paper) 88%,var(--canvas))}.spare-search-box>label{display:block;font-size:11px;font-weight:850;color:var(--muted)}.spare-search-line{display:flex;gap:8px;margin-top:6px}.spare-search-line input{flex:1;margin:0}.spare-search-line button{flex:0 0 auto}.spare-search-results{display:grid;gap:7px;margin-top:10px}.spare-search-result{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:var(--paper)}.spare-search-result b{display:block;font-size:12px}.spare-search-result small{display:block;margin-top:2px;color:var(--muted)}.spare-search-result .stock-ok{color:var(--green-dark,#087039);font-weight:850}.spare-search-result .stock-zero{color:var(--red);font-weight:850}.spare-search-empty{padding:10px;border:1px dashed var(--line);border-radius:9px;color:var(--muted);font-size:11px}.spare-search-empty button{margin-top:8px}@media(max-width:620px){.spare-search-line{flex-direction:column}.spare-search-result{grid-template-columns:1fr}.spare-search-result button{width:100%}}

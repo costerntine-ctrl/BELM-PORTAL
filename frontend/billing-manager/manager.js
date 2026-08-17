@@ -118,7 +118,7 @@
     const statuses = ["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
     panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
       <tr>
-        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong> <span class="invoice-sync-badge ${invoice.status === "PAID" ? "paid" : invoice.status === "CANCELLED" ? "cancelled" : "outstanding"}">${invoice.status === "PAID" ? "PAID" : invoice.status === "CANCELLED" ? "CANCELLED" : "OUTSTANDING"}</span><div class="muted">${(invoice.items || []).length} item(s)</div></td>
+        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong><div class="muted">${(invoice.items || []).length} item(s)</div></td>
         <td>${escapeHtml(invoice.customer?.name || "—")}</td>
         <td class="money">${money(invoice.total)}</td>
         <td class="money">${money(invoice.paidAmount)}</td>
@@ -224,7 +224,7 @@
 
   async function load() {
     if (!token) {
-      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/login">Go to admin login</a></div>';
+      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/admin/login">Go to admin login</a></div>';
       return;
     }
     try {
@@ -263,7 +263,7 @@
       renderReceipts();
       updateMetrics();
     } catch (error) {
-      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/login">Go to admin login</a></div>`;
+      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
       showAlert(error.message, true);
     }
   }
@@ -319,7 +319,6 @@
     const invoice = invoices.find((item) => item.id === id);
     document.getElementById("invoiceForm").reset();
     document.getElementById("invoiceId").value = invoice?.id || "";
-    document.getElementById("invoiceSourceJobCardId").value = invoice?.sourceJobCardId || invoice?.source_job_card_id || "";
     document.getElementById("invoiceTitle").textContent = invoice ? `Re-edit · ${invoice.invoiceNo}` : "New invoice";
     await ensureCustomersLoaded();
     document.getElementById("invoiceCustomer").innerHTML = customerOptions(invoice?.customer?.id || invoice?.customerId || "");
@@ -383,7 +382,6 @@
           action: id ? "edit" : undefined,
           customerId: document.getElementById("invoiceCustomer").value,
           machineId: document.getElementById("invoiceMachine").value || null,
-          sourceJobCardId: document.getElementById("invoiceSourceJobCardId").value || null,
           dueDate: document.getElementById("invoiceDueDate").value || null,
           tax: Number(document.getElementById("invoiceTax").value || 0),
           items,
@@ -669,8 +667,7 @@
     document.getElementById("proformaForm").reset();
     document.getElementById("proformaId").value = proforma?.id || "";
     document.getElementById("proformaMachineId").value = proforma?.machineId || "";
-    document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || proforma?.source_spare_request_id || "";
-    document.getElementById("proformaSourceJobCardId").value = proforma?.sourceJobCardId || proforma?.source_job_card_id || "";
+    document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || "";
     document.getElementById("proformaTitle").textContent = proforma ? `Re-edit ${proforma.invoiceNo}` : "New proforma";
     await ensureCustomersLoaded();
     document.getElementById("proformaCustomer").innerHTML = customerOptions(proforma?.customer?.id || "");
@@ -732,7 +729,6 @@
           notice: document.getElementById("proformaNotice").value.trim(),
           machineId: document.getElementById("proformaMachineId").value,
           sourceSpareRequestId: document.getElementById("proformaSourceSpareRequestId").value,
-          sourceJobCardId: document.getElementById("proformaSourceJobCardId").value,
           items,
           ...editConfirmation,
         }),
@@ -953,7 +949,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/login";
+    window.location.href = "/admin/login";
   });
 
   async function applyProformaPrefillFromSparePartRequest() {
@@ -971,7 +967,6 @@
     if (prefill.customerId) document.getElementById("proformaCustomer").value = prefill.customerId;
     document.getElementById("proformaMachineId").value = prefill.machineId || "";
     document.getElementById("proformaSourceSpareRequestId").value = prefill.sourceSpareRequestId || "";
-    document.getElementById("proformaSourceJobCardId").value = prefill.sourceJobCardId || "";
     fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
     const firstRow = document.querySelector("#proformaItems .item-row");
     if (firstRow) {
@@ -983,18 +978,5 @@
     showAlert(`Proforma pre-filled from the spare-part request — check the customer and pricing, then Save.`);
   }
 
-  async function applyInvoicePrefillFromJobCard() {
-    const raw=sessionStorage.getItem("belm_prefill_invoice");if(!raw)return;
-    sessionStorage.removeItem("belm_prefill_invoice");let prefill;try{prefill=JSON.parse(raw)}catch(_){return}
-    await openInvoice();
-    if(prefill.customerId) document.getElementById("invoiceCustomer").value=prefill.customerId;
-    updateMachineOptions(prefill.machineId||"");
-    document.getElementById("invoiceSourceJobCardId").value=prefill.sourceJobCardId||"";
-    fillCustomerInformation("invoiceCustomer","invoiceCustomerInfo");
-    const firstRow=document.querySelector("#invoiceItems .item-row");
-    if(firstRow){firstRow.querySelector('[data-field="description"]').value=prefill.description||"BELM service work";firstRow.querySelector('[data-field="quantity"]').value=prefill.qty||1;firstRow.querySelector('[data-field="unitPrice"]').value=prefill.unitPrice||0;}
-    showAlert("Invoice pre-filled from the customer-signed Job Card — enter the agreed price/tax, then Save.");
-  }
-
-  load().then(async()=>{await applyProformaPrefillFromSparePartRequest();await applyInvoicePrefillFromJobCard();});
+  load().then(applyProformaPrefillFromSparePartRequest);
 })();

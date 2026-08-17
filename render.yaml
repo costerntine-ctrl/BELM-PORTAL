@@ -27,12 +27,6 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
-      # Required only while the seeded Super Admin still has the locked/legacy
-      # bootstrap hash. Render prompts for this secret; use 12+ characters.
-      - key: INITIAL_ADMIN_PASSWORD
-        sync: false
-      - key: INITIAL_ADMIN_ACTION_PIN
-        sync: false
       - key: SMTP_HOST
         value: ""
       - key: SMTP_PORT

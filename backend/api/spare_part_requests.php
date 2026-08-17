@@ -76,90 +76,6 @@ function validate_technician_spare_request(array $body): array {
     ];
 }
 
-// V298 - when a BELM supply request originated from Customer Procurement,
-// closing the BELM request also advances the customer's Procurement and
-// Maintenance Process records. This keeps both organizations on one status.
-function sync_customer_procurement_from_belm(string $procurementRequestId, string $actorName): void {
-    if ($procurementRequestId === '') return;
-    $pdo = db();
-    $stmt = $pdo->prepare(
-        "SELECT cpr.id,cpr.customer_id,cpr.machine_id,cpr.workflow_case_id,cpr.description,cpr.part_number,
-                c.name AS customer_name,m.brand,m.model
-         FROM customer_procurement_requests cpr
-         JOIN customers c ON c.id=cpr.customer_id
-         JOIN machines m ON m.id=cpr.machine_id
-         WHERE cpr.id=?"
-    );
-    $stmt->execute([$procurementRequestId]);
-    $req = $stmt->fetch();
-    if (!$req) return;
-
-    $pdo->beginTransaction();
-    try {
-        $pdo->prepare(
-            "UPDATE customer_procurement_requests
-             SET status='PARTS_READY',handled_by_name=?,handled_at=NOW(),decision_note='BELM supply fulfilled / parts ready',updated_at=NOW()
-             WHERE id=?"
-        )->execute([$actorName,$procurementRequestId]);
-        $pdo->prepare(
-            "UPDATE breakdown_spare_requests
-             SET status='PARTS_READY',fulfilled_by_name=?,fulfilled_at=NOW(),approval_note='BELM supply fulfilled / parts ready',updated_at=NOW()
-             WHERE procurement_request_id=?"
-        )->execute([$actorName,$procurementRequestId]);
-        $caseId = trim((string)($req['workflow_case_id'] ?? ''));
-        if ($caseId !== '') {
-            $countStmt = $pdo->prepare(
-                "SELECT COUNT(*) FILTER (WHERE status NOT IN ('PARTS_READY','REJECTED')) AS pending_count,
-                        COUNT(*) FILTER (WHERE status='BELM_REQUESTED') AS belm_count,
-                        COUNT(*) FILTER (WHERE status='PARTS_READY') AS ready_count
-                 FROM breakdown_spare_requests
-                 WHERE case_id=? AND procurement_request_id IS NOT NULL"
-            );
-            $countStmt->execute([$caseId]);
-            $counts = $countStmt->fetch() ?: [];
-            $pending = (int)($counts['pending_count'] ?? 0);
-            $belm = (int)($counts['belm_count'] ?? 0);
-            $ready = (int)($counts['ready_count'] ?? 0);
-            if ($pending > 0) {
-                $stage='PROCUREMENT'; $department='Procurement';
-                $blocker=$belm>0 ? 'Waiting BELM supply via Procurement on ' . $belm . ' spare item(s).' : 'Waiting Procurement action on ' . $pending . ' spare item(s).';
-            } elseif ($ready > 0) {
-                $stage='PARTS_READY'; $department='Workshop'; $blocker=null;
-            } else {
-                $stage='DIAGNOSIS'; $department='Workshop'; $blocker='Procurement request closed without parts issued.';
-            }
-            $pdo->prepare(
-                'UPDATE breakdown_cases SET current_stage=?,current_department=?,blocker_reason=?,stage_started_at=NOW(),updated_at=NOW() WHERE id=? AND status<>\'COMPLETED\''
-            )->execute([$stage,$department,$blocker,$caseId]);
-            $pdo->prepare(
-                "INSERT INTO breakdown_case_events
-                 (id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at)
-                 VALUES (?,?,?,?,?,'BELM fulfilled the Procurement shortage request.','belm',NULL,?,NOW())"
-            )->execute([uuid(),$caseId,$stage,$department,'BELM supply fulfilled',$actorName]);
-        }
-        $pdo->commit();
-    } catch (Throwable $error) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
-        throw $error;
-    }
-    try {
-        customer_send_team_alert(
-            (string)$req['customer_id'], ['machine-expenses','workflow'],
-            'BELM SPARE SUPPLY READY - ' . trim(($req['brand'] ?? '') . ' ' . ($req['model'] ?? '')),
-            'BELM marked the requested spare as fulfilled/ready: ' . ($req['part_number'] ?: $req['description']) . '. Maintenance Process has been updated.',
-            true
-        );
-    } catch (Throwable $ignored) {}
-    try {
-        belm_log_customer_communication(
-            (string)$req['customer_id'], (string)$req['machine_id'], 'BELM_TO_CUSTOMER', 'PORTAL',
-            'BELM Spare Supply Ready',
-            'BELM marked the Procurement shortage item as supplied/ready: ' . ($req['part_number'] ?: $req['description']) . '.',
-            'PROCUREMENT', $procurementRequestId, $actorName, 'SENT'
-        );
-    } catch (Throwable $ignored) {}
-}
-
 // Technician -> Spare Parts Inventory alert.
 if ($method === 'POST') {
     $request = validate_technician_spare_request(body());
@@ -261,7 +177,7 @@ if ($method === 'GET') {
             json_error('This Technician has not been assigned to a customer.', 403);
         }
         $stmt = db()->prepare(
-            "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.procurement_request_id, spr.machine_id, spr.quantity,
+            "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.machine_id, spr.quantity,
                     spr.status, spr.requested_by_name, spr.description,
                     spr.machine_type, spr.created_at,
                     sp.part_number, sp.name AS part_name, sp.stock_qty,
@@ -283,7 +199,7 @@ if ($method === 'GET') {
 
     require_page_access($user, 'spare-parts');
     $stmt = db()->query(
-        "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.procurement_request_id, spr.machine_id, spr.quantity,
+        "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.machine_id, spr.quantity,
                 spr.status, spr.requested_by_id, spr.requested_by_name, spr.description,
                 spr.machine_type, spr.created_at,
                 sp.part_number, sp.name AS part_name, sp.stock_qty,
@@ -403,7 +319,7 @@ if ($method === 'PUT') {
 
     require_page_access($user, 'spare-parts');
     $stmt = db()->prepare(
-        'SELECT spr.id, spr.status, spr.spare_part_id, spr.procurement_request_id, spr.machine_id, m.customer_id,
+        'SELECT spr.id, spr.status, spr.spare_part_id, spr.machine_id, m.customer_id,
                 spr.description, spr.quantity, sp.stock_qty
          FROM spare_part_requests spr
          LEFT JOIN spare_parts sp ON sp.id = spr.spare_part_id
@@ -496,17 +412,14 @@ if ($method === 'PUT') {
         // Inventory-linked requests must actually have stock before closing.
         // Custom (non-inventory) requests have nothing to check — BELM has
         // simply sourced/delivered the part, so just mark it fulfilled.
-        if ($request['spare_part_id'] !== null && (int)$request['stock_qty'] < (int)$request['quantity']) {
-            json_error('BELM stock is not enough to fulfill this request. Required: ' . (int)$request['quantity'] . ', available: ' . (int)$request['stock_qty'] . '.', 409);
+        if ($request['spare_part_id'] !== null && (int)$request['stock_qty'] <= 0) {
+            json_error('Add stock quantity above 0 before closing this alert.', 409);
         }
         db()->prepare(
             "UPDATE spare_part_requests
              SET status = 'ADDED', resolved_at = NOW()
              WHERE id = ?"
         )->execute([$id]);
-        if (!empty($request['procurement_request_id'])) {
-            sync_customer_procurement_from_belm((string)$request['procurement_request_id'], (string)($user['name'] ?? 'BELM Spare Parts'));
-        }
         if (!empty($request['customer_id'])) {
             belm_log_customer_communication(
                 (string)$request['customer_id'], $request['machine_id'] ?: null,

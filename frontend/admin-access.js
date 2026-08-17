@@ -6,7 +6,7 @@
   } catch (_) {}
 
   if (!token || !user) {
-    window.location.replace("/login");
+    window.location.replace("/admin/login");
     return;
   }
 

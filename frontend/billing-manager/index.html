@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/billing-manager/manager.css">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+  <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -76,7 +76,6 @@
       <form id="invoiceForm" class="dialog-card">
         <div class="dialog-head"><div><p class="eyebrow">Customer billing</p><h2 id="invoiceTitle">New invoice</h2></div><button class="icon-close" data-close="invoiceDialog" type="button">×</button></div>
         <input id="invoiceId" type="hidden">
-        <input id="invoiceSourceJobCardId" type="hidden">
         <div id="invoiceError" class="alert error hidden"></div>
         <div class="form-grid">
           <label>Customer<select id="invoiceCustomer" required></select></label>
@@ -167,7 +166,6 @@
         <input id="proformaId" type="hidden">
         <input id="proformaMachineId" type="hidden">
         <input id="proformaSourceSpareRequestId" type="hidden">
-        <input id="proformaSourceJobCardId" type="hidden">
         <div id="proformaError" class="alert error hidden"></div>
         <div class="form-grid">
           <label>Customer<select id="proformaCustomer" required></select></label>
@@ -198,7 +196,7 @@
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/billing-manager/manager.js?v=301-job-billing-sync"></script>
+    <script src="/billing-manager/manager.js?v=257-customer-retry"></script>
     <div id="qrScanOverlay" class="qr-scan-overlay hidden">
       <video id="qrScanVideo" autoplay playsinline muted></video>
       <button id="qrScanCancelButton" type="button" class="qr-scan-cancel">Cancel scan</button>

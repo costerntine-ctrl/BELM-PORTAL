@@ -100,19 +100,6 @@ function bw_case_access(array $ctx, string $caseId): array {
     return $case;
 }
 
-function bw_is_technician_actor(array $ctx): bool {
-    return !empty($ctx['isTechnician'])
-        || $ctx['kind'] === 'customer-tech'
-        || ($ctx['kind'] === 'customer' && strtolower((string)($ctx['role'] ?? '')) === 'technician');
-}
-
-function bw_require_assigned_job(array $ctx, array $job): void {
-    if (!bw_is_technician_actor($ctx)) return;
-    if (empty($job['technician_id']) || (string)$job['technician_id'] !== (string)$ctx['actorId']) {
-        json_error('This Job Card is not assigned to this Technician.', 403);
-    }
-}
-
 function bw_log(string $caseId, string $stage, string $department, string $action, ?string $note, array $ctx): void {
     db()->prepare(
         'INSERT INTO breakdown_case_events
@@ -178,18 +165,6 @@ function bw_ensure_case_from_report(string $reportId, array $ctx): ?string {
     )->execute([$caseId,$r['customer_id'],$r['machine_id'],'OPERATOR_REPORT',$reportId,'Breakdown - '.$label,$r['message'],$r['operator_name']]);
     bw_log($caseId,'WORKSHOP_REVIEW','Workshop','Breakdown reported',$r['message'],$ctx);
     return $caseId;
-}
-
-function bw_signed_copy_upload(string $dataUrl, string $name): array {
-    $dataUrl = trim($dataUrl);
-    if (!preg_match('#^data:(application/pdf|image/jpeg|image/png|image/webp);base64,(.+)$#s', $dataUrl, $m)) {
-        json_error('Signed Job Card must be a PDF, JPG, PNG or WebP file.', 422);
-    }
-    $binary = base64_decode($m[2], true);
-    if ($binary === false) json_error('Signed Job Card file is damaged.', 422);
-    if (strlen($binary) > 5 * 1024 * 1024) json_error('Signed Job Card is too large (max 5MB).', 422);
-    $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '-', trim($name)) ?: 'signed-job-card';
-    return [base64_encode($binary), $m[1], $safeName];
 }
 
 function bw_case_view(array $row): array {
@@ -433,7 +408,6 @@ function bw_department_report_data(array $ctx, string $period, string $anchorDat
 }
 
 if ($method === 'GET' && $action === 'technicians') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians use My Job Cards; technician roster management is restricted.',403);
     $customerId = trim((string)($_GET['customerId'] ?? $ctx['customerId']));
     if (in_array($ctx['kind'],['customer','customer-tech'],true) && $customerId !== $ctx['customerId']) json_error('Not allowed.',403);
     $mode = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id=?'); $mode->execute([$customerId]);
@@ -491,7 +465,6 @@ if ($method === 'GET' && $action === 'technicians') {
 }
 
 if ($method === 'GET' && $action === 'performance') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians can view their own Job Card reports, not department performance.',403);
     $customerId = trim((string)($_GET['customerId'] ?? $ctx['customerId']));
     if (in_array($ctx['kind'],['customer','customer-tech'],true) && $customerId !== $ctx['customerId']) json_error('Not allowed.',403);
     if ($customerId==='' && $ctx['kind']==='belm') {
@@ -580,7 +553,6 @@ if ($method === 'GET' && $action === 'department-report-pdf') {
 // digging through Breakdown Workflow case by case. Read-only, never
 // deletes or hides anything.
 if ($method === 'GET' && $action === 'machine-job-cards' && !empty($_GET['machineId'])) {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians can view only their assigned Job Cards in My Job Cards.',403);
     $machineId = trim((string)$_GET['machineId']);
     bw_machine_report_access($ctx, $machineId);
     [$fromTs, $toTs] = bw_machine_report_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
@@ -598,7 +570,6 @@ if ($method === 'GET' && $action === 'machine-job-cards' && !empty($_GET['machin
 }
 
 if ($method === 'GET' && $action === 'machine-job-cards-pdf' && !empty($_GET['machineId'])) {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians can download only their assigned Job Card/Report PDFs.',403);
     $machineId = trim((string)$_GET['machineId']);
     $machine = bw_machine_report_access($ctx, $machineId);
     [$fromTs, $toTs, $periodLabel] = bw_machine_report_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
@@ -636,7 +607,7 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name
         FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id
         LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN customers hc ON hc.id=u.assigned_customer_id WHERE j.id=?');
-    $stmt->execute([$id]); $job=$stmt->fetch(); if(!$job)json_error('Job Card not found.',404); bw_case_access($ctx,$job['case_id']); bw_require_assigned_job($ctx,$job);
+    $stmt->execute([$id]); $job=$stmt->fetch(); if(!$job)json_error('Job Card not found.',404); bw_case_access($ctx,$job['case_id']);
     $rows=[
         ['Job Card', $job['job_card_no']],
         ['Customer', $job['customer_name']],
@@ -644,10 +615,6 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Machine Type', $job['machine_type']??''],
         ['Serial / Reg', $job['serial_number'] ?: ($job['reg_number'] ?: '-')],
         ['Status', $job['status']],
-        ['Priority', $job['priority'] ?: 'NORMAL'],
-        ['Due Date', !empty($job['due_date']) ? display_date_billing($job['due_date']) : '-'],
-        ['Issued By', $job['issued_by_name'] ?: ($job['generated_by_name'] ?: $job['customer_name'])],
-        ['Issued At', display_date_billing($job['issued_at'] ?: $job['created_at'])],
         ['Technician', $job['technician_name'] ?: 'Unassigned'],
         ['Assignment', !empty($job['technician_id']) && !empty($job['technician_home_customer_id']) && (string)$job['technician_home_customer_id'] !== (string)$job['customer_id']
             ? 'TEMPORARY OVERRIDE - Home: '.($job['technician_home_customer_name'] ?: 'Other customer')
@@ -660,12 +627,9 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Repeat / Rework', !empty($job['repeat_issue']) ? 'YES' : 'NO'],
         ['Started', display_date_billing($job['started_at'])],
         ['Completed', display_date_billing($job['completed_at'])],
-        ['Customer Sign-Off', !empty($job['signed_copy_data']) ? 'SIGNED COPY UPLOADED - '.($job['customer_signed_by_name'] ?: 'Customer') : 'WAITING CUSTOMER SIGNATURE'],
-        ['Billing / Procurement', $job['billing_status'] ?: 'NOT_READY'],
         ['', ''],
         ['Technician Signature', '_________________________  Date: ______________'],
         ['Customer / Supervisor Signature', '_________________________  Date: ______________'],
-        ['Issued By', ($job['issued_by_name'] ?: ($job['generated_by_name'] ?: $job['customer_name'])) . '  Date: ' . display_date_billing($job['issued_at'] ?: $job['created_at'])],
     ];
     output_table_pdf('BELM-'.$job['job_card_no'].'.pdf','DIGITAL JOB CARD',[
         'Generated: '.date('d/m/Y H:i'),
@@ -674,94 +638,7 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
     ],$rows);
 }
 
-if ($method === 'PUT' && $action === 'signed-job-card' && $id !== '') {
-    if ($ctx['kind'] !== 'belm' || !empty($ctx['isTechnician'])) {
-        json_error('BELM Workshop / Administration must upload the customer-signed Job Card.', 403);
-    }
-    $stmt=db()->prepare('SELECT * FROM digital_job_cards WHERE id=?');
-    $stmt->execute([$id]);
-    $job=$stmt->fetch();
-    if(!$job) json_error('Job Card not found.',404);
-    $case=bw_case_access($ctx,(string)$job['case_id']);
-    if (($case['source_type'] ?? '') !== 'SERVICE_REQUEST') {
-        json_error('Customer signed-copy upload is used for BELM Service Request Job Cards.', 422);
-    }
-    if (strtoupper((string)$job['status']) !== 'COMPLETED') {
-        json_error('Complete the Technician Job Card before uploading the customer-signed copy.', 409);
-    }
-    if (strtoupper((string)($case['status'] ?? '')) !== 'COMPLETED') {
-        json_error('Workshop testing must be completed and the machine returned to service before the signed Job Card is uploaded.', 409);
-    }
-    $b=body();
-    $signedBy=trim((string)($b['signedByName']??''));
-    $fileData=trim((string)($b['fileData']??''));
-    $fileName=trim((string)($b['fileName']??''));
-    if($signedBy==='') json_error('Enter the customer / supervisor name who signed the Job Card.');
-    if($fileData==='') json_error('Choose the signed Job Card PDF or photo.');
-    [$copyData,$copyMime,$copyName]=bw_signed_copy_upload($fileData,$fileName);
-    db()->prepare(
-        "UPDATE digital_job_cards SET customer_signed_by_name=?,customer_signed_at=NOW(),signed_copy_data=?,signed_copy_mime=?,signed_copy_name=?,signed_uploaded_by_name=?,signed_uploaded_at=NOW(),billing_status='READY_FOR_PROCUREMENT',updated_at=NOW() WHERE id=?"
-    )->execute([$signedBy,$copyData,$copyMime,$copyName,$ctx['actorName'],$id]);
-    bw_log((string)$job['case_id'],'COMPLETED','Procurement','Customer-signed Job Card uploaded - ready for Proforma / Invoice','Signed by '.$signedBy.'; uploaded by '.$ctx['actorName'],$ctx);
-    try {
-        customer_send_team_alert((string)$job['customer_id'],['machine-expenses'], 'SIGNED JOB CARD READY FOR PROCUREMENT - '.$job['job_card_no'],
-            "Job Card {$job['job_card_no']} is complete and the customer-signed copy has been uploaded. Procurement can now follow Proforma / Invoice status.", true);
-    } catch(Throwable $ignored) {}
-    json_out(['ok'=>true,'billingStatus'=>'READY_FOR_PROCUREMENT','message'=>'Signed Job Card uploaded. Procurement / Billing follow-up is now active.']);
-}
-
-if ($method === 'GET' && $action === 'signed-job-card-file' && $id !== '') {
-    $stmt=db()->prepare('SELECT id,case_id,job_card_no,technician_id,signed_copy_data,signed_copy_mime,signed_copy_name FROM digital_job_cards WHERE id=?');
-    $stmt->execute([$id]);
-    $job=$stmt->fetch();
-    if(!$job) json_error('Job Card not found.',404);
-    bw_case_access($ctx,(string)$job['case_id']);
-    bw_require_assigned_job($ctx,$job);
-    if(empty($job['signed_copy_data'])) json_error('Signed Job Card has not been uploaded yet.',404);
-    $binary=base64_decode((string)$job['signed_copy_data'],true);
-    if($binary===false) json_error('Signed Job Card file is damaged.',500);
-    $mime=in_array((string)$job['signed_copy_mime'],['application/pdf','image/jpeg','image/png','image/webp'],true)?(string)$job['signed_copy_mime']:'application/pdf';
-    $name=preg_replace('/[^A-Za-z0-9._-]+/','-',(string)($job['signed_copy_name']?:('Signed-'.$job['job_card_no'].'.pdf')));
-    header('Content-Type: '.$mime);
-    header('Content-Length: '.strlen($binary));
-    header('Content-Disposition: '.(!empty($_GET['download'])?'attachment':'inline').'; filename="'.$name.'"');
-    echo $binary; exit;
-}
-
-if ($method === 'GET' && $action === 'technician-jobs') {
-    $isTechActor = !empty($ctx['isTechnician']) || ($ctx['kind']==='customer' && $ctx['role']==='technician');
-    if(!$isTechActor) json_error('Technician login required.',403);
-    $params=[$ctx['actorId']];
-    $where=['j.technician_id=?'];
-    if($ctx['kind']==='customer') { $where[]='j.customer_id=?'; $params[]=$ctx['customerId']; }
-    $machineId=trim((string)($_GET['machineId']??''));
-    if($machineId!==''){ $where[]='j.machine_id=?'; $params[]=$machineId; }
-    $stmt=db()->prepare(
-        "SELECT j.id,j.case_id,j.customer_id,j.machine_id,j.job_card_no,j.title,j.fault_description,j.status,
-                j.priority,j.due_date,j.diagnosis,j.work_done,j.test_result,j.completion_note,j.repeat_issue,
-                j.issued_by_name,j.issued_by_type,j.issued_at,j.started_at,j.completed_at,j.created_at,j.updated_at,
-                bc.status AS case_status,bc.current_stage,bc.current_department,bc.blocker_reason,bc.source_type,bc.source_id,
-                c.name AS customer_name,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
-                (SELECT COUNT(*) FROM breakdown_spare_requests sr WHERE sr.job_card_id=j.id AND sr.status NOT IN ('REJECTED','PARTS_READY')) AS open_spare_requests
-         FROM digital_job_cards j
-         JOIN breakdown_cases bc ON bc.id=j.case_id
-         JOIN customers c ON c.id=j.customer_id
-         JOIN machines m ON m.id=j.machine_id
-         WHERE ".implode(' AND ',$where)."
-         ORDER BY CASE WHEN j.status='COMPLETED' THEN 1 ELSE 0 END, COALESCE(j.due_date,DATE '9999-12-31'), j.created_at DESC"
-    );
-    $stmt->execute($params); $rows=$stmt->fetchAll();
-    foreach($rows as &$row){
-        $row['machineLabel']=trim(($row['brand']??'').' '.($row['model']??'')) ?: ($row['machine_type']??'Machine');
-        $row['openSpareRequests']=(int)($row['open_spare_requests']??0);
-        unset($row['open_spare_requests']);
-    }
-    unset($row);
-    json_out($rows);
-}
-
 if ($method === 'GET' && $action === 'case' && $id !== '') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians use My Job Cards; full Maintenance Process detail is restricted.',403);
     $case=bw_case_access($ctx,$id);
     $events=db()->prepare('SELECT stage,department,action,note,actor_name,created_at FROM breakdown_case_events WHERE case_id=? ORDER BY created_at ASC');
     $events->execute([$id]);
@@ -773,15 +650,12 @@ if ($method === 'GET' && $action === 'case' && $id !== '') {
     foreach($jobRows as &$jobRow){
         $jobRow['temporary_override']=!empty($jobRow['technician_id']) && !empty($jobRow['technician_home_customer_id'])
             && (string)$jobRow['technician_home_customer_id'] !== (string)$jobRow['customer_id'];
-        $jobRow['has_signed_copy']=!empty($jobRow['signed_copy_data']);
-        unset($jobRow['signed_copy_data']);
     }
     unset($jobRow);
     json_out(['case'=>bw_case_view($case),'events'=>$events->fetchAll(),'spares'=>$spares->fetchAll(),'jobCards'=>$jobRows]);
 }
 
 if ($method === 'GET' && $action === 'sync') {
-    if (bw_is_technician_actor($ctx)) json_error('Maintenance source synchronization is restricted to Workshop/Administration.',403);
     $scopeCustomer = in_array($ctx['kind'], ['customer','customer-tech'], true) ? $ctx['customerId'] : null;
     if ($ctx['kind']==='belm' && !empty($ctx['isTechnician'])) {
         if ($ctx['customerId']==='') json_out(['ok'=>true,'sync'=>['created'=>0,'serviceRequests'=>0,'operatorReports'=>0]]);
@@ -792,14 +666,12 @@ if ($method === 'GET' && $action === 'sync') {
 }
 
 if ($method === 'GET' && $action === 'from-report') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians use assigned Job Cards; report-to-case management is restricted.',403);
     $reportId=trim((string)($_GET['reportId'] ?? '')); if($reportId==='') json_error('reportId is required.');
     $caseId=bw_ensure_case_from_report($reportId,$ctx); if(!$caseId) json_error('Report not found.',404);
     $case=bw_case_access($ctx,$caseId); json_out(['case'=>bw_case_view($case)]);
 }
 
 if ($method === 'GET' && $action === '') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians use My Job Cards; full Maintenance Process list is restricted.',403);
     $params=[]; $where=['1=1'];
     if($ctx['kind']==='customer'){
         $where[]='bc.customer_id=?'; $params[]=$ctx['customerId'];
@@ -844,7 +716,6 @@ if ($method === 'POST' && $action === 'case') {
 }
 
 if ($method === 'POST' && $action === 'job-card') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians cannot issue Job Cards. Workshop/Administration must issue and assign them.',403);
     $b=body(); $caseId=trim((string)($b['caseId']??'')); $case=bw_case_access($ctx,$caseId);
     if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Administration/Customer Admin or Workshop Manager can generate a Job Card.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate Job Cards. Workshop Manager must issue the Job Card.',403);
@@ -874,7 +745,7 @@ if ($method === 'POST' && $action === 'job-card') {
     }
     $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
     $jobId=uuid(); $title=trim((string)($b['title']??$case['title']));
-    db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,?,?,NOW(),NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind'])]);
+    db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$ctx['actorName']]);
     bw_set_stage($caseId,'DIAGNOSIS',null,$ctx,'Digital Job Card '.$num.' generated');
     if ($temporaryOverride && $techId!=='') {
         bw_log($caseId,'DIAGNOSIS','Technician','Temporary Technician Override - '.$techName,
@@ -888,16 +759,8 @@ if ($method === 'POST' && $action === 'job-card') {
 
 if ($method === 'POST' && $action === 'spare') {
     $b=body(); $caseId=trim((string)($b['caseId']??'')); $case=bw_case_access($ctx,$caseId);
-    $jobCardId=trim((string)($b['jobCardId']??''));
-    if (bw_is_technician_actor($ctx) && $jobCardId==='') json_error('A Technician spare request must come from an assigned Job Card.',403);
-    if ($jobCardId!=='') {
-        $jobCheck=db()->prepare('SELECT id,case_id,technician_id FROM digital_job_cards WHERE id=?');
-        $jobCheck->execute([$jobCardId]); $jobForSpare=$jobCheck->fetch();
-        if(!$jobForSpare || (string)$jobForSpare['case_id']!==$caseId) json_error('The selected Job Card does not belong to this maintenance case.',422);
-        bw_require_assigned_job($ctx,$jobForSpare);
-    }
     $name=trim((string)($b['spareName']??'')); $qty=(float)($b['quantity']??1); if($name===''||$qty<=0)json_error('Spare name and quantity are required.');
-    $spareId=uuid(); db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'WAITING_BOSS_APPROVAL',?,NOW(),NOW())")->execute([$spareId,$caseId,$jobCardId!==''?$jobCardId:null,$name,trim((string)($b['partNumber']??''))?:null,$qty,trim((string)($b['unit']??'pcs'))?:'pcs',trim((string)($b['reason']??''))?:null,$ctx['actorName']]);
+    $spareId=uuid(); db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'WAITING_BOSS_APPROVAL',?,NOW(),NOW())")->execute([$spareId,$caseId,trim((string)($b['jobCardId']??''))?:null,$name,trim((string)($b['partNumber']??''))?:null,$qty,trim((string)($b['unit']??'pcs'))?:'pcs',trim((string)($b['reason']??''))?:null,$ctx['actorName']]);
     bw_set_stage($caseId,'BOSS_APPROVAL','Waiting for Administration approval of spare request',$ctx,'Spare requested - waiting Administration approval');
     try {
         $owner = db()->prepare('SELECT email FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
@@ -922,7 +785,6 @@ if ($method === 'PUT' && $action === 'approve-spare' && $id !== '') {
 }
 
 if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians request spares from Job Cards; Store/Procurement status is managed by authorized departments.',403);
     $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?'); $stmt->execute([$id]); $s=$stmt->fetch(); if(!$s)json_error('Spare request not found.',404); bw_case_access($ctx,$s['case_id']);
     $b=body(); $status=strtoupper(trim((string)($b['status']??''))); $allowed=['STORE_AVAILABLE','PROCUREMENT_REQUIRED','PI_WAITING_ACCOUNTS','ORDERED','PARTS_READY']; if(!in_array($status,$allowed,true))json_error('Invalid spare process status.');
     if ($ctx['kind']==='customer' && !$ctx['isOwner']) {
@@ -943,10 +805,9 @@ if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
 
 if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
     $stmt=db()->prepare('SELECT jc.* FROM digital_job_cards jc JOIN breakdown_cases bc ON bc.id=jc.case_id WHERE jc.id=?'); $stmt->execute([$id]); $job=$stmt->fetch(); if(!$job)json_error('Job Card not found.',404); $case=bw_case_access($ctx,$job['case_id']);
-    if($ctx['kind']==='customer' && $ctx['role']!=='technician') json_error('Technician report must be saved from a Technician login.',403);
-    $isTechActor=!empty($ctx['isTechnician']) || ($ctx['kind']==='customer' && $ctx['role']==='technician');
-    if(!$isTechActor) json_error('Only a Technician can save the technical Job Card report.',403);
-    bw_require_assigned_job($ctx,$job);
+    if($ctx['kind']==='customer') json_error('Technician report must be saved from a Technician login.',403);
+    if(empty($ctx['isTechnician'])) json_error('Only a Technician can save the technical Job Card report.',403);
+    if($job['technician_id'] && $job['technician_id']!==$ctx['actorId']) json_error('This Job Card is assigned to another Technician.',403);
     $b=body(); $complete=!empty($b['complete']);
     $diagnosis=trim((string)($b['diagnosis']??'')); $work=trim((string)($b['workDone']??'')); if($diagnosis===''||$work==='')json_error('Diagnosis and work done are required.');
     $repeat = !empty($b['repeatIssue']);
@@ -955,7 +816,7 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
         $rp->execute([$id,$job['machine_id'],$job['title']]);
         $repeat=(bool)$rp->fetchColumn();
     }
-    db()->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,diagnosis=?,work_done=?,test_result=?,completion_note=?,repeat_issue=?,status=?,started_at=COALESCE(started_at,NOW()),completed_at=CASE WHEN ? THEN NOW() ELSE NULL END,updated_at=NOW() WHERE id=?")->execute([$ctx['actorId'],$ctx['actorName'],$diagnosis,$work,trim((string)($b['testResult']??''))?:null,trim((string)($b['completionNote']??''))?:null,$repeat?1:0,$complete?'COMPLETED':'IN_PROGRESS',$complete?1:0,$id]);
+    db()->prepare("UPDATE digital_job_cards SET technician_id=COALESCE(technician_id,?),technician_name=?,diagnosis=?,work_done=?,test_result=?,completion_note=?,repeat_issue=?,status=?,started_at=COALESCE(started_at,NOW()),completed_at=CASE WHEN ? THEN NOW() ELSE NULL END,updated_at=NOW() WHERE id=?")->execute([$ctx['actorId'],$ctx['actorName'],$diagnosis,$work,trim((string)($b['testResult']??''))?:null,trim((string)($b['completionNote']??''))?:null,$repeat?1:0,$complete?'COMPLETED':'IN_PROGRESS',$complete?1:0,$id]);
     bw_set_stage($job['case_id'],$complete?'TESTING':'REPAIR',null,$ctx,$complete?'Technician repair completed - waiting Workshop test':'Technician Job Card updated');
     try{ customer_send_team_alert((string)$case['customer_id'],['workflow','check-up'], 'TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'], "Job Card: {$job['job_card_no']}\nTechnician: {$ctx['actorName']}\nDiagnosis: $diagnosis\nWork done: $work\nStatus: ".($complete?'Repair completed - waiting test':'In progress').($repeat?'\nRepeat/Rework: YES':''), true);}catch(Throwable $e){}
     if ($ctx['kind']==='belm' && empty($case['is_machinery_admin'])) { try { belm_send_customer_to_belm_alert(['service-requests'],'BELM TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'],"Technician: {$ctx['actorName']}\nMachine: ".$case['brand'].' '.$case['model']."\nDiagnosis: $diagnosis\nWork done: $work\nStatus: ".($complete?'Repair completed - waiting Workshop test':'In progress')); } catch(Throwable $e) {} }
@@ -963,7 +824,6 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
 }
 
 if ($method === 'PUT' && $action === 'stage' && $id !== '') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians update work through My Job Cards; main Maintenance Process stages are restricted.',403);
     $case=bw_case_access($ctx,$id); $b=body(); $stage=strtoupper(trim((string)($b['stage']??''))); $note=trim((string)($b['note']??''));
     if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Workshop Manager or Administration can move the main breakdown stage.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians update the process through their Digital Job Card report.',403);

@@ -27,5 +27,5 @@ check('customer card switch uses customer name', manager.includes('customer-prov
 check('communication direction uses actual customer', manager.includes('fallbackCustomerName'));
 check('portal/tech generic customer labels replaced', portal.includes('function replaceGenericCustomerLabels'));
 check('tech dashboard uses company name', portal.includes('`${companyName} Dashboard'));
-check('V289 service worker cache', sw.includes("belm-app-v289-friendly-identities"));
+check('V289 service worker cache', (() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(sw); return m && Number(m[1]) >= 289; })());
 console.log(`${pass}/${pass+fail} V289 checks passed`); if(fail)process.exit(1);

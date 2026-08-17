@@ -25,7 +25,7 @@ $tables = [
 
 $backup = [
     'exportedAt' => date('c'),
-    'schemaVersion' => '23-technician-job-card-workspace',
+    'schemaVersion' => '22-breakdown-workflow-job-cards',
     'tables' => [],
 ];
 

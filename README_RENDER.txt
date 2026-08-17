@@ -84,15 +84,15 @@ Settings:
 - Company details, business defaults, light/dark theme and protected PIN save.
 
 
-CUSTOMER PROCUREMENT
+CUSTOMER MACHINE EXPENSES
 -------------------------
-- Machine cards on Customer Dashboard are larger and include Procurement.
+- Machine cards on Customer Dashboard are larger and include Machine Expenses.
 - Customer records expense date, spare description, part number, quantity,
   unit and unit cost for the selected machine.
 - Total cost is calculated and saved against that customer and machine only.
 - Customer can take or upload a receipt photo; the browser compresses it and
   the database stores it with the calculated expense.
-- Analysis cards show total procurement cost, total spare quantity, number of
+- Analysis cards show total machine expense, total spare quantity, number of
   records, average cost and attached receipt count.
 - Expense history can be downloaded as authenticated PDF or CSV.
 - Customer Viewer accounts remain read-only.
@@ -145,15 +145,16 @@ hata kama hosting environment haitumii nested .htaccess rewrite.
 
 LOGIN YA KWANZA
 ---------------
-Email ya seeded Super Admin:
-  info@belmgeneral.co.tz
+Email:
+  admin@belmgeneraltech.co.tz
 
-Kabla ya fresh/default-password deploy, weka Render secret:
-  INITIAL_ADMIN_PASSWORD = password yako salama (angalau characters 12)
+Temporary password:
+  ChangeMe123!
 
-Hakuna public/default Admin password inayoruhusiwa na V302 migration.
-Kwa database iliyopo yenye password iliyokwisha badilishwa, password hiyo inabaki.
-Full database reset pia inahifadhi Admin email/password na edit/delete PIN zilizotumika kabla ya reset.
+Default delete PIN:
+  1234
+
+Badilisha password na PIN baada ya kuingia.
 
 
 ROLE LOGIN & ADMIN APPROVAL
@@ -483,13 +484,4 @@ V201 SERVICE AUTO CALCULATE + OWNER NOTIFICATIONS
 - Customer/machine owner receives one DUE SOON email (<=60 hrs) and one OVERDUE email per milestone; duplicates are suppressed.
 - WhatsApp auto-send is available when BELM_WHATSAPP_API_URL is configured. The endpoint must accept JSON {"to":"255...","message":"..."}; optional Bearer token: BELM_WHATSAPP_API_TOKEN.
 - Without a configured WhatsApp provider, WhatsApp is logged as PENDING_PROVIDER; the portal never falsely marks it sent.
-- Render runs backend/scripts/migrate.php automatically at startup; do not manually re-import schema.sql on every deploy.
-
-V303 - ONE CANONICAL LOGIN
---------------------------
-Publish one login URL for all BELM portal email/password accounts:
-  https://<your-portal-domain>/login
-
-The unified login endpoint verifies the credentials first, then routes the user to the correct workspace based on the verified account type, role, tenant and permissions.
-Legacy /app/<company>, /app/*@BELM, /admin/login and /portal/login links redirect to /login for compatibility.
-The Technician workspace remains /tech after successful sign-in.
+- Run backend/schema.sql after deployment.

@@ -6,7 +6,7 @@
   let openReceiptUrl = "";
   const money = new Intl.NumberFormat("en-TZ", { style: "currency", currency: "TZS", maximumFractionDigits: 2 });
 
-  if (!token) { window.location.replace("/login"); return; }
+  if (!token) { window.location.replace("/portal/login"); return; }
 
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]); }
   function formatDate(value) { if (!value) return "—"; const d = new Date(value); if (Number.isNaN(d.getTime())) return "—"; return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`; }
@@ -16,7 +16,7 @@
 
   async function api(path, options={}) {
     const response = await fetch(`/api/customer-portal${path}`, { ...options, cache:"no-store", headers:{ ...(options.body ? {"Content-Type":"application/json"}:{}), Authorization:`Bearer ${token}`, ...(options.headers||{}) } });
-    if (!response.ok) { let message="Request failed."; try { const e=await response.json(); message=e.error||message; } catch(_){} if(response.status===401){ localStorage.removeItem("belm_customer_token"); window.location.replace("/login"); } throw new Error(message); }
+    if (!response.ok) { let message="Request failed."; try { const e=await response.json(); message=e.error||message; } catch(_){} if(response.status===401){ localStorage.removeItem("belm_customer_token"); window.location.replace("/portal/login"); } throw new Error(message); }
     return response.status===204 ? null : response.json();
   }
 
@@ -79,6 +79,6 @@
   document.getElementById("printScope").addEventListener("change",e=>{document.getElementById("printDateInput").classList.toggle("hidden",e.target.value!=="date");document.getElementById("printMonthInput").classList.toggle("hidden",e.target.value!=="month"); if(e.target.value==="all")load();});
   document.getElementById("printDateInput").addEventListener("change",load); document.getElementById("printMonthInput").addEventListener("change",load);
   document.getElementById("refreshButton").addEventListener("click",load); document.getElementById("csvButton").addEventListener("click",()=>download("csv")); document.getElementById("pdfButton").addEventListener("click",()=>download("pdf")); document.getElementById("receiptsButton").addEventListener("click",downloadAllReceipts);
-  document.getElementById("logoutButton").addEventListener("click",()=>{localStorage.removeItem("belm_customer_token");window.location.href="/login";});
+  document.getElementById("logoutButton").addEventListener("click",()=>{localStorage.removeItem("belm_customer_token");window.location.href="/portal/login";});
   load();
 })();

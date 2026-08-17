@@ -210,5 +210,3 @@ html[data-theme="dark"] .customer-info {
   .hero-actions { flex-wrap: nowrap; overflow-x: auto; width: 100%; justify-content: flex-start; }
   .hero-actions button { flex: 0 0 auto; font-size: 12px; padding: 9px 12px; white-space: nowrap; }
 }
-
-.invoice-sync-badge{display:inline-flex;margin-left:5px;padding:3px 7px;border-radius:999px;font-size:9px;font-weight:900;vertical-align:middle}.invoice-sync-badge.outstanding{background:#facc15;color:#3d2f00}.invoice-sync-badge.paid{background:#16a34a;color:#fff}.invoice-sync-badge.cancelled{background:#64748b;color:#fff}

@@ -96,33 +96,3 @@ main { width:min(1180px,calc(100% - 28px)); }
 #topupForm { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:16px; }
 #topupForm label { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:800; }
 @media(max-width:620px){#topupForm{grid-template-columns:1fr}}
-
-/* V295 - Customer Store issue approval queue */
-.store-approval-panel { border-color:#d9c65e; }
-.store-approval-panel::before { background:linear-gradient(90deg,#ffd400,#00a651); }
-.approval-count { display:inline-flex; align-items:center; min-height:30px; padding:5px 10px; border-radius:999px; background:#fff8d7; color:#6e5700; font-size:11px; font-weight:850; white-space:nowrap; }
-.approval-status { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:10px; font-weight:850; }
-.approval-status.pending_approval { background:#fff8d7; color:#6e5700; }
-.approval-status.approved { background:#e8f7ee; color:#087039; }
-.approval-status.rejected { background:#fdeceb; color:#9d2720; }
-.approval-actions { display:flex; gap:6px; flex-wrap:wrap; }
-.approval-actions button { min-height:32px; padding:6px 10px; border-radius:8px; font-size:10px; font-weight:850; cursor:pointer; }
-.approve-store-issue { border:1px solid #00a651; background:#00a651; color:#fff; }
-.reject-store-issue { border:1px solid #e5aaa5; background:#fff3f2; color:#a42a23; }
-.approval-actions button:disabled { opacity:.5; cursor:not-allowed; }
-.stock-warning { display:block; margin-top:5px; color:#b42318; font-size:9px; font-weight:800; }
-html[data-theme="dark"] .approval-count { background:#30280d; color:#ffe581; }
-html[data-theme="dark"] .approval-status.pending_approval { background:#30280d; color:#ffe581; }
-html[data-theme="dark"] .approval-status.approved { background:#102a21; color:#8fe5b4; }
-html[data-theme="dark"] .approval-status.rejected { background:#32191b; color:#ffb0aa; }
-html[data-theme="dark"] .reject-store-issue { background:#32191b; color:#ffb0aa; border-color:#66363a; }
-
-/* V297 Procurement request queue */
-.procurement-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.procurement-request-table .procurement-action-cell{min-width:220px}.procurement-actions{display:flex;flex-wrap:wrap;gap:5px}.procurement-actions button{border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--paper);color:var(--ink);font-size:10px;font-weight:800;cursor:pointer}.procurement-actions .store-action{border-color:#46a36f;color:#087039;background:#effaf4}.procurement-actions .purchase-action{border-color:#d7b11d;color:#725b00;background:#fff9dc}.procurement-actions .ready-action{border-color:#2f7cf5;color:#1a4fb0;background:#eef5ff}.procurement-actions .reject-action{border-color:#e5a0a0;color:#b42318;background:#fff4f3}.procurement-store-state{font-size:10.5px;line-height:1.35}.procurement-store-state b{display:block}.procurement-status{display:inline-flex;padding:4px 7px;border-radius:999px;background:#eef3f8;font-size:9.5px;font-weight:850;white-space:nowrap}.procurement-status.parts_ready{background:#e7f8ee;color:#087039}.procurement-status.purchase_required,.procurement-status.ordered{background:#fff5c9;color:#725b00}.procurement-status.rejected{background:#fdecec;color:#b42318}.procurement-status.pending_procurement{background:#eaf3ff;color:#175b9c}[data-theme="dark"] .procurement-actions button{background:#16233d}[data-theme="dark"] .procurement-actions .store-action{background:#123428;color:#b7f3d2}[data-theme="dark"] .procurement-actions .purchase-action{background:#493d0e;color:#ffe58a}[data-theme="dark"] .procurement-actions .ready-action{background:#153758;color:#b9dcff}
-
-/* V298 - shortage selection / BELM supply handoff */
-.procurement-select-cell{width:58px;text-align:center}.procurement-select-cell input{width:18px;height:18px;accent-color:var(--green);cursor:pointer}.shortage-value{display:block;margin-top:3px;font-size:10px;font-weight:850;color:#b42318}.shortage-value.zero{color:var(--green-dark,#087039)}.procurement-head-actions .primary.compact{min-height:32px}.procurement-status.belm_requested{background:#e8f2fc;color:#075ca7}[data-theme="dark"] .procurement-status.belm_requested{background:#173b5f;color:#dff0ff}
-
-
-/* V301 - signed BELM service Job Cards + synchronized billing */
-.service-billing-panel{margin-bottom:16px;border-top:3px solid #1d4ed8}.service-billing-table td small{display:block;margin-top:3px;color:var(--muted,#64748b);font-size:10px}.sync-status{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:900;white-space:nowrap}.sync-status.outstanding{background:#facc15;color:#3f3000;border:1px solid #d9a900}.sync-status.paid{background:#16a34a;color:#fff;border:1px solid #12823c}.sync-status.pending{background:#334155;color:#fff;border:1px solid #475569}.doc-button{margin:4px 4px 0 0;padding:5px 8px;border:1px solid #3b82f6;border-radius:7px;background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:850;cursor:pointer}[data-theme="dark"] .doc-button{background:#13243a;color:#9ecbff;border-color:#31557d}[data-theme="dark"] .sync-status.outstanding{background:#5a4700;color:#ffe98b;border-color:#8a6f00}

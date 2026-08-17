@@ -485,7 +485,7 @@
         if (!id) {
           alert(`Technician added. Share the email and initial password securely.
 
-Technician workspace: ${result.loginUrl || "/login"}
+Technician workspace: ${result.loginUrl || "/tech"}
 Customer Dashboard access follows Role Manager permissions.`);
         }
         showAlert(id ? "Technician profile and dashboard access updated." : "Technician added successfully.", false);
@@ -556,12 +556,12 @@ Customer Dashboard access follows Role Manager permissions.`);
   document.getElementById("cancelButton").addEventListener("click", () => dialog.close());
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
-    window.location.href = "/login";
+    window.location.href = "/portal/login";
   });
   const payload = tokenPayload();
   const customerPortalUrl = payload?.portalLink
-    ? `${window.location.origin}/login`
-    : `${window.location.origin}/login`;
+    ? `${window.location.origin}/portal/login?customer=${encodeURIComponent(payload.portalLink)}`
+    : `${window.location.origin}/portal/login`;
   document.getElementById("customerPortalUrl").textContent = customerPortalUrl;
   document.getElementById("copyLinkButton").dataset.portalUrl = customerPortalUrl;
   document.getElementById("copyLinkButton").addEventListener("click", async () => {

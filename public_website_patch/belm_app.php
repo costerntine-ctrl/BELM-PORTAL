@@ -3,7 +3,7 @@ $customer = strtolower(trim((string)($_GET['customer'] ?? '')));
 if ($customer !== '' && !preg_match('/^(?:[a-z0-9][a-z0-9-]{0,35}|[a-z0-9][a-z0-9-]{0,24}@belm)$/', $customer)) {
     http_response_code(404); exit('Invalid app link');
 }
-$portalPath = '/login';
+$portalPath = $customer !== '' ? '/app/' . rawurlencode($customer) : '/app/';
 $portalUrl = 'https://portal.belmgeneraltech.co.tz' . $portalPath;
 $manifestUrl = '/belm_manifest.php?customer=' . rawurlencode($customer);
 ?>

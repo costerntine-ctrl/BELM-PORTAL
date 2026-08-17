@@ -41,13 +41,3 @@ BELM staff app:
 The main-domain wrapper keeps the readable URL visible and opens the secure
 portal full-screen. On supported phones, Install App adds the current customer
 link to the home screen.
-
-
-V303 ONE LOGIN FOR ALL
-----------------------
-Use this as the only published login link:
-  https://belmgeneraltech.co.tz/login
-
-client_login.php, login.php and technician_login.php all redirect there.
-Legacy /app/<company> and /app/*@BELM links redirect there as well.
-The secure portal identifies the account after successful authentication and opens the correct workspace automatically.

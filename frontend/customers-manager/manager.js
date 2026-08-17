@@ -9,6 +9,49 @@
     isSuperAdmin = currentUser?.role === "Super Admin";
   } catch (_) {}
 
+  // V276 - "Back" must reliably close whatever dialog is open (Report,
+  // Check Up, Expense Receipts, Service Parts, Edit, Delete confirm,
+  // Message Customer, etc.) instead of navigating away from this page.
+  // Native <dialog> elements don't touch browser history on their own,
+  // so pressing Back while one is open would otherwise leave the whole
+  // Customers Manager page. This wires EVERY dialog on this page at
+  // once: opening any of them pushes one history entry; Back (or the
+  // phone's system back gesture) pops it and closes the dialog instead
+  // of leaving. Closing normally (Cancel/X/ESC/successful save) cleans
+  // up that same history entry so Back afterwards behaves normally
+  // again, with no extra empty step left behind either way.
+  (function wireDialogBackButton() {
+    let ignoreNextPopstate = false;
+    let closingViaBack = false;
+    const nativeShowModal = HTMLDialogElement.prototype.showModal;
+    HTMLDialogElement.prototype.showModal = function (...args) {
+      const result = nativeShowModal.apply(this, args);
+      history.pushState({ belmDialogOpen: true, belmDialogId: this.id || null }, "", location.href);
+      return result;
+    };
+    // The native 'close' event fires no matter how a <dialog> closes -
+    // an explicit .close() call, the ESC key, or a `formmethod="dialog"`
+    // submit button - so listening for it (with capture, since 'close'
+    // doesn't bubble) is more reliable than only patching .close().
+    document.addEventListener("close", (event) => {
+      if (event.target.tagName !== "DIALOG") return;
+      if (closingViaBack) return; // already unwound by popstate below
+      if (history.state?.belmDialogOpen) {
+        ignoreNextPopstate = true;
+        history.back();
+      }
+    }, true);
+    window.addEventListener("popstate", () => {
+      if (ignoreNextPopstate) { ignoreNextPopstate = false; return; }
+      const openDialog = document.querySelector("dialog[open]");
+      if (openDialog) {
+        closingViaBack = true;
+        openDialog.close();
+        closingViaBack = false;
+      }
+    });
+  })();
+
   async function confirmThenOpen(title, message, openFn) {
     const confirmation = await window.belmConfirmEdit({ title, message });
     if (!confirmation) return;
@@ -291,14 +334,13 @@
           <div class="customer-feed-body">Loading recent updates…</div>
         </div>
         <div class="customer-card-machine-quick-actions">
-          <button type="button" class="secondary" data-quick-edit-machine="${escapeHtml(customer.id)}">✎ Edit Machine</button>
           <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
         </div>
         <div class="customer-card-actions">
           <button class="view-machines-inline" data-view-machines="${escapeHtml(customer.id)}">
             View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">!</span>' : ""}
           </button>
-          <button class="secondary" data-message-customer="${escapeHtml(customer.id)}">Message Customer</button>
+          <button type="button" class="secondary" data-quick-edit-machine="${escapeHtml(customer.id)}">✎ Edit Machine</button>
           <button data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
           <button data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
           <button class="delete" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
@@ -401,7 +443,7 @@
     }
   }
 
-  function openSendCustomerMessage(customer) {
+  function openSendCustomerMessage(customer, preselectMachineId = "") {
     if (!customer) return;
     document.getElementById("sendCustomerMessageCustomerId").value = customer.id;
     document.getElementById("sendCustomerMessageTitle").textContent = `Message ${customer.name}`;
@@ -412,12 +454,9 @@
       const label = [machine.brand, machine.model, machine.machineType].filter(Boolean).join(" ") || "Machine";
       return `<option value="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType || "")}" data-machine-name="${escapeHtml(label)}">${escapeHtml(label)}</option>`;
     }).join("");
+    if (preselectMachineId) machineSelect.value = preselectMachineId;
     const checkupJumpButton = document.getElementById("sendCustomerMessageCheckup");
-    const checkupReportButton = document.getElementById("sendCustomerMessageCheckupReport");
-    const syncCheckupJumpButton = () => {
-      checkupJumpButton.disabled = !machineSelect.value;
-      checkupReportButton.disabled = !machineSelect.value;
-    };
+    const syncCheckupJumpButton = () => { checkupJumpButton.disabled = !machineSelect.value; };
     machineSelect.onchange = syncCheckupJumpButton;
     syncCheckupJumpButton();
     checkupJumpButton.onclick = () => {
@@ -425,12 +464,6 @@
       if (!option || !option.value) return;
       document.getElementById("sendCustomerMessageDialog").close();
       openMachineCheckup(option.value, option.dataset.machineType || "", option.dataset.machineName || "Machine");
-    };
-    checkupReportButton.onclick = () => {
-      const option = machineSelect.selectedOptions[0];
-      if (!option || !option.value) return;
-      document.getElementById("sendCustomerMessageDialog").close();
-      openMachineReports(option.value, option.dataset.machineName || "Machine");
     };
     document.getElementById("sendCustomerMessageDialog").showModal();
     setTimeout(() => document.getElementById("sendCustomerMessageBody").focus(), 0);
@@ -757,6 +790,15 @@
     } else {
       moveWrap.classList.add("hidden");
     }
+    // V277 - lets you message the customer about THIS specific machine
+    // right from Edit Machine, without leaving to find the customer
+    // card first. Reuses the exact same Message Customer dialog (no
+    // separate messaging implementation) - just pre-selects this
+    // machine and jumps straight to it.
+    document.getElementById("machineSendMessageButton").onclick = () => {
+      document.getElementById("machineDialog").close();
+      openSendCustomerMessage(customer, machine?.id || "");
+    };
     document.getElementById("machineDialog").showModal();
   }
 
@@ -1629,7 +1671,6 @@
     }
     const viewMachines = event.target.closest("[data-view-machines]");
     const viewMessages = event.target.closest("[data-view-messages]");
-    const messageCustomer = event.target.closest("[data-message-customer]");
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
@@ -1639,7 +1680,6 @@
     const quickDeleteMachine = event.target.closest("[data-quick-delete-machine]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
-    if (messageCustomer) openSendCustomerMessage(customers.find((customer) => customer.id === messageCustomer.dataset.messageCustomer));
     if (editCustomer) {
       const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
       confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));

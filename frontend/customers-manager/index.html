@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/customers-manager/manager.css">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=245-sidebar-width-font">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=198-global-user-theme"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -187,6 +187,7 @@
           <label>Service kit<select id="machineServiceKit"><option value="OK">OK</option><option value="ATTENTION">Attention</option><option value="CRITICAL">Critical</option></select></label>
         </div>
         <div class="dialog-actions">
+          <button type="button" id="machineSendMessageButton" class="ghost">✉ Send Message to Customer</button>
           <button class="ghost" data-close="machineDialog" type="button">Cancel</button>
           <button id="saveMachineButton" class="primary" type="submit">Save machine</button>
         </div>
@@ -273,7 +274,6 @@
           </label>
           <div class="message-checkup-jump">
             <button type="button" id="sendCustomerMessageCheckup" class="ghost" disabled>Check Up → Fill checklist</button>
-            <button type="button" id="sendCustomerMessageCheckupReport" class="ghost" disabled>Checkup Report</button>
           </div>
           <label class="span-2">Message
             <textarea id="sendCustomerMessageBody" rows="6" maxlength="2000" placeholder="Write the message the customer should see in the portal and receive by email…" required></textarea>
@@ -381,9 +381,9 @@
     </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=262-maintenance-process-label"></script>
+    <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=275-sync-panel-collapse"></script>
+    <script src="/customers-manager/manager.js?v=278-remove-message-customer"></script>
   </body>
 </html>

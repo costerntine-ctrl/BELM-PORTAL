@@ -204,7 +204,19 @@
   });
   footer.append(themeToggle, logout);
 
-  sidebar.append(brand, userCard, nav);
+  // V279 - the sidebar has grown to 17+ items across several sections;
+  // a quick search makes it faster to jump straight to one instead of
+  // scanning/expanding every group. Filters by label text as you type;
+  // a section with zero matches hides entirely, one with any match
+  // stays open so the result is actually visible.
+  const searchWrap = document.createElement("div");
+  searchWrap.className = "belm-sidebar-search";
+  searchWrap.innerHTML = `
+    <span class="belm-sidebar-search-icon" aria-hidden="true">⌕</span>
+    <input type="search" id="belmSidebarSearch" placeholder="Search menu…" aria-label="Search sidebar menu">
+    <button type="button" class="belm-sidebar-search-clear hidden" aria-label="Clear search">×</button>`;
+
+  sidebar.append(brand, userCard, searchWrap, nav);
   sidebar.appendChild(footer);
 
   const toggle = document.createElement("button");
@@ -227,6 +239,51 @@
   document.body.prepend(sidebar);
   document.body.prepend(toggle);
   document.body.classList.add("belm-sidebar-ready");
+
+  // V279 - wire the search box: filter links by label text, hide empty
+  // sections, and remember which sections the user had open so turning
+  // the search off restores exactly how the sidebar looked before.
+  (function wireSidebarSearch() {
+    const input = document.getElementById("belmSidebarSearch");
+    const clearButton = searchWrap.querySelector(".belm-sidebar-search-clear");
+    if (!input) return;
+    let openStateBeforeSearch = null;
+    function applyFilter(query) {
+      const term = query.trim().toLowerCase();
+      clearButton.classList.toggle("hidden", term === "");
+      const groups = nav.querySelectorAll(".belm-sidebar-group");
+      if (term === "") {
+        groups.forEach((group) => {
+          group.classList.remove("belm-sidebar-search-hidden");
+          group.querySelectorAll(".belm-sidebar-link").forEach((link) => link.classList.remove("belm-sidebar-search-hidden"));
+          if (openStateBeforeSearch?.has(group)) group.open = openStateBeforeSearch.get(group);
+        });
+        openStateBeforeSearch = null;
+        return;
+      }
+      if (!openStateBeforeSearch) {
+        openStateBeforeSearch = new Map();
+        groups.forEach((group) => openStateBeforeSearch.set(group, group.open));
+      }
+      groups.forEach((group) => {
+        let anyMatch = false;
+        group.querySelectorAll(".belm-sidebar-link").forEach((link) => {
+          const label = (link.textContent || "").toLowerCase();
+          const matches = label.includes(term);
+          link.classList.toggle("belm-sidebar-search-hidden", !matches);
+          if (matches) anyMatch = true;
+        });
+        group.classList.toggle("belm-sidebar-search-hidden", !anyMatch);
+        if (anyMatch) group.open = true;
+      });
+    }
+    input.addEventListener("input", () => applyFilter(input.value));
+    clearButton.addEventListener("click", () => {
+      input.value = "";
+      applyFilter("");
+      input.focus();
+    });
+  })();
 
   const applications = document.getElementById("belmSidebarApplications");
   if (applications) {

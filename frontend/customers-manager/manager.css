@@ -102,7 +102,7 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
   text-decoration: none;
 }
 .machine-actions .belm-maintenance-process-link:hover { background: #6a3fa5; }
-.customer-card-actions { display: flex; justify-content: flex-end; align-items: center; gap: 7px; padding: 11px 20px; border-top: 1px solid var(--line); }
+.customer-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 7px; padding: 11px 20px; border-top: 1px solid var(--line); }
 .customer-card-actions button { padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .customer-card-actions button.delete { color: var(--red); }
 .customer-card-actions .view-machines-inline { margin-right: auto; color: var(--green-dark, #087039); border-color: var(--green); background: color-mix(in srgb, var(--green) 8%, var(--paper)); }

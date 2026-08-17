@@ -12,7 +12,7 @@ $sub2 = $_GET['sub2'] ?? '';
 $sub3 = $_GET['sub3'] ?? '';
 
 // V273 - turns a day/month/year (or explicit date) filter from the
-// "Job Card Reports" / "Daily Report" tabs into an inclusive [from, to)
+// "Job Card Reports" / "Daily Report" tabs into an inclusive from/to
 // timestamp range for a SQL query. Accepts either a full date
 // (YYYY-MM-DD) or a partial one (YYYY-MM or YYYY) for a whole-month or
 // whole-year selection. Returns [null, null] when nothing was chosen,

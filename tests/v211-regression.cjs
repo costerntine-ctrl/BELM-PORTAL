@@ -16,7 +16,7 @@ const auth=read('backend/api/auth.php');
   const m = /admin-sidebar\.css\?v=(\d+)-/.exec(index);
   check('SPA sidebar CSS cache version bumped', !!m && Number(m[1]) >= 211);
 }
-check('Admin Breakdown link declares actor', sidebar.includes('/breakdown-workflow/?actor=admin'));
+check('BELM admin Maintenance Process is not a duplicate sidebar entry', !sidebar.includes('label: "Maintenance Process"') && sidebar.includes('label: "Engineering"'));
 check('Mobile sidebar closes only on actual link', sidebar.includes('event.target.closest("a.belm-sidebar-link")'));
 check('Shared Breakdown accepts explicit actor', workflow.includes("params.get('actor')||params.get('source')"));
 check('Explicit actor without matching token redirects', workflow.includes("if(source && !actorToken[source])"));

@@ -31,12 +31,12 @@
       <div class="customer-chip" id="customerChip" hidden></div>
       <h2>Sign in</h2>
       <p class="subtext" id="loginHint">Use the email and password provided for your account.</p>
-      <form id="loginForm" autocomplete="on">
+      <form id="loginForm" autocomplete="on" data-manual-login="true">
         <label>Email / Customer Portal ID</label>
         <input id="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="name@company.com or company-id" />
         <label>Password</label>
         <input id="password" type="password" autocomplete="current-password" required placeholder="Password" />
-        <button id="loginButton" class="primary" type="submit">Open My Workspace</button>
+        <button id="loginButton" class="primary" type="button">Open My Workspace</button>
       </form>
       <div id="errorBox" class="error" hidden></div>
       <div class="actions">
@@ -46,6 +46,6 @@
       <p class="privacy">After sign-in, the system opens the workspace allowed for your role automatically.</p>
     </section>
   </main>
-  <script src="/customer-app.js?v=303-unified-login"></script>
+  <script src="/customer-app.js?v=320-manual-login"></script>
 </body>
 </html>

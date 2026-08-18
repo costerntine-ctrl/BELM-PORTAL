@@ -26,6 +26,17 @@
   const isAccounts=isBelmAdmin||isOwner||customerRole==='accounts';
   const isTechnician=source==='tech';
 
+  // V320: BELM staff use one Maintenance Process owner only: Engineering > Job Cards.
+  // Customer workflow remains standalone for customer teams, while any legacy admin
+  // bookmark is folded back into Engineering. Embedded mode is the canonical admin view.
+  if(isBelmAdmin&&!embedded){
+    const target=new URL('/engineering-manager/',location.origin);
+    if(machineFilter)target.searchParams.set('machine',machineFilter);
+    target.hash='job-cards';
+    location.replace(`${target.pathname}${target.search}${target.hash}`);
+    return;
+  }
+
   if(isTechnician){
     const q=machineFilter?`?machine=${encodeURIComponent(machineFilter)}`:'';
     location.replace(`/technician-job-cards/${q}`);

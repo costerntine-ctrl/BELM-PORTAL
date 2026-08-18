@@ -1,0 +1,33 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let pass=0,fail=0;
+function test(name,ok){if(ok){console.log('PASS',name);pass++;}else{console.error('FAIL',name);fail++;}}
+const sidebar=read('frontend/admin-sidebar.js');
+const eng=read('frontend/engineering-manager/manager.js');
+const engHtml=read('frontend/engineering-manager/index.html');
+const workflow=read('frontend/breakdown-workflow/workflow.js');
+const workflowHtml=read('frontend/breakdown-workflow/index.html');
+const customers=read('frontend/customers-manager/manager.js');
+const customersHtml=read('frontend/customers-manager/index.html');
+const login=read('frontend/customer-app.js');
+const loginHtml=read('frontend/customer-app.html');
+const sw=read('frontend/belm-sw.js');
+const health=read('backend/index.php');
+
+test('standalone BELM Maintenance Process sidebar entry removed',!sidebar.includes('label: "Maintenance Process"')&&sidebar.includes('label: "Engineering"'));
+test('Engineering remains visible for roles or service requests',sidebar.includes('anyKeys: ["roles", "service-requests"]')&&sidebar.includes('label: "Engineering"'));
+test('legacy standalone admin workflow redirects into Engineering Job Cards',workflow.includes("if(isBelmAdmin&&!embedded)")&&workflow.includes("target.hash='job-cards'")&&workflow.includes("new URL('/engineering-manager/'"));
+test('customer workflow remains standalone',workflow.includes("source==='customer'")&&workflow.includes("'/portal/dashboard'"));
+test('Engineering forwards machine focus into embedded workflow',eng.includes('const machineFocus = String(routeParams.get("machine")')&&eng.includes('url.searchParams.set("machine", machineFocus)'));
+test('machine-focused Engineering opens Job Cards automatically',eng.includes('window.location.hash === "#job-cards" || machineFocus'));
+test('admin machine shortcut now opens Engineering Job Cards',customers.includes('/engineering-manager/?machine=${encodeURIComponent(machine.id)}#job-cards')&&!customers.includes('/breakdown-workflow/?machine=${escapeHtml(machine.id)}&actor=admin'));
+test('login no longer has quick resume',!login.includes('quickResume(')&&!login.includes('validToken('));
+test('login waits for explicit button click',loginHtml.includes('id="loginButton" class="primary" type="button"')&&login.includes("button.addEventListener('click',login)"));
+test('autofill form submission cannot log in',login.includes("form.addEventListener('submit',event=>event.preventDefault())"));
+test('browser credential autofill remains available',loginHtml.includes('autocomplete="username"')&&loginHtml.includes('autocomplete="current-password"'));
+test('login JS is cache-busted in page and service worker',loginHtml.includes('/customer-app.js?v=320-manual-login')&&sw.includes("'/customer-app.js?v=320-manual-login'"));
+test('changed admin assets are cache-busted',engHtml.includes('/admin-sidebar.js?v=320-engineering-single-owner')&&engHtml.includes('/engineering-manager/manager.js?v=320-engineering-single-owner')&&workflowHtml.includes('/breakdown-workflow/workflow.js?v=320-engineering-single-owner')&&customersHtml.includes('/customers-manager/manager.js?v=320-engineering-single-owner'));
+test('health and PWA advertise V320',health.includes("'schemaVersion' => '320-engineering-single-owner-manual-login'")&&sw.includes("const CACHE='belm-app-v320-engineering-single-owner-manual-login';"));
+console.log(`\n${pass}/${pass+fail} V320 checks passed`);process.exit(fail?1:0);

@@ -33,7 +33,7 @@ test('UI treats sync response error as a real warning',js.includes("if(!syncErro
 test('UI exposes failed and inconsistent counts',js.includes("sync?.sync?.failedSources")&&js.includes("sync?.sync?.inconsistencies"));
 test('sync error has explicit visual state',css.includes('.sync-status.sync-error'));
 test('breakdown sync endpoint returns central reconciliation payload',bw.includes('$sync = belm_sync_breakdown_sources($scopeCustomer ?: null)')&&bw.includes("json_out(['ok'=>true,'sync'=>$sync])"));
-test('V319 workflow assets are cache-busted',html.includes('workflow.css?v=319-full-sync-hardening')&&html.includes('workflow.js?v=319-full-sync-hardening'));
-test('health schema is V319',health.includes("'schemaVersion' => '319-full-sync-hardening'"));
-test('service worker cache is V319',sw.includes("const CACHE='belm-app-v319-full-sync-hardening';"));
+test('V319 workflow assets are cache-busted or newer',(()=>{const c=/workflow\.css\?v=(\d+)-/.exec(html),j=/workflow\.js\?v=(\d+)-/.exec(html);return c&&j&&Number(c[1])>=319&&Number(j[1])>=319;})());
+test('health schema is V319 or newer',(()=>{const m=/\'schemaVersion\' => \'(\d+)-/.exec(health);return m&&Number(m[1])>=319;})());
+test('service worker cache is V319 or newer',(()=>{const m=/const CACHE='belm-app-v(\d+)-/.exec(sw);return m&&Number(m[1])>=319;})());
 console.log(`\n${pass}/${pass+fail} V319 checks passed`);process.exit(fail?1:0);

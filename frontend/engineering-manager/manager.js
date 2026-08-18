@@ -278,6 +278,13 @@
       return;
     }
     serviceFrame.src = serviceFrame.dataset.src || "/service-request-manager/?embed=1";
+    const routeParams = new URLSearchParams(window.location.search);
+    const machineFocus = String(routeParams.get("machine") || "").trim();
+    const jobCardsSource = () => {
+      const url = new URL(jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin", window.location.origin);
+      if (machineFocus) url.searchParams.set("machine", machineFocus);
+      return `${url.pathname}${url.search}`;
+    };
 
     const setWorkspace = (name, updateHash = true) => {
       const jobCards = name === "job-cards";
@@ -288,7 +295,7 @@
         button.classList.toggle("active", active);
         button.setAttribute("aria-selected", active ? "true" : "false");
       });
-      if (jobCards && !jobFrame.src) jobFrame.src = jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin";
+      if (jobCards && !jobFrame.src) jobFrame.src = jobCardsSource();
       if (updateHash) history.replaceState(null, "", jobCards ? "#job-cards" : "#service-requests");
       window.setTimeout(() => document.getElementById("service-requests")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
     };
@@ -311,7 +318,7 @@
         if (event.data?.type === "belm-engineering-open-service-requests") setWorkspace("service-requests");
       }
     });
-    setWorkspace(window.location.hash === "#job-cards" ? "job-cards" : "service-requests", false);
+    setWorkspace(window.location.hash === "#job-cards" || machineFocus ? "job-cards" : "service-requests", false);
   }
 
   initEngineeringWorkspace();

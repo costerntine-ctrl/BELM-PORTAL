@@ -28,9 +28,9 @@ check('static htaccess supports canonical login', ht.includes('RewriteRule ^logi
 check('home page uses one login link', home.includes('href="/login"') && home.includes('Portal Login'));
 check('PWA opens canonical login', manifest.includes('"start_url": "/login"'));
 check('login accepts email or Customer Portal ID', html.includes('Email / Customer Portal ID') && html.includes('type="text"'));
-check('canonical no-slug quick resume supports customer', app.includes("if(active==='customer')"));
-check('canonical no-slug quick resume supports technician', app.includes("if(active==='technician')"));
-check('canonical no-slug quick resume supports admin', app.includes("if(active==='admin')"));
+check('canonical login does not quick-resume saved portal sessions', !app.includes('quickResume('));
+check('canonical login waits for explicit login button click', html.includes('id="loginButton" class="primary" type="button"') && app.includes("button.addEventListener('click',login)"));
+check('canonical login blocks form autosubmit from autofill', app.includes("form.addEventListener('submit',event=>event.preventDefault())"));
 check('login posts to unified endpoint', app.includes("fetch('/api/auth/unified-login'"));
 check('unauthenticated technician workspace returns to one login', portal.includes("window.location.replace('/login')"));
 check('service worker cache bumped', sw.includes('belm-app-v303-unified-login'));

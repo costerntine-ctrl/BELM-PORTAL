@@ -15,7 +15,7 @@ test('assignment stage exists',bw.includes("'TECHNICIAN_ASSIGNMENT' => ['departm
 test('unassigned new job does not enter diagnosis',bw.includes("if ($techId !== '')")&&bw.includes("bw_set_stage($caseId,'TECHNICIAN_ASSIGNMENT','Awaiting Technician Assignment'"));
 test('diagnosis/repair guarded by assigned technician',bw.includes("Assign a Technician to the active Job Card before moving this case to Technician Diagnosis/Repair."));
 test('service request open unassigned uses assignment stage',helpers.includes("$newStage='TECHNICIAN_ASSIGNMENT'; $department='Workshop / Dispatch';"));
-test('service request assigned advances to diagnosis',helpers.includes("in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT'],true)"));
+test('service request assigned advances to diagnosis',helpers.includes("$status === 'ASSIGNED'")&&/in_array\(\$stage,\[[^\]]*'WORKSHOP_REVIEW'[^\]]*'TECHNICIAN_ASSIGNMENT'[^\]]*\],true\)\)\s*\{\s*\n\s*\$newStage='JOB_CARD_ASSIGNED'/.test(helpers));
 test('migration repairs stale unassigned jobs',migrate.includes("current_stage='TECHNICIAN_ASSIGNMENT'")&&migrate.includes("j.technician_id IS NOT NULL"));
 test('schema repair is idempotent',schema.includes('-- V308: an active Job Card without a Technician')&&schema.includes("bc.current_stage IN ('WORKSHOP_REVIEW','DIAGNOSIS','REPAIR')"));
 test('job card shows assignment warning',js.includes('AWAITING TECHNICIAN ASSIGNMENT · Workshop / Dispatch action required'));

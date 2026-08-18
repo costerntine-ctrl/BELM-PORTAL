@@ -24,7 +24,7 @@ function test(name,cond){if(cond){console.log('PASS',name);pass++;}else{console.
 test('job card stores issuer and customer signoff',schema.includes('issued_by_name VARCHAR(255)')&&schema.includes('signed_copy_data TEXT')&&schema.includes("billing_status VARCHAR(40) NOT NULL DEFAULT 'NOT_READY'"));
 test('proforma and invoice link to source Job Card',schema.includes('ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_job_card_id')&&schema.includes('ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_job_card_id'));
 test('official service request auto-creates one Job Card',helpers.includes('function belm_ensure_service_request_job_card')&&helpers.includes("source_type='SERVICE_REQUEST'")&&helpers.includes("issued_by_type"));
-test('service assignment syncs technician into same Job Card',helpers.includes('assigned_to_id')&&helpers.includes('UPDATE digital_job_cards SET technician_id=?,technician_name=?')&&helpers.includes('assigned_to_name'));
+test('service assignment syncs technician into same Job Card',helpers.includes('assigned_to_id')&&/UPDATE digital_job_cards\s*SET technician_id=\?,technician_name=\?/.test(helpers)&&helpers.includes('assigned_to_name'));
 test('Job Card PDF prints Issued By and customer signoff',workflowApi.includes("['Issued By'")&&workflowApi.includes("['Customer Sign-Off'")&&workflowApi.includes('Customer / Supervisor Signature'));
 test('signed Job Card upload endpoint exists',workflowApi.includes("signed-job-card'")&&workflowApi.includes('READY_FOR_PROCUREMENT')&&workflowApi.includes('signed_copy_data'));
 test('signed Job Card file endpoint exists',workflowApi.includes('signed-job-card-file'));

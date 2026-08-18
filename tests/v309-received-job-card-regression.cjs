@@ -17,7 +17,7 @@ test('received list can filter by selected customer', js.includes('dispatchJobCa
 test('customer selector remains enabled in received mode', js.includes('if(customer) customer.disabled=false;'));
 test('changing customer clears previous Job Card selection', js.includes('if(jobSelect) jobSelect.value="";') && js.includes('renderReceivedJobCards();'));
 test('selecting received Job Card auto syncs customer', js.includes('customer.value=job.customerId||"";'));
-test('received Job Card UI explains customer-first filter', html.includes('Select customer first to filter.') && html.includes('still Unassigned'));
+test('received Job Card UI explains customer-first filter', html.includes('Select customer first to filter.') && html.includes('waiting for Technician assignment'));
 test('V309 engineering cache bust is present', html.includes('v=309-received-job-card'));
 test('V309 health schema version is present', health.includes('309-received-job-card-dispatch'));
 test('V309 service worker cache bumped', sw.includes('belm-app-v309-received-job-card-dispatch'));

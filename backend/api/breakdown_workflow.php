@@ -874,10 +874,42 @@ if ($method === 'POST' && $action === 'job-card') {
             if($temporaryOverride || (string)$tech['assigned_customer_id']!==(string)$case['customer_id']) json_error('Selected Technician is not available for this customer.',403);
         }
     }
-    $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
-    $jobId=uuid(); $title=trim((string)($b['title']??$case['title']));
+    $title=trim((string)($b['title']??$case['title']));
     $initialJobStatus=$techId!==''?'ASSIGNED':'RECEIVED';
-    db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$initialJobStatus,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind']),date('c')]);
+    // V314 - a case created FROM a customer's Service Request already gets
+    // its Job Card auto-issued the moment the request comes in (see
+    // belm_ensure_service_request_job_card()) — that's the one card
+    // Engineering "receives" per the intended flow: Customer Service
+    // Request -> BELM Engineering receives the Job Card -> BELM Admin
+    // assigns a Technician. This button had no check at all for that
+    // already-existing card and always inserted a brand new one, so
+    // every case with a Service-Request-issued card ended up with two
+    // Job Cards the moment anyone used this button too. Now: if an
+    // open (not completed/cancelled) Job Card already exists for this
+    // case, assign/update THAT one instead of creating a second.
+    $existingJob = db()->prepare(
+        "SELECT id, job_card_no, status, technician_id FROM digital_job_cards
+         WHERE case_id = ? AND status NOT IN ('COMPLETED','CANCELLED')
+         ORDER BY created_at ASC LIMIT 1"
+    );
+    $existingJob->execute([$caseId]);
+    $existingJobRow = $existingJob->fetch();
+    if ($existingJobRow) {
+        if (!empty($existingJobRow['technician_id'] ?? null) || in_array(strtoupper((string)$existingJobRow['status']), ['ASSIGNED', 'IN_PROGRESS'], true)) {
+            json_error('Job Card '.$existingJobRow['job_card_no'].' already exists for this case and is already assigned. Use Technician Dispatch / handover instead of generating a new one.', 409);
+        }
+        $jobId = (string)$existingJobRow['id'];
+        $num = (string)$existingJobRow['job_card_no'];
+        db()->prepare(
+            "UPDATE digital_job_cards
+             SET technician_id=?,technician_name=?,status=?,updated_at=NOW()
+             WHERE id=?"
+        )->execute([$techId?:null,$techName?:null,$initialJobStatus,$jobId]);
+    } else {
+        $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
+        $jobId=uuid();
+        db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$initialJobStatus,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind']),date('c')]);
+    }
     if ($techId !== '') {
         bw_set_stage($caseId,'JOB_CARD_ASSIGNED',null,$ctx,'Digital Job Card '.$num.' generated and assigned');
     } else {

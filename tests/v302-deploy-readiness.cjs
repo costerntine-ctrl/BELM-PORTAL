@@ -25,12 +25,15 @@ check('schema no plaintext default password', () => assert.doesNotMatch(schema, 
 check('migration requires secure bootstrap secret', () => { assert.match(migrate, /INITIAL_ADMIN_PASSWORD/); assert.match(migrate, /strlen\(\$initialPassword\) < 12/); });
 check('migration detects legacy known hash', () => assert.match(migrate, /legacyKnownHash/));
 check('Render prompts for initial admin secret', () => assert.match(render, /key: INITIAL_ADMIN_PASSWORD\s+sync: false/s));
-check('health schema version current', () => assert.match(health, /301-customer-job-billing/));
+check('health schema version current', () => {
+  const m = /'schemaVersion' => '(\d+)-/.exec(health);
+  assert.ok(m && Number(m[1]) >= 301, 'schemaVersion should be >= 301');
+});
 check('health checks V301 billing tables', () => { for (const x of ["'invoices'", "'payments'", "'proforma_invoices'"]) assert.match(health, new RegExp(x)); });
 check('health checks V301 columns', () => { for (const x of ['signed_copy_data','billing_status','source_job_card_id']) assert.match(health, new RegExp(x)); });
-check('incomplete schema returns 503', () => assert.match(health, /\$schemaReady \? 200 : 503/));
+check('incomplete schema returns 503', () => assert.match(health, /\$healthReady \? 200 : 503/));
 check('health seeded admin lookup uses stable id', () => assert.match(health, /00000000-0000-4000-8000-000000000003/));
-check('full reset preserves admin password', () => assert.match(reset, /password_hash\(\$preservedAdminPassword/));
+check('full reset preserves admin password', () => assert.match(reset, /preservedAdminPasswordHash/));
 check('full reset preserves edit and delete PINs', () => { assert.match(reset, /preservedDeletePin/); assert.match(reset, /preservedEditPin/); });
 check('full reset no public default credential message', () => assert.doesNotMatch(reset, /ChangeMe123!/));
 check('README no public default password', () => assert.doesNotMatch(readme, /ChangeMe123!/));

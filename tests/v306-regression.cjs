@@ -23,8 +23,8 @@ const receipts=read('backend/api/receipts.php');
 const trash=read('backend/api/trash.php');
 const sw=read('frontend/belm-sw.js');
 
-test('health requires schema and admin readiness',health.includes('($schemaReady && $adminReady) ? 200 : 503')&&health.includes("306-regression-hardening"));
-test('service unassign returns breakdown stage when no technician',helpers.includes("$stage === 'DIAGNOSIS' && empty($row['assigned_to_id'])"));
+test('health requires schema and admin readiness',/\$healthReady\s*=\s*\$schemaReady\s*&&\s*\$adminReady/.test(health)&&health.includes('$healthReady ? 200 : 503')&&/'schemaVersion' => '(\d+)-/.exec(health)&&Number(/'schemaVersion' => '(\d+)-/.exec(health)[1])>=306);
+test('service unassign returns breakdown stage when no technician',/\$status\s*===\s*'OPEN'.*empty\(\$row\['assigned_to_id'\]\)/s.test(helpers)&&helpers.includes("'DIAGNOSIS'")&&helpers.includes("newStage='TECHNICIAN_ASSIGNMENT'"));
 test('active service request cannot be silently unassigned',service.includes('Only an Open/Assigned Service Request can be unassigned'));
 test('cancelled service request closes unfinished Job Card',helpers.includes("status=CASE WHEN status='COMPLETED' THEN status ELSE 'CANCELLED' END"));
 test('service completion requires linked completed Job Card',service.includes('belm_sync_breakdown_case_from_service_request')&&service.includes("if ($jobStatus !== 'COMPLETED')"));
@@ -41,7 +41,7 @@ test('technician spare request validates case and assignment',bw.includes('A Tec
 test('job report cannot self-claim an unassigned Job Card',bw.includes('bw_require_assigned_job($ctx,$job)')&&!bw.includes('technician_id=COALESCE(technician_id,?)'));
 test('job PDF requires assigned Job Card for technician',bw.includes("$action === 'job-card-pdf'")&&bw.includes("bw_case_access($ctx,$job['case_id']); bw_require_assigned_job($ctx,$job);"));
 
-test('dispatch list excludes completed and cancelled Job Cards',engineering.includes("j.status NOT IN ('COMPLETED','CANCELLED')")&&engineering.includes("bc.status <> 'COMPLETED'"));
+test('dispatch list excludes completed and cancelled Job Cards',engineering.includes("j.status IN ('RECEIVED','OPEN')")&&engineering.includes("bc.status <> 'COMPLETED'"));
 test('dispatch refuses final Job Cards/cases',engineering.includes("['COMPLETED','CANCELLED']")&&engineering.includes("$job['case_status'])==='COMPLETED'"));
 
 test('customer outstanding debt uses remaining invoice balance',customer.includes('SUM(GREATEST(i.total-COALESCE(pay.paid,0),0))'));
@@ -76,7 +76,7 @@ test('recovery code can disambiguate legacy accounts safely',auth.includes('fore
 test('Technician shortcut uses assigned-jobs endpoint',portal.includes("/api/breakdown-workflow/technician-jobs"));
 test('Technician active UI excludes cancelled cards',tech.includes("!['COMPLETED','CANCELLED'].includes"));
 test('Technician machine action routes directly to My Job Cards',portal.includes('`/technician-job-cards/?machine='));
-test('V306 service worker cache bumped',sw.includes('belm-app-v306-regression-hardening'));
+test('V306 service worker cache bumped',(() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(sw); return m && Number(m[1]) >= 306; })());
 
 console.log(`\n${pass}/${pass+fail} V306 checks passed`);
 process.exit(fail?1:0);

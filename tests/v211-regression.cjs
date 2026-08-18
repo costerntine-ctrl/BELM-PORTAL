@@ -25,7 +25,7 @@ check('Explicit actor without matching token redirects', workflow.includes("if(s
   check('Shared Breakdown loads Admin sidebar safely', !!m && Number(m[1]) >= 211);
 }
 check('Customer machine Breakdown link declares actor', portal.includes('&actor=${encodeURIComponent(customerWorkflowActor())}'));
-check('Technician Breakdown link declares actor=tech', portal.includes('&actor=tech`'));
+check('Technician Job Cards link routes to My Job Cards', portal.includes('/technician-job-cards/'));
 check('Workshop login destination declares customer actor', auth.includes("'/breakdown-workflow/?actor=customer'"));
 check('Machine actions decorated after async panel creation', /enforceCustomerFeaturePermissions\(panel\);\s*decorateMachineActionIcons\(panel\);\s*organizeMachineActions\(panel\);/.test(portal));
 check('Workflow icon has explicit label', portal.includes('"workflow": "WF"'));

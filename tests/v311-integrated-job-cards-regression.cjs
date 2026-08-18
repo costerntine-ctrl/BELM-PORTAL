@@ -20,5 +20,5 @@ ok('Breakdown page detects embed mode', bwHtml.includes('classList.add("embed-mo
 ok('Embedded breakdown hides nested admin sidebar', bwCss.includes('html.embed-mode #belmAdminSidebar')&&bwCss.includes('html.embed-mode .belm-admin-sidebar'));
 ok('Embedded breakdown reports height to Engineering', bwJs.includes('belm-breakdown-workflow-height'));
 ok('Back can return to Service Requests in Engineering', bwJs.includes('belm-engineering-open-service-requests'));
-ok('Cache bumped to V311', read('frontend/belm-sw.js').includes("belm-app-v311-integrated-job-cards"));
+ok('Cache bumped to V311', (() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(read('frontend/belm-sw.js')); return m && Number(m[1]) >= 311; })());
 console.log(`V311 integrated Job Cards regression: ${pass}/${pass} PASS`);checks.forEach(x=>console.log('PASS',x));

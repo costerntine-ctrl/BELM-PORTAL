@@ -38,7 +38,7 @@ test('BELM spare request links procurement request', files.schema.includes('proc
 test('BELM fulfillment advances customer maintenance', files.spareApi.includes("SET status='PARTS_READY'") && files.spareApi.includes('BELM supply fulfilled'));
 test('procurement page keeps store issue flow', files.procJs.includes('ISSUE_STORE') && files.procJs.includes('Issue from Store'));
 test('request screen no direct spare BELM submit', files.serviceHtml.includes('Send Requirements to Procurement'));
-test('new cache bust present', read('frontend/index.html').includes('298-spare-service-shortage') && files.procHtml.includes('298-shortage-select'));
+test('new cache bust present', (() => { const m1 = /portal-tools\.js\?v=(\d+)-/.exec(read('frontend/index.html')); const m2 = /expenses\.js\?v=(\d+)-/.exec(files.procHtml); return m1 && m2 && Number(m1[1]) >= 298 && Number(m2[1]) >= 298; })());
 
 console.log(`\n${pass}/${pass + fail} V298 checks passed`);
 process.exit(fail ? 1 : 0);

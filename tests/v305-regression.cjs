@@ -19,7 +19,7 @@ test('received Job Card assignment updates same card',engApi.includes('UPDATE di
 test('create mode creates breakdown case and Digital Job Card',engApi.includes("$mode==='existing'")&&engApi.includes("INSERT INTO breakdown_cases")&&engApi.includes("INSERT INTO digital_job_cards"));
 test('dispatch preserves temporary override protection',engApi.includes('temporaryOverride')&&engJs.includes('Temporary Override'));
 test('job cards retain priority and due date',schema.includes("ADD COLUMN IF NOT EXISTS priority")&&schema.includes("ADD COLUMN IF NOT EXISTS due_date"));
-test('health checks V305 job card columns',health.includes("['digital_job_cards', 'priority']")&&health.includes("305-technician-job-cards"));
+test('health checks V305 job card columns',/\['digital_job_cards',\s*'priority'\]/.test(health)&&(() => { const m = /'schemaVersion' => '(\d+)-/.exec(health); return m && Number(m[1]) >= 305; })());
 test('dedicated Technician Job Card workspace exists',techHtml.includes('My Job Cards')&&techHtml.includes('My Reports')&&techHtml.includes('Job Card Workspace'));
 test('Technician page uses dedicated compact API',techJs.includes('/technician-jobs')&&bwApi.includes("action === 'technician-jobs'"));
 test('Technician list scoped to assigned technician',bwApi.includes("$where=['j.technician_id=?']"));

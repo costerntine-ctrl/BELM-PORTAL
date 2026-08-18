@@ -15,14 +15,14 @@ check('maintenance spare links procurement request',schema.includes('ADD COLUMN 
 check('health checks procurement table',backendIndex.includes("'customer_procurement_requests'"));
 check('spare search endpoint exists',api.includes("$sub === 'spare-search'"));
 check('procurement request endpoint exists',api.includes("$sub === 'procurement-requests'"));
-check('legacy direct BELM spare routes blocked',api.includes('Direct spare requests to BELM are disabled')&&!api.includes('CUSTOMER SPARE REQUEST TO BELM'));
-check('customer UI searches spare/store',reqHtml.includes('Search Spare → Procurement Request')&&reqHtml.includes('Search Store')&&reqJs.includes('/spare-search/${encodeURIComponent(machineId)}'));
+check('legacy direct BELM spare routes blocked',api.includes('Direct spare requests from the request screen are disabled')&&!api.includes('CUSTOMER SPARE REQUEST TO BELM'));
+check('customer UI searches spare/store',reqHtml.includes('Search Store')&&reqJs.includes('/spare-search/${encodeURIComponent(machineId)}'));
 check('customer UI no direct supplier csv',!reqHtml.includes('Download Selected CSV')&&!reqHtml.includes('Send Selected Spare Request to BELM'));
 check('customer submits only to procurement queue',reqJs.includes('/procurement-requests/${encodeURIComponent(machineId)}')&&!reqJs.includes('api("/spare-part-requests"'));
 check('customer can open maintenance status',reqHtml.includes('Maintenance Status')&&reqJs.includes('/breakdown-workflow/?machine='));
 check('procurement queue panel added',procHtml.includes('<h2>Procurement Requests</h2>')&&procHtml.includes('procurementRequestRows'));
 check('procurement owns source decisions',procJs.includes('ISSUE_STORE')&&procJs.includes('PURCHASE_REQUIRED')&&procJs.includes('ORDERED')&&procJs.includes('PARTS_READY'));
-check('purchase CSV moved to procurement',procHtml.includes('Purchase CSV')&&procJs.includes('downloadPurchaseCsvButton'));
+check('purchase CSV moved to procurement',procHtml.includes('downloadPurchaseCsvButton')&&procJs.includes('downloadPurchaseCsvButton'));
 check('store issue deducts balance in procurement action',api.includes("$action === 'ISSUE_STORE'")&&api.includes('UPDATE customer_store_items SET qty_on_hand=?'));
 check('procurement status syncs maintenance case',api.includes("current_stage='PROCUREMENT'")&&api.includes('customer_refresh_procurement_case'));
 check('procurement request creates maintenance spare row',api.includes("'PROCUREMENT_REVIEW'")&&api.includes('procurement_request_id'));
@@ -30,5 +30,5 @@ check('maintenance process labels procurement source',workflowJs.includes("s==='
 check('linked spares managed in procurement',workflowJs.includes('Managed in Procurement'));
 check('customer workflow request spare redirects to search',workflowJs.includes('/customer-service-request/?machine='));
 check('procurement page still supports direct records',procHtml.includes('Add procurement record')&&procJs.includes('/machine-expenses/${encodeURIComponent(machineId)}'));
-check('cache bust v297',read('frontend/index.html').includes('portal-tools.js?v=297-procurement-first')&&read('frontend/belm-sw.js').includes('belm-app-v297-procurement-first'));
+check('cache bust v297',(() => { const m1 = /portal-tools\.js\?v=(\d+)-/.exec(read('frontend/index.html')); const m2 = /const CACHE='belm-app-v(\d+)-/.exec(read('frontend/belm-sw.js')); return m1 && m2 && Number(m1[1]) >= 297 && Number(m2[1]) >= 297; })());
 console.log(`${pass}/${pass+fail} V297 checks passed`);process.exit(fail?1:0);

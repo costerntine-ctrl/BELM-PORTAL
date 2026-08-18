@@ -23,9 +23,9 @@ test('service request completion waits for Workshop case closure',service.includ
 test('Service Request case cannot close with unfinished Job Cards',bw.includes('All Job Cards must be completed before Workshop can return the machine to service.')&&bw.includes("($case['source_type'] ?? '') === 'SERVICE_REQUEST'"));
 test('terminal Service Requests cannot be resurrected by assignment',service.includes('A completed/cancelled Service Request cannot be assigned again.'));
 test('Service Request status cannot claim OPEN/ASSIGNED/IN PROGRESS with contradictory assignment',service.includes('Unassign the Technician first')&&service.includes('Assign a Technician before setting this Service Request'));
-test('started Job Card prevents Service Request status rollback',service.includes('The linked Job Card has already started. Keep the Service Request in progress'));
+test('started Job Card prevents Service Request status rollback',service.includes('The linked Job Card has already been assigned/started. Keep the Service Request in progress'));
 test('Technician Job Card work synchronizes Service Request to IN_PROGRESS',bw.includes('Synchronized from Technician Job Card')&&bw.includes("status='IN_PROGRESS'"));
-test('started Service Request Job Cards must be reassigned through Job Card Dispatch',service.includes('has already started. Change Technician assignment from Job Card Dispatch'));
+test('started Service Request Job Cards must be reassigned through Job Card Dispatch',service.includes('has already started. Manage Technician handover from Job Card Dispatch'));
 test('service sync never rewrites completed/cancelled Job Card technician ownership',helpers.includes("status NOT IN ('COMPLETED','CANCELLED')"));
 test('RESPONDED proforma remains sent/visible billing state',helpers.includes("['SENT','RESPONDED']")&&helpers.includes("'PROFORMA_SENT'"));
 test('customer service billing ignores cancelled invoices',customer.includes("ii.status<>'CANCELLED'"));

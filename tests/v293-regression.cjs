@@ -19,7 +19,7 @@ const checks = [
   ['rotation pauses on hover/focus', js.includes('box.onmouseenter') && js.includes('box.onfocusin')],
   ['ticker styling exists', css.includes('.belm-machine-update-progress') && css.includes('@keyframes belmMachineUpdateIn')],
   ['dark mode ticker styling exists', css.includes('html[data-theme="dark"] .belm-machine-update-slide')],
-  ['cache bust points to V293', html.includes('portal-tools.js?v=293-rotating-machine-updates') && html.includes('belm-theme.css?v=293-rotating-machine-updates')],
+  ['cache bust points to V293', (() => { const m1 = /portal-tools\.js\?v=(\d+)-/.exec(html); const m2 = /belm-theme\.css\?v=(\d+)-/.exec(html); return m1 && m2 && Number(m1[1]) >= 293 && Number(m2[1]) >= 293; })()],
 ];
 for (const [name, ok] of checks) {
   console.log(`${ok ? 'PASS' : 'FAIL'} - ${name}`);

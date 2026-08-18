@@ -24,6 +24,6 @@ test('pre-start unassign returns ASSIGNED card to RECEIVED without allowing sile
 test('received dropdown visibly labels received cards',js.includes('RECEIVED · ${job.jobCardNo}'));
 test('received helper text explains waiting assignment',html.includes('Shows RECEIVED Job Cards'));
 test('migration logs V312 normalization',migrate.includes('V312 Job Card lifecycle normalized'));
-test('health schema is V312',health.includes('312-received-job-card-status'));
-test('service worker cache is V312',sw.includes('belm-app-v312-received-job-card-status'));
+test('health schema is V312',(() => { const m = /'schemaVersion' => '(\d+)-/.exec(health); return m && Number(m[1]) >= 312; })());
+test('service worker cache is V312',(() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(sw); return m && Number(m[1]) >= 312; })());
 console.log(`V312 checks: ${pass}/${pass+fail} passed`);process.exit(fail?1:0);

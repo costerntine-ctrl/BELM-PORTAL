@@ -11,8 +11,8 @@ const checks = [
   ['rotating ticker preserved', tools.includes('customerMachineUpdateRotationTimer') && tools.includes('5500')],
   ['hide update preserved', tools.includes('data-dismiss-update') && tools.includes('dismissUpdateId(id)')],
   ['view all updates preserved', tools.includes('data-view-all-communications')],
-  ['V294 portal-tools cache bust', index.includes('/portal-tools.js?v=294-company-communication-direction')],
-  ['V294 service worker cache', sw.includes("belm-app-v294-company-communication-direction")],
+  ['V294 portal-tools cache bust', (() => { const m = /portal-tools\.js\?v=(\d+)-/.exec(index); return m && Number(m[1]) >= 294; })()],
+  ['V294 service worker cache', (() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(sw); return m && Number(m[1]) >= 294; })()],
 ];
 let passed=0;
 for (const [name, ok] of checks) {

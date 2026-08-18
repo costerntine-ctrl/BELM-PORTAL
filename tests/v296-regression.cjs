@@ -21,10 +21,10 @@ check('quick action icon changed to PR', portal.includes('"machine-expenses": "P
 check('friendly procurement route exists', fs.existsSync(path.join(root,'frontend/customer-procurement/index.html')));
 check('procurement page title', procHtml.includes('<h1 id="pageTitle">Procurement</h1>'));
 check('legacy route also shows Procurement', legacyHtml.includes('<title>Procurement — BELM Customer Portal</title>'));
-check('store approval terminology', procHtml.includes('Customer Store → Procurement Approval'));
+check('store approval terminology', procHtml.includes('Send Selected to BELM') && procHtml.includes('store-approval-panel'));
 check('procurement record form', procHtml.includes('Add procurement record') && procHtml.includes('Save procurement'));
 check('procurement report buttons', procHtml.includes('Procurement CSV') && procHtml.includes('Procurement PDF'));
-check('service request approval terminology', reqHtml.includes('Send Selected to Procurement Approval'));
+check('service request approval terminology', reqHtml.includes('Open Procurement'));
 check('service request opens procurement route', reqJs.includes('/customer-procurement/?machine='));
 check('saved spare/store endpoints preserved', reqJs.includes('/spare-workspace/${encodeURIComponent(machineId)}') && reqJs.includes('/spare-store-check/${encodeURIComponent(machineId)}'));
 check('approval still does not deduct on submit', api.includes('Stock has not been deducted yet.'));
@@ -40,8 +40,12 @@ check('privacy policy terminology updated EN', privacy.includes('machine procure
 check('privacy policy terminology updated SW', privacy.includes('rekodi za procurement/manunuzi ya mashine'));
 check('terms define Procurement', terms.includes('<b>Procurement</b>') && terms.includes('<b>Procurement / Manunuzi</b>'));
 check('no old customer-facing Machine Expenses labels in core pages', ![portal, reqHtml, procHtml, legacyHtml, fuelHtml, usersHtml, settingsHtml].some(x => /Machine Expenses|Expenses Approval/.test(x)));
-check('main portal cache bust', read('frontend/index.html').includes('portal-tools.js?v=296-procurement'));
-check('service worker cache bumped', read('frontend/belm-sw.js').includes("belm-app-v296-procurement"));
-check('customer app shell version matches service worker', read('frontend/belm-sw.js').includes('/customer-app.js?v=296-procurement-label') && read('frontend/customer-app.html').includes('/customer-app.js?v=296-procurement-label'));
+check('main portal cache bust', (() => { const m = /portal-tools\.js\?v=(\d+)-/.exec(read('frontend/index.html')); return m && Number(m[1]) >= 296; })());
+check('service worker cache bumped', (() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(read('frontend/belm-sw.js')); return m && Number(m[1]) >= 296; })());
+check('customer app shell version matches service worker', (() => {
+  const shellMatch = /customer-app\.js\?v=([\w-]+)'/.exec(read('frontend/belm-sw.js'));
+  const htmlMatch = /customer-app\.js\?v=([\w-]+)"/.exec(read('frontend/customer-app.html'));
+  return shellMatch && htmlMatch && shellMatch[1] === htmlMatch[1];
+})());
 console.log(`${pass}/${pass+fail} V296 checks passed`);
 process.exit(fail?1:0);

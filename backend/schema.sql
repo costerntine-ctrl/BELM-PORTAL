@@ -1360,3 +1360,22 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NUL
 CREATE INDEX IF NOT EXISTS idx_proforma_source_job_card ON proforma_invoices(source_job_card_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_source_job_card ON invoices(source_job_card_id);
 CREATE INDEX IF NOT EXISTS idx_job_cards_billing_status ON digital_job_cards(customer_id, billing_status, completed_at DESC);
+
+
+-- V308: an active Job Card without a Technician belongs to Workshop / Dispatch,
+-- never to Technician Diagnosis/Repair. This is idempotent and repairs legacy rows.
+UPDATE breakdown_cases bc
+SET current_stage='TECHNICIAN_ASSIGNMENT',
+    current_department='Workshop / Dispatch',
+    blocker_reason='Awaiting Technician Assignment',
+    updated_at=NOW()
+WHERE bc.status <> 'COMPLETED'
+  AND bc.current_stage IN ('WORKSHOP_REVIEW','DIAGNOSIS','REPAIR')
+  AND EXISTS (
+      SELECT 1 FROM digital_job_cards j
+      WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED')
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM digital_job_cards j
+      WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED') AND j.technician_id IS NOT NULL
+  );

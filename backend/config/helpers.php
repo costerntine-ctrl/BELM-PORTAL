@@ -1685,11 +1685,13 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         }
 
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
-        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && $stage === 'DIAGNOSIS' && empty($row['assigned_to_id'])) {
-            $newStage='WORKSHOP_REVIEW'; $department='Workshop'; $action='Service Request returned to open queue';
-        } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && $stage === 'WORKSHOP_REVIEW') {
+        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && empty($row['assigned_to_id'])
+            && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','DIAGNOSIS','REPAIR'],true)) {
+            $newStage='TECHNICIAN_ASSIGNMENT'; $department='Workshop / Dispatch';
+            $blocker='Awaiting Technician Assignment'; $action='Service Request waiting Technician assignment';
+        } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT'],true)) {
             $newStage='DIAGNOSIS'; $department='Technician'; $action='Service Request assigned - technician action';
-        } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','DIAGNOSIS'],true)) {
+        } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','DIAGNOSIS'],true)) {
             $newStage='REPAIR'; $department='Technician'; $action='Service Request in progress';
         } elseif ($status === 'ON_HOLD' && $caseStatus !== 'COMPLETED') {
             $blocker='Service Request is ON HOLD'; $action='Service Request placed on hold';

@@ -11,6 +11,7 @@ if (!$payload) json_error('Not authenticated', 401);
 
 const BREAKDOWN_STAGE_META = [
     'WORKSHOP_REVIEW' => ['department' => 'Workshop', 'slaHours' => 4],
+    'TECHNICIAN_ASSIGNMENT' => ['department' => 'Workshop / Dispatch', 'slaHours' => 4],
     'DIAGNOSIS' => ['department' => 'Technician', 'slaHours' => 8],
     'BOSS_APPROVAL' => ['department' => 'Administration Approval', 'slaHours' => 4],
     'STORE_CHECK' => ['department' => 'Store Keeper', 'slaHours' => 6],
@@ -875,7 +876,11 @@ if ($method === 'POST' && $action === 'job-card') {
     $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
     $jobId=uuid(); $title=trim((string)($b['title']??$case['title']));
     db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,?,?,NOW(),NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind'])]);
-    bw_set_stage($caseId,'DIAGNOSIS',null,$ctx,'Digital Job Card '.$num.' generated');
+    if ($techId !== '') {
+        bw_set_stage($caseId,'DIAGNOSIS',null,$ctx,'Digital Job Card '.$num.' generated and assigned');
+    } else {
+        bw_set_stage($caseId,'TECHNICIAN_ASSIGNMENT','Awaiting Technician Assignment',$ctx,'Digital Job Card '.$num.' generated - waiting Technician assignment');
+    }
     if ($temporaryOverride && $techId!=='') {
         bw_log($caseId,'DIAGNOSIS','Technician','Temporary Technician Override - '.$techName,
             'Home customer: '.($techHomeName ?: 'Unassigned').'. Override applies only to Job Card '.$num.'.', $ctx);
@@ -980,6 +985,13 @@ if ($method === 'PUT' && $action === 'stage' && $id !== '') {
     $case=bw_case_access($ctx,$id); $b=body(); $stage=strtoupper(trim((string)($b['stage']??''))); $note=trim((string)($b['note']??''));
     if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Workshop Manager or Administration can move the main breakdown stage.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians update the process through their Digital Job Card report.',403);
+    if (in_array($stage, ['DIAGNOSIS','REPAIR'], true)) {
+        $assignedJob = db()->prepare("SELECT 1 FROM digital_job_cards WHERE case_id=? AND status NOT IN ('COMPLETED','CANCELLED') AND technician_id IS NOT NULL LIMIT 1");
+        $assignedJob->execute([$id]);
+        if (!$assignedJob->fetchColumn()) {
+            json_error('Assign a Technician to the active Job Card before moving this case to Technician Diagnosis/Repair.',409);
+        }
+    }
     if ($stage === 'COMPLETED') {
         // V307: a Service Request cannot skip the Technician Job Card / Workshop
         // test simply by moving the main process directly to COMPLETED.

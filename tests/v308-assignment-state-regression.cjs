@@ -1,0 +1,27 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const bw=read('backend/api/breakdown_workflow.php');
+const helpers=read('backend/config/helpers.php');
+const migrate=read('backend/scripts/migrate.php');
+const schema=read('backend/schema.sql');
+const js=read('frontend/breakdown-workflow/workflow.js');
+const css=read('frontend/breakdown-workflow/workflow.css');
+const sw=read('frontend/belm-sw.js');
+let pass=0,fail=0;
+function test(name,ok){if(ok){console.log('PASS',name);pass++;}else{console.error('FAIL',name);fail++;}}
+test('assignment stage exists',bw.includes("'TECHNICIAN_ASSIGNMENT' => ['department' => 'Workshop / Dispatch'"));
+test('unassigned new job does not enter diagnosis',bw.includes("if ($techId !== '')")&&bw.includes("bw_set_stage($caseId,'TECHNICIAN_ASSIGNMENT','Awaiting Technician Assignment'"));
+test('diagnosis/repair guarded by assigned technician',bw.includes("Assign a Technician to the active Job Card before moving this case to Technician Diagnosis/Repair."));
+test('service request open unassigned uses assignment stage',helpers.includes("$newStage='TECHNICIAN_ASSIGNMENT'; $department='Workshop / Dispatch';"));
+test('service request assigned advances to diagnosis',helpers.includes("in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT'],true)"));
+test('migration repairs stale unassigned jobs',migrate.includes("current_stage='TECHNICIAN_ASSIGNMENT'")&&migrate.includes("j.technician_id IS NOT NULL"));
+test('schema repair is idempotent',schema.includes('-- V308: an active Job Card without a Technician')&&schema.includes("bc.current_stage IN ('WORKSHOP_REVIEW','DIAGNOSIS','REPAIR')"));
+test('job card shows assignment warning',js.includes('AWAITING TECHNICIAN ASSIGNMENT · Workshop / Dispatch action required'));
+test('focus owner shows workshop dispatch',js.includes('AWAITING TECHNICIAN ASSIGNMENT - WORKSHOP / DISPATCH OWNS THE NEXT ACTION'));
+test('Safari-safe created date parser',js.includes("raw.replace(' ','T')")&&js.includes('Number.isNaN(d.getTime())'));
+test('assignment badge styling present',css.includes('.job-awaiting-tech'));
+test('service worker cache bumped',sw.includes('belm-app-v308-job-card-assignment-state-fix'));
+console.log(`\n${pass}/${pass+fail} V308 checks passed`);
+if(fail) process.exit(1);

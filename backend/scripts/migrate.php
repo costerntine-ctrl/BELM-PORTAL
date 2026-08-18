@@ -13,6 +13,30 @@ if ($schema === false) {
 try {
     db()->exec($schema);
 
+    // V308: repair legacy/manual cases that were incorrectly handed to the
+    // Technician department while every active Job Card was still unassigned.
+    // Keep stage_started_at unchanged so the real assignment waiting time stays visible.
+    $assignmentRepair = db()->exec(
+        "UPDATE breakdown_cases bc
+         SET current_stage='TECHNICIAN_ASSIGNMENT',
+             current_department='Workshop / Dispatch',
+             blocker_reason='Awaiting Technician Assignment',
+             updated_at=NOW()
+         WHERE bc.status <> 'COMPLETED'
+           AND bc.current_stage IN ('WORKSHOP_REVIEW','DIAGNOSIS','REPAIR')
+           AND EXISTS (
+               SELECT 1 FROM digital_job_cards j
+               WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED')
+           )
+           AND NOT EXISTS (
+               SELECT 1 FROM digital_job_cards j
+               WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED') AND j.technician_id IS NOT NULL
+           )"
+    );
+    if ($assignmentRepair > 0) {
+        fwrite(STDOUT, "V308 repaired {$assignmentRepair} unassigned Job Card workflow case(s).\n");
+    }
+
     // V302 deploy safety: never leave a fresh/legacy database on a password
     // embedded in the source tree. Existing Admin passwords are preserved.
     $seedAdminId = '00000000-0000-4000-8000-000000000003';

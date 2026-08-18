@@ -32,7 +32,7 @@
 
   function parseToken(t){if(!t)return null;try{const x=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(decodeURIComponent(Array.from(atob(x)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')))}catch{return null}}
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
-  function fmtDate(v){if(!v)return '-';return new Date(v).toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+  function fmtDate(v){if(!v)return '-';const raw=String(v).trim();const iso=/^\d{4}-\d{2}-\d{2} /.test(raw)?raw.replace(' ','T').replace(/([+-]\d{2})(?!:?\d{2})$/,'$1:00'):raw;const d=new Date(iso);if(Number.isNaN(d.getTime()))return raw;return d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
   function duration(h){h=Number(h||0);return h>=24?`${(h/24).toFixed(h>=72?0:1)} days`:`${Math.round(h)} hrs`}
   function sourceLabel(c){const s=String(c?.sourceType||'MANUAL').toUpperCase();return s==='SERVICE_REQUEST'?'BELM SUPPORT':s==='OPERATOR_REPORT'?'PROBLEM REPORT':s==='PROCUREMENT'?'PROCUREMENT':'MANUAL CASE'}
   function show(msg,error=false){const e=document.getElementById('alertBox');e.textContent=msg;e.className=`alert${error?' error':''}`;setTimeout(()=>e.classList.add('hidden'),5000)}
@@ -91,9 +91,11 @@
   }
 
   function renderJobCard(j,c){
+    const awaitingTech=!j.technician_id && !['COMPLETED','CANCELLED'].includes(String(j.status||'').toUpperCase());
     return `<div class="job"><div class="job-head"><b>${esc(j.job_card_no)} - ${esc(j.title)}</b><span class="pill">${esc(j.status)}</span></div>
       <small>Issued by: <b>${esc(j.issued_by_name||j.generated_by_name||c.customerName||'Customer')}</b> · ${fmtDate(j.issued_at||j.created_at)}</small>
       <small>Technician: ${esc(j.technician_name||'Unassigned')} · Created ${fmtDate(j.created_at)}</small>
+      ${awaitingTech?'<div class="job-override-badge job-awaiting-tech">AWAITING TECHNICIAN ASSIGNMENT · Workshop / Dispatch action required</div>':''}
       ${j.temporary_override?`<div class="job-override-badge">TEMPORARY OVERRIDE · Home: ${esc(j.technician_home_customer_name||'Other customer')}</div>`:''}
       ${j.diagnosis?`<p><b>Diagnosis:</b> ${esc(j.diagnosis)}</p><p><b>Work done:</b> ${esc(j.work_done)}</p>${j.test_result?`<p><b>Test:</b> ${esc(j.test_result)}</p>`:''}`:''}
       ${j.billing_status&&j.billing_status!=='NOT_READY'?`<div class="job-billing-status"><b>Procurement / Billing:</b> ${esc(String(j.billing_status).replaceAll('_',' '))}</div>`:''}
@@ -134,9 +136,10 @@
 
   function renderDetail(){
     const d=selected,c=d.case;
-    const blockerText=c.blockerReason?esc(c.blockerReason):'No blocker reason recorded.';
+    const awaitingAssignment=c.stage==='TECHNICIAN_ASSIGNMENT';
+    const blockerText=c.blockerReason?esc(c.blockerReason):(awaitingAssignment?'Assign a Technician to the open Job Card.':'No blocker reason recorded.');
     const focusClass=c.delayed?'delayed':c.status==='COMPLETED'?'complete':'';
-    const focusTitle=c.status==='COMPLETED'?'COMPLETED - MACHINE RETURNED TO SERVICE':`${c.delayed?'DELAYED - ':''}${esc(c.department)} OWNS THE NEXT ACTION`;
+    const focusTitle=c.status==='COMPLETED'?'COMPLETED - MACHINE RETURNED TO SERVICE':awaitingAssignment?`${c.delayed?'DELAYED - ':''}AWAITING TECHNICIAN ASSIGNMENT - WORKSHOP / DISPATCH OWNS THE NEXT ACTION`:`${c.delayed?'DELAYED - ':''}${esc(c.department)} OWNS THE NEXT ACTION`;
     const sparesHtml=d.spares.length?d.spares.map(s=>{const spareName=s.spareName??s.spare_name??'Spare';const partNumber=s.partNumber??s.part_number??'';const requestedBy=s.requestedByName??s.requested_by_name??'-';const requestedAt=s.requestedAt??s.requested_at;const approvedBy=s.approvedByName??s.approved_by_name;const approvedAt=s.approvedAt??s.approved_at;return `<div class="spare"><div class="spare-head"><b>${esc(spareName)} x ${esc(s.quantity)} ${esc(s.unit)}</b><span class="pill">${esc(String(s.status||'').replaceAll('_',' '))}</span></div><small>${esc(partNumber||'No part number')} · Requested by ${esc(requestedBy)} · ${fmtDate(requestedAt)}</small>${approvedBy?`<div><small>Administration: ${esc(approvedBy)} · ${fmtDate(approvedAt)}</small></div>`:''}<div class="actions">${spareActions(s)}</div></div>`}).join(''):'<div class="empty">No spare request on this case.</div>';
     const jobsHtml=d.jobCards.length?d.jobCards.map(j=>renderJobCard(j,c)).join(''):'<div class="empty">No Job Card yet.</div>';
     const timelineHtml=d.events.length?`<div class="timeline">${d.events.map(e=>`<div class="event"><b>${esc(e.action)} - ${esc(e.department)}</b><div>${esc(e.note||'')}</div><small>${esc(e.actor_name||'System')} · ${fmtDate(e.created_at)}</small></div>`).join('')}</div>`:'<div class="empty">No process event recorded.</div>';

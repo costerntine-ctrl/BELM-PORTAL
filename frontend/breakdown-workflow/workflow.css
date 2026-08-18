@@ -77,3 +77,8 @@ html[data-theme="dark"] .actions .reject{
 
 /* V301 - customer-issued Job Card sign-off + Procurement/Billing handoff */
 .job-billing-status{margin-top:8px;padding:8px 10px;border:1px solid #f1c40f;border-radius:8px;background:#fff9d9;color:#654f00;font-size:11px}.job-signoff-note{display:inline-flex;align-items:center;max-width:100%;padding:7px 9px;border:1px dashed #d6a600;border-radius:8px;background:#fff9d9;color:#654f00;font-size:10.5px;font-weight:750}.actions input[type=file]{display:none}[data-theme="dark"] .job-billing-status,[data-theme="dark"] .job-signoff-note{background:#3b3108;color:#ffe795;border-color:#7e6a15}
+
+
+/* V308 - unassigned Job Card state must be visually explicit. */
+.job-awaiting-tech { margin-top:8px; border-color:#f2c94c; background:#2b2508; color:#ffe58f; }
+html[data-theme="light"] .job-awaiting-tech { background:#fff8d8; color:#805b00; }

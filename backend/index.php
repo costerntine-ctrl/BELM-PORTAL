@@ -24,7 +24,7 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
-// Regression baseline: 307-second-pass-hardening
+// Regression baseline: 308-job-card-assignment-state-fix
 // Health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
@@ -135,7 +135,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '307-second-pass-hardening',
+            'schemaVersion' => '308-job-card-assignment-state-fix',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
-    <link rel="stylesheet" href="/engineering-manager/manager.css?v=310-service-requests-engineering">
+    <link rel="stylesheet" href="/engineering-manager/manager.css?v=312-received-job-card-status">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -57,7 +57,7 @@
         <form id="dispatchForm" class="eng-dispatch-form">
           <label>Technician<select id="dispatchTechnician" required><option value="">Select Technician...</option></select></label>
           <fieldset class="wide eng-job-source"><legend>Job Card Source</legend><label><input type="radio" name="jobCardMode" value="existing" checked> Select Received Job Card</label><label><input type="radio" name="jobCardMode" value="create"> Create Job Card</label></fieldset>
-          <label class="wide" id="receivedJobCardField">Received Job Card<select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><small>Select customer first to filter. Shows active Customer-issued / Service Request Job Cards that are still Unassigned.</small></label>
+          <label class="wide" id="receivedJobCardField">Received Job Card<select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><small>Select customer first to filter. Shows RECEIVED Job Cards: active Customer-issued / Service Request cards waiting for Technician assignment.</small></label>
           <label id="dispatchCustomerField">Customer for this job<select id="dispatchCustomer"><option value="">Select Customer...</option></select></label>
           <label id="dispatchMachineField" class="hidden">Machine<select id="dispatchMachine"><option value="">Select Machine...</option></select></label>
           <label class="wide hidden" id="dispatchTitleField">Job title<input id="dispatchTitle" placeholder="e.g. Hydraulic pressure diagnosis"></label>
@@ -83,9 +83,18 @@
         </form>
       </dialog>
 
-      <section id="service-requests" class="eng-service-requests-host" aria-label="Service Requests inside Engineering">
-        <iframe id="engineeringServiceRequestsFrame" title="Engineering Service Requests" data-src="/service-request-manager/?embed=1" loading="eager"></iframe>
-        <div id="engineeringServiceRequestsLocked" class="panel eng-service-requests-locked hidden">Service Requests access is not enabled for this role.</div>
+      <section id="service-requests" class="eng-service-requests-host" aria-label="Engineering service and Job Card workspace">
+        <div id="engineeringWorkspaceTabs" class="eng-workspace-tabs" role="tablist" aria-label="Engineering workspace">
+          <button type="button" class="active" data-eng-workspace="service-requests" role="tab" aria-selected="true">Service Requests</button>
+          <button type="button" data-eng-workspace="job-cards" role="tab" aria-selected="false">Job Cards</button>
+        </div>
+        <div id="engineeringServiceRequestsPanel" class="eng-workspace-panel">
+          <iframe id="engineeringServiceRequestsFrame" title="Engineering Service Requests" data-src="/service-request-manager/?embed=1" loading="eager"></iframe>
+        </div>
+        <div id="engineeringJobCardsPanel" class="eng-workspace-panel hidden">
+          <iframe id="engineeringJobCardsFrame" title="Engineering Job Cards" data-src="/breakdown-workflow/?embed=1&amp;source=admin" loading="lazy"></iframe>
+        </div>
+        <div id="engineeringServiceRequestsLocked" class="panel eng-service-requests-locked hidden">Service Requests / Job Cards access is not enabled for this role.</div>
       </section>
 
       <section id="engineeringOverviewGrid" class="eng-grid">
@@ -124,6 +133,6 @@
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/engineering-manager/manager.js?v=310-service-requests-engineering"></script>
+    <script src="/engineering-manager/manager.js?v=312-received-job-card-status"></script>
   </body>
 </html>

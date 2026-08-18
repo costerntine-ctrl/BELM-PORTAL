@@ -4,8 +4,9 @@
   <!-- Regression baseline: 301-job-signoff -->
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BELM Breakdown Workflow</title>
+  <script>(function(){if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");})();</script>
   <link rel="stylesheet" href="/theme-global.css"><link rel="stylesheet" href="/belm-theme.css?v=216-breakdown-rail">
-  <link rel="stylesheet" href="/breakdown-workflow/workflow.css?v=308-assignment-state">
+  <link rel="stylesheet" href="/breakdown-workflow/workflow.css?v=312-received-job-card-status">
   <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
@@ -47,5 +48,5 @@
   <dialog id="spareDialog"><form id="spareForm"><h2>Request Spare - Administration Approval Required</h2><input id="spareCaseId" type="hidden"><label>Spare name<input id="spareName" required></label><label>Part number / reference<input id="sparePart"></label><div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div><label>Why required<textarea id="spareReason" rows="3"></textarea></label><div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send for Administration Approval</button></div></form></dialog>
   <dialog id="techReportDialog"><form id="techReportForm"><h2>Technician Job Card Report</h2><input id="techJobId" type="hidden"><label>Diagnosis<textarea id="techDiagnosis" required rows="3"></textarea></label><label>Work done<textarea id="techWork" required rows="4"></textarea></label><label>Test result<textarea id="techTest" rows="2"></textarea></label><label>Completion note<textarea id="techNote" rows="2"></textarea></label><label class="check"><input id="techRepeat" type="checkbox"> This is repeat/rework of the same fault</label><label class="check"><input id="techComplete" type="checkbox"> Repair work completed - send to Workshop testing</label><div class="dialog-actions"><button type="button" data-close="techReportDialog">Cancel</button><button class="primary" type="submit">Save Job Report</button></div></form></dialog>
 
-  <script src="/theme-manager.js?v=299-session-stability"></script><script src="/admin-sidebar.js?v=279-sidebar-search"></script><script src="/breakdown-workflow/workflow.js?v=308-assignment-state"></script>
+  <script src="/theme-manager.js?v=299-session-stability"></script><script src="/admin-sidebar.js?v=279-sidebar-search"></script><script src="/breakdown-workflow/workflow.js?v=312-received-job-card-status"></script>
 </body></html>

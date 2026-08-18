@@ -1362,6 +1362,22 @@ CREATE INDEX IF NOT EXISTS idx_invoice_source_job_card ON invoices(source_job_ca
 CREATE INDEX IF NOT EXISTS idx_job_cards_billing_status ON digital_job_cards(customer_id, billing_status, completed_at DESC);
 
 
+
+
+-- V312 - Job Card intake lifecycle.
+-- Any active unassigned card is a RECEIVED card waiting for Dispatch.
+UPDATE digital_job_cards
+SET status='RECEIVED', updated_at=NOW()
+WHERE status IN ('OPEN','ASSIGNED')
+  AND technician_id IS NULL
+  AND NULLIF(TRIM(COALESCE(technician_name,'')),'') IS NULL;
+
+-- Legacy active cards that already have a Technician are ASSIGNED, not RECEIVED.
+UPDATE digital_job_cards
+SET status='ASSIGNED', updated_at=NOW()
+WHERE status IN ('OPEN','RECEIVED')
+  AND technician_id IS NOT NULL;
+
 -- V308: an active Job Card without a Technician belongs to Workshop / Dispatch,
 -- never to Technician Diagnosis/Repair. This is idempotent and repairs legacy rows.
 UPDATE breakdown_cases bc

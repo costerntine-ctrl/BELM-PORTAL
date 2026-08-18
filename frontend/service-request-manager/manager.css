@@ -102,3 +102,6 @@ html.embed-mode #belmAdminSidebar,
 html.embed-mode .belm-admin-sidebar { display: none !important; }
 
 html.embed-mode .belm-global-theme-toggle { display: none !important; }
+
+html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
+html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display:none!important}

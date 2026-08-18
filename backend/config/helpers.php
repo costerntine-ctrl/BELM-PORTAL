@@ -1630,7 +1630,7 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
             "INSERT INTO digital_job_cards
              (id,case_id,customer_id,machine_id,job_card_no,title,fault_description,status,generated_by_name,
               issued_by_name,issued_by_type,issued_at,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,?,'OPEN',?,?,'CUSTOMER',?,NOW(),NOW())"
+             VALUES (?,?,?,?,?,?,?,'RECEIVED',?,?,'CUSTOMER',?,NOW(),NOW())"
         )->execute([
             $jobId,(string)$row['case_id'],(string)$row['customer_id'],(string)$row['machine_id'],$num,
             $title,(string)$row['description'],$issuer,$issuer,$row['created_at'] ?: date('c')
@@ -1675,12 +1675,15 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         // synchronized. This makes one operational record from request to repair.
         if ($jobId && !empty($row['assigned_to_id'])) {
             db()->prepare(
-                "UPDATE digital_job_cards SET technician_id=?,technician_name=?,updated_at=NOW()
+                "UPDATE digital_job_cards
+                 SET technician_id=?,technician_name=?,
+                     status=CASE WHEN status IN ('OPEN','RECEIVED') THEN 'ASSIGNED' ELSE status END,
+                     updated_at=NOW()
                  WHERE id=? AND status NOT IN ('COMPLETED','CANCELLED')"
             )->execute([(string)$row['assigned_to_id'],(string)($row['assigned_to_name'] ?: 'Technician'),$jobId]);
         } elseif ($jobId && empty($row['assigned_to_id'])) {
             db()->prepare(
-                "UPDATE digital_job_cards SET technician_id=NULL,technician_name=NULL,updated_at=NOW() WHERE id=? AND status='OPEN'"
+                "UPDATE digital_job_cards SET technician_id=NULL,technician_name=NULL,status='RECEIVED',updated_at=NOW() WHERE id=? AND status IN ('OPEN','RECEIVED','ASSIGNED')"
             )->execute([$jobId]);
         }
 

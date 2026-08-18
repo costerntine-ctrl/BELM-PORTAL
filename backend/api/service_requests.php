@@ -386,8 +386,11 @@ if ($method === 'PUT' && $action === 'status') {
         $jobState = $jobStateStmt->fetch();
         if ($jobState) {
             $jobStatus = strtoupper((string)($jobState['status'] ?? ''));
-            if ($previousStatus !== $status && in_array($status, ['OPEN','ASSIGNED'], true) && $jobStatus !== 'OPEN') {
-                json_error('The linked Job Card has already started. Keep the Service Request in progress and manage the work from Job Card Dispatch.', 409);
+            if ($previousStatus !== $status && $status === 'OPEN' && !in_array($jobStatus, ['OPEN','RECEIVED'], true)) {
+                json_error('The linked Job Card has already been assigned/started. Keep the Service Request in progress and manage the work from Job Card Dispatch.', 409);
+            }
+            if ($previousStatus !== $status && $status === 'ASSIGNED' && !in_array($jobStatus, ['OPEN','RECEIVED','ASSIGNED'], true)) {
+                json_error('The linked Job Card has already started. Manage Technician handover from Job Card Dispatch.', 409);
             }
             if ($status === 'IN_PROGRESS' && empty($jobState['technician_id'])) {
                 json_error('Assign the linked Job Card to a Technician before starting work.', 409);
@@ -479,11 +482,13 @@ if ($method === 'PUT' && $action === 'assign') {
     );
     $linkedJobStmt->execute([$id]);
     $linkedJobStatus = strtoupper((string)($linkedJobStmt->fetchColumn() ?: ''));
-    if ($linkedJobStatus !== '' && $linkedJobStatus !== 'OPEN') {
-        json_error('This Service Request Job Card has already started. Change Technician assignment from Job Card Dispatch so the work history remains auditable.', 409);
-    }
-
+    // RECEIVED/legacy OPEN cards have not started. A merely ASSIGNED card can
+    // still be unassigned back to RECEIVED, but assigning a different Technician
+    // after assignment must go through Job Card Dispatch so handover is audited.
     if ($assignedToId === '') {
+        if ($linkedJobStatus !== '' && !in_array($linkedJobStatus, ['OPEN','RECEIVED','ASSIGNED'], true)) {
+            json_error('This Service Request Job Card has already started. Use Job Card Dispatch/Workshop flow to change assignment.', 409);
+        }
         if (!in_array((string)$request['status'], ['OPEN','ASSIGNED'], true)) {
             json_error('Only an Open/Assigned Service Request can be unassigned. Put active work back through the Job Card/Workshop flow.', 409);
         }
@@ -499,6 +504,10 @@ if ($method === 'PUT' && $action === 'assign') {
         }
         belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
         json_out(['ok' => true]);
+    }
+
+    if ($linkedJobStatus !== '' && !in_array($linkedJobStatus, ['OPEN','RECEIVED'], true)) {
+        json_error('This Service Request Job Card is already assigned/started. Change Technician from Job Card Dispatch so the handover remains auditable.', 409);
     }
 
     $stmt = db()->prepare(

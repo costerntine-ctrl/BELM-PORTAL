@@ -52,7 +52,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
          JOIN breakdown_cases bc ON bc.id=j.case_id
          JOIN customers c ON c.id=j.customer_id
          JOIN machines m ON m.id=j.machine_id
-         WHERE j.status NOT IN ('COMPLETED','CANCELLED')
+         WHERE j.status IN ('RECEIVED','OPEN')
            AND bc.status <> 'COMPLETED'
            AND j.technician_id IS NULL
            AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL
@@ -71,6 +71,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         $job['sourceType']=$job['source_type'];
         $job['issuedByName']=$job['issued_by_name'];
         $job['issuedAt']=$job['issued_at'];
+        $job['dispatchStatus']='RECEIVED';
     }
     unset($job);
     json_out(['technicians'=>$technicians,'customers'=>$customers,'machines'=>$machines,'receivedJobCards'=>$receivedJobCards]);
@@ -122,7 +123,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             $jobNo=(string)$job['job_card_no']; $title=(string)$job['title']; $description=(string)$job['fault_description'];
             $sourceRequestId=(string)($job['source_type']==='SERVICE_REQUEST' ? ($job['source_id']??'') : '');
             $machineLabel=trim(($job['brand']??'').' '.($job['model']??'')) ?: 'Machine';
-            $pdo->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,priority=?,due_date=?,updated_at=NOW() WHERE id=?")
+            $pdo->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,status='ASSIGNED',priority=?,due_date=?,updated_at=NOW() WHERE id=?")
                 ->execute([$technicianId,$tech['name'],$priority,$dueDate?:null,$jobId]);
             $pdo->prepare("UPDATE breakdown_cases SET current_stage='DIAGNOSIS',current_department='Technician',blocker_reason=NULL,stage_started_at=NOW(),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")
                 ->execute([$caseId]);
@@ -157,7 +158,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             $jobNo='JC-'.date('ym').'-'.str_pad((string)$pdo->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
             $jobId=uuid();
             $pdo->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,priority,due_date,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at)
-                           VALUES(?,?,?,?,?,?,?,?,?,'OPEN',?,?,?,?,? ,NOW(),NOW(),NOW())")
+                           VALUES(?,?,?,?,?,?,?,?,?,'ASSIGNED',?,?,?,?,? ,NOW(),NOW(),NOW())")
                 ->execute([$jobId,$caseId,$customerId,$machineId,$jobNo,$title,$description?:$title,$technicianId,$tech['name'],$priority,$dueDate?:null,$user['name'],$user['name'],'BELM']);
             $pdo->prepare("INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,NOW())")
                 ->execute([uuid(),$caseId,'DIAGNOSIS','Technician','Digital Job Card '.$jobNo.' created and assigned',$description?:$title,'belm',$user['id']??null,$user['name']]);

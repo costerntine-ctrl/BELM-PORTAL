@@ -13,6 +13,23 @@ if ($schema === false) {
 try {
     db()->exec($schema);
 
+    // V312: normalize the Job Card intake lifecycle for existing live data.
+    $receivedRepair = db()->exec(
+        "UPDATE digital_job_cards
+         SET status='RECEIVED', updated_at=NOW()
+         WHERE status IN ('OPEN','ASSIGNED')
+           AND technician_id IS NULL
+           AND NULLIF(TRIM(COALESCE(technician_name,'')),'') IS NULL"
+    );
+    $assignedRepair = db()->exec(
+        "UPDATE digital_job_cards
+         SET status='ASSIGNED', updated_at=NOW()
+         WHERE status IN ('OPEN','RECEIVED') AND technician_id IS NOT NULL"
+    );
+    if ($receivedRepair > 0 || $assignedRepair > 0) {
+        fwrite(STDOUT, "V312 Job Card lifecycle normalized: {$receivedRepair} received, {$assignedRepair} assigned.\n");
+    }
+
     // V308: repair legacy/manual cases that were incorrectly handed to the
     // Technician department while every active Job Card was still unassigned.
     // Keep stage_started_at unchanged so the real assignment waiting time stays visible.

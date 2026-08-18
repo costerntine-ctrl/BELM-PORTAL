@@ -82,3 +82,14 @@ html[data-theme="dark"] .actions .reject{
 /* V308 - unassigned Job Card state must be visually explicit. */
 .job-awaiting-tech { margin-top:8px; border-color:#f2c94c; background:#2b2508; color:#ffe58f; }
 html[data-theme="light"] .job-awaiting-tech { background:#fff8d8; color:#805b00; }
+
+
+/* V311 - Embedded Job Cards inside Engineering: never render a second admin shell/sidebar. */
+html.embed-mode body{min-height:0;background:transparent}
+html.embed-mode body>.topbar,html.embed-mode #belmAdminSidebar,html.embed-mode .belm-admin-sidebar,html.embed-mode .belm-global-theme-toggle{display:none!important}
+html.embed-mode main{max-width:none;width:100%;margin:0;padding:4px 4px 18px}
+html.embed-mode .summary{margin-top:0}
+html.embed-mode .workshop-report-panel,html.embed-mode .performance-panel{margin-bottom:4px}
+
+html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
+html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display:none!important}

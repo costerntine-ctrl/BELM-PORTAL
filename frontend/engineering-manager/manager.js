@@ -184,7 +184,7 @@
     const rows=dispatchJobCards.filter((job)=>!customerId||String(job.customerId)===String(customerId));
     select.innerHTML='<option value="">Select received Job Card...</option>'+rows.map((job)=>{
       const source=String(job.sourceType||"")==="SERVICE_REQUEST"?"Service Request":"Customer Job Card";
-      return `<option value="${escapeHtml(job.id)}">${escapeHtml(`${job.jobCardNo} · ${job.customerName} · ${job.machineLabel} · ${job.title} · ${source}`)}</option>`;
+      return `<option value="${escapeHtml(job.id)}">${escapeHtml(`RECEIVED · ${job.jobCardNo} · ${job.customerName} · ${job.machineLabel} · ${job.title} · ${source}`)}</option>`;
     }).join("");
     if(rows.some((job)=>String(job.id)===String(current))) select.value=current;
   }
@@ -382,30 +382,62 @@
 
   document.getElementById("refreshButton").addEventListener("click", load);
 
-  function initEngineeringServiceRequests() {
-    const frame = document.getElementById("engineeringServiceRequestsFrame");
+  function initEngineeringWorkspace() {
+    const serviceFrame = document.getElementById("engineeringServiceRequestsFrame");
+    const jobFrame = document.getElementById("engineeringJobCardsFrame");
+    const servicePanel = document.getElementById("engineeringServiceRequestsPanel");
+    const jobPanel = document.getElementById("engineeringJobCardsPanel");
     const locked = document.getElementById("engineeringServiceRequestsLocked");
-    if (!frame) return;
+    const tabs = [...document.querySelectorAll("[data-eng-workspace]")];
+    if (!serviceFrame || !jobFrame) return;
     const allowed = hasPageAccess("service-requests");
     if (!allowed) {
-      frame.removeAttribute("src");
-      frame.classList.add("hidden");
+      serviceFrame.removeAttribute("src");
+      jobFrame.removeAttribute("src");
+      servicePanel?.classList.add("hidden");
+      jobPanel?.classList.add("hidden");
+      document.getElementById("engineeringWorkspaceTabs")?.classList.add("hidden");
       locked?.classList.remove("hidden");
       return;
     }
-    frame.src = frame.dataset.src || "/service-request-manager/?embed=1";
+    serviceFrame.src = serviceFrame.dataset.src || "/service-request-manager/?embed=1";
+
+    const setWorkspace = (name, updateHash = true) => {
+      const jobCards = name === "job-cards";
+      servicePanel?.classList.toggle("hidden", jobCards);
+      jobPanel?.classList.toggle("hidden", !jobCards);
+      tabs.forEach((button) => {
+        const active = button.dataset.engWorkspace === (jobCards ? "job-cards" : "service-requests");
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", active ? "true" : "false");
+      });
+      if (jobCards && !jobFrame.src) jobFrame.src = jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin";
+      if (updateHash) history.replaceState(null, "", jobCards ? "#job-cards" : "#service-requests");
+      window.setTimeout(() => document.getElementById("service-requests")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
+    };
+
+    tabs.forEach((button) => button.addEventListener("click", () => setWorkspace(button.dataset.engWorkspace)));
     window.addEventListener("message", (event) => {
-      if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
-      if (event.data?.type !== "belm-service-requests-height") return;
-      const height = Math.max(620, Math.min(1000, Number(event.data.height) || 0));
-      frame.style.height = `${height}px`;
+      if (event.origin !== window.location.origin) return;
+      if (event.source === serviceFrame.contentWindow) {
+        if (event.data?.type === "belm-service-requests-height") {
+          const height = Math.max(620, Math.min(1400, Number(event.data.height) || 0));
+          serviceFrame.style.height = `${height}px`;
+        }
+        if (event.data?.type === "belm-engineering-open-job-cards") setWorkspace("job-cards");
+      }
+      if (event.source === jobFrame.contentWindow) {
+        if (event.data?.type === "belm-breakdown-workflow-height") {
+          const height = Math.max(760, Math.min(1800, Number(event.data.height) || 0));
+          jobFrame.style.height = `${height}px`;
+        }
+        if (event.data?.type === "belm-engineering-open-service-requests") setWorkspace("service-requests");
+      }
     });
-    if (window.location.hash === "#service-requests") {
-      window.setTimeout(() => document.getElementById("service-requests")?.scrollIntoView({ behavior: "smooth", block: "start" }), 180);
-    }
+    setWorkspace(window.location.hash === "#job-cards" ? "job-cards" : "service-requests", false);
   }
 
-  initEngineeringServiceRequests();
+  initEngineeringWorkspace();
 
   if (!token) {
     showAlert("Administrator login required.");

@@ -150,3 +150,14 @@ dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
 @media (max-width: 760px) {
   .eng-service-requests-host iframe { min-height: 760px; }
 }
+
+
+/* V311 - Service Requests + Job Cards share one Engineering shell; no nested sidebar/page. */
+.eng-workspace-tabs{display:flex;gap:8px;margin:0 0 10px;padding:7px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.eng-workspace-tabs button{min-height:36px;padding:8px 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:850;cursor:pointer}
+.eng-workspace-tabs button.active{color:#fff;border-color:#2563eb;background:#2563eb;box-shadow:0 4px 12px rgba(37,99,235,.18)}
+.eng-workspace-panel.hidden{display:none!important}
+.eng-workspace-panel iframe{display:block;width:100%;min-height:620px;border:0;border-radius:16px;background:var(--canvas)}
+#engineeringJobCardsFrame{min-height:820px}
+html[data-theme="dark"] .eng-workspace-tabs{background:#0f1c2c}
+@media(max-width:760px){.eng-workspace-tabs{position:sticky;top:4px;z-index:5}.eng-workspace-tabs button{flex:1}.eng-workspace-panel iframe{min-height:760px}#engineeringJobCardsFrame{min-height:920px}}

@@ -1,0 +1,29 @@
+const fs=require('fs');
+function read(p){return fs.readFileSync(p,'utf8')}
+let pass=0,fail=0;function test(n,c){if(c){pass++;console.log('PASS',n)}else{fail++;console.error('FAIL',n)}}
+const eng=read('backend/api/engineering.php');
+const helpers=read('backend/config/helpers.php');
+const bw=read('backend/api/breakdown_workflow.php');
+const sr=read('backend/api/service_requests.php');
+const schema=read('backend/schema.sql');
+const migrate=read('backend/scripts/migrate.php');
+const js=read('frontend/engineering-manager/manager.js');
+const html=read('frontend/engineering-manager/index.html');
+const health=read('backend/index.php');
+const sw=read('frontend/belm-sw.js');
+test('unassigned active cards migrate to RECEIVED',schema.includes("SET status='RECEIVED'")&&schema.includes("status IN ('OPEN','ASSIGNED')")&&schema.includes("technician_id IS NULL"));
+test('legacy assigned OPEN cards migrate to ASSIGNED',schema.includes("SET status='ASSIGNED'")&&schema.includes("technician_id IS NOT NULL"));
+test('service-request cards are created RECEIVED',helpers.includes("VALUES (?,?,?,?,?,?,?,'RECEIVED'"));
+test('sync assignment advances RECEIVED to ASSIGNED',helpers.includes("status=CASE WHEN status IN ('OPEN','RECEIVED') THEN 'ASSIGNED'"));
+test('sync unassign returns card to RECEIVED',helpers.includes("status='RECEIVED'")&&helpers.includes("status IN ('OPEN','RECEIVED','ASSIGNED')"));
+test('breakdown card initial status depends on technician',bw.includes("$initialJobStatus=$techId!==''?'ASSIGNED':'RECEIVED'"));
+test('dispatch list is RECEIVED only with legacy OPEN compatibility',eng.includes("WHERE j.status IN ('RECEIVED','OPEN')"));
+test('dispatch assignment marks same Job Card ASSIGNED',eng.includes("status='ASSIGNED',priority=?"));
+test('service request rules accept RECEIVED pre-start lifecycle',sr.includes("['OPEN','RECEIVED']")&&sr.includes("['OPEN','RECEIVED','ASSIGNED']"));
+test('pre-start unassign returns ASSIGNED card to RECEIVED without allowing silent handover',sr.includes("['OPEN','RECEIVED','ASSIGNED']")&&sr.includes('Change Technician from Job Card Dispatch'));
+test('received dropdown visibly labels received cards',js.includes('RECEIVED · ${job.jobCardNo}'));
+test('received helper text explains waiting assignment',html.includes('Shows RECEIVED Job Cards'));
+test('migration logs V312 normalization',migrate.includes('V312 Job Card lifecycle normalized'));
+test('health schema is V312',health.includes('312-received-job-card-status'));
+test('service worker cache is V312',sw.includes('belm-app-v312-received-job-card-status'));
+console.log(`V312 checks: ${pass}/${pass+fail} passed`);process.exit(fail?1:0);

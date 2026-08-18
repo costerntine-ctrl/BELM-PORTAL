@@ -1,4 +1,5 @@
 (function(){
+  const embedded=new URLSearchParams(location.search).get('embed')==='1' && window.parent!==window;
   const customerToken=localStorage.getItem('belm_customer_token');
   const techToken=localStorage.getItem('belm_tech_token');
   const adminToken=localStorage.getItem('belm_admin_token');
@@ -39,7 +40,7 @@
   async function api(path,opt={}){const r=await fetch(`/api/breakdown-workflow${path}`,{...opt,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token||''}`,...(opt.headers||{})}});const text=await r.text();const data=text?JSON.parse(text):null;if(!r.ok)throw new Error(data?.error||'Request failed.');return data}
   if(!token){location.href='/';return}
 
-  document.getElementById('backButton').onclick=()=>{location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/engineering-manager/#service-requests'};
+  document.getElementById('backButton').onclick=()=>{if(embedded){window.parent.postMessage({type:'belm-engineering-open-service-requests'},window.location.origin);return;}location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/engineering-manager/#service-requests'};
   if(source!=='customer'||!isWorkshop) document.querySelectorAll('.customer-only').forEach(e=>e.classList.add('hidden'));
   if(!isWorkshop||isTechnician){document.getElementById('workshopReportPanel')?.classList.add('hidden');document.querySelector('.performance-panel')?.classList.add('hidden');}
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close)?.close());
@@ -273,5 +274,15 @@
   document.getElementById('techReportForm').onsubmit=async e=>{e.preventDefault();try{await api(`/job-report/${document.getElementById('techJobId').value}`,{method:'PUT',body:JSON.stringify({diagnosis:document.getElementById('techDiagnosis').value,workDone:document.getElementById('techWork').value,testResult:document.getElementById('techTest').value,completionNote:document.getElementById('techNote').value,repeatIssue:document.getElementById('techRepeat').checked,complete:document.getElementById('techComplete').checked})});document.getElementById('techReportDialog').close();show('Digital Job Card report saved.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function loadPerformance(){try{const rows=await api('/performance');document.getElementById('performanceGrid').innerHTML=rows.length?rows.map(r=>`<article class="tech-card"><strong>${esc(r.technicianName)}</strong><div class="metrics"><div><span>Completed</span><b>${r.completedJobs}/${r.totalJobs}</b></div><div><span>Completion rate</span><b>${r.completionRate}%</b></div><div><span>First-time fix</span><b>${r.firstTimeFixRate}%</b></div><div><span>Avg resolution</span><b>${duration(r.avgResolutionHours)}</b></div><div><span>Repeat / rework</span><b>${r.repeatJobs}</b></div></div></article>`).join(''):'<div class="empty">No completed Job Card data yet.</div>'}catch(x){document.getElementById('performanceGrid').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
   async function load(){try{const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent='Syncing Problem Reports, BELM Support Requests and Job Cards...';let sync=null;try{sync=await api('/sync')}catch{}cases=await api(machineFilter?`?machineId=${encodeURIComponent(machineFilter)}`:'');renderSummary();renderList();if(syncStatus){const made=Number(sync?.sync?.created||0);syncStatus.textContent=made>0?`${made} missing workflow case${made===1?'':'s'} restored by sync. Data is now aligned.`:'Synced: Problem Reports + official BELM Support Requests + Digital Job Cards.'}loadPerformance();loadDepartmentReport()}catch(x){show(x.message,true);const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent='Sync failed - use Sync / Refresh after checking the API.';document.getElementById('caseList').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
+  if(embedded){
+    const reportEmbedHeight=()=>{
+      const height=Math.ceil(Math.max(document.body.scrollHeight,document.documentElement.scrollHeight));
+      window.parent.postMessage({type:'belm-breakdown-workflow-height',height},window.location.origin);
+    };
+    window.addEventListener('load',reportEmbedHeight);
+    window.addEventListener('resize',reportEmbedHeight);
+    if(window.ResizeObserver)new ResizeObserver(reportEmbedHeight).observe(document.body);
+    window.setTimeout(reportEmbedHeight,100);
+  }
   loadMachines();load();
 })();

@@ -426,7 +426,12 @@
   });
 
   document.getElementById("jobCardButton")?.addEventListener("click", () => {
-    window.location.href = "/breakdown-workflow/?source=admin";
+    const embedded = new URLSearchParams(window.location.search).get("embed") === "1" && window.parent !== window;
+    if (embedded) {
+      window.parent.postMessage({ type: "belm-engineering-open-job-cards" }, window.location.origin);
+      return;
+    }
+    window.location.href = "/engineering-manager/#job-cards";
   });
   document.getElementById("refreshButton").addEventListener("click", load);
 

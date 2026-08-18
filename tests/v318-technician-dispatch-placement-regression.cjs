@@ -1,0 +1,28 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let pass=0,fail=0;function test(name,ok){if(ok){console.log('PASS',name);pass++;}else{console.error('FAIL',name);fail++;}}
+const engHtml=read('frontend/engineering-manager/index.html');
+const bwHtml=read('frontend/breakdown-workflow/index.html');
+const bwJs=read('frontend/breakdown-workflow/workflow.js');
+const bwCss=read('frontend/breakdown-workflow/workflow.css');
+const api=read('backend/api/engineering.php');
+const health=read('backend/index.php');
+const sw=read('frontend/belm-sw.js');
+const refreshPos=bwHtml.indexOf('id="refreshButton"');
+const dispatchPos=bwHtml.indexOf('id="dispatchPanel"');
+const gridPos=bwHtml.indexOf('<section class="grid">');
+test('Engineering landing still does not render Technician Dispatch',!engHtml.includes('id="dispatchPanel"'));
+test('Technician Dispatch is rendered inside Job Cards workflow',dispatchPos>=0&&bwHtml.includes('<h2>Technician Dispatch</h2>'));
+test('Technician Dispatch is directly below Sync / Refresh and before queue',refreshPos>=0&&dispatchPos>refreshPos&&gridPos>dispatchPos);
+test('Received Job Card and Create Job Card modes are available in relocated panel',bwHtml.includes('value="existing" checked')&&bwHtml.includes('value="create"')&&bwHtml.includes('id="dispatchJobCard"'));
+test('relocated Dispatch uses existing Engineering dispatch APIs',bwJs.includes("engineeringApi('/engineering?action=dispatch-options')")&&bwJs.includes("engineeringApi('/engineering?action=dispatch'"));
+test('Sync / Refresh also refreshes Dispatch for BELM admin actor',bwJs.includes('if(isBelmAdmin)await loadDispatchOptions()'));
+test('Dispatch remains hidden outside BELM admin context',bwJs.includes("if(!isBelmAdmin){panel.classList.add('hidden');return}"));
+test('backend permission remains Super Admin / Engineer controlled',api.includes('Only BELM Super Admin or Engineer can use Technician Dispatch.'));
+test('relocated Dispatch styling is present',bwCss.includes('V318 - Technician Dispatch moved into Job Cards')&&bwCss.includes('.workflow-dispatch-form'));
+test('breakdown workflow assets are cache-busted for V318',bwHtml.includes('workflow.css?v=318-technician-dispatch-placement')&&bwHtml.includes('workflow.js?v=318-technician-dispatch-placement'));
+test('health schema is V318',health.includes("'schemaVersion' => '318-technician-dispatch-placement'"));
+test('service worker cache is V318',sw.includes("const CACHE='belm-app-v318-technician-dispatch-placement';"));
+console.log(`\n${pass}/${pass+fail} V318 checks passed`);process.exit(fail?1:0);

@@ -14,6 +14,7 @@
   const token=actorToken[source]||null;
 
   let cases=[],selected=null,machines=[],jobTechnicians=[];
+  let dispatchTechnicians=[],dispatchCustomers=[],dispatchMachines=[],dispatchJobCards=[];
   const machineFilter=params.get('machine')||'';
   const payload=parseToken(token);
   const customerRole=payload?.customerRole||payload?.role||'';
@@ -38,6 +39,7 @@
   function sourceLabel(c){const s=String(c?.sourceType||'MANUAL').toUpperCase();return s==='SERVICE_REQUEST'?'BELM SUPPORT':s==='OPERATOR_REPORT'?'PROBLEM REPORT':s==='PROCUREMENT'?'PROCUREMENT':'MANUAL CASE'}
   function show(msg,error=false){const e=document.getElementById('alertBox');e.textContent=msg;e.className=`alert${error?' error':''}`;setTimeout(()=>e.classList.add('hidden'),5000)}
   async function api(path,opt={}){const r=await fetch(`/api/breakdown-workflow${path}`,{...opt,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token||''}`,...(opt.headers||{})}});const text=await r.text();const data=text?JSON.parse(text):null;if(!r.ok)throw new Error(data?.error||'Request failed.');return data}
+  async function engineeringApi(path,opt={}){const r=await fetch(`/api${path}`,{...opt,cache:'no-store',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${adminToken||''}`,...(opt.headers||{})}});const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch{}if(!r.ok){const error=new Error(data?.error||`Request failed (${r.status}).`);error.status=r.status;throw error}return data}
   if(!token){location.href='/';return}
 
   document.getElementById('backButton').onclick=()=>{if(embedded){window.parent.postMessage({type:'belm-engineering-open-service-requests'},window.location.origin);return;}location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/engineering-manager/#service-requests'};
@@ -46,6 +48,91 @@
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close)?.close());
   document.getElementById('refreshButton').onclick=load;
   document.getElementById('searchBox').oninput=renderList;
+
+  function dispatchMode(){return document.querySelector('input[name="jobCardMode"]:checked')?.value||'existing'}
+  function renderDispatchMachines(){
+    const customerId=document.getElementById('dispatchCustomer')?.value||'';
+    const select=document.getElementById('dispatchMachine');if(!select)return;
+    const current=select.value||'';
+    const rows=dispatchMachines.filter(m=>!customerId||String(m.customer_id)===String(customerId));
+    const placeholder=!customerId?'Select Customer first...':(rows.length?'Select Machine...':'No active machines for this customer');
+    select.innerHTML=`<option value="">${esc(placeholder)}</option>`+rows.map(m=>{const label=[m.brand,m.model].filter(Boolean).join(' ')||m.machine_type||'Machine';const serial=m.serial_number?` · ${m.serial_number}`:'';return `<option value="${esc(m.id)}">${esc(label+serial)}</option>`}).join('');
+    if(rows.some(m=>String(m.id)===String(current)))select.value=current;
+  }
+  function renderReceivedJobCards(){
+    const select=document.getElementById('dispatchJobCard');if(!select)return;
+    const customerId=document.getElementById('dispatchCustomer')?.value||'';
+    const current=select.value||'';
+    const rows=dispatchJobCards.filter(job=>!customerId||String(job.customerId)===String(customerId));
+    const placeholder=customerId&&!rows.length?'No received Job Cards for this customer':(!rows.length?'No received Job Cards waiting for dispatch':'Select received Job Card...');
+    select.innerHTML=`<option value="">${esc(placeholder)}</option>`+rows.map(job=>{const src=String(job.sourceType||'')==='SERVICE_REQUEST'?'Service Request':'Customer Job Card';const serial=job.machineSerial?` · S/N ${job.machineSerial}`:'';return `<option value="${esc(job.id)}">${esc(`RECEIVED · ${job.jobCardNo} · ${job.customerName} · ${job.machineLabel}${serial} · ${job.title} · ${src}`)}</option>`}).join('');
+    if(rows.some(job=>String(job.id)===String(current)))select.value=current;
+    const help=document.getElementById('receivedJobCardHelp');if(help)help.textContent=rows.length?`${rows.length} received Job Card${rows.length===1?'':'s'} waiting for Technician assignment${customerId?' for this customer':''}.`:(customerId?'No unassigned received Job Card is waiting for this customer. Use Refresh Job Cards after a new Service Request arrives.':'No unassigned received Job Cards are waiting. Service Requests are synchronized automatically when this list refreshes.');
+  }
+  function updateDispatchNote(){
+    const techId=document.getElementById('dispatchTechnician')?.value||'';
+    const customerId=document.getElementById('dispatchCustomer')?.value||'';
+    const tech=dispatchTechnicians.find(x=>String(x.id)===String(techId));
+    const customer=dispatchCustomers.find(x=>String(x.id)===String(customerId));
+    const note=document.getElementById('dispatchNote');if(!note)return;
+    if(tech&&customer&&tech.assignedCustomerId&&String(tech.assignedCustomerId)!==String(customer.id)){note.innerHTML=`<b>TEMPORARY OVERRIDE:</b> ${esc(tech.name)} stays permanently attached to ${esc(tech.assignedCustomerName||'their home customer')}. Only this Job Card is for ${esc(customer.name)}.`;note.classList.add('override')}
+    else if(tech&&customer){note.textContent=`${tech.name} is already attached to ${customer.name}; this Job Card is a normal assignment.`;note.classList.remove('override')}
+    else{note.textContent=dispatchMode()==='existing'?'Select a received Job Card and Technician.':'Select a Technician, customer and machine to create a Job Card.';note.classList.remove('override')}
+  }
+  function syncJobCardSource(){
+    const existing=dispatchMode()==='existing';
+    document.getElementById('receivedJobCardField')?.classList.toggle('hidden',!existing);
+    document.getElementById('dispatchMachineField')?.classList.toggle('hidden',existing);
+    document.getElementById('dispatchTitleField')?.classList.toggle('hidden',existing);
+    document.getElementById('dispatchDescriptionField')?.classList.toggle('hidden',existing);
+    if(existing){const job=dispatchJobCards.find(x=>String(x.id)===String(document.getElementById('dispatchJobCard')?.value||''));if(job){const customer=document.getElementById('dispatchCustomer');if(customer)customer.value=job.customerId||'';document.getElementById('dispatchPriority').value=job.priority||'NORMAL';document.getElementById('dispatchDueDate').value=job.due_date||''}renderReceivedJobCards()}else renderDispatchMachines();
+    updateDispatchNote();
+  }
+  async function loadDispatchOptions({announce=false}={}){
+    if(!isBelmAdmin)return;
+    const panel=document.getElementById('dispatchPanel');if(!panel)return;
+    const selectedValues={technicianId:document.getElementById('dispatchTechnician')?.value||'',customerId:document.getElementById('dispatchCustomer')?.value||'',machineId:document.getElementById('dispatchMachine')?.value||'',jobCardId:document.getElementById('dispatchJobCard')?.value||''};
+    try{
+      const data=await engineeringApi('/engineering?action=dispatch-options');
+      dispatchTechnicians=data.technicians||[];dispatchCustomers=data.customers||[];dispatchMachines=data.machines||[];dispatchJobCards=data.receivedJobCards||[];
+      const technicianSelect=document.getElementById('dispatchTechnician'),customerSelect=document.getElementById('dispatchCustomer');
+      technicianSelect.innerHTML='<option value="">Select Technician...</option>'+dispatchTechnicians.map(tech=>{const home=tech.assignedCustomerName?` · Home: ${tech.assignedCustomerName}`:' · No home customer';return `<option value="${esc(tech.id)}">${esc(tech.name+home)}</option>`}).join('');
+      customerSelect.innerHTML='<option value="">Select Customer...</option>'+dispatchCustomers.map(customer=>`<option value="${esc(customer.id)}">${esc(customer.name)}</option>`).join('');
+      if(dispatchTechnicians.some(tech=>String(tech.id)===String(selectedValues.technicianId)))technicianSelect.value=selectedValues.technicianId;
+      if(dispatchCustomers.some(customer=>String(customer.id)===String(selectedValues.customerId)))customerSelect.value=selectedValues.customerId;
+      renderReceivedJobCards();if(dispatchJobCards.some(job=>String(job.id)===String(selectedValues.jobCardId)))document.getElementById('dispatchJobCard').value=selectedValues.jobCardId;
+      renderDispatchMachines();if(dispatchMachines.some(machine=>String(machine.id)===String(selectedValues.machineId)))document.getElementById('dispatchMachine').value=selectedValues.machineId;
+      syncJobCardSource();panel.classList.remove('hidden');
+      if(announce){const received=Number(data.dispatchSync?.receivedJobCards??dispatchJobCards.length);show(received?`Technician Dispatch refreshed: ${received} received Job Card${received===1?'':'s'} waiting for assignment.`:'Technician Dispatch refreshed. No received Job Cards are currently waiting for assignment.',false)}
+    }catch(x){panel.classList.add('hidden');if(x.status!==403)show(x.message||'Could not load Technician Dispatch.',true)}
+  }
+  async function dispatchTechnician(e){
+    e.preventDefault();
+    const mode=dispatchMode(),technicianId=document.getElementById('dispatchTechnician').value,jobCardId=document.getElementById('dispatchJobCard')?.value||'';
+    const existingJob=dispatchJobCards.find(x=>String(x.id)===String(jobCardId));
+    const customerId=mode==='existing'?(existingJob?.customerId||''):document.getElementById('dispatchCustomer').value;
+    const tech=dispatchTechnicians.find(x=>String(x.id)===String(technicianId)),customer=dispatchCustomers.find(x=>String(x.id)===String(customerId));
+    if(!technicianId){show('Select Technician.',true);return}if(mode==='existing'&&!jobCardId){show('Select a received Job Card.',true);return}if(mode==='create'&&(!customerId||!document.getElementById('dispatchMachine').value||!document.getElementById('dispatchTitle').value.trim())){show('Customer, machine and Job Card title are required.',true);return}
+    const temporary=Boolean(tech?.assignedCustomerId&&customerId&&String(tech.assignedCustomerId)!==String(customerId));
+    if(temporary&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Assign this Job Card to ${customer?.name||'the selected customer'} as a Temporary Override?`))return;
+    try{
+      const currentCaseId=selected?.case?.id||'';
+      const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,temporaryOverride:temporary})});
+      show(`${result.jobCardNo||'Job Card'} assigned to Technician${result.temporaryOverride?' as Temporary Override':''}.`,false);
+      document.getElementById('dispatchTitle').value='';document.getElementById('dispatchDescription').value='';document.getElementById('dispatchDueDate').value='';
+      await load();if(currentCaseId)try{await openCase(currentCaseId)}catch{}
+    }catch(x){show(x.message||'Could not assign the Job Card.',true)}
+  }
+  function initTechnicianDispatch(){
+    const panel=document.getElementById('dispatchPanel');if(!panel)return;
+    if(!isBelmAdmin){panel.classList.add('hidden');return}
+    document.getElementById('dispatchTechnician')?.addEventListener('change',updateDispatchNote);
+    document.getElementById('dispatchCustomer')?.addEventListener('change',()=>{if(dispatchMode()==='existing'){const jobSelect=document.getElementById('dispatchJobCard');if(jobSelect)jobSelect.value='';renderReceivedJobCards()}else renderDispatchMachines();updateDispatchNote()});
+    document.getElementById('dispatchJobCard')?.addEventListener('change',syncJobCardSource);
+    document.getElementById('refreshReceivedJobCards')?.addEventListener('click',()=>loadDispatchOptions({announce:true}));
+    document.querySelectorAll('input[name="jobCardMode"]').forEach(input=>input.addEventListener('change',syncJobCardSource));
+    document.getElementById('dispatchForm')?.addEventListener('submit',dispatchTechnician);
+  }
 
   function localIsoDate(){const d=new Date();const off=d.getTimezoneOffset();return new Date(d.getTime()-off*60000).toISOString().slice(0,10)}
   const reportDateEl=document.getElementById('reportDate');if(reportDateEl)reportDateEl.value=localIsoDate();
@@ -290,7 +377,7 @@
   async function approveSpare(id,approve){const note=prompt(approve?'Administration approval note (optional):':'Reason for rejection:')||'';try{await api(`/approve-spare/${id}`,{method:'PUT',body:JSON.stringify({approve,note})});show(approve?'Spare approved by Administration.':'Spare request rejected.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}}
   document.getElementById('techReportForm').onsubmit=async e=>{e.preventDefault();try{await api(`/job-report/${document.getElementById('techJobId').value}`,{method:'PUT',body:JSON.stringify({diagnosis:document.getElementById('techDiagnosis').value,workDone:document.getElementById('techWork').value,testResult:document.getElementById('techTest').value,completionNote:document.getElementById('techNote').value,repeatIssue:document.getElementById('techRepeat').checked,complete:document.getElementById('techComplete').checked})});document.getElementById('techReportDialog').close();show('Digital Job Card report saved.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function loadPerformance(){try{const rows=await api('/performance');document.getElementById('performanceGrid').innerHTML=rows.length?rows.map(r=>`<article class="tech-card"><strong>${esc(r.technicianName)}</strong><div class="metrics"><div><span>Completed</span><b>${r.completedJobs}/${r.totalJobs}</b></div><div><span>Completion rate</span><b>${r.completionRate}%</b></div><div><span>First-time fix</span><b>${r.firstTimeFixRate}%</b></div><div><span>Avg resolution</span><b>${duration(r.avgResolutionHours)}</b></div><div><span>Repeat / rework</span><b>${r.repeatJobs}</b></div></div></article>`).join(''):'<div class="empty">No completed Job Card data yet.</div>'}catch(x){document.getElementById('performanceGrid').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
-  async function load(){try{const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent='Syncing Problem Reports, BELM Support Requests and Job Cards...';let sync=null;try{sync=await api('/sync')}catch{}cases=await api(machineFilter?`?machineId=${encodeURIComponent(machineFilter)}`:'');renderSummary();renderList();if(syncStatus){const made=Number(sync?.sync?.created||0);syncStatus.textContent=made>0?`${made} missing workflow case${made===1?'':'s'} restored by sync. Data is now aligned.`:'Synced: Problem Reports + official BELM Support Requests + Digital Job Cards.'}loadPerformance();loadDepartmentReport()}catch(x){show(x.message,true);const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent='Sync failed - use Sync / Refresh after checking the API.';document.getElementById('caseList').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
+  async function load(){try{const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent='Syncing Problem Reports, BELM Support Requests and Job Cards...';let sync=null;try{sync=await api('/sync')}catch{}cases=await api(machineFilter?`?machineId=${encodeURIComponent(machineFilter)}`:'');renderSummary();renderList();if(syncStatus){const made=Number(sync?.sync?.created||0);syncStatus.textContent=made>0?`${made} missing workflow case${made===1?'':'s'} restored by sync. Data is now aligned.`:'Synced: Problem Reports + official BELM Support Requests + Digital Job Cards.'}if(isBelmAdmin)await loadDispatchOptions();loadPerformance();loadDepartmentReport()}catch(x){show(x.message,true);const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent='Sync failed - use Sync / Refresh after checking the API.';document.getElementById('caseList').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
   if(embedded){
     const reportEmbedHeight=()=>{
       const height=Math.ceil(Math.max(document.body.scrollHeight,document.documentElement.scrollHeight));
@@ -301,5 +388,5 @@
     if(window.ResizeObserver)new ResizeObserver(reportEmbedHeight).observe(document.body);
     window.setTimeout(reportEmbedHeight,100);
   }
-  loadMachines();load();
+  initTechnicianDispatch();loadMachines();load();
 })();

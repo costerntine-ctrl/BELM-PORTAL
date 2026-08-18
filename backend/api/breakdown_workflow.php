@@ -831,7 +831,8 @@ if ($method === 'GET' && $action === '') {
         }
     }
     $machineId=trim((string)($_GET['machineId'] ?? '')); if($machineId!==''){ $where[]='bc.machine_id=?'; $params[]=$machineId; }
-    $stmt=db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE '.implode(' AND ',$where).' ORDER BY CASE WHEN bc.status=\'OPEN\' THEN 0 ELSE 1 END, bc.opened_at DESC');
+    $where[]="bc.status <> 'COMPLETED'";
+    $stmt=db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE '.implode(' AND ',$where).' ORDER BY bc.opened_at DESC, bc.updated_at DESC');
     $stmt->execute($params); $out=[]; foreach($stmt->fetchAll() as $r)$out[]=bw_case_view($r); json_out($out);
 }
 

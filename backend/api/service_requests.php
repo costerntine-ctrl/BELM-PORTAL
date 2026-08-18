@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 
 $user = require_auth();
 // The shared Technician role is used by both BELM field technicians and
@@ -224,6 +225,134 @@ if ($method === 'GET' && $action === 'history') {
         ];
     }, $rows);
     json_out($timeline);
+}
+
+// V332 - downloadable Service Request History report. The PDF is generated
+// from the same audit trail shown in the History dialog, so the screen and
+// downloaded record cannot drift apart. Notes are merged into the same timeline.
+if ($method === 'GET' && $action === 'history-pdf') {
+    $requestId = trim((string)($_GET['requestId'] ?? ''));
+    if ($requestId === '') json_error('requestId is required.');
+
+    $stmt = db()->prepare(
+        "SELECT sr.id,sr.status,sr.priority,sr.service_type,sr.description,sr.created_at,sr.updated_at,
+                sr.completed_at,sr.cancelled_at,sr.hidden_at,
+                c.name AS customer_name,m.brand AS machine_brand,m.model AS machine_model,
+                m.serial_number,m.reg_number,u.name AS technician_name,
+                jc.job_card_no,jc.status AS job_card_status
+         FROM service_requests sr
+         LEFT JOIN customers c ON c.id=sr.customer_id
+         LEFT JOIN machines m ON m.id=sr.machine_id
+         LEFT JOIN users u ON u.id=sr.assigned_to_id
+         LEFT JOIN LATERAL (
+             SELECT j.job_card_no,j.status
+             FROM breakdown_cases bc
+             JOIN digital_job_cards j ON j.case_id=bc.id
+             WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
+             ORDER BY j.created_at ASC LIMIT 1
+         ) jc ON TRUE
+         WHERE sr.id=?"
+    );
+    $stmt->execute([$requestId]);
+    $request = $stmt->fetch();
+    if (!$request) json_error('Service request not found.', 404);
+
+    $historyStmt = db()->prepare(
+        "SELECT 'STATUS' AS kind, event_type, from_value, to_value, actor_name, note, created_at
+         FROM service_request_history WHERE request_id = ?
+         UNION ALL
+         SELECT 'NOTE' AS kind, NULL, NULL, NULL, author, note, created_at
+         FROM service_notes WHERE request_id = ?
+         ORDER BY created_at ASC"
+    );
+    $historyStmt->execute([$requestId, $requestId]);
+    $history = $historyStmt->fetchAll();
+
+    $pdfText = static function ($value): string {
+        $text = preg_replace('/\s+/u', ' ', trim((string)$value)) ?? trim((string)$value);
+        if ($text === '') return '-';
+        if (function_exists('iconv')) {
+            $ascii = @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $text);
+            if ($ascii !== false && $ascii !== '') $text = $ascii;
+        }
+        return str_replace(['|', "\r", "\n"], ['/', ' ', ' '], $text);
+    };
+    $dateTime = static function ($value): string {
+        if (!$value) return '-';
+        $ts = strtotime((string)$value);
+        return $ts !== false ? date('d/m/Y H:i', $ts) : (string)$value;
+    };
+
+    $eventLabels = [
+        'OPENED' => 'Opened',
+        'STATUS' => 'Status changed',
+        'ASSIGNMENT' => 'Assignment changed',
+        'HIDDEN' => 'Visibility changed',
+        'JOB_CARD_ACTIVATED' => 'Job Card activated',
+    ];
+    $rows = [];
+    foreach ($history as $entry) {
+        $kind = strtoupper((string)($entry['kind'] ?? 'STATUS'));
+        if ($kind === 'NOTE') {
+            $rows[] = [
+                $dateTime($entry['created_at'] ?? null),
+                'NOTE',
+                $pdfText($entry['actor_name'] ?? 'BELM'),
+                $pdfText($entry['note'] ?? ''),
+            ];
+            continue;
+        }
+        $eventType = strtoupper((string)($entry['event_type'] ?? 'STATUS'));
+        $label = $eventLabels[$eventType] ?? str_replace('_', ' ', $eventType);
+        $detail = '';
+        if ($eventType === 'ASSIGNMENT') {
+            $detail = !empty($entry['to_value'])
+                ? 'Assigned to ' . (string)$entry['to_value']
+                : 'Unassigned';
+        } elseif ($eventType === 'OPENED') {
+            $detail = 'Request opened';
+        } elseif ($eventType === 'HIDDEN') {
+            $detail = (string)($entry['note'] ?? 'Visibility updated');
+        } elseif ($eventType === 'JOB_CARD_ACTIVATED') {
+            $detail = (string)($entry['note'] ?? 'Job Card activated');
+        } else {
+            $detail = 'From ' . ((string)($entry['from_value'] ?? '') ?: '-')
+                . ' to ' . ((string)($entry['to_value'] ?? '') ?: '-');
+        }
+        if ($eventType !== 'HIDDEN' && $eventType !== 'JOB_CARD_ACTIVATED' && !empty($entry['note'])) {
+            $detail .= ' - ' . (string)$entry['note'];
+        }
+        $rows[] = [
+            $dateTime($entry['created_at'] ?? null),
+            $pdfText($label),
+            $pdfText($entry['actor_name'] ?? 'BELM'),
+            $pdfText($detail),
+        ];
+    }
+
+    $machine = trim((string)($request['machine_brand'] ?? '') . ' ' . (string)($request['machine_model'] ?? '')) ?: 'General request';
+    $jobCard = trim((string)($request['job_card_no'] ?? ''));
+    $safeCompany = preg_replace('/[^A-Za-z0-9_-]+/', '-', $pdfText($request['customer_name'] ?? 'Customer')) ?: 'Customer';
+    $safeId = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$requestId) ?: 'request';
+    output_table_pdf(
+        'BELM-Service-Request-History-' . $safeCompany . '-' . $safeId . '.pdf',
+        'SERVICE REQUEST HISTORY REPORT',
+        [
+            'Generated: ' . date('d/m/Y H:i'),
+            'Company: ' . $pdfText($request['customer_name'] ?? 'Unknown customer'),
+            'Machine: ' . $pdfText($machine),
+            'Serial / Registration: ' . $pdfText($request['serial_number'] ?: ($request['reg_number'] ?: 'Not recorded')),
+            'Service type: ' . $pdfText($request['service_type'] ?? 'Service request'),
+            'Priority: ' . $pdfText($request['priority'] ?? 'NORMAL'),
+            'Current status: ' . $pdfText(str_replace('_', ' ', (string)($request['status'] ?? 'OPEN'))),
+            'Assigned Technician: ' . $pdfText($request['technician_name'] ?? 'Unassigned'),
+            'Job Card: ' . ($jobCard !== '' ? $pdfText($jobCard . ' / ' . ($request['job_card_status'] ?? 'RECEIVED')) : 'Not linked'),
+            'Opened: ' . $dateTime($request['created_at'] ?? null),
+            'Instructions: ' . $pdfText($request['description'] ?? ''),
+            'Date / Time  |  Event  |  By  |  Details',
+        ],
+        $rows
+    );
 }
 
 // ---- Customer inbox: service requests + operator reports for ONE customer -

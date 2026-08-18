@@ -1,0 +1,23 @@
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname, '..');
+const js = fs.readFileSync(path.join(root, 'frontend/breakdown-workflow/workflow.js'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'frontend/breakdown-workflow/index.html'), 'utf8');
+const php = fs.readFileSync(path.join(root, 'backend/api/breakdown_workflow.php'), 'utf8');
+const sw = fs.readFileSync(path.join(root, 'frontend/belm-sw.js'), 'utf8');
+const apiIndex = fs.readFileSync(path.join(root, 'backend/index.php'), 'utf8');
+let checks = 0;
+function ok(cond, msg){ if(!cond){ console.error('FAIL:', msg); process.exitCode=1; } else { checks++; console.log('PASS:', msg); } }
+ok(js.includes("!['COMPLETED','CANCELLED','CLOSED'].includes(String(c.status||'').toUpperCase())"), 'live queue filters final jobs');
+ok(js.includes(".sort((a,b)=>(Date.parse(b.openedAt||b.updatedAt||b.createdAt||'')||0)-(Date.parse(a.openedAt||a.updatedAt||a.createdAt||'')||0))"), 'live queue sorts newest unfinished jobs first');
+ok(js.includes('No unfinished breakdown job.'), 'empty state describes unfinished queue');
+ok(html.includes('Latest unfinished jobs only.'), 'queue subtitle explains latest unfinished behavior');
+ok(html.includes('Completed jobs stay in Timeline / History and reports.'), 'queue subtitle points completed jobs to history');
+ok(php.includes('$where[]="bc.status <> \'COMPLETED\'";'), 'backend excludes completed cases from live list');
+ok(php.includes('ORDER BY bc.opened_at DESC, bc.updated_at DESC'), 'backend orders latest jobs first');
+ok(html.includes('workflow.js?v=334-latest-open-job'), 'workflow JS cache bust updated');
+ok(html.includes('workflow.css?v=334-latest-open-job'), 'workflow CSS cache bust updated');
+ok(sw.includes("belm-app-v334-latest-open-job"), 'service worker cache version updated');
+ok(apiIndex.includes("'schemaVersion' => '334-latest-open-job'"), 'API schema version updated');
+console.log(`V334 checks ${checks}/11`);
+if(process.exitCode) process.exit(process.exitCode);

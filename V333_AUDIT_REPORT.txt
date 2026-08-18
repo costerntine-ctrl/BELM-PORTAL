@@ -1,0 +1,13 @@
+BELM PORTAL V333 - VERIFICATION
+
+Feature: Direct Assign Technician dropdown on Main Job Card
+
+Checks completed:
+- PHP syntax: 41/41 files passed.
+- JavaScript/CJS syntax: 90/90 files passed.
+- Runnable regression suites: 51/51 passed.
+- V333 feature checks: 12/12 passed.
+- Existing authoritative Engineering dispatch API is reused; no database migration required.
+
+Note:
+- tests/ui-smoke.cjs requires the external BELM_JS_TOOLS environment variable/jsdom harness and was not part of the runnable regression-suite count in this container.

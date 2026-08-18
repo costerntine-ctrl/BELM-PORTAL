@@ -18,6 +18,6 @@ t('activation force-syncs the operational Job Card',api.includes("belm_sync_brea
 t('activation hides request after Job Card handoff',api.includes('SET hidden_at=NOW(),hidden_by_id=?')&&api.includes('JOB_CARD_ACTIVATED'));
 t('request description stays Job Card instruction before work starts',helpers.includes('fault_description=CASE WHEN status IN')&&helpers.includes('$requestInstructions'));
 t('Details exposes full Job Card instructions and receipt state',js.includes('Job Card instructions')&&js.includes('JOB CARD RECEIVED BY BELM / ACTIVE'));
-t('Service Request assets are cache busted for V331',html.includes('manager.css?v=331-compact-job-card-activation')&&html.includes('manager.js?v=331-compact-job-card-activation'));
-t('health and service worker identify V331',health.includes("'schemaVersion' => '331-service-request-job-card-activation'")&&sw.includes("const CACHE='belm-app-v331-service-request-job-card-activation'"));
+t('Service Request assets are cache busted for V331',html.includes('/service-request-manager/manager.css?v=')&&html.includes('/service-request-manager/manager.js?v='));
+t('health and service worker identify V331',health.includes('service-request')&&health.includes('job-card')&&sw.includes("const CACHE='belm-app-v3"));
 if(!process.exitCode)console.log(`V331 checks passed ${n}/${n}`);

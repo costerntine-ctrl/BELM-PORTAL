@@ -1,0 +1,9 @@
+BELM PORTAL V332 - SERVICE REQUEST HISTORY PDF REPORT
+
+- Service Request History can now be downloaded as an official PDF report.
+- The PDF uses the same audit source as the on-screen History timeline.
+- Report summary includes Company, Machine, Serial/Registration, Service Type, Priority, Current Status, Assigned Technician, linked Job Card, opened time and Job Card instructions.
+- Timeline merges status/assignment/activation/visibility events with Notes.
+- Download is authenticated and available inside Details > History.
+- Mobile layout keeps the Download Report action full-width and easy to tap.
+- No database migration required.

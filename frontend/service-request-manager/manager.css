@@ -126,3 +126,8 @@ html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display
 html[data-theme="dark"] .compact-job-state.ready{color:#bdf4d4;border-color:#216c49;background:#102b20}
 @media(max-width:980px){.request-compact-row{grid-template-columns:minmax(220px,1.35fr) minmax(170px,1fr) minmax(130px,.8fr) auto}.details-toggle{grid-column:4}.request-extra-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.request-card.compact-request{padding:4px 7px}.request-compact-row{min-height:auto;grid-template-columns:1fr 1fr;gap:7px;padding:5px 1px}.compact-company{grid-column:1/-1}.compact-field{min-width:0}.activate-jc-button,.details-toggle{width:100%;min-height:38px}.request-extra-grid{grid-template-columns:1fr 1fr}.compact-job-state{max-width:none}.compact-instruction{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}}
+
+/* V332 - History can be exported as an official PDF audit report. */
+.history-report-actions{border-top:1px solid var(--line,#d9e2df);background:var(--paper,#fff)}
+.history-report-actions .primary{min-width:190px}
+@media(max-width:640px){.history-report-actions{padding:12px 14px 16px}.history-report-actions .primary{width:100%;min-width:0}}

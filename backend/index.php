@@ -139,7 +139,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 326-jc-proforma-sync
             // Regression baseline: 'schemaVersion' => '329-action-feedback-reset'
             // Regression baseline: 'schemaVersion' => '330-queue-company-blink'
-            'schemaVersion' => '331-service-request-job-card-activation',
+            // Regression baseline: 'schemaVersion' => '332-service-request-history-pdf-report'
+            'schemaVersion' => '334-latest-open-job',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

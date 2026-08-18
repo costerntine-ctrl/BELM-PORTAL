@@ -14,7 +14,7 @@
       }
     })();
   </script>
-    <link rel="stylesheet" href="/service-request-manager/manager.css?v=331-compact-job-card-activation">
+    <link rel="stylesheet" href="/service-request-manager/manager.css?v=332-history-pdf-report">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
@@ -91,13 +91,14 @@
 
   <dialog id="historyDialog">
     <div class="dialog-card">
-      <div class="dialog-head"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Request history</h2></div><button id="closeHistoryButton" type="button" aria-label="Close">×</button></div>
+      <div class="dialog-head"><div><p class="eyebrow">AUDIT TRAIL</p><h2>Request history</h2><small>View the timeline here or download the same audit trail as an official PDF report.</small></div><button id="closeHistoryButton" type="button" aria-label="Close">×</button></div>
       <div id="historyBody" class="history-body"></div>
+      <div class="dialog-actions history-report-actions"><button class="primary" id="downloadHistoryReportButton" type="button">Download Report (PDF)</button></div>
     </div>
   </dialog>
 
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
-    <script src="/service-request-manager/manager.js?v=331-compact-job-card-activation"></script>
+    <script src="/service-request-manager/manager.js?v=332-history-pdf-report"></script>
 </body>
 </html>

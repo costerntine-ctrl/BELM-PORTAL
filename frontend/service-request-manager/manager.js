@@ -9,6 +9,7 @@
   let hiddenRequests = [];
   let technicians = [];
   let activeStatus = "";
+  let activeHistoryRequestId = "";
 
   function formatDate(value) {
     if (!value) return "—";
@@ -316,6 +317,12 @@
   async function openHistory(requestId) {
     const dialog = document.getElementById("historyDialog");
     const body = document.getElementById("historyBody");
+    activeHistoryRequestId = requestId;
+    const downloadButton = document.getElementById("downloadHistoryReportButton");
+    if (downloadButton) {
+      downloadButton.disabled = false;
+      downloadButton.textContent = "Download Report (PDF)";
+    }
     body.innerHTML = '<p class="muted">Loading…</p>';
     dialog.showModal();
     try {
@@ -349,6 +356,48 @@
       }).join("") : '<p class="muted">No history recorded yet.</p>';
     } catch (error) {
       body.innerHTML = `<p class="alert error">${escapeHtml(error.message)}</p>`;
+    }
+  }
+
+  async function downloadHistoryReport() {
+    if (!activeHistoryRequestId) return;
+    const button = document.getElementById("downloadHistoryReportButton");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Preparing PDF…";
+    }
+    try {
+      const response = await fetch(`/api/service-requests?action=history-pdf&requestId=${encodeURIComponent(activeHistoryRequestId)}`, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token || ""}` },
+      });
+      if (!response.ok) {
+        const text = await response.text();
+        let message = "Could not download the history report.";
+        try { message = JSON.parse(text)?.error || message; } catch (_) {}
+        throw new Error(message);
+      }
+      const blob = await response.blob();
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename = match?.[1] || `BELM-Service-Request-History-${activeHistoryRequestId}.pdf`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+      showAlert("History report downloaded as PDF.", false);
+    } catch (error) {
+      showAlert(error.message || "Could not download the history report.", true);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Download Report (PDF)";
+      }
     }
   }
 
@@ -446,8 +495,11 @@
       showAlert(error.message, true);
     }
   }
-  document.getElementById("closeHistoryButton")?.addEventListener("click", () =>
-    document.getElementById("historyDialog").close());
+  document.getElementById("downloadHistoryReportButton")?.addEventListener("click", downloadHistoryReport);
+  document.getElementById("closeHistoryButton")?.addEventListener("click", () => {
+    activeHistoryRequestId = "";
+    document.getElementById("historyDialog").close();
+  });
   document.getElementById("noteForm").addEventListener("submit", saveNote);
   document.getElementById("closeNoteButton").addEventListener("click", () => noteDialog.close());
   document.getElementById("cancelNoteButton").addEventListener("click", () => noteDialog.close());

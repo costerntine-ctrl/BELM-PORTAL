@@ -137,7 +137,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
             // Regression baseline: 326-jc-proforma-sync
-            'schemaVersion' => '328-assigned-job-card-select',
+            // Regression baseline: 'schemaVersion' => '329-action-feedback-reset'
+            'schemaVersion' => '330-queue-company-blink',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

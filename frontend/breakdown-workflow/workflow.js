@@ -54,6 +54,34 @@
   function duration(h){h=Number(h||0);return h>=24?`${(h/24).toFixed(h>=72?0:1)} days`:`${Math.round(h)} hrs`}
   function sourceLabel(c){const s=String(c?.sourceType||'MANUAL').toUpperCase();return s==='SERVICE_REQUEST'?'BELM SUPPORT':s==='OPERATOR_REPORT'?'PROBLEM REPORT':s==='PROCUREMENT'?'PROCUREMENT':'MANUAL CASE'}
   function show(msg,error=false){const e=document.getElementById('alertBox');e.textContent=msg;e.className=`alert${error?' error':''}`;setTimeout(()=>e.classList.add('hidden'),5000)}
+  // V329: every workflow button gives immediate tactile/visual feedback on click.
+  document.addEventListener('pointerdown',event=>{
+    const button=event.target.closest?.('button');
+    if(!button||button.disabled)return;
+    button.classList.remove('button-pressed');
+    void button.offsetWidth;
+    button.classList.add('button-pressed');
+    window.setTimeout(()=>button.classList.remove('button-pressed'),260);
+  },true);
+  function setActionButtonState(button,state,label=''){
+    if(!button)return;
+    if(!button.dataset.idleLabel)button.dataset.idleLabel=(button.textContent||'').trim();
+    button.classList.remove('action-busy','action-success','action-error');
+    if(state==='busy'){
+      button.disabled=true;
+      button.classList.add('action-busy');
+      if(label)button.textContent=label;
+      return;
+    }
+    button.disabled=false;
+    if(state==='success')button.classList.add('action-success');
+    if(state==='error')button.classList.add('action-error');
+    if(label)button.textContent=label;
+    if(state==='idle'){
+      button.textContent=button.dataset.idleLabel||button.textContent;
+      delete button.dataset.idleLabel;
+    }
+  }
   async function api(path,opt={}){const r=await fetch(`/api/breakdown-workflow${path}`,{...opt,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token||''}`,...(opt.headers||{})}});const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch{}if(!r.ok){const error=new Error(data?.error||`Request failed (${r.status}).`);error.status=r.status;throw error}return data}
   async function engineeringApi(path,opt={}){const r=await fetch(`/api${path}`,{...opt,cache:'no-store',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${adminToken||''}`,...(opt.headers||{})}});const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch{}if(!r.ok){const error=new Error(data?.error||`Request failed (${r.status}).`);error.status=r.status;throw error}return data}
   if(!token){location.href='/';return}
@@ -137,6 +165,7 @@
     const tech=dispatchTechnicians.find(x=>String(x.id)===String(techId));
     const customer=dispatchCustomers.find(x=>String(x.id)===String(customerId));
     const note=document.getElementById('dispatchNote');if(!note)return;
+    note.classList.remove('dispatch-success','dispatch-error');
     if(selectedJob&&(selectedJob.technicianId||selectedJob.technicianName)){
       const same=techId&&selectedJob.technicianId&&String(techId)===String(selectedJob.technicianId);
       note.innerHTML=same
@@ -188,25 +217,64 @@
       if(announce){const total=Number(data.dispatchSync?.totalJobCards??dispatchJobCards.length),assigned=Number(data.dispatchSync?.assignedJobCards??0),waiting=Number(data.dispatchSync?.receivedJobCards??Math.max(0,total-assigned));if(data.dispatchSync?.error)show(`Technician Dispatch loaded ${total} active Job Card${total===1?'':'s'} (${waiting} waiting, ${assigned} assigned), but source synchronization reported an error.`,true);else show(total?`Technician Dispatch refreshed: ${total} active Job Card${total===1?'':'s'} (${waiting} waiting, ${assigned} assigned).`:'Technician Dispatch refreshed. No active received/assigned Job Cards are available.',false)}
     }catch(x){panel.classList.add('hidden');if(x.status!==403)show(x.message||'Could not load Technician Dispatch.',true)}
   }
+  function resetTechnicianDispatchForm(){
+    const form=document.getElementById('dispatchForm');if(!form)return;
+    form.reset();
+    const existingMode=form.querySelector('input[name="jobCardMode"][value="existing"]');if(existingMode)existingMode.checked=true;
+    ['dispatchTechnician','dispatchJobCard','dispatchCustomer','dispatchMachine'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+    const jcInput=document.getElementById('dispatchJobCardNo');
+    if(jcInput){jcInput.value='';jcInput.dataset.source='';jcInput.classList.remove('jc-auto-detected','jc-manual')}
+    const jcHelp=document.getElementById('dispatchJobCardNoHelp');if(jcHelp)jcHelp.textContent='Auto-detected from the selected Job Card. You can also type the JC / Proforma code manually.';
+    const priority=document.getElementById('dispatchPriority');if(priority)priority.value='NORMAL';
+    const due=document.getElementById('dispatchDueDate');if(due)due.value='';
+    const title=document.getElementById('dispatchTitle');if(title)title.value='';
+    const description=document.getElementById('dispatchDescription');if(description)description.value='';
+    renderReceivedJobCards();
+    renderDispatchMachines();
+    syncJobCardSource();
+  }
+  function showDispatchResult(message,error=false){
+    const note=document.getElementById('dispatchNote');if(!note)return;
+    note.textContent=message;
+    note.classList.remove('override','dispatch-success','dispatch-error');
+    note.classList.add(error?'dispatch-error':'dispatch-success');
+  }
   async function dispatchTechnician(e){
     e.preventDefault();
+    const submitBtn=e.submitter||document.getElementById('dispatchSubmit')||document.querySelector('#dispatchForm button[type="submit"]');
     const mode=dispatchMode(),technicianId=document.getElementById('dispatchTechnician').value,jobCardId=document.getElementById('dispatchJobCard')?.value||'',jobCardNo=document.getElementById('dispatchJobCardNo')?.value.trim()||'';
     const existingJob=dispatchJobCards.find(x=>String(x.id)===String(jobCardId));
     const customerId=mode==='existing'?(existingJob?.customerId||document.getElementById('dispatchCustomer').value||''):document.getElementById('dispatchCustomer').value;
     const tech=dispatchTechnicians.find(x=>String(x.id)===String(technicianId)),customer=dispatchCustomers.find(x=>String(x.id)===String(customerId));
-    if(!technicianId){show('Select Technician.',true);return}if(mode==='existing'&&!jobCardId&&!jobCardNo){show('Select a received/assigned Job Card or fill the JC Number / Proforma Code.',true);return}if(mode==='create'&&(!customerId||!document.getElementById('dispatchMachine').value||!document.getElementById('dispatchTitle').value.trim())){show('Customer, machine and Job Card title are required.',true);return}
+    if(!technicianId){show('Select Technician.',true);showDispatchResult('Select Technician before assigning the Job Card.',true);return}
+    if(mode==='existing'&&!jobCardId&&!jobCardNo){show('Select a received/assigned Job Card or fill the JC Number / Proforma Code.',true);showDispatchResult('Select a Job Card or enter its JC Number / Proforma Code.',true);return}
+    if(mode==='create'&&(!customerId||!document.getElementById('dispatchMachine').value||!document.getElementById('dispatchTitle').value.trim())){show('Customer, machine and Job Card title are required.',true);showDispatchResult('Customer, machine and Job Card title are required.',true);return}
     const currentAssignedTechId=String(existingJob?.technicianId||'');
     const reassigning=mode==='existing'&&currentAssignedTechId&&currentAssignedTechId!==String(technicianId);
     if(reassigning&&!confirm(`${existingJob?.jobCardNo||'This Job Card'} is currently assigned to ${existingJob?.technicianName||'another Technician'}. Reassign it to ${tech?.name||'the selected Technician'}?`))return;
     const temporary=Boolean(tech?.assignedCustomerId&&customerId&&String(tech.assignedCustomerId)!==String(customerId));
     if(temporary&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Assign this Job Card to ${customer?.name||'the selected customer'} as a Temporary Override?`))return;
+    setActionButtonState(submitBtn,'busy',reassigning?'Reassigning...':'Assigning...');
+    showDispatchResult(reassigning?'Reassigning Job Card...':'Assigning Job Card...');
     try{
       const currentCaseId=selected?.case?.id||'';
       const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,jobCardNo,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,temporaryOverride:temporary})});
+      const verb=result.reassigned?'reassigned':'assigned';
+      const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} to ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · ${result.proformaCode||result.jobCardNo||jobCardNo}.`;
       show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} to Technician${result.temporaryOverride?' as Temporary Override':''}. Proforma sync: ${result.proformaStatus||'PENDING'} · code ${result.proformaCode||result.jobCardNo||jobCardNo}.`,false);
-      document.getElementById('dispatchTitle').value='';document.getElementById('dispatchDescription').value='';document.getElementById('dispatchDueDate').value='';
-      await load();if(currentCaseId)try{await openCase(currentCaseId)}catch{}
-    }catch(x){show(x.message||'Could not assign the Job Card.',true)}
+      setActionButtonState(submitBtn,'success',result.reassigned?'✓ Reassigned':'✓ Assigned');
+      // Clear every dispatch choice BEFORE reload so loadDispatchOptions cannot preserve stale selections.
+      resetTechnicianDispatchForm();
+      await load();
+      if(currentCaseId)try{await openCase(currentCaseId)}catch{}
+      showDispatchResult(successMessage,false);
+      window.setTimeout(()=>setActionButtonState(submitBtn,'idle'),1200);
+    }catch(x){
+      setActionButtonState(submitBtn,'error','Try Again');
+      showDispatchResult(`Assignment failed: ${x.message||'Could not assign the Job Card.'}`,true);
+      show(x.message||'Could not assign the Job Card.',true);
+      window.setTimeout(()=>setActionButtonState(submitBtn,'idle'),1600);
+    }
   }
   function initTechnicianDispatch(){
     const panel=document.getElementById('dispatchPanel');if(!panel)return;
@@ -237,7 +305,7 @@
   document.getElementById('caseForm').onsubmit=async e=>{e.preventDefault();try{const d=await api('/case',{method:'POST',body:JSON.stringify({machineId:document.getElementById('caseMachine').value,description:document.getElementById('caseDescription').value})});document.getElementById('caseDialog').close();show('Breakdown case opened. Workshop now owns the next action.');await load();await openCase(d.id)}catch(x){show(x.message,true)}};
 
   function renderSummary(){const open=cases.filter(c=>c.status!=='COMPLETED');const delayed=open.filter(c=>c.delayed);const administration=open.filter(c=>c.stage==='PROCUREMENT'||c.stage==='BOSS_APPROVAL');const avg=open.length?open.reduce((a,c)=>a+Number(c.breakdownHours||0),0)/open.length:0;document.getElementById('summaryCards').innerHTML=`<div class="summary-card"><b>${open.length}</b><span>Open breakdowns</span></div><div class="summary-card red"><b>${delayed.length}</b><span>Delayed / SLA exceeded</span></div><div class="summary-card yellow"><b>${administration.length}</b><span>Waiting Procurement / approval</span></div><div class="summary-card green"><b>${duration(avg)}</b><span>Average open time</span></div>`}
-  function renderList(){const q=document.getElementById('searchBox').value.toLowerCase().trim();const list=cases.filter(c=>!q||[c.machineLabel,c.department,c.stage,c.status,c.description,c.sourceType,sourceLabel(c)].join(' ').toLowerCase().includes(q));document.getElementById('caseList').innerHTML=list.length?list.map(c=>`<article class="case-card ${c.delayed?'delayed':''} ${c.status==='COMPLETED'?'closed':''}" data-case="${esc(c.id)}"><div class="case-title-line"><h3>${esc(c.machineLabel)}</h3><span class="pill source-pill">${esc(sourceLabel(c))}</span></div><div>${esc(c.description)}</div><div class="case-meta"><span class="pill ${c.delayed?'red':c.status==='COMPLETED'?'green':'yellow'}">${esc(c.delayed?'DELAYED':c.status)}</span><span class="pill">${esc(c.department)}</span><span class="pill">Breakdown ${esc(duration(c.breakdownHours))}</span>${c.delayed?`<span class="pill red">Delay ${esc(duration(c.delayHours))}</span>`:''}</div></article>`).join(''):`<div class="empty">${q?'No case matches this search.':'No open/synced breakdown cases. Problem Reports and official BELM Support Requests linked to a machine will appear here automatically.'}</div>`;document.querySelectorAll('[data-case]').forEach(e=>e.onclick=()=>openCase(e.dataset.case))}
+  function renderList(){const q=document.getElementById('searchBox').value.toLowerCase().trim();const list=cases.filter(c=>!q||[c.machineLabel,c.customerName,c.department,c.stage,c.status,c.description,c.sourceType,sourceLabel(c)].join(' ').toLowerCase().includes(q));document.getElementById('caseList').innerHTML=list.length?list.map(c=>{const active=c.status!=='COMPLETED';const company=String(c.customerName||'Customer').trim()||'Customer';return `<article class="case-card ${active?'attention':''} ${c.delayed?'delayed':''} ${c.status==='COMPLETED'?'closed':''}" data-case="${esc(c.id)}"><div class="case-title-line"><h3>${esc(c.machineLabel)}</h3><div class="case-title-badges"><span class="pill company-pill ${active?'company-alert':''} ${c.delayed?'red':''}">FROM: ${esc(company)}</span><span class="pill source-pill">${esc(sourceLabel(c))}</span></div></div><div>${esc(c.description)}</div><div class="case-meta"><span class="pill ${c.delayed?'red':c.status==='COMPLETED'?'green':'yellow'}">${esc(c.delayed?'DELAYED':c.status)}</span><span class="pill">${esc(c.department)}</span><span class="pill">Breakdown ${esc(duration(c.breakdownHours))}</span>${c.delayed?`<span class="pill red">Delay ${esc(duration(c.delayHours))}</span>`:''}</div></article>`}).join(''):`<div class="empty">${q?'No case matches this search.':'No open/synced breakdown cases. Problem Reports and official BELM Support Requests linked to a machine will appear here automatically.'}</div>`;document.querySelectorAll('[data-case]').forEach(e=>e.onclick=()=>openCase(e.dataset.case))}
 
   async function openCase(id){try{selected=await api(`/case/${encodeURIComponent(id)}`);selected={...selected,jobCards:(selected?.jobCards||[]).map(normalizeJobCard),spares:selected?.spares||[],events:selected?.events||[]};renderDetail()}catch(x){show(x.message,true)}}
   function spareActions(s){if(s.procurementRequestId||s.procurement_request_id)return `<span class="pill yellow">Managed in Procurement</span>`;if(s.status==='WAITING_BOSS_APPROVAL'&&isOwner)return `<button class="approve" data-approve="${s.id}">Administration Approve</button><button class="reject" data-reject="${s.id}">Reject</button>`;if(s.status==='APPROVED'&&isStore)return `<button class="approve" data-spare-status="${s.id}|STORE_AVAILABLE">Available in Store</button><button class="yellow" data-spare-status="${s.id}|PROCUREMENT_REQUIRED">Send Procurement</button>`;if(['PROCUREMENT_REQUIRED','ORDERED'].includes(s.status)&&isProcurement)return `<button class="yellow" data-spare-status="${s.id}|PI_WAITING_ACCOUNTS">Send to Accounts / PI</button><button class="blue" data-spare-status="${s.id}|ORDERED">Mark Ordered</button>`;if(s.status==='PI_WAITING_ACCOUNTS'&&isAccounts)return `<button class="blue" data-spare-status="${s.id}|ORDERED">Accounts cleared / Ordered</button>`;if(['STORE_AVAILABLE','ORDERED'].includes(s.status)&&(isStore||isWorkshop))return `<button class="approve" data-spare-status="${s.id}|PARTS_READY">Parts Ready for Repair</button>`;return ''}

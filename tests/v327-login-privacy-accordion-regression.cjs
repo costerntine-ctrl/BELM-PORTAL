@@ -17,8 +17,8 @@ const checks = [
   ['login stylesheet cache-busted', /customer-app\.css\?v=327-login-legal/.test(html)],
   ['accordion css exists', /\.login-legal\{/.test(css)],
   ['mobile legal styling exists', /@media\(max-width:760px\).*\.login-legal/s.test(css)],
-  ['service worker caches new login stylesheet', /belm-app-v(327-login-legal|328-assigned-job-card-select)/.test(sw) && /customer-app\.css\?v=327-login-legal/.test(sw)],
-  ['health build marker bumped', /(327-login-legal|328-assigned-job-card-select)/.test(health)],
+  ['service worker caches new login stylesheet', /belm-app-v(327-login-legal|328-assigned-job-card-select|329-action-feedback-reset)/.test(sw) && /customer-app\.css\?v=327-login-legal/.test(sw)],
+  ['health build marker bumped', /(327-login-legal|328-assigned-job-card-select|329-action-feedback-reset)/.test(health)],
 ];
 
 let passed = 0;

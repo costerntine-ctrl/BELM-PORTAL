@@ -11,6 +11,6 @@ t('reassignment requires explicit confirmation in UI',js.includes('Reassign it t
 t('backend permits assigned-card reassignment and records previous Technician',eng.includes('$assignmentChanged=$wasAlreadyAssigned')&&eng.includes('reassigned from '));
 t('manual JC lookup includes assigned Job Cards',eng.includes('active received/assigned Job Cards')&&!eng.includes('waiting for Technician assignment. Refresh or check the code.'));
 t('success response tells UI whether card was reassigned',eng.includes("'reassigned'=>($assignmentChanged??false)")&&js.includes("result.reassigned?'reassigned':'assigned/confirmed'"));
-t('V328 workflow assets are cache-busted',html.includes('workflow.js?v=328-assigned-job-card-select')&&html.includes('workflow.css?v=328-assigned-job-card-select'));
-t('health and service worker identify V328',health.includes('328-assigned-job-card-select')&&sw.includes('belm-app-v328-assigned-job-card-select'));
+t('V328 workflow assets are cache-busted',(/workflow\.js\?v=(328-assigned-job-card-select|329-action-feedback-reset)/.test(html))&&(/workflow\.css\?v=(328-assigned-job-card-select|329-action-feedback-reset)/.test(html)));
+t('health and service worker identify V328',(/(328-assigned-job-card-select|329-action-feedback-reset)/.test(health))&&(/belm-app-v(328-assigned-job-card-select|329-action-feedback-reset)/.test(sw)));
 if(!process.exitCode)console.log(`V328 checks passed ${n}/${n}`);

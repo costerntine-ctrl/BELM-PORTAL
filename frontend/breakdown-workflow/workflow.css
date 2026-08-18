@@ -126,3 +126,30 @@ html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display
 @media(max-width:760px){.workflow-dispatch-form{grid-template-columns:1fr}.workflow-received-card-field,.workflow-jc-number-field{grid-column:auto}.workflow-received-card-field .workflow-dispatch-inline-control{grid-template-columns:minmax(0,1fr) auto}.workflow-received-card-field .workflow-dispatch-inline-control button{width:auto}}
 
 /* V328 - assigned Job Cards selectable in Technician Dispatch; existing compact layout retained. */
+
+
+/* V329 - action feedback + post-assignment dispatch reset. */
+button{transition:transform .12s ease,filter .16s ease,box-shadow .16s ease,opacity .16s ease}
+button.button-pressed{transform:translateY(1px) scale(.975);filter:brightness(.93)}
+button.action-busy{cursor:wait!important;opacity:.78;box-shadow:0 0 0 3px rgba(11,103,194,.16)}
+button.action-success{background:#09834a!important;color:#fff!important;border-color:#09834a!important;box-shadow:0 0 0 3px rgba(9,131,74,.18)}
+button.action-error{background:#c72f2f!important;color:#fff!important;border-color:#c72f2f!important;box-shadow:0 0 0 3px rgba(199,47,47,.16)}
+.workflow-dispatch-note.dispatch-success{border:1px solid #1f8f62;background:#e9f9f0;color:#076d3c;font-weight:800}
+.workflow-dispatch-note.dispatch-error{border:1px solid #c72f2f;background:#fee8e8;color:#9c2020;font-weight:800}
+[data-theme="dark"] .workflow-dispatch-note.dispatch-success{background:#0d2b20;color:#bff3d9;border-color:#1f8f62}
+[data-theme="dark"] .workflow-dispatch-note.dispatch-error{background:#431f24;color:#ffc5c5;border-color:#8e313c}
+@media (prefers-reduced-motion:reduce){button{transition:none}button.button-pressed{transform:none}}
+
+
+/* V330 - Live Breakdown Queue customer/company origin + action blink. */
+.case-title-line{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.case-title-badges{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;align-items:center}
+.company-pill{background:#e6f2ff;color:#0a4f91;border:1px solid #b7d9f7;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.case-card.attention .company-pill.company-alert{animation:belmQueueCompanyBlink 1.35s ease-in-out infinite;box-shadow:0 0 0 0 rgba(11,103,194,.28)}
+.case-card.delayed .company-pill.company-alert{background:#fee8e8;color:#9f1f1f;border-color:#f3b6b6;animation:belmQueueCompanyBlinkDelayed 1.05s ease-in-out infinite}
+@keyframes belmQueueCompanyBlink{0%,100%{opacity:1;filter:brightness(1);box-shadow:0 0 0 0 rgba(11,103,194,.05)}50%{opacity:.62;filter:brightness(1.16);box-shadow:0 0 0 4px rgba(11,103,194,.16)}}
+@keyframes belmQueueCompanyBlinkDelayed{0%,100%{opacity:1;filter:brightness(1);box-shadow:0 0 0 0 rgba(199,47,47,.05)}50%{opacity:.58;filter:brightness(1.18);box-shadow:0 0 0 5px rgba(199,47,47,.18)}}
+[data-theme="dark"] .company-pill{background:#123451;color:#b8dcff;border-color:#2b6294}
+[data-theme="dark"] .case-card.delayed .company-pill.company-alert{background:#431f24;color:#ffc5c5;border-color:#8e313c}
+@media(max-width:760px){.case-title-line{flex-direction:column}.case-title-badges{justify-content:flex-start}.company-pill{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.case-card.attention .company-pill.company-alert,.case-card.delayed .company-pill.company-alert{animation:none}}

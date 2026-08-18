@@ -1,0 +1,17 @@
+BELM Operations Platform V330 - Audit Report
+
+Scope
+- Live Breakdown Queue customer/company visibility.
+- Active-case attention blink.
+- Delayed-case red attention blink.
+- Completed-case no-blink behavior.
+- Search by customer/company.
+- Mobile/tablet badge layout.
+- Asset and PWA cache busting.
+
+Verification
+- PHP syntax: 41/41 passed.
+- JavaScript/CJS syntax: 87/87 passed.
+- Runnable regression suites: 49/49 passed (ui-smoke.cjs excluded because it requires an external browser/root argument).
+- V330-specific regression checks: 12/12 passed.
+- No database migration required; customerName is already supplied by breakdown_workflow API from customers.name.

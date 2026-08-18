@@ -1,0 +1,21 @@
+const fs=require('fs');const path=require('path');const root=path.join(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');let n=0;function t(name,ok){n++;if(!ok){console.error('FAIL',name);process.exitCode=1}else console.log('PASS',name)}
+const html=read('frontend/breakdown-workflow/index.html');
+const js=read('frontend/breakdown-workflow/workflow.js');
+const css=read('frontend/breakdown-workflow/workflow.css');
+const api=read('backend/api/breakdown_workflow.php');
+const health=read('backend/index.php');
+const sw=read('frontend/belm-sw.js');
+t('breakdown API exposes linked customer/company name',api.includes("'customerName'=>$row['customer_name'] ?? null"));
+t('queue search includes customer/company name',js.includes('[c.machineLabel,c.customerName,c.department'));
+t('queue renders FROM customer/company badge',js.includes('FROM: ${esc(company)}'));
+t('company badge only alerts on active cases',js.includes("const active=c.status!=='COMPLETED'")&&js.includes("${active?'company-alert':''}"));
+t('delayed company badge gets red attention state',js.includes("${c.delayed?'red':''}"));
+t('company blink animation is defined',css.includes('@keyframes belmQueueCompanyBlink')&&css.includes('@keyframes belmQueueCompanyBlinkDelayed'));
+t('completed cases are excluded from blink by active flag',js.includes("const active=c.status!=='COMPLETED'"));
+t('mobile layout keeps company badges readable',css.includes('@media(max-width:760px)')&&css.includes('.case-title-badges{justify-content:flex-start}'));
+t('reduced motion disables queue blinking',css.includes('@media(prefers-reduced-motion:reduce)')&&css.includes('animation:none'));
+t('queue help text explains company and blink meaning',html.includes('FROM shows the customer/company')&&html.includes('Active cases blink'));
+t('V330 workflow assets are cache busted',html.includes('workflow.js?v=330-queue-company-blink')&&html.includes('workflow.css?v=330-queue-company-blink'));
+t('health and service worker identify V330',health.includes("'schemaVersion' => '330-queue-company-blink'")&&sw.includes("const CACHE='belm-app-v330-queue-company-blink'"));
+if(!process.exitCode)console.log(`V330 checks passed ${n}/${n}`);

@@ -768,15 +768,43 @@ if ($method === 'GET' && $action === 'case' && $id !== '') {
     $events=db()->prepare('SELECT stage,department,action,note,actor_name,created_at FROM breakdown_case_events WHERE case_id=? ORDER BY created_at ASC');
     $events->execute([$id]);
     $spares=db()->prepare('SELECT * FROM breakdown_spare_requests WHERE case_id=? ORDER BY requested_at ASC'); $spares->execute([$id]);
-    $jobs=db()->prepare('SELECT j.*,u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name
+    $jobs=db()->prepare('SELECT j.*,u.name AS technician_account_name,u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name
         FROM digital_job_cards j LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
         WHERE j.case_id=? ORDER BY j.created_at DESC'); $jobs->execute([$id]);
     $jobRows=$jobs->fetchAll();
+
+    // V336: an older/interrupted Service Request may already be ASSIGNED while
+    // the linked Job Card row is missing its copied Technician name/id. The
+    // Service Request assignment remains authoritative for that legacy case, so
+    // expose it as the effective assignment instead of showing "Select Technician".
+    $sourceTechnicianId=''; $sourceTechnicianName='';
+    if (strtoupper((string)($case['source_type'] ?? '')) === 'SERVICE_REQUEST' && !empty($case['source_id'])) {
+        $sourceTech=db()->prepare('SELECT sr.assigned_to_id,u.name AS assigned_to_name FROM service_requests sr LEFT JOIN users u ON u.id=sr.assigned_to_id WHERE sr.id=? LIMIT 1');
+        $sourceTech->execute([(string)$case['source_id']]);
+        $sourceTechRow=$sourceTech->fetch() ?: [];
+        $sourceTechnicianId=trim((string)($sourceTechRow['assigned_to_id'] ?? ''));
+        $sourceTechnicianName=trim((string)($sourceTechRow['assigned_to_name'] ?? ''));
+    }
     foreach($jobRows as &$jobRow){
-        $jobRow['temporary_override']=!empty($jobRow['technician_id']) && !empty($jobRow['technician_home_customer_id'])
+        $jobTechId=trim((string)($jobRow['technician_id'] ?? ''));
+        $jobTechName=trim((string)($jobRow['technician_name'] ?? ''));
+        if ($jobTechName==='' && $jobTechId!=='') {
+            $jobTechName=trim((string)($jobRow['technician_account_name'] ?? ''));
+        }
+        $jobState=strtoupper((string)($jobRow['status'] ?? ''));
+        if ($jobTechId==='' && $sourceTechnicianId!=='' && in_array($jobState,['ASSIGNED','IN_PROGRESS'],true)) {
+            $jobTechId=$sourceTechnicianId;
+            $jobTechName=$sourceTechnicianName ?: 'Assigned Technician';
+            $jobRow['technician_assignment_source']='SERVICE_REQUEST';
+        }
+        $jobRow['technician_id']=$jobTechId;
+        $jobRow['technician_name']=$jobTechName;
+        $jobRow['technicianId']=$jobTechId;
+        $jobRow['technicianName']=$jobTechName;
+        $jobRow['temporary_override']=$jobTechId!=='' && !empty($jobRow['technician_home_customer_id'])
             && (string)$jobRow['technician_home_customer_id'] !== (string)$jobRow['customer_id'];
         $jobRow['has_signed_copy']=!empty($jobRow['signed_copy_data']);
-        unset($jobRow['signed_copy_data']);
+        unset($jobRow['signed_copy_data'],$jobRow['technician_account_name']);
     }
     unset($jobRow);
     json_out(['case'=>bw_case_view($case),'events'=>$events->fetchAll(),'spares'=>$spares->fetchAll(),'jobCards'=>$jobRows]);

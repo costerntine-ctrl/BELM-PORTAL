@@ -15,9 +15,9 @@ ok(html.includes('Latest unfinished jobs only.'), 'queue subtitle explains lates
 ok(html.includes('Completed jobs stay in Timeline / History and reports.'), 'queue subtitle points completed jobs to history');
 ok(php.includes('$where[]="bc.status <> \'COMPLETED\'";'), 'backend excludes completed cases from live list');
 ok(php.includes('ORDER BY bc.opened_at DESC, bc.updated_at DESC'), 'backend orders latest jobs first');
-ok(html.includes('workflow.js?v=334-latest-open-job'), 'workflow JS cache bust updated');
-ok(html.includes('workflow.css?v=334-latest-open-job'), 'workflow CSS cache bust updated');
-ok(sw.includes("belm-app-v334-latest-open-job"), 'service worker cache version updated');
-ok(apiIndex.includes("'schemaVersion' => '334-latest-open-job'"), 'API schema version updated');
+ok(/workflow\.js\?v=3(?:3[4-9]|[4-9][0-9])[-a-z0-9]*/.test(html), 'workflow JS cache bust updated');
+ok(/workflow\.css\?v=3(?:3[4-9]|[4-9][0-9])[-a-z0-9]*/.test(html), 'workflow CSS cache bust updated');
+ok(/belm-app-v3(?:3[4-9]|[4-9][0-9])[-a-z0-9]*/.test(sw), 'service worker cache version remains V334+');
+ok(/'schemaVersion' => '3(?:3[4-9]|[4-9][0-9])[-a-z0-9]*'/.test(apiIndex), 'API schema version updated');
 console.log(`V334 checks ${checks}/11`);
 if(process.exitCode) process.exit(process.exitCode);

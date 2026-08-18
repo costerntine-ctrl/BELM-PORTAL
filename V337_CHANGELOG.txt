@@ -1,0 +1,10 @@
+BELM Operations Platform V337 - Proforma Generate Sync
+
+- Accounting/Billing pending Proforma queue now derives the effective Technician from the linked Service Request when a legacy Job Card copy is missing technician_id/name.
+- Assigned legacy OPEN/RECEIVED Job Cards are exposed to Billing as ASSIGNED / PROFORMA_PENDING instead of disappearing from the queue.
+- Pending rows explain the exact blocker: Technician Job Card completion, Workshop testing, or customer-signed Job Card upload.
+- Ready pending rows use a clear Generate <JC Number> action.
+- Billing Manager now respects ?tab=proformas and stays on Proforma after generation.
+- Saving a generated Proforma visibly confirms the generated JC/Proforma code.
+- Billing Manager JS/CSS cache query bumped to V337 so deployed browsers do not keep the old Proforma logic.
+- No database migration required.

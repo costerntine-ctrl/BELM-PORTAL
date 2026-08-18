@@ -14,6 +14,6 @@ t('History PDF contains request summary',api.includes('SERVICE REQUEST HISTORY R
 t('History PDF contains notes and status timeline',api.includes("SELECT 'STATUS' AS kind")&&api.includes("SELECT 'NOTE' AS kind")&&api.includes("Date / Time  |  Event  |  By  |  Details"));
 t('History PDF includes linked Job Card',api.includes('jc.job_card_no')&&api.includes("'Job Card: '"));
 t('History PDF uses shared report generator',api.includes("require_once __DIR__ . '/table_pdf_helper.php';")&&api.includes('output_table_pdf(')&&helper.includes("header('Content-Type: application/pdf')"));
-t('V332 assets are cache busted',html.includes('manager.css?v=332-history-pdf-report')&&html.includes('manager.js?v=332-history-pdf-report'));
+t('V332 assets remain cache busted on V332+',/manager\.css\?v=33[2-9]-/.test(html)&&/manager\.js\?v=33[2-9]-/.test(html));
 t('Health and service worker identify V332',health.includes("'schemaVersion' => '332-service-request-history-pdf-report'")&&sw.includes("const CACHE='belm-app-v332-service-request-history-pdf-report'"));
 if(!process.exitCode)console.log(`V332 checks passed ${n}/${n}`);

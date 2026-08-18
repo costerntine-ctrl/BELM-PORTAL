@@ -48,7 +48,9 @@
   function normalizeJobCard(job={}){
     const jobCardNo=String(job.job_card_no??job.jobCardNo??'').trim()||'Job Card';
     const title=String(job.title??job.service_type??job.serviceType??'').trim()||'Machine Breakdown';
-    return {...job,job_card_no:jobCardNo,jobCardNo,customerId:job.customerId??job.customer_id??'',customer_id:job.customer_id??job.customerId??'',machineId:job.machineId??job.machine_id??'',machine_id:job.machine_id??job.machineId??'',customerName:job.customerName??job.customer_name??'Customer',machineLabel:job.machineLabel??job.machine_label??job.machine??'Machine',sourceType:job.sourceType??job.source_type??'',due_date:job.due_date??job.dueDate??'',dueDate:job.dueDate??job.due_date??'',technicianId:job.technicianId??job.technician_id??'',technicianName:job.technicianName??job.technician_name??'',dispatchStatus:String(job.dispatchStatus??job.status??'RECEIVED').toUpperCase(),title};
+    const technicianId=job.technicianId??job.technician_id??'';
+    const technicianName=job.technicianName??job.technician_name??'';
+    return {...job,job_card_no:jobCardNo,jobCardNo,customerId:job.customerId??job.customer_id??'',customer_id:job.customer_id??job.customerId??'',machineId:job.machineId??job.machine_id??'',machine_id:job.machine_id??job.machineId??'',customerName:job.customerName??job.customer_name??'Customer',machineLabel:job.machineLabel??job.machine_label??job.machine??'Machine',sourceType:job.sourceType??job.source_type??'',due_date:job.due_date??job.dueDate??'',dueDate:job.dueDate??job.due_date??'',technicianId,technician_id:technicianId,technicianName,technician_name:technicianName,dispatchStatus:String(job.dispatchStatus??job.status??'RECEIVED').toUpperCase(),title};
   }
   function fmtDate(v){if(!v)return '-';const raw=String(v).trim();const iso=/^\d{4}-\d{2}-\d{2} /.test(raw)?raw.replace(' ','T').replace(/([+-]\d{2})(?!:?\d{2})$/,'$1:00'):raw;const d=new Date(iso);if(Number.isNaN(d.getTime()))return raw;return d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
   function duration(h){h=Number(h||0);return h>=24?`${(h/24).toFixed(h>=72?0:1)} days`:`${Math.round(h)} hrs`}
@@ -400,9 +402,11 @@
     const steps=[['RECEIVED','Received by BELM'],['ASSIGNED','Assigned'],['IN_PROGRESS','In Progress'],['SPARES','Spares'],['TESTING','Testing'],['COMPLETED','Completed']];
     const activeIndex=Math.max(0,steps.findIndex(([key])=>key===processKey));
     const processHtml=`<div class="job-process-card"><div class="job-process-title"><div><span>MAIN JOB CARD PROCESS</span><b>${mainJob?esc(mainJob.job_card_no+' · '+mainJob.title):'Waiting for Job Card'}</b></div>${mainJob?`<span class="pill">${esc(jobStatus||'RECEIVED')}</span>`:''}</div><div class="job-process-steps">${steps.map(([key,label],i)=>`<div class="job-process-step ${i<activeIndex?'done':i===activeIndex?'active':''}"><span>${i+1}</span><b>${label}</b></div>`).join('')}</div><div class="job-process-actions">${mainJob?`<button class="blue" data-job-pdf="${esc(mainJob.id)}">Download Main Job Card PDF</button>`:''}${(isWorkshop||isTechnician)&&c.status!=='COMPLETED'&&mainJob?'<button class="yellow" id="requestSpare">Request Spare</button>':''}${isWorkshop&&c.stage==='TESTING'?'<button class="approve" id="completeCase">Test Passed - Return to Service</button>':''}</div></div>`;
+    const mainJobTechnicianId=String(mainJob?.technician_id||mainJob?.technicianId||'');
+    const mainJobTechnicianName=String(mainJob?.technician_name||mainJob?.technicianName||'');
     const mainJobTechnicianHtml=isBelmAdmin&&mainJob&&!['COMPLETED','CANCELLED'].includes(jobStatus)
-      ? `<label class="main-job-tech-control"><span>Assign Technician</span><select id="mainJobTechnicianSelect" data-job-id="${esc(mainJob.id)}" data-current-technician-id="${esc(mainJob.technician_id||'')}" data-current-technician-name="${esc(mainJob.technician_name||'')}"><option value="">${mainJob.technician_name?esc(mainJob.technician_name):'Loading Technicians...'}</option></select><small id="mainJobTechnicianStatus">${mainJob.technician_name?'Assigned - choose another Technician to reassign.':'Select a Technician to assign this Job Card.'}</small></label>`
-      : `<span>Technician <b>${esc(mainJob?.technician_name||'Unassigned')}</b></span>`;
+      ? `<label class="main-job-tech-control"><span>${mainJobTechnicianName?'Assigned Technician':'Assign Technician'}</span><select id="mainJobTechnicianSelect" data-job-id="${esc(mainJob.id)}" data-current-technician-id="${esc(mainJobTechnicianId)}" data-current-technician-name="${esc(mainJobTechnicianName)}"><option value="${esc(mainJobTechnicianId)}">${mainJobTechnicianName?esc(mainJobTechnicianName+' · ASSIGNED'):'Loading Technicians...'}</option></select><small id="mainJobTechnicianStatus">${mainJobTechnicianName?`Assigned to ${esc(mainJobTechnicianName)}. Select another Technician only to reassign.`:'Select a Technician to assign this Job Card.'}</small></label>`
+      : `<span>Technician <b>${esc(mainJobTechnicianName||'Unassigned')}</b></span>`;
     const mainJobHtml=mainJob?`<div class="main-job-card"><div class="main-job-card-head"><div><span>MAIN JOB CARD</span><h3>${esc(mainJob.job_card_no)} · ${esc(mainJob.title)}</h3></div><span class="pill">${esc(jobStatus)}</span></div><div class="main-job-meta"><span>Issued by <b>${esc(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer')}</b></span>${String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST'||String(mainJob.issued_by_type||'').toUpperCase()==='CUSTOMER'?`<span>BELM Receipt <b>✓ RECEIVED · ${fmtDate(mainJob.issued_at||mainJob.created_at)}</b></span>`:''}${mainJobTechnicianHtml}<span>Created <b>${fmtDate(mainJob.created_at)}</b></span></div>${mainJob.diagnosis?`<div class="main-job-summary"><p><b>Diagnosis:</b> ${esc(mainJob.diagnosis)}</p><p><b>Work done:</b> ${esc(mainJob.work_done||'-')}</p></div>`:''}<div class="actions"><button class="blue" data-job-pdf="${esc(mainJob.id)}">Download Job Card PDF</button></div></div>`:'<div class="main-job-card empty">No Main Job Card has been issued yet.</div>';
 
     document.getElementById('caseDetail').innerHTML=`<div class="detail">
@@ -460,8 +464,8 @@
     if(status)status.textContent='Syncing Technicians...';
     try{
       inlineTechnicians=await api(`/technicians?customerId=${encodeURIComponent(selected.case.customerId)}&_=${Date.now()}`);
-      let options='<option value="">Select Technician...</option>';
-      if(currentId&&!inlineTechnicians.some(x=>String(x.id)===currentId))options+=`<option value="${esc(currentId)}">${esc(currentName||'Current Technician')} · CURRENT</option>`;
+      let options=currentId?`<option value="${esc(currentId)}">${esc((currentName||'Current Technician')+' · ASSIGNED')}</option>`:'<option value="">Select Technician...</option>';
+      if(currentId&&!inlineTechnicians.some(x=>String(x.id)===currentId)&&!currentName)options+=`<option value="${esc(currentId)}">Current Technician · ASSIGNED</option>`;
       options+=inlineTechnicians.map(x=>{
         const home=x.assignedCustomerName?` · Home: ${x.assignedCustomerName}`:'';
         const tag=x.temporaryForCustomer?' · TEMP OVERRIDE':'';
@@ -471,7 +475,7 @@
       select.innerHTML=options;
       if(currentId)select.value=currentId;
       select.disabled=false;
-      if(status)status.textContent=currentId?'Assigned - select another Technician only when reassignment is required.':'Select a Technician to assign this Job Card.';
+      if(status)status.textContent=currentId?`Assigned to ${currentName||'current Technician'}. Select another Technician only when reassignment is required.`:'Select a Technician to assign this Job Card.';
       if(showToast)show(inlineTechnicians.length?`Technicians synced: ${inlineTechnicians.length}.`:'No eligible BELM Technician found.',!inlineTechnicians.length);
       select.onchange=()=>assignMainJobTechnician(select);
     }catch(x){

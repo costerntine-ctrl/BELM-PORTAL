@@ -31,6 +31,19 @@
     return `${day}/${month}/${date.getFullYear()}, ${hours}:${minutes}`;
   }
 
+
+  function localDateKey(value = new Date()) {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function displayDateKey(value) {
+    const parts = String(value || "").split("-");
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : String(value || "");
+  }
+
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (char) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -505,17 +518,23 @@
   document.getElementById("cancelNoteButton").addEventListener("click", () => noteDialog.close());
   async function loadDailyReport(date) {
     const rows = document.getElementById("dailyReportRows");
+    const summaryBox = document.getElementById("dailyReportSummary");
     rows.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
+    if (summaryBox) summaryBox.textContent = "Synchronizing final-status actions…";
     try {
       const result = await api(`/service-requests?action=daily-report&date=${encodeURIComponent(date)}`);
-      const requests = result.requests || [];
-      rows.innerHTML = requests.length
-        ? requests.map((request) => {
+      const reportRequests = result.requests || [];
+      const summary = result.summary || {};
+      if (summaryBox) {
+        summaryBox.innerHTML = `<strong>${escapeHtml(displayDateKey(result.date || date))}</strong> · ${Number(summary.completed || 0)} completed · ${Number(summary.cancelled || 0)} cancelled <span>Status tabs: ${Number(summary.visibleCompleted || 0)} completed · ${Number(summary.visibleCancelled || 0)} cancelled</span>`;
+      }
+      rows.innerHTML = reportRequests.length
+        ? reportRequests.map((request) => {
             const isCompleted = request.status === "COMPLETED";
-            const handledBy = isCompleted
+            const handledBy = request.handledBy?.name || (isCompleted
               ? (request.completedBy?.name || "—")
-              : (request.cancelledBy?.name || "—");
-            const when = isCompleted ? request.completedAt : request.cancelledAt;
+              : (request.cancelledBy?.name || "—"));
+            const when = request.actionAt || (isCompleted ? request.completedAt : request.cancelledAt);
             return `<tr>
               <td>${when ? formatDateTime(when) : "—"}</td>
               <td>${escapeHtml(request.customer?.name || "—")}</td>
@@ -525,15 +544,16 @@
               <td><strong>${escapeHtml(handledBy)}</strong></td>
             </tr>`;
           }).join("")
-        : '<tr><td colspan="6" class="empty">No completed or cancelled requests on this date.</td></tr>';
+        : `<tr><td colspan="6" class="empty">No completion/cancellation action on ${escapeHtml(displayDateKey(result.date || date))}. Status-tab totals are all dates; choose the date when the job was actually completed or cancelled.</td></tr>`;
     } catch (error) {
+      if (summaryBox) summaryBox.textContent = "Daily Report sync failed.";
       rows.innerHTML = `<tr><td colspan="6" class="empty">${escapeHtml(error.message || "Could not load the daily report.")}</td></tr>`;
     }
   }
 
   document.getElementById("dailyReportButton").addEventListener("click", () => {
     const dateInput = document.getElementById("dailyReportDate");
-    if (!dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+    if (!dateInput.value) dateInput.value = localDateKey();
     document.getElementById("dailyReportDialog").showModal();
     loadDailyReport(dateInput.value);
   });

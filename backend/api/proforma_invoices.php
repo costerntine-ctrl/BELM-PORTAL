@@ -79,16 +79,47 @@ if ($method === 'GET' && $action === 'export') {
 }
 
 if ($method === 'GET' && $action === 'pending-job-cards') {
+    // V337: Billing must see the same assignment that Engineering sees. Older
+    // Service Requests can be ASSIGNED while the copied technician_id/name on
+    // digital_job_cards is still blank. Derive the effective Technician from
+    // the source Service Request instead of dropping that Job Card from the
+    // Proforma queue. This is read-side recovery; normal Engineering sync will
+    // still persist the copied assignment on the Job Card itself.
     $stmt = db()->query(
-        "SELECT j.id,j.job_card_no,j.customer_id,j.machine_id,j.technician_id,j.technician_name,j.status,j.billing_status,j.created_at,j.updated_at,
-                c.name AS customer_name,m.brand,m.model,m.machine_type,bc.status AS case_status,
-                CASE WHEN UPPER(COALESCE(j.status,''))='COMPLETED' AND UPPER(COALESCE(bc.status,''))='COMPLETED' AND j.signed_copy_data IS NOT NULL THEN 1 ELSE 0 END AS can_prepare
+        "SELECT j.id,j.job_card_no,j.customer_id,j.machine_id,
+                COALESCE(j.technician_id,sr.assigned_to_id) AS technician_id,
+                COALESCE(NULLIF(j.technician_name,''),u.name) AS technician_name,
+                CASE
+                  WHEN UPPER(COALESCE(j.status,'')) IN ('OPEN','RECEIVED') AND COALESCE(j.technician_id,sr.assigned_to_id) IS NOT NULL THEN 'ASSIGNED'
+                  ELSE j.status
+                END AS status,
+                CASE
+                  WHEN UPPER(COALESCE(j.billing_status,'')) IN ('','NOT_READY') AND COALESCE(j.technician_id,sr.assigned_to_id) IS NOT NULL THEN 'PROFORMA_PENDING'
+                  ELSE j.billing_status
+                END AS billing_status,
+                j.created_at,j.updated_at,c.name AS customer_name,m.brand,m.model,m.machine_type,bc.status AS case_status,bc.source_type,
+                CASE
+                  WHEN UPPER(COALESCE(bc.source_type,''))<>'SERVICE_REQUEST' THEN 1
+                  WHEN UPPER(COALESCE(j.status,''))='COMPLETED'
+                       AND UPPER(COALESCE(bc.status,''))='COMPLETED'
+                       AND NULLIF(TRIM(COALESCE(j.signed_copy_data,'')),'') IS NOT NULL THEN 1
+                  ELSE 0
+                END AS can_prepare,
+                CASE
+                  WHEN UPPER(COALESCE(bc.source_type,''))<>'SERVICE_REQUEST' THEN 'Ready to generate Proforma'
+                  WHEN UPPER(COALESCE(j.status,''))<>'COMPLETED' THEN 'Complete Technician Job Card'
+                  WHEN UPPER(COALESCE(bc.status,''))<>'COMPLETED' THEN 'Complete Workshop testing'
+                  WHEN NULLIF(TRIM(COALESCE(j.signed_copy_data,'')),'') IS NULL THEN 'Upload customer-signed Job Card'
+                  ELSE 'Ready to generate Proforma'
+                END AS pending_reason
          FROM digital_job_cards j
          JOIN breakdown_cases bc ON bc.id=j.case_id
          JOIN customers c ON c.id=j.customer_id
          LEFT JOIN machines m ON m.id=j.machine_id
-         WHERE j.technician_id IS NOT NULL
-           AND UPPER(COALESCE(j.status,'')) IN ('ASSIGNED','IN_PROGRESS','WAITING_PARTS','TESTING','COMPLETED')
+         LEFT JOIN service_requests sr ON bc.source_type='SERVICE_REQUEST' AND sr.id=bc.source_id
+         LEFT JOIN users u ON u.id=sr.assigned_to_id
+         WHERE UPPER(COALESCE(j.status,'')) IN ('OPEN','RECEIVED','ASSIGNED','IN_PROGRESS','WAITING_PARTS','TESTING','COMPLETED')
+           AND (COALESCE(j.technician_id,sr.assigned_to_id) IS NOT NULL OR UPPER(COALESCE(j.billing_status,''))='PROFORMA_PENDING')
            AND NOT EXISTS (SELECT 1 FROM proforma_invoices p WHERE p.source_job_card_id=j.id AND p.deleted_at IS NULL)
          ORDER BY CASE WHEN UPPER(COALESCE(j.status,''))='COMPLETED' THEN 0 ELSE 1 END,j.updated_at DESC"
     );
@@ -238,7 +269,7 @@ if ($method === 'POST') {
     }
     if ($sourceJobCardId !== '') { belm_recompute_job_billing_status($sourceJobCardId); }
     log_activity($user, 'proforma-created', 'proforma', $newId, ['invoiceNo' => $invoiceNo]);
-    json_out(['id' => $newId, 'invoiceNo' => $invoiceNo], 201);
+    json_out(['id' => $newId, 'invoiceNo' => $invoiceNo, 'sourceJobCardId' => $sourceJobCardId !== '' ? $sourceJobCardId : null, 'billingStatus' => $sourceJobCardId !== '' ? 'PROFORMA_READY' : null], 201);
 }
 
 

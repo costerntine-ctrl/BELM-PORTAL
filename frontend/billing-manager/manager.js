@@ -59,6 +59,21 @@
     return data;
   }
 
+
+  function activateBillingTab(tabName) {
+    const wanted = String(tabName || '').trim();
+    if (!wanted) return;
+    const button = document.querySelector(`[data-tab="${CSS.escape(wanted)}"]`);
+    if (!button) return;
+    document.querySelectorAll("[data-tab]").forEach((tab) => tab.classList.toggle("active", tab === button));
+    document.querySelectorAll("[data-billing-panel]").forEach((panel) =>
+      panel.classList.toggle("hidden", panel.dataset.billingPanel !== wanted));
+  }
+
+  function requestedBillingTab() {
+    try { return new URLSearchParams(window.location.search).get('tab') || ''; } catch (_) { return ''; }
+  }
+
   function customerOptions(selected = "") {
     return `<option value="">Select customer…</option>${customers.map((customer) =>
       `<option value="${escapeHtml(customer.id)}" ${customer.id === selected ? "selected" : ""}>${escapeHtml(customer.name)}</option>`
@@ -167,7 +182,7 @@
 
   function renderProformas() {
     const panel = document.getElementById("proformasPanel");
-    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>JC / Proforma Code</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="edit" data-prepare-pending-proforma="${escapeHtml(job.id)}">Prepare ${escapeHtml(job.proformaCode||job.jobCardNo)}</button>`:`<button type="button" disabled>Waiting Job Completion</button>`}</td></tr>`).join("")}</tbody></table></div><small>The JC Number is the reserved Proforma code. It stays PENDING after Technician assignment until the signed Job Card is ready for billing.</small></div>` : '';
+    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>JC / Proforma Code</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="edit" data-prepare-pending-proforma="${escapeHtml(job.id)}">Generate ${escapeHtml(job.proformaCode||job.jobCardNo)}</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The JC Number is the reserved Proforma code. It stays PENDING after Technician assignment until the signed Job Card is ready for billing.</small></div>` : '';
     const actualHtml = proformas.length ? `<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
       <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button></div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
     `).join("")}</tbody></table></div>` : '<div class="empty">No prepared proforma invoices yet.</div>';
@@ -730,7 +745,7 @@
     button.disabled = true;
     button.dataset.originalText = button.textContent;
     try {
-      await api(id ? `/proforma-invoices/${id}` : "/proforma-invoices", {
+      const savedProforma = await api(id ? `/proforma-invoices/${id}` : "/proforma-invoices", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify({
           customerId: document.getElementById("proformaCustomer").value,
@@ -753,7 +768,9 @@
       await showButtonSuccess(button);
       document.getElementById("proformaDialog").close();
       await load();
-      showAlert(id ? "Proforma updated successfully." : "Proforma saved successfully.");
+      activateBillingTab('proformas');
+      const generatedNo = savedProforma?.invoiceNo || '';
+      showAlert(id ? "Proforma updated successfully." : (generatedNo ? `✓ Proforma ${generatedNo} generated and synchronized.` : "Proforma generated successfully."));
     } catch (error) {
       formError("proformaError", error.message);
     } finally {
@@ -779,9 +796,12 @@
   document.querySelector(".tabs").addEventListener("click", (event) => {
     const button = event.target.closest("[data-tab]");
     if (!button) return;
-    document.querySelectorAll("[data-tab]").forEach((tab) => tab.classList.toggle("active", tab === button));
-    document.querySelectorAll("[data-billing-panel]").forEach((panel) =>
-      panel.classList.toggle("hidden", panel.dataset.billingPanel !== button.dataset.tab));
+    activateBillingTab(button.dataset.tab);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', button.dataset.tab);
+      history.replaceState(null, '', url);
+    } catch (_) {}
   });
   document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => document.getElementById(button.dataset.close).close()));
   document.getElementById("newInvoiceButton").addEventListener("click", openInvoice);
@@ -1027,5 +1047,11 @@
     showAlert("Invoice pre-filled from the customer-signed Job Card — enter the agreed price/tax, then Save.");
   }
 
-  load().then(async()=>{await applyProformaPrefillFromSparePartRequest();await applyInvoicePrefillFromJobCard();});
+  activateBillingTab(requestedBillingTab());
+  load().then(async()=>{
+    activateBillingTab(requestedBillingTab());
+    await applyProformaPrefillFromSparePartRequest();
+    await applyInvoicePrefillFromJobCard();
+    activateBillingTab(requestedBillingTab());
+  });
 })();

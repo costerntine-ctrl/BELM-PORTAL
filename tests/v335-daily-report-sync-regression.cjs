@@ -1,0 +1,28 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const php=fs.readFileSync(path.join(root,'backend/api/service_requests.php'),'utf8');
+const js=fs.readFileSync(path.join(root,'frontend/service-request-manager/manager.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'frontend/service-request-manager/index.html'),'utf8');
+const css=fs.readFileSync(path.join(root,'frontend/service-request-manager/manager.css'),'utf8');
+const sw=fs.readFileSync(path.join(root,'frontend/belm-sw.js'),'utf8');
+let checks=0;
+function ok(v,msg){if(!v){console.error('FAIL:',msg);process.exit(1)}checks++;}
+ok(php.includes("$reportTimezone = 'Africa/Dar_es_Salaam';"),'server uses portal timezone');
+ok(php.includes("AT TIME ZONE 'Africa/Dar_es_Salaam'"),'SQL filters final action by local calendar date');
+ok(php.includes("COALESCE(sr.completed_at, fh.created_at, sr.updated_at, sr.created_at)"),'legacy completed timestamps have audit fallback');
+ok(php.includes("COALESCE(sr.cancelled_at, fh.created_at, sr.updated_at, sr.created_at)"),'legacy cancelled timestamps have audit fallback');
+ok(php.includes("service_request_history h")&&php.includes("UPPER(COALESCE(h.to_value,'')) = sr.status"),'final status history is used for recovery');
+ok(php.includes("$r['actionAt'] = $r['action_at'];"),'API exposes canonical actionAt');
+ok(php.includes("$r['handledBy']"),'API exposes canonical handledBy');
+ok(php.includes("'visibleCompleted'")&&php.includes("hidden_at IS NULL"),'API returns status-tab aligned totals');
+ok(js.includes('function localDateKey(value = new Date())'),'frontend uses local date helper');
+ok(!js.includes('new Date().toISOString().slice(0, 10)'),'Daily Report no longer defaults through UTC ISO date');
+ok(js.includes('request.actionAt ||'),'frontend renders canonical final timestamp');
+ok(js.includes('request.handledBy?.name'),'frontend renders canonical handler');
+ok(js.includes('Status tabs:'),'modal explains all-date status totals');
+ok(html.includes('id="dailyReportSummary"'),'Daily Report has sync summary');
+ok(html.includes('manager.js?v=335-daily-report-sync'),'JS cache bust updated');
+ok(css.includes('.daily-report-sync-summary'),'summary style exists');
+ok(/belm-app-v3(?:3[5-9]|[4-9][0-9])[-a-z0-9]*/.test(sw),'service worker cache updated');
+console.log(`V335 checks ${checks}/17`);

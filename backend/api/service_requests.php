@@ -144,33 +144,93 @@ if ($method === 'PUT' && $action === 'operator-reports') {
 }
 
 if ($method === 'GET' && $action === 'daily-report') {
-    $date = trim((string)($_GET['date'] ?? date('Y-m-d')));
+    // V335: the status tabs are all-time working counts, while Daily Report is
+    // scoped to the local calendar date on which COMPLETED/CANCELLED happened.
+    // TIMESTAMPTZ::date depends on the PostgreSQL session timezone, so use the
+    // portal's Tanzania timezone explicitly. Legacy final rows may predate the
+    // completed_at/cancelled_at columns; recover their final action timestamp
+    // from History, then updated_at/created_at as a last-resort audit fallback.
+    $reportTimezone = 'Africa/Dar_es_Salaam';
+    $todayLocal = (new DateTimeImmutable('now', new DateTimeZone($reportTimezone)))->format('Y-m-d');
+    $date = trim((string)($_GET['date'] ?? $todayLocal));
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) json_error('Enter a valid date (YYYY-MM-DD).');
 
     $stmt = db()->prepare(
-        'SELECT sr.*, c.name AS customer_name, m.model AS machine_model, m.machine_type,
-                cu.name AS completed_by_name, xu.name AS cancelled_by_name
-         FROM service_requests sr
-         LEFT JOIN customers c ON c.id = sr.customer_id
-         LEFT JOIN machines m ON m.id = sr.machine_id
-         LEFT JOIN users cu ON cu.id = sr.completed_by_id
-         LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
-         WHERE (sr.status = \'COMPLETED\' AND sr.completed_at::date = ?)
-            OR (sr.status = \'CANCELLED\' AND sr.cancelled_at::date = ?)
-         ORDER BY COALESCE(sr.completed_at, sr.cancelled_at) DESC'
+        "WITH final_requests AS (
+            SELECT sr.*, c.name AS customer_name, m.model AS machine_model, m.machine_type,
+                   cu.name AS completed_by_name, xu.name AS cancelled_by_name,
+                   CASE WHEN sr.status='COMPLETED'
+                        THEN COALESCE(sr.completed_at, fh.created_at, sr.updated_at, sr.created_at)
+                        ELSE COALESCE(sr.cancelled_at, fh.created_at, sr.updated_at, sr.created_at)
+                   END AS action_at,
+                   CASE WHEN sr.status='COMPLETED'
+                        THEN COALESCE(cu.name, fh.actor_name)
+                        ELSE COALESCE(xu.name, fh.actor_name)
+                   END AS handled_by_name
+            FROM service_requests sr
+            LEFT JOIN customers c ON c.id = sr.customer_id
+            LEFT JOIN machines m ON m.id = sr.machine_id
+            LEFT JOIN users cu ON cu.id = sr.completed_by_id
+            LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
+            LEFT JOIN LATERAL (
+                SELECT h.created_at, h.actor_name
+                FROM service_request_history h
+                WHERE h.request_id = sr.id
+                  AND h.event_type = 'STATUS'
+                  AND UPPER(COALESCE(h.to_value,'')) = sr.status
+                ORDER BY h.created_at DESC
+                LIMIT 1
+            ) fh ON TRUE
+            WHERE sr.status IN ('COMPLETED','CANCELLED')
+        )
+        SELECT * FROM final_requests
+        WHERE (action_at AT TIME ZONE 'Africa/Dar_es_Salaam')::date = ?
+        ORDER BY action_at DESC"
     );
-    $stmt->execute([$date, $date]);
+    $stmt->execute([$date]);
     $requests = $stmt->fetchAll();
+
+    $selectedCompleted = 0;
+    $selectedCancelled = 0;
     foreach ($requests as &$r) {
+        $isCompleted = strtoupper((string)$r['status']) === 'COMPLETED';
+        if ($isCompleted) $selectedCompleted++; else $selectedCancelled++;
         $r['customer'] = $r['customer_id'] ? ['id' => $r['customer_id'], 'name' => $r['customer_name']] : null;
         $r['machine'] = $r['machine_id'] ? ['model' => $r['machine_model'], 'machineType' => $r['machine_type']] : null;
-        $r['completedBy'] = $r['completed_by_id'] ? ['name' => $r['completed_by_name']] : null;
-        $r['cancelledBy'] = $r['cancelled_by_id'] ? ['name' => $r['cancelled_by_name']] : null;
+        $handledByName = trim((string)($r['handled_by_name'] ?? ''));
+        $r['handledBy'] = $handledByName !== '' ? ['name' => $handledByName] : null;
+        $r['completedBy'] = $isCompleted && $handledByName !== '' ? ['name' => $handledByName] : null;
+        $r['cancelledBy'] = !$isCompleted && $handledByName !== '' ? ['name' => $handledByName] : null;
+        $r['actionAt'] = $r['action_at'];
         $r['completedAt'] = $r['completed_at'];
         $r['cancelledAt'] = $r['cancelled_at'];
-        unset($r['customer_name'], $r['machine_model'], $r['machine_type'], $r['completed_by_name'], $r['cancelled_by_name']);
+        unset($r['customer_name'], $r['machine_model'], $r['machine_type'], $r['completed_by_name'], $r['cancelled_by_name'], $r['action_at'], $r['handled_by_name']);
     }
-    json_out(['date' => $date, 'requests' => $requests]);
+    unset($r);
+
+    $totalsStmt = db()->query(
+        "SELECT
+            COUNT(*) FILTER (WHERE status='COMPLETED' AND hidden_at IS NULL) AS visible_completed,
+            COUNT(*) FILTER (WHERE status='CANCELLED' AND hidden_at IS NULL) AS visible_cancelled,
+            COUNT(*) FILTER (WHERE status='COMPLETED') AS all_completed,
+            COUNT(*) FILTER (WHERE status='CANCELLED') AS all_cancelled
+         FROM service_requests"
+    );
+    $totals = $totalsStmt->fetch() ?: [];
+
+    json_out([
+        'date' => $date,
+        'timezone' => $reportTimezone,
+        'summary' => [
+            'completed' => $selectedCompleted,
+            'cancelled' => $selectedCancelled,
+            'visibleCompleted' => (int)($totals['visible_completed'] ?? 0),
+            'visibleCancelled' => (int)($totals['visible_cancelled'] ?? 0),
+            'allCompleted' => (int)($totals['all_completed'] ?? 0),
+            'allCancelled' => (int)($totals['all_cancelled'] ?? 0),
+        ],
+        'requests' => $requests,
+    ]);
 }
 
 if ($method === 'GET' && $action === 'assignees') {

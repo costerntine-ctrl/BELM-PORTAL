@@ -14,7 +14,7 @@
       }
     })();
   </script>
-    <link rel="stylesheet" href="/service-request-manager/manager.css?v=332-history-pdf-report">
+    <link rel="stylesheet" href="/service-request-manager/manager.css?v=335-daily-report-sync">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
@@ -69,6 +69,7 @@
     </div>
     <div class="daily-report-body">
       <label>Date<input id="dailyReportDate" type="date"></label>
+      <div id="dailyReportSummary" class="daily-report-sync-summary">Synchronizing final-status actions…</div>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Time</th><th>Customer</th><th>Machine</th><th>Description</th><th>Status</th><th>Handled by</th></tr></thead>
@@ -99,6 +100,6 @@
 
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
-    <script src="/service-request-manager/manager.js?v=332-history-pdf-report"></script>
+    <script src="/service-request-manager/manager.js?v=335-daily-report-sync"></script>
 </body>
 </html>

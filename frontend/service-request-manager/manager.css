@@ -131,3 +131,11 @@ html[data-theme="dark"] .compact-job-state.ready{color:#bdf4d4;border-color:#216
 .history-report-actions{border-top:1px solid var(--line,#d9e2df);background:var(--paper,#fff)}
 .history-report-actions .primary{min-width:190px}
 @media(max-width:640px){.history-report-actions{padding:12px 14px 16px}.history-report-actions .primary{width:100%;min-width:0}}
+
+
+/* V335 - Daily Report uses the same final-status source as Service Request tabs. */
+.daily-report-sync-summary{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:-2px 0 12px;padding:9px 11px;border:1px solid var(--line);border-radius:9px;color:var(--ink);background:rgba(0,166,81,.06);font-size:11px;font-weight:750}
+.daily-report-sync-summary strong{color:var(--green2)}
+.daily-report-sync-summary span{margin-left:auto;color:var(--muted);font-size:10px;font-weight:700}
+html[data-theme="dark"] .daily-report-sync-summary{background:rgba(0,166,81,.10)}
+@media(max-width:640px){.daily-report-sync-summary{display:grid;gap:4px}.daily-report-sync-summary span{margin-left:0}}

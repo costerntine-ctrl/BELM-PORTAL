@@ -11,7 +11,7 @@
 // const CACHE='belm-app-v329-action-feedback-reset'; // regression baseline
 // const CACHE='belm-app-v330-queue-company-blink'; // regression baseline
 // const CACHE='belm-app-v332-service-request-history-pdf-report'; // regression baseline
-const CACHE='belm-app-v334-latest-open-job';
+const CACHE='belm-app-v337-proforma-generate-sync';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline

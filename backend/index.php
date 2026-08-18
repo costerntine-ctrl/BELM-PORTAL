@@ -140,7 +140,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '329-action-feedback-reset'
             // Regression baseline: 'schemaVersion' => '330-queue-company-blink'
             // Regression baseline: 'schemaVersion' => '332-service-request-history-pdf-report'
-            'schemaVersion' => '334-latest-open-job',
+            'schemaVersion' => '337-proforma-generate-sync',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

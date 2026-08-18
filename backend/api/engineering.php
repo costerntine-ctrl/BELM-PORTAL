@@ -54,8 +54,10 @@ if ($method === 'GET' && $action === 'dispatch-options') {
          JOIN machines m ON m.id=j.machine_id
          WHERE j.status NOT IN ('COMPLETED','CANCELLED')
            AND bc.status <> 'COMPLETED'
-           AND (bc.source_type='SERVICE_REQUEST' OR (c.is_machinery_admin=0 AND UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER'))
-         ORDER BY j.created_at DESC
+           AND j.technician_id IS NULL
+           AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL
+           AND (bc.source_type='SERVICE_REQUEST' OR UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER')
+         ORDER BY c.name,j.created_at DESC
          LIMIT 250"
     )->fetchAll();
     foreach ($receivedJobCards as &$job) {
@@ -113,7 +115,9 @@ if ($method === 'POST' && $action === 'dispatch') {
             $j->execute([$jobId]); $job=$j->fetch();
             if(!$job) throw new RuntimeException('Selected Job Card was not found.');
             if(in_array(strtoupper((string)$job['status']),['COMPLETED','CANCELLED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('Completed/cancelled Job Cards cannot be dispatched again.');
-            if((string)$job['source_type']!=='SERVICE_REQUEST' && !empty($job['is_machinery_admin'])) throw new RuntimeException('This Job Card belongs to a customer-managed workshop and was not received by BELM.');
+            $customerIssued = strtoupper(trim((string)($job['issued_by_type']??''))) === 'CUSTOMER';
+            if((string)$job['source_type']!=='SERVICE_REQUEST' && !$customerIssued) throw new RuntimeException('Only Customer-issued or Service Request Job Cards can be received through Technician Dispatch.');
+            if(trim((string)($job['technician_id']??''))!=='' || trim((string)($job['technician_name']??''))!=='') throw new RuntimeException('This Job Card is already assigned. Use Job Card handover/reassignment instead.');
             $customerId=(string)$job['customer_id']; $caseId=(string)$job['case_id'];
             $jobNo=(string)$job['job_card_no']; $title=(string)$job['title']; $description=(string)$job['fault_description'];
             $sourceRequestId=(string)($job['source_type']==='SERVICE_REQUEST' ? ($job['source_id']??'') : '');

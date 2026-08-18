@@ -1,4 +1,5 @@
 <?php
+// Regression baseline: 307-second-pass-hardening; ['payments', 'receipt_id']; 'receipts'
 // Front controller — translates the same REST-style URLs the React
 // frontend already calls (e.g. GET /api/customers, PUT /api/spare-parts/123)
 // into the ?action=&id= style each api/*.php file expects, so neither the
@@ -24,7 +25,7 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
-// Regression baseline: 308-job-card-assignment-state-fix
+// Regression baseline: 309-received-job-card-dispatch
 // Health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
@@ -135,7 +136,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '308-job-card-assignment-state-fix',
+            'schemaVersion' => '310-service-requests-engineering',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

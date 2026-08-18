@@ -429,6 +429,18 @@
     window.location.href = "/breakdown-workflow/?source=admin";
   });
   document.getElementById("refreshButton").addEventListener("click", load);
+
+  if (new URLSearchParams(window.location.search).get("embed") === "1" && window.parent !== window) {
+    const reportEmbedHeight = () => {
+      const height = Math.ceil(Math.max(document.body.scrollHeight, document.documentElement.scrollHeight));
+      window.parent.postMessage({ type: "belm-service-requests-height", height }, window.location.origin);
+    };
+    window.addEventListener("load", reportEmbedHeight);
+    window.addEventListener("resize", reportEmbedHeight);
+    if (window.ResizeObserver) new ResizeObserver(reportEmbedHeight).observe(document.body);
+    window.setTimeout(reportEmbedHeight, 80);
+  }
+
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");

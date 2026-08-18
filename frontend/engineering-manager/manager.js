@@ -4,7 +4,7 @@
     ["customers", "Customers"],
     ["overview", "All Overview"],
     ["roles", "Roles & system users"],
-    ["service-requests", "Service requests"],
+    ["service-requests", "Service requests (inside Engineering)"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
     ["bank-manager", "Bank Manager"],
@@ -19,6 +19,16 @@
   let dispatchCustomers = [];
   let dispatchMachines = [];
   let dispatchJobCards = [];
+
+  function currentAdminUser() {
+    try { return JSON.parse(localStorage.getItem("belm_admin_user") || "null"); } catch (_) { return null; }
+  }
+  function hasPageAccess(key) {
+    const user = currentAdminUser();
+    if (!user) return false;
+    if (user.role === "Super Admin" || user.allowedPages === null) return true;
+    return Array.isArray(user.allowedPages) && user.allowedPages.includes(key);
+  }
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -169,10 +179,14 @@
 
   function renderReceivedJobCards() {
     const select=document.getElementById("dispatchJobCard"); if(!select)return;
-    select.innerHTML='<option value="">Select received Job Card...</option>'+dispatchJobCards.map((job)=>{
-      const assigned=job.technicianName?` · Assigned: ${job.technicianName}`:" · Unassigned";
-      return `<option value="${escapeHtml(job.id)}">${escapeHtml(`${job.jobCardNo} · ${job.customerName} · ${job.machineLabel} · ${job.title}${assigned}`)}</option>`;
+    const customerId=document.getElementById("dispatchCustomer")?.value||"";
+    const current=select.value||"";
+    const rows=dispatchJobCards.filter((job)=>!customerId||String(job.customerId)===String(customerId));
+    select.innerHTML='<option value="">Select received Job Card...</option>'+rows.map((job)=>{
+      const source=String(job.sourceType||"")==="SERVICE_REQUEST"?"Service Request":"Customer Job Card";
+      return `<option value="${escapeHtml(job.id)}">${escapeHtml(`${job.jobCardNo} · ${job.customerName} · ${job.machineLabel} · ${job.title} · ${source}`)}</option>`;
     }).join("");
+    if(rows.some((job)=>String(job.id)===String(current))) select.value=current;
   }
 
   function syncJobCardSource() {
@@ -182,12 +196,16 @@
     document.getElementById("dispatchTitleField")?.classList.toggle("hidden",existing);
     document.getElementById("dispatchDescriptionField")?.classList.toggle("hidden",existing);
     const customer=document.getElementById("dispatchCustomer");
-    if(customer) customer.disabled=existing;
+    if(customer) customer.disabled=false;
     if(existing){
       const job=dispatchJobCards.find((x)=>String(x.id)===String(document.getElementById("dispatchJobCard")?.value||""));
-      if(job){ customer.value=job.customerId||""; document.getElementById("dispatchPriority").value=job.priority||"NORMAL"; document.getElementById("dispatchDueDate").value=job.due_date||""; }
+      if(job){
+        customer.value=job.customerId||"";
+        document.getElementById("dispatchPriority").value=job.priority||"NORMAL";
+        document.getElementById("dispatchDueDate").value=job.due_date||"";
+      }
+      renderReceivedJobCards();
     } else {
-      if(customer) customer.disabled=false;
       renderDispatchMachines();
     }
     updateDispatchNote();
@@ -364,16 +382,58 @@
 
   document.getElementById("refreshButton").addEventListener("click", load);
 
+  function initEngineeringServiceRequests() {
+    const frame = document.getElementById("engineeringServiceRequestsFrame");
+    const locked = document.getElementById("engineeringServiceRequestsLocked");
+    if (!frame) return;
+    const allowed = hasPageAccess("service-requests");
+    if (!allowed) {
+      frame.removeAttribute("src");
+      frame.classList.add("hidden");
+      locked?.classList.remove("hidden");
+      return;
+    }
+    frame.src = frame.dataset.src || "/service-request-manager/?embed=1";
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
+      if (event.data?.type !== "belm-service-requests-height") return;
+      const height = Math.max(620, Math.min(1000, Number(event.data.height) || 0));
+      frame.style.height = `${height}px`;
+    });
+    if (window.location.hash === "#service-requests") {
+      window.setTimeout(() => document.getElementById("service-requests")?.scrollIntoView({ behavior: "smooth", block: "start" }), 180);
+    }
+  }
+
+  initEngineeringServiceRequests();
+
   if (!token) {
     showAlert("Administrator login required.");
   } else {
-    document.getElementById("dispatchTechnician")?.addEventListener("change", updateDispatchNote);
-  document.getElementById("dispatchCustomer")?.addEventListener("change", ()=>{renderDispatchMachines();updateDispatchNote();});
-  document.getElementById("dispatchJobCard")?.addEventListener("change", syncJobCardSource);
-  document.querySelectorAll('input[name="jobCardMode"]').forEach((input)=>input.addEventListener("change",syncJobCardSource));
-  document.getElementById("dispatchForm")?.addEventListener("submit", dispatchTechnician);
-  loadDispatchOptions();
-  load();
-    loadEngineerRoleSummary();
+    const rolesAccess = hasPageAccess("roles");
+    if (!rolesAccess) {
+      document.getElementById("engineeringRolesStrip")?.classList.add("hidden");
+      document.getElementById("engineeringOverviewGrid")?.classList.add("hidden");
+      document.getElementById("dispatchPanel")?.classList.add("hidden");
+      document.getElementById("refreshButton")?.classList.add("hidden");
+    } else {
+      document.getElementById("dispatchTechnician")?.addEventListener("change", updateDispatchNote);
+      document.getElementById("dispatchCustomer")?.addEventListener("change", ()=>{
+        if(dispatchMode()==="existing"){
+          const jobSelect=document.getElementById("dispatchJobCard");
+          if(jobSelect) jobSelect.value="";
+          renderReceivedJobCards();
+        } else {
+          renderDispatchMachines();
+        }
+        updateDispatchNote();
+      });
+      document.getElementById("dispatchJobCard")?.addEventListener("change", syncJobCardSource);
+      document.querySelectorAll('input[name="jobCardMode"]').forEach((input)=>input.addEventListener("change",syncJobCardSource));
+      document.getElementById("dispatchForm")?.addEventListener("submit", dispatchTechnician);
+      loadDispatchOptions();
+      load();
+      loadEngineerRoleSummary();
+    }
   }
 })();

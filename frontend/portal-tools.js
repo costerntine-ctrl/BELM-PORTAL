@@ -3890,7 +3890,7 @@
 
   function redirectServiceRequestManager() {
     if (window.location.pathname === "/admin/service-requests") {
-      window.location.replace("/service-request-manager/");
+      window.location.replace("/engineering-manager/#service-requests");
     }
   }
 

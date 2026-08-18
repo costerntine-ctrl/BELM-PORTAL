@@ -1,4 +1,5 @@
 (function () {
+  if (new URLSearchParams(window.location.search).get("embed") === "1") return;
   if (document.getElementById("belmAdminSidebar")) return;
 
   const pathname = window.location.pathname;
@@ -60,11 +61,10 @@
     { section: "Operations", key: "overview", label: "Overview", short: "OV", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
     { section: "Operations", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
     { section: "Operations", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
-    { section: "Operations", key: "service-requests", label: "Service Requests", short: "SR", href: "/service-request-manager/", paths: ["/service-request-manager/", "/admin/service-requests"], priority: true },
     { section: "Operations", key: "service-requests", label: "Maintenance Process", short: "BP", href: "/breakdown-workflow/?actor=admin", paths: ["/breakdown-workflow/"], priority: true },
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    { section: "Maintenance", key: "roles", label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
+    { section: "Maintenance", key: "roles", anyKeys: ["roles", "service-requests"], label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
     { section: "Maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
@@ -79,7 +79,7 @@
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
   const allowedPages = Array.isArray(user.allowedPages) ? user.allowedPages : [];
   const visiblePages = pages.filter((page) =>
-    page.key === null || isSuperAdmin || allowedPages.includes(page.key)
+    page.key === null || isSuperAdmin || (Array.isArray(page.anyKeys) ? page.anyKeys.some((key) => allowedPages.includes(key)) : allowedPages.includes(page.key))
   );
 
   const sidebar = document.createElement("aside");

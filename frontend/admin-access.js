@@ -17,7 +17,7 @@
     customers: "/customers-manager/",
     overview: "/overview-manager/",
     roles: "/roles-manager/",
-    "service-requests": "/service-request-manager/",
+    "service-requests": "/engineering-manager/#service-requests",
     "spare-parts": "/spare-parts-manager/",
     billing: "/billing-manager/",
     reports: "/reports-manager/",
@@ -57,11 +57,15 @@
   document.querySelectorAll("a[href]").forEach(link => {
     const href = new URL(link.getAttribute("href"), window.location.origin).pathname;
     const key = keyForPath(href);
-    if (key && !allowedPages.includes(key)) link.hidden = true;
+    const engineeringLink = /^\/engineering-manager(?:\/|$)/.test(href);
+    const engineeringAllowed = engineeringLink && (allowedPages.includes("roles") || allowedPages.includes("service-requests"));
+    if (key && !engineeringAllowed && !allowedPages.includes(key)) link.hidden = true;
   });
 
   const currentKey = keyForPath(window.location.pathname);
-  if (!currentKey || allowedPages.includes(currentKey)) return;
+  const engineeringAccess = /^\/engineering-manager(?:\/|$)/.test(window.location.pathname)
+    && (allowedPages.includes("roles") || allowedPages.includes("service-requests"));
+  if (engineeringAccess || !currentKey || allowedPages.includes(currentKey)) return;
 
   const firstAllowed = allowedPages.find(key => routes[key]);
   if (firstAllowed) {

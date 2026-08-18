@@ -4,7 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Service Requests — BELM Admin</title>
-    <link rel="stylesheet" href="/service-request-manager/manager.css?v=304-job-card-action">
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      if (params.get("embed") === "1") {
+        document.documentElement.classList.add("embed-mode");
+      } else {
+        window.location.replace("/engineering-manager/#service-requests");
+      }
+    })();
+  </script>
+    <link rel="stylesheet" href="/service-request-manager/manager.css?v=310-engineering-embed">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
@@ -88,6 +98,6 @@
 
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
-    <script src="/service-request-manager/manager.js?v=304-job-card-action"></script>
+    <script src="/service-request-manager/manager.js?v=310-engineering-embed"></script>
 </body>
 </html>

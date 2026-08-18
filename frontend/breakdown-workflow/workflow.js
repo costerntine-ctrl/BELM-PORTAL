@@ -39,7 +39,7 @@
   async function api(path,opt={}){const r=await fetch(`/api/breakdown-workflow${path}`,{...opt,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token||''}`,...(opt.headers||{})}});const text=await r.text();const data=text?JSON.parse(text):null;if(!r.ok)throw new Error(data?.error||'Request failed.');return data}
   if(!token){location.href='/';return}
 
-  document.getElementById('backButton').onclick=()=>{location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/service-request-manager/'};
+  document.getElementById('backButton').onclick=()=>{location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/engineering-manager/#service-requests'};
   if(source!=='customer'||!isWorkshop) document.querySelectorAll('.customer-only').forEach(e=>e.classList.add('hidden'));
   if(!isWorkshop||isTechnician){document.getElementById('workshopReportPanel')?.classList.add('hidden');document.querySelector('.performance-panel')?.classList.add('hidden');}
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close)?.close());

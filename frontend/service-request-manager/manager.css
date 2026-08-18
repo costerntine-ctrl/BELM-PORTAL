@@ -89,3 +89,16 @@ html[data-theme="dark"] .top-actions .job-card-button {
   .top-actions{width:100%;flex-wrap:wrap;}
   .top-actions .refresh-button{margin-left:auto;}
 }
+
+
+/* V310 - Embedded Service Requests inside Engineering. */
+html.embed-mode body { min-height: 0; background: transparent; }
+html.embed-mode body::before,
+html.embed-mode body > header { display: none !important; }
+html.embed-mode main { width: 100%; margin: 0; padding: 4px 4px 18px; }
+html.embed-mode .heading { padding: 2px 2px 0; }
+html.embed-mode .request-list { padding-bottom: 4px; }
+html.embed-mode #belmAdminSidebar,
+html.embed-mode .belm-admin-sidebar { display: none !important; }
+
+html.embed-mode .belm-global-theme-toggle { display: none !important; }

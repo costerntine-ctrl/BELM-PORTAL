@@ -127,3 +127,26 @@ dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
 .eng-job-source input{width:auto;margin:0;accent-color:#0f62fe}
 .eng-dispatch-form label small{color:var(--muted);font-size:10px;font-weight:600;text-transform:none;letter-spacing:0}
 .eng-dispatch-form .hidden{display:none!important}
+
+
+/* V310 - Service Requests live inside Engineering. */
+.eng-service-requests-host {
+  margin: 18px 0;
+  scroll-margin-top: 86px;
+}
+.eng-service-requests-host iframe {
+  display: block;
+  width: 100%;
+  min-height: 620px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--canvas);
+}
+.eng-service-requests-locked {
+  padding: 22px;
+  color: var(--muted);
+  text-align: center;
+}
+@media (max-width: 760px) {
+  .eng-service-requests-host iframe { min-height: 760px; }
+}

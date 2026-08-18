@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+  <!-- Regression baseline: v=309-received-job-card -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BELM Engineering</title>
@@ -9,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
-    <link rel="stylesheet" href="/engineering-manager/manager.css?v=305-job-card-dispatch">
+    <link rel="stylesheet" href="/engineering-manager/manager.css?v=310-service-requests-engineering">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -38,7 +39,7 @@
 
       <div id="pageAlert" class="alert hidden" role="status"></div>
 
-      <section class="eng-roles-strip">
+      <section id="engineeringRolesStrip" class="eng-roles-strip">
         <article class="eng-role-card">
           <h3>Engineer</h3>
           <p id="engineerRoleAccess" class="muted">Loading…</p>
@@ -56,7 +57,7 @@
         <form id="dispatchForm" class="eng-dispatch-form">
           <label>Technician<select id="dispatchTechnician" required><option value="">Select Technician...</option></select></label>
           <fieldset class="wide eng-job-source"><legend>Job Card Source</legend><label><input type="radio" name="jobCardMode" value="existing" checked> Select Received Job Card</label><label><input type="radio" name="jobCardMode" value="create"> Create Job Card</label></fieldset>
-          <label class="wide" id="receivedJobCardField">Received Job Card<select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><small>Customer-issued / Service Request Job Cards waiting for Technician work.</small></label>
+          <label class="wide" id="receivedJobCardField">Received Job Card<select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><small>Select customer first to filter. Shows active Customer-issued / Service Request Job Cards that are still Unassigned.</small></label>
           <label id="dispatchCustomerField">Customer for this job<select id="dispatchCustomer"><option value="">Select Customer...</option></select></label>
           <label id="dispatchMachineField" class="hidden">Machine<select id="dispatchMachine"><option value="">Select Machine...</option></select></label>
           <label class="wide hidden" id="dispatchTitleField">Job title<input id="dispatchTitle" placeholder="e.g. Hydraulic pressure diagnosis"></label>
@@ -82,7 +83,12 @@
         </form>
       </dialog>
 
-      <section class="eng-grid">
+      <section id="service-requests" class="eng-service-requests-host" aria-label="Service Requests inside Engineering">
+        <iframe id="engineeringServiceRequestsFrame" title="Engineering Service Requests" data-src="/service-request-manager/?embed=1" loading="eager"></iframe>
+        <div id="engineeringServiceRequestsLocked" class="panel eng-service-requests-locked hidden">Service Requests access is not enabled for this role.</div>
+      </section>
+
+      <section id="engineeringOverviewGrid" class="eng-grid">
         <article class="panel eng-card">
           <div class="panel-head"><h2>Machine activity</h2><span id="activityCount" class="eng-count">0</span></div>
           <div id="activityList" class="eng-card-body"><p class="muted">Loading…</p></div>
@@ -118,6 +124,6 @@
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/engineering-manager/manager.js?v=305-job-card-dispatch"></script>
+    <script src="/engineering-manager/manager.js?v=310-service-requests-engineering"></script>
   </body>
 </html>

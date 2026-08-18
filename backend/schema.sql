@@ -495,11 +495,14 @@ CREATE TABLE IF NOT EXISTS company_expenses (
 ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_data TEXT NULL;
 ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_mime VARCHAR(50) NULL;
 ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_name VARCHAR(255) NULL;
+ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NULL;
 
 ALTER TABLE company_expenses
   ADD COLUMN IF NOT EXISTS bank_account_id VARCHAR(36) NULL REFERENCES bank_accounts(id);
 CREATE INDEX IF NOT EXISTS idx_company_expenses_bank_account
   ON company_expenses(bank_account_id);
+CREATE INDEX IF NOT EXISTS idx_company_expenses_date
+  ON company_expenses(date DESC);
 
 CREATE TABLE IF NOT EXISTS bank_withdrawals (
   id VARCHAR(36) PRIMARY KEY,

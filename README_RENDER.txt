@@ -493,3 +493,15 @@ Publish one login URL for all BELM portal email/password accounts:
 The unified login endpoint verifies the credentials first, then routes the user to the correct workspace based on the verified account type, role, tenant and permissions.
 Legacy /app/<company>, /app/*@BELM, /admin/login and /portal/login links redirect to /login for compatibility.
 The Technician workspace remains /tech after successful sign-in.
+
+V347 BILLING DATA STORAGE & PERSISTENCE
+---------------------------------------
+Billing records are stored in the PostgreSQL database connected through DATABASE_URL; they are not kept only in the browser.
+- BELM company operating expenses: company_expenses
+- Proformas and lines: proforma_invoices / proforma_invoice_items
+- Invoices and lines: invoices / invoice_items
+- Customer payments: payments
+- Official receipts: receipts
+- Customer/Machine procurement, fuel and petty cash: usage_logs (separate from BELM company P&L)
+
+Normal Render deploys/restarts run additive schema migrations and do not truncate these tables. A deliberate reset/delete action is different and can remove/soft-delete records as designed. V347 fault-isolates Billing API loads so a failure in one section cannot make another saved section look empty.

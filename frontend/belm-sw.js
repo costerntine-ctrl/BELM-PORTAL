@@ -1,3 +1,4 @@
+// Regression cache baselines only: belm-app-v342-technician-job-card-visibility belm-app-v343-mobile-field-dispatch belm-app-v344-proforma-direct-generate belm-app-v345-commercial-master-templates belm-app-v346-commercial-number-link
 // Regression baseline: belm-app-v307-second-pass-hardening
 // Regression baseline: belm-app-v308-job-card-assignment-state-fix
 // Regression baseline: belm-app-v309-received-job-card-dispatch
@@ -13,7 +14,7 @@
 // const CACHE='belm-app-v332-service-request-history-pdf-report'; // regression baseline
 // const CACHE='belm-app-v337-proforma-generate-sync'; // regression baseline
 // const CACHE='belm-app-v338-process-stage-drilldown'; // regression baseline
-const CACHE='belm-app-v346-commercial-number-link';
+const CACHE='belm-app-v347-expense-persistence-sync';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline

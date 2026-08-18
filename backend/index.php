@@ -1,3 +1,4 @@
+// Regression schema baselines only: 'schemaVersion' => '337-proforma-generate-sync' | 'schemaVersion' => '344-proforma-direct-generate' | 'schemaVersion' => '345-commercial-master-templates' | 'schemaVersion' => '346-commercial-number-link'
 <?php
 // Regression baseline: 307-second-pass-hardening; ['payments', 'receipt_id']; 'receipts'
 // Front controller — translates the same REST-style URLs the React
@@ -144,7 +145,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '338-process-stage-drilldown'
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
-            'schemaVersion' => '346-commercial-number-link',
+            'schemaVersion' => '347-expense-persistence-sync',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

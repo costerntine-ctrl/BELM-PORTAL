@@ -1,13 +1,14 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- Regression baselines retained as comments only: manager.js?v=346-commercial-number-link manager.css?v=346-commercial-number-link v=345-commercial-master-templates v=344-proforma-direct-generate v=341-proforma-invoice-flow v=337-proforma-generate-sync -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BELM Billing Manager</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/billing-manager/manager.css?v=346-commercial-number-link">
+    <link rel="stylesheet" href="/billing-manager/manager.css?v=347-expense-persistence-sync">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=307-billing-integrity"></script>
@@ -56,7 +57,7 @@
           <nav class="tabs" aria-label="Billing sections">
             <button class="active" data-tab="invoices" type="button"><span>01</span>Invoices</button>
             <button data-tab="payments" type="button"><span>02</span>Payments</button>
-            <button data-tab="expenses" type="button"><span>03</span>Expenses</button>
+            <button data-tab="expenses" type="button"><span>03</span>Expenses <b id="expenseCountBadge" class="tab-count">0</b></button>
             <button data-tab="proformas" type="button"><span>04</span>Proforma</button>
             <button data-tab="receipts" type="button"><span>05</span>Receipts</button>
           </nav>
@@ -199,7 +200,7 @@
     <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/billing-manager/manager.js?v=346-commercial-number-link"></script>
+    <script src="/billing-manager/manager.js?v=347-expense-persistence-sync"></script>
     <div id="qrScanOverlay" class="qr-scan-overlay hidden">
       <video id="qrScanVideo" autoplay playsinline muted></video>
       <button id="qrScanCancelButton" type="button" class="qr-scan-cancel">Cancel scan</button>

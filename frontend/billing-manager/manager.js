@@ -8,6 +8,8 @@
   let pendingSpareProformaRequests = [];
   let receipts = [];
   let bankData = { accounts: [], withdrawals: [], summary: {} };
+  let expenseSyncError = "";
+  let expenseLastSync = null;
 
   function formatDate(value) {
     if (!value) return "—";
@@ -125,7 +127,11 @@
     document.getElementById("outstandingValue").textContent = money(invoices
       .filter((item) => !["PAID", "CANCELLED"].includes(item.status))
       .reduce((sum, item) => sum + Number(item.balance || 0), 0));
-    document.getElementById("expenseValue").textContent = money(expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+    const expenseValue = document.getElementById("expenseValue");
+    expenseValue.textContent = expenseSyncError ? "SYNC ERROR" : money(expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+    expenseValue.classList.toggle("sync-error-value", Boolean(expenseSyncError));
+    const countBadge = document.getElementById("expenseCountBadge");
+    if (countBadge) countBadge.textContent = String(expenses.length);
   }
 
   function reviewHeading(title, description, exportUrl) {
@@ -190,12 +196,21 @@
 
   function renderExpenses() {
     const panel = document.getElementById("expensesPanel");
-    if (!expenses.length) {
-      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}<div class="empty">No company expenses recorded.</div>`;
+    const total = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const syncText = expenseSyncError
+      ? `<div class="expense-storage-status error"><strong>EXPENSE SYNC ERROR</strong><span>${escapeHtml(expenseSyncError)}</span><small>The page will not show TZS 0 as if records were deleted. Press Refresh after the API/database issue is corrected.</small></div>`
+      : `<div class="expense-storage-status"><strong>✓ SAVED IN POSTGRESQL</strong><span>${expenses.length} company expense record${expenses.length === 1 ? "" : "s"} · ${money(total)}</span><small>${expenseLastSync ? `Last database sync: ${escapeHtml(expenseLastSync.toLocaleTimeString())}. ` : ""}Records entered with + Record expense are stored in company_expenses and survive normal deploys/restarts.</small></div>`;
+    const storageNote = `<div class="expense-storage-note"><strong>Storage rule</strong><span>BELM operating expenses entered here are permanent accounting records. Customer/Machine Procurement, Fuel and Petty Cash are stored separately in customer usage records and are not mixed into BELM company P&amp;L.</span></div>`;
+    if (expenseSyncError) {
+      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}${syncText}${storageNote}`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
-      <tr><td>${formatDate(expense.date)}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions">${expense.hasReceipt ? `<button type="button" data-view-expense-receipt="${escapeHtml(expense.id)}">Receipt</button>` : ""}<button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
+    if (!expenses.length) {
+      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}${syncText}${storageNote}<div class="empty">No BELM company expense records were found in PostgreSQL. Use + Record expense to create one.</div>`;
+      return;
+    }
+    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}${syncText}${storageNote}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
+      <tr><td>${formatDate(expense.date)}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "BELM")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions">${expense.hasReceipt ? `<button type="button" data-view-expense-receipt="${escapeHtml(expense.id)}">Receipt</button>` : ""}<button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
 
@@ -404,47 +419,64 @@
       document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/login">Go to admin login</a></div>';
       return;
     }
+
+    // V347: one broken Billing endpoint must never make every other section
+    // look empty.  Load each source independently so a Proforma/Invoice issue
+    // cannot hide already-saved company expenses.
+    const primary = await Promise.allSettled([
+      api("/billing/invoices"),
+      api("/company-expenses"),
+      api("/proforma-invoices"),
+      api("/proforma-invoices?action=pending-job-cards"),
+      api("/proforma-invoices?action=pending-spare-requests"),
+    ]);
+    const [invoiceResult, expenseResult, proformaResult, pendingJobResult, pendingSpareResult] = primary;
+
+    if (invoiceResult.status === "fulfilled") invoices = invoiceResult.value;
+    else {
+      invoices = [];
+      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">Invoice sync error: ${escapeHtml(invoiceResult.reason?.message || "Request failed")}</div>`;
+    }
+
+    if (expenseResult.status === "fulfilled") {
+      expenses = Array.isArray(expenseResult.value) ? expenseResult.value : [];
+      expenseSyncError = "";
+      expenseLastSync = new Date();
+    } else {
+      expenseSyncError = expenseResult.reason?.message || "Company expense records could not load.";
+      // Do not overwrite an already-visible saved list with [] just because a
+      // refresh failed.  This prevents the UI from falsely suggesting deletion.
+      if (!Array.isArray(expenses)) expenses = [];
+    }
+
+    proformas = proformaResult.status === "fulfilled" ? proformaResult.value : [];
+    pendingProformaJobs = pendingJobResult.status === "fulfilled" ? pendingJobResult.value : [];
+    pendingSpareProformaRequests = pendingSpareResult.status === "fulfilled" ? pendingSpareResult.value : [];
+
     try {
-      [invoices, expenses, proformas, pendingProformaJobs, pendingSpareProformaRequests] = await Promise.all([
-        api("/billing/invoices"),
-        api("/company-expenses"),
-        api("/proforma-invoices"),
-        api("/proforma-invoices?action=pending-job-cards"),
-        api("/proforma-invoices?action=pending-spare-requests"),
-      ]);
-      // Customer lookup is part of Billing itself. Billing staff should not
-      // need the separate Customers Manager permission just to issue an invoice.
-      try {
-        customers = await api("/billing?action=customer-lookup");
-      } catch (lookupError) {
-        customers = [];
-        showAlert(`Customer list could not load: ${lookupError.message}`, true);
-      }
-      try {
-        receipts = await api("/receipts");
-      } catch (_) {
-        receipts = [];
-      }
-      // Bank account options are a convenience for tagging which bank a
-      // payment/expense went into. Bank Manager itself (adding accounts,
-      // withdrawals) lives only in /bank-controller/ under its own
-      // permission, so this must never block the rest of Billing loading
-      // for staff who don't have that separate access.
-      try {
-        bankData = await api("/bank-manager");
-      } catch (_) {
-        bankData = { accounts: [], withdrawals: [], summary: {} };
-      }
+      customers = await api("/billing?action=customer-lookup");
+    } catch (lookupError) {
+      customers = [];
+      showAlert(`Customer list could not load: ${lookupError.message}`, true);
+    }
+    try { receipts = await api("/receipts"); } catch (_) { receipts = []; }
+    try { bankData = await api("/bank-manager"); } catch (_) { bankData = { accounts: [], withdrawals: [], summary: {} }; }
+
+    if (invoiceResult.status === "fulfilled") {
       renderInvoices();
       renderPayments();
-      renderExpenses();
-      renderProformas();
-      renderReceipts();
-      updateMetrics();
-    } catch (error) {
-      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/login">Go to admin login</a></div>`;
-      showAlert(error.message, true);
     }
+    renderExpenses();
+    renderProformas();
+    renderReceipts();
+    updateMetrics();
+
+    const failedNames = [];
+    if (invoiceResult.status === "rejected") failedNames.push("Invoices");
+    if (expenseResult.status === "rejected") failedNames.push("Expenses");
+    if (proformaResult.status === "rejected") failedNames.push("Proforma");
+    if (pendingJobResult.status === "rejected" || pendingSpareResult.status === "rejected") failedNames.push("Pending Proforma queue");
+    if (failedNames.length) showAlert(`Partial sync warning: ${failedNames.join(", ")}. Other Billing records remain visible.`, true);
   }
 
   function invoiceItemRow(item = {}) {
@@ -757,7 +789,7 @@
         receiptPhoto = read.dataUrl;
         receiptName = read.name;
       }
-      await api(id ? `/company-expenses/${id}` : "/company-expenses", {
+      const saved = await api(id ? `/company-expenses/${id}` : "/company-expenses", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify({
           date: document.getElementById("expenseDate").value,
@@ -774,8 +806,25 @@
       });
       await showButtonSuccess(button);
       document.getElementById("expenseDialog").close();
+      if (saved?.expense?.id) {
+        expenses = [saved.expense, ...expenses.filter((item) => item.id !== saved.expense.id)];
+        expenseSyncError = "";
+        expenseLastSync = new Date();
+        renderExpenses();
+        updateMetrics();
+      }
+      activateBillingTab("expenses");
+      const persistedId = saved?.expense?.id || saved?.id || id;
       await load();
-      showAlert(id ? "Expense changes saved successfully." : "Expense recorded successfully.");
+      if (persistedId && expenses.some((item) => item.id === persistedId)) {
+        showAlert(id
+          ? "✓ Expense changes saved and verified in PostgreSQL."
+          : "✓ Expense saved permanently in PostgreSQL and verified in Billing.");
+      } else if (saved?.persisted) {
+        showAlert("Expense was saved in PostgreSQL, but the page could not verify the refreshed list. Press Refresh; the record was not deleted.", true);
+      } else {
+        showAlert(id ? "Expense changes saved successfully." : "Expense recorded successfully.");
+      }
     } catch (error) {
       formError("expenseError", error.message);
     } finally {

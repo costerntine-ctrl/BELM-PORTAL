@@ -22,7 +22,7 @@ test('job cards retain priority and due date',schema.includes("ADD COLUMN IF NOT
 test('health checks V305 job card columns',/\['digital_job_cards',\s*'priority'\]/.test(health)&&(() => { const m = /'schemaVersion' => '(\d+)-/.exec(health); return m && Number(m[1]) >= 305; })());
 test('dedicated Technician Job Card workspace exists',techHtml.includes('My Job Cards')&&techHtml.includes('My Reports')&&techHtml.includes('Job Card Workspace'));
 test('Technician page uses dedicated compact API',techJs.includes('/technician-jobs')&&bwApi.includes("action === 'technician-jobs'"));
-test('Technician list scoped to assigned technician',bwApi.includes("$where=['j.technician_id=?']"));
+test('Technician list scoped to assigned technician',bwApi.includes('j.technician_id=?')&&bwApi.includes('sr_fix.assigned_to_id=?'));
 test('Technician can update report inside Job Card workspace',techJs.includes('/job-report/')&&techHtml.includes('Save Job Report'));
 test('Technician can request spare from Job Card',techJs.includes("api('/spare'")&&techHtml.includes('Request Spare'));
 test('Technician can download reference PDF',techJs.includes('job-card-pdf')&&techJs.includes('Download Report PDF'));

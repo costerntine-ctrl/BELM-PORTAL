@@ -13,7 +13,7 @@ const checks = [
   ['keyboard focus visible', css.includes('.portal-actions a:focus-visible')],
   ['customer manager css cache bumped', html.includes('manager.css?v=340-customer-login-blue')],
   ['unchanged manager js retains compatible cache label', html.includes('manager.js?v=320-engineering-single-owner')],
-  ['service worker cache bumped', sw.includes("belm-app-v340-customer-login-blue")],
+  ['service worker cache bumped', (/belm-app-v(?:340-customer-login-blue|341-proforma-invoice-direct-sync|342-technician-job-card-visibility)/.test(sw))],
 ];
 let failed = 0;
 for (const [name, ok] of checks) { console.log(`${ok ? 'PASS' : 'FAIL'} - ${name}`); if (!ok) failed++; }

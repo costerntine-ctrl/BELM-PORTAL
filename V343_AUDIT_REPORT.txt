@@ -1,0 +1,7 @@
+V343 audit target: portable field dispatch and job-site navigation.
+
+Assignment source of truth remains digital_job_cards.technician_id with V342 Service Request self-repair.
+Location source priority:
+  1. Explicit Job Card job_location saved by Engineering.
+  2. Customer registered address fallback.
+Navigation opens directions to the Job Card destination; the portal does not continuously track or store the Technician's live GPS position.

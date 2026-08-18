@@ -60,7 +60,7 @@ function bw_context(array $payload): array {
 
 function bw_case_access(array $ctx, string $caseId): array {
     $stmt = db()->prepare(
-        'SELECT bc.*, c.name AS customer_name, c.is_machinery_admin,
+        'SELECT bc.*, c.name AS customer_name, c.address AS customer_address, c.is_machinery_admin,
                 m.brand, m.model, m.machine_type, m.serial_number, m.reg_number
          FROM breakdown_cases bc
          JOIN customers c ON c.id = bc.customer_id
@@ -110,9 +110,38 @@ function bw_is_technician_actor(array $ctx): bool {
 
 function bw_require_assigned_job(array $ctx, array $job): void {
     if (!bw_is_technician_actor($ctx)) return;
-    if (empty($job['technician_id']) || (string)$job['technician_id'] !== (string)$ctx['actorId']) {
-        json_error('This Job Card is not assigned to this Technician.', 403);
+    $actorId = trim((string)($ctx['actorId'] ?? ''));
+    $jobTechId = trim((string)($job['technician_id'] ?? ''));
+    if ($actorId !== '' && $jobTechId === $actorId) return;
+
+    // V342: legacy/interrupted Service Request sync can leave the source request
+    // assigned to the Technician while digital_job_cards.technician_id is still
+    // NULL. Recover only that safe missing-assignment case; never override a Job
+    // Card that is explicitly assigned to a different Technician.
+    if ($actorId !== '' && $jobTechId === '' && !empty($job['id'])) {
+        $recover = db()->prepare(
+            "SELECT sr.assigned_to_id,u.name AS assigned_to_name
+             FROM digital_job_cards j
+             JOIN breakdown_cases bc ON bc.id=j.case_id
+             JOIN service_requests sr ON bc.source_type='SERVICE_REQUEST' AND sr.id=bc.source_id
+             LEFT JOIN users u ON u.id=sr.assigned_to_id
+             WHERE j.id=? LIMIT 1"
+        );
+        $recover->execute([(string)$job['id']]);
+        $sourceAssignment = $recover->fetch() ?: [];
+        if (trim((string)($sourceAssignment['assigned_to_id'] ?? '')) === $actorId) {
+            $name = trim((string)($sourceAssignment['assigned_to_name'] ?? '')) ?: (string)($ctx['actorName'] ?? 'Technician');
+            db()->prepare(
+                "UPDATE digital_job_cards
+                 SET technician_id=?,technician_name=?,
+                     status=CASE WHEN UPPER(COALESCE(status,'')) IN ('OPEN','RECEIVED') THEN 'ASSIGNED' ELSE status END,
+                     updated_at=NOW()
+                 WHERE id=? AND technician_id IS NULL"
+            )->execute([$actorId,$name,(string)$job['id']]);
+            return;
+        }
     }
+    json_error('This Job Card is not assigned to this Technician.', 403);
 }
 
 function bw_log(string $caseId, string $stage, string $department, string $action, ?string $note, array $ctx): void {
@@ -634,7 +663,7 @@ if ($method === 'GET' && $action === 'machine-job-cards-pdf' && !empty($_GET['ma
 }
 
 if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
-    $stmt=db()->prepare('SELECT j.*,bc.customer_id,bc.current_stage,c.name customer_name,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
+    $stmt=db()->prepare('SELECT j.*,bc.customer_id,bc.current_stage,c.name customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
         u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name
         FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id
         LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN customers hc ON hc.id=u.assigned_customer_id WHERE j.id=?');
@@ -648,6 +677,7 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Status', $job['status']],
         ['Priority', $job['priority'] ?: 'NORMAL'],
         ['Due Date', !empty($job['due_date']) ? display_date_billing($job['due_date']) : '-'],
+        ['Job Location', trim((string)($job['job_location'] ?? '')) ?: (trim((string)($job['customer_address'] ?? '')) ?: '-')],
         ['Issued By', $job['issued_by_name'] ?: ($job['generated_by_name'] ?: $job['customer_name'])],
         ['Issued At', display_date_billing($job['issued_at'] ?: $job['created_at'])],
         ['Technician', $job['technician_name'] ?: 'Unassigned'],
@@ -733,17 +763,47 @@ if ($method === 'GET' && $action === 'signed-job-card-file' && $id !== '') {
 if ($method === 'GET' && $action === 'technician-jobs') {
     $isTechActor = !empty($ctx['isTechnician']) || ($ctx['kind']==='customer' && $ctx['role']==='technician');
     if(!$isTechActor) json_error('Technician login required.',403);
-    $params=[$ctx['actorId']];
-    $where=['j.technician_id=?'];
+    $actorId=trim((string)($ctx['actorId']??''));
+    if($actorId==='') json_error('Technician account identity is missing. Please log in again.',401);
+
+    // V342 self-heal: Service Request assignment and Digital Job Card assignment
+    // are one operational record. If an older/interrupted sync left the Job Card
+    // without technician_id, repair it when that source request is assigned to
+    // the logged-in Technician. Do not overwrite an explicit different assignee.
+    try {
+        db()->prepare(
+            "UPDATE digital_job_cards j
+             SET technician_id=sr.assigned_to_id,
+                 technician_name=COALESCE(NULLIF(TRIM(u.name),''),NULLIF(TRIM(j.technician_name),''),?),
+                 status=CASE WHEN UPPER(COALESCE(j.status,'')) IN ('OPEN','RECEIVED') THEN 'ASSIGNED' ELSE j.status END,
+                 updated_at=NOW()
+             FROM breakdown_cases bc
+             JOIN service_requests sr ON bc.source_type='SERVICE_REQUEST' AND sr.id=bc.source_id
+             LEFT JOIN users u ON u.id=sr.assigned_to_id
+             WHERE j.case_id=bc.id
+               AND sr.assigned_to_id=?
+               AND j.technician_id IS NULL
+               AND UPPER(COALESCE(j.status,''))<>'CANCELLED'"
+        )->execute([(string)($ctx['actorName']??'Technician'),$actorId]);
+        db()->prepare(
+            "UPDATE digital_job_cards SET technician_name=?,updated_at=NOW()
+             WHERE technician_id=? AND COALESCE(TRIM(technician_name),'')=''"
+        )->execute([(string)($ctx['actorName']??'Technician'),$actorId]);
+    } catch(Throwable $e) {
+        error_log('Technician Job Card assignment recovery failed: '.$e->getMessage());
+    }
+
+    $params=[$actorId,$actorId];
+    $where=["(j.technician_id=? OR (j.technician_id IS NULL AND bc.source_type='SERVICE_REQUEST' AND EXISTS (SELECT 1 FROM service_requests sr_fix WHERE sr_fix.id=bc.source_id AND sr_fix.assigned_to_id=?)))"];
     if($ctx['kind']==='customer') { $where[]='j.customer_id=?'; $params[]=$ctx['customerId']; }
     $machineId=trim((string)($_GET['machineId']??''));
     if($machineId!==''){ $where[]='j.machine_id=?'; $params[]=$machineId; }
     $stmt=db()->prepare(
         "SELECT j.id,j.case_id,j.customer_id,j.machine_id,j.job_card_no,j.title,j.fault_description,j.status,
-                j.priority,j.due_date,j.diagnosis,j.work_done,j.test_result,j.completion_note,j.repeat_issue,
+                j.technician_id,j.technician_name,j.priority,j.due_date,j.job_location,j.diagnosis,j.work_done,j.test_result,j.completion_note,j.repeat_issue,
                 j.issued_by_name,j.issued_by_type,j.issued_at,j.started_at,j.completed_at,j.created_at,j.updated_at,
                 bc.status AS case_status,bc.current_stage,bc.current_department,bc.blocker_reason,bc.source_type,bc.source_id,
-                c.name AS customer_name,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
+                c.name AS customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
                 (SELECT COUNT(*) FROM breakdown_spare_requests sr WHERE sr.job_card_id=j.id AND sr.status NOT IN ('REJECTED','PARTS_READY')) AS open_spare_requests
          FROM digital_job_cards j
          JOIN breakdown_cases bc ON bc.id=j.case_id
@@ -756,6 +816,11 @@ if ($method === 'GET' && $action === 'technician-jobs') {
     foreach($rows as &$row){
         $row['machineLabel']=trim(($row['brand']??'').' '.($row['model']??'')) ?: ($row['machine_type']??'Machine');
         $row['openSpareRequests']=(int)($row['open_spare_requests']??0);
+        $row['assignedTechnicianId']=$row['technician_id']??null;
+        $row['assignedTechnicianName']=trim((string)($row['technician_name']??'')) ?: (string)($ctx['actorName']??'Technician');
+        // V343 portable field dispatch: every assigned Job Card carries the work site.
+        $row['jobLocation']=trim((string)($row['job_location']??'')) ?: trim((string)($row['customer_address']??''));
+        $row['remoteDispatch']=!empty($row['jobLocation']);
         unset($row['open_spare_requests']);
     }
     unset($row);
@@ -904,6 +969,8 @@ if ($method === 'POST' && $action === 'job-card') {
         }
     }
     $title=trim((string)($b['title']??$case['title']));
+    $jobLocation=trim((string)($b['jobLocation']??''));
+    if($jobLocation==='') $jobLocation=trim((string)($case['customer_address']??''));
     $initialJobStatus=$techId!==''?'ASSIGNED':'RECEIVED';
     // V314 - a case created FROM a customer's Service Request already gets
     // its Job Card auto-issued the moment the request comes in (see
@@ -931,13 +998,13 @@ if ($method === 'POST' && $action === 'job-card') {
         $num = (string)$existingJobRow['job_card_no'];
         db()->prepare(
             "UPDATE digital_job_cards
-             SET technician_id=?,technician_name=?,status=?,updated_at=NOW()
+             SET technician_id=?,technician_name=?,status=?,job_location=COALESCE(NULLIF(?,''),job_location),updated_at=NOW()
              WHERE id=?"
-        )->execute([$techId?:null,$techName?:null,$initialJobStatus,$jobId]);
+        )->execute([$techId?:null,$techName?:null,$initialJobStatus,$jobLocation,$jobId]);
     } else {
         $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
         $jobId=uuid();
-        db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$initialJobStatus,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind']),date('c')]);
+        db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,job_location,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$initialJobStatus,$jobLocation?:null,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind']),date('c')]);
     }
     if ($techId !== '') {
         bw_set_stage($caseId,'JOB_CARD_ASSIGNED',null,$ctx,'Digital Job Card '.$num.' generated and assigned');
@@ -949,7 +1016,7 @@ if ($method === 'POST' && $action === 'job-card') {
             'Home customer: '.($techHomeName ?: 'Unassigned').'. Override applies only to Job Card '.$num.'.', $ctx);
     }
     if ($techId!=='') {
-        try { $te=db()->prepare('SELECT email FROM users WHERE id=?'); $te->execute([$techId]); $email=trim((string)$te->fetchColumn()); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":"")."\nMachine: ".$case['brand'].' '.$case['model']."\nFault: ".$case['description']."\nOpen Technician > Job Card / Process."); } catch(Throwable $e) {}
+        try { $te=db()->prepare('SELECT email FROM users WHERE id=?'); $te->execute([$techId]); $email=trim((string)$te->fetchColumn()); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":"")."\nMachine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'')."\nFault: ".$case['description']."\nOpen Technician > My Job Cards."); } catch(Throwable $e) {}
     }
     json_out(['id'=>$jobId,'jobCardNo'=>$num],201);
 }

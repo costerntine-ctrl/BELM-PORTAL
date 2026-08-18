@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>My Job Cards — BELM Technician</title>
   <link rel="stylesheet" href="/theme-global.css?v=305-tech-jobcards">
-  <link rel="stylesheet" href="/technician-job-cards/job-cards.css?v=324-technician-alert-condition-sync">
+  <link rel="stylesheet" href="/technician-job-cards/job-cards.css?v=343-mobile-field-dispatch">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
 </head>
 <body>
@@ -13,7 +13,7 @@
     <nav><a href="/tech">← Check-up</a><button type="button" id="themeButton" data-belm-theme-toggle>Light / Dark</button><button type="button" id="refreshButton">Refresh</button></nav>
   </header>
   <main>
-    <section class="hero"><p>TECHNICIAN WORK</p><h1>My Job Cards</h1><span>Only the information you need to do the work, update your report and keep a PDF reference.</span></section>
+    <section class="hero"><div class="hero-copy"><p>TECHNICIAN WORK</p><h1>My Job Cards</h1><span>Only the information you need to do the work, update your report and keep a PDF reference.</span></div><div class="tech-identity"><small>LOGGED IN TECHNICIAN</small><b id="techIdentity">Technician</b></div></section>
     <div id="alertBox" class="alert hidden"></div>
     <section class="summary" id="summary"></section>
     <section class="toolbar">
@@ -45,6 +45,6 @@
     <div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send Spare Request</button></div>
   </form></dialog>
 
-  <script src="/technician-job-cards/job-cards.js?v=324-technician-alert-condition-sync"></script>
+  <script src="/technician-job-cards/job-cards.js?v=343-mobile-field-dispatch"></script>
 </body>
 </html>

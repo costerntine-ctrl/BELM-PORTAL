@@ -9,7 +9,7 @@ t('dispatch posts JC number',js.includes('jobCardNo,technicianId')&&eng.includes
 t('dispatch sets Proforma pending status',eng.includes("'PROFORMA_PENDING'")&&eng.includes("'proformaStatus'=>'PENDING'"));
 t('pending Proforma endpoint exists',pro.includes("$action === 'pending-job-cards'")&&pro.includes("$row['proforma_code']=$row['job_card_no']"));
 t('billing loads pending Proforma queue',billing.includes('/proforma-invoices?action=pending-job-cards')&&billing.includes('Pending Job Card Proformas'));
-t('pending queue can prepare detected Job Card Proforma',billing.includes('preparePendingJobProforma')&&billing.includes('proformaSourceJobCardId'));
+t('pending queue can prepare detected Job Card Proforma',(billing.includes('preparePendingJobProforma')||billing.includes('generatePendingJobProforma'))&&(billing.includes('proformaSourceJobCardId')||billing.includes('sourceJobCardId: job.id')));
 t('Job Card number becomes Proforma invoice code',pro.includes("$invoiceNo = $sourceJobCardId !== '' && $sourceJobCardNo !== ''")&&pro.includes('? $sourceJobCardNo'));
 t('pending queue styled',bcss.includes('V326 pending Job Card Proforma queue')&&bcss.includes('.pending-proforma-status'));
 t('cache and health bumped to V326',health.includes('326-jc-proforma-sync')&&sw.includes('belm-app-v326-jc-proforma-sync'));

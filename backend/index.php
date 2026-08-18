@@ -143,7 +143,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '337-proforma-generate-sync'
             // Regression baseline: 'schemaVersion' => '338-process-stage-drilldown'
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
-            'schemaVersion' => '341-proforma-invoice-direct-sync',
+            // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
+            'schemaVersion' => '344-proforma-direct-generate',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

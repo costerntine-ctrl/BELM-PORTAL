@@ -26,7 +26,13 @@
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
   })[char]);
-  const today = () => new Date().toISOString().slice(0, 10);
+  // Billing dates follow the user's local portal day, not UTC. Using
+  // toISOString() directly can shift a Tanzania midnight entry to the prior day.
+  const today = () => {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  };
 
   function showAlert(message, error = false) {
     const box = document.getElementById("alertBox");
@@ -189,49 +195,150 @@
       groups[key].requests.push(request);
       return groups;
     }, {}));
-    const pendingSpareHtml = spareGroups.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM SPARE REQUESTS</span><strong>Pending Spare Request Proformas</strong></div><b>${pendingSpareProformaRequests.length}</b></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Machine</th><th>Items</th><th></th></tr></thead><tbody>${spareGroups.map(group=>`<tr><td><strong>${escapeHtml(group.customerName||"—")}</strong></td><td>${escapeHtml(group.machineLabel||"—")}</td><td>${group.requests.map(r=>`${escapeHtml(r.partNumber||"")} ${escapeHtml(r.partName||r.description||"Spare")} × ${escapeHtml(r.quantity||1)}`).join("<br>")}</td><td><button type="button" class="pay" data-prepare-spare-proforma="${escapeHtml(group.key)}">Generate Proforma (${group.requests.length})</button></td></tr>`).join("")}</tbody></table></div><small>Requests for the same customer and machine are grouped into one multi-line Proforma.</small></div>` : "";
-    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>JC / Proforma Code</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="edit" data-prepare-pending-proforma="${escapeHtml(job.id)}">Generate ${escapeHtml(job.proformaCode||job.jobCardNo)}</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The JC Number is the reserved Proforma code. It stays PENDING after Technician assignment until the signed Job Card is ready for billing.</small></div>` : '';
+    const pendingSpareHtml = spareGroups.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM SPARE REQUESTS</span><strong>Pending Spare Request Proformas</strong></div><b>${pendingSpareProformaRequests.length}</b></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Machine</th><th>Items</th><th></th></tr></thead><tbody>${spareGroups.map(group=>`<tr><td><strong>${escapeHtml(group.customerName||"—")}</strong></td><td>${escapeHtml(group.machineLabel||"—")}</td><td>${group.requests.map(r=>`${escapeHtml(r.partNumber||"")} ${escapeHtml(r.partName||r.description||"Spare")} × ${escapeHtml(r.quantity||1)}`).join("<br>")}</td><td><button type="button" class="pay" data-generate-spare-proforma="${escapeHtml(group.key)}">Generate Proforma (${group.requests.length})</button></td></tr>`).join("")}</tbody></table></div><small>Requests for the same customer and machine are grouped into one multi-line Proforma.</small></div>` : "";
+    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>JC / Proforma Code</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="pay" data-generate-pending-proforma="${escapeHtml(job.id)}">Generate ${escapeHtml(job.proformaCode||job.jobCardNo)}</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The JC Number is the reserved Proforma code. It stays PENDING after Technician assignment until the signed Job Card is ready for billing.</small></div>` : '';
     const actualHtml = proformas.length ? `<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
       <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line">${proforma.generatedInvoiceId ? `<span class="muted">Proforma locked after Invoice</span>` : `<button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button>`}${proforma.generatedInvoiceId ? `<button type="button" disabled>✓ Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')}</button>` : (String(proforma.customerResponse || '').toUpperCase() === 'CHANGE_REQUESTED' ? `<button type="button" disabled>Update Proforma first</button>` : `<button class="pay" data-generate-invoice-from-proforma="${escapeHtml(proforma.id)}">Generate Invoice</button>`)}</div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
     `).join("")}</tbody></table></div>` : '<div class="empty">No prepared proforma invoices yet.</div>';
     panel.innerHTML = `${reviewHeading("Proforma", "JC Number is the Proforma code for Job Card billing; assigned jobs stay pending until ready.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingSpareHtml}${pendingHtml}${actualHtml}`;
   }
 
-  async function preparePendingJobProforma(jobId){
-    const job=pendingProformaJobs.find(item=>item.id===jobId);if(!job)return;
-    if(!job.canPrepare){showAlert('This Job Card is still pending completion/sign-off.',true);return}
-    await openProforma();
-    document.getElementById('proformaCustomer').value=job.customerId||'';
-    document.getElementById('proformaMachineId').value=job.machineId||'';
-    document.getElementById('proformaSourceJobCardId').value=job.id||'';
-    document.getElementById('proformaTitle').textContent=`Prepare Proforma ${job.proformaCode||job.jobCardNo}`;
-    fillCustomerInformation('proformaCustomer','proformaCustomerInfo');
-    const jobItems=[{description:`Service Job Card ${job.jobCardNo||''}`.trim(),qty:1,unit:'JOB',unitPrice:0},...(job.requestedSpares||[]).map(item=>({partNumber:item.partNumber||'',description:item.description||'Spare part',qty:item.quantity||1,unit:item.unit||'PC',unitPrice:item.unitPrice||0}))];
-    document.getElementById('proformaItems').replaceChildren();
-    jobItems.forEach(addProformaItem);
-    showAlert(`JC ${job.jobCardNo} detected automatically with ${jobItems.length} billing line${jobItems.length===1?'':'s'}. Saving uses code ${job.proformaCode||job.jobCardNo}.`);
+  function jobProformaItems(job) {
+    const title = String(job.title || "").trim();
+    const fault = String(job.faultDescription || "").trim();
+    const serviceDescription = [job.jobCardNo || "Job Card", title || fault || "BELM service work"]
+      .filter(Boolean).join(" · ");
+    return [
+      { partNumber: "", description: serviceDescription, qty: 1, unit: "JOB", unitPrice: 0 },
+      ...(job.requestedSpares || []).map((item) => ({
+        partNumber: item.partNumber || "",
+        description: item.description || "Spare part",
+        qty: Number(item.quantity || 1),
+        unit: item.unit || "PC",
+        unitPrice: Number(item.unitPrice ?? 0),
+      })),
+    ];
   }
 
-  async function preparePendingSpareProforma(groupKey) {
-    const groupRequests = pendingSpareProformaRequests.filter((request) => `${request.customerId || ""}::${request.machineId || ""}` === groupKey);
-    if (!groupRequests.length) return;
-    await ensureSparePartsLoaded();
-    await openProforma();
-    document.getElementById("proformaCustomer").value = groupRequests[0].customerId || "";
-    document.getElementById("proformaMachineId").value = groupRequests[0].machineId || "";
-    document.getElementById("proformaSourceSpareRequestId").value = groupRequests[0].id || "";
-    document.getElementById("proformaSourceSpareRequestIds").value = groupRequests.map((request) => request.id).join(",");
-    fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
-    document.getElementById("proformaItems").replaceChildren();
-    groupRequests.forEach((request) => addProformaItem({
-      partNumber: request.partNumber || "",
-      description: request.partName || request.description || "Spare part",
-      qty: request.quantity || 1,
-      unit: "PC",
-      unitPrice: request.sellingPrice || 0,
-    }));
-    document.getElementById("proformaTitle").textContent = `Proforma · ${groupRequests[0].customerName || "Customer"} · ${groupRequests.length} item${groupRequests.length === 1 ? "" : "s"}`;
-    showAlert(`${groupRequests.length} spare request item${groupRequests.length === 1 ? "" : "s"} loaded into one Proforma.`);
+  function baseGeneratedProformaPayload() {
+    return {
+      date: today(),
+      vatMode: "VAT",
+      vatRate: 18,
+      discountType: "FIXED",
+      discount: 0,
+      paymentTerms: "",
+      deliveryTime: "",
+      quoteValidity: "",
+      notice: "",
+    };
+  }
+
+  async function generatePendingJobProforma(jobId, button) {
+    const job = pendingProformaJobs.find((item) => item.id === jobId);
+    if (!job) {
+      showAlert("This pending Job Card is no longer in the queue. Refreshing Proforma list.", true);
+      await load();
+      activateBillingTab("proformas");
+      return;
+    }
+    if (!job.canPrepare) {
+      showAlert(job.pendingReason || "This Job Card is still pending completion/sign-off.", true);
+      return;
+    }
+    const oldText = button?.textContent || "Generate Proforma";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Generating…";
+    }
+    try {
+      const saved = await api("/proforma-invoices", {
+        method: "POST",
+        body: JSON.stringify({
+          ...baseGeneratedProformaPayload(),
+          customerId: job.customerId || "",
+          machineId: job.machineId || "",
+          sourceJobCardId: job.id || "",
+          sourceSpareRequestId: "",
+          sourceSpareRequestIds: [],
+          items: jobProformaItems(job),
+        }),
+      });
+      if (button) button.textContent = "✓ Generated";
+      await load();
+      activateBillingTab("proformas");
+      showAlert(`✓ Proforma ${saved?.invoiceNo || job.proformaCode || job.jobCardNo} generated and synchronized. Use Re-edit to enter/change pricing before sending.`);
+    } catch (error) {
+      // A double click, another admin, or a slow refresh may create it first.
+      // Treat the duplicate response as a synchronization event and refresh the list.
+      if (error.status === 409 && /already exists|already in use/i.test(error.message || "")) {
+        await load();
+        activateBillingTab("proformas");
+        showAlert(`✓ ${error.message} Proforma list refreshed.`);
+      } else {
+        showAlert(`Proforma was not generated: ${error.message}`, true);
+      }
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldText;
+      }
+    }
+  }
+
+  async function generatePendingSpareProforma(groupKey, button) {
+    const groupRequests = pendingSpareProformaRequests.filter(
+      (request) => `${request.customerId || ""}::${request.machineId || ""}` === groupKey,
+    );
+    if (!groupRequests.length) {
+      showAlert("These spare requests are no longer pending. Refreshing Proforma list.", true);
+      await load();
+      activateBillingTab("proformas");
+      return;
+    }
+    const oldText = button?.textContent || "Generate Proforma";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Generating…";
+    }
+    try {
+      const first = groupRequests[0];
+      const saved = await api("/proforma-invoices", {
+        method: "POST",
+        body: JSON.stringify({
+          ...baseGeneratedProformaPayload(),
+          customerId: first.customerId || "",
+          machineId: first.machineId || "",
+          sourceSpareRequestId: first.id || "",
+          sourceSpareRequestIds: groupRequests.map((request) => request.id),
+          sourceJobCardId: "",
+          items: groupRequests.map((request) => ({
+            partNumber: request.partNumber || "",
+            description: request.partName || request.description || "Spare part",
+            qty: Number(request.quantity || 1),
+            unit: "PC",
+            unitPrice: Number(request.sellingPrice ?? 0),
+          })),
+        }),
+      });
+      if (button) button.textContent = "✓ Generated";
+      await load();
+      activateBillingTab("proformas");
+      showAlert(`✓ Proforma ${saved?.invoiceNo || ""} generated from ${groupRequests.length} spare request item${groupRequests.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      if (error.status === 409 && /already exists|already in use/i.test(error.message || "")) {
+        await load();
+        activateBillingTab("proformas");
+        showAlert(`✓ ${error.message} Proforma list refreshed.`);
+      } else {
+        showAlert(`Proforma was not generated: ${error.message}`, true);
+      }
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldText;
+      }
+    }
   }
 
   function openReviewExport(type, record) {
@@ -1008,11 +1115,11 @@
     const reviewButton = event.target.closest("[data-review-proforma]");
     const removeButton = event.target.closest("[data-delete-proforma]");
     const sendButton = event.target.closest("[data-send-proforma]");
-    const pendingButton = event.target.closest("[data-prepare-pending-proforma]");
-    const pendingSpareButton = event.target.closest("[data-prepare-spare-proforma]");
+    const pendingButton = event.target.closest("[data-generate-pending-proforma]");
+    const pendingSpareButton = event.target.closest("[data-generate-spare-proforma]");
     const generateInvoiceButton = event.target.closest("[data-generate-invoice-from-proforma]");
-    if (pendingButton) preparePendingJobProforma(pendingButton.dataset.preparePendingProforma);
-    if (pendingSpareButton) preparePendingSpareProforma(pendingSpareButton.dataset.prepareSpareProforma);
+    if (pendingButton) generatePendingJobProforma(pendingButton.dataset.generatePendingProforma, pendingButton);
+    if (pendingSpareButton) generatePendingSpareProforma(pendingSpareButton.dataset.generateSpareProforma, pendingSpareButton);
     if (generateInvoiceButton) {
       const proformaId = generateInvoiceButton.dataset.generateInvoiceFromProforma;
       generateInvoiceButton.disabled = true;

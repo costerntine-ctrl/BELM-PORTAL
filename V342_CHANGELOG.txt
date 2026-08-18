@@ -1,0 +1,12 @@
+BELM PORTAL V342 - TECHNICIAN JOB CARD VISIBILITY + IDENTITY SYNC
+
+- My Job Cards now shows the logged-in Technician name prominently at the top of the workspace.
+- Job Card headings also show the effective assigned Technician name.
+- Technician Job Card loading self-heals an interrupted legacy sync where the Service Request is assigned but digital_job_cards.technician_id is still NULL.
+- Recovery is deliberately narrow: an explicit Job Card assignment to a different Technician is never overwritten.
+- Recovered OPEN/RECEIVED Job Cards advance to ASSIGNED and keep the Service Request / Job Card as one operational assignment.
+- Technician Job Card authorization uses the same safe recovery path, so recovered cards can be opened, reported, downloaded and used for spare requests.
+- Technician list remains scoped by Technician account ID; a Service Request fallback is accepted only when the Job Card has no explicit Technician ID.
+- Empty-state messages identify the logged-in Technician, making account/assignment troubleshooting clear on shared phones/tablets.
+- Technician Job Card CSS/JS and service-worker cache keys were bumped to V342 so browsers do not retain the old zero-card view.
+- No database migration is required.

@@ -13,7 +13,7 @@
 // const CACHE='belm-app-v332-service-request-history-pdf-report'; // regression baseline
 // const CACHE='belm-app-v337-proforma-generate-sync'; // regression baseline
 // const CACHE='belm-app-v338-process-stage-drilldown'; // regression baseline
-const CACHE='belm-app-v340-customer-login-blue';
+const CACHE='belm-app-v344-proforma-direct-generate';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline

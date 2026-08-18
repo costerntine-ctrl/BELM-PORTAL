@@ -50,7 +50,8 @@
     const title=String(job.title??job.service_type??job.serviceType??'').trim()||'Machine Breakdown';
     const technicianId=job.technicianId??job.technician_id??'';
     const technicianName=job.technicianName??job.technician_name??'';
-    return {...job,job_card_no:jobCardNo,jobCardNo,customerId:job.customerId??job.customer_id??'',customer_id:job.customer_id??job.customerId??'',machineId:job.machineId??job.machine_id??'',machine_id:job.machine_id??job.machineId??'',customerName:job.customerName??job.customer_name??'Customer',machineLabel:job.machineLabel??job.machine_label??job.machine??'Machine',sourceType:job.sourceType??job.source_type??'',due_date:job.due_date??job.dueDate??'',dueDate:job.dueDate??job.due_date??'',technicianId,technician_id:technicianId,technicianName,technician_name:technicianName,dispatchStatus:String(job.dispatchStatus??job.status??'RECEIVED').toUpperCase(),title};
+    const jobLocation=job.jobLocation??job.job_location??job.customerAddress??job.customer_address??'';
+    return {...job,job_card_no:jobCardNo,jobCardNo,customerId:job.customerId??job.customer_id??'',customer_id:job.customer_id??job.customerId??'',machineId:job.machineId??job.machine_id??'',machine_id:job.machine_id??job.machineId??'',customerName:job.customerName??job.customer_name??'Customer',machineLabel:job.machineLabel??job.machine_label??job.machine??'Machine',sourceType:job.sourceType??job.source_type??'',due_date:job.due_date??job.dueDate??'',dueDate:job.dueDate??job.due_date??'',jobLocation,job_location:jobLocation,technicianId,technician_id:technicianId,technicianName,technician_name:technicianName,dispatchStatus:String(job.dispatchStatus??job.status??'RECEIVED').toUpperCase(),title};
   }
   function fmtDate(v){if(!v)return '-';const raw=String(v).trim();const iso=/^\d{4}-\d{2}-\d{2} /.test(raw)?raw.replace(' ','T').replace(/([+-]\d{2})(?!:?\d{2})$/,'$1:00'):raw;const d=new Date(iso);if(Number.isNaN(d.getTime()))return raw;return d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
   function duration(h){h=Number(h||0);return h>=24?`${(h/24).toFixed(h>=72?0:1)} days`:`${Math.round(h)} hrs`}
@@ -96,6 +97,8 @@
   document.getElementById('searchBox').oninput=renderList;
 
   function dispatchMode(){return document.querySelector('input[name="jobCardMode"]:checked')?.value||'existing'}
+  function dispatchCustomerAddress(customerId){const row=dispatchCustomers.find(c=>String(c.id)===String(customerId));return String(row?.address||row?.customerAddress||'').trim()}
+  function syncDispatchLocation(force=false){const input=document.getElementById('dispatchLocation');if(!input)return;const existing=dispatchMode()==='existing';const selectedJob=dispatchJobCards.find(x=>String(x.id)===String(document.getElementById('dispatchJobCard')?.value||''));const candidate=existing?String(selectedJob?.jobLocation||'').trim():dispatchCustomerAddress(document.getElementById('dispatchCustomer')?.value||'');if(force||!input.value.trim())input.value=candidate}
   function normalizeDispatchMachine(machine={}){
     const customerId=machine.customerId??machine.customer_id??'';
     const machineType=machine.machineType??machine.machine_type??'';
@@ -160,6 +163,7 @@
       const customer=document.getElementById('dispatchCustomer');if(customer)customer.value=match.customerId||'';
       document.getElementById('dispatchPriority').value=match.priority||'NORMAL';
       document.getElementById('dispatchDueDate').value=match.due_date||'';
+      const locationInput=document.getElementById('dispatchLocation');if(locationInput)locationInput.value=match.jobLocation||'';
       input.value=match.proformaCode||match.jobCardNo||raw;input.dataset.source='auto';input.classList.add('jc-auto-detected');
       const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent=`Matched automatically to received Job Card ${match.jobCardNo}.`;
       renderReceivedJobCards();
@@ -202,18 +206,19 @@
       if(job){
         const customer=document.getElementById('dispatchCustomer');if(customer)customer.value=job.customerId||'';
         document.getElementById('dispatchPriority').value=job.priority||'NORMAL';document.getElementById('dispatchDueDate').value=job.due_date||'';
+        const locationInput=document.getElementById('dispatchLocation');if(locationInput)locationInput.value=job.jobLocation||'';
         const technician=document.getElementById('dispatchTechnician');
         if(technician&&job.technicianId&&dispatchTechnicians.some(x=>String(x.id)===String(job.technicianId)))technician.value=job.technicianId;
       }
       renderReceivedJobCards();if(job){const reselect=document.getElementById('dispatchJobCard');if(reselect)reselect.value=job.id}
       syncDispatchJcNumberFromSelection();
     }else renderDispatchMachines();
-    updateDispatchNote();
+    syncDispatchLocation(false);updateDispatchNote();
   }
   async function loadDispatchOptions({announce=false,syncSources=true}={}){
     if(!isBelmAdmin)return;
     const panel=document.getElementById('dispatchPanel');if(!panel)return;
-    const selectedValues={technicianId:document.getElementById('dispatchTechnician')?.value||'',customerId:document.getElementById('dispatchCustomer')?.value||'',machineId:document.getElementById('dispatchMachine')?.value||'',jobCardId:document.getElementById('dispatchJobCard')?.value||'',jobCardNo:document.getElementById('dispatchJobCardNo')?.value||''};
+    const selectedValues={technicianId:document.getElementById('dispatchTechnician')?.value||'',customerId:document.getElementById('dispatchCustomer')?.value||'',machineId:document.getElementById('dispatchMachine')?.value||'',jobCardId:document.getElementById('dispatchJobCard')?.value||'',jobCardNo:document.getElementById('dispatchJobCardNo')?.value||'',jobLocation:document.getElementById('dispatchLocation')?.value||''};
     try{
       const data=await engineeringApi(`/engineering?action=dispatch-options${syncSources?'':'&skipSync=1'}`);
       dispatchTechnicians=data.technicians||[];dispatchCustomers=data.customers||[];dispatchMachines=(data.machines||[]).map(normalizeDispatchMachine);dispatchJobCards=(data.jobCards||data.receivedJobCards||[]).map(normalizeJobCard);
@@ -225,6 +230,7 @@
       renderReceivedJobCards();if(dispatchJobCards.some(job=>String(job.id)===String(selectedValues.jobCardId)))document.getElementById('dispatchJobCard').value=selectedValues.jobCardId;
       const jcInput=document.getElementById('dispatchJobCardNo');if(jcInput&&selectedValues.jobCardNo&&!document.getElementById('dispatchJobCard')?.value){jcInput.value=selectedValues.jobCardNo;jcInput.dataset.source='manual';jcInput.classList.add('jc-manual')}else syncDispatchJcNumberFromSelection();
       renderDispatchMachines();if(dispatchMachines.some(machine=>String(machine.id)===String(selectedValues.machineId)))document.getElementById('dispatchMachine').value=selectedValues.machineId;
+      const loc=document.getElementById('dispatchLocation');if(loc){loc.value=selectedValues.jobLocation||'';syncDispatchLocation(false)}
       syncJobCardSource();panel.classList.remove('hidden');
       if(announce){const total=Number(data.dispatchSync?.totalJobCards??dispatchJobCards.length),assigned=Number(data.dispatchSync?.assignedJobCards??0),waiting=Number(data.dispatchSync?.receivedJobCards??Math.max(0,total-assigned));if(data.dispatchSync?.error)show(`Technician Dispatch loaded ${total} active Job Card${total===1?'':'s'} (${waiting} waiting, ${assigned} assigned), but source synchronization reported an error.`,true);else show(total?`Technician Dispatch refreshed: ${total} active Job Card${total===1?'':'s'} (${waiting} waiting, ${assigned} assigned).`:'Technician Dispatch refreshed. No active received/assigned Job Cards are available.',false)}
     }catch(x){panel.classList.add('hidden');if(x.status!==403)show(x.message||'Could not load Technician Dispatch.',true)}
@@ -241,6 +247,7 @@
     const due=document.getElementById('dispatchDueDate');if(due)due.value='';
     const title=document.getElementById('dispatchTitle');if(title)title.value='';
     const description=document.getElementById('dispatchDescription');if(description)description.value='';
+    const locationInput=document.getElementById('dispatchLocation');if(locationInput)locationInput.value='';
     renderReceivedJobCards();
     renderDispatchMachines();
     syncJobCardSource();
@@ -270,7 +277,7 @@
     showDispatchResult(reassigning?'Reassigning Job Card...':'Assigning Job Card...');
     try{
       const currentCaseId=selected?.case?.id||'';
-      const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,jobCardNo,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,temporaryOverride:temporary})});
+      const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,jobCardNo,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,jobLocation:document.getElementById('dispatchLocation')?.value.trim()||'',temporaryOverride:temporary})});
       const verb=result.reassigned?'reassigned':'assigned';
       const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} to ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · ${result.proformaCode||result.jobCardNo||jobCardNo}.`;
       show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} to Technician${result.temporaryOverride?' as Temporary Override':''}. Proforma sync: ${result.proformaStatus||'PENDING'} · code ${result.proformaCode||result.jobCardNo||jobCardNo}.`,false);
@@ -292,7 +299,7 @@
     const panel=document.getElementById('dispatchPanel');if(!panel)return;
     if(!isBelmAdmin){panel.classList.add('hidden');return}
     document.getElementById('dispatchTechnician')?.addEventListener('change',updateDispatchNote);
-    document.getElementById('dispatchCustomer')?.addEventListener('change',()=>{if(dispatchMode()==='existing'){const jobSelect=document.getElementById('dispatchJobCard');if(jobSelect)jobSelect.value='';renderReceivedJobCards()}else renderDispatchMachines();updateDispatchNote()});
+    document.getElementById('dispatchCustomer')?.addEventListener('change',()=>{if(dispatchMode()==='existing'){const jobSelect=document.getElementById('dispatchJobCard');if(jobSelect)jobSelect.value='';renderReceivedJobCards()}else{renderDispatchMachines();syncDispatchLocation(true)}updateDispatchNote()});
     document.getElementById('dispatchJobCard')?.addEventListener('change',syncJobCardSource);
     document.getElementById('dispatchJobCardNo')?.addEventListener('change',resolveDispatchJobCardNumber);
     document.getElementById('dispatchJobCardNo')?.addEventListener('blur',resolveDispatchJobCardNumber);

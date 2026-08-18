@@ -1644,7 +1644,7 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
     try {
         $stmt = db()->prepare(
             "SELECT sr.id,sr.customer_id,sr.machine_id,sr.service_type,sr.description,sr.created_at,
-                    bc.id AS case_id,bc.created_by_name,c.name AS customer_name
+                    bc.id AS case_id,bc.created_by_name,c.name AS customer_name,c.address AS customer_address
              FROM service_requests sr
              JOIN customers c ON c.id=sr.customer_id
              JOIN breakdown_cases bc ON bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
@@ -1672,9 +1672,10 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
                      issued_at=COALESCE(issued_at,created_at),
                      title=CASE WHEN status IN ('OPEN','RECEIVED','ASSIGNED') THEN ? ELSE title END,
                      fault_description=CASE WHEN status IN ('OPEN','RECEIVED','ASSIGNED') THEN ? ELSE fault_description END,
+                     job_location=COALESCE(NULLIF(TRIM(job_location),''),NULLIF(TRIM(?),'')),
                      updated_at=NOW()
                  WHERE id=?"
-            )->execute([$issuer,$requestTitle,$requestInstructions,(string)$existing]);
+            )->execute([$issuer,$requestTitle,$requestInstructions,(string)($row['customer_address']??''),(string)$existing]);
             return (string)$existing;
         }
 
@@ -1683,12 +1684,12 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
         $title=trim((string)($row['service_type'] ?: 'BELM Service Request'));
         db()->prepare(
             "INSERT INTO digital_job_cards
-             (id,case_id,customer_id,machine_id,job_card_no,title,fault_description,status,generated_by_name,
+             (id,case_id,customer_id,machine_id,job_card_no,title,fault_description,status,job_location,generated_by_name,
               issued_by_name,issued_by_type,issued_at,created_at,updated_at)
-             VALUES (?,?,?,?,?,?,?,'RECEIVED',?,?,'CUSTOMER',?,NOW(),NOW())"
+             VALUES (?,?,?,?,?,?,?,'RECEIVED',?,?,?,'CUSTOMER',?,NOW(),NOW())"
         )->execute([
             $jobId,(string)$row['case_id'],(string)$row['customer_id'],(string)$row['machine_id'],$num,
-            $title,(string)$row['description'],$issuer,$issuer,$row['created_at'] ?: date('c')
+            $title,(string)$row['description'],trim((string)($row['customer_address']??''))?:null,$issuer,$issuer,$row['created_at'] ?: date('c')
         ]);
         db()->prepare(
             'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_name,created_at)

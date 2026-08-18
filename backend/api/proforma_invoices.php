@@ -118,7 +118,7 @@ if ($method === 'GET' && $action === 'pending-job-cards') {
     // Proforma queue. This is read-side recovery; normal Engineering sync will
     // still persist the copied assignment on the Job Card itself.
     $stmt = db()->query(
-        "SELECT j.id,j.job_card_no,j.customer_id,j.machine_id,
+        "SELECT j.id,j.job_card_no,j.title,j.fault_description,j.customer_id,j.machine_id,
                 COALESCE(j.technician_id,sr.assigned_to_id) AS technician_id,
                 COALESCE(NULLIF(j.technician_name,''),u.name) AS technician_name,
                 CASE

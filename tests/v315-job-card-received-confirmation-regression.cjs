@@ -8,6 +8,6 @@ t('engineering service request card shows receipt banner',mgr.includes('JOB CARD
 t('workflow first step says Received by BELM',wf.includes("['RECEIVED','Received by BELM']"));
 t('workflow shows explicit BELM receipt',wf.includes('BELM Receipt')&&wf.includes('RECEIVED BY BELM'));
 t('customer billing shows BELM receipt',bill.includes('RECEIVED BY BELM')&&bill.includes('Current:'));
-t('health schema V315',health.includes("'schemaVersion' => '315-job-card-received-confirmation'"));
-t('service worker cache V315',sw.includes("belm-app-v315-job-card-received-confirmation"));
+t('health schema is V315 or newer',(()=>{const m=/\'schemaVersion\' => \'(\d+)-/.exec(health);return m&&Number(m[1])>=315;})());
+t('service worker cache is V315 or newer',(()=>{const m=/const CACHE='belm-app-v(\d+)-/.exec(sw);return m&&Number(m[1])>=315;})());
 console.log(`V315 checks: ${p}/${p+f} passed`);process.exit(f?1:0);

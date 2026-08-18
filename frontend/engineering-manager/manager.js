@@ -19,6 +19,7 @@
   let dispatchCustomers = [];
   let dispatchMachines = [];
   let dispatchJobCards = [];
+  let lastDispatchOptionsLoadedAt = 0;
 
   function currentAdminUser() {
     try { return JSON.parse(localStorage.getItem("belm_admin_user") || "null"); } catch (_) { return null; }
@@ -170,11 +171,17 @@
     const customerId=document.getElementById("dispatchCustomer")?.value||"";
     const select=document.getElementById("dispatchMachine");
     if(!select)return;
+    const current=select.value||"";
     const rows=dispatchMachines.filter((m)=>!customerId||String(m.customer_id)===String(customerId));
-    select.innerHTML='<option value="">Select Machine...</option>'+rows.map((m)=>{
+    const placeholder = !customerId
+      ? "Select Customer first..."
+      : (rows.length ? "Select Machine..." : "No active machines for this customer");
+    select.innerHTML=`<option value="">${escapeHtml(placeholder)}</option>`+rows.map((m)=>{
       const label=[m.brand,m.model].filter(Boolean).join(" ")||m.machine_type||"Machine";
-      return `<option value="${escapeHtml(m.id)}">${escapeHtml(label)}</option>`;
+      const serial=m.serial_number?` · ${m.serial_number}`:"";
+      return `<option value="${escapeHtml(m.id)}">${escapeHtml(label+serial)}</option>`;
     }).join("");
+    if(rows.some((machine)=>String(machine.id)===String(current))) select.value=current;
   }
 
   function renderReceivedJobCards() {
@@ -182,11 +189,23 @@
     const customerId=document.getElementById("dispatchCustomer")?.value||"";
     const current=select.value||"";
     const rows=dispatchJobCards.filter((job)=>!customerId||String(job.customerId)===String(customerId));
-    select.innerHTML='<option value="">Select received Job Card...</option>'+rows.map((job)=>{
+    const placeholder = customerId && !rows.length
+      ? "No received Job Cards for this customer"
+      : (!rows.length ? "No received Job Cards waiting for dispatch" : "Select received Job Card...");
+    select.innerHTML=`<option value="">${escapeHtml(placeholder)}</option>`+rows.map((job)=>{
       const source=String(job.sourceType||"")==="SERVICE_REQUEST"?"Service Request":"Customer Job Card";
-      return `<option value="${escapeHtml(job.id)}">${escapeHtml(`RECEIVED · ${job.jobCardNo} · ${job.customerName} · ${job.machineLabel} · ${job.title} · ${source}`)}</option>`;
+      const serial=job.machineSerial?` · S/N ${job.machineSerial}`:"";
+      return `<option value="${escapeHtml(job.id)}">${escapeHtml(`RECEIVED · ${job.jobCardNo} · ${job.customerName} · ${job.machineLabel}${serial} · ${job.title} · ${source}`)}</option>`;
     }).join("");
     if(rows.some((job)=>String(job.id)===String(current))) select.value=current;
+    const help=document.getElementById("receivedJobCardHelp");
+    if(help){
+      help.textContent=rows.length
+        ? `${rows.length} received Job Card${rows.length===1?"":"s"} waiting for Technician assignment${customerId?" for this customer":""}.`
+        : (customerId
+          ? "No unassigned received Job Card is waiting for this customer. Use Refresh Job Cards after a new Service Request arrives."
+          : "No unassigned received Job Cards are waiting. New/legacy machine-linked Service Requests are synchronized automatically when this list refreshes.");
+    }
   }
 
   function syncJobCardSource() {
@@ -230,21 +249,42 @@
     }
   }
 
-  async function loadDispatchOptions() {
+  async function loadDispatchOptions({ announce = false } = {}) {
     const panel = document.getElementById("dispatchPanel");
+    const selected = {
+      technicianId: document.getElementById("dispatchTechnician")?.value || "",
+      customerId: document.getElementById("dispatchCustomer")?.value || "",
+      machineId: document.getElementById("dispatchMachine")?.value || "",
+      jobCardId: document.getElementById("dispatchJobCard")?.value || "",
+    };
     try {
       const data = await api("/engineering?action=dispatch-options");
       dispatchTechnicians = data.technicians || [];
       dispatchCustomers = data.customers || [];
       dispatchMachines = data.machines || [];
       dispatchJobCards = data.receivedJobCards || [];
-      document.getElementById("dispatchTechnician").innerHTML = '<option value="">Select Technician...</option>' + dispatchTechnicians.map((tech) => {
+      const technicianSelect=document.getElementById("dispatchTechnician");
+      const customerSelect=document.getElementById("dispatchCustomer");
+      technicianSelect.innerHTML = '<option value="">Select Technician...</option>' + dispatchTechnicians.map((tech) => {
         const home = tech.assignedCustomerName ? ` · Home: ${tech.assignedCustomerName}` : " · No home customer";
         return `<option value="${escapeHtml(tech.id)}">${escapeHtml(tech.name + home)}</option>`;
       }).join("");
-      document.getElementById("dispatchCustomer").innerHTML = '<option value="">Select Customer...</option>' + dispatchCustomers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join("");
-      renderReceivedJobCards(); renderDispatchMachines(); syncJobCardSource();
+      customerSelect.innerHTML = '<option value="">Select Customer...</option>' + dispatchCustomers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join("");
+      if(dispatchTechnicians.some((tech)=>String(tech.id)===String(selected.technicianId))) technicianSelect.value=selected.technicianId;
+      if(dispatchCustomers.some((customer)=>String(customer.id)===String(selected.customerId))) customerSelect.value=selected.customerId;
+      renderReceivedJobCards();
+      if(dispatchJobCards.some((job)=>String(job.id)===String(selected.jobCardId))) document.getElementById("dispatchJobCard").value=selected.jobCardId;
+      renderDispatchMachines();
+      if(dispatchMachines.some((machine)=>String(machine.id)===String(selected.machineId))) document.getElementById("dispatchMachine").value=selected.machineId;
+      syncJobCardSource();
+      lastDispatchOptionsLoadedAt=Date.now();
       panel?.classList.remove("hidden");
+      if(announce){
+        const received=Number(data.dispatchSync?.receivedJobCards ?? dispatchJobCards.length);
+        showAlert(received
+          ? `Technician Dispatch refreshed: ${received} received Job Card${received===1?"":"s"} waiting for assignment.`
+          : "Technician Dispatch refreshed. No received Job Cards are currently waiting for assignment.", false);
+      }
     } catch (error) {
       if (error.status !== 403) showAlert(error.message || "Could not load Technician Dispatch.");
       panel?.classList.add("hidden");
@@ -380,7 +420,9 @@
   document.getElementById("closeRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
   document.getElementById("cancelRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
 
-  document.getElementById("refreshButton").addEventListener("click", load);
+  document.getElementById("refreshButton").addEventListener("click", async () => {
+    await Promise.all([load(), loadDispatchOptions({ announce: true }), loadEngineerRoleSummary()]);
+  });
 
   function initEngineeringWorkspace() {
     const serviceFrame = document.getElementById("engineeringServiceRequestsFrame");
@@ -461,8 +503,12 @@
         updateDispatchNote();
       });
       document.getElementById("dispatchJobCard")?.addEventListener("change", syncJobCardSource);
+      document.getElementById("refreshReceivedJobCards")?.addEventListener("click", ()=>loadDispatchOptions({ announce: true }));
       document.querySelectorAll('input[name="jobCardMode"]').forEach((input)=>input.addEventListener("change",syncJobCardSource));
       document.getElementById("dispatchForm")?.addEventListener("submit", dispatchTechnician);
+      window.addEventListener("focus", ()=>{
+        if(Date.now()-lastDispatchOptionsLoadedAt>15000) loadDispatchOptions();
+      });
       loadDispatchOptions();
       load();
       loadEngineerRoleSummary();

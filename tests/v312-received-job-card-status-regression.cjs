@@ -17,12 +17,12 @@ test('service-request cards are created RECEIVED',helpers.includes("VALUES (?,?,
 test('sync assignment advances RECEIVED to ASSIGNED',helpers.includes("status=CASE WHEN status IN ('OPEN','RECEIVED') THEN 'ASSIGNED'"));
 test('sync unassign returns card to RECEIVED',helpers.includes("status='RECEIVED'")&&helpers.includes("status IN ('OPEN','RECEIVED','ASSIGNED')"));
 test('breakdown card initial status depends on technician',bw.includes("$initialJobStatus=$techId!==''?'ASSIGNED':'RECEIVED'"));
-test('dispatch list is RECEIVED only with legacy OPEN compatibility',eng.includes("WHERE j.status IN ('RECEIVED','OPEN')"));
+test('dispatch list keeps RECEIVED/OPEN plus legacy unassigned ASSIGNED compatibility',eng.includes("IN ('RECEIVED','OPEN','ASSIGNED')")&&eng.includes('j.technician_id IS NULL'));
 test('dispatch assignment marks same Job Card ASSIGNED',eng.includes("status='ASSIGNED',priority=?"));
 test('service request rules accept RECEIVED pre-start lifecycle',sr.includes("['OPEN','RECEIVED']")&&sr.includes("['OPEN','RECEIVED','ASSIGNED']"));
 test('pre-start unassign returns ASSIGNED card to RECEIVED without allowing silent handover',sr.includes("['OPEN','RECEIVED','ASSIGNED']")&&sr.includes('Change Technician from Job Card Dispatch'));
 test('received dropdown visibly labels received cards',js.includes('RECEIVED · ${job.jobCardNo}'));
-test('received helper text explains waiting assignment',html.includes('Shows RECEIVED Job Cards'));
+test('received helper text explains waiting assignment',js.includes('waiting for Technician assignment'));
 test('migration logs V312 normalization',migrate.includes('V312 Job Card lifecycle normalized'));
 test('health schema is V312',(() => { const m = /'schemaVersion' => '(\d+)-/.exec(health); return m && Number(m[1]) >= 312; })());
 test('service worker cache is V312',(() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(sw); return m && Number(m[1]) >= 312; })());

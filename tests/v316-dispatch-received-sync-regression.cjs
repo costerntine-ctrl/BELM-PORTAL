@@ -1,0 +1,24 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let pass=0,fail=0;function test(name,ok){if(ok){console.log('PASS',name);pass++;}else{console.error('FAIL',name);fail++;}}
+const api=read('backend/api/engineering.php');
+const js=read('frontend/engineering-manager/manager.js');
+const html=read('frontend/engineering-manager/index.html');
+const css=read('frontend/engineering-manager/manager.css');
+const health=read('backend/index.php');
+const sw=read('frontend/belm-sw.js');
+test('dispatch options self-sync active service requests',api.includes("belm_sync_breakdown_case_from_service_request((string)$syncRow['id'], 'Technician Dispatch Sync')"));
+test('received query tolerates legacy unassigned ASSIGNED card',api.includes("IN ('RECEIVED','OPEN','ASSIGNED')")&&api.includes('j.technician_id IS NULL'));
+test('received query keeps card even when machine join is unavailable',api.includes('LEFT JOIN machines m ON m.id=j.machine_id'));
+test('dispatch response exposes sync diagnostics',api.includes("'dispatchSync'=>[")&&api.includes("'receivedJobCards'=>count($receivedJobCards)"));
+test('main Engineering refresh reloads dispatch options',js.includes('Promise.all([load(), loadDispatchOptions({ announce: true }), loadEngineerRoleSummary()])'));
+test('dedicated received Job Card refresh button exists',html.includes('id="refreshReceivedJobCards"')&&js.includes('refreshReceivedJobCards'));
+test('empty received list has explicit state',js.includes('No received Job Cards waiting for dispatch')&&js.includes('No received Job Cards for this customer'));
+test('machine selector has explicit no-machine state',js.includes('No active machines for this customer')&&js.includes('Select Customer first...'));
+test('dispatch refreshes after returning to browser',js.includes('Date.now()-lastDispatchOptionsLoadedAt>15000'));
+test('V316 engineering assets cache-busted',html.includes('v=316-dispatch-received-sync')&&css.includes('V316 - received Job Card refresh/diagnostic control.'));
+test('health schema V316',health.includes("'schemaVersion' => '316-dispatch-received-sync'"));
+test('service worker cache V316',sw.includes("belm-app-v316-dispatch-received-sync"));
+console.log(`\n${pass}/${pass+fail} V316 checks passed`);process.exit(fail?1:0);

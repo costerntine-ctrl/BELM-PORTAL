@@ -19,6 +19,33 @@ if ($method === 'GET' && $action === 'dispatch-options') {
     if (!belm_can_override_technician_customer($user)) {
         json_error('Only BELM Super Admin or Engineer can use Technician Dispatch.', 403);
     }
+
+    // V316: Technician Dispatch is also a recovery point for older/interrupted
+    // Service Requests. A machine-linked OPEN request should always have one
+    // customer-issued Job Card waiting for assignment. Sync those sources before
+    // building the dropdown so the Engineer does not have to open another page
+    // first just to make a received Job Card appear.
+    $syncedServiceRequests = 0;
+    try {
+        $syncRows = db()->query(
+            "SELECT sr.id
+             FROM service_requests sr
+             WHERE sr.machine_id IS NOT NULL
+               AND sr.status NOT IN ('PENDING_CUSTOMER','COMPLETED','CANCELLED')
+             ORDER BY sr.created_at DESC
+             LIMIT 250"
+        )->fetchAll();
+        foreach ($syncRows as $syncRow) {
+            if (belm_sync_breakdown_case_from_service_request((string)$syncRow['id'], 'Technician Dispatch Sync')) {
+                $syncedServiceRequests++;
+            }
+        }
+    } catch (Throwable $error) {
+        // Do not block Dispatch if legacy data cannot be repaired in this pass.
+        // The dropdown query below can still return every already-valid card.
+        error_log('Technician Dispatch Service Request sync failed: ' . $error->getMessage());
+    }
+
     $technicians = db()->query(
         "SELECT u.id,u.name,u.email,u.assigned_customer_id,hc.name AS assigned_customer_name
          FROM users u JOIN roles r ON r.id=u.role_id
@@ -47,12 +74,12 @@ if ($method === 'GET' && $action === 'dispatch-options') {
     $receivedJobCards = db()->query(
         "SELECT j.id,j.job_card_no,j.title,j.customer_id,j.machine_id,j.status,j.priority,j.due_date,
                 j.technician_id,j.technician_name,j.issued_by_name,j.issued_at,
-                bc.source_type,bc.source_id,c.name AS customer_name,m.brand,m.model,m.machine_type
+                bc.source_type,bc.source_id,c.name AS customer_name,m.brand,m.model,m.machine_type,m.serial_number
          FROM digital_job_cards j
          JOIN breakdown_cases bc ON bc.id=j.case_id
          JOIN customers c ON c.id=j.customer_id
-         JOIN machines m ON m.id=j.machine_id
-         WHERE j.status IN ('RECEIVED','OPEN')
+         LEFT JOIN machines m ON m.id=j.machine_id
+         WHERE UPPER(COALESCE(j.status,'RECEIVED')) IN ('RECEIVED','OPEN','ASSIGNED')
            AND bc.status <> 'COMPLETED'
            AND j.technician_id IS NULL
            AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL
@@ -67,14 +94,25 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         $job['technicianId']=$job['technician_id'];
         $job['technicianName']=$job['technician_name'];
         $job['customerName']=$job['customer_name'];
-        $job['machineLabel']=trim(($job['brand']??'').' '.($job['model']??'')) ?: ($job['machine_type']??'Machine');
+        $job['machineLabel']=trim(($job['brand']??'').' '.($job['model']??'')) ?: ($job['machine_type']??'Machine unavailable');
+        $job['machineSerial']=$job['serial_number']??null;
         $job['sourceType']=$job['source_type'];
         $job['issuedByName']=$job['issued_by_name'];
         $job['issuedAt']=$job['issued_at'];
         $job['dispatchStatus']='RECEIVED';
     }
     unset($job);
-    json_out(['technicians'=>$technicians,'customers'=>$customers,'machines'=>$machines,'receivedJobCards'=>$receivedJobCards]);
+    json_out([
+        'technicians'=>$technicians,
+        'customers'=>$customers,
+        'machines'=>$machines,
+        'receivedJobCards'=>$receivedJobCards,
+        'dispatchSync'=>[
+            'serviceRequests'=>$syncedServiceRequests,
+            'receivedJobCards'=>count($receivedJobCards),
+            'machines'=>count($machines),
+        ],
+    ]);
 }
 
 if ($method === 'POST' && $action === 'dispatch') {
@@ -115,7 +153,8 @@ if ($method === 'POST' && $action === 'dispatch') {
             );
             $j->execute([$jobId]); $job=$j->fetch();
             if(!$job) throw new RuntimeException('Selected Job Card was not found.');
-            if(in_array(strtoupper((string)$job['status']),['COMPLETED','CANCELLED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('Completed/cancelled Job Cards cannot be dispatched again.');
+            $jobStatus=strtoupper(trim((string)($job['status']??'RECEIVED')));
+            if(!in_array($jobStatus,['RECEIVED','OPEN','ASSIGNED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('This Job Card is no longer waiting for Technician Dispatch. Refresh the received Job Cards list.');
             $customerIssued = strtoupper(trim((string)($job['issued_by_type']??''))) === 'CUSTOMER';
             if((string)$job['source_type']!=='SERVICE_REQUEST' && !$customerIssued) throw new RuntimeException('Only Customer-issued or Service Request Job Cards can be received through Technician Dispatch.');
             if(trim((string)($job['technician_id']??''))!=='' || trim((string)($job['technician_name']??''))!=='') throw new RuntimeException('This Job Card is already assigned. Use Job Card handover/reassignment instead.');

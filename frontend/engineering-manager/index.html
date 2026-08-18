@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
-    <link rel="stylesheet" href="/engineering-manager/manager.css?v=315-job-card-received-confirmation">
+    <link rel="stylesheet" href="/engineering-manager/manager.css?v=316-dispatch-received-sync">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -57,7 +57,7 @@
         <form id="dispatchForm" class="eng-dispatch-form">
           <label>Technician<select id="dispatchTechnician" required><option value="">Select Technician...</option></select></label>
           <fieldset class="wide eng-job-source"><legend>Job Card Source</legend><label><input type="radio" name="jobCardMode" value="existing" checked> Select Received Job Card</label><label><input type="radio" name="jobCardMode" value="create"> Create Job Card</label></fieldset>
-          <label class="wide" id="receivedJobCardField">Received Job Card<select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><small>Select customer first to filter. Shows RECEIVED Job Cards: active Customer-issued / Service Request cards waiting for Technician assignment.</small></label>
+          <label class="wide" id="receivedJobCardField">Received Job Card<div class="eng-dispatch-inline-control"><select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><button type="button" class="secondary" id="refreshReceivedJobCards">Refresh Job Cards</button></div><small id="receivedJobCardHelp">Select customer first to filter. Loading received Job Cards waiting for Technician assignment...</small></label>
           <label id="dispatchCustomerField">Customer for this job<select id="dispatchCustomer"><option value="">Select Customer...</option></select></label>
           <label id="dispatchMachineField" class="hidden">Machine<select id="dispatchMachine"><option value="">Select Machine...</option></select></label>
           <label class="wide hidden" id="dispatchTitleField">Job title<input id="dispatchTitle" placeholder="e.g. Hydraulic pressure diagnosis"></label>
@@ -133,6 +133,6 @@
     <script src="/admin-access.js"></script>
     <script src="/admin-sidebar.js?v=279-sidebar-search"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/engineering-manager/manager.js?v=315-job-card-received-confirmation"></script>
+    <script src="/engineering-manager/manager.js?v=316-dispatch-received-sync"></script>
   </body>
 </html>

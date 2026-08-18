@@ -41,8 +41,8 @@ test('technician spare request validates case and assignment',bw.includes('A Tec
 test('job report cannot self-claim an unassigned Job Card',bw.includes('bw_require_assigned_job($ctx,$job)')&&!bw.includes('technician_id=COALESCE(technician_id,?)'));
 test('job PDF requires assigned Job Card for technician',bw.includes("$action === 'job-card-pdf'")&&bw.includes("bw_case_access($ctx,$job['case_id']); bw_require_assigned_job($ctx,$job);"));
 
-test('dispatch list excludes completed and cancelled Job Cards',engineering.includes("j.status IN ('RECEIVED','OPEN')")&&engineering.includes("bc.status <> 'COMPLETED'"));
-test('dispatch refuses final Job Cards/cases',engineering.includes("['COMPLETED','CANCELLED']")&&engineering.includes("$job['case_status'])==='COMPLETED'"));
+test('dispatch list excludes completed and cancelled Job Cards',engineering.includes("IN ('RECEIVED','OPEN','ASSIGNED')")&&engineering.includes("bc.status <> 'COMPLETED'")&&engineering.includes('j.technician_id IS NULL'));
+test('dispatch refuses final/started Job Cards and completed cases',engineering.includes("!in_array($jobStatus,['RECEIVED','OPEN','ASSIGNED'],true)")&&engineering.includes("$job['case_status'])==='COMPLETED'"));
 
 test('customer outstanding debt uses remaining invoice balance',customer.includes('SUM(GREATEST(i.total-COALESCE(pay.paid,0),0))'));
 test('customer outstanding debt excludes cancelled/deleted invoices',customer.includes("i.deleted_at IS NULL AND i.status<>'CANCELLED'"));

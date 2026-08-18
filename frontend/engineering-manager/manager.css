@@ -161,3 +161,8 @@ dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
 #engineeringJobCardsFrame{min-height:820px}
 html[data-theme="dark"] .eng-workspace-tabs{background:#0f1c2c}
 @media(max-width:760px){.eng-workspace-tabs{position:sticky;top:4px;z-index:5}.eng-workspace-tabs button{flex:1}.eng-workspace-panel iframe{min-height:760px}#engineeringJobCardsFrame{min-height:920px}}
+
+/* V316 - received Job Card refresh/diagnostic control. */
+.eng-dispatch-inline-control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.eng-dispatch-inline-control button{white-space:nowrap;padding:9px 12px;border-radius:9px}
+@media(max-width:760px){.eng-dispatch-inline-control{grid-template-columns:1fr}.eng-dispatch-inline-control button{width:100%}}

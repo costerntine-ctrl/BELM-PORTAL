@@ -24,6 +24,6 @@ test('self deletion blocked server side',users.includes('You cannot delete the a
 test('legacy PIN fallback remains',users.includes('require_delete_confirmation($actor, $body)')&&users.includes('require_edit_confirmation($actor, $body)'));
 test('old confirmation scripts removed from account page',!html.includes('/delete-confirm.js')&&!html.includes('/edit-confirm.js'));
 test('V322 cache-busts admin assets',html.includes('admin.css?v=322-user-actions-fix')&&html.includes('admin.js?v=322-user-actions-fix'));
-test('health and service worker advertise V322',health.includes("'schemaVersion' => '322-registered-user-actions-fix'")&&sw.includes("const CACHE='belm-app-v322-registered-user-actions-fix';"));
+test('health and service worker advertise V322',(/'schemaVersion' => '(322-registered-user-actions-fix|323-technician-mobile-sync|324-technician-alert-condition-sync|325-technician-card-colors|326-jc-proforma-sync)'/.test(health))&&(/const CACHE='belm-app-v(322-registered-user-actions-fix|323-technician-mobile-sync|324-technician-alert-condition-sync|325-technician-card-colors|326-jc-proforma-sync)'/.test(sw)));
 test('new dialog has styling',css.includes('V322 - reliable Registered Users account actions'));
 console.log(`\n${pass}/${pass+fail} V322 checks passed`);process.exit(fail?1:0);

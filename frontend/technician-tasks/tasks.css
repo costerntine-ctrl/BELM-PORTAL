@@ -8,3 +8,10 @@ main { width:min(900px,calc(100% - 28px)); margin:38px auto 70px; }.heading { di
 @media(max-width:600px){.heading{align-items:start;flex-direction:column}.task-head{align-items:start}.task-actions{align-items:start;flex-direction:column;gap:10px}}
 
 .temporary-override{display:inline-block;margin-top:6px;padding:4px 8px;border-radius:999px;background:#fff3bf;color:#6b5200;font-size:11px;font-weight:800;border:1px solid #f4cf00}
+
+
+/* V323 - synchronized Technician work inbox */
+.task.JOB_CARD::before { background:#0b4f9c; }
+.job-card-sync { display:inline-flex; margin-top:7px; padding:4px 8px; border:1px solid #bcd8f5; border-radius:999px; color:#0b4f9c; background:#eff7ff; font-size:10px; font-weight:900; }
+.open-job-card { display:inline-flex; align-items:center; justify-content:center; min-height:34px; padding:8px 12px; border-radius:8px; color:#fff; background:#0b4f9c; text-decoration:none; font-size:11px; font-weight:850; }
+@media(max-width:600px){header{align-items:flex-start;gap:12px;flex-direction:column}header nav{width:100%;justify-content:space-between}.tabs{overflow-x:auto;padding-bottom:3px}.tabs button{flex:0 0 auto}.task{padding:15px}.task-actions .complete,.task-actions .open-job-card{width:100%}}

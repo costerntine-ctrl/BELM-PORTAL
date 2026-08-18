@@ -2024,10 +2024,12 @@ function belm_recompute_job_billing_status(string $jobId): string {
         return $status;
     }
 
-    $job = db()->prepare('SELECT signed_copy_data FROM digital_job_cards WHERE id=?');
+    $job = db()->prepare('SELECT signed_copy_data,technician_id,status FROM digital_job_cards WHERE id=?');
     $job->execute([$jobId]);
-    $signed = $job->fetchColumn();
-    $status = $signed ? 'READY_FOR_PROCUREMENT' : 'NOT_READY';
+    $jobRow = $job->fetch();
+    $signed = $jobRow['signed_copy_data'] ?? null;
+    $assigned = !empty($jobRow['technician_id']) || in_array(strtoupper((string)($jobRow['status'] ?? '')), ['ASSIGNED','IN_PROGRESS','WAITING_PARTS','TESTING','COMPLETED'], true);
+    $status = $signed ? 'READY_FOR_PROCUREMENT' : ($assigned ? 'PROFORMA_PENDING' : 'NOT_READY');
     db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
         ->execute([$status, $jobId]);
     return $status;

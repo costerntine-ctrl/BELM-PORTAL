@@ -1009,9 +1009,60 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
                 ->execute([uuid(),(string)$case['source_id'],'STATUS',$oldSrStatus,'IN_PROGRESS',$ctx['kind']==='belm'?($ctx['actorId']??null):null,$ctx['actorName'],'Synchronized from Technician Job Card '.$job['job_card_no']]);
         }
     }
-    try{ customer_send_team_alert((string)$case['customer_id'],['workflow','check-up'], 'TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'], "Job Card: {$job['job_card_no']}\nTechnician: {$ctx['actorName']}\nDiagnosis: $diagnosis\nWork done: $work\nStatus: ".($complete?'Repair completed - waiting test':'In progress').($repeat?'\nRepeat/Rework: YES':''), true);}catch(Throwable $e){}
-    if ($ctx['kind']==='belm' && empty($case['is_machinery_admin'])) { try { belm_send_customer_to_belm_alert(['service-requests'],'BELM TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'],"Technician: {$ctx['actorName']}\nMachine: ".$case['brand'].' '.$case['model']."\nDiagnosis: $diagnosis\nWork done: $work\nStatus: ".($complete?'Repair completed - waiting Workshop test':'In progress')); } catch(Throwable $e) {} }
-    json_out(['ok'=>true,'repeatIssue'=>$repeat]);
+    // V324: Technician Job Report delivery is explicit and auditable. The
+    // Job Card/workflow update is already committed before notification, so
+    // email failures never make the Technician lose the technical report.
+    $customerDelivery=['sent'=>0,'failed'=>0,'recipients'=>[]];
+    $belmDelivery=['sent'=>0,'failed'=>0,'recipients'=>[]];
+    $portalCommunicationId=null;
+    $customerSubject='TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'];
+    $customerBody="Job Card: {$job['job_card_no']}\nTechnician: {$ctx['actorName']}\nDiagnosis: $diagnosis\nWork done: $work\nStatus: ".($complete?'Repair completed - waiting test':'In progress').($repeat?'\nRepeat/Rework: YES':'');
+    try {
+        $customerDelivery=customer_send_team_alert((string)$case['customer_id'],['workflow','check-up'],$customerSubject,$customerBody,true);
+    } catch(Throwable $e) {}
+
+    // Any BELM-owned Technician who can update this Job Card must notify BELM,
+    // including official Support Requests for a self-managed Customer. V323
+    // incorrectly skipped that latter case because is_machinery_admin=1.
+    if ($ctx['kind']==='belm') {
+        $portalCommunicationId=belm_log_customer_communication(
+            (string)$case['customer_id'],
+            (string)$job['machine_id'],
+            'BELM_TO_CUSTOMER',
+            'PORTAL',
+            $customerSubject,
+            $customerBody,
+            'JOB_CARD',
+            (string)$job['id'],
+            (string)$ctx['actorName'],
+            'SENT'
+        );
+        try {
+            $belmDelivery=belm_send_customer_to_belm_alert(
+                ['service-requests'],
+                'BELM TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'],
+                "Technician: {$ctx['actorName']}\nMachine: ".$case['brand'].' '.$case['model']."\nDiagnosis: $diagnosis\nWork done: $work\nStatus: ".($complete?'Repair completed - waiting Workshop test':'In progress')
+            );
+        } catch(Throwable $e) {}
+    }
+    json_out([
+        'ok'=>true,
+        'repeatIssue'=>$repeat,
+        'delivery'=>[
+            'customer'=>[
+                'portalRecorded'=>true,
+                'emailsSent'=>(int)($customerDelivery['sent']??0),
+                'emailFailures'=>(int)($customerDelivery['failed']??0),
+            ],
+            'belm'=>[
+                'required'=>$ctx['kind']==='belm',
+                'workflowSynced'=>true,
+                'portalCommunicationId'=>$portalCommunicationId,
+                'emailsSent'=>(int)($belmDelivery['sent']??0),
+                'emailFailures'=>(int)($belmDelivery['failed']??0),
+            ],
+        ],
+    ]);
 }
 
 if ($method === 'PUT' && $action === 'stage' && $id !== '') {

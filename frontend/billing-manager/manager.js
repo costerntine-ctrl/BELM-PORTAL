@@ -4,6 +4,7 @@
   let invoices = [];
   let expenses = [];
   let proformas = [];
+  let pendingProformaJobs = [];
   let receipts = [];
   let bankData = { accounts: [], withdrawals: [], summary: {} };
 
@@ -166,13 +167,25 @@
 
   function renderProformas() {
     const panel = document.getElementById("proformasPanel");
-    if (!proformas.length) {
-      panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="empty">No proforma invoices yet.</div>`;
-      return;
-    }
-    panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
+    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>JC / Proforma Code</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="edit" data-prepare-pending-proforma="${escapeHtml(job.id)}">Prepare ${escapeHtml(job.proformaCode||job.jobCardNo)}</button>`:`<button type="button" disabled>Waiting Job Completion</button>`}</td></tr>`).join("")}</tbody></table></div><small>The JC Number is the reserved Proforma code. It stays PENDING after Technician assignment until the signed Job Card is ready for billing.</small></div>` : '';
+    const actualHtml = proformas.length ? `<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
       <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button></div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
-    `).join("")}</tbody></table></div>`;
+    `).join("")}</tbody></table></div>` : '<div class="empty">No prepared proforma invoices yet.</div>';
+    panel.innerHTML = `${reviewHeading("Proforma", "JC Number is the Proforma code for Job Card billing; assigned jobs stay pending until ready.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingHtml}${actualHtml}`;
+  }
+
+  async function preparePendingJobProforma(jobId){
+    const job=pendingProformaJobs.find(item=>item.id===jobId);if(!job)return;
+    if(!job.canPrepare){showAlert('This Job Card is still pending completion/sign-off.',true);return}
+    await openProforma();
+    document.getElementById('proformaCustomer').value=job.customerId||'';
+    document.getElementById('proformaMachineId').value=job.machineId||'';
+    document.getElementById('proformaSourceJobCardId').value=job.id||'';
+    document.getElementById('proformaTitle').textContent=`Prepare Proforma ${job.proformaCode||job.jobCardNo}`;
+    fillCustomerInformation('proformaCustomer','proformaCustomerInfo');
+    const firstRow=document.querySelector('#proformaItems .item-row');
+    if(firstRow)firstRow.querySelector('[data-field="description"]').value=`Service Job Card ${job.jobCardNo||''}`.trim();
+    showAlert(`JC ${job.jobCardNo} detected automatically. Saving this Proforma will use the same code: ${job.proformaCode||job.jobCardNo}.`);
   }
 
   function openReviewExport(type, record) {
@@ -227,10 +240,11 @@
       return;
     }
     try {
-      [invoices, expenses, proformas] = await Promise.all([
+      [invoices, expenses, proformas, pendingProformaJobs] = await Promise.all([
         api("/billing/invoices"),
         api("/company-expenses"),
         api("/proforma-invoices"),
+        api("/proforma-invoices?action=pending-job-cards"),
       ]);
       // Customer lookup is part of Billing itself. Billing staff should not
       // need the separate Customers Manager permission just to issue an invoice.
@@ -953,6 +967,8 @@
     const reviewButton = event.target.closest("[data-review-proforma]");
     const removeButton = event.target.closest("[data-delete-proforma]");
     const sendButton = event.target.closest("[data-send-proforma]");
+    const pendingButton = event.target.closest("[data-prepare-pending-proforma]");
+    if (pendingButton) preparePendingJobProforma(pendingButton.dataset.preparePendingProforma);
     if (edit) openProforma(proformas.find((item) => item.id === edit.dataset.editProforma));
     if (reviewButton) {
       const proforma = proformas.find((item) => item.id === reviewButton.dataset.reviewProforma);

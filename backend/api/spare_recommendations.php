@@ -80,7 +80,7 @@ if ($method === 'POST') {
     if (!isset($systemLabels[$systemCategory])) json_error('Select a valid system.');
 
     $stmt = db()->prepare(
-        'SELECT id, machine_type, model FROM machines
+        'SELECT id, machine_type, brand, model, serial_number, reg_number FROM machines
          WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
     );
     $stmt->execute([$machineId, $assignedCustomerId]);
@@ -127,9 +127,55 @@ if ($method === 'POST') {
     }
 
     log_activity($payload, 'created', 'spareRecommendation', $requestId, ['referenceNumber' => $referenceNumber]);
+
+    // V324: a Technician recommendation is not only a database row. Record it
+    // in the shared Customer communication feed and alert the Customer team so
+    // the recommendation is visible even when email delivery is unavailable.
+    $technicianName = trim((string)($payload['name'] ?? 'Technician'));
+    $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''))
+        ?: ((string)($machine['machine_type'] ?? '') ?: 'Machine');
+    $recommendationText = 'BELM Technician ' . $technicianName . ' recommended a spare part.'
+        . "\nMachine: " . $machineLabel
+        . (!empty($machine['serial_number']) ? "\nSerial: " . $machine['serial_number'] : '')
+        . "\nSystem: " . $systemLabels[$systemCategory]
+        . "\nSpare: " . $spareName
+        . "\nReference: " . $referenceNumber
+        . ($manufacturerPartNumber !== '' ? "\nManufacturer part number: " . $manufacturerPartNumber : '')
+        . "\nOpen the Customer Portal to confirm or order this recommendation.";
+    $portalCommunicationId = belm_log_customer_communication(
+        $assignedCustomerId,
+        $machineId,
+        'BELM_TO_CUSTOMER',
+        'PORTAL',
+        'Technician Spare Recommendation - ' . $machineLabel,
+        $recommendationText,
+        'SERVICE_REQUEST',
+        $requestId,
+        $technicianName,
+        'SENT'
+    );
+    $customerDelivery = ['sent' => 0, 'failed' => 0, 'recipients' => []];
+    try {
+        $customerDelivery = customer_send_team_alert(
+            $assignedCustomerId,
+            ['workflow', 'service-request'],
+            'TECHNICIAN SPARE RECOMMENDATION - ' . $machineLabel,
+            $recommendationText,
+            true
+        );
+    } catch (Throwable $ignored) {}
+
     json_out([
         'id' => $requestId,
-        'message' => 'Spare-part recommendation sent. The customer will see the reference number and can order it.',
+        'message' => 'Spare-part recommendation saved and synchronized to the Customer Portal.',
+        'delivery' => [
+            'customer' => [
+                'portalRecorded' => true,
+                'portalCommunicationId' => $portalCommunicationId,
+                'emailsSent' => (int)($customerDelivery['sent'] ?? 0),
+                'emailFailures' => (int)($customerDelivery['failed'] ?? 0),
+            ],
+        ],
     ], 201);
 }
 

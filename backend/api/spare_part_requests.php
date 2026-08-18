@@ -243,12 +243,46 @@ if ($method === 'POST') {
         throw $error;
     }
 
+    // V324: persist first, then explicitly alert the BELM Inventory owners.
+    // Email is best-effort; the saved Inventory Request remains the source of
+    // truth and the response tells the Technician whether alert delivery worked.
+    $technicianName = trim((string)($user['name'] ?? 'Technician'));
+    $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''))
+        ?: ((string)($machine['machine_type'] ?? '') ?: 'Machine');
+    $inventoryText = 'Technician ' . $technicianName . ' submitted an Inventory Request.'
+        . "\nCustomer: " . ($machine['customer_name'] ?? 'Unknown')
+        . "\nMachine: " . $machineLabel
+        . (!empty($machine['serial_number']) ? "\nSerial: " . $machine['serial_number'] : '')
+        . "\nPart number: " . $request['partNumber']
+        . "\nDescription: " . $request['description']
+        . "\nRequest ID: " . $requestId;
+    $belmDelivery = ['sent' => 0, 'failed' => 0, 'recipients' => []];
+    try {
+        $belmDelivery = belm_send_staff_page_alert(
+            ['spare-parts'],
+            'TECHNICIAN INVENTORY REQUEST - ' . $request['partNumber'] . ' - ' . $machineLabel,
+            $inventoryText
+        );
+    } catch (Throwable $ignored) {}
+    log_activity($user, 'created', 'sparePartRequest', $requestId, [
+        'partNumber' => $request['partNumber'],
+        'machineId' => $machine['id'],
+        'customerId' => $machine['customer_id'],
+    ]);
+
     json_out([
         'id' => $requestId,
         'sparePartId' => $part['id'],
         'stockQty' => 0,
         'status' => 'PENDING',
-        'message' => 'Spare request sent to Inventory. Stock is 0; addition or purchase is required.',
+        'message' => 'Inventory Request saved and synchronized to BELM Spare Parts.',
+        'delivery' => [
+            'belm' => [
+                'workflowSynced' => true,
+                'emailsSent' => (int)($belmDelivery['sent'] ?? 0),
+                'emailFailures' => (int)($belmDelivery['failed'] ?? 0),
+            ],
+        ],
     ], 201);
 }
 

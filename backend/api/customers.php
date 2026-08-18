@@ -1183,7 +1183,13 @@ if ($method === 'PUT' && $action === 'operational-status') {
     $note = trim((string)($b['note'] ?? ''));
     if (!in_array($status, MACHINE_OPERATIONAL_STATUSES, true)) json_error('Invalid operational status.', 422);
 
-    $stmt = db()->prepare('SELECT customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
+    $stmt = db()->prepare(
+        'SELECT m.customer_id, m.machine_type, m.brand, m.model, m.serial_number, m.reg_number,
+                c.name AS customer_name
+         FROM machines m
+         JOIN customers c ON c.id = m.customer_id
+         WHERE m.id = ? AND m.deleted_at IS NULL AND c.deleted_at IS NULL'
+    );
     $stmt->execute([$_GET['machineId']]);
     $machine = $stmt->fetch();
     if (!$machine) json_error('Machine not found.', 404);
@@ -1196,7 +1202,68 @@ if ($method === 'PUT' && $action === 'operational-status') {
     db()->prepare('UPDATE machines SET operational_status = ?, operational_status_note = ?, operational_status_updated_at = NOW() WHERE id = ?')
         ->execute([$status, $note !== '' ? $note : null, $_GET['machineId']]);
 
-    json_out(['ok' => true]);
+    $delivery = [
+        'customer' => ['portalRecorded' => true, 'emailsSent' => 0, 'emailFailures' => 0],
+        'belm' => ['required' => false, 'workflowSynced' => true, 'emailsSent' => 0, 'emailFailures' => 0],
+    ];
+    if (($user['roleName'] ?? '') === 'Technician') {
+        $actorName = trim((string)($user['name'] ?? 'Technician'));
+        $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''))
+            ?: ((string)($machine['machine_type'] ?? '') ?: 'Machine');
+        $statusText = 'Technician ' . $actorName . ' updated machine activity status.'
+            . "
+Customer: " . ($machine['customer_name'] ?? 'Customer')
+            . "
+Machine: " . $machineLabel
+            . (!empty($machine['serial_number']) ? "
+Serial: " . $machine['serial_number'] : '')
+            . "
+Activity status: " . $status
+            . ($note !== '' ? "
+Note: " . $note : '');
+        $communicationId = belm_log_customer_communication(
+            (string)$machine['customer_id'],
+            (string)$_GET['machineId'],
+            'BELM_TO_CUSTOMER',
+            'PORTAL',
+            'Technician Machine Activity Status - ' . $machineLabel,
+            $statusText,
+            'MACHINE_STATUS',
+            (string)$_GET['machineId'],
+            $actorName,
+            'SENT'
+        );
+        $delivery['customer']['portalCommunicationId'] = $communicationId;
+        $customerDelivery = ['sent' => 0, 'failed' => 0];
+        try {
+            $customerDelivery = customer_send_team_alert(
+                (string)$machine['customer_id'],
+                ['workflow', 'check-up'],
+                'MACHINE ACTIVITY STATUS - ' . $machineLabel . ' - ' . $status,
+                $statusText,
+                true
+            );
+        } catch (Throwable $ignored) {}
+        $delivery['customer']['emailsSent'] = (int)($customerDelivery['sent'] ?? 0);
+        $delivery['customer']['emailFailures'] = (int)($customerDelivery['failed'] ?? 0);
+
+        $isBelmTechnician = empty($user['isCustomerManaged']);
+        $delivery['belm']['required'] = $isBelmTechnician;
+        if ($isBelmTechnician) {
+            $belmDelivery = ['sent' => 0, 'failed' => 0];
+            try {
+                $belmDelivery = belm_send_customer_to_belm_alert(
+                    ['service-requests'],
+                    'BELM TECHNICIAN MACHINE STATUS - ' . $machineLabel . ' - ' . $status,
+                    $statusText
+                );
+            } catch (Throwable $ignored) {}
+            $delivery['belm']['emailsSent'] = (int)($belmDelivery['sent'] ?? 0);
+            $delivery['belm']['emailFailures'] = (int)($belmDelivery['failed'] ?? 0);
+        }
+    }
+
+    json_out(['ok' => true, 'delivery' => $delivery]);
 }
 
 if ($method === 'PUT' && $action === 'edit-machine') {

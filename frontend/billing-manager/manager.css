@@ -212,3 +212,7 @@ html[data-theme="dark"] .customer-info {
 }
 
 .invoice-sync-badge{display:inline-flex;margin-left:5px;padding:3px 7px;border-radius:999px;font-size:9px;font-weight:900;vertical-align:middle}.invoice-sync-badge.outstanding{background:#facc15;color:#3d2f00}.invoice-sync-badge.paid{background:#16a34a;color:#fff}.invoice-sync-badge.cancelled{background:#64748b;color:#fff}
+
+
+/* V326 pending Job Card Proforma queue */
+.pending-proforma-box{margin:0 0 18px;padding:14px;border:1px solid #e1bd34;border-radius:12px;background:#fff9df}.pending-proforma-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}.pending-proforma-head div{display:grid;gap:3px}.pending-proforma-head span{font-size:9px;font-weight:900;letter-spacing:.08em;color:#7a5e00}.pending-proforma-head strong{font-size:15px}.pending-proforma-head>b{display:grid;place-items:center;min-width:30px;height:30px;border-radius:999px;background:#e1bd34;color:#231c00}.pending-proforma-box>small{display:block;margin-top:8px;color:#66551b}.pending-proforma-status{display:inline-flex;padding:4px 8px;border-radius:999px;background:#facc15;color:#3d2f00;font-size:10px;font-weight:900}html[data-theme="dark"] .pending-proforma-box{border-color:#766423;background:#2b2716}html[data-theme="dark"] .pending-proforma-head span,html[data-theme="dark"] .pending-proforma-box>small{color:#f6df86}

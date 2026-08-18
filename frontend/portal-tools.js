@@ -680,8 +680,10 @@
   async function addTechnicianCustomerDashboardShortcut() {
     if (!window.location.pathname.startsWith("/tech")) return;
     if (document.getElementById("belm-tech-customer-dashboard")) return;
+    if (document.body.dataset.belmTechCustomerShortcutLoading === "1") return;
     const token = localStorage.getItem("belm_tech_token");
     if (!token) return;
+    document.body.dataset.belmTechCustomerShortcutLoading = "1";
     try {
       const response = await fetch("/api/customer-portal/dashboard", {
         headers: { Authorization: `Bearer ${token}` },
@@ -697,27 +699,18 @@
       button.id = "belm-tech-customer-dashboard";
       button.type = "button";
       const companyName = data?.customer?.name || roleContextCustomerName() || "Customer";
-      button.textContent = permissions === null ? `${companyName} Dashboard - Full Control` : `${companyName} Dashboard`;
-      Object.assign(button.style, {
-        position: "fixed",
-        right: "18px",
-        bottom: "150px",
-        zIndex: "9998",
-        background: "#151d31",
-        color: "#fff",
-        border: "2px solid #00a651",
-        borderRadius: "999px",
-        padding: "10px 14px",
-        font: "800 12px Inter,system-ui,sans-serif",
-        boxShadow: "0 10px 26px rgba(21,29,49,.24)",
-        cursor: "pointer",
-      });
+      button.textContent = permissions === null ? "Customer · Full" : "Customer";
+      button.title = permissions === null ? `${companyName} Dashboard - Full Control` : `${companyName} Dashboard`;
+      button.className = "belm-tech-dock-customer";
       button.addEventListener("click", () => {
         localStorage.setItem("belm_customer_token", token);
         window.location.href = "/portal/dashboard";
       });
-      document.body.appendChild(button);
-    } catch (_) {}
+      mountTechnicianDockAction(button, 50);
+    } catch (_) {
+    } finally {
+      delete document.body.dataset.belmTechCustomerShortcutLoading;
+    }
   }
 
   function clarifyTechnicianAssignment() {
@@ -1352,7 +1345,7 @@
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Checkup Report</button>
-        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow">${customerWorkflowActor() === "tech" ? "My Job Cards" : "Maintenance Process"}</a>
+        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>${customerWorkflowActor() === "tech" ? "Machine Job Cards" : "Maintenance Process"}</a>
       </div>`;
     card.appendChild(panel);
     panel.addEventListener("click", (event) => event.stopPropagation());
@@ -1361,6 +1354,7 @@
     enforceCustomerFeaturePermissions(panel);
     decorateMachineActionIcons(panel);
     organizeMachineActions(panel);
+    if (customerWorkflowActor() === "tech") scheduleTechnicianShortcutSync(180);
   }
 
 
@@ -3445,7 +3439,13 @@
     }
   }
 
-  async function loadTechnicianCustomerProfile() {
+  async function loadTechnicianCustomerProfile(force = false) {
+    if (force) {
+      technicianCustomerProfile = null;
+      technicianCustomerProfilePromise = null;
+      technicianReportMachines = null;
+      technicianReportMachinesPromise = null;
+    }
     if (technicianCustomerProfile) return technicianCustomerProfile;
     if (technicianCustomerProfilePromise) return technicianCustomerProfilePromise;
     const token = localStorage.getItem("belm_tech_token");
@@ -3459,6 +3459,7 @@
     if (!customerId) return null;
 
     technicianCustomerProfilePromise = fetch(`/api/customers/${encodeURIComponent(customerId)}`, {
+      cache: "no-store",
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async response => {
@@ -3471,14 +3472,21 @@
       .catch(() => {
         technicianCustomerProfilePromise = null;
         return null;
+      })
+      .finally(() => {
+        technicianCustomerProfilePromise = null;
       });
     return technicianCustomerProfilePromise;
   }
 
-  async function loadTechnicianReportMachines() {
+  async function loadTechnicianReportMachines(force = false) {
+    if (force) {
+      technicianReportMachines = null;
+      technicianReportMachinesPromise = null;
+    }
     if (technicianReportMachines) return technicianReportMachines;
     if (technicianReportMachinesPromise) return technicianReportMachinesPromise;
-    technicianReportMachinesPromise = loadTechnicianCustomerProfile()
+    technicianReportMachinesPromise = loadTechnicianCustomerProfile(force)
       .then(customer => Array.isArray(customer?.machines) ? customer.machines : [])
       .finally(() => {
         technicianReportMachinesPromise = null;
@@ -3510,6 +3518,97 @@
       status: normalized,
       ...(conditions[normalized] || conditions.UNKNOWN),
     };
+  }
+
+  function technicianSetActionAlert(element, count = 0, label = "Action required") {
+    if (!element) return;
+    const active = Number(count || 0) > 0;
+    element.classList.toggle("belm-tech-action-alert", active);
+    if (active) {
+      element.dataset.alertCount = String(count);
+      element.dataset.alertLabel = label;
+    } else {
+      delete element.dataset.alertCount;
+      delete element.dataset.alertLabel;
+    }
+  }
+
+  function technicianMachineNeedsCheck(status) {
+    return ["UNKNOWN", "YELLOW", "RED"].includes(String(status || "UNKNOWN").toUpperCase());
+  }
+
+  function updateTechnicianMachineCardState(card, machine) {
+    if (!card || !machine) return;
+    const condition = technicianCondition(machine.status);
+    ["green", "yellow", "red", "unknown"].forEach((value) => card.classList.remove(`status-${value}`));
+    card.classList.add(`status-${condition.status.toLowerCase()}`);
+    card.dataset.belmMachineStatus = condition.status;
+
+    const health = card.querySelector("[data-tech-machine-health]");
+    if (health) {
+      ["green", "yellow", "red", "unknown"].forEach((value) => health.classList.remove(`status-${value}`));
+      health.classList.add(`status-${condition.status.toLowerCase()}`);
+      const statusValue = health.querySelector("[data-tech-machine-status]");
+      const conditionValue = health.querySelector("[data-tech-condition-label]");
+      const conditionNote = health.querySelector("[data-tech-condition-note]");
+      if (statusValue) statusValue.textContent = condition.status;
+      if (conditionValue) conditionValue.textContent = condition.label;
+      if (conditionNote) {
+        const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons.filter(Boolean).slice(0, 2) : [];
+        conditionNote.textContent = reasons.length ? `${condition.note} ${reasons.join(" · ")}` : condition.note;
+      }
+    }
+
+    const lastChecked = card.querySelector("[data-tech-last-checked]");
+    if (lastChecked) {
+      const checkedAt = machine.lastCheckedAt || machine.last_checked_at;
+      lastChecked.textContent = checkedAt ? new Date(checkedAt).toLocaleDateString() : "Never checked";
+    }
+
+    const opSelect = card.querySelector("[data-belm-op-status]");
+    const opStatus = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
+    if (opSelect && document.activeElement !== opSelect && !opSelect.disabled) opSelect.value = opStatus;
+
+    const checkup = card.querySelector("[data-tech-checkup-machine]");
+    const needsCheck = technicianMachineNeedsCheck(condition.status);
+    technicianSetActionAlert(checkup, needsCheck ? 1 : 0, condition.status === "RED" ? "Critical machine condition" : "Machine check-up required");
+    if (checkup) {
+      checkup.dataset.alertCount = needsCheck ? "!" : "";
+      checkup.title = needsCheck
+        ? `${condition.status}: ${condition.label}. Open Check-up.`
+        : `Start a check-up for ${machine.model || machine.machineType || "machine"}`;
+      if (!needsCheck) delete checkup.dataset.alertCount;
+    }
+  }
+
+  async function refreshTechnicianMachineConditionSync() {
+    if (window.location.pathname !== "/tech") return;
+    const customer = await loadTechnicianCustomerProfile(true);
+    const machines = Array.isArray(customer?.machines) ? customer.machines : [];
+    if (!machines.length) return;
+    machines.forEach((machine) => {
+      const card = Array.from(document.querySelectorAll(".belm-technician-machine-card"))
+        .find((item) => String(item.dataset.belmMachineId || "") === String(machine.id || ""));
+      if (card) updateTechnicianMachineCardState(card, machine);
+    });
+  }
+
+  function technicianSyncToast(message, isError = false) {
+    if (!window.location.pathname.startsWith("/tech") || !message) return;
+    let toast = document.getElementById("belmTechnicianSyncToast");
+    if (!toast) {
+      toast = document.createElement("div");
+      toast.id = "belmTechnicianSyncToast";
+      toast.className = "belm-technician-sync-toast";
+      toast.setAttribute("role", "status");
+      toast.setAttribute("aria-live", "polite");
+      document.body.appendChild(toast);
+    }
+    toast.textContent = message;
+    toast.classList.toggle("error", Boolean(isError));
+    toast.classList.add("show");
+    clearTimeout(toast.belmHideTimer);
+    toast.belmHideTimer = setTimeout(() => toast.classList.remove("show"), 5200);
   }
 
   function technicianCustomerInfoCard(customer) {
@@ -3558,6 +3657,7 @@
   function technicianMachineInfoCard(card, machine) {
     if (card.dataset.belmTechnicianInfoReady === "1") return;
     card.dataset.belmTechnicianInfoReady = "1";
+    card.dataset.belmMachineId = String(machine.id || "");
     // Any click that results in this card's own native "open checklist"
     // action (a direct tap on the card OR our injected "Check-up" button
     // re-firing card.click()) reliably tells us which machine is about to
@@ -3584,13 +3684,13 @@
         <div><span>Serial No.</span><b>${escapeHtml(machine.serialNumber || machine.serial_number || "Not recorded")}</b></div>
         <div><span>Registration</span><b>${escapeHtml(machine.regNumber || machine.reg_number || "Not recorded")}</b></div>
         <div><span>Service Kit</span><b>${escapeHtml(machine.serviceKit || machine.service_kit || "Not recorded")}</b></div>
-        <div><span>Last Checked</span><b>${escapeHtml(machine.lastCheckedAt || machine.last_checked_at
+        <div><span>Last Checked</span><b data-tech-last-checked>${escapeHtml(machine.lastCheckedAt || machine.last_checked_at
           ? new Date(machine.lastCheckedAt || machine.last_checked_at).toLocaleDateString()
           : "Never checked")}</b></div>
       </div>
-      <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}">
-        <div><span>Machine Status</span><strong>${escapeHtml(condition.status)}</strong></div>
-        <div><span>Condition</span><strong>${escapeHtml(condition.label)}</strong><small>${escapeHtml(condition.note)}</small></div>
+      <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}" data-tech-machine-health>
+        <div><span>Machine Status</span><strong data-tech-machine-status>${escapeHtml(condition.status)}</strong></div>
+        <div><span>Condition</span><strong data-tech-condition-label>${escapeHtml(condition.label)}</strong><small data-tech-condition-note>${escapeHtml(condition.note)}</small></div>
       </div>
       <div class="belm-technician-op-status">
         <span>Activity status <small>(customer sees this update live)</small></span>
@@ -3616,7 +3716,18 @@
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ operationalStatus: select.value }),
         });
-        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Could not update status.");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not update status.");
+        window.dispatchEvent(new CustomEvent("belm-technician-data-changed", { detail: { machineId: machine.id, operationalStatus: select.value } }));
+        const customerSynced = result?.delivery?.customer?.portalRecorded !== false;
+        const belmRequired = Boolean(result?.delivery?.belm?.required);
+        const belmSynced = !belmRequired || Boolean(result?.delivery?.belm?.workflowSynced);
+        technicianSyncToast(
+          customerSynced && belmSynced
+            ? "Machine activity status synced to Customer and BELM."
+            : "Machine status saved. Some delivery needs attention.",
+          !(customerSynced && belmSynced),
+        );
       } catch (error) {
         alert(error.message || "Could not update machine activity status.");
       } finally {
@@ -3767,6 +3878,7 @@
       const checkupButton = document.createElement("button");
       checkupButton.type = "button";
       checkupButton.className = "belm-technician-checkup-button";
+      checkupButton.dataset.techCheckupMachine = String(machine.id || "");
       checkupButton.textContent = "Check-up";
       checkupButton.title = `Start a check-up for ${model}`;
       checkupButton.addEventListener("click", (event) => {
@@ -3778,8 +3890,9 @@
 
       const workflowButton = document.createElement("button");
       workflowButton.type = "button";
-      workflowButton.className = "belm-technician-checkup-button";
-      workflowButton.textContent = "My Job Cards";
+      workflowButton.className = "belm-technician-checkup-button belm-technician-jobcards-button";
+      workflowButton.dataset.techJobcardsMachine = String(machine.id || "");
+      workflowButton.textContent = "Machine Job Cards";
       workflowButton.title = `Open your assigned Job Cards for ${model}`;
       workflowButton.addEventListener("click", (event) => {
         event.preventDefault();
@@ -3792,6 +3905,8 @@
       actionsRow.appendChild(checkupButton);
       actionsRow.appendChild(workflowButton);
       card.appendChild(actionsRow);
+      updateTechnicianMachineCardState(card, machine);
+      scheduleTechnicianShortcutSync(180);
     });
   }
 
@@ -3869,6 +3984,19 @@
             }
           }
           if (!saved?.id || !machineId) return;
+          technicianCustomerProfile = null;
+          technicianReportMachines = null;
+          window.dispatchEvent(new CustomEvent("belm-technician-data-changed", { detail: { machineId, reportId: saved.id } }));
+          refreshTechnicianMachineConditionSync().catch(() => {});
+          const customerSynced = saved?.delivery?.customer?.portalRecorded !== false;
+          const belmRequired = Boolean(saved?.delivery?.belm?.required);
+          const belmSynced = !belmRequired || Boolean(saved?.delivery?.belm?.workflowSynced);
+          technicianSyncToast(
+            customerSynced && belmSynced
+              ? "Check-up saved · Machine condition synced · Customer and BELM updated."
+              : "Check-up saved. Some notification delivery needs attention.",
+            !(customerSynced && belmSynced)
+          );
           window.setTimeout(() => {
             if (saved.machine && Array.isArray(saved.answers)) {
               renderCheckedReport(saved);
@@ -4669,10 +4797,116 @@
     }, true);
   }
 
+  let belmTechnicianShortcutSyncTimer = null;
+
+  function ensureTechnicianActionDock() {
+    if (window.location.pathname !== "/tech") return null;
+    let dock = document.getElementById("belm-tech-action-dock");
+    if (dock) return dock;
+    dock = document.createElement("nav");
+    dock.id = "belm-tech-action-dock";
+    dock.className = "belm-tech-action-dock";
+    dock.setAttribute("aria-label", "Technician quick actions");
+    document.body.appendChild(dock);
+    document.body.classList.add("belm-tech-has-action-dock");
+    return dock;
+  }
+
+  function mountTechnicianDockAction(element, order) {
+    const dock = ensureTechnicianActionDock();
+    if (!dock || !element) return;
+    element.classList.add("belm-tech-dock-action");
+    element.style.order = String(order || 10);
+    dock.appendChild(element);
+  }
+
+  function scheduleTechnicianShortcutSync(delay = 100) {
+    if (window.location.pathname !== "/tech") return;
+    clearTimeout(belmTechnicianShortcutSyncTimer);
+    belmTechnicianShortcutSyncTimer = setTimeout(() => refreshTechnicianShortcutCounts(), delay);
+  }
+
+  async function refreshTechnicianShortcutCounts() {
+    if (window.location.pathname !== "/tech") return;
+    const payload = tokenPayload("belm_tech_token");
+    const token = localStorage.getItem("belm_tech_token");
+    if (!payload || !token || String(payload.roleName || "").toLowerCase() !== "technician") return;
+
+    const [jobsResult, tasksResult, machineResult] = await Promise.allSettled([
+      fetch('/api/breakdown-workflow/technician-jobs', {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (response) => response.ok ? response.json() : Promise.reject(new Error('Job Cards unavailable'))),
+      fetch(`/api/tasks/user/${encodeURIComponent(payload.id)}`, {
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(async (response) => response.ok ? response.json() : Promise.reject(new Error('Tasks unavailable'))),
+      loadTechnicianCustomerProfile(true).then((customer) => customer || Promise.reject(new Error('Machine condition unavailable'))),
+    ]);
+
+    if (jobsResult.status === 'fulfilled') {
+      const jobs = Array.isArray(jobsResult.value) ? jobsResult.value : [];
+      const activeJobs = jobs.filter((item) => !['COMPLETED','CANCELLED'].includes(String(item.status || '').toUpperCase()));
+      const jobLink = document.getElementById("belm-tech-jobcards-shortcut");
+      if (jobLink) {
+        jobLink.textContent = activeJobs.length ? `Job Cards (${activeJobs.length})` : "Job Cards";
+        technicianSetActionAlert(jobLink, activeJobs.length, "Assigned Job Card requires action");
+      }
+
+      const byMachine = new Map();
+      activeJobs.forEach((item) => {
+        const key = String(item.machineId || item.machine_id || '');
+        if (!key) return;
+        byMachine.set(key, (byMachine.get(key) || 0) + 1);
+      });
+      document.querySelectorAll("[data-tech-jobcards-machine]").forEach((link) => {
+        const count = byMachine.get(String(link.dataset.techJobcardsMachine || '')) || 0;
+        link.textContent = count ? `Machine Job Cards (${count})` : "Machine Job Cards";
+        link.classList.toggle("has-active-job-card", count > 0);
+        technicianSetActionAlert(link, count, "This machine has an assigned Job Card");
+      });
+    }
+
+    if (tasksResult.status === 'fulfilled') {
+      const tasks = Array.isArray(tasksResult.value) ? tasksResult.value : [];
+      const pending = tasks.filter((task) => String(task.status || '').toUpperCase() !== "DONE").length;
+      const taskLink = document.getElementById("belm-tech-tasks-shortcut");
+      if (taskLink) {
+        taskLink.textContent = pending ? `Tasks (${pending})` : "Tasks";
+        technicianSetActionAlert(taskLink, pending, "Pending task requires action");
+      }
+    }
+
+    if (machineResult.status === 'fulfilled') {
+      const machines = Array.isArray(machineResult.value?.machines) ? machineResult.value.machines : [];
+      machines.forEach((machine) => {
+        const card = Array.from(document.querySelectorAll(".belm-technician-machine-card"))
+          .find((item) => String(item.dataset.belmMachineId || "") === String(machine.id || ""));
+        if (card) updateTechnicianMachineCardState(card, machine);
+      });
+    }
+  }
+
+  function installTechnicianShortcutSync() {
+    if (window.location.pathname !== "/tech") return;
+    if (document.body.dataset.belmTechShortcutSync === "1") return;
+    document.body.dataset.belmTechShortcutSync = "1";
+    const refresh = () => scheduleTechnicianShortcutSync(20);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refresh();
+    });
+    window.addEventListener("belm-technician-data-changed", refresh);
+    window.setInterval(() => {
+      if (!document.hidden) refresh();
+    }, 30000);
+    refresh();
+  }
+
   async function addTechnicianTasksShortcut() {
     if (window.location.pathname !== "/tech") return;
     if (document.getElementById("belm-tech-tasks-shortcut")) return;
-
     const payload = tokenPayload("belm_tech_token");
     const token = localStorage.getItem("belm_tech_token");
     if (!payload || !token || String(payload.roleName || "").toLowerCase() !== "technician") return;
@@ -4680,34 +4914,10 @@
     const link = document.createElement("a");
     link.id = "belm-tech-tasks-shortcut";
     link.href = "/technician-tasks/";
-    link.textContent = "My Tasks";
-    Object.assign(link.style, {
-      position: "fixed",
-      right: "20px",
-      bottom: "82px",
-      zIndex: "1000",
-      padding: "12px 18px",
-      borderRadius: "999px",
-      background: "#00aa5b",
-      color: "#fff",
-      fontWeight: "800",
-      textDecoration: "none",
-      boxShadow: "0 12px 30px rgba(0, 170, 91, .30)",
-      border: "2px solid #f4cf00",
-    });
-    document.body.appendChild(link);
-
-    try {
-      const response = await fetch(`/api/tasks/user/${encodeURIComponent(payload.id)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) return;
-      const tasks = await response.json();
-      const pending = Array.isArray(tasks)
-        ? tasks.filter((task) => task.status !== "DONE").length
-        : 0;
-      if (pending > 0) link.textContent = `My Tasks (${pending})`;
-    } catch (_) {}
+    link.textContent = "Tasks";
+    link.className = "belm-tech-dock-tasks";
+    mountTechnicianDockAction(link, 20);
+    scheduleTechnicianShortcutSync();
   }
 
   async function addTechnicianJobCardsShortcut() {
@@ -4719,21 +4929,10 @@
     const link = document.createElement("a");
     link.id = "belm-tech-jobcards-shortcut";
     link.href = "/technician-job-cards/";
-    link.textContent = "My Job Cards";
-    Object.assign(link.style, {
-      position: "fixed", right: "20px", bottom: "138px", zIndex: "1000",
-      padding: "12px 18px", borderRadius: "999px", background: "#0b4f9c",
-      color: "#fff", fontWeight: "800", textDecoration: "none",
-      boxShadow: "0 12px 30px rgba(11, 79, 156, .28)", border: "2px solid #f4cf00",
-    });
-    document.body.appendChild(link);
-    try {
-      const response = await fetch('/api/breakdown-workflow/technician-jobs', { headers: { Authorization: `Bearer ${token}` } });
-      if (!response.ok) return;
-      const rows = await response.json();
-      const active = Array.isArray(rows) ? rows.filter((item) => !['COMPLETED','CANCELLED'].includes(String(item.status || '').toUpperCase())).length : 0;
-      if (active > 0) link.textContent = `My Job Cards (${active})`;
-    } catch (_) {}
+    link.textContent = "Job Cards";
+    link.className = "belm-tech-dock-jobcards";
+    mountTechnicianDockAction(link, 10);
+    scheduleTechnicianShortcutSync();
   }
 
   function closeTechnicianSpareRequest() {
@@ -4932,12 +5131,15 @@
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || "Spare request could not be sent.");
-        successBox.textContent = result.message || "Spare request sent to Inventory.";
+        const belmSynced = Boolean(result?.delivery?.belm?.workflowSynced);
+        successBox.textContent = belmSynced
+          ? `${result.message || "Inventory Request saved."} · BELM Inventory synced.`
+          : (result.message || "Inventory Request saved.");
         successBox.hidden = false;
         resetRequestForm();
         successBox.hidden = false;
-        successBox.textContent = result.message || "Inventory Request saved.";
         await loadRequests();
+        window.dispatchEvent(new CustomEvent("belm-technician-data-changed", { detail: { source: "inventory-request" } }));
         form.elements.partNumber.focus();
       } catch (error) {
         errorBox.textContent = error.message || "Spare request could not be sent.";
@@ -5262,9 +5464,13 @@
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || "Recommendation could not be sent.");
-        successBox.textContent = result.message || "Recommendation sent to the customer.";
+        const customerSynced = Boolean(result?.delivery?.customer?.portalRecorded);
+        successBox.textContent = customerSynced
+          ? `${result.message || "Recommendation saved."} · Customer synced.`
+          : (result.message || "Recommendation saved.");
         successBox.hidden = false;
         form.reset();
+        window.dispatchEvent(new CustomEvent("belm-technician-data-changed", { detail: { source: "spare-recommendation" } }));
       } catch (error) {
         errorBox.textContent = error.message || "Recommendation could not be sent.";
         errorBox.hidden = false;
@@ -5287,8 +5493,8 @@
     const button = document.createElement("button");
     button.id = "belm-tech-spare-recommend-shortcut";
     button.type = "button";
-    button.className = "belm-tech-spare-recommend-shortcut";
-    button.textContent = "+ Recommend Spare";
+    button.className = "belm-tech-spare-recommend-shortcut belm-tech-dock-recommend";
+    button.textContent = "Recommend Spare";
     button.addEventListener("click", async () => {
       const originalText = button.textContent;
       button.disabled = true;
@@ -5305,23 +5511,31 @@
         button.textContent = originalText;
       }
     });
-    document.body.appendChild(button);
+    mountTechnicianDockAction(button, 30);
   }
 
   async function addTechnicianSpareShortcut() {
     if (window.location.pathname !== "/tech") return;
     if (document.getElementById("belm-tech-spare-shortcut")) return;
+    if (document.body.dataset.belmTechSpareShortcutLoading === "1") return;
     const payload = tokenPayload("belm_tech_token");
     const token = localStorage.getItem("belm_tech_token");
     if (!payload || !token || String(payload.roleName || "").toLowerCase() !== "technician") return;
-    const assignedCustomer = await loadTechnicianCustomerProfile();
+    document.body.dataset.belmTechSpareShortcutLoading = "1";
+    let assignedCustomer = null;
+    try {
+      assignedCustomer = await loadTechnicianCustomerProfile();
+    } finally {
+      delete document.body.dataset.belmTechSpareShortcutLoading;
+    }
     if (assignedCustomer?.isMachineryAdmin && payload?.isCustomerManaged) return;
+    if (document.getElementById("belm-tech-spare-shortcut")) return;
 
     const button = document.createElement("button");
     button.id = "belm-tech-spare-shortcut";
     button.type = "button";
-    button.className = "belm-tech-spare-shortcut";
-    button.textContent = "+ Add Spare";
+    button.className = "belm-tech-spare-shortcut belm-tech-dock-spare";
+    button.textContent = "Add Spare";
     button.addEventListener("click", async () => {
       const originalText = button.textContent;
       button.disabled = true;
@@ -5337,7 +5551,7 @@
         button.textContent = originalText;
       }
     });
-    document.body.appendChild(button);
+    mountTechnicianDockAction(button, 40);
   }
 
   if (redirectIfAlreadyLoggedIn()) return;
@@ -5355,6 +5569,7 @@
   addTechnicianSpareShortcut();
   addTechnicianSpareRecommendationShortcut();
   addTechnicianCustomerDashboardShortcut();
+  installTechnicianShortcutSync();
   syncTechnicianCustomerName();
   clarifyTechnicianAssignment();
   clarifyTechnicianChecklistSave();

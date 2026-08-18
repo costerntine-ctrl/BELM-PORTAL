@@ -78,6 +78,31 @@ if ($method === 'GET' && $action === 'export') {
     );
 }
 
+if ($method === 'GET' && $action === 'pending-job-cards') {
+    $stmt = db()->query(
+        "SELECT j.id,j.job_card_no,j.customer_id,j.machine_id,j.technician_id,j.technician_name,j.status,j.billing_status,j.created_at,j.updated_at,
+                c.name AS customer_name,m.brand,m.model,m.machine_type,bc.status AS case_status,
+                CASE WHEN UPPER(COALESCE(j.status,''))='COMPLETED' AND UPPER(COALESCE(bc.status,''))='COMPLETED' AND j.signed_copy_data IS NOT NULL THEN 1 ELSE 0 END AS can_prepare
+         FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id
+         JOIN customers c ON c.id=j.customer_id
+         LEFT JOIN machines m ON m.id=j.machine_id
+         WHERE j.technician_id IS NOT NULL
+           AND UPPER(COALESCE(j.status,'')) IN ('ASSIGNED','IN_PROGRESS','WAITING_PARTS','TESTING','COMPLETED')
+           AND NOT EXISTS (SELECT 1 FROM proforma_invoices p WHERE p.source_job_card_id=j.id AND p.deleted_at IS NULL)
+         ORDER BY CASE WHEN UPPER(COALESCE(j.status,''))='COMPLETED' THEN 0 ELSE 1 END,j.updated_at DESC"
+    );
+    $rows=$stmt->fetchAll();
+    foreach($rows as &$row){
+        $row['proforma_code']=$row['job_card_no'];
+        $row['proforma_status']='PENDING';
+        $row['machine_label']=trim(($row['brand']??'').' '.($row['model']??'')) ?: ($row['machine_type']??'Machine');
+        $row['can_prepare']=(bool)$row['can_prepare'];
+    }
+    unset($row);
+    json_out($rows);
+}
+
 if ($method === 'GET') {
     $stmt = db()->query('SELECT p.*, c.name AS customer_name FROM proforma_invoices p JOIN customers c ON c.id = p.customer_id WHERE p.deleted_at IS NULL ORDER BY p.date DESC');
     $proformas = $stmt->fetchAll();
@@ -108,6 +133,7 @@ if ($method === 'POST') {
     $machineId = trim((string)($b['machineId'] ?? ''));
     $sourceSpareRequestId = trim((string)($b['sourceSpareRequestId'] ?? ''));
     $sourceJobCardId = trim((string)($b['sourceJobCardId'] ?? ''));
+    $sourceJobCardNo = '';
 
     if (!is_array($items)) $items = [];
     proforma_validate_items($items);
@@ -144,13 +170,14 @@ if ($method === 'POST') {
 
     if ($sourceJobCardId !== '') {
         $jobCheck=db()->prepare(
-            "SELECT j.machine_id,j.status,j.signed_copy_data,bc.source_type,bc.status AS case_status
+            "SELECT j.machine_id,j.job_card_no,j.status,j.signed_copy_data,bc.source_type,bc.status AS case_status
              FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id
              WHERE j.id=? AND j.customer_id=?"
         );
         $jobCheck->execute([$sourceJobCardId,$customerId]);
         $sourceJob=$jobCheck->fetch();
         if(!$sourceJob) json_error('Source Job Card was not found for this customer.',422);
+        $sourceJobCardNo=trim((string)($sourceJob['job_card_no']??''));
         if($machineId!=='' && (string)$sourceJob['machine_id']!==$machineId) json_error('Selected machine does not match the source Job Card.',422);
         if($machineId==='' && !empty($sourceJob['machine_id'])) $machineId=(string)$sourceJob['machine_id'];
         if(strtoupper((string)$sourceJob['source_type'])==='SERVICE_REQUEST') {
@@ -169,7 +196,15 @@ if ($method === 'POST') {
     if ($discountAmount > $subtotal) json_error('Discount cannot be greater than the subtotal.');
 
     $newId = uuid();
-    $invoiceNo = belm_next_document_number('PI', 'proforma_number_seq');
+    // V326: a Service Job Card and its Proforma share one code. This makes
+    // Technician Dispatch -> Proforma traceability deterministic. Standalone
+    // Proformas still use the normal PI sequence.
+    $invoiceNo = $sourceJobCardId !== '' && $sourceJobCardNo !== ''
+        ? $sourceJobCardNo
+        : belm_next_document_number('PI', 'proforma_number_seq');
+    $invoiceNoCheck=db()->prepare('SELECT 1 FROM proforma_invoices WHERE invoice_no=? AND deleted_at IS NULL LIMIT 1');
+    $invoiceNoCheck->execute([$invoiceNo]);
+    if($invoiceNoCheck->fetchColumn()) json_error('Proforma code '.$invoiceNo.' is already in use. Open that Proforma instead of creating a duplicate.',409);
     $pdo = db();
     $pdo->beginTransaction();
     try {

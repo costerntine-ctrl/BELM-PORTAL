@@ -1,0 +1,11 @@
+BELM Operations Platform V323
+Technician Mobile Sync
+
+- My Job Cards dashboard shortcut and machine-specific Job Card buttons now use the same live technician-jobs source.
+- The Technician machine-card button is labelled Machine Job Cards and displays the active count for that machine, synchronized with the global Job Cards action.
+- My Tasks now includes live Job Card assignments without duplicating rows in the tasks table.
+- Job Card items inside My Tasks open the Job Card workspace instead of allowing a separate task completion state.
+- My Tasks and My Job Cards refresh every 30 seconds and on focus/pageshow/visibility return.
+- Technician quick actions are consolidated into one responsive bottom dock for phone/tablet use, with slow-network duplicate guards.
+- Job Cards, Tasks, Recommend Spare, Add Spare and Customer Dashboard use the same dock.
+- No database migration required.

@@ -110,3 +110,17 @@ html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display
 
 /* V319 - Sync status must never look successful when reconciliation failed. */
 .sync-status.sync-error{color:var(--red);font-weight:850}
+
+
+/* V326 - compact received Job Card intake + JC/Proforma code pairing. */
+.workflow-dispatch-form{grid-template-columns:minmax(280px,1.2fr) minmax(240px,.8fr);align-items:start}
+.workflow-received-card-field,.workflow-jc-number-field{align-self:start;min-width:0}
+.workflow-received-card-field{grid-column:1;justify-self:stretch}
+.workflow-jc-number-field{grid-column:2;justify-self:stretch}
+.workflow-received-card-field .workflow-dispatch-inline-control{grid-template-columns:minmax(0,1fr) auto;gap:6px}
+.workflow-received-card-field select,.workflow-jc-number-field input{min-height:38px;padding:7px 9px}
+.workflow-received-card-field .workflow-dispatch-inline-control button{min-height:38px;padding:7px 10px}
+.workflow-received-card-field small,.workflow-jc-number-field small{line-height:1.3}
+.workflow-jc-number-field input.jc-auto-detected{border-color:#1f8f62;box-shadow:0 0 0 2px color-mix(in srgb,#1f8f62 18%,transparent)}
+.workflow-jc-number-field input.jc-manual{border-color:#d5b100;box-shadow:0 0 0 2px color-mix(in srgb,#d5b100 16%,transparent)}
+@media(max-width:760px){.workflow-dispatch-form{grid-template-columns:1fr}.workflow-received-card-field,.workflow-jc-number-field{grid-column:auto}.workflow-received-card-field .workflow-dispatch-inline-control{grid-template-columns:minmax(0,1fr) auto}.workflow-received-card-field .workflow-dispatch-inline-control button{width:auto}}

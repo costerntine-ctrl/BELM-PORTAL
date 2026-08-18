@@ -445,46 +445,70 @@ if ($method === 'POST' && $action === 'submit') {
         json_error('Checklist was saved, but the Checked Report could not be loaded.', 500);
     }
 
-    // Role-aware customer alert after EVERY technician check-up. The customer
-    // owner and users who have Check Up dashboard access receive the report
-    // summary. This keeps Workshop Manager / delegated users in sync without
-    // emailing unrelated roles such as Procurement or Accounts.
+    // V324: every Technician check-up has two synchronized destinations:
+    // 1) the Customer portal/team, and 2) BELM when the Technician is BELM-owned.
+    // The database report remains the source of truth even if email delivery fails.
+    $customerAlertResult = ['sent' => 0, 'failed' => 0, 'recipients' => []];
+    $belmAlertResult = ['sent' => 0, 'failed' => 0, 'recipients' => []];
+    $portalCommunicationId = null;
+    $isBelmTechnician = (($user['roleName'] ?? '') === 'Technician' && empty($user['isCustomerManaged']));
+    $machineName = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
+    $serial = $machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded');
+    $statusLabel = strtoupper((string)$worst);
+    $subject = "CHECK UP REPORT - $machineName - $statusLabel";
+    $bodyText = "TECHNICIAN CHECK UP SUBMITTED\n\n"
+        . "Customer: " . ($machine['customer_name'] ?? 'Customer') . "\n"
+        . "Machine: $machineName\n"
+        . "Serial / Reg: $serial\n"
+        . "Filled by: $filledBy\n"
+        . "Hour meter: " . $b['hourMeterReading'] . "\n"
+        . "Overall status: $statusLabel\n"
+        . ($isServiceDay ? "Service recorded: " . ($serviceIntervals[$serviceType]['label'] ?? $serviceType) . " on $serviceDate\n" : '')
+        . "\nOpen the Customer Portal > Check Up to view the full report/PDF.";
+
     try {
-        $machineName = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: ($machine['machine_type'] ?? 'Machine');
-        $serial = $machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded');
-        $statusLabel = strtoupper((string)$worst);
-        $subject = "CHECK UP REPORT - $machineName - $statusLabel";
-        $bodyText = "TECHNICIAN CHECK UP SUBMITTED
+        $customerAlertResult = customer_send_team_alert(
+            (string)$machine['customer_id'],
+            ['check-up'],
+            $subject,
+            $bodyText,
+            true
+        );
+    } catch (Throwable $error) { /* report remains saved even if email fails */ }
 
-"
-            . "Customer: " . ($machine['customer_name'] ?? 'Customer') . "
-"
-            . "Machine: $machineName
-"
-            . "Serial / Reg: $serial
-"
-            . "Filled by: $filledBy
-"
-            . "Hour meter: " . $b['hourMeterReading'] . "
-"
-            . "Overall status: $statusLabel
-"
-            . ($isServiceDay ? "Service recorded: " . ($serviceIntervals[$serviceType]['label'] ?? $serviceType) . " on $serviceDate
-" : '')
-            . "
-Open the Customer Portal > Check Up to view the full report/PDF.";
-        customer_send_team_alert((string)$machine['customer_id'], ['check-up'], $subject, $bodyText, true);
-    } catch (Throwable $error) { /* alerts are best-effort */ }
+    if ($isBelmTechnician) {
+        // Persistent portal audit: Customer can see the Technician update on
+        // the machine timeline, and BELM can see the same communication record.
+        $portalCommunicationId = belm_log_customer_communication(
+            (string)$machine['customer_id'],
+            (string)$b['machineId'],
+            'BELM_TO_CUSTOMER',
+            'PORTAL',
+            $subject,
+            $bodyText,
+            'CHECKLIST_REPORT',
+            $reportId,
+            $filledBy,
+            'SENT'
+        );
+        try {
+            $belmAlertResult = belm_send_customer_to_belm_alert(
+                ['service-requests'],
+                'BELM TECHNICIAN ' . $subject,
+                $bodyText
+            );
+        } catch (Throwable $error) { /* workflow/database sync is still authoritative */ }
+    }
 
-    // Urgent RED/YELLOW/service-due alert. BELM receives it only when BELM is
-    // the active Service Provider OR the report was submitted by a BELM-owned
-    // Technician. A customer's own independent Technician report stays inside
-    // the customer's business unless BELM support was explicitly requested.
+    // Urgent RED/YELLOW/service-due alert. The customer still receives the
+    // safety alert. BELM-owned Technicians already sent the full V324 update
+    // above, so avoid sending the Business Email a duplicate copy here.
     try {
         $customerEmailStmt = db()->prepare('SELECT email FROM customers WHERE id = ?');
         $customerEmailStmt->execute([$machine['customer_id']]);
         $customerEmail = trim((string)($customerEmailStmt->fetchColumn() ?: ''));
-        $notifyBelm = empty($machine['is_machinery_admin']) || empty($user['isCustomerManaged']);
+        $notifyBelm = !$isBelmTechnician
+            && (empty($machine['is_machinery_admin']) || empty($user['isCustomerManaged']));
         send_machine_alert_email(
             $worst,
             compute_service_status_helper($b['machineId']),
@@ -512,6 +536,20 @@ Open the Customer Portal > Check Up to view the full report/PDF.";
         'checklist_report_answer_view',
         $answerStmt->fetchAll()
     );
+    $savedReport['delivery'] = [
+        'customer' => [
+            'portalRecorded' => true,
+            'emailsSent' => (int)($customerAlertResult['sent'] ?? 0),
+            'emailFailures' => (int)($customerAlertResult['failed'] ?? 0),
+        ],
+        'belm' => [
+            'required' => $isBelmTechnician,
+            'workflowSynced' => true,
+            'portalCommunicationId' => $portalCommunicationId,
+            'emailsSent' => (int)($belmAlertResult['sent'] ?? 0),
+            'emailFailures' => (int)($belmAlertResult['failed'] ?? 0),
+        ],
+    ];
     json_out($savedReport, 201);
 }
 

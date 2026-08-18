@@ -6,7 +6,7 @@
   <title>BELM Breakdown Workflow</title>
   <script>(function(){if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");})();</script>
   <link rel="stylesheet" href="/theme-global.css"><link rel="stylesheet" href="/belm-theme.css?v=216-breakdown-rail">
-  <link rel="stylesheet" href="/breakdown-workflow/workflow.css?v=319-full-sync-hardening">
+  <link rel="stylesheet" href="/breakdown-workflow/workflow.css?v=326-jc-proforma-sync">
   <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
@@ -32,7 +32,8 @@
       <form id="dispatchForm" class="workflow-dispatch-form">
         <label>Technician<select id="dispatchTechnician" required><option value="">Select Technician...</option></select></label>
         <fieldset class="wide workflow-job-source"><legend>Job Card Source</legend><label><input type="radio" name="jobCardMode" value="existing" checked> Select Received Job Card</label><label><input type="radio" name="jobCardMode" value="create"> Create Job Card</label></fieldset>
-        <label class="wide" id="receivedJobCardField">Received Job Card<div class="workflow-dispatch-inline-control"><select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><button type="button" id="refreshReceivedJobCards">Refresh Job Cards</button></div><small id="receivedJobCardHelp">Loading received Job Cards waiting for Technician assignment...</small></label>
+        <label id="receivedJobCardField" class="workflow-received-card-field">Received Job Card<div class="workflow-dispatch-inline-control"><select id="dispatchJobCard"><option value="">Select received Job Card...</option></select><button type="button" id="refreshReceivedJobCards">Refresh</button></div><small id="receivedJobCardHelp">Loading received Job Cards waiting for Technician assignment...</small></label>
+        <label id="dispatchJobCardNoField" class="workflow-jc-number-field">JC Number / Proforma Code<input id="dispatchJobCardNo" list="dispatchJobCardNoList" autocomplete="off" placeholder="Fill the received JC Number to assign technician"><datalist id="dispatchJobCardNoList"></datalist><small id="dispatchJobCardNoHelp">Auto-detected from the selected received Job Card. You can also type the JC / Proforma code manually.</small></label>
         <label id="dispatchCustomerField">Customer for this job<select id="dispatchCustomer"><option value="">Select Customer...</option></select></label>
         <label id="dispatchMachineField" class="hidden">Machine<select id="dispatchMachine"><option value="">Select Machine...</option></select></label>
         <label class="wide hidden" id="dispatchTitleField">Job title<input id="dispatchTitle" placeholder="e.g. Hydraulic pressure diagnosis"></label>
@@ -67,5 +68,5 @@
   <dialog id="spareDialog"><form id="spareForm"><h2>Request Spare - Administration Approval Required</h2><input id="spareCaseId" type="hidden"><label>Spare name<input id="spareName" required></label><label>Part number / reference<input id="sparePart"></label><div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div><label>Why required<textarea id="spareReason" rows="3"></textarea></label><div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send for Administration Approval</button></div></form></dialog>
   <dialog id="techReportDialog"><form id="techReportForm"><h2>Technician Job Card Report</h2><input id="techJobId" type="hidden"><label>Diagnosis<textarea id="techDiagnosis" required rows="3"></textarea></label><label>Work done<textarea id="techWork" required rows="4"></textarea></label><label>Test result<textarea id="techTest" rows="2"></textarea></label><label>Completion note<textarea id="techNote" rows="2"></textarea></label><label class="check"><input id="techRepeat" type="checkbox"> This is repeat/rework of the same fault</label><label class="check"><input id="techComplete" type="checkbox"> Repair work completed - send to Workshop testing</label><div class="dialog-actions"><button type="button" data-close="techReportDialog">Cancel</button><button class="primary" type="submit">Save Job Report</button></div></form></dialog>
 
-  <script src="/theme-manager.js?v=299-session-stability"></script><script src="/admin-sidebar.js?v=320-engineering-single-owner"></script><script src="/breakdown-workflow/workflow.js?v=320-engineering-single-owner"></script>
+  <script src="/theme-manager.js?v=299-session-stability"></script><script src="/admin-sidebar.js?v=320-engineering-single-owner"></script><script src="/breakdown-workflow/workflow.js?v=326-jc-proforma-sync"></script>
 </body></html>

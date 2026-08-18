@@ -35,6 +35,55 @@ if ($method === 'GET') {
     );
     $stmt->execute([$_GET['userId']]);
     $rows = $stmt->fetchAll();
+
+    // V323: My Tasks is a live work inbox for Technicians. Job Cards are not
+    // copied into the tasks table (which can drift or duplicate); instead they
+    // are projected here from digital_job_cards, the assignment source of truth.
+    // This keeps Engineering dispatch, My Job Cards and My Tasks synchronized.
+    if ($isTechnician) {
+        $jobStmt = db()->prepare(
+            "SELECT j.id,j.technician_id,j.customer_id,j.machine_id,j.job_card_no,j.title,j.fault_description,
+                    j.due_date,j.priority,j.status,j.issued_by_name,j.created_at,
+                    bc.current_stage,c.name AS customer_name,m.brand,m.model,m.machine_type,
+                    u.assigned_customer_id AS home_customer_id,hc.name AS home_customer_name
+             FROM digital_job_cards j
+             JOIN breakdown_cases bc ON bc.id=j.case_id
+             JOIN customers c ON c.id=j.customer_id
+             JOIN machines m ON m.id=j.machine_id
+             JOIN users u ON u.id=j.technician_id
+             LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
+             WHERE j.technician_id=?
+             ORDER BY j.created_at DESC"
+        );
+        $jobStmt->execute([$_GET['userId']]);
+        foreach ($jobStmt->fetchAll() as $job) {
+            $jobStatus = strtoupper(trim((string)($job['status'] ?? 'ASSIGNED')));
+            $machineLabel = trim((string)($job['brand'] ?? '').' '.(string)($job['model'] ?? ''));
+            if ($machineLabel === '') $machineLabel = trim((string)($job['machine_type'] ?? '')) ?: 'Machine';
+            $rows[] = [
+                'id' => 'job-card:'.(string)$job['id'],
+                'assigned_to_id' => $job['technician_id'],
+                'customer_id' => $job['customer_id'],
+                'title' => 'Job Card '.(string)$job['job_card_no'].' - '.(string)$job['title'],
+                'description' => trim((string)($job['fault_description'] ?? '')) ?: (string)$job['title'],
+                'due_date' => $job['due_date'],
+                'priority' => $job['priority'] ?: 'NORMAL',
+                'status' => in_array($jobStatus, ['COMPLETED','CANCELLED'], true) ? 'DONE' : 'PENDING',
+                'created_by' => trim((string)($job['issued_by_name'] ?? '')) ?: 'BELM / Customer',
+                'created_at' => $job['created_at'],
+                'customer_name' => $job['customer_name'],
+                'home_customer_id' => $job['home_customer_id'],
+                'home_customer_name' => $job['home_customer_name'],
+                'source_type' => 'JOB_CARD',
+                'job_card_id' => $job['id'],
+                'job_card_no' => $job['job_card_no'],
+                'machine_id' => $job['machine_id'],
+                'machine_label' => $machineLabel,
+                'case_stage' => $job['current_stage'],
+            ];
+        }
+    }
+
     foreach ($rows as &$row) {
         $row['temporaryOverride'] = !empty($row['customer_id'])
             && !empty($row['home_customer_id'])
@@ -43,6 +92,9 @@ if ($method === 'GET') {
         unset($row['home_customer_id'], $row['home_customer_name']);
     }
     unset($row);
+    usort($rows, static function (array $a, array $b): int {
+        return strcmp((string)($b['created_at'] ?? ''), (string)($a['created_at'] ?? ''));
+    });
     json_out($rows);
 }
 

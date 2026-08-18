@@ -78,7 +78,11 @@ a.secondary { display:inline-block; text-decoration:none; }
 .user-row-actions { display:flex; justify-content:flex-end; gap:7px; align-items:center; }
 .user-row-actions button { border:0; border-radius:8px; padding:8px 11px; font-weight:850; font-size:11px; cursor:pointer; }
 .user-edit { background:#e8f1ff; color:#1258a0; }
+.user-reset { background:#fff5b8; color:#725400; }
 .user-delete { background:#feeeee; color:var(--red); }
+.same-login-link-note { margin:14px 0 0; padding:10px 12px; border-radius:9px; background:#e8f1ff; color:#274f79; font-size:12px; line-height:1.45; text-align:left; }
+.credential-copy-row { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:9px; }
+.credential-copy-row .secondary { width:100%; }
 .you-badge { border-radius:999px; padding:5px 8px; background:#fff5b8; color:#725400; font-size:10px; font-weight:900; }
 .field-title { display:block; color:#344b61; font-size:12px; font-weight:800; }
 .user-role-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:7px; }
@@ -100,3 +104,16 @@ html[data-theme="dark"] .user-role-option span { color:#dce6f1; }
   .registered-users-tools input{width:100%;flex:1 1 220px}
 }
 @media(max-width:500px){.user-role-options{grid-template-columns:1fr}}
+
+html[data-theme="dark"] .same-login-link-note { background:#17243a; color:#c7d7e8; border:1px solid #30445e; }
+@media(max-width:500px){.credential-copy-row{grid-template-columns:1fr}}
+
+
+/* V322 - reliable Registered Users account actions */
+.registered-user-action-dialog { text-align:left; }
+.registered-user-action-dialog textarea { width:100%; border:1px solid #c9d5e1; border-radius:9px; padding:11px 12px; background:#fff; color:#18344f; font:500 14px inherit; resize:vertical; }
+.registered-user-action-buttons { display:grid; grid-template-columns:1fr 1.4fr; gap:9px; margin-top:4px; }
+.registered-user-action-buttons .secondary,.registered-user-action-buttons .primary { width:100%; }
+.user-row-actions button:disabled { opacity:.55; cursor:not-allowed; }
+html[data-theme="dark"] .registered-user-action-dialog textarea { background:#0c1626; border-color:#34465f; color:#edf4fb; }
+@media(max-width:500px){.registered-user-action-buttons{grid-template-columns:1fr}}

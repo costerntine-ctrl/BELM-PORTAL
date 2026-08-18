@@ -99,6 +99,39 @@ function protect_last_super_admin(string $userId, string $nextRoleId, bool $next
     }
 }
 
+
+// V322: Registered-user account actions must work even when the legacy
+// Edit/Delete PINs have not been configured on a deployment. These actions
+// are already restricted by the Roles page permission; additionally require
+// the currently signed-in staff member's own password. Legacy PIN payloads are
+// still accepted for backwards compatibility with older cached frontends.
+function require_registered_user_admin_confirmation(array $actor, array $body, bool $requireReason = false): ?string {
+    $adminPassword = (string)($body['adminPassword'] ?? '');
+    $reason = trim((string)($body['reason'] ?? ''));
+
+    if ($adminPassword === '') {
+        if ($requireReason) return require_delete_confirmation($actor, $body);
+        require_edit_confirmation($actor, $body);
+        return null;
+    }
+
+    if ($requireReason) {
+        if ($reason === '') json_error('Enter a reason for this deletion.');
+        if (mb_strlen($reason) > 500) json_error('Reason must be 500 characters or fewer.');
+    }
+
+    assert_not_rate_limited('registered-user-admin-password', (string)$actor['id'], 8, 15);
+    $stmt = db()->prepare('SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([(string)$actor['id']]);
+    $hash = $stmt->fetchColumn();
+    if (!$hash || !password_verify($adminPassword, (string)$hash)) {
+        record_failed_attempt('registered-user-admin-password', (string)$actor['id']);
+        json_error('Incorrect admin password.', 403);
+    }
+    clear_rate_limit('registered-user-admin-password', (string)$actor['id']);
+    return $requireReason ? $reason : null;
+}
+
 // ---- Roles ------------------------------------------------------------
 if ($method === 'GET' && $action === 'roles') {
     $roles = db()->query('SELECT * FROM roles WHERE deleted_at IS NULL')->fetchAll();
@@ -259,7 +292,7 @@ if ($method === 'POST' && !$action) {
 
 if ($method === 'PUT' && !$action) {
     $b = body();
-    require_edit_confirmation($user, $b);
+    require_registered_user_admin_confirmation($user, $b);
     if (!$id) json_error('User ID is required.');
     $name = trim((string)($b['name'] ?? ''));
     $roleIds = role_ids_from_body($b);
@@ -283,10 +316,9 @@ if ($method === 'PUT' && !$action) {
 }
 
 if ($method === 'PUT' && $action === 'reset-password') {
-    // Resetting a staff account's password is reversible (can simply be
-    // reset again) — same lighter Edit PIN standard as the customer
-    // version of this same action, not the full delete confirmation.
-    require_edit_confirmation($user, body());
+    // V322: account reset is confirmed with the signed-in admin's current
+    // password so it works even when legacy action PINs are not configured.
+    require_registered_user_admin_confirmation($user, body());
     $newPassword = secure_account_secret();
     $recoveryCode = account_recovery_code();
     $stmt = db()->prepare(
@@ -312,6 +344,8 @@ if ($method === 'PUT' && $action === 'reset-password') {
 }
 
 if ($method === 'DELETE' && !$action) {
+    if (!$id) json_error('User ID is required.');
+    if ((string)$id === (string)$user['id']) json_error('You cannot delete the account you are currently signed in with.', 409);
     $stmt = db()->prepare(
         'SELECT u.name, u.is_active, r.name AS role_name
          FROM users u JOIN roles r ON r.id = u.role_id
@@ -331,7 +365,7 @@ if ($method === 'DELETE' && !$action) {
             json_error('Create another active Super Admin before deleting this account.', 409);
         }
     }
-    $reason = require_delete_confirmation($user, body());
+    $reason = require_registered_user_admin_confirmation($user, body(), true);
     send_to_trash('user', $id, $row['name'], $user['id'], $reason);
     soft_delete('users', $id);
     json_out(null, 204);

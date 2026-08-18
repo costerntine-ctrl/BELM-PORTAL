@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Access Applications — BELM Admin</title>
-  <link rel="stylesheet" href="/admin-applications/admin.css?v=217-user-list">
+  <link rel="stylesheet" href="/admin-applications/admin.css?v=322-user-actions-fix">
   <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
@@ -212,6 +212,49 @@
     </form>
   </dialog>
 
+
+  <dialog id="registeredUserActionDialog" class="registered-user-action-dialog">
+    <button class="dialog-close" id="closeRegisteredUserAction" type="button" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow" id="registeredUserActionEyebrow">ACCOUNT SECURITY</p>
+      <h2 id="registeredUserActionTitle">Confirm account action</h2>
+      <p id="registeredUserActionMessage">Enter your current BELM Admin password to continue.</p>
+    </div>
+    <form id="registeredUserActionForm" class="assignment-form">
+      <label>Your current admin password
+        <input id="registeredUserAdminPassword" type="password" required autocomplete="current-password" placeholder="Enter your login password">
+      </label>
+      <label id="registeredUserDeleteReasonWrap" class="hidden">Reason for deletion
+        <textarea id="registeredUserDeleteReason" rows="3" maxlength="500" placeholder="e.g. Duplicate account, employee left, created by mistake"></textarea>
+      </label>
+      <div id="registeredUserActionError" class="alert hidden"></div>
+      <div class="registered-user-action-buttons">
+        <button id="cancelRegisteredUserAction" class="secondary" type="button">Cancel</button>
+        <button id="confirmRegisteredUserAction" class="primary" type="submit">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="resetRegisteredUserCredentialsDialog">
+    <button class="dialog-close" id="closeResetRegisteredUserCredentials" aria-label="Close">×</button>
+    <div class="check">✓</div>
+    <h2>Password reset complete</h2>
+    <p>The old password no longer works. Copy the new details now; the temporary password and recovery code are shown only once.</p>
+    <div class="same-login-link-note">One portal link is used by all BELM users. The account role and customer are resolved after login.</div>
+    <div class="login-summary">
+      <label>Name</label><strong id="resetCredName"></strong>
+      <label>Login email</label><strong id="resetCredEmail"></strong>
+      <label>New temporary password</label><strong id="resetCredPassword"></strong>
+      <label>Recovery code</label><strong id="resetCredRecovery"></strong>
+      <label>Login link — same for all users</label><a id="resetCredLink" target="_blank" rel="noopener"></a>
+    </div>
+    <button id="copyResetRegisteredUserDetails" class="primary" type="button">Copy login details</button>
+    <div class="credential-copy-row">
+      <button id="copyResetRegisteredUserPassword" class="secondary" type="button">Copy password</button>
+      <button id="copyResetRegisteredUserLink" class="secondary" type="button">Copy login link</button>
+    </div>
+  </dialog>
+
   <dialog id="registerCredentialsDialog">
     <button class="dialog-close" id="closeRegisterCredentials" aria-label="Close">×</button>
     <div class="check">✓</div>
@@ -230,8 +273,6 @@
 
   <script src="/admin-access.js"></script>
   <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
-  <script src="/delete-confirm.js?v=217-user-list"></script>
-  <script src="/edit-confirm.js?v=217-user-list"></script>
-  <script src="/admin-applications/admin.js?v=217-user-list"></script>
+  <script src="/admin-applications/admin.js?v=322-user-actions-fix"></script>
 </body>
 </html>

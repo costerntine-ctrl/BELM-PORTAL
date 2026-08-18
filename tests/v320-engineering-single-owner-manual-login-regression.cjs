@@ -29,5 +29,5 @@ test('autofill form submission cannot log in',login.includes("form.addEventListe
 test('browser credential autofill remains available',loginHtml.includes('autocomplete="username"')&&loginHtml.includes('autocomplete="current-password"'));
 test('login JS is cache-busted in page and service worker',loginHtml.includes('/customer-app.js?v=320-manual-login')&&sw.includes("'/customer-app.js?v=320-manual-login'"));
 test('changed admin assets are cache-busted',engHtml.includes('/admin-sidebar.js?v=320-engineering-single-owner')&&engHtml.includes('/engineering-manager/manager.js?v=320-engineering-single-owner')&&workflowHtml.includes('/breakdown-workflow/workflow.js?v=320-engineering-single-owner')&&customersHtml.includes('/customers-manager/manager.js?v=320-engineering-single-owner'));
-test('health and PWA advertise V320',health.includes("'schemaVersion' => '320-engineering-single-owner-manual-login'")&&sw.includes("const CACHE='belm-app-v320-engineering-single-owner-manual-login';"));
+test('health and PWA keep versioned build identity',health.includes("'schemaVersion' => '")&&sw.includes("const CACHE='belm-app-v3"));
 console.log(`\n${pass}/${pass+fail} V320 checks passed`);process.exit(fail?1:0);

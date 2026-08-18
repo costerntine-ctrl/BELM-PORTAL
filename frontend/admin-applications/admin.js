@@ -58,6 +58,48 @@ async function copyText(value) {
   }
 }
 
+
+let registeredUserActionResolver = null;
+let registeredUserActionNeedsReason = false;
+
+function finishRegisteredUserAction(result) {
+  const dialog = document.getElementById("registeredUserActionDialog");
+  if (dialog.open) dialog.close();
+  const resolve = registeredUserActionResolver;
+  registeredUserActionResolver = null;
+  registeredUserActionNeedsReason = false;
+  if (resolve) resolve(result);
+}
+
+function confirmRegisteredUserAction(options = {}) {
+  const dialog = document.getElementById("registeredUserActionDialog");
+  const password = document.getElementById("registeredUserAdminPassword");
+  const reason = document.getElementById("registeredUserDeleteReason");
+  const reasonWrap = document.getElementById("registeredUserDeleteReasonWrap");
+  const errorBox = document.getElementById("registeredUserActionError");
+  const submit = document.getElementById("confirmRegisteredUserAction");
+
+  if (registeredUserActionResolver) finishRegisteredUserAction(null);
+  registeredUserActionNeedsReason = Boolean(options.requireReason);
+  document.getElementById("registeredUserActionEyebrow").textContent = options.destructive ? "CONFIRM DELETION" : "ACCOUNT SECURITY";
+  document.getElementById("registeredUserActionTitle").textContent = options.title || "Confirm account action";
+  document.getElementById("registeredUserActionMessage").textContent = options.message || "Enter your current BELM Admin password to continue.";
+  password.value = "";
+  reason.value = "";
+  reasonWrap.classList.toggle("hidden", !registeredUserActionNeedsReason);
+  reason.required = registeredUserActionNeedsReason;
+  errorBox.classList.add("hidden");
+  errorBox.textContent = "";
+  submit.textContent = options.confirmLabel || "Confirm";
+  submit.classList.toggle("danger-action", Boolean(options.destructive));
+  dialog.showModal();
+  setTimeout(() => password.focus(), 0);
+
+  return new Promise(resolve => {
+    registeredUserActionResolver = resolve;
+  });
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -204,6 +246,7 @@ function renderRegisteredUsers() {
         <td><span class="user-status ${active ? "active" : "inactive"}">${active ? "Active" : "Inactive"}</span></td>
         <td><div class="user-row-actions">
           <button class="user-edit" type="button" data-edit-registered-user="${escapeHtml(user.id)}">Edit</button>
+          <button class="user-reset" type="button" data-reset-registered-user="${escapeHtml(user.id)}">Reset Password</button>
           ${isSelf ? '<span class="you-badge">You</span>' : `<button class="user-delete" type="button" data-delete-registered-user="${escapeHtml(user.id)}">Delete</button>`}
         </div></td>
       </tr>`;
@@ -292,9 +335,10 @@ async function saveRegisteredUser(event) {
     errorBox.classList.remove("hidden");
     return;
   }
-  const confirmation = await window.belmConfirmEdit({
+  const confirmation = await confirmRegisteredUserAction({
     title: "Save user changes?",
-    message: `Confirm changes to ${payload.name}.`,
+    message: `Enter your current admin password to save changes to ${payload.name}.`,
+    confirmLabel: "Save user",
   });
   if (!confirmation) return;
   Object.assign(payload, confirmation);
@@ -315,12 +359,57 @@ async function saveRegisteredUser(event) {
   }
 }
 
+let lastRegisteredUserReset = null;
+
+function openRegisteredUserResetCredentials(user, result) {
+  const loginUrl = result.loginUrl || `${window.location.origin}/login`;
+  lastRegisteredUserReset = {
+    name: user.name || "",
+    email: user.email || "",
+    password: result.newPassword || result.temporaryPassword || "",
+    recoveryCode: result.recoveryCode || "",
+    loginUrl,
+  };
+  document.getElementById("resetCredName").textContent = lastRegisteredUserReset.name;
+  document.getElementById("resetCredEmail").textContent = lastRegisteredUserReset.email;
+  document.getElementById("resetCredPassword").textContent = lastRegisteredUserReset.password;
+  document.getElementById("resetCredRecovery").textContent = lastRegisteredUserReset.recoveryCode;
+  const link = document.getElementById("resetCredLink");
+  link.href = loginUrl;
+  link.textContent = loginUrl;
+  document.getElementById("resetRegisteredUserCredentialsDialog").showModal();
+}
+
+async function resetRegisteredUserPassword(id) {
+  const user = registeredUsers.find(item => item.id === id);
+  if (!user) return;
+  const confirmation = await confirmRegisteredUserAction({
+    title: "Reset user password?",
+    message: `Enter your current admin password to generate a new temporary password for ${user.name}. The old password will stop working immediately.`,
+    confirmLabel: "Reset password",
+  });
+  if (!confirmation) return;
+  try {
+    const result = await api(`/api/users/${id}/reset-password`, {
+      method: "PUT",
+      body: JSON.stringify(confirmation),
+    });
+    openRegisteredUserResetCredentials(user, result);
+    showAlert(`Password reset for ${user.name}. Copy the new login details before closing the box.`);
+  } catch (error) {
+    showAlert(error.message);
+  }
+}
+
 async function deleteRegisteredUser(id) {
   const user = registeredUsers.find(item => item.id === id);
   if (!user || user.id === currentAdminUser.id) return;
-  const confirmation = await window.belmConfirmDelete({
+  const confirmation = await confirmRegisteredUserAction({
     title: "Delete registered user?",
-    message: `Delete ${user.name}? The account will move to the Recycle Bin.`,
+    message: `Enter your current admin password and a reason to move ${user.name} to the Recycle Bin.`,
+    confirmLabel: "Delete user",
+    requireReason: true,
+    destructive: true,
   });
   if (!confirmation) return;
   try {
@@ -477,14 +566,69 @@ document.getElementById("copyApprovedPasswordButton").addEventListener("click", 
 document.getElementById("registeredUsersSearch").addEventListener("input", renderRegisteredUsers);
 document.getElementById("refreshUsersButton").addEventListener("click", loadRegisteredUsers);
 document.getElementById("registeredUsersList").addEventListener("click", event => {
-  const editButton = event.target.closest("[data-edit-registered-user]");
-  const deleteButton = event.target.closest("[data-delete-registered-user]");
-  if (editButton) openRegisteredUserEditor(registeredUsers.find(user => user.id === editButton.dataset.editRegisteredUser));
-  if (deleteButton) deleteRegisteredUser(deleteButton.dataset.deleteRegisteredUser);
+  const button = event.target.closest("button[data-edit-registered-user],button[data-reset-registered-user],button[data-delete-registered-user]");
+  if (!button) return;
+  event.preventDefault();
+  event.stopPropagation();
+  if (button.dataset.editRegisteredUser) {
+    openRegisteredUserEditor(registeredUsers.find(user => user.id === button.dataset.editRegisteredUser));
+    return;
+  }
+  if (button.dataset.resetRegisteredUser) {
+    resetRegisteredUserPassword(button.dataset.resetRegisteredUser);
+    return;
+  }
+  if (button.dataset.deleteRegisteredUser) deleteRegisteredUser(button.dataset.deleteRegisteredUser);
 });
 document.getElementById("editRegisteredUserRoles").addEventListener("change", updateRegisteredUserCustomerField);
 document.getElementById("editRegisteredUserForm").addEventListener("submit", saveRegisteredUser);
 document.getElementById("closeEditRegisteredUser").addEventListener("click", () => document.getElementById("editRegisteredUserDialog").close());
+document.getElementById("closeResetRegisteredUserCredentials").addEventListener("click", () => document.getElementById("resetRegisteredUserCredentialsDialog").close());
+document.getElementById("copyResetRegisteredUserDetails").addEventListener("click", async () => {
+  if (!lastRegisteredUserReset) return;
+  const message = [
+    `BELM Portal Login: ${lastRegisteredUserReset.loginUrl}`,
+    `Email: ${lastRegisteredUserReset.email}`,
+    `Temporary password: ${lastRegisteredUserReset.password}`,
+    `Recovery code: ${lastRegisteredUserReset.recoveryCode}`,
+  ].join("\n");
+  await copyText(message);
+  document.getElementById("copyResetRegisteredUserDetails").textContent = "Login details copied";
+});
+document.getElementById("copyResetRegisteredUserPassword").addEventListener("click", async () => {
+  if (!lastRegisteredUserReset) return;
+  await copyText(lastRegisteredUserReset.password);
+  document.getElementById("copyResetRegisteredUserPassword").textContent = "Password copied";
+});
+document.getElementById("copyResetRegisteredUserLink").addEventListener("click", async () => {
+  if (!lastRegisteredUserReset) return;
+  await copyText(lastRegisteredUserReset.loginUrl);
+  document.getElementById("copyResetRegisteredUserLink").textContent = "Login link copied";
+});
+
+document.getElementById("registeredUserActionForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const password = document.getElementById("registeredUserAdminPassword").value;
+  const reason = document.getElementById("registeredUserDeleteReason").value.trim();
+  const errorBox = document.getElementById("registeredUserActionError");
+  if (!password) {
+    errorBox.textContent = "Enter your current admin password.";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  if (registeredUserActionNeedsReason && !reason) {
+    errorBox.textContent = "Enter a reason for deleting this user.";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  finishRegisteredUserAction({ adminPassword: password, ...(registeredUserActionNeedsReason ? { reason } : {}) });
+});
+document.getElementById("cancelRegisteredUserAction").addEventListener("click", () => finishRegisteredUserAction(null));
+document.getElementById("closeRegisteredUserAction").addEventListener("click", () => finishRegisteredUserAction(null));
+document.getElementById("registeredUserActionDialog").addEventListener("cancel", event => {
+  event.preventDefault();
+  finishRegisteredUserAction(null);
+});
 
 loadApplications();
 loadRegisteredUsers();

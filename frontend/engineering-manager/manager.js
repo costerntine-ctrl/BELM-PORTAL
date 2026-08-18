@@ -421,7 +421,7 @@
   document.getElementById("cancelRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
 
   document.getElementById("refreshButton").addEventListener("click", async () => {
-    await Promise.all([load(), loadDispatchOptions({ announce: true }), loadEngineerRoleSummary()]);
+    await Promise.all([load(), loadEngineerRoleSummary()]);
   });
 
   function initEngineeringWorkspace() {
@@ -488,28 +488,9 @@
     if (!rolesAccess) {
       document.getElementById("engineeringRolesStrip")?.classList.add("hidden");
       document.getElementById("engineeringOverviewGrid")?.classList.add("hidden");
-      document.getElementById("dispatchPanel")?.classList.add("hidden");
       document.getElementById("refreshButton")?.classList.add("hidden");
     } else {
-      document.getElementById("dispatchTechnician")?.addEventListener("change", updateDispatchNote);
-      document.getElementById("dispatchCustomer")?.addEventListener("change", ()=>{
-        if(dispatchMode()==="existing"){
-          const jobSelect=document.getElementById("dispatchJobCard");
-          if(jobSelect) jobSelect.value="";
-          renderReceivedJobCards();
-        } else {
-          renderDispatchMachines();
-        }
-        updateDispatchNote();
-      });
-      document.getElementById("dispatchJobCard")?.addEventListener("change", syncJobCardSource);
-      document.getElementById("refreshReceivedJobCards")?.addEventListener("click", ()=>loadDispatchOptions({ announce: true }));
-      document.querySelectorAll('input[name="jobCardMode"]').forEach((input)=>input.addEventListener("change",syncJobCardSource));
-      document.getElementById("dispatchForm")?.addEventListener("submit", dispatchTechnician);
-      window.addEventListener("focus", ()=>{
-        if(Date.now()-lastDispatchOptionsLoadedAt>15000) loadDispatchOptions();
-      });
-      loadDispatchOptions();
+      // V317: Technician Dispatch is intentionally not mounted on the Engineering landing page.
       load();
       loadEngineerRoleSummary();
     }

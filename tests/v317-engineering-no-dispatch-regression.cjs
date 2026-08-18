@@ -1,0 +1,21 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+let pass=0,fail=0;function test(name,ok){if(ok){console.log('PASS',name);pass++;}else{console.error('FAIL',name);fail++;}}
+const html=read('frontend/engineering-manager/index.html');
+const js=read('frontend/engineering-manager/manager.js');
+const api=read('backend/api/engineering.php');
+const health=read('backend/index.php');
+const sw=read('frontend/belm-sw.js');
+const initTail=js.slice(js.indexOf('initEngineeringWorkspace();'));
+test('Technician Dispatch panel removed from Engineering landing HTML',!html.includes('id="dispatchPanel"')&&!html.includes('<h2>Technician Dispatch</h2>'));
+test('dispatch form controls removed from Engineering landing HTML',!html.includes('id="dispatchForm"')&&!html.includes('id="dispatchTechnician"')&&!html.includes('id="dispatchJobCard"'));
+test('Service Requests and Job Cards workspace remains visible',html.includes('data-eng-workspace="service-requests"')&&html.includes('data-eng-workspace="job-cards"'));
+test('Engineering refresh no longer loads dispatch options',js.includes('Promise.all([load(), loadEngineerRoleSummary()])')&&!js.includes('Promise.all([load(), loadDispatchOptions({ announce: true }), loadEngineerRoleSummary()])'));
+test('Engineering startup no longer mounts or auto-refreshes dispatch',!initTail.includes('refreshReceivedJobCards')&&!initTail.includes('lastDispatchOptionsLoadedAt>15000')&&!initTail.includes('\n      loadDispatchOptions();'));
+test('dispatch backend capability retained for compatibility',api.includes("action === 'dispatch-options'")&&api.includes("action === 'dispatch'"));
+test('Engineering assets use V317 cache key',html.includes('v=317-engineering-no-dispatch'));
+test('health schema V317',health.includes("'schemaVersion' => '317-engineering-no-dispatch'"));
+test('service worker cache V317',sw.includes("belm-app-v317-engineering-no-dispatch"));
+console.log(`\n${pass}/${pass+fail} V317 checks passed`);process.exit(fail?1:0);

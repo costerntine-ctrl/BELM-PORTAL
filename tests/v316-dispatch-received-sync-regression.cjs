@@ -13,12 +13,12 @@ test('dispatch options self-sync active service requests',api.includes("belm_syn
 test('received query tolerates legacy unassigned ASSIGNED card',api.includes("IN ('RECEIVED','OPEN','ASSIGNED')")&&api.includes('j.technician_id IS NULL'));
 test('received query keeps card even when machine join is unavailable',api.includes('LEFT JOIN machines m ON m.id=j.machine_id'));
 test('dispatch response exposes sync diagnostics',api.includes("'dispatchSync'=>[")&&api.includes("'receivedJobCards'=>count($receivedJobCards)"));
-test('main Engineering refresh reloads dispatch options',js.includes('Promise.all([load(), loadDispatchOptions({ announce: true }), loadEngineerRoleSummary()])'));
-test('dedicated received Job Card refresh button exists',html.includes('id="refreshReceivedJobCards"')&&js.includes('refreshReceivedJobCards'));
+test('V317 main Engineering refresh no longer reloads hidden dispatch UI',js.includes('Promise.all([load(), loadEngineerRoleSummary()])')&&!js.includes('Promise.all([load(), loadDispatchOptions({ announce: true }), loadEngineerRoleSummary()])'));
+test('V317 removes dedicated dispatch refresh control from Engineering HTML',!html.includes('id="refreshReceivedJobCards"')&&!html.includes('id="dispatchPanel"'));
 test('empty received list has explicit state',js.includes('No received Job Cards waiting for dispatch')&&js.includes('No received Job Cards for this customer'));
 test('machine selector has explicit no-machine state',js.includes('No active machines for this customer')&&js.includes('Select Customer first...'));
-test('dispatch refreshes after returning to browser',js.includes('Date.now()-lastDispatchOptionsLoadedAt>15000'));
-test('V316 engineering assets cache-busted',html.includes('v=316-dispatch-received-sync')&&css.includes('V316 - received Job Card refresh/diagnostic control.'));
-test('health schema V316',health.includes("'schemaVersion' => '316-dispatch-received-sync'"));
-test('service worker cache V316',sw.includes("belm-app-v316-dispatch-received-sync"));
+test('V317 does not auto-refresh dispatch when Engineering regains focus',!js.includes('Date.now()-lastDispatchOptionsLoadedAt>15000'));
+test('current Engineering assets cache-busted after V316',html.includes('v=317-engineering-no-dispatch')&&css.includes('V317 - Technician Dispatch removed from Engineering landing page.'));
+test('current health schema supersedes V316',health.includes("'schemaVersion' => '317-engineering-no-dispatch'"));
+test('current service worker cache supersedes V316',sw.includes("belm-app-v317-engineering-no-dispatch"));
 console.log(`\n${pass}/${pass+fail} V316 checks passed`);process.exit(fail?1:0);

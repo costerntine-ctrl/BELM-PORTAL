@@ -15,9 +15,9 @@ test('backend only receives customer-issued or service-request Job Cards', api.i
 test('already-assigned Job Card is rejected', api.includes('This Job Card is already assigned. Use Job Card handover/reassignment instead.'));
 test('received list can filter by selected customer', js.includes('dispatchJobCards.filter((job)=>!customerId||String(job.customerId)===String(customerId))'));
 test('customer selector remains enabled in received mode', js.includes('if(customer) customer.disabled=false;'));
-test('changing customer clears previous Job Card selection', js.includes('if(jobSelect) jobSelect.value="";') && js.includes('renderReceivedJobCards();'));
+test('V309 customer-filter logic retained even though V317 removed dispatch landing UI', js.includes('dispatchJobCards.filter((job)=>!customerId||String(job.customerId)===String(customerId))') && !html.includes('id="dispatchPanel"'));
 test('selecting received Job Card auto syncs customer', js.includes('customer.value=job.customerId||"";'));
-test('received Job Card UI explains customer-first filter', html.includes('Select customer first to filter.') && html.includes('waiting for Technician assignment'));
+test('V317 intentionally removes received Job Card dispatch helper from Engineering landing UI', !html.includes('Select customer first to filter.') && !html.includes('id="refreshReceivedJobCards"'));
 test('V309 engineering cache bust is present', html.includes('v=309-received-job-card'));
 test('V309 health schema version is present', health.includes('309-received-job-card-dispatch'));
 test('V309 service worker cache bumped', sw.includes('belm-app-v309-received-job-card-dispatch'));

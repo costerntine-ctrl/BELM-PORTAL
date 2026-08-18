@@ -13,7 +13,7 @@ const schema=read('backend/schema.sql');
 const health=read('backend/index.php');
 const techHtml=read('frontend/technician-job-cards/index.html');
 const techJs=read('frontend/technician-job-cards/job-cards.js');
-test('dispatch offers received or create Job Card',engHtml.includes('Select Received Job Card')&&engHtml.includes('Create Job Card')&&engHtml.includes('Job Card Source'));
+test('dispatch received/create modes remain supported by backend after V317 UI removal',engApi.includes("$mode==='existing'")&&engJs.includes('jobCardMode:mode')&&!engHtml.includes('id="dispatchPanel"'));
 test('dispatch options returns received job cards and machines',engApi.includes("'receivedJobCards'")&&engApi.includes("'machines'")&&engApi.includes("source_type='SERVICE_REQUEST'"));
 test('received Job Card assignment updates same card',engApi.includes('UPDATE digital_job_cards SET technician_id=?')&&engApi.includes('Assigned through received Job Card'));
 test('create mode creates breakdown case and Digital Job Card',engApi.includes("$mode==='existing'")&&engApi.includes("INSERT INTO breakdown_cases")&&engApi.includes("INSERT INTO digital_job_cards"));

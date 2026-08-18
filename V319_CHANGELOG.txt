@@ -1,0 +1,42 @@
+BELM PORTAL V319 - FULL SYNC HARDENING
+Date: 2026-08-18
+Source: V318 Technician Dispatch Below Sync / Refresh
+
+Requested change
+- Audit and harden synchronization because inconsistent states/bugs were still visible across Engineering and the Maintenance Process.
+
+What changed
+1. Full Maintenance source reconciliation is now honest and diagnostic.
+   - Sync / Refresh reconciles machine-linked Service Requests and Operator Problem Reports without the old Technician Dispatch 250-row recovery cap.
+   - Per-source sync runs in strict mode during a manual/full reconciliation so one broken source is counted instead of being silently treated as successful.
+   - The response reports failedSources, inconsistencies and an error warning when reconciliation is partial.
+2. Cross-table sync health checks were added after reconciliation.
+   - Missing Service Request -> Breakdown Case / Job Card links.
+   - Service Request <-> Job Card Technician assignment mismatches.
+   - IN_PROGRESS Service Request <-> Job Card status mismatches.
+   - Completed/cancelled source -> Breakdown Case closure mismatches.
+   - Legacy COMPLETED Service Request with an unfinished Job Card is reported instead of silently claiming success.
+3. Service Request / Job Card state sync is monotonic.
+   - A stale OPEN/ASSIGNED Service Request can no longer drag an advanced Job Card process backward from Diagnosis/Repair.
+   - Legacy OPEN-with-Technician and ASSIGNED-without-Technician contradictions are repaired.
+   - Starting a Service Request now also advances its linked Job Card to IN_PROGRESS and records started_at.
+   - A completed Job Card repairs an interrupted case forward to Workshop TESTING instead of back to assignment.
+4. Technician Dispatch is synchronized with the same authoritative source routine.
+   - Dispatch accepts the Engineering access model used by the workspace (roles OR service-requests), while role authority still limits dispatch to Super Admin / Engineer.
+   - Received Job Cards are no longer capped at 250.
+   - Dispatch exposes source-sync diagnostics and records both assignment and OPEN -> ASSIGNED history transitions.
+5. The visible "undefined - Machine Breakdown" Job Card label is hardened.
+   - Job Card payloads are normalized for snake_case/camelCase fields and safe fallbacks before rendering.
+6. Sync UI no longer reports a false success.
+   - API/network failures and server-reported consistency failures render an explicit sync warning state.
+   - The warning includes failed-source and unresolved-consistency counts when available.
+7. Technician spare recommendation confirmation now synchronizes immediately.
+   - When a customer confirms a machine-linked technician recommendation, its official Service Request immediately receives a Breakdown Case and received Job Card rather than waiting for a later refresh.
+8. Customer Service Request cancellation now records a STATUS history row before synchronizing the linked Maintenance Process.
+9. Operator Report closure synchronization now writes a Breakdown Process timeline event when it closes a case.
+10. Removed stale duplicate Technician Dispatch JavaScript from the Engineering landing manager.
+    - Breakdown Workflow is now the single UI owner of Technician Dispatch, preventing the two copies from drifting apart again.
+11. Cache/schema version bumped to 319-full-sync-hardening.
+
+Database migration
+- None. V319 reconciles existing rows through the current schema.

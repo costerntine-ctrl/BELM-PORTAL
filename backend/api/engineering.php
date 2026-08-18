@@ -10,40 +10,41 @@ require_once __DIR__ . '/../config/mailer.php';
 // service reminders (due soon / overdue), and pending spare-part
 // requests — everything an Engineer needs to scan at a glance, as cards.
 $user = require_auth();
-require_page_access($user, 'roles');
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
+// V319: Engineering landing administration still requires Roles access, but
+// Technician Dispatch lives inside Maintenance Process and must also work for
+// an Engineer who has service-requests access. This mirrors sidebar anyKeys.
+$isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch'], true);
+if ($isDispatchAction) {
+    require_any_page_access($user, ['roles','service-requests']);
+} else {
+    require_page_access($user, 'roles');
+}
 
 if ($method === 'GET' && $action === 'dispatch-options') {
     if (!belm_can_override_technician_customer($user)) {
         json_error('Only BELM Super Admin or Engineer can use Technician Dispatch.', 403);
     }
 
-    // V316: Technician Dispatch is also a recovery point for older/interrupted
-    // Service Requests. A machine-linked OPEN request should always have one
-    // customer-issued Job Card waiting for assignment. Sync those sources before
-    // building the dropdown so the Engineer does not have to open another page
-    // first just to make a received Job Card appear.
-    $syncedServiceRequests = 0;
-    try {
-        $syncRows = db()->query(
-            "SELECT sr.id
-             FROM service_requests sr
-             WHERE sr.machine_id IS NOT NULL
-               AND sr.status NOT IN ('PENDING_CUSTOMER','COMPLETED','CANCELLED')
-             ORDER BY sr.created_at DESC
-             LIMIT 250"
-        )->fetchAll();
-        foreach ($syncRows as $syncRow) {
-            if (belm_sync_breakdown_case_from_service_request((string)$syncRow['id'], 'Technician Dispatch Sync')) {
-                $syncedServiceRequests++;
-            }
+    // V319: use the same authoritative reconciliation routine as the main
+    // Sync / Refresh action. This removes the old 250-request recovery cap and
+    // keeps Service Requests, breakdown cases and received Job Cards aligned
+    // before Technician Dispatch builds its dropdown.
+    $dispatchSync = ['created'=>0,'serviceRequests'=>0,'operatorReports'=>0,'failedSources'=>0,'inconsistencies'=>0,'skipped'=>false];
+    $skipSourceSync = (string)($_GET['skipSync'] ?? '') === '1';
+    if ($skipSourceSync) {
+        $dispatchSync['skipped'] = true;
+    } else {
+        try {
+            $dispatchSync = array_merge($dispatchSync, belm_sync_breakdown_sources(null));
+        } catch (Throwable $error) {
+            // Existing valid cards can still be dispatched, but the response exposes
+            // the partial sync state so the UI never claims a successful refresh.
+            error_log('Technician Dispatch source sync failed: ' . $error->getMessage());
+            $dispatchSync['error'] = 'Source synchronization did not complete.';
         }
-    } catch (Throwable $error) {
-        // Do not block Dispatch if legacy data cannot be repaired in this pass.
-        // The dropdown query below can still return every already-valid card.
-        error_log('Technician Dispatch Service Request sync failed: ' . $error->getMessage());
     }
 
     $technicians = db()->query(
@@ -84,8 +85,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
            AND j.technician_id IS NULL
            AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL
            AND (bc.source_type='SERVICE_REQUEST' OR UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER')
-         ORDER BY c.name,j.created_at DESC
-         LIMIT 250"
+         ORDER BY c.name,j.created_at DESC"
     )->fetchAll();
     foreach ($receivedJobCards as &$job) {
         $job['jobCardNo']=$job['job_card_no'];
@@ -108,9 +108,15 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         'machines'=>$machines,
         'receivedJobCards'=>$receivedJobCards,
         'dispatchSync'=>[
-            'serviceRequests'=>$syncedServiceRequests,
+            'serviceRequests'=>(int)($dispatchSync['serviceRequests'] ?? 0),
+            'operatorReports'=>(int)($dispatchSync['operatorReports'] ?? 0),
+            'created'=>(int)($dispatchSync['created'] ?? 0),
+            'failedSources'=>(int)($dispatchSync['failedSources'] ?? 0),
+            'inconsistencies'=>(int)($dispatchSync['inconsistencies'] ?? 0),
             'receivedJobCards'=>count($receivedJobCards),
             'machines'=>count($machines),
+            'error'=>$dispatchSync['error'] ?? null,
+            'skipped'=>!empty($dispatchSync['skipped']),
         ],
     ]);
 }
@@ -177,7 +183,11 @@ if ($method === 'POST' && $action === 'dispatch') {
                     $pdo->prepare('UPDATE service_requests SET assigned_to_id=?,assigned_by_id=?,status=?,updated_at=NOW() WHERE id=?')
                         ->execute([$technicianId,$user['id']??null,$newStatus,$sourceRequestId]);
                     $pdo->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
-                        ->execute([uuid(),$sourceRequestId,'ASSIGNMENT',(string)($old['assigned_to_id']??''),$technicianId,$user['id']??null,$user['name'],'Assigned through received Job Card '.$jobNo]);
+                        ->execute([uuid(),$sourceRequestId,'ASSIGNMENT',(string)($old['assigned_to_id']??''),(string)$tech['name'],$user['id']??null,$user['name'],'Assigned through received Job Card '.$jobNo]);
+                    if ((string)$old['status'] !== $newStatus) {
+                        $pdo->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
+                            ->execute([uuid(),$sourceRequestId,'STATUS',(string)$old['status'],$newStatus,$user['id']??null,$user['name'],'Synchronized from Technician Dispatch for Job Card '.$jobNo]);
+                    }
                 }
             }
         } else {

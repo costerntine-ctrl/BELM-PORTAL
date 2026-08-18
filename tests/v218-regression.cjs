@@ -7,7 +7,7 @@ function has(path, needles) {
 has('backend/config/helpers.php', ['belm_can_override_technician_customer', "'Super Admin', 'Engineer'"]);
 has('backend/api/tasks.php', ['Customer-managed Technicians cannot be borrowed', 'temporarily assign this Technician to another customer', 'temporaryOverride']);
 has('backend/api/engineering.php', ['dispatch-options', "action === 'dispatch'", 'TEMPORARY OVERRIDE', 'u.is_customer_managed=0']);
-has('frontend/engineering-manager/manager.js', ['/engineering?action=dispatch-options', '/engineering?action=dispatch', 'TEMPORARY OVERRIDE']);
+has('frontend/breakdown-workflow/workflow.js', ['/engineering?action=dispatch-options', '/engineering?action=dispatch', 'TEMPORARY OVERRIDE']);
 has('frontend/engineering-manager/index.html', ['engineeringServiceRequestsPanel', 'engineeringJobCardsPanel']);
 has('backend/api/service_requests.php', ['temporaryOverride', 'This override applies to this service request only', 'belm_can_override_technician_customer']);
 has('frontend/service-request-manager/manager.js', ['temporaryOverride', 'Temporary Technician Override']);

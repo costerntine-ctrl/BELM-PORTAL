@@ -4682,6 +4682,9 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'P
     if (!in_array($req['status'], ['OPEN', 'ASSIGNED'], true)) json_error('Only Open or Assigned requests can be cancelled.');
     db()->prepare("UPDATE service_requests SET status='CANCELLED', cancelled_at=COALESCE(cancelled_at,NOW()), updated_at=NOW() WHERE id=?")->execute([$sub2]);
     $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    db()->prepare(
+        'INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())'
+    )->execute([uuid(),$sub2,'STATUS',(string)$req['status'],'CANCELLED',null,$actorName,'Cancelled by customer']);
     belm_sync_breakdown_case_from_service_request($sub2, $actorName);
     $cancelMessage = 'Customer cancelled service request: ' . ($req['description'] ?? '');
     belm_log_customer_communication(

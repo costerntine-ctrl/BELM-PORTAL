@@ -17,12 +17,12 @@ test('Engineering landing still does not render Technician Dispatch',!engHtml.in
 test('Technician Dispatch is rendered inside Job Cards workflow',dispatchPos>=0&&bwHtml.includes('<h2>Technician Dispatch</h2>'));
 test('Technician Dispatch is directly below Sync / Refresh and before queue',refreshPos>=0&&dispatchPos>refreshPos&&gridPos>dispatchPos);
 test('Received Job Card and Create Job Card modes are available in relocated panel',bwHtml.includes('value="existing" checked')&&bwHtml.includes('value="create"')&&bwHtml.includes('id="dispatchJobCard"'));
-test('relocated Dispatch uses existing Engineering dispatch APIs',bwJs.includes("engineeringApi('/engineering?action=dispatch-options')")&&bwJs.includes("engineeringApi('/engineering?action=dispatch'"));
-test('Sync / Refresh also refreshes Dispatch for BELM admin actor',bwJs.includes('if(isBelmAdmin)await loadDispatchOptions()'));
+test('relocated Dispatch uses existing Engineering dispatch APIs',bwJs.includes("/engineering?action=dispatch-options")&&bwJs.includes("engineeringApi('/engineering?action=dispatch'"));
+test('Sync / Refresh also refreshes Dispatch for BELM admin actor',bwJs.includes('if(isBelmAdmin)await loadDispatchOptions('));
 test('Dispatch remains hidden outside BELM admin context',bwJs.includes("if(!isBelmAdmin){panel.classList.add('hidden');return}"));
 test('backend permission remains Super Admin / Engineer controlled',api.includes('Only BELM Super Admin or Engineer can use Technician Dispatch.'));
 test('relocated Dispatch styling is present',bwCss.includes('V318 - Technician Dispatch moved into Job Cards')&&bwCss.includes('.workflow-dispatch-form'));
-test('breakdown workflow assets are cache-busted for V318',bwHtml.includes('workflow.css?v=318-technician-dispatch-placement')&&bwHtml.includes('workflow.js?v=318-technician-dispatch-placement'));
-test('health schema is V318',health.includes("'schemaVersion' => '318-technician-dispatch-placement'"));
-test('service worker cache is V318',sw.includes("const CACHE='belm-app-v318-technician-dispatch-placement';"));
+test('breakdown workflow assets are cache-busted for V318 or newer',(()=>{const m=/workflow\.css\?v=(\d+)-/.exec(bwHtml);const j=/workflow\.js\?v=(\d+)-/.exec(bwHtml);return m&&j&&Number(m[1])>=318&&Number(j[1])>=318;})());
+test('health schema is V318 or newer',(()=>{const m=/\'schemaVersion\' => \'(\d+)-/.exec(health);return m&&Number(m[1])>=318;})());
+test('service worker cache is V318 or newer',(()=>{const m=/const CACHE='belm-app-v(\d+)-/.exec(sw);return m&&Number(m[1])>=318;})());
 console.log(`\n${pass}/${pass+fail} V318 checks passed`);process.exit(fail?1:0);

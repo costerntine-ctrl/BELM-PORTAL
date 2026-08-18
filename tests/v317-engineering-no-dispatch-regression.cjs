@@ -15,7 +15,7 @@ test('Service Requests and Job Cards workspace remains visible',html.includes('d
 test('Engineering refresh no longer loads dispatch options',js.includes('Promise.all([load(), loadEngineerRoleSummary()])')&&!js.includes('Promise.all([load(), loadDispatchOptions({ announce: true }), loadEngineerRoleSummary()])'));
 test('Engineering startup no longer mounts or auto-refreshes dispatch',!initTail.includes('refreshReceivedJobCards')&&!initTail.includes('lastDispatchOptionsLoadedAt>15000')&&!initTail.includes('\n      loadDispatchOptions();'));
 test('dispatch backend capability retained for compatibility',api.includes("action === 'dispatch-options'")&&api.includes("action === 'dispatch'"));
-test('Engineering assets use V317 cache key',html.includes('v=317-engineering-no-dispatch'));
+test('Engineering assets use V317 or newer cache key',(()=>{const m=/engineering-manager\/manager\.js\?v=(\d+)-/.exec(html);return m&&Number(m[1])>=317;})());
 test('health schema V317 or newer',(()=>{const m=/\'schemaVersion\' => \'(\d+)-/.exec(health);return m&&Number(m[1])>=317;})());
 test('service worker cache V317 or newer',(()=>{const m=/const CACHE='belm-app-v(\d+)-/.exec(sw);return m&&Number(m[1])>=317;})());
 console.log(`\n${pass}/${pass+fail} V317 checks passed`);process.exit(fail?1:0);

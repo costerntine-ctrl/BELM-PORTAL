@@ -358,6 +358,19 @@ function require_page_access(array $user, string $pageKey): void {
     }
 }
 
+// V319: some workspaces intentionally accept more than one page permission
+// (for example Engineering is reachable from either Roles administration or
+// the Service Requests / Maintenance Process workspace). Keep backend access
+// aligned with the sidebar's anyKeys behavior instead of rejecting a valid role.
+function require_any_page_access(array $user, array $pageKeys): void {
+    if (($user['roleName'] ?? '') === 'Super Admin') return;
+    $allowed = is_array($user['allowedPages'] ?? null) ? $user['allowedPages'] : [];
+    foreach ($pageKeys as $pageKey) {
+        if (in_array((string)$pageKey, $allowed, true)) return;
+    }
+    json_error('Your role does not have access to this workspace.', 403);
+}
+
 function require_super_admin(array $user): void {
     if (($user['roleName'] ?? '') !== 'Super Admin') {
         json_error('Super Admin access is required.', 403);
@@ -1505,7 +1518,7 @@ function belm_send_customer_alert(
 // V202 - create one live breakdown-process record from an Operator Problem Report.
 // Kept in helpers so reports created from the customer portal and from the
 // operator shift screen enter the same workflow automatically.
-function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?string $actorName = null): ?string {
+function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?string $actorName = null, bool $strict = false): ?string {
     try {
         $stmt = db()->prepare(
             'SELECT o.id,o.customer_id,o.machine_id,o.message,o.operator_name,m.brand,m.model,m.machine_type
@@ -1536,6 +1549,7 @@ function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?stri
         // Older deployments can briefly run before schema migration; never
         // block the original problem report because the workflow table is new.
         error_log('Breakdown case auto-create failed: ' . $error->getMessage());
+        if ($strict) throw $error;
         return null;
     }
 }
@@ -1544,7 +1558,7 @@ function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?stri
 // V220 - official BELM Support Requests are part of the same operational
 // breakdown queue. A request linked to a machine gets exactly one case;
 // UNIQUE(source_type, source_id) prevents duplicate cases during refresh.
-function belm_ensure_breakdown_case_from_service_request(string $requestId, ?string $actorName = null): ?string {
+function belm_ensure_breakdown_case_from_service_request(string $requestId, ?string $actorName = null, bool $strict = false): ?string {
     try {
         $stmt = db()->prepare(
             'SELECT sr.id,sr.customer_id,sr.machine_id,sr.description,sr.service_type,sr.priority,sr.status,sr.created_at,
@@ -1586,6 +1600,7 @@ function belm_ensure_breakdown_case_from_service_request(string $requestId, ?str
         return $id;
     } catch (Throwable $error) {
         error_log('Service Request breakdown sync failed: ' . $error->getMessage());
+        if ($strict) throw $error;
         return null;
     }
 }
@@ -1594,7 +1609,7 @@ function belm_ensure_breakdown_case_from_service_request(string $requestId, ?str
 // It is created once, with the customer/requesting user recorded as Issued By.
 // BELM later assigns a Technician to this same Job Card instead of generating
 // a duplicate card in Workshop. Safe to call repeatedly.
-function belm_ensure_service_request_job_card(string $requestId, ?string $actorName = null): ?string {
+function belm_ensure_service_request_job_card(string $requestId, ?string $actorName = null, bool $strict = false): ?string {
     try {
         $stmt = db()->prepare(
             "SELECT sr.id,sr.customer_id,sr.machine_id,sr.service_type,sr.description,sr.created_at,
@@ -1642,6 +1657,7 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
         return $jobId;
     } catch (Throwable $error) {
         error_log('Service Request Job Card auto-create failed: ' . $error->getMessage());
+        if ($strict) throw $error;
         return null;
     }
 }
@@ -1650,13 +1666,16 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
 // a more advanced Digital Job Card workflow. Assignment advances to an explicit
 // Job Card Assigned stage; In Progress can advance it to Repair; final request
 // states close the linked case. This routine is safe to call repeatedly.
-function belm_sync_breakdown_case_from_service_request(string $requestId, ?string $actorName = null): ?string {
-    $caseId = belm_ensure_breakdown_case_from_service_request($requestId, $actorName);
-    $jobId = $caseId ? belm_ensure_service_request_job_card($requestId, $actorName) : null;
+function belm_sync_breakdown_case_from_service_request(string $requestId, ?string $actorName = null, bool $strict = false): ?string {
+    $caseId = belm_ensure_breakdown_case_from_service_request($requestId, $actorName, $strict);
+    $jobId = $caseId ? belm_ensure_service_request_job_card($requestId, $actorName, $strict) : null;
     try {
         $stmt = db()->prepare(
             "SELECT sr.status,sr.assigned_to_id,u.name AS assigned_to_name,bc.id AS case_id,bc.status AS case_status,bc.current_stage,bc.current_department,
-                    EXISTS (SELECT 1 FROM digital_job_cards j WHERE j.case_id=bc.id) AS has_job_card
+                    EXISTS (SELECT 1 FROM digital_job_cards j WHERE j.case_id=bc.id) AS has_job_card,
+                    (SELECT j.status FROM digital_job_cards j WHERE j.case_id=bc.id ORDER BY j.created_at ASC LIMIT 1) AS job_status,
+                    (SELECT j.technician_id FROM digital_job_cards j WHERE j.case_id=bc.id ORDER BY j.created_at ASC LIMIT 1) AS job_technician_id,
+                    (SELECT j.technician_name FROM digital_job_cards j WHERE j.case_id=bc.id ORDER BY j.created_at ASC LIMIT 1) AS job_technician_name
              FROM service_requests sr
              LEFT JOIN users u ON u.id=sr.assigned_to_id
              LEFT JOIN breakdown_cases bc ON bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id
@@ -1670,17 +1689,84 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         $actor = trim((string)($actorName ?: 'System Sync'));
         $stage = (string)$row['current_stage'];
         $caseStatus = (string)$row['case_status'];
+        $jobStatus = strtoupper((string)($row['job_status'] ?? ''));
+        $jobTechnicianId = trim((string)($row['job_technician_id'] ?? ''));
+        $jobTechnicianName = trim((string)($row['job_technician_name'] ?? ''));
+        $sourceStatusBefore = $status;
+        $sourceAssigneeBefore = trim((string)($row['assigned_to_id'] ?? ''));
+
+        // V319: synchronization is monotonic. Once the Digital Job Card has
+        // actually advanced, an older/stale Service Request must never drag the
+        // maintenance case backwards to Assignment/Diagnosis. Repair the source
+        // request forward from the operational Job Card first.
+        if (!in_array($status, ['COMPLETED','CANCELLED'], true) && $jobTechnicianId !== '') {
+            if (in_array($jobStatus, ['IN_PROGRESS','COMPLETED'], true) && in_array($status, ['OPEN','ASSIGNED'], true)) {
+                db()->prepare(
+                    "UPDATE service_requests SET assigned_to_id=?,status='IN_PROGRESS',started_at=COALESCE(started_at,NOW()),updated_at=NOW() WHERE id=?"
+                )->execute([$jobTechnicianId,$requestId]);
+                $status = 'IN_PROGRESS';
+                $row['assigned_to_id'] = $jobTechnicianId;
+                $row['assigned_to_name'] = $jobTechnicianName ?: ($row['assigned_to_name'] ?? 'Technician');
+            } elseif ($jobStatus === 'ASSIGNED' && $status === 'OPEN') {
+                db()->prepare(
+                    "UPDATE service_requests SET assigned_to_id=?,status='ASSIGNED',updated_at=NOW() WHERE id=?"
+                )->execute([$jobTechnicianId,$requestId]);
+                $status = 'ASSIGNED';
+                $row['assigned_to_id'] = $jobTechnicianId;
+                $row['assigned_to_name'] = $jobTechnicianName ?: ($row['assigned_to_name'] ?? 'Technician');
+            } elseif (in_array($jobStatus, ['ASSIGNED','IN_PROGRESS','COMPLETED'], true)
+                && (string)($row['assigned_to_id'] ?? '') !== $jobTechnicianId) {
+                db()->prepare('UPDATE service_requests SET assigned_to_id=?,updated_at=NOW() WHERE id=?')
+                    ->execute([$jobTechnicianId,$requestId]);
+                $row['assigned_to_id'] = $jobTechnicianId;
+                $row['assigned_to_name'] = $jobTechnicianName ?: ($row['assigned_to_name'] ?? 'Technician');
+            }
+        }
+
+        // Repair legacy source-state contradictions before using the request
+        // to drive the visible process. ASSIGNED always needs a Technician; an
+        // OPEN request that already has one is effectively ASSIGNED.
+        if ($status === 'OPEN' && !empty($row['assigned_to_id'])) {
+            db()->prepare("UPDATE service_requests SET status='ASSIGNED',updated_at=NOW() WHERE id=?")
+                ->execute([$requestId]);
+            $status = 'ASSIGNED';
+        } elseif ($status === 'ASSIGNED' && empty($row['assigned_to_id']) && $jobTechnicianId === '') {
+            db()->prepare("UPDATE service_requests SET status='OPEN',updated_at=NOW() WHERE id=?")
+                ->execute([$requestId]);
+            $status = 'OPEN';
+        }
+
+        if ($sourceStatusBefore !== $status) {
+            db()->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
+                ->execute([uuid(),$requestId,'STATUS',$sourceStatusBefore,$status,null,$actor,'Recovered from Digital Job Card during synchronization']);
+        }
+        $sourceAssigneeAfter = trim((string)($row['assigned_to_id'] ?? ''));
+        if ($sourceAssigneeBefore !== $sourceAssigneeAfter && $sourceAssigneeAfter !== '') {
+            db()->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
+                ->execute([uuid(),$requestId,'ASSIGNMENT',$sourceAssigneeBefore,$jobTechnicianName ?: $sourceAssigneeAfter,null,$actor,'Recovered from Digital Job Card during synchronization']);
+        }
 
         // Keep the customer-issued Job Card and BELM Service Request assignment
         // synchronized. This makes one operational record from request to repair.
         if ($jobId && !empty($row['assigned_to_id'])) {
+            // Keep the Job Card operational status aligned with the source
+            // request. Starting a Service Request must not leave its Job Card
+            // visually stuck at ASSIGNED while the process is already REPAIR.
             db()->prepare(
                 "UPDATE digital_job_cards
                  SET technician_id=?,technician_name=?,
-                     status=CASE WHEN status IN ('OPEN','RECEIVED') THEN 'ASSIGNED' ELSE status END,
+                     status=CASE
+                         WHEN ?='IN_PROGRESS' AND status IN ('OPEN','RECEIVED','ASSIGNED') THEN 'IN_PROGRESS'
+                         WHEN ?='ASSIGNED' AND status IN ('OPEN','RECEIVED') THEN 'ASSIGNED'
+                         ELSE status
+                     END,
+                     started_at=CASE WHEN ?='IN_PROGRESS' THEN COALESCE(started_at,NOW()) ELSE started_at END,
                      updated_at=NOW()
                  WHERE id=? AND status NOT IN ('COMPLETED','CANCELLED')"
-            )->execute([(string)$row['assigned_to_id'],(string)($row['assigned_to_name'] ?: 'Technician'),$jobId]);
+            )->execute([
+                (string)$row['assigned_to_id'],(string)($row['assigned_to_name'] ?: 'Technician'),
+                $status,$status,$status,$jobId
+            ]);
         } elseif ($jobId && empty($row['assigned_to_id'])) {
             db()->prepare(
                 "UPDATE digital_job_cards SET technician_id=NULL,technician_name=NULL,status='RECEIVED',updated_at=NOW() WHERE id=? AND status IN ('OPEN','RECEIVED','ASSIGNED')"
@@ -1688,13 +1774,19 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         }
 
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
-        if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && empty($row['assigned_to_id'])
+        if ($jobStatus === 'COMPLETED' && $caseStatus !== 'COMPLETED'
             && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS','REPAIR'],true)) {
+            // Technician completion means Workshop testing is the next safe stage.
+            // This also repairs an interrupted request where the Job Card save
+            // succeeded but the stage update did not.
+            $newStage='TESTING'; $department='Workshop'; $action='Completed Job Card synchronized - waiting Workshop test';
+        } elseif ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && empty($row['assigned_to_id'])
+            && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED'],true)) {
             $newStage='TECHNICIAN_ASSIGNMENT'; $department='Workshop / Dispatch';
             $blocker='Awaiting Technician Assignment'; $action='Service Request waiting Technician assignment';
-        } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','DIAGNOSIS'],true)) {
+        } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && !empty($row['assigned_to_id']) && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT'],true)) {
             $newStage='JOB_CARD_ASSIGNED'; $department='Technician'; $action='Service Request assigned - Job Card waiting Technician start';
-        } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS'],true)) {
+        } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && (!empty($row['assigned_to_id']) || $jobTechnicianId !== '') && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS'],true)) {
             $newStage='REPAIR'; $department='Technician'; $action='Service Request in progress';
         } elseif ($status === 'ON_HOLD' && $caseStatus !== 'COMPLETED') {
             $blocker='Service Request is ON HOLD'; $action='Service Request placed on hold';
@@ -1738,6 +1830,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         return $caseId;
     } catch (Throwable $error) {
         error_log('Service Request case state sync failed: ' . $error->getMessage());
+        if ($strict) throw $error;
         return $caseId;
     }
 }
@@ -1750,43 +1843,150 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
     $createdAfter = 0;
     $syncedRequests = 0;
     $syncedReports = 0;
+    $failedSources = 0;
+    $inconsistencies = 0;
+    $errorMessage = null;
     try {
         $countSql = 'SELECT COUNT(*) FROM breakdown_cases';
         if ($customerId !== null && $customerId !== '') {
-            $c = db()->prepare($countSql . ' WHERE customer_id=?'); $c->execute([$customerId]); $createdBefore=(int)$c->fetchColumn();
-        } else { $createdBefore=(int)db()->query($countSql)->fetchColumn(); }
+            $c = db()->prepare($countSql . ' WHERE customer_id=?');
+            $c->execute([$customerId]);
+            $createdBefore=(int)$c->fetchColumn();
+        } else {
+            $createdBefore=(int)db()->query($countSql)->fetchColumn();
+        }
 
-        $sql = "SELECT o.id,o.status FROM operator_reports o WHERE (o.status='OPEN' OR EXISTS (SELECT 1 FROM breakdown_cases bc WHERE bc.source_type='OPERATOR_REPORT' AND bc.source_id=o.id AND bc.status<>'COMPLETED'))";
+        $sql = "SELECT o.id,o.status FROM operator_reports o
+                WHERE (o.status='OPEN' OR EXISTS (
+                    SELECT 1 FROM breakdown_cases bc
+                    WHERE bc.source_type='OPERATOR_REPORT' AND bc.source_id=o.id AND bc.status<>'COMPLETED'
+                ))";
         $params=[];
-        if ($customerId !== null && $customerId !== '') { $sql.=' AND o.customer_id=?'; $params[]=$customerId; }
-        $q=db()->prepare($sql); $q->execute($params);
+        if ($customerId !== null && $customerId !== '') {
+            $sql.=' AND o.customer_id=?';
+            $params[]=$customerId;
+        }
+        $q=db()->prepare($sql);
+        $q->execute($params);
         foreach ($q->fetchAll() as $r) {
-            $caseId=belm_ensure_breakdown_case_from_operator_report((string)$r['id'],'System Sync');
-            if ($caseId) {
+            try {
+                $caseId=belm_ensure_breakdown_case_from_operator_report((string)$r['id'],'System Sync',true);
+                if (!$caseId) {
+                    $failedSources++;
+                    error_log('Operator Report sync did not produce a breakdown case: '.(string)$r['id']);
+                    continue;
+                }
                 $syncedReports++;
                 if (strtoupper((string)$r['status'])!=='OPEN') {
-                    db()->prepare("UPDATE breakdown_cases SET status='COMPLETED',current_stage='COMPLETED',current_department='Completed',blocker_reason=NULL,closed_at=COALESCE(closed_at,NOW()),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")->execute([$caseId]);
+                    $close=db()->prepare("UPDATE breakdown_cases
+                        SET status='COMPLETED',current_stage='COMPLETED',current_department='Completed',blocker_reason=NULL,
+                            closed_at=COALESCE(closed_at,NOW()),updated_at=NOW()
+                        WHERE id=? AND status<>'COMPLETED'");
+                    $close->execute([$caseId]);
+                    if ($close->rowCount() > 0) {
+                        db()->prepare(
+                            'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
+                             VALUES(?,?,?,?,?,?,?,?,NOW())'
+                        )->execute([uuid(),$caseId,'COMPLETED','Completed','Operator report resolved - case synchronized',null,'system','System Sync']);
+                    }
                 }
+            } catch (Throwable $sourceError) {
+                $failedSources++;
+                error_log('Operator Report source sync failed for '.(string)$r['id'].': '.$sourceError->getMessage());
             }
         }
 
-        $sql = "SELECT sr.id FROM service_requests sr WHERE sr.machine_id IS NOT NULL AND sr.status<>'PENDING_CUSTOMER' AND (sr.status NOT IN ('COMPLETED','CANCELLED') OR EXISTS (SELECT 1 FROM breakdown_cases bc WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id AND bc.status<>'COMPLETED'))";
+        $sql = "SELECT sr.id FROM service_requests sr
+                WHERE sr.machine_id IS NOT NULL AND sr.status<>'PENDING_CUSTOMER'
+                  AND (sr.status NOT IN ('COMPLETED','CANCELLED') OR EXISTS (
+                    SELECT 1 FROM breakdown_cases bc
+                    WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=sr.id AND bc.status<>'COMPLETED'
+                  ))";
         $params=[];
-        if ($customerId !== null && $customerId !== '') { $sql.=' AND sr.customer_id=?'; $params[]=$customerId; }
-        $q=db()->prepare($sql); $q->execute($params);
+        if ($customerId !== null && $customerId !== '') {
+            $sql.=' AND sr.customer_id=?';
+            $params[]=$customerId;
+        }
+        $q=db()->prepare($sql);
+        $q->execute($params);
         foreach ($q->fetchAll() as $r) {
-            if (belm_sync_breakdown_case_from_service_request((string)$r['id'],'System Sync')) $syncedRequests++;
+            try {
+                if (belm_sync_breakdown_case_from_service_request((string)$r['id'],'System Sync',true)) {
+                    $syncedRequests++;
+                } else {
+                    $failedSources++;
+                    error_log('Service Request sync did not produce a breakdown case: '.(string)$r['id']);
+                }
+            } catch (Throwable $sourceError) {
+                $failedSources++;
+                error_log('Service Request source sync failed for '.(string)$r['id'].': '.$sourceError->getMessage());
+            }
         }
 
+        // V319: verify the key cross-table invariants after reconciliation.
+        // These checks make Sync / Refresh honest: a partial repair is reported
+        // as a warning instead of displaying a green-looking "Synced" message.
+        $healthSql = "SELECT
+                COUNT(*) FILTER (WHERE sr.status IN ('OPEN','ASSIGNED','IN_PROGRESS','ON_HOLD')
+                    AND (bc.id IS NULL OR j.id IS NULL)) AS missing_links,
+                COUNT(*) FILTER (WHERE sr.status IN ('ASSIGNED','IN_PROGRESS') AND sr.assigned_to_id IS NOT NULL
+                    AND (j.technician_id IS DISTINCT FROM sr.assigned_to_id)) AS assignment_mismatches,
+                COUNT(*) FILTER (WHERE sr.status='IN_PROGRESS'
+                    AND UPPER(COALESCE(j.status,'')) NOT IN ('IN_PROGRESS','COMPLETED')) AS progress_mismatches,
+                COUNT(*) FILTER (WHERE sr.status IN ('COMPLETED','CANCELLED') AND bc.id IS NOT NULL
+                    AND UPPER(COALESCE(bc.status,''))<>'COMPLETED') AS closure_mismatches,
+                COUNT(*) FILTER (WHERE sr.status='COMPLETED' AND j.id IS NOT NULL
+                    AND UPPER(COALESCE(j.status,''))<>'COMPLETED') AS completed_job_mismatches
+            FROM service_requests sr
+            LEFT JOIN LATERAL (
+                SELECT b.id,b.status FROM breakdown_cases b
+                WHERE b.source_type='SERVICE_REQUEST' AND b.source_id=sr.id
+                ORDER BY b.opened_at ASC LIMIT 1
+            ) bc ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT dj.id,dj.status,dj.technician_id FROM digital_job_cards dj
+                WHERE dj.case_id=bc.id ORDER BY dj.created_at ASC LIMIT 1
+            ) j ON TRUE
+            WHERE sr.machine_id IS NOT NULL AND sr.status<>'PENDING_CUSTOMER'";
+        $healthParams=[];
         if ($customerId !== null && $customerId !== '') {
-            $c = db()->prepare($countSql . ' WHERE customer_id=?'); $c->execute([$customerId]); $createdAfter=(int)$c->fetchColumn();
-        } else { $createdAfter=(int)db()->query($countSql)->fetchColumn(); }
+            $healthSql.=' AND sr.customer_id=?';
+            $healthParams[]=$customerId;
+        }
+        $healthStmt=db()->prepare($healthSql);
+        $healthStmt->execute($healthParams);
+        $health=$healthStmt->fetch() ?: [];
+        $inconsistencies=(int)($health['missing_links'] ?? 0)
+            +(int)($health['assignment_mismatches'] ?? 0)
+            +(int)($health['progress_mismatches'] ?? 0)
+            +(int)($health['closure_mismatches'] ?? 0)
+            +(int)($health['completed_job_mismatches'] ?? 0);
+
+        if ($customerId !== null && $customerId !== '') {
+            $c = db()->prepare($countSql . ' WHERE customer_id=?');
+            $c->execute([$customerId]);
+            $createdAfter=(int)$c->fetchColumn();
+        } else {
+            $createdAfter=(int)db()->query($countSql)->fetchColumn();
+        }
     } catch (Throwable $error) {
+        $failedSources++;
+        $errorMessage = 'Synchronization query failed before all sources could be checked.';
         error_log('Breakdown source backfill failed: ' . $error->getMessage());
     }
-    return ['created'=>max(0,$createdAfter-$createdBefore),'serviceRequests'=>$syncedRequests,'operatorReports'=>$syncedReports];
-}
 
+    if ($errorMessage === null && ($failedSources > 0 || $inconsistencies > 0)) {
+        $errorMessage = 'Synchronization completed with unresolved source consistency issues.';
+    }
+    return [
+        'created'=>max(0,$createdAfter-$createdBefore),
+        'serviceRequests'=>$syncedRequests,
+        'operatorReports'=>$syncedReports,
+        'failedSources'=>$failedSources,
+        'inconsistencies'=>$inconsistencies,
+        'error'=>$errorMessage,
+    ];
+}
 
 // V306: derive one authoritative Job Card billing status from the currently
 // active billing documents. Invoice state always wins over Proforma state;

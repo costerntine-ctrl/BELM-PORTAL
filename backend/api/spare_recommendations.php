@@ -203,6 +203,12 @@ if ($method === 'PUT' && $id) {
     )->execute([uuid(), $id, 'STATUS', 'PENDING_CUSTOMER', 'OPEN', null, trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'))]);
 
     $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+    // V319: customer confirmation turns this into an official machine-linked
+    // Service Request, so create/synchronize its Breakdown Case + received Job
+    // Card immediately instead of waiting for someone to press Sync / Refresh.
+    if (!empty($recommendation['machine_id'])) {
+        belm_sync_breakdown_case_from_service_request((string)$id, $actorName);
+    }
     $machineLabel = trim((string)($recommendation['brand'] ?? '') . ' ' . (string)($recommendation['model'] ?? ''))
         ?: ((string)($recommendation['machine_type'] ?? '') ?: 'Machine');
     $supportText = 'Customer confirmed a spare recommendation and is requesting BELM action.'

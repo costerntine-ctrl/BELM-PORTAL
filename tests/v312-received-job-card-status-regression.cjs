@@ -21,8 +21,8 @@ test('dispatch list keeps RECEIVED/OPEN plus legacy unassigned ASSIGNED compatib
 test('dispatch assignment marks same Job Card ASSIGNED',eng.includes("status='ASSIGNED',priority=?"));
 test('service request rules accept RECEIVED pre-start lifecycle',sr.includes("['OPEN','RECEIVED']")&&sr.includes("['OPEN','RECEIVED','ASSIGNED']"));
 test('pre-start unassign returns ASSIGNED card to RECEIVED without allowing silent handover',sr.includes("['OPEN','RECEIVED','ASSIGNED']")&&sr.includes('Change Technician from Job Card Dispatch'));
-test('received dropdown visibly labels received cards',js.includes('RECEIVED · ${job.jobCardNo}'));
-test('received helper text explains waiting assignment',js.includes('waiting for Technician assignment'));
+test('dispatch dropdown visibly labels each card by actual lifecycle status',js.includes("const status=String(job.dispatchStatus||job.status||'RECEIVED').toUpperCase()")&&js.includes('${status} · ${job.jobCardNo}'));
+test('dispatch helper text explains waiting and assigned counts',js.includes('${waiting} waiting, ${assigned} assigned')&&js.includes('Assigned cards are selectable'));
 test('migration logs V312 normalization',migrate.includes('V312 Job Card lifecycle normalized'));
 test('health schema is V312',(() => { const m = /'schemaVersion' => '(\d+)-/.exec(health); return m && Number(m[1]) >= 312; })());
 test('service worker cache is V312',(() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(sw); return m && Number(m[1]) >= 312; })());

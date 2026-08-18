@@ -88,10 +88,10 @@ if ($method === 'GET' && $action === 'dispatch-options') {
          ) pi ON TRUE
          WHERE UPPER(COALESCE(j.status,'RECEIVED')) IN ('RECEIVED','OPEN','ASSIGNED')
            AND bc.status <> 'COMPLETED'
-           AND j.technician_id IS NULL
-           AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL
            AND (bc.source_type='SERVICE_REQUEST' OR UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER')
-         ORDER BY c.name,j.created_at DESC"
+         ORDER BY c.name,
+                  CASE WHEN j.technician_id IS NULL AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL THEN 0 ELSE 1 END,
+                  j.created_at DESC"
     )->fetchAll();
     foreach ($receivedJobCards as &$job) {
         $job['jobCardNo']=$job['job_card_no'];
@@ -105,16 +105,24 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         $job['sourceType']=$job['source_type'];
         $job['issuedByName']=$job['issued_by_name'];
         $job['issuedAt']=$job['issued_at'];
-        $job['dispatchStatus']='RECEIVED';
+        $hasAssignedTechnician = trim((string)($job['technician_id'] ?? '')) !== '' || trim((string)($job['technician_name'] ?? '')) !== '';
+        $job['dispatchStatus']=$hasAssignedTechnician ? 'ASSIGNED' : strtoupper(trim((string)($job['status'] ?? 'RECEIVED')));
+        $job['canReassign']=$hasAssignedTechnician;
         // V326: one business identifier. Before an actual Proforma exists, the
         // pending Proforma code is the received Job Card number itself.
         $job['proformaCode']=$job['proforma_invoice_no'] ?: $job['job_card_no'];
     }
     unset($job);
+    $assignedJobCards = count(array_filter($receivedJobCards, fn($job) => ($job['dispatchStatus'] ?? '') === 'ASSIGNED'));
+    $unassignedJobCards = count($receivedJobCards) - $assignedJobCards;
     json_out([
         'technicians'=>$technicians,
         'customers'=>$customers,
         'machines'=>$machines,
+        // V328: keep receivedJobCards as a backward-compatible alias while
+        // returning every active Customer/Service-Request Job Card, including
+        // cards that already have a Technician and can be selected/reassigned.
+        'jobCards'=>$receivedJobCards,
         'receivedJobCards'=>$receivedJobCards,
         'dispatchSync'=>[
             'serviceRequests'=>(int)($dispatchSync['serviceRequests'] ?? 0),
@@ -122,7 +130,9 @@ if ($method === 'GET' && $action === 'dispatch-options') {
             'created'=>(int)($dispatchSync['created'] ?? 0),
             'failedSources'=>(int)($dispatchSync['failedSources'] ?? 0),
             'inconsistencies'=>(int)($dispatchSync['inconsistencies'] ?? 0),
-            'receivedJobCards'=>count($receivedJobCards),
+            'receivedJobCards'=>$unassignedJobCards,
+            'assignedJobCards'=>$assignedJobCards,
+            'totalJobCards'=>count($receivedJobCards),
             'machines'=>count($machines),
             'error'=>$dispatchSync['error'] ?? null,
             'skipped'=>!empty($dispatchSync['skipped']),
@@ -169,13 +179,12 @@ if ($method === 'POST' && $action === 'dispatch') {
                             WHERE (UPPER(TRIM(j.job_card_no))=UPPER(TRIM(?)) OR UPPER(TRIM(COALESCE(pi.invoice_no,'')))=UPPER(TRIM(?)))
                               AND UPPER(COALESCE(j.status,'RECEIVED')) IN ('RECEIVED','OPEN','ASSIGNED')
                               AND bc.status<>'COMPLETED'
-                              AND j.technician_id IS NULL AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL
                               AND (bc.source_type='SERVICE_REQUEST' OR UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER')";
                 $lookupArgs=[$jobCardNoInput,$jobCardNoInput];
                 if($customerId!==''){ $lookupSql.=' AND j.customer_id=?'; $lookupArgs[]=$customerId; }
                 $lookupSql.=' ORDER BY j.created_at DESC LIMIT 2';
                 $find=$pdo->prepare($lookupSql);$find->execute($lookupArgs);$matches=$find->fetchAll();
-                if(count($matches)===0) throw new RuntimeException('JC Number / Proforma Code was not found among received Job Cards waiting for Technician assignment. Refresh or check the code.');
+                if(count($matches)===0) throw new RuntimeException('JC Number / Proforma Code was not found among active received/assigned Job Cards. Refresh or check the code.');
                 if(count($matches)>1) throw new RuntimeException('More than one received Job Card matches this code. Select the Job Card from the list.');
                 $jobId=(string)$matches[0]['id'];
             }
@@ -192,7 +201,10 @@ if ($method === 'POST' && $action === 'dispatch') {
             if(!in_array($jobStatus,['RECEIVED','OPEN','ASSIGNED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('This Job Card is no longer waiting for Technician Dispatch. Refresh the received Job Cards list.');
             $customerIssued = strtoupper(trim((string)($job['issued_by_type']??''))) === 'CUSTOMER';
             if((string)$job['source_type']!=='SERVICE_REQUEST' && !$customerIssued) throw new RuntimeException('Only Customer-issued or Service Request Job Cards can be received through Technician Dispatch.');
-            if(trim((string)($job['technician_id']??''))!=='' || trim((string)($job['technician_name']??''))!=='') throw new RuntimeException('This Job Card is already assigned. Use Job Card handover/reassignment instead.');
+            $previousTechnicianId=trim((string)($job['technician_id']??''));
+            $previousTechnicianName=trim((string)($job['technician_name']??''));
+            $wasAlreadyAssigned=$previousTechnicianId!=='' || $previousTechnicianName!=='';
+            $assignmentChanged=$wasAlreadyAssigned && $previousTechnicianId!==$technicianId;
             if($jobCardNoInput!=='' && strcasecmp($jobCardNoInput,(string)$job['job_card_no'])!==0 && strcasecmp($jobCardNoInput,(string)($job['proforma_invoice_no']??''))!==0) {
                 throw new RuntimeException('The entered JC Number / Proforma Code does not match the selected received Job Card.');
             }
@@ -204,9 +216,15 @@ if ($method === 'POST' && $action === 'dispatch') {
                 ->execute([$technicianId,$tech['name'],$priority,$dueDate?:null,$jobId]);
             $pdo->prepare("UPDATE breakdown_cases SET current_stage='JOB_CARD_ASSIGNED',current_department='Technician',blocker_reason=NULL,stage_started_at=NOW(),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")
                 ->execute([$caseId]);
+            $assignmentAction = $assignmentChanged
+                ? 'Job Card '.$jobNo.' reassigned from '.($previousTechnicianName ?: 'previous Technician').' to '.$tech['name']
+                : ($wasAlreadyAssigned ? 'Job Card '.$jobNo.' assignment confirmed for '.$tech['name'] : 'Job Card '.$jobNo.' assigned to '.$tech['name']);
+            $assignmentNote = $assignmentChanged
+                ? 'Technician reassignment from active assigned Job Card'
+                : ($wasAlreadyAssigned ? 'Existing Technician assignment confirmed/updated' : 'Technician dispatch from received Job Card');
             $pdo->prepare("INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at)
                            SELECT ?,id,current_stage,current_department,?,?, 'belm',?,?,NOW() FROM breakdown_cases WHERE id=?")
-                ->execute([uuid(),'Job Card '.$jobNo.' assigned to '.$tech['name'],'Technician dispatch from received Job Card',$user['id']??null,$user['name'],$caseId]);
+                ->execute([uuid(),$assignmentAction,$assignmentNote,$user['id']??null,$user['name'],$caseId]);
             if($sourceRequestId!=='') {
                 $sr=$pdo->prepare('SELECT status,assigned_to_id FROM service_requests WHERE id=? FOR UPDATE');
                 $sr->execute([$sourceRequestId]); $old=$sr->fetch();
@@ -214,8 +232,10 @@ if ($method === 'POST' && $action === 'dispatch') {
                     $newStatus=in_array((string)$old['status'],['OPEN','ASSIGNED'],true)?'ASSIGNED':(string)$old['status'];
                     $pdo->prepare('UPDATE service_requests SET assigned_to_id=?,assigned_by_id=?,status=?,updated_at=NOW() WHERE id=?')
                         ->execute([$technicianId,$user['id']??null,$newStatus,$sourceRequestId]);
-                    $pdo->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
-                        ->execute([uuid(),$sourceRequestId,'ASSIGNMENT',(string)($old['assigned_to_id']??''),(string)$tech['name'],$user['id']??null,$user['name'],'Assigned through received Job Card '.$jobNo]);
+                    if ((string)($old['assigned_to_id'] ?? '') !== $technicianId) {
+                        $pdo->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
+                            ->execute([uuid(),$sourceRequestId,'ASSIGNMENT',(string)($old['assigned_to_id']??''),(string)$tech['name'],$user['id']??null,$user['name'],$assignmentChanged?'Reassigned through active Job Card '.$jobNo:'Assigned through Job Card '.$jobNo]);
+                    }
                     if ((string)$old['status'] !== $newStatus) {
                         $pdo->prepare('INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())')
                             ->execute([uuid(),$sourceRequestId,'STATUS',(string)$old['status'],$newStatus,$user['id']??null,$user['name'],'Synchronized from Technician Dispatch for Job Card '.$jobNo]);
@@ -265,7 +285,7 @@ if ($method === 'POST' && $action === 'dispatch') {
                 ($temporary?"\nAssignment: TEMPORARY OVERRIDE - your permanent customer has not changed.":'').
                 ($description!==''?"\nDetails: $description":'')."\nOpen Technician > My Job Cards.");
         } catch(Throwable $e) {}
-        json_out(['id'=>$jobId,'jobCardNo'=>$jobNo,'mode'=>$mode,'temporaryOverride'=>$temporary,'homeCustomerName'=>$tech['home_customer_name']??null,'proformaCode'=>$jobNo,'proformaStatus'=>'PENDING'],201);
+        json_out(['id'=>$jobId,'jobCardNo'=>$jobNo,'mode'=>$mode,'temporaryOverride'=>$temporary,'homeCustomerName'=>$tech['home_customer_name']??null,'proformaCode'=>$jobNo,'proformaStatus'=>'PENDING','reassigned'=>($assignmentChanged??false),'previousTechnicianName'=>($previousTechnicianName??null)],201);
     } catch(Throwable $e) {
         if($pdo->inTransaction()) $pdo->rollBack();
         json_error($e->getMessage(),422);

@@ -10,7 +10,7 @@
   <title>BELM Portal — Sign in</title>
   <link rel="manifest" href="/belm-app.webmanifest" />
   <link rel="apple-touch-icon" href="/app-icon-192.png" />
-  <link rel="stylesheet" href="/customer-app.css?v=211-bug-audit" />
+  <link rel="stylesheet" href="/customer-app.css?v=327-login-legal" />
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -43,6 +43,21 @@
         <a href="/forgot-password/">Forgot password? Get OTP</a>
         <button type="button" id="installButton" class="text-button" hidden>Install as App</button>
       </div>
+      <details class="login-legal" id="loginLegal">
+        <summary>View Privacy Policy &amp; Terms</summary>
+        <div class="login-legal-content">
+          <p>By using the BELM Operations Platform, you agree that BELM General Tech Service Limited may use the account, company, contact, machine, service and support information you provide only to operate and deliver the requested services.</p>
+          <ul>
+            <li>Process service requests, breakdown reports and Digital Job Cards.</li>
+            <li>Contact authorized users by phone, WhatsApp or email about operational work.</li>
+            <li>Prepare quotations, Proforma Invoices, invoices, Job Cards and technical documentation.</li>
+            <li>Maintain service records for warranty, follow-up, quality and audit purposes.</li>
+          </ul>
+          <p>Your information is not sold. Access is limited according to the account role, customer permissions and service workflow.</p>
+          <p class="login-legal-links"><a href="/legal/privacy-policy.html" target="_blank" rel="noopener">Full Privacy Policy</a><a href="/legal/terms.html" target="_blank" rel="noopener">Full Terms &amp; Definitions</a></p>
+          <p class="login-legal-note">You can expand or collapse this notice without leaving the sign-in page.</p>
+        </div>
+      </details>
       <p class="privacy">After sign-in, the system opens the workspace allowed for your role automatically.</p>
     </section>
   </main>

@@ -9,10 +9,10 @@ const js=read('frontend/breakdown-workflow/workflow.js');
 const html=read('frontend/engineering-manager/index.html');
 const health=read('backend/index.php');
 const sw=read('frontend/belm-sw.js');
-test('dispatch lists unassigned Job Cards only', api.includes('AND j.technician_id IS NULL') && api.includes("COALESCE(j.technician_name,''") && api.includes("UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER'"));
+test('V328 dispatch lists active received and assigned Job Cards', !api.includes("AND j.technician_id IS NULL\n           AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL") && api.includes("UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER'"));
 test('customer-managed customer-issued Job Cards are no longer excluded', !api.includes("c.is_machinery_admin=0 AND UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER'") && !api.includes('belongs to a customer-managed workshop and was not received by BELM'));
 test('backend only receives customer-issued or service-request Job Cards', api.includes('Only Customer-issued or Service Request Job Cards can be received through Technician Dispatch.'));
-test('already-assigned Job Card is rejected', api.includes('This Job Card is already assigned. Use Job Card handover/reassignment instead.'));
+test('already-assigned Job Card can be selected for explicit reassignment', !api.includes('This Job Card is already assigned. Use Job Card handover/reassignment instead.') && api.includes('$assignmentChanged=$wasAlreadyAssigned'));
 test('received list can filter by selected customer', js.includes('dispatchJobCards.filter(job=>!customerId||String(job.customerId)===String(customerId))'));
 test('customer selector remains enabled in received mode', !js.includes("dispatchCustomer').disabled=true"));
 

@@ -124,3 +124,5 @@ html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display
 .workflow-jc-number-field input.jc-auto-detected{border-color:#1f8f62;box-shadow:0 0 0 2px color-mix(in srgb,#1f8f62 18%,transparent)}
 .workflow-jc-number-field input.jc-manual{border-color:#d5b100;box-shadow:0 0 0 2px color-mix(in srgb,#d5b100 16%,transparent)}
 @media(max-width:760px){.workflow-dispatch-form{grid-template-columns:1fr}.workflow-received-card-field,.workflow-jc-number-field{grid-column:auto}.workflow-received-card-field .workflow-dispatch-inline-control{grid-template-columns:minmax(0,1fr) auto}.workflow-received-card-field .workflow-dispatch-inline-control button{width:auto}}
+
+/* V328 - assigned Job Cards selectable in Technician Dispatch; existing compact layout retained. */

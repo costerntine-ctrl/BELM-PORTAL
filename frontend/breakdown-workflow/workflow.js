@@ -48,7 +48,7 @@
   function normalizeJobCard(job={}){
     const jobCardNo=String(job.job_card_no??job.jobCardNo??'').trim()||'Job Card';
     const title=String(job.title??job.service_type??job.serviceType??'').trim()||'Machine Breakdown';
-    return {...job,job_card_no:jobCardNo,jobCardNo,customerId:job.customerId??job.customer_id??'',customer_id:job.customer_id??job.customerId??'',machineId:job.machineId??job.machine_id??'',machine_id:job.machine_id??job.machineId??'',customerName:job.customerName??job.customer_name??'Customer',machineLabel:job.machineLabel??job.machine_label??job.machine??'Machine',sourceType:job.sourceType??job.source_type??'',due_date:job.due_date??job.dueDate??'',dueDate:job.dueDate??job.due_date??'',title};
+    return {...job,job_card_no:jobCardNo,jobCardNo,customerId:job.customerId??job.customer_id??'',customer_id:job.customer_id??job.customerId??'',machineId:job.machineId??job.machine_id??'',machine_id:job.machine_id??job.machineId??'',customerName:job.customerName??job.customer_name??'Customer',machineLabel:job.machineLabel??job.machine_label??job.machine??'Machine',sourceType:job.sourceType??job.source_type??'',due_date:job.due_date??job.dueDate??'',dueDate:job.dueDate??job.due_date??'',technicianId:job.technicianId??job.technician_id??'',technicianName:job.technicianName??job.technician_name??'',dispatchStatus:String(job.dispatchStatus??job.status??'RECEIVED').toUpperCase(),title};
   }
   function fmtDate(v){if(!v)return '-';const raw=String(v).trim();const iso=/^\d{4}-\d{2}-\d{2} /.test(raw)?raw.replace(' ','T').replace(/([+-]\d{2})(?!:?\d{2})$/,'$1:00'):raw;const d=new Date(iso);if(Number.isNaN(d.getTime()))return raw;return d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
   function duration(h){h=Number(h||0);return h>=24?`${(h/24).toFixed(h>=72?0:1)} days`:`${Math.round(h)} hrs`}
@@ -80,11 +80,20 @@
     const customerId=document.getElementById('dispatchCustomer')?.value||'';
     const current=select.value||'';
     const rows=dispatchJobCards.filter(job=>!customerId||String(job.customerId)===String(customerId));
-    const placeholder=customerId&&!rows.length?'No received Job Cards for this customer':(!rows.length?'No received Job Cards waiting for dispatch':'Select received Job Card...');
-    select.innerHTML=`<option value="">${esc(placeholder)}</option>`+rows.map(job=>{const src=String(job.sourceType||'')==='SERVICE_REQUEST'?'Service Request':'Customer Job Card';const serial=job.machineSerial?` · S/N ${job.machineSerial}`:'';return `<option value="${esc(job.id)}">${esc(`RECEIVED · ${job.jobCardNo} · ${job.customerName} · ${job.machineLabel}${serial} · ${job.title} · ${src}`)}</option>`}).join('');
+    const placeholder=customerId&&!rows.length?'No active Job Cards for this customer':(!rows.length?'No received / assigned Job Cards available':'Select Job Card...');
+    select.innerHTML=`<option value="">${esc(placeholder)}</option>`+rows.map(job=>{
+      const src=String(job.sourceType||'')==='SERVICE_REQUEST'?'Service Request':'Customer Job Card';
+      const serial=job.machineSerial?` · S/N ${job.machineSerial}`:'';
+      const assigned=job.technicianName?` · Technician: ${job.technicianName}`:'';
+      const status=String(job.dispatchStatus||job.status||'RECEIVED').toUpperCase();
+      return `<option value="${esc(job.id)}">${esc(`${status} · ${job.jobCardNo} · ${job.customerName} · ${job.machineLabel}${serial}${assigned} · ${job.title} · ${src}`)}</option>`;
+    }).join('');
     if(rows.some(job=>String(job.id)===String(current)))select.value=current;
-    const dataList=document.getElementById('dispatchJobCardNoList');if(dataList)dataList.innerHTML=rows.map(job=>`<option value="${esc(job.proformaCode||job.jobCardNo)}">${esc(`${job.customerName} · ${job.machineLabel}`)}</option>`).join('');
-    const help=document.getElementById('receivedJobCardHelp');if(help)help.textContent=rows.length?`${rows.length} received Job Card${rows.length===1?'':'s'} waiting for Technician assignment${customerId?' for this customer':''}.`:(customerId?'No unassigned received Job Card is waiting for this customer. You can still type a known JC / Proforma code in the field on the right.':'No unassigned received Job Cards are waiting. Service Requests are synchronized automatically when this list refreshes.');
+    const dataList=document.getElementById('dispatchJobCardNoList');if(dataList)dataList.innerHTML=rows.map(job=>`<option value="${esc(job.proformaCode||job.jobCardNo)}">${esc(`${String(job.dispatchStatus||job.status||'RECEIVED').toUpperCase()} · ${job.customerName} · ${job.machineLabel}${job.technicianName?` · ${job.technicianName}`:''}`)}</option>`).join('');
+    const assigned=rows.filter(job=>job.technicianId||job.technicianName||String(job.dispatchStatus||'').toUpperCase()==='ASSIGNED').length;
+    const waiting=rows.length-assigned;
+    const help=document.getElementById('receivedJobCardHelp');
+    if(help)help.textContent=rows.length?`${rows.length} active Job Card${rows.length===1?'':'s'}${customerId?' for this customer':''}: ${waiting} waiting, ${assigned} assigned. Assigned cards are selectable for confirmation or reassignment.`:(customerId?'No active received/assigned Job Card for this customer. You can still type a known JC / Proforma code in the field on the right.':'No active received/assigned Job Cards are available. Service Requests are synchronized automatically when this list refreshes.');
   }
   function syncDispatchJcNumberFromSelection(){
     const input=document.getElementById('dispatchJobCardNo');if(!input)return;
@@ -118,18 +127,27 @@
       updateDispatchNote();
     }else{
       input.dataset.source='manual';input.classList.add('jc-manual');
-      const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent='Manual JC / Proforma code entered. Assign will ask the server to find the matching received Job Card by this code.';
+      const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent='Manual JC / Proforma code entered. Assign will ask the server to find the matching active received/assigned Job Card by this code.';
     }
   }
   function updateDispatchNote(){
     const techId=document.getElementById('dispatchTechnician')?.value||'';
     const customerId=document.getElementById('dispatchCustomer')?.value||'';
+    const selectedJob=dispatchJobCards.find(x=>String(x.id)===String(document.getElementById('dispatchJobCard')?.value||''));
     const tech=dispatchTechnicians.find(x=>String(x.id)===String(techId));
     const customer=dispatchCustomers.find(x=>String(x.id)===String(customerId));
     const note=document.getElementById('dispatchNote');if(!note)return;
+    if(selectedJob&&(selectedJob.technicianId||selectedJob.technicianName)){
+      const same=techId&&selectedJob.technicianId&&String(techId)===String(selectedJob.technicianId);
+      note.innerHTML=same
+        ? `<b>ASSIGNED:</b> ${esc(selectedJob.jobCardNo)} is already assigned to ${esc(selectedJob.technicianName||tech?.name||'this Technician')}. You can keep this assignment and update priority/due date.`
+        : `<b>ASSIGNED:</b> ${esc(selectedJob.jobCardNo)} is currently assigned to ${esc(selectedJob.technicianName||'another Technician')}. Select a Technician and click Assign Job Card to reassign.`;
+      note.classList.toggle('override',!same);
+      return;
+    }
     if(tech&&customer&&tech.assignedCustomerId&&String(tech.assignedCustomerId)!==String(customer.id)){note.innerHTML=`<b>TEMPORARY OVERRIDE:</b> ${esc(tech.name)} stays permanently attached to ${esc(tech.assignedCustomerName||'their home customer')}. Only this Job Card is for ${esc(customer.name)}.`;note.classList.add('override')}
     else if(tech&&customer){note.textContent=`${tech.name} is already attached to ${customer.name}; this Job Card is a normal assignment.`;note.classList.remove('override')}
-    else{note.textContent=dispatchMode()==='existing'?'Select a received Job Card and Technician.':'Select a Technician, customer and machine to create a Job Card.';note.classList.remove('override')}
+    else{note.textContent=dispatchMode()==='existing'?'Select a received or assigned Job Card and Technician.':'Select a Technician, customer and machine to create a Job Card.';note.classList.remove('override')}
   }
   function syncJobCardSource(){
     const existing=dispatchMode()==='existing';
@@ -138,7 +156,17 @@
     document.getElementById('dispatchMachineField')?.classList.toggle('hidden',existing);
     document.getElementById('dispatchTitleField')?.classList.toggle('hidden',existing);
     document.getElementById('dispatchDescriptionField')?.classList.toggle('hidden',existing);
-    if(existing){const job=dispatchJobCards.find(x=>String(x.id)===String(document.getElementById('dispatchJobCard')?.value||''));if(job){const customer=document.getElementById('dispatchCustomer');if(customer)customer.value=job.customerId||'';document.getElementById('dispatchPriority').value=job.priority||'NORMAL';document.getElementById('dispatchDueDate').value=job.due_date||''}renderReceivedJobCards();if(job){const reselect=document.getElementById('dispatchJobCard');if(reselect)reselect.value=job.id}syncDispatchJcNumberFromSelection()}else renderDispatchMachines();
+    if(existing){
+      const job=dispatchJobCards.find(x=>String(x.id)===String(document.getElementById('dispatchJobCard')?.value||''));
+      if(job){
+        const customer=document.getElementById('dispatchCustomer');if(customer)customer.value=job.customerId||'';
+        document.getElementById('dispatchPriority').value=job.priority||'NORMAL';document.getElementById('dispatchDueDate').value=job.due_date||'';
+        const technician=document.getElementById('dispatchTechnician');
+        if(technician&&job.technicianId&&dispatchTechnicians.some(x=>String(x.id)===String(job.technicianId)))technician.value=job.technicianId;
+      }
+      renderReceivedJobCards();if(job){const reselect=document.getElementById('dispatchJobCard');if(reselect)reselect.value=job.id}
+      syncDispatchJcNumberFromSelection();
+    }else renderDispatchMachines();
     updateDispatchNote();
   }
   async function loadDispatchOptions({announce=false,syncSources=true}={}){
@@ -147,7 +175,7 @@
     const selectedValues={technicianId:document.getElementById('dispatchTechnician')?.value||'',customerId:document.getElementById('dispatchCustomer')?.value||'',machineId:document.getElementById('dispatchMachine')?.value||'',jobCardId:document.getElementById('dispatchJobCard')?.value||'',jobCardNo:document.getElementById('dispatchJobCardNo')?.value||''};
     try{
       const data=await engineeringApi(`/engineering?action=dispatch-options${syncSources?'':'&skipSync=1'}`);
-      dispatchTechnicians=data.technicians||[];dispatchCustomers=data.customers||[];dispatchMachines=data.machines||[];dispatchJobCards=(data.receivedJobCards||[]).map(normalizeJobCard);
+      dispatchTechnicians=data.technicians||[];dispatchCustomers=data.customers||[];dispatchMachines=data.machines||[];dispatchJobCards=(data.jobCards||data.receivedJobCards||[]).map(normalizeJobCard);
       const technicianSelect=document.getElementById('dispatchTechnician'),customerSelect=document.getElementById('dispatchCustomer');
       technicianSelect.innerHTML='<option value="">Select Technician...</option>'+dispatchTechnicians.map(tech=>{const home=tech.assignedCustomerName?` · Home: ${tech.assignedCustomerName}`:' · No home customer';return `<option value="${esc(tech.id)}">${esc(tech.name+home)}</option>`}).join('');
       customerSelect.innerHTML='<option value="">Select Customer...</option>'+dispatchCustomers.map(customer=>`<option value="${esc(customer.id)}">${esc(customer.name)}</option>`).join('');
@@ -157,7 +185,7 @@
       const jcInput=document.getElementById('dispatchJobCardNo');if(jcInput&&selectedValues.jobCardNo&&!document.getElementById('dispatchJobCard')?.value){jcInput.value=selectedValues.jobCardNo;jcInput.dataset.source='manual';jcInput.classList.add('jc-manual')}else syncDispatchJcNumberFromSelection();
       renderDispatchMachines();if(dispatchMachines.some(machine=>String(machine.id)===String(selectedValues.machineId)))document.getElementById('dispatchMachine').value=selectedValues.machineId;
       syncJobCardSource();panel.classList.remove('hidden');
-      if(announce){const received=Number(data.dispatchSync?.receivedJobCards??dispatchJobCards.length);if(data.dispatchSync?.error)show(`Technician Dispatch loaded ${received} received Job Card${received===1?'':'s'}, but source synchronization reported an error.`,true);else show(received?`Technician Dispatch refreshed: ${received} received Job Card${received===1?'':'s'} waiting for assignment.`:'Technician Dispatch refreshed. No received Job Cards are currently waiting for assignment.',false)}
+      if(announce){const total=Number(data.dispatchSync?.totalJobCards??dispatchJobCards.length),assigned=Number(data.dispatchSync?.assignedJobCards??0),waiting=Number(data.dispatchSync?.receivedJobCards??Math.max(0,total-assigned));if(data.dispatchSync?.error)show(`Technician Dispatch loaded ${total} active Job Card${total===1?'':'s'} (${waiting} waiting, ${assigned} assigned), but source synchronization reported an error.`,true);else show(total?`Technician Dispatch refreshed: ${total} active Job Card${total===1?'':'s'} (${waiting} waiting, ${assigned} assigned).`:'Technician Dispatch refreshed. No active received/assigned Job Cards are available.',false)}
     }catch(x){panel.classList.add('hidden');if(x.status!==403)show(x.message||'Could not load Technician Dispatch.',true)}
   }
   async function dispatchTechnician(e){
@@ -166,13 +194,16 @@
     const existingJob=dispatchJobCards.find(x=>String(x.id)===String(jobCardId));
     const customerId=mode==='existing'?(existingJob?.customerId||document.getElementById('dispatchCustomer').value||''):document.getElementById('dispatchCustomer').value;
     const tech=dispatchTechnicians.find(x=>String(x.id)===String(technicianId)),customer=dispatchCustomers.find(x=>String(x.id)===String(customerId));
-    if(!technicianId){show('Select Technician.',true);return}if(mode==='existing'&&!jobCardId&&!jobCardNo){show('Select a received Job Card or fill the received JC Number / Proforma Code.',true);return}if(mode==='create'&&(!customerId||!document.getElementById('dispatchMachine').value||!document.getElementById('dispatchTitle').value.trim())){show('Customer, machine and Job Card title are required.',true);return}
+    if(!technicianId){show('Select Technician.',true);return}if(mode==='existing'&&!jobCardId&&!jobCardNo){show('Select a received/assigned Job Card or fill the JC Number / Proforma Code.',true);return}if(mode==='create'&&(!customerId||!document.getElementById('dispatchMachine').value||!document.getElementById('dispatchTitle').value.trim())){show('Customer, machine and Job Card title are required.',true);return}
+    const currentAssignedTechId=String(existingJob?.technicianId||'');
+    const reassigning=mode==='existing'&&currentAssignedTechId&&currentAssignedTechId!==String(technicianId);
+    if(reassigning&&!confirm(`${existingJob?.jobCardNo||'This Job Card'} is currently assigned to ${existingJob?.technicianName||'another Technician'}. Reassign it to ${tech?.name||'the selected Technician'}?`))return;
     const temporary=Boolean(tech?.assignedCustomerId&&customerId&&String(tech.assignedCustomerId)!==String(customerId));
     if(temporary&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Assign this Job Card to ${customer?.name||'the selected customer'} as a Temporary Override?`))return;
     try{
       const currentCaseId=selected?.case?.id||'';
       const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,jobCardNo,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,temporaryOverride:temporary})});
-      show(`${result.jobCardNo||'Job Card'} assigned to Technician${result.temporaryOverride?' as Temporary Override':''}. Proforma sync: ${result.proformaStatus||'PENDING'} · code ${result.proformaCode||result.jobCardNo||jobCardNo}.`,false);
+      show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} to Technician${result.temporaryOverride?' as Temporary Override':''}. Proforma sync: ${result.proformaStatus||'PENDING'} · code ${result.proformaCode||result.jobCardNo||jobCardNo}.`,false);
       document.getElementById('dispatchTitle').value='';document.getElementById('dispatchDescription').value='';document.getElementById('dispatchDueDate').value='';
       await load();if(currentCaseId)try{await openCase(currentCaseId)}catch{}
     }catch(x){show(x.message||'Could not assign the Job Card.',true)}

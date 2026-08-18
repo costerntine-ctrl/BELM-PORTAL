@@ -136,7 +136,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '326-jc-proforma-sync',
+            // Regression baseline: 326-jc-proforma-sync
+            'schemaVersion' => '328-assigned-job-card-select',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

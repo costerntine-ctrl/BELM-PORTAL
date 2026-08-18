@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
   <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
-  <link rel="stylesheet" href="/bank-controller/app.css">
+  <link rel="stylesheet" href="/bank-controller/app.css?v=348-bank-account-visibility">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -40,6 +40,7 @@
         <div><h2>Select bank account</h2><p>Choose which account's balance and withdrawals to view.</p></div>
         <select id="accountSelect"><option value="">Loading accounts…</option></select>
       </div>
+      <p id="bankStorageStatus" class="muted" style="margin:8px 0 0;font-size:12px;font-weight:700">Loading bank accounts from PostgreSQL…</p>
       <div id="accountDetail" class="account-detail hidden">
         <div class="metrics-grid" id="accountMetrics"></div>
         <div class="account-detail-actions">
@@ -110,6 +111,6 @@
 
   <script src="/admin-access.js"></script>
   <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
-  <script src="/bank-controller/app.js"></script>
+  <script src="/bank-controller/app.js?v=348-bank-account-visibility"></script>
 </body>
 </html>

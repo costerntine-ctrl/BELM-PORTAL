@@ -35,6 +35,18 @@
     })[character]);
   }
 
+  // API responses are normalized to camelCase by helpers.php.  Keep legacy
+  // snake_case fallbacks so older cached/API payloads cannot make saved bank
+  // accounts appear as blank labels such as "— 0".
+  const bankNameOf = (account) => account?.bankName ?? account?.bank_name ?? "";
+  const accountNameOf = (account) => account?.accountName ?? account?.account_name ?? "";
+  const accountNumberOf = (account) => account?.accountNumber ?? account?.account_number ?? "";
+  const openingBalanceOf = (account) => Number(account?.openingBalance ?? account?.opening_balance ?? 0);
+  const withdrawalBankNameOf = (item) => item?.bankName ?? item?.bank_name ?? "";
+  const withdrawalAccountNameOf = (item) => item?.accountName ?? item?.account_name ?? "";
+  const withdrawalChequeOf = (item) => item?.chequeNumber ?? item?.cheque_number ?? "";
+  const withdrawalByOf = (item) => item?.withdrawnBy ?? item?.withdrawn_by ?? "";
+
   function message(text, isError = false) {
     const box = document.getElementById("pageAlert");
     box.textContent = text;
@@ -69,7 +81,7 @@
     try {
       const result = await api("/bank-manager?action=customer-debt");
       const receiptBadge = (receipts) => receipts.length
-        ? receipts.map((r) => `<span class="receipt-chip">${escapeHtml(r.receipt_no)}${r.payment_reference ? ` · ${escapeHtml(r.payment_reference)}` : ""}</span>`).join(" ")
+        ? receipts.map((r) => `<span class="receipt-chip">${escapeHtml(r.receiptNo ?? r.receipt_no)}${(r.paymentReference ?? r.payment_reference) ? ` · ${escapeHtml(r.paymentReference ?? r.payment_reference)}` : ""}</span>`).join(" ")
         : '<span class="muted">No receipt on file</span>';
       const rowsHtml = (list) => list.length
         ? list.map((row) => `
@@ -111,7 +123,7 @@
     const current = select.value;
     select.innerHTML = data.accounts.length
       ? `<option value="">Select an account to view…</option>${data.accounts.map(account =>
-          `<option value="${escapeHtml(account.id)}">${escapeHtml(account.bank_name)} — ${escapeHtml(account.account_name)} (${escapeHtml(account.account_number)})</option>`
+          `<option value="${escapeHtml(account.id)}">${escapeHtml(bankNameOf(account))} — ${escapeHtml(accountNameOf(account))} (${escapeHtml(accountNumberOf(account))})</option>`
         ).join("")}`
       : '<option value="">No bank accounts yet — add one</option>';
     if (current && data.accounts.some(account => account.id === current)) select.value = current;
@@ -127,7 +139,7 @@
     }
     detail.classList.remove("hidden");
     document.getElementById("accountMetrics").innerHTML = [
-      metricCard("Opening Balance", money.format(account.opening_balance || 0)),
+      metricCard("Opening Balance", money.format(openingBalanceOf(account))),
       metricCard("Payments In", money.format(account.payments || 0), "green"),
       metricCard("Expenses Out", money.format(account.expenses || 0), "yellow"),
       metricCard("Withdrawals Out", money.format(account.withdrawals || 0), "yellow"),
@@ -140,24 +152,32 @@
     document.getElementById("withdrawalRows").innerHTML = rows.length
       ? rows.map(item => `<tr>
           <td>${escapeHtml(item.date)}</td>
-          <td>${escapeHtml(item.bank_name)} — ${escapeHtml(item.account_name)}</td>
-          <td>${escapeHtml(item.cheque_number || "—")}</td>
+          <td>${escapeHtml(withdrawalBankNameOf(item))} — ${escapeHtml(withdrawalAccountNameOf(item))}</td>
+          <td>${escapeHtml(withdrawalChequeOf(item) || "—")}</td>
           <td>${escapeHtml(item.description)}</td>
           <td><strong>${money.format(Number(item.amount || 0))}</strong></td>
-          <td>${escapeHtml(item.withdrawn_by || "—")}</td>
+          <td>${escapeHtml(withdrawalByOf(item) || "—")}</td>
         </tr>`).join("")
       : '<tr><td colspan="6" class="empty">No withdrawals recorded yet.</td></tr>';
   }
 
-  async function load() {
+  async function load(preferredAccountId = "") {
     if (!token) {
       window.location.href = "/login";
       return;
     }
     try {
       data = await api("/bank-manager");
+      const storageStatus = document.getElementById("bankStorageStatus");
+      if (storageStatus) {
+        const count = Array.isArray(data.accounts) ? data.accounts.length : 0;
+        storageStatus.textContent = `✓ ${count} bank account${count === 1 ? "" : "s"} loaded from PostgreSQL`;
+      }
       renderCompanyMetrics();
       populateAccountSelect();
+      if (preferredAccountId && data.accounts.some(account => account.id === preferredAccountId)) {
+        document.getElementById("accountSelect").value = preferredAccountId;
+      }
       renderAccountDetail();
       renderWithdrawals();
     } catch (error) {
@@ -180,10 +200,10 @@
     const account = data.accounts.find(item => item.id === document.getElementById("accountSelect").value);
     if (!account) return;
     document.getElementById("accountId").value = account.id;
-    document.getElementById("bankName").value = account.bank_name;
-    document.getElementById("accountName").value = account.account_name;
-    document.getElementById("accountNumber").value = account.account_number;
-    document.getElementById("openingBalance").value = account.opening_balance;
+    document.getElementById("bankName").value = bankNameOf(account);
+    document.getElementById("accountName").value = accountNameOf(account);
+    document.getElementById("accountNumber").value = accountNumberOf(account);
+    document.getElementById("openingBalance").value = openingBalanceOf(account);
     document.getElementById("accountDialogTitle").textContent = "Edit bank account";
     document.getElementById("accountFormAlert").classList.add("hidden");
     document.getElementById("accountDialog").showModal();
@@ -202,14 +222,18 @@
         accountNumber: document.getElementById("accountNumber").value.trim(),
         openingBalance: Number(document.getElementById("openingBalance").value || 0),
       };
+      let saved;
       if (id) {
-        await api(`/bank-manager/accounts/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
+        saved = await api(`/bank-manager/accounts/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
       } else {
-        await api("/bank-manager/accounts", { method: "POST", body: JSON.stringify(payload) });
+        saved = await api("/bank-manager/accounts", { method: "POST", body: JSON.stringify(payload) });
       }
+      const savedId = saved?.id || id || "";
       document.getElementById("accountDialog").close();
-      message(id ? "Bank account updated successfully." : "Bank account added successfully.");
-      await load();
+      message(id
+        ? "Bank account updated and saved in PostgreSQL."
+        : "Bank account added and saved in PostgreSQL.");
+      await load(savedId);
     } catch (error) {
       alertBox.textContent = error.message;
       alertBox.classList.remove("hidden");

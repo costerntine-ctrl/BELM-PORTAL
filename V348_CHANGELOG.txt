@@ -1,0 +1,9 @@
+BELM PORTAL V348 - BANK ACCOUNT VISIBILITY + PERSISTENCE DISPLAY FIX
+
+1. Fixed Bank Manager dropdown reading camelCase API fields (bankName, accountName, accountNumber, openingBalance).
+2. Added legacy snake_case fallbacks so older cached payloads remain readable.
+3. Saved/edited bank account remains selected after refresh, making persistence visible immediately.
+4. Withdrawals now show bank/account, cheque/reference and withdrawn-by correctly from camelCase API data.
+5. Save confirmation explicitly states the account is stored in PostgreSQL.
+6. Added V348 cache bust for Bank Manager assets.
+7. Existing balances and bank account records are not migrated, reset or deleted.

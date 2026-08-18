@@ -577,6 +577,90 @@ if ($method === 'PUT' && $action === 'assign') {
     json_out(['ok' => true]);
 }
 
+// V331 - one-click handoff from Service Requests to the operational Job Card.
+// The customer request already IS the Job Card source: description = work instructions.
+// OK/Activate verifies/repairs the linked Job Card and then removes the request from
+// the active Service Requests inbox. The request remains intact in History/HIDDEN and
+// the work continues in Engineering -> Job Cards.
+if ($method === 'PUT' && $action === 'activate-job-card') {
+    $stmt = db()->prepare(
+        'SELECT id,customer_id,machine_id,status,assigned_to_id,description,service_type
+         FROM service_requests WHERE id=?'
+    );
+    $stmt->execute([$id]);
+    $request = $stmt->fetch();
+    if (!$request) json_error('Service request not found.', 404);
+    if (empty($request['machine_id'])) {
+        json_error('Select/link a machine before activating a Job Card.', 409);
+    }
+    if (in_array(strtoupper((string)$request['status']), ['COMPLETED','CANCELLED'], true)) {
+        json_error('Completed or cancelled requests cannot be activated as a new Job Card.', 409);
+    }
+    if (empty($request['assigned_to_id'])) {
+        json_error('Select an Assigned Technician first, then press OK to activate the Job Card.', 409);
+    }
+
+    try {
+        $caseId = belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'), true);
+        if (!$caseId) json_error('Job Card activation could not create the maintenance case.', 500);
+
+        $jobStmt = db()->prepare(
+            "SELECT j.id,j.job_card_no,j.status,j.technician_id,j.technician_name,j.fault_description
+             FROM digital_job_cards j
+             JOIN breakdown_cases bc ON bc.id=j.case_id
+             WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=?
+             ORDER BY j.created_at ASC LIMIT 1"
+        );
+        $jobStmt->execute([$id]);
+        $job = $jobStmt->fetch();
+        if (!$job) json_error('Job Card activation did not produce a Job Card. Try Sync / Refresh.', 500);
+
+        // The request description is the Job Card instruction. The sync helper keeps
+        // it current until work begins; explicitly repair legacy blank instructions too.
+        if (trim((string)($job['fault_description'] ?? '')) === '') {
+            db()->prepare(
+                "UPDATE digital_job_cards SET fault_description=?,updated_at=NOW()
+                 WHERE id=? AND status IN ('OPEN','RECEIVED','ASSIGNED')"
+            )->execute([(string)($request['description'] ?? ''),(string)$job['id']]);
+            $job['fault_description'] = (string)($request['description'] ?? '');
+        }
+
+        // Activation is the inbox handoff. Keep the source record for audit/customer
+        // history, but hide it from the active BELM Service Request inbox so there is
+        // only one operational work item: the Digital Job Card.
+        db()->prepare(
+            'UPDATE service_requests
+             SET hidden_at=NOW(),hidden_by_id=?,updated_at=NOW()
+             WHERE id=?'
+        )->execute([$user['id'],$id]);
+        log_service_request_history(
+            (string)$id,
+            'JOB_CARD_ACTIVATED',
+            (string)$request['status'],
+            (string)$job['status'],
+            $user,
+            'Activated '.$job['job_card_no'].' and handed work to Engineering Job Cards.'
+        );
+
+        json_out([
+            'ok' => true,
+            'hidden' => true,
+            'jobCard' => [
+                'id' => $job['id'],
+                'jobCardNo' => $job['job_card_no'],
+                'status' => $job['status'],
+                'technicianId' => $job['technician_id'],
+                'technicianName' => $job['technician_name'],
+                'instructions' => $job['fault_description'],
+            ],
+        ]);
+    } catch (Throwable $error) {
+        if ($error instanceof RuntimeException) throw $error;
+        error_log('Service Request Job Card activation failed: '.$error->getMessage());
+        json_error('Could not activate the Job Card. Use Sync / Refresh and try again.', 500);
+    }
+}
+
 // Hides a request from the main daily list without deleting it — it
 // remains fully intact for the daily report and its History timeline.
 // Only allowed once a request has reached a final state.

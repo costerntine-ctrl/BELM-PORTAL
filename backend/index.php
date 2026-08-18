@@ -138,7 +138,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'databaseVersion' => $databaseVersion,
             // Regression baseline: 326-jc-proforma-sync
             // Regression baseline: 'schemaVersion' => '329-action-feedback-reset'
-            'schemaVersion' => '330-queue-company-blink',
+            // Regression baseline: 'schemaVersion' => '330-queue-company-blink'
+            'schemaVersion' => '331-service-request-job-card-activation',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,
@@ -325,6 +326,7 @@ switch ($resource) {
         if (($segments[1] ?? '') === 'assignees') dispatch('service_requests.php', ['action' => 'assignees']);
         if (isset($segments[2]) && $segments[2] === 'status') dispatch('service_requests.php', ['action' => 'status', 'id' => $segments[1]]);
         if (isset($segments[2]) && $segments[2] === 'assign') dispatch('service_requests.php', ['action' => 'assign', 'id' => $segments[1]]);
+        if (isset($segments[2]) && $segments[2] === 'activate-job-card') dispatch('service_requests.php', ['action' => 'activate-job-card', 'id' => $segments[1]]);
         if (isset($segments[2]) && $segments[2] === 'hide') dispatch('service_requests.php', ['action' => 'hide', 'id' => $segments[1]]);
         if (isset($segments[2]) && $segments[2] === 'unhide') dispatch('service_requests.php', ['action' => 'unhide', 'id' => $segments[1]]);
         if (isset($segments[2]) && $segments[2] === 'notes') dispatch('service_requests.php', ['action' => 'notes', 'id' => $segments[1]]);

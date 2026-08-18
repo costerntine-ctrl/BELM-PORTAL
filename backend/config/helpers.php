@@ -1628,13 +1628,22 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
         $existing = $find->fetchColumn();
         $issuer = trim((string)($actorName ?: $row['created_by_name'] ?: $row['customer_name'] ?: 'Customer'));
         if ($existing) {
+            // V331: the Service Request is the customer-issued Job Card. Keep
+            // its machine-work instructions synchronized until the Technician
+            // has actually started work. Once IN_PROGRESS, preserve the field
+            // report exactly as the Technician received it.
+            $requestTitle = trim((string)($row['service_type'] ?: 'BELM Service Request'));
+            $requestInstructions = trim((string)($row['description'] ?? ''));
             db()->prepare(
                 "UPDATE digital_job_cards
                  SET issued_by_name=COALESCE(NULLIF(issued_by_name,''),?),
                      issued_by_type=COALESCE(NULLIF(issued_by_type,''),'CUSTOMER'),
-                     issued_at=COALESCE(issued_at,created_at),updated_at=NOW()
+                     issued_at=COALESCE(issued_at,created_at),
+                     title=CASE WHEN status IN ('OPEN','RECEIVED','ASSIGNED') THEN ? ELSE title END,
+                     fault_description=CASE WHEN status IN ('OPEN','RECEIVED','ASSIGNED') THEN ? ELSE fault_description END,
+                     updated_at=NOW()
                  WHERE id=?"
-            )->execute([$issuer,(string)$existing]);
+            )->execute([$issuer,$requestTitle,$requestInstructions,(string)$existing]);
             return (string)$existing;
         }
 

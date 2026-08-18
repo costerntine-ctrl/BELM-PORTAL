@@ -92,55 +92,77 @@
         : requests.filter((request) => !["COMPLETED", "CANCELLED"].includes(request.status));
     if (visible.length === 0) {
       requestList.innerHTML = activeStatus === "HIDDEN"
-        ? '<div class="empty">Nothing hidden. Completed/Cancelled requests can be hidden from their card.</div>'
+        ? '<div class="empty">Nothing hidden. Activated Job Cards and manually hidden history appear here.</div>'
         : activeStatus
           ? '<div class="empty">No service requests in this status.</div>'
-          : '<div class="empty">No active service requests. Check the COMPLETED or CANCELLED tabs for history.</div>';
+          : '<div class="empty">No active service requests waiting in this inbox. Activated work continues in Engineering → Job Cards.</div>';
       return;
     }
-    requestList.innerHTML = visible.map((request) => `
-      <article class="request-card ${String(request.priority || "").toLowerCase()}">
-        <div class="request-head">
-          <div>
-            <h2>${escapeHtml(request.customer?.name || "Unknown customer")} · ${escapeHtml(request.machine?.model || "General request")}</h2>
-            <div class="meta">${formatDateTime(request.createdAt)} · ${escapeHtml(request.status.replaceAll("_", " "))}</div>
-          </div>
-          <span class="priority ${escapeHtml(request.priority)}">${escapeHtml(request.priority)}</span>
-        </div>
-        ${request.customer?.phone ? `<a class="whatsapp-link" target="_blank" rel="noopener" href="https://wa.me/${escapeHtml(String(request.customer.phone).replace(/[^0-9]/g, ""))}?text=${encodeURIComponent(`Hello, this is BELM regarding your service request for ${request.machine?.model || "your machine"}.`)}">💬 WhatsApp ${escapeHtml(request.customer.name || "customer")}</a>` : ""}
-        ${request.serviceType ? `<div class="service-type"><b>Service type:</b> ${escapeHtml(request.serviceType)}</div>` : ""}
-        <div class="description">${escapeHtml(request.description)}</div>
-        ${request.jobCard ? `<div class="job-card-receipt-banner received"><b>✓ JOB CARD RECEIVED BY BELM</b><span>${escapeHtml(request.jobCard.jobCardNo || 'Job Card')} · Received ${formatDateTime(request.jobCard.receivedAt)} · Current status: ${escapeHtml(String(request.jobCard.status || 'RECEIVED').replaceAll('_', ' '))}</span></div>` : (request.machine?.id ? `<div class="job-card-receipt-banner missing"><b>JOB CARD RECEIPT NOT CONFIRMED</b><span>This machine-linked request should create one Job Card automatically. Open Job Cards / Refresh to resync.</span></div>` : '')}
-        ${request.assignedTo?.temporaryOverride ? `<div class="temporary-override-banner"><b>TEMPORARY OVERRIDE</b> · ${escapeHtml(request.assignedTo.name)} remains attached to ${escapeHtml(request.assignedTo.homeCustomerName || "their home customer")}; this assignment is for this request only.</div>` : ""}
-        ${(request.serviceParts || []).length ? `
-          <div class="request-parts">
-            <b>Synchronized service parts</b>
-            <div>
-              ${request.serviceParts.map((part) => `
-                <span>${escapeHtml(part.spareName)} · ${escapeHtml(part.partNumber)} · Qty ${Number(part.quantity).toLocaleString("en-TZ")}${part.inventoryMatch ? ` <em class="inventory-match-badge">✓ In stock: ${escapeHtml(part.inventoryMatch.name)} (${escapeHtml(part.inventoryMatch.stockQty)} available)</em>` : ' <em class="inventory-match-missing">Not in BELM inventory</em>'}</span>
-              `).join("")}
+    requestList.innerHTML = visible.map((request) => {
+      const isFinal = ["COMPLETED", "CANCELLED"].includes(request.status);
+      const isHidden = Boolean(request.hiddenAt);
+      const controlsLocked = isFinal || isHidden;
+      const canActivate = Boolean(request.machine?.id) && !isFinal && !isHidden;
+      const company = request.customer?.name || "Unknown customer";
+      const machine = request.machine?.model || "General request";
+      const instruction = request.description || request.serviceType || "No work instruction supplied.";
+      const jobCardLabel = request.jobCard
+        ? `${request.jobCard.jobCardNo || "Job Card"} · ${String(request.jobCard.status || "RECEIVED").replaceAll("_", " ")}`
+        : "Job Card not yet confirmed";
+      return `
+      <article class="request-card compact-request ${String(request.priority || "").toLowerCase()}" data-request-card="${escapeHtml(request.id)}">
+        <div class="request-compact-row">
+          <div class="compact-company" title="${escapeHtml(instruction)}">
+            <div class="compact-company-line">
+              <strong>${escapeHtml(company)}</strong>
+              <span class="priority ${escapeHtml(request.priority)}">${escapeHtml(request.priority)}</span>
             </div>
+            <div class="compact-machine">${escapeHtml(machine)}${request.serviceType ? ` · ${escapeHtml(request.serviceType)}` : ""}</div>
+            <div class="compact-instruction">${escapeHtml(instruction)}</div>
           </div>
-        ` : ""}
-        <div class="control-grid">
-          <label>Assigned Technician
-            <select data-assign="${escapeHtml(request.id)}" ${["COMPLETED", "CANCELLED"].includes(request.status) ? "disabled" : ""}>${technicianOptions(request)}</select>
+          <label class="compact-field">Assigned Technician
+            <select data-assign="${escapeHtml(request.id)}" ${controlsLocked ? "disabled" : ""}>${technicianOptions(request)}</select>
           </label>
-          <label>Job status
-            <select data-status-update="${escapeHtml(request.id)}">
+          <label class="compact-field">Job Status
+            <select data-status-update="${escapeHtml(request.id)}" ${controlsLocked ? "disabled" : ""}>
               ${statuses.filter((status) => status && status !== "HIDDEN").map((status) => `<option value="${status}" ${request.status === status ? "selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}
             </select>
           </label>
-          <button class="note-button" type="button" data-note="${escapeHtml(request.id)}">Notes (${(request.notes || []).length})</button>
-          <button class="note-button history-button" type="button" data-history="${escapeHtml(request.id)}">History</button>
-          ${request.hiddenAt
-            ? `<button class="note-button unhide-button" type="button" data-unhide="${escapeHtml(request.id)}">Restore to list</button>`
-            : ["COMPLETED", "CANCELLED"].includes(request.status)
-              ? `<button class="note-button hide-button" type="button" data-hide="${escapeHtml(request.id)}">Hide from list</button>`
-              : ""}
+          ${canActivate
+            ? `<button class="activate-jc-button" type="button" data-activate-job-card="${escapeHtml(request.id)}">OK · Activate JC</button>`
+            : `<div class="compact-job-state ${request.jobCard ? "ready" : ""}">${escapeHtml(jobCardLabel)}</div>`}
+          <button class="details-toggle" type="button" data-toggle-request="${escapeHtml(request.id)}" aria-expanded="false">Details</button>
         </div>
-      </article>
-    `).join("");
+        <div class="request-extra" data-request-extra="${escapeHtml(request.id)}" hidden>
+          <div class="request-extra-grid">
+            <div><b>Company</b><span>${escapeHtml(company)}</span></div>
+            <div><b>Machine</b><span>${escapeHtml(machine)}</span></div>
+            <div><b>Created</b><span>${formatDateTime(request.createdAt)}</span></div>
+            <div><b>Job Card</b><span>${escapeHtml(jobCardLabel)}</span></div>
+          </div>
+          ${request.customer?.phone ? `<a class="whatsapp-link" target="_blank" rel="noopener" href="https://wa.me/${escapeHtml(String(request.customer.phone).replace(/[^0-9]/g, ""))}?text=${encodeURIComponent(`Hello, this is BELM regarding your service request for ${request.machine?.model || "your machine"}.`)}">💬 WhatsApp ${escapeHtml(company)}</a>` : ""}
+          <div class="job-card-instructions"><b>Job Card instructions</b><span>${escapeHtml(instruction)}</span></div>
+          ${request.jobCard
+            ? `<div class="job-card-receipt-banner received"><b>✓ JOB CARD RECEIVED BY BELM / ACTIVE</b><span>${escapeHtml(jobCardLabel)} · Received ${formatDateTime(request.jobCard.receivedAt)}</span></div>`
+            : (request.machine?.id ? `<div class="job-card-receipt-banner missing"><b>JOB CARD RECEIPT NOT CONFIRMED — SYNC NEEDS ATTENTION</b><span>Press OK · Activate JC to force-create/repair the Job Card from these instructions.</span></div>` : "")}
+          ${request.assignedTo?.temporaryOverride ? `<div class="temporary-override-banner"><b>TEMPORARY OVERRIDE</b> · ${escapeHtml(request.assignedTo.name)} remains attached to ${escapeHtml(request.assignedTo.homeCustomerName || "their home customer")}; this assignment is for this request only.</div>` : ""}
+          ${(request.serviceParts || []).length ? `
+            <div class="request-parts">
+              <b>Synchronized service parts</b>
+              <div>${request.serviceParts.map((part) => `<span>${escapeHtml(part.spareName)} · ${escapeHtml(part.partNumber)} · Qty ${Number(part.quantity).toLocaleString("en-TZ")}${part.inventoryMatch ? ` <em class="inventory-match-badge">✓ In stock: ${escapeHtml(part.inventoryMatch.name)} (${escapeHtml(part.inventoryMatch.stockQty)} available)</em>` : ' <em class="inventory-match-missing">Not in BELM inventory</em>'}</span>`).join("")}</div>
+            </div>` : ""}
+          <div class="compact-secondary-actions">
+            <button class="note-button" type="button" data-note="${escapeHtml(request.id)}">Notes (${(request.notes || []).length})</button>
+            <button class="note-button history-button" type="button" data-history="${escapeHtml(request.id)}">History</button>
+            ${request.hiddenAt
+              ? `<button class="note-button unhide-button" type="button" data-unhide="${escapeHtml(request.id)}">Restore to list</button>`
+              : isFinal
+                ? `<button class="note-button hide-button" type="button" data-hide="${escapeHtml(request.id)}">Hide from list</button>`
+                : ""}
+          </div>
+        </div>
+      </article>`;
+    }).join("");
   }
 
   async function load() {
@@ -204,6 +226,73 @@
     }
   }
 
+  function setActivateState(button, state, text) {
+    if (!button) return;
+    button.classList.remove("is-busy", "is-success", "is-error", "has-pending-change");
+    if (state) button.classList.add(state);
+    if (text) button.textContent = text;
+  }
+
+  async function activateJobCard(requestId, button) {
+    const request = requests.find((item) => item.id === requestId);
+    const card = button?.closest("[data-request-card]");
+    const assignedSelect = card?.querySelector("[data-assign]");
+    const statusSelect = card?.querySelector("[data-status-update]");
+    const assignedToId = assignedSelect?.value || request?.assignedTo?.id || "";
+    let desiredStatus = statusSelect?.value || request?.status || "OPEN";
+    if (!request) return;
+    if (!request.machine?.id) {
+      showAlert("Link this Service Request to a machine before activating its Job Card.", true);
+      setActivateState(button, "is-error", "Machine required");
+      return;
+    }
+    if (!assignedToId) {
+      showAlert("Select Assigned Technician first, then press OK to activate the Job Card.", true);
+      setActivateState(button, "is-error", "Select Technician");
+      return;
+    }
+    if (desiredStatus === "OPEN") desiredStatus = "ASSIGNED";
+
+    const technician = technicians.find((item) => item.id === assignedToId);
+    const temporaryOverride = Boolean(
+      request.customer?.id && technician?.assignedCustomerId
+      && String(request.customer.id) !== String(technician.assignedCustomerId)
+    );
+    if (temporaryOverride && String(request.assignedTo?.id || "") !== String(assignedToId)) {
+      const ok = confirm(
+        `${technician.name} is permanently attached to ${technician.assignedCustomerName || "another customer"}.\n\n` +
+        `Use TEMPORARY OVERRIDE for this Job Card only? Their permanent customer will not change.`
+      );
+      if (!ok) return;
+    }
+
+    button.disabled = true;
+    setActivateState(button, "is-busy", "Activating…");
+    try {
+      if (String(request.assignedTo?.id || "") !== String(assignedToId)) {
+        await api(`/service-requests/${requestId}/assign`, {
+          method: "PUT",
+          body: JSON.stringify({ assignedToId, temporaryOverride }),
+        });
+      }
+      if (desiredStatus !== request.status || (request.status === "OPEN" && assignedToId)) {
+        await api(`/service-requests/${requestId}/status`, {
+          method: "PUT",
+          body: JSON.stringify({ status: desiredStatus }),
+        });
+      }
+      const result = await api(`/service-requests/${requestId}/activate-job-card`, { method: "PUT" });
+      setActivateState(button, "is-success", `✓ ${result.jobCard?.jobCardNo || "Activated"}`);
+      card?.classList.add("activation-complete");
+      showAlert(`✓ ${result.jobCard?.jobCardNo || "Job Card"} activated. Service Request moved out of the active inbox; continue in Engineering → Job Cards.`, false);
+      window.setTimeout(load, 550);
+    } catch (error) {
+      button.disabled = false;
+      setActivateState(button, "is-error", "Try Again");
+      showAlert(error.message || "Could not activate this Job Card.", true);
+    }
+  }
+
   function openNotes(requestId) {
     const request = requests.find((item) => item.id === requestId);
     if (!request) return;
@@ -221,6 +310,7 @@
     STATUS: "Status changed",
     ASSIGNMENT: "Assignment changed",
     HIDDEN: "Visibility changed",
+    JOB_CARD_ACTIVATED: "Job Card activated",
   };
 
   async function openHistory(requestId) {
@@ -301,14 +391,34 @@
     renderRequests();
   });
   requestList.addEventListener("change", (event) => {
-    if (event.target.dataset.assign) assign(event.target.dataset.assign, event.target.value);
-    if (event.target.dataset.statusUpdate) updateStatus(event.target.dataset.statusUpdate, event.target.value);
+    const card = event.target.closest("[data-request-card]");
+    if (!card) return;
+    const activateButton = card.querySelector("[data-activate-job-card]");
+    if (event.target.dataset.assign) {
+      const statusSelect = card.querySelector("[data-status-update]");
+      if (event.target.value && statusSelect?.value === "OPEN") statusSelect.value = "ASSIGNED";
+      if (!event.target.value && statusSelect?.value === "ASSIGNED") statusSelect.value = "OPEN";
+    }
+    if (event.target.dataset.assign || event.target.dataset.statusUpdate) {
+      setActivateState(activateButton, "has-pending-change", "OK · Apply & Activate");
+    }
   });
   requestList.addEventListener("click", (event) => {
+    const activateButton = event.target.closest("[data-activate-job-card]");
+    const toggleButton = event.target.closest("[data-toggle-request]");
     const button = event.target.closest("[data-note]");
     const historyButton = event.target.closest("[data-history]");
     const hideButton = event.target.closest("[data-hide]");
     const unhideButton = event.target.closest("[data-unhide]");
+    if (activateButton) activateJobCard(activateButton.dataset.activateJobCard, activateButton);
+    if (toggleButton) {
+      const panel = requestList.querySelector(`[data-request-extra="${toggleButton.dataset.toggleRequest}"]`);
+      if (panel) {
+        panel.hidden = !panel.hidden;
+        toggleButton.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
+        toggleButton.textContent = panel.hidden ? "Details" : "Close";
+      }
+    }
     if (button) openNotes(button.dataset.note);
     if (historyButton) openHistory(historyButton.dataset.history);
     if (hideButton) hideRequest(hideButton.dataset.hide);

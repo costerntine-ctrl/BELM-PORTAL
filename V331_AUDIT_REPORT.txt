@@ -1,0 +1,24 @@
+BELM Operations Platform V331 - Audit Report
+
+Scope
+- Compact Service Request dispatch rows (minimum 12 mm line height).
+- Company / machine / work-instruction visibility.
+- Assigned Technician and Job Status staged controls.
+- OK / Activate Job Card one-click handoff.
+- Force repair/sync for missing legacy Service Request Job Cards.
+- Automatic active-inbox hide after successful Job Card activation.
+- Service Request description -> Digital Job Card work/fault instructions synchronization.
+- Expanded Details for receipt, instructions, WhatsApp, parts, Notes and History.
+- Asset/PWA cache busting.
+
+Verification
+- PHP syntax: 41/41 passed.
+- JavaScript/CJS syntax: 88/88 passed.
+- Runnable regression suites: 50/50 passed (ui-smoke.cjs excluded because it requires an external browser/root argument).
+- V331-specific regression checks: 12/12 passed.
+- No database migration required; activation uses existing hidden_at/hidden_by_id and existing Job Card tables.
+
+Operational behavior
+- Machine-linked Customer Service Requests already auto-create the Breakdown Case + customer-issued Job Card at submission.
+- V331 OK / Activate JC is an explicit force/repair handoff: it verifies Technician, applies selected state, re-syncs the Job Card, then removes the request from the active Service Request inbox.
+- The source Service Request is retained for audit/customer history and can be viewed under HIDDEN/History; operational work continues in Engineering -> Job Cards.

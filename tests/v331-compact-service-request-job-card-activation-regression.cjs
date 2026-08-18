@@ -1,0 +1,23 @@
+const fs=require('fs');const path=require('path');const root=path.join(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');let n=0;function t(name,ok){n++;if(!ok){console.error('FAIL',name);process.exitCode=1}else console.log('PASS',name)}
+const html=read('frontend/service-request-manager/index.html');
+const js=read('frontend/service-request-manager/manager.js');
+const css=read('frontend/service-request-manager/manager.css');
+const api=read('backend/api/service_requests.php');
+const router=read('backend/index.php');
+const helpers=read('backend/config/helpers.php');
+const health=read('backend/index.php');
+const sw=read('frontend/belm-sw.js');
+t('Service Request line is compact 12mm',css.includes('min-height:12mm')&&css.includes('.request-compact-row'));
+t('compact row shows company, technician and status',js.includes('compact-company')&&js.includes('Assigned Technician')&&js.includes('Job Status'));
+t('OK Activate Job Card button exists',js.includes('OK · Activate JC')&&js.includes('data-activate-job-card'));
+t('technician/status changes are staged for OK',js.includes('OK · Apply & Activate')&&js.includes('has-pending-change'));
+t('activation route is registered',router.includes("segments[2] === 'activate-job-card'")&&router.includes("'action' => 'activate-job-card'"));
+t('activation requires machine and Technician',api.includes('Select/link a machine before activating a Job Card.')&&api.includes('Select an Assigned Technician first'));
+t('activation force-syncs the operational Job Card',api.includes("belm_sync_breakdown_case_from_service_request((string)$id")&&api.includes("$action === 'activate-job-card'"));
+t('activation hides request after Job Card handoff',api.includes('SET hidden_at=NOW(),hidden_by_id=?')&&api.includes('JOB_CARD_ACTIVATED'));
+t('request description stays Job Card instruction before work starts',helpers.includes('fault_description=CASE WHEN status IN')&&helpers.includes('$requestInstructions'));
+t('Details exposes full Job Card instructions and receipt state',js.includes('Job Card instructions')&&js.includes('JOB CARD RECEIVED BY BELM / ACTIVE'));
+t('Service Request assets are cache busted for V331',html.includes('manager.css?v=331-compact-job-card-activation')&&html.includes('manager.js?v=331-compact-job-card-activation'));
+t('health and service worker identify V331',health.includes("'schemaVersion' => '331-service-request-job-card-activation'")&&sw.includes("const CACHE='belm-app-v331-service-request-job-card-activation'"));
+if(!process.exitCode)console.log(`V331 checks passed ${n}/${n}`);

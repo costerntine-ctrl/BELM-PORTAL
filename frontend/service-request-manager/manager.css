@@ -105,3 +105,7 @@ html.embed-mode .belm-global-theme-toggle { display: none !important; }
 
 html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
 html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display:none!important}
+
+
+/* V315 - explicit Job Card arrival confirmation. */
+.job-card-receipt-banner{display:grid;gap:4px;margin:0 0 15px;padding:11px 13px;border-radius:10px;font-size:11px}.job-card-receipt-banner b{font-size:11px;letter-spacing:.04em}.job-card-receipt-banner span{line-height:1.45}.job-card-receipt-banner.received{border:1px solid #9ed7b8;background:#edf9f2;color:#075f35}.job-card-receipt-banner.missing{border:1px solid #f3ca80;background:#fff8e8;color:#815400}html[data-theme="dark"] .job-card-receipt-banner.received{border-color:#216c49;background:#102b20;color:#bdf4d4}html[data-theme="dark"] .job-card-receipt-banner.missing{border-color:#7d6428;background:#2b2412;color:#ffe2a8}

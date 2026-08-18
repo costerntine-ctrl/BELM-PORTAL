@@ -282,14 +282,23 @@ if ($method === 'GET' && !$action) {
     $sql = 'SELECT sr.*, c.name AS customer_name, c.phone AS customer_phone, m.model AS machine_model,
                    m.machine_type, u.name AS assigned_to_name, u.assigned_customer_id AS assigned_home_customer_id,
                    hc.name AS assigned_home_customer_name,
-                   cu.name AS completed_by_name, xu.name AS cancelled_by_name
+                   cu.name AS completed_by_name, xu.name AS cancelled_by_name,
+                   jc.id AS linked_job_card_id, jc.job_card_no AS linked_job_card_no,
+                   jc.status AS linked_job_card_status, jc.received_at AS linked_job_card_received_at
             FROM service_requests sr
             LEFT JOIN customers c ON c.id = sr.customer_id
             LEFT JOIN machines m ON m.id = sr.machine_id
             LEFT JOIN users u ON u.id = sr.assigned_to_id
             LEFT JOIN customers hc ON hc.id = u.assigned_customer_id
             LEFT JOIN users cu ON cu.id = sr.completed_by_id
-            LEFT JOIN users xu ON xu.id = sr.cancelled_by_id';
+            LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
+            LEFT JOIN LATERAL (
+                SELECT j.id,j.job_card_no,j.status,COALESCE(j.issued_at,j.created_at) AS received_at
+                FROM breakdown_cases bc
+                JOIN digital_job_cards j ON j.case_id=bc.id
+                WHERE bc.source_type=\'SERVICE_REQUEST\' AND bc.source_id=sr.id
+                ORDER BY j.created_at ASC LIMIT 1
+            ) jc ON TRUE';
     if ($onlyHidden) {
         $stmt = db()->query("$sql WHERE sr.hidden_at IS NOT NULL ORDER BY sr.hidden_at DESC");
     } elseif ($status) {
@@ -334,6 +343,13 @@ if ($method === 'GET' && !$action) {
         $r['updatedAt'] = $r['updated_at'];
         $r['hiddenAt'] = $r['hidden_at'];
         $r['serviceParts'] = fetch_request_parts($r['id']);
+        $r['jobCard'] = !empty($r['linked_job_card_id']) ? [
+            'id' => $r['linked_job_card_id'],
+            'jobCardNo' => $r['linked_job_card_no'],
+            'status' => $r['linked_job_card_status'],
+            'receivedAt' => $r['linked_job_card_received_at'],
+            'receivedByBelm' => true,
+        ] : null;
         unset(
             $r['customer_name'],
             $r['customer_phone'],
@@ -343,7 +359,11 @@ if ($method === 'GET' && !$action) {
             $r['assigned_home_customer_id'],
             $r['assigned_home_customer_name'],
             $r['completed_by_name'],
-            $r['cancelled_by_name']
+            $r['cancelled_by_name'],
+            $r['linked_job_card_id'],
+            $r['linked_job_card_no'],
+            $r['linked_job_card_status'],
+            $r['linked_job_card_received_at']
         );
         $stmt2 = db()->prepare('SELECT * FROM service_notes WHERE request_id = ? ORDER BY created_at ASC');
         $stmt2->execute([$r['id']]);

@@ -110,6 +110,7 @@
         ${request.customer?.phone ? `<a class="whatsapp-link" target="_blank" rel="noopener" href="https://wa.me/${escapeHtml(String(request.customer.phone).replace(/[^0-9]/g, ""))}?text=${encodeURIComponent(`Hello, this is BELM regarding your service request for ${request.machine?.model || "your machine"}.`)}">💬 WhatsApp ${escapeHtml(request.customer.name || "customer")}</a>` : ""}
         ${request.serviceType ? `<div class="service-type"><b>Service type:</b> ${escapeHtml(request.serviceType)}</div>` : ""}
         <div class="description">${escapeHtml(request.description)}</div>
+        ${request.jobCard ? `<div class="job-card-receipt-banner received"><b>✓ JOB CARD RECEIVED BY BELM</b><span>${escapeHtml(request.jobCard.jobCardNo || 'Job Card')} · Received ${formatDateTime(request.jobCard.receivedAt)} · Current status: ${escapeHtml(String(request.jobCard.status || 'RECEIVED').replaceAll('_', ' '))}</span></div>` : (request.machine?.id ? `<div class="job-card-receipt-banner missing"><b>JOB CARD RECEIPT NOT CONFIRMED</b><span>This machine-linked request should create one Job Card automatically. Open Job Cards / Refresh to resync.</span></div>` : '')}
         ${request.assignedTo?.temporaryOverride ? `<div class="temporary-override-banner"><b>TEMPORARY OVERRIDE</b> · ${escapeHtml(request.assignedTo.name)} remains attached to ${escapeHtml(request.assignedTo.homeCustomerName || "their home customer")}; this assignment is for this request only.</div>` : ""}
         ${(request.serviceParts || []).length ? `
           <div class="request-parts">

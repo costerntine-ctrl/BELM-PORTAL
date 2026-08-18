@@ -342,13 +342,14 @@
       return `<tr>
         <td><strong>${escapeHtml(item.job_card_no||'-')}</strong><small>${escapeHtml(item.title||'')}</small></td>
         <td>${escapeHtml(item.issued_by_name||'Customer')}<small>${formatDateTime(item.issued_at)}</small></td>
+        <td><span class="sync-status paid">RECEIVED BY BELM</span><small>${formatDateTime(item.issued_at)}</small><small>Current: ${escapeHtml(String(item.status||'RECEIVED').replaceAll('_',' '))}</small></td>
         <td>${item.hasSignedCopy?`<span class="sync-status paid">SIGNED</span><button class="doc-button" type="button" data-signed-copy="${escapeHtml(item.id)}">View</button>`:'<span class="sync-status outstanding">WAITING SIGNATURE</span>'}</td>
         <td>${item.proforma_id?`<strong>${escapeHtml(item.proforma_no||'Proforma')}</strong>${proformaReady?`<button class="doc-button" type="button" data-proforma-download="${escapeHtml(item.proforma_id)}">Download</button>`:`<small>${escapeHtml(item.proforma_status||'DRAFT')}</small>`}`:'<span class="muted">Not prepared</span>'}</td>
         <td>${item.invoice_id?`<strong>${escapeHtml(item.invoice_no||'Invoice')}</strong><button class="doc-button" type="button" data-invoice-download="${escapeHtml(item.invoice_id)}">Download</button>`:'<span class="muted">Not issued</span>'}</td>
         <td>${item.invoice_id?money.format(Number(item.balance||0)):'—'}</td>
         <td><span class="sync-status ${paymentClass}">${paymentLabel}</span></td>
       </tr>`;
-    }).join(''):'<tr><td colspan="7" class="empty">No BELM Service Job Card billing records for this machine yet.</td></tr>';
+    }).join(''):'<tr><td colspan="8" class="empty">No BELM Service Job Card billing records for this machine yet.</td></tr>';
     body.querySelectorAll('[data-signed-copy]').forEach(b=>b.onclick=()=>openBelmDocument(`/api/breakdown-workflow/signed-job-card-file/${encodeURIComponent(b.dataset.signedCopy)}`));
     body.querySelectorAll('[data-proforma-download]').forEach(b=>b.onclick=()=>openBelmDocument(`/api/customer-portal/proformas/${encodeURIComponent(b.dataset.proformaDownload)}/download`,`BELM-Proforma-${b.dataset.proformaDownload}.pdf`));
     body.querySelectorAll('[data-invoice-download]').forEach(b=>b.onclick=()=>openBelmDocument(`/api/customer-portal/invoices/${encodeURIComponent(b.dataset.invoiceDownload)}/download`,`BELM-Invoice-${b.dataset.invoiceDownload}.pdf`));

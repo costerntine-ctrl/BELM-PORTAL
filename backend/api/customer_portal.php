@@ -4611,7 +4611,27 @@ if ($sub === 'service-requests' && $method === 'POST') {
     // V220: a machine-linked official BELM Support Request enters the same
     // Breakdown Process automatically. Requests without a machine stay only
     // in Service Requests because there is no machine workflow to attach.
-    if ($machineId !== '') belm_sync_breakdown_case_from_service_request($newId, $actorName);
+    $jobReceipt = null;
+    if ($machineId !== '') {
+        belm_sync_breakdown_case_from_service_request($newId, $actorName);
+        $jobReceiptStmt = db()->prepare(
+            "SELECT j.id,j.job_card_no,j.status,COALESCE(j.issued_at,j.created_at) AS received_at
+             FROM breakdown_cases bc
+             JOIN digital_job_cards j ON j.case_id=bc.id
+             WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=?
+             ORDER BY j.created_at ASC LIMIT 1"
+        );
+        $jobReceiptStmt->execute([$newId]);
+        if ($jobReceiptRow = $jobReceiptStmt->fetch()) {
+            $jobReceipt = [
+                'id' => $jobReceiptRow['id'],
+                'jobCardNo' => $jobReceiptRow['job_card_no'],
+                'status' => $jobReceiptRow['status'],
+                'receivedAt' => $jobReceiptRow['received_at'],
+                'receivedByBelm' => true,
+            ];
+        }
+    }
     belm_log_customer_communication(
         (string)$customer['id'], $machineId !== '' ? $machineId : null,
         'CUSTOMER_TO_BELM', 'EMAIL', 'Service Request',
@@ -4648,6 +4668,7 @@ Open Service Requests in BELM Portal to review and assign it.",
         'serviceType' => $serviceType,
         'belmSupport' => true,
         'emailSent' => !empty($alertResult['businessEmailSent']),
+        'jobCard' => $jobReceipt,
     ], 201);
 }
 

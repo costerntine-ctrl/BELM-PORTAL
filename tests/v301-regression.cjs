@@ -41,7 +41,7 @@ test('BELM Billing shows yellow outstanding and green paid',billingJs.includes('
 test('Proforma syncs source Job Card state',proformaApi.includes('sourceJobCardId')&&proformaApi.includes('belm_recompute_job_billing_status')&&helpers.includes('PROFORMA_READY')&&helpers.includes('PROFORMA_SENT'));
 test('receipt payment syncs linked Job Card',receiptsApi.includes('source_job_card_id')&&receiptsApi.includes("$jobBillingStatus = $newStatus === 'PAID' ? 'PAID' : 'INVOICE_OUTSTANDING'"));
 test('workflow assets cache-busted to V301',workflowHtml.includes('301-job-signoff'));
-test('procurement assets cache-busted to V301',procHtml.includes('301-service-billing'));
+test('procurement assets cache-busted to V301',(()=>{const m=/customer-machine-expenses\/expenses\.js\?v=(\d+)-/.exec(procHtml);return m&&Number(m[1])>=301;})());
 test('shared theme cache-busted to V301',portalIndex.includes('301-customer-job-billing'));
 test('service worker cache bumped to V301',sw.includes('belm-app-v301-customer-job-billing'));
 console.log(`\n${pass}/${pass+fail} V301 checks passed`);

@@ -666,6 +666,12 @@ function belm_ensure_invoice_proforma_schema(): void {
         )'
     );
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_proforma_spare_request_link_request ON proforma_spare_request_links(spare_request_id)');
+    // V346: commercial numbers use their own permanent sequences so the new
+    // fixed-width formats start cleanly without renumbering or deleting any
+    // historical PI/INV documents. PostgreSQL requires MINVALUE 0 when a
+    // sequence starts at zero.
+    $pdo->exec('CREATE SEQUENCE IF NOT EXISTS commercial_pi_number_seq_v346 MINVALUE 0 START WITH 0');
+    $pdo->exec('CREATE SEQUENCE IF NOT EXISTS commercial_inv_number_seq_v346 MINVALUE 0 START WITH 0');
     $done = true;
 }
 
@@ -677,6 +683,61 @@ function belm_next_document_number(string $prefix, string $sequenceName, int $pa
     } catch (Throwable $error) {
         return document_number($prefix);
     }
+}
+
+/**
+ * V346 commercial numbering.
+ * New Proformas: PI-0000000, PI-0000001, ... (7 digits)
+ * New Invoices:  INV-000000, INV-000001, ... (6 digits)
+ *
+ * The dedicated sequences start at zero. We still check the unique column
+ * before returning a number so a restored/legacy record can never collide
+ * with the new sequence.
+ */
+function belm_next_commercial_number(string $type): string {
+    belm_ensure_invoice_proforma_schema();
+    $type = strtoupper(trim($type));
+    if ($type === 'PI') {
+        $sequence = 'commercial_pi_number_seq_v346';
+        $prefix = 'PI';
+        $pad = 7;
+        $table = 'proforma_invoices';
+    } elseif ($type === 'INV') {
+        $sequence = 'commercial_inv_number_seq_v346';
+        $prefix = 'INV';
+        $pad = 6;
+        $table = 'invoices';
+    } else {
+        throw new InvalidArgumentException('Unsupported commercial document type.');
+    }
+
+    $exists = db()->prepare("SELECT 1 FROM {$table} WHERE invoice_no=? LIMIT 1");
+    for ($attempt = 0; $attempt < 10000; $attempt++) {
+        $stmt = db()->query('SELECT nextval(' . db()->quote($sequence) . ')');
+        $next = (int)$stmt->fetchColumn();
+        $candidate = $prefix . '-' . str_pad((string)$next, $pad, '0', STR_PAD_LEFT);
+        $exists->execute([$candidate]);
+        if (!$exists->fetchColumn()) return $candidate;
+    }
+    throw new RuntimeException('Could not allocate a unique ' . $type . ' number.');
+}
+
+/**
+ * Convert a V346 PI number into its paired Invoice number.
+ * Example: PI-0000000 -> INV-000000, PI-0000123 -> INV-000123.
+ * Legacy Proformas that do not use PI-<digits> get the next six-digit INV.
+ */
+function belm_invoice_number_from_proforma(string $proformaNo): string {
+    belm_ensure_invoice_proforma_schema();
+    $proformaNo = strtoupper(trim($proformaNo));
+    if (preg_match('/^PI-(\d+)$/', $proformaNo, $match)) {
+        $serial = (int)$match[1];
+        $candidate = 'INV-' . str_pad((string)$serial, 6, '0', STR_PAD_LEFT);
+        $exists = db()->prepare('SELECT 1 FROM invoices WHERE invoice_no=? LIMIT 1');
+        $exists->execute([$candidate]);
+        if (!$exists->fetchColumn()) return $candidate;
+    }
+    return belm_next_commercial_number('INV');
 }
 
 // Shared invoice-status calculation used both when an invoice is edited

@@ -15,7 +15,7 @@ const checks=[
 ['spare manager multi-select',sjs.includes('Generate Proforma from Selected')],
 ['job proforma includes spares',proforma.includes('requested_spares')&&bjs.includes('job.requestedSpares')],
 ['invoice button lives on proforma',bjs.includes('data-generate-invoice-from-proforma')],
-['new invoice redirects to proforma',bjs.includes('Invoices are generated directly from a Proforma')],
+['new invoice starts Proforma-linked flow',bjs.includes('Invoices are generated directly from a Proforma')&&bjs.includes('invoiceProformaNumber')],
 ['invoice spare picker removed',!bjs.slice(bjs.indexOf('function invoiceItemRow'),bjs.indexOf('function addInvoiceItem')).includes('Pick from Spare Parts Inventory')],
 ['job workflow direct invoice removed',!workflow.includes('>Prepare Invoice</button>')],
 ];let fail=0;for(const [n,ok] of checks){console.log(`${ok?'PASS':'FAIL'} ${n}`);if(!ok)fail++;}if(fail)process.exit(1);console.log(`V341 checks ${checks.length}/${checks.length} passed.`);

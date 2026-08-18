@@ -16,7 +16,7 @@ const checks=[
   ['job card heading includes technician name',js.includes('Technician: ${esc(assignedName)}')],
   ['technician identity has responsive styling',css.includes('.tech-identity')&&css.includes('.hero{align-items:stretch;flex-direction:column}')],
   ['technician assets cache-busted',/v=(342-technician-assignment-sync|343-mobile-field-dispatch)/.test(html)],
-  ['service worker bumped to v342',/belm-app-v(342-technician-job-card-visibility|343-mobile-field-dispatch|344-proforma-direct-generate)/.test(sw)],
+  ['service worker bumped to v342',/belm-app-v(342-technician-job-card-visibility|343-mobile-field-dispatch|344-proforma-direct-generate|345-commercial-master-templates|346-commercial-number-link)/.test(sw)],
 ];
 let fail=0;for(const [n,ok] of checks){console.log(`${ok?'PASS':'FAIL'} ${n}`);if(!ok)fail++;}
 if(fail)process.exit(1);console.log(`V342 checks ${checks.length}/${checks.length} passed.`);

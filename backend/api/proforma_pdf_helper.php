@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/invoice_pdf_helper.php';
+require_once __DIR__ . '/commercial_master_pdf_helper.php';
 
 function belm_load_proforma_document(string $proformaId, ?string $customerId = null): array {
     $sql = 'SELECT p.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
@@ -51,60 +52,58 @@ function belm_output_proforma_document_pdf(string $proformaId, ?string $customer
         $pdfItems[] = [
             'itemNo' => (string)($index + 1),
             'partNumber' => $item['part_number'] ?: '',
-            'description' => $item['description'],
-            'qty' => (string)$item['qty'],
-            'unit' => (string)$item['unit'],
+            'description' => (string)$item['description'],
+            'qty' => rtrim(rtrim(number_format((float)$item['qty'], 2, '.', ''), '0'), '.'),
+            'unit' => (string)($item['unit'] ?: 'PC'),
             'unitPrice' => number_format((float)$item['unit_price'], 2),
             'extended' => number_format((float)$item['qty'] * (float)$item['unit_price'], 2),
         ];
     }
 
-    $discountLabel = ($proforma['discount_type'] ?? 'FIXED') === 'PERCENT'
-        ? 'Discount (' . rtrim(rtrim(number_format((float)$proforma['discount'], 2), '0'), '.') . '%)'
-        : 'Discount';
+    $validityText = trim((string)($proforma['quote_validity'] ?? ''));
+    $validityDays = belm_master_days_from_validity($validityText ?: (string)($company['defaultQuoteValidity'] ?? '7 days'));
+    $issueDateRaw = (string)$proforma['date'];
+    $issueTs = strtotime($issueDateRaw) ?: time();
+    $validUntil = date('Y-m-d', strtotime('+' . $validityDays . ' days', $issueTs));
 
-    $bank = [];
-    if ($company['bankAccountName']) $bank[] = ['ACCOUNT NAME', $company['bankAccountName']];
-    if ($company['bankNmbNumber']) $bank[] = ['NMB BANK', $company['bankNmbNumber']];
-    if ($company['bankCrdbNumber']) $bank[] = ['CRDB BANK', $company['bankCrdbNumber']];
-
-    $tradingTerms = array_values(array_filter([
-        $proforma['payment_terms'] ? 'Term of Payment: ' . $proforma['payment_terms'] : ($company['defaultPaymentTerms'] ? 'Term of Payment: ' . $company['defaultPaymentTerms'] : null),
-        $proforma['delivery_time'] ? 'Delivery Time: ' . $proforma['delivery_time'] : ($company['defaultDeliveryTime'] ? 'Delivery Time: ' . $company['defaultDeliveryTime'] : null),
-        $proforma['quote_validity']
-            ? 'Period of validity for the above quoted price: ' . $proforma['quote_validity']
-            : ($company['defaultQuoteValidity'] ? 'Period of validity for the above quoted price: ' . $company['defaultQuoteValidity'] : null),
+    $bank = [
+        ['ACCOUNT NAME', (string)($company['bankAccountName'] ?: BELM_MASTER_ACCOUNT_NAME)],
+        ['NMB BANK', (string)($company['bankNmbNumber'] ?: BELM_MASTER_NMB)],
+        ['CRDB BANK', (string)($company['bankCrdbNumber'] ?: BELM_MASTER_CRDB)],
+    ];
+    $terms = array_values(array_filter([
+        $proforma['payment_terms'] ? 'Payment: ' . $proforma['payment_terms'] : ($company['defaultPaymentTerms'] ? 'Payment: ' . $company['defaultPaymentTerms'] : null),
+        $proforma['delivery_time'] ? 'Delivery: ' . $proforma['delivery_time'] : ($company['defaultDeliveryTime'] ? 'Delivery: ' . $company['defaultDeliveryTime'] : null),
     ]));
 
-    output_professional_document_pdf(
-        'Proforma-Invoice-' . $proforma['invoice_no'] . '-' . $proforma['customer_name'] . '.pdf',
-        'Proforma Invoice',
-        $company,
+    belm_output_commercial_master_pdf(
+        'Proforma-' . $proforma['invoice_no'] . '-' . $proforma['customer_name'] . '.pdf',
+        'PROFORMA',
         [
             'name' => $proforma['customer_name'],
             'tin' => $proforma['customer_tin'] ?: null,
             'vrn' => $proforma['customer_vrn'] ?: null,
-            'address' => $proforma['customer_address'] ?: null,
+            'customerRef' => $proforma['customer_name'],
         ],
         [
-            'invoiceNo' => $proforma['invoice_no'],
-            'tin' => $company['companyTin'] ?: null,
-            'vrn' => $company['companyVrn'] ?: null,
-            'date' => display_date_billing((string)$proforma['date']),
+            'number' => $proforma['invoice_no'],
+            'issueDate' => belm_master_date_display($issueDateRaw),
+            'validUntil' => belm_master_date_display($validUntil),
+            'validityDays' => $validityDays,
+            'currency' => 'TZS',
         ],
         $pdfItems,
         [
-            'subtotal' => number_format($totals['subtotal'], 2),
-            'discount' => number_format($totals['discount'], 2),
-            'discountLabel' => $discountLabel,
-            'vat' => number_format($totals['vat'], 2),
-            'vatLabel' => ($proforma['vat_mode'] ?? 'VAT') === 'VAT' ? 'VAT ' . rtrim(rtrim(number_format((float)$proforma['vat_rate'], 2), '0'), '.') . '%' : 'VAT (not applicable)',
-            'grandTotal' => number_format($totals['grandTotal'], 2),
+            'subtotal' => $totals['subtotal'],
+            'discount' => $totals['discount'],
+            'vat' => $totals['vat'],
+            'vatLabel' => ($proforma['vat_mode'] ?? 'VAT') === 'VAT'
+                ? 'VAT ' . rtrim(rtrim(number_format((float)$proforma['vat_rate'], 2), '0'), '.') . '%'
+                : 'VAT 0%',
+            'grandTotal' => $totals['grandTotal'],
         ],
         (string)($proforma['notice'] ?? ''),
         $bank,
-        $tradingTerms,
-        is_array($company['whyChooseUs']) ? $company['whyChooseUs'] : [],
-        (string)($company['footerMessage'] ?? 'Thank you for your business')
+        $terms
     );
 }

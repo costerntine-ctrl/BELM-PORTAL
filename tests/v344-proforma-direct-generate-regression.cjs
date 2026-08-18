@@ -11,8 +11,8 @@ const checks=[
  ['generated job lines include job context',api.includes('j.title,j.fault_description')&&js.includes('job.faultDescription')],
  ['local billing date avoids UTC shift',js.includes('getTimezoneOffset() * 60000')],
  ['generate buttons styled blue',css.includes('data-generate-pending-proforma')&&css.includes('data-generate-spare-proforma')],
- ['billing assets cache-busted',html.includes('v=344-proforma-direct-generate')],
- ['service worker bumped',sw.includes('belm-app-v344-proforma-direct-generate')],
- ['health build marker bumped',health.includes("'schemaVersion' => '344-proforma-direct-generate'")],
+ ['billing assets cache-busted',(html.includes('v=344-proforma-direct-generate')||(html.includes('v=345-commercial-master-templates')||html.includes('v=346-commercial-number-link')))],
+ ['service worker bumped',(sw.includes('belm-app-v344-proforma-direct-generate')||(sw.includes('belm-app-v345-commercial-master-templates')||sw.includes('belm-app-v346-commercial-number-link')))],
+ ['health build marker bumped',(health.includes("'schemaVersion' => '344-proforma-direct-generate'")||(health.includes("'schemaVersion' => '345-commercial-master-templates'")||health.includes("'schemaVersion' => '346-commercial-number-link'")))],
 ];
 let fail=0;for(const [n,ok] of checks){console.log(`${ok?'PASS':'FAIL'} ${n}`);if(!ok)fail++;}if(fail)process.exit(1);console.log(`V344 checks ${checks.length}/${checks.length} passed.`);

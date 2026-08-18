@@ -110,8 +110,8 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         $job['dispatchStatus']=$hasAssignedTechnician ? 'ASSIGNED' : strtoupper(trim((string)($job['status'] ?? 'RECEIVED')));
         $job['canReassign']=$hasAssignedTechnician;
         // V326: one business identifier. Before an actual Proforma exists, the
-        // pending Proforma code is the received Job Card number itself.
-        $job['proformaCode']=$job['proforma_invoice_no'] ?: $job['job_card_no'];
+        // V346: Job Card and Proforma numbers are separate. Existing Proforma PI is returned when present; otherwise null.
+        $job['proformaCode']=$job['proforma_invoice_no'] ?: null;
     }
     unset($job);
     $assignedJobCards = count(array_filter($receivedJobCards, fn($job) => ($job['dispatchStatus'] ?? '') === 'ASSIGNED'));
@@ -173,7 +173,7 @@ if ($method === 'POST' && $action === 'dispatch') {
         if($mode==='existing') {
             $jobId=trim((string)($b['jobCardId']??''));
             if($jobId==='') {
-                if($jobCardNoInput==='') throw new RuntimeException('Select a received Job Card or fill the received JC Number / Proforma Code.');
+                if($jobCardNoInput==='') throw new RuntimeException('Select a received Job Card or fill the received JC Number.');
                 $lookupSql="SELECT j.id
                             FROM digital_job_cards j
                             JOIN breakdown_cases bc ON bc.id=j.case_id
@@ -186,7 +186,7 @@ if ($method === 'POST' && $action === 'dispatch') {
                 if($customerId!==''){ $lookupSql.=' AND j.customer_id=?'; $lookupArgs[]=$customerId; }
                 $lookupSql.=' ORDER BY j.created_at DESC LIMIT 2';
                 $find=$pdo->prepare($lookupSql);$find->execute($lookupArgs);$matches=$find->fetchAll();
-                if(count($matches)===0) throw new RuntimeException('JC Number / Proforma Code was not found among active received/assigned Job Cards. Refresh or check the code.');
+                if(count($matches)===0) throw new RuntimeException('JC Number was not found among active received/assigned Job Cards. Refresh or check the reference.');
                 if(count($matches)>1) throw new RuntimeException('More than one received Job Card matches this code. Select the Job Card from the list.');
                 $jobId=(string)$matches[0]['id'];
             }
@@ -208,7 +208,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             $wasAlreadyAssigned=$previousTechnicianId!=='' || $previousTechnicianName!=='';
             $assignmentChanged=$wasAlreadyAssigned && $previousTechnicianId!==$technicianId;
             if($jobCardNoInput!=='' && strcasecmp($jobCardNoInput,(string)$job['job_card_no'])!==0 && strcasecmp($jobCardNoInput,(string)($job['proforma_invoice_no']??''))!==0) {
-                throw new RuntimeException('The entered JC Number / Proforma Code does not match the selected received Job Card.');
+                throw new RuntimeException('The entered JC Number does not match the selected received Job Card.');
             }
             $customerId=(string)$job['customer_id']; $caseId=(string)$job['case_id'];
             $jobNo=(string)$job['job_card_no']; $title=(string)$job['title']; $description=(string)$job['fault_description'];
@@ -290,7 +290,7 @@ if ($method === 'POST' && $action === 'dispatch') {
                 ($temporary?"\nAssignment: TEMPORARY OVERRIDE - your permanent customer has not changed.":'').
                 ($description!==''?"\nDetails: $description":'')."\nOpen Technician > My Job Cards.");
         } catch(Throwable $e) {}
-        json_out(['id'=>$jobId,'jobCardNo'=>$jobNo,'mode'=>$mode,'temporaryOverride'=>$temporary,'homeCustomerName'=>$tech['home_customer_name']??null,'proformaCode'=>$jobNo,'proformaStatus'=>'PENDING','reassigned'=>($assignmentChanged??false),'previousTechnicianName'=>($previousTechnicianName??null)],201);
+        json_out(['id'=>$jobId,'jobCardNo'=>$jobNo,'mode'=>$mode,'temporaryOverride'=>$temporary,'homeCustomerName'=>$tech['home_customer_name']??null,'proformaCode'=>null,'proformaStatus'=>'PENDING','reassigned'=>($assignmentChanged??false),'previousTechnicianName'=>($previousTechnicianName??null)],201);
     } catch(Throwable $e) {
         if($pdo->inTransaction()) $pdo->rollBack();
         json_error($e->getMessage(),422);

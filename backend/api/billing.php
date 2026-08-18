@@ -62,96 +62,10 @@ if ($method === 'GET' && $action === 'spare-lookup') {
 
 if ($method === 'GET' && $action === 'export-invoice') {
     $invoiceId = trim((string)($_GET['id'] ?? ''));
-    $stmt = db()->prepare(
-        'SELECT i.*, c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone,
-                c.tin_number AS customer_tin, c.vrn AS customer_vrn
-         FROM invoices i JOIN customers c ON c.id = i.customer_id
-         WHERE i.id = ? AND i.deleted_at IS NULL'
-    );
-    $stmt->execute([$invoiceId]);
-    $invoice = $stmt->fetch();
-    if (!$invoice) json_error('Invoice not found.', 404);
-
-    $itemsStmt = db()->prepare('SELECT part_number, description, quantity, unit, unit_price, line_total FROM invoice_items WHERE invoice_id = ?');
-    $itemsStmt->execute([$invoiceId]);
-    $items = $itemsStmt->fetchAll();
-
-    $paymentsStmt = db()->prepare(
-        "SELECT p.paid_at, p.amount, p.method, b.bank_name
-         FROM payments p LEFT JOIN bank_accounts b ON b.id = p.bank_account_id
-         WHERE p.invoice_id = ? ORDER BY p.paid_at ASC"
-    );
-    $paymentsStmt->execute([$invoiceId]);
-    $payments = $paymentsStmt->fetchAll();
-    $paid = array_sum(array_map(static fn($p) => (float)$p['amount'], $payments));
-    $balance = (float)$invoice['total'] - $paid;
-    $company = belm_get_company_details();
-
-    $pdfItems = [];
-    foreach ($items as $index => $item) {
-        $pdfItems[] = [
-            'itemNo' => (string)($index + 1),
-            'partNumber' => (string)($item['part_number'] ?: '—'),
-            'description' => $item['description'],
-            'qty' => (string)$item['quantity'],
-            'unit' => (string)($item['unit'] ?: 'PC'),
-            'unitPrice' => number_format((float)$item['unit_price'], 2),
-            'extended' => number_format((float)$item['line_total'], 2),
-        ];
-    }
-
-    $paymentSummary = [
-        ['Amount Paid', 'TZS ' . number_format($paid, 2)],
-        ['Balance Due', 'TZS ' . number_format($balance, 2)],
-    ];
-    foreach ($payments as $payment) {
-        $paymentSummary[] = [
-            'Paid ' . display_date_billing((string)$payment['paid_at']) . ' (' . ($payment['method'] ?? '—') . ($payment['bank_name'] ? ', ' . $payment['bank_name'] : '') . ')',
-            'TZS ' . number_format((float)$payment['amount'], 2),
-        ];
-    }
-
-    $bank = [];
-    if ($company['bankAccountName']) $bank[] = ['ACCOUNT NAME', $company['bankAccountName']];
-    if ($company['bankNmbNumber']) $bank[] = ['NMB BANK', $company['bankNmbNumber']];
-    if ($company['bankCrdbNumber']) $bank[] = ['CRDB BANK', $company['bankCrdbNumber']];
-
-    output_professional_document_pdf(
-        'Invoice-' . $invoice['invoice_no'] . '-' . $invoice['customer_name'] . '.pdf',
-        'Invoice',
-        $company,
-        [
-            'name' => $invoice['customer_name'],
-            'tin' => $invoice['customer_tin'] ?: null,
-            'vrn' => $invoice['customer_vrn'] ?: null,
-        ],
-        [
-            'invoiceNo' => $invoice['invoice_no'],
-            'tin' => $company['companyTin'] ?: null,
-            'vrn' => $company['companyVrn'] ?: null,
-            'date' => display_date_billing((string)$invoice['created_at']),
-            'dueDate' => display_date_billing((string)$invoice['due_date']),
-            'status' => strtoupper((string)$invoice['status']),
-        ],
-        $pdfItems,
-        [
-            'subtotal' => number_format((float)$invoice['subtotal'], 2),
-            'discount' => number_format((float)($invoice['discount'] ?? 0), 2),
-            'discountLabel' => 'Discount',
-            'vat' => number_format((float)$invoice['tax'], 2),
-            'vatLabel' => ((float)($invoice['vat_rate'] ?? 0) > 0 ? 'VAT (' . rtrim(rtrim(number_format((float)$invoice['vat_rate'], 2), '0'), '.') . '%)' : 'Tax'),
-            'grandTotal' => number_format((float)$invoice['total'], 2),
-        ],
-        (string)($invoice['notice'] ?? ''),
-        $bank,
-        array_values(array_filter([
-            $invoice['payment_terms'] ? 'Term of Payment: ' . $invoice['payment_terms'] : ($company['defaultPaymentTerms'] ? 'Term of Payment: ' . $company['defaultPaymentTerms'] : null),
-        ])),
-        [],
-        (string)($company['footerMessage'] ?? 'Thank you for your business'),
-        $paymentSummary
-    );
+    if ($invoiceId === '') json_error('Invoice id is required.', 422);
+    belm_output_invoice_document_pdf($invoiceId);
 }
+
 
 if ($method === 'GET' && $action === 'export-invoices') {
     $stmt = db()->query(
@@ -332,12 +246,16 @@ function validated_payment_bank_id(array $payload): ?string {
 if ($method === 'POST' && $action === 'generate-from-proforma') {
     $b = body();
     $proformaId = trim((string)($b['proformaId'] ?? ''));
-    if ($proformaId === '') json_error('Select a Proforma to generate the Invoice from.', 422);
+    $proformaNoInput = strtoupper(trim((string)($b['proformaNo'] ?? '')));
+    if ($proformaId === '' && $proformaNoInput === '') json_error('Enter or select a PI Number to generate the Invoice from.', 422);
 
-    $stmt = db()->prepare(
-        "SELECT p.* FROM proforma_invoices p WHERE p.id=? AND p.deleted_at IS NULL"
-    );
-    $stmt->execute([$proformaId]);
+    if ($proformaId !== '') {
+        $stmt = db()->prepare("SELECT p.* FROM proforma_invoices p WHERE p.id=? AND p.deleted_at IS NULL");
+        $stmt->execute([$proformaId]);
+    } else {
+        $stmt = db()->prepare("SELECT p.* FROM proforma_invoices p WHERE UPPER(TRIM(p.invoice_no))=? AND p.deleted_at IS NULL ORDER BY p.created_at DESC LIMIT 1");
+        $stmt->execute([$proformaNoInput]);
+    }
     $proforma = $stmt->fetch();
     if (!$proforma) json_error('Proforma not found.', 404);
     if (strtoupper((string)($proforma['customer_response'] ?? '')) === 'CHANGE_REQUESTED') {
@@ -363,7 +281,7 @@ if ($method === 'POST' && $action === 'generate-from-proforma') {
     if (!$proformaItems) json_error('This Proforma has no items to copy.', 409);
     $totals = belm_invoice_totals_from_proforma($proforma, $proformaItems);
 
-    $invoiceNo = belm_next_document_number('INV', 'invoice_number_seq');
+    $invoiceNo = belm_invoice_number_from_proforma((string)$proforma['invoice_no']);
     $newId = uuid();
     $pdo = db();
     $pdo->beginTransaction();
@@ -467,7 +385,7 @@ if ($method === 'POST' && !$action) {
         $existingNo=$existingInvoice->fetchColumn();
         if($existingNo) json_error('An active Invoice already exists for this Job Card: '.$existingNo.'. Open/edit that Invoice instead of creating a duplicate.',409);
     }
-    $invoiceNo = belm_next_document_number('INV', 'invoice_number_seq');
+    $invoiceNo = belm_next_commercial_number('INV');
     $newId = uuid();
     $pdo = db();
     $pdo->beginTransaction();

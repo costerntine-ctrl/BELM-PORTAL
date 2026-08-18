@@ -527,28 +527,72 @@ function belm_assemble_pdf(string $filename, array $pageContents, $logoData, $lo
 // supplied, the document is returned only when that invoice belongs to the
 // authenticated customer.
 function belm_output_invoice_document_pdf(string $invoiceId, ?string $customerId = null): void {
-    $sql='SELECT i.*,c.name AS customer_name,c.email AS customer_email,c.phone AS customer_phone,c.tin_number AS customer_tin,c.vrn AS customer_vrn
-          FROM invoices i JOIN customers c ON c.id=i.customer_id
+    require_once __DIR__ . '/commercial_master_pdf_helper.php';
+    $sql='SELECT i.*,c.name AS customer_name,c.email AS customer_email,c.phone AS customer_phone,
+                 c.address AS customer_address,c.tin_number AS customer_tin,c.vrn AS customer_vrn,
+                 j.job_card_no AS source_job_card_no
+          FROM invoices i
+          JOIN customers c ON c.id=i.customer_id
+          LEFT JOIN digital_job_cards j ON j.id=i.source_job_card_id
           WHERE i.id=? AND i.deleted_at IS NULL';
     $params=[$invoiceId];
     if($customerId!==null){$sql.=' AND i.customer_id=?';$params[]=$customerId;}
     $stmt=db()->prepare($sql);$stmt->execute($params);$invoice=$stmt->fetch();
     if(!$invoice) json_error('Invoice not found or not available to this customer.',404);
-    $itemsStmt=db()->prepare('SELECT description,quantity,unit_price,line_total FROM invoice_items WHERE invoice_id=?');
+
+    $itemsStmt=db()->prepare('SELECT part_number,description,quantity,unit,unit_price,line_total FROM invoice_items WHERE invoice_id=?');
     $itemsStmt->execute([$invoiceId]);$items=$itemsStmt->fetchAll();
     $paymentsStmt=db()->prepare('SELECT p.paid_at,p.amount,p.method,b.bank_name FROM payments p LEFT JOIN bank_accounts b ON b.id=p.bank_account_id WHERE p.invoice_id=? ORDER BY p.paid_at ASC');
     $paymentsStmt->execute([$invoiceId]);$payments=$paymentsStmt->fetchAll();
-    $paid=array_sum(array_map(static fn($x)=>(float)$x['amount'],$payments));$balance=max(0,(float)$invoice['total']-$paid);
-    $company=belm_get_company_details();$pdfItems=[];
-    foreach($items as $index=>$item){$pdfItems[]=['itemNo'=>(string)($index+1),'partNumber'=>'—','description'=>$item['description'],'qty'=>(string)$item['quantity'],'unit'=>'PC','unitPrice'=>number_format((float)$item['unit_price'],2),'extended'=>number_format((float)$item['line_total'],2)];}
-    $paymentSummary=[['Amount Paid','TZS '.number_format($paid,2)],['Balance Due','TZS '.number_format($balance,2)]];
-    foreach($payments as $payment){$paymentSummary[]=['Paid '.display_date_billing((string)$payment['paid_at']).' ('.($payment['method']??'—').($payment['bank_name']?', '.$payment['bank_name']:'').')','TZS '.number_format((float)$payment['amount'],2)];}
-    $bank=[];if($company['bankAccountName'])$bank[]=['ACCOUNT NAME',$company['bankAccountName']];if($company['bankNmbNumber'])$bank[]=['NMB BANK',$company['bankNmbNumber']];if($company['bankCrdbNumber'])$bank[]=['CRDB BANK',$company['bankCrdbNumber']];
-    output_professional_document_pdf(
-        'Invoice-'.$invoice['invoice_no'].'-'.$invoice['customer_name'].'.pdf','Invoice',$company,
-        ['name'=>$invoice['customer_name'],'tin'=>$invoice['customer_tin']?:null,'vrn'=>$invoice['customer_vrn']?:null],
-        ['invoiceNo'=>$invoice['invoice_no'],'tin'=>$company['companyTin']?:null,'vrn'=>$company['companyVrn']?:null,'date'=>display_date_billing((string)$invoice['created_at']),'dueDate'=>display_date_billing((string)$invoice['due_date']),'status'=>strtoupper((string)$invoice['status'])],
-        $pdfItems,['subtotal'=>number_format((float)$invoice['subtotal'],2),'vat'=>number_format((float)$invoice['tax'],2),'vatLabel'=>'Tax','grandTotal'=>number_format((float)$invoice['total'],2)],
-        (string)($invoice['notice']??''),$bank,array_values(array_filter([$invoice['payment_terms']?'Term of Payment: '.$invoice['payment_terms']:($company['defaultPaymentTerms']?'Term of Payment: '.$company['defaultPaymentTerms']:null)])),[],(string)($company['footerMessage']??'Thank you for your business'),$paymentSummary
+    $paid=array_sum(array_map(static fn($x)=>(float)$x['amount'],$payments));
+    $balance=max(0,(float)$invoice['total']-$paid);
+    $company=belm_get_company_details();
+
+    $pdfItems=[];
+    foreach($items as $index=>$item){
+        $pdfItems[]=[
+            'itemNo'=>(string)($index+1),
+            'partNumber'=>(string)($item['part_number']?:''),
+            'description'=>(string)$item['description'],
+            'qty'=>(string)$item['quantity'],
+            'unit'=>(string)($item['unit']?:'PC'),
+            'unitPrice'=>number_format((float)$item['unit_price'],2),
+            'extended'=>number_format((float)$item['line_total'],2),
+        ];
+    }
+    $bank=[
+        ['ACCOUNT NAME',(string)($company['bankAccountName']?:BELM_MASTER_ACCOUNT_NAME)],
+        ['NMB BANK',(string)($company['bankNmbNumber']?:BELM_MASTER_NMB)],
+        ['CRDB BANK',(string)($company['bankCrdbNumber']?:BELM_MASTER_CRDB)],
+    ];
+    $terms=array_values(array_filter([
+        $invoice['payment_terms']?'Payment: '.$invoice['payment_terms']:($company['defaultPaymentTerms']?'Payment: '.$company['defaultPaymentTerms']:null),
+        $company['defaultDeliveryTime']?'Delivery: '.$company['defaultDeliveryTime']:null,
+    ]));
+    belm_output_commercial_master_pdf(
+        'Invoice-'.$invoice['invoice_no'].'-'.$invoice['customer_name'].'.pdf',
+        'INVOICE',
+        ['name'=>$invoice['customer_name'],'tin'=>$invoice['customer_tin']?:null,'vrn'=>$invoice['customer_vrn']?:null,'customerRef'=>$invoice['customer_name']],
+        [
+            'number'=>$invoice['invoice_no'],
+            'issueDate'=>belm_master_date_display((string)$invoice['created_at']),
+            'currency'=>'TZS',
+            'dueStatus'=>$balance<=0.005?'PAID':'OUTSTANDING',
+            'jobCardRef'=>trim((string)($invoice['source_job_card_no']??''))?:'-',
+            'validityDays'=>7,
+        ],
+        $pdfItems,
+        [
+            'subtotal'=>(float)$invoice['subtotal'],
+            'discount'=>(float)($invoice['discount']??0),
+            'vat'=>(float)$invoice['tax'],
+            'vatLabel'=>((float)($invoice['vat_rate']??0)>0?'VAT '.rtrim(rtrim(number_format((float)$invoice['vat_rate'],2),'0'),'.').'%':'VAT 0%'),
+            'grandTotal'=>(float)$invoice['total'],
+        ],
+        (string)($invoice['notice']??''),
+        $bank,
+        $terms,
+        $paid,
+        $balance
     );
 }

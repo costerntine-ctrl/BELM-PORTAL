@@ -551,11 +551,17 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_terms VARCHAR(500) NULL;
 -- Server-side, gap-free (per type) document numbering. Existing rows
 -- already have unique invoice_no values in the older PRO-<timestamp>-<rand>
 -- format — that data is untouched. New documents prefer the clean
--- PI-0001 / RCPT-0001 style; belm_next_document_number() falls back to the
+-- Legacy PI-0001 / RCPT-0001 style; newer V346 commercial numbers use dedicated sequences. belm_next_document_number() falls back to the
 -- legacy format only if a sequence somehow isn't available.
 CREATE SEQUENCE IF NOT EXISTS proforma_number_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS invoice_number_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS receipt_number_seq START WITH 1;
+
+-- V346 permanent commercial numbering. Historical document numbers are not
+-- rewritten. New documents use PI-0000000 (7 digits) and INV-000000 (6 digits).
+-- The Invoice generated from a V346 PI uses the same numeric serial.
+CREATE SEQUENCE IF NOT EXISTS commercial_pi_number_seq_v346 MINVALUE 0 START WITH 0;
+CREATE SEQUENCE IF NOT EXISTS commercial_inv_number_seq_v346 MINVALUE 0 START WITH 0;
 
 -- ---------------------------------------------------------------------
 -- RECEIPTS — official payment receipts, optionally linked to an invoice

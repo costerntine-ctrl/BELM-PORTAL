@@ -286,12 +286,10 @@ if ($method === 'POST') {
     if ($discountAmount > $subtotal) json_error('Discount cannot be greater than the subtotal.');
 
     $newId = uuid();
-    // V326: a Service Job Card and its Proforma share one code. This makes
-    // Technician Dispatch -> Proforma traceability deterministic. Standalone
-    // Proformas still use the normal PI sequence.
-    $invoiceNo = $sourceJobCardId !== '' && $sourceJobCardNo !== ''
-        ? $sourceJobCardNo
-        : belm_next_document_number('PI', 'proforma_number_seq');
+    // V346: every new commercial Proforma has its own permanent PI number.
+    // The Job Card stays linked through source_job_card_id / Job Card Ref, but
+    // it no longer replaces the Proforma number.
+    $invoiceNo = belm_next_commercial_number('PI');
     $invoiceNoCheck=db()->prepare('SELECT 1 FROM proforma_invoices WHERE invoice_no=? AND deleted_at IS NULL LIMIT 1');
     $invoiceNoCheck->execute([$invoiceNo]);
     if($invoiceNoCheck->fetchColumn()) json_error('Proforma code '.$invoiceNo.' is already in use. Open that Proforma instead of creating a duplicate.',409);

@@ -132,13 +132,25 @@
     return `<div class="review-heading"><div><p class="eyebrow">Review</p><h2>${escapeHtml(title)}</h2><span>${escapeHtml(description)}</span></div>${exportUrl ? `<a class="export-pdf-button" href="${exportUrl}" target="_blank" rel="noopener">Export PDF</a>` : ""}</div>`;
   }
 
+  function invoiceNumberFromPiPreview(value) {
+    const match = String(value || "").trim().toUpperCase().match(/^PI-(\d+)$/);
+    if (!match) return "INV-000000";
+    const serial = String(Number(match[1]));
+    return `INV-${serial.padStart(6, "0")}`;
+  }
+
+  function invoiceFromPiGenerator() {
+    return `<div class="pi-invoice-generator"><div><span>PI → INVOICE</span><strong>Generate Invoice by PI Number</strong><small>New numbering: PI-0000000 → INV-000000. Enter the PI number; customer, items and totals are copied automatically.</small></div><label>PI Number<input id="invoiceProformaNumber" inputmode="text" autocomplete="off" placeholder="PI-0000000" maxlength="30"></label><div class="pi-invoice-result"><span>Invoice Number</span><strong id="invoiceNumberPreview">INV-000000</strong></div><button class="pay" type="button" data-generate-invoice-by-pi>Generate Invoice</button></div>`;
+  }
+
   function renderInvoices() {
     const panel = document.getElementById("invoicesPanel");
+    const piGenerator = invoiceFromPiGenerator();
     if (!invoices.length) {
-      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="empty">No invoices yet. Generate an Invoice directly from a Proforma.</div>`;
+      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}${piGenerator}<div class="empty">No invoices yet. Generate an Invoice directly from a Proforma.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
+    panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}${piGenerator}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
       <tr>
         <td><strong>${escapeHtml(invoice.invoiceNo)}</strong> <span class="invoice-sync-badge ${invoice.status === "PAID" ? "paid" : invoice.status === "CANCELLED" ? "cancelled" : "outstanding"}">${invoice.status === "PAID" ? "PAID" : invoice.status === "CANCELLED" ? "CANCELLED" : "OUTSTANDING"}</span><div class="muted">${(invoice.items || []).length} item(s)${invoice.sourceProformaId ? ` · copied from ${escapeHtml(invoice.sourceProformaNo || 'Proforma')}` : ''}</div></td>
         <td>${escapeHtml(invoice.customer?.name || "—")}</td>
@@ -196,11 +208,11 @@
       return groups;
     }, {}));
     const pendingSpareHtml = spareGroups.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM SPARE REQUESTS</span><strong>Pending Spare Request Proformas</strong></div><b>${pendingSpareProformaRequests.length}</b></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Machine</th><th>Items</th><th></th></tr></thead><tbody>${spareGroups.map(group=>`<tr><td><strong>${escapeHtml(group.customerName||"—")}</strong></td><td>${escapeHtml(group.machineLabel||"—")}</td><td>${group.requests.map(r=>`${escapeHtml(r.partNumber||"")} ${escapeHtml(r.partName||r.description||"Spare")} × ${escapeHtml(r.quantity||1)}`).join("<br>")}</td><td><button type="button" class="pay" data-generate-spare-proforma="${escapeHtml(group.key)}">Generate Proforma (${group.requests.length})</button></td></tr>`).join("")}</tbody></table></div><small>Requests for the same customer and machine are grouped into one multi-line Proforma.</small></div>` : "";
-    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>JC / Proforma Code</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="pay" data-generate-pending-proforma="${escapeHtml(job.id)}">Generate ${escapeHtml(job.proformaCode||job.jobCardNo)}</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The JC Number is the reserved Proforma code. It stays PENDING after Technician assignment until the signed Job Card is ready for billing.</small></div>` : '';
+    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>Job Card</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="pay" data-generate-pending-proforma="${escapeHtml(job.id)}">Generate Proforma</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The Job Card stays PENDING until billing readiness. When generated, the system assigns the next permanent PI-0000000 format number.</small></div>` : '';
     const actualHtml = proformas.length ? `<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
       <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line">${proforma.generatedInvoiceId ? `<span class="muted">Proforma locked after Invoice</span>` : `<button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button>`}${proforma.generatedInvoiceId ? `<button type="button" disabled>✓ Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')}</button>` : (String(proforma.customerResponse || '').toUpperCase() === 'CHANGE_REQUESTED' ? `<button type="button" disabled>Update Proforma first</button>` : `<button class="pay" data-generate-invoice-from-proforma="${escapeHtml(proforma.id)}">Generate Invoice</button>`)}</div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
     `).join("")}</tbody></table></div>` : '<div class="empty">No prepared proforma invoices yet.</div>';
-    panel.innerHTML = `${reviewHeading("Proforma", "JC Number is the Proforma code for Job Card billing; assigned jobs stay pending until ready.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingSpareHtml}${pendingHtml}${actualHtml}`;
+    panel.innerHTML = `${reviewHeading("Proforma", "Job Cards stay linked as references; every generated Proforma receives its own PI-0000000 format number.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingSpareHtml}${pendingHtml}${actualHtml}`;
   }
 
   function jobProformaItems(job) {
@@ -932,7 +944,7 @@
     } catch (_) {}
   });
   document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => document.getElementById(button.dataset.close).close()));
-  document.getElementById("newInvoiceButton").addEventListener("click", () => { activateBillingTab("proformas"); document.getElementById("proformasPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }); showAlert("Invoices are generated directly from a Proforma so customer, items, quantities, prices, discount and VAT stay synchronized."); });
+  document.getElementById("newInvoiceButton").addEventListener("click", () => { activateBillingTab("invoices"); document.getElementById("invoicesPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => document.getElementById("invoiceProformaNumber")?.focus(), 100); showAlert("Invoices are generated directly from a Proforma. Enter the PI Number; the INV number is derived automatically and all commercial lines stay synchronized."); });
   document.getElementById("newExpenseButton").addEventListener("click", openExpense);
   document.getElementById("newProformaButton").addEventListener("click", () => openProforma());
   document.getElementById("refreshButton").addEventListener("click", load);
@@ -1035,7 +1047,38 @@
     const removeButton = event.target.closest(".remove-item");
     if (removeButton && list.children.length > 1) removeButton.closest(".item-row").remove();
   }));
-  document.getElementById("invoicesPanel").addEventListener("click", (event) => {
+  document.getElementById("invoicesPanel").addEventListener("input", (event) => {
+    if (event.target.id !== "invoiceProformaNumber") return;
+    event.target.value = event.target.value.toUpperCase().replace(/\s+/g, "");
+    const preview = document.getElementById("invoiceNumberPreview");
+    if (preview) preview.textContent = invoiceNumberFromPiPreview(event.target.value);
+  });
+  document.getElementById("invoicesPanel").addEventListener("click", async (event) => {
+    const generateByPi = event.target.closest("[data-generate-invoice-by-pi]");
+    if (generateByPi) {
+      const input = document.getElementById("invoiceProformaNumber");
+      const proformaNo = String(input?.value || "").trim().toUpperCase();
+      if (!/^PI-\d+$/.test(proformaNo)) {
+        showAlert("Enter a valid PI Number, for example PI-0000000.", true);
+        input?.focus();
+        return;
+      }
+      generateByPi.disabled = true;
+      const oldText = generateByPi.textContent;
+      generateByPi.textContent = "Generating…";
+      try {
+        const result = await api("/billing?action=generate-from-proforma", { method: "POST", body: JSON.stringify({ proformaNo }) });
+        await load();
+        activateBillingTab("invoices");
+        showAlert(`✓ ${result.proformaNo} generated ${result.invoiceNo}. Invoice copied directly from Proforma.`);
+      } catch (error) {
+        showAlert(error.message, true);
+      } finally {
+        generateByPi.disabled = false;
+        generateByPi.textContent = oldText;
+      }
+      return;
+    }
     const pay = event.target.closest("[data-payment]");
     const receiptButton = event.target.closest("[data-receipt]");
     const edit = event.target.closest("[data-edit-invoice]");

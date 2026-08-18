@@ -138,7 +138,7 @@ function belm_seed_machine_service_parts_from_templates(string $machineId, strin
 
 function belm_create_service_draft_proforma(array $machine, string $alertId, int $interval, array $preparedItems): ?array {
     if (!$preparedItems) return null;
-    $invoiceNo = belm_next_document_number('PI', 'proforma_number_seq');
+    $invoiceNo = belm_next_commercial_number('PI');
     $proformaId = uuid();
     $notice = 'AUTO-PREPARED FOR BELM REVIEW - ' . belm_service_label_for_interval($interval)
         . ' for ' . trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''))

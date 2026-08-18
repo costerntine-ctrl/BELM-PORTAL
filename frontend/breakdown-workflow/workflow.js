@@ -132,21 +132,21 @@
       return `<option value="${esc(job.id)}">${esc(`${status} · ${job.jobCardNo} · ${job.customerName} · ${job.machineLabel}${serial}${assigned} · ${job.title} · ${src}`)}</option>`;
     }).join('');
     if(rows.some(job=>String(job.id)===String(current)))select.value=current;
-    const dataList=document.getElementById('dispatchJobCardNoList');if(dataList)dataList.innerHTML=rows.map(job=>`<option value="${esc(job.proformaCode||job.jobCardNo)}">${esc(`${String(job.dispatchStatus||job.status||'RECEIVED').toUpperCase()} · ${job.customerName} · ${job.machineLabel}${job.technicianName?` · ${job.technicianName}`:''}`)}</option>`).join('');
+    const dataList=document.getElementById('dispatchJobCardNoList');if(dataList)dataList.innerHTML=rows.map(job=>`<option value="${esc(job.jobCardNo||job.proformaCode)}">${esc(`${String(job.dispatchStatus||job.status||'RECEIVED').toUpperCase()} · ${job.customerName} · ${job.machineLabel}${job.technicianName?` · ${job.technicianName}`:''}`)}</option>`).join('');
     const assigned=rows.filter(job=>job.technicianId||job.technicianName||String(job.dispatchStatus||'').toUpperCase()==='ASSIGNED').length;
     const waiting=rows.length-assigned;
     const help=document.getElementById('receivedJobCardHelp');
-    if(help)help.textContent=rows.length?`${rows.length} active Job Card${rows.length===1?'':'s'}${customerId?' for this customer':''}: ${waiting} waiting, ${assigned} assigned. Assigned cards are selectable for confirmation or reassignment.`:(customerId?'No active received/assigned Job Card for this customer. You can still type a known JC / Proforma code in the field on the right.':'No active received/assigned Job Cards are available. Service Requests are synchronized automatically when this list refreshes.');
+    if(help)help.textContent=rows.length?`${rows.length} active Job Card${rows.length===1?'':'s'}${customerId?' for this customer':''}: ${waiting} waiting, ${assigned} assigned. Assigned cards are selectable for confirmation or reassignment.`:(customerId?'No active received/assigned Job Card for this customer. You can still type a known JC Number in the field on the right.':'No active received/assigned Job Cards are available. Service Requests are synchronized automatically when this list refreshes.');
   }
   function syncDispatchJcNumberFromSelection(){
     const input=document.getElementById('dispatchJobCardNo');if(!input)return;
     const selectedId=document.getElementById('dispatchJobCard')?.value||'';
     const job=dispatchJobCards.find(x=>String(x.id)===String(selectedId));
     if(job){
-      input.value=job.proformaCode||job.jobCardNo||'';
+      input.value=job.jobCardNo||job.proformaCode||'';
       input.dataset.source='auto';
       input.classList.add('jc-auto-detected');input.classList.remove('jc-manual');
-      const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent=`Detected automatically: ${input.value}. This same code stays PENDING in Proforma until the Job Card is ready for billing.`;
+      const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent=`Detected automatically: ${input.value}. This is the Job Card reference. Billing assigns a separate PI-0000000 number when the Proforma is generated.`;
     }else if(input.dataset.source==='auto'){
       input.value='';input.dataset.source='';input.classList.remove('jc-auto-detected');
     }
@@ -164,14 +164,14 @@
       document.getElementById('dispatchPriority').value=match.priority||'NORMAL';
       document.getElementById('dispatchDueDate').value=match.due_date||'';
       const locationInput=document.getElementById('dispatchLocation');if(locationInput)locationInput.value=match.jobLocation||'';
-      input.value=match.proformaCode||match.jobCardNo||raw;input.dataset.source='auto';input.classList.add('jc-auto-detected');
+      input.value=match.jobCardNo||match.proformaCode||raw;input.dataset.source='auto';input.classList.add('jc-auto-detected');
       const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent=`Matched automatically to received Job Card ${match.jobCardNo}.`;
       renderReceivedJobCards();
       const reselect=document.getElementById('dispatchJobCard');if(reselect)reselect.value=match.id;
       updateDispatchNote();
     }else{
       input.dataset.source='manual';input.classList.add('jc-manual');
-      const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent='Manual JC / Proforma code entered. Assign will ask the server to find the matching active received/assigned Job Card by this code.';
+      const help=document.getElementById('dispatchJobCardNoHelp');if(help)help.textContent='Manual JC Number entered. Assign will ask the server to find the matching active received/assigned Job Card by this reference.';
     }
   }
   function updateDispatchNote(){
@@ -242,7 +242,7 @@
     ['dispatchTechnician','dispatchJobCard','dispatchCustomer','dispatchMachine'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
     const jcInput=document.getElementById('dispatchJobCardNo');
     if(jcInput){jcInput.value='';jcInput.dataset.source='';jcInput.classList.remove('jc-auto-detected','jc-manual')}
-    const jcHelp=document.getElementById('dispatchJobCardNoHelp');if(jcHelp)jcHelp.textContent='Auto-detected from the selected Job Card. You can also type the JC / Proforma code manually.';
+    const jcHelp=document.getElementById('dispatchJobCardNoHelp');if(jcHelp)jcHelp.textContent='Auto-detected from the selected Job Card. You can also type the JC Number manually.';
     const priority=document.getElementById('dispatchPriority');if(priority)priority.value='NORMAL';
     const due=document.getElementById('dispatchDueDate');if(due)due.value='';
     const title=document.getElementById('dispatchTitle');if(title)title.value='';
@@ -266,7 +266,7 @@
     const customerId=mode==='existing'?(existingJob?.customerId||document.getElementById('dispatchCustomer').value||''):document.getElementById('dispatchCustomer').value;
     const tech=dispatchTechnicians.find(x=>String(x.id)===String(technicianId)),customer=dispatchCustomers.find(x=>String(x.id)===String(customerId));
     if(!technicianId){show('Select Technician.',true);showDispatchResult('Select Technician before assigning the Job Card.',true);return}
-    if(mode==='existing'&&!jobCardId&&!jobCardNo){show('Select a received/assigned Job Card or fill the JC Number / Proforma Code.',true);showDispatchResult('Select a Job Card or enter its JC Number / Proforma Code.',true);return}
+    if(mode==='existing'&&!jobCardId&&!jobCardNo){show('Select a received/assigned Job Card or fill the JC Number.',true);showDispatchResult('Select a Job Card or enter its JC Number.',true);return}
     if(mode==='create'&&(!customerId||!document.getElementById('dispatchMachine').value||!document.getElementById('dispatchTitle').value.trim())){show('Customer, machine and Job Card title are required.',true);showDispatchResult('Customer, machine and Job Card title are required.',true);return}
     const currentAssignedTechId=String(existingJob?.technicianId||'');
     const reassigning=mode==='existing'&&currentAssignedTechId&&currentAssignedTechId!==String(technicianId);
@@ -279,8 +279,8 @@
       const currentCaseId=selected?.case?.id||'';
       const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,jobCardNo,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,jobLocation:document.getElementById('dispatchLocation')?.value.trim()||'',temporaryOverride:temporary})});
       const verb=result.reassigned?'reassigned':'assigned';
-      const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} to ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · ${result.proformaCode||result.jobCardNo||jobCardNo}.`;
-      show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} to Technician${result.temporaryOverride?' as Temporary Override':''}. Proforma sync: ${result.proformaStatus||'PENDING'} · code ${result.proformaCode||result.jobCardNo||jobCardNo}.`,false);
+      const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} to ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · PI number is assigned in Billing when generated.`;
+      show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} to Technician${result.temporaryOverride?' as Temporary Override':''}. Proforma sync: ${result.proformaStatus||'PENDING'} · PI number will be created in Billing.`,false);
       setActionButtonState(submitBtn,'success',result.reassigned?'✓ Reassigned':'✓ Assigned');
       // Clear every dispatch choice BEFORE reload so loadDispatchOptions cannot preserve stale selections.
       resetTechnicianDispatchForm();

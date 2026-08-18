@@ -25,6 +25,6 @@ const checks=[
  ['job card PDF shows location',api.includes("['Job Location'")],
  ['technician assets cache-busted',techHtml.includes('v=343-mobile-field-dispatch')],
  ['workflow assets cache-busted',wfHtml.includes('v=343-mobile-field-dispatch')],
- ['service worker bumped',(sw.includes('belm-app-v343-mobile-field-dispatch')||sw.includes('belm-app-v344-proforma-direct-generate'))],
+ ['service worker bumped',(sw.includes('belm-app-v343-mobile-field-dispatch')||sw.includes('belm-app-v344-proforma-direct-generate')||(sw.includes('belm-app-v345-commercial-master-templates')||sw.includes('belm-app-v346-commercial-number-link')))],
 ];
 let fail=0;for(const [n,ok] of checks){console.log(`${ok?'PASS':'FAIL'} ${n}`);if(!ok)fail++;}if(fail)process.exit(1);console.log(`V343 checks ${checks.length}/${checks.length} passed.`);

@@ -125,7 +125,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             $machineLabel=trim(($job['brand']??'').' '.($job['model']??'')) ?: 'Machine';
             $pdo->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,status='ASSIGNED',priority=?,due_date=?,updated_at=NOW() WHERE id=?")
                 ->execute([$technicianId,$tech['name'],$priority,$dueDate?:null,$jobId]);
-            $pdo->prepare("UPDATE breakdown_cases SET current_stage='DIAGNOSIS',current_department='Technician',blocker_reason=NULL,stage_started_at=NOW(),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")
+            $pdo->prepare("UPDATE breakdown_cases SET current_stage='JOB_CARD_ASSIGNED',current_department='Technician',blocker_reason=NULL,stage_started_at=NOW(),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")
                 ->execute([$caseId]);
             $pdo->prepare("INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at)
                            SELECT ?,id,current_stage,current_department,?,?, 'belm',?,?,NOW() FROM breakdown_cases WHERE id=?")
@@ -153,7 +153,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             $machineLabel=trim(($machine['brand']??'').' '.($machine['model']??'')) ?: ($machine['machine_type']??'Machine');
             $caseId=uuid();
             $pdo->prepare("INSERT INTO breakdown_cases(id,customer_id,machine_id,source_type,title,description,status,current_stage,current_department,opened_at,stage_started_at,updated_at,created_by_name)
-                           VALUES(?,?,?,'MANUAL',?,?,'OPEN','DIAGNOSIS','Technician',NOW(),NOW(),NOW(),?)")
+                           VALUES(?,?,?,'MANUAL',?,?,'OPEN','JOB_CARD_ASSIGNED','Technician',NOW(),NOW(),NOW(),?)")
                 ->execute([$caseId,$customerId,$machineId,$title,$description?:$title,$user['name']]);
             $jobNo='JC-'.date('ym').'-'.str_pad((string)$pdo->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
             $jobId=uuid();
@@ -161,7 +161,7 @@ if ($method === 'POST' && $action === 'dispatch') {
                            VALUES(?,?,?,?,?,?,?,?,?,'ASSIGNED',?,?,?,?,? ,NOW(),NOW(),NOW())")
                 ->execute([$jobId,$caseId,$customerId,$machineId,$jobNo,$title,$description?:$title,$technicianId,$tech['name'],$priority,$dueDate?:null,$user['name'],$user['name'],'BELM']);
             $pdo->prepare("INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,NOW())")
-                ->execute([uuid(),$caseId,'DIAGNOSIS','Technician','Digital Job Card '.$jobNo.' created and assigned',$description?:$title,'belm',$user['id']??null,$user['name']]);
+                ->execute([uuid(),$caseId,'JOB_CARD_ASSIGNED','Technician','Digital Job Card '.$jobNo.' created and assigned',$description?:$title,'belm',$user['id']??null,$user['name']]);
         }
 
         $temporary=!empty($tech['assigned_customer_id']) && (string)$tech['assigned_customer_id']!==$customerId;

@@ -1647,8 +1647,8 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
 }
 
 // Keep the source request and Breakdown Process aligned without overriding
-// a more advanced Digital Job Card workflow. Assignment can advance a new
-// request to Diagnosis; In Progress can advance it to Repair; final request
+// a more advanced Digital Job Card workflow. Assignment advances to an explicit
+// Job Card Assigned stage; In Progress can advance it to Repair; final request
 // states close the linked case. This routine is safe to call repeatedly.
 function belm_sync_breakdown_case_from_service_request(string $requestId, ?string $actorName = null): ?string {
     $caseId = belm_ensure_breakdown_case_from_service_request($requestId, $actorName);
@@ -1689,12 +1689,12 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
 
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
         if ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && empty($row['assigned_to_id'])
-            && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','DIAGNOSIS','REPAIR'],true)) {
+            && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS','REPAIR'],true)) {
             $newStage='TECHNICIAN_ASSIGNMENT'; $department='Workshop / Dispatch';
             $blocker='Awaiting Technician Assignment'; $action='Service Request waiting Technician assignment';
-        } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT'],true)) {
-            $newStage='DIAGNOSIS'; $department='Technician'; $action='Service Request assigned - technician action';
-        } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','DIAGNOSIS'],true)) {
+        } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','DIAGNOSIS'],true)) {
+            $newStage='JOB_CARD_ASSIGNED'; $department='Technician'; $action='Service Request assigned - Job Card waiting Technician start';
+        } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS'],true)) {
             $newStage='REPAIR'; $department='Technician'; $action='Service Request in progress';
         } elseif ($status === 'ON_HOLD' && $caseStatus !== 'COMPLETED') {
             $blocker='Service Request is ON HOLD'; $action='Service Request placed on hold';

@@ -136,7 +136,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'api' => 'BELM PHP/PostgreSQL',
             'database' => 'connected',
             'databaseVersion' => $databaseVersion,
-            'schemaVersion' => '312-received-job-card-status',
+            'schemaVersion' => '313-job-card-process-sync',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

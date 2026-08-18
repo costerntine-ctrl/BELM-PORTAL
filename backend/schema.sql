@@ -1395,3 +1395,25 @@ WHERE bc.status <> 'COMPLETED'
       SELECT 1 FROM digital_job_cards j
       WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED') AND j.technician_id IS NOT NULL
   );
+
+
+-- V313 - Main Job Card process alignment.
+-- Assigned-but-not-started cards must show the ASSIGNED stage, not DIAGNOSIS.
+UPDATE breakdown_cases bc
+SET current_stage='JOB_CARD_ASSIGNED',
+    current_department='Technician',
+    blocker_reason=NULL,
+    updated_at=NOW()
+WHERE bc.status <> 'COMPLETED'
+  AND bc.current_stage IN ('DIAGNOSIS','REPAIR')
+  AND EXISTS (
+      SELECT 1 FROM digital_job_cards j
+      WHERE j.case_id=bc.id
+        AND j.status='ASSIGNED'
+        AND j.technician_id IS NOT NULL
+        AND j.started_at IS NULL
+  )
+  AND NOT EXISTS (
+      SELECT 1 FROM digital_job_cards j
+      WHERE j.case_id=bc.id AND j.status='IN_PROGRESS'
+  );

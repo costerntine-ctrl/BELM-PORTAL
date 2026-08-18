@@ -30,6 +30,32 @@ try {
         fwrite(STDOUT, "V312 Job Card lifecycle normalized: {$receivedRepair} received, {$assignedRepair} assigned.\n");
     }
 
+    // V313: an ASSIGNED Job Card is a real workflow stage. Do not jump to Diagnosis
+    // until the Technician saves the first technical Job Card report.
+    $assignedStageRepair = db()->exec(
+        "UPDATE breakdown_cases bc
+         SET current_stage='JOB_CARD_ASSIGNED',
+             current_department='Technician',
+             blocker_reason=NULL,
+             updated_at=NOW()
+         WHERE bc.status <> 'COMPLETED'
+           AND bc.current_stage IN ('DIAGNOSIS','REPAIR')
+           AND EXISTS (
+               SELECT 1 FROM digital_job_cards j
+               WHERE j.case_id=bc.id
+                 AND j.status='ASSIGNED'
+                 AND j.technician_id IS NOT NULL
+                 AND j.started_at IS NULL
+           )
+           AND NOT EXISTS (
+               SELECT 1 FROM digital_job_cards j
+               WHERE j.case_id=bc.id AND j.status='IN_PROGRESS'
+           )"
+    );
+    if ($assignedStageRepair > 0) {
+        fwrite(STDOUT, "V313 repaired {$assignedStageRepair} assigned Job Card workflow case(s).\n");
+    }
+
     // V308: repair legacy/manual cases that were incorrectly handed to the
     // Technician department while every active Job Card was still unassigned.
     // Keep stage_started_at unchanged so the real assignment waiting time stays visible.

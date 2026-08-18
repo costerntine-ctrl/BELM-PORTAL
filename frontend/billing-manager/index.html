@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/billing-manager/manager.css?v=337-proforma-generate-sync">
+    <link rel="stylesheet" href="/billing-manager/manager.css?v=341-proforma-invoice-flow">
     <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=307-billing-integrity"></script>
@@ -35,7 +35,7 @@
           <p>Review every billing record from a clear top-to-bottom menu.</p>
         </div>
         <div class="hero-actions">
-          <button id="newInvoiceButton" class="primary" type="button">+ New invoice</button>
+          <button id="newInvoiceButton" class="primary" type="button">Invoice from Proforma</button>
           <button id="newExpenseButton" class="secondary" type="button">+ Record expense</button>
           <button id="newProformaButton" class="secondary" type="button">+ New proforma</button>
         </div>
@@ -87,7 +87,7 @@
         <div id="invoiceCustomerInfo" class="customer-info empty-info">
           Choose a customer to auto-fill company information.
         </div>
-        <div class="items-head"><h3>Invoice items</h3><button id="addInvoiceItem" class="link-button" type="button">+ Add item</button></div>
+        <div class="items-head"><h3>Invoice items</h3><span class="muted">Generated Invoices copy these lines directly from Proforma.</span><button id="addInvoiceItem" class="link-button" type="button">+ Add item</button></div>
         <div id="invoiceItems" class="item-list"></div>
         <div class="dialog-actions"><button class="ghost" data-close="invoiceDialog" type="button">Cancel</button><button id="saveInvoiceButton" class="primary">Save invoice</button></div>
       </form>
@@ -167,6 +167,7 @@
         <input id="proformaId" type="hidden">
         <input id="proformaMachineId" type="hidden">
         <input id="proformaSourceSpareRequestId" type="hidden">
+        <input id="proformaSourceSpareRequestIds" type="hidden">
         <input id="proformaSourceJobCardId" type="hidden">
         <div id="proformaError" class="alert error hidden"></div>
         <div class="form-grid">
@@ -198,7 +199,7 @@
     <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/billing-manager/manager.js?v=337-proforma-generate-sync"></script>
+    <script src="/billing-manager/manager.js?v=341-proforma-invoice-flow"></script>
     <div id="qrScanOverlay" class="qr-scan-overlay hidden">
       <video id="qrScanVideo" autoplay playsinline muted></video>
       <button id="qrScanCancelButton" type="button" class="qr-scan-cancel">Cancel scan</button>

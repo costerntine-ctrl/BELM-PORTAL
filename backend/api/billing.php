@@ -10,6 +10,8 @@ $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 $paymentId = $_GET['paymentId'] ?? null;
 
+belm_ensure_invoice_proforma_schema();
+
 function belm_sync_invoice_job_card(string $invoiceId): void {
     try {
         $stmt=db()->prepare('SELECT source_job_card_id FROM invoices WHERE id=?');
@@ -70,7 +72,7 @@ if ($method === 'GET' && $action === 'export-invoice') {
     $invoice = $stmt->fetch();
     if (!$invoice) json_error('Invoice not found.', 404);
 
-    $itemsStmt = db()->prepare('SELECT description, quantity, unit_price, line_total FROM invoice_items WHERE invoice_id = ?');
+    $itemsStmt = db()->prepare('SELECT part_number, description, quantity, unit, unit_price, line_total FROM invoice_items WHERE invoice_id = ?');
     $itemsStmt->execute([$invoiceId]);
     $items = $itemsStmt->fetchAll();
 
@@ -89,10 +91,10 @@ if ($method === 'GET' && $action === 'export-invoice') {
     foreach ($items as $index => $item) {
         $pdfItems[] = [
             'itemNo' => (string)($index + 1),
-            'partNumber' => '—',
+            'partNumber' => (string)($item['part_number'] ?: '—'),
             'description' => $item['description'],
             'qty' => (string)$item['quantity'],
-            'unit' => 'PC',
+            'unit' => (string)($item['unit'] ?: 'PC'),
             'unitPrice' => number_format((float)$item['unit_price'], 2),
             'extended' => number_format((float)$item['line_total'], 2),
         ];
@@ -134,8 +136,10 @@ if ($method === 'GET' && $action === 'export-invoice') {
         $pdfItems,
         [
             'subtotal' => number_format((float)$invoice['subtotal'], 2),
+            'discount' => number_format((float)($invoice['discount'] ?? 0), 2),
+            'discountLabel' => 'Discount',
             'vat' => number_format((float)$invoice['tax'], 2),
-            'vatLabel' => 'Tax',
+            'vatLabel' => ((float)($invoice['vat_rate'] ?? 0) > 0 ? 'VAT (' . rtrim(rtrim(number_format((float)$invoice['vat_rate'], 2), '0'), '.') . '%)' : 'Tax'),
             'grandTotal' => number_format((float)$invoice['total'], 2),
         ],
         (string)($invoice['notice'] ?? ''),
@@ -204,6 +208,28 @@ if ($method === 'GET' && $action === 'export-payments') {
         ['Generated: ' . date('d/m/Y H:i'), 'Total records: ' . count($rows)],
         $rows
     );
+}
+
+function belm_invoice_totals_from_proforma(array $proforma, array $items): array {
+    $subtotal = round(array_sum(array_map(static fn(array $item): float => (float)$item['qty'] * (float)$item['unit_price'], $items)), 2);
+    $discountType = strtoupper((string)($proforma['discount_type'] ?? 'FIXED'));
+    $discountValue = (float)($proforma['discount'] ?? 0);
+    $discount = $discountType === 'PERCENT'
+        ? round($subtotal * (max(0, min(100, $discountValue)) / 100), 2)
+        : round(max(0, $discountValue), 2);
+    $discount = min($discount, $subtotal);
+    $vatRate = (float)($proforma['vat_rate'] ?? 18);
+    $tax = strtoupper((string)($proforma['vat_mode'] ?? 'VAT')) === 'VAT'
+        ? round(($subtotal - $discount) * ($vatRate / 100), 2)
+        : 0.0;
+    return [
+        'subtotal' => $subtotal,
+        'discount' => $discount,
+        'discountType' => $discountType,
+        'vatRate' => $vatRate,
+        'tax' => $tax,
+        'total' => round($subtotal - $discount + $tax, 2),
+    ];
 }
 
 function validate_invoice_input(array $payload): array {
@@ -303,10 +329,104 @@ function validated_payment_bank_id(array $payload): ?string {
     return $bankAccountId;
 }
 
+if ($method === 'POST' && $action === 'generate-from-proforma') {
+    $b = body();
+    $proformaId = trim((string)($b['proformaId'] ?? ''));
+    if ($proformaId === '') json_error('Select a Proforma to generate the Invoice from.', 422);
+
+    $stmt = db()->prepare(
+        "SELECT p.* FROM proforma_invoices p WHERE p.id=? AND p.deleted_at IS NULL"
+    );
+    $stmt->execute([$proformaId]);
+    $proforma = $stmt->fetch();
+    if (!$proforma) json_error('Proforma not found.', 404);
+    if (strtoupper((string)($proforma['customer_response'] ?? '')) === 'CHANGE_REQUESTED') {
+        json_error('Customer requested changes to this Proforma. Re-edit and resend it before generating the Invoice.', 409);
+    }
+
+    $existing = db()->prepare("SELECT invoice_no FROM invoices WHERE source_proforma_id=? AND deleted_at IS NULL AND status<>'CANCELLED' ORDER BY created_at DESC LIMIT 1");
+    $existing->execute([$proformaId]);
+    $existingNo = $existing->fetchColumn();
+    if ($existingNo) json_error('Invoice already exists for this Proforma: '.$existingNo.'.', 409);
+
+    $sourceJobCardId = trim((string)($proforma['source_job_card_id'] ?? ''));
+    if ($sourceJobCardId !== '') {
+        $jobInvoice = db()->prepare("SELECT invoice_no FROM invoices WHERE source_job_card_id=? AND deleted_at IS NULL AND status<>'CANCELLED' ORDER BY created_at DESC LIMIT 1");
+        $jobInvoice->execute([$sourceJobCardId]);
+        $jobInvoiceNo = $jobInvoice->fetchColumn();
+        if ($jobInvoiceNo) json_error('An active Invoice already exists for this Job Card: '.$jobInvoiceNo.'.', 409);
+    }
+
+    $itemsStmt = db()->prepare('SELECT part_number, description, qty, unit, unit_price FROM proforma_invoice_items WHERE proforma_id=? ORDER BY "order" ASC');
+    $itemsStmt->execute([$proformaId]);
+    $proformaItems = $itemsStmt->fetchAll();
+    if (!$proformaItems) json_error('This Proforma has no items to copy.', 409);
+    $totals = belm_invoice_totals_from_proforma($proforma, $proformaItems);
+
+    $invoiceNo = belm_next_document_number('INV', 'invoice_number_seq');
+    $newId = uuid();
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare(
+            "INSERT INTO invoices
+             (id, customer_id, machine_id, source_job_card_id, source_proforma_id, invoice_no,
+              subtotal, discount, discount_type, vat_rate, tax, total, status, due_date, notice, payment_terms, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'UNPAID',?,?,?,NOW())"
+        )->execute([
+            $newId,
+            $proforma['customer_id'],
+            $proforma['machine_id'] ?: null,
+            $sourceJobCardId !== '' ? $sourceJobCardId : null,
+            $proformaId,
+            $invoiceNo,
+            $totals['subtotal'],
+            $totals['discount'],
+            $totals['discountType'],
+            $totals['vatRate'],
+            $totals['tax'],
+            $totals['total'],
+            null,
+            $proforma['notice'] ?: null,
+            $proforma['payment_terms'] ?: null,
+        ]);
+        $itemInsert = $pdo->prepare(
+            'INSERT INTO invoice_items (id, invoice_id, part_number, description, quantity, unit, unit_price, line_total, spare_part_id) VALUES (?,?,?,?,?,?,?,?,?)'
+        );
+        $partLookup = $pdo->prepare('SELECT id FROM spare_parts WHERE UPPER(part_number)=UPPER(?) AND deleted_at IS NULL ORDER BY created_at ASC LIMIT 1');
+        foreach ($proformaItems as $item) {
+            $partNumber = trim((string)($item['part_number'] ?? ''));
+            $sparePartId = null;
+            if ($partNumber !== '') {
+                $partLookup->execute([$partNumber]);
+                $sparePartId = $partLookup->fetchColumn() ?: null;
+            }
+            $qty = (int)$item['qty'];
+            $unitPrice = (float)$item['unit_price'];
+            $itemInsert->execute([
+                uuid(), $newId, $partNumber !== '' ? $partNumber : null, (string)$item['description'], $qty,
+                (string)($item['unit'] ?: 'PC'), $unitPrice, round($qty * $unitPrice, 2), $sparePartId,
+            ]);
+        }
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+    belm_sync_invoice_job_card($newId);
+    log_activity($user, 'invoice-generated-from-proforma', 'invoice', $newId, [
+        'invoiceNo' => $invoiceNo,
+        'proformaId' => $proformaId,
+        'proformaNo' => $proforma['invoice_no'],
+        'total' => $totals['total'],
+    ]);
+    json_out(['id' => $newId, 'invoiceNo' => $invoiceNo, 'proformaNo' => $proforma['invoice_no']], 201);
+}
+
 if ($method === 'GET' && !$action) {
     $customerId = $_GET['customerId'] ?? null;
     $status = $_GET['status'] ?? null;
-    $sql = 'SELECT i.*, c.name AS customer_name FROM invoices i JOIN customers c ON c.id = i.customer_id WHERE i.deleted_at IS NULL';
+    $sql = 'SELECT i.*, c.name AS customer_name, p.invoice_no AS source_proforma_no FROM invoices i JOIN customers c ON c.id = i.customer_id LEFT JOIN proforma_invoices p ON p.id=i.source_proforma_id WHERE i.deleted_at IS NULL';
     $params = [];
     if ($customerId) { $sql .= ' AND i.customer_id = ?'; $params[] = $customerId; }
     if ($status) { $sql .= ' AND i.status = ?'; $params[] = $status; }
@@ -407,7 +527,7 @@ if ($method === 'PUT' && !$action) {
         $pdo->beginTransaction();
         try {
             $stmt = $pdo->prepare(
-                'SELECT status, source_job_card_id
+                'SELECT status, source_job_card_id, source_proforma_id
                  FROM invoices
                  WHERE id = ? AND deleted_at IS NULL
                  FOR UPDATE'
@@ -419,6 +539,10 @@ if ($method === 'PUT' && !$action) {
                 json_error('Invoice not found.', 404);
             }
             $currentStatus = (string)$currentInvoice['status'];
+            if (trim((string)($currentInvoice['source_proforma_id'] ?? '')) !== '') {
+                $pdo->rollBack();
+                json_error('This Invoice was generated from a Proforma and its commercial lines are locked. Cancel the Invoice first if the Proforma must be changed.', 409);
+            }
             $oldSourceJobCardId = trim((string)($currentInvoice['source_job_card_id'] ?? ''));
             $stmt = $pdo->prepare('SELECT COALESCE(SUM(amount),0) FROM payments WHERE invoice_id = ?');
             $stmt->execute([$id]);

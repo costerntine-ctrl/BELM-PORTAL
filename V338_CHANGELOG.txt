@@ -1,0 +1,42 @@
+BELM OPERATIONS PLATFORM - V338
+Main Job Card Process Stage Drill-down
+
+1. Main Job Card Process stages are now clickable:
+   - Received by BELM
+   - Assigned
+   - In Progress
+   - Spares
+   - Testing
+   - Completed
+
+2. Received by BELM opens a detail panel showing:
+   - Job Card number
+   - who confirmed receipt/activation at BELM
+   - receipt time
+   - original issuer
+   - direct Assign Technician / Reassign Technician dropdown for BELM Admin/Engineer
+
+3. Assigned opens a detail panel showing:
+   - assigned Technician
+   - who assigned/reassigned the Technician
+   - assignment time
+   - current Job Card status
+
+4. In Progress opens Technician work details:
+   - Technician
+   - started time
+   - diagnosis
+   - work done
+   - latest repair/progress timeline updates
+
+5. Spares opens the Job Card's spare requests and statuses.
+
+6. Testing opens Workshop test/result information.
+
+7. Completed opens return-to-service/closure information and signed Job Card state.
+
+8. Service Request -> Job Card activation now records the BELM actor on the Breakdown timeline, so the Received stage can identify who confirmed the handoff.
+
+9. Stage detail panel is responsive for phone/tablet and process buttons retain their existing workflow colors while gaining click/inspection feedback.
+
+10. No database migration is required.

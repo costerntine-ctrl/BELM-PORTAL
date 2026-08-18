@@ -11,6 +11,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 $action = $_GET['action'] ?? '';
 
+belm_ensure_invoice_proforma_schema();
+
 // Money is rounded to 2dp at every step (matches how the company's own
 // paper invoices are written up) rather than left as raw floating point,
 // so Subtotal/Discount/VAT/Grand Total always add up exactly on screen,
@@ -78,6 +80,36 @@ if ($method === 'GET' && $action === 'export') {
     );
 }
 
+if ($method === 'GET' && $action === 'pending-spare-requests') {
+    $stmt = db()->query(
+        "SELECT spr.id,spr.machine_id,spr.quantity,spr.description,spr.status,
+                sp.part_number,sp.name AS part_name,sp.selling_price,
+                c.id AS customer_id,c.name AS customer_name,
+                m.brand,m.model,m.machine_type,m.serial_number,m.reg_number
+         FROM spare_part_requests spr
+         JOIN machines m ON m.id=spr.machine_id AND m.deleted_at IS NULL
+         JOIN customers c ON c.id=m.customer_id AND c.deleted_at IS NULL AND c.is_active=1
+         JOIN spare_parts sp ON sp.id=spr.spare_part_id AND sp.deleted_at IS NULL
+         WHERE spr.status IN ('PENDING','PURCHASE_REQUIRED')
+           AND NOT EXISTS (
+             SELECT 1 FROM proforma_spare_request_links l
+             JOIN proforma_invoices p ON p.id=l.proforma_id AND p.deleted_at IS NULL
+             WHERE l.spare_request_id=spr.id
+           )
+           AND NOT EXISTS (
+             SELECT 1 FROM proforma_invoices p
+             WHERE p.source_spare_request_id=spr.id AND p.deleted_at IS NULL
+           )
+         ORDER BY c.name ASC,m.model ASC,spr.created_at ASC"
+    );
+    $rows=$stmt->fetchAll();
+    foreach($rows as &$row){
+        $row['machine_label']=trim(($row['brand']??'').' '.($row['model']??'')) ?: ($row['machine_type']??'Machine');
+    }
+    unset($row);
+    json_out($rows);
+}
+
 if ($method === 'GET' && $action === 'pending-job-cards') {
     // V337: Billing must see the same assignment that Engineering sees. Older
     // Service Requests can be ASSIGNED while the copied technician_id/name on
@@ -129,13 +161,27 @@ if ($method === 'GET' && $action === 'pending-job-cards') {
         $row['proforma_status']='PENDING';
         $row['machine_label']=trim(($row['brand']??'').' '.($row['model']??'')) ?: ($row['machine_type']??'Machine');
         $row['can_prepare']=(bool)$row['can_prepare'];
+        $spareStmt=db()->prepare(
+            "SELECT bsr.part_number,bsr.spare_name AS description,bsr.quantity,bsr.unit,COALESCE(sp.selling_price,0) AS unit_price
+             FROM breakdown_spare_requests bsr
+             LEFT JOIN spare_parts sp ON UPPER(sp.part_number)=UPPER(bsr.part_number) AND sp.deleted_at IS NULL
+             WHERE bsr.job_card_id=? AND UPPER(COALESCE(bsr.status,''))<>'REJECTED'
+             ORDER BY bsr.requested_at ASC"
+        );
+        $spareStmt->execute([$row['id']]);
+        $row['requested_spares']=$spareStmt->fetchAll();
     }
     unset($row);
     json_out($rows);
 }
 
 if ($method === 'GET') {
-    $stmt = db()->query('SELECT p.*, c.name AS customer_name FROM proforma_invoices p JOIN customers c ON c.id = p.customer_id WHERE p.deleted_at IS NULL ORDER BY p.date DESC');
+    $stmt = db()->query("SELECT p.*, c.name AS customer_name,
+                i.id AS generated_invoice_id, i.invoice_no AS generated_invoice_no
+         FROM proforma_invoices p
+         JOIN customers c ON c.id = p.customer_id
+         LEFT JOIN invoices i ON i.source_proforma_id=p.id AND i.deleted_at IS NULL AND i.status<>'CANCELLED'
+         WHERE p.deleted_at IS NULL ORDER BY p.date DESC");
     $proformas = $stmt->fetchAll();
     foreach ($proformas as &$p) {
         $p['customer'] = ['id' => $p['customer_id'], 'name' => $p['customer_name']];
@@ -143,6 +189,10 @@ if ($method === 'GET') {
         $stmt2 = db()->prepare('SELECT * FROM proforma_invoice_items WHERE proforma_id = ? ORDER BY "order" ASC');
         $stmt2->execute([$p['id']]);
         $p['items'] = $stmt2->fetchAll();
+        $linkStmt = db()->prepare('SELECT spare_request_id FROM proforma_spare_request_links WHERE proforma_id=? ORDER BY spare_request_id');
+        $linkStmt->execute([$p['id']]);
+        $p['source_spare_request_ids'] = array_map(static fn(array $row): string => (string)$row['spare_request_id'], $linkStmt->fetchAll());
+        if (!$p['source_spare_request_ids'] && !empty($p['source_spare_request_id'])) $p['source_spare_request_ids'] = [(string)$p['source_spare_request_id']];
         $p['totals'] = compute_totals($p['items'], (float)$p['discount'], (string)$p['discount_type'], $p['vat_mode'], (float)$p['vat_rate']);
     }
     json_out($proformas);
@@ -163,6 +213,9 @@ if ($method === 'POST') {
     $quoteValidity = trim((string)($b['quoteValidity'] ?? ''));
     $machineId = trim((string)($b['machineId'] ?? ''));
     $sourceSpareRequestId = trim((string)($b['sourceSpareRequestId'] ?? ''));
+    $sourceSpareRequestIds = array_values(array_unique(array_filter(array_map(static fn($value): string => trim((string)$value), is_array($b['sourceSpareRequestIds'] ?? null) ? $b['sourceSpareRequestIds'] : []))));
+    if ($sourceSpareRequestId !== '' && !in_array($sourceSpareRequestId, $sourceSpareRequestIds, true)) array_unshift($sourceSpareRequestIds, $sourceSpareRequestId);
+    if ($sourceSpareRequestId === '' && $sourceSpareRequestIds) $sourceSpareRequestId = $sourceSpareRequestIds[0];
     $sourceJobCardId = trim((string)($b['sourceJobCardId'] ?? ''));
     $sourceJobCardNo = '';
 
@@ -184,19 +237,25 @@ if ($method === 'POST') {
         $machineCheck->execute([$machineId, $customerId]);
         if (!$machineCheck->fetch()) json_error('Selected machine does not belong to this customer.', 422);
     }
-    if ($sourceSpareRequestId !== '') {
+    if ($sourceSpareRequestIds) {
         $requestCheck = db()->prepare(
             'SELECT spr.machine_id FROM spare_part_requests spr
              JOIN machines m ON m.id = spr.machine_id
              WHERE spr.id = ? AND m.customer_id = ?'
         );
-        $requestCheck->execute([$sourceSpareRequestId, $customerId]);
-        $requestMachine = $requestCheck->fetchColumn();
-        if ($requestMachine === false) json_error('Source spare request was not found for this customer.', 422);
-        if ($machineId !== '' && $requestMachine && (string)$requestMachine !== $machineId) {
-            json_error('Selected machine does not match the source spare request.', 422);
+        $resolvedRequestMachine = $machineId;
+        foreach ($sourceSpareRequestIds as $requestId) {
+            $requestCheck->execute([$requestId, $customerId]);
+            $requestMachine = $requestCheck->fetchColumn();
+            if ($requestMachine === false) json_error('One of the selected spare requests was not found for this customer.', 422);
+            $requestMachine = (string)$requestMachine;
+            if ($resolvedRequestMachine !== '' && $requestMachine !== '' && $requestMachine !== $resolvedRequestMachine) {
+                if (count($sourceSpareRequestIds) === 1) json_error('Selected machine does not match the source spare request.', 422);
+                json_error('Selected spare requests must belong to the same customer and machine.', 422);
+            }
+            if ($resolvedRequestMachine === '' && $requestMachine !== '') $resolvedRequestMachine = $requestMachine;
         }
-        if ($machineId === '' && $requestMachine) $machineId = (string)$requestMachine;
+        $machineId = $resolvedRequestMachine;
     }
 
     if ($sourceJobCardId !== '') {
@@ -261,6 +320,10 @@ if ($method === 'POST') {
                 trim((string)$item['description']), (int)$item['qty'],
                 $item['unit'] ?? 'PC', (float)$item['unitPrice'], $order,
             ]);
+        }
+        if ($sourceSpareRequestIds) {
+            $linkInsert = $pdo->prepare('INSERT INTO proforma_spare_request_links(proforma_id,spare_request_id) VALUES(?,?) ON CONFLICT DO NOTHING');
+            foreach ($sourceSpareRequestIds as $requestId) $linkInsert->execute([$newId, $requestId]);
         }
         $pdo->commit();
     } catch (Throwable $error) {
@@ -334,6 +397,11 @@ if ($method === 'PUT' && $action === 'send') {
 
 if ($method === 'PUT') {
     $b = body();
+    $generatedInvoice = db()->prepare("SELECT invoice_no FROM invoices WHERE source_proforma_id=? AND deleted_at IS NULL AND status<>'CANCELLED' ORDER BY created_at DESC LIMIT 1");
+    $generatedInvoice->execute([$id]);
+    $generatedInvoiceNo = $generatedInvoice->fetchColumn();
+    if ($generatedInvoiceNo) json_error('This Proforma already generated Invoice '.$generatedInvoiceNo.'. Cancel that Invoice before changing the Proforma.', 409);
+
     require_edit_confirmation($user, $b);
     $items = $b['items'] ?? [];
     $vatMode = strtoupper(trim((string)($b['vatMode'] ?? '')));
@@ -346,6 +414,8 @@ if ($method === 'PUT') {
     $quoteValidity = trim((string)($b['quoteValidity'] ?? ''));
     $machineId = trim((string)($b['machineId'] ?? ''));
     $sourceSpareRequestId = trim((string)($b['sourceSpareRequestId'] ?? ''));
+    $sourceSpareRequestIds = array_values(array_unique(array_filter(array_map(static fn($value): string => trim((string)$value), is_array($b['sourceSpareRequestIds'] ?? null) ? $b['sourceSpareRequestIds'] : []))));
+    if ($sourceSpareRequestId !== '' && !in_array($sourceSpareRequestId, $sourceSpareRequestIds, true)) array_unshift($sourceSpareRequestIds, $sourceSpareRequestId);
 
     if (!is_array($items) || count($items) === 0) json_error('Add at least one proforma item.');
     if (!in_array($vatMode, ['VAT', 'NO_VAT'], true)) json_error('Invalid VAT mode.');
@@ -403,6 +473,13 @@ if ($method === 'PUT') {
         $discountAmount = $discountType === 'PERCENT' ? round($subtotal * ($discount / 100), 2) : $discount;
         if ($discountAmount > $subtotal) {
             throw new InvalidArgumentException('Discount cannot be greater than the subtotal.');
+        }
+        if (isset($sourceSpareRequestIds)) {
+            $pdo->prepare('DELETE FROM proforma_spare_request_links WHERE proforma_id=?')->execute([$id]);
+            if ($sourceSpareRequestIds) {
+                $linkInsert = $pdo->prepare('INSERT INTO proforma_spare_request_links(proforma_id,spare_request_id) VALUES(?,?) ON CONFLICT DO NOTHING');
+                foreach ($sourceSpareRequestIds as $requestId) $linkInsert->execute([$id, $requestId]);
+            }
         }
         $pdo->commit();
     } catch (InvalidArgumentException $error) {

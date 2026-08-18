@@ -830,6 +830,17 @@ if ($method === 'PUT' && $action === 'activate-job-card') {
             $user,
             'Activated '.$job['job_card_no'].' and handed work to Engineering Job Cards.'
         );
+        // V338: make the Received process button auditable. The person who
+        // confirms the Service Request -> Job Card handoff is recorded on the
+        // same Breakdown Case timeline used by the Main Job Card Process UI.
+        db()->prepare(
+            'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,NOW())'
+        )->execute([
+            uuid(),(string)$caseId,'TECHNICIAN_ASSIGNMENT','Workshop / Dispatch',
+            'Job Card '.$job['job_card_no'].' received by BELM / activation confirmed',
+            'Service Request handed to Engineering Job Cards.',
+            'belm',$user['id']??null,$user['name']??'BELM'
+        ]);
 
         json_out([
             'ok' => true,

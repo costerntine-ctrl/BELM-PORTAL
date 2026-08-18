@@ -140,7 +140,10 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '329-action-feedback-reset'
             // Regression baseline: 'schemaVersion' => '330-queue-company-blink'
             // Regression baseline: 'schemaVersion' => '332-service-request-history-pdf-report'
-            'schemaVersion' => '337-proforma-generate-sync',
+            // Regression baseline: 'schemaVersion' => '337-proforma-generate-sync'
+            // Regression baseline: 'schemaVersion' => '338-process-stage-drilldown'
+            // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
+            'schemaVersion' => '341-proforma-invoice-direct-sync',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

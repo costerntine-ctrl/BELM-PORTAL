@@ -86,7 +86,10 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .portal-link-box code { display: block; margin-top: 4px; overflow: hidden; color: var(--ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .portal-actions { display: flex; gap: 7px; margin-top: 9px; }
 .portal-actions button,.portal-actions a { flex: 1; padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; text-align: center; text-decoration: none; }
-.portal-actions a { color: #fff; border-color: var(--green); background: var(--green); }
+.portal-actions a { color: #fff; border-color: #2f7cf5; background: #2f7cf5; box-shadow: 0 5px 14px rgba(47,124,245,.24); }
+.portal-actions a:hover { border-color: #2563eb; background: #2563eb; }
+.portal-actions a:active { border-color: #1d4ed8; background: #1d4ed8; transform: translateY(1px); }
+.portal-actions a:focus-visible { outline: 3px solid rgba(47,124,245,.28); outline-offset: 2px; }
 .machine-section { padding: 15px 20px 18px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 84%, var(--canvas)); }
 .machine-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .machine-section-head h3 { margin: 0; font: 750 13px "Space Grotesk", sans-serif; }

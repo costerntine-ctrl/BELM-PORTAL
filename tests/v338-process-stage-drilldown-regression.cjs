@@ -1,0 +1,22 @@
+const fs=require('fs');const path=require('path');const root=path.join(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');let n=0;function t(name,ok){n++;if(!ok){console.error('FAIL',name);process.exitCode=1}else console.log('PASS',name)}
+const js=read('frontend/breakdown-workflow/workflow.js');
+const css=read('frontend/breakdown-workflow/workflow.css');
+const html=read('frontend/breakdown-workflow/index.html');
+const sr=read('backend/api/service_requests.php');
+const sw=read('frontend/belm-sw.js');
+const health=read('backend/index.php');
+t('process stages are clickable buttons',js.includes('data-process-step="${key}"')&&js.includes('aria-pressed="false"'));
+t('stage detail panel is rendered below the process',js.includes('id="jobProcessStageDetail"')&&js.includes('Press Received, Assigned, In Progress'));
+t('Received drilldown identifies receiver and receipt time',js.includes("info('Received by'")&&js.includes("info('Received at'")&&js.includes('BELM Engineering / automatic receipt'));
+t('Received drilldown can assign or reassign Technician',js.includes('stage-tech-control')&&js.includes('main-job-technician-select')&&js.includes("if(String(stageKey||'').toUpperCase()==='RECEIVED')void loadMainJobTechnicians(false)"));
+t('Assigned drilldown shows Technician, actor and time',js.includes("info('Technician',esc(techName||'Not assigned yet'))")&&js.includes("info('Assigned by'")&&js.includes("info('Assigned at'"));
+t('In Progress drilldown shows diagnosis and work done',js.includes("info('Diagnosis'")&&js.includes("info('Work done'")&&js.includes('No Technician progress update recorded yet'));
+t('Spares drilldown shows parts and request status',js.includes('stage-spare-row')&&js.includes('Requested by ${esc('));
+t('Testing and Completed drilldowns show stage outcomes',js.includes('Workshop Testing')&&js.includes('Completed / Returned to Service')&&js.includes("info('Closed by'"));
+t('click wiring marks inspected stage and renders details',js.includes("x.classList.toggle('inspecting',on)")&&js.includes('renderProcessStageDetail(button.dataset.processStep)'));
+t('Service Request activation records who received Job Card at BELM',sr.includes('received by BELM / activation confirmed')&&sr.includes('Service Request handed to Engineering Job Cards.'));
+t('stage drilldown is responsive and visibly interactive',css.includes('.job-process-step.inspecting')&&css.includes('.job-stage-detail')&&css.includes('@media(max-width:900px){.stage-detail-grid'));
+t('workflow assets cache busted to V338',html.includes('workflow.js?v=338-process-stage-drilldown')&&html.includes('workflow.css?v=338-process-stage-drilldown'));
+t('service worker and health identify V338',sw.includes("const CACHE='belm-app-v338-process-stage-drilldown'")&&health.includes("'schemaVersion' => '338-process-stage-drilldown'"));
+if(!process.exitCode)console.log(`V338 checks passed ${n}/${n}`);

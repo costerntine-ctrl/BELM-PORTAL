@@ -416,6 +416,8 @@ CREATE TABLE IF NOT EXISTS invoice_items (
 -- (when it is one), so BELM's real profit can subtract the purchase cost
 -- of goods sold, not just count the sale price as pure profit.
 ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id);
+ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS part_number VARCHAR(100) NULL;
+ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS unit VARCHAR(30) NOT NULL DEFAULT 'PC';
 
 CREATE TABLE IF NOT EXISTS payments (
   id VARCHAR(36) PRIMARY KEY,
@@ -1357,6 +1359,18 @@ ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT 
 ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS due_date DATE NULL;
 ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_proforma_id VARCHAR(36) NULL REFERENCES proforma_invoices(id) ON DELETE SET NULL;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_type VARCHAR(10) NOT NULL DEFAULT 'FIXED';
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5,2) NOT NULL DEFAULT 18;
+CREATE INDEX IF NOT EXISTS idx_invoices_source_proforma ON invoices(source_proforma_id);
+
+CREATE TABLE IF NOT EXISTS proforma_spare_request_links (
+  proforma_id VARCHAR(36) NOT NULL REFERENCES proforma_invoices(id) ON DELETE CASCADE,
+  spare_request_id VARCHAR(36) NOT NULL REFERENCES spare_part_requests(id) ON DELETE CASCADE,
+  PRIMARY KEY (proforma_id, spare_request_id)
+);
+CREATE INDEX IF NOT EXISTS idx_proforma_spare_request_link_request ON proforma_spare_request_links(spare_request_id);
 CREATE INDEX IF NOT EXISTS idx_proforma_source_job_card ON proforma_invoices(source_job_card_id);
 CREATE INDEX IF NOT EXISTS idx_invoice_source_job_card ON invoices(source_job_card_id);
 CREATE INDEX IF NOT EXISTS idx_job_cards_billing_status ON digital_job_cards(customer_id, billing_status, completed_at DESC);

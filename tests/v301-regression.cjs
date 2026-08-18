@@ -29,7 +29,7 @@ test('Job Card PDF prints Issued By and customer signoff',workflowApi.includes("
 test('signed Job Card upload endpoint exists',workflowApi.includes("signed-job-card'")&&workflowApi.includes('READY_FOR_PROCUREMENT')&&workflowApi.includes('signed_copy_data'));
 test('signed Job Card file endpoint exists',workflowApi.includes('signed-job-card-file'));
 test('workflow UI uploads signed Job Card',workflowJs.includes('Upload Customer-Signed Job Card')&&workflowJs.includes('Replace Signed Copy'));
-test('workflow UI prepares Proforma and Invoice',workflowJs.includes('Prepare Proforma')&&workflowJs.includes('Prepare Invoice')&&workflowJs.includes('belm_prefill_invoice')&&workflowJs.includes('belm_prefill_proforma'));
+test('workflow UI prepares Proforma before Invoice',workflowJs.includes('Prepare Proforma')&&!workflowJs.includes('>Prepare Invoice</button>')&&workflowJs.includes('belm_prefill_proforma'));
 test('customer Procurement has service billing panel',procHtml.includes('BELM Service Job Billing')&&procHtml.includes('Payment'));
 test('customer Procurement exposes Proforma and Invoice downloads',procJs.includes('Proforma')&&procJs.includes('Invoice')&&procJs.includes('/api/customer-portal/invoices/')&&procJs.includes('/api/customer-portal/proformas/'));
 test('customer Procurement colors paid/outstanding',procJs.includes('PAID')&&procJs.includes('OUTSTANDING')&&read('frontend/customer-machine-expenses/expenses.css').includes('.sync-status.outstanding')&&read('frontend/customer-machine-expenses/expenses.css').includes('.sync-status.paid'));

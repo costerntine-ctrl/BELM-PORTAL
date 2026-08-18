@@ -7,6 +7,7 @@
   let activeRequestId = "";
   let choosingRequestId = "";
   let pendingEditPin = null;
+  let selectedProformaRequestIds = new Set();
 
   async function confirmThenOpen(title, message, openFn) {
     const confirmation = await window.belmConfirmEdit({ title, message });
@@ -78,7 +79,9 @@
     }
 
     panel.className = "request-grid";
-    panel.innerHTML = requests.map((request) => {
+    const selectedRequests = requests.filter((request) => selectedProformaRequestIds.has(request.id));
+    const toolbar = `<div class="request-proforma-toolbar"><strong>${selectedRequests.length} selected for Proforma</strong><button type="button" data-generate-selected-proforma ${selectedRequests.length ? "" : "disabled"}>Generate Proforma from Selected</button></div>`;
+    panel.innerHTML = toolbar + requests.map((request) => {
       const machineName = [request.machineBrand, request.machineModel].filter(Boolean).join(" ") || "Machine";
       const reference = request.serialNumber || request.regNumber || "No serial recorded";
       const purchaseRequired = request.status === "PURCHASE_REQUIRED";
@@ -110,6 +113,7 @@
           ${selected && request.description ? `<div><dt>Customer asked</dt><dd>${escapeHtml(request.description)}</dd></div>` : ""}
         </dl>
         <div class="row-actions request-actions">
+          ${request.customerId && selected ? `<label class="proforma-request-select"><input type="checkbox" data-select-proforma-request="${escapeHtml(request.id)}" ${selectedProformaRequestIds.has(request.id) ? "checked" : ""}> Add to Proforma</label>` : ""}
           ${!selected ? `<button data-choose-request="${escapeHtml(request.id)}">Choose BELM Spare</button>` : ""}
           ${selected && stockQty <= 0 ? `<button data-add-request="${escapeHtml(request.id)}">Add / Receive Stock</button>` : ""}
           <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>
@@ -681,6 +685,38 @@
     showAlert(`Import complete — ${created} added, ${updated} updated${failed ? `, ${failed} failed` : ""}.`, failed > 0 && created === 0 && updated === 0);
   });
 
+  function openProformaForRequests(selectedRequests) {
+    if (!selectedRequests.length) { showAlert("Select at least one spare request.", true); return; }
+    const customerId = selectedRequests[0].customerId || "";
+    const machineId = selectedRequests[0].machineId || "";
+    if (selectedRequests.some((request) => (request.customerId || "") !== customerId || (request.machineId || "") !== machineId)) {
+      showAlert("Select spare requests for the same customer and machine before generating one Proforma.", true);
+      return;
+    }
+    sessionStorage.setItem("belm_prefill_proforma", JSON.stringify({
+      customerId,
+      machineId,
+      sourceSpareRequestId: selectedRequests[0].id,
+      sourceSpareRequestIds: selectedRequests.map((request) => request.id),
+      items: selectedRequests.map((request) => ({
+        partNumber: request.partNumber || request.referenceNumber || "",
+        description: request.partName || request.description || "Spare part",
+        qty: request.quantity || 1,
+        unit: "PC",
+        unitPrice: request.sellingPrice || 0,
+      })),
+    }));
+    window.location.href = "/billing-manager/#new-proforma";
+  }
+
+  document.getElementById("requestsPanel").addEventListener("change", (event) => {
+    const checkbox = event.target.closest("[data-select-proforma-request]");
+    if (!checkbox) return;
+    if (checkbox.checked) selectedProformaRequestIds.add(checkbox.dataset.selectProformaRequest);
+    else selectedProformaRequestIds.delete(checkbox.dataset.selectProformaRequest);
+    renderRequests();
+  });
+
   document.getElementById("requestsPanel").addEventListener("click", (event) => {
     const add = event.target.closest("[data-add-request]");
     const purchase = event.target.closest("[data-purchase-request]");
@@ -691,17 +727,10 @@
     if (generateProforma) {
       const request = requests.find((item) => item.id === generateProforma.dataset.generateProforma);
       if (!request) return;
-      sessionStorage.setItem("belm_prefill_proforma", JSON.stringify({
-        customerId: request.customerId,
-        partNumber: request.partNumber || request.referenceNumber || "",
-        description: request.description || request.partName || "Spare part",
-        qty: request.quantity || 1,
-        unitPrice: request.sellingPrice || 0,
-        sourceSpareRequestId: request.id,
-        machineId: request.machineId || "",
-      }));
-      window.location.href = "/billing-manager/#new-proforma";
+      openProformaForRequests([request]);
     }
+    const generateSelected = event.target.closest("[data-generate-selected-proforma]");
+    if (generateSelected) openProformaForRequests(requests.filter((request) => selectedProformaRequestIds.has(request.id)));
     if (resolve) markFulfilled(resolve.dataset.resolveRequest);
     if (add) {
       const request = requests.find((item) => item.id === add.dataset.addRequest);

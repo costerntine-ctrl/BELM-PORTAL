@@ -8,6 +8,6 @@ t('ready pending row generates the JC code',manager.includes('Generate ${escapeH
 t('billing honors proforma deep link',manager.includes('function requestedBillingTab()')&&manager.includes("activateBillingTab(requestedBillingTab())"));
 t('save remains on Proforma tab and confirms code',manager.includes("activateBillingTab('proformas')")&&manager.includes('generated and synchronized'));
 t('create API returns source Job Card sync metadata',pro.includes("'sourceJobCardId' => $sourceJobCardId")&&pro.includes("'billingStatus' => $sourceJobCardId"));
-t('billing assets cache busted to V337',html.includes('manager.js?v=337-proforma-generate-sync')&&html.includes('manager.css?v=337-proforma-generate-sync'));
+t('billing assets cache version is current',/manager\.js\?v=(337-proforma-generate-sync|341-proforma-invoice-flow)/.test(html)&&/manager\.css\?v=(337-proforma-generate-sync|341-proforma-invoice-flow)/.test(html));
 t('service worker and health are V337',sw.includes('belm-app-v337-proforma-generate-sync')&&health.includes("'schemaVersion' => '337-proforma-generate-sync'"));
 if(!process.exitCode)console.log(`V337 checks passed ${n}/${n}`);

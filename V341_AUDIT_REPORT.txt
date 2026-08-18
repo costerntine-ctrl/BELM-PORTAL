@@ -1,0 +1,7 @@
+V341 AUDIT
+Flow: Requests / Job Card -> Proforma -> Invoice.
+Invoice source of truth: Proforma.
+Multiple spare requests: grouped by same customer and machine.
+Exact copy fields: part number, description, qty, unit, unit price, discount, VAT, totals.
+Integrity: source_proforma_id + duplicate prevention + post-generation lock.
+Schema: additive only; runtime self-heal plus schema.sql definitions.

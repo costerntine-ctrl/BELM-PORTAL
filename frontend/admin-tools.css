@@ -234,3 +234,9 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(0, 169, 88, 
 .equivalent-summary-symbol { color: #0b66c3; font-size: 20px; font-weight: 900; }
 .equivalent-summary-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 @media (max-width: 640px) { .equivalent-summary-link { grid-template-columns: 1fr; } .equivalent-summary-symbol { transform: rotate(90deg); text-align: center; } }
+
+/* V341 - multiple spare requests -> one Proforma */
+.request-proforma-toolbar{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid rgba(56,189,248,.28);border-radius:14px;background:rgba(14,116,144,.10)}
+.request-proforma-toolbar button{background:#16a34a;color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:800}
+.request-proforma-toolbar button:disabled{opacity:.45;cursor:not-allowed}
+.proforma-request-select{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid rgba(56,189,248,.32);border-radius:10px;font-weight:700}

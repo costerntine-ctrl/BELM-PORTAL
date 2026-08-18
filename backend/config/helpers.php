@@ -638,6 +638,37 @@ function require_delete_confirmation(array $user, array $body): string {
 // Falls back to the legacy long-form number only if the sequence is
 // somehow missing, so this never breaks a deploy that hasn't run the
 // latest schema.sql yet.
+function belm_ensure_invoice_proforma_schema(): void {
+    static $done = false;
+    if ($done) return;
+    $pdo = db();
+    $columnExists = $pdo->prepare(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND column_name=?)"
+    );
+    $columns = [
+        ['invoices', 'source_proforma_id', "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_proforma_id VARCHAR(36) NULL REFERENCES proforma_invoices(id) ON DELETE SET NULL"],
+        ['invoices', 'discount', "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount NUMERIC(12,2) NOT NULL DEFAULT 0"],
+        ['invoices', 'discount_type', "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS discount_type VARCHAR(10) NOT NULL DEFAULT 'FIXED'"],
+        ['invoices', 'vat_rate', "ALTER TABLE invoices ADD COLUMN IF NOT EXISTS vat_rate NUMERIC(5,2) NOT NULL DEFAULT 18"],
+        ['invoice_items', 'part_number', "ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS part_number VARCHAR(100) NULL"],
+        ['invoice_items', 'unit', "ALTER TABLE invoice_items ADD COLUMN IF NOT EXISTS unit VARCHAR(30) NOT NULL DEFAULT 'PC'"],
+    ];
+    foreach ($columns as [$table, $column, $ddl]) {
+        $columnExists->execute([$table, $column]);
+        if (!$columnExists->fetchColumn()) $pdo->exec($ddl);
+    }
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_invoices_source_proforma ON invoices(source_proforma_id)');
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS proforma_spare_request_links (
+            proforma_id VARCHAR(36) NOT NULL REFERENCES proforma_invoices(id) ON DELETE CASCADE,
+            spare_request_id VARCHAR(36) NOT NULL REFERENCES spare_part_requests(id) ON DELETE CASCADE,
+            PRIMARY KEY (proforma_id, spare_request_id)
+        )'
+    );
+    $pdo->exec('CREATE INDEX IF NOT EXISTS idx_proforma_spare_request_link_request ON proforma_spare_request_links(spare_request_id)');
+    $done = true;
+}
+
 function belm_next_document_number(string $prefix, string $sequenceName, int $pad = 4): string {
     try {
         $stmt = db()->query('SELECT nextval(' . db()->quote($sequenceName) . ')');

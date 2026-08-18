@@ -5,6 +5,7 @@
   let expenses = [];
   let proformas = [];
   let pendingProformaJobs = [];
+  let pendingSpareProformaRequests = [];
   let receipts = [];
   let bankData = { accounts: [], withdrawals: [], summary: {} };
 
@@ -128,19 +129,19 @@
   function renderInvoices() {
     const panel = document.getElementById("invoicesPanel");
     if (!invoices.length) {
-      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="empty">No invoices yet. Select “New invoice” to create one.</div>`;
+      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="empty">No invoices yet. Generate an Invoice directly from a Proforma.</div>`;
       return;
     }
     panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
       <tr>
-        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong> <span class="invoice-sync-badge ${invoice.status === "PAID" ? "paid" : invoice.status === "CANCELLED" ? "cancelled" : "outstanding"}">${invoice.status === "PAID" ? "PAID" : invoice.status === "CANCELLED" ? "CANCELLED" : "OUTSTANDING"}</span><div class="muted">${(invoice.items || []).length} item(s)</div></td>
+        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong> <span class="invoice-sync-badge ${invoice.status === "PAID" ? "paid" : invoice.status === "CANCELLED" ? "cancelled" : "outstanding"}">${invoice.status === "PAID" ? "PAID" : invoice.status === "CANCELLED" ? "CANCELLED" : "OUTSTANDING"}</span><div class="muted">${(invoice.items || []).length} item(s)${invoice.sourceProformaId ? ` · copied from ${escapeHtml(invoice.sourceProformaNo || 'Proforma')}` : ''}</div></td>
         <td>${escapeHtml(invoice.customer?.name || "—")}</td>
         <td class="money">${money(invoice.total)}</td>
         <td class="money">${money(invoice.paidAmount)}</td>
         <td class="money">${money(invoice.balance)}</td>
         <td>${invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</td>
         <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}" ${invoice.status === "CANCELLED" ? "disabled" : ""}><option value="${escapeHtml(invoice.status)}" selected>${escapeHtml(invoice.status.replaceAll("_", " "))}</option>${invoice.status !== "CANCELLED" ? '<option value="CANCELLED">CANCEL INVOICE</option>' : ""}</select></td>
-        <td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><button class="export-row-button" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</button><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
+        <td><div class="row-actions"><div class="row-actions-line">${invoice.sourceProformaId ? `<span class="muted">Synced from Proforma</span>` : `<button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>`}${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><button class="export-row-button" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</button><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
@@ -182,11 +183,18 @@
 
   function renderProformas() {
     const panel = document.getElementById("proformasPanel");
+    const spareGroups = Object.values(pendingSpareProformaRequests.reduce((groups, request) => {
+      const key = `${request.customerId || ""}::${request.machineId || ""}`;
+      if (!groups[key]) groups[key] = { key, customerId: request.customerId, customerName: request.customerName, machineId: request.machineId, machineLabel: request.machineLabel, requests: [] };
+      groups[key].requests.push(request);
+      return groups;
+    }, {}));
+    const pendingSpareHtml = spareGroups.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM SPARE REQUESTS</span><strong>Pending Spare Request Proformas</strong></div><b>${pendingSpareProformaRequests.length}</b></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Machine</th><th>Items</th><th></th></tr></thead><tbody>${spareGroups.map(group=>`<tr><td><strong>${escapeHtml(group.customerName||"—")}</strong></td><td>${escapeHtml(group.machineLabel||"—")}</td><td>${group.requests.map(r=>`${escapeHtml(r.partNumber||"")} ${escapeHtml(r.partName||r.description||"Spare")} × ${escapeHtml(r.quantity||1)}`).join("<br>")}</td><td><button type="button" class="pay" data-prepare-spare-proforma="${escapeHtml(group.key)}">Generate Proforma (${group.requests.length})</button></td></tr>`).join("")}</tbody></table></div><small>Requests for the same customer and machine are grouped into one multi-line Proforma.</small></div>` : "";
     const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>JC / Proforma Code</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="edit" data-prepare-pending-proforma="${escapeHtml(job.id)}">Generate ${escapeHtml(job.proformaCode||job.jobCardNo)}</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The JC Number is the reserved Proforma code. It stays PENDING after Technician assignment until the signed Job Card is ready for billing.</small></div>` : '';
     const actualHtml = proformas.length ? `<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
-      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button></div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
+      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line">${proforma.generatedInvoiceId ? `<span class="muted">Proforma locked after Invoice</span>` : `<button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button>`}${proforma.generatedInvoiceId ? `<button type="button" disabled>✓ Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')}</button>` : (String(proforma.customerResponse || '').toUpperCase() === 'CHANGE_REQUESTED' ? `<button type="button" disabled>Update Proforma first</button>` : `<button class="pay" data-generate-invoice-from-proforma="${escapeHtml(proforma.id)}">Generate Invoice</button>`)}</div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
     `).join("")}</tbody></table></div>` : '<div class="empty">No prepared proforma invoices yet.</div>';
-    panel.innerHTML = `${reviewHeading("Proforma", "JC Number is the Proforma code for Job Card billing; assigned jobs stay pending until ready.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingHtml}${actualHtml}`;
+    panel.innerHTML = `${reviewHeading("Proforma", "JC Number is the Proforma code for Job Card billing; assigned jobs stay pending until ready.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingSpareHtml}${pendingHtml}${actualHtml}`;
   }
 
   async function preparePendingJobProforma(jobId){
@@ -198,15 +206,38 @@
     document.getElementById('proformaSourceJobCardId').value=job.id||'';
     document.getElementById('proformaTitle').textContent=`Prepare Proforma ${job.proformaCode||job.jobCardNo}`;
     fillCustomerInformation('proformaCustomer','proformaCustomerInfo');
-    const firstRow=document.querySelector('#proformaItems .item-row');
-    if(firstRow)firstRow.querySelector('[data-field="description"]').value=`Service Job Card ${job.jobCardNo||''}`.trim();
-    showAlert(`JC ${job.jobCardNo} detected automatically. Saving this Proforma will use the same code: ${job.proformaCode||job.jobCardNo}.`);
+    const jobItems=[{description:`Service Job Card ${job.jobCardNo||''}`.trim(),qty:1,unit:'JOB',unitPrice:0},...(job.requestedSpares||[]).map(item=>({partNumber:item.partNumber||'',description:item.description||'Spare part',qty:item.quantity||1,unit:item.unit||'PC',unitPrice:item.unitPrice||0}))];
+    document.getElementById('proformaItems').replaceChildren();
+    jobItems.forEach(addProformaItem);
+    showAlert(`JC ${job.jobCardNo} detected automatically with ${jobItems.length} billing line${jobItems.length===1?'':'s'}. Saving uses code ${job.proformaCode||job.jobCardNo}.`);
+  }
+
+  async function preparePendingSpareProforma(groupKey) {
+    const groupRequests = pendingSpareProformaRequests.filter((request) => `${request.customerId || ""}::${request.machineId || ""}` === groupKey);
+    if (!groupRequests.length) return;
+    await ensureSparePartsLoaded();
+    await openProforma();
+    document.getElementById("proformaCustomer").value = groupRequests[0].customerId || "";
+    document.getElementById("proformaMachineId").value = groupRequests[0].machineId || "";
+    document.getElementById("proformaSourceSpareRequestId").value = groupRequests[0].id || "";
+    document.getElementById("proformaSourceSpareRequestIds").value = groupRequests.map((request) => request.id).join(",");
+    fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
+    document.getElementById("proformaItems").replaceChildren();
+    groupRequests.forEach((request) => addProformaItem({
+      partNumber: request.partNumber || "",
+      description: request.partName || request.description || "Spare part",
+      qty: request.quantity || 1,
+      unit: "PC",
+      unitPrice: request.sellingPrice || 0,
+    }));
+    document.getElementById("proformaTitle").textContent = `Proforma · ${groupRequests[0].customerName || "Customer"} · ${groupRequests.length} item${groupRequests.length === 1 ? "" : "s"}`;
+    showAlert(`${groupRequests.length} spare request item${groupRequests.length === 1 ? "" : "s"} loaded into one Proforma.`);
   }
 
   function openReviewExport(type, record) {
     const isInvoice = type === "invoice";
     const totals = isInvoice
-      ? { subtotal: record.subtotal, tax: record.tax, grandTotal: record.total }
+      ? { subtotal: record.subtotal, discount: record.discount, tax: record.tax, grandTotal: record.total }
       : { subtotal: record.totals?.subtotal, discount: record.totals?.discount, vat: record.totals?.vat, grandTotal: record.totals?.grandTotal };
     const items = record.items || [];
     document.getElementById("reviewExportTitle").textContent =
@@ -218,10 +249,10 @@
         ${isInvoice ? `<div><span>Due date</span><strong>${formatDate(record.dueDate)}</strong></div><div><span>Status</span><strong>${escapeHtml(record.status)}</strong></div>` : `<div><span>VAT mode</span><strong>${escapeHtml(record.vatMode)}</strong></div><div><span>Discount type</span><strong>${escapeHtml(record.discountType || "FIXED")}</strong></div>`}
       </div>
       <div class="table-wrap">
-        <table><thead><tr><th>Description</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead>
+        <table><thead><tr><th>Part No.</th><th>Description</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Total</th></tr></thead>
         <tbody>${items.length ? items.map((item) => `
-          <tr><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.qty || item.quantity || 1)}</td><td class="money">${money(item.unitPrice ?? item.unit_price)}</td><td class="money">${money((item.unitPrice ?? item.unit_price ?? 0) * (item.qty ?? item.quantity ?? 1))}</td></tr>
-        `).join("") : '<tr><td colspan="4" class="muted">No items</td></tr>'}</tbody></table>
+          <tr><td>${escapeHtml(item.partNumber || item.part_number || "—")}</td><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.qty || item.quantity || 1)}</td><td>${escapeHtml(item.unit || "PC")}</td><td class="money">${money(item.unitPrice ?? item.unit_price)}</td><td class="money">${money((item.unitPrice ?? item.unit_price ?? 0) * (item.qty ?? item.quantity ?? 1))}</td></tr>
+        `).join("") : '<tr><td colspan="6" class="muted">No items</td></tr>'}</tbody></table>
       </div>
       <div class="review-export-totals">
         <div><span>Subtotal</span><strong>${money(totals.subtotal)}</strong></div>
@@ -255,11 +286,12 @@
       return;
     }
     try {
-      [invoices, expenses, proformas, pendingProformaJobs] = await Promise.all([
+      [invoices, expenses, proformas, pendingProformaJobs, pendingSpareProformaRequests] = await Promise.all([
         api("/billing/invoices"),
         api("/company-expenses"),
         api("/proforma-invoices"),
         api("/proforma-invoices?action=pending-job-cards"),
+        api("/proforma-invoices?action=pending-spare-requests"),
       ]);
       // Customer lookup is part of Billing itself. Billing staff should not
       // need the separate Customers Manager permission just to issue an invoice.
@@ -300,22 +332,10 @@
     const row = document.createElement("div");
     row.className = "item-row";
     row.innerHTML = `
-      <label class="full">Pick from Spare Parts Inventory <small>(auto-fills description &amp; price, links cost-of-goods for profit tracking — optional)</small>
-        <select data-field="sparePartId">${sparePartOptionsHtml()}</select>
-      </label>
-      <label>Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
+      <label class="full">Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
       <label>Qty<input data-field="quantity" required type="number" min="1" step="1" value="${escapeHtml(item.quantity || 1)}"></label>
       <label>Unit price<input data-field="unitPrice" required type="number" min="0" step="0.01" value="${escapeHtml(item.unitPrice || item.unit_price || 0)}"></label>
       <button class="remove-item" type="button" aria-label="Remove item">×</button>`;
-    if (item.sparePartId) row.querySelector('[data-field="sparePartId"]').value = item.sparePartId;
-    row.querySelector('[data-field="sparePartId"]').addEventListener("change", (event) => {
-      const partId = event.target.value;
-      if (!partId) return;
-      const part = (sparePartsCache || []).find((p) => p.id === partId);
-      if (!part) return;
-      row.querySelector('[data-field="description"]').value = part.name || "";
-      row.querySelector('[data-field="unitPrice"]').value = part.sellingPrice || 0;
-    });
     return row;
   }
 
@@ -391,7 +411,6 @@
       description: row.querySelector('[data-field="description"]').value.trim(),
       quantity: Number(row.querySelector('[data-field="quantity"]').value),
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
-      sparePartId: row.querySelector('[data-field="sparePartId"]').value || undefined,
     }));
     let editConfirmation = {};
     if (id) {
@@ -698,6 +717,7 @@
     document.getElementById("proformaId").value = proforma?.id || "";
     document.getElementById("proformaMachineId").value = proforma?.machineId || "";
     document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || proforma?.source_spare_request_id || "";
+    document.getElementById("proformaSourceSpareRequestIds").value = (proforma?.sourceSpareRequestIds || []).join(",");
     document.getElementById("proformaSourceJobCardId").value = proforma?.sourceJobCardId || proforma?.source_job_card_id || "";
     document.getElementById("proformaTitle").textContent = proforma ? `Re-edit ${proforma.invoiceNo}` : "New proforma";
     await ensureCustomersLoaded();
@@ -760,6 +780,7 @@
           notice: document.getElementById("proformaNotice").value.trim(),
           machineId: document.getElementById("proformaMachineId").value,
           sourceSpareRequestId: document.getElementById("proformaSourceSpareRequestId").value,
+          sourceSpareRequestIds: document.getElementById("proformaSourceSpareRequestIds").value.split(",").map((value) => value.trim()).filter(Boolean),
           sourceJobCardId: document.getElementById("proformaSourceJobCardId").value,
           items,
           ...editConfirmation,
@@ -804,7 +825,7 @@
     } catch (_) {}
   });
   document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => document.getElementById(button.dataset.close).close()));
-  document.getElementById("newInvoiceButton").addEventListener("click", openInvoice);
+  document.getElementById("newInvoiceButton").addEventListener("click", () => { activateBillingTab("proformas"); document.getElementById("proformasPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }); showAlert("Invoices are generated directly from a Proforma so customer, items, quantities, prices, discount and VAT stay synchronized."); });
   document.getElementById("newExpenseButton").addEventListener("click", openExpense);
   document.getElementById("newProformaButton").addEventListener("click", () => openProforma());
   document.getElementById("refreshButton").addEventListener("click", load);
@@ -988,7 +1009,24 @@
     const removeButton = event.target.closest("[data-delete-proforma]");
     const sendButton = event.target.closest("[data-send-proforma]");
     const pendingButton = event.target.closest("[data-prepare-pending-proforma]");
+    const pendingSpareButton = event.target.closest("[data-prepare-spare-proforma]");
+    const generateInvoiceButton = event.target.closest("[data-generate-invoice-from-proforma]");
     if (pendingButton) preparePendingJobProforma(pendingButton.dataset.preparePendingProforma);
+    if (pendingSpareButton) preparePendingSpareProforma(pendingSpareButton.dataset.prepareSpareProforma);
+    if (generateInvoiceButton) {
+      const proformaId = generateInvoiceButton.dataset.generateInvoiceFromProforma;
+      generateInvoiceButton.disabled = true;
+      const oldText = generateInvoiceButton.textContent;
+      generateInvoiceButton.textContent = "Generating…";
+      api("/billing?action=generate-from-proforma", { method: "POST", body: JSON.stringify({ proformaId }) })
+        .then(async (result) => {
+          await load();
+          activateBillingTab("invoices");
+          showAlert(`✓ Invoice ${result.invoiceNo} copied directly from Proforma ${result.proformaNo}.`);
+        })
+        .catch((error) => showAlert(error.message, true))
+        .finally(() => { generateInvoiceButton.disabled = false; generateInvoiceButton.textContent = oldText; });
+    }
     if (edit) openProforma(proformas.find((item) => item.id === edit.dataset.editProforma));
     if (reviewButton) {
       const proforma = proformas.find((item) => item.id === reviewButton.dataset.reviewProforma);
@@ -1021,17 +1059,20 @@
     await openProforma();
     if (prefill.customerId) document.getElementById("proformaCustomer").value = prefill.customerId;
     document.getElementById("proformaMachineId").value = prefill.machineId || "";
-    document.getElementById("proformaSourceSpareRequestId").value = prefill.sourceSpareRequestId || "";
+    document.getElementById("proformaSourceSpareRequestId").value = prefill.sourceSpareRequestId || (prefill.sourceSpareRequestIds || [])[0] || "";
+    document.getElementById("proformaSourceSpareRequestIds").value = (prefill.sourceSpareRequestIds || (prefill.sourceSpareRequestId ? [prefill.sourceSpareRequestId] : [])).join(",");
     document.getElementById("proformaSourceJobCardId").value = prefill.sourceJobCardId || "";
     fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
-    const firstRow = document.querySelector("#proformaItems .item-row");
-    if (firstRow) {
-      firstRow.querySelector('[data-field="partNumber"]').value = prefill.partNumber || "";
-      firstRow.querySelector('[data-field="description"]').value = prefill.description || "";
-      firstRow.querySelector('[data-field="qty"]').value = prefill.qty || 1;
-      firstRow.querySelector('[data-field="unitPrice"]').value = prefill.unitPrice || 0;
-    }
-    showAlert(`Proforma pre-filled from the spare-part request — check the customer and pricing, then Save.`);
+    const requestedItems = Array.isArray(prefill.items) && prefill.items.length ? prefill.items : [{
+      partNumber: prefill.partNumber || "",
+      description: prefill.description || "",
+      qty: prefill.qty || 1,
+      unitPrice: prefill.unitPrice || 0,
+      unit: prefill.unit || "PC",
+    }];
+    document.getElementById("proformaItems").replaceChildren();
+    requestedItems.forEach(addProformaItem);
+    showAlert(`Proforma pre-filled from ${requestedItems.length} spare request item${requestedItems.length === 1 ? "" : "s"} — check pricing, then Save.`);
   }
 
   async function applyInvoicePrefillFromJobCard() {

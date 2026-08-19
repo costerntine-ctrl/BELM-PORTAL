@@ -3302,7 +3302,7 @@ body[data-belm-area="portal"]::before {
 
 /* Customer machine grid: enough breathing room for operational information. */
 .belm-customer-machine-grid {
-  grid-template-columns: repeat(auto-fill, minmax(350px, 430px));
+  grid-template-columns: repeat(auto-fill, minmax(370px, 450px));
   gap: 20px;
 }
 
@@ -4901,4 +4901,171 @@ body.belm-customer-dashboard-face-active #root { display: none !important; }
   .belm-customer-face-card { padding-left: 12px; padding-right: 12px; }
   .belm-customer-face-provider { max-width: 110px; }
   .belm-customer-face-action { font-size: 9.2px; }
+}
+
+
+/* V376 - Customer > View Your Machine: four direct actions in one readable row.
+   Extra established actions remain available under More actions. */
+.belm-service-due-panel .belm-machine-quick-actions {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  align-items: stretch;
+}
+.belm-service-due-panel .belm-machine-quick-actions > a,
+.belm-service-due-panel .belm-machine-quick-actions > button {
+  min-width: 0;
+  width: 100%;
+  min-height: 40px;
+  padding: 7px 5px !important;
+  justify-content: center !important;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.08;
+  font-size: 8.5px !important;
+}
+.belm-service-due-panel .belm-machine-quick-actions [data-ui-icon]::before {
+  flex-basis: 20px;
+  width: 20px;
+  height: 20px;
+}
+@media (max-width: 620px) {
+  .belm-service-due-panel .belm-machine-quick-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+  }
+  .belm-service-due-panel .belm-machine-quick-actions > a,
+  .belm-service-due-panel .belm-machine-quick-actions > button {
+    min-height: 38px;
+    padding: 6px 2px !important;
+    gap: 3px !important;
+    font-size: 7.5px !important;
+  }
+  .belm-service-due-panel .belm-machine-quick-actions [data-ui-icon]::before {
+    flex-basis: 17px;
+    width: 17px;
+    height: 17px;
+  }
+}
+
+
+/* V378 - Customer > View Your Machine: balanced Activity Status selector directly below the four primary actions. */
+.belm-service-due-panel .belm-customer-activity-selector {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(145px, 1.2fr);
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 9px;
+  border: 1px solid #dce5ed;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+.belm-service-due-panel .belm-customer-activity-selector > div {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.belm-service-due-panel .belm-customer-activity-selector span {
+  color: #263951;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.belm-service-due-panel .belm-customer-activity-selector small {
+  color: #738399;
+  font-size: 8px;
+  font-weight: 700;
+}
+.belm-service-due-panel .belm-customer-activity-selector select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 28px 0 9px;
+  border: 1px solid #cbd7e3;
+  border-radius: 8px;
+  color: #1e3045;
+  background: #fff;
+  font-size: 9px;
+  font-weight: 800;
+}
+html.dark .belm-service-due-panel .belm-customer-activity-selector,
+html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector {
+  border-color: #293a4e;
+  background: #111d2c;
+}
+html.dark .belm-service-due-panel .belm-customer-activity-selector span,
+html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector span { color: #dce6f2; }
+html.dark .belm-service-due-panel .belm-customer-activity-selector small,
+html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector small { color: #8fa4ba; }
+html.dark .belm-service-due-panel .belm-customer-activity-selector select,
+html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector select {
+  border-color: #31465d;
+  color: #e8f0f8;
+  background: #0e1826;
+}
+@media (max-width: 430px) {
+  .belm-service-due-panel .belm-customer-activity-selector {
+    grid-template-columns: minmax(0, .72fr) minmax(132px, 1.28fr);
+    gap: 6px;
+    padding: 7px;
+  }
+  .belm-service-due-panel .belm-customer-activity-selector select {
+    height: 34px;
+    font-size: 8px;
+  }
+}
+
+
+/* V379 - Customer > View Your Machine: compact Fleet Number badge in the machine nameplate.
+   The 12ch reference is intentionally close to the visual width of "SANY RSC45V". */
+.belm-customer-machine-card > .belm-machine-native-head {
+  padding-right: 132px !important;
+}
+.belm-customer-machine-card > .belm-machine-native-head .belm-customer-fleet-number {
+  position: absolute;
+  top: 22px;
+  right: 22px;
+  width: 12ch;
+  min-width: 12ch;
+  max-width: 12ch;
+  box-sizing: border-box;
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 9px;
+  background: rgba(7,18,31,.58);
+  overflow: hidden;
+  text-align: left;
+  box-shadow: 0 5px 14px rgba(0,0,0,.16);
+}
+.belm-customer-machine-card > .belm-machine-native-head .belm-customer-fleet-number small {
+  color: #9fb2c7 !important;
+  font-size: 7px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.belm-customer-machine-card > .belm-machine-native-head .belm-customer-fleet-number b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+}
+@media (max-width: 720px) {
+  .belm-customer-machine-card > .belm-machine-native-head { padding-right: 112px !important; }
+  .belm-customer-machine-card > .belm-machine-native-head .belm-customer-fleet-number {
+    top: 18px; right: 18px; width: 11ch; min-width: 11ch; max-width: 11ch; padding: 5px 6px;
+  }
+}
+@media (max-width: 390px) {
+  .belm-customer-machine-card > .belm-machine-native-head { padding-right: 18px !important; padding-top: 62px !important; }
+  .belm-customer-machine-card > .belm-machine-native-head .belm-customer-fleet-number { top: 16px; left: 18px; right: auto; }
 }

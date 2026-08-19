@@ -10,18 +10,21 @@ function test(name, ok) {
   else { console.error('FAIL', name); fail++; }
 }
 
-// V369 sync guard baseline, reviewed again for V371. V371 deliberately changes
-// only the Customers & Machines customer-card quick-action markup; backend and
-// synchronization runtime fingerprints remain protected here.
+// V369 sync guard baseline, reviewed again for V377. Later approved versions deliberately
+// change selected BELM Admin/customer-facing UI surfaces while synchronization runtime
+// fingerprints remain protected here. The customers-manager fingerprint is updated for the
+// reviewed V377 admin-only machine management row. V378 intentionally adds the customer-scoped
+// Activity Status sync endpoint. V379 intentionally adds the reviewed Fleet Number identity badge
+// to customers-manager, so that UI fingerprint is advanced while backend synchronization hashes remain protected.
 const baseline = {
   'backend/config/helpers.php': '5e4fc6b5296a790f96f02af4c616c04f5b34cc8ff4d05c77086a523064ac0cf4',
   'backend/api/breakdown_workflow.php': 'd6e792e8243f9455c46506c36079c40c914218a39e05adcf83f5bacb8ac747ab',
-  'backend/api/customer_portal.php': '31459d6a10d87a2144e3e60c2c8c4dc5cc1231d630f402aaf4539143ce65e8ca',
+  'backend/api/customer_portal.php': '1617238c7362736bda506a715af99c062326d199a97374a57142c82782dce5b6',
   'backend/api/engineering.php': '6ea6d5f2f3ad16a9b6343dd7666c7304f7de30b51a915b7452741b2aa6dca63e',
   'backend/api/service_requests.php': '66c9e8378092db5c0e914e994d12e8b41521fb8ca004850099358131fd602d05',
   'backend/api/spare_recommendations.php': 'eeec8df6b3f4c631000b3d09b5ad032c2f7ecf289879955cee05892713359507',
   'frontend/my-c/app.js': '0b01c58784d3783fa68a471ebfd6a653d1f1f92ed25679fd62dbfbba9ce28d19',
-  'frontend/customers-manager/manager.js': 'df19c99f674d7c292d7a97d615921bd15d3396623ae3c580603a037b88501af7',
+  'frontend/customers-manager/manager.js': 'ce9377c0a7d132a62f57965ca68c4936e930bb65777215d9abc8b5e1a80af831',
   'frontend/engineering-manager/manager.js': '401c91e9731e257a31f67ee09a4b84602149e10c817c04b9e761052fb7e18695',
   'frontend/spare-parts-manager/manager.js': 'befcbfb959dbbca87f258f2e3d6ec9e7725a273dac6fc3d206ba5aebe9e5ea2c',
   'frontend/reports-manager/app.js': '387a3a0964839d8d4c6dbf17c0d0d89e09f82bc957dc9e972003491b2a4ece97',
@@ -74,8 +77,15 @@ test('machine view keeps only intended operational controls',
   !customers.includes('privacyButton("Procurement Receipts"'));
 
 const machineCard = customers.match(/function machineCard\([\s\S]*?\n  function renderCustomers\(\)/)?.[0] || '';
-test('machine card still has no Edit/Delete buttons',
-  !machineCard.includes('data-edit-machine=') && !machineCard.includes('data-delete-machine='));
+test('V377 admin machine management reuses Edit/Delete while permanent delete is admin-only',
+  machineCard.includes('class=\"machine-admin-actions\"') &&
+  machineCard.includes('data-edit-machine=') && machineCard.includes('data-delete-machine=') &&
+  machineCard.includes('data-forget-machine=') && customers.includes('isSuperAdmin ?'));
+
+test('customer portal remains free of BELM Admin machine-management controls',
+  !customerPortal.includes('data-edit-machine=') &&
+  !customerPortal.includes('data-delete-machine=') &&
+  !customerPortal.includes('data-forget-machine='));
 
 test('customer card retains communication and existing lower actions',
   customers.includes('<strong>Communication history</strong>') &&

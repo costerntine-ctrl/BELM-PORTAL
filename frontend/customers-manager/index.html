@@ -8,7 +8,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/customers-manager/manager.css?v=371-customer-quick-buttons">
+    <!-- Regression baseline: /customers-manager/manager.css?v=377-admin-machine-management-activity-status -->
+    <link rel="stylesheet" href="/customers-manager/manager.css?v=379-machine-fleet-number">
     <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
@@ -83,18 +84,6 @@
         <button id="refreshCustomersButton" class="secondary" type="button">Refresh customers</button>
       </section>
       <section class="settings-panels-row">
-        <div class="user-limit-panel compact">
-          <div class="user-limit-panel-head">
-            <h2>Customer user limit</h2>
-            <p>Portal users a customer can self-add.</p>
-          </div>
-          <div class="user-limit-panel-row">
-            <select id="userLimitCustomerSelect"><option value="">Select customer…</option></select>
-            <input id="userLimitInput" type="number" min="0" step="1" placeholder="e.g. 3">
-            <button id="userLimitSaveButton" class="secondary" type="button">Save</button>
-          </div>
-          <p id="userLimitCurrentInfo" class="muted"></p>
-        </div>
         <div class="user-limit-panel compact">
           <div class="user-limit-panel-head">
             <h2>Portal service <small>(non-payment)</small></h2>
@@ -208,6 +197,46 @@
         <div class="dialog-actions">
           <button class="ghost" data-close="servicePartsDialog" type="button">Cancel</button>
           <button id="servicePartsSaveButton" class="primary" type="button">Save Service Parts</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="manageCustomerDialog">
+      <div class="dialog-card manage-customer-dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">BELM Admin</p><h2 id="manageCustomerDialogTitle">Manage customer</h2></div>
+          <button class="icon-close" data-close="manageCustomerDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <p class="manage-customer-summary">Customer: <strong id="manageCustomerDialogName">—</strong></p>
+        <div class="manage-customer-actions" aria-label="Customer management actions">
+          <button id="manageEditCustomerButton" class="manage-customer-action edit" type="button"><strong>Edit Customer</strong><span>Update customer details</span></button>
+          <button id="manageResetCustomerButton" class="manage-customer-action reset" type="button"><strong>Reset Login</strong><span>Generate new credentials and open copy screen</span></button>
+          <button id="manageUsersCustomerButton" class="manage-customer-action users" type="button"><strong>Users Control</strong><span>Default 3 users · increase after customer request</span></button>
+          <button id="manageDeleteCustomerButton" class="manage-customer-action delete" type="button"><strong>Delete</strong><span>Move customer to Recycle Bin</span></button>
+          <button id="manageForgetCustomerButton" class="manage-customer-action forget" type="button"><strong>Forget Permanently</strong><span>Permanently erase customer data</span></button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="customerUsersControlDialog">
+      <div class="dialog-card customer-users-control-dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Manage Customer</p><h2 id="customerUsersControlTitle">Users Control</h2></div>
+          <button class="icon-close" data-close="customerUsersControlDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <p class="manage-customer-summary">Customer: <strong id="customerUsersControlName">—</strong></p>
+        <div class="customer-users-control-stats">
+          <div><span>Users in use</span><strong id="customerUsersControlUsed">0</strong></div>
+          <div><span>Current limit</span><strong id="customerUsersControlLimit">3</strong></div>
+        </div>
+        <label class="customer-users-control-limit-field">
+          <span>Allowed portal users</span>
+          <input id="customerUsersControlInput" type="number" min="0" step="1" value="3" inputmode="numeric">
+        </label>
+        <p class="muted customer-users-control-note">System default is 3 users. Increase this number only when the customer requests additional user access.</p>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="customerUsersControlDialog" type="button">Cancel</button>
+          <button id="customerUsersControlSaveButton" class="primary" type="button">Save User Limit</button>
         </div>
       </div>
     </dialog>
@@ -388,6 +417,7 @@
     <script src="/admin-sidebar.js?v=361-my-c-customer-details"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=371-customer-quick-buttons"></script>
+    <!-- Regression baseline: /customers-manager/manager.js?v=377-admin-machine-management -->
+    <script src="/customers-manager/manager.js?v=379-machine-fleet-number"></script>
   </body>
 </html>

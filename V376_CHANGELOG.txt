@@ -1,0 +1,8 @@
+BELM PORTAL V376
+
+- BELM Admin > Customers & Machines > View Your Machine: four machine action buttons are kept on one bottom row.
+- Customer > View Your Machine: four direct buttons are kept on one row; established extra actions remain under More actions.
+- Direct labels: Report, Check Up, Service Parts, Job Card.
+- Engineering / Job Cards visible label shortened to Job Card; existing route/function is unchanged.
+- Work/job address flow is unchanged.
+- No backend or sync route changes.

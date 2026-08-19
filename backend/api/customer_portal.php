@@ -3422,6 +3422,52 @@ if ($sub === 'machines' && $sub2) {
     $stmt->execute([$machineId, $customer['id']]);
     if (!$stmt->fetch()) json_error('Not found', 404);
 
+    // V378 - Customer > View Your Machine can update the same live Activity Status
+    // shown to BELM Admin. The customer-scoped endpoint prevents cross-customer edits.
+    if ($sub3 === 'activity-status' && $method === 'PUT') {
+        require_customer_any_feature_access($customer, ['check-up', 'workflow'], 'Activity Status');
+        $b = body();
+        $status = strtoupper(trim((string)($b['operationalStatus'] ?? '')));
+        $allowedStatuses = ['NORMAL', 'SERVICE_IN_PROGRESS', 'CHECKUP_IN_PROGRESS', 'MAINTENANCE_IN_PROGRESS', 'GROUNDED'];
+        if (!in_array($status, $allowedStatuses, true)) json_error('Invalid operational status.', 422);
+
+        $machineStmt = db()->prepare(
+            'SELECT id, brand, model, machine_type, serial_number, reg_number
+             FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+        );
+        $machineStmt->execute([$machineId, $customer['id']]);
+        $machine = $machineStmt->fetch();
+        if (!$machine) json_error('Machine not found for this customer.', 404);
+
+        db()->prepare(
+            'UPDATE machines SET operational_status = ?, operational_status_updated_at = NOW() WHERE id = ? AND customer_id = ?'
+        )->execute([$status, $machineId, $customer['id']]);
+
+        $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+        $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''))
+            ?: ((string)($machine['machine_type'] ?? '') ?: 'Machine');
+        $statusLabels = [
+            'NORMAL' => 'Normal',
+            'SERVICE_IN_PROGRESS' => 'Service in progress',
+            'CHECKUP_IN_PROGRESS' => 'Check-up in progress',
+            'MAINTENANCE_IN_PROGRESS' => 'Maintenance in progress',
+            'GROUNDED' => 'Grounded',
+        ];
+        $message = $actorName . ' updated machine Activity Status to ' . ($statusLabels[$status] ?? $status) . '.';
+        log_customer_activity($customer, $message . ' Machine: ' . $machineLabel);
+        belm_log_customer_communication(
+            (string)$customer['id'], $machineId, 'CUSTOMER_TO_BELM', 'PORTAL',
+            'Machine Activity Status - ' . $machineLabel, $message,
+            'MACHINE_ACTIVITY_STATUS', $machineId, $actorName, 'SENT'
+        );
+
+        json_out([
+            'ok' => true,
+            'operationalStatus' => $status,
+            'sync' => ['customer' => true, 'belm' => true],
+        ]);
+    }
+
     if ($sub3 === 'daily-checklist' && $method === 'GET') {
         require_customer_feature_access($customer, 'check-up', 'Check Up');
         $machineStmt = db()->prepare(

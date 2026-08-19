@@ -1444,6 +1444,8 @@
     });
   }
 
+  // V376 customer direct row labels: Report, Check Up, Service Parts, Job Card.
+  // Historical labels retained as reference only: Operator Reports, Checkup Report, Spare & Service Request, Maintenance Process, Machine Job Cards.
   function organizeMachineActions(panel) {
     const container = panel.querySelector(".belm-machine-quick-actions");
     if (!container) return;
@@ -1452,14 +1454,14 @@
 
     const role = customerRoleKey();
     const priorities = {
-      workshop_manager: ["workflow", "check-up", "report-problem", "service-request"],
-      store_keeper: ["machine-expenses", "workflow", "check-up", "service-request"],
-      accounts: ["machine-expenses", "fuel-usage", "workflow", "service-request"],
-      procurement: ["workflow", "machine-expenses", "service-request", "check-up"],
-      technician: ["workflow", "check-up", "report-problem", "operator-reports"],
-      operator: ["fuel-usage", "operator-reports", "report-problem", "check-up"],
-      owner: ["workflow", "check-up", "machine-expenses", "service-request"],
-      admin: ["workflow", "check-up", "machine-expenses", "service-request"],
+      workshop_manager: ["operator-reports", "check-up", "service-request", "workflow"],
+      store_keeper: ["operator-reports", "check-up", "service-request", "workflow"],
+      accounts: ["operator-reports", "check-up", "service-request", "workflow"],
+      procurement: ["operator-reports", "check-up", "service-request", "workflow"],
+      technician: ["operator-reports", "check-up", "service-request", "workflow"],
+      operator: ["operator-reports", "check-up", "service-request", "workflow"],
+      owner: ["operator-reports", "check-up", "service-request", "workflow"],
+      admin: ["operator-reports", "check-up", "service-request", "workflow"],
     };
     const preferred = priorities[role] || priorities.owner;
     const ordered = visible.slice().sort((a, b) => {
@@ -1505,16 +1507,69 @@
       <div class="belm-machine-quick-actions">
         <a href="/customer-procurement/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Procurement</a>
         <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
-        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">${selfServiceMode ? "Spare & BELM Support" : "Spare & Service Request"}</a>
+        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Service Parts</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Operator Reports</button>
-        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Checkup Report</button>
-        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>${customerWorkflowActor() === "tech" ? "Machine Job Cards" : "Maintenance Process"}</a>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Report</button>
+        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Check Up</button>
+        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>
+      </div>
+      <div class="belm-customer-activity-selector" data-customer-activity-control>
+        <div><span>Activity Status</span><small>Synced with BELM</small></div>
+        <select data-customer-activity-status="${escapeHtml(machine.id)}" aria-label="Activity Status">
+          ${Object.entries({
+            NORMAL: "Normal",
+            SERVICE_IN_PROGRESS: "Service in progress",
+            CHECKUP_IN_PROGRESS: "Check-up in progress",
+            MAINTENANCE_IN_PROGRESS: "Maintenance in progress",
+            GROUNDED: "Grounded",
+          }).map(([value, label]) => `<option value="${value}" ${value === String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase() ? "selected" : ""}>${label}</option>`).join("")}
+        </select>
       </div>`;
     card.appendChild(panel);
     panel.addEventListener("click", (event) => event.stopPropagation());
     panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     panel.querySelector("[data-customer-checkup]")?.addEventListener("click", () => openCustomerCheckupDialog(machine));
+    const activityControl = panel.querySelector("[data-customer-activity-control]");
+    const activitySelect = panel.querySelector("[data-customer-activity-status]");
+    const customerToken = localStorage.getItem("belm_customer_token");
+    if (!customerToken || customerWorkflowActor() === "tech") {
+      activityControl?.remove();
+    } else if (activitySelect) {
+      activitySelect.addEventListener("change", async () => {
+        const previous = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
+        const next = activitySelect.value;
+        activitySelect.disabled = true;
+        try {
+          const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/activity-status`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${customerToken}` },
+            body: JSON.stringify({ operationalStatus: next }),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(result.error || "Could not update Activity Status.");
+          machine.operationalStatus = next;
+          machine.operational_status = next;
+          const opLabels = {
+            NORMAL: "Normal - no active work", SERVICE_IN_PROGRESS: "Service in progress",
+            CHECKUP_IN_PROGRESS: "Check-up in progress", MAINTENANCE_IN_PROGRESS: "Maintenance in progress",
+            GROUNDED: "Grounded - not operational",
+          };
+          const statusBox = card.querySelector(".belm-customer-op-status");
+          if (statusBox) {
+            statusBox.className = `belm-customer-op-status op-${next}`;
+            const statusText = statusBox.querySelector("strong");
+            if (statusText) statusText.textContent = opLabels[next] || "Normal";
+          }
+          technicianSyncToast("Activity Status synced to BELM.", false);
+          window.dispatchEvent(new CustomEvent("belm-customer-activity-status-changed", { detail: { machineId: machine.id, operationalStatus: next } }));
+        } catch (error) {
+          activitySelect.value = previous;
+          alert(error.message || "Could not update Activity Status.");
+        } finally {
+          activitySelect.disabled = false;
+        }
+      });
+    }
     enforceCustomerFeaturePermissions(panel);
     decorateMachineActionIcons(panel);
     organizeMachineActions(panel);
@@ -3549,7 +3604,16 @@
       card.classList.add("belm-customer-machine-card");
       card.dataset.belmMachineId = String(machine.id || "");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
-      card.firstElementChild?.classList.add("belm-machine-native-head");
+      const nativeHead = card.firstElementChild;
+      nativeHead?.classList.add("belm-machine-native-head");
+      if (nativeHead && !nativeHead.querySelector(".belm-customer-fleet-number")) {
+        const fleetNumber = machine.fleetNumber || machine.fleet_number || "—";
+        const fleetBadge = document.createElement("span");
+        fleetBadge.className = "belm-customer-fleet-number";
+        fleetBadge.title = `Fleet Number: ${fleetNumber}`;
+        fleetBadge.innerHTML = `<small>Fleet No.</small><b>${escapeHtml(fleetNumber)}</b>`;
+        nativeHead.appendChild(fleetBadge);
+      }
       if (card.children[1]) card.children[1].classList.add("belm-machine-last-checked");
       // The whole card is a native <button> that navigates somewhere
       // broken/blank on click — tapping ANY part of it (even plain text

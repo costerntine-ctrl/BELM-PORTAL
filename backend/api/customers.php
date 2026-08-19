@@ -26,6 +26,30 @@ function belm_in_clause(array $ids): string {
     return implode(',', array_fill(0, count($ids), '?'));
 }
 
+// V377 - Permanent deletion for ONE machine from BELM Admin > View Your Machine.
+// Mirrors the proven Danger Zone machine hard-delete behavior: machine-owned
+// operational history is removed, while independent customer billing/service
+// records are detached so the customer and every other machine stay intact.
+function belm_forget_machine_permanently(PDO $pdo, string $machineId): void {
+    $ids = [$machineId];
+    $in = belm_in_clause($ids);
+
+    $pdo->prepare("DELETE FROM checklist_answers WHERE report_id IN (SELECT id FROM checklist_reports WHERE machine_id IN ($in))")->execute($ids);
+    $pdo->prepare("DELETE FROM checklist_reports WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM usage_logs WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM petty_cash_topups WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM machine_operator_shifts WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM spare_part_requests WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE service_requests SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE invoices SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE proforma_invoices SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE customer_applications SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM trash_entries WHERE entity_type='machine' AND entity_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM machines WHERE id IN ($in)")->execute($ids);
+}
+
 // Permanently erases a customer and everything tied only to them —
 // bypasses the Recycle Bin entirely so it cannot come back. Mirrors the
 // hard-delete used by Danger Zone > Reset Database, exposed here as a
@@ -291,6 +315,32 @@ if ($method === 'GET' && !$action) {
         $customers
     )));
     $machinesByCustomer = fetch_machines_for_customers($customerIds);
+    $portalUserCountsByCustomer = [];
+    if ($customerIds && ($user['roleName'] ?? '') !== 'Technician') {
+        $inPortalUsers = belm_in_clause($customerIds);
+        $inManagedTechs = belm_in_clause($customerIds);
+        $portalUserCountStmt = db()->prepare(
+            "SELECT customer_id, SUM(total_count) AS total_count
+             FROM (
+               SELECT customer_id, COUNT(*) AS total_count
+               FROM customer_users
+               WHERE customer_id IN ($inPortalUsers) AND is_active = 1
+               GROUP BY customer_id
+               UNION ALL
+               SELECT u.assigned_customer_id AS customer_id, COUNT(*) AS total_count
+               FROM users u JOIN roles r ON r.id = u.role_id
+               WHERE u.assigned_customer_id IN ($inManagedTechs)
+                 AND u.is_customer_managed = 1 AND u.is_active = 1
+                 AND u.deleted_at IS NULL AND r.name = 'Technician'
+               GROUP BY u.assigned_customer_id
+             ) counted
+             GROUP BY customer_id"
+        );
+        $portalUserCountStmt->execute(array_merge($customerIds, $customerIds));
+        foreach ($portalUserCountStmt->fetchAll() as $countRow) {
+            $portalUserCountsByCustomer[(string)$countRow['customer_id']] = (int)$countRow['total_count'];
+        }
+    }
     $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
     $teamVisibleCustomerIds = [];
     if (($user['roleName'] ?? '') !== 'Technician') {
@@ -340,6 +390,7 @@ if ($method === 'GET' && !$action) {
         ];
         if (($user['roleName'] ?? '') !== 'Technician') {
             $c['users'] = $teamVisible ? ($usersByCustomer[$customerId] ?? []) : [];
+            $c['portalUserCount'] = $portalUserCountsByCustomer[$customerId] ?? 0;
             $c['userLimit'] = isset($c['user_limit']) ? (int)$c['user_limit'] : null;
         }
         unset($c['privacy_preferences'], $c['password'], $c['recovery_code_hash']);
@@ -739,6 +790,17 @@ if ($method === 'PUT' && $action === 'user-limit') {
     if ($limit !== null) {
         $limit = (int)$limit;
         if ($limit < 0) json_error('User limit cannot be negative.');
+        $usedStmt = db()->prepare(
+            "SELECT
+               (SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1)
+               +
+               (SELECT COUNT(*) FROM users u JOIN roles r ON r.id = u.role_id
+                WHERE u.assigned_customer_id = ? AND u.is_customer_managed = 1
+                  AND u.is_active = 1 AND u.deleted_at IS NULL AND r.name = 'Technician') AS total"
+        );
+        $usedStmt->execute([$id, $id]);
+        $used = (int)$usedStmt->fetchColumn();
+        if ($limit < $used) json_error("User limit cannot be lower than the $used active portal user(s) already in use.", 422);
     }
     $stmt = db()->prepare('UPDATE customers SET user_limit = ? WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$limit, $id]);
@@ -1307,11 +1369,34 @@ if ($method === 'PUT' && $action === 'edit-machine') {
 if ($method === 'DELETE' && $action === 'delete-machine') {
     require_page_access($user, 'customers');
     $machineId = $_GET['machineId'];
-    $stmt = db()->prepare('SELECT model FROM machines WHERE id = ?');
+    $stmt = db()->prepare('SELECT model, customer_id FROM machines WHERE id = ?');
     $stmt->execute([$machineId]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
     $reason = require_delete_confirmation($user, body());
+
+    if (($_GET['permanent'] ?? '') === '1') {
+        require_super_admin($user);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            belm_forget_machine_permanently($pdo, $machineId);
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+        log_activity($user, 'machine-forgotten-permanently', 'machine', $machineId, [
+            'model' => $row['model'],
+            'customerId' => $row['customer_id'],
+            'reason' => $reason,
+        ]);
+        json_out([
+            'ok' => true,
+            'message' => "Machine \"{$row['model']}\" has been permanently forgotten. The customer and all other machines remain intact.",
+        ]);
+    }
+
     send_to_trash('machine', $machineId, $row['model'], $user['id'], $reason);
     soft_delete('machines', $machineId);
     json_out(null, 204);

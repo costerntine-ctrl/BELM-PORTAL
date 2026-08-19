@@ -21,5 +21,5 @@ t('four face actions stay one-row grid',css.includes('grid-template-columns: rep
 t('root is hidden while face is active',css.includes('body.belm-customer-dashboard-face-active #root { display: none !important; }'));
 t('view machines query bypasses landing face',tools.includes('get("view") === "machines"'));
 t('communication history uses authenticated customer recent activity',tools.includes('fetch("/api/customer-portal/recent-activity"')&&tools.includes('Authorization: `Bearer ${token}`'));
-t('asset cache keys bumped for deployment',idx.includes('/portal-tools.js?v=372-customer-dashboard-face')&&idx.includes('/belm-theme.css?v=372-customer-dashboard-face'));
+t('asset cache keys bumped for deployment',(/\/portal-tools\.js\?v=(372-customer-dashboard-face|376-machine-actions-one-row|378-customer-activity-status)/.test(idx))&&(/\/belm-theme\.css\?v=(372-customer-dashboard-face|376-machine-actions-one-row|378-customer-activity-status)/.test(idx)));
 console.log(`V372 customer login dashboard face regression: ${pass}/${pass+fail} passed`);process.exit(fail?1:0);

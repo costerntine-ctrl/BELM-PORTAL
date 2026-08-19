@@ -17,6 +17,6 @@ t('contact rows are compact under the name', /\/\* V368[\s\S]*?\.customer-card-c
 t('customer name font size remains 21px', /\.customer-card-head h2\s*\{[^}]*font:\s*750 21px/.test(css));
 t('communication history remains expanded but yields contact-line space', /\/\* V368[\s\S]*?\.customer-feed\s*\{[\s\S]*?height:\s*346px;[\s\S]*?min-height:\s*346px;/.test(css));
 t('customer card width remains compact', css.includes('.customer-card { display: flex; flex-direction: column; width: 370px;'));
-t('manager CSS cache is bumped for V368', /\/customers-manager\/manager\.css\?v=(368-customer-contact-lines|371-customer-quick-buttons)/.test(html));
-t('manager JS cache is bumped for V368', /\/customers-manager\/manager\.js\?v=(368-customer-contact-lines|371-customer-quick-buttons)/.test(html));
+t('manager CSS cache is bumped for V368', /\/customers-manager\/manager\.css\?v=(368-customer-contact-lines|371-customer-quick-buttons|373-manage-customer|376-machine-actions-one-row|377-admin-machine-management|377-admin-machine-management-activity-status)/.test(html));
+t('manager JS cache is bumped for V368', /\/customers-manager\/manager\.js\?v=(368-customer-contact-lines|371-customer-quick-buttons|373-manage-customer|376-machine-actions-one-row|377-admin-machine-management|377-admin-machine-management-activity-status)/.test(html));
 console.log(`V368 customer contact lines ${pass}/12 checks passed`);

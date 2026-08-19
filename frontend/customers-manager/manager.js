@@ -178,7 +178,9 @@
     GROUNDED: "Grounded (not operational)",
   };
 
+  // V376 visible label: Job Card. Historical label kept for regression reference: Engineering / Job Cards.
   function machineCard(customerId, machine, belmServiceProviderActive, privacyAccess = {}) {
+    // Historical visible label before V376: Engineering / Job Cards. Function/route remains the same.
     const status = String(machine.status || "NOT_CHECKED").toUpperCase();
     const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
     const opStatus = String(machine.operationalStatus || "NORMAL").toUpperCase();
@@ -188,9 +190,14 @@
     const privacyButton = (label, allowed, attrs) => allowed
       ? `<button ${attrs}>${label}</button>`
       : `<button type="button" class="privacy-locked" disabled title="Customer privacy setting blocks BELM access">🔒 ${label}</button>`;
+    const machineTitle = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType;
+    const fleetNumber = machine.fleetNumber || machine.fleet_number || "—";
     return `<article class="machine-card ${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
-        <h4>${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}</h4>
+        <div class="machine-title-row">
+          <h4>${escapeHtml(machineTitle)}</h4>
+          <span class="machine-fleet-number" title="Fleet Number: ${escapeHtml(fleetNumber)}"><small>Fleet No.</small><b>${escapeHtml(fleetNumber)}</b></span>
+        </div>
         <p>${escapeHtml(machine.machineType)} · Reg: ${escapeHtml(machine.regNumber || "—")} · Serial: ${escapeHtml(machine.serialNumber || "—")}</p>
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
         ${reasons.length ? `<span class="machine-alert-reason">${escapeHtml(reasons[0])}</span>` : '<span class="machine-alert-reason"></span>'}
@@ -206,7 +213,12 @@
         ${privacyButton("Report", canMaintenance, `data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Check Up", canMaintenance, `data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Service Parts", canParts, `data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
-        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/engineering-manager/?machine=${encodeURIComponent(machine.id)}#job-cards">Engineering / Job Cards</a>` : ""}
+        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/engineering-manager/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
+      </div>
+      <div class="machine-admin-actions" aria-label="BELM Admin machine management">
+        <button type="button" class="machine-admin-edit" data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit Machine</button>
+        <button type="button" class="machine-admin-delete" data-delete-machine="${escapeHtml(machine.id)}">Delete Machine</button>
+        ${isSuperAdmin ? `<button type="button" class="machine-admin-forget" data-forget-machine="${escapeHtml(machine.id)}">Forget Permanently</button>` : ""}
       </div>
     </article>`;
   }
@@ -251,15 +263,6 @@
     });
   }
   setInterval(rotateMachineAlertReasons, 3000);
-
-  function populateUserLimitDropdown() {
-    const select = document.getElementById("userLimitCustomerSelect");
-    if (!select) return;
-    const previousValue = select.value;
-    select.innerHTML = '<option value="">Select customer…</option>'
-      + customers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`).join("");
-    if (previousValue) select.value = previousValue;
-  }
 
   function populateMachineryAdminDropdown() {
     const select = document.getElementById("machineryAdminCustomerSelect");
@@ -357,6 +360,7 @@
           <a class="customer-quick-action action-blue" href="/engineering-manager/">Workshop</a>
           <a class="customer-quick-action action-green" href="/spare-parts-manager/">Procurement</a>
           <a class="customer-quick-action action-yellow" href="/reports-manager/">General Report</a>
+          <button type="button" class="customer-quick-action action-manage" data-manage-customer="${escapeHtml(customer.id)}">Manage Customer</button>
         </nav>
         <div class="customer-card-legacy-actions" hidden aria-hidden="true">
           <button type="button" data-quick-delete-machine="${escapeHtml(customer.id)}">Delete Machine</button>
@@ -578,8 +582,7 @@
       customers = await api("/customers");
       updateMetrics();
       renderCustomers();
-      populateUserLimitDropdown();
-      populateMachineryAdminDropdown();
+        populateMachineryAdminDropdown();
       populatePortalAccessDropdown();
       const deepLinkParams = new URLSearchParams(window.location.search);
       const requestedCustomerId = String(deepLinkParams.get("customer") || "").trim();
@@ -620,6 +623,30 @@
     document.getElementById("customerActiveField").classList.toggle("hidden", !customer);
     document.getElementById("customerFormAlert").className = "alert error hidden";
     document.getElementById("customerDialog").showModal();
+  }
+
+  function openManageCustomer(customer) {
+    if (!customer) return;
+    const dialog = document.getElementById("manageCustomerDialog");
+    dialog.dataset.customerId = customer.id;
+    document.getElementById("manageCustomerDialogTitle").textContent = `Manage ${customer.name}`;
+    document.getElementById("manageCustomerDialogName").textContent = customer.name;
+    document.getElementById("manageForgetCustomerButton").hidden = !isSuperAdmin;
+    dialog.showModal();
+  }
+
+  function openCustomerUsersControl(customer) {
+    if (!customer) return;
+    const dialog = document.getElementById("customerUsersControlDialog");
+    const used = Number.isFinite(Number(customer.portalUserCount)) ? Number(customer.portalUserCount) : (Array.isArray(customer.users) ? customer.users.length : 0);
+    const limit = customer.userLimit != null ? Number(customer.userLimit) : 3;
+    dialog.dataset.customerId = customer.id;
+    document.getElementById("customerUsersControlTitle").textContent = `Users Control — ${customer.name}`;
+    document.getElementById("customerUsersControlName").textContent = customer.name;
+    document.getElementById("customerUsersControlUsed").textContent = String(used);
+    document.getElementById("customerUsersControlLimit").textContent = String(limit);
+    document.getElementById("customerUsersControlInput").value = String(limit);
+    dialog.showModal();
   }
 
   function showCredentials(customer, loginInfo) {
@@ -1014,6 +1041,32 @@
       }
       showAlert("Machine moved to the Recycle Bin.");
     } catch (error) { showAlert(error.message, true); }
+  }
+
+  async function forgetMachine(id) {
+    if (!isSuperAdmin) {
+      showAlert("Forget Permanently is restricted to BELM Super Admin.", true);
+      return;
+    }
+    const machine = customers.flatMap((customer) => customer.machines || []).find((item) => item.id === id);
+    if (!machine) return;
+    const customerId = customers.find((customer) => (customer.machines || []).some((m) => m.id === id))?.id;
+    const label = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType || "this machine";
+    const confirmation = await window.belmConfirmDelete({
+      title: "Forget machine permanently?",
+      message: `Permanently erase ${label} and its machine-only history? This skips the Recycle Bin and cannot be restored. The customer and all other machines stay untouched.`,
+    });
+    if (!confirmation) return;
+    try {
+      await api(`/customers/machines/${id}?permanent=1`, { method: "DELETE", body: JSON.stringify(confirmation) });
+      await load();
+      if (document.getElementById("machineListDialog").open && customerId) {
+        openMachineList(customers.find((customer) => customer.id === customerId));
+      }
+      showAlert(`${label} has been permanently forgotten.`);
+    } catch (error) {
+      showAlert(error.message || "Could not permanently forget this machine.", true);
+    }
   }
 
   let cachedMachineReports = [];
@@ -1752,45 +1805,6 @@
     }
   });
 
-  document.getElementById("userLimitCustomerSelect")?.addEventListener("change", (event) => {
-    const customer = customers.find((item) => item.id === event.target.value);
-    const info = document.getElementById("userLimitCurrentInfo");
-    const input = document.getElementById("userLimitInput");
-    if (!customer) {
-      info.textContent = "";
-      input.value = "";
-      return;
-    }
-    input.value = customer.userLimit ?? "";
-    info.textContent = customer.userLimit != null
-      ? `Current limit: ${customer.userLimit} · Currently has ${(customer.users || []).length} user(s).`
-      : `Using the system default (3) · Currently has ${(customer.users || []).length} user(s).`;
-  });
-
-  document.getElementById("userLimitSaveButton")?.addEventListener("click", async () => {
-    const customerId = document.getElementById("userLimitCustomerSelect").value;
-    if (!customerId) {
-      showAlert("Select a customer first.", true);
-      return;
-    }
-    const rawValue = document.getElementById("userLimitInput").value.trim();
-    const confirmation = await window.belmConfirmEdit({
-      title: "Save user limit?",
-      message: "Confirm this new portal-user limit for the selected customer.",
-    });
-    if (!confirmation) return;
-    try {
-      await api(`/customers/${customerId}/user-limit`, {
-        method: "PUT",
-        body: JSON.stringify({ userLimit: rawValue === "" ? null : Number(rawValue), ...confirmation }),
-      });
-      showAlert("User limit saved successfully.", false);
-      await load();
-    } catch (error) {
-      showAlert(error.message, true);
-    }
-  });
-
   document.getElementById("machineryAdminCustomerSelect")?.addEventListener("change", (event) => {
     const customer = customers.find((item) => item.id === event.target.value);
     const info = document.getElementById("machineryAdminCurrentInfo");
@@ -1930,6 +1944,87 @@
   document.getElementById("copyCredentialPasswordButton").addEventListener("click", () => {
     copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
   });
+
+  function managedCustomerFromDialog() {
+    const id = document.getElementById("manageCustomerDialog").dataset.customerId || "";
+    return customers.find((customer) => customer.id === id) || null;
+  }
+
+  document.getElementById("manageEditCustomerButton").addEventListener("click", () => {
+    const customer = managedCustomerFromDialog();
+    if (!customer) return;
+    document.getElementById("manageCustomerDialog").close();
+    confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer.name}.`, () => openCustomer(customer));
+  });
+
+  document.getElementById("manageResetCustomerButton").addEventListener("click", async () => {
+    const customer = managedCustomerFromDialog();
+    if (!customer) return;
+    document.getElementById("manageCustomerDialog").close();
+    await resetCustomerLogin(customer.id);
+  });
+
+  document.getElementById("manageUsersCustomerButton").addEventListener("click", () => {
+    const customer = managedCustomerFromDialog();
+    if (!customer) return;
+    document.getElementById("manageCustomerDialog").close();
+    openCustomerUsersControl(customer);
+  });
+
+  document.getElementById("customerUsersControlSaveButton").addEventListener("click", async () => {
+    const dialog = document.getElementById("customerUsersControlDialog");
+    const customerId = dialog.dataset.customerId || "";
+    const customer = customers.find((item) => item.id === customerId);
+    if (!customer) {
+      showAlert("Customer record was not found. Refresh customers and try again.", true);
+      return;
+    }
+    const input = document.getElementById("customerUsersControlInput");
+    const requestedLimit = Number(input.value);
+    if (!Number.isInteger(requestedLimit) || requestedLimit < 0) {
+      showAlert("Enter a valid whole-number user limit.", true);
+      return;
+    }
+    const used = Number.isFinite(Number(customer.portalUserCount)) ? Number(customer.portalUserCount) : (Array.isArray(customer.users) ? customer.users.length : 0);
+    if (requestedLimit < used) {
+      showAlert(`This customer already has ${used} portal user(s). The limit cannot be lower than users currently in use.`, true);
+      return;
+    }
+    const confirmation = await window.belmConfirmEdit({
+      title: "Save user limit?",
+      message: `Set ${customer.name} to a maximum of ${requestedLimit} portal user(s)?`,
+    });
+    if (!confirmation) return;
+    const saveButton = document.getElementById("customerUsersControlSaveButton");
+    saveButton.disabled = true;
+    try {
+      await api(`/customers/${customerId}/user-limit`, {
+        method: "PUT",
+        body: JSON.stringify({ userLimit: requestedLimit, ...confirmation }),
+      });
+      dialog.close();
+      showAlert(`Users Control updated. ${customer.name} can now have up to ${requestedLimit} portal user(s).`, false);
+      await load();
+    } catch (error) {
+      showAlert(error.message, true);
+    } finally {
+      saveButton.disabled = false;
+    }
+  });
+
+  document.getElementById("manageDeleteCustomerButton").addEventListener("click", async () => {
+    const customer = managedCustomerFromDialog();
+    if (!customer) return;
+    document.getElementById("manageCustomerDialog").close();
+    await removeCustomer(customer.id);
+  });
+
+  document.getElementById("manageForgetCustomerButton").addEventListener("click", async () => {
+    const customer = managedCustomerFromDialog();
+    if (!customer || !isSuperAdmin) return;
+    document.getElementById("manageCustomerDialog").close();
+    await forgetCustomer(customer.id);
+  });
   // V283 - compact per-customer BELM <-> Customer maintenance switch.
   // Checked means BELM Service Provider is ON; unchecked hands maintenance
   // back to the customer's own Technician team. The existing API and edit
@@ -2035,6 +2130,7 @@
     }
     const viewMachines = event.target.closest("[data-view-machines]");
     const viewMessages = event.target.closest("[data-view-messages]");
+    const manageCustomer = event.target.closest("[data-manage-customer]");
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
@@ -2042,6 +2138,7 @@
     const quickDeleteMachine = event.target.closest("[data-quick-delete-machine]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
+    if (manageCustomer) openManageCustomer(customers.find((customer) => customer.id === manageCustomer.dataset.manageCustomer));
     if (editCustomer) {
       const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
       confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));
@@ -2075,6 +2172,7 @@
     const addMachine = event.target.closest("[data-add-machine]");
     const editMachine = event.target.closest("[data-edit-machine]");
     const deleteMachine = event.target.closest("[data-delete-machine]");
+    const forgetMachineButton = event.target.closest("[data-forget-machine]");
     const viewReports = event.target.closest("[data-view-reports]");
     const doCheckup = event.target.closest("[data-checkup]");
     const viewExpenseReceipts = event.target.closest("[data-view-expense-receipts]");
@@ -2090,6 +2188,7 @@
       confirmThenOpen("Edit machine?", `Confirm you want to edit ${machine?.model || "this machine"}.`, () => openMachine(customer, machine));
     }
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
+    if (forgetMachineButton) forgetMachine(forgetMachineButton.dataset.forgetMachine);
   });
   document.getElementById("machineListBody").addEventListener("change", async (event) => {
     const select = event.target.closest("[data-operational-status]");

@@ -14,5 +14,5 @@ t('desktop communication history expands into freed area', /\/\* V367[\s\S]*?\.c
 t('mobile communication history remains usable and bounded', /@media \(max-width: 620px\)[\s\S]*?\.customer-feed\s*\{[\s\S]*?height:\s*320px;[\s\S]*?min-height:\s*320px;/.test(css));
 t('customer card width remains compact', css.includes('.customer-card { display: flex; flex-direction: column; width: 370px;'));
 t('communication body keeps internal scrolling', /\.customer-feed-body\s*\{[\s\S]*?overflow-y:\s*auto;/.test(css));
-t('customer manager CSS cache is bumped for V367', /\/customers-manager\/manager\.css\?v=(367-communication-history-fit|368-customer-contact-lines|371-customer-quick-buttons)/.test(html));
+t('customer manager CSS cache is bumped for V367', /\/customers-manager\/manager\.css\?v=(367-communication-history-fit|368-customer-contact-lines|371-customer-quick-buttons|373-manage-customer|376-machine-actions-one-row|377-admin-machine-management|377-admin-machine-management-activity-status)/.test(html));
 console.log(`V367 communication history fit ${pass}/8 checks passed`);

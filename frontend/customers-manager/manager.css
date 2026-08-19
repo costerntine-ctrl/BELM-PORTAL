@@ -532,7 +532,7 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
    only the visible action row with the same four quick actions proven in MY C. */
 .customer-card-actions.customer-card-quick-actions {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: stretch;
   gap: 7px;
   min-height: 52px;
@@ -565,12 +565,13 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
 .customer-card-actions.customer-card-quick-actions .action-blue { background: #2f7cf5; border-color: #2f7cf5; color: #fff; }
 .customer-card-actions.customer-card-quick-actions .action-green { background: #21a957; border-color: #21a957; color: #fff; }
 .customer-card-actions.customer-card-quick-actions .action-yellow { background: #ffc928; border-color: #ffc928; color: #1b2230; }
+.customer-card-actions.customer-card-quick-actions .action-manage { background: #6f56c9; border-color: #6f56c9; color: #fff; }
 .customer-card-actions.customer-card-quick-actions .customer-quick-action:hover { filter: brightness(1.06); transform: translateY(-1px); }
 .customer-card-legacy-actions { display: none !important; }
 
 @media (max-width: 620px) {
   .customer-card-actions.customer-card-quick-actions {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 4px;
     min-height: 48px;
     padding-left: 12px;
@@ -581,4 +582,257 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
     padding: 6px 3px;
     font-size: 8.5px;
   }
+}
+
+
+/* V373 - BELM Admin Manage Customer consolidates sensitive customer actions. */
+.manage-customer-dialog-card { max-width: 520px; }
+.manage-customer-summary { margin: 0 0 14px; color: var(--muted); font-size: 11px; }
+.manage-customer-summary strong { color: var(--ink); }
+.manage-customer-actions { display: grid; gap: 9px; }
+.manage-customer-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.manage-customer-action strong { font-size: 12px; }
+.manage-customer-action span { color: var(--muted); font-size: 9.5px; text-align: right; }
+.manage-customer-action:hover { background: color-mix(in srgb, var(--paper) 88%, var(--canvas)); }
+.manage-customer-action.edit { border-color: #e5bd00; }
+.manage-customer-action.reset { border-color: #2f7cf5; }
+.manage-customer-action.delete { border-color: #e07171; }
+.manage-customer-action.forget { color: #b42318; border-color: #d92d20; }
+.manage-customer-action.forget span { color: #b42318; }
+.manage-customer-action[hidden] { display: none !important; }
+@media (max-width: 620px) {
+  .customer-card-actions.customer-card-quick-actions .customer-quick-action { font-size: 7.7px; padding-left: 2px; padding-right: 2px; }
+  .manage-customer-action { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .manage-customer-action span { text-align: left; }
+}
+
+
+/* V374 - Users Control lives inside Manage Customer; default portal-user limit remains 3. */
+.manage-customer-action.users { border-color: #21a957; }
+.customer-users-control-dialog-card { max-width: 480px; }
+.customer-users-control-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 8px 0 12px;
+}
+.customer-users-control-stats > div {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  padding: 11px 12px;
+}
+.customer-users-control-stats span { display: block; color: var(--muted); font-size: 9px; margin-bottom: 4px; }
+.customer-users-control-stats strong { font-size: 18px; color: var(--ink); }
+.customer-users-control-limit-field { display: grid; gap: 6px; margin-top: 6px; }
+.customer-users-control-limit-field span { font-size: 10px; font-weight: 700; color: var(--ink); }
+.customer-users-control-limit-field input { width: 100%; }
+.customer-users-control-note { margin: 8px 0 0; font-size: 9.5px; line-height: 1.45; }
+
+/* V375 - BELM Admin > Customers & Machines > View Your Machine.
+   Match each machine card to the approved customer-card footprint while
+   keeping + Add machine outside the card and preserving all machine actions. */
+#machineListDialog .machine-list {
+  grid-template-columns: repeat(auto-fill, 390px);
+  align-items: stretch;
+  justify-content: start;
+  gap: 15px;
+}
+#machineListDialog .machine-card {
+  width: 390px;
+  height: 590px;
+  min-height: 590px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #machineListDialog .machine-card {
+    width: 100%;
+    height: 590px;
+    min-height: 590px;
+  }
+}
+
+
+/* V376 - Admin View Your Machine: four readable actions on one bottom row. */
+#machineListDialog .machine-card .machine-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+#machineListDialog .machine-card .machine-actions > button,
+#machineListDialog .machine-card .machine-actions > a {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.08;
+  font-size: 9px;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .machine-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  #machineListDialog .machine-card .machine-actions > button,
+  #machineListDialog .machine-card .machine-actions > a {
+    min-height: 38px;
+    padding: 6px 3px;
+    font-size: 8px;
+  }
+}
+
+
+/* V377 - BELM Admin only: machine management row below the four operational actions.
+   Customer View Your Machine is intentionally untouched. */
+#machineListDialog .machine-card .machine-admin-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 7px;
+}
+#machineListDialog .machine-card .machine-admin-actions > button {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 4px;
+  border-radius: 9px;
+  font-size: 8.5px;
+  line-height: 1.08;
+  text-align: center;
+  white-space: normal;
+}
+#machineListDialog .machine-card .machine-admin-edit {
+  border-color: #2f80ed;
+}
+#machineListDialog .machine-card .machine-admin-delete {
+  border-color: #ef5350;
+  color: #ff6b6b;
+}
+#machineListDialog .machine-card .machine-admin-forget {
+  border-color: #d32f2f;
+  color: #ff4d4f;
+  background: rgba(211, 47, 47, .08);
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .machine-admin-actions { gap: 4px; }
+  #machineListDialog .machine-card .machine-admin-actions > button {
+    min-height: 32px;
+    padding: 5px 3px;
+    font-size: 8px;
+  }
+}
+
+/* V377 - Balance Activity Status inside the fixed-size BELM Admin machine card.
+   This is admin View Your Machine only; the customer-facing machine view is untouched. */
+#machineListDialog .machine-card .operational-status-picker {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+  line-height: 1.15;
+}
+#machineListDialog .machine-card .operational-status-picker select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  margin-top: 0;
+  padding: 7px 8px;
+  box-sizing: border-box;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .operational-status-picker {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 6px;
+    min-height: 50px;
+    padding: 7px 8px;
+  }
+}
+
+
+
+/* V379 - Slightly wider machine identity area + Fleet Number reference badge.
+   Fleet badge width intentionally tracks the visual width of a model such as "SANY RSC45V". */
+#machineListDialog .machine-card .machine-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12ch;
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+}
+#machineListDialog .machine-card .machine-title-row h4 {
+  min-width: 0;
+  margin: 0 0 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#machineListDialog .machine-card .machine-fleet-number {
+  width: 12ch;
+  min-width: 12ch;
+  max-width: 12ch;
+  box-sizing: border-box;
+  display: grid;
+  gap: 1px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+  text-align: left;
+  overflow: hidden;
+}
+#machineListDialog .machine-card .machine-fleet-number small {
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+#machineListDialog .machine-card .machine-fleet-number b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: 9px;
+  line-height: 1.1;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .machine-title-row { grid-template-columns: minmax(0, 1fr) 11ch; gap: 7px; }
+  #machineListDialog .machine-card .machine-fleet-number { width: 11ch; min-width: 11ch; max-width: 11ch; padding: 5px 6px; }
 }

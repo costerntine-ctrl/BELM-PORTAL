@@ -11,8 +11,8 @@ const checks = [
   ['hover state blue', css.includes('.portal-actions a:hover') && css.includes('background: #2563eb')],
   ['pressed state blue', css.includes('.portal-actions a:active') && css.includes('background: #1d4ed8')],
   ['keyboard focus visible', css.includes('.portal-actions a:focus-visible')],
-  ['customer manager css cache bumped', /manager\.css\?v=(?:340-customer-login-blue|367-communication-history-fit|368-customer-contact-lines|371-customer-quick-buttons)/.test(html)],
-  ['unchanged manager js retains compatible cache label', /manager\.js\?v=(320-engineering-single-owner|351-dev-expense-access|352-public-url-port-guard|360-customer-card-cleanup|362-my-c-quick-actions|365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines|371-customer-quick-buttons)/.test(html)],
+  ['customer manager css cache bumped', /manager\.css\?v=(?:340-customer-login-blue|367-communication-history-fit|368-customer-contact-lines|371-customer-quick-buttons|373-manage-customer|376-machine-actions-one-row|377-admin-machine-management|377-admin-machine-management-activity-status)/.test(html)],
+  ['unchanged manager js retains compatible cache label', /manager\.js\?v=(320-engineering-single-owner|351-dev-expense-access|352-public-url-port-guard|360-customer-card-cleanup|362-my-c-quick-actions|365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines|371-customer-quick-buttons|373-manage-customer|376-machine-actions-one-row|377-admin-machine-management|377-admin-machine-management-activity-status)/.test(html)],
   ['service worker cache bumped', (/belm-app-v(?:340-customer-login-blue|341-proforma-invoice-direct-sync|342-technician-job-card-visibility)/.test(sw))],
 ];
 let failed = 0;

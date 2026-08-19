@@ -926,6 +926,169 @@
     return customerPortalProfilePromise;
   }
 
+  // V372 - Customer main-login face. The customer owner lands on one compact
+  // company card first (the same layout approved in Customers & Machines),
+  // while the existing operational dashboard remains available behind
+  // View Your Machine. Data is always loaded from the authenticated customer
+  // token, so no customer selector/id is accepted by this landing card.
+  function shouldShowCustomerDashboardFace() {
+    if (window.location.pathname !== "/portal/dashboard") return false;
+    if (!localStorage.getItem("belm_customer_token")) return false;
+    if (new URLSearchParams(window.location.search).get("view") === "machines") return false;
+    if (isCustomerOperatorRole()) return false;
+    return true;
+  }
+
+  function customerFaceCommunicationDirection(item, companyName) {
+    const direction = String(item?.direction || "").toUpperCase();
+    if (direction === "CUSTOMER_TO_BELM") return `${companyName} → BELM`;
+    if (direction === "BELM_TO_CUSTOMER") return `BELM → ${companyName}`;
+    return `BELM ↔ ${companyName}`;
+  }
+
+  function renderCustomerFaceCommunicationRows(container, items, companyName, limit = 3) {
+    if (!container) return;
+    const rows = Array.isArray(items) ? items.slice(0, limit) : [];
+    container.innerHTML = rows.length ? rows.map((item) => `
+      <article class="belm-customer-face-communication-row">
+        <div class="belm-customer-face-communication-head">
+          <strong>${escapeHtml(item.subject || "Communication")}</strong>
+          <span>${escapeHtml(customerFaceCommunicationDirection(item, companyName))}</span>
+        </div>
+        <p>${escapeHtml(item.message || "—")}</p>
+        <small>${item.machineLabel ? `${escapeHtml(item.machineLabel)} · ` : ""}${escapeHtml(item.createdAt ? new Date(item.createdAt).toLocaleString("en-TZ") : "")}</small>
+      </article>`).join("") : '<p class="belm-customer-face-empty">No new communication. Use <strong>View all</strong> for history.</p>';
+  }
+
+  async function loadCustomerFaceCommunications(face, companyName) {
+    const body = face?.querySelector("[data-customer-face-communications]");
+    if (!body) return [];
+    try {
+      const token = localStorage.getItem("belm_customer_token");
+      const response = await fetch("/api/customer-portal/recent-activity", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      const messages = Array.isArray(data.belmMessages) ? data.belmMessages : [];
+      face._belmCommunicationItems = messages;
+      renderCustomerFaceCommunicationRows(body, messages, companyName, 3);
+      return messages;
+    } catch (_) {
+      body.innerHTML = '<p class="belm-customer-face-empty">Could not load communication history.</p>';
+      return [];
+    }
+  }
+
+  async function openCustomerFaceCommunicationHistory(face, companyName) {
+    let dialog = document.getElementById("belmCustomerFaceCommunicationDialog");
+    if (dialog) dialog.remove();
+    dialog = document.createElement("dialog");
+    dialog.id = "belmCustomerFaceCommunicationDialog";
+    dialog.className = "belm-customer-face-communication-dialog";
+    dialog.innerHTML = `
+      <div class="belm-customer-face-dialog-head">
+        <div><b>Communication History</b><span>${escapeHtml(companyName)}</span></div>
+        <button type="button" data-close-customer-face-history>Close</button>
+      </div>
+      <div class="belm-customer-face-dialog-body" data-customer-face-history-body>Loading history…</div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-customer-face-history]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+    const body = dialog.querySelector("[data-customer-face-history-body]");
+    let items = Array.isArray(face?._belmCommunicationItems) ? face._belmCommunicationItems : [];
+    if (!items.length) items = await loadCustomerFaceCommunications(face, companyName);
+    renderCustomerFaceCommunicationRows(body, items, companyName, 30);
+  }
+
+  function customerFaceProviderText(profile) {
+    return profile?.belmServiceProviderActive ? "BELM ON" : `${profile?.name || "CUSTOMER"} ON`;
+  }
+
+  async function installCustomerDashboardFace() {
+    if (!shouldShowCustomerDashboardFace()) return;
+    if (document.getElementById("belmCustomerDashboardFace")) return;
+    const payload = tokenPayload("belm_customer_token") || {};
+    // The primary customer account is the dashboard owner. Customer team
+    // members retain their existing role-specific workspace behaviour.
+    if (String(payload.actorType || "owner").toLowerCase() !== "owner") return;
+
+    const face = document.createElement("main");
+    face.id = "belmCustomerDashboardFace";
+    face.className = "belm-customer-dashboard-face";
+    face.innerHTML = '<div class="belm-customer-face-loading">Loading your dashboard…</div>';
+    document.body.appendChild(face);
+    document.body.classList.add("belm-customer-dashboard-face-active");
+
+    const profile = await loadCustomerPortalProfile();
+    if (!profile) {
+      face.innerHTML = '<div class="belm-customer-face-loading">Could not load your customer dashboard. Refresh and try again.</div>';
+      return;
+    }
+    const name = String(profile.name || payload.name || "Customer");
+    face.innerHTML = `
+      <div class="belm-customer-face-toolbar">
+        <span>CUSTOMER DASHBOARD</span>
+        <button type="button" data-customer-face-logout>Logout</button>
+      </div>
+      <article class="belm-customer-face-card">
+        <div class="belm-customer-face-accent"></div>
+        <header class="belm-customer-face-head">
+          <div>
+            <p class="belm-customer-face-eyebrow">CUSTOMER</p>
+            <h1>${escapeHtml(name)}</h1>
+            <div class="belm-customer-face-contacts">
+              <div><span>PHONE</span><b title="${escapeHtml(profile.phone || "Not recorded")}">${escapeHtml(profile.phone || "Not recorded")}</b></div>
+              <div><span>EMAIL</span><b title="${escapeHtml(profile.email || "Not recorded")}">${escapeHtml(profile.email || "Not recorded")}</b></div>
+              <div><span>ADDRESS</span><b title="${escapeHtml(profile.address || payload.address || "Not recorded")}">${escapeHtml(profile.address || payload.address || "Not recorded")}</b></div>
+            </div>
+          </div>
+          <div class="belm-customer-face-statuses">
+            <span class="belm-customer-face-active-pill">Active</span>
+            <span class="belm-customer-face-provider">${escapeHtml(customerFaceProviderText(profile))}</span>
+          </div>
+        </header>
+        <section class="belm-customer-face-communication">
+          <div class="belm-customer-face-communication-title">
+            <strong>Communication<br>history</strong>
+            <button type="button" data-customer-face-view-all>View all</button>
+          </div>
+          <div class="belm-customer-face-communication-body" data-customer-face-communications>
+            <p class="belm-customer-face-empty">Loading communication history…</p>
+          </div>
+        </section>
+        <nav class="belm-customer-face-actions" aria-label="Customer dashboard actions">
+          <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">View Your Machine</a>
+          <a class="belm-customer-face-action action-blue" href="/breakdown-workflow/?actor=customer">Workshop</a>
+          <a class="belm-customer-face-action action-green" href="/customer-procurement/">Procurement</a>
+          <button type="button" class="belm-customer-face-action action-yellow" data-customer-face-general-report>General Report</button>
+        </nav>
+      </article>`;
+
+    face.querySelector("[data-customer-face-logout]")?.addEventListener("click", () => {
+      localStorage.removeItem("belm_customer_token");
+      if (localStorage.getItem("belm_active_account_type") === "customer") localStorage.removeItem("belm_active_account_type");
+      window.location.href = "/login";
+    });
+    face.querySelector("[data-customer-face-view-all]")?.addEventListener("click", () => openCustomerFaceCommunicationHistory(face, name));
+    face.querySelector("[data-customer-face-general-report]")?.addEventListener("click", () => openCustomerGeneralAnalysisDialog());
+    loadCustomerFaceCommunications(face, name);
+  }
+
+  function focusCustomerMachinesFromQuery() {
+    if (window.location.pathname !== "/portal/dashboard") return;
+    if (new URLSearchParams(window.location.search).get("view") !== "machines") return;
+    if (document.documentElement.dataset.belmCustomerMachinesFocused === "1") return;
+    const machineGrid = document.querySelector(".belm-customer-machine-grid");
+    const heading = Array.from(document.querySelectorAll("h1,h2"))
+      .find((element) => /machines/i.test((element.textContent || "").trim()));
+    const target = machineGrid || heading;
+    if (!target) return;
+    document.documentElement.dataset.belmCustomerMachinesFocused = "1";
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
   async function loadCustomerExpenseMachines() {
     if (customerExpenseMachines) return customerExpenseMachines;
     if (customerExpenseMachinesPromise) return customerExpenseMachinesPromise;
@@ -5579,6 +5742,8 @@
   addPortalHomeLink();
   enforceAdminPageAccess();
   enhanceCustomerAssistants();
+  installCustomerDashboardFace();
+  focusCustomerMachinesFromQuery();
   enhanceCustomerMachineExpenseCards();
   enforceOperatorCardOnlyInterface();
   enhanceCustomerDirectMessagesPanel();
@@ -5625,6 +5790,8 @@
     addPortalHomeLink();
     enforceAdminPageAccess();
     enhanceCustomerAssistants();
+    installCustomerDashboardFace();
+    focusCustomerMachinesFromQuery();
     enhanceCustomerMachineExpenseCards();
     enforceOperatorCardOnlyInterface();
     enhanceCustomerDirectMessagesPanel();

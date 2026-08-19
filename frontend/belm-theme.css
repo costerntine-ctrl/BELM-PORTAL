@@ -4787,3 +4787,118 @@ body[data-belm-area="tech"] .belm-technician-card-actions .belm-technician-jobca
 body[data-belm-area="tech"] .belm-technician-card-actions .belm-technician-jobcards-button:focus {
   background: var(--belm-blue-dark, #0f4f96) !important;
 }
+
+
+/* ========================================================================
+   V372 - Customer main-login dashboard face
+   One authenticated company card first; existing operational dashboard is
+   available through View Your Machine (?view=machines).
+   ======================================================================== */
+body.belm-customer-dashboard-face-active {
+  min-height: 100vh !important;
+  margin: 0 !important;
+  background: radial-gradient(circle at 30% 0%, #132942 0, #071523 42%, #050c16 100%) !important;
+  overflow-x: hidden;
+}
+body.belm-customer-dashboard-face-active #root { display: none !important; }
+.belm-customer-dashboard-face {
+  width: 100%; min-height: 100vh; padding: 28px 18px 42px;
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+  color: #eef6ff; font-family: Inter,system-ui,sans-serif;
+}
+.belm-customer-face-toolbar {
+  width: min(720px, calc(100vw - 32px)); margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  color: #8fa5bd; font-size: 11px; font-weight: 900; letter-spacing: .12em;
+}
+.belm-customer-face-toolbar button {
+  min-height: 34px; padding: 6px 14px; border: 1px solid #31465f; border-radius: 9px;
+  color: #d9e6f4; background: #0b1726; font: 800 11px/1 Inter,system-ui,sans-serif; cursor: pointer;
+}
+.belm-customer-face-card {
+  position: relative; width: min(720px, calc(100vw - 32px)); min-height: 820px;
+  padding: 30px 30px 22px; overflow: hidden;
+  border: 1px solid #314968; border-radius: 22px;
+  background: linear-gradient(180deg,#10233a 0%,#0b1a2d 48%,#091725 100%);
+  box-shadow: 0 24px 60px rgba(0,0,0,.36), inset 0 0 0 1px rgba(99,168,233,.04);
+}
+.belm-customer-face-accent {
+  position: absolute; inset: 0 0 auto; height: 7px;
+  background: linear-gradient(90deg,#5cd85e,#38ce61 65%,#75e667);
+  box-shadow: 0 0 18px rgba(66,220,101,.6);
+}
+.belm-customer-face-head { display: flex; justify-content: space-between; gap: 18px; padding-top: 8px; }
+.belm-customer-face-eyebrow { margin: 0 0 4px; color: #80e36e; font-size: 12px; font-weight: 900; letter-spacing: .09em; }
+.belm-customer-face-head h1 { margin: 0 0 20px; color: #fff; font-size: clamp(28px,4.2vw,40px); line-height: 1.05; font-weight: 900; }
+.belm-customer-face-contacts { display: grid; gap: 7px; width: min(430px, 100%); }
+.belm-customer-face-contacts > div { display: grid; grid-template-columns: 82px minmax(0,1fr); align-items: baseline; gap: 10px; min-width: 0; }
+.belm-customer-face-contacts span { color: #a9bad0; font-size: 11px; font-weight: 900; letter-spacing: .03em; }
+.belm-customer-face-contacts b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #fff; font-size: 13px; font-weight: 850; }
+.belm-customer-face-statuses { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; padding-top: 3px; }
+.belm-customer-face-active-pill { padding: 7px 13px; border-radius: 999px; color: #d8ffcf; background: #258f45; font-size: 11px; font-weight: 900; }
+.belm-customer-face-provider { max-width: 170px; padding: 7px 11px; border: 1px solid #3c5d79; border-radius: 999px; color: #d8e6f6; background: #0c1c2f; font-size: 10px; font-weight: 900; text-align: center; }
+.belm-customer-face-communication {
+  min-height: 520px; margin-top: 48px; padding: 20px 20px 16px;
+  display: flex; flex-direction: column;
+  border: 1px solid #375471; border-radius: 18px; background: rgba(5,15,27,.42);
+}
+.belm-customer-face-communication-title { display: grid; grid-template-columns: minmax(150px,.55fr) 1fr; align-items: center; gap: 16px; }
+.belm-customer-face-communication-title strong { color: #fff; font-size: 21px; line-height: 1.04; }
+.belm-customer-face-communication-title button {
+  width: 100%; min-height: 42px; border: 1px solid #4c8cd1; border-radius: 12px;
+  color: #fff; background: #215f9f; font: 850 12px/1 Inter,system-ui,sans-serif; cursor: pointer;
+}
+.belm-customer-face-communication-body { display: grid; align-content: start; gap: 9px; padding-top: 16px; overflow: auto; }
+.belm-customer-face-empty { margin: 12px 0; color: #c3d0de; font-size: 13px; font-weight: 650; text-align: center; }
+.belm-customer-face-communication-row { padding: 11px 12px; border: 1px solid #29445f; border-radius: 11px; background: rgba(18,39,62,.82); }
+.belm-customer-face-communication-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.belm-customer-face-communication-head strong { color: #fff; font-size: 12px; }
+.belm-customer-face-communication-head span { color: #75e667; font-size: 9px; font-weight: 900; }
+.belm-customer-face-communication-row p { margin: 7px 0 5px; color: #d4dfeb; font-size: 12px; line-height: 1.4; }
+.belm-customer-face-communication-row small { color: #7f96ad; font-size: 10px; }
+.belm-customer-face-actions { margin-top: 18px; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.belm-customer-face-action {
+  min-width: 0; min-height: 62px; padding: 8px 8px; border: 1px solid transparent; border-radius: 13px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  text-decoration: none; white-space: normal; overflow-wrap: anywhere;
+  font: 900 12px/1.15 Inter,system-ui,sans-serif; cursor: pointer;
+  box-shadow: 0 8px 18px rgba(0,0,0,.18);
+}
+.belm-customer-face-action.action-black { color:#fff; background:#05080e; border-color:#253247; }
+.belm-customer-face-action.action-blue { color:#fff; background:#2f7cf5; border-color:#2f7cf5; }
+.belm-customer-face-action.action-green { color:#fff; background:#21a957; border-color:#21a957; }
+.belm-customer-face-action.action-yellow { color:#1b2230; background:#ffc928; border-color:#ffc928; }
+.belm-customer-face-loading { margin: auto; padding: 30px; color: #d7e4f2; font-size: 14px; font-weight: 800; }
+.belm-customer-face-communication-dialog {
+  width: min(720px, calc(100vw - 28px)); max-height: 82vh; padding: 0; border: 1px solid #36516d; border-radius: 18px;
+  color: #eaf3fc; background: #0b1929; box-shadow: 0 28px 80px rgba(0,0,0,.5);
+}
+.belm-customer-face-communication-dialog::backdrop { background: rgba(1,7,14,.78); }
+.belm-customer-face-dialog-head { padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #284158; }
+.belm-customer-face-dialog-head div { display: grid; gap: 3px; }
+.belm-customer-face-dialog-head b { font-size: 17px; }
+.belm-customer-face-dialog-head span { color: #89a0b7; font-size: 11px; }
+.belm-customer-face-dialog-head button { border: 1px solid #3c5c78; border-radius: 9px; padding: 8px 12px; color: #fff; background: #10243a; font-weight: 800; cursor: pointer; }
+.belm-customer-face-dialog-body { max-height: 66vh; padding: 16px; display: grid; gap: 9px; overflow: auto; }
+@media (max-width: 720px) {
+  .belm-customer-dashboard-face { padding: 14px 8px 28px; }
+  .belm-customer-face-toolbar, .belm-customer-face-card { width: min(100%, 620px); }
+  .belm-customer-face-card { min-height: 760px; padding: 24px 16px 16px; border-radius: 17px; }
+  .belm-customer-face-head { gap: 10px; }
+  .belm-customer-face-head h1 { margin-bottom: 15px; }
+  .belm-customer-face-contacts > div { grid-template-columns: 66px minmax(0,1fr); gap: 7px; }
+  .belm-customer-face-contacts span { font-size: 9.5px; }
+  .belm-customer-face-contacts b { font-size: 11.5px; }
+  .belm-customer-face-statuses { gap: 7px; }
+  .belm-customer-face-active-pill, .belm-customer-face-provider { font-size: 9px; padding: 6px 8px; }
+  .belm-customer-face-communication { min-height: 440px; margin-top: 34px; padding: 14px 12px; }
+  .belm-customer-face-communication-title { grid-template-columns: minmax(105px,.52fr) 1fr; gap: 9px; }
+  .belm-customer-face-communication-title strong { font-size: 17px; }
+  .belm-customer-face-actions { gap: 6px; }
+  .belm-customer-face-action { min-height: 58px; padding: 6px 4px; font-size: 10.5px; border-radius: 10px; }
+}
+@media (max-width: 430px) {
+  .belm-customer-face-card { padding-left: 12px; padding-right: 12px; }
+  .belm-customer-face-provider { max-width: 110px; }
+  .belm-customer-face-action { font-size: 9.2px; }
+}

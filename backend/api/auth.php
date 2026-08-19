@@ -605,6 +605,7 @@ if ($action === 'unified-login' && $method === 'POST') {
         'type' => 'customer',
         'id' => $customer['id'],
         'name' => $customer['name'],
+        'address' => $customer['address'] ?? null,
         'portalLink' => $customer['portal_link'],
         'actorType' => $actorType,
         'actorId' => $actorId,

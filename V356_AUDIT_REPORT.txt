@@ -1,0 +1,13 @@
+V356 SAFETY SCOPE
+
+AUTHORIZED DESTRUCTIVE SCOPE (first successful V356 migration only):
+- bank_withdrawals: DELETE all
+- bank_accounts: DELETE all, then insert BELM TEST BANK
+- payments/receipts/company_expenses: bank_account_id only -> NULL; rows preserved
+
+PROHIBITED / GUARDED:
+- spare_parts rows, stock_qty, reorder_threshold, purchase_price, selling_price
+- spare_part_requests and all other business tables
+- invoices, payments, receipts, expenses rows themselves
+
+The reset is one-time, keyed by belm_deployment_audits release=356-bank-test-reset.

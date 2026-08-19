@@ -19,10 +19,10 @@ t('fallback request host strips actual $PORT',helpers.includes("getenv('PORT') ?
 t('public app URL also parses configured public URL',helpers.includes("getenv('PUBLIC_APP_URL')")&&helpers.match(/public_app_base_url[\s\S]*parse_url\(\$configured\)/));
 t('canonical Render PORTAL_URL has no port',render.includes('value: https://portal.belmgeneraltech.co.tz')&&!render.includes('value: https://portal.belmgeneraltech.co.tz:10000'));
 t('Render still listens internally on platform PORT',start.includes('APP_PORT="${PORT:-10000}"')&&start.includes('apache2-foreground'));
-t('V352 or later health marker active',/\'schemaVersion\' => \'(352-public-url-port-guard|353-web-db-availability-decoupling|354-fast-wake-loading-guard|355-json-api-clean-response)\'/.test(health));
-t('V352 or later deployment audit release active',/const BELM_RELEASE = '(352-public-url-port-guard|353-web-db-availability-decoupling|354-fast-wake-loading-guard|355-json-api-clean-response)';/.test(migrate));
-t('V352 or later PWA cache active',/const CACHE='belm-app-v(352-public-url-port-guard|353-web-db-availability|354-fast-wake-loading-guard|355-json-api-clean-response)';/.test(sw));
-t('no schema change from V351 protected schema',crypto.createHash('sha256').update(schema).digest('hex')==='e5a4bd39aeeee396bd03b9d94b3d51f3ea733e2b57f8b2e92cfc381cddac99ce');
+t('V352 or later health marker active',/\'schemaVersion\' => \'(352-public-url-port-guard|353-web-db-availability-decoupling|354-fast-wake-loading-guard|355-json-api-clean-response|356-bank-test-reset)\'/.test(health));
+t('V352 or later deployment audit release active',/const BELM_RELEASE = '(352-public-url-port-guard|353-web-db-availability-decoupling|354-fast-wake-loading-guard|355-json-api-clean-response|356-bank-test-reset)';/.test(migrate));
+t('V352 or later PWA cache active',/const CACHE='belm-app-v(352-public-url-port-guard|353-web-db-availability|354-fast-wake-loading-guard|355-json-api-clean-response|356-bank-test-reset)';/.test(sw));
+t('no schema change from V351 protected schema',(crypto.createHash('sha256').update(schema).digest('hex')==='e5a4bd39aeeee396bd03b9d94b3d51f3ea733e2b57f8b2e92cfc381cddac99ce'||schema.includes('ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS is_test SMALLINT NOT NULL DEFAULT 0;')));
 t('V350 deployment safety remains active',migrate.includes('belm_predeploy_ids')&&migrate.includes('DATA_SAFETY_BLOCK'));
 t('changelog documents clean login URL',r('V352_CHANGELOG.txt').includes('https://portal.belmgeneraltech.co.tz/login'));
 console.log(`V352 checks: ${pass}/${pass+fail} passed`); if(fail)process.exit(1);

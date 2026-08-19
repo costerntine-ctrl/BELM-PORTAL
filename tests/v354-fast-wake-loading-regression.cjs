@@ -25,11 +25,11 @@ t('login has bounded fetch helper',login.includes('fetchWithTimeout')&&login.inc
 t('login gives wake feedback',login.includes('Server waking up…'));
 t('login has timeout retry message',login.includes('Server did not respond in time'));
 t('login HTML uses V354-or-later JS',loginHtml.includes('/customer-app.js?v=354-fast-wake')||loginHtml.includes('/customer-app.js?v=355-json-api'));
-t('service worker uses V354-or-later cache',sw.includes("const CACHE='belm-app-v354-fast-wake-loading-guard';")||sw.includes("const CACHE='belm-app-v355-json-api-clean-response';"));
+t('service worker uses V354-or-later cache',sw.includes("const CACHE='belm-app-v354-fast-wake-loading-guard';")||sw.includes("const CACHE='belm-app-v355-json-api-clean-response';")||sw.includes("const CACHE='belm-app-v356-bank-test-reset';"));
 t('login shell is cache-first',sw.includes("caches.match('/customer-app.html')")&&sw.includes('isLoginShell'));
 t('API requests bypass SW cache',sw.includes("url.pathname.startsWith('/api/')"));
-t('V354-or-later health marker active',health.includes("'schemaVersion' => '354-fast-wake-loading-guard'")||health.includes("'schemaVersion' => '355-json-api-clean-response'"));
-t('V354-or-later migration release active',migrate.includes("const BELM_RELEASE = '354-fast-wake-loading-guard';")||migrate.includes("const BELM_RELEASE = '355-json-api-clean-response';"));
+t('V354-or-later health marker active',health.includes("'schemaVersion' => '354-fast-wake-loading-guard'")||health.includes("'schemaVersion' => '355-json-api-clean-response'")||health.includes("'schemaVersion' => '356-bank-test-reset'"));
+t('V354-or-later migration release active',migrate.includes("const BELM_RELEASE = '354-fast-wake-loading-guard';")||migrate.includes("const BELM_RELEASE = '355-json-api-clean-response';")||migrate.includes("const BELM_RELEASE = '356-bank-test-reset';"));
 t('V350 data safety remains active',migrate.includes('DATA_SAFETY_BLOCK')&&migrate.includes('belm_predeploy_ids'));
 t('schema unchanged by V354',!schema.includes('V354'));
 console.log(`RESULT ${pass} passed, ${fail} failed`);process.exit(fail?1:0);

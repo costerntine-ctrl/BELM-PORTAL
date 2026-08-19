@@ -1,0 +1,10 @@
+BELM PORTAL V356 — BANK TEST RESET
+
+- One-time user-authorized reset removes all existing bank_accounts and bank_withdrawals.
+- Existing payments, receipts and company expenses are preserved; only bank_account_id is detached.
+- Creates one clearable BELM TEST BANK at TZS 0 (TEST-000001).
+- Adds is_test marker to bank_accounts.
+- Adds Clear TEST BANK Data action that resets only test-bank allocations/withdrawals/opening balance.
+- Bank Controller payment/expense flow totals now count bank-allocated records only.
+- Spare Stock is explicitly protected: no spare write is performed and migration hashes stock quantities/prices before/after reset.
+- V350+ database preservation remains active for every non-bank table.

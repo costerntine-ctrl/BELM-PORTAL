@@ -14,8 +14,8 @@
       }
     })();
   </script>
-    <link rel="stylesheet" href="/service-request-manager/manager.css?v=335-daily-report-sync">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
+    <link rel="stylesheet" href="/service-request-manager/manager.css?v=358-technician-job-reports">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -64,18 +64,30 @@
 
   <dialog id="dailyReportDialog">
     <div class="dialog-head">
-      <div><p class="eyebrow">COMPLETED & CANCELLED</p><h2>Daily Report</h2></div>
+      <div><p class="eyebrow">TECHNICIAN REPORTS + FINAL STATUS</p><h2>Daily Report</h2></div>
       <button id="closeDailyReportButton" type="button" aria-label="Close">×</button>
     </div>
     <div class="daily-report-body">
       <label>Date<input id="dailyReportDate" type="date"></label>
-      <div id="dailyReportSummary" class="daily-report-sync-summary">Synchronizing final-status actions…</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Time</th><th>Customer</th><th>Machine</th><th>Description</th><th>Status</th><th>Handled by</th></tr></thead>
-          <tbody id="dailyReportRows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
-        </table>
-      </div>
+      <div id="dailyReportSummary" class="daily-report-sync-summary">Synchronizing Technician reports and final-status actions…</div>
+      <section class="daily-report-section technician-report-section">
+        <div class="daily-report-section-head"><div><b>Technician Job Card Reports</b><small>Latest technical report saved by the Technician on the selected date.</small></div><span id="dailyJobReportCount">0 reports</span></div>
+        <div class="table-wrap technician-report-table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Job Card</th><th>Customer / Machine</th><th>Technician</th><th>Diagnosis / Work Done</th><th>Status</th><th>Report</th></tr></thead>
+            <tbody id="dailyJobReportRows"><tr><td colspan="7" class="empty">Loading Technician reports…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="daily-report-section final-status-section">
+        <div class="daily-report-section-head"><div><b>Completed & Cancelled Service Requests</b><small>Workshop/customer-support final actions on the selected date.</small></div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Customer</th><th>Machine</th><th>Description</th><th>Status</th><th>Handled by</th></tr></thead>
+            <tbody id="dailyReportRows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
     </div>
   </dialog>
 
@@ -99,7 +111,7 @@
   </dialog>
 
     <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
-    <script src="/service-request-manager/manager.js?v=335-daily-report-sync"></script>
+    <script src="/admin-sidebar.js?v=357-az-refresh-motion"></script>
+    <script src="/service-request-manager/manager.js?v=358-technician-job-reports"></script>
 </body>
 </html>

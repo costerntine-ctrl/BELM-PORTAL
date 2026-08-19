@@ -120,61 +120,37 @@
   userCard.append(userAvatar, userCopy);
 
   const nav = document.createElement("nav");
-  nav.className = "belm-sidebar-nav";
+  nav.className = "belm-sidebar-nav belm-sidebar-nav-flat";
   const currentPath = pathname;
   const currentHash = window.location.hash || "";
-  const groupedPages = visiblePages.reduce((groups, page) => {
-    const section = page.section || "General";
-    if (!groups.has(section)) groups.set(section, []);
-    groups.get(section).push(page);
-    return groups;
-  }, new Map());
 
-  groupedPages.forEach((sectionPages, sectionName) => {
-    const group = document.createElement("details");
-    group.className = "belm-sidebar-group";
-    const hasActivePage = sectionPages.some((page) => {
-      const pathMatches = page.paths.some((path) => currentPath === path || currentPath.startsWith(path));
-      const hashMatches = page.hash ? currentHash === page.hash : (page.hashNot ? currentHash !== page.hashNot : true);
-      return pathMatches && hashMatches;
-    });
-    const stored = localStorage.getItem(`belm-sidebar-group:${sectionName}`);
-    group.open = hasActivePage || stored !== "closed";
+  // V357: one simple A-Z navigation list. Category headings intentionally
+  // stay out of the UI so every destination is visible and predictable.
+  const sortedPages = [...visiblePages].sort((a, b) =>
+    String(a.label || "").localeCompare(String(b.label || ""), "en", { sensitivity: "base" })
+  );
 
-    const heading = document.createElement("summary");
-    heading.className = "belm-sidebar-section";
-    heading.innerHTML = `<span>${sectionName}</span><span class="belm-sidebar-section-chevron" aria-hidden="true">⌄</span>`;
-    group.appendChild(heading);
-
-    const groupLinks = document.createElement("div");
-    groupLinks.className = "belm-sidebar-group-links";
-    sectionPages.forEach((page) => {
-      const link = document.createElement("a");
-      link.className = "belm-sidebar-link";
-      link.dataset.section = sectionName;
-      if (page.priority) link.classList.add("workflow");
-      link.href = page.href;
-      const pathMatches = page.paths.some((path) => currentPath === path || currentPath.startsWith(path));
-      const hashMatches = page.hash ? currentHash === page.hash : (page.hashNot ? currentHash !== page.hashNot : true);
-      if (pathMatches && hashMatches) {
-        link.classList.add("active");
-        link.setAttribute("aria-current", "page");
-      }
-      const icon = document.createElement("span");
-      icon.className = "belm-sidebar-icon";
-      icon.textContent = page.short;
-      const label = document.createElement("span");
-      label.textContent = page.label;
-      label.title = page.label;
-      link.append(icon, label);
-      if (page.applications) link.id = "belmSidebarApplications";
-      groupLinks.appendChild(link);
-    });
-    group.appendChild(groupLinks);
-    group.addEventListener("toggle", () => {
-      localStorage.setItem(`belm-sidebar-group:${sectionName}`, group.open ? "open" : "closed");
-    });
-    nav.appendChild(group);
+  sortedPages.forEach((page) => {
+    const link = document.createElement("a");
+    link.className = "belm-sidebar-link";
+    link.dataset.section = page.section || "";
+    if (page.priority) link.classList.add("workflow");
+    link.href = page.href;
+    const pathMatches = page.paths.some((path) => currentPath === path || currentPath.startsWith(path));
+    const hashMatches = page.hash ? currentHash === page.hash : (page.hashNot ? currentHash !== page.hashNot : true);
+    if (pathMatches && hashMatches) {
+      link.classList.add("active");
+      link.setAttribute("aria-current", "page");
+    }
+    const icon = document.createElement("span");
+    icon.className = "belm-sidebar-icon";
+    icon.textContent = page.short;
+    const label = document.createElement("span");
+    label.textContent = page.label;
+    label.title = page.label;
+    link.append(icon, label);
+    if (page.applications) link.id = "belmSidebarApplications";
+    nav.appendChild(link);
   });
 
   const footer = document.createElement("div");
@@ -241,41 +217,17 @@
   document.body.prepend(toggle);
   document.body.classList.add("belm-sidebar-ready");
 
-  // V279 - wire the search box: filter links by label text, hide empty
-  // sections, and remember which sections the user had open so turning
-  // the search off restores exactly how the sidebar looked before.
+  // V357: flat A-Z list search; there are no category/group containers.
   (function wireSidebarSearch() {
     const input = document.getElementById("belmSidebarSearch");
     const clearButton = searchWrap.querySelector(".belm-sidebar-search-clear");
     if (!input) return;
-    let openStateBeforeSearch = null;
     function applyFilter(query) {
       const term = query.trim().toLowerCase();
       clearButton.classList.toggle("hidden", term === "");
-      const groups = nav.querySelectorAll(".belm-sidebar-group");
-      if (term === "") {
-        groups.forEach((group) => {
-          group.classList.remove("belm-sidebar-search-hidden");
-          group.querySelectorAll(".belm-sidebar-link").forEach((link) => link.classList.remove("belm-sidebar-search-hidden"));
-          if (openStateBeforeSearch?.has(group)) group.open = openStateBeforeSearch.get(group);
-        });
-        openStateBeforeSearch = null;
-        return;
-      }
-      if (!openStateBeforeSearch) {
-        openStateBeforeSearch = new Map();
-        groups.forEach((group) => openStateBeforeSearch.set(group, group.open));
-      }
-      groups.forEach((group) => {
-        let anyMatch = false;
-        group.querySelectorAll(".belm-sidebar-link").forEach((link) => {
-          const label = (link.textContent || "").toLowerCase();
-          const matches = label.includes(term);
-          link.classList.toggle("belm-sidebar-search-hidden", !matches);
-          if (matches) anyMatch = true;
-        });
-        group.classList.toggle("belm-sidebar-search-hidden", !anyMatch);
-        if (anyMatch) group.open = true;
+      nav.querySelectorAll(".belm-sidebar-link").forEach((link) => {
+        const label = (link.textContent || "").toLowerCase();
+        link.classList.toggle("belm-sidebar-search-hidden", term !== "" && !label.includes(term));
       });
     }
     input.addEventListener("input", () => applyFilter(input.value));
@@ -284,6 +236,33 @@
       applyFilter("");
       input.focus();
     });
+  })();
+
+  // V357: every admin Refresh / Sync control gives immediate visible motion.
+  // This is UI feedback only; it does not alter the page's existing refresh logic.
+  (function wireRefreshMotionFeedback() {
+    const timers = new WeakMap();
+    document.addEventListener("click", (event) => {
+      const control = event.target.closest("button, a");
+      if (!control) return;
+      const id = String(control.id || "").toLowerCase();
+      const label = String(control.textContent || "").trim().toLowerCase();
+      const isRefreshControl = id.includes("refresh") || /(^|\s)(refresh|sync)(\s|$|\/)/i.test(label);
+      if (!isRefreshControl) return;
+
+      const previous = timers.get(control);
+      if (previous) window.clearTimeout(previous);
+      control.classList.remove("belm-refresh-working");
+      void control.offsetWidth;
+      control.classList.add("belm-refresh-working");
+      control.setAttribute("aria-busy", "true");
+      const timer = window.setTimeout(() => {
+        control.classList.remove("belm-refresh-working");
+        control.removeAttribute("aria-busy");
+        timers.delete(control);
+      }, 1600);
+      timers.set(control, timer);
+    }, true);
   })();
 
   const applications = document.getElementById("belmSidebarApplications");

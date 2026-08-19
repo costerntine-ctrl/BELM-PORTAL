@@ -36,7 +36,7 @@ if (($segments[0] ?? '') === 'live') {
     json_out([
         'ok' => true,
         'api' => 'BELM PHP web service',
-        'schemaVersion' => '355-json-api-clean-response',
+        'schemaVersion' => '356-bank-test-reset',
         'databaseReadiness' => '/api/health',
     ], 200);
 }
@@ -104,6 +104,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             ['proforma_invoices', 'source_job_card_id'],
             ['password_reset_codes', 'account_id'],
             ['payments', 'receipt_id'],
+            ['bank_accounts', 'is_test'],
         ];
         $columnChecks = [];
         $columnStatement = db()->prepare(
@@ -188,7 +189,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
             // Regression baseline: 'schemaVersion' => '347-expense-persistence-sync'
-            'schemaVersion' => '355-json-api-clean-response',
+            'schemaVersion' => '356-bank-test-reset',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,
@@ -421,6 +422,9 @@ switch ($resource) {
         }
         if (($segments[1] ?? '') === 'withdrawals') {
             dispatch('bank_manager.php', ['action' => 'withdrawal', 'id' => $segments[2] ?? null]);
+        }
+        if (($segments[1] ?? '') === 'test-reset') {
+            dispatch('bank_manager.php', ['action' => 'test-reset']);
         }
         dispatch('bank_manager.php');
 

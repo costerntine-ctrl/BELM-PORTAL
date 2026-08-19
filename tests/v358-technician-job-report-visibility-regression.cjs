@@ -1,0 +1,35 @@
+const fs=require('fs');
+const path=require('path');
+const crypto=require('crypto');
+const root=path.resolve(__dirname,'..');
+const r=p=>fs.readFileSync(path.join(root,p),'utf8');
+const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(path.join(root,p))).digest('hex');
+const api=r('backend/api/service_requests.php');
+const html=r('frontend/service-request-manager/index.html');
+const js=r('frontend/service-request-manager/manager.js');
+const css=r('frontend/service-request-manager/manager.css');
+const schema=r('backend/schema.sql');
+const migrate=r('backend/scripts/migrate.php');
+let pass=0,fail=0;
+function t(name,cond){try{const ok=typeof cond==='function'?cond():cond;if(!ok)throw new Error('failed');console.log('PASS',name);pass++;}catch(e){console.error('FAIL',name,e.message);fail++;}}
+
+t('daily report queries technician digital job cards',api.includes('$jobReportStmt = db()->prepare')&&api.includes('FROM digital_job_cards j')&&api.includes('JOIN breakdown_cases bc ON bc.id=j.case_id'));
+t('only saved technical reports are included',api.includes("NULLIF(TRIM(COALESCE(j.diagnosis,'')),'') IS NOT NULL")&&api.includes("NULLIF(TRIM(COALESCE(j.work_done,'')),'') IS NOT NULL"));
+t('technician report date is Tanzania local date',api.includes("AT TIME ZONE 'Africa/Dar_es_Salaam')::date = ?"));
+t('daily response exposes jobReports',api.includes("'jobReports' => count($jobReports)")&&api.includes("'jobReports' => $jobReports"));
+t('job report response exposes camel-case UI fields',api.includes("$jr['jobCardNo']")&&api.includes("$jr['technicianName']")&&api.includes("$jr['workDone']")&&api.includes("$jr['reportAt']"));
+t('daily report modal contains technician report section',html.includes('Technician Job Card Reports')&&html.includes('dailyJobReportRows')&&html.includes('dailyJobReportCount'));
+t('final service request section remains separate',html.includes('Completed & Cancelled Service Requests')&&html.includes('dailyReportRows'));
+t('service request assets are cache-busted to V358',html.includes('manager.css?v=358-technician-job-reports')&&html.includes('manager.js?v=358-technician-job-reports'));
+t('frontend renders technician report count',js.includes('summary.jobReports')&&js.includes('technicianReports.length'));
+t('frontend renders job card identity and technician',js.includes('report.jobCardNo')&&js.includes('report.technicianName'));
+t('frontend renders diagnosis and work done',js.includes('report.diagnosis')&&js.includes('report.workDone')&&js.includes('Diagnosis:')&&js.includes('Work:'));
+t('frontend exposes report PDF action',js.includes('data-technician-job-report-pdf')&&js.includes('downloadTechnicianJobReport'));
+t('PDF action uses official breakdown job-card PDF endpoint',js.includes('/api/breakdown-workflow/job-card-pdf/'));
+t('daily report dialog is widened for report table',css.includes('#dailyReportDialog{width:min(1020px')&&css.includes('.technician-report-table-wrap'));
+t('no V358 schema mutation',!schema.includes('V358')&&!schema.includes('358-technician-job-reports'));
+t('bank reset migration stays V356',migrate.includes("const BELM_RELEASE = '356-bank-test-reset';"));
+t('spare manager unchanged from V357 baseline',sha('frontend/spare-parts-manager/manager.js')==='befcbfb959dbbca87f258f2e3d6ec9e7725a273dac6fc3d206ba5aebe9e5ea2c');
+t('spare backend unchanged from V357 baseline',sha('backend/api/spare_parts.php')==='1c504edbedfd231d2d704cf93c457fda70f897db4ab869e5d3ffa509545828c3');
+t('bank reset migration unchanged from V357 baseline',sha('backend/scripts/migrate.php')==='d8c681aea4e06d77e21b915d4462d4ebb87741f96a9e92794e9e01378e777a26');
+console.log(`V358 checks: ${pass}/${pass+fail} passed`);process.exit(fail?1:0);

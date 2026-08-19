@@ -19,7 +19,7 @@ check('withdrawal list uses normalized bank fields', () => assert.match(app, /wi
 check('saved account stays selected after reload', () => assert.match(app, /load\(savedId\)/));
 check('save UI confirms PostgreSQL persistence', () => assert.match(app, /saved in PostgreSQL/));
 check('page shows PostgreSQL load status', () => assert.match(html, /bankStorageStatus/));
-check('bank asset cache is V348', () => assert.match(html, /348-bank-account-visibility/));
+check('bank asset cache is V348 or later bank build', () => assert.match(html, /(348-bank-account-visibility|356-bank-test-reset)/));
 check('bank accounts remain persistent schema table', () => assert.match(schema, /CREATE TABLE IF NOT EXISTS bank_accounts/));
 check('bank save inserts named fields', () => assert.match(api, /INSERT INTO bank_accounts[\s\S]*bank_name, account_name, account_number, opening_balance/));
 check('bank API returns saved id', () => assert.match(api, /json_out\(\['id' => \$newId\], 201\)/));

@@ -516,17 +516,69 @@
   document.getElementById("noteForm").addEventListener("submit", saveNote);
   document.getElementById("closeNoteButton").addEventListener("click", () => noteDialog.close());
   document.getElementById("cancelNoteButton").addEventListener("click", () => noteDialog.close());
+  async function downloadTechnicianJobReport(jobId, button) {
+    const original = button?.textContent || "PDF";
+    if (button) { button.disabled = true; button.textContent = "Opening…"; }
+    try {
+      const response = await fetch(`/api/breakdown-workflow/job-card-pdf/${encodeURIComponent(jobId)}`, {
+        cache: "no-store",
+        headers: { Authorization: `Bearer ${token || ""}` },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.error || "Could not prepare Technician Job Card report.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `BELM-Technician-Job-Report-${jobId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (error) {
+      showAlert(error.message || "Could not open Technician Job Card report.", true);
+    } finally {
+      if (button) { button.disabled = false; button.textContent = original; }
+    }
+  }
+
   async function loadDailyReport(date) {
     const rows = document.getElementById("dailyReportRows");
+    const jobRows = document.getElementById("dailyJobReportRows");
+    const jobCount = document.getElementById("dailyJobReportCount");
     const summaryBox = document.getElementById("dailyReportSummary");
     rows.innerHTML = '<tr><td colspan="6" class="empty">Loading…</td></tr>';
-    if (summaryBox) summaryBox.textContent = "Synchronizing final-status actions…";
+    if (jobRows) jobRows.innerHTML = '<tr><td colspan="7" class="empty">Loading Technician reports…</td></tr>';
+    if (jobCount) jobCount.textContent = "Loading…";
+    if (summaryBox) summaryBox.textContent = "Synchronizing Technician reports and final-status actions…";
     try {
       const result = await api(`/service-requests?action=daily-report&date=${encodeURIComponent(date)}`);
       const reportRequests = result.requests || [];
+      const technicianReports = result.jobReports || [];
       const summary = result.summary || {};
       if (summaryBox) {
-        summaryBox.innerHTML = `<strong>${escapeHtml(displayDateKey(result.date || date))}</strong> · ${Number(summary.completed || 0)} completed · ${Number(summary.cancelled || 0)} cancelled <span>Status tabs: ${Number(summary.visibleCompleted || 0)} completed · ${Number(summary.visibleCancelled || 0)} cancelled</span>`;
+        summaryBox.innerHTML = `<strong>${escapeHtml(displayDateKey(result.date || date))}</strong> · ${Number(summary.jobReports || technicianReports.length || 0)} Technician Job Card report(s) · ${Number(summary.completed || 0)} completed · ${Number(summary.cancelled || 0)} cancelled <span>Status tabs: ${Number(summary.visibleCompleted || 0)} completed · ${Number(summary.visibleCancelled || 0)} cancelled</span>`;
+      }
+      if (jobCount) jobCount.textContent = `${technicianReports.length} report${technicianReports.length === 1 ? "" : "s"}`;
+      if (jobRows) {
+        jobRows.innerHTML = technicianReports.length
+          ? technicianReports.map((report) => {
+              const work = String(report.workDone || "");
+              const diagnosis = String(report.diagnosis || "");
+              const machine = report.machine?.label || [report.machine?.brand, report.machine?.model].filter(Boolean).join(" ") || "—";
+              return `<tr class="technician-job-report-row">
+                <td>${report.reportAt ? formatDateTime(report.reportAt) : "—"}</td>
+                <td><strong>${escapeHtml(report.jobCardNo || "—")}</strong><small>${escapeHtml(report.title || "")}</small></td>
+                <td><strong>${escapeHtml(report.customer?.name || "—")}</strong><small>${escapeHtml(machine)}</small></td>
+                <td><strong>${escapeHtml(report.technicianName || "Technician")}</strong></td>
+                <td><div class="job-report-summary"><b>Diagnosis:</b> ${escapeHtml(diagnosis.slice(0, 90))}${diagnosis.length > 90 ? "…" : ""}<br><b>Work:</b> ${escapeHtml(work.slice(0, 90))}${work.length > 90 ? "…" : ""}</div></td>
+                <td><span class="job-report-status ${String(report.status || "").toLowerCase()}">${escapeHtml(report.status || "—")}</span>${report.repeatIssue ? '<small class="repeat-flag">REPEAT / REWORK</small>' : ""}</td>
+                <td><button type="button" class="secondary compact" data-technician-job-report-pdf="${escapeHtml(report.id)}">View PDF</button></td>
+              </tr>`;
+            }).join("")
+          : `<tr><td colspan="7" class="empty">No Technician Job Card report was saved on ${escapeHtml(displayDateKey(result.date || date))}.</td></tr>`;
       }
       rows.innerHTML = reportRequests.length
         ? reportRequests.map((request) => {
@@ -544,9 +596,11 @@
               <td><strong>${escapeHtml(handledBy)}</strong></td>
             </tr>`;
           }).join("")
-        : `<tr><td colspan="6" class="empty">No completion/cancellation action on ${escapeHtml(displayDateKey(result.date || date))}. Status-tab totals are all dates; choose the date when the job was actually completed or cancelled.</td></tr>`;
+        : `<tr><td colspan="6" class="empty">No Service Request completion/cancellation action on ${escapeHtml(displayDateKey(result.date || date))}. Technician reports, if any, are shown above.</td></tr>`;
     } catch (error) {
       if (summaryBox) summaryBox.textContent = "Daily Report sync failed.";
+      if (jobCount) jobCount.textContent = "Sync failed";
+      if (jobRows) jobRows.innerHTML = `<tr><td colspan="7" class="empty">${escapeHtml(error.message || "Could not load Technician Job Card reports.")}</td></tr>`;
       rows.innerHTML = `<tr><td colspan="6" class="empty">${escapeHtml(error.message || "Could not load the daily report.")}</td></tr>`;
     }
   }
@@ -558,6 +612,11 @@
     loadDailyReport(dateInput.value);
   });
   document.getElementById("dailyReportDate").addEventListener("change", (event) => loadDailyReport(event.target.value));
+  document.getElementById("dailyJobReportRows")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-technician-job-report-pdf]");
+    if (!button) return;
+    downloadTechnicianJobReport(button.dataset.technicianJobReportPdf, button);
+  });
   document.getElementById("closeDailyReportButton").addEventListener("click", () =>
     document.getElementById("dailyReportDialog").close());
 

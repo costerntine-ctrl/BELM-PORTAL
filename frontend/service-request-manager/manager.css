@@ -139,3 +139,19 @@ html[data-theme="dark"] .compact-job-state.ready{color:#bdf4d4;border-color:#216
 .daily-report-sync-summary span{margin-left:auto;color:var(--muted);font-size:10px;font-weight:700}
 html[data-theme="dark"] .daily-report-sync-summary{background:rgba(0,166,81,.10)}
 @media(max-width:640px){.daily-report-sync-summary{display:grid;gap:4px}.daily-report-sync-summary span{margin-left:0}}
+
+
+/* V358 - Technician Job Card reports are visible in the Engineering Daily Report. */
+#dailyReportDialog{width:min(1020px,calc(100% - 28px));max-height:calc(100vh - 24px);overflow:auto}
+.daily-report-section{display:grid;gap:8px;margin:14px 0 18px}
+.daily-report-section-head{display:flex;align-items:end;justify-content:space-between;gap:14px;padding:0 2px}
+.daily-report-section-head>div{display:grid;gap:2px}.daily-report-section-head b{font-size:12px;color:var(--ink)}.daily-report-section-head small{color:var(--muted);font-size:9.5px;line-height:1.4}
+.daily-report-section-head>span{padding:4px 8px;border:1px solid var(--line);border-radius:999px;color:var(--green2);background:rgba(0,166,81,.06);font-size:9px;font-weight:900;white-space:nowrap}
+.technician-report-table-wrap{max-height:34vh;border:1px solid var(--line);border-radius:10px}
+.final-status-section .table-wrap{max-height:27vh;border:1px solid var(--line);border-radius:10px}
+.technician-job-report-row td{vertical-align:top}.technician-job-report-row td small{display:block;margin-top:3px;color:var(--muted);font-size:9px;line-height:1.35}
+.job-report-summary{min-width:220px;max-width:360px;color:var(--muted);font-size:10px;line-height:1.48}.job-report-summary b{color:var(--ink)}
+.job-report-status{display:inline-flex;padding:4px 7px;border-radius:999px;background:rgba(59,130,246,.11);color:#1d4ed8;font-size:8.5px;font-weight:900;white-space:nowrap}.job-report-status.completed{background:rgba(0,166,81,.12);color:var(--green2)}
+.repeat-flag{color:#b42318!important;font-weight:900}.technician-job-report-row .compact{white-space:nowrap}
+html[data-theme="dark"] .daily-report-section-head>span{background:rgba(0,166,81,.12)}html[data-theme="dark"] .job-report-status{color:#93c5fd}html[data-theme="dark"] .job-report-status.completed{color:#86efac}
+@media(max-width:700px){#dailyReportDialog{width:calc(100% - 12px);max-height:calc(100vh - 12px)}.daily-report-body{padding-left:12px;padding-right:12px}.daily-report-section-head{align-items:start;flex-direction:column}.job-report-summary{min-width:180px}}

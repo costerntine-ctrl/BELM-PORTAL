@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=279-sidebar-search">
-  <link rel="stylesheet" href="/bank-controller/app.css?v=348-bank-account-visibility">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
+  <link rel="stylesheet" href="/bank-controller/app.css?v=356-bank-test-reset">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -28,7 +28,10 @@
         <h1>Bank Accounts</h1>
         <p>Select a bank account to view its balance, or add a new account and record withdrawals.</p>
       </div>
-      <button id="addAccountButton" class="primary" type="button">+ Add bank account</button>
+      <div class="topbar-actions">
+        <button id="clearTestBankButton" class="secondary hidden" type="button">Clear TEST BANK Data</button>
+        <button id="addAccountButton" class="primary" type="button">+ Add bank account</button>
+      </div>
     </section>
 
     <div id="pageAlert" class="alert hidden"></div>
@@ -110,7 +113,7 @@
   </dialog>
 
   <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
-  <script src="/bank-controller/app.js?v=348-bank-account-visibility"></script>
+  <script src="/admin-sidebar.js?v=357-az-refresh-motion"></script>
+  <script src="/bank-controller/app.js?v=356-bank-test-reset"></script>
 </body>
 </html>

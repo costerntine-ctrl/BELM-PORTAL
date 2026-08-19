@@ -708,3 +708,41 @@
 .belm-sidebar-link.workflow { font-weight:850; }
 .belm-sidebar-link.workflow .belm-sidebar-icon { background:rgba(0,169,88,.16); }
 .belm-sidebar-group:has(.belm-sidebar-link.active) > .belm-sidebar-section { color:#fff; }
+
+/* ========================================================================
+   V357 - FLAT A-Z SIDEBAR + VISIBLE REFRESH MOTION
+   ======================================================================== */
+.belm-sidebar-nav-flat {
+  gap: 1px;
+  padding-top: 9px;
+}
+.belm-sidebar-nav-flat > .belm-sidebar-link {
+  margin: 2px 0;
+}
+
+@keyframes belmRefreshControlWiggle {
+  0%   { transform: translateX(0) scale(1); }
+  25%  { transform: translateX(-2px) scale(1.015); }
+  50%  { transform: translateX(0) scale(1.025); }
+  75%  { transform: translateX(2px) scale(1.015); }
+  100% { transform: translateX(0) scale(1); }
+}
+@keyframes belmRefreshGlyphSpin {
+  to { transform: rotate(360deg); }
+}
+.belm-refresh-working {
+  position: relative;
+  animation: belmRefreshControlWiggle .42s ease-in-out infinite !important;
+  box-shadow: 0 0 0 3px rgba(23, 105, 194, .16), 0 8px 20px rgba(13, 33, 58, .14) !important;
+}
+.belm-refresh-working::before {
+  display: inline-block;
+  margin-right: .42em;
+  content: "↻";
+  font-weight: 900;
+  animation: belmRefreshGlyphSpin .58s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .belm-refresh-working { animation: none !important; }
+  .belm-refresh-working::before { animation: none; }
+}

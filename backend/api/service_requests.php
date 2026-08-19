@@ -208,6 +208,55 @@ if ($method === 'GET' && $action === 'daily-report') {
     }
     unset($r);
 
+    // V358: Daily Report must also show the technical Job Card report that the
+    // assigned Technician actually saved. The Service Request reaches COMPLETED
+    // only after Workshop testing, so using only final Service Request actions
+    // hid a Technician report that may have been submitted hours/days earlier.
+    // We expose the latest technical snapshot for Job Cards whose report was
+    // updated on the selected Tanzania calendar date. No Job Card history/data is
+    // rewritten here; this is a read-only reporting view.
+    $jobReportStmt = db()->prepare(
+        "SELECT j.id,j.job_card_no,j.title,j.status,j.technician_name,j.diagnosis,j.work_done,
+                j.test_result,j.completion_note,j.repeat_issue,j.started_at,j.completed_at,j.updated_at,
+                c.name AS customer_name,m.brand AS machine_brand,m.model AS machine_model,m.machine_type,
+                bc.source_type,bc.source_id,
+                COALESCE(j.completed_at,j.updated_at,j.started_at,j.created_at) AS report_at
+         FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id
+         LEFT JOIN customers c ON c.id=j.customer_id
+         LEFT JOIN machines m ON m.id=j.machine_id
+         WHERE NULLIF(TRIM(COALESCE(j.diagnosis,'')),'') IS NOT NULL
+           AND NULLIF(TRIM(COALESCE(j.work_done,'')),'') IS NOT NULL
+           AND (COALESCE(j.completed_at,j.updated_at,j.started_at,j.created_at) AT TIME ZONE 'Africa/Dar_es_Salaam')::date = ?
+         ORDER BY report_at DESC,j.job_card_no DESC"
+    );
+    $jobReportStmt->execute([$date]);
+    $jobReports = $jobReportStmt->fetchAll();
+    foreach ($jobReports as &$jr) {
+        $machineLabel = trim((string)($jr['machine_brand'] ?? '') . ' ' . (string)($jr['machine_model'] ?? ''));
+        $jr['jobCardNo'] = $jr['job_card_no'];
+        $jr['technicianName'] = $jr['technician_name'];
+        $jr['customer'] = ['name' => (string)($jr['customer_name'] ?? '')];
+        $jr['machine'] = [
+            'brand' => (string)($jr['machine_brand'] ?? ''),
+            'model' => (string)($jr['machine_model'] ?? ''),
+            'machineType' => (string)($jr['machine_type'] ?? ''),
+            'label' => $machineLabel !== '' ? $machineLabel : (string)($jr['machine_model'] ?? 'Machine'),
+        ];
+        $jr['diagnosis'] = (string)($jr['diagnosis'] ?? '');
+        $jr['workDone'] = (string)($jr['work_done'] ?? '');
+        $jr['testResult'] = (string)($jr['test_result'] ?? '');
+        $jr['completionNote'] = (string)($jr['completion_note'] ?? '');
+        $jr['repeatIssue'] = !empty($jr['repeat_issue']);
+        $jr['reportAt'] = $jr['report_at'];
+        $jr['completedAt'] = $jr['completed_at'];
+        $jr['startedAt'] = $jr['started_at'];
+        $jr['sourceType'] = $jr['source_type'];
+        $jr['sourceId'] = $jr['source_id'];
+        unset($jr['job_card_no'],$jr['technician_name'],$jr['customer_name'],$jr['machine_brand'],$jr['machine_model'],$jr['machine_type'],$jr['work_done'],$jr['test_result'],$jr['completion_note'],$jr['repeat_issue'],$jr['report_at'],$jr['completed_at'],$jr['started_at'],$jr['source_type'],$jr['source_id']);
+    }
+    unset($jr);
+
     $totalsStmt = db()->query(
         "SELECT
             COUNT(*) FILTER (WHERE status='COMPLETED' AND hidden_at IS NULL) AS visible_completed,
@@ -222,6 +271,7 @@ if ($method === 'GET' && $action === 'daily-report') {
         'date' => $date,
         'timezone' => $reportTimezone,
         'summary' => [
+            'jobReports' => count($jobReports),
             'completed' => $selectedCompleted,
             'cancelled' => $selectedCancelled,
             'visibleCompleted' => (int)($totals['visible_completed'] ?? 0),
@@ -229,6 +279,7 @@ if ($method === 'GET' && $action === 'daily-report') {
             'allCompleted' => (int)($totals['all_completed'] ?? 0),
             'allCancelled' => (int)($totals['all_cancelled'] ?? 0),
         ],
+        'jobReports' => $jobReports,
         'requests' => $requests,
     ]);
 }

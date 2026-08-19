@@ -375,6 +375,8 @@ CREATE TABLE IF NOT EXISTS bank_accounts (
   deleted_at TIMESTAMPTZ NULL
 );
 
+ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS is_test SMALLINT NOT NULL DEFAULT 0;
+
 CREATE UNIQUE INDEX IF NOT EXISTS idx_bank_accounts_active_number
   ON bank_accounts (LOWER(bank_name), LOWER(account_number))
   WHERE deleted_at IS NULL;

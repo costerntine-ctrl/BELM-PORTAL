@@ -1,0 +1,11 @@
+BELM PORTAL V358 - TECHNICIAN JOB CARD REPORT VISIBILITY SYNC
+
+- Engineering > Service Requests > Daily Report now includes a dedicated Technician Job Card Reports section.
+- Technician reports are read from existing digital_job_cards fields (diagnosis, work done, test result, completion note).
+- Selected Daily Report date is applied in Africa/Dar_es_Salaam time.
+- Technician report rows show Job Card number, customer, machine, technician, report status and technical summary.
+- View PDF opens the same official Digital Job Card/Report PDF used by Technician My Job Cards.
+- Final Service Request completed/cancelled actions remain visible in a separate section.
+- No schema/database migration was added.
+- V356 bank-test reset and V357 A-Z sidebar behavior are preserved.
+- Spare Stock implementation and migration logic were not modified.

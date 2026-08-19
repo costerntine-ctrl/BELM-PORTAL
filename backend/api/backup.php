@@ -15,7 +15,7 @@ $tables = $pdo->query(
 
 $backup = [
     'exportedAt' => date('c'),
-    'schemaVersion' => '351-free-reedit-dev-customer-expenses',
+    'schemaVersion' => '356-bank-test-reset',
     'formatVersion' => 2,
     'database' => 'PostgreSQL',
     'tables' => [],

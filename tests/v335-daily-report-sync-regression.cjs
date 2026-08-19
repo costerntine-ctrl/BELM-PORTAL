@@ -22,7 +22,7 @@ ok(js.includes('request.actionAt ||'),'frontend renders canonical final timestam
 ok(js.includes('request.handledBy?.name'),'frontend renders canonical handler');
 ok(js.includes('Status tabs:'),'modal explains all-date status totals');
 ok(html.includes('id="dailyReportSummary"'),'Daily Report has sync summary');
-ok(html.includes('manager.js?v=335-daily-report-sync'),'JS cache bust updated');
+ok(/manager\.js\?v=(?:33[5-9]|3[4-9][0-9]|[4-9][0-9]{2})-/.test(html),'JS cache bust updated');
 ok(css.includes('.daily-report-sync-summary'),'summary style exists');
 ok(/belm-app-v3(?:3[5-9]|[4-9][0-9])[-a-z0-9]*/.test(sw),'service worker cache updated');
 console.log(`V335 checks ${checks}/17`);

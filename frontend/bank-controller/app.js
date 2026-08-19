@@ -46,6 +46,7 @@
   const withdrawalAccountNameOf = (item) => item?.accountName ?? item?.account_name ?? "";
   const withdrawalChequeOf = (item) => item?.chequeNumber ?? item?.cheque_number ?? "";
   const withdrawalByOf = (item) => item?.withdrawnBy ?? item?.withdrawn_by ?? "";
+  const isTestAccount = (account) => Number(account?.isTest ?? account?.is_test ?? 0) === 1;
 
   function message(text, isError = false) {
     const box = document.getElementById("pageAlert");
@@ -60,6 +61,15 @@
 
   function renderCompanyMetrics() {
     const s = data.summary || {};
+    if (s.bankTestMode) {
+      document.getElementById("companyMetrics").innerHTML = [
+        metricCard("TEST Bank Balance", money.format(s.allBankBalance || 0), "green"),
+        metricCard("TEST Payments In", money.format(s.paymentsReceived || 0)),
+        metricCard("TEST Expenses Out", money.format(s.companyExpenses || 0), "yellow"),
+        metricCard("TEST Withdrawals", money.format(s.totalWithdrawals || 0), "yellow"),
+      ].join("");
+      return;
+    }
     document.getElementById("companyMetrics").innerHTML = [
       metricCard("All Bank Balance", money.format(s.allBankBalance || 0), "green"),
       metricCard("Payments Received", money.format(s.paymentsReceived || 0)),
@@ -123,7 +133,7 @@
     const current = select.value;
     select.innerHTML = data.accounts.length
       ? `<option value="">Select an account to view…</option>${data.accounts.map(account =>
-          `<option value="${escapeHtml(account.id)}">${escapeHtml(bankNameOf(account))} — ${escapeHtml(accountNameOf(account))} (${escapeHtml(accountNumberOf(account))})</option>`
+          `<option value="${escapeHtml(account.id)}">${isTestAccount(account) ? '[TEST] ' : ''}${escapeHtml(bankNameOf(account))} — ${escapeHtml(accountNameOf(account))} (${escapeHtml(accountNumberOf(account))})</option>`
         ).join("")}`
       : '<option value="">No bank accounts yet — add one</option>';
     if (current && data.accounts.some(account => account.id === current)) select.value = current;
@@ -171,8 +181,13 @@
       const storageStatus = document.getElementById("bankStorageStatus");
       if (storageStatus) {
         const count = Array.isArray(data.accounts) ? data.accounts.length : 0;
-        storageStatus.textContent = `✓ ${count} bank account${count === 1 ? "" : "s"} loaded from PostgreSQL`;
+        const testCount = data.accounts.filter(isTestAccount).length;
+        storageStatus.textContent = testCount
+          ? `TEST MODE · ${testCount} clearable TEST BANK account${testCount === 1 ? "" : "s"} · saved in PostgreSQL`
+          : `✓ ${count} bank account${count === 1 ? "" : "s"} loaded from PostgreSQL`;
       }
+      const clearTestButton = document.getElementById("clearTestBankButton");
+      if (clearTestButton) clearTestButton.classList.toggle("hidden", !data.accounts.some(isTestAccount));
       renderCompanyMetrics();
       populateAccountSelect();
       if (preferredAccountId && data.accounts.some(account => account.id === preferredAccountId)) {
@@ -187,6 +202,22 @@
 
   document.getElementById("accountSelect").addEventListener("change", renderAccountDetail);
   document.getElementById("refreshButton").addEventListener("click", load);
+
+  document.getElementById("clearTestBankButton")?.addEventListener("click", async () => {
+    const confirmed = window.confirm("Clear TEST BANK data now? This resets TEST BANK opening balance/withdrawals and removes only its bank allocations. Invoices, payments, receipts, expenses and Spare Stock are not deleted.");
+    if (!confirmed) return;
+    const button = document.getElementById("clearTestBankButton");
+    button.disabled = true;
+    try {
+      await api("/bank-manager/test-reset", { method: "POST", body: JSON.stringify({ confirm: "CLEAR TEST BANK" }) });
+      message("TEST BANK cleared to TZS 0. Spare Stock was not touched.");
+      await load("35600000-0000-4000-8000-000000000001");
+    } catch (error) {
+      message(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  });
 
   document.getElementById("addAccountButton").addEventListener("click", () => {
     document.getElementById("accountForm").reset();

@@ -157,13 +157,13 @@ if ($method === 'GET' && $action === '') {
 
     $paymentsReceived = finance_amount(
         $pdo,
-        'SELECT COALESCE(SUM(amount),0) FROM payments'
+        'SELECT COALESCE(SUM(amount),0) FROM payments WHERE bank_account_id IS NOT NULL'
     );
     $companyExpenses = finance_amount(
         $pdo,
         'SELECT COALESCE(SUM(amount),0)
          FROM company_expenses
-         WHERE deleted_at IS NULL'
+         WHERE bank_account_id IS NOT NULL AND deleted_at IS NULL'
     );
     $totalWithdrawals = finance_amount(
         $pdo,
@@ -232,8 +232,39 @@ if ($method === 'GET' && $action === '') {
             'belmProfit' => max(0, $netAfterVat),
             'unallocatedPayments' => $unallocatedPayments,
             'unallocatedExpenses' => $unallocatedExpenses,
+            'bankTestMode' => count($accounts) > 0 && count(array_filter($accounts, static fn($a) => (int)($a['is_test'] ?? 0) !== 1)) === 0,
         ],
     ]);
+}
+
+// Clear only TEST BANK allocations/withdrawals and return it to TZS 0. This
+// never deletes invoices, payments, receipts, company expenses or Spare Stock.
+if ($method === 'POST' && $action === 'test-reset') {
+    $b = body();
+    if (trim((string)($b['confirm'] ?? '')) !== 'CLEAR TEST BANK') {
+        json_error('TEST BANK clear confirmation is required.', 422);
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $testIds = $pdo->query("SELECT id FROM bank_accounts WHERE is_test=1 AND deleted_at IS NULL FOR UPDATE")->fetchAll(PDO::FETCH_COLUMN);
+        if (!$testIds) {
+            $pdo->rollBack();
+            json_error('No TEST BANK account exists to clear.', 404);
+        }
+        $placeholders = implode(',', array_fill(0, count($testIds), '?'));
+        $pdo->prepare("UPDATE payments SET bank_account_id=NULL WHERE bank_account_id IN ($placeholders)")->execute($testIds);
+        $pdo->prepare("UPDATE receipts SET bank_account_id=NULL WHERE bank_account_id IN ($placeholders)")->execute($testIds);
+        $pdo->prepare("UPDATE company_expenses SET bank_account_id=NULL WHERE bank_account_id IN ($placeholders)")->execute($testIds);
+        $pdo->prepare("DELETE FROM bank_withdrawals WHERE bank_account_id IN ($placeholders)")->execute($testIds);
+        $pdo->prepare("UPDATE bank_accounts SET opening_balance=0, is_active=1, deleted_at=NULL WHERE id IN ($placeholders) AND is_test=1")->execute($testIds);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+    log_activity($user, 'test-bank-cleared', 'bankAccount', implode(',', $testIds), ['testOnly' => true]);
+    json_out(['ok' => true, 'cleared' => count($testIds), 'spareStockTouched' => false]);
 }
 
 if ($method === 'POST' && $action === 'account') {

@@ -1,0 +1,10 @@
+V360 - CUSTOMER CARD CLEANUP
+
+- Removed the Registered date line from customer cards.
+- Removed Email, Phone, Address, and TIN / VRN from the customer card display.
+- Removed the Working customer portal link box from customer cards.
+- Removed Copy link and Open customer login actions from customer cards.
+- Removed the customer-card delegated Copy link handler so the removed control has no active behavior.
+- Kept Communication history and the lower customer/machine management actions unchanged.
+- Customer data itself is not deleted; Edit customer and other existing administration flows remain available.
+- Bumped customers-manager/manager.js cache key to V360 so deployed browsers load the updated card immediately.

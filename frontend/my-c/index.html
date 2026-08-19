@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MY C - BELM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
+  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+  <link rel="stylesheet" href="/my-c/my-c.css?v=363-my-c-single-row-actions">
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+  <script defer src="/my-c/app.js?v=362-my-c-quick-actions-364-machine-view"></script>
+  <script defer src="/admin-sidebar.js?v=361-my-c-customer-details"></script>
+</head>
+<body class="management-page">
+  <header class="management-topbar">
+    <div><strong>BELM General Tech</strong><small>Customer identity and portal access</small></div>
+    <div class="topbar-actions"><a class="button" href="/customers-manager/">Customers &amp; Machines</a></div>
+  </header>
+
+  <main class="management-shell myc-shell">
+    <section class="management-hero">
+      <div>
+        <p class="eyebrow">Customer profile center</p>
+        <h1>MY C</h1>
+        <p>Customer registration details and working customer portal links are kept here instead of on the operational customer cards.</p>
+      </div>
+    </section>
+
+    <div id="pageAlert" class="alert hidden" role="status" aria-live="polite"></div>
+
+    <section class="panel myc-filter-panel">
+      <div class="myc-filter-copy">
+        <strong>Find customer</strong>
+        <span>Select a customer or search by name, email, phone, address, TIN or VRN.</span>
+      </div>
+      <div class="myc-filter-controls">
+        <input id="customerSearch" type="search" placeholder="Search customer..." autocomplete="off">
+        <select id="customerSelect" aria-label="Select customer">
+          <option value="">Select customer...</option>
+        </select>
+        <button id="refreshCustomersButton" type="button">Refresh</button>
+      </div>
+    </section>
+
+    <section id="customerDetails" class="myc-details-wrap" aria-live="polite">
+      <article class="panel myc-empty-state">
+        <strong>Loading customer details...</strong>
+      </article>
+    </section>
+  </main>
+</body>
+</html>

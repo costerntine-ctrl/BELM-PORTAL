@@ -1,0 +1,22 @@
+const fs = require('fs');
+const path = require('path');
+const root = path.resolve(__dirname, '..');
+const css = fs.readFileSync(path.join(root, 'frontend/customers-manager/manager.css'), 'utf8');
+const html = fs.readFileSync(path.join(root, 'frontend/customers-manager/index.html'), 'utf8');
+const manager = fs.readFileSync(path.join(root, 'frontend/customers-manager/manager.js'), 'utf8');
+let pass = 0;
+function t(name, ok) { if (!ok) { console.error('FAIL:', name); process.exitCode = 1; } else { pass++; } }
+const renderCustomers = manager.match(/function renderCustomers\(\)[\s\S]*?\n  }\n\n  let currentMachineListCustomerName/)?.[0] || '';
+t('customer name keeps established h2 markup', renderCustomers.includes('<h2 title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</h2>'));
+t('phone is shown directly in customer title block', renderCustomers.includes('<span>Phone</span><b title="${escapeHtml(customer.phone'));
+t('email is shown directly in customer title block', renderCustomers.includes('<span>Email</span><b title="${escapeHtml(customer.email'));
+t('address is shown directly in customer title block', renderCustomers.includes('<span>Address</span><b title="${escapeHtml(customer.address'));
+t('removed legacy customer info grid stays removed', !renderCustomers.includes('customer-info-grid'));
+t('removed customer portal link stays out of card', !renderCustomers.includes('portal-link-box'));
+t('contact rows are compact under the name', /\/\* V368[\s\S]*?\.customer-card-contact-lines\s*\{[\s\S]*?display:\s*grid;[\s\S]*?margin-top:\s*7px;/.test(css));
+t('customer name font size remains 21px', /\.customer-card-head h2\s*\{[^}]*font:\s*750 21px/.test(css));
+t('communication history remains expanded but yields contact-line space', /\/\* V368[\s\S]*?\.customer-feed\s*\{[\s\S]*?height:\s*346px;[\s\S]*?min-height:\s*346px;/.test(css));
+t('customer card width remains compact', css.includes('.customer-card { display: flex; flex-direction: column; width: 370px;'));
+t('manager CSS cache is bumped for V368', html.includes('/customers-manager/manager.css?v=368-customer-contact-lines'));
+t('manager JS cache is bumped for V368', html.includes('/customers-manager/manager.js?v=368-customer-contact-lines'));
+console.log(`V368 customer contact lines ${pass}/12 checks passed`);

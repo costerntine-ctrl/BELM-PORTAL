@@ -1,0 +1,20 @@
+V359 AUDIT - MY C SIDEBAR BUTTON
+
+Scope:
+- Admin sidebar navigation only.
+- Added MY C shortcut to Company profile.
+
+Implementation:
+- frontend/admin-sidebar.js adds MY C (MC) -> /settings-manager/#company-profile.
+- System Settings remains available and is excluded from active state when #company-profile is selected.
+- frontend/settings-manager/index.html now exposes id="company-profile" on the existing Company profile panel.
+- All 17 HTML pages that load admin-sidebar.js now use cache version v=359-my-c-sidebar.
+
+Regression verification:
+- V359 dedicated regression: 6/6 passed.
+- V357 sidebar regression: 17/17 passed.
+- V358 technician job report visibility regression: 19/19 passed.
+- Full runnable CJS regression set: 78/78 passed.
+- tests/ui-smoke.cjs was excluded because BELM_JS_TOOLS/jsdom is not configured in this build environment, consistent with prior project audit notes.
+
+No database schema, migration, bank reset, spare-parts, or technician Job Card reporting logic was changed.

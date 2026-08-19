@@ -205,11 +205,8 @@
       <div class="machine-actions">
         ${privacyButton("Report", canMaintenance, `data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Check Up", canMaintenance, `data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
-        ${privacyButton("Procurement Receipts", canExpenses, `data-view-expense-receipts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Service Parts", canParts, `data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/engineering-manager/?machine=${encodeURIComponent(machine.id)}#job-cards">Engineering / Job Cards</a>` : ""}
-        <button data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit</button>
-        <button class="delete" data-delete-machine="${escapeHtml(machine.id)}">Delete</button>
       </div>
     </article>`;
   }
@@ -310,7 +307,6 @@
       return;
     }
     grid.innerHTML = filtered.map((customer) => {
-      const portalUrl = customerPortalUrl(customer);
       const machines = customer.machines || [];
       // V282 - the card itself blinks to match the worst machine status
       // that customer has, so trouble is visible while scrolling the
@@ -327,7 +323,15 @@
         : !Boolean(customer.isMachineryAdmin);
       return `<article class="customer-card ${Number(customer.isActive) === 1 ? "" : "inactive"} ${blinkClass}">
         <div class="customer-card-head">
-          <div class="customer-card-title"><p class="eyebrow">Customer</p><h2 title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</h2><p>Registered ${customer.createdAt ? escapeHtml(new Date(customer.createdAt).toLocaleDateString()) : ""}</p></div>
+          <div class="customer-card-title">
+            <p class="eyebrow">Customer</p>
+            <h2 title="${escapeHtml(customer.name)}">${escapeHtml(customer.name)}</h2>
+            <div class="customer-card-contact-lines" aria-label="Customer contact details">
+              <div class="customer-card-contact-row"><span>Phone</span><b title="${escapeHtml(customer.phone || 'Not recorded')}">${escapeHtml(customer.phone || 'Not recorded')}</b></div>
+              <div class="customer-card-contact-row"><span>Email</span><b title="${escapeHtml(customer.email || 'Not recorded')}">${escapeHtml(customer.email || 'Not recorded')}</b></div>
+              <div class="customer-card-contact-row"><span>Address</span><b title="${escapeHtml(customer.address || 'Not recorded')}">${escapeHtml(customer.address || 'Not recorded')}</b></div>
+            </div>
+          </div>
           <div class="customer-card-head-controls">
             <span class="badge ${Number(customer.isActive) === 1 ? "" : "off"}">${Number(customer.isActive) === 1 ? "Active" : "Inactive"}</span>
             <div class="customer-provider-control ${belmProviderActive ? "belm-on" : "customer-on"}" title="Switch maintenance control between ${escapeHtml(customer.name)} and BELM">
@@ -339,20 +343,6 @@
               <span class="customer-provider-side">BELM</span>
               <strong class="customer-provider-state">${belmProviderActive ? "ON" : "OFF"}</strong>
             </div>
-          </div>
-        </div>
-        <div class="customer-info-grid">
-          <div><span>Email</span><strong>${escapeHtml(customer.email)}</strong></div>
-          <div><span>Phone</span><strong>${escapeHtml(customer.phone)}</strong></div>
-          <div><span>Address</span><strong>${escapeHtml(customer.address || "—")}</strong></div>
-          <div><span>TIN / VRN</span><strong>${escapeHtml(customer.tinNumber || "—")} / ${escapeHtml(customer.vrn || "—")}</strong></div>
-        </div>
-        <div class="portal-link-box">
-          <span>Working customer portal link</span>
-          <code>${escapeHtml(portalUrl)}</code>
-          <div class="portal-actions">
-            <button data-copy-link="${escapeHtml(customer.id)}">Copy link</button>
-            <a href="${escapeHtml(portalUrl)}" target="_blank" rel="noopener">Open customer login</a>
           </div>
         </div>
         <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
@@ -588,6 +578,20 @@
       populateUserLimitDropdown();
       populateMachineryAdminDropdown();
       populatePortalAccessDropdown();
+      const deepLinkParams = new URLSearchParams(window.location.search);
+      const requestedCustomerId = String(deepLinkParams.get("customer") || "").trim();
+      const requestedView = String(deepLinkParams.get("view") || "").trim().toLowerCase();
+      // V364 - MY C "View Your Machine" uses an explicit deep link.
+      // Keep the older customer-only link compatible, but when view=machines
+      // is present it is unambiguous that the selected customer's machine
+      // dialog should open immediately. No other customer's machines are
+      // rendered because openMachineList receives only requestedCustomer.
+      if (requestedCustomerId && (!requestedView || requestedView === "machines")) {
+        const requestedCustomer = customers.find((customer) => String(customer.id) === requestedCustomerId);
+        if (requestedCustomer) {
+          window.setTimeout(() => openMachineList(requestedCustomer), 0);
+        }
+      }
       if (!customers.length) await showCustomerDataDiagnostic();
     } catch (error) {
       const message = String(error.message || "Could not load customers.");
@@ -2032,7 +2036,6 @@
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
     const forgetCustomerButton = event.target.closest("[data-forget-customer]");
-    const copyLink = event.target.closest("[data-copy-link]");
     const quickDeleteMachine = event.target.closest("[data-quick-delete-machine]");
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
@@ -2043,10 +2046,6 @@
     if (resetCustomer) resetCustomerLogin(resetCustomer.dataset.resetCustomer);
     if (deleteCustomer) removeCustomer(deleteCustomer.dataset.deleteCustomer);
     if (forgetCustomerButton) forgetCustomer(forgetCustomerButton.dataset.forgetCustomer);
-    if (copyLink) {
-      const customer = customers.find((item) => item.id === copyLink.dataset.copyLink);
-      if (customer) copyText(customerPortalUrl(customer), "Customer portal link copied.");
-    }
     // V281 - "Edit Machine" shortcut removed entirely (V270/277/278) -
     // editing a machine is already one click away inside View Machines,
     // so keeping a second copy of that button here just made the card

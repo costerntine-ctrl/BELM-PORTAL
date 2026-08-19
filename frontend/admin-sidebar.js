@@ -21,6 +21,7 @@
     "/reports-manager/",
     "/roles-manager/",
     "/settings-manager/",
+    "/my-c/",
     "/bank-controller/",
     "/recycle-bin/",
     "/engineering-manager/",
@@ -74,6 +75,7 @@
     { section: "Finance", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
     { section: "Administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
     { section: "Administration", key: "roles", label: "BELM Staff Access", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
+    { section: "Administration", key: "customers", label: "MY C", short: "MC", href: "/my-c/", paths: ["/my-c/"] },
     { section: "Administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
   ];
 

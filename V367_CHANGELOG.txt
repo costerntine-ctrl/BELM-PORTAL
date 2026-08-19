@@ -1,0 +1,7 @@
+BELM PORTAL V367 — COMMUNICATION HISTORY FIT
+
+- Expanded Communication History on each Customers & Machines customer card.
+- The history panel now uses the vertical space previously occupied by Registered/Email/Phone/Address/TIN/VRN and the customer portal-link box.
+- Desktop history height is 394px so the customer card keeps its former useful vertical footprint without becoming wider.
+- Mobile history height is 320px and keeps internal scrolling for long histories.
+- Customer card width remains 370px on desktop; no customer data, machine data, permissions, or action functions were changed.

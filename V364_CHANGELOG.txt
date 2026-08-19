@@ -1,0 +1,8 @@
+BELM PORTAL V364 - MY C VIEW YOUR MACHINE DIRECT MACHINE VIEW
+
+- MY C > View Your Machine now uses an explicit customer machine deep link: customer=<id>&view=machines.
+- Customers & Machines reads the selected customer id and opens that customer's machine list immediately.
+- The machine list is restricted to the selected customer object only.
+- Existing machine card controls remain unchanged: Report, Check Up, Procurement Receipts, Service Parts, Engineering / Job Cards, Edit, Delete.
+- Existing legacy customer-only deep links remain compatible.
+- No database schema, API, permissions, or machine data were changed.

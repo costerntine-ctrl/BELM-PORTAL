@@ -460,3 +460,69 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
 @media (max-width: 460px) {
   .machine-report-filter { grid-template-columns: 1fr; }
 }
+
+/* V367 - Customer card communication history now uses the space freed when
+   contact details and the customer portal-link box moved to MY C. Keep the
+   card narrow while letting the history panel carry the useful vertical space. */
+.customer-feed {
+  height: 394px;
+  min-height: 394px;
+}
+@media (max-width: 620px) {
+  .customer-feed {
+    height: 320px;
+    min-height: 320px;
+  }
+}
+
+
+/* V368 - Keep the customer name at its established size, then place the
+   three most useful contact fields directly below it. The communication
+   history gives back only the vertical space used by these compact lines so
+   the overall customer-card footprint stays close to V367. */
+.customer-card-contact-lines {
+  display: grid;
+  gap: 3px;
+  margin-top: 7px;
+  min-width: 0;
+}
+.customer-card-contact-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.25;
+}
+.customer-card-contact-row span {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 850;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.customer-card-contact-row b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-card-head {
+  min-height: 174px;
+}
+.customer-feed {
+  height: 346px;
+  min-height: 346px;
+}
+@media (max-width: 620px) {
+  .customer-card-head { min-height: auto; }
+  .customer-card-contact-lines { width: 100%; }
+  .customer-feed {
+    height: 285px;
+    min-height: 285px;
+  }
+}

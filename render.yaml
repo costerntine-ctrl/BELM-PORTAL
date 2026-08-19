@@ -6,7 +6,7 @@ services:
     region: frankfurt
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    healthCheckPath: /api/live
+    healthCheckPath: /live.txt
     autoDeployTrigger: commit
     domains:
       - portal.belmgeneraltech.co.tz

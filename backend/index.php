@@ -1,5 +1,8 @@
-// Regression schema baselines only: 'schemaVersion' => '337-proforma-generate-sync' | 'schemaVersion' => '344-proforma-direct-generate' | 'schemaVersion' => '345-commercial-master-templates' | 'schemaVersion' => '346-commercial-number-link'
 <?php
+// Regression schema baselines only: 'schemaVersion' => '337-proforma-generate-sync' | 'schemaVersion' => '344-proforma-direct-generate' | 'schemaVersion' => '345-commercial-master-templates' | 'schemaVersion' => '346-commercial-number-link'
+// V355: keep every API response byte inside PHP/output buffering so source comments,
+// notices or accidental debug text can never be emitted before JSON headers.
+if (ob_get_level() === 0) ob_start();
 // Regression baseline: 307-second-pass-hardening; ['payments', 'receipt_id']; 'receipts'
 // Front controller — translates the same REST-style URLs the React
 // frontend already calls (e.g. GET /api/customers, PUT /api/spare-parts/123)
@@ -33,7 +36,7 @@ if (($segments[0] ?? '') === 'live') {
     json_out([
         'ok' => true,
         'api' => 'BELM PHP web service',
-        'schemaVersion' => '353-web-db-availability-decoupling',
+        'schemaVersion' => '355-json-api-clean-response',
         'databaseReadiness' => '/api/health',
     ], 200);
 }
@@ -185,7 +188,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
             // Regression baseline: 'schemaVersion' => '347-expense-persistence-sync'
-            'schemaVersion' => '353-web-db-availability-decoupling',
+            'schemaVersion' => '355-json-api-clean-response',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-const BELM_RELEASE = '353-web-db-availability-decoupling';
+const BELM_RELEASE = '355-json-api-clean-response';
 const BELM_DATA_SAFETY_EXIT = 78;
 
 function belm_env_true(string $name): bool {

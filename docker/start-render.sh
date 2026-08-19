@@ -5,10 +5,10 @@ APP_PORT="${PORT:-10000}"
 sed -ri "s/Listen 80/Listen ${APP_PORT}/" /etc/apache2/ports.conf
 sed -ri "s/<VirtualHost \\*:80>/<VirtualHost *:${APP_PORT}>/" /etc/apache2/sites-available/000-default.conf
 
-# V353 availability guard: bind the public web service immediately. Database
-# migration is intentionally decoupled from Apache startup so a guarded/slow DB
-# check can never make the entire BELM portal unreachable. migrate.php remains
-# transactional and rolls itself back on any data-safety violation.
+# V354 fast-wake availability guard: bind the web service immediately. Database
+# migration remains decoupled from Apache startup and starts after a short delay
+# so a cold Render instance can serve the login shell before competing for DB/CPU.
+# migrate.php remains transactional and rolls itself back on any data-safety violation.
 run_safe_migration() {
     attempt=1
     while :; do
@@ -38,5 +38,8 @@ run_safe_migration() {
     done
 }
 
-run_safe_migration &
+(
+    sleep "${BELM_MIGRATION_START_DELAY:-6}"
+    run_safe_migration
+) &
 exec apache2-foreground

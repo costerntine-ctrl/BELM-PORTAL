@@ -1,0 +1,10 @@
+BELM PORTAL V354 - FAST WAKE / LOADING GUARD
+
+- Render health check now uses static /live.txt; no PHP or PostgreSQL dependency.
+- Background database migration waits 6 seconds after web startup to prioritise first page response.
+- PostgreSQL connection wait is bounded (default 5s); statement/lock waits are bounded and configurable.
+- Login shell service worker is cache-first on repeat visits and wakes/refreshes the server in background.
+- Login button shows Server waking up... after 5 seconds instead of appearing frozen.
+- Login/context fetch has a 70 second maximum and returns a clear retry message on timeout.
+- No schema.sql changes and no business data reset.
+- V350 data preservation guard remains active.

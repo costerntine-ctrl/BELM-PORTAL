@@ -63,6 +63,11 @@ function api_shape($value) {
 }
 
 function json_out($data, int $status = 200): void {
+    // V355: API clients must receive JSON from byte 1. If an included PHP file
+    // accidentally echoed debug text/notices, discard that buffered output here.
+    if (ob_get_level() > 0) {
+        ob_clean();
+    }
     http_response_code($status);
     // Every API response is dynamic — never let the browser (or an
     // intermediate proxy) cache it. Without this, GET requests like

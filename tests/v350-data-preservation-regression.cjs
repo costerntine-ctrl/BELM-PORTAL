@@ -33,10 +33,10 @@ t('old deploy-time workflow repairs removed from migrate',!migrate.includes('V31
 t('full reset is production guarded',reset.includes('ALLOW_FULL_DATABASE_RESET')&&reset.includes('V350 data-safety guard'));
 t('start script keeps website online on safety exit',start.includes('code" -eq 78')&&start.includes('web service remains online')&&start.includes('apache2-foreground'));
 t('backup enumerates all public tables',backup.includes("FROM pg_tables WHERE schemaname='public'")&&backup.includes("SELECT * FROM "));
-t('backup remains at least V350-safe',(/'schemaVersion' => '(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability-decoupling)'/.test(backup))&&backup.includes("'rowCounts'"));
-t('health exposes data safety state',(/'schemaVersion' => '(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability-decoupling)'/.test(health))&&health.includes("'dataSafety' => $dataSafety")&&health.includes('installationId'));
+t('backup remains at least V350-safe',(/'schemaVersion' => '(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability-decoupling|354-fast-wake-loading-guard|355-json-api-clean-response)'/.test(backup))&&backup.includes("'rowCounts'"));
+t('health exposes data safety state',(/'schemaVersion' => '(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability-decoupling|354-fast-wake-loading-guard|355-json-api-clean-response)'/.test(health))&&health.includes("'dataSafety' => $dataSafety")&&health.includes('installationId'));
 t('Render defaults fresh bootstrap and full reset off',render.includes('ALLOW_FRESH_DATABASE_BOOTSTRAP')&&render.includes('ALLOW_FULL_DATABASE_RESET')&&render.includes('value: "false"'));
-t('PWA cache remains at least V350-safe',/const CACHE='belm-app-v(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability-decoupling)'/.test(sw));
+t('PWA cache remains at least V350-safe',/const CACHE='belm-app-v(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability-decoupling|354-fast-wake-loading-guard|355-json-api-clean-response)'/.test(sw));
 t('changelog documents no ordinary deploy data mutation',/bug deployments non-destructive|bug deployments non-destructive|non-destructive/i.test(changelog));
 console.log(`V350 checks: ${pass}/${pass+fail} passed`);
 process.exit(fail?1:0);

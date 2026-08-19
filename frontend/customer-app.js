@@ -15,6 +15,25 @@
   const installButton=document.getElementById('installButton');
   let installPrompt=null;
 
+  async function fetchWithTimeout(url,options={},timeoutMs=70000,onSlow=null){
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    let slowTimer=null;
+    if(typeof onSlow==='function')slowTimer=setTimeout(onSlow,5000);
+    try{return await fetch(url,{...options,signal:controller.signal})}
+    finally{clearTimeout(timer);if(slowTimer)clearTimeout(slowTimer)}
+  }
+
+
+  async function readJsonResponse(res){
+    const text=await res.text();
+    try{return JSON.parse(text)}
+    catch(_err){
+      console.error('BELM API returned a non-JSON response',text.slice(0,240));
+      throw new Error('Portal API response was invalid. Refresh once after deployment and try again.');
+    }
+  }
+
   function clearRoleSessions(){['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token'].forEach(k=>localStorage.removeItem(k))}
   function setActiveAccount(type){localStorage.setItem('belm_active_account_type',type)}
 
@@ -22,7 +41,7 @@
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
     if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account email or Customer Portal ID and password, then click Open My Workspace.';return}
     try{
-      const res=await fetch('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'});
+      const res=await fetchWithTimeout('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'},70000);
       if(!res.ok)throw new Error('Customer app link was not found.');
       const data=await res.json();
       companyName.textContent=data.name;
@@ -39,8 +58,8 @@
       const payload={email:email.value.trim(),password:password.value};
       if(slug && !isBelm)payload.customerSlug=slug;
       if(isBelm)payload.customerSlug='belm';
-      const res=await fetch('/api/auth/unified-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      const data=await res.json(); if(!res.ok)throw new Error(data.error||'Login failed.');
+      const res=await fetchWithTimeout('/api/auth/unified-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)},70000,()=>{button.textContent='Server waking up…'});
+      const data=await readJsonResponse(res); if(!res.ok)throw new Error(data.error||'Login failed.');
       clearRoleSessions();
       if(data.accountType==='customer'){
         localStorage.setItem('belm_customer_token',data.token); setActiveAccount('customer');
@@ -52,7 +71,7 @@
         localStorage.setItem('belm_admin_user',JSON.stringify(data.user||{})); setActiveAccount('admin');
       }
       location.replace(data.destination||'/');
-    }catch(err){showError(err.message||'Login failed.');button.disabled=false;button.textContent='Open My Workspace'}
+    }catch(err){const timedOut=err&&err.name==='AbortError';showError(timedOut?'Server did not respond in time. Tap Open My Workspace again.':(err.message||'Login failed.'));button.disabled=false;button.textContent='Open My Workspace'}
   }
   // V320: saved credentials may be filled by the browser, but opening the login link
   // never resumes a stored portal session and never submits automatically.

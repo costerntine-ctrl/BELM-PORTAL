@@ -31,7 +31,7 @@ check('login accepts email or Customer Portal ID', html.includes('Email / Custom
 check('canonical login does not quick-resume saved portal sessions', !app.includes('quickResume('));
 check('canonical login waits for explicit login button click', html.includes('id="loginButton" class="primary" type="button"') && app.includes("button.addEventListener('click',login)"));
 check('canonical login blocks form autosubmit from autofill', app.includes("form.addEventListener('submit',event=>event.preventDefault())"));
-check('login posts to unified endpoint', app.includes("fetch('/api/auth/unified-login'"));
+check('login posts to unified endpoint', app.includes("fetch('/api/auth/unified-login'") || app.includes("fetchWithTimeout('/api/auth/unified-login'"));
 check('unauthenticated technician workspace returns to one login', portal.includes("window.location.replace('/login')"));
 check('service worker cache bumped', sw.includes('belm-app-v303-unified-login'));
 check('public website exposes one /login wrapper', publicRules.includes('RewriteRule ^login/?$ /belm_app.php') && publicWrapper.includes("$portalPath = '/login';"));

@@ -27,7 +27,7 @@ test('login no longer has quick resume',!login.includes('quickResume(')&&!login.
 test('login waits for explicit button click',loginHtml.includes('id="loginButton" class="primary" type="button"')&&login.includes("button.addEventListener('click',login)"));
 test('autofill form submission cannot log in',login.includes("form.addEventListener('submit',event=>event.preventDefault())"));
 test('browser credential autofill remains available',loginHtml.includes('autocomplete="username"')&&loginHtml.includes('autocomplete="current-password"'));
-test('login JS is cache-busted in page and service worker',loginHtml.includes('/customer-app.js?v=320-manual-login')&&sw.includes("'/customer-app.js?v=320-manual-login'"));
+test('login JS is cache-busted in page and service worker',/\/customer-app\.js\?v=(320-manual-login|354-fast-wake|355-json-api)/.test(loginHtml)&&/\/customer-app\.js\?v=(320-manual-login|354-fast-wake|355-json-api)/.test(sw));
 test('changed admin assets are cache-busted',engHtml.includes('/admin-sidebar.js?v=320-engineering-single-owner')&&engHtml.includes('/engineering-manager/manager.js?v=320-engineering-single-owner')&&/breakdown-workflow\/workflow\.js\?v=(320-engineering-single-owner|326-jc-proforma-sync|328-assigned-job-card-select|329-action-feedback-reset)/.test(workflowHtml)&&/customers-manager\/manager\.js\?v=(320-engineering-single-owner|351-dev-expense-access|352-public-url-port-guard)/.test(customersHtml));
 test('health and PWA keep versioned build identity',health.includes("'schemaVersion' => '")&&sw.includes("const CACHE='belm-app-v3"));
 console.log(`\n${pass}/${pass+fail} V320 checks passed`);process.exit(fail?1:0);

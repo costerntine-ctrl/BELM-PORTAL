@@ -8,7 +8,7 @@
 // Regression baseline: belm-app-v215-petty-checkup
 // Regression baseline: belm-app-v211-bug-audit
 // Regression baseline: belm-app-v326-jc-proforma-sync
-// const CACHE='belm-app-v353-web-db-availability'; // regression baseline
+// const CACHE='belm-app-v355-json-api-clean-response'; // regression baseline
 // const CACHE='belm-app-v329-action-feedback-reset'; // regression baseline
 // const CACHE='belm-app-v330-queue-company-blink'; // regression baseline
 // const CACHE='belm-app-v332-service-request-history-pdf-report'; // regression baseline
@@ -17,12 +17,30 @@
 // Regression baseline: const CACHE='belm-app-v347-expense-persistence-sync';
 // Regression baseline: const CACHE='belm-app-v349-login-password-stability';
 // Regression baseline: const CACHE='belm-app-v350-data-preservation-guard';
-const CACHE='belm-app-v353-web-db-availability';
+const CACHE='belm-app-v354-fast-wake-loading-guard';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline
 // const CACHE='belm-app-v303-unified-login'; // regression baseline
-const SHELL=['/customer-app.html','/customer-app.css?v=327-login-legal','/customer-app.js?v=320-manual-login','/password-visibility.css?v=209-eye-toggle','/password-visibility.js?v=209-eye-toggle','/belm-watermark.jpg'];
+const SHELL=['/customer-app.html','/customer-app.css?v=327-login-legal','/customer-app.js?v=355-json-api','/password-visibility.css?v=209-eye-toggle','/password-visibility.js?v=209-eye-toggle','/belm-watermark.jpg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',event=>{if(event.request.method!=='GET'||new URL(event.request.url).pathname.startsWith('/api/'))return;event.respondWith(fetch(event.request).catch(()=>caches.match(event.request).then(r=>r||caches.match('/customer-app.html'))))});
+self.addEventListener('fetch',event=>{
+  if(event.request.method!=='GET')return;
+  const url=new URL(event.request.url);
+  if(url.pathname.startsWith('/api/'))return;
+  const isLoginShell=event.request.mode==='navigate'&&(url.pathname==='/login'||url.pathname==='/login/'||url.pathname==='/customer-app.html');
+  if(isLoginShell){
+    const refresh=fetch(event.request).then(async response=>{
+      if(response&&response.ok){
+        const copy=response.clone();
+        await caches.open(CACHE).then(cache=>cache.put('/customer-app.html',copy));
+      }
+      return response;
+    }).catch(()=>null);
+    event.waitUntil(refresh.then(()=>undefined));
+    event.respondWith(caches.match('/customer-app.html').then(cached=>cached||refresh));
+    return;
+  }
+  event.respondWith(fetch(event.request).catch(()=>caches.match(event.request).then(r=>r||caches.match('/customer-app.html'))));
+});

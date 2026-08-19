@@ -14,5 +14,5 @@ t('deep link opens machines while preserving legacy customer-only links', manage
 t('machine card keeps non-procurement operational controls', ['Report', 'Check Up', 'Service Parts', 'Engineering / Job Cards'].every((label) => manager.includes(label)));
 t('machine list renderer maps only the supplied customer machines', manager.includes('const machines = customer.machines || []') && manager.includes('machines.map((machine) => machineCard(customer.id, machine'));
 t('MY C app cache label updated', /\/my-c\/app\.js\?v=(362-my-c-quick-actions-364-machine-view|370-my-c-compact-card)/.test(mycHtml));
-t('customers manager cache label updated', (/\/customers-manager\/manager\.js\?v=(362-my-c-quick-actions-364-machine-view|365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines)/.test(managerHtml)));
+t('customers manager cache label updated', (/\/customers-manager\/manager\.js\?v=(362-my-c-quick-actions-364-machine-view|365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines|371-customer-quick-buttons)/.test(managerHtml)));
 console.log(`V364 MY C direct machine view ${pass}/8 checks passed`);

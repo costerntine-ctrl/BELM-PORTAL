@@ -10,7 +10,7 @@ const checks = [
   ['copy-link button removed from customer card', !js.includes('data-copy-link="${escapeHtml(customer.id)}"')],
   ['open-customer-login action removed from customer card', !js.includes('>Open customer login</a>')],
   ['copy-link delegated handler removed', !js.includes('event.target.closest("[data-copy-link]")')],
-  ['customer manager cache bust bumped', /customers-manager\/manager\.js\?v=(360-customer-card-cleanup|362-my-c-quick-actions|365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines)/.test(html)],
+  ['customer manager cache bust bumped', /customers-manager\/manager\.js\?v=(360-customer-card-cleanup|362-my-c-quick-actions|365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines|371-customer-quick-buttons)/.test(html)],
   ['communication history remains', js.includes('<strong>Communication history</strong>')],
   ['lower customer actions remain', js.includes('data-view-machines=') && js.includes('data-edit-customer=') && js.includes('data-reset-customer=')],
 ];

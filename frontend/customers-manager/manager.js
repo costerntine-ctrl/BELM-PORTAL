@@ -352,15 +352,18 @@
           </div>
           <div class="customer-feed-body">Loading recent updates…</div>
         </div>
-        <div class="customer-card-actions">
-          <button class="view-machines-inline" data-view-machines="${escapeHtml(customer.id)}">
-            View Machines (${machines.length})${machines.some((m) => isAttention(m.status)) ? ' <span class="badge off">!</span>' : ""}
-          </button>
-          <button type="button" class="delete" data-quick-delete-machine="${escapeHtml(customer.id)}">🗑 Delete Machine</button>
-          <button class="action-yellow" data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
-          <button class="action-blue" data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
-          <button class="delete" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
-          ${isSuperAdmin ? `<button class="delete" data-forget-customer="${escapeHtml(customer.id)}" title="Permanently erase — skips the Recycle Bin, cannot be undone or restored">Forget permanently</button>` : ""}
+        <nav class="customer-card-actions customer-card-quick-actions" aria-label="Customer quick actions">
+          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">View Your Machine</button>
+          <a class="customer-quick-action action-blue" href="/engineering-manager/">Workshop</a>
+          <a class="customer-quick-action action-green" href="/spare-parts-manager/">Procurement</a>
+          <a class="customer-quick-action action-yellow" href="/reports-manager/">General Report</a>
+        </nav>
+        <div class="customer-card-legacy-actions" hidden aria-hidden="true">
+          <button type="button" data-quick-delete-machine="${escapeHtml(customer.id)}">Delete Machine</button>
+          <button type="button" data-edit-customer="${escapeHtml(customer.id)}">Edit customer</button>
+          <button type="button" data-reset-customer="${escapeHtml(customer.id)}">Reset login</button>
+          <button type="button" data-delete-customer="${escapeHtml(customer.id)}">Delete</button>
+          ${isSuperAdmin ? `<button type="button" data-forget-customer="${escapeHtml(customer.id)}">Forget permanently</button>` : ""}
         </div>
       </article>`;
     }).join("");

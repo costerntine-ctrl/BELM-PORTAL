@@ -13,5 +13,5 @@ t('machine card keeps Engineering Job Cards', machineCardSource.includes('Engine
 t('machine card no longer renders Edit button', !machineCardSource.includes('data-edit-machine='));
 t('machine card no longer renders Delete button', !machineCardSource.includes('data-delete-machine='));
 t('machine card still has no Procurement Receipts duplicate', !machineCardSource.includes('Procurement Receipts'));
-t('customers manager asset is cache-busted for V366', /\/customers-manager\/manager\.js\?v=(366-machine-card-no-edit-delete|368-customer-contact-lines)/.test(managerHtml));
+t('customers manager asset is cache-busted for V366', /\/customers-manager\/manager\.js\?v=(366-machine-card-no-edit-delete|368-customer-contact-lines|371-customer-quick-buttons)/.test(managerHtml));
 console.log(`V366 machine card no Edit/Delete ${pass}/8 checks passed`);

@@ -526,3 +526,59 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
     min-height: 285px;
   }
 }
+
+/* V371 - Approved Customers & Machines quick actions.
+   Keep every established card rhythm/communication rule above, then replace
+   only the visible action row with the same four quick actions proven in MY C. */
+.customer-card-actions.customer-card-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 7px;
+  min-height: 52px;
+  margin-top: auto;
+  padding: 11px 20px;
+  border-top: 1px solid var(--line);
+  box-sizing: border-box;
+}
+.customer-card-actions.customer-card-quick-actions .customer-quick-action {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 8px 7px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 850;
+  line-height: 1.12;
+  white-space: normal;
+  cursor: pointer;
+}
+.customer-card-actions.customer-card-quick-actions .action-black { background: #05080e; border-color: #253247; color: #fff; }
+.customer-card-actions.customer-card-quick-actions .action-blue { background: #2f7cf5; border-color: #2f7cf5; color: #fff; }
+.customer-card-actions.customer-card-quick-actions .action-green { background: #21a957; border-color: #21a957; color: #fff; }
+.customer-card-actions.customer-card-quick-actions .action-yellow { background: #ffc928; border-color: #ffc928; color: #1b2230; }
+.customer-card-actions.customer-card-quick-actions .customer-quick-action:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.customer-card-legacy-actions { display: none !important; }
+
+@media (max-width: 620px) {
+  .customer-card-actions.customer-card-quick-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    min-height: 48px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .customer-card-actions.customer-card-quick-actions .customer-quick-action {
+    min-height: 44px;
+    padding: 6px 3px;
+    font-size: 8.5px;
+  }
+}

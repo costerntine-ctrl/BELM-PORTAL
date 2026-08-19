@@ -13,5 +13,5 @@ t('Procurement is main-card button number 3', labels[2] === 'Procurement' && qui
 t('only one visible Procurement quick action exists in MY C main card', (quickActions.match(/>Procurement<\/a>/g) || []).length === 1);
 t('machine card no longer shows Procurement Receipts button', !manager.includes('privacyButton("Procurement Receipts"'));
 t('machine card keeps Report Check Up Service Parts Engineering', ['Report','Check Up','Service Parts','Engineering / Job Cards'].every(label => manager.includes(label)));
-t('customers manager changed asset is cache-busted', (/\/customers-manager\/manager\.js\?v=(365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines)/.test(managerHtml)));
+t('customers manager changed asset is cache-busted', (/\/customers-manager\/manager\.js\?v=(365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines|371-customer-quick-buttons)/.test(managerHtml)));
 console.log(`V365 single Procurement main card ${pass}/6 checks passed`);

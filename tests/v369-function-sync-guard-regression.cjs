@@ -10,9 +10,9 @@ function test(name, ok) {
   else { console.error('FAIL', name); fail++; }
 }
 
-// V368 runtime fingerprints. V369 is a verification/guard release: no runtime
-// behavior is intentionally changed. If one of these files changes, this test
-// must fail until the change is deliberately reviewed.
+// V369 sync guard baseline, reviewed again for V371. V371 deliberately changes
+// only the Customers & Machines customer-card quick-action markup; backend and
+// synchronization runtime fingerprints remain protected here.
 const baseline = {
   'backend/config/helpers.php': '5e4fc6b5296a790f96f02af4c616c04f5b34cc8ff4d05c77086a523064ac0cf4',
   'backend/api/breakdown_workflow.php': 'd6e792e8243f9455c46506c36079c40c914218a39e05adcf83f5bacb8ac747ab',
@@ -21,7 +21,7 @@ const baseline = {
   'backend/api/service_requests.php': '66c9e8378092db5c0e914e994d12e8b41521fb8ca004850099358131fd602d05',
   'backend/api/spare_recommendations.php': 'eeec8df6b3f4c631000b3d09b5ad032c2f7ecf289879955cee05892713359507',
   'frontend/my-c/app.js': '0b01c58784d3783fa68a471ebfd6a653d1f1f92ed25679fd62dbfbba9ce28d19',
-  'frontend/customers-manager/manager.js': 'df0cfa1603d40553cb8a227233647db297c3de4daa1bee1744f12d77d684e25d',
+  'frontend/customers-manager/manager.js': 'df19c99f674d7c292d7a97d615921bd15d3396623ae3c580603a037b88501af7',
   'frontend/engineering-manager/manager.js': '401c91e9731e257a31f67ee09a4b84602149e10c817c04b9e761052fb7e18695',
   'frontend/spare-parts-manager/manager.js': 'befcbfb959dbbca87f258f2e3d6ec9e7725a273dac6fc3d206ba5aebe9e5ea2c',
   'frontend/reports-manager/app.js': '387a3a0964839d8d4c6dbf17c0d0d89e09f82bc957dc9e972003491b2a4ece97',

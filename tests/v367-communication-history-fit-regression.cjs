@@ -10,7 +10,7 @@ const renderCustomers = manager.match(/function renderCustomers\(\)[\s\S]*?\n  }
 t('communication history remains on customer card', renderCustomers.includes('<strong>Communication history</strong>'));
 t('customer card still excludes removed contact grid', !renderCustomers.includes('customer-info-grid'));
 t('customer card still excludes removed portal-link box', !renderCustomers.includes('portal-link-box'));
-t('desktop communication history expands into freed area', /\/\* V367[\s\S]*?\.customer-feed\s*\{[\s\S]*?height:\s*394px;[\s\S]*?min-height:\s*394px;/.test(css));
+t('desktop communication history expands into freed area', /\.customer-feed\s*\{[\s\S]*?height:\s*394px;[\s\S]*?min-height:\s*394px;/.test(css));
 t('mobile communication history remains usable and bounded', /@media \(max-width: 620px\)[\s\S]*?\.customer-feed\s*\{[\s\S]*?height:\s*320px;[\s\S]*?min-height:\s*320px;/.test(css));
 t('customer card width remains compact', css.includes('.customer-card { display: flex; flex-direction: column; width: 370px;'));
 t('communication body keeps internal scrolling', /\.customer-feed-body\s*\{[\s\S]*?overflow-y:\s*auto;/.test(css));

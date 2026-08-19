@@ -159,3 +159,53 @@ html[data-theme="dark"] .op-alert.error {
   .belm-global-theme-toggle { display: none !important; }
   html, body { color-scheme: light !important; }
 }
+
+/* V382 - Preserve full-card machine range colors in dark mode instead of the
+   generic .machine-card dark background flattening RED/YELLOW/GREEN states. */
+html[data-theme="dark"] #machineListDialog .machine-card.machine-range-green {
+  border-color: #22c55e !important;
+  background: linear-gradient(160deg, #102b25 0%, #111b2e 66%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(34,197,94,.055), 0 12px 30px rgba(34,197,94,.16) !important;
+}
+html[data-theme="dark"] #machineListDialog .machine-card.machine-range-yellow {
+  border-color: #eab308 !important;
+  background: linear-gradient(160deg, #30290f 0%, #111b2e 66%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(234,179,8,.065), 0 12px 30px rgba(234,179,8,.18) !important;
+}
+html[data-theme="dark"] #machineListDialog .machine-card.machine-range-red {
+  border-color: #ef4444 !important;
+  background: linear-gradient(160deg, #35191f 0%, #111b2e 66%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(239,68,68,.075), 0 12px 32px rgba(239,68,68,.22) !important;
+}
+html[data-theme="dark"] #machineListDialog .machine-alert-copy {
+  background: rgba(7,18,31,.72) !important;
+}
+html[data-theme="dark"] #machineListDialog .machine-card.machine-range-green .machine-alert-copy { border-color: rgba(34,197,94,.58) !important; }
+html[data-theme="dark"] #machineListDialog .machine-card.machine-range-yellow .machine-alert-copy { border-color: rgba(234,179,8,.62) !important; }
+html[data-theme="dark"] #machineListDialog .machine-card.machine-range-red .machine-alert-copy { border-color: rgba(239,68,68,.64) !important; }
+html[data-theme="dark"] #machineListDialog .machine-alert-copy .machine-alert-reason { color: #f8fafc !important; }
+html[data-theme="dark"] #machineListDialog .machine-alert-copy .machine-service-alert-copy { color: #cbd5e1 !important; }
+
+html[data-theme="dark"] .belm-customer-machine-card.belm-range-green,
+html.dark .belm-customer-machine-card.belm-range-green {
+  border-color: #22c55e !important;
+  background: linear-gradient(160deg, #102b25 0%, #101b2d 68%) !important;
+}
+html[data-theme="dark"] .belm-customer-machine-card.belm-range-yellow,
+html.dark .belm-customer-machine-card.belm-range-yellow {
+  border-color: #eab308 !important;
+  background: linear-gradient(160deg, #30290f 0%, #101b2d 68%) !important;
+}
+html[data-theme="dark"] .belm-customer-machine-card.belm-range-red,
+html.dark .belm-customer-machine-card.belm-range-red {
+  border-color: #ef4444 !important;
+  background: linear-gradient(160deg, #35191f 0%, #101b2d 68%) !important;
+}
+html[data-theme="dark"] .belm-customer-machine-alert-copy,
+html.dark .belm-customer-machine-alert-copy {
+  background: rgba(7,18,31,.76) !important;
+}
+html[data-theme="dark"] .belm-customer-machine-alert-copy strong,
+html.dark .belm-customer-machine-alert-copy strong { color: #f8fafc !important; }
+html[data-theme="dark"] .belm-customer-machine-alert-copy span,
+html.dark .belm-customer-machine-alert-copy span { color: #cbd5e1 !important; }

@@ -5,7 +5,7 @@ const js = fs.readFileSync(path.join(root, 'frontend/customers-manager/manager.j
 const css = fs.readFileSync(path.join(root, 'frontend/customers-manager/manager.css'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'frontend/customers-manager/index.html'), 'utf8');
 const checks = [
-  ['View Your Machine button exists', /class="customer-quick-action action-black" data-view-machines=.*?>View Your Machine<\/button>/.test(js)],
+  ['Machine quick-action button exists', /class="customer-quick-action action-black" data-view-machines=.*?<\/button>/.test(js)],
   ['Workshop button exists', /class="customer-quick-action action-blue" href="\/engineering-manager\/">Workshop<\/a>/.test(js)],
   ['Procurement button exists', /class="customer-quick-action action-green" href="\/spare-parts-manager\/">Procurement<\/a>/.test(js)],
   ['General Report button exists', /class="customer-quick-action action-yellow" href="\/reports-manager\/">General Report<\/a>/.test(js)],

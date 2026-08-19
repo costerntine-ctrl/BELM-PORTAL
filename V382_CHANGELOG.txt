@@ -1,0 +1,8 @@
+BELM PORTAL V382
+
+- BELM Admin > Customer Machine and Customer > View Your Machine now use one full-card alert/service range.
+- RED is highest priority, then YELLOW, then GREEN. The strongest level between machine condition and live service range colors the whole machine card.
+- Machine alert/reason text is placed in a high-contrast message area so the fault/message stays readable.
+- Live service-range text is shown beside the machine alert and updates when service status loads.
+- Dark mode now preserves RED/YELLOW/GREEN full-card states instead of flattening the card to the generic navy background.
+- Existing buttons, Activity Status, machine management, backend APIs and sync logic are unchanged.

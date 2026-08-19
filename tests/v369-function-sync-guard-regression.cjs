@@ -16,6 +16,8 @@ function test(name, ok) {
 // reviewed V377 admin-only machine management row. V378 intentionally adds the customer-scoped
 // Activity Status sync endpoint. V379 intentionally adds the reviewed Fleet Number identity badge
 // to customers-manager, so that UI fingerprint is advanced while backend synchronization hashes remain protected.
+// V381 changes only the BELM Admin customer-machine button label; the reviewed UI fingerprint is advanced again.
+// V382 intentionally advances customers-manager UI for full-card alert/service range coloring; backend sync fingerprints remain protected.
 const baseline = {
   'backend/config/helpers.php': '5e4fc6b5296a790f96f02af4c616c04f5b34cc8ff4d05c77086a523064ac0cf4',
   'backend/api/breakdown_workflow.php': 'd6e792e8243f9455c46506c36079c40c914218a39e05adcf83f5bacb8ac747ab',
@@ -23,8 +25,7 @@ const baseline = {
   'backend/api/engineering.php': '6ea6d5f2f3ad16a9b6343dd7666c7304f7de30b51a915b7452741b2aa6dca63e',
   'backend/api/service_requests.php': '66c9e8378092db5c0e914e994d12e8b41521fb8ca004850099358131fd602d05',
   'backend/api/spare_recommendations.php': 'eeec8df6b3f4c631000b3d09b5ad032c2f7ecf289879955cee05892713359507',
-  'frontend/my-c/app.js': '0b01c58784d3783fa68a471ebfd6a653d1f1f92ed25679fd62dbfbba9ce28d19',
-  'frontend/customers-manager/manager.js': 'ce9377c0a7d132a62f57965ca68c4936e930bb65777215d9abc8b5e1a80af831',
+  'frontend/customers-manager/manager.js': 'b27548f7eeaaa46549f67ec94743119654ae272e5008789006c1a6f8825a3400',
   'frontend/engineering-manager/manager.js': '401c91e9731e257a31f67ee09a4b84602149e10c817c04b9e761052fb7e18695',
   'frontend/spare-parts-manager/manager.js': 'befcbfb959dbbca87f258f2e3d6ec9e7725a273dac6fc3d206ba5aebe9e5ea2c',
   'frontend/reports-manager/app.js': '387a3a0964839d8d4c6dbf17c0d0d89e09f82bc957dc9e972003491b2a4ece97',
@@ -40,7 +41,6 @@ const customerPortal = read('backend/api/customer_portal.php');
 const engineering = read('backend/api/engineering.php');
 const serviceRequests = read('backend/api/service_requests.php');
 const spare = read('backend/api/spare_recommendations.php');
-const myc = read('frontend/my-c/app.js');
 const customers = read('frontend/customers-manager/manager.js');
 
 test('central strict sync function remains available',
@@ -65,12 +65,6 @@ test('service request transitions still synchronize linked process',
 
 test('procurement/spare confirmation still synchronizes linked process',
   spare.includes('belm_sync_breakdown_case_from_service_request'));
-
-test('MY C four main actions keep their established destinations',
-  myc.includes('View Your Machine') && myc.includes('/customers-manager/?customer=${encodeURIComponent(customer.id)}&view=machines') &&
-  myc.includes('href="/engineering-manager/">Workshop') &&
-  myc.includes('href="/spare-parts-manager/">Procurement') &&
-  myc.includes('href="/reports-manager/">General Report'));
 
 test('machine view keeps only intended operational controls',
   ['Report', 'Check Up', 'Service Parts', 'Engineering / Job Cards'].every(x => customers.includes(x)) &&

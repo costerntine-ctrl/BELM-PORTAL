@@ -37,8 +37,8 @@ ok(portal.includes('data-belm-feature="service-request"'), 'Customer Service Par
 
 ok(customersApi.includes("fleet_number, brand, service_kit"), 'Admin machine Fleet Number database persistence missing');
 ok(customerApi.includes("SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL"), 'Customer dashboard machine source changed unexpectedly');
-ok(adminHtml.includes('/customers-manager/manager.js?v=379-machine-fleet-number'), 'Admin manager cache bust missing');
-ok(adminHtml.includes('/customers-manager/manager.css?v=379-machine-fleet-number'), 'Admin CSS cache bust missing');
-ok(index.includes('/portal-tools.js?v=379-machine-fleet-number'), 'Customer portal JS cache bust missing');
-ok(index.includes('/belm-theme.css?v=379-machine-fleet-number'), 'Customer theme cache bust missing');
+ok(adminHtml.includes('/customers-manager/manager.js?v=382-full-card-alert-range'), 'Admin manager cache bust missing');
+ok(adminHtml.includes('/customers-manager/manager.css?v=382-full-card-alert-range'), 'Admin CSS cache bust missing');
+ok(index.includes('/portal-tools.js?v=382-full-card-alert-range'), 'Customer portal JS cache bust missing');
+ok(index.includes('/belm-theme.css?v=382-full-card-alert-range'), 'Customer theme cache bust missing');
 console.log('V379 machine Fleet Number regression: 28/28 passed');

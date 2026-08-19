@@ -461,9 +461,9 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
   .machine-report-filter { grid-template-columns: 1fr; }
 }
 
-/* V367 - Customer card communication history now uses the space freed when
-   contact details and the customer portal-link box moved to MY C. Keep the
-   card narrow while letting the history panel carry the useful vertical space. */
+/* Customer card communication history uses the space freed by the removed
+   portal-link/details block. Keep the card narrow while letting the history
+   panel carry the useful vertical space. */
 .customer-feed {
   height: 394px;
   min-height: 394px;
@@ -527,9 +527,9 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
   }
 }
 
-/* V371 - Approved Customers & Machines quick actions.
+/* Approved Customers & Machines quick actions.
    Keep every established card rhythm/communication rule above, then replace
-   only the visible action row with the same four quick actions proven in MY C. */
+   only the visible action row with the four established operational actions. */
 .customer-card-actions.customer-card-quick-actions {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -835,4 +835,103 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
 @media (max-width: 620px) {
   #machineListDialog .machine-card .machine-title-row { grid-template-columns: minmax(0, 1fr) 11ch; gap: 7px; }
   #machineListDialog .machine-card .machine-fleet-number { width: 11ch; min-width: 11ch; max-width: 11ch; padding: 5px 6px; }
+}
+
+/* V382 - Machine alert/service range colors the entire BELM Admin machine card.
+   RED outranks YELLOW, which outranks GREEN. Alert copy remains high-contrast. */
+#machineListDialog .machine-card.machine-range-green {
+  border-color: #22c55e !important;
+  background: linear-gradient(165deg, #eafaf1 0%, #dcfce7 45%, #f8fffb 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(34,197,94,.035), 0 12px 28px rgba(34,197,94,.16) !important;
+}
+#machineListDialog .machine-card.machine-range-yellow {
+  border-color: #eab308 !important;
+  background: linear-gradient(165deg, #fffbea 0%, #fef3c7 48%, #fffdf5 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(234,179,8,.045), 0 12px 28px rgba(234,179,8,.18) !important;
+}
+#machineListDialog .machine-card.machine-range-red {
+  border-color: #ef4444 !important;
+  background: linear-gradient(165deg, #fdecec 0%, #fee2e2 48%, #fff7f7 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(239,68,68,.055), 0 12px 30px rgba(239,68,68,.22) !important;
+}
+#machineListDialog .machine-card.machine-range-unknown {
+  border-color: #94a3b8 !important;
+}
+#machineListDialog .machine-alert-copy {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 8px 10px;
+  border: 1px solid rgba(71,85,105,.22);
+  border-radius: 8px;
+  background: rgba(255,255,255,.72);
+  line-height: 1.32;
+}
+#machineListDialog .machine-alert-copy .machine-alert-reason {
+  display: block;
+  margin: 0;
+  min-height: 0;
+  color: #172033 !important;
+  font-size: 10.5px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+#machineListDialog .machine-alert-copy .machine-service-alert-copy {
+  color: #475569 !important;
+  font-size: 9.5px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+#machineListDialog .machine-card.machine-range-green .machine-alert-copy { border-color: rgba(22,163,74,.38); background: rgba(240,253,244,.88); }
+#machineListDialog .machine-card.machine-range-green .machine-alert-copy .machine-alert-reason { color: #14532d !important; }
+#machineListDialog .machine-card.machine-range-yellow .machine-alert-copy { border-color: rgba(202,138,4,.44); background: rgba(254,249,195,.90); }
+#machineListDialog .machine-card.machine-range-yellow .machine-alert-copy .machine-alert-reason { color: #713f12 !important; }
+#machineListDialog .machine-card.machine-range-red .machine-alert-copy { border-color: rgba(220,38,38,.44); background: rgba(254,226,226,.92); }
+#machineListDialog .machine-card.machine-range-red .machine-alert-copy .machine-alert-reason { color: #7f1d1d !important; }
+
+/* V383 - BELM Admin machine alert blinking.
+   RED blinks clearly, YELLOW pulses slowly, GREEN stays steady.
+   The effect is drawn around the whole card so alert text remains readable. */
+#machineListDialog .machine-card.machine-range-red,
+#machineListDialog .machine-card.machine-range-yellow {
+  position: relative;
+  isolation: isolate;
+}
+#machineListDialog .machine-card.machine-range-red::after,
+#machineListDialog .machine-card.machine-range-yellow::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 4;
+}
+#machineListDialog .machine-card.machine-range-red::after {
+  border: 3px solid rgba(239,68,68,.96);
+  box-shadow: 0 0 0 2px rgba(239,68,68,.20), 0 0 26px rgba(239,68,68,.72);
+  animation: belm-machine-red-blink 0.9s steps(2, end) infinite;
+}
+#machineListDialog .machine-card.machine-range-yellow::after {
+  border: 3px solid rgba(234,179,8,.88);
+  box-shadow: 0 0 0 2px rgba(234,179,8,.16), 0 0 22px rgba(234,179,8,.48);
+  animation: belm-machine-yellow-pulse 1.65s ease-in-out infinite;
+}
+#machineListDialog .machine-card.machine-range-green::after {
+  content: none;
+  animation: none;
+}
+@keyframes belm-machine-red-blink {
+  0%, 44% { opacity: 1; }
+  45%, 100% { opacity: .12; }
+}
+@keyframes belm-machine-yellow-pulse {
+  0%, 100% { opacity: .30; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.006); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #machineListDialog .machine-card.machine-range-red::after,
+  #machineListDialog .machine-card.machine-range-yellow::after {
+    animation: none !important;
+    opacity: .86;
+  }
 }

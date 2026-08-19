@@ -5069,3 +5069,185 @@ html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector
   .belm-customer-machine-card > .belm-machine-native-head { padding-right: 18px !important; padding-top: 62px !important; }
   .belm-customer-machine-card > .belm-machine-native-head .belm-customer-fleet-number { top: 16px; left: 18px; right: auto; }
 }
+
+/* V382 - Customer > View Your Machine: the strongest machine/service range
+   colors the whole card (RED > YELLOW > GREEN), with readable alert text. */
+.belm-customer-machine-card.belm-range-green {
+  border-color: #22c55e !important;
+  background: linear-gradient(160deg, #eafaf1 0%, #dcfce7 46%, #f8fffb 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(34,197,94,.035), 0 14px 30px rgba(34,197,94,.18) !important;
+}
+.belm-customer-machine-card.belm-range-yellow {
+  border-color: #eab308 !important;
+  background: linear-gradient(160deg, #fffbea 0%, #fef3c7 46%, #fffdf5 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(234,179,8,.05), 0 14px 30px rgba(234,179,8,.20) !important;
+}
+.belm-customer-machine-card.belm-range-red {
+  border: 4px solid #ef4444 !important;
+  background: linear-gradient(160deg, #fdecec 0%, #fee2e2 46%, #fff7f7 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(239,68,68,.06), 0 14px 32px rgba(239,68,68,.26) !important;
+}
+.belm-customer-machine-card.belm-range-unknown { border-color: #94a3b8 !important; }
+.belm-customer-machine-alert-copy {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 9px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: rgba(255,255,255,.82);
+  line-height: 1.32;
+}
+.belm-customer-machine-alert-copy strong {
+  color: #172033 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  overflow-wrap: anywhere;
+}
+.belm-customer-machine-alert-copy span {
+  color: #475569 !important;
+  font-size: 9px !important;
+  font-weight: 750 !important;
+  overflow-wrap: anywhere;
+}
+.belm-customer-machine-card.belm-range-green .belm-customer-machine-alert-copy { border-color: rgba(22,163,74,.38); background: rgba(240,253,244,.90); }
+.belm-customer-machine-card.belm-range-green .belm-customer-machine-alert-copy strong { color: #14532d !important; }
+.belm-customer-machine-card.belm-range-yellow .belm-customer-machine-alert-copy { border-color: rgba(202,138,4,.44); background: rgba(254,249,195,.92); }
+.belm-customer-machine-card.belm-range-yellow .belm-customer-machine-alert-copy strong { color: #713f12 !important; }
+.belm-customer-machine-card.belm-range-red .belm-customer-machine-alert-copy { border-color: rgba(220,38,38,.46); background: rgba(254,226,226,.94); }
+.belm-customer-machine-card.belm-range-red .belm-customer-machine-alert-copy strong { color: #7f1d1d !important; }
+
+/* V383 - Customer > View Your Machine alert blinking.
+   RED blinks clearly, YELLOW pulses slowly, GREEN stays steady.
+   Only the whole-card alert ring animates so machine messages remain readable. */
+.belm-customer-machine-card.belm-range-red,
+.belm-customer-machine-card.belm-range-yellow {
+  position: relative;
+  isolation: isolate;
+}
+.belm-customer-machine-card.belm-range-red::after,
+.belm-customer-machine-card.belm-range-yellow::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 5;
+}
+.belm-customer-machine-card.belm-range-red::after {
+  border: 3px solid rgba(239,68,68,.98);
+  box-shadow: 0 0 0 2px rgba(239,68,68,.22), 0 0 28px rgba(239,68,68,.76);
+  animation: belm-customer-machine-red-blink 0.9s steps(2, end) infinite;
+}
+.belm-customer-machine-card.belm-range-yellow::after {
+  border: 3px solid rgba(234,179,8,.90);
+  box-shadow: 0 0 0 2px rgba(234,179,8,.18), 0 0 24px rgba(234,179,8,.52);
+  animation: belm-customer-machine-yellow-pulse 1.65s ease-in-out infinite;
+}
+.belm-customer-machine-card.belm-range-green::after {
+  content: none;
+  animation: none;
+}
+@keyframes belm-customer-machine-red-blink {
+  0%, 44% { opacity: 1; }
+  45%, 100% { opacity: .12; }
+}
+@keyframes belm-customer-machine-yellow-pulse {
+  0%, 100% { opacity: .30; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.006); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .belm-customer-machine-card.belm-range-red::after,
+  .belm-customer-machine-card.belm-range-yellow::after {
+    animation: none !important;
+    opacity: .86;
+  }
+}
+
+/* ========================================================================
+   V384 - BELM Technician dashboard handoff
+   Technician lands on one assigned-customer card; View Machine reveals the
+   technician fleet workspace so it cannot be confused with Admin/Customer UI.
+   ======================================================================== */
+body[data-belm-area="tech"] .belm-technician-dashboard-card-v384 {
+  width: min(390px, 100%);
+  margin: 6px 0 22px;
+  border-color: rgba(0,166,81,.78);
+  background:
+    radial-gradient(circle at 92% 10%, rgba(0,166,81,.20), transparent 12rem),
+    linear-gradient(150deg, #12223a 0%, #0c182a 100%);
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-card-v384 .belm-technician-customer-head {
+  padding: 22px 22px 16px;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-card-v384 .belm-technician-customer-head h1 {
+  font-size: 28px;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-contact {
+  display: grid;
+  gap: 7px;
+  padding: 0 22px 18px;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-contact > div {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-contact span {
+  color: #9eb0c8;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-contact b {
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-footer {
+  padding: 14px 18px 18px;
+  border-top: 1px solid rgba(255,255,255,.10);
+}
+body[data-belm-area="tech"] .belm-technician-view-machine-button {
+  width: 100%;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(0,166,81,.95);
+  border-radius: 12px;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(0,166,81,.32), rgba(0,166,81,.13));
+  font: 900 12px/1.1 Inter,system-ui,sans-serif;
+  cursor: pointer;
+}
+body[data-belm-area="tech"] .belm-technician-view-machine-button small {
+  color: #bde8cf;
+  font-size: 9px;
+  font-weight: 800;
+}
+body[data-belm-area="tech"] .belm-technician-view-machine-button:hover,
+body[data-belm-area="tech"] .belm-technician-view-machine-button:focus-visible {
+  background: linear-gradient(135deg, rgba(0,166,81,.46), rgba(0,166,81,.20));
+  outline: 2px solid rgba(0,166,81,.28);
+  outline-offset: 2px;
+}
+body[data-belm-area="tech"] .belm-technician-machine-grid-collapsed,
+body[data-belm-area="tech"] .belm-technician-machine-list-heading-collapsed {
+  display: none !important;
+}
+body[data-belm-area="tech"] .belm-technician-machine-list-heading {
+  scroll-margin-top: 84px;
+}
+@media (max-width: 520px) {
+  body[data-belm-area="tech"] .belm-technician-dashboard-card-v384 { width: 100%; }
+}

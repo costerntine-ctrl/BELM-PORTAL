@@ -85,6 +85,26 @@
   })[status] || status || "Not checked";
   const isAttention = (status) => ["YELLOW", "ATTENTION", "RED", "CRITICAL"].includes(status);
 
+  // V382 - One visual range for the whole machine card. The strongest state
+  // wins across the latest machine condition and the live service range.
+  const machineRangeLevel = (value) => {
+    const status = String(value || "UNKNOWN").toUpperCase();
+    if (["RED", "CRITICAL"].includes(status)) return "red";
+    if (["YELLOW", "ATTENTION"].includes(status)) return "yellow";
+    if (["GREEN", "OK"].includes(status)) return "green";
+    return "unknown";
+  };
+  const machineRangeRank = { unknown: 0, green: 1, yellow: 2, red: 3 };
+  function applyAdminMachineRange(card) {
+    if (!card) return;
+    const conditionLevel = machineRangeLevel(card.dataset.machineConditionLevel);
+    const serviceLevel = machineRangeLevel(card.dataset.machineServiceLevel);
+    const level = machineRangeRank[serviceLevel] > machineRangeRank[conditionLevel] ? serviceLevel : conditionLevel;
+    card.classList.remove("machine-range-green", "machine-range-yellow", "machine-range-red", "machine-range-unknown");
+    card.classList.add(`machine-range-${level}`);
+    card.dataset.machineEffectiveRange = level.toUpperCase();
+  }
+
   async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
@@ -192,7 +212,17 @@
       : `<button type="button" class="privacy-locked" disabled title="Customer privacy setting blocks BELM access">🔒 ${label}</button>`;
     const machineTitle = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType;
     const fleetNumber = machine.fleetNumber || machine.fleet_number || "—";
-    return `<article class="machine-card ${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
+    const conditionRange = machineRangeLevel(status);
+    const conditionMessage = reasons.length
+      ? reasons[0]
+      : conditionRange === "red"
+        ? "Critical machine alert — do not operate until corrected."
+        : conditionRange === "yellow"
+          ? "Machine needs attention — inspection or maintenance is required."
+          : conditionRange === "green"
+            ? "Machine condition normal."
+            : "Machine condition has not been checked yet.";
+    return `<article class="machine-card ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <div class="machine-title-row">
           <h4>${escapeHtml(machineTitle)}</h4>
@@ -200,7 +230,10 @@
         </div>
         <p>${escapeHtml(machine.machineType)} · Reg: ${escapeHtml(machine.regNumber || "—")} · Serial: ${escapeHtml(machine.serialNumber || "—")}</p>
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
-        ${reasons.length ? `<span class="machine-alert-reason">${escapeHtml(reasons[0])}</span>` : '<span class="machine-alert-reason"></span>'}
+        <div class="machine-alert-copy" aria-live="polite">
+          <span class="machine-alert-reason">${escapeHtml(conditionMessage)}</span>
+          <span class="machine-service-alert-copy" data-machine-service-alert-copy>${canMaintenance ? "Service range: checking…" : "Service range: customer private"}</span>
+        </div>
         <span class="service-due-badge" ${canMaintenance ? `data-service-due-badge="${escapeHtml(machine.id)}"` : ""}>${canMaintenance ? "Service due: checking…" : "Service due: 🔒 Customer private"}</span>
         <label class="operational-status-picker op-${escapeHtml(opStatus)}">Activity status
           <select data-operational-status="${escapeHtml(machine.id)}">
@@ -241,8 +274,19 @@
           : remaining === 0 ? 'DUE NOW' : `NEXT ${status.dueHour} HRS · ${remaining} HRS LEFT`;
         badge.textContent = `${serviceType} · ${state}`;
         badge.className = `service-due-badge ${level}`;
+        const card = badge.closest(".machine-card");
+        if (card) {
+          card.dataset.machineServiceLevel = level;
+          const serviceCopy = card.querySelector("[data-machine-service-alert-copy]");
+          if (serviceCopy) serviceCopy.textContent = `Service range: ${serviceType} · ${state}`;
+          applyAdminMachineRange(card);
+        }
       } catch (_) {
         badge.textContent = "Service due: not available";
+        const card = badge.closest(".machine-card");
+        const serviceCopy = card?.querySelector("[data-machine-service-alert-copy]");
+        if (serviceCopy) serviceCopy.textContent = "Service range: not available";
+        applyAdminMachineRange(card);
       }
     });
   }
@@ -356,7 +400,7 @@
           <div class="customer-feed-body">Loading recent updates…</div>
         </div>
         <nav class="customer-card-actions customer-card-quick-actions" aria-label="Customer quick actions">
-          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">View Your Machine</button>
+          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">Customer Machine</button>
           <a class="customer-quick-action action-blue" href="/engineering-manager/">Workshop</a>
           <a class="customer-quick-action action-green" href="/spare-parts-manager/">Procurement</a>
           <a class="customer-quick-action action-yellow" href="/reports-manager/">General Report</a>
@@ -587,11 +631,10 @@
       const deepLinkParams = new URLSearchParams(window.location.search);
       const requestedCustomerId = String(deepLinkParams.get("customer") || "").trim();
       const requestedView = String(deepLinkParams.get("view") || "").trim().toLowerCase();
-      // V364 - MY C "View Your Machine" uses an explicit deep link.
-      // Keep the older customer-only link compatible, but when view=machines
-      // is present it is unambiguous that the selected customer's machine
-      // dialog should open immediately. No other customer's machines are
-      // rendered because openMachineList receives only requestedCustomer.
+      // Explicit customer machine deep link. Keep the older customer-only link
+      // compatible; when view=machines is present, open only that selected
+      // customer's machine dialog. No other customer's machines are rendered
+      // because openMachineList receives only requestedCustomer.
       if (requestedCustomerId && (!requestedView || requestedView === "machines")) {
         const requestedCustomer = customers.find((customer) => String(customer.id) === requestedCustomerId);
         if (requestedCustomer) {

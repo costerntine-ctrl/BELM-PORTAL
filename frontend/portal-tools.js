@@ -1112,10 +1112,30 @@
     return customerExpenseMachinesPromise;
   }
 
+  const customerMachineRangeRank = { unknown: 0, green: 1, yellow: 2, red: 3 };
+  function customerMachineRangeLevel(value) {
+    const status = String(value || "UNKNOWN").toUpperCase();
+    if (["RED", "CRITICAL"].includes(status)) return "red";
+    if (["YELLOW", "ATTENTION"].includes(status)) return "yellow";
+    if (["GREEN", "OK"].includes(status)) return "green";
+    return "unknown";
+  }
+  function applyCustomerMachineRange(card) {
+    if (!card) return;
+    const condition = customerMachineRangeLevel(card.dataset.belmConditionRange);
+    const service = customerMachineRangeLevel(card.dataset.belmServiceRange);
+    const level = customerMachineRangeRank[service] > customerMachineRangeRank[condition] ? service : condition;
+    card.classList.remove("belm-range-green", "belm-range-yellow", "belm-range-red", "belm-range-unknown");
+    card.classList.add(`belm-range-${level}`);
+    card.dataset.belmEffectiveRange = level.toUpperCase();
+  }
+
   function customerMachineInfoCard(card, machine) {
     if (card.dataset.belmCustomerInfoReady === "1") return;
     card.dataset.belmCustomerInfoReady = "1";
     const condition = technicianCondition(machine.status);
+    card.dataset.belmConditionRange = condition.status;
+    applyCustomerMachineRange(card);
     const opStatus = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
     const opLabels = {
       NORMAL: "Normal - no active work", SERVICE_IN_PROGRESS: "Service in progress",
@@ -1123,6 +1143,16 @@
       GROUNDED: "Grounded - not operational",
     };
     const lastChecked = machine.lastCheckedAt || machine.last_checked_at;
+    const alertReasons = Array.isArray(machine.alertReasons) ? machine.alertReasons.filter(Boolean) : [];
+    const conditionMessage = alertReasons.length
+      ? alertReasons.join(" · ")
+      : condition.status === "RED"
+        ? "Critical machine alert — do not operate until corrected."
+        : condition.status === "YELLOW"
+          ? "Machine needs attention — inspection or maintenance is required."
+          : condition.status === "GREEN"
+            ? "Machine condition normal."
+            : "Machine condition has not been checked yet.";
     const details = document.createElement("div");
     details.className = "belm-technician-machine-info belm-machine-info-v210";
     details.innerHTML = `
@@ -1135,6 +1165,10 @@
           <span>Current Activity</span>
           <strong>${escapeHtml(opLabels[opStatus] || "Normal")}</strong>
         </div>
+      </div>
+      <div class="belm-customer-machine-alert-copy" aria-live="polite">
+        <strong>${escapeHtml(conditionMessage)}</strong>
+        <span data-belm-service-alert-copy>Service range: checking…</span>
       </div>
       <details class="belm-machine-details-disclosure">
         <summary>Machine details <span>Brand, type, serial, registration & service kit</span></summary>
@@ -1491,6 +1525,10 @@
     const levelLabel = status.level === "RED" ? (overdueBy ? `OVERDUE BY ${overdueBy} HRS` : "DUE NOW") : status.level === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
     const serviceTypeLabel = status.serviceType || `${status.intervalHours}-Hour Service`;
     mergeMachineServiceLiveUpdate(machine.id, status);
+    card.dataset.belmServiceRange = String(status.level || "GREEN").toUpperCase();
+    const serviceCopy = card.querySelector("[data-belm-service-alert-copy]");
+    if (serviceCopy) serviceCopy.textContent = `Service range: ${serviceTypeLabel} · ${levelLabel}`;
+    applyCustomerMachineRange(card);
 
     const panel = document.createElement("div");
     panel.className = `belm-service-due-panel status-${String(status.level || "GREEN").toLowerCase()}`;
@@ -3604,6 +3642,8 @@
       card.classList.add("belm-customer-machine-card");
       card.dataset.belmMachineId = String(machine.id || "");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
+      card.dataset.belmConditionRange = technicianCondition(machine.status).status;
+      applyCustomerMachineRange(card);
       const nativeHead = card.firstElementChild;
       nativeHead?.classList.add("belm-machine-native-head");
       if (nativeHead && !nativeHead.querySelector(".belm-customer-fleet-number")) {
@@ -3855,31 +3895,59 @@
 
     const customerCard = document.createElement("section");
     customerCard.id = "belmTechnicianCustomerCard";
-    customerCard.className = "belm-technician-customer-card";
+    customerCard.className = "belm-technician-customer-card belm-technician-dashboard-card-v384";
+    const machineCount = Array.isArray(customer.machines) ? customer.machines.length : 0;
     customerCard.innerHTML = `
       <div class="belm-technician-customer-head">
         <div>
-          <span>Assigned Customer</span>
+          <span>BELM Technician Dashboard</span>
           <h1>${escapeHtml(customer.name || "Customer")}</h1>
-          <p>${escapeHtml(customer.address || "Location not recorded")}</p>
+          <p>Assigned customer</p>
         </div>
         <strong>${Number(customer.isActive ?? 1) === 1 ? "ACTIVE" : "INACTIVE"}</strong>
       </div>
-      <div class="belm-technician-customer-info">
-        <div><span>Location</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
+      <div class="belm-technician-dashboard-contact">
         <div><span>Phone</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div>
         <div><span>Email</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div>
-        <div><span>TIN / VRN</span><b>${escapeHtml([customer.tinNumber, customer.vrn].filter(Boolean).join(" / ") || "Not recorded")}</b></div>
-        <div><span>Registered Machines</span><b>${escapeHtml((customer.machines || []).length)}</b></div>
+        <div><span>Address</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
+      </div>
+      <div class="belm-technician-dashboard-footer">
+        <button type="button" class="belm-technician-view-machine-button" data-technician-view-machines>
+          <span>View Machine</span><small>${escapeHtml(machineCount)} machine${machineCount === 1 ? "" : "s"}</small>
+        </button>
       </div>`;
 
     const listHeading = document.createElement("div");
     listHeading.id = "belmTechnicianMachineListHeading";
     listHeading.className = "belm-technician-machine-list-heading";
     listHeading.innerHTML = `<div><span>Customer Fleet</span><h2>${escapeHtml((customer.name || "Customer").toUpperCase())} MACHINES</h2></div>
-      <strong>${escapeHtml((customer.machines || []).length)} MACHINE(S)</strong>`;
+      <strong>${escapeHtml(machineCount)} MACHINE(S)</strong>`;
+    machineGrid.id = "belmTechnicianMachineGrid";
     machineGrid.classList.add("belm-technician-machine-grid");
+
+    const machineViewRequested = new URLSearchParams(window.location.search).get("view") === "machines";
+    const setMachineView = (open, focus = false) => {
+      machineGrid.classList.toggle("belm-technician-machine-grid-collapsed", !open);
+      listHeading.classList.toggle("belm-technician-machine-list-heading-collapsed", !open);
+      customerCard.classList.toggle("machine-view-open", open);
+      const viewButton = customerCard.querySelector("[data-technician-view-machines]");
+      if (viewButton) {
+        viewButton.setAttribute("aria-expanded", open ? "true" : "false");
+        viewButton.querySelector("span").textContent = open ? "Hide Machine" : "View Machine";
+      }
+      if (open && focus) listHeading.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
     machineGrid.before(customerCard, listHeading);
+    setMachineView(machineViewRequested, false);
+    customerCard.querySelector("[data-technician-view-machines]")?.addEventListener("click", () => {
+      const open = machineGrid.classList.contains("belm-technician-machine-grid-collapsed");
+      setMachineView(open, open);
+      const url = new URL(window.location.href);
+      if (open) url.searchParams.set("view", "machines");
+      else url.searchParams.delete("view");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    });
   }
 
   function technicianMachineInfoCard(card, machine) {

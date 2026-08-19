@@ -1,0 +1,15 @@
+BELM PORTAL V384 TEST SUMMARY
+
+Scope: BELM Technician dashboard handoff only.
+
+- Technician landing card: PASS
+- View Machine reveal/hide flow: PASS
+- Direct /tech?view=machines support: PASS
+- Existing Check-up action retained: PASS
+- Existing Checked Reports action retained: PASS
+- Existing Machine Job Cards action retained: PASS
+- Existing Activity Status sync retained: PASS
+- Regression suites: 96/96 PASS
+- ui-smoke.cjs: skipped (external jsdom harness not available in package)
+- Frontend JavaScript syntax: 37/37 PASS
+- PHP syntax: 48/48 PASS

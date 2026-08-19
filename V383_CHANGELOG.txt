@@ -1,0 +1,15 @@
+BELM PORTAL V383
+Machine Alert Blink
+
+Scope
+- BELM Admin > Customer Machine / View machine cards
+- Customer > View Your Machine
+
+Changes
+- RED machine/service range: clear whole-card blinking alert ring.
+- YELLOW machine/service range: slower whole-card pulse.
+- GREEN machine/service range: steady, no blink.
+- Alert/fault/service message text remains static and readable while the outer card alert ring animates.
+- Existing machine state priority remains RED > YELLOW > GREEN.
+- No backend, database, Activity Status, report, Job Card, machine management, or sync logic changes.
+- Reduced-motion OS preference disables animation and keeps a steady alert ring.

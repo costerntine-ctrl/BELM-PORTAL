@@ -40,26 +40,6 @@
     return new Intl.DateTimeFormat("en", { year: "numeric", month: "numeric", day: "numeric" }).format(date);
   }
 
-  function portalUrl() {
-    return new URL("/login", window.location.origin).href;
-  }
-
-  async function copyText(text) {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (_) {
-      const area = document.createElement("textarea");
-      area.value = text;
-      area.style.position = "fixed";
-      area.style.opacity = "0";
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand("copy");
-      area.remove();
-    }
-    showAlert("Customer portal link copied.", false);
-  }
-
   function customerSearchText(customer) {
     return [
       customer.name,
@@ -98,7 +78,6 @@
       return;
     }
 
-    const link = portalUrl();
     const tinVrn = [customer.tinNumber || "-", customer.vrn || "-"].join(" / ");
     details.innerHTML = `
       <article class="panel myc-customer-card">
@@ -119,15 +98,6 @@
             <div class="myc-info-item"><span>Phone</span><strong>${escapeHtml(customer.phone || "-")}</strong></div>
             <div class="myc-info-item"><span>Address</span><strong>${escapeHtml(customer.address || "-")}</strong></div>
             <div class="myc-info-item"><span>TIN / VRN</span><strong>${escapeHtml(tinVrn)}</strong></div>
-          </div>
-
-          <div class="myc-portal-box">
-            <label>Working customer portal link</label>
-            <p class="myc-portal-url">${escapeHtml(link)}</p>
-            <div class="myc-portal-actions">
-              <button type="button" data-copy-customer-link>Copy link</button>
-              <a class="open-login" href="${escapeHtml(link)}" target="_blank" rel="noopener">Open customer login</a>
-            </div>
           </div>
 
           <nav class="myc-quick-actions" aria-label="Customer quick actions">
@@ -177,10 +147,5 @@
     renderSelectedCustomer();
   });
   refreshButton.addEventListener("click", loadCustomers);
-  details.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-copy-customer-link]");
-    if (button) copyText(portalUrl());
-  });
-
   loadCustomers();
 })();

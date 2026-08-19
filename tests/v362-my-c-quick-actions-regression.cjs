@@ -12,7 +12,7 @@ t('four MY C quick-action labels exist', ['View Your Machine','Workshop','Procur
 t('quick-action colors are black blue green yellow', css.includes('.action-black') && css.includes('#090d12') && css.includes('.action-blue') && css.includes('#2374d8') && css.includes('.action-green') && css.includes('#00a958') && css.includes('.action-yellow') && css.includes('#ffd43b'));
 t('buttons point to matching admin destinations', app.includes('/customers-manager/?customer=${encodeURIComponent(customer.id)}') && app.includes('href="/engineering-manager/"') && app.includes('href="/spare-parts-manager/"') && app.includes('href="/reports-manager/"'));
 t('View Your Machine auto-opens selected customer machine list', customers.includes('get("customer")') && customers.includes('openMachineList(requestedCustomer)'));
-t('MY C quick-action assets retain compatible cache labels', /\/my-c\/my-c\.css\?v=(362-my-c-quick-actions|363-my-c-single-row-actions)/.test(html) && html.includes('/my-c/app.js?v=362-my-c-quick-actions'));
+t('MY C quick-action assets retain compatible cache labels', /\/my-c\/my-c\.css\?v=(362-my-c-quick-actions|363-my-c-single-row-actions|370-my-c-compact-card)/.test(html) && /\/my-c\/app\.js\?v=(362-my-c-quick-actions-364-machine-view|370-my-c-compact-card)/.test(html));
 t('customers manager deep-link code is cache-busted', /\/customers-manager\/manager\.js\?v=(362-my-c-quick-actions|365-single-procurement-main-card|366-machine-card-no-edit-delete|368-customer-contact-lines)/.test(customersHtml));
 t('quick actions are responsive', css.includes('@media (max-width: 920px)') && css.includes('@media (max-width: 460px)'));
 console.log(`V362 MY C quick actions ${pass}/7 checks passed`);

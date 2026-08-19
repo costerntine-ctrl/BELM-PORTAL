@@ -20,7 +20,7 @@ const baseline = {
   'backend/api/engineering.php': '6ea6d5f2f3ad16a9b6343dd7666c7304f7de30b51a915b7452741b2aa6dca63e',
   'backend/api/service_requests.php': '66c9e8378092db5c0e914e994d12e8b41521fb8ca004850099358131fd602d05',
   'backend/api/spare_recommendations.php': 'eeec8df6b3f4c631000b3d09b5ad032c2f7ecf289879955cee05892713359507',
-  'frontend/my-c/app.js': '245d17c6b571b17b065bdd12e0cef739333e7e98939982eebfbb5ddfd7f07b54',
+  'frontend/my-c/app.js': '0b01c58784d3783fa68a471ebfd6a653d1f1f92ed25679fd62dbfbba9ce28d19',
   'frontend/customers-manager/manager.js': 'df0cfa1603d40553cb8a227233647db297c3de4daa1bee1744f12d77d684e25d',
   'frontend/engineering-manager/manager.js': '401c91e9731e257a31f67ee09a4b84602149e10c817c04b9e761052fb7e18695',
   'frontend/spare-parts-manager/manager.js': 'befcbfb959dbbca87f258f2e3d6ec9e7725a273dac6fc3d206ba5aebe9e5ea2c',

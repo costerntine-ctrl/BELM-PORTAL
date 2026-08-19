@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-const BELM_RELEASE = '352-public-url-port-guard';
+const BELM_RELEASE = '353-web-db-availability-decoupling';
 const BELM_DATA_SAFETY_EXIT = 78;
 
 function belm_env_true(string $name): bool {
@@ -230,7 +230,7 @@ try {
     ]);
 
     $pdo->commit();
-    fwrite(STDOUT, 'BELM V352 safe code deployment completed. Installation ' . $installationId . '; protected records preserved; schema ' . ($schemaApplied ? 'applied' : 'already current') . ".\n");
+    fwrite(STDOUT, 'BELM V353 safe background database check completed. Installation ' . $installationId . '; protected records preserved; schema ' . ($schemaApplied ? 'applied' : 'already current') . ".\n");
 } catch (Throwable $error) {
     try {
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();

@@ -19,7 +19,7 @@ test('reset response returns one-time password and recovery code',users.includes
 test('reset response returns login URL',users.includes("'loginUrl' => belm_staff_login_url"));
 test('all staff login URLs resolve to canonical public login URL',helpers.includes('function belm_staff_login_url')&&helpers.includes('return public_login_url();'));
 test('customer portal URL also resolves to same canonical login URL',helpers.includes('function customer_portal_url')&&helpers.includes('return public_login_url();'));
-test('canonical public login ends in /login',helpers.includes("return public_app_base_url() . '/login';"));
+test('canonical public login ends in /login',helpers.includes("return public_app_base_url() . '/login';")||helpers.includes("return portal_base_url() . '/login';"));
 test('reset credentials dialog shows email password recovery and link',html.includes('id="resetRegisteredUserCredentialsDialog"')&&html.includes('id="resetCredEmail"')&&html.includes('id="resetCredPassword"')&&html.includes('id="resetCredRecovery"')&&html.includes('id="resetCredLink"'));
 test('dialog explains the login link is shared by all users',html.includes('One portal link is used by all BELM users')&&html.includes('Login link — same for all users'));
 test('admin can copy all reset login details',admin.includes('copyResetRegisteredUserDetails')&&admin.includes('Temporary password: ${lastRegisteredUserReset.password}')&&admin.includes('BELM Portal Login: ${lastRegisteredUserReset.loginUrl}'));

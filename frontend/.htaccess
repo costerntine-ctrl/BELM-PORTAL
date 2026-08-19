@@ -1,5 +1,10 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
+
+  # V353: never publish Render's internal listener port in an HTTPS redirect.
+  RewriteCond %{HTTP:X-Forwarded-Proto} ^https$ [NC]
+  RewriteCond %{HTTP_HOST} ^(.+):10000$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [R=302,L,NE]
   RewriteBase /
   DirectoryIndex portal-home.html index.html
   RewriteRule ^api(?:/|$) - [L]

@@ -26,8 +26,20 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
+// V353 lightweight liveness endpoint for Render. It deliberately performs no
+// database query: a slow/guarded migration must never make the web service look
+// dead to the platform. Use /api/health for detailed PostgreSQL/schema readiness.
+if (($segments[0] ?? '') === 'live') {
+    json_out([
+        'ok' => true,
+        'api' => 'BELM PHP web service',
+        'schemaVersion' => '353-web-db-availability-decoupling',
+        'databaseReadiness' => '/api/health',
+    ], 200);
+}
+
 // Regression baseline: 309-received-job-card-dispatch
-// Health/setup check. This deliberately exposes no credentials.
+// Detailed health/setup check. This deliberately exposes no credentials.
 if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
     try {
         $databaseVersion = db()->query('SELECT VERSION()')->fetchColumn();
@@ -146,6 +158,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'lastDeploymentAt' => null,
             'fullResetProtected' => strtolower((string)(getenv('APP_ENV') ?: '')) === 'production'
                 && trim((string)(getenv('ALLOW_FULL_DATABASE_RESET') ?: '')) !== 'YES-I-UNDERSTAND',
+            'webStartupIndependentOfMigration' => true,
         ];
         try {
             $dataSafety['installationId'] = db()->query('SELECT installation_id FROM belm_installation_meta WHERE singleton=1')->fetchColumn() ?: null;
@@ -172,7 +185,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
             // Regression baseline: 'schemaVersion' => '347-expense-persistence-sync'
-            'schemaVersion' => '352-public-url-port-guard',
+            'schemaVersion' => '353-web-db-availability-decoupling',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

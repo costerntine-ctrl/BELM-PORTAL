@@ -16,6 +16,6 @@ const checks=[
 ['customer expense separation explained',js.includes('Customer/Machine Procurement')&&js.includes('not mixed into BELM company P&amp;L')],
 ['expense count badge',html.includes('expenseCountBadge')&&css.includes('.tab-count')],
 ['backup automatically exports every public table',backup.includes("FROM pg_tables WHERE schemaname='public'")&&backup.includes("SELECT * FROM " )],
-['billing cache remains current',html.includes('v=351-free-reedit-dev-expenses')&&/belm-app-v(351-free-reedit-dev-customer-expenses|352-public-url-port-guard)/.test(sw)],
-['health remains at least V347',/\'schemaVersion\' => \'(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard)\'/.test(health)],
+['billing cache remains current',html.includes('v=351-free-reedit-dev-expenses')&&/belm-app-v(351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability)/.test(sw)],
+['health remains at least V347',/\'schemaVersion\' => \'(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard|353-web-db-availability-decoupling)\'/.test(health)],
 ];let fail=0;for(const [n,ok] of checks){console.log(`${ok?'PASS':'FAIL'} ${n}`);if(!ok)fail++;}if(fail)process.exit(1);console.log(`V347 checks ${checks.length}/${checks.length} passed.`);

@@ -17,7 +17,7 @@ const portal=read('frontend/portal-tools.js');
 const publicRules=read('public_website_patch/HTACCESS_APP_RULES.txt');
 const publicWrapper=read('public_website_patch/belm_app.php');
 const publicRegister=read('public_website_patch/client_register.php');
-check('canonical public_login_url exists', helpers.includes("return public_app_base_url() . '/login';"));
+check('canonical public_login_url exists', helpers.includes("return public_app_base_url() . '/login';") || helpers.includes("return portal_base_url() . '/login';"));
 check('customer generated login uses canonical URL', /function customer_portal_url[\s\S]*?return public_login_url\(\);/.test(helpers));
 check('staff generated login uses canonical URL', /function belm_staff_login_url[\s\S]*?return public_login_url\(\);/.test(helpers));
 check('unified backend login remains enabled', auth.includes("$action === 'unified-login'"));

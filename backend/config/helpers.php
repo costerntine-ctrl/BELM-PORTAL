@@ -190,10 +190,10 @@ function public_app_base_url(): string {
 }
 
 function public_login_url(): string {
-    // V303: one canonical sign-in link for every email/password portal account.
-    // Account type, role, company and permissions are resolved only after the
-    // credentials are verified by /api/auth/unified-login.
-    return public_app_base_url() . '/login';
+    // V353: authentication always belongs to the portal web service itself.
+    // Never route a login through a wrapper/main-site origin and never inherit
+    // Render's internal listener port from the current request.
+    return portal_base_url() . '/login';
 }
 
 function customer_portal_url(string $portalSlug, ?string $email = null): string {

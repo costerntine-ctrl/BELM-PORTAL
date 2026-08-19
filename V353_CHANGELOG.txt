@@ -1,0 +1,23 @@
+BELM PORTAL V353 - WEB / DATABASE AVAILABILITY DECOUPLING
+
+Problem fixed
+- The portal could become completely unreachable after V350 database hardening because
+  startup waited on migrate.php and deliberately exited when a data-safety guard blocked.
+- Render health checking also depended on full database/schema readiness, so a DB problem
+  could keep a healthy Apache/frontend container out of service.
+- Public/login URLs must never expose Render's internal :10000 listener.
+
+Changes
+1. Apache now binds to Render $PORT immediately; safe DB migration runs in the background.
+2. A blocked/slow migration no longer kills the website process. migrate.php remains transactional
+   and rolls back on any data-safety violation.
+3. New GET /api/live is a database-independent HTTP liveness endpoint.
+4. render.yaml healthCheckPath now uses /api/live. Detailed DB/schema diagnostics stay at /api/health.
+5. public_login_url() now always uses the canonical portal origin, not the main-site wrapper origin.
+6. Apache/.htaccess defensively strip :10000 from any forwarded HTTPS Host redirect.
+7. V350 record-preservation rules, production reset protection and PostgreSQL history remain intact.
+8. schema.sql is unchanged; this is a code/startup bug fix only.
+
+Clean login examples
+https://belm-portal.onrender.com/login
+https://portal.belmgeneraltech.co.tz/login

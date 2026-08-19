@@ -227,6 +227,21 @@ const BELM_CUSTOMER_PRIVACY_DEFAULTS = [
     'storeAndParts' => false,
 ];
 
+// V351 DEVELOPMENT ACCESS: Customer expense/procurement records are temporarily
+// visible to authenticated BELM staff while the portal is still being built and
+// tested. The customer's saved privacy preference is NOT overwritten, so this
+// bypass can be closed later without losing the preference they selected. Set
+// BELM_OPEN_CUSTOMER_EXPENSES_FOR_DEVELOPMENT=false to close the bypass early.
+const BELM_DEVELOPMENT_OPEN_CUSTOMER_EXPENSE_ACCESS = true;
+
+function belm_development_customer_expense_access_enabled(): bool {
+    $raw = getenv('BELM_OPEN_CUSTOMER_EXPENSES_FOR_DEVELOPMENT');
+    if ($raw !== false && trim((string)$raw) !== '') {
+        return in_array(strtolower(trim((string)$raw)), ['1', 'true', 'yes', 'on'], true);
+    }
+    return BELM_DEVELOPMENT_OPEN_CUSTOMER_EXPENSE_ACCESS;
+}
+
 function belm_customer_privacy_normalize($raw): array {
     if (is_string($raw)) {
         $decoded = json_decode($raw, true);
@@ -276,6 +291,7 @@ function belm_customer_has_open_support(string $customerId, ?string $machineId =
 
 function belm_customer_privacy_allows(string $customerId, string $key, ?string $machineId = null): bool {
     if (!array_key_exists($key, BELM_CUSTOMER_PRIVACY_DEFAULTS)) return false;
+    if ($key === 'expenseReceipts' && belm_development_customer_expense_access_enabled()) return true;
     $row = belm_customer_privacy_row($customerId);
     if (!$row) return false;
     $prefs = $row['privacyPreferences'];
@@ -1209,6 +1225,17 @@ function clear_rate_limit(string $scope, string $identifier): void {
     if ($identifier === '') return;
     db()->prepare('DELETE FROM security_rate_limits WHERE scope = ? AND identifier = ?')
         ->execute([$scope, $identifier]);
+}
+
+// V349: password resets and credential repairs must immediately release any
+// stale unified-login lockout for that identity. Otherwise a user can reset
+// the password successfully and still be told the new password does not work
+// until the previous 15-minute failed-attempt window expires.
+function clear_unified_login_lockout(?string $email = null, ?string $portalLink = null): void {
+    foreach ([$email, $portalLink] as $identifier) {
+        $identifier = mb_strtolower(trim((string)$identifier));
+        if ($identifier !== '') clear_rate_limit('unified-login', $identifier);
+    }
 }
 
 // ---- General-purpose audit trail -----------------------------------------

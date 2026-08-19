@@ -153,6 +153,7 @@ Kabla ya fresh/default-password deploy, weka Render secret:
 
 Hakuna public/default Admin password inayoruhusiwa na V302 migration.
 Kwa database iliyopo yenye password iliyokwisha badilishwa, password hiyo inabaki.
+V349 pia haibadilishi legacy Admin password wakati wa deploy; hash ya zamani hu-upgrade tu baada ya login iliyofanikiwa kwa password hiyo hiyo. Password reset inafuta stale login lockout mara moja.
 Full database reset pia inahifadhi Admin email/password na edit/delete PIN zilizotumika kabla ya reset.
 
 
@@ -505,3 +506,19 @@ Billing records are stored in the PostgreSQL database connected through DATABASE
 - Customer/Machine procurement, fuel and petty cash: usage_logs (separate from BELM company P&L)
 
 Normal Render deploys/restarts run additive schema migrations and do not truncate these tables. A deliberate reset/delete action is different and can remove/soft-delete records as designed. V347 fault-isolates Billing API loads so a failure in one section cannot make another saved section look empty.
+
+V350 DATABASE DATA-PRESERVATION GUARD
+-------------------------------------
+V350 changes the deployment rule from "run live-data repairs on every restart" to "schema-only unless an explicit user/API action changes business data".
+
+- schema.sql contains additive DDL and insert-if-missing seed rows only. It does not UPDATE/DELETE/TRUNCATE business records during deployment.
+- backend/scripts/migrate.php runs inside one PostgreSQL transaction with an advisory lock.
+- Every pre-existing protected record ID is snapshotted before a schema change. If any protected ID disappears or a protected table row count decreases while migration runs, the transaction is rolled back and deployment stops.
+- The cumulative schema is applied only when schema.sql SHA-256 changes. Bug-only code deploys do not re-run the schema.
+- A brand-new/empty production database is refused by default. This prevents a changed/recreated DATABASE_URL from silently opening an empty portal. ALLOW_FRESH_DATABASE_BOOTSTRAP=true is only for an intentional first installation.
+- Full database reset is blocked in production by default. ALLOW_FULL_DATABASE_RESET must equal YES-I-UNDERSTAND to enable a deliberate full wipe.
+- /api/health reports the persistent PostgreSQL installation ID and last guarded deployment.
+- /api/backup exports every public PostgreSQL table automatically, including tables added by future versions.
+- Optional strongest protection: copy the installationId shown by /api/health into an EXPECTED_BELM_INSTALLATION_ID environment variable. Future deploys then refuse any different PostgreSQL database target.
+
+IMPORTANT: V350 protects data from code deployments. A deliberate delete/reset action, PostgreSQL provider deletion/expiry, or changing DATABASE_URL outside the app is a separate infrastructure event. Keep regular /api/backup exports and use a persistent production PostgreSQL plan for business records.

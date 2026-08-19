@@ -42,6 +42,14 @@ $roleId = trim((string)($body['roleId'] ?? ''));
 $machineScope = trim((string)($body['machineScope'] ?? 'single')); // 'single' | 'all'
 $userScope = trim((string)($body['userScope'] ?? 'single'));       // 'single' | 'all'
 
+// V350 DATA SAFETY: a full production wipe is disabled by default. Ordinary
+// code deployments never call this endpoint, and even a Super Admin cannot
+// accidentally drop every table unless the server owner explicitly enables it.
+if ($category === 'all' && strtolower((string)(getenv('APP_ENV') ?: '')) === 'production'
+    && trim((string)(getenv('ALLOW_FULL_DATABASE_RESET') ?: '')) !== 'YES-I-UNDERSTAND') {
+    json_error('Full database reset is disabled in production by the V350 data-safety guard.', 403);
+}
+
 function belm_in_clause(array $ids): string {
     return implode(',', array_fill(0, count($ids), '?'));
 }

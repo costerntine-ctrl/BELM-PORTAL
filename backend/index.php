@@ -51,6 +51,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'spare_part_requests',
             'bank_accounts',
             'bank_withdrawals',
+            'company_expenses',
             'customer_communications',
             'user_preferences',
             'machine_service_parts',
@@ -61,10 +62,14 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'breakdown_spare_requests',
             'digital_job_cards',
             'invoices',
+            'invoice_items',
             'payments',
             'receipts',
             'proforma_invoices',
             'proforma_invoice_items',
+            'belm_installation_meta',
+            'belm_schema_migrations',
+            'belm_deployment_audits',
         ];
         $tableChecks = [];
         $schemaReady = true;
@@ -131,6 +136,27 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
         }
         $adminReady = !in_array(false, $adminChecks, true);
 
+        // V350 deployment/data-persistence health. This does not expose secrets;
+        // it confirms which persistent PostgreSQL installation is connected and
+        // whether the last guarded schema deployment completed.
+        $dataSafety = [
+            'storage' => 'PostgreSQL',
+            'installationId' => null,
+            'lastDeploymentRelease' => null,
+            'lastDeploymentAt' => null,
+            'fullResetProtected' => strtolower((string)(getenv('APP_ENV') ?: '')) === 'production'
+                && trim((string)(getenv('ALLOW_FULL_DATABASE_RESET') ?: '')) !== 'YES-I-UNDERSTAND',
+        ];
+        try {
+            $dataSafety['installationId'] = db()->query('SELECT installation_id FROM belm_installation_meta WHERE singleton=1')->fetchColumn() ?: null;
+            $lastDeploy = db()->query('SELECT release,applied_at FROM belm_deployment_audits ORDER BY applied_at DESC LIMIT 1')->fetch();
+            if ($lastDeploy) {
+                $dataSafety['lastDeploymentRelease'] = $lastDeploy['release'];
+                $dataSafety['lastDeploymentAt'] = $lastDeploy['applied_at'];
+            }
+        } catch (Throwable $ignored) {
+        }
+
         $healthReady = $schemaReady && $adminReady;
         json_out([
             'ok' => $healthReady,
@@ -145,12 +171,14 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '338-process-stage-drilldown'
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
-            'schemaVersion' => '347-expense-persistence-sync',
+            // Regression baseline: 'schemaVersion' => '347-expense-persistence-sync'
+            'schemaVersion' => '351-free-reedit-dev-customer-expenses',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,
             'adminReady' => $adminReady,
             'adminChecks' => $adminChecks,
+            'dataSafety' => $dataSafety,
             'loginEndpoints' => [
                 'unified' => '/api/auth/unified-login',
                 'legacyStaff' => '/api/auth/login',

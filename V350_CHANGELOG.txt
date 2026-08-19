@@ -1,0 +1,42 @@
+BELM PORTAL V350 - DATABASE DATA PRESERVATION GUARD
+===================================================
+
+Purpose
+-------
+Make ordinary code/bug deployments non-destructive. Existing business records must not be rewritten, reset or disappear just because a new portal build is deployed.
+
+Changes
+-------
+1. schema.sql is deploy-safe:
+   - no UPDATE business-data repairs
+   - no DELETE/TRUNCATE/DROP TABLE business operations
+   - existing Admin/user rows use ON CONFLICT DO NOTHING
+   - historical V308/V312/V313 repairs are no longer re-applied on every deploy
+
+2. migrate.php is guarded:
+   - PostgreSQL transaction + advisory migration lock
+   - schema SHA-256 ledger; unchanged schema is skipped on bug-only deployments
+   - snapshots pre-existing protected IDs and row counts
+   - migration rolls back if any protected record disappears or row count decreases
+   - records a successful deployment audit and permanent installation identity
+
+3. Production target protection:
+   - refuses an empty/new production database unless ALLOW_FRESH_DATABASE_BOOTSTRAP=true
+   - optional EXPECTED_BELM_INSTALLATION_ID blocks accidental DATABASE_URL switches
+
+4. Destructive reset protection:
+   - full database reset is blocked in production unless ALLOW_FULL_DATABASE_RESET=YES-I-UNDERSTAND
+
+5. Backup completeness:
+   - /api/backup now exports every public PostgreSQL table dynamically
+   - includes row counts, schema version and installation identity
+
+6. Health diagnostics:
+   - /api/health reports V350, PostgreSQL storage, installation ID, last guarded deployment and full-reset protection state
+
+7. Existing login safety remains:
+   - deploy never rotates an existing password
+   - only the exact fresh locked Admin seed can be initialized from INITIAL_ADMIN_PASSWORD
+   - existing action PIN values are never overwritten by deployment
+
+No manual database migration is required for an existing V349 database.

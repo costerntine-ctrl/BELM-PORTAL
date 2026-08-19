@@ -1,0 +1,11 @@
+V349 LOGIN PASSWORD AUDIT
+
+Root causes hardened:
+1. A legacy seeded Super Admin hash could be replaced from INITIAL_ADMIN_PASSWORD during deploy, making the previously working saved password stop working. V349 only initializes the locked fresh-database placeholder; existing legacy passwords are preserved.
+2. Successful password reset flows did not clear unified-login failed-attempt rows, so a newly reset password could remain blocked until the rate-limit window expired. V349 clears that lockout immediately.
+3. Successful legacy logins now upgrade the hash policy in place using the same plaintext credential.
+
+Safety:
+- No plaintext passwords are logged or stored.
+- No automatic reset of existing credentials.
+- No database/business-data reset.

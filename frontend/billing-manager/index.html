@@ -78,6 +78,8 @@
         <div class="dialog-head"><div><p class="eyebrow">Customer billing</p><h2 id="invoiceTitle">New invoice</h2></div><button class="icon-close" data-close="invoiceDialog" type="button">×</button></div>
         <input id="invoiceId" type="hidden">
         <input id="invoiceSourceJobCardId" type="hidden">
+        <input id="invoiceDiscount" type="hidden" value="0">
+        <input id="invoiceVatRate" type="hidden" value="18">
         <div id="invoiceError" class="alert error hidden"></div>
         <div class="form-grid">
           <label>Customer<select id="invoiceCustomer" required></select></label>
@@ -200,7 +202,7 @@
     <script src="/admin-sidebar.js?v=320-engineering-single-owner"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/billing-manager/manager.js?v=347-expense-persistence-sync"></script>
+    <script src="/billing-manager/manager.js?v=351-free-reedit-dev-expenses"></script>
     <div id="qrScanOverlay" class="qr-scan-overlay hidden">
       <video id="qrScanVideo" autoplay playsinline muted></video>
       <button id="qrScanCancelButton" type="button" class="qr-scan-cancel">Cancel scan</button>

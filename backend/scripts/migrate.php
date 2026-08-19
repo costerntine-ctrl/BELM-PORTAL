@@ -3,135 +3,241 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
+const BELM_RELEASE = '351-free-reedit-dev-customer-expenses';
+const BELM_DATA_SAFETY_EXIT = 78;
+
+function belm_env_true(string $name): bool {
+    return in_array(strtolower(trim((string)(getenv($name) ?: ''))), ['1', 'true', 'yes', 'on'], true);
+}
+
+function belm_table_exists(PDO $pdo, string $table): bool {
+    $stmt = $pdo->prepare('SELECT to_regclass(?) IS NOT NULL');
+    $stmt->execute(['public.' . $table]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function belm_column_exists(PDO $pdo, string $table, string $column): bool {
+    $stmt = $pdo->prepare(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND column_name=?)"
+    );
+    $stmt->execute([$table, $column]);
+    return (bool)$stmt->fetchColumn();
+}
+
+function belm_safe_identifier(string $name): string {
+    if (!preg_match('/^[a-z_][a-z0-9_]*$/', $name)) {
+        throw new RuntimeException('Unsafe database identifier: ' . $name);
+    }
+    return '"' . $name . '"';
+}
+
+function belm_table_count(PDO $pdo, string $table): int {
+    return (int)$pdo->query('SELECT COUNT(*) FROM ' . belm_safe_identifier($table))->fetchColumn();
+}
+
+function belm_uuid(): string {
+    $data = random_bytes(16);
+    $data[6] = chr((ord($data[6]) & 0x0f) | 0x40);
+    $data[8] = chr((ord($data[8]) & 0x3f) | 0x80);
+    $hex = bin2hex($data);
+    return substr($hex, 0, 8) . '-' . substr($hex, 8, 4) . '-' . substr($hex, 12, 4) . '-' . substr($hex, 16, 4) . '-' . substr($hex, 20);
+}
+
 $schemaPath = __DIR__ . '/../schema.sql';
 $schema = file_get_contents($schemaPath);
 if ($schema === false) {
     fwrite(STDERR, "Could not read schema.sql\n");
     exit(1);
 }
+$schemaHash = hash('sha256', $schema);
+
+$protectedTables = [
+    'roles', 'users', 'customers', 'customer_users', 'machines',
+    'checklist_templates', 'checklist_reports', 'service_requests', 'service_request_history', 'service_notes',
+    'spare_parts', 'spare_part_requests', 'suppliers',
+    'bank_accounts', 'bank_withdrawals', 'company_expenses',
+    'proforma_invoices', 'proforma_invoice_items', 'invoices', 'invoice_items', 'payments', 'receipts',
+    'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests',
+    'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
+    'customer_communications', 'tasks', 'activity_logs', 'trash_entries',
+];
 
 try {
-    db()->exec($schema);
+    $pdo = db();
+    $isProduction = strtolower((string)(getenv('APP_ENV') ?: '')) === 'production';
 
-    // V312: normalize the Job Card intake lifecycle for existing live data.
-    $receivedRepair = db()->exec(
-        "UPDATE digital_job_cards
-         SET status='RECEIVED', updated_at=NOW()
-         WHERE status IN ('OPEN','ASSIGNED')
-           AND technician_id IS NULL
-           AND NULLIF(TRIM(COALESCE(technician_name,'')),'') IS NULL"
-    );
-    $assignedRepair = db()->exec(
-        "UPDATE digital_job_cards
-         SET status='ASSIGNED', updated_at=NOW()
-         WHERE status IN ('OPEN','RECEIVED') AND technician_id IS NOT NULL"
-    );
-    if ($receivedRepair > 0 || $assignedRepair > 0) {
-        fwrite(STDOUT, "V312 Job Card lifecycle normalized: {$receivedRepair} received, {$assignedRepair} assigned.\n");
+    // V350 fail-closed database target guard. A code update must never silently
+    // bootstrap a brand-new/empty production database because DATABASE_URL was
+    // changed, detached or recreated. First-ever production setup is explicit.
+    if ($isProduction && trim((string)(getenv('DATABASE_URL') ?: '')) === '') {
+        fwrite(STDERR, "DATA_SAFETY_BLOCK: DATABASE_URL is required in production.\n");
+        exit(BELM_DATA_SAFETY_EXIT);
     }
 
-    // V313: an ASSIGNED Job Card is a real workflow stage. Do not jump to Diagnosis
-    // until the Technician saves the first technical Job Card report.
-    $assignedStageRepair = db()->exec(
-        "UPDATE breakdown_cases bc
-         SET current_stage='JOB_CARD_ASSIGNED',
-             current_department='Technician',
-             blocker_reason=NULL,
-             updated_at=NOW()
-         WHERE bc.status <> 'COMPLETED'
-           AND bc.current_stage IN ('DIAGNOSIS','REPAIR')
-           AND EXISTS (
-               SELECT 1 FROM digital_job_cards j
-               WHERE j.case_id=bc.id
-                 AND j.status='ASSIGNED'
-                 AND j.technician_id IS NOT NULL
-                 AND j.started_at IS NULL
-           )
-           AND NOT EXISTS (
-               SELECT 1 FROM digital_job_cards j
-               WHERE j.case_id=bc.id AND j.status='IN_PROGRESS'
-           )"
-    );
-    if ($assignedStageRepair > 0) {
-        fwrite(STDOUT, "V313 repaired {$assignedStageRepair} assigned Job Card workflow case(s).\n");
+    $existingCoreTables = 0;
+    foreach (['users', 'customers', 'machines', 'service_requests', 'digital_job_cards', 'company_expenses', 'bank_accounts', 'proforma_invoices', 'invoices'] as $table) {
+        if (belm_table_exists($pdo, $table)) $existingCoreTables++;
+    }
+    $freshDatabase = $existingCoreTables === 0;
+    if ($isProduction && $freshDatabase && !belm_env_true('ALLOW_FRESH_DATABASE_BOOTSTRAP')) {
+        fwrite(STDERR, "DATA_SAFETY_BLOCK: production database has no BELM core tables. Refusing to create a blank portal during an ordinary deploy. Set ALLOW_FRESH_DATABASE_BOOTSTRAP=true only for an intentional first installation.\n");
+        exit(BELM_DATA_SAFETY_EXIT);
     }
 
-    // V308: repair legacy/manual cases that were incorrectly handed to the
-    // Technician department while every active Job Card was still unassigned.
-    // Keep stage_started_at unchanged so the real assignment waiting time stays visible.
-    $assignmentRepair = db()->exec(
-        "UPDATE breakdown_cases bc
-         SET current_stage='TECHNICIAN_ASSIGNMENT',
-             current_department='Workshop / Dispatch',
-             blocker_reason='Awaiting Technician Assignment',
-             updated_at=NOW()
-         WHERE bc.status <> 'COMPLETED'
-           AND bc.current_stage IN ('WORKSHOP_REVIEW','DIAGNOSIS','REPAIR')
-           AND EXISTS (
-               SELECT 1 FROM digital_job_cards j
-               WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED')
-           )
-           AND NOT EXISTS (
-               SELECT 1 FROM digital_job_cards j
-               WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED') AND j.technician_id IS NOT NULL
-           )"
+    $pdo->beginTransaction();
+    // Only one release may evolve the shared schema at a time.
+    $pdo->query("SELECT pg_advisory_xact_lock(hashtext('belm-portal-schema-migration'))");
+
+    // Migration/audit metadata is additive and contains no business data.
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS belm_installation_meta (\n" .
+        "  singleton SMALLINT PRIMARY KEY CHECK (singleton = 1),\n" .
+        "  installation_id VARCHAR(36) NOT NULL UNIQUE,\n" .
+        "  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP\n" .
+        ")"
     );
-    if ($assignmentRepair > 0) {
-        fwrite(STDOUT, "V308 repaired {$assignmentRepair} unassigned Job Card workflow case(s).\n");
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS belm_schema_migrations (\n" .
+        "  id VARCHAR(36) PRIMARY KEY,\n" .
+        "  release VARCHAR(100) NOT NULL,\n" .
+        "  schema_sha256 VARCHAR(64) NOT NULL UNIQUE,\n" .
+        "  applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP\n" .
+        ")"
+    );
+    $pdo->exec(
+        "CREATE TABLE IF NOT EXISTS belm_deployment_audits (\n" .
+        "  id VARCHAR(36) PRIMARY KEY,\n" .
+        "  release VARCHAR(100) NOT NULL,\n" .
+        "  schema_sha256 VARCHAR(64) NOT NULL,\n" .
+        "  installation_id VARCHAR(36) NOT NULL,\n" .
+        "  pre_counts JSONB NOT NULL DEFAULT '{}'::jsonb,\n" .
+        "  post_counts JSONB NOT NULL DEFAULT '{}'::jsonb,\n" .
+        "  schema_applied SMALLINT NOT NULL DEFAULT 0,\n" .
+        "  applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP\n" .
+        ")"
+    );
+
+    $installationId = (string)$pdo->query('SELECT installation_id FROM belm_installation_meta WHERE singleton=1')->fetchColumn();
+    if ($installationId === '') {
+        $installationId = belm_uuid();
+        $stmt = $pdo->prepare('INSERT INTO belm_installation_meta(singleton,installation_id) VALUES(1,?) ON CONFLICT (singleton) DO NOTHING');
+        $stmt->execute([$installationId]);
+        $installationId = (string)$pdo->query('SELECT installation_id FROM belm_installation_meta WHERE singleton=1')->fetchColumn();
     }
 
-    // V302 deploy safety: never leave a fresh/legacy database on a password
-    // embedded in the source tree. Existing Admin passwords are preserved.
+    // Optional strongest guard: once EXPECTED_BELM_INSTALLATION_ID is set in
+    // Render, an accidental DATABASE_URL switch to another existing DB fails.
+    $expectedInstallationId = trim((string)(getenv('EXPECTED_BELM_INSTALLATION_ID') ?: ''));
+    if ($expectedInstallationId !== '' && !hash_equals($expectedInstallationId, $installationId)) {
+        throw new RuntimeException('DATA_SAFETY_BLOCK: connected PostgreSQL installation identity does not match EXPECTED_BELM_INSTALLATION_ID.');
+    }
+
+    // Snapshot every pre-existing business ID before schema evolution. A deploy
+    // is rolled back if even one of these IDs disappears while migrate.php runs.
+    $pdo->exec('CREATE TEMP TABLE belm_predeploy_ids(table_name TEXT NOT NULL,row_id TEXT NOT NULL) ON COMMIT DROP');
+    $preCounts = [];
+    foreach ($protectedTables as $table) {
+        if (!belm_table_exists($pdo, $table)) continue;
+        $preCounts[$table] = belm_table_count($pdo, $table);
+        if (belm_column_exists($pdo, $table, 'id')) {
+            $quoted = belm_safe_identifier($table);
+            $pdo->exec("INSERT INTO belm_predeploy_ids(table_name,row_id) SELECT " . $pdo->quote($table) . ", id::text FROM {$quoted}");
+        }
+    }
+
+    // Apply the cumulative schema only when its content changes. schema.sql is
+    // intentionally DDL + insert-if-missing only; it contains no deployment-time
+    // UPDATE/DELETE/TRUNCATE/DROP TABLE business-data operations in V350+.
+    $schemaStmt = $pdo->prepare('SELECT 1 FROM belm_schema_migrations WHERE schema_sha256=? LIMIT 1');
+    $schemaStmt->execute([$schemaHash]);
+    $schemaApplied = false;
+    if (!$schemaStmt->fetchColumn()) {
+        $pdo->exec($schema);
+        $insertMigration = $pdo->prepare('INSERT INTO belm_schema_migrations(id,release,schema_sha256) VALUES(?,?,?)');
+        $insertMigration->execute([belm_uuid(), BELM_RELEASE, $schemaHash]);
+        $schemaApplied = true;
+    }
+
+    // Fresh-seed password bootstrap only. Existing passwords are never rotated
+    // by deployment. The exact locked seed hash is the only row eligible here.
     $seedAdminId = '00000000-0000-4000-8000-000000000003';
     $lockedSeedHash = '$2y$12$mLP95q9gTllhw8LFyLjavuv/f8/qY8kfEGmAy.l9dKCNs084SvFNS';
     $legacyKnownHash = '$2y$10$uXo8bDdT3YV7BlM7V4oOR.ybSIUrBtG0x/bwydGsmf98C0IBBWtme';
-    $stmt = db()->prepare('SELECT password_hash FROM users WHERE id = ?');
-    $stmt->execute([$seedAdminId]);
-    $currentHash = (string)($stmt->fetchColumn() ?: '');
-    if ($currentHash === $lockedSeedHash || $currentHash === $legacyKnownHash) {
-        $initialPassword = (string)(getenv('INITIAL_ADMIN_PASSWORD') ?: '');
-        if (strlen($initialPassword) < 12) {
-            throw new RuntimeException('INITIAL_ADMIN_PASSWORD must be set to at least 12 characters before the first/default-password deploy.');
+    if (belm_table_exists($pdo, 'users')) {
+        $stmt = $pdo->prepare('SELECT password_hash FROM users WHERE id = ?');
+        $stmt->execute([$seedAdminId]);
+        $currentHash = (string)($stmt->fetchColumn() ?: '');
+        if ($currentHash === $lockedSeedHash) {
+            $initialPassword = (string)(getenv('INITIAL_ADMIN_PASSWORD') ?: '');
+            if (strlen($initialPassword) < 12) {
+                throw new RuntimeException('INITIAL_ADMIN_PASSWORD must be set to at least 12 characters before the first/default-password deploy.');
+            }
+            $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?')
+                ->execute([password_hash($initialPassword, PASSWORD_BCRYPT, ['cost' => 12]), $seedAdminId, $lockedSeedHash]);
+            fwrite(STDOUT, "Fresh Super Admin password initialized from INITIAL_ADMIN_PASSWORD.\n");
+        } elseif ($currentHash === $legacyKnownHash) {
+            fwrite(STDERR, "V350: existing legacy Super Admin password preserved; auth.php may re-hash it after the next successful login using the same plaintext password.\n");
         }
-        db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?')
-            ->execute([password_hash($initialPassword, PASSWORD_DEFAULT), $seedAdminId]);
-        fwrite(STDOUT, "Initial Super Admin password secured from INITIAL_ADMIN_PASSWORD.\n");
     }
 
-    // V306: old builds exposed predictable Edit/Delete PIN fallbacks (2026/1234).
-    // Preserve custom PINs, but require a deploy-time secret to replace any
-    // missing or known legacy value. This fails closed rather than deploying
-    // with a public action PIN.
-    $initialActionPin = trim((string)(getenv('INITIAL_ADMIN_ACTION_PIN') ?: ''));
-    $pinRows = [];
-    $pinStmt = db()->prepare("SELECT \"key\",\"value\" FROM system_settings WHERE \"key\" IN ('adminEditPin','adminDeletePin')");
-    $pinStmt->execute();
-    foreach ($pinStmt->fetchAll() as $row) {
-        $decoded = json_decode((string)$row['value'], true);
-        $pinRows[(string)$row['key']] = trim((string)($decoded ?? trim((string)$row['value'], "\" \t\n\r\0\x0B")));
-    }
-    $needsPinBootstrap = !isset($pinRows['adminEditPin']) || !isset($pinRows['adminDeletePin'])
-        || in_array($pinRows['adminEditPin'] ?? '', ['', '2026'], true)
-        || in_array($pinRows['adminDeletePin'] ?? '', ['', '1234'], true);
-    if ($needsPinBootstrap) {
-        if (!preg_match('/^\d{4}$/', $initialActionPin)) {
-            throw new RuntimeException('INITIAL_ADMIN_ACTION_PIN must be set to exactly 4 digits to replace missing/legacy Edit/Delete PINs.');
-        }
-        $upsertPin = db()->prepare(
-            'INSERT INTO system_settings(id,"key","value",updated_at) VALUES(?,?,?::jsonb,NOW()) '
-            . 'ON CONFLICT ("key") DO UPDATE SET "value"=EXCLUDED."value",updated_at=NOW()'
-        );
-        foreach (['adminEditPin' => '2026', 'adminDeletePin' => '1234'] as $key => $legacy) {
-            $current = $pinRows[$key] ?? '';
-            if ($current === '' || $current === $legacy) {
-                $upsertPin->execute([bin2hex(random_bytes(16)), $key, json_encode($initialActionPin)]);
+    // Missing action PINs may be inserted on a fresh/partial installation when
+    // an explicit deploy secret exists. Existing PIN values are never changed.
+    if (belm_table_exists($pdo, 'system_settings')) {
+        $initialActionPin = trim((string)(getenv('INITIAL_ADMIN_ACTION_PIN') ?: ''));
+        if (preg_match('/^\d{4}$/', $initialActionPin)) {
+            $insertPin = $pdo->prepare(
+                'INSERT INTO system_settings(id,"key","value",updated_at) VALUES(?,?,?::jsonb,NOW()) ON CONFLICT ("key") DO NOTHING'
+            );
+            foreach (['adminEditPin', 'adminDeletePin'] as $key) {
+                $insertPin->execute([belm_uuid(), $key, json_encode($initialActionPin)]);
             }
         }
-        fwrite(STDOUT, "Admin action PINs secured from INITIAL_ADMIN_ACTION_PIN.\n");
     }
 
-    fwrite(STDOUT, "BELM database migration completed.\n");
+    // Verify migration itself did not delete any pre-existing ID and did not
+    // reduce protected table counts. Any violation aborts/rolls back the deploy.
+    $postCounts = [];
+    foreach ($preCounts as $table => $beforeCount) {
+        if (!belm_table_exists($pdo, $table)) {
+            throw new RuntimeException("DATA_SAFETY_BLOCK: protected table {$table} disappeared during deployment.");
+        }
+        $afterCount = belm_table_count($pdo, $table);
+        $postCounts[$table] = $afterCount;
+        if ($afterCount < $beforeCount) {
+            throw new RuntimeException("DATA_SAFETY_BLOCK: protected table {$table} lost rows during deployment ({$beforeCount} -> {$afterCount}).");
+        }
+        if (belm_column_exists($pdo, $table, 'id')) {
+            $quoted = belm_safe_identifier($table);
+            $missingStmt = $pdo->prepare(
+                "SELECT COUNT(*) FROM belm_predeploy_ids s WHERE s.table_name=? AND NOT EXISTS (SELECT 1 FROM {$quoted} t WHERE t.id::text=s.row_id)"
+            );
+            $missingStmt->execute([$table]);
+            $missing = (int)$missingStmt->fetchColumn();
+            if ($missing > 0) {
+                throw new RuntimeException("DATA_SAFETY_BLOCK: {$missing} pre-existing {$table} record(s) disappeared during deployment.");
+            }
+        }
+    }
+
+    $auditStmt = $pdo->prepare(
+        'INSERT INTO belm_deployment_audits(id,release,schema_sha256,installation_id,pre_counts,post_counts,schema_applied) VALUES(?,?,?,?,?::jsonb,?::jsonb,?)'
+    );
+    $auditStmt->execute([
+        belm_uuid(), BELM_RELEASE, $schemaHash, $installationId,
+        json_encode($preCounts, JSON_UNESCAPED_SLASHES),
+        json_encode($postCounts, JSON_UNESCAPED_SLASHES),
+        $schemaApplied ? 1 : 0,
+    ]);
+
+    $pdo->commit();
+    fwrite(STDOUT, 'BELM V351 safe code deployment completed. Installation ' . $installationId . '; protected records preserved; schema ' . ($schemaApplied ? 'applied' : 'already current') . ".\n");
 } catch (Throwable $error) {
-    fwrite(STDERR, "BELM database migration failed: {$error->getMessage()}\n");
+    try {
+        if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();
+    } catch (Throwable $ignored) {
+    }
+    $message = $error->getMessage();
+    fwrite(STDERR, "BELM database migration failed: {$message}\n");
+    if (str_contains($message, 'DATA_SAFETY_BLOCK:')) exit(BELM_DATA_SAFETY_EXIT);
     exit(1);
 }

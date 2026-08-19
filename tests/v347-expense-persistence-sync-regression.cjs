@@ -15,7 +15,7 @@ const checks=[
 ['expense database status visible',js.includes('✓ SAVED IN POSTGRESQL')&&js.includes('company_expenses')],
 ['customer expense separation explained',js.includes('Customer/Machine Procurement')&&js.includes('not mixed into BELM company P&amp;L')],
 ['expense count badge',html.includes('expenseCountBadge')&&css.includes('.tab-count')],
-['company expenses included in backup',backup.includes("'company_expenses'")],
-['billing cache V347',html.includes('v=347-expense-persistence-sync')&&sw.includes('belm-app-v347-expense-persistence-sync')],
-['health V347',health.includes("'schemaVersion' => '347-expense-persistence-sync'")],
+['backup automatically exports every public table',backup.includes("FROM pg_tables WHERE schemaname='public'")&&backup.includes("SELECT * FROM " )],
+['billing cache remains current',html.includes('v=351-free-reedit-dev-expenses')&&sw.includes('belm-app-v351-free-reedit-dev-customer-expenses')],
+['health remains at least V347',/\'schemaVersion\' => \'(350-data-preservation-guard|351-free-reedit-dev-customer-expenses)\'/.test(health)],
 ];let fail=0;for(const [n,ok] of checks){console.log(`${ok?'PASS':'FAIL'} ${n}`);if(!ok)fail++;}if(fail)process.exit(1);console.log(`V347 checks ${checks.length}/${checks.length} passed.`);

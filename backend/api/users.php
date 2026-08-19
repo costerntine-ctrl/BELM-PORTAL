@@ -335,6 +335,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
     $resetUser = $stmt->fetch();
     if (!$resetUser) json_error('User not found.', 404);
     $roleName = role_name((string)$resetUser['role_id']);
+    clear_unified_login_lockout((string)$resetUser['email']);
     log_activity($user, 'system-user-login-reset', 'user', $id);
     json_out([
         'newPassword' => $newPassword,

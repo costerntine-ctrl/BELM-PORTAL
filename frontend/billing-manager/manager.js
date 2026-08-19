@@ -165,7 +165,7 @@
         <td class="money">${money(invoice.balance)}</td>
         <td>${invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</td>
         <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}" ${invoice.status === "CANCELLED" ? "disabled" : ""}><option value="${escapeHtml(invoice.status)}" selected>${escapeHtml(invoice.status.replaceAll("_", " "))}</option>${invoice.status !== "CANCELLED" ? '<option value="CANCELLED">CANCEL INVOICE</option>' : ""}</select></td>
-        <td><div class="row-actions"><div class="row-actions-line">${invoice.sourceProformaId ? `<span class="muted">Synced from Proforma</span>` : `<button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>`}${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><button class="export-row-button" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</button><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
+        <td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${invoice.sourceProformaId ? `<span class="muted">Linked to ${escapeHtml(invoice.sourceProformaNo || 'Proforma')} · editable independently</span>` : ``}${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><button class="export-row-button" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</button><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
@@ -225,7 +225,7 @@
     const pendingSpareHtml = spareGroups.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM SPARE REQUESTS</span><strong>Pending Spare Request Proformas</strong></div><b>${pendingSpareProformaRequests.length}</b></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Machine</th><th>Items</th><th></th></tr></thead><tbody>${spareGroups.map(group=>`<tr><td><strong>${escapeHtml(group.customerName||"—")}</strong></td><td>${escapeHtml(group.machineLabel||"—")}</td><td>${group.requests.map(r=>`${escapeHtml(r.partNumber||"")} ${escapeHtml(r.partName||r.description||"Spare")} × ${escapeHtml(r.quantity||1)}`).join("<br>")}</td><td><button type="button" class="pay" data-generate-spare-proforma="${escapeHtml(group.key)}">Generate Proforma (${group.requests.length})</button></td></tr>`).join("")}</tbody></table></div><small>Requests for the same customer and machine are grouped into one multi-line Proforma.</small></div>` : "";
     const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM ENGINEERING</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>Job Card</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="pay" data-generate-pending-proforma="${escapeHtml(job.id)}">Generate Proforma</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The Job Card stays PENDING until billing readiness. When generated, the system assigns the next permanent PI-0000000 format number.</small></div>` : '';
     const actualHtml = proformas.length ? `<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
-      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line">${proforma.generatedInvoiceId ? `<span class="muted">Proforma locked after Invoice</span>` : `<button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button>`}${proforma.generatedInvoiceId ? `<button type="button" disabled>✓ Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')}</button>` : (String(proforma.customerResponse || '').toUpperCase() === 'CHANGE_REQUESTED' ? `<button type="button" disabled>Update Proforma first</button>` : `<button class="pay" data-generate-invoice-from-proforma="${escapeHtml(proforma.id)}">Generate Invoice</button>`)}</div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
+      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button>${proforma.generatedInvoiceId ? `<span class="muted">Linked Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')} · Proforma remains editable</span><button type="button" disabled>✓ Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')}</button>` : (String(proforma.customerResponse || '').toUpperCase() === 'CHANGE_REQUESTED' ? `<button type="button" disabled>Update Proforma first</button>` : `<button class="pay" data-generate-invoice-from-proforma="${escapeHtml(proforma.id)}">Generate Invoice</button>`)}</div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
     `).join("")}</tbody></table></div>` : '<div class="empty">No prepared proforma invoices yet.</div>';
     panel.innerHTML = `${reviewHeading("Proforma", "Job Cards stay linked as references; every generated Proforma receives its own PI-0000000 format number.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingSpareHtml}${pendingHtml}${actualHtml}`;
   }
@@ -483,8 +483,11 @@
     const row = document.createElement("div");
     row.className = "item-row";
     row.innerHTML = `
+      <input type="hidden" data-field="sparePartId" value="${escapeHtml(item.sparePartId || item.spare_part_id || "")}">
+      <label>Part no.<input data-field="partNumber" value="${escapeHtml(item.partNumber || item.part_number || "")}"></label>
       <label class="full">Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
       <label>Qty<input data-field="quantity" required type="number" min="1" step="1" value="${escapeHtml(item.quantity || 1)}"></label>
+      <label>Unit<input data-field="unit" value="${escapeHtml(item.unit || "PC")}"></label>
       <label>Unit price<input data-field="unitPrice" required type="number" min="0" step="0.01" value="${escapeHtml(item.unitPrice || item.unit_price || 0)}"></label>
       <button class="remove-item" type="button" aria-label="Remove item">×</button>`;
     return row;
@@ -525,6 +528,8 @@
     document.getElementById("invoiceMachine").innerHTML = '<option value="">No machine / general</option>';
     document.getElementById("invoiceItems").replaceChildren();
     document.getElementById("invoiceDueDate").value = invoice?.dueDate || "";
+    document.getElementById("invoiceDiscount").value = invoice?.discount || "0";
+    document.getElementById("invoiceVatRate").value = invoice?.vatRate ?? 18;
     document.getElementById("invoiceTax").value = invoice?.tax || "0";
     document.getElementById("invoiceError").className = "alert error hidden";
     fillCustomerInformation("invoiceCustomer", "invoiceCustomerInfo");
@@ -559,19 +564,14 @@
     if (button.disabled) return;
     const id = document.getElementById("invoiceId").value;
     const items = [...document.querySelectorAll("#invoiceItems .item-row")].map((row) => ({
+      sparePartId: row.querySelector('[data-field="sparePartId"]')?.value || "",
+      partNumber: row.querySelector('[data-field="partNumber"]').value.trim(),
       description: row.querySelector('[data-field="description"]').value.trim(),
       quantity: Number(row.querySelector('[data-field="quantity"]').value),
+      unit: row.querySelector('[data-field="unit"]').value.trim() || "PC",
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
     }));
-    let editConfirmation = {};
-    if (id) {
-      const confirmation = await window.belmConfirmEdit({
-        title: "Save invoice changes?",
-        message: "Confirm changes to this invoice's items and totals.",
-      });
-      if (!confirmation) return;
-      editConfirmation = confirmation;
-    }
+    // V351: Invoice Re-edit is intentionally direct for Billing-authorized staff.
     button.disabled = true;
     button.dataset.originalText = button.textContent;
     try {
@@ -583,15 +583,17 @@
           machineId: document.getElementById("invoiceMachine").value || null,
           sourceJobCardId: document.getElementById("invoiceSourceJobCardId").value || null,
           dueDate: document.getElementById("invoiceDueDate").value || null,
+          discount: Number(document.getElementById("invoiceDiscount").value || 0),
+          vatRate: Number(document.getElementById("invoiceVatRate").value || 18),
           tax: Number(document.getElementById("invoiceTax").value || 0),
           items,
-          ...editConfirmation,
         }),
       });
       await showButtonSuccess(button);
       document.getElementById("invoiceDialog").close();
       await load();
-      showAlert(id ? "Invoice changes saved and totals recalculated." : "Invoice saved successfully.");
+      const linked = id ? invoices.find((item) => item.id === id)?.sourceProformaId : null;
+      showAlert(id ? (linked ? "Invoice changes saved. Source Proforma was not overwritten." : "Invoice changes saved and totals recalculated.") : "Invoice saved successfully.");
     } catch (error) {
       formError("invoiceError", error.message);
     } finally {
@@ -921,15 +923,7 @@
       unit: row.querySelector('[data-field="unit"]').value.trim() || "PC",
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
     }));
-    let editConfirmation = {};
-    if (id) {
-      const confirmation = await window.belmConfirmEdit({
-        title: "Save proforma changes?",
-        message: "Confirm changes to this proforma invoice.",
-      });
-      if (!confirmation) return;
-      editConfirmation = confirmation;
-    }
+    // V351: Proforma Re-edit is intentionally direct for Billing-authorized staff.
     button.disabled = true;
     button.dataset.originalText = button.textContent;
     try {
@@ -951,7 +945,6 @@
           sourceSpareRequestIds: document.getElementById("proformaSourceSpareRequestIds").value.split(",").map((value) => value.trim()).filter(Boolean),
           sourceJobCardId: document.getElementById("proformaSourceJobCardId").value,
           items,
-          ...editConfirmation,
         }),
       });
       await showButtonSuccess(button);
@@ -959,7 +952,8 @@
       await load();
       activateBillingTab('proformas');
       const generatedNo = savedProforma?.invoiceNo || '';
-      showAlert(id ? "Proforma updated successfully." : (generatedNo ? `✓ Proforma ${generatedNo} generated and synchronized.` : "Proforma generated successfully."));
+      const linkedInvoiceNo = id ? proformas.find((item) => item.id === id)?.generatedInvoiceNo : "";
+      showAlert(id ? (linkedInvoiceNo ? `Proforma updated. Linked Invoice ${linkedInvoiceNo} was not overwritten; re-edit it separately if required.` : "Proforma updated successfully.") : (generatedNo ? `✓ Proforma ${generatedNo} generated and synchronized.` : "Proforma generated successfully."));
     } catch (error) {
       formError("proformaError", error.message);
     } finally {

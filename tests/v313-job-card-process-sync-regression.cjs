@@ -5,7 +5,7 @@ t('breakdown generated assigned card stops at assigned',bw.includes("bw_set_stag
 t('engineering dispatch stops at assigned',eng.includes("current_stage='JOB_CARD_ASSIGNED'"));
 t('service request sync stops at assigned',h.includes("$newStage='JOB_CARD_ASSIGNED'"));
 t('in progress can leave assigned stage',h.includes("'JOB_CARD_ASSIGNED','DIAGNOSIS'"));
-t('live migration repairs assigned not-started',mig.includes("j.status='ASSIGNED'")&&mig.includes('j.started_at IS NULL')&&mig.includes("current_stage='JOB_CARD_ASSIGNED'"));
+t('deploy migration leaves assigned process state untouched',!mig.includes("SET current_stage='JOB_CARD_ASSIGNED'")&&mig.includes('DATA_SAFETY_BLOCK'));
 t('main job card visible in overview',js.includes('MAIN JOB CARD')&&js.includes('main-job-card'));
 t('job process visible',js.includes('MAIN JOB CARD PROCESS'));
 t('process includes received assigned in-progress spares testing completed',['Received','Assigned','In Progress','Spares','Testing','Completed'].every(x=>js.includes(x)));

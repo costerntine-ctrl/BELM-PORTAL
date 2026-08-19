@@ -99,19 +99,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_customer_managed SMALLINT NOT NULL
 -- Dashboard permissions granted by the customer's Administration to a customer-managed Technician.
 -- NULL means full customer-dashboard control; JSON [] means Technician workspace only.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_permissions TEXT NULL;
--- Backfill technicians created by the customer-portal flow used in recent
--- releases. Those accounts were created with no recovery_code_hash; BELM Admin
--- created technicians receive a recovery code. Restrict the heuristic to
--- customers already in Self-Service mode to avoid touching normal BELM staff.
-UPDATE users u
-SET is_customer_managed = 1
-FROM roles r, customers c
-WHERE u.role_id = r.id
-  AND r.name = 'Technician'
-  AND u.assigned_customer_id = c.id
-  AND c.is_machinery_admin = 1
-  AND u.recovery_code_hash IS NULL
-  AND u.is_customer_managed = 0;
+-- V350 DATA SAFETY: legacy customer-managed Technician backfills are no longer
+-- executed from schema.sql on every deploy. Existing business rows are preserved.
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_customer_users_customer ON customer_users(customer_id);
 CREATE INDEX IF NOT EXISTS idx_customer_users_email ON customer_users(LOWER(email));
@@ -886,32 +875,12 @@ VALUES
   )
 ON CONFLICT (name) DO NOTHING;
 
--- Fix already-deployed databases where the Technician role's allowed_pages
--- was seeded as an empty array (or with mismatched camelCase keys like
--- serviceRequests/spareParts) instead of the page keys require_page_access()
--- actually checks (checklist-templates/service-requests/spare-parts).
--- Without this, existing Technician accounts silently lose access to their
--- own pages.
-UPDATE roles
-SET allowed_pages = '["customers","checklist-templates","service-requests","spare-parts"]'::jsonb
-WHERE name = 'Technician'
-  AND allowed_pages::text NOT LIKE '%checklist-templates%';
+-- V350 DATA SAFETY: role repair is not executed during ordinary deploys.
+-- Existing role permissions are preserved exactly as stored.
 
--- Keep the built-in Administrator role usable when this schema is applied to
--- a database created by an older BELM release. Other custom roles and their
--- permissions remain untouched.
-UPDATE roles
-SET deleted_at = NULL
-WHERE name = 'Super Admin';
+-- V350 DATA SAFETY: existing Super Admin role rows are not modified by schema deploys.
 
--- Migrate the seeded Super Admin's login email from the old default to the
--- company's real inbox, on databases that already have this exact row from
--- an earlier deploy. Only touches it if the email is still the old default
--- (so it never overwrites an email the Administrator has since changed).
-UPDATE users
-SET email = 'info@belmgeneral.co.tz'
-WHERE id = '00000000-0000-4000-8000-000000000003'
-  AND email = 'admin@belmgeneraltech.co.tz';
+-- V350 DATA SAFETY: existing Admin identity/email is never rewritten by schema deploys.
 
 INSERT INTO users (id, name, email, password_hash, role_id)
 SELECT
@@ -922,19 +891,7 @@ SELECT
   id
 FROM roles
 WHERE name = 'Super Admin'
-ON CONFLICT (id) DO UPDATE SET
-  name = EXCLUDED.name,
-  is_active = 1,
-  role_id = EXCLUDED.role_id,
-  deleted_at = NULL,
-  -- Preserve a password the Administrator has already changed. A newly seeded
-  -- account receives a locked placeholder hash here; migrate.php replaces that
-  -- placeholder from INITIAL_ADMIN_PASSWORD before Apache starts.
-  password_hash = CASE
-    WHEN users.password_hash LIKE '$2%' OR users.password_hash LIKE '$argon2%'
-      THEN users.password_hash
-    ELSE EXCLUDED.password_hash
-  END;
+ON CONFLICT (id) DO NOTHING;
 
 -- ---- Controller Pin Out reference library ---------------------------------
 -- Documents the pinout of a machine's controller (ECU, joystick controller,
@@ -1389,56 +1346,7 @@ CREATE INDEX IF NOT EXISTS idx_job_cards_billing_status ON digital_job_cards(cus
 
 
 
--- V312 - Job Card intake lifecycle.
--- Any active unassigned card is a RECEIVED card waiting for Dispatch.
-UPDATE digital_job_cards
-SET status='RECEIVED', updated_at=NOW()
-WHERE status IN ('OPEN','ASSIGNED')
-  AND technician_id IS NULL
-  AND NULLIF(TRIM(COALESCE(technician_name,'')),'') IS NULL;
-
--- Legacy active cards that already have a Technician are ASSIGNED, not RECEIVED.
-UPDATE digital_job_cards
-SET status='ASSIGNED', updated_at=NOW()
-WHERE status IN ('OPEN','RECEIVED')
-  AND technician_id IS NOT NULL;
-
--- V308: an active Job Card without a Technician belongs to Workshop / Dispatch,
--- never to Technician Diagnosis/Repair. This is idempotent and repairs legacy rows.
-UPDATE breakdown_cases bc
-SET current_stage='TECHNICIAN_ASSIGNMENT',
-    current_department='Workshop / Dispatch',
-    blocker_reason='Awaiting Technician Assignment',
-    updated_at=NOW()
-WHERE bc.status <> 'COMPLETED'
-  AND bc.current_stage IN ('WORKSHOP_REVIEW','DIAGNOSIS','REPAIR')
-  AND EXISTS (
-      SELECT 1 FROM digital_job_cards j
-      WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED')
-  )
-  AND NOT EXISTS (
-      SELECT 1 FROM digital_job_cards j
-      WHERE j.case_id=bc.id AND j.status NOT IN ('COMPLETED','CANCELLED') AND j.technician_id IS NOT NULL
-  );
-
-
--- V313 - Main Job Card process alignment.
--- Assigned-but-not-started cards must show the ASSIGNED stage, not DIAGNOSIS.
-UPDATE breakdown_cases bc
-SET current_stage='JOB_CARD_ASSIGNED',
-    current_department='Technician',
-    blocker_reason=NULL,
-    updated_at=NOW()
-WHERE bc.status <> 'COMPLETED'
-  AND bc.current_stage IN ('DIAGNOSIS','REPAIR')
-  AND EXISTS (
-      SELECT 1 FROM digital_job_cards j
-      WHERE j.case_id=bc.id
-        AND j.status='ASSIGNED'
-        AND j.technician_id IS NOT NULL
-        AND j.started_at IS NULL
-  )
-  AND NOT EXISTS (
-      SELECT 1 FROM digital_job_cards j
-      WHERE j.case_id=bc.id AND j.status='IN_PROGRESS'
-  );
+-- V350 DATA SAFETY
+-- Historical V308/V312/V313 data-repair UPDATE statements were intentionally
+-- removed from schema.sql. Workflow state is changed only by explicit user/API
+-- actions, never merely because a new code build was deployed.

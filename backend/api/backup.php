@@ -1,45 +1,44 @@
 <?php
+declare(strict_types=1);
 require_once __DIR__ . '/../config/helpers.php';
 
-// GET /api/backup — Super Admin only. Downloads a full JSON snapshot of
-// every important table, so the data is safe even without paid Render
-// database backups. Restore is manual (send the file back to Claude/a
-// developer to re-import if ever needed) — this is an export, not a
-// one-click restore tool.
-
+// GET /api/backup — Super Admin only.
+// V350 exports EVERY public table instead of a hand-maintained list, so newly
+// added tables cannot silently be omitted from the safety copy.
 $user = require_auth();
 require_super_admin($user);
 
-$tables = [
-    'roles', 'users', 'customers', 'customer_users', 'machines',
-    'customer_applications', 'user_applications', 'checklist_templates',
-    'checklist_template_parts', 'checklist_reports', 'checklist_answers',
-    'service_requests', 'service_request_parts', 'spare_parts',
-    'spare_part_requests', 'suppliers', 'invoices', 'invoice_payments',
-    'company_expenses', 'proforma_invoices', 'usage_logs', 'customer_store_items', 'customer_store_movements',
-    'machine_service_parts', 'service_due_alerts', 'service_due_alert_items', 'tasks',
-    'bank_accounts', 'bank_withdrawals', 'admin_announcements', 'customer_communications',
-    'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
-    'system_settings', 'user_preferences', 'activity_logs', 'trash_entries',
-];
+$pdo = db();
+$tables = $pdo->query(
+    "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename"
+)->fetchAll(PDO::FETCH_COLUMN);
 
 $backup = [
     'exportedAt' => date('c'),
-    'schemaVersion' => '23-technician-job-card-workspace',
+    'schemaVersion' => '351-free-reedit-dev-customer-expenses',
+    'formatVersion' => 2,
+    'database' => 'PostgreSQL',
     'tables' => [],
+    'rowCounts' => [],
 ];
 
 foreach ($tables as $table) {
-    try {
-        $stmt = db()->query('SELECT * FROM "' . $table . '"');
-        $backup['tables'][$table] = $stmt->fetchAll();
-    } catch (Throwable $ignored) {
-        // Table may not exist in older schema versions — skip it quietly.
-        $backup['tables'][$table] = [];
-    }
+    if (!preg_match('/^[a-z_][a-z0-9_]*$/', (string)$table)) continue;
+    $quoted = '"' . $table . '"';
+    $stmt = $pdo->query('SELECT * FROM ' . $quoted);
+    $rows = $stmt->fetchAll();
+    $backup['tables'][$table] = $rows;
+    $backup['rowCounts'][$table] = count($rows);
 }
 
-$filename = 'belm-portal-backup-' . date('Y-m-d-His') . '.json';
+try {
+    $installationId = $pdo->query('SELECT installation_id FROM belm_installation_meta WHERE singleton=1')->fetchColumn();
+    if ($installationId) $backup['installationId'] = (string)$installationId;
+} catch (Throwable $ignored) {
+}
+
+$filename = 'belm-portal-full-backup-' . date('Y-m-d-His') . '.json';
 header('Content-Type: application/json');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
-echo json_encode($backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+header('Cache-Control: no-store');
+echo json_encode($backup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

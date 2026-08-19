@@ -33,6 +33,14 @@ services:
         sync: false
       - key: INITIAL_ADMIN_ACTION_PIN
         sync: false
+      # V350 safety: ordinary production deploys must never bootstrap an
+      # empty/recreated database silently. Set true only for a deliberate first install.
+      - key: ALLOW_FRESH_DATABASE_BOOTSTRAP
+        value: "false"
+      # Full database wipe endpoint is blocked in production unless this exact
+      # value is deliberately set by the server owner. Keep it false normally.
+      - key: ALLOW_FULL_DATABASE_RESET
+        value: "false"
       - key: SMTP_HOST
         value: ""
       - key: SMTP_PORT

@@ -300,6 +300,7 @@ if ($method === 'GET' && !$action) {
         }
     }
     $usersByCustomer = $teamVisibleCustomerIds ? fetch_customer_users_for_customers($teamVisibleCustomerIds) : [];
+    $developmentExpenseAccess = belm_development_customer_expense_access_enabled();
 
     foreach ($customers as &$c) {
         $customerId = (string)$c['id'];
@@ -307,7 +308,7 @@ if ($method === 'GET' && !$action) {
         $providerActive = empty($c['is_machinery_admin']);
         $maintenanceVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['maintenanceRecords']);
         $partsVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['storeAndParts']);
-        $expenseVisible = $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
+        $expenseVisible = $developmentExpenseAccess || $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
         $teamVisible = $isCustomerManagedTechnician || !empty($prefs['teamDirectory']);
         $c['machines'] = $machinesByCustomer[$customerId] ?? [];
         foreach ($c['machines'] as &$privacyMachine) {
@@ -364,11 +365,12 @@ if ($method === 'GET' && $action === 'one') {
     $providerActive = empty($customer['is_machinery_admin']);
     $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
     $maintenanceVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['maintenanceRecords']);
+    $developmentExpenseAccess = belm_development_customer_expense_access_enabled();
     foreach ($customer['machines'] as &$privacyMachine) {
         $machineSupportAccess = !empty($privacyMachine['supportAccessActive']);
         $privacyMachine['privacyMaintenanceAccess'] = $maintenanceVisible || $machineSupportAccess;
         $privacyMachine['privacyPartsAccess'] = $isCustomerManagedTechnician || $providerActive || !empty($prefs['storeAndParts']) || $machineSupportAccess;
-        $privacyMachine['privacyExpenseAccess'] = $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
+        $privacyMachine['privacyExpenseAccess'] = $developmentExpenseAccess || $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
         if (!$privacyMachine['privacyMaintenanceAccess']) {
             $privacyMachine['alertReasons'] = [];
             unset(
@@ -387,7 +389,7 @@ if ($method === 'GET' && $action === 'one') {
     $customer['privacyPreferences'] = $prefs;
     $customer['privacyAccess'] = [
         'maintenanceRecords' => $maintenanceVisible,
-        'expenseReceipts' => $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']),
+        'expenseReceipts' => $developmentExpenseAccess || $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']),
         'teamDirectory' => $isCustomerManagedTechnician || !empty($prefs['teamDirectory']),
         'storeAndParts' => $isCustomerManagedTechnician || $providerActive || !empty($prefs['storeAndParts']),
     ];
@@ -720,6 +722,7 @@ if ($method === 'PUT' && $action === 'reset-password') {
     ]);
     $resetCustomer = $stmt->fetch();
     if (!$resetCustomer) json_error('Customer not found.', 404);
+    clear_unified_login_lockout((string)$resetCustomer['email'], (string)$resetCustomer['portal_link']);
     log_activity($user, 'customer-login-reset', 'customer', $id);
     json_out([
         'temporaryPassword' => $temporaryPassword,

@@ -2,6 +2,35 @@
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/../config/mailer.php';
 
+// V349: verify the stored credential without ever changing the user's
+// plaintext password. Successful logins transparently re-hash older bcrypt
+// hashes using the current policy, so legacy accounts become stronger without
+// forcing a password reset or breaking a password that already works.
+function verify_portal_password(string $plainPassword, ?string $storedHash, string $accountType, string $accountId): bool {
+    $storedHash = (string)$storedHash;
+    if ($storedHash === '' || !password_verify($plainPassword, $storedHash)) return false;
+
+    if (password_needs_rehash($storedHash, PASSWORD_BCRYPT, ['cost' => 12])) {
+        $freshHash = password_hash($plainPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+        try {
+            if ($accountType === 'staff') {
+                db()->prepare('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash = ?')
+                    ->execute([$freshHash, $accountId, $storedHash]);
+            } elseif ($accountType === 'customer') {
+                db()->prepare('UPDATE customers SET password = ? WHERE id = ? AND password = ?')
+                    ->execute([$freshHash, $accountId, $storedHash]);
+            } elseif ($accountType === 'assistant') {
+                db()->prepare('UPDATE customer_users SET password = ? WHERE id = ? AND password = ?')
+                    ->execute([$freshHash, $accountId, $storedHash]);
+            }
+        } catch (Throwable $ignored) {
+            // A re-hash is maintenance only. A correct password must still be
+            // allowed even if the optional hash upgrade cannot be persisted.
+        }
+    }
+    return true;
+}
+
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -267,6 +296,7 @@ if ($action === 'reset-with-code' && $method === 'POST') {
     }
 
     db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
+    clear_unified_login_lockout($email);
 
     json_out(['ok' => true, 'message' => 'Password reset successfully. You can now log in with your new password.']);
 }
@@ -342,6 +372,8 @@ if ($action === 'recover' && $method === 'POST') {
             'UPDATE customer_users SET password = ?, recovery_code_hash = ? WHERE id = ?'
         )->execute([$passwordHash, $recoveryHash, $account['id']]);
     }
+
+    clear_unified_login_lockout($email);
 
     json_out([
         'ok' => true,
@@ -419,7 +451,7 @@ if ($action === 'unified-login' && $method === 'POST') {
         $stmt->execute([$resolvedEmailIdentity['id']]);
         $user = $stmt->fetch();
 
-        if ($user && password_verify($password, $user['password_hash'])) {
+        if ($user && verify_portal_password($password, $user['password_hash'] ?? null, 'staff', (string)$user['id'])) {
             if ($contextSlug !== '' && !$isBelmContext) {
                 if ($user['role_name'] !== 'Technician') {
                     json_error('This customer app link is for the customer team. BELM staff should use their @BELM app link.', 403);
@@ -520,7 +552,7 @@ if ($action === 'unified-login' && $method === 'POST') {
             $stmt->execute([$portalId]);
         }
         $candidateCustomer=$stmt->fetch();
-        if ($candidateCustomer && password_verify($password,$candidateCustomer['password'])) $customer=$candidateCustomer;
+        if ($candidateCustomer && verify_portal_password($password, $candidateCustomer['password'] ?? null, 'customer', (string)$candidateCustomer['id'])) $customer=$candidateCustomer;
     }
     $loggedInAs = null;
     $actorType = null;
@@ -528,7 +560,7 @@ if ($action === 'unified-login' && $method === 'POST') {
     $customerRole = null;
     $permissions = null;
 
-    if ($customer && ($isEmailLogin || password_verify($password, $customer['password']))) {
+    if ($customer && verify_portal_password($password, $customer['password'] ?? null, 'customer', (string)$customer['id'])) {
         $loggedInAs = $customer['name'];
         $actorType = 'owner';
         $actorId = $customer['id'];
@@ -547,7 +579,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                 && strtolower((string)$subUser['portal_link']) !== $contextSlug) {
                 json_error('This customer app link belongs to a different company.',403);
             }
-            if ($subUser) {
+            if ($subUser && verify_portal_password($password, $subUser['password'] ?? null, 'assistant', (string)$subUser['id'])) {
                 $stmt = db()->prepare(
                     'SELECT * FROM customers
                      WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
@@ -621,7 +653,7 @@ if ($action === 'login' && $method === 'POST') {
     $stmt->execute([$email]);
     $staffMatches = [];
     foreach ($stmt->fetchAll() as $candidateUser) {
-        if (!empty($candidateUser['password_hash']) && password_verify($password, (string)$candidateUser['password_hash'])) {
+        if (!empty($candidateUser['password_hash']) && verify_portal_password($password, (string)$candidateUser['password_hash'], 'staff', (string)$candidateUser['id'])) {
             $staffMatches[] = $candidateUser;
         }
     }
@@ -708,7 +740,7 @@ if ($action === 'customer-login' && $method === 'POST') {
         $stmt = db()->prepare('SELECT * FROM customers WHERE LOWER(email) = ? AND deleted_at IS NULL AND is_active = 1');
         $stmt->execute([$loginId]);
         foreach ($stmt->fetchAll() as $candidateCustomer) {
-            if (!empty($candidateCustomer['password']) && password_verify($password, (string)$candidateCustomer['password'])) {
+            if (!empty($candidateCustomer['password']) && verify_portal_password($password, (string)$candidateCustomer['password'], 'customer', (string)$candidateCustomer['id'])) {
                 $identityMatches[] = ['type' => 'owner', 'row' => $candidateCustomer];
             }
         }
@@ -721,7 +753,7 @@ if ($action === 'customer-login' && $method === 'POST') {
         );
         $stmt->execute([$loginId]);
         foreach ($stmt->fetchAll() as $candidateSubUser) {
-            if (!empty($candidateSubUser['password']) && password_verify($password, (string)$candidateSubUser['password'])) {
+            if (!empty($candidateSubUser['password']) && verify_portal_password($password, (string)$candidateSubUser['password'], 'assistant', (string)$candidateSubUser['id'])) {
                 $identityMatches[] = ['type' => 'assistant', 'row' => $candidateSubUser];
             }
         }
@@ -729,7 +761,7 @@ if ($action === 'customer-login' && $method === 'POST') {
         $stmt = db()->prepare('SELECT * FROM customers WHERE portal_link = ? AND deleted_at IS NULL AND is_active = 1');
         $stmt->execute([$portalId]);
         foreach ($stmt->fetchAll() as $candidateCustomer) {
-            if (!empty($candidateCustomer['password']) && password_verify($password, (string)$candidateCustomer['password'])) {
+            if (!empty($candidateCustomer['password']) && verify_portal_password($password, (string)$candidateCustomer['password'], 'customer', (string)$candidateCustomer['id'])) {
                 $identityMatches[] = ['type' => 'owner', 'row' => $candidateCustomer];
             }
         }

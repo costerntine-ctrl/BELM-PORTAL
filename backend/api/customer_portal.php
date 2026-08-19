@@ -1043,6 +1043,7 @@ if ($sub === 'privacy') {
         json_out([
             'preferences' => $preferences,
             'belmServiceProviderActive' => empty($row['is_machinery_admin']),
+            'developmentExpenseAccessOpen' => belm_development_customer_expense_access_enabled(),
             'alwaysShared' => [
                 'Basic company identity and contact details',
                 'Registered machine identity and operational status',
@@ -1069,7 +1070,10 @@ if ($sub === 'privacy') {
             'ok' => true,
             'preferences' => $preferences,
             'belmServiceProviderActive' => empty($row['is_machinery_admin']),
-            'message' => 'Privacy settings saved.',
+            'developmentExpenseAccessOpen' => belm_development_customer_expense_access_enabled(),
+            'message' => belm_development_customer_expense_access_enabled()
+                ? 'Privacy preference saved. Procurement/expense access remains temporarily open to BELM during portal development.'
+                : 'Privacy settings saved.',
         ]);
     }
 

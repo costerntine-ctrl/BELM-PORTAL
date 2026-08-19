@@ -63,7 +63,7 @@ test('invoice/proforma deletion recomputes Job Card billing state',billing.inclu
 
 test('known default action PINs removed from runtime fallbacks',helpers.includes("belm_read_stored_pin('adminDeletePin', '')")&&helpers.includes("belm_read_stored_pin('adminEditPin', '')"));
 test('schema does not seed public 1234 delete PIN',!schema.includes("'adminDeletePin',\n  '\"1234\"'::jsonb"));
-test('migration replaces missing/legacy action PIN securely',migrate.includes('INITIAL_ADMIN_ACTION_PIN')&&migrate.includes("['adminEditPin' => '2026', 'adminDeletePin' => '1234']"));
+test('migration only inserts missing action PIN without overwriting stored values',migrate.includes('INITIAL_ADMIN_ACTION_PIN')&&migrate.includes('ON CONFLICT (\"key\") DO NOTHING')&&!migrate.includes("['adminEditPin' => '2026', 'adminDeletePin' => '1234']"));
 test('Render requests initial action PIN secret',render.includes('INITIAL_ADMIN_ACTION_PIN')&&render.includes('sync: false'));
 test('settings GET does not expose action PINs',settings.includes("NOT IN ('adminEditPin','adminDeletePin')"));
 test('generic settings PUT cannot overwrite action PINs',settings.includes('Security PINs can only be changed through the protected change-PIN action'));

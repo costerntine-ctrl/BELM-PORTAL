@@ -286,9 +286,10 @@
           <b>${belmT("Always shared with BELM")}</b>
           <span>${belmT("Basic company/machine identity, official support requests, and direct BELM communications remain available.")}</span>
         </div>
+        ${data.developmentExpenseAccessOpen ? `<div class="belm-privacy-note"><b>${belmT("Development access open")}</b><span>${belmT("Procurement, petty-cash and receipt records are temporarily visible to BELM while the portal is being built. Your saved privacy choice is retained and will apply again when development access is closed.")}</span></div>` : ""}
         <div class="belm-privacy-options">
           ${option("maintenanceRecords", "Check-up & maintenance records", "Allow BELM to view internal checklist, check-up and maintenance history when not otherwise required for active service/support.")}
-          ${option("expenseReceipts", "Procurement & receipt photos", "Allow BELM to view machine procurement records, petty-cash records and uploaded receipt images.")}
+          ${option("expenseReceipts", "Procurement & receipt photos", data.developmentExpenseAccessOpen ? "Preference retained for later; BELM access is temporarily open during development." : "Allow BELM to view machine procurement records, petty-cash records and uploaded receipt images.")}
           ${option("storeAndParts", "Store & service-parts records", "Allow BELM to view internal service-part/service-kit and store-related records when not otherwise required for active service/support.")}
           ${option("teamDirectory", "Customer team/user directory", "Allow BELM to view and manage the Customer Portal team/user directory.")}
         </div>

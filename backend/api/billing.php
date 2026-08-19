@@ -148,6 +148,7 @@ function belm_invoice_totals_from_proforma(array $proforma, array $items): array
 
 function validate_invoice_input(array $payload): array {
     $items = $payload['items'] ?? [];
+    $isEditPayload = (($payload['action'] ?? '') === 'edit');
     if (!is_array($items) || count($items) === 0) json_error('Add at least one invoice item.');
     $customerId = trim((string)($payload['customerId'] ?? ''));
     $machineId = trim((string)($payload['machineId'] ?? ''));
@@ -183,8 +184,10 @@ function validate_invoice_input(array $payload): array {
     $normalizedItems = [];
     $subtotal = 0.0;
     foreach ($items as $item) {
+        $partNumber = trim((string)($item['partNumber'] ?? $item['part_number'] ?? ''));
         $description = trim((string)($item['description'] ?? ''));
         $quantity = $item['quantity'] ?? null;
+        $unit = strtoupper(trim((string)($item['unit'] ?? 'PC'))) ?: 'PC';
         $unitPrice = $item['unitPrice'] ?? null;
         $sparePartId = trim((string)($item['sparePartId'] ?? ''));
         if ($description === '') json_error('Every invoice item needs a description.');
@@ -197,14 +200,18 @@ function validate_invoice_input(array $payload): array {
             json_error('Invoice item price cannot be negative.');
         }
         if ($sparePartId !== '') {
-            $partCheck = db()->prepare('SELECT 1 FROM spare_parts WHERE id = ? AND deleted_at IS NULL');
+            $partCheck = db()->prepare($isEditPayload
+                ? 'SELECT 1 FROM spare_parts WHERE id = ?'
+                : 'SELECT 1 FROM spare_parts WHERE id = ? AND deleted_at IS NULL');
             $partCheck->execute([$sparePartId]);
             if (!$partCheck->fetch()) json_error('Selected spare part was not found.', 422);
         }
         $lineTotal = (int)$quantity * (float)$unitPrice;
         $normalizedItems[] = [
+            'partNumber' => $partNumber !== '' ? $partNumber : null,
             'description' => $description,
             'quantity' => (int)$quantity,
+            'unit' => $unit,
             'unitPrice' => (float)$unitPrice,
             'lineTotal' => $lineTotal,
             'sparePartId' => $sparePartId !== '' ? $sparePartId : null,
@@ -213,6 +220,11 @@ function validate_invoice_input(array $payload): array {
     }
     $tax = (float)($payload['tax'] ?? 0);
     if ($tax < 0) json_error('Tax cannot be negative.');
+    $discount = (float)($payload['discount'] ?? 0);
+    if ($discount < 0) json_error('Discount cannot be negative.');
+    if ($discount > $subtotal + 0.005) json_error('Discount cannot be greater than the invoice subtotal.');
+    $vatRate = (float)($payload['vatRate'] ?? 18);
+    if ($vatRate < 0 || $vatRate > 100) json_error('VAT rate must be between 0 and 100.');
     $dueDate = trim((string)($payload['dueDate'] ?? ''));
     $notice = trim((string)($payload['notice'] ?? ''));
     $paymentTerms = trim((string)($payload['paymentTerms'] ?? ''));
@@ -225,8 +237,10 @@ function validate_invoice_input(array $payload): array {
         'paymentTerms' => $paymentTerms !== '' ? $paymentTerms : null,
         'items' => $normalizedItems,
         'subtotal' => $subtotal,
+        'discount' => $discount,
+        'vatRate' => $vatRate,
         'tax' => $tax,
-        'total' => $subtotal + $tax,
+        'total' => round($subtotal - $discount + $tax, 2),
     ];
 }
 
@@ -258,6 +272,7 @@ if ($method === 'POST' && $action === 'generate-from-proforma') {
     }
     $proforma = $stmt->fetch();
     if (!$proforma) json_error('Proforma not found.', 404);
+    $proformaId = (string)$proforma['id'];
     if (strtoupper((string)($proforma['customer_response'] ?? '')) === 'CHANGE_REQUESTED') {
         json_error('Customer requested changes to this Proforma. Re-edit and resend it before generating the Invoice.', 409);
     }
@@ -390,7 +405,7 @@ if ($method === 'POST' && !$action) {
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $pdo->prepare("INSERT INTO invoices (id, customer_id, machine_id, source_job_card_id, invoice_no, subtotal, tax, total, status, due_date, notice, payment_terms, created_at) VALUES (?,?,?,?,?,?,?,?,'UNPAID',?,?,?,NOW())")
+        $pdo->prepare("INSERT INTO invoices (id, customer_id, machine_id, source_job_card_id, invoice_no, subtotal, discount, discount_type, vat_rate, tax, total, status, due_date, notice, payment_terms, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,'UNPAID',?,?,?,NOW())")
             ->execute([
                 $newId,
                 $invoice['customerId'],
@@ -398,6 +413,9 @@ if ($method === 'POST' && !$action) {
                 $invoice['sourceJobCardId'],
                 $invoiceNo,
                 $invoice['subtotal'],
+                $invoice['discount'],
+                'FIXED',
+                $invoice['vatRate'],
                 $invoice['tax'],
                 $invoice['total'],
                 $invoice['dueDate'],
@@ -406,15 +424,17 @@ if ($method === 'POST' && !$action) {
             ]);
         $itemStmt = $pdo->prepare(
             'INSERT INTO invoice_items
-             (id, invoice_id, description, quantity, unit_price, line_total, spare_part_id)
-             VALUES (?,?,?,?,?,?,?)'
+             (id, invoice_id, part_number, description, quantity, unit, unit_price, line_total, spare_part_id)
+             VALUES (?,?,?,?,?,?,?,?,?)'
         );
         foreach ($invoice['items'] as $item) {
             $itemStmt->execute([
                 uuid(),
                 $newId,
+                $item['partNumber'],
                 $item['description'],
                 $item['quantity'],
+                $item['unit'],
                 $item['unitPrice'],
                 $item['lineTotal'],
                 $item['sparePartId'],
@@ -433,7 +453,8 @@ if ($method === 'POST' && !$action) {
 if ($method === 'PUT' && !$action) {
     $b = body();
     if (($b['action'] ?? '') === 'edit') {
-        require_edit_confirmation($user, $b);
+        // V351: Billing-authorized staff can Re-edit Invoices directly.
+        // No Edit PIN is required; the edit is still authenticated and audit logged.
         $invoice = validate_invoice_input($b);
         if (!empty($invoice['sourceJobCardId'])) {
             $duplicateInvoice = db()->prepare("SELECT invoice_no FROM invoices WHERE source_job_card_id=? AND id<>? AND deleted_at IS NULL AND status<>'CANCELLED' ORDER BY created_at DESC LIMIT 1");
@@ -457,10 +478,9 @@ if ($method === 'PUT' && !$action) {
                 json_error('Invoice not found.', 404);
             }
             $currentStatus = (string)$currentInvoice['status'];
-            if (trim((string)($currentInvoice['source_proforma_id'] ?? '')) !== '') {
-                $pdo->rollBack();
-                json_error('This Invoice was generated from a Proforma and its commercial lines are locked. Cancel the Invoice first if the Proforma must be changed.', 409);
-            }
+            $linkedProformaId = trim((string)($currentInvoice['source_proforma_id'] ?? ''));
+            // V351: source_proforma_id remains as traceability only. It no longer
+            // locks the Invoice commercial lines; an authorized re-edit is allowed.
             $oldSourceJobCardId = trim((string)($currentInvoice['source_job_card_id'] ?? ''));
             $stmt = $pdo->prepare('SELECT COALESCE(SUM(amount),0) FROM payments WHERE invoice_id = ?');
             $stmt->execute([$id]);
@@ -474,7 +494,7 @@ if ($method === 'PUT' && !$action) {
                 : calculated_invoice_status($invoice['total'], $paid, $invoice['dueDate']);
             $pdo->prepare(
                 'UPDATE invoices
-                 SET customer_id=?, machine_id=?, source_job_card_id=?, subtotal=?, tax=?, total=?,
+                 SET customer_id=?, machine_id=?, source_job_card_id=?, subtotal=?, discount=?, vat_rate=?, tax=?, total=?,
                      status=?, due_date=?, notice=?, payment_terms=?
                  WHERE id=? AND deleted_at IS NULL'
             )->execute([
@@ -482,6 +502,8 @@ if ($method === 'PUT' && !$action) {
                 $invoice['machineId'],
                 $invoice['sourceJobCardId'],
                 $invoice['subtotal'],
+                $invoice['discount'],
+                $invoice['vatRate'],
                 $invoice['tax'],
                 $invoice['total'],
                 $status,
@@ -493,15 +515,17 @@ if ($method === 'PUT' && !$action) {
             $pdo->prepare('DELETE FROM invoice_items WHERE invoice_id = ?')->execute([$id]);
             $itemStmt = $pdo->prepare(
                 'INSERT INTO invoice_items
-                 (id, invoice_id, description, quantity, unit_price, line_total, spare_part_id)
-                 VALUES (?,?,?,?,?,?,?)'
+                 (id, invoice_id, part_number, description, quantity, unit, unit_price, line_total, spare_part_id)
+                 VALUES (?,?,?,?,?,?,?,?,?)'
             );
             foreach ($invoice['items'] as $item) {
                 $itemStmt->execute([
                     uuid(),
                     $id,
+                    $item['partNumber'],
                     $item['description'],
                     $item['quantity'],
+                    $item['unit'],
                     $item['unitPrice'],
                     $item['lineTotal'],
                     $item['sparePartId'],
@@ -520,8 +544,19 @@ if ($method === 'PUT' && !$action) {
         if ($oldSourceJobCardId !== '' && $oldSourceJobCardId !== $newSourceJobCardId) {
             belm_recompute_job_billing_status($oldSourceJobCardId);
         }
-        log_activity($user, 'invoice-edited', 'invoice', $id, ['status' => $status]);
-        json_out(['ok' => true, 'status' => $status]);
+        log_activity($user, 'invoice-edited', 'invoice', $id, [
+            'status' => $status,
+            'sourceProformaId' => $linkedProformaId !== '' ? $linkedProformaId : null,
+            'independentReedit' => $linkedProformaId !== '',
+        ]);
+        json_out([
+            'ok' => true,
+            'status' => $status,
+            'linkedProformaId' => $linkedProformaId !== '' ? $linkedProformaId : null,
+            'message' => $linkedProformaId !== ''
+                ? 'Invoice changes saved. The source Proforma remains unchanged.'
+                : 'Invoice changes saved.',
+        ]);
     }
     // V307: payment rows are the source of truth. A user may cancel an
     // invoice, but cannot manually force a paid/part-paid invoice back to

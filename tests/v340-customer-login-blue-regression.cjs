@@ -12,7 +12,7 @@ const checks = [
   ['pressed state blue', css.includes('.portal-actions a:active') && css.includes('background: #1d4ed8')],
   ['keyboard focus visible', css.includes('.portal-actions a:focus-visible')],
   ['customer manager css cache bumped', html.includes('manager.css?v=340-customer-login-blue')],
-  ['unchanged manager js retains compatible cache label', html.includes('manager.js?v=320-engineering-single-owner')],
+  ['unchanged manager js retains compatible cache label', /manager\.js\?v=(320-engineering-single-owner|351-dev-expense-access)/.test(html)],
   ['service worker cache bumped', (/belm-app-v(?:340-customer-login-blue|341-proforma-invoice-direct-sync|342-technician-job-card-visibility)/.test(sw))],
 ];
 let failed = 0;

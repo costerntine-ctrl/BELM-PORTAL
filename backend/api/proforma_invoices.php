@@ -395,12 +395,15 @@ if ($method === 'PUT' && $action === 'send') {
 
 if ($method === 'PUT') {
     $b = body();
+    // V351: Re-edit stays available even after this Proforma generated an Invoice.
+    // The linked Invoice is an accounting document of its own and is NOT silently
+    // rewritten here; staff may re-edit that Invoice separately when required.
     $generatedInvoice = db()->prepare("SELECT invoice_no FROM invoices WHERE source_proforma_id=? AND deleted_at IS NULL AND status<>'CANCELLED' ORDER BY created_at DESC LIMIT 1");
     $generatedInvoice->execute([$id]);
-    $generatedInvoiceNo = $generatedInvoice->fetchColumn();
-    if ($generatedInvoiceNo) json_error('This Proforma already generated Invoice '.$generatedInvoiceNo.'. Cancel that Invoice before changing the Proforma.', 409);
+    $generatedInvoiceNo = $generatedInvoice->fetchColumn() ?: null;
 
-    require_edit_confirmation($user, $b);
+    // V351: Billing-authorized staff can Re-edit Proformas directly.
+    // No Edit PIN is required; the edit is still authenticated and audit logged.
     $items = $b['items'] ?? [];
     $vatMode = strtoupper(trim((string)($b['vatMode'] ?? '')));
     $vatRate = isset($b['vatRate']) ? (float)$b['vatRate'] : 18.0;
@@ -487,8 +490,17 @@ if ($method === 'PUT') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
-    log_activity($user, 'proforma-edited', 'proforma', $id);
-    json_out(['ok' => true]);
+    log_activity($user, 'proforma-edited', 'proforma', $id, [
+        'linkedInvoiceNo' => $generatedInvoiceNo,
+        'linkedInvoiceUnaffected' => $generatedInvoiceNo ? true : false,
+    ]);
+    json_out([
+        'ok' => true,
+        'linkedInvoiceNo' => $generatedInvoiceNo,
+        'message' => $generatedInvoiceNo
+            ? 'Proforma changes saved. Linked Invoice '.$generatedInvoiceNo.' was not overwritten; re-edit the Invoice separately if needed.'
+            : 'Proforma changes saved.',
+    ]);
 }
 
 if ($method === 'DELETE') {

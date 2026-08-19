@@ -95,9 +95,24 @@ function uuid(): string {
 }
 
 function portal_base_url(): string {
-    // Use the host the customer/admin is currently visiting. This keeps every
-    // generated customer link working on both the Render URL and the custom
-    // portal domain while DNS is being configured.
+    // V352: public links must NEVER inherit Render's internal container port
+    // (normally :10000). PORTAL_URL is the canonical external address and is
+    // intentionally preferred over HTTP_HOST / X-Forwarded-Host in production.
+    $configured = trim((string)(getenv('PORTAL_URL') ?: ''));
+    if ($configured !== '') {
+        $parts = parse_url($configured);
+        $scheme = strtolower((string)($parts['scheme'] ?? ''));
+        $host = (string)($parts['host'] ?? '');
+        if (in_array($scheme, ['http', 'https'], true) && $host !== '') {
+            $portNumber = isset($parts['port']) ? (int)$parts['port'] : null;
+            // :10000 is Render's container listener, never a public HTTPS port.
+            if ($scheme === 'https' && $portNumber === 10000) $portNumber = null;
+            $port = $portNumber !== null ? ':' . $portNumber : '';
+            $path = rtrim((string)($parts['path'] ?? ''), '/');
+            return $scheme . '://' . $host . $port . $path;
+        }
+    }
+
     $forwardedHost = trim(explode(',', (string)($_SERVER['HTTP_X_FORWARDED_HOST'] ?? ''))[0]);
     $host = $forwardedHost !== '' ? $forwardedHost : trim((string)($_SERVER['HTTP_HOST'] ?? ''));
     if ($host !== '' && preg_match('/^[a-zA-Z0-9.-]+(?::\d+)?$/', $host)) {
@@ -105,9 +120,21 @@ function portal_base_url(): string {
         $scheme = in_array($forwardedProto, ['http', 'https'], true)
             ? $forwardedProto
             : ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http');
+
+        // Render forwards traffic to the container on $PORT (usually 10000).
+        // That port is not a public HTTPS port and must not be published in
+        // customer links, emails, QR URLs or redirects. Keep local HTTP dev
+        // ports untouched; only sanitize an HTTPS production-style origin.
+        if ($scheme === 'https') {
+            $internalPort = trim((string)(getenv('PORT') ?: '10000'));
+            if ($internalPort !== '' && preg_match('/^\d+$/', $internalPort)) {
+                $host = preg_replace('/:' . preg_quote($internalPort, '/') . '$/', '', $host);
+            }
+            $host = preg_replace('/:10000$/', '', $host);
+        }
         return $scheme . '://' . $host;
     }
-    return rtrim(getenv('PORTAL_URL') ?: 'https://portal.belmgeneraltech.co.tz', '/');
+    return 'https://portal.belmgeneraltech.co.tz';
 }
 
 /**
@@ -147,7 +174,18 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
 
 function public_app_base_url(): string {
     $configured = trim((string)(getenv('PUBLIC_APP_URL') ?: ''));
-    if ($configured !== '') return rtrim($configured, '/');
+    if ($configured !== '') {
+        $parts = parse_url($configured);
+        $scheme = strtolower((string)($parts['scheme'] ?? ''));
+        $host = (string)($parts['host'] ?? '');
+        if (in_array($scheme, ['http', 'https'], true) && $host !== '') {
+            $portNumber = isset($parts['port']) ? (int)$parts['port'] : null;
+            if ($scheme === 'https' && $portNumber === 10000) $portNumber = null;
+            $port = $portNumber !== null ? ':' . $portNumber : '';
+            $path = rtrim((string)($parts['path'] ?? ''), '/');
+            return $scheme . '://' . $host . $port . $path;
+        }
+    }
     return portal_base_url();
 }
 

@@ -1,0 +1,28 @@
+const fs=require('fs');
+const path=require('path');
+const root=path.resolve(__dirname,'..');
+const r=p=>fs.readFileSync(path.join(root,p),'utf8');
+let pass=0,fail=0;
+function t(name,ok){try{ok=typeof ok==='function'?ok():ok}catch(e){ok=false} if(ok){pass++;console.log('PASS',name)}else{fail++;console.error('FAIL',name)}}
+const helpers=r('backend/config/helpers.php');
+const render=r('render.yaml');
+const start=r('docker/start-render.sh');
+const health=r('backend/index.php');
+const migrate=r('backend/scripts/migrate.php');
+const sw=r('frontend/belm-sw.js');
+const schema=r('backend/schema.sql');
+const crypto=require('crypto');
+t('portal_base_url prefers configured PORTAL_URL',helpers.indexOf("getenv('PORTAL_URL')") < helpers.indexOf("HTTP_X_FORWARDED_HOST"));
+t('portal URL strips HTTPS configured port 10000',helpers.includes("$scheme === 'https' && $portNumber === 10000"));
+t('fallback request host strips Render internal port',helpers.includes("preg_replace('/:10000$/', '', $host)"));
+t('fallback request host strips actual $PORT',helpers.includes("getenv('PORT') ?: '10000'")&&helpers.includes("preg_quote($internalPort"));
+t('public app URL also parses configured public URL',helpers.includes("getenv('PUBLIC_APP_URL')")&&helpers.match(/public_app_base_url[\s\S]*parse_url\(\$configured\)/));
+t('canonical Render PORTAL_URL has no port',render.includes('value: https://portal.belmgeneraltech.co.tz')&&!render.includes('value: https://portal.belmgeneraltech.co.tz:10000'));
+t('Render still listens internally on platform PORT',start.includes('APP_PORT="${PORT:-10000}"')&&start.includes('apache2-foreground'));
+t('V352 health marker active',health.includes("'schemaVersion' => '352-public-url-port-guard'"));
+t('V352 deployment audit release active',migrate.includes("const BELM_RELEASE = '352-public-url-port-guard';"));
+t('V352 PWA cache active',sw.includes("const CACHE='belm-app-v352-public-url-port-guard';"));
+t('no schema change from V351 protected schema',crypto.createHash('sha256').update(schema).digest('hex')==='e5a4bd39aeeee396bd03b9d94b3d51f3ea733e2b57f8b2e92cfc381cddac99ce');
+t('V350 deployment safety remains active',migrate.includes('belm_predeploy_ids')&&migrate.includes('DATA_SAFETY_BLOCK'));
+t('changelog documents clean login URL',r('V352_CHANGELOG.txt').includes('https://portal.belmgeneraltech.co.tz/login'));
+console.log(`V352 checks: ${pass}/${pass+fail} passed`); if(fail)process.exit(1);

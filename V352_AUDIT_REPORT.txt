@@ -1,0 +1,7 @@
+V352 AUDIT
+- Scope: public URL / Render internal-port leakage only.
+- Database schema: unchanged from V351/V350 protected schema.
+- Business records: no UPDATE, DELETE, TRUNCATE or reset added.
+- Internal Render listener: unchanged ($PORT, normally 10000).
+- External generated URLs: canonical PORTAL_URL first; HTTPS :10000 removed.
+- Public-app URL: HTTPS :10000 removed defensively.

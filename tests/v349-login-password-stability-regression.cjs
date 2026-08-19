@@ -20,8 +20,8 @@ t('recovery reset clears stale unified login lockout',()=>assert.match(auth,/Pas
 t('registered user admin reset clears login lockout',()=>assert.match(users,/clear_unified_login_lockout\(\(string\)\$resetUser\['email'\]\)/));
 t('customer admin reset clears email and portal id lockouts',()=>assert.match(customers,/clear_unified_login_lockout\(\(string\)\$resetCustomer\['email'\], \(string\)\$resetCustomer\['portal_link'\]\)/));
 t('lockout helper is centralized',()=>assert.match(helpers,/function clear_unified_login_lockout/));
-t('health remains at least V349',()=>assert.match(health,/'schemaVersion' => '(350-data-preservation-guard|351-free-reedit-dev-customer-expenses)'/));
-t('PWA cache remains at least V349',()=>assert.match(sw,/const CACHE='belm-app-v(350-data-preservation-guard|351-free-reedit-dev-customer-expenses)'/));
+t('health remains at least V349',()=>assert.match(health,/'schemaVersion' => '(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard)'/));
+t('PWA cache remains at least V349',()=>assert.match(sw,/const CACHE='belm-app-v(350-data-preservation-guard|351-free-reedit-dev-customer-expenses|352-public-url-port-guard)'/));
 t('ordinary deploy no longer deletes login/security rows',()=>{assert.doesNotMatch(migrate,/DELETE FROM security_rate_limits/);assert.match(migrate,/Existing passwords are never rotated/);});
 t('changelog promises no credential auto-reset',()=>assert.match(changelog,/no longer silently rotated/i));
 console.log(`V349 checks passed: ${pass}/${pass}`);

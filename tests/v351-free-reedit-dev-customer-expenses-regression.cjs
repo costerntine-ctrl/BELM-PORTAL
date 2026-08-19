@@ -38,8 +38,8 @@ t('invoice re-edit preserves generated discount and VAT metadata',billing.includ
 t('payment safety still blocks total below payments',billing.includes('Invoice total cannot be lower than payments already recorded.'));
 t('PI number lookup resolves real Proforma ID before Invoice insert',billing.includes("$proformaId = (string)$proforma['id'];"));
 t('V351 is code-only against exact V350 schema hash',crypto.createHash('sha256').update(schema).digest('hex')==='e5a4bd39aeeee396bd03b9d94b3d51f3ea733e2b57f8b2e92cfc381cddac99ce');
-t('V350 deployment safety guard remains active',migrate.includes('belm_predeploy_ids')&&migrate.includes('DATA_SAFETY_BLOCK')&&migrate.includes("const BELM_RELEASE = '351-free-reedit-dev-customer-expenses'"));
-t('health and PWA identify V351',health.includes("'schemaVersion' => '351-free-reedit-dev-customer-expenses'")&&sw.includes("const CACHE='belm-app-v351-free-reedit-dev-customer-expenses'"));
+t('V350 deployment safety guard remains active',migrate.includes('belm_predeploy_ids')&&migrate.includes('DATA_SAFETY_BLOCK')&&/const BELM_RELEASE = '(351-free-reedit-dev-customer-expenses|352-public-url-port-guard)';/.test(migrate));
+t('health and PWA identify V351',/'schemaVersion' => '(351-free-reedit-dev-customer-expenses|352-public-url-port-guard)'/.test(health)&&/const CACHE='belm-app-v(351-free-reedit-dev-customer-expenses|352-public-url-port-guard)'/.test(sw));
 t('changelog documents no database reset',/no schema\.sql change|no business-data reset/i.test(changelog));
 console.log(`V351 checks: ${pass}/${pass+fail} passed`);
 process.exit(fail?1:0);

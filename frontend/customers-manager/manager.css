@@ -1049,3 +1049,278 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
     max-height: 90px;
   }
 }
+
+
+/* ========================================================================
+   V409 - Compact Machine Card parity
+   BELM Admin > Customers & Machines > View Machine.
+   Uses the approved 390 x 590 footprint while adopting the dark industrial
+   dashboard treatment requested for both BELM and Customer machine views.
+   ======================================================================== */
+#machineListDialog .machine-list {
+  grid-template-columns: repeat(auto-fill, 390px) !important;
+  gap: 15px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 {
+  width: 390px !important;
+  height: 590px !important;
+  min-height: 590px !important;
+  max-height: 590px !important;
+  max-width: 100% !important;
+  padding: 15px !important;
+  gap: 0 !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+  color: #eef6ff !important;
+  border: 2px solid #66d957 !important;
+  border-radius: 14px !important;
+  background:
+    radial-gradient(circle at 88% 7%, rgba(43, 126, 83, .18), transparent 13rem),
+    linear-gradient(160deg, #0b1725 0%, #08121f 58%, #07101b 100%) !important;
+  box-shadow: 0 16px 34px rgba(2, 10, 20, .30), inset 0 0 32px rgba(49, 190, 98, .025) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 > div:first-child {
+  min-width: 0;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-title-row {
+  grid-template-columns: minmax(0, 1fr) 90px !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-title-row h4 {
+  margin: 1px 0 4px !important;
+  color: #f8fbff !important;
+  font: 900 17px/1.08 "Space Grotesk", Inter, system-ui, sans-serif !important;
+  letter-spacing: -.02em;
+}
+#machineListDialog .machine-card.machine-card-v409 > div:first-child > p {
+  margin: 0 0 7px !important;
+  color: #b6c4d5 !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-fleet-number {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  min-height: 48px !important;
+  padding: 7px 9px !important;
+  border: 1px solid #31475e !important;
+  border-radius: 9px !important;
+  background: rgba(4, 12, 22, .74) !important;
+  box-shadow: inset 0 0 14px rgba(58, 138, 91, .05) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-fleet-number small {
+  color: #9eafc1 !important;
+  font-size: 7px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-fleet-number b {
+  margin-top: 2px;
+  color: #f3f7fb !important;
+  font-size: 10px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-status {
+  margin-top: 1px !important;
+  padding: 5px 10px !important;
+  border: 1px solid #2d435a !important;
+  border-radius: 7px !important;
+  color: #f1f5f9 !important;
+  background: #0b1726 !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-alert-copy {
+  min-height: 112px !important;
+  max-height: 112px !important;
+  margin-top: 8px !important;
+  padding: 8px 9px !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+  border: 1px solid #345d3e !important;
+  border-radius: 10px !important;
+  background: rgba(5, 15, 24, .72) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message {
+  min-height: 55px !important;
+  max-height: 55px !important;
+  padding: 6px 7px !important;
+  gap: 2px !important;
+  border-color: #28415c !important;
+  border-radius: 8px !important;
+  background: rgba(14, 32, 50, .82) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message.is-open {
+  border-color: rgba(245, 180, 48, .62) !important;
+  background: rgba(84, 54, 11, .27) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-message-kicker {
+  color: #67d65e !important;
+  font-size: 6.8px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message > strong {
+  color: #edf6ff !important;
+  font-size: 8.4px !important;
+  line-height: 1.25 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message > small {
+  color: #8ea1b5 !important;
+  font-size: 6.5px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-condition-message {
+  gap: 1px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-condition-message .machine-alert-reason {
+  color: #69d65d !important;
+  font-size: 8.7px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-condition-message .machine-service-alert-copy {
+  color: #c8d3df !important;
+  font-size: 7.6px !important;
+  font-weight: 750 !important;
+  line-height: 1.2 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .service-due-badge {
+  display: flex !important;
+  min-height: 42px !important;
+  margin-top: 8px !important;
+  padding: 8px 10px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #5fce57 !important;
+  border-radius: 9px !important;
+  color: #182334 !important;
+  background: linear-gradient(180deg, #f5f7f4, #dfe6e3) !important;
+  box-shadow: 0 5px 15px rgba(55, 206, 88, .12) !important;
+  font-size: 9.2px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  text-align: center !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .service-due-badge.YELLOW {
+  border-color: #e0ad22 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .service-due-badge.RED {
+  border-color: #ef5350 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .operational-status-picker {
+  grid-template-columns: 86px minmax(0, 1fr) !important;
+  min-height: 51px !important;
+  margin-top: 8px !important;
+  padding: 7px 8px !important;
+  border: 1px solid #263b52 !important;
+  border-radius: 9px !important;
+  color: #a9b9ca !important;
+  background: rgba(11, 24, 39, .88) !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .03em !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .operational-status-picker select {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 6px 26px 6px 9px !important;
+  border: 1px solid #38536e !important;
+  border-radius: 8px !important;
+  color: #f1f5f9 !important;
+  background: #0c1929 !important;
+  font-size: 9px !important;
+  font-weight: 850 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  margin-top: auto !important;
+  padding-top: 9px !important;
+  border-top: 1px solid #1d3145 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button,
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a {
+  min-height: 46px !important;
+  padding: 6px 3px !important;
+  border: 1px solid #2c465f !important;
+  border-radius: 9px !important;
+  color: #eef5fc !important;
+  background: linear-gradient(180deg, #12243a, #0c1a2b) !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button::before,
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a::before {
+  display: block;
+  margin-right: 4px;
+  color: #68db5f;
+  font-size: 12px;
+  line-height: 1;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button:nth-child(1)::before { content: "▤"; }
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button:nth-child(2)::before { content: "✓"; }
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button:nth-child(3)::before { content: "⚙"; }
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a.belm-maintenance-process-link {
+  border-color: #8e66ef !important;
+  color: #fff !important;
+  background: linear-gradient(145deg, #8653ea, #6b2fc7) !important;
+  box-shadow: 0 7px 17px rgba(120, 66, 219, .26) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a.belm-maintenance-process-link::before {
+  content: "▣";
+  color: #fff;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  margin-top: 7px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-actions > button {
+  min-height: 39px !important;
+  padding: 6px 3px !important;
+  border-radius: 9px !important;
+  color: #dbe8f5 !important;
+  background: #13253a !important;
+  font-size: 7.8px !important;
+  font-weight: 900 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-edit {
+  border-color: #517aa4 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-delete,
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-forget {
+  border-color: #d74646 !important;
+  color: #ff6b6b !important;
+  background: rgba(92, 24, 30, .32) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-green {
+  border-color: #66d957 !important;
+  background: radial-gradient(circle at 88% 7%, rgba(43,126,83,.18), transparent 13rem), linear-gradient(160deg,#0b1725,#08121f 58%,#07101b) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-yellow {
+  border-color: #e9b52e !important;
+  background: radial-gradient(circle at 88% 7%, rgba(197,146,33,.13), transparent 13rem), linear-gradient(160deg,#0b1725,#08121f 58%,#07101b) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-red {
+  border: 2px solid #ef5350 !important;
+  background: radial-gradient(circle at 88% 7%, rgba(183,49,49,.15), transparent 13rem), linear-gradient(160deg,#0b1725,#08121f 58%,#07101b) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-unknown {
+  border-color: #667c92 !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-green .machine-alert-copy,
+#machineListDialog .machine-card.machine-card-v409.machine-range-yellow .machine-alert-copy,
+#machineListDialog .machine-card.machine-card-v409.machine-range-red .machine-alert-copy {
+  background: rgba(5,15,24,.72) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-yellow .machine-condition-message .machine-alert-reason { color:#f4c542 !important; }
+#machineListDialog .machine-card.machine-card-v409.machine-range-red .machine-condition-message .machine-alert-reason { color:#ff6868 !important; }
+@media (max-width: 620px) {
+  #machineListDialog .machine-list { grid-template-columns: minmax(0, 1fr) !important; }
+  #machineListDialog .machine-card.machine-card-v409 {
+    width: 100% !important;
+    height: 590px !important;
+    min-height: 590px !important;
+  }
+}

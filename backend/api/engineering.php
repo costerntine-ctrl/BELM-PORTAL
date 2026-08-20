@@ -175,6 +175,7 @@ if ($method === 'GET' && $action === 'job-process') {
     )->fetchAll();
     foreach ($rows as &$row) {
         $stage = strtoupper(trim((string)($row['current_stage'] ?? '')));
+        $jobStatus = strtoupper(trim((string)($row['status'] ?? '')));
         $caseStatus = strtoupper(trim((string)($row['case_status'] ?? '')));
         $openSpares = (int)($row['open_spare_requests'] ?? 0);
         $hasDiagnosis = trim((string)($row['diagnosis'] ?? '')) !== '';
@@ -184,13 +185,15 @@ if ($method === 'GET' && $action === 'job-process') {
         $detail = '';
         if ($caseStatus === 'COMPLETED' || $stage === 'COMPLETED') {
             $code = 'COMPLETED';
-            $label = 'Completed';
+        } elseif ($jobStatus === 'PENDING_APPROVAL' || $stage === 'PENDING_APPROVAL') {
+            $code = 'PENDING_APPROVAL';
+            $label = 'Pending Approval';
         } elseif ($stage === 'TESTING') {
             $code = 'TESTING';
             $label = 'Testing';
-        } elseif ($openSpares > 0 || in_array($stage, ['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS'], true)) {
+        } elseif ($jobStatus === 'WAITING_FOR_PARTS' || $openSpares > 0 || in_array($stage, ['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS'], true)) {
             $code = 'WAITING_FOR_SPARE';
-            $label = 'Waiting for Spare';
+            $label = 'Waiting for Parts';
             $detail = trim((string)($row['active_spares'] ?? ''));
         } elseif ($hasDiagnosis) {
             $code = 'DIAGNOSIS_REPORT';

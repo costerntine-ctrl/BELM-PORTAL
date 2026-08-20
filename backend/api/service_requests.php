@@ -671,7 +671,7 @@ if ($method === 'PUT' && $action === 'status') {
         $jobCheck->execute([$id]);
         $jobStatus = strtoupper((string)($jobCheck->fetchColumn() ?: ''));
         if ($jobStatus !== 'COMPLETED') {
-            json_error('Complete the Technician Job Card before closing this Service Request.', 409);
+            json_error('The Technician Job Card must be approved and Completed before closing this Service Request.', 409);
         }
         // V307: Technician completion only advances the operational case to
         // TESTING. The Service Request must not be closed manually until the
@@ -685,7 +685,7 @@ if ($method === 'PUT' && $action === 'status') {
         if (!$caseState
             || strtoupper((string)$caseState['status']) !== 'COMPLETED'
             || strtoupper((string)$caseState['current_stage']) !== 'COMPLETED') {
-            json_error('Workshop test is still pending. Complete the Maintenance Process test before closing this Service Request.', 409);
+            json_error('Job Card approval / Maintenance Process closure is still pending. Approve the Job Card before closing this Service Request.', 409);
         }
     }
 

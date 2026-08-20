@@ -1327,6 +1327,11 @@ ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS priority VARCHAR(10) NOT 
 ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS due_date DATE NULL;
 -- V343 - portable field dispatch location carried with the Job Card.
 ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS job_location VARCHAR(500) NULL;
+-- V410 - technician completion is submitted for review before final closure.
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS technician_submitted_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS reviewed_by_name VARCHAR(255) NULL;
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS review_note TEXT NULL;
 ALTER TABLE proforma_invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL;
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS source_proforma_id VARCHAR(36) NULL REFERENCES proforma_invoices(id) ON DELETE SET NULL;

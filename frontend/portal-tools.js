@@ -1982,10 +1982,15 @@
     const overdueBy = Math.max(0, Math.round(Math.abs(Math.min(0, status.hoursRemaining || 0))));
     const levelLabel = status.level === "RED" ? (overdueBy ? `OVERDUE BY ${overdueBy} HRS` : "DUE NOW") : status.level === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
     const serviceTypeLabel = status.serviceType || `${status.intervalHours}-Hour Service`;
+    const serviceStateLabel = remaining < 0
+      ? `OVERDUE BY ${overdueBy} HRS`
+      : remaining === 0
+        ? "DUE NOW"
+        : `NEXT ${Math.round(status.dueHour)} HRS · ${remaining} HRS LEFT`;
     mergeMachineServiceLiveUpdate(machine.id, status);
     card.dataset.belmServiceRange = String(status.level || "GREEN").toUpperCase();
     const serviceCopy = card.querySelector("[data-belm-service-alert-copy]");
-    if (serviceCopy) serviceCopy.textContent = `Service range: ${serviceTypeLabel} · ${levelLabel}`;
+    if (serviceCopy) serviceCopy.textContent = `Service range: ${serviceTypeLabel} · ${serviceStateLabel}`;
     applyCustomerMachineRange(card);
 
     const panel = document.createElement("div");
@@ -1993,7 +1998,7 @@
     panel.innerHTML = `
       <div class="belm-service-due-head belm-service-due-head-v210">
         <div><span>SERVICE PLAN</span><b>${escapeHtml(serviceTypeLabel)}</b></div>
-        <strong>${escapeHtml(levelLabel)}</strong>
+        <strong>${escapeHtml(serviceStateLabel)}</strong>
       </div>
       <div class="belm-service-due-grid belm-service-due-grid-v210">
         <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
@@ -4095,7 +4100,7 @@
       if (!card) return;
 
       card.dataset.belmMachineExpenseReady = "1";
-      card.classList.add("belm-customer-machine-card");
+      card.classList.add("belm-customer-machine-card", "belm-customer-machine-card-v409");
       card.dataset.belmMachineId = String(machine.id || "");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       card.dataset.belmConditionRange = technicianCondition(machine.status).status;

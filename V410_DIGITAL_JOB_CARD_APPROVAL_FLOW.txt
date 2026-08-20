@@ -1,0 +1,11 @@
+BELM Portal V410 - Digital Job Card approval lifecycle
+
+- Official Customer Admin -> BELM Job Card: RECEIVED -> ASSIGNED -> IN_PROGRESS / WAITING_FOR_PARTS -> PENDING_APPROVAL -> COMPLETED.
+- Customer internal Job Card: CREATED -> ASSIGNED -> IN_PROGRESS / WAITING_FOR_PARTS -> PENDING_APPROVAL -> COMPLETED.
+- Customer internal Job Cards never display Received by BELM.
+- Technicians can start/update only their assigned Job Cards and cannot assign or approve.
+- Technician completion submits for approval; it no longer closes the Job Card.
+- BELM Super Admin / Engineer approves official BELM jobs.
+- Customer Admin / Workshop Manager approves customer-internal jobs.
+- Reviewer can return a pending Job Card to the Technician with a required reason.
+- Approval/review metadata is retained on the Job Card and PDF.

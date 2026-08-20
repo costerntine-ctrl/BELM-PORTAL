@@ -21,6 +21,7 @@ const BREAKDOWN_STAGE_META = [
     'PARTS_READY' => ['department' => 'Workshop', 'slaHours' => 4],
     'REPAIR' => ['department' => 'Technician', 'slaHours' => 24],
     'TESTING' => ['department' => 'Workshop', 'slaHours' => 8],
+    'PENDING_APPROVAL' => ['department' => 'Administration / Engineering', 'slaHours' => 8],
     'COMPLETED' => ['department' => 'Completed', 'slaHours' => 0],
 ];
 
@@ -37,6 +38,7 @@ function bw_context(array $payload): array {
             'role' => $role, 'actorId' => (string)($customer['actorId'] ?? $customer['id']),
             'actorName' => (string)($customer['actorName'] ?? $customer['name'] ?? 'Customer User'),
             'canOverrideTechnician' => false,
+            'canApproveJob' => $isOwner || in_array($role, ['admin','workshop_manager'], true),
         ];
     }
     $user = require_auth();
@@ -55,6 +57,7 @@ function bw_context(array $payload): array {
         'actorId' => (string)($user['id'] ?? ''), 'actorName' => (string)($user['name'] ?? 'BELM'),
         'isTechnician' => $isTech, 'isCustomerManaged' => $isCustomerManaged,
         'canOverrideTechnician' => !$isTech && belm_can_override_technician_customer($user),
+        'canApproveJob' => !$isTech && belm_user_has_named_role($user, ['Super Admin','Engineer']),
     ];
 }
 
@@ -700,6 +703,9 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Completion Note', $job['completion_note'] ?: '-'],
         ['Repeat / Rework', !empty($job['repeat_issue']) ? 'YES' : 'NO'],
         ['Started', display_date_billing($job['started_at'])],
+        ['Submitted for Approval', display_date_billing($job['technician_submitted_at'] ?? null)],
+        ['Reviewed By', $job['reviewed_by_name'] ?: '-'],
+        ['Review Note', $job['review_note'] ?: '-'],
         ['Completed', display_date_billing($job['completed_at'])],
         ['Customer Sign-Off', !empty($job['signed_copy_data']) ? 'SIGNED COPY UPLOADED - '.($job['customer_signed_by_name'] ?: 'Customer') : 'WAITING CUSTOMER SIGNATURE'],
         ['Billing / Procurement', $job['billing_status'] ?: 'NOT_READY'],
@@ -810,7 +816,7 @@ if ($method === 'GET' && $action === 'technician-jobs') {
     $stmt=db()->prepare(
         "SELECT j.id,j.case_id,j.customer_id,j.machine_id,j.job_card_no,j.title,j.fault_description,j.status,
                 j.technician_id,j.technician_name,j.priority,j.due_date,j.job_location,j.diagnosis,j.work_done,j.test_result,j.completion_note,j.repeat_issue,
-                j.issued_by_name,j.issued_by_type,j.issued_at,j.started_at,j.completed_at,j.created_at,j.updated_at,
+                j.issued_by_name,j.issued_by_type,j.issued_at,j.started_at,j.technician_submitted_at,j.reviewed_at,j.reviewed_by_name,j.review_note,j.completed_at,j.created_at,j.updated_at,
                 bc.status AS case_status,bc.current_stage,bc.current_department,bc.blocker_reason,bc.source_type,bc.source_id,
                 c.name AS customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
                 (SELECT COUNT(*) FROM breakdown_spare_requests sr WHERE sr.job_card_id=j.id AND sr.status NOT IN ('REJECTED','PARTS_READY')) AS open_spare_requests,
@@ -980,6 +986,7 @@ if ($method === 'POST' && $action === 'job-card') {
             if($temporaryOverride || (string)$tech['assigned_customer_id']!==(string)$case['customer_id']) json_error('Selected Technician is not available for this customer.',403);
         }
     }
+    if($ctx['kind']==='customer' && $techId==='') json_error('Select one of your customer-managed Technicians before issuing this internal Job Card.',422);
     $title=trim((string)($b['title']??$case['title']));
     $jobLocation=trim((string)($b['jobLocation']??''));
     if($jobLocation==='') $jobLocation=trim((string)($case['customer_address']??''));
@@ -1003,7 +1010,7 @@ if ($method === 'POST' && $action === 'job-card') {
     $existingJob->execute([$caseId]);
     $existingJobRow = $existingJob->fetch();
     if ($existingJobRow) {
-        if (!empty($existingJobRow['technician_id'] ?? null) || in_array(strtoupper((string)$existingJobRow['status']), ['ASSIGNED', 'IN_PROGRESS'], true)) {
+        if (!empty($existingJobRow['technician_id'] ?? null) || in_array(strtoupper((string)$existingJobRow['status']), ['ASSIGNED', 'IN_PROGRESS', 'WAITING_FOR_PARTS', 'PENDING_APPROVAL'], true)) {
             json_error('Job Card '.$existingJobRow['job_card_no'].' already exists for this case and is already assigned. Use Technician Dispatch / handover instead of generating a new one.', 409);
         }
         $jobId = (string)$existingJobRow['id'];
@@ -1017,6 +1024,9 @@ if ($method === 'POST' && $action === 'job-card') {
         $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
         $jobId=uuid();
         db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,job_location,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$initialJobStatus,$jobLocation?:null,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind']),date('c')]);
+    }
+    if ($ctx['kind']==='customer') {
+        bw_log($caseId,'TECHNICIAN_ASSIGNMENT','Workshop','Digital Job Card '.$num.' created','Internal Customer Job Card - remains inside the customer workshop team.',$ctx);
     }
     if ($techId !== '') {
         bw_set_stage($caseId,'JOB_CARD_ASSIGNED',null,$ctx,'Digital Job Card '.$num.' generated and assigned');
@@ -1077,9 +1087,12 @@ if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
         if (in_array($status,['STORE_AVAILABLE','PROCUREMENT_REQUIRED','PARTS_READY'],true) && !in_array($role,['store_keeper','workshop_manager','admin'],true)) json_error('Store Keeper or Workshop Manager action required.',403);
         if (in_array($status,['PI_WAITING_ACCOUNTS','ORDERED'],true) && !in_array($role,['procurement','accounts','admin'],true)) json_error('Procurement or Accounts action required.',403);
     }
-    $stage=match($status){'STORE_AVAILABLE','PARTS_READY'=>'PARTS_READY','PROCUREMENT_REQUIRED','ORDERED'=>'PROCUREMENT','PI_WAITING_ACCOUNTS'=>'ACCOUNTS',default=>'STORE_CHECK'};
-    db()->prepare('UPDATE breakdown_spare_requests SET status=?,fulfilled_by_name=CASE WHEN ?=\'PARTS_READY\' THEN ? ELSE fulfilled_by_name END,fulfilled_at=CASE WHEN ?=\'PARTS_READY\' THEN NOW() ELSE fulfilled_at END,updated_at=NOW() WHERE id=?')->execute([$status,$status,$ctx['actorName'],$status,$id]);
-    bw_set_stage($s['case_id'],$stage,trim((string)($b['note']??''))?:null,$ctx,'Spare process: '.$status);
+    $stage=match($status){'STORE_AVAILABLE'=>'PARTS_READY','PARTS_READY'=>'REPAIR','PROCUREMENT_REQUIRED','ORDERED'=>'PROCUREMENT','PI_WAITING_ACCOUNTS'=>'ACCOUNTS',default=>'STORE_CHECK'};
+    db()->prepare("UPDATE breakdown_spare_requests SET status=?,fulfilled_by_name=CASE WHEN ?='PARTS_READY' THEN ? ELSE fulfilled_by_name END,fulfilled_at=CASE WHEN ?='PARTS_READY' THEN NOW() ELSE fulfilled_at END,updated_at=NOW() WHERE id=?")->execute([$status,$status,$ctx['actorName'],$status,$id]);
+    if($status==='PARTS_READY' && !empty($s['job_card_id'])) {
+        db()->prepare("UPDATE digital_job_cards SET status='IN_PROGRESS',updated_at=NOW() WHERE id=? AND status='WAITING_FOR_PARTS'")->execute([(string)$s['job_card_id']]);
+    }
+    bw_set_stage($s['case_id'],$stage,trim((string)($b['note']??''))?:null,$ctx,$status==='PARTS_READY'?'Parts ready - Technician can continue repair':'Spare process: '.$status);
     try {
         if ($status==='PROCUREMENT_REQUIRED') customer_send_team_alert((string)$s['customer_id'],['service-request','store'],'PROCUREMENT ACTION REQUIRED','Approved spare is not available in Store. Procurement action is required. Open Breakdown Workflow.',true);
         if ($status==='PI_WAITING_ACCOUNTS') customer_send_team_alert((string)$s['customer_id'],['email'],'ACCOUNTS / PI ACTION REQUIRED','Procurement has sent a breakdown spare requirement to Accounts. Open Breakdown Workflow.',true);
@@ -1101,7 +1114,7 @@ if ($method === 'PUT' && $action === 'job-open' && $id !== '') {
     bw_require_assigned_job($ctx,$job);
     $firstOpen=empty($job['started_at']);
     if($firstOpen){
-        db()->prepare("UPDATE digital_job_cards SET started_at=COALESCE(started_at,NOW()),status=CASE WHEN UPPER(COALESCE(status,'')) IN ('ASSIGNED','OPEN','RECEIVED') THEN 'IN_PROGRESS' ELSE status END,updated_at=NOW() WHERE id=?")
+        db()->prepare("UPDATE digital_job_cards SET started_at=COALESCE(started_at,NOW()),status=CASE WHEN UPPER(COALESCE(status,'')) IN ('ASSIGNED','OPEN','RECEIVED','CREATED') THEN 'IN_PROGRESS' ELSE status END,updated_at=NOW() WHERE id=?")
             ->execute([$id]);
         $stage=strtoupper(trim((string)($job['current_stage']??'')));
         if(in_array($stage,['JOB_CARD_ASSIGNED','TECHNICIAN_ASSIGNMENT','WORKSHOP_REVIEW'],true)){
@@ -1119,6 +1132,10 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
     $isTechActor=!empty($ctx['isTechnician']) || ($ctx['kind']==='customer' && $ctx['role']==='technician');
     if(!$isTechActor) json_error('Only a Technician can save the technical Job Card report.',403);
     bw_require_assigned_job($ctx,$job);
+    $currentJobStatus=strtoupper(trim((string)($job['status']??'')));
+    if(in_array($currentJobStatus,['PENDING_APPROVAL','COMPLETED','CANCELLED'],true)) {
+        json_error($currentJobStatus==='PENDING_APPROVAL'?'This Job Card has already been submitted for approval. It can be edited again only if the reviewer returns it to the Technician.':'This Job Card is already closed.',409);
+    }
     $b=body(); $complete=!empty($b['complete']);
     $diagnosis=trim((string)($b['diagnosis']??''));
     $work=trim((string)($b['workDone']??''));
@@ -1126,13 +1143,13 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
     $requiredSpareQty=(float)($b['requiredSpareQty']??1);
     if($requiredSpare!=='' && $requiredSpareQty<=0) json_error('Required Spare quantity must be greater than zero.');
     if($diagnosis==='') json_error('Diagnosis is required.');
-    if($complete && $work==='') json_error('Work done is required before sending the Job Card to Testing.');
+    if($complete && $work==='') json_error('Work done is required before submitting the Job Card for approval.');
     $activeSpareStmt=db()->prepare("SELECT COUNT(*) AS total,string_agg(spare_name, ', ' ORDER BY requested_at) AS names FROM breakdown_spare_requests WHERE job_card_id=? AND UPPER(COALESCE(status,'')) NOT IN ('REJECTED','PARTS_READY')");
     $activeSpareStmt->execute([$id]);
     $activeSpareRow=$activeSpareStmt->fetch()?:['total'=>0,'names'=>''];
     $activeSpareCount=(int)($activeSpareRow['total']??0);
     $activeSpareNames=trim((string)($activeSpareRow['names']??''));
-    if($complete && ($requiredSpare!=='' || $activeSpareCount>0)) json_error('A Job Card with a Required Spare must wait for the spare before Testing.',409);
+    if($complete && ($requiredSpare!=='' || $activeSpareCount>0)) json_error('A Job Card with a Required Spare must wait until the parts are ready before it can be submitted for approval.',409);
     $repeatProvided=array_key_exists('repeatIssue',$b);
     $repeat=!empty($b['repeatIssue']);
     if ($complete && !$repeatProvided) {
@@ -1140,8 +1157,9 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
         $rp->execute([$id,$job['machine_id'],$job['title']]);
         $repeat=(bool)$rp->fetchColumn();
     }
-    db()->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,diagnosis=?,work_done=?,test_result=?,completion_note=?,repeat_issue=?,status=?,started_at=COALESCE(started_at,NOW()),completed_at=CASE WHEN ? THEN NOW() ELSE NULL END,updated_at=NOW() WHERE id=?")
-        ->execute([$ctx['actorId'],$ctx['actorName'],$diagnosis,$work?:null,trim((string)($b['testResult']??''))?:null,trim((string)($b['completionNote']??''))?:null,$repeat?1:0,$complete?'COMPLETED':'IN_PROGRESS',$complete?1:0,$id]);
+    $nextJobStatus=$complete?'PENDING_APPROVAL':(($requiredSpare!==''||$activeSpareCount>0)?'WAITING_FOR_PARTS':'IN_PROGRESS');
+    db()->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,diagnosis=?,work_done=?,test_result=?,completion_note=?,repeat_issue=?,status=?,started_at=COALESCE(started_at,NOW()),technician_submitted_at=CASE WHEN ? THEN NOW() ELSE technician_submitted_at END,completed_at=NULL,reviewed_at=CASE WHEN ? THEN NULL ELSE reviewed_at END,reviewed_by_name=CASE WHEN ? THEN NULL ELSE reviewed_by_name END,review_note=CASE WHEN ? THEN NULL ELSE review_note END,updated_at=NOW() WHERE id=?")
+        ->execute([$ctx['actorId'],$ctx['actorName'],$diagnosis,$work?:null,trim((string)($b['testResult']??''))?:null,trim((string)($b['completionNote']??''))?:null,$repeat?1:0,$nextJobStatus,$complete?1:0,$complete?1:0,$complete?1:0,$complete?1:0,$id]);
     $spareCreated=false;
     if($requiredSpare!==''){
         $existingSpare=db()->prepare("SELECT id FROM breakdown_spare_requests WHERE job_card_id=? AND LOWER(TRIM(spare_name))=LOWER(TRIM(?)) AND UPPER(COALESCE(status,'')) NOT IN ('REJECTED','PARTS_READY') LIMIT 1");
@@ -1165,11 +1183,11 @@ Open Breakdown Workflow to approve or reject.");
     }elseif($activeSpareCount>0){
         bw_set_stage($job['case_id'],'BOSS_APPROVAL','Required spare: '.($activeSpareNames?:'Waiting for spare'),$ctx,'Diagnosis updated - required spare still waiting');
     }else{
-        bw_set_stage($job['case_id'],$complete?'TESTING':'REPAIR',null,$ctx,$complete?'Technician repair completed - waiting Workshop test':'Technician Diagnosis Report saved');
+        bw_set_stage($job['case_id'],$complete?'PENDING_APPROVAL':'REPAIR',null,$ctx,$complete?'Technician submitted completed work - waiting approval':'Technician Diagnosis Report saved');
     }
     if (($case['source_type'] ?? '') === 'SERVICE_REQUEST' && !empty($case['source_id'])) {
         // Technician work means the support request is operationally in progress.
-        // Completion remains a Workshop decision after testing; do not close it here.
+        // Completion remains a reviewer decision after Technician submission; do not close it here.
         $srState=db()->prepare('SELECT status FROM service_requests WHERE id=?');
         $srState->execute([(string)$case['source_id']]);
         $oldSrStatus=strtoupper((string)($srState->fetchColumn() ?: ''));
@@ -1187,7 +1205,7 @@ Open Breakdown Workflow to approve or reject.");
     $belmDelivery=['sent'=>0,'failed'=>0,'recipients'=>[]];
     $portalCommunicationId=null;
     $customerSubject='TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'];
-    $jobReportStatus=($requiredSpare!==''||$activeSpareCount>0)?'Waiting for Spare':($complete?'Testing':'Diagnosis Report / In progress');
+    $jobReportStatus=($requiredSpare!==''||$activeSpareCount>0)?'Waiting for Parts':($complete?'Pending Approval':'Diagnosis Report / In progress');
     $customerBody="Job Card: {$job['job_card_no']}\nTechnician: {$ctx['actorName']}\nDiagnosis: $diagnosis\nWork done: $work\nStatus: $jobReportStatus".(($requiredSpare!==''||$activeSpareNames!=='')?"\nRequired spare: ".($requiredSpare?:$activeSpareNames):'').($repeat?'\nRepeat/Rework: YES':'');
     try {
         $customerDelivery=customer_send_team_alert((string)$case['customer_id'],['workflow','check-up'],$customerSubject,$customerBody,true);
@@ -1237,6 +1255,48 @@ Open Breakdown Workflow to approve or reject.");
             ],
         ],
     ]);
+}
+
+
+// V410 - final Job Card closure is a reviewer decision, never a Technician action.
+// Official Customer -> BELM jobs are reviewed by BELM Super Admin / Engineer.
+// Customer-internal jobs are reviewed by that Customer's Admin / Workshop Manager.
+if ($method === 'PUT' && $action === 'job-approval' && $id !== '') {
+    $stmt=db()->prepare('SELECT jc.*,bc.source_type,bc.source_id,bc.status AS case_status,c.is_machinery_admin FROM digital_job_cards jc JOIN breakdown_cases bc ON bc.id=jc.case_id JOIN customers c ON c.id=jc.customer_id WHERE jc.id=?');
+    $stmt->execute([$id]);
+    $job=$stmt->fetch();
+    if(!$job) json_error('Job Card not found.',404);
+    $case=bw_case_access($ctx,(string)$job['case_id']);
+    if(bw_is_technician_actor($ctx)) json_error('Technicians cannot approve their own Job Cards.',403);
+    $officialBelmJob=strtoupper((string)($job['source_type']??''))==='SERVICE_REQUEST' || $ctx['kind']==='belm';
+    if($officialBelmJob){
+        if($ctx['kind']!=='belm' || empty($ctx['canApproveJob'])) json_error('BELM Super Admin or Engineer approval is required for this Job Card.',403);
+    }else{
+        if($ctx['kind']!=='customer' || empty($ctx['canApproveJob']) || empty($job['is_machinery_admin'])) json_error('Customer Admin or Workshop Manager approval is required for this internal Job Card.',403);
+    }
+    if(strtoupper((string)$job['status'])!=='PENDING_APPROVAL') json_error('Only a Job Card in Pending Approval can be reviewed.',409);
+    $b=body(); $approve=!empty($b['approve']); $note=trim((string)($b['note']??''));
+    if(!$approve && $note==='') json_error('Enter a reason before returning the Job Card to the Technician.');
+    if($approve){
+        db()->prepare("UPDATE digital_job_cards SET status='COMPLETED',reviewed_at=NOW(),reviewed_by_name=?,review_note=?,completed_at=NOW(),updated_at=NOW() WHERE id=?")
+            ->execute([$ctx['actorName'],$note?:null,$id]);
+        bw_set_stage((string)$job['case_id'],'COMPLETED',null,$ctx,'Job Card approved - machine returned to service');
+        try {
+            $mail=db()->prepare('SELECT email FROM users WHERE id=?'); $mail->execute([(string)($job['technician_id']??'')]);
+            $email=trim((string)$mail->fetchColumn());
+            if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'JOB CARD APPROVED - '.$job['job_card_no'],"Job Card {$job['job_card_no']} has been approved by {$ctx['actorName']}.\nStatus: COMPLETED".($note!==''?"\nReview note: $note":''));
+        } catch(Throwable $e) {}
+        json_out(['ok'=>true,'status'=>'COMPLETED','message'=>'Job Card approved and closed.']);
+    }
+    db()->prepare("UPDATE digital_job_cards SET status='IN_PROGRESS',reviewed_at=NOW(),reviewed_by_name=?,review_note=?,completed_at=NULL,updated_at=NOW() WHERE id=?")
+        ->execute([$ctx['actorName'],$note,$id]);
+    bw_set_stage((string)$job['case_id'],'REPAIR',$note,$ctx,'Job Card returned to Technician for correction / additional work');
+    try {
+        $mail=db()->prepare('SELECT email FROM users WHERE id=?'); $mail->execute([(string)($job['technician_id']??'')]);
+        $email=trim((string)$mail->fetchColumn());
+        if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'JOB CARD RETURNED - '.$job['job_card_no'],"Job Card {$job['job_card_no']} was returned by {$ctx['actorName']}.\nReason: $note\nOpen My Job Cards and update the report.");
+    } catch(Throwable $e) {}
+    json_out(['ok'=>true,'status'=>'IN_PROGRESS','message'=>'Job Card returned to Technician.']);
 }
 
 if ($method === 'PUT' && $action === 'stage' && $id !== '') {

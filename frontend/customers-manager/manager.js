@@ -229,7 +229,7 @@
     const operatorMeta = operatorReport
       ? `${operatorName}${operatorCreated ? ` · ${formatDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
       : "Waiting for Operator report";
-    return `<article class="machine-card ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
+    return `<article class="machine-card machine-card-v409 ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <div class="machine-title-row">
           <h4>${escapeHtml(machineTitle)}</h4>
@@ -413,7 +413,7 @@
           <div class="customer-feed-body">Loading recent updates…</div>
         </div>
         <nav class="customer-card-actions customer-card-quick-actions" aria-label="Customer quick actions">
-          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">Customer Machine</button>
+          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">View Machine</button>
           <a class="customer-quick-action action-blue" href="/engineering-manager/">Workshop</a>
           <a class="customer-quick-action action-green" href="/spare-parts-manager/">Procurement</a>
           <a class="customer-quick-action action-yellow" href="/reports-manager/">General Report</a>

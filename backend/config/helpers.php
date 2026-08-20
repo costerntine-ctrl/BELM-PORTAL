@@ -2017,7 +2017,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         // maintenance case backwards to Assignment/Diagnosis. Repair the source
         // request forward from the operational Job Card first.
         if (!in_array($status, ['COMPLETED','CANCELLED'], true) && $jobTechnicianId !== '') {
-            if (in_array($jobStatus, ['IN_PROGRESS','COMPLETED'], true) && in_array($status, ['OPEN','ASSIGNED'], true)) {
+            if (in_array($jobStatus, ['IN_PROGRESS','WAITING_FOR_PARTS','PENDING_APPROVAL','COMPLETED'], true) && in_array($status, ['OPEN','ASSIGNED'], true)) {
                 db()->prepare(
                     "UPDATE service_requests SET assigned_to_id=?,status='IN_PROGRESS',started_at=COALESCE(started_at,NOW()),updated_at=NOW() WHERE id=?"
                 )->execute([$jobTechnicianId,$requestId]);
@@ -2031,7 +2031,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
                 $status = 'ASSIGNED';
                 $row['assigned_to_id'] = $jobTechnicianId;
                 $row['assigned_to_name'] = $jobTechnicianName ?: ($row['assigned_to_name'] ?? 'Technician');
-            } elseif (in_array($jobStatus, ['ASSIGNED','IN_PROGRESS','COMPLETED'], true)
+            } elseif (in_array($jobStatus, ['ASSIGNED','IN_PROGRESS','WAITING_FOR_PARTS','PENDING_APPROVAL','COMPLETED'], true)
                 && (string)($row['assigned_to_id'] ?? '') !== $jobTechnicianId) {
                 db()->prepare('UPDATE service_requests SET assigned_to_id=?,updated_at=NOW() WHERE id=?')
                     ->execute([$jobTechnicianId,$requestId]);
@@ -2091,12 +2091,13 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         }
 
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
-        if ($jobStatus === 'COMPLETED' && $caseStatus !== 'COMPLETED'
-            && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS','REPAIR'],true)) {
-            // Technician completion means Workshop testing is the next safe stage.
-            // This also repairs an interrupted request where the Job Card save
-            // succeeded but the stage update did not.
-            $newStage='TESTING'; $department='Workshop'; $action='Completed Job Card synchronized - waiting Workshop test';
+        if ($jobStatus === 'PENDING_APPROVAL' && $caseStatus !== 'COMPLETED'
+            && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS','REPAIR','TESTING'],true)) {
+            $newStage='PENDING_APPROVAL'; $department='Administration / Engineering'; $action='Technician completed work - waiting Job Card approval';
+        } elseif ($jobStatus === 'COMPLETED' && $caseStatus !== 'COMPLETED'
+            && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS','REPAIR','TESTING','PENDING_APPROVAL'],true)) {
+            // Legacy/recovered completed Job Cards may still need the case closure step.
+            $newStage='COMPLETED'; $department='Completed'; $action='Approved Job Card synchronized - case closed'; $close=true;
         } elseif ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && empty($row['assigned_to_id'])
             && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED'],true)) {
             $newStage='TECHNICIAN_ASSIGNMENT'; $department='Workshop / Dispatch';

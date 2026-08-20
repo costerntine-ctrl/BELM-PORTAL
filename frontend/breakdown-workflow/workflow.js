@@ -381,7 +381,7 @@
 
   function renderJobCard(j,c){
     const awaitingTech=!j.technician_id && !['COMPLETED','CANCELLED'].includes(String(j.status||'').toUpperCase());
-    const customerIssued=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST'||String(j.issued_by_type||'').toUpperCase()==='CUSTOMER';
+    const customerIssued=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST';
     return `<div class="job"><div class="job-head"><b>${esc(j.job_card_no)} - ${esc(j.title)}</b><span class="pill">${esc(j.status)}</span></div>
       ${customerIssued?`<div class="job-receipt-confirmation"><b>✓ RECEIVED BY BELM</b><span>${fmtDate(j.issued_at||j.created_at)} · Current: ${esc(String(j.status||'RECEIVED').replaceAll('_',' '))}</span></div>`:''}
       <small>Issued by: <b>${esc(j.issued_by_name||j.generated_by_name||c.customerName||'Customer')}</b> · ${fmtDate(j.issued_at||j.created_at)}</small>
@@ -389,8 +389,9 @@
       ${awaitingTech?'<div class="job-override-badge job-awaiting-tech">AWAITING TECHNICIAN ASSIGNMENT · Workshop / Dispatch action required</div>':''}
       ${j.temporary_override?`<div class="job-override-badge">TEMPORARY OVERRIDE · Home: ${esc(j.technician_home_customer_name||'Other customer')}</div>`:''}
       ${j.diagnosis?`<p><b>Diagnosis:</b> ${esc(j.diagnosis)}</p><p><b>Work done:</b> ${esc(j.work_done)}</p>${j.test_result?`<p><b>Test:</b> ${esc(j.test_result)}</p>`:''}`:''}
+      ${j.reviewed_by_name?`<p><b>Review:</b> ${esc(j.reviewed_by_name)}${j.review_note?` · ${esc(j.review_note)}`:''}</p>`:''}
       ${j.billing_status&&j.billing_status!=='NOT_READY'?`<div class="job-billing-status"><b>Procurement / Billing:</b> ${esc(String(j.billing_status).replaceAll('_',' '))}</div>`:''}
-      <div class="actions"><button class="blue" data-job-pdf="${esc(j.id)}">Download Job Card PDF</button>${isTechnician&&j.status!=='COMPLETED'?`<button class="blue" data-tech-report="${esc(j.id)}">Open / Save Job Report</button>`:''}${serviceJobCardActions(j,c)}</div></div>`;
+      <div class="actions"><button class="blue" data-job-pdf="${esc(j.id)}">Download Job Card PDF</button>${isTechnician&&!['COMPLETED','PENDING_APPROVAL'].includes(String(j.status||'').toUpperCase())?`<button class="blue" data-tech-report="${esc(j.id)}">Open / Save Job Report</button>`:''}${serviceJobCardActions(j,c)}</div></div>`;
   }
 
   async function signedJobFile(jobId, download=false){
@@ -446,11 +447,12 @@
     if(!mainJob)return `<div class="stage-detail-empty">No Main Job Card has been created for this case yet.</div>`;
 
     if(key==='RECEIVED'){
-      const receivedBy=receivedEvent?.actor_name||'BELM Engineering / automatic receipt';
+      const officialBelmJob=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST';
+      const receivedBy=receivedEvent?.actor_name||(officialBelmJob?'BELM Engineering / automatic receipt':(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer Workshop'));
       const receivedAt=receivedEvent?.created_at||mainJob.issued_at||mainJob.created_at;
       const canAssign=isBelmAdmin&&!['COMPLETED','CANCELLED'].includes(jobStatus);
       const assignControl=canAssign?`<label class="main-job-tech-control stage-tech-control"><span>${techName?'Assigned Technician':'Assign Technician'}</span><select class="main-job-technician-select" data-job-id="${esc(mainJob.id)}" data-current-technician-id="${esc(techId)}" data-current-technician-name="${esc(techName)}"><option value="${esc(techId)}">${techName?esc(techName+' · ASSIGNED'):'Loading Technicians...'}</option></select><small class="main-job-tech-status">${techName?`Assigned to ${esc(techName)}. Select another Technician only to reassign.`:'Select a Technician to assign this Job Card.'}</small></label>`:'';
-      return `<div class="stage-detail-head"><div><span>STAGE 1</span><h4>Received by BELM</h4></div><span class="pill green">RECEIVED</span></div><div class="stage-detail-grid">${info('Job Card',esc(mainJob.job_card_no||'-'))}${info('Received by',esc(receivedBy))}${info('Received at',fmtDate(receivedAt))}${info('Issued by',esc(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer'))}</div>${receivedEvent?note(receivedEvent):'<div class="stage-detail-event"><b>Automatic BELM receipt</b><p>This Job Card was synchronized into Engineering from its source request.</p></div>'}${assignControl}`;
+      return `<div class="stage-detail-head"><div><span>STAGE 1</span><h4>${officialBelmJob?'Received by BELM':'Created'}</h4></div><span class="pill green">${officialBelmJob?'RECEIVED':'CREATED'}</span></div><div class="stage-detail-grid">${info('Job Card',esc(mainJob.job_card_no||'-'))}${info(officialBelmJob?'Received by':'Created by',esc(receivedBy))}${info(officialBelmJob?'Received at':'Created at',fmtDate(receivedAt))}${info('Issued by',esc(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer'))}</div>${receivedEvent?note(receivedEvent):(officialBelmJob?'<div class="stage-detail-event"><b>Automatic BELM receipt</b><p>This Job Card was synchronized into Engineering from its source request.</p></div>':'<div class="stage-detail-event"><b>Customer workshop Job Card</b><p>This Job Card stays inside the customer team unless Customer Admin sends a separate official Job Card to BELM.</p></div>')}${assignControl}`;
     }
     if(key==='ASSIGNED'){
       return `<div class="stage-detail-head"><div><span>STAGE 2</span><h4>Assigned Technician</h4></div><span class="pill yellow">${techName?'ASSIGNED':'WAITING'}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Not assigned yet'))}${info('Assigned by',esc(assignedEvent?.actor_name||'-'))}${info('Assigned at',assignedEvent?fmtDate(assignedEvent.created_at):'-')}${info('Job status',esc(jobStatus||'RECEIVED'))}</div>${note(assignedEvent)}`;
@@ -458,18 +460,22 @@
     if(key==='IN_PROGRESS'){
       const last=progressEvents.length?progressEvents[progressEvents.length-1]:null;
       const recent=progressEvents.slice(-3).map(note).join('');
-      return `<div class="stage-detail-head"><div><span>STAGE 3</span><h4>Work in Progress</h4></div><span class="pill">${esc(jobStatus||'WAITING')}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Unassigned'))}${info('Started',fmtDate(mainJob.started_at||last?.created_at))}${info('Diagnosis',esc(mainJob.diagnosis||'Not reported yet'))}${info('Work done',esc(mainJob.work_done||'No progress report yet'))}</div>${recent||'<div class="stage-detail-empty">No Technician progress update recorded yet.</div>'}`;
+      return `<div class="stage-detail-head"><div><span>STAGE 3</span><h4>${jobStatus==='WAITING_FOR_PARTS'?'Waiting for Parts':'Work in Progress'}</h4></div><span class="pill">${esc(jobStatus||'WAITING')}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Unassigned'))}${info('Started',fmtDate(mainJob.started_at||last?.created_at))}${info('Diagnosis',esc(mainJob.diagnosis||'Not reported yet'))}${info('Work done',esc(mainJob.work_done||'No progress report yet'))}</div>${recent||'<div class="stage-detail-empty">No Technician progress update recorded yet.</div>'}`;
     }
     if(key==='SPARES'){
       const spares=detail?.spares||[];
       const rows=spares.length?spares.slice().reverse().map(s=>`<div class="stage-spare-row"><b>${esc(s.spareName??s.spare_name??'Spare')} x ${esc(s.quantity??1)} ${esc(s.unit??'pcs')}</b><span class="pill">${esc(String(s.status||'').replaceAll('_',' '))}</span><small>Requested by ${esc(s.requestedByName??s.requested_by_name??'-')} · ${fmtDate(s.requestedAt??s.requested_at)}</small></div>`).join(''):'<div class="stage-detail-empty">No spare request recorded for this Job Card.</div>';
       return `<div class="stage-detail-head"><div><span>STAGE 4</span><h4>Spares / Parts</h4></div><span class="pill">${spares.length}</span></div>${rows}`;
     }
+    if(key==='PENDING_APPROVAL'){
+      const pending=jobStatus==='PENDING_APPROVAL';
+      return `<div class="stage-detail-head"><div><span>STAGE 4</span><h4>Pending Approval</h4></div><span class="pill yellow">${pending?'PENDING APPROVAL':'WAITING'}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Unassigned'))}${info('Submitted',fmtDate(mainJob.technician_submitted_at||testingEvent?.created_at))}${info('Test result',esc(mainJob.test_result||'Not recorded'))}${info('Completion note',esc(mainJob.completion_note||'-'))}</div>${mainJob.review_note?`<div class="stage-detail-event"><b>Latest review</b><p>${esc(mainJob.review_note)}</p><small>${esc(mainJob.reviewed_by_name||'Reviewer')} · ${fmtDate(mainJob.reviewed_at)}</small></div>`:''}`;
+    }
     if(key==='TESTING'){
-      return `<div class="stage-detail-head"><div><span>STAGE 5</span><h4>Workshop Testing</h4></div><span class="pill">${testingEvent?'TESTING':'WAITING'}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Unassigned'))}${info('Repair completed',fmtDate(mainJob.completed_at||testingEvent?.created_at))}${info('Test result',esc(mainJob.test_result||'Not recorded yet'))}${info('Completion note',esc(mainJob.completion_note||'-'))}</div>${note(testingEvent)}`;
+      return `<div class="stage-detail-head"><div><span>LEGACY</span><h4>Workshop Testing</h4></div><span class="pill">${testingEvent?'TESTING':'WAITING'}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Unassigned'))}${info('Repair completed',fmtDate(mainJob.completed_at||testingEvent?.created_at))}${info('Test result',esc(mainJob.test_result||'Not recorded yet'))}${info('Completion note',esc(mainJob.completion_note||'-'))}</div>${note(testingEvent)}`;
     }
     if(key==='COMPLETED'){
-      return `<div class="stage-detail-head"><div><span>STAGE 6</span><h4>Completed / Returned to Service</h4></div><span class="pill green">${String(c.status||'').toUpperCase()==='COMPLETED'?'COMPLETED':'WAITING'}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Unassigned'))}${info('Completed at',fmtDate(mainJob.completed_at||completedEvent?.created_at))}${info('Closed by',esc(completedEvent?.actor_name||'-'))}${info('Signed Job Card',mainJob.has_signed_copy?'Yes':'Not uploaded')}</div>${note(completedEvent)}`;
+      return `<div class="stage-detail-head"><div><span>STAGE 5</span><h4>Completed / Returned to Service</h4></div><span class="pill green">${String(c.status||'').toUpperCase()==='COMPLETED'?'COMPLETED':'WAITING'}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Unassigned'))}${info('Completed at',fmtDate(mainJob.completed_at||completedEvent?.created_at))}${info('Closed by',esc(completedEvent?.actor_name||'-'))}${info('Signed Job Card',mainJob.has_signed_copy?'Yes':'Not uploaded')}</div>${note(completedEvent)}`;
     }
     return '<div class="stage-detail-empty">No stage detail available.</div>';
   }
@@ -489,22 +495,24 @@
     const mainJob=d.jobCards.find(j=>!['COMPLETED','CANCELLED'].includes(String(j.status||'').toUpperCase())) || d.jobCards[0] || null;
     const jobStatus=String(mainJob?.status||'').toUpperCase();
     const hasOpenSpare=d.spares.some(s=>!['REJECTED','PARTS_READY'].includes(String(s.status||'').toUpperCase()));
-    const blockerText=c.blockerReason?esc(c.blockerReason):(awaitingAssignment?'Assign a Technician to the RECEIVED Job Card.':'No blocker reason recorded.');
+    const blockerText=c.blockerReason?esc(c.blockerReason):(awaitingAssignment?`Assign a Technician to the ${String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST'?'RECEIVED':'CREATED'} Job Card.`:'No blocker reason recorded.');
     const focusClass=c.delayed?'delayed':c.status==='COMPLETED'?'complete':'';
     const focusTitle=c.status==='COMPLETED'?'COMPLETED - MACHINE RETURNED TO SERVICE':awaitingAssignment?`${c.delayed?'DELAYED - ':''}AWAITING TECHNICIAN ASSIGNMENT - WORKSHOP / DISPATCH OWNS THE NEXT ACTION`:`${c.delayed?'DELAYED - ':''}${esc(c.department)} OWNS THE NEXT ACTION`;
     const sparesHtml=d.spares.length?d.spares.map(s=>{const spareName=s.spareName??s.spare_name??'Spare';const partNumber=s.partNumber??s.part_number??'';const requestedBy=s.requestedByName??s.requested_by_name??'-';const requestedAt=s.requestedAt??s.requested_at;const approvedBy=s.approvedByName??s.approved_by_name;const approvedAt=s.approvedAt??s.approved_at;return `<div class="spare"><div class="spare-head"><b>${esc(spareName)} x ${esc(s.quantity)} ${esc(s.unit)}</b><span class="pill">${esc(String(s.status||'').replaceAll('_',' '))}</span></div><small>${esc(partNumber||'No part number')} · Requested by ${esc(requestedBy)} · ${fmtDate(requestedAt)}</small>${approvedBy?`<div><small>Administration: ${esc(approvedBy)} · ${fmtDate(approvedAt)}</small></div>`:''}<div class="actions">${spareActions(s)}</div></div>`}).join(''):'<div class="empty">No spare request on this case.</div>';
     const jobsHtml=d.jobCards.length?d.jobCards.map(j=>renderJobCard(j,c)).join(''):'<div class="empty">No Job Card yet.</div>';
     const timelineHtml=d.events.length?`<div class="timeline">${d.events.map(e=>`<div class="event"><b>${esc(e.action)} - ${esc(e.department)}</b><div>${esc(e.note||'')}</div><small>${esc(e.actor_name||'System')} · ${fmtDate(e.created_at)}</small></div>`).join('')}</div>`:'<div class="empty">No process event recorded.</div>';
 
-    const processKey=c.status==='COMPLETED'?'COMPLETED':
-      (c.stage==='TESTING'?'TESTING':
-      (['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS','PARTS_READY'].includes(c.stage)||hasOpenSpare?'SPARES':
-      (jobStatus==='IN_PROGRESS'||['DIAGNOSIS','REPAIR'].includes(c.stage)?'IN_PROGRESS':
-      (jobStatus==='ASSIGNED'||c.stage==='JOB_CARD_ASSIGNED'?'ASSIGNED':'RECEIVED'))));
-    const receivedStepLabel=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST'?'Received by BELM':'Job Card Issued';
-    const steps=[['RECEIVED',receivedStepLabel],['ASSIGNED','Assigned'],['IN_PROGRESS','In Progress'],['SPARES','Spares'],['TESTING','Testing'],['COMPLETED','Completed']];
+    const waitingParts=jobStatus==='WAITING_FOR_PARTS'||['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS'].includes(c.stage)||hasOpenSpare;
+    const processKey=c.status==='COMPLETED'||jobStatus==='COMPLETED'?'COMPLETED':
+      (jobStatus==='PENDING_APPROVAL'||c.stage==='PENDING_APPROVAL'?'PENDING_APPROVAL':
+      (jobStatus==='IN_PROGRESS'||waitingParts||['DIAGNOSIS','REPAIR','TESTING'].includes(c.stage)?'IN_PROGRESS':
+      (jobStatus==='ASSIGNED'||c.stage==='JOB_CARD_ASSIGNED'?'ASSIGNED':'RECEIVED')));
+    const officialBelmJob=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST';
+    const receivedStepLabel=officialBelmJob?'Received by BELM':'Created';
+    const steps=[['RECEIVED',receivedStepLabel],['ASSIGNED','Assigned'],['IN_PROGRESS',waitingParts?'Waiting for Parts':'In Progress'],['PENDING_APPROVAL','Pending Approval'],['COMPLETED','Completed']];
     const activeIndex=Math.max(0,steps.findIndex(([key])=>key===processKey));
-    const processHtml=`<div class="job-process-card"><div class="job-process-title"><div><span>MAIN JOB CARD PROCESS</span><b>${mainJob?esc(mainJob.job_card_no+' · '+mainJob.title):'Waiting for Job Card'}</b></div>${mainJob?`<span class="pill">${esc(jobStatus||'RECEIVED')}</span>`:''}</div><div class="job-process-steps">${steps.map(([key,label],i)=>`<button type="button" class="job-process-step ${i<activeIndex?'done':i===activeIndex?'active':''}" data-process-step="${key}" aria-pressed="false" title="Press to view ${esc(label)} details"><span>${i+1}</span><b>${label}</b></button>`).join('')}</div><div id="jobProcessStageDetail" class="job-stage-detail"><div class="stage-detail-placeholder">Press Received, Assigned, In Progress, Spares, Testing or Completed to view who handled that stage and what happened.</div></div><div class="job-process-actions">${mainJob?`<button class="blue" data-job-pdf="${esc(mainJob.id)}">Download Main Job Card PDF</button>`:''}${(isWorkshop||isTechnician)&&c.status!=='COMPLETED'&&mainJob?'<button class="yellow" id="requestSpare">Request Spare</button>':''}${isWorkshop&&c.stage==='TESTING'?'<button class="approve" id="completeCase">Test Passed - Return to Service</button>':''}</div></div>`;
+    const canApprovePending=mainJob&&jobStatus==='PENDING_APPROVAL'&&((isBelmAdmin&&officialBelmJob)||(isBelmAdmin&&!officialBelmJob)||(source==='customer'&&c.customerManagesWorkshop&&(isOwner||['admin','workshop_manager'].includes(customerRole))));
+    const processHtml=`<div class="job-process-card"><div class="job-process-title"><div><span>MAIN JOB CARD PROCESS</span><b>${mainJob?esc(mainJob.job_card_no+' · '+mainJob.title):'Waiting for Job Card'}</b></div>${mainJob?`<span class="pill">${esc(jobStatus||'CREATED')}</span>`:''}</div><div class="job-process-steps">${steps.map(([key,label],i)=>`<button type="button" class="job-process-step ${i<activeIndex?'done':i===activeIndex?'active':''}" data-process-step="${key}" aria-pressed="false" title="Press to view ${esc(label)} details"><span>${i+1}</span><b>${label}</b></button>`).join('')}</div><div id="jobProcessStageDetail" class="job-stage-detail"><div class="stage-detail-placeholder">Press a stage to view who handled it and what happened.</div></div><div class="job-process-actions">${mainJob?`<button class="blue" data-job-pdf="${esc(mainJob.id)}">Download Main Job Card PDF</button>`:''}${(isWorkshop||isTechnician)&&c.status!=='COMPLETED'&&mainJob&&!['PENDING_APPROVAL','COMPLETED'].includes(jobStatus)?'<button class="yellow" id="requestSpare">Request Spare</button>':''}${canApprovePending?'<button class="approve" id="approveJobCard">Approve & Complete</button><button class="reject" id="returnJobCard">Return to Technician</button>':''}${isWorkshop&&c.stage==='TESTING'&&jobStatus==='COMPLETED'?'<button class="approve" id="completeCase">Legacy Test Passed - Return to Service</button>':''}</div></div>`;
     const mainJobTechnicianId=String(mainJob?.technician_id||mainJob?.technicianId||'');
     const mainJobTechnicianName=String(mainJob?.technician_name||mainJob?.technicianName||'');
     const mainJobTechnicianHtml=isBelmAdmin&&mainJob&&!['COMPLETED','CANCELLED'].includes(jobStatus)
@@ -549,6 +557,17 @@
     document.getElementById('completeCase')?.addEventListener('click',async()=>{
       await api(`/stage/${selected.case.id}`,{method:'PUT',body:JSON.stringify({stage:'COMPLETED',note:'Workshop test passed; machine returned to service. Customer signature is required on BELM Service Job Cards before billing follow-up.'})});
       show('Machine returned to service. For BELM Service Jobs, collect the customer signature and upload the signed Job Card.');await load();await openCase(selected.case.id);
+    });
+    document.getElementById('approveJobCard')?.addEventListener('click',async()=>{
+      const mainJob=(selected.jobCards||[]).find(j=>String(j.status||'').toUpperCase()==='PENDING_APPROVAL');if(!mainJob)return;
+      const note=prompt('Approval / final review note (optional):')||'';
+      if(!confirm(`Approve ${mainJob.job_card_no} and close this job as Completed?`))return;
+      try{await api(`/job-approval/${encodeURIComponent(mainJob.id)}`,{method:'PUT',body:JSON.stringify({approve:true,note})});show('Job Card approved and Completed.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}
+    });
+    document.getElementById('returnJobCard')?.addEventListener('click',async()=>{
+      const mainJob=(selected.jobCards||[]).find(j=>String(j.status||'').toUpperCase()==='PENDING_APPROVAL');if(!mainJob)return;
+      const note=prompt('Reason / correction required from Technician:')||'';if(!note.trim())return;
+      try{await api(`/job-approval/${encodeURIComponent(mainJob.id)}`,{method:'PUT',body:JSON.stringify({approve:false,note:note.trim()})});show('Job Card returned to Technician for update.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}
     });
     document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.approve,true));
     document.querySelectorAll('[data-reject]').forEach(b=>b.onclick=()=>approveSpare(b.dataset.reject,false));
@@ -728,7 +747,7 @@
   };
   document.getElementById('spareForm').onsubmit=async e=>{e.preventDefault();try{await api('/spare',{method:'POST',body:JSON.stringify({caseId:document.getElementById('spareCaseId').value,jobCardId:document.getElementById('spareForm').dataset.jobCardId||'',spareName:document.getElementById('spareName').value,partNumber:document.getElementById('sparePart').value,quantity:Number(document.getElementById('spareQty').value),unit:document.getElementById('spareUnit').value,reason:document.getElementById('spareReason').value})});document.getElementById('spareDialog').close();show('Spare request sent to Administration for approval.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function approveSpare(id,approve){const note=prompt(approve?'Administration approval note (optional):':'Reason for rejection:')||'';try{await api(`/approve-spare/${id}`,{method:'PUT',body:JSON.stringify({approve,note})});show(approve?'Spare approved by Administration.':'Spare request rejected.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}}
-  document.getElementById('techReportForm').onsubmit=async e=>{e.preventDefault();try{await api(`/job-report/${document.getElementById('techJobId').value}`,{method:'PUT',body:JSON.stringify({diagnosis:document.getElementById('techDiagnosis').value,workDone:document.getElementById('techWork').value,testResult:document.getElementById('techTest').value,completionNote:document.getElementById('techNote').value,repeatIssue:document.getElementById('techRepeat').checked,complete:document.getElementById('techComplete').checked})});document.getElementById('techReportDialog').close();show('Digital Job Card report saved.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
+  document.getElementById('techReportForm').onsubmit=async e=>{e.preventDefault();try{await api(`/job-report/${document.getElementById('techJobId').value}`,{method:'PUT',body:JSON.stringify({diagnosis:document.getElementById('techDiagnosis').value,workDone:document.getElementById('techWork').value,testResult:document.getElementById('techTest').value,completionNote:document.getElementById('techNote').value,repeatIssue:document.getElementById('techRepeat').checked,complete:document.getElementById('techComplete').checked})});document.getElementById('techReportDialog').close();show(document.getElementById('techComplete').checked?'Digital Job Card submitted for approval.':'Digital Job Card progress saved.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function loadPerformance(){try{const rows=await api('/performance');document.getElementById('performanceGrid').innerHTML=rows.length?rows.map(r=>`<article class="tech-card"><strong>${esc(r.technicianName)}</strong><div class="metrics"><div><span>Completed</span><b>${r.completedJobs}/${r.totalJobs}</b></div><div><span>Completion rate</span><b>${r.completionRate}%</b></div><div><span>First-time fix</span><b>${r.firstTimeFixRate}%</b></div><div><span>Avg resolution</span><b>${duration(r.avgResolutionHours)}</b></div><div><span>Repeat / rework</span><b>${r.repeatJobs}</b></div></div></article>`).join(''):'<div class="empty">No completed Job Card data yet.</div>'}catch(x){document.getElementById('performanceGrid').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
   async function load(){
     if(adminJobCardsDispatchOnly){

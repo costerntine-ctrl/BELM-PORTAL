@@ -1,0 +1,11 @@
+BELM PORTAL V409 - COMPACT MACHINE CARD PARITY
+
+Requested UI update:
+- BELM Admin > Customers & Machines > View Machine uses the approved compact machine card.
+- Customer Dashboard > View Your Machine uses the same visual system and footprint.
+- Card footprint remains 390 x 590 px on desktop; responsive width on small screens keeps the same 590 px height.
+- Dark navy industrial card, dynamic green/yellow/red condition border, fleet badge, compact condition/service strips, Activity Status, and four primary actions.
+- Customer card primary actions remain Report / Check Up / Service Parts / Job Card.
+- Customer ownership controls and extra actions remain available without making the card tall.
+- Exact service strip now shows NEXT service hour and hours left when available.
+- Admin customer quick action wording updated to View Machine.

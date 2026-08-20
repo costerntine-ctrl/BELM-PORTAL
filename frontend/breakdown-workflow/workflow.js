@@ -19,6 +19,7 @@
   const payload=parseToken(token);
   const customerRole=payload?.customerRole||payload?.role||'';
   const isOwner=source==='customer'&&payload?.actorType==='owner';
+  const isCustomerAdmin=source==='customer'&&(isOwner||customerRole==='admin');
   const isBelmAdmin=source==='admin';
   const isWorkshop=isBelmAdmin||isOwner||customerRole==='workshop_manager'||customerRole==='admin';
   const isStore=isBelmAdmin||isOwner||customerRole==='store_keeper'||customerRole==='workshop_manager';
@@ -149,7 +150,7 @@
     const rows=dispatchJobCards.filter(job=>!customerId||String(job.customerId)===String(customerId));
     const placeholder=customerId&&!rows.length?'No active Job Cards for this customer':(!rows.length?'No received / assigned Job Cards available':'Select Job Card...');
     select.innerHTML=`<option value="">${esc(placeholder)}</option>`+rows.map(job=>{
-      const src=String(job.sourceType||'')==='SERVICE_REQUEST'?'Service Request':'Customer Job Card';
+      const src=String(job.sourceType||'')==='SERVICE_REQUEST'?'Customer Admin Job Card':'BELM Job Card';
       const serial=job.machineSerial?` · S/N ${job.machineSerial}`:'';
       const assigned=job.technicianName?` · Technician: ${job.technicianName}`:'';
       const status=String(job.dispatchStatus||job.status||'RECEIVED').toUpperCase();
@@ -160,7 +161,7 @@
     const assigned=rows.filter(job=>job.technicianId||job.technicianName||String(job.dispatchStatus||'').toUpperCase()==='ASSIGNED').length;
     const waiting=rows.length-assigned;
     const help=document.getElementById('receivedJobCardHelp');
-    if(help)help.textContent=rows.length?`${rows.length} active Job Card${rows.length===1?'':'s'}${customerId?' for this customer':''}: ${waiting} waiting, ${assigned} assigned. Assigned cards are selectable for confirmation or reassignment.`:(customerId?'No active received/assigned Job Card for this customer. You can still type a known JC Number in the field on the right.':'No active received/assigned Job Cards are available. Service Requests are synchronized automatically when this list refreshes.');
+    if(help)help.textContent=rows.length?`${rows.length} active Job Card${rows.length===1?'':'s'}${customerId?' for this customer':''}: ${waiting} waiting, ${assigned} assigned. Assigned cards are selectable for confirmation or reassignment.`:(customerId?'No active received/assigned Job Card for this customer. You can still type a known JC Number in the field on the right.':'No active Customer Admin Job Cards are available. Official Service Requests are synchronized automatically when this list refreshes.');
   }
   function syncDispatchJcNumberFromSelection(){
     const input=document.getElementById('dispatchJobCardNo');if(!input)return;
@@ -297,14 +298,14 @@
     if(reassigning&&!confirm(`${existingJob?.jobCardNo||'This Job Card'} is currently assigned to ${existingJob?.technicianName||'another Technician'}. Reassign it to ${tech?.name||'the selected Technician'}?`))return;
     const temporary=Boolean(tech?.assignedCustomerId&&customerId&&String(tech.assignedCustomerId)!==String(customerId));
     if(temporary&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Assign this Job Card to ${customer?.name||'the selected customer'} as a Temporary Override?`))return;
-    setActionButtonState(submitBtn,'busy',reassigning?'Reassigning...':'Assigning to Customer & BELM...');
-    showDispatchResult(reassigning?'Reassigning Job Card...':'Assigning Job Card to Customer & BELM...');
+    setActionButtonState(submitBtn,'busy',reassigning?'Reassigning...':'Assigning BELM Technician...');
+    showDispatchResult(reassigning?'Reassigning Job Card...':'Assigning Job Card to BELM Technician...');
     try{
       const currentCaseId=selected?.case?.id||'';
       const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,jobCardNo,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,jobLocation:document.getElementById('dispatchLocation')?.value.trim()||'',temporaryOverride:temporary})});
       const verb=result.reassigned?'reassigned':'assigned';
-      const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} and shared with Customer & BELM. Technician: ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · PI number is assigned in Billing when generated.`;
-      show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} and shared with Customer & BELM${result.temporaryOverride?' as Temporary Override':''}. Technician: ${tech?.name||'Technician'}. Proforma sync: ${result.proformaStatus||'PENDING'} · PI number will be created in Billing.`,false);
+      const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} and assigned to BELM staff. Technician: ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · PI number is assigned in Billing when generated.`;
+      show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} and assigned to BELM staff${result.temporaryOverride?' as Temporary Override':''}. Technician: ${tech?.name||'Technician'}. Proforma sync: ${result.proformaStatus||'PENDING'} · PI number will be created in Billing.`,false);
       setActionButtonState(submitBtn,'success',result.reassigned?'✓ Reassigned':'✓ Assigned');
       // Clear every dispatch choice BEFORE reload so loadDispatchOptions cannot preserve stale selections.
       resetTechnicianDispatchForm();
@@ -500,7 +501,8 @@
       (['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS','PARTS_READY'].includes(c.stage)||hasOpenSpare?'SPARES':
       (jobStatus==='IN_PROGRESS'||['DIAGNOSIS','REPAIR'].includes(c.stage)?'IN_PROGRESS':
       (jobStatus==='ASSIGNED'||c.stage==='JOB_CARD_ASSIGNED'?'ASSIGNED':'RECEIVED'))));
-    const steps=[['RECEIVED','Received by BELM'],['ASSIGNED','Assigned'],['IN_PROGRESS','In Progress'],['SPARES','Spares'],['TESTING','Testing'],['COMPLETED','Completed']];
+    const receivedStepLabel=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST'?'Received by BELM':'Job Card Issued';
+    const steps=[['RECEIVED',receivedStepLabel],['ASSIGNED','Assigned'],['IN_PROGRESS','In Progress'],['SPARES','Spares'],['TESTING','Testing'],['COMPLETED','Completed']];
     const activeIndex=Math.max(0,steps.findIndex(([key])=>key===processKey));
     const processHtml=`<div class="job-process-card"><div class="job-process-title"><div><span>MAIN JOB CARD PROCESS</span><b>${mainJob?esc(mainJob.job_card_no+' · '+mainJob.title):'Waiting for Job Card'}</b></div>${mainJob?`<span class="pill">${esc(jobStatus||'RECEIVED')}</span>`:''}</div><div class="job-process-steps">${steps.map(([key,label],i)=>`<button type="button" class="job-process-step ${i<activeIndex?'done':i===activeIndex?'active':''}" data-process-step="${key}" aria-pressed="false" title="Press to view ${esc(label)} details"><span>${i+1}</span><b>${label}</b></button>`).join('')}</div><div id="jobProcessStageDetail" class="job-stage-detail"><div class="stage-detail-placeholder">Press Received, Assigned, In Progress, Spares, Testing or Completed to view who handled that stage and what happened.</div></div><div class="job-process-actions">${mainJob?`<button class="blue" data-job-pdf="${esc(mainJob.id)}">Download Main Job Card PDF</button>`:''}${(isWorkshop||isTechnician)&&c.status!=='COMPLETED'&&mainJob?'<button class="yellow" id="requestSpare">Request Spare</button>':''}${isWorkshop&&c.stage==='TESTING'?'<button class="approve" id="completeCase">Test Passed - Return to Service</button>':''}</div></div>`;
     const mainJobTechnicianId=String(mainJob?.technician_id||mainJob?.technicianId||'');
@@ -508,14 +510,14 @@
     const mainJobTechnicianHtml=isBelmAdmin&&mainJob&&!['COMPLETED','CANCELLED'].includes(jobStatus)
       ? `<label class="main-job-tech-control"><span>${mainJobTechnicianName?'Assigned Technician':'Assign Technician'}</span><select id="mainJobTechnicianSelect" class="main-job-technician-select" data-job-id="${esc(mainJob.id)}" data-current-technician-id="${esc(mainJobTechnicianId)}" data-current-technician-name="${esc(mainJobTechnicianName)}"><option value="${esc(mainJobTechnicianId)}">${mainJobTechnicianName?esc(mainJobTechnicianName+' · ASSIGNED'):'Loading Technicians...'}</option></select><small id="mainJobTechnicianStatus" class="main-job-tech-status">${mainJobTechnicianName?`Assigned to ${esc(mainJobTechnicianName)}. Select another Technician only to reassign.`:'Select a Technician to assign this Job Card.'}</small></label>`
       : `<span>Technician <b>${esc(mainJobTechnicianName||'Unassigned')}</b></span>`;
-    const mainJobHtml=mainJob?`<div class="main-job-card"><div class="main-job-card-head"><div><span>MAIN JOB CARD</span><h3>${esc(mainJob.job_card_no)} · ${esc(mainJob.title)}</h3></div><span class="pill">${esc(jobStatus)}</span></div><div class="main-job-meta"><span>Issued by <b>${esc(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer')}</b></span>${String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST'||String(mainJob.issued_by_type||'').toUpperCase()==='CUSTOMER'?`<span>BELM Receipt <b>✓ RECEIVED · ${fmtDate(mainJob.issued_at||mainJob.created_at)}</b></span>`:''}${mainJobTechnicianHtml}<span>Created <b>${fmtDate(mainJob.created_at)}</b></span></div>${mainJob.diagnosis?`<div class="main-job-summary"><p><b>Diagnosis:</b> ${esc(mainJob.diagnosis)}</p><p><b>Work done:</b> ${esc(mainJob.work_done||'-')}</p></div>`:''}<div class="actions"><button class="blue" data-job-pdf="${esc(mainJob.id)}">Download Job Card PDF</button></div></div>`:'<div class="main-job-card empty">No Main Job Card has been issued yet.</div>';
+    const mainJobHtml=mainJob?`<div class="main-job-card"><div class="main-job-card-head"><div><span>MAIN JOB CARD</span><h3>${esc(mainJob.job_card_no)} · ${esc(mainJob.title)}</h3></div><span class="pill">${esc(jobStatus)}</span></div><div class="main-job-meta"><span>Issued by <b>${esc(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer')}</b></span>${String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST'?`<span>BELM Receipt <b>✓ RECEIVED · ${fmtDate(mainJob.issued_at||mainJob.created_at)}</b></span>`:''}${mainJobTechnicianHtml}<span>Created <b>${fmtDate(mainJob.created_at)}</b></span></div>${mainJob.diagnosis?`<div class="main-job-summary"><p><b>Diagnosis:</b> ${esc(mainJob.diagnosis)}</p><p><b>Work done:</b> ${esc(mainJob.work_done||'-')}</p></div>`:''}<div class="actions"><button class="blue" data-job-pdf="${esc(mainJob.id)}">Download Job Card PDF</button></div></div>`:'<div class="main-job-card empty">No Main Job Card has been issued yet.</div>';
 
     document.getElementById('caseDetail').innerHTML=`<div class="detail">
       <div class="detail-title-row"><div><h2>${esc(c.machineLabel)}</h2><div class="detail-sub">${esc(c.title)} · ${esc(c.machineType||'')} · ${esc(c.serialNumber||'No serial')} · <b>${esc(sourceLabel(c))}</b></div></div><span class="pill ${c.status==='COMPLETED'?'green':c.delayed?'red':'yellow'}">${esc(c.status)}</span></div>
       <div class="workflow-focus ${focusClass}"><div><span>CURRENT PROCESS OWNER</span><strong>${focusTitle}</strong><small>Waiting here: ${esc(duration(c.stageHours))}${c.delayed?` · SLA exceeded by ${esc(duration(c.delayHours))}`:''}</small></div><div class="workflow-focus-reason"><span>WHY / BLOCKER</span><b>${blockerText}</b></div></div>
       <div class="status-box"><div><span>Breakdown Time</span><b>${esc(duration(c.breakdownHours))}</b></div><div><span>Current Stage</span><b>${esc(c.stage.replaceAll('_',' '))}</b></div><div><span>Department</span><b>${esc(c.department)}</b></div><div><span>Waiting Here</span><b>${esc(duration(c.stageHours))}</b></div></div>
       ${processHtml}
-      <div class="actions workflow-primary-actions">${isWorkshop&&c.status!=='COMPLETED'&&d.jobCards.length===0?'<button class="blue" id="generateJob">+ Digital Job Card</button>':''}</div>
+      <div class="actions workflow-primary-actions">${isWorkshop&&c.status!=='COMPLETED'&&d.jobCards.length===0&&(source!=='customer'||c.customerManagesWorkshop)?'<button class="blue" id="generateJob">+ Digital Job Card</button>':''}${source==='customer'&&isCustomerAdmin&&c.status!=='COMPLETED'&&d.jobCards.length===0&&!c.customerManagesWorkshop?'<button class="blue" id="sendJobToBelm">Send Job Card to BELM</button>':''}</div>
       <div class="workflow-tabs" role="tablist"><button type="button" class="active" data-workflow-tab="overview">Overview</button><button type="button" data-workflow-tab="jobs">Job Cards <span>${d.jobCards.length}</span></button><button type="button" data-workflow-tab="spares">Spares <span>${d.spares.length}</span></button><button type="button" data-workflow-tab="timeline">Timeline <span>${d.events.length}</span></button></div>
       <section class="workflow-tab-panel active" data-workflow-panel="overview">${mainJobHtml}<div class="workflow-overview-grid"><div><span>Reported issue</span><b>${esc(c.description||c.title||'-')}</b></div><div><span>Next responsible team</span><b>${esc(c.department)}</b></div><div><span>Open Job Cards</span><b>${d.jobCards.filter(j=>j.status!=='COMPLETED').length}</b></div><div><span>Open Spare Requests</span><b>${d.spares.filter(s=>!['REJECTED','PARTS_READY'].includes(s.status)).length}</b></div></div></section>
       <section class="workflow-tab-panel" data-workflow-panel="jobs"><div class="section tab-section collapsible-section" data-collapsible-section="jobs"><div class="section-head"><h3>Digital Job Cards</h3><button type="button" class="section-toggle" data-collapse-panel="jobs" aria-expanded="true">Hide</button></div><div class="section-content" data-collapse-content="jobs">${jobsHtml}</div></div></section>
@@ -539,6 +541,7 @@
       const hidden=content.classList.toggle('hidden');if(section)section.classList.toggle('collapsed',hidden);button.textContent=hidden?'Show':'Hide';button.setAttribute('aria-expanded',hidden?'false':'true');
     }));
     document.getElementById('generateJob')?.addEventListener('click',openJob);
+    document.getElementById('sendJobToBelm')?.addEventListener('click',sendSelectedCaseToBelm);
     document.getElementById('requestSpare')?.addEventListener('click',()=>{
       if(source==='customer'){location.href=`/customer-service-request/?machine=${encodeURIComponent(selected.case.machineId||selected.case.machine_id||machineFilter)}#procurement-spares`;return;}
       document.getElementById('spareCaseId').value=selected.case.id;const mainJob=(selected.jobCards||[]).find(j=>!['COMPLETED','CANCELLED'].includes(String(j.status||'').toUpperCase()))||(selected.jobCards||[])[0];document.getElementById('spareForm').dataset.jobCardId=mainJob?.id||'';document.getElementById('spareDialog').showModal();
@@ -655,7 +658,7 @@
         return `<option value="${esc(x.id)}">${esc(x.name+home+tag)}</option>`;
       }).join('');
       if(status)status.textContent=jobTechnicians.length?`${jobTechnicians.length} technician${jobTechnicians.length===1?'':'s'} synced`:'0 technicians synced';
-      if(showToast)show(jobTechnicians.length?`Technicians synced: ${jobTechnicians.length}.`:'No eligible Technician found for this customer.',!jobTechnicians.length);
+      if(showToast)show(jobTechnicians.length?`Customer team synced: ${jobTechnicians.length} Technician${jobTechnicians.length===1?'':'s'}.`:'No customer-managed Technician is available. Customer Admin can send the Job Card to BELM instead.',!jobTechnicians.length);
     }catch(x){
       jobTechnicians=[];
       select.innerHTML='<option value="">Unassigned</option>';
@@ -668,22 +671,23 @@
     document.getElementById('jobTitle').value=selected.case.title;
     const note=document.getElementById('jobOverrideNote');
     if(note){note.classList.add('hidden');note.textContent='';}
-    // V263 - "Send to BELM instead" only makes sense for an actual
-    // Customer actor requesting BELM's help. It was showing up
-    // unconditionally, including on BELM's own Admin/Workshop
-    // dashboard - nonsensical there, since BELM Admin IS BELM.
+    // Only Customer Admin/Owner may issue the official machine Job Card to BELM.
+    // Workshop Manager can issue internal Customer Job Cards to the customer's own
+    // team, but cannot assign BELM personnel or send a Job Card directly to BELM.
     const sendRow=document.getElementById('jobSendToBelm')?.closest('.belm-send-row');
-    if(sendRow) sendRow.classList.toggle('hidden', source!=='customer');
+    if(sendRow) sendRow.classList.toggle('hidden', !isCustomerAdmin);
     document.getElementById('jobDialog').showModal();
     await loadJobTechnicians(false);
   }
   document.getElementById('jobTechSync')?.addEventListener('click',()=>loadJobTechnicians(true));
-  document.getElementById('jobSendToBelm')?.addEventListener('click',()=>{
+  function sendSelectedCaseToBelm(){
+    if(!isCustomerAdmin){show('Only Customer Admin can send a machine Job Card to BELM.',true);return}
     const machineId=selected?.case?.machineId||'';
     const description=selected?.case?.description||selected?.case?.title||'';
     const url=`/customer-service-request/?machine=${encodeURIComponent(machineId)}${description?`&note=${encodeURIComponent(description)}`:''}`;
     location.href=url;
-  });
+  }
+  document.getElementById('jobSendToBelm')?.addEventListener('click',sendSelectedCaseToBelm);
   document.getElementById('jobTechnician')?.addEventListener('change',e=>{
     const tech=jobTechnicians.find(x=>String(x.id)===String(e.target.value));
     const note=document.getElementById('jobOverrideNote');

@@ -4,8 +4,9 @@
   let pendingEditPin = null;
   let servicePartsState = null;
   let isSuperAdmin = false;
+  let currentUser = null;
   try {
-    const currentUser = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
+    currentUser = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
     isSuperAdmin = currentUser?.role === "Super Admin";
   } catch (_) {}
 
@@ -220,6 +221,14 @@
           : conditionRange === "green"
             ? "Machine condition normal."
             : "Machine condition has not been checked yet.";
+    const operatorReport = machine.latestOperatorMessage || machine.latest_operator_message || null;
+    const operatorText = String(operatorReport?.message || "").trim() || "No operator message reported yet.";
+    const operatorName = String(operatorReport?.operatorName || operatorReport?.operator_name || "Operator").trim() || "Operator";
+    const operatorStatus = String(operatorReport?.status || "NONE").toUpperCase();
+    const operatorCreated = operatorReport?.createdAt || operatorReport?.created_at || null;
+    const operatorMeta = operatorReport
+      ? `${operatorName}${operatorCreated ? ` · ${formatDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
+      : "Waiting for Operator report";
     return `<article class="machine-card ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <div class="machine-title-row">
@@ -229,8 +238,15 @@
         <p>${escapeHtml(machine.machineType)} · Reg: ${escapeHtml(machine.regNumber || "—")} · Serial: ${escapeHtml(machine.serialNumber || "—")}</p>
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
         <div class="machine-alert-copy" aria-live="polite">
-          <span class="machine-alert-reason">${escapeHtml(conditionMessage)}</span>
-          <span class="machine-service-alert-copy" data-machine-service-alert-copy>${canMaintenance ? "Service range: checking…" : "Service range: customer private"}</span>
+          <div class="machine-operator-message${operatorStatus === "OPEN" ? " is-open" : ""}">
+            <span class="machine-message-kicker">Operator Message</span>
+            <strong>${escapeHtml(operatorText)}</strong>
+            <small>${escapeHtml(operatorMeta)}</small>
+          </div>
+          <div class="machine-condition-message">
+            <span class="machine-alert-reason">${escapeHtml(conditionMessage)}</span>
+            <span class="machine-service-alert-copy" data-machine-service-alert-copy>${canMaintenance ? "Service range: checking…" : "Service range: customer private"}</span>
+          </div>
         </div>
         <span class="service-due-badge" ${canMaintenance ? `data-service-due-badge="${escapeHtml(machine.id)}"` : ""}>${canMaintenance ? "Service due: checking…" : "Service due: 🔒 Customer private"}</span>
         <label class="operational-status-picker op-${escapeHtml(opStatus)}">Activity status
@@ -315,15 +331,6 @@
     if (previousValue) select.value = previousValue;
   }
 
-  function populatePortalAccessDropdown() {
-    const select = document.getElementById("portalAccessCustomerSelect");
-    if (!select) return;
-    const previousValue = select.value;
-    select.innerHTML = '<option value="">Select customer…</option>'
-      + customers.map((customer) => `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}${Number(customer.isActive) !== 1 ? " (Portal STOPPED)" : ""}</option>`).join("");
-    if (previousValue) select.value = previousValue;
-  }
-
   function renderCustomers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
     const filter = document.getElementById("statusFilter").value;
@@ -387,6 +394,14 @@
               </label>
               <span class="customer-provider-side">BELM</span>
               <strong class="customer-provider-state">${belmProviderActive ? "ON" : "OFF"}</strong>
+            </div>
+            <div class="customer-nonpayment-control ${Number(customer.isActive) === 1 ? "portal-on" : "portal-stopped"}" title="Portal service switch for non-payment: ${escapeHtml(customer.name)}">
+              <span class="customer-nonpayment-label">Non-payment</span>
+              <label class="customer-nonpayment-switch">
+                <input type="checkbox" data-card-portal-toggle="${escapeHtml(customer.id)}" ${Number(customer.isActive) === 1 ? "checked" : ""} aria-label="Portal service for ${escapeHtml(customer.name)}">
+                <span class="customer-nonpayment-slider" aria-hidden="true"></span>
+              </label>
+              <strong class="customer-nonpayment-state">${Number(customer.isActive) === 1 ? "PORTAL ON" : "STOPPED"}</strong>
             </div>
           </div>
         </div>
@@ -626,7 +641,6 @@
       updateMetrics();
       renderCustomers();
         populateMachineryAdminDropdown();
-      populatePortalAccessDropdown();
       const deepLinkParams = new URLSearchParams(window.location.search);
       const requestedCustomerId = String(deepLinkParams.get("customer") || "").trim();
       const requestedView = String(deepLinkParams.get("view") || "").trim().toLowerCase();
@@ -1678,7 +1692,11 @@
     document.getElementById("checkupDialogTitle").textContent = `${machineName} — Check Up`;
     document.getElementById("checkupMachineId").value = machineId;
     document.getElementById("checkupForm").reset();
-    document.getElementById("checkupFilledBy").value = "";
+    const checkupFilledBy = document.getElementById("checkupFilledBy");
+    if (checkupFilledBy) {
+      checkupFilledBy.value = String(currentUser?.name || currentUser?.fullName || "").trim();
+      checkupFilledBy.readOnly = true;
+    }
     document.getElementById("checkupFormAlert").classList.add("hidden");
     document.getElementById("checkupServiceFields").classList.add("hidden");
     document.getElementById("checkupDisplayPhotoValue").value = "";
@@ -1891,48 +1909,6 @@
     }
   });
 
-  document.getElementById("portalAccessCustomerSelect")?.addEventListener("change", (event) => {
-    const customer = customers.find((item) => item.id === event.target.value);
-    const info = document.getElementById("portalAccessCurrentInfo");
-    const toggle = document.getElementById("portalAccessToggle");
-    if (!customer) {
-      info.textContent = "";
-      toggle.checked = true;
-      return;
-    }
-    const isActive = Number(customer.isActive) === 1;
-    toggle.checked = isActive;
-    info.textContent = isActive
-      ? "Currently ON — this customer can log in normally."
-      : "Currently STOPPED — this customer (and their assistants/operators) cannot log in.";
-  });
-
-  document.getElementById("portalAccessSaveButton")?.addEventListener("click", async () => {
-    const customerId = document.getElementById("portalAccessCustomerSelect").value;
-    if (!customerId) {
-      showAlert("Select a customer first.", true);
-      return;
-    }
-    const enabled = document.getElementById("portalAccessToggle").checked;
-    const confirmation = await window.belmConfirmEdit({
-      title: enabled ? "Restore portal service?" : "Stop portal service?",
-      message: enabled
-        ? "This customer will be able to log in again."
-        : "This customer (and their assistants/operators) will be blocked from logging in until you turn this back ON.",
-    });
-    if (!confirmation) return;
-    try {
-      await api(`/customers/${customerId}/portal-access`, {
-        method: "PUT",
-        body: JSON.stringify({ enabled, ...confirmation }),
-      });
-      showAlert(enabled ? "Portal service restored." : "Portal service stopped for this customer.", false);
-      await load();
-    } catch (error) {
-      showAlert(error.message, true);
-    }
-  });
-
   document.getElementById("sendCustomerMessageForm")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const customerId = document.getElementById("sendCustomerMessageCustomerId").value;
@@ -2115,6 +2091,56 @@
     } catch (error) {
       toggle.checked = !serviceProviderEnabled;
       showAlert(error.message || "Could not change maintenance control.", true);
+    } finally {
+      toggle.disabled = false;
+    }
+  });
+
+  // V405 - non-payment portal access now lives directly on each customer card.
+  // Checked means the customer's portal login is ON; unchecked blocks the
+  // customer and all of that customer's portal users using the existing
+  // audited portal-access endpoint.
+  document.getElementById("customerGrid").addEventListener("change", async (event) => {
+    const toggle = event.target.closest("[data-card-portal-toggle]");
+    if (!toggle) return;
+
+    const customerId = toggle.dataset.cardPortalToggle;
+    const customer = customers.find((item) => item.id === customerId);
+    if (!customer) {
+      toggle.checked = !toggle.checked;
+      showAlert("Customer record was not found. Refresh customers and try again.", true);
+      return;
+    }
+
+    const enabled = toggle.checked;
+    toggle.disabled = true;
+    try {
+      const confirmation = await window.belmConfirmEdit({
+        title: enabled ? "Restore portal service?" : "Stop portal service for non-payment?",
+        message: enabled
+          ? `Restore portal login for ${customer.name} and all of this customer's active portal users?`
+          : `Stop portal login for ${customer.name} and all of this customer's portal users until this switch is turned back ON?`,
+      });
+      if (!confirmation) {
+        toggle.checked = !enabled;
+        return;
+      }
+
+      const result = await api(`/customers/${customerId}/portal-access`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled, ...confirmation }),
+      });
+      customer.isActive = Boolean(result?.isActive ?? enabled) ? 1 : 0;
+      showAlert(
+        enabled
+          ? `${customer.name}: portal service restored.`
+          : `${customer.name}: portal service stopped for non-payment.`,
+        false,
+      );
+      await load();
+    } catch (error) {
+      toggle.checked = !enabled;
+      showAlert(error.message || "Could not change portal service.", true);
     } finally {
       toggle.disabled = false;
     }

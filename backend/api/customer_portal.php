@@ -4737,6 +4737,12 @@ if ($sub === 'service-requests' && $method === 'POST') {
     }
     $machineId = trim((string)($b['machineId'] ?? ''));
     $machine = null;
+    $customerActorType = strtolower(trim((string)($customer['actorType'] ?? '')));
+    $customerActorRole = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    $canIssueBelmMachineJobCard = $customerActorType === 'owner' || $customerActorRole === 'admin';
+    if ($machineId !== '' && !$canIssueBelmMachineJobCard) {
+        json_error('Only Customer Admin can send a machine Job Card to BELM. Workshop Manager should assign the customer-owned team, or ask Customer Admin to send the Job Card to BELM.', 403);
+    }
     if ($machineId) {
         $stmt = db()->prepare(
             'SELECT id, machine_type, model FROM machines

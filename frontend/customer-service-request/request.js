@@ -73,6 +73,19 @@
     }
   }
 
+  function canIssueBelmMachineJobCard() {
+    const payload = tokenPayload();
+    const actorType = String(payload.actorType || "").toLowerCase();
+    const role = String(payload.customerRole || payload.role || "").toLowerCase();
+    return actorType === "owner" || role === "admin";
+  }
+
+  function applyBelmJobCardPermission() {
+    if (canIssueBelmMachineJobCard()) return;
+    setSubmitButtonsDisabled(true);
+    setSubmitButtonsText("Customer Admin approval required");
+  }
+
   async function api(path, options = {}) {
     const response = await fetch(`/api/customer-portal${path}`, {
       ...options,
@@ -128,6 +141,11 @@
       document.getElementById("servicePanelTitle").textContent = "Service request details";
       document.getElementById("servicePanelIntro").textContent = "Select the service required for this machine. Spare requirements stay in the machine spare list and are handled through Procurement.";
       setSubmitButtonsText("Submit service request to BELM");
+    }
+    if (!canIssueBelmMachineJobCard()) {
+      notice.textContent += " Only Customer Admin/Owner can issue this machine Job Card to BELM. Workshop Manager assigns only the customer's own maintenance team.";
+      notice.classList.add("error");
+      applyBelmJobCardPermission();
     }
     document.getElementById("machineDetails").textContent = [
       machine.machineType,
@@ -458,6 +476,11 @@
   let isSubmittingServiceRequest = false;
   document.getElementById("serviceForm").addEventListener("submit", async event => {
     event.preventDefault();
+    if (!canIssueBelmMachineJobCard()) {
+      showAlert("Only Customer Admin can send this machine Job Card to BELM. Workshop Manager should assign the customer's own team.", true);
+      applyBelmJobCardPermission();
+      return;
+    }
     // Guards against duplicate submissions from a fast double-click/tap —
     // checked before anything else runs, so a second click while the
     // first request is still in flight is simply ignored instead of
@@ -503,6 +526,7 @@
       submitButtons().forEach((btn) => btn.classList.remove("success"));
       setSubmitButtonsDisabled(false);
       setSubmitButtonsText(selfServiceMode ? "Send to BELM Technical Support" : "Submit service request to BELM");
+      applyBelmJobCardPermission();
       isSubmittingServiceRequest = false;
     }
   });

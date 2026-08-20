@@ -239,6 +239,7 @@ function bw_case_view(array $row): array {
         'brand'=>$row['brand'] ?? null,'model'=>$row['model'] ?? null,'machineType'=>$row['machine_type'] ?? null,
         'serialNumber'=>$row['serial_number'] ?? null,'title'=>$row['title'],'description'=>$row['description'],
         'sourceType'=>$row['source_type'] ?? 'MANUAL','sourceId'=>$row['source_id'] ?? null,
+        'customerManagesWorkshop'=>!empty($row['is_machinery_admin']),
         'status'=>$row['status'],'stage'=>$stage,'department'=>$row['current_department'],'blockerReason'=>$row['blocker_reason'],
         'openedAt'=>$row['opened_at'],'stageStartedAt'=>$row['stage_started_at'],'closedAt'=>$row['closed_at'],
         'breakdownHours'=>$breakdownHours,'breakdownDays'=>round($breakdownHours/24,1),'stageHours'=>$stageHours,
@@ -470,6 +471,15 @@ if ($method === 'GET' && $action === 'technicians') {
     $mode = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id=?'); $mode->execute([$customerId]);
     $selfService = !empty($mode->fetchColumn());
 
+    // Customer-side assignment is strictly organization-owned: when the customer
+    // runs its own workshop, Customer Admin / Workshop Manager may assign only
+    // customer-managed Technicians. When BELM is the active provider, the customer
+    // does not receive BELM staff in this roster; Customer Admin sends a Job Card to
+    // BELM and BELM Admin/Engineer performs the BELM-side assignment.
+    if ($ctx['kind']==='customer' && !$selfService) {
+        json_out([]);
+    }
+
     if ($ctx['kind']==='belm' && empty($ctx['isTechnician']) && !empty($ctx['canOverrideTechnician'])) {
         // Super Admin / Engineer sees every active BELM-owned Technician.
         // Home-customer labels let them intentionally pick a cross-customer
@@ -506,8 +516,7 @@ if ($method === 'GET' && $action === 'technicians') {
                    WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL
               ))";
     if ($ctx['kind']==='belm') $sql .= ' AND u.is_customer_managed=0';
-    elseif ($selfService) $sql .= ' AND u.is_customer_managed=1';
-    else $sql .= ' AND u.is_customer_managed=0';
+    else $sql .= ' AND u.is_customer_managed=1';
     $sql .= ' ORDER BY u.name';
     $stmt=db()->prepare($sql); $stmt->execute([$customerId]);
     $rows=$stmt->fetchAll();
@@ -944,9 +953,10 @@ if ($method === 'POST' && $action === 'case') {
 if ($method === 'POST' && $action === 'job-card') {
     if (bw_is_technician_actor($ctx)) json_error('Technicians cannot issue Job Cards. Workshop/Administration must issue and assign them.',403);
     $b=body(); $caseId=trim((string)($b['caseId']??'')); $case=bw_case_access($ctx,$caseId);
-    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Administration/Customer Admin or Workshop Manager can generate a Job Card.',403);
-    if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate Job Cards. Workshop Manager must issue the Job Card.',403);
-    if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('BELM is not the active service provider.',403);
+    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Customer Admin or Workshop Manager can issue an internal Customer Job Card.',403);
+    if($ctx['kind']==='customer' && empty($case['is_machinery_admin'])) json_error('BELM is the active service provider for this customer. Customer staff cannot assign BELM employees. Customer Admin must send the Job Card to BELM Support, then BELM Admin/Engineer assigns a BELM Technician.',403);
+    if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate or assign Job Cards. Customer Admin / Workshop Manager must issue the Job Card.',403);
+    if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('This customer uses its own maintenance team. BELM can work here only after an official Job Card / Support Request is sent by Customer Admin.',403);
     $techId=trim((string)($b['technicianId']??'')); $techName=null; $temporaryOverride=false; $techHomeName=null;
     if($techId!==''){
         $t=db()->prepare("SELECT u.name,u.assigned_customer_id,u.is_customer_managed,hc.name AS home_customer_name

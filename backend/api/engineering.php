@@ -88,7 +88,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
          ) pi ON TRUE
          WHERE UPPER(COALESCE(j.status,'RECEIVED')) IN ('RECEIVED','OPEN','ASSIGNED')
            AND bc.status <> 'COMPLETED'
-           AND (bc.source_type='SERVICE_REQUEST' OR UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER')
+           AND bc.source_type='SERVICE_REQUEST'
          ORDER BY c.name,
                   CASE WHEN j.technician_id IS NULL AND NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NULL THEN 0 ELSE 1 END,
                   j.created_at DESC"
@@ -122,8 +122,8 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         'customers'=>$customers,
         'machines'=>$machines,
         // V328: keep receivedJobCards as a backward-compatible alias while
-        // returning every active Customer/Service-Request Job Card, including
-        // cards that already have a Technician and can be selected/reassigned.
+        // returning every active Customer-Admin Service Request Job Card, including
+        // cards that already have a BELM Technician and can be selected/reassigned.
         'jobCards'=>$receivedJobCards,
         'receivedJobCards'=>$receivedJobCards,
         'dispatchSync'=>[
@@ -167,6 +167,7 @@ if ($method === 'GET' && $action === 'job-process') {
          JOIN machines m ON m.id=j.machine_id
          LEFT JOIN users u ON u.id=j.technician_id
          WHERE UPPER(COALESCE(j.status,'')) <> 'CANCELLED'
+           AND (c.is_machinery_admin=0 OR bc.source_type='SERVICE_REQUEST')
            AND (j.technician_id IS NOT NULL OR NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NOT NULL)
          ORDER BY CASE WHEN UPPER(COALESCE(bc.status,''))='COMPLETED' THEN 1 ELSE 0 END,
                   COALESCE(j.updated_at,j.created_at) DESC
@@ -254,7 +255,7 @@ if ($method === 'POST' && $action === 'dispatch') {
                             WHERE (UPPER(TRIM(j.job_card_no))=UPPER(TRIM(?)) OR UPPER(TRIM(COALESCE(pi.invoice_no,'')))=UPPER(TRIM(?)))
                               AND UPPER(COALESCE(j.status,'RECEIVED')) IN ('RECEIVED','OPEN','ASSIGNED')
                               AND bc.status<>'COMPLETED'
-                              AND (bc.source_type='SERVICE_REQUEST' OR UPPER(COALESCE(j.issued_by_type,''))='CUSTOMER')";
+                              AND bc.source_type='SERVICE_REQUEST'";
                 $lookupArgs=[$jobCardNoInput,$jobCardNoInput];
                 if($customerId!==''){ $lookupSql.=' AND j.customer_id=?'; $lookupArgs[]=$customerId; }
                 $lookupSql.=' ORDER BY j.created_at DESC LIMIT 2';
@@ -274,8 +275,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             if(!$job) throw new RuntimeException('Selected Job Card was not found.');
             $jobStatus=strtoupper(trim((string)($job['status']??'RECEIVED')));
             if(!in_array($jobStatus,['RECEIVED','OPEN','ASSIGNED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('This Job Card is no longer waiting for Technician Dispatch. Refresh the received Job Cards list.');
-            $customerIssued = strtoupper(trim((string)($job['issued_by_type']??''))) === 'CUSTOMER';
-            if((string)$job['source_type']!=='SERVICE_REQUEST' && !$customerIssued) throw new RuntimeException('Only Customer-issued or Service Request Job Cards can be received through Technician Dispatch.');
+            if((string)$job['source_type']!=='SERVICE_REQUEST') throw new RuntimeException('BELM Technician Dispatch accepts only an official Customer Admin Job Card / Service Request. Customer internal Job Cards stay inside the customer workshop.');
             $previousTechnicianId=trim((string)($job['technician_id']??''));
             $previousTechnicianName=trim((string)($job['technician_name']??''));
             $wasAlreadyAssigned=$previousTechnicianId!=='' || $previousTechnicianName!=='';
@@ -323,8 +323,9 @@ if ($method === 'POST' && $action === 'dispatch') {
             $title=trim((string)($b['title']??''));
             $description=trim((string)($b['description']??''));
             if($customerId===''||$machineId===''||$title==='') throw new RuntimeException('Customer, machine and Job Card title are required.');
-            $c=$pdo->prepare('SELECT id,name,address FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
+            $c=$pdo->prepare('SELECT id,name,address,is_machinery_admin FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
             $c->execute([$customerId]); $customer=$c->fetch(); if(!$customer) throw new RuntimeException('Selected customer is not available.');
+            if(!empty($customer['is_machinery_admin'])) throw new RuntimeException('This customer uses its own maintenance team. BELM cannot create an internal assignment for that workshop. Customer Admin must send an official Job Card / Support Request to BELM first.');
             $m=$pdo->prepare('SELECT id,brand,model,machine_type FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL');
             $m->execute([$machineId,$customerId]); $machine=$m->fetch(); if(!$machine) throw new RuntimeException('Selected machine is not available for this customer.');
             $machineLabel=trim(($machine['brand']??'').' '.($machine['model']??'')) ?: ($machine['machine_type']??'Machine');

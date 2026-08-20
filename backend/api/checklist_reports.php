@@ -276,7 +276,8 @@ function validate_checklist_report_answers(string $templateId, array $submittedA
     return ['answers' => $answers, 'overallStatus' => $worst];
 }
 
-// POST ?action=submit  { machineId, templateId, filledBy, hourMeterReading, answers[] }
+// POST ?action=submit  { machineId, templateId, hourMeterReading, answers[] }
+// Inspector identity is always taken from the authenticated login; client-supplied names are ignored.
 if ($method === 'POST' && $action === 'submit') {
     $b = body();
     if (empty($b['machineId']) || empty($b['templateId'])) {
@@ -348,9 +349,10 @@ if ($method === 'POST' && $action === 'submit') {
     $displayPhotoUrl = trim((string)($b['displayPhotoUrl'] ?? ''));
 
     $reportId = uuid();
-    $filledBy = ($user['roleName'] ?? '') === 'Technician'
-        ? $user['name']
-        : ($b['filledBy'] ?? $user['name']);
+    $filledBy = trim((string)($user['name'] ?? ''));
+    if ($filledBy === '') {
+        json_error('Your login does not have a technician/inspector name. Ask BELM Admin to update the user profile.');
+    }
     $pdo = db();
     $pdo->beginTransaction();
     try {

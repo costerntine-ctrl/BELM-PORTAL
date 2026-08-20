@@ -6401,6 +6401,49 @@
     });
   }
 
+  // V406 — Technician / Inspector identity is owned by the authenticated login.
+  // The legacy Technician form renders a controlled "Your name" input. Keep it
+  // visible for audit clarity, but lock it to belm_tech_user.name so a technician
+  // cannot type a different inspector name. The API independently enforces the
+  // same rule server-side.
+  function lockTechnicianInspectorName() {
+    if (!window.location.pathname.startsWith("/tech")) return;
+    let techUser = {};
+    try { techUser = JSON.parse(localStorage.getItem("belm_tech_user") || "{}"); } catch (_) {}
+    const loginName = String(techUser?.name || techUser?.fullName || "").trim();
+    if (!loginName) return;
+
+    const labels = Array.from(document.querySelectorAll("label"));
+    for (const label of labels) {
+      const labelText = String(label.textContent || "").trim().toLowerCase();
+      if (!(labelText === "your name" || labelText.startsWith("technician / inspector"))) continue;
+      const input = label.querySelector("input");
+      if (!input) continue;
+      if (input.value !== loginName) {
+        const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+        if (valueSetter) valueSetter.call(input, loginName);
+        else input.value = loginName;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      input.readOnly = true;
+      input.setAttribute("aria-readonly", "true");
+      input.dataset.belmInspectorFromLogin = "1";
+      const firstTextNode = Array.from(label.childNodes).find(node => node.nodeType === Node.TEXT_NODE && String(node.textContent || "").trim());
+      if (firstTextNode) firstTextNode.textContent = "Technician / Inspector (automatic from login)";
+    }
+  }
+
+  function installTechnicianInspectorNameLock() {
+    if (!window.location.pathname.startsWith("/tech")) return;
+    lockTechnicianInspectorName();
+    if (window.__belmTechnicianInspectorNameObserver) return;
+    const observer = new MutationObserver(() => lockTechnicianInspectorName());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    window.__belmTechnicianInspectorNameObserver = observer;
+  }
+  installTechnicianInspectorNameLock();
+
   // Compresses an image file to a small JPEG data URL — shared logic so the
   // "Display photo" field stays lightweight like every other checklist
   // photo capture in this app, regardless of the source camera's resolution.

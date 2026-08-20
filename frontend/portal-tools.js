@@ -243,6 +243,326 @@
     }
   }
 
+
+  function closeCustomerGeneralReportCenter() {
+    document.getElementById("belmCustomerGeneralReportCenter")?.remove();
+  }
+
+  function closeCustomerReportDetail() {
+    document.getElementById("belmCustomerReportDetail")?.remove();
+  }
+
+  function showCustomerReportDetail(title, subtitle, content) {
+    closeCustomerReportDetail();
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmCustomerReportDetail";
+    dialog.className = "belm-general-analysis-dialog belm-customer-report-detail";
+    dialog.innerHTML = `
+      <div class="belm-general-analysis-head">
+        <div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(subtitle || "Customer report")}</p></div>
+        <button type="button" data-close-customer-report-detail>Close</button>
+      </div>
+      <div class="belm-general-analysis-body belm-customer-report-detail-body">${content}</div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-customer-report-detail]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+    return dialog;
+  }
+
+  function customerReportMachineLabel(machine) {
+    return [machine?.brand, machine?.model].filter(Boolean).join(" ") || machine?.model || machine?.machineType || machine?.machine_type || "Machine";
+  }
+
+  async function openCustomerReportMachinePicker(title, onSelect) {
+    const machines = await loadCustomerExpenseMachines();
+    if (!machines.length) {
+      showCustomerReportDetail(title, "Machine selection", '<p class="belm-general-analysis-loading">No machines registered yet.</p>');
+      return;
+    }
+    const dialog = showCustomerReportDetail(
+      title,
+      "Select a machine",
+      `<div class="belm-customer-report-machine-grid">${machines.map((machine) => `
+        <button type="button" class="belm-customer-report-machine" data-customer-report-machine="${escapeHtml(machine.id)}">
+          <strong>${escapeHtml(customerReportMachineLabel(machine))}</strong>
+          <span>${escapeHtml(machine.machineType || machine.machine_type || "Machine")}</span>
+          <small>${escapeHtml(machine.fleetNumber || machine.fleet_number || machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No reference")}</small>
+        </button>`).join("")}</div>`
+    );
+    dialog.querySelectorAll("[data-customer-report-machine]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const machine = machines.find((item) => String(item.id) === button.dataset.customerReportMachine);
+        if (!machine) return;
+        dialog.close();
+        onSelect(machine);
+      });
+    });
+  }
+
+  async function openCustomerChecklistReport(machine) {
+    const token = localStorage.getItem("belm_customer_token");
+    const title = `${customerReportMachineLabel(machine)} — Checklist Report`;
+    const loading = showCustomerReportDetail(title, "Completed checklist history", '<p class="belm-general-analysis-loading">Loading checklist reports…</p>');
+    try {
+      const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/reports`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const reports = await response.json().catch(() => []);
+      if (!response.ok) throw new Error(reports.error || "Could not load checklist reports.");
+      const body = loading.querySelector(".belm-customer-report-detail-body");
+      body.innerHTML = Array.isArray(reports) && reports.length ? `
+        <div class="belm-customer-report-list">${reports.map((report) => `
+          <article class="belm-customer-report-row">
+            <div><strong>${escapeHtml(report.templateName || "Checklist Report")}</strong>
+              <span>${escapeHtml(formatTanzaniaDateTime(report.createdAt || report.created_at))}</span>
+              <small>Technician: ${escapeHtml(report.filledBy || report.filled_by || "Not recorded")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? report.hour_meter_reading ?? "—")}</small>
+            </div>
+            <span class="belm-report-status status-${escapeHtml(String(report.overallStatus || report.overall_status || "GREEN").toLowerCase())}">${escapeHtml(report.overallStatus || report.overall_status || "GREEN")}</span>
+            <div class="belm-customer-report-row-actions">
+              <button type="button" data-customer-view-checklist="${escapeHtml(report.id)}">View</button>
+              <button type="button" data-customer-download-checklist="${escapeHtml(report.id)}">PDF</button>
+            </div>
+          </article>`).join("")}</div>` : '<p class="belm-general-analysis-loading">No checklist reports found for this machine.</p>';
+      body.querySelectorAll("[data-customer-view-checklist]").forEach((button) => button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          const result = await fetch(`/api/customer-portal/reports/${encodeURIComponent(button.dataset.customerViewChecklist)}/view`, { headers: { Authorization: `Bearer ${token}` } });
+          const report = await result.json().catch(() => ({}));
+          if (!result.ok) throw new Error(report.error || "Could not open checklist report.");
+          loading.close();
+          renderCheckedReport(report);
+        } catch (error) {
+          alert(error.message || "Could not open checklist report.");
+          button.disabled = false;
+        }
+      }));
+      body.querySelectorAll("[data-customer-download-checklist]").forEach((button) => button.addEventListener("click", async () => {
+        button.disabled = true;
+        try {
+          const result = await fetch(`/api/customer-portal/reports/${encodeURIComponent(button.dataset.customerDownloadChecklist)}/download`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!result.ok) throw new Error("Could not download checklist report.");
+          const blob = await result.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `${customerReportMachineLabel(machine).replace(/[^a-z0-9]+/gi, "-")}-checklist-report.pdf`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 1500);
+        } catch (error) {
+          alert(error.message || "Could not download checklist report.");
+        } finally {
+          button.disabled = false;
+        }
+      }));
+    } catch (error) {
+      loading.querySelector(".belm-customer-report-detail-body").innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load checklist reports.")}</p>`;
+    }
+  }
+
+  async function openCustomerMaintenanceReport(machine) {
+    const token = localStorage.getItem("belm_customer_token");
+    const dialog = showCustomerReportDetail(`${customerReportMachineLabel(machine)} — Maintenance Report`, "Service status and job-card history", '<p class="belm-general-analysis-loading">Loading maintenance report…</p>');
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [jobResponse, serviceResponse] = await Promise.all([
+        fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/job-cards`, { headers }),
+        fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/service-status`, { headers }),
+      ]);
+      const jobs = await jobResponse.json().catch(() => []);
+      const service = await serviceResponse.json().catch(() => ({}));
+      if (!jobResponse.ok) throw new Error(jobs.error || "Could not load maintenance history.");
+      const body = dialog.querySelector(".belm-customer-report-detail-body");
+      body.innerHTML = `
+        <div class="belm-customer-report-summary-grid">
+          <div><span>Service level</span><b>${escapeHtml(service.level || "—")}</b></div>
+          <div><span>Total hours</span><b>${escapeHtml(service.totalHours ?? "—")}</b></div>
+          <div><span>Next service</span><b>${escapeHtml(service.dueHour ?? "—")}</b></div>
+          <div><span>Job cards</span><b>${Array.isArray(jobs) ? jobs.length : 0}</b></div>
+        </div>
+        <div class="belm-customer-report-list">${Array.isArray(jobs) && jobs.length ? jobs.map((job) => `
+          <article class="belm-customer-report-row">
+            <div><strong>${escapeHtml(job.job_card_no || job.jobCardNo || "Job Card")}</strong><span>${escapeHtml(job.title || "Maintenance")}</span><small>${escapeHtml(formatTanzaniaDateTime(job.created_at || job.createdAt))} · Technician: ${escapeHtml(job.technician_name || job.technicianName || "Unassigned")}</small></div>
+            <span class="belm-customer-report-neutral-status">${escapeHtml(job.status || "OPEN")}</span>
+          </article>`).join("") : '<p class="belm-general-analysis-loading">No maintenance job cards found for this machine.</p>'}</div>`;
+    } catch (error) {
+      dialog.querySelector(".belm-customer-report-detail-body").innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load maintenance report.")}</p>`;
+    }
+  }
+
+  async function openCustomerTechnicianReport(machine) {
+    const token = localStorage.getItem("belm_customer_token");
+    const dialog = showCustomerReportDetail(`${customerReportMachineLabel(machine)} — Technician Report`, "Technician checklist and job-card activity", '<p class="belm-general-analysis-loading">Loading technician report…</p>');
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [reportResponse, jobResponse] = await Promise.all([
+        fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/reports`, { headers }),
+        fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/job-cards`, { headers }),
+      ]);
+      const reports = await reportResponse.json().catch(() => []);
+      const jobs = await jobResponse.json().catch(() => []);
+      if (!reportResponse.ok) throw new Error(reports.error || "Could not load technician checklist activity.");
+      if (!jobResponse.ok) throw new Error(jobs.error || "Could not load technician job-card activity.");
+      const checklistRows = (Array.isArray(reports) ? reports : []).map((report) => ({
+        type: "CHECKLIST", date: report.createdAt || report.created_at, technician: report.filledBy || report.filled_by || "Not recorded", status: report.overallStatus || report.overall_status || "GREEN", detail: report.templateName || "Checklist Report",
+      }));
+      const jobRows = (Array.isArray(jobs) ? jobs : []).map((job) => ({
+        type: "JOB CARD", date: job.created_at || job.createdAt, technician: job.technician_name || job.technicianName || "Unassigned", status: job.status || "OPEN", detail: `${job.job_card_no || job.jobCardNo || "Job Card"} · ${job.title || "Maintenance"}`,
+      }));
+      const rows = [...checklistRows, ...jobRows].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+      const names = [...new Set(rows.map((row) => row.technician).filter(Boolean))];
+      dialog.querySelector(".belm-customer-report-detail-body").innerHTML = `
+        <div class="belm-customer-report-summary-grid">
+          <div><span>Technicians</span><b>${names.length}</b></div><div><span>Checklist activity</span><b>${checklistRows.length}</b></div><div><span>Job cards</span><b>${jobRows.length}</b></div>
+        </div>
+        <div class="belm-customer-report-list">${rows.length ? rows.map((row) => `
+          <article class="belm-customer-report-row"><div><strong>${escapeHtml(row.technician)}</strong><span>${escapeHtml(row.detail)}</span><small>${escapeHtml(formatTanzaniaDateTime(row.date))} · ${escapeHtml(row.type)}</small></div><span class="belm-customer-report-neutral-status">${escapeHtml(row.status)}</span></article>`).join("") : '<p class="belm-general-analysis-loading">No technician activity found for this machine.</p>'}</div>`;
+    } catch (error) {
+      dialog.querySelector(".belm-customer-report-detail-body").innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load technician report.")}</p>`;
+    }
+  }
+
+  async function openCustomerStoreKeepingReport() {
+    const token = localStorage.getItem("belm_customer_token");
+    const dialog = showCustomerReportDetail("Store Keeping", "Customer store balances and recent movements", '<p class="belm-general-analysis-loading">Loading store report…</p>');
+    try {
+      const response = await fetch("/api/customer-portal/store", { headers: { Authorization: `Bearer ${token}` } });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || "Store report is not available for this account.");
+      const items = Array.isArray(data.items) ? data.items : [];
+      const movements = Array.isArray(data.recentMovements) ? data.recentMovements : [];
+      dialog.querySelector(".belm-customer-report-detail-body").innerHTML = `
+        <div class="belm-customer-report-summary-grid"><div><span>Stock items</span><b>${items.length}</b></div><div><span>Recent movements</span><b>${movements.length}</b></div></div>
+        <h3 class="belm-customer-report-subhead">Current Store Balance</h3>
+        <div class="belm-customer-report-table-wrap"><table class="belm-analysis-table"><thead><tr><th>Part No.</th><th>Description</th><th>Qty</th><th>Unit</th><th>Avg. Cost</th></tr></thead><tbody>${items.length ? items.map((item) => `<tr><td>${escapeHtml(item.part_number || item.partNumber || "—")}</td><td>${escapeHtml(item.description || "—")}</td><td>${escapeHtml(item.qty_on_hand ?? item.qtyOnHand ?? 0)}</td><td>${escapeHtml(item.unit || "PC")}</td><td>${Number(item.average_unit_cost ?? item.averageUnitCost ?? 0).toLocaleString("en-TZ")}</td></tr>`).join("") : '<tr><td colspan="5">No store items recorded.</td></tr>'}</tbody></table></div>
+        <h3 class="belm-customer-report-subhead">Recent Store Movements</h3>
+        <div class="belm-customer-report-list">${movements.length ? movements.slice(0, 30).map((move) => `<article class="belm-customer-report-row"><div><strong>${escapeHtml(move.part_number || "Store item")}</strong><span>${escapeHtml(move.description || "")}</span><small>${escapeHtml(formatTanzaniaDateTime(move.created_at || move.createdAt))} · ${escapeHtml(move.actor_name || move.actorName || "Customer Store")}</small></div><span class="belm-customer-report-neutral-status">${escapeHtml(move.movement_type || move.movementType || "MOVE")} ${escapeHtml(move.quantity ?? "")}</span></article>`).join("") : '<p class="belm-general-analysis-loading">No store movements recorded.</p>'}</div>`;
+    } catch (error) {
+      dialog.querySelector(".belm-customer-report-detail-body").innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load store report.")}</p>`;
+    }
+  }
+
+  async function openCustomerFinanceReport() {
+    const token = localStorage.getItem("belm_customer_token");
+    const dialog = showCustomerReportDetail(
+      "Finance Report",
+      "Invoices, payments, petty cash, fuel and machine cost summary",
+      '<p class="belm-general-analysis-loading">Loading finance report…</p>'
+    );
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      const [analysisResponse, invoiceResponse, proformaResponse] = await Promise.all([
+        fetch("/api/customer-portal/analysis", { headers }),
+        fetch("/api/customer-portal/invoices", { headers }),
+        fetch("/api/customer-portal/proformas", { headers }),
+      ]);
+      const analysis = await analysisResponse.json().catch(() => ({}));
+      const invoices = await invoiceResponse.json().catch(() => []);
+      const proformas = await proformaResponse.json().catch(() => []);
+      if (!analysisResponse.ok) throw new Error(analysis.error || "Could not load financial summary.");
+      if (!invoiceResponse.ok) throw new Error(invoices.error || "Could not load invoices.");
+      if (!proformaResponse.ok) throw new Error(proformas.error || "Could not load proformas.");
+
+      const invoiceRows = Array.isArray(invoices) ? invoices : [];
+      const proformaRows = Array.isArray(proformas) ? proformas : [];
+      const pettyCash = analysis.pettyCashAccount || {};
+      const invoiceTotal = invoiceRows.reduce((sum, row) => sum + Number(row.total || 0), 0);
+      const invoicePaid = invoiceRows.reduce((sum, row) => sum + Number(row.paid_amount ?? row.paidAmount ?? 0), 0);
+      const invoiceOutstanding = invoiceRows.reduce((sum, row) => sum + Number(row.balance ?? Math.max(0, Number(row.total || 0) - Number(row.paid_amount ?? row.paidAmount ?? 0))), 0);
+      const proformaTotal = proformaRows.reduce((sum, row) => sum + Number(row.totals?.grandTotal ?? row.grand_total ?? row.total ?? 0), 0);
+      const money = (value) => `TZS ${Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
+      const body = dialog.querySelector(".belm-customer-report-detail-body");
+      body.innerHTML = `
+        <div class="belm-customer-report-summary-grid">
+          <div><span>Invoices total</span><b>${money(invoiceTotal || analysis.invoices?.total)}</b></div>
+          <div><span>Payments received</span><b>${money(invoicePaid)}</b></div>
+          <div><span>Outstanding</span><b>${money(invoiceOutstanding || analysis.invoices?.outstanding)}</b></div>
+          <div><span>Published proformas</span><b>${proformaRows.length}</b></div>
+          <div><span>Proforma value</span><b>${money(proformaTotal)}</b></div>
+          <div><span>Machine expenses</span><b>${money(analysis.machineExpensesTotal)}</b></div>
+          <div><span>Fuel cost</span><b>${money(analysis.fuelCostTotal)}</b></div>
+          <div><span>Petty Cash topped up</span><b>${money(pettyCash.totalToppedUp)}</b></div>
+          <div><span>Petty Cash used</span><b>${money(pettyCash.totalUsed)}</b></div>
+          <div><span>Petty Cash balance</span><b>${money(pettyCash.balance)}</b></div>
+        </div>
+        <h3 class="belm-customer-report-subhead">Recent Invoices</h3>
+        <div class="belm-customer-report-table-wrap"><table class="belm-analysis-table"><thead><tr><th>Invoice</th><th>Date</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr></thead><tbody>${invoiceRows.length ? invoiceRows.slice(0, 30).map((row) => `
+          <tr>
+            <td>${escapeHtml(row.invoice_no || row.invoiceNo || "Invoice")}</td>
+            <td>${escapeHtml(formatTanzaniaDateTime(row.created_at || row.createdAt))}</td>
+            <td>${money(row.total)}</td>
+            <td>${money(row.paid_amount ?? row.paidAmount)}</td>
+            <td>${money(row.balance)}</td>
+            <td>${escapeHtml(row.status || "—")}</td>
+            <td><button type="button" data-customer-finance-invoice="${escapeHtml(row.id)}">PDF</button></td>
+          </tr>`).join("") : '<tr><td colspan="7">No invoices recorded yet.</td></tr>'}</tbody></table></div>
+        <h3 class="belm-customer-report-subhead">Recent Proformas</h3>
+        <div class="belm-customer-report-table-wrap"><table class="belm-analysis-table"><thead><tr><th>Proforma</th><th>Date</th><th>Value</th><th>Status</th><th></th></tr></thead><tbody>${proformaRows.length ? proformaRows.slice(0, 30).map((row) => `
+          <tr>
+            <td>${escapeHtml(row.invoice_no || row.invoiceNo || "Proforma")}</td>
+            <td>${escapeHtml(formatTanzaniaDateTime(row.sent_at || row.sentAt || row.created_at || row.createdAt))}</td>
+            <td>${money(row.totals?.grandTotal ?? row.grand_total ?? row.total)}</td>
+            <td>${escapeHtml(row.delivery_status || row.deliveryStatus || "—")}</td>
+            <td><button type="button" data-customer-finance-proforma="${escapeHtml(row.id)}">PDF</button></td>
+          </tr>`).join("") : '<tr><td colspan="5">No published proformas yet.</td></tr>'}</tbody></table></div>`;
+      body.querySelectorAll("[data-customer-finance-invoice]").forEach((button) => button.addEventListener("click", () => {
+        customerPdfAction(`/api/customer-portal/invoices/${encodeURIComponent(button.dataset.customerFinanceInvoice)}/download`, "view", "BELM-Invoice.pdf").catch((error) => alert(error.message));
+      }));
+      body.querySelectorAll("[data-customer-finance-proforma]").forEach((button) => button.addEventListener("click", () => {
+        customerPdfAction(`/api/customer-portal/proformas/${encodeURIComponent(button.dataset.customerFinanceProforma)}/download`, "view", "BELM-Proforma.pdf").catch((error) => alert(error.message));
+      }));
+    } catch (error) {
+      dialog.querySelector(".belm-customer-report-detail-body").innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load finance report.")}</p>`;
+    }
+  }
+
+  function openCustomerGeneralReportCenter() {
+    closeCustomerGeneralReportCenter();
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmCustomerGeneralReportCenter";
+    dialog.className = "belm-general-analysis-dialog belm-customer-report-center";
+    const reports = [
+      ["checklist", "Checklist Report", "Completed machine inspections and checklist history."],
+      ["fuel", "Fuel Consumption Report", "Fuel usage, cost and machine consumption records."],
+      ["expenses", "Machine Expenses Report", "Machine expenses, receipts and cost records."],
+      ["maintenance", "Maintenance Report", "Service status and maintenance Job Card history."],
+      ["operator", "Operator Report", "Problems and reports submitted by machine operators."],
+      ["technician", "Technician Report", "Technician checklist and Job Card activity."],
+      ["statistics", "Statistics Analysis", "Fleet status, service, finance and per-machine statistics."],
+      ["store", "Store Keeping", "Customer Store stock balances and movement history."],
+      ["finance", "Finance Report", "Invoices, payments, petty cash and overall financial position."],
+    ];
+    dialog.innerHTML = `
+      <div class="belm-general-analysis-head">
+        <div><h2>GENERAL REPORT</h2><p>Select the report you want to open.</p></div>
+        <button type="button" data-close-customer-report-center>Close</button>
+      </div>
+      <div class="belm-general-analysis-body">
+        <div class="belm-customer-report-center-grid">${reports.map(([key, label, detail], index) => `
+          <button type="button" class="belm-customer-report-center-card" data-customer-report-type="${key}">
+            <span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(label)}</strong><small>${escapeHtml(detail)}</small>
+          </button>`).join("")}</div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-customer-report-center]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.querySelectorAll("[data-customer-report-type]").forEach((button) => button.addEventListener("click", () => {
+      const type = button.dataset.customerReportType;
+      if (type === "fuel") { window.location.href = "/customer-fuel-usage/"; return; }
+      if (type === "expenses") { window.location.href = "/customer-machine-expenses/"; return; }
+      if (type === "statistics") { dialog.close(); openCustomerGeneralAnalysisDialog(); return; }
+      if (type === "store") { dialog.close(); openCustomerStoreKeepingReport(); return; }
+      if (type === "finance") { dialog.close(); openCustomerFinanceReport(); return; }
+      if (type === "checklist") { dialog.close(); openCustomerReportMachinePicker("Checklist Report", openCustomerChecklistReport); return; }
+      if (type === "maintenance") { dialog.close(); openCustomerReportMachinePicker("Maintenance Report", openCustomerMaintenanceReport); return; }
+      if (type === "operator") { dialog.close(); openCustomerReportMachinePicker("Operator Report", (machine) => openOperatorReportsDialog(machine.id, false)); return; }
+      if (type === "technician") { dialog.close(); openCustomerReportMachinePicker("Technician Report", openCustomerTechnicianReport); }
+    }));
+    dialog.showModal();
+  }
+
   function closeCustomerPrivacyDialog() {
     const existing = document.getElementById("belmCustomerPrivacyDialog");
     if (existing) existing.remove();
@@ -1072,7 +1392,7 @@
       window.location.href = "/login";
     });
     face.querySelector("[data-customer-face-view-all]")?.addEventListener("click", () => openCustomerFaceCommunicationHistory(face, name));
-    face.querySelector("[data-customer-face-general-report]")?.addEventListener("click", () => openCustomerGeneralAnalysisDialog());
+    face.querySelector("[data-customer-face-general-report]")?.addEventListener("click", () => openCustomerGeneralReportCenter());
     loadCustomerFaceCommunications(face, name);
   }
 
@@ -1514,11 +1834,150 @@
     panel.appendChild(more);
   }
 
+
+  // V387 - Customer-side machine ownership controls. These are deliberately
+  // separate from BELM Admin controls. When BELM Service Provider is ON, the
+  // four controls stay visible but disabled so the customer can see who owns
+  // machine administration at that moment.
+  function customerCanManageMachines(profile) {
+    if (!profile) return false;
+    const actorType = String(profile.actorType || "").toLowerCase();
+    const actorRole = String(profile.actorRole || "").toLowerCase();
+    return actorType === "owner" || (actorType === "assistant" && actorRole === "admin");
+  }
+
+  function closeCustomerMachineEditor() {
+    document.getElementById("belmCustomerMachineEditor")?.remove();
+  }
+
+  function openCustomerMachineEditor(machine = null) {
+    closeCustomerMachineEditor();
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token) return;
+    const editing = Boolean(machine?.id);
+    const modal = document.createElement("div");
+    modal.id = "belmCustomerMachineEditor";
+    modal.className = "belm-customer-machine-editor";
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    const values = {
+      machineType: machine?.machineType || machine?.machine_type || "",
+      model: machine?.model || "",
+      serialNumber: machine?.serialNumber || machine?.serial_number || "",
+      regNumber: machine?.regNumber || machine?.reg_number || "",
+      fleetNumber: machine?.fleetNumber || machine?.fleet_number || "",
+      brand: machine?.brand || "",
+      serviceKit: machine?.serviceKit || machine?.service_kit || "OK",
+    };
+    modal.innerHTML = `<section class="belm-customer-machine-editor-card">
+      <header><div><p>CUSTOMER MACHINE</p><h2>${editing ? "Edit Machine" : "Add Machine"}</h2></div><button type="button" data-close-customer-machine-editor aria-label="Close">×</button></header>
+      <form data-customer-machine-editor-form>
+        <label><span>Machine Type</span><input name="machineType" required value="${escapeHtml(values.machineType)}"></label>
+        <label><span>Model</span><input name="model" required value="${escapeHtml(values.model)}"></label>
+        <label><span>Serial Number</span><input name="serialNumber" value="${escapeHtml(values.serialNumber)}"></label>
+        <label><span>Registration Number</span><input name="regNumber" value="${escapeHtml(values.regNumber)}"></label>
+        <label><span>Fleet Number</span><input name="fleetNumber" value="${escapeHtml(values.fleetNumber)}"></label>
+        <label><span>Brand</span><input name="brand" value="${escapeHtml(values.brand)}"></label>
+        <label><span>Service Kit</span><select name="serviceKit"><option value="OK" ${values.serviceKit === "OK" ? "selected" : ""}>OK</option><option value="NEW" ${values.serviceKit === "NEW" ? "selected" : ""}>NEW</option></select></label>
+        <div class="belm-customer-machine-editor-error" data-customer-machine-editor-error hidden></div>
+        <div class="belm-customer-machine-editor-actions"><button type="button" data-close-customer-machine-editor>Cancel</button><button type="submit" class="primary">${editing ? "Save Machine" : "Add Machine"}</button></div>
+      </form>
+    </section>`;
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal || event.target.closest("[data-close-customer-machine-editor]")) closeCustomerMachineEditor();
+    });
+    modal.querySelector("[data-customer-machine-editor-form]")?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const submit = form.querySelector('button[type="submit"]');
+      const errorBox = form.querySelector("[data-customer-machine-editor-error]");
+      const data = Object.fromEntries(new FormData(form).entries());
+      submit.disabled = true;
+      submit.textContent = editing ? "Saving…" : "Adding…";
+      errorBox.hidden = true;
+      try {
+        const response = await fetch(editing ? `/api/customer-portal/machines/${encodeURIComponent(machine.id)}` : "/api/customer-portal/machines", {
+          method: editing ? "PUT" : "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify(data),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `Could not ${editing ? "edit" : "add"} machine.`);
+        window.location.reload();
+      } catch (error) {
+        errorBox.textContent = error.message || "Could not save machine.";
+        errorBox.hidden = false;
+        submit.disabled = false;
+        submit.textContent = editing ? "Save Machine" : "Add Machine";
+      }
+    });
+    document.body.appendChild(modal);
+    modal.querySelector('input[name="machineType"]')?.focus();
+  }
+
+  async function customerDeleteMachine(machine, permanent = false) {
+    const token = localStorage.getItem("belm_customer_token");
+    if (!token || !machine?.id) return;
+    const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "this machine";
+    if (permanent) {
+      const typed = window.prompt(`Type FORGET to permanently delete ${machineName}. This cannot be undone.`);
+      if (String(typed || "").trim().toUpperCase() !== "FORGET") return;
+    } else if (!window.confirm(`Delete ${machineName}? It will move to the Recycle Bin.`)) {
+      return;
+    }
+    const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}${permanent ? "/forget" : ""}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.error || `Could not ${permanent ? "forget" : "delete"} machine.`);
+    window.location.reload();
+  }
+
+  function customerMachineManagementRow(panel, machine, profile) {
+    if (!panel || panel.querySelector("[data-customer-machine-management]")) return;
+    if (!customerCanManageMachines(profile)) return;
+    const providerOn = Boolean(profile?.belmServiceProviderActive);
+    const row = document.createElement("div");
+    row.className = `belm-customer-machine-management${providerOn ? " provider-locked" : ""}`;
+    row.dataset.customerMachineManagement = "1";
+    row.innerHTML = `
+      <div class="belm-customer-machine-management-buttons">
+        <button type="button" class="add" data-customer-add-machine ${providerOn ? "disabled" : ""}>Add Machine</button>
+        <button type="button" class="edit" data-customer-edit-machine ${providerOn ? "disabled" : ""}>Edit Machine</button>
+        <button type="button" class="delete" data-customer-delete-machine ${providerOn ? "disabled" : ""}>Delete Machine</button>
+        <button type="button" class="forget" data-customer-forget-machine ${providerOn ? "disabled" : ""}>Forget Permanently</button>
+      </div>
+      ${providerOn ? '<small>BELM Service Provider ON — customer machine management is locked.</small>' : ''}`;
+    panel.appendChild(row);
+    row.addEventListener("click", async (event) => {
+      event.stopPropagation();
+      if (providerOn) return;
+      try {
+        if (event.target.closest("[data-customer-add-machine]")) openCustomerMachineEditor(null);
+        else if (event.target.closest("[data-customer-edit-machine]")) openCustomerMachineEditor(machine);
+        else if (event.target.closest("[data-customer-delete-machine]")) await customerDeleteMachine(machine, false);
+        else if (event.target.closest("[data-customer-forget-machine]")) await customerDeleteMachine(machine, true);
+      } catch (error) {
+        alert(error.message || "Machine management action failed.");
+      }
+    });
+    row.addEventListener("pointerdown", (event) => event.stopPropagation());
+  }
+
   async function customerServiceDuePanel(card, machine) {
     if (card.dataset.belmServiceDueReady === "1") return;
     card.dataset.belmServiceDueReady = "1";
     const [status, profile] = await Promise.all([loadServiceStatus(machine.id), loadCustomerPortalProfile()]);
-    if (!status) return;
+    if (!status) {
+      if (customerCanManageMachines(profile)) {
+        const managementOnly = document.createElement("div");
+        managementOnly.className = "belm-service-due-panel belm-customer-management-only";
+        card.appendChild(managementOnly);
+        customerMachineManagementRow(managementOnly, machine, profile);
+      }
+      return;
+    }
     const selfServiceMode = Boolean(profile?.isMachineryAdmin);
     const remaining = Math.round(status.hoursRemaining);
     const overdueBy = Math.max(0, Math.round(Math.abs(Math.min(0, status.hoursRemaining || 0))));
@@ -1611,6 +2070,7 @@
     enforceCustomerFeaturePermissions(panel);
     decorateMachineActionIcons(panel);
     organizeMachineActions(panel);
+    customerMachineManagementRow(panel, machine, profile);
     if (customerWorkflowActor() === "tech") scheduleTechnicianShortcutSync(180);
   }
 
@@ -3879,6 +4339,72 @@
     toast.belmHideTimer = setTimeout(() => toast.classList.remove("show"), 5200);
   }
 
+  async function loadTechnicianDashboardCommunications(card, customer) {
+    const body = card?.querySelector("[data-tech-dashboard-communications]");
+    if (!body || !customer?.id) return [];
+    try {
+      const token = localStorage.getItem("belm_tech_token");
+      const response = await fetch(`/api/customers/${encodeURIComponent(customer.id)}/communications`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      if (!response.ok) throw new Error();
+      const items = await response.json();
+      card._belmTechnicianCommunications = Array.isArray(items) ? items : [];
+      renderCustomerFaceCommunicationRows(body, card._belmTechnicianCommunications, customer.name || "Customer", 3);
+      return card._belmTechnicianCommunications;
+    } catch (_) {
+      body.innerHTML = '<p class="belm-customer-face-empty">Could not load communication history.</p>';
+      return [];
+    }
+  }
+
+  async function openTechnicianDashboardCommunicationHistory(card, customer) {
+    let dialog = document.getElementById("belmTechnicianCommunicationDialog");
+    if (dialog) dialog.remove();
+    dialog = document.createElement("dialog");
+    dialog.id = "belmTechnicianCommunicationDialog";
+    dialog.className = "belm-customer-face-communication-dialog";
+    dialog.innerHTML = `
+      <div class="belm-customer-face-dialog-head">
+        <div><b>Communication History</b><span>${escapeHtml(customer?.name || "Customer")}</span></div>
+        <button type="button" data-close-tech-history>Close</button>
+      </div>
+      <div class="belm-customer-face-dialog-body" data-tech-history-body>Loading history…</div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-tech-history]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+    let items = Array.isArray(card?._belmTechnicianCommunications) ? card._belmTechnicianCommunications : [];
+    if (!items.length) items = await loadTechnicianDashboardCommunications(card, customer);
+    renderCustomerFaceCommunicationRows(dialog.querySelector("[data-tech-history-body]"), items, customer?.name || "Customer", 30);
+  }
+
+  function openTechnicianGeneralReport(customer) {
+    const machines = Array.isArray(customer?.machines) ? customer.machines : [];
+    const totals = { GREEN: 0, YELLOW: 0, RED: 0 };
+    machines.forEach((machine) => {
+      const state = technicianCondition(machine.status).status;
+      if (totals[state] !== undefined) totals[state] += 1;
+    });
+    const dialog = document.createElement("dialog");
+    dialog.className = "belm-customer-face-communication-dialog";
+    dialog.innerHTML = `
+      <div class="belm-customer-face-dialog-head"><div><b>General Report</b><span>${escapeHtml(customer?.name || "Customer")}</span></div><button type="button">Close</button></div>
+      <div class="belm-customer-face-dialog-body">
+        <article class="belm-technician-general-report">
+          <div><span>Total machines</span><b>${machines.length}</b></div>
+          <div><span>Green</span><b>${totals.GREEN}</b></div>
+          <div><span>Yellow</span><b>${totals.YELLOW}</b></div>
+          <div><span>Red</span><b>${totals.RED}</b></div>
+        </article>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("button")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.showModal();
+  }
+
   function technicianCustomerInfoCard(customer) {
     if (document.getElementById("belmTechnicianCustomerCard")) return;
     const title = Array.from(document.querySelectorAll("h2"))
@@ -3911,11 +4437,35 @@
         <div><span>Email</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div>
         <div><span>Address</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
       </div>
-      <div class="belm-technician-dashboard-footer">
-        <button type="button" class="belm-technician-view-machine-button" data-technician-view-machines>
-          <span>View Machine</span><small>${escapeHtml(machineCount)} machine${machineCount === 1 ? "" : "s"}</small>
-        </button>
+      <section class="belm-technician-dashboard-communication">
+        <div class="belm-technician-dashboard-communication-head">
+          <strong>Communication<br>history</strong>
+          <button type="button" data-tech-view-all-communications>View all</button>
+        </div>
+        <div class="belm-technician-dashboard-communication-body" data-tech-dashboard-communications>
+          <p class="belm-customer-face-empty">Loading communication history…</p>
+        </div>
+      </section>
+      <div class="belm-technician-dashboard-footer belm-technician-dashboard-actions-v385">
+        <button type="button" class="belm-tech-main-action action-black" data-technician-view-machines>View Machines</button>
+        <a class="belm-tech-main-action action-blue" href="/breakdown-workflow/?actor=tech">BELM Workshop</a>
+        <button type="button" class="belm-tech-main-action action-green" data-tech-open-store>BELM Store</button>
+        <button type="button" class="belm-tech-main-action action-yellow" data-tech-general-report>General Report</button>
+        <button type="button" class="belm-tech-main-action action-purple" data-tech-expenses-rec>Expenses Rec</button>
       </div>`;
+
+    customerCard.querySelector("[data-tech-view-all-communications]")?.addEventListener("click", () => openTechnicianDashboardCommunicationHistory(customerCard, customer));
+    customerCard.querySelector("[data-tech-open-store]")?.addEventListener("click", async () => {
+      await addTechnicianSpareShortcut();
+      const shortcut = document.getElementById("belm-tech-spare-shortcut");
+      if (shortcut) shortcut.click();
+      else technicianSyncToast("BELM Store is not available for this Technician assignment.", true);
+    });
+    customerCard.querySelector("[data-tech-general-report]")?.addEventListener("click", () => openTechnicianGeneralReport(customer));
+    customerCard.querySelector("[data-tech-expenses-rec]")?.addEventListener("click", () => {
+      technicianSyncToast("Expenses Rec is ready as the Technician dashboard entry; expense workflow connection will follow the assigned BELM permissions.");
+    });
+    loadTechnicianDashboardCommunications(customerCard, customer);
 
     const listHeading = document.createElement("div");
     listHeading.id = "belmTechnicianMachineListHeading";
@@ -3933,7 +4483,7 @@
       const viewButton = customerCard.querySelector("[data-technician-view-machines]");
       if (viewButton) {
         viewButton.setAttribute("aria-expanded", open ? "true" : "false");
-        viewButton.querySelector("span").textContent = open ? "Hide Machine" : "View Machine";
+        viewButton.textContent = open ? "Hide Machines" : "View Machines";
       }
       if (open && focus) listHeading.scrollIntoView({ behavior: "smooth", block: "start" });
     };
@@ -4119,8 +4669,47 @@
     }
   }
 
+  function removeTechnicianMachineManagementControls(root = document) {
+    if (!window.location.pathname.startsWith("/tech")) return;
+    const selectors = [
+      "[data-edit-machine]",
+      "[data-delete-machine]",
+      "[data-forget-machine]",
+      ".machine-admin-edit",
+      ".machine-admin-delete",
+      ".machine-admin-forget",
+    ];
+    root.querySelectorAll?.(selectors.join(",")).forEach((element) => element.remove());
+
+    const forbiddenLabels = new Set(["edit machine", "delete machine", "forget permanently"]);
+    root.querySelectorAll?.("button, a, [role='button']").forEach((element) => {
+      const label = String(element.textContent || "").trim().replace(/\s+/g, " ").toLowerCase();
+      if (!forbiddenLabels.has(label)) return;
+      const inTechnicianMachineArea = Boolean(
+        element.closest(".belm-technician-machine-card, #belmTechnicianMachineGrid, .belm-technician-machine-grid")
+      );
+      if (inTechnicianMachineArea) element.remove();
+    });
+  }
+
+  function installTechnicianMachineManagementGuard() {
+    if (!window.location.pathname.startsWith("/tech")) return;
+    removeTechnicianMachineManagementControls();
+    if (window.__belmTechnicianMachineManagementGuardInstalled) return;
+    window.__belmTechnicianMachineManagementGuardInstalled = true;
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) removeTechnicianMachineManagementControls(node);
+        });
+      });
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   async function enhanceTechnicianReportCards() {
     if (!window.location.pathname.startsWith("/tech")) return;
+    installTechnicianMachineManagementGuard();
     const customer = await loadTechnicianCustomerProfile();
     if (!customer) return;
     technicianCustomerInfoCard(customer);
@@ -4141,6 +4730,7 @@
       card.dataset.belmTechnicianReportsReady = "1";
       card.classList.add("belm-technician-machine-card");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
+      removeTechnicianMachineManagementControls(card);
       card.firstElementChild?.classList.add("belm-machine-native-head");
       if (card.children[1]) card.children[1].classList.add("belm-machine-last-checked");
       technicianMachineInfoCard(card, machine);

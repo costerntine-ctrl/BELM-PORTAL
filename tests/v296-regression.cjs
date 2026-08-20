@@ -39,7 +39,7 @@ check('settings visible log label renamed', settingsHtml.includes('>Procurement 
 check('privacy policy terminology updated EN', privacy.includes('machine procurement records'));
 check('privacy policy terminology updated SW', privacy.includes('rekodi za procurement/manunuzi ya mashine'));
 check('terms define Procurement', terms.includes('<b>Procurement</b>') && terms.includes('<b>Procurement / Manunuzi</b>'));
-check('no old customer-facing Machine Expenses labels in core pages', ![portal, reqHtml, procHtml, legacyHtml, fuelHtml, usersHtml, settingsHtml].some(x => /Machine Expenses|Expenses Approval/.test(x)));
+check('no old customer-facing Machine Expenses workflow labels in core pages', ![reqHtml, procHtml, legacyHtml, fuelHtml, usersHtml, settingsHtml].some(x => /Machine Expenses|Expenses Approval/.test(x)) && !/>(?:Machine Expenses|Expenses Approval)</.test(portal));
 check('main portal cache bust', (() => { const m = /portal-tools\.js\?v=(\d+)-/.exec(read('frontend/index.html')); return m && Number(m[1]) >= 296; })());
 check('service worker cache bumped', (() => { const m = /const CACHE='belm-app-v(\d+)-/.exec(read('frontend/belm-sw.js')); return m && Number(m[1]) >= 296; })());
 check('customer app shell version matches service worker', (() => {

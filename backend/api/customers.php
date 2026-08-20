@@ -559,7 +559,11 @@ if ($method === 'GET' && $action === 'communication-feed') {
 
 // ---- BELM <-> Customer communication history -----------------------------
 if ($method === 'GET' && $action === 'communications') {
-    require_page_access($user, 'customers');
+    if (($user['roleName'] ?? '') === 'Technician') {
+        require_customer_read_access($user, $id);
+    } else {
+        require_page_access($user, 'customers');
+    }
     $stmt = db()->prepare('SELECT id, name FROM customers WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     $target = $stmt->fetch();

@@ -5,6 +5,7 @@ require_once __DIR__ . '/checklist_reports_helpers.php';
 require_once __DIR__ . '/proforma_pdf_helper.php';
 require_once __DIR__ . '/invoice_pdf_helper.php';
 require_once __DIR__ . '/table_pdf_helper.php';
+require_once __DIR__ . '/service_due_helper.php';
 
 $customer = require_customer_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -54,6 +55,85 @@ function log_customer_activity(array $customer, string $action): void {
     db()->prepare(
         'INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())'
     )->execute([uuid(), $customer['id'], $actorName, $action]);
+}
+
+
+// V387 - Customer machine self-management is available only when BELM is NOT
+// the active service provider. The UI mirrors this rule, but the API enforces
+// it as the source of truth so disabled buttons cannot be bypassed manually.
+function require_customer_machine_management_access(array $customer): void {
+    require_customer_write_access($customer);
+    $isOwner = ($customer['actorType'] ?? '') === 'owner';
+    $isCompanyAdmin = ($customer['actorType'] ?? '') === 'assistant'
+        && strtolower(trim((string)($customer['customerRole'] ?? ''))) === 'admin';
+    if (!$isOwner && !$isCompanyAdmin) {
+        json_error('Only the main customer account or Company Admin can manage machines.', 403);
+    }
+    $stmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([$customer['id']]);
+    $selfServiceEnabled = $stmt->fetchColumn();
+    if (empty($selfServiceEnabled)) {
+        json_error('BELM Service Provider is ON. Add, Edit, Delete and Forget Machine are controlled by BELM while this switch is ON.', 403);
+    }
+}
+
+function customer_machine_details_from_body(array $body): array {
+    $machineType = trim((string)($body['machineType'] ?? ''));
+    $model = trim((string)($body['model'] ?? ''));
+    $serialNumber = trim((string)($body['serialNumber'] ?? ''));
+    $regNumber = trim((string)($body['regNumber'] ?? ''));
+    $fleetNumber = trim((string)($body['fleetNumber'] ?? ''));
+    $brand = trim((string)($body['brand'] ?? ''));
+    $serviceKit = trim((string)($body['serviceKit'] ?? 'OK')) ?: 'OK';
+    if ($machineType === '') json_error('Machine type is required.');
+    if ($model === '') json_error('Machine model is required.');
+    if ($serialNumber === '' && $regNumber === '') json_error('Enter a serial number or machine registration number.');
+    if (!in_array($serviceKit, ['OK', 'NEW'], true)) $serviceKit = 'OK';
+    return [
+        'machineType' => $machineType,
+        'model' => $model,
+        'serialNumber' => $serialNumber !== '' ? $serialNumber : null,
+        'regNumber' => $regNumber !== '' ? $regNumber : null,
+        'fleetNumber' => $fleetNumber !== '' ? $fleetNumber : null,
+        'brand' => $brand !== '' ? $brand : null,
+        'serviceKit' => $serviceKit,
+    ];
+}
+
+function customer_assert_machine_serial_available(?string $serialNumber, ?string $excludeMachineId = null): void {
+    if ($serialNumber === null || trim($serialNumber) === '') return;
+    $sql = 'SELECT 1 FROM machines WHERE LOWER(serial_number) = LOWER(?)';
+    $params = [$serialNumber];
+    if ($excludeMachineId !== null && $excludeMachineId !== '') {
+        $sql .= ' AND id <> ?';
+        $params[] = $excludeMachineId;
+    }
+    $sql .= ' LIMIT 1';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    if ($stmt->fetch()) json_error('This serial number is already registered to another machine.', 409);
+}
+
+// Same machine-owned cleanup proven on BELM Admin hard-delete, scoped here to
+// one authenticated customer's machine. Customer-independent commercial rows
+// are detached so the customer and every other machine remain intact.
+function customer_forget_machine_permanently(PDO $pdo, string $machineId): void {
+    $ids = [$machineId];
+    $in = implode(',', array_fill(0, count($ids), '?'));
+    $pdo->prepare("DELETE FROM checklist_answers WHERE report_id IN (SELECT id FROM checklist_reports WHERE machine_id IN ($in))")->execute($ids);
+    $pdo->prepare("DELETE FROM checklist_reports WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM usage_logs WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM petty_cash_topups WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM machine_operator_shifts WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM operator_reports WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM machine_operators WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM spare_part_requests WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE service_requests SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE invoices SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE proforma_invoices SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("UPDATE customer_applications SET machine_id=NULL WHERE machine_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM trash_entries WHERE entity_type='machine' AND entity_id IN ($in)")->execute($ids);
+    $pdo->prepare("DELETE FROM machines WHERE id IN ($in)")->execute($ids);
 }
 
 // Valid per-feature access keys an assistant can be limited to. If the
@@ -3413,6 +3493,81 @@ if ($sub === 'petty-cash' && $sub2) {
             'entries' => $entries,
         ]);
     }
+}
+
+
+// ---- Customer-owned machine management -------------------------------------
+// V387: These four actions are customer-side only and are enabled only while
+// Customer Self-Service is ON (equivalent to BELM Service Provider being OFF).
+if ($sub === 'machines' && !$sub2 && $method === 'POST') {
+    require_customer_machine_management_access($customer);
+    $machine = customer_machine_details_from_body(body());
+    customer_assert_machine_serial_available($machine['serialNumber']);
+    $newId = uuid();
+    db()->prepare(
+        'INSERT INTO machines (id, customer_id, machine_type, model, serial_number, reg_number, fleet_number, brand, service_kit, status, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())'
+    )->execute([
+        $newId, $customer['id'], $machine['machineType'], $machine['model'],
+        $machine['serialNumber'], $machine['regNumber'], $machine['fleetNumber'],
+        $machine['brand'], $machine['serviceKit'], 'NOT_CHECKED',
+    ]);
+    $seededServiceParts = belm_seed_machine_service_parts_from_templates($newId, $machine['machineType']);
+    log_customer_activity($customer, 'Added machine "' . $machine['model'] . '".');
+    json_out(['id' => $newId, 'servicePartsSeeded' => $seededServiceParts, 'sync' => ['customer' => true, 'belm' => true]], 201);
+}
+
+if ($sub === 'machines' && $sub2 && !$sub3 && $method === 'PUT') {
+    require_customer_machine_management_access($customer);
+    $stmt = db()->prepare('SELECT id, model FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$sub2, $customer['id']]);
+    $existing = $stmt->fetch();
+    if (!$existing) json_error('Machine not found for this customer.', 404);
+    $machine = customer_machine_details_from_body(body());
+    customer_assert_machine_serial_available($machine['serialNumber'], $sub2);
+    db()->prepare(
+        'UPDATE machines SET machine_type=?, model=?, serial_number=?, reg_number=?, fleet_number=?, brand=?, service_kit=?, updated_at=NOW() WHERE id=? AND customer_id=?'
+    )->execute([
+        $machine['machineType'], $machine['model'], $machine['serialNumber'], $machine['regNumber'],
+        $machine['fleetNumber'], $machine['brand'], $machine['serviceKit'], $sub2, $customer['id'],
+    ]);
+    log_customer_activity($customer, 'Edited machine "' . $existing['model'] . '" to "' . $machine['model'] . '".');
+    json_out(['ok' => true, 'sync' => ['customer' => true, 'belm' => true]]);
+}
+
+if ($sub === 'machines' && $sub2 && !$sub3 && $method === 'DELETE') {
+    require_customer_machine_management_access($customer);
+    $stmt = db()->prepare('SELECT id, model FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$sub2, $customer['id']]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found for this customer.', 404);
+    send_to_trash('machine', $sub2, $machine['model'], $customer['actorId'] ?? null, 'Deleted by customer self-service');
+    soft_delete('machines', $sub2);
+    log_customer_activity($customer, 'Deleted machine "' . $machine['model'] . '" to Recycle Bin.');
+    json_out(['ok' => true, 'sync' => ['customer' => true, 'belm' => true]]);
+}
+
+if ($sub === 'machines' && $sub2 && $sub3 === 'forget' && $method === 'DELETE') {
+    require_customer_machine_management_access($customer);
+    $stmt = db()->prepare('SELECT id, model FROM machines WHERE id = ? AND customer_id = ?');
+    $stmt->execute([$sub2, $customer['id']]);
+    $machine = $stmt->fetch();
+    if (!$machine) json_error('Machine not found for this customer.', 404);
+    $model = (string)$machine['model'];
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        customer_forget_machine_permanently($pdo, $sub2);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $error;
+    }
+    log_customer_activity($customer, 'Permanently forgot machine "' . $model . '".');
+    json_out([
+        'ok' => true,
+        'message' => 'Machine "' . $model . '" has been permanently forgotten.',
+        'sync' => ['customer' => true, 'belm' => true],
+    ]);
 }
 
 // ---- Machine reports / service status / operation analysis ----------------

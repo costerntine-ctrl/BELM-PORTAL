@@ -1,0 +1,15 @@
+BELM PORTAL V387 TEST SUMMARY
+
+Scope: Customer -> View Machines machine management and BELM Service Provider lock.
+
+Results:
+- V387 focused regression: 22/22 passed.
+- Full runnable regression suite: 99/99 passed.
+- ui-smoke.cjs: skipped because the package does not provide the external BELM_JS_TOOLS/jsdom path expected by that harness.
+- Frontend JavaScript syntax: 36/36 passed.
+- Backend PHP syntax: 42/42 passed.
+
+Protected behavior:
+- BELM Admin and BELM Technician machine management flows unchanged.
+- Customer Add/Edit/Delete/Forget are server-gated by Customer Self-Service / BELM Service Provider state.
+- BELM Service Provider ON disables all four Customer machine-management controls and direct API attempts are rejected.

@@ -18,10 +18,11 @@ function test(name, ok) {
 // to customers-manager, so that UI fingerprint is advanced while backend synchronization hashes remain protected.
 // V381 changes only the BELM Admin customer-machine button label; the reviewed UI fingerprint is advanced again.
 // V382 intentionally advances customers-manager UI for full-card alert/service range coloring; backend sync fingerprints remain protected.
+// V387 intentionally advances customer_portal.php for customer-owned machine CRUD guarded by BELM Service Provider mode; sync invariants below remain protected.
 const baseline = {
   'backend/config/helpers.php': '5e4fc6b5296a790f96f02af4c616c04f5b34cc8ff4d05c77086a523064ac0cf4',
   'backend/api/breakdown_workflow.php': 'd6e792e8243f9455c46506c36079c40c914218a39e05adcf83f5bacb8ac747ab',
-  'backend/api/customer_portal.php': '1617238c7362736bda506a715af99c062326d199a97374a57142c82782dce5b6',
+  'backend/api/customer_portal.php': 'bbe9d07ba86cdec990ce0909c7f6945e69b1c489cafe6aa78287dd31c8b9ed3f',
   'backend/api/engineering.php': '6ea6d5f2f3ad16a9b6343dd7666c7304f7de30b51a915b7452741b2aa6dca63e',
   'backend/api/service_requests.php': '66c9e8378092db5c0e914e994d12e8b41521fb8ca004850099358131fd602d05',
   'backend/api/spare_recommendations.php': 'eeec8df6b3f4c631000b3d09b5ad032c2f7ecf289879955cee05892713359507',

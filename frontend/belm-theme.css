@@ -5251,3 +5251,251 @@ body[data-belm-area="tech"] .belm-technician-machine-list-heading {
 @media (max-width: 520px) {
   body[data-belm-area="tech"] .belm-technician-dashboard-card-v384 { width: 100%; }
 }
+
+/* V385 BELM Technician first-card communication + five main actions */
+body[data-belm-area="tech"] .belm-technician-dashboard-communication {
+  margin: 0 18px 14px; padding: 14px; min-height: 250px;
+  border: 1px solid rgba(139,177,235,.28); border-radius: 14px;
+  background: rgba(8,22,43,.42);
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-communication-head {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(130px,1.35fr); gap:12px; align-items:center; margin-bottom:12px;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-communication-head strong { color:#fff; font-size:18px; line-height:1.04; }
+body[data-belm-area="tech"] .belm-technician-dashboard-communication-head button {
+  min-height:38px; border:1px solid rgba(92,169,255,.58); border-radius:10px; background:rgba(45,126,224,.34); color:#fff; font-weight:900; cursor:pointer;
+}
+body[data-belm-area="tech"] .belm-technician-dashboard-communication-body { max-height:180px; overflow:auto; }
+body[data-belm-area="tech"] .belm-technician-dashboard-actions-v385 {
+  display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px;
+}
+body[data-belm-area="tech"] .belm-tech-main-action {
+  min-width:0; min-height:56px; display:flex; align-items:center; justify-content:center; text-align:center;
+  padding:8px 6px; border-radius:11px; border:1px solid rgba(255,255,255,.2); color:#fff;
+  font:900 10px/1.1 Inter,system-ui,sans-serif; text-decoration:none; cursor:pointer; white-space:normal;
+}
+body[data-belm-area="tech"] .belm-tech-main-action.action-black{background:#111827;}
+body[data-belm-area="tech"] .belm-tech-main-action.action-blue{background:#2196f3;}
+body[data-belm-area="tech"] .belm-tech-main-action.action-green{background:#56c94f;}
+body[data-belm-area="tech"] .belm-tech-main-action.action-yellow{background:#f4b400;color:#2b2200;}
+body[data-belm-area="tech"] .belm-tech-main-action.action-purple{background:#8a6edb;}
+body[data-belm-area="tech"] .belm-technician-general-report { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+body[data-belm-area="tech"] .belm-technician-general-report div { padding:14px; border:1px solid rgba(139,177,235,.25); border-radius:10px; }
+body[data-belm-area="tech"] .belm-technician-general-report span { display:block; color:#93a8c8; font-size:10px; text-transform:uppercase; font-weight:900; }
+body[data-belm-area="tech"] .belm-technician-general-report b { display:block; margin-top:4px; font-size:24px; color:#fff; }
+@media (max-width:720px){
+  body[data-belm-area="tech"] .belm-technician-dashboard-actions-v385{gap:5px;}
+  body[data-belm-area="tech"] .belm-tech-main-action{font-size:8px;padding:7px 3px;}
+}
+
+
+/* V387 - Customer > View Machines: Add/Edit/Delete/Forget management row.
+   BELM Service Provider ON keeps all four visible but disabled; the backend
+   enforces the same switch so UI state cannot be bypassed. */
+.belm-service-due-panel .belm-customer-machine-management {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148,163,184,.35);
+}
+.belm-service-due-panel .belm-customer-machine-management-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.belm-service-due-panel .belm-customer-machine-management-buttons button {
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 4px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1.05;
+  white-space: normal;
+  cursor: pointer;
+}
+.belm-service-due-panel .belm-customer-machine-management-buttons .add { background:#dcfce7; border-color:#22c55e; color:#166534; }
+.belm-service-due-panel .belm-customer-machine-management-buttons .edit { background:#e0f2fe; border-color:#38bdf8; color:#075985; }
+.belm-service-due-panel .belm-customer-machine-management-buttons .delete { background:#fff7ed; border-color:#fb923c; color:#9a3412; }
+.belm-service-due-panel .belm-customer-machine-management-buttons .forget { background:#fff1f2; border-color:#ef4444; color:#991b1b; }
+.belm-service-due-panel .belm-customer-machine-management.provider-locked button,
+.belm-service-due-panel .belm-customer-machine-management-buttons button:disabled {
+  opacity:.42;
+  filter:grayscale(.38);
+  cursor:not-allowed;
+  box-shadow:none !important;
+}
+.belm-service-due-panel .belm-customer-machine-management > small {
+  display:block;
+  margin-top:6px;
+  color:#b45309;
+  font-size:8px;
+  font-weight:800;
+  line-height:1.25;
+}
+html.dark .belm-service-due-panel .belm-customer-machine-management,
+html[data-theme="dark"] .belm-service-due-panel .belm-customer-machine-management { border-top-color:#334155; }
+html.dark .belm-service-due-panel .belm-customer-machine-management-buttons button,
+html[data-theme="dark"] .belm-service-due-panel .belm-customer-machine-management-buttons button { box-shadow:inset 0 0 0 9999px rgba(15,23,42,.28); }
+
+.belm-customer-machine-editor {
+  position:fixed;
+  inset:0;
+  z-index:10020;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+  background:rgba(2,6,23,.72);
+  backdrop-filter:blur(5px);
+}
+.belm-customer-machine-editor-card {
+  width:min(520px,100%);
+  max-height:88vh;
+  overflow:auto;
+  border:1px solid #cbd5e1;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 24px 70px rgba(2,6,23,.34);
+}
+.belm-customer-machine-editor-card > header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:16px 18px;
+  border-bottom:1px solid #e2e8f0;
+}
+.belm-customer-machine-editor-card > header p { margin:0 0 3px; color:#64748b; font-size:9px; font-weight:900; letter-spacing:.08em; }
+.belm-customer-machine-editor-card > header h2 { margin:0; color:#0f172a; font-size:20px; font-weight:900; }
+.belm-customer-machine-editor-card > header button { width:34px; height:34px; border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; font-size:22px; }
+.belm-customer-machine-editor-card form { display:grid; grid-template-columns:1fr 1fr; gap:10px; padding:18px; }
+.belm-customer-machine-editor-card label { display:grid; gap:5px; }
+.belm-customer-machine-editor-card label span { color:#475569; font-size:9px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+.belm-customer-machine-editor-card input,
+.belm-customer-machine-editor-card select { width:100%; min-width:0; height:40px; padding:0 10px; border:1px solid #cbd5e1; border-radius:9px; background:#fff; color:#0f172a; font-size:12px; font-weight:700; }
+.belm-customer-machine-editor-error { grid-column:1/-1; padding:9px 10px; border-radius:8px; background:#fee2e2; color:#991b1b; font-size:11px; font-weight:700; }
+.belm-customer-machine-editor-actions { grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:4px; }
+.belm-customer-machine-editor-actions button { min-height:42px; border:1px solid #cbd5e1; border-radius:9px; background:#f8fafc; font-size:11px; font-weight:900; }
+.belm-customer-machine-editor-actions .primary { border-color:#22c55e; background:#22c55e; color:#052e16; }
+html.dark .belm-customer-machine-editor-card,
+html[data-theme="dark"] .belm-customer-machine-editor-card { border-color:#334155; background:#0f172a; }
+html.dark .belm-customer-machine-editor-card > header,
+html[data-theme="dark"] .belm-customer-machine-editor-card > header { border-bottom-color:#334155; }
+html.dark .belm-customer-machine-editor-card > header h2,
+html[data-theme="dark"] .belm-customer-machine-editor-card > header h2 { color:#f8fafc; }
+html.dark .belm-customer-machine-editor-card input,
+html.dark .belm-customer-machine-editor-card select,
+html[data-theme="dark"] .belm-customer-machine-editor-card input,
+html[data-theme="dark"] .belm-customer-machine-editor-card select { border-color:#334155; background:#111827; color:#f8fafc; }
+@media (max-width:430px) {
+  .belm-service-due-panel .belm-customer-machine-management-buttons { gap:4px; }
+  .belm-service-due-panel .belm-customer-machine-management-buttons button { min-height:38px; padding:6px 2px; font-size:7.2px; }
+  .belm-customer-machine-editor-card form { grid-template-columns:1fr; }
+  .belm-customer-machine-editor-error,
+  .belm-customer-machine-editor-actions { grid-column:1; }
+}
+
+/* V388 - Customer General Report Center */
+.belm-customer-report-center { width:min(760px,calc(100% - 28px)); }
+.belm-customer-report-center-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+.belm-customer-report-center-card {
+  min-height:110px;
+  display:grid;
+  grid-template-columns:42px 1fr;
+  grid-template-rows:auto 1fr;
+  gap:5px 12px;
+  text-align:left;
+  padding:14px;
+  border:1px solid rgba(127,173,238,.27);
+  border-radius:13px;
+  color:#fff;
+  background:linear-gradient(145deg,rgba(35,61,104,.78),rgba(16,29,51,.92));
+  cursor:pointer;
+}
+.belm-customer-report-center-card:hover { border-color:rgba(255,212,0,.72); transform:translateY(-1px); }
+.belm-customer-report-center-card > span {
+  grid-row:1/3;
+  width:38px;
+  height:38px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  font-size:11px;
+  font-weight:900;
+  color:#ffd400;
+  background:rgba(255,212,0,.10);
+  border:1px solid rgba(255,212,0,.32);
+}
+.belm-customer-report-center-card strong { font-size:13px; line-height:1.25; }
+.belm-customer-report-center-card small { color:#9fb0c8; font-size:10px; line-height:1.35; }
+.belm-customer-report-machine-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.belm-customer-report-machine {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:4px;
+  padding:14px;
+  border:1px solid rgba(127,173,238,.25);
+  border-radius:12px;
+  background:rgba(255,255,255,.045);
+  color:#fff;
+  text-align:left;
+  cursor:pointer;
+}
+.belm-customer-report-machine:hover { border-color:#52b9ff; background:rgba(82,185,255,.10); }
+.belm-customer-report-machine strong { font-size:13px; }
+.belm-customer-report-machine span,.belm-customer-report-machine small { color:#9fb0c8; font-size:10px; }
+.belm-customer-report-list { display:flex; flex-direction:column; gap:9px; }
+.belm-customer-report-row {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:12px;
+  align-items:center;
+  padding:11px 12px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:11px;
+  background:rgba(255,255,255,.04);
+}
+.belm-customer-report-row > div:first-child { min-width:0; }
+.belm-customer-report-row strong,.belm-customer-report-row span,.belm-customer-report-row small { display:block; }
+.belm-customer-report-row strong { color:#fff; font-size:12px; }
+.belm-customer-report-row > div:first-child span { margin-top:3px; color:#d4deec; font-size:10.5px; }
+.belm-customer-report-row small { margin-top:3px; color:#8fa4c2; font-size:9.5px; }
+.belm-customer-report-row-actions { display:flex; gap:6px; }
+.belm-customer-report-row-actions button {
+  border:1px solid rgba(127,173,238,.35);
+  border-radius:8px;
+  padding:7px 9px;
+  background:rgba(47,126,247,.13);
+  color:#fff;
+  font-size:9.5px;
+  font-weight:800;
+  cursor:pointer;
+}
+.belm-customer-report-neutral-status {
+  padding:6px 8px;
+  border-radius:8px;
+  color:#dfe9f8;
+  background:rgba(127,173,238,.12);
+  border:1px solid rgba(127,173,238,.22);
+  font-size:9px!important;
+  font-weight:900;
+  white-space:nowrap;
+}
+.belm-customer-report-summary-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin-bottom:14px; }
+.belm-customer-report-summary-grid > div { padding:11px; border:1px solid rgba(127,173,238,.22); border-radius:10px; background:rgba(255,255,255,.04); }
+.belm-customer-report-summary-grid span { display:block; color:#8fa4c2; font-size:9px; text-transform:uppercase; font-weight:850; }
+.belm-customer-report-summary-grid b { display:block; margin-top:4px; color:#fff; font-size:16px; }
+.belm-customer-report-subhead { margin:16px 0 8px; color:#fff; font-size:12px; }
+.belm-customer-report-table-wrap { overflow:auto; }
+@media (max-width:640px) {
+  .belm-customer-report-center-grid,.belm-customer-report-machine-grid { grid-template-columns:1fr; }
+  .belm-customer-report-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .belm-customer-report-row { grid-template-columns:minmax(0,1fr) auto; }
+  .belm-customer-report-row-actions { grid-column:1/-1; }
+}

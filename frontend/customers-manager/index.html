@@ -291,13 +291,17 @@
             <button type="button" id="sendCustomerMessageCheckup" class="ghost" disabled>Check Up → Fill checklist</button>
           </div>
           <label class="span-2">Message
-            <textarea id="sendCustomerMessageBody" rows="6" maxlength="2000" placeholder="Write the message the customer should see in the portal and receive by email…" required></textarea>
+            <textarea id="sendCustomerMessageBody" rows="6" maxlength="2000" placeholder="Write the message the customer should see in the portal…" required></textarea>
+          </label>
+          <label class="span-2 message-email-option">
+            <input id="sendCustomerMessageEmailGroup" type="checkbox">
+            <span><strong>Send Email to Customer Group for Action</strong><small>Customer account owner + all active customer users.</small></span>
           </label>
         </div>
-        <p class="muted">The message is saved in the customer portal communication history. Email is sent to the customer account owner and active customer Admin users.</p>
+        <p class="muted">Every message is saved in Communication History. Email is optional here; only Service Overdue alerts are emailed automatically to the customer group.</p>
         <div class="dialog-actions">
           <button class="ghost" data-close="sendCustomerMessageDialog" type="button">Cancel</button>
-          <button id="sendCustomerMessageButton" class="primary" type="submit">Send to Customer</button>
+          <button id="sendCustomerMessageButton" class="primary" type="submit">Save / Send Message</button>
         </div>
       </form>
     </dialog>

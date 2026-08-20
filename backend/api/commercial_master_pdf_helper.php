@@ -24,6 +24,7 @@ const BELM_MASTER_LIGHT = [0.950, 0.968, 0.985];
 const BELM_MASTER_LIGHT_BLUE = [0.920, 0.955, 0.985];
 const BELM_MASTER_LINE = [0.78, 0.84, 0.90];
 const BELM_MASTER_RED = [0.82, 0.14, 0.14];
+const BELM_PROFORMA_VISUAL_BG_SHA256 = 'd02414c85f62e23e813754ab7230d99ddf8be9bb5f32dbbfa8c4ddd69460f84c';
 
 
 function belm_commercial_master_template_integrity(): array {
@@ -41,6 +42,17 @@ function belm_commercial_master_template_integrity(): array {
         if (!$ok) $result['ok'] = false;
     }
     return $result;
+}
+
+function belm_proforma_visual_background_path(): string {
+    return __DIR__ . '/../assets/commercial_master/proforma-master-bg.jpg';
+}
+
+function belm_proforma_visual_background_integrity(): bool {
+    $path = belm_proforma_visual_background_path();
+    if (!is_file($path)) return false;
+    $actual = hash_file('sha256', $path);
+    return is_string($actual) && hash_equals(BELM_PROFORMA_VISUAL_BG_SHA256, $actual);
 }
 
 function belm_master_pdf_rgb(array $rgb, bool $stroke = false): string {
@@ -211,6 +223,238 @@ function belm_master_assemble_pdf(array $pageContents): string {
     for ($n = 1; $n <= $maxObject; $n++) $pdf .= sprintf('%010d 00000 n ' . "\n", $offsets[$n]);
     $pdf .= "trailer\n<< /Size " . ($maxObject + 1) . " /Root 1 0 R >>\nstartxref\n{$xref}\n%%EOF";
     return $pdf;
+}
+
+
+function belm_master_assemble_pdf_with_background(array $pageContents, string $backgroundPath): string {
+    $pageCount = count($pageContents);
+    $fontObject = 3 + ($pageCount * 2);
+    $boldObject = $fontObject + 1;
+    $logoObject = $boldObject + 1;
+    $mainQrObject = $logoObject + 1;
+    $backgroundObject = $mainQrObject + 1;
+
+    $assetDir = __DIR__ . '/../assets/commercial_master';
+    $logo = belm_master_load_jpeg($assetDir . '/belm-logo-master.jpg');
+    $mainQr = belm_master_load_jpeg($assetDir . '/portal-main-qr.jpg');
+    $background = $backgroundPath ? belm_master_load_jpeg($backgroundPath) : null;
+
+    $objects = [];
+    $pageRefs = [];
+    foreach ($pageContents as $i => $content) {
+        $pageObj = 3 + ($i * 2);
+        $contentObj = $pageObj + 1;
+        $pageRefs[] = $pageObj . ' 0 R';
+        $xobjects = [];
+        if ($logo) $xobjects[] = "/MasterLogo {$logoObject} 0 R";
+        if ($mainQr) $xobjects[] = "/MainQR {$mainQrObject} 0 R";
+        if ($background) $xobjects[] = "/MasterBackground {$backgroundObject} 0 R";
+        if ($background) $content = belm_master_image('MasterBackground', 0, 0, 595, 842) . $content;
+        $objects[$pageObj] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] '
+            . "/Resources << /Font << /F1 {$fontObject} 0 R /FB {$boldObject} 0 R >>"
+            . ($xobjects ? ' /XObject << ' . implode(' ', $xobjects) . ' >>' : '')
+            . " >> /Contents {$contentObj} 0 R >>";
+        $objects[$contentObj] = '<< /Length ' . strlen($content) . ">>\nstream\n{$content}endstream";
+    }
+    $objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    $objects[2] = '<< /Type /Pages /Kids [' . implode(' ', $pageRefs) . '] /Count ' . $pageCount . ' >>';
+    $objects[$fontObject] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+    $objects[$boldObject] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+    if ($logo) {
+        $objects[$logoObject] = "<< /Type /XObject /Subtype /Image /Width {$logo['width']} /Height {$logo['height']} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($logo['data']) . ">>\nstream\n{$logo['data']}\nendstream";
+    } else {
+        $objects[$logoObject] = '<< >>';
+    }
+    if ($mainQr) {
+        $objects[$mainQrObject] = "<< /Type /XObject /Subtype /Image /Width {$mainQr['width']} /Height {$mainQr['height']} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($mainQr['data']) . ">>\nstream\n{$mainQr['data']}\nendstream";
+    } else {
+        $objects[$mainQrObject] = '<< >>';
+    }
+    if ($background) {
+        $objects[$backgroundObject] = "<< /Type /XObject /Subtype /Image /Width {$background['width']} /Height {$background['height']} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " . strlen($background['data']) . ">>\nstream\n{$background['data']}\nendstream";
+    } else {
+        $objects[$backgroundObject] = '<< >>';
+    }
+
+    ksort($objects);
+    $pdf = "%PDF-1.4\n";
+    $offsets = [0];
+    $maxObject = max(array_keys($objects));
+    for ($n = 1; $n <= $maxObject; $n++) {
+        $offsets[$n] = strlen($pdf);
+        $body = $objects[$n] ?? '<< >>';
+        $pdf .= "{$n} 0 obj\n{$body}\nendobj\n";
+    }
+    $xref = strlen($pdf);
+    $pdf .= "xref\n0 " . ($maxObject + 1) . "\n0000000000 65535 f \n";
+    for ($n = 1; $n <= $maxObject; $n++) $pdf .= sprintf('%010d 00000 n ' . "\n", $offsets[$n]);
+    $pdf .= "trailer\n<< /Size " . ($maxObject + 1) . " /Root 1 0 R >>\nstartxref\n{$xref}\n%%EOF";
+    return $pdf;
+}
+
+
+/**
+ * V400 - Proforma runtime overlay on the user-approved DIGITAL PROFORMA V2.
+ *
+ * The approved master is used as the actual visual base. We only clear the
+ * sample values inside the existing panels and draw the live database values
+ * in the same positions. This prevents later UI work from silently replacing
+ * the user's approved commercial document design.
+ */
+function belm_master_proforma_overlay_header(string $number, int $validityDays): string {
+    $c = '';
+    // Keep the original navy header, website QR, logo and rounded gold badge.
+    // Clear only the sample PI number / badge text inside their original areas.
+    $c .= belm_master_pdf_box(493, 792, 64, 17, BELM_MASTER_NAVY);
+    $c .= pdf_text_right(548, 796, $number, 'FB', 9.5, [1,1,1]);
+    $c .= belm_master_pdf_box(429, 763, 62, 13, BELM_MASTER_GOLD);
+    $c .= pdf_text_center(460, 767, 'VALID ' . $validityDays . ' DAYS', 'FB', 8.5, BELM_MASTER_NAVY);
+    return $c;
+}
+
+function belm_master_proforma_overlay_bill_meta(array $customer, array $meta): string {
+    $c = '';
+    // BILL TO - retain the approved rounded panel and section label.
+    $c .= belm_master_pdf_box(46, 615, 236, 49, BELM_MASTER_LIGHT);
+    $c .= pdf_text(48, 649, strtoupper((string)($customer['name'] ?? '-')), 'FB', 12.5, BELM_MASTER_NAVY);
+    $tin = trim((string)($customer['tin'] ?? '')) ?: '-';
+    $vrn = trim((string)($customer['vrn'] ?? '')) ?: '-';
+    $c .= pdf_text(48, 633, 'TIN: ' . $tin . '   |   VRN: ' . $vrn, 'F1', 7.5, [0.34,0.43,0.53]);
+    $ref = trim((string)($customer['customerRef'] ?? $customer['name'] ?? ''));
+    $c .= pdf_text(48, 619, 'Customer Ref: ' . ($ref ?: '-'), 'F1', 7.5, [0.34,0.43,0.53]);
+
+    // DOCUMENT DETAILS - retain the approved rounded panel and heading.
+    $c .= belm_master_pdf_box(315, 610, 238, 54, BELM_MASTER_LIGHT);
+    $rows = [
+        ['Issue Date', $meta['issueDate'] ?? '-'],
+        ['Valid Until', $meta['validUntil'] ?? '-'],
+        ['Currency', $meta['currency'] ?? 'TZS'],
+        ['Reference', $meta['number'] ?? '-'],
+    ];
+    $y = 651;
+    foreach ($rows as [$label, $value]) {
+        $c .= pdf_text(320, $y, $label, 'F1', 7.3, [0.34,0.43,0.53]);
+        $c .= pdf_text_right(546, $y, (string)$value, 'FB', 7.6, BELM_MASTER_NAVY);
+        $y -= 13;
+    }
+    return $c;
+}
+
+/** Clear and refill all seven sample table rows while retaining the approved header. */
+function belm_master_proforma_overlay_table(array $items, float $topY = 586): array {
+    $x = 34; $w = 527; $headerH = 20; $rowH = 21;
+    $cols = [28, 78, 190, 35, 38, 80, 78];
+    $keys = ['itemNo','partNumber','description','qty','unit','unitPrice','extended'];
+    $items = array_values($items);
+    $y = $topY - $headerH;
+    for ($ri = 0; $ri < 7; $ri++) {
+        $y -= $rowH;
+        $fill = $ri % 2 ? [0.965,0.975,0.985] : [1,1,1];
+        // Inset fill preserves the existing master border/rule geometry.
+        $cPart = belm_master_pdf_box($x + 0.7, $y + 0.7, $w - 1.4, $rowH - 1.4, $fill);
+        $cPart .= belm_master_pdf_line($x, $y, $x + $w, $y, BELM_MASTER_LINE, 0.35);
+        $item = $items[$ri] ?? [];
+        $cx = $x;
+        foreach ($cols as $i => $cw) {
+            $key = $keys[$i];
+            $value = (string)($item[$key] ?? '');
+            if ($value !== '') {
+                $right = in_array($key, ['qty','unitPrice','extended'], true);
+                $cPart .= $right
+                    ? pdf_text_right($cx + $cw - 5, $y + 7, $value, 'F1', 6.7, BELM_MASTER_NAVY)
+                    : pdf_text($cx + 5, $y + 7, $value, 'F1', 6.7, BELM_MASTER_NAVY);
+            }
+            $cx += $cw;
+        }
+        $c = ($c ?? '') . $cPart;
+    }
+    return [$c ?? '', $y];
+}
+
+function belm_master_proforma_overlay_lower(
+    string $number, array $totals, string $notice, array $bank, array $terms, int $validityDays
+): string {
+    $c = '';
+    $totalsY = 332;
+    $subtotal = belm_master_money($totals['subtotal'] ?? 0);
+    $discount = belm_master_money($totals['discount'] ?? 0);
+    $vat = belm_master_money($totals['vat'] ?? 0);
+    $grand = belm_master_money($totals['grandTotal'] ?? 0);
+    $vatLabel = trim((string)($totals['vatLabel'] ?? 'VAT 18%'));
+
+    // IMPORTANT NOTICE body - keep the approved rounded yellow panel/title.
+    $c .= belm_master_pdf_box(45, 340, 294, 45, [1.00,0.978,0.90]);
+    $noticeText = trim($notice) ?: 'Availability and delivery dates are confirmed upon order.';
+    $lineY = 374;
+    foreach (belm_master_wrap_lines($noticeText, 285, 6.5, 4) as $line) {
+        $c .= pdf_text(46, $lineY, $line, 'F1', 6.5, BELM_MASTER_NAVY);
+        $lineY -= 14;
+    }
+
+    // Totals values/labels inside the approved totals panel.
+    $totalX = 364; $totalW = 197; $totalH = 78;
+    $c .= belm_master_pdf_box($totalX + 6, $totalsY + 2, $totalW - 12, $totalH - 5, BELM_MASTER_LIGHT);
+    $rowY = $totalsY + $totalH - 17;
+    foreach ([['Subtotal',$subtotal],['Discount',$discount],[$vatLabel,$vat]] as [$label,$value]) {
+        $c .= pdf_text($totalX + 14, $rowY, $label, 'F1', 7.2, [0.34,0.43,0.53]);
+        $c .= pdf_text_right($totalX + $totalW - 14, $rowY, $value, 'F1', 7.2, BELM_MASTER_NAVY);
+        $rowY -= 13;
+    }
+    $c .= belm_master_pdf_line($totalX + 14, $rowY + 5, $totalX + $totalW - 14, $rowY + 5, BELM_MASTER_LINE, 0.6);
+    $c .= pdf_text($totalX + 14, $rowY - 7, 'GRAND TOTAL', 'FB', 9.2, BELM_MASTER_NAVY);
+    $c .= pdf_text_right($totalX + $totalW - 14, $rowY - 7, 'TZS ' . $grand, 'FB', 8.5, BELM_MASTER_NAVY);
+    $c .= belm_master_pdf_box($totalX + 8, $totalsY - 10, $totalW - 16, 14, BELM_MASTER_LIGHT);
+    $c .= pdf_text($totalX + 14, $totalsY - 4, 'VALIDITY', 'FB', 7.2, BELM_MASTER_GREEN);
+    $c .= pdf_text_right($totalX + $totalW - 14, $totalsY - 4, $validityDays . ' DAYS', 'FB', 7.2, BELM_MASTER_NAVY);
+
+    // Account name strip and both bank cards. Clear the sample QR/reference values.
+    $bankY = 164;
+    $accountName = belm_master_extract_bank_value($bank, 'ACCOUNT NAME', BELM_MASTER_ACCOUNT_NAME);
+    $nmb = belm_master_extract_bank_value($bank, 'NMB BANK', BELM_MASTER_NMB);
+    $crdb = belm_master_extract_bank_value($bank, 'CRDB BANK', BELM_MASTER_CRDB);
+    $c .= belm_master_pdf_box(49, $bankY + 94, 327, 14, BELM_MASTER_LIGHT_BLUE);
+    $c .= pdf_text(54, $bankY + 99, 'ACCOUNT NAME: ' . strtoupper($accountName), 'FB', 6.3, BELM_MASTER_NAVY);
+    $cardY = $bankY + 14; $cardH = 64; $cardW = 159;
+    foreach ([['NMB BANK',$nmb,48],['CRDB BANK',$crdb,218]] as [$bankName,$acct,$cardX]) {
+        // Preserve the master rounded card border; clear only its interior.
+        $c .= belm_master_pdf_box($cardX + 2, $cardY + 2, $cardW - 4, $cardH - 4, [1,1,1]);
+        $payload = BELM_MASTER_ACCOUNT_NAME . "\n" . $bankName . "\nACCOUNT NUMBER: " . $acct . "\nREFERENCE: " . $number . "\n" . BELM_MASTER_WEBSITE;
+        $qr = belm_master_qr_vector($payload, $cardX + 10, $cardY + 10, 44);
+        if ($qr !== '') {
+            $c .= $qr;
+        } else {
+            // Never leave the sample PI-0498 QR on a live document.
+            $c .= belm_master_pdf_box($cardX + 10, $cardY + 10, 44, 44, [1,1,1], BELM_MASTER_LINE);
+            $c .= pdf_text_center($cardX + 32, $cardY + 30, 'QR', 'FB', 8, BELM_MASTER_NAVY);
+        }
+        $c .= pdf_text($cardX + 64, $cardY + 43, $bankName, 'FB', 8.2, BELM_MASTER_NAVY);
+        $c .= pdf_text($cardX + 64, $cardY + 29, 'Account Number', 'F1', 5.8, [0.40,0.48,0.58]);
+        $c .= pdf_text($cardX + 64, $cardY + 15, $acct, 'FB', 8.0, BELM_MASTER_NAVY);
+        $c .= pdf_text($cardX + 64, $cardY + 5, 'SCAN DETAILS', 'FB', 5.2, BELM_MASTER_GREEN);
+    }
+
+    // Trading terms and dynamic payment reference.
+    $termsX = 405; $termsW = 156; $bankH = 138;
+    $c .= belm_master_pdf_box($termsX + 9, $bankY + 45, $termsW - 18, 72, [1,1,1]);
+    $termY = $bankY + $bankH - 28;
+    foreach (belm_master_terms($terms, $validityDays) as $term) {
+        foreach (belm_master_wrap_lines('- ' . $term, $termsW - 28, 6.5, 2) as $line) {
+            $c .= pdf_text($termsX + 14, $termY, $line, 'F1', 6.5, BELM_MASTER_NAVY);
+            $termY -= 11;
+        }
+        $termY -= 5;
+    }
+    $c .= belm_master_pdf_box($termsX + 10, $bankY + 12, $termsW - 20, 14, [1,1,1]);
+    $c .= pdf_text($termsX + 14, $bankY + 18, 'Payment reference: ' . $number, 'F1', 5.8, [0.40,0.48,0.58]);
+    return $c;
+}
+
+function belm_master_proforma_overlay_continuation(): string {
+    // Remove the sample lower commercial blocks from continuation pages while
+    // preserving the approved header/table/footer visual language.
+    $c = belm_master_pdf_box(0, 64, 595, 350, [1,1,1]);
+    $c .= pdf_text(34, 320, 'CONTINUED ON NEXT PAGE', 'FB', 8.5, BELM_MASTER_BLUE);
+    return $c;
 }
 
 function belm_master_draw_header(string $kind, string $number, string $badge): string {
@@ -456,6 +700,32 @@ function belm_build_commercial_master_pdf(
     $chunks = array_chunk($items ?: [['itemNo'=>'1','partNumber'=>'','description'=>'','qty'=>'','unit'=>'','unitPrice'=>'','extended'=>'']], 7);
     $pageContents = [];
     $count = count($chunks);
+
+    if ($kind === 'PROFORMA') {
+        // V400: the user's approved DIGITAL PROFORMA V2 itself is the page base.
+        // Live values are overlaid into the existing approved panels.
+        foreach ($chunks as $pageIndex => $chunk) {
+            $last = $pageIndex === $count - 1;
+            $c = belm_master_proforma_overlay_header($number, $validityDays);
+            $c .= belm_master_proforma_overlay_bill_meta($customer, $meta + ['number' => $number]);
+            [$table, $bottom] = belm_master_proforma_overlay_table($chunk, 586);
+            $c .= $table;
+            if ($last) {
+                $c .= belm_master_proforma_overlay_lower($number, $totals, $notice, $bank, $terms, $validityDays);
+            } else {
+                $c .= belm_master_proforma_overlay_continuation();
+                $c .= pdf_text_right(548, 41, 'Page ' . ($pageIndex + 1) . ' of ' . $count, 'F1', 6.3, [1,1,1]);
+            }
+            $pageContents[] = $c;
+        }
+        $background = belm_proforma_visual_background_path();
+        if (!belm_proforma_visual_background_integrity()) {
+            throw new RuntimeException('Approved DIGITAL PROFORMA V2 visual master is missing or changed.');
+        }
+        return belm_master_assemble_pdf_with_background($pageContents, $background);
+    }
+
+    // Invoice remains byte-for-byte on the existing V399 renderer path.
     foreach ($chunks as $pageIndex => $chunk) {
         $last = $pageIndex === $count - 1;
         $c = belm_master_draw_header($kind, $number, $badge);
@@ -467,7 +737,7 @@ function belm_build_commercial_master_pdf(
         } else {
             $c .= pdf_text(34, 320, 'CONTINUED ON NEXT PAGE', 'FB', 8.5, BELM_MASTER_BLUE);
             $c .= belm_master_pdf_box(34, 29, 527, 31, BELM_MASTER_NAVY);
-            $c .= pdf_text(48, 41, $kind === 'PROFORMA' ? 'PROFORMA CONTINUATION' : 'INVOICE CONTINUATION', 'FB', 7, [1,1,1]);
+            $c .= pdf_text(48, 41, 'INVOICE CONTINUATION', 'FB', 7, [1,1,1]);
             $c .= pdf_text_right(548, 41, 'Page ' . ($pageIndex + 1) . ' of ' . $count, 'F1', 6.3, [1,1,1]);
         }
         $pageContents[] = $c;

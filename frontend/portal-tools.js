@@ -4368,6 +4368,40 @@
     }
   }
 
+  function technicianOperatorMessageMarkup(machine) {
+    const report = machine?.latestOperatorMessage || machine?.latest_operator_message || null;
+    if (!report || !String(report.message || "").trim()) {
+      return {
+        text: "No operator message reported yet.",
+        meta: "Waiting for Operator report",
+        status: "NONE",
+      };
+    }
+    const operator = String(report.operatorName || report.operator_name || "Operator").trim() || "Operator";
+    const status = String(report.status || "OPEN").toUpperCase();
+    const created = report.createdAt || report.created_at || null;
+    return {
+      text: String(report.message || "").trim(),
+      meta: `${operator}${created ? ` · ${formatTanzaniaDateTime(created)}` : ""} · ${status}`,
+      status,
+    };
+  }
+
+  function technicianRenderOperatorMessage(card, machine) {
+    if (!card) return;
+    const view = technicianOperatorMessageMarkup(machine);
+    const panel = card.querySelector("[data-tech-operator-message-panel]");
+    const text = card.querySelector("[data-tech-operator-message]");
+    const meta = card.querySelector("[data-tech-operator-message-meta]");
+    if (text) text.textContent = view.text;
+    if (meta) meta.textContent = view.meta;
+    if (panel) {
+      panel.dataset.operatorStatus = view.status;
+      panel.classList.toggle("has-operator-message", view.status !== "NONE");
+      panel.classList.toggle("is-open", view.status === "OPEN");
+    }
+  }
+
   function updateTechnicianMachineCardState(card, machine) {
     if (!card || !machine) return;
     card._belmMachineSnapshot = machine;
@@ -4377,8 +4411,9 @@
     card.dataset.belmMachineStatus = condition.status;
     card.dataset.belmConditionRange = condition.status;
     applyCustomerMachineRange(card);
+    technicianRenderOperatorMessage(card, machine);
 
-    const alertCopy = card.querySelector(".belm-technician-machine-alert-copy strong");
+    const alertCopy = card.querySelector("[data-tech-machine-condition-message]");
     if (alertCopy) {
       const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons.filter(Boolean) : [];
       alertCopy.textContent = reasons.length
@@ -4670,9 +4705,17 @@
         <strong data-tech-check-stamp-text></strong>
         <span data-tech-check-stamp-number></span>
       </div>
-      <div class="belm-technician-machine-alert-copy belm-customer-machine-alert-copy" aria-live="polite">
-        <strong>${escapeHtml(conditionMessage)}</strong>
-        <span data-tech-service-alert-copy>Service range: checking…</span>
+      <div class="belm-technician-machine-alert-copy belm-customer-machine-alert-copy belm-technician-message-panel-v397" aria-live="polite">
+        <div class="belm-technician-operator-message" data-tech-operator-message-panel>
+          <span class="belm-technician-message-kicker">Operator Message</span>
+          <strong data-tech-operator-message>${escapeHtml(technicianOperatorMessageMarkup(machine).text)}</strong>
+          <small data-tech-operator-message-meta>${escapeHtml(technicianOperatorMessageMarkup(machine).meta)}</small>
+        </div>
+        <div class="belm-technician-condition-message">
+          <span class="belm-technician-message-kicker">Machine Alert</span>
+          <strong data-tech-machine-condition-message>${escapeHtml(conditionMessage)}</strong>
+          <span data-tech-service-alert-copy>Service range: checking…</span>
+        </div>
       </div>
       <details class="belm-machine-details-disclosure belm-tech-machine-details-v390">
         <summary>Machine details <span>Type, registration, serial & service kit</span></summary>

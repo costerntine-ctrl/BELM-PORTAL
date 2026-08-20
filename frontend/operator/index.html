@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Operator — BELM Portal</title>
-  <link rel="stylesheet" href="/operator/operator.css">
+  <link rel="stylesheet" href="/operator/operator.css?v=399-operator-checkup">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
-<body>
+<body data-belm-area="operator">
   <header class="op-header">
     <span class="op-brand">B</span>
     <div><b>BELM Portal</b><small>Machine Operator</small></div>
@@ -31,19 +31,25 @@
       <p class="op-hint">No PIN? Ask your Machine Admin to set one for you on the roster.</p>
     </section>
 
-    <section id="shiftSection" class="op-card hidden">
-      <p class="op-eyebrow" id="shiftMachineName">MACHINE</p>
-      <h1 id="shiftGreeting">Hello</h1>
-      <p class="op-hint" id="shiftSignedInAt"></p>
-
-      <div class="op-counter-card">
-        <span>CONTAINERS HANDLED THIS SHIFT</span>
-        <strong id="containerCount">0</strong>
-        <button class="op-counter-button" id="logContainerButton" type="button">+ Log 1 container</button>
+    <section id="shiftSection" class="op-dashboard-shell hidden">
+      <div id="operatorMachineDashboard" class="op-machine-dashboard" aria-live="polite">
+        <div class="op-dashboard-loading">Loading machine dashboard…</div>
       </div>
 
-      <button class="op-secondary" id="signOutButton" type="button">Sign out — end shift</button>
-      <button class="op-logout" id="logoutButton" type="button">Log out</button>
+      <section class="op-card op-shift-tools">
+        <p class="op-eyebrow" id="shiftMachineName">MACHINE</p>
+        <h1 id="shiftGreeting">Hello</h1>
+        <p class="op-hint" id="shiftSignedInAt"></p>
+
+        <div class="op-counter-card">
+          <span>CONTAINERS HANDLED THIS SHIFT</span>
+          <strong id="containerCount">0</strong>
+          <button class="op-counter-button" id="logContainerButton" type="button">+ Log 1 container</button>
+        </div>
+
+        <button class="op-secondary" id="signOutButton" type="button">Sign out — end shift</button>
+        <button class="op-logout" id="logoutButton" type="button">Log out</button>
+      </section>
     </section>
 
     <section id="signOutSection" class="op-card hidden">
@@ -66,8 +72,65 @@
       <p class="op-hint" id="doneSummary"></p>
       <button class="op-primary" id="startNewShiftButton" type="button">Start a new shift</button>
     </section>
+
+    <dialog id="operatorCheckupDialog" class="op-checkup-dialog">
+      <form id="operatorCheckupForm" class="op-checkup-card">
+        <div class="op-checkup-head">
+          <div><span>OPERATOR CHECK UP</span><h2>Machine condition check</h2></div>
+          <button type="button" id="closeOperatorCheckupButton" class="op-checkup-close" aria-label="Close">×</button>
+        </div>
+        <div class="op-checkup-grid">
+          <label>Engine Oil Level
+            <select id="operatorEngineOil" required>
+              <option value="OK">OK</option><option value="LOW">Low</option><option value="CONTAMINATED">Contaminated</option>
+            </select>
+          </label>
+          <label>Gearbox Oil Level
+            <select id="operatorGearboxOil" required>
+              <option value="OK">OK</option><option value="LOW">Low</option><option value="CONTAMINATED">Contaminated</option>
+            </select>
+          </label>
+          <label>Coolant Level
+            <select id="operatorCoolant" required>
+              <option value="OK">OK</option><option value="LOW">Low</option>
+            </select>
+          </label>
+          <label>Tires
+            <select id="operatorTires" required>
+              <option value="OK">OK</option><option value="WORN">Worn</option><option value="DAMAGED">Damaged</option>
+            </select>
+          </label>
+          <label>Brakes
+            <select id="operatorBrakes" required>
+              <option value="OK">OK</option><option value="NEEDS_ATTENTION">Needs attention</option><option value="CRITICAL">Critical</option>
+            </select>
+          </label>
+        </div>
+        <div class="op-checkup-actions">
+          <button type="button" id="cancelOperatorCheckupButton" class="op-secondary">Cancel</button>
+          <button type="submit" id="saveOperatorCheckupButton" class="op-primary">Save Check Up</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="operatorReportDialog" class="op-checkup-dialog">
+      <form id="operatorReportForm" class="op-checkup-card">
+        <div class="op-checkup-head">
+          <div><span>OPERATOR REPORT</span><h2>Send machine message</h2></div>
+          <button type="button" id="closeOperatorReportButton" class="op-checkup-close" aria-label="Close">×</button>
+        </div>
+        <label class="op-checkup-comment">Comment
+          <textarea id="operatorReportComment" rows="7" maxlength="1000" required placeholder="Write machine problem, observation or message here..."></textarea>
+          <small>This message will be saved in Operator Reports and sent through the Operator Message workflow.</small>
+        </label>
+        <div class="op-checkup-actions">
+          <button type="button" id="cancelOperatorReportButton" class="op-secondary">Cancel</button>
+          <button type="submit" id="saveOperatorReportButton" class="op-primary">Send Report</button>
+        </div>
+      </form>
+    </dialog>
   </main>
 
-  <script src="/operator/operator.js"></script>
+  <script src="/operator/operator.js?v=399-operator-checkup"></script>
 </body>
 </html>

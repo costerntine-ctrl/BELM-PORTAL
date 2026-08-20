@@ -275,6 +275,26 @@ html[data-theme="dark"] .customer-feed-empty {
 .message-checkup-jump { grid-column: 1 / -1; margin-top: -6px; display: flex; gap: 8px; }
 .message-checkup-jump button { flex: 1; }
 .message-checkup-jump button:disabled { opacity: .5; cursor: not-allowed; }
+.message-email-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 2px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(2,132,199,.04);
+  cursor: pointer;
+}
+.message-email-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  flex: 0 0 auto;
+}
+.message-email-option span { display: grid; gap: 3px; }
+.message-email-option strong { font-size: 12px; }
+.message-email-option small { color: var(--muted); font-size: 11px; }
 
 /* Printed Checked Report must always come out as a clean white document,
    matching what Customer and Technician get from the same report data —

@@ -47,6 +47,28 @@
   const withdrawalChequeOf = (item) => item?.chequeNumber ?? item?.cheque_number ?? "";
   const withdrawalByOf = (item) => item?.withdrawnBy ?? item?.withdrawn_by ?? "";
   const isTestAccount = (account) => Number(account?.isTest ?? account?.is_test ?? 0) === 1;
+  const signedInAdmin = (() => {
+    try { return JSON.parse(localStorage.getItem("belm_admin_user") || "null") || {}; }
+    catch (_) { return {}; }
+  })();
+
+  function setBankEditAuthorization(enabled) {
+    const wrap = document.getElementById("bankEditAuthorization");
+    const fields = ["bankEditAdminPassword", "bankEditPin", "bankEditReason"]
+      .map(id => document.getElementById(id));
+    wrap?.classList.toggle("hidden", !enabled);
+    fields.forEach((field) => {
+      if (!field) return;
+      field.disabled = !enabled;
+      field.required = enabled;
+      field.value = "";
+    });
+    const actor = document.getElementById("bankEditActor");
+    if (actor) {
+      const identity = [signedInAdmin.name, signedInAdmin.email].filter(Boolean).join(" · ");
+      actor.textContent = identity || "Signed-in BELM Admin";
+    }
+  }
 
   function message(text, isError = false) {
     const box = document.getElementById("pageAlert");
@@ -157,6 +179,30 @@
     ].join("");
   }
 
+  async function loadBankEditAudit() {
+    const rows = document.getElementById("bankEditAuditRows");
+    if (!rows) return;
+    try {
+      const result = await api("/bank-manager?action=edit-audit");
+      const sender = document.getElementById("systemSenderEmail");
+      if (sender && result.systemSenderEmail) sender.textContent = result.systemSenderEmail;
+      const edits = Array.isArray(result.edits) ? result.edits : [];
+      rows.innerHTML = edits.length ? edits.map((item) => {
+        const admin = [item.adminName, item.adminEmail].filter(Boolean).join(" · ") || "BELM Admin";
+        const account = [item.bankName, item.accountName, item.accountNumber].filter(Boolean).join(" · ") || "Bank account";
+        const when = item.createdAt ? new Date(item.createdAt).toLocaleString("en-TZ") : "—";
+        return `<tr>
+          <td>${escapeHtml(when)}</td>
+          <td><strong>${escapeHtml(admin)}</strong></td>
+          <td>${escapeHtml(account)}</td>
+          <td>${escapeHtml(item.reason || "—")}</td>
+        </tr>`;
+      }).join("") : '<tr><td colspan="4" class="empty">No bank account edits recorded yet.</td></tr>';
+    } catch (error) {
+      rows.innerHTML = `<tr><td colspan="4" class="empty">${escapeHtml(error.message || "Could not load bank edit history.")}</td></tr>`;
+    }
+  }
+
   function renderWithdrawals() {
     const rows = data.withdrawals || [];
     document.getElementById("withdrawalRows").innerHTML = rows.length
@@ -195,6 +241,7 @@
       }
       renderAccountDetail();
       renderWithdrawals();
+      await loadBankEditAudit();
     } catch (error) {
       message(error.message, true);
     }
@@ -202,6 +249,7 @@
 
   document.getElementById("accountSelect").addEventListener("change", renderAccountDetail);
   document.getElementById("refreshButton").addEventListener("click", load);
+  document.getElementById("refreshBankEditAuditButton")?.addEventListener("click", loadBankEditAudit);
 
   document.getElementById("clearTestBankButton")?.addEventListener("click", async () => {
     const confirmed = window.confirm("Clear TEST BANK data now? This resets TEST BANK opening balance/withdrawals and removes only its bank allocations. Invoices, payments, receipts, expenses and Spare Stock are not deleted.");
@@ -224,6 +272,7 @@
     document.getElementById("accountId").value = "";
     document.getElementById("accountDialogTitle").textContent = "Add bank account";
     document.getElementById("accountFormAlert").classList.add("hidden");
+    setBankEditAuthorization(false);
     document.getElementById("accountDialog").showModal();
   });
 
@@ -237,6 +286,7 @@
     document.getElementById("openingBalance").value = openingBalanceOf(account);
     document.getElementById("accountDialogTitle").textContent = "Edit bank account";
     document.getElementById("accountFormAlert").classList.add("hidden");
+    setBankEditAuthorization(true);
     document.getElementById("accountDialog").showModal();
   });
 
@@ -255,6 +305,9 @@
       };
       let saved;
       if (id) {
+        payload.adminPassword = document.getElementById("bankEditAdminPassword").value;
+        payload.editPin = document.getElementById("bankEditPin").value.trim();
+        payload.reason = document.getElementById("bankEditReason").value.trim();
         saved = await api(`/bank-manager/accounts/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) });
       } else {
         saved = await api("/bank-manager/accounts", { method: "POST", body: JSON.stringify(payload) });
@@ -262,7 +315,7 @@
       const savedId = saved?.id || id || "";
       document.getElementById("accountDialog").close();
       message(id
-        ? "Bank account updated and saved in PostgreSQL."
+        ? (saved?.message || "Bank account updated and audit logged.")
         : "Bank account added and saved in PostgreSQL.");
       await load(savedId);
     } catch (error) {

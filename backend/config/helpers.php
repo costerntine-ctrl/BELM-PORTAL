@@ -1015,11 +1015,168 @@ function belm_send_whatsapp_text(string $phone, string $message): array {
     ];
 }
 
+// V397 - Operator problem messages are operational alerts for the whole team.
+// WhatsApp recipients are the active Customer owner/users plus every active
+// BELM user account. Customer-managed Technicians assigned to this customer
+// are included as part of the Customer team. Numbers are normalized and
+// deduplicated before delivery so one person/number is never spammed twice.
+function belm_operator_message_whatsapp_recipients(string $customerId): array {
+    $byPhone = [];
+    $add = static function (array &$target, string $phone, string $name, string $source): void {
+        $normalized = belm_normalize_whatsapp_number($phone);
+        if ($normalized === '') return;
+        if (!isset($target[$normalized])) {
+            $target[$normalized] = [
+                'phone' => $normalized,
+                'name' => trim($name),
+                'source' => $source,
+            ];
+            return;
+        }
+        // Keep an audit-friendly source list when the same number belongs to
+        // more than one synchronized account.
+        $existingSources = array_filter(array_map('trim', explode(',', (string)$target[$normalized]['source'])));
+        if (!in_array($source, $existingSources, true)) $existingSources[] = $source;
+        $target[$normalized]['source'] = implode(',', $existingSources);
+    };
+
+    try {
+        $ownerStmt = db()->prepare('SELECT name, phone FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+        $ownerStmt->execute([$customerId]);
+        if ($owner = $ownerStmt->fetch()) {
+            $add($byPhone, (string)($owner['phone'] ?? ''), (string)($owner['name'] ?? 'Customer'), 'CUSTOMER_OWNER');
+        }
+    } catch (Throwable $ignored) {}
+
+    try {
+        $customerUsers = db()->prepare(
+            'SELECT name, phone FROM customer_users WHERE customer_id = ? AND is_active = 1 ORDER BY created_at ASC'
+        );
+        $customerUsers->execute([$customerId]);
+        foreach ($customerUsers->fetchAll() as $row) {
+            $add($byPhone, (string)($row['phone'] ?? ''), (string)($row['name'] ?? ''), 'CUSTOMER_USER');
+        }
+    } catch (Throwable $ignored) {}
+
+    try {
+        $belmUsers = db()->prepare(
+            'SELECT name, phone, is_customer_managed, assigned_customer_id
+             FROM users
+             WHERE deleted_at IS NULL AND is_active = 1
+               AND (is_customer_managed = 0 OR assigned_customer_id = ?)'
+        );
+        $belmUsers->execute([$customerId]);
+        foreach ($belmUsers->fetchAll() as $row) {
+            $source = !empty($row['is_customer_managed']) ? 'CUSTOMER_TECHNICIAN' : 'BELM_USER';
+            $add($byPhone, (string)($row['phone'] ?? ''), (string)($row['name'] ?? ''), $source);
+        }
+    } catch (Throwable $ignored) {}
+
+    return array_values($byPhone);
+}
+
+function belm_send_operator_message_whatsapp_group(string $customerId, string $subject, string $body): array {
+    $result = [
+        'sent' => 0,
+        'failed' => 0,
+        'pending' => 0,
+        'skipped' => 0,
+        'recipients' => [],
+    ];
+    foreach (belm_operator_message_whatsapp_recipients($customerId) as $recipient) {
+        $phone = (string)($recipient['phone'] ?? '');
+        $delivery = belm_send_whatsapp_text($phone, $body);
+        $status = (string)($delivery['status'] ?? 'FAILED');
+        if ($status === 'SENT') $result['sent']++;
+        elseif ($status === 'PENDING_PROVIDER') $result['pending']++;
+        elseif (in_array($status, ['DISABLED', 'NO_PHONE'], true)) $result['skipped']++;
+        else $result['failed']++;
+        $result['recipients'][] = [
+            'phone' => (string)($delivery['to'] ?? $phone),
+            'name' => (string)($recipient['name'] ?? ''),
+            'source' => (string)($recipient['source'] ?? ''),
+            'status' => $status,
+        ];
+        try {
+            db()->prepare(
+                'INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at)
+                 VALUES (?,?,?,?,?,?,NOW())'
+            )->execute([uuid(), 'WHATSAPP', (string)($delivery['to'] ?? $phone), $subject, $body, $status]);
+        } catch (Throwable $ignored) {}
+    }
+    return $result;
+}
+
+function belm_send_deduplicated_email_group(array $recipients, string $subject, string $body): array {
+    if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
+    $sent = 0;
+    $failed = 0;
+    $skipped = 0;
+    $emails = [];
+    foreach ($recipients as $recipient) {
+        $email = strtolower(trim((string)($recipient['email'] ?? '')));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+        $emails[$email] = true;
+
+        // Subject includes the customer, machine and due-hour milestone, so a
+        // successful recipient is never emailed twice for the same overdue
+        // service even when dashboard/checklist scans retry failed deliveries.
+        $already = db()->prepare(
+            "SELECT 1 FROM notification_logs
+             WHERE channel = 'EMAIL' AND LOWER(recipient) = LOWER(?)
+               AND subject = ? AND status = 'SENT' LIMIT 1"
+        );
+        $already->execute([$email, $subject]);
+        if ($already->fetch()) {
+            $skipped++;
+            continue;
+        }
+
+        $status = 'SENT';
+        try {
+            send_email($email, $subject, $body);
+            $sent++;
+        } catch (Throwable $error) {
+            $status = 'FAILED';
+            $failed++;
+            error_log('BELM grouped email failed for ' . $email . ': ' . $error->getMessage());
+        }
+        try {
+            db()->prepare(
+                'INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at)
+                 VALUES (?,?,?,?,?,?,NOW())'
+            )->execute([uuid(), 'EMAIL', $email, $subject, $body, $status]);
+        } catch (Throwable $ignored) {}
+    }
+    return [
+        'sent' => $sent,
+        'failed' => $failed,
+        'skipped' => $skipped,
+        'recipients' => array_keys($emails),
+    ];
+}
+
+function belm_service_overdue_admin_recipients(): array {
+    $recipients = belm_staff_recipients_for_pages(['customers']);
+    if ($recipients) return $recipients;
+    try {
+        $company = belm_get_company_details();
+        $fallback = strtolower(trim((string)($company['companyEmail'] ?? '')));
+        if (filter_var($fallback, FILTER_VALIDATE_EMAIL)) {
+            return [['email' => $fallback, 'name' => 'BELM Business Email', 'pages' => ['customers']]];
+        }
+    } catch (Throwable $ignored) {}
+    return [];
+}
+
 function belm_notify_machine_owner_service_status(array $serviceStatus, array $machine): array {
     $remaining = (float)($serviceStatus['hoursRemaining'] ?? 0);
-    // Customer owner notifications start in the same 60-hour warning window
-    // used by the portal. GREEN machines do not generate reminder traffic.
-    if ($remaining > 60) return ['skipped' => 'NOT_DUE_SOON'];
+
+    // V396 communication policy: only SERVICE OVERDUE sends an automatic
+    // customer email. Due-soon and all other machine/check-up alerts remain
+    // visible in the portal and can be emailed manually when BELM chooses
+    // "Send Email to Customer Group for Action".
+    if ($remaining >= 0) return ['skipped' => 'NOT_OVERDUE'];
 
     $machineId = (string)($machine['id'] ?? '');
     $customerId = (string)($machine['customer_id'] ?? '');
@@ -1032,7 +1189,7 @@ function belm_notify_machine_owner_service_status(array $serviceStatus, array $m
 
     $dueHour = (int)($serviceStatus['dueHour'] ?? 0);
     $interval = (int)($serviceStatus['intervalHours'] ?? 250);
-    $kind = $remaining <= 0 ? 'OVERDUE' : 'DUE_SOON';
+    $kind = 'OVERDUE';
     $ownerEmail = trim((string)($owner['email'] ?? ''));
     $ownerPhone = trim((string)($owner['phone'] ?? ''));
 
@@ -1057,15 +1214,17 @@ function belm_notify_machine_owner_service_status(array $serviceStatus, array $m
 
     $machineName = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''))
         ?: ((string)($machine['machine_type'] ?? 'Machine'));
+    $customerName = trim((string)($owner['name'] ?? 'Customer')) ?: 'Customer';
     $serial = (string)($machine['serial_number'] ?? ($machine['reg_number'] ?? 'Not recorded'));
     $current = (float)($serviceStatus['totalHours'] ?? 0);
     $remainingAbs = abs($remaining);
     $serviceType = $interval . '-Hour Service';
     $stateLine = $remaining < 0
         ? 'OVERDUE by ' . rtrim(rtrim(number_format($remainingAbs, 2, '.', ''), '0'), '.') . ' hrs'
-        : ($remaining == 0 ? 'DUE NOW' : rtrim(rtrim(number_format($remaining, 2, '.', ''), '0'), '.') . ' hrs remaining');
-    $subject = ($kind === 'OVERDUE' ? 'SERVICE OVERDUE' : 'SERVICE DUE SOON') . ' - ' . $machineName;
-    $body = "PREVENTIVE MAINTENANCE ALERT\n\n"
+        : 'OVERDUE';
+    $subject = 'SERVICE OVERDUE - ' . $customerName . ' - ' . $machineName . ' - ' . $dueHour . 'HRS';
+    $body = "PREVENTIVE MAINTENANCE - ACTION REQUIRED\n\n"
+        . "Customer: $customerName\n"
         . "Machine: $machineName\n"
         . "Machine Type: " . (($machine['machine_type'] ?? '') ?: 'Not recorded') . "\n"
         . "Brand: " . (($machine['brand'] ?? '') ?: 'Not recorded') . "\n"
@@ -1073,35 +1232,38 @@ function belm_notify_machine_owner_service_status(array $serviceStatus, array $m
         . "Serial / Reg: $serial\n"
         . "Current Hours: " . rtrim(rtrim(number_format($current, 2, '.', ''), '0'), '.') . "\n"
         . "Service Type: $serviceType\n"
-        . "Next Service At: $dueHour hrs\n"
+        . "Service Due At: $dueHour hrs\n"
         . "Status: $stateLine\n\n"
-        . "Open the BELM Customer Portal to review the machine and arrange service.";
+        . "Action required: arrange the overdue service and update the machine service record in BELM Portal.";
 
-    $emailStatus = (string)($row['email_status'] ?? 'PENDING');
-    if ($emailStatus !== 'SENT') {
-        if ($ownerEmail !== '' && filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)) {
-            try {
-                if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
-                send_email($ownerEmail, $subject, $body);
-                $emailStatus = 'SENT';
-                db()->prepare('UPDATE machine_service_owner_notifications SET email_status = ?, email_sent_at = NOW(), owner_email = ?, last_attempt_at = NOW(), updated_at = NOW() WHERE id = ?')
-                    ->execute([$emailStatus, $ownerEmail, $row['id']]);
-                try {
-                    db()->prepare('INSERT INTO notification_logs (id, channel, recipient, subject, body, status, created_at) VALUES (?,?,?,?,?,?,NOW())')
-                        ->execute([uuid(), 'EMAIL', $ownerEmail, $subject, $body, 'SENT']);
-                } catch (Throwable $ignored) {}
-            } catch (Throwable $error) {
-                $emailStatus = 'FAILED';
-                db()->prepare('UPDATE machine_service_owner_notifications SET email_status = ?, last_attempt_at = NOW(), updated_at = NOW() WHERE id = ?')
-                    ->execute([$emailStatus, $row['id']]);
-                error_log('BELM owner service email failed: ' . $error->getMessage());
-            }
-        } else {
-            $emailStatus = 'NO_EMAIL';
-            db()->prepare('UPDATE machine_service_owner_notifications SET email_status = ?, last_attempt_at = NOW(), updated_at = NOW() WHERE id = ?')
-                ->execute([$emailStatus, $row['id']]);
-        }
-    }
+    // Automatic customer delivery goes to the account owner plus every active
+    // customer portal user. Empty roles means the full synchronized group.
+    $customerRecipients = belm_customer_notification_recipients($customerId, []);
+    $customerDelivery = belm_send_deduplicated_email_group($customerRecipients, $subject, $body);
+    $recipientCount = count($customerDelivery['recipients'] ?? []);
+    $deliveredCount = (int)($customerDelivery['sent'] ?? 0) + (int)($customerDelivery['skipped'] ?? 0);
+    if ($recipientCount === 0) $emailStatus = 'NO_EMAIL';
+    elseif ((int)($customerDelivery['failed'] ?? 0) === 0 && $deliveredCount >= $recipientCount) $emailStatus = 'SENT';
+    elseif ($deliveredCount > 0) $emailStatus = 'PARTIAL';
+    else $emailStatus = 'FAILED';
+
+    db()->prepare(
+        "UPDATE machine_service_owner_notifications
+         SET email_status = ?,
+             email_sent_at = CASE WHEN ? IN ('SENT','PARTIAL') THEN COALESCE(email_sent_at, NOW()) ELSE email_sent_at END,
+             owner_email = ?, last_attempt_at = NOW(), updated_at = NOW()
+         WHERE id = ?"
+    )->execute([$emailStatus, $emailStatus, $ownerEmail ?: null, $row['id']]);
+
+    // The same overdue action is copied back to BELM Admin/staff who own the
+    // Customers page. Deduplication keeps dashboard scans from spamming admins.
+    $belmSubject = '[BELM COPY] ' . $subject;
+    $belmBody = $body . "\n\nAutomatic customer recipients: " . ($recipientCount ?: 0) . ".";
+    $belmDelivery = belm_send_deduplicated_email_group(
+        belm_service_overdue_admin_recipients(),
+        $belmSubject,
+        $belmBody
+    );
 
     $whatsappStatus = (string)($row['whatsapp_status'] ?? 'PENDING');
     $shouldAttemptWhatsApp = $whatsappStatus !== 'SENT';
@@ -1122,8 +1284,7 @@ function belm_notify_machine_owner_service_status(array $serviceStatus, array $m
         } catch (Throwable $ignored) {}
     }
 
-    // Keep the same message visible inside the customer's communication
-    // history even if one external channel is temporarily unavailable.
+    // Keep one portal record for the overdue milestone even if SMTP is down.
     try {
         $communicationExists = db()->prepare(
             "SELECT 1 FROM customer_communications
@@ -1135,13 +1296,19 @@ function belm_notify_machine_owner_service_status(array $serviceStatus, array $m
         if (!$communicationExists->fetch()) {
             belm_log_customer_communication(
                 $customerId, $machineId, 'BELM_TO_CUSTOMER', 'SYSTEM',
-                $subject, $body, 'SERVICE_MILESTONE', $relatedId, 'BELM Service Auto Calculate',
-                $emailStatus === 'SENT' || $whatsappStatus === 'SENT' ? 'SENT' : 'PORTAL_ONLY'
+                $subject, $body, 'SERVICE_MILESTONE', $relatedId, 'BELM Service Overdue Alert',
+                in_array($emailStatus, ['SENT', 'PARTIAL'], true) || $whatsappStatus === 'SENT' ? 'SENT' : 'PORTAL_ONLY'
             );
         }
     } catch (Throwable $ignored) {}
 
-    return ['emailStatus' => $emailStatus, 'whatsappStatus' => $whatsappStatus, 'kind' => $kind];
+    return [
+        'emailStatus' => $emailStatus,
+        'whatsappStatus' => $whatsappStatus,
+        'kind' => $kind,
+        'customerEmails' => $customerDelivery['recipients'] ?? [],
+        'belmEmails' => $belmDelivery['recipients'] ?? [],
+    ];
 }
 
 // ---- Machine safety/service alert emails --------------------------------
@@ -1158,39 +1325,17 @@ function send_machine_alert_email(
     string $customerName,
     bool $notifyBelm = true
 ): void {
+    // V396: RED/YELLOW checklist conditions and DUE-SOON service states do not
+    // auto-email. They remain visible in the machine/checklist UI. BELM can
+    // choose the customer-group email option from Communication when action is
+    // required. Only SERVICE OVERDUE is delivered automatically.
     try {
-        $company = belm_get_company_details();
-        $adminEmail = trim((string)($company['companyEmail'] ?? ''));
-        $machineName = trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')) ?: 'Machine';
-        $serial = $machine['serial_number'] ?? $machine['reg_number'] ?? 'Not recorded';
-
-        $alerts = [];
-        if (strtoupper($overallStatus) === 'RED') {
-            $alerts[] = [
-                'subject' => "DON'T OPERATE — $machineName ($customerName)",
-                'body' => "A check-up on $machineName ($serial) for $customerName came back RED — DON'T OPERATE.\n\nOpen BELM Portal to review the full checklist report.",
-            ];
-        } elseif (strtoupper($overallStatus) === 'YELLOW') {
-            $alerts[] = [
-                'subject' => "Attention needed — $machineName ($customerName)",
-                'body' => "A check-up on $machineName ($serial) for $customerName came back YELLOW — needs attention soon.\n\nOpen BELM Portal to review the full checklist report.",
-            ];
+        if ($serviceStatus && (float)($serviceStatus['hoursRemaining'] ?? 0) < 0) {
+            belm_notify_machine_owner_service_status($serviceStatus, $machine);
         }
-        if ($serviceStatus && in_array($serviceStatus['level'] ?? '', ['YELLOW', 'RED'], true)) {
-            // Service reminder has its own milestone/state deduplication so a
-            // daily check-up cannot spam the owner. It also handles WhatsApp.
-            try {
-                belm_notify_machine_owner_service_status($serviceStatus, $machine);
-            } catch (Throwable $serviceNotifyError) {
-                error_log('BELM owner service notification failed: ' . $serviceNotifyError->getMessage());
-            }
-        }
-
-        foreach ($alerts as $alert) {
-            if ($notifyBelm && $adminEmail !== '') send_email($adminEmail, $alert['subject'], $alert['body']);
-            if ($customerEmail !== '') send_email($customerEmail, $alert['subject'], $alert['body']);
-        }
-    } catch (Throwable $error) { /* alerts are best-effort — never break the caller */ }
+    } catch (Throwable $error) {
+        error_log('BELM overdue service notification failed: ' . $error->getMessage());
+    }
 }
 
 function belm_get_company_details(): array {

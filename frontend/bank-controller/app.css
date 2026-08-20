@@ -148,3 +148,40 @@ dialog::backdrop {
   font-size: 13px;
   min-width: 260px;
 }
+
+
+/* V395: protected bank-account edit authorization and human-admin audit. */
+.bank-edit-authorization {
+  display: grid;
+  gap: 11px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid #e0b84c;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+.bank-edit-authorization.hidden { display: none; }
+.bank-edit-auth-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bank-edit-auth-head strong { color: #7a5500; font-size: 11px; letter-spacing: .06em; }
+.bank-edit-auth-head small { color: var(--muted); font-size: 10px; font-weight: 700; text-align: right; }
+.dialog-card textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  resize: vertical;
+}
+.bank-edit-auth-note, .system-sender-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.system-sender-note { margin: 0 0 12px; }

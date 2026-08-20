@@ -371,7 +371,8 @@ switch ($resource) {
         dispatch('engineering.php');
 
     case 'operator':
-        dispatch('operator.php');
+        // REST-style Operator routes: /api/operator/login, /dashboard, /sign-in, etc.
+        dispatch('operator.php', ['action' => $segments[1] ?? ($_GET['action'] ?? '')]);
 
     case 'service-requests':
         if (($segments[1] ?? '') === 'assignees') dispatch('service_requests.php', ['action' => 'assignees']);

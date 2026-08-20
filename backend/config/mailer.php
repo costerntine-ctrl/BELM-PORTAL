@@ -16,7 +16,7 @@ function smtp_config(): array {
         'port' => (int)(getenv('SMTP_PORT') ?: 587),
         'user' => getenv('SMTP_USER') ?: '',
         'pass' => getenv('SMTP_PASS') ?: '',
-        'fromEmail' => getenv('SMTP_FROM_EMAIL') ?: (getenv('SMTP_USER') ?: 'no-reply@belmgeneraltech.co.tz'),
+        'fromEmail' => getenv('SMTP_FROM_EMAIL') ?: (getenv('SMTP_USER') ?: 'info@belmgeneral.co.tz'),
         'fromName' => getenv('SMTP_FROM_NAME') ?: 'BELM General Tech',
         'secure' => getenv('SMTP_SECURE') !== false ? getenv('SMTP_SECURE') : 'tls',
     ];

@@ -566,6 +566,7 @@
     document.getElementById("sendCustomerMessageTitle").textContent = `Message ${customer.name}`;
     document.getElementById("sendCustomerMessageSubject").value = "Message from BELM";
     document.getElementById("sendCustomerMessageBody").value = "";
+    document.getElementById("sendCustomerMessageEmailGroup").checked = false;
     const machineSelect = document.getElementById("sendCustomerMessageMachine");
     machineSelect.innerHTML = '<option value="">General / customer account</option>' + (customer.machines || []).map((machine) => {
       const label = [machine.brand, machine.model, machine.machineType].filter(Boolean).join(" ") || "Machine";
@@ -1938,16 +1939,18 @@
     const button = document.getElementById("sendCustomerMessageButton");
     button.disabled = true;
     try {
+      const emailRequested = document.getElementById("sendCustomerMessageEmailGroup").checked;
       const result = await api(`/customers/${encodeURIComponent(customerId)}/message`, {
         method: "POST",
         body: JSON.stringify({
           machineId: document.getElementById("sendCustomerMessageMachine").value,
           subject: document.getElementById("sendCustomerMessageSubject").value.trim(),
           message: document.getElementById("sendCustomerMessageBody").value.trim(),
+          sendEmail: emailRequested,
         }),
       });
       document.getElementById("sendCustomerMessageDialog").close();
-      showAlert(result.message || "Message sent to customer.", !result.emailDelivered);
+      showAlert(result.message || "Message saved for customer.", emailRequested && !result.emailDelivered);
       await loadCustomerFeeds(customers.filter((item) => item.id === customerId), true);
     } catch (error) {
       showAlert(error.message || "Could not send customer message.", true);

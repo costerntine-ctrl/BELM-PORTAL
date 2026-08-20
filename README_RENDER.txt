@@ -37,6 +37,17 @@ Customer
   Maintenance, Operator, Technician, Statistics Analysis, Store Keeping and
   Finance Report.
 
+Machine Operator
+- Operator dashboard uses the assigned machine card with Fleet No., machine
+  condition, Operator Message, service range, Machine Details and read-only
+  Activity Status.
+- Operator Check Up records Engine Oil Level, Gearbox Oil Level, Coolant Level,
+  Tires and Brakes. Results are stored in Operator Reports; abnormal checks are
+  OPEN for action.
+- Operator Report has a dedicated Comment textarea for machine observations or
+  problems and uses the Operator Message / WhatsApp team workflow.
+- Existing shift, container count and sign-out tools remain available.
+
 MACHINE ALERT RULE
 ------------------
 - Strongest state wins: RED > YELLOW > GREEN.
@@ -60,6 +71,18 @@ DATA SAFETY
 
 PACKAGE ORGANIZATION
 --------------------
-- Historical version changelogs/audits are kept under docs/history/ instead of
-  cluttering the deployment root.
-- Regression tests remain under tests/.
+- This is the clean production package: historical changelogs, audit notes and
+  regression-test source files are intentionally kept outside the deploy ZIP.
+- Runtime frontend/backend, Docker and Render deployment files remain included.
+
+V395 BANK EDIT CONTROL
+- Editing an existing Bank Account requires the signed-in BELM Admin password, the 4-digit Edit PIN, and a written reason.
+- Each bank edit is audit logged with a snapshot of the Admin name/email plus before/after values.
+- info@belmgeneral.co.tz remains the system/customer-message sender identity; human bank edits are attributed to the signed-in Admin account (for example Costerntine or Abdulatif).
+
+
+V396 COMMUNICATION EMAIL POLICY
+- SERVICE OVERDUE is the only machine/check-up alert that emails automatically to the customer group.
+- Automatic overdue recipients are the customer owner plus all active customer users; BELM Admin/customer-page staff receive a deduplicated copy.
+- RED/YELLOW check-up alerts and service Due Soon stay visible in the portal and do not auto-email the customer group.
+- Other BELM-to-customer messages always save to Communication History; email is optional through 'Send Email to Customer Group for Action'.

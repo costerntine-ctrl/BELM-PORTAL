@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
   <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
-  <link rel="stylesheet" href="/bank-controller/app.css?v=356-bank-test-reset">
+  <link rel="stylesheet" href="/bank-controller/app.css?v=395-bank-edit-audit">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -53,6 +53,20 @@
       </div>
     </section>
 
+    <section class="panel" id="bankEditAuditPanel">
+      <div class="section-head">
+        <div><h2>Bank account edit log</h2><p>Who edited a bank account, when, and why.</p></div>
+        <button id="refreshBankEditAuditButton" class="secondary compact" type="button">Refresh log</button>
+      </div>
+      <p class="system-sender-note">System sender: <strong id="systemSenderEmail">info@belmgeneral.co.tz</strong> — reserved for portal/customer messages. Bank edits are attributed to the signed-in human Admin account.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date / time</th><th>Admin</th><th>Bank / account</th><th>Reason</th></tr></thead>
+          <tbody id="bankEditAuditRows"><tr><td colspan="4" class="empty">Loading bank edit history…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
     <section class="panel">
       <div class="section-head">
         <div><h2>Recent withdrawals</h2><p>Latest 100 withdrawals across all accounts, newest first.</p></div>
@@ -79,6 +93,16 @@
       <label>Account name<input id="accountName" required maxlength="180" placeholder="e.g. BELM General Tech Service Ltd"></label>
       <label>Account number<input id="accountNumber" required maxlength="100"></label>
       <label>Opening balance (TZS)<input id="openingBalance" type="number" min="0" max="999999999999" step="0.01" value="0" required></label>
+      <section id="bankEditAuthorization" class="bank-edit-authorization hidden" aria-label="Bank account edit authorization">
+        <div class="bank-edit-auth-head">
+          <strong>EDIT AUTHORIZATION</strong>
+          <small id="bankEditActor">Signed-in BELM Admin</small>
+        </div>
+        <label>BELM Admin password<input id="bankEditAdminPassword" type="password" autocomplete="current-password" disabled></label>
+        <label>Edit PIN<input id="bankEditPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" disabled></label>
+        <label>Reason for edit<textarea id="bankEditReason" maxlength="500" rows="3" placeholder="Why is this bank account being changed?" disabled></textarea></label>
+        <p class="bank-edit-auth-note">Every edit is saved to the audit log with the signed-in admin, date/time, reason and before/after values.</p>
+      </section>
       <div class="dialog-actions">
         <button class="ghost" data-close="accountDialog" type="button">Cancel</button>
         <button id="saveAccountButton" class="primary" type="submit">Save account</button>
@@ -114,6 +138,6 @@
 
   <script src="/admin-access.js"></script>
   <script src="/admin-sidebar.js?v=380-admin-cleanup"></script>
-  <script src="/bank-controller/app.js?v=356-bank-test-reset"></script>
+  <script src="/bank-controller/app.js?v=395-bank-edit-audit"></script>
 </body>
 </html>

@@ -517,9 +517,8 @@ if ($method === 'POST' && $action === 'submit') {
         } catch (Throwable $error) { /* workflow/database sync is still authoritative */ }
     }
 
-    // Urgent RED/YELLOW/service-due alert. The customer still receives the
-    // safety alert. BELM-owned Technicians already sent the full V324 update
-    // above, so avoid sending the Business Email a duplicate copy here.
+    // Machine alert policy: RED/YELLOW and service-due-soon remain portal-only.
+    // Only SERVICE OVERDUE can trigger automatic customer-group email + BELM copy.
     try {
         $customerEmailStmt = db()->prepare('SELECT email FROM customers WHERE id = ?');
         $customerEmailStmt->execute([$machine['customer_id']]);
@@ -837,8 +836,8 @@ if ($method === 'PUT' && $action === 'update') {
         throw $error;
     }
 
-    // Best-effort safety/service alert email for this same-day correction —
-    // same three triggers as a fresh submission.
+    // Re-evaluate the communication policy after a same-day correction.
+    // Only SERVICE OVERDUE can trigger automatic email.
     try {
         $machineStmt = db()->prepare(
             'SELECT m.id, m.machine_type, m.brand, m.model, m.serial_number, m.reg_number, m.customer_id,

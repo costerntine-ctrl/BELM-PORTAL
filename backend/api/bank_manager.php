@@ -130,6 +130,77 @@ function require_bank_account(PDO $pdo, string $accountId, bool $lock = false): 
     return $account;
 }
 
+// Bank-account edits are high-impact financial changes. Require the signed-in
+// BELM Admin's own password, the shared Edit PIN, and a written reason. The
+// returned identity is snapshotted into the audit metadata so the history still
+// says exactly who made the edit even if that user is renamed later.
+function require_bank_account_edit_confirmation(array $user, array $body): array {
+    $adminPassword = (string)($body['adminPassword'] ?? '');
+    $reason = trim((string)($body['reason'] ?? ''));
+
+    if ($adminPassword === '') json_error('Enter your BELM Admin password to confirm this bank account edit.');
+    if ($reason === '') json_error('Enter a reason for this bank account edit.');
+    if (mb_strlen($reason) > 500) json_error('Reason must be 500 characters or fewer.');
+
+    // Reuse the portal-wide protected Edit PIN check.
+    require_edit_confirmation($user, $body);
+
+    assert_not_rate_limited('bank-account-edit-password', (string)$user['id'], 8, 15);
+    $stmt = db()->prepare(
+        'SELECT name, email, password_hash
+         FROM users
+         WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+    );
+    $stmt->execute([(string)$user['id']]);
+    $actor = $stmt->fetch();
+    if (!$actor || !password_verify($adminPassword, (string)$actor['password_hash'])) {
+        record_failed_attempt('bank-account-edit-password', (string)$user['id']);
+        json_error('Incorrect BELM Admin password.', 403);
+    }
+    clear_rate_limit('bank-account-edit-password', (string)$user['id']);
+
+    return [
+        'reason' => $reason,
+        'actorName' => trim((string)$actor['name']),
+        'actorEmail' => trim((string)$actor['email']),
+    ];
+}
+
+// Recent bank-account edits, with the actor snapshot and the written reason.
+// This is intentionally read-only and restricted by the Bank Controller page
+// permission already enforced above.
+if ($method === 'GET' && $action === 'edit-audit') {
+    $stmt = db()->query(
+        "SELECT a.id, a.created_at, a.metadata, u.name AS current_actor_name, u.email AS current_actor_email
+         FROM activity_logs a
+         LEFT JOIN users u ON u.id = a.user_id
+         WHERE a.action = 'bank-account-edited' AND a.entity = 'bankAccount'
+         ORDER BY a.created_at DESC
+         LIMIT 100"
+    );
+    $rows = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $metadata = json_decode((string)($row['metadata'] ?? ''), true);
+        if (!is_array($metadata)) $metadata = [];
+        $rows[] = [
+            'id' => $row['id'],
+            'createdAt' => $row['created_at'],
+            'adminName' => $metadata['actorName'] ?? $row['current_actor_name'],
+            'adminEmail' => $metadata['actorEmail'] ?? $row['current_actor_email'],
+            'bankName' => $metadata['bankName'] ?? '',
+            'accountName' => $metadata['accountName'] ?? '',
+            'accountNumber' => $metadata['accountNumber'] ?? '',
+            'reason' => $metadata['reason'] ?? '',
+            'before' => $metadata['before'] ?? null,
+            'after' => $metadata['after'] ?? null,
+        ];
+    }
+    json_out([
+        'systemSenderEmail' => 'info@belmgeneral.co.tz',
+        'edits' => $rows,
+    ]);
+}
+
 if ($method === 'GET' && $action === '') {
     $pdo = db();
     $accounts = $pdo->query(
@@ -297,6 +368,7 @@ if ($method === 'POST' && $action === 'account') {
 
 if ($method === 'PUT' && $action === 'account') {
     $b = body();
+    $confirmation = require_bank_account_edit_confirmation($user, $b);
     $bankName = trim((string)($b['bankName'] ?? ''));
     $accountName = trim((string)($b['accountName'] ?? ''));
     $accountNumber = trim((string)($b['accountNumber'] ?? ''));
@@ -308,8 +380,9 @@ if ($method === 'PUT' && $action === 'account') {
     if ($openingBalance >= 999999999999.99) json_error('Opening balance is too large. Check the number you entered.');
     $pdo = db();
     $pdo->beginTransaction();
+    $before = null;
     try {
-        require_bank_account($pdo, (string)$id, true);
+        $before = require_bank_account($pdo, (string)$id, true);
         $stmt = $pdo->prepare(
             'SELECT 1 FROM bank_accounts
              WHERE LOWER(bank_name) = LOWER(?) AND LOWER(account_number) = LOWER(?)
@@ -338,8 +411,27 @@ if ($method === 'PUT' && $action === 'account') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
-    log_activity($user, 'bank-account-edited', 'bankAccount', $id, ['bankName' => $bankName]);
-    json_out(['ok' => true]);
+    log_activity($user, 'bank-account-edited', 'bankAccount', $id, [
+        'bankName' => $bankName,
+        'accountName' => $accountName,
+        'accountNumber' => $accountNumber,
+        'reason' => $confirmation['reason'],
+        'actorName' => $confirmation['actorName'],
+        'actorEmail' => $confirmation['actorEmail'],
+        'before' => [
+            'bankName' => $before['bank_name'] ?? '',
+            'accountName' => $before['account_name'] ?? '',
+            'accountNumber' => $before['account_number'] ?? '',
+            'openingBalance' => (float)($before['opening_balance'] ?? 0),
+        ],
+        'after' => [
+            'bankName' => $bankName,
+            'accountName' => $accountName,
+            'accountNumber' => $accountNumber,
+            'openingBalance' => $openingBalance,
+        ],
+    ]);
+    json_out(['ok' => true, 'message' => 'Bank account updated and audit logged.']);
 }
 
 if (($method === 'POST' || $method === 'PUT') && $action === 'withdrawal') {

@@ -1099,8 +1099,8 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 
 -- =====================================================================
 -- V201 MACHINE OWNER SERVICE NOTIFICATIONS
--- One deduplicated notification per service milestone/state. Email is sent
--- automatically to the registered customer/machine owner. WhatsApp can be
+-- One deduplicated notification per overdue service milestone. Email is sent
+-- automatically to the customer owner + active customer users, with a BELM Admin copy. WhatsApp can be
 -- delivered automatically when BELM_WHATSAPP_API_URL is configured; otherwise
 -- the attempt is retained as PENDING_PROVIDER for audit/follow-up.
 CREATE TABLE IF NOT EXISTS machine_service_owner_notifications (

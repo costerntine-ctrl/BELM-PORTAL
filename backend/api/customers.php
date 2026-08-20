@@ -695,27 +695,54 @@ if ($method === 'POST' && $action === 'send-message') {
     }
 
     $sender = trim((string)($user['name'] ?? 'BELM')) ?: 'BELM';
+    $sendEmail = filter_var($b['sendEmail'] ?? false, FILTER_VALIDATE_BOOLEAN);
     $emailBody = $message;
     if ($machineLabel !== '') $emailBody .= "\n\nMachine: $machineLabel";
-    $emailBody .= "\n\nSent by: $sender\nOpen the BELM Customer Portal to keep this message in your communication history.";
-    $result = belm_send_customer_alert(
+    $emailBody .= "\n\nAction requested by: $sender\nOpen the BELM Customer Portal to review this message in Communication History.";
+
+    if ($sendEmail) {
+        // Empty role filter = customer owner + every active customer portal user.
+        $result = belm_send_customer_alert(
+            (string)$id,
+            $machineId !== '' ? $machineId : null,
+            [],
+            $subject,
+            $emailBody,
+            'DIRECT_MESSAGE',
+            null,
+            $sender,
+            $message
+        );
+        $delivered = (int)($result['sent'] ?? 0) > 0;
+        json_out([
+            'ok' => true,
+            'emailRequested' => true,
+            'emailDelivered' => $delivered,
+            'emailRecipients' => $result['recipients'] ?? [],
+            'message' => $delivered
+                ? 'Message saved and emailed to the active customer group for action.'
+                : 'Message saved in the customer portal. Group email was requested but delivery needs attention.',
+        ]);
+    }
+
+    belm_log_customer_communication(
         (string)$id,
         $machineId !== '' ? $machineId : null,
-        ['admin'],
+        'BELM_TO_CUSTOMER',
+        'PORTAL',
         $subject,
-        $emailBody,
+        $message,
         'DIRECT_MESSAGE',
         null,
         $sender,
-        $message
+        'PORTAL_ONLY'
     );
     json_out([
         'ok' => true,
-        'emailDelivered' => (int)($result['sent'] ?? 0) > 0,
-        'emailRecipients' => $result['recipients'] ?? [],
-        'message' => (int)($result['sent'] ?? 0) > 0
-            ? 'Message saved to the customer portal and emailed successfully.'
-            : 'Message saved to the customer portal. Email was not delivered; check customer email/SMTP settings.',
+        'emailRequested' => false,
+        'emailDelivered' => false,
+        'emailRecipients' => [],
+        'message' => 'Message saved in the customer portal. No email was sent.',
     ]);
 }
 
@@ -1546,11 +1573,34 @@ function fetch_machines_for_customers(array $customerIds): array {
         );
     }
 
+    // V397: preload the latest Operator message per machine in one query so
+    // Technician cards can show it directly in the large message panel. The
+    // existing 30-second Technician profile refresh keeps it live without an
+    // N+1 request for every card.
+    $operatorStmt = db()->prepare(
+        "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, message, status, created_at
+         FROM operator_reports
+         WHERE machine_id IN ($machineIn)
+         ORDER BY machine_id, created_at DESC, id DESC"
+    );
+    $operatorStmt->execute($machineIds);
+    $operatorByMachine = [];
+    foreach ($operatorStmt->fetchAll() as $report) {
+        $operatorByMachine[(string)$report['machine_id']] = [
+            'id' => (string)$report['id'],
+            'operatorName' => (string)$report['operator_name'],
+            'message' => (string)$report['message'],
+            'status' => (string)$report['status'],
+            'createdAt' => (string)$report['created_at'],
+        ];
+    }
+
     foreach ($machines as $machine) {
         $machineId = (string)$machine['id'];
         $customerId = (string)$machine['customer_id'];
         $machine['alertReasons'] = $reasonsByMachine[$machineId] ?? [];
         $machine['supportAccessActive'] = !empty($supportMachines[$machineId]);
+        $machine['latestOperatorMessage'] = $operatorByMachine[$machineId] ?? null;
         $grouped[$customerId][] = $machine;
     }
     return $grouped;

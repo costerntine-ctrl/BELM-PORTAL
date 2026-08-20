@@ -1,0 +1,27 @@
+BELM V339 AUDIT REPORT
+
+Scope
+- Engineering -> Job Cards -> Technician Dispatch -> Create Job Card
+- Customer-to-machine filtering and API field-shape compatibility
+- Existing V338 process stage drill-down regression
+
+Root cause verified
+- backend/config/helpers.php api_shape() camelCases customer_id -> customerId.
+- frontend/breakdown-workflow/workflow.js previously filtered dispatchMachines only by m.customer_id.
+- Therefore a selected customer could display zero machines even though Dispatch Options returned valid machine rows.
+
+Fix
+- Added normalizeDispatchMachine().
+- Dispatch Options machine rows are normalized at load time.
+- Customer filtering, machine type and serial display accept camelCase and legacy snake_case.
+- Browser/PWA cache keys bumped to V339.
+
+Database
+- No schema migration required.
+
+Verification
+- V339 targeted checks: 9/9 PASS
+- Runnable CJS regression suites: 58/58 PASS
+- PHP syntax: 47/47 PASS
+- JS/CJS syntax: 97/97 PASS
+- tests/ui-smoke.cjs remains excluded from the runnable regression count because BELM_JS_TOOLS/jsdom is not configured in this build container.

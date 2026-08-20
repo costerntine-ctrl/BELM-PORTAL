@@ -1,0 +1,14 @@
+BELM Portal V298 - Spare & Service Request + Procurement Shortage Handoff
+
+1. Customer-facing "Request Service" is now "Spare & Service Request".
+2. Spare requirements submitted to Procurement are persisted as reusable machine spare-list items.
+3. Procurement request table now shows Select, Required Qty, live Customer Store stock, and calculated Shortage Qty.
+4. "Select Shortage" automatically selects open requests where Customer Store balance is below the required quantity.
+5. "Download Selected CSV" exports only selected shortage quantities for Procurement sourcing.
+6. "Send Selected to BELM" sends only selected shortage quantities to BELM Spare Parts; the customer request screen still does not expose BELM inventory.
+7. BELM supply requests are linked back to the customer Procurement request and Maintenance Process using BELM_REQUESTED status.
+8. Maintenance Process shows "Waiting BELM supply via Procurement" while selected shortages are with BELM.
+9. When BELM marks the linked supply request fulfilled, Procurement and Maintenance Process automatically advance to PARTS_READY.
+10. Customer Store matching refreshes dynamically if stock is received after the Procurement request was created.
+11. BELM fulfillment now requires enough BELM stock for the requested quantity, not merely stock above zero.
+12. Cache versions updated for V298.

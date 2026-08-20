@@ -1,0 +1,28 @@
+BELM Operations Platform V323 - Technician Mobile Sync Audit
+Date: 2026-08-18
+
+SCOPE
+- Technician machine-card Job Card button
+- Global Technician Job Cards shortcut
+- Technician My Tasks synchronization
+- Phone/tablet quick action layout
+- Auto-refresh behavior after assignments/status changes
+
+FIXES VERIFIED
+1. Machine-card Job Card button and global Job Cards shortcut read the same /api/breakdown-workflow/technician-jobs source.
+2. Machine-card button is explicitly labelled Machine Job Cards and receives a per-machine active Job Card count.
+3. Global Job Cards shortcut displays the technician's total active Job Card count.
+4. My Tasks projects assigned Digital Job Cards directly from digital_job_cards, avoiding duplicate/stale shadow task rows.
+5. Projected Job Cards in My Tasks open the Job Card workspace; they cannot be completed independently from the Job Card workflow.
+6. Job Cards, My Tasks and dashboard counters auto-refresh every 30 seconds and whenever the technician returns to the tab/app.
+7. Job Cards, Tasks, Recommend Spare, Add Spare and Customer Dashboard are arranged in one responsive bottom dock.
+8. Tablet layout uses three columns; phone layout uses two columns and safe-area spacing.
+9. Slow-network guards prevent async dock actions from being inserted more than once.
+10. No database migration is required.
+
+VALIDATION
+- PHP syntax: 41/41 PASS
+- JS/CJS syntax: 80/80 PASS
+- Static regression suites: 42/42 PASS
+- V323 targeted checks: 16/16 PASS
+- ui-smoke.cjs was not included in the regression count because its external jsdom tools path is not available in this build container.

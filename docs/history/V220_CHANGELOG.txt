@@ -1,0 +1,14 @@
+BELM PORTAL V220 - BREAKDOWN SOURCE SYNC
+
+1. Breakdown Process now auto-syncs machine-linked official BELM Support Requests.
+2. Existing open Service Requests from older builds are backfilled on Sync / Refresh without duplicates.
+3. Operator Problem Reports and Service Requests share the same Breakdown Process queue.
+4. BELM Admin/Engineer can see an official BELM Support Request even when the customer uses Customer Maintenance Team (provider OFF).
+5. Provider-OFF internal customer breakdowns remain private to the customer unless BELM support is officially requested.
+6. BELM Technicians only see provider work assigned to their home customer, explicit Job Card overrides, or provider-OFF support requests assigned to them.
+7. Service Request status changes sync to the linked breakdown case: Assigned -> Diagnosis, In Progress -> Repair, Completed/Cancelled -> Closed.
+8. Completing a synced Breakdown Case also completes its Service Request source. Resolving an Operator Problem Report closes its linked case.
+9. Workflow cards show source badges: BELM SUPPORT / PROBLEM REPORT / MANUAL CASE.
+10. Refresh button is now Sync / Refresh with visible sync status.
+
+No new database table/column is required for V220. Existing V202 breakdown schema is reused.

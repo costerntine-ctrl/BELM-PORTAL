@@ -1,0 +1,24 @@
+BELM PORTAL V251 - SINGLE-MACHINE CUSTOMERS GET THE SIDEBAR LAYOUT TOO
+
+ROOT CAUSE
+- On desktop/PC widths, the dashboard is supposed to show the machine
+  grid on the left with Status/Petty Cash/More Tools sticking as a
+  sidebar on the right. That layout only activates once the machine
+  cards' shared container gets tagged with the
+  .belm-customer-machine-grid class.
+- That tagging step was gated behind `allCards.length > 1` - it only
+  ran when a customer had TWO OR MORE machines. A customer with
+  exactly one machine never got tagged, so the dashboard silently fell
+  back to the older stacked layout (Status/Petty Cash full-width on
+  top, machine card below) even on a wide screen with plenty of room
+  for the sidebar.
+
+FIXED
+- Changed the condition so the tagging (and therefore the sticky
+  right-hand sidebar layout) applies for one machine just as it does
+  for two or more. A single-machine customer's dashboard now looks and
+  behaves the same as a multi-machine customer's - Status/Petty
+  Cash/More Tools sticking on the right, machine card(s) on the left.
+
+- Browser/PWA cache bumped to V251.
+- No database migration required.

@@ -1,0 +1,12 @@
+BELM PORTAL V363 - MY C SINGLE-ROW QUICK ACTIONS
+Date: 2026-08-19
+
+Changes
+- MY C customer/profile card is capped at 980px so it stays compact instead of stretching too wide.
+- The four quick-action buttons always remain in one horizontal row.
+- Removed the previous 2-column and 1-column stacking behavior at tablet/mobile breakpoints.
+- Reduced button gap/padding/font size progressively on smaller screens so the four buttons fit without overlapping.
+- Increased mobile button height slightly so wrapped labels remain readable while the buttons themselves stay on one row.
+- Updated MY C CSS cache-bust to v363-my-c-single-row-actions.
+
+No API, database, permission, route or customer-data behavior was changed.

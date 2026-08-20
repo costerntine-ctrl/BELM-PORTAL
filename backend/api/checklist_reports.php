@@ -47,6 +47,22 @@ function checklist_report_is_expired(string $createdAt): bool {
     return $now >= checklist_report_expiry($createdAt);
 }
 
+function checklist_report_number(array $report): string {
+    $rawId = (string)($report['id'] ?? '');
+    $compactId = strtoupper((string)preg_replace('/[^A-Za-z0-9]/', '', $rawId));
+    $suffix = substr($compactId, 0, 8);
+    $dateKey = '00000000';
+    try {
+        $created = new DateTimeImmutable((string)($report['created_at'] ?? 'now'));
+        $dateKey = $created
+            ->setTimezone(new DateTimeZone(CHECKLIST_REPORT_TIMEZONE))
+            ->format('Ymd');
+    } catch (Throwable $error) {
+        // The report UUID still keeps the generated checklist number stable.
+    }
+    return 'CHK-' . $dateKey . '-' . ($suffix !== '' ? $suffix : 'AUTO');
+}
+
 function validated_checklist_photo_url(string $photoUrl): string {
     $photoUrl = trim($photoUrl);
     if ($photoUrl === '') return '';
@@ -167,6 +183,7 @@ function checklist_report_api_view(array $report, array $machine, array $user): 
     $report['overallStatus'] = $report['overall_status'] ?? 'GREEN';
     $report['displayPhotoUrl'] = $report['display_photo_url'] ?? null;
     $report['createdAt'] = $report['created_at'] ?? null;
+    $report['checklistNo'] = checklist_report_number($report);
     $report['updatedAt'] = $report['updated_at'] ?? null;
     $report['expiresAt'] = $expiry->format(DateTimeInterface::ATOM);
     $report['isExpired'] = $isExpired;
@@ -667,6 +684,7 @@ if ($method === 'GET' && $action === 'pdf') {
         strtoupper($machine['customer_name'] ?? 'BELM CUSTOMER') . ' - CHECKLIST REPORT',
         'Service provided by: BELM General Tech Service Limited',
         'Template: ' . ($view['templateName'] ?: 'Checklist'),
+        'Checklist No: ' . ($view['checklistNo'] ?? checklist_report_number($report)),
         'Machine: ' . trim(($machine['brand'] ?? '') . ' ' . ($machine['model'] ?? '')),
         'Serial / Registration: ' . ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
         'Filled by: ' . ($view['filledBy'] ?: '—'),

@@ -1,0 +1,12 @@
+BELM PORTAL V343 - MOBILE FIELD DISPATCH + JOB LOCATION
+
+1. Assigned BELM Job Cards are portable: the Technician sees the same assigned card wherever they log in with internet access (phone, tablet or computer).
+2. Job Cards now carry a Job Site / Location snapshot. Existing/Service Request cards fall back to the customer's registered address when no explicit site has been saved.
+3. Technician Dispatch now includes Job site / location. Existing cards auto-fill the saved destination; a new card defaults to the customer address but Engineering can edit it (address, landmark or GPS coordinates).
+4. My Job Cards shows the job location and a Navigate to Job button. It opens Google Maps directions using the Technician device's current location as the starting point.
+5. Assignment emails include Job Location plus a navigation link.
+6. Job Card PDF includes Job Location.
+7. Temporary Override stays per Job Card: a BELM Technician can travel to another customer's job without changing the Technician's permanent/home customer.
+8. Customer-managed Technicians remain limited to their own company for data/security isolation.
+
+Database: schema adds digital_job_cards.job_location automatically at deployment; no manual migration.

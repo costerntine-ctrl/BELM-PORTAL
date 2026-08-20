@@ -1,0 +1,15 @@
+BELM Operations Platform V326
+
+Technician Dispatch / Job Card
+- Received Job Card selector is compact and aligned left.
+- Added JC Number / Proforma Code field with requested instruction.
+- Selecting a received Job Card auto-detects the JC code; manual exact-code lookup is supported.
+- Assignment stores billing state as PROFORMA_PENDING and returns Proforma sync confirmation.
+
+Proforma sync
+- Assigned Job Cards appear automatically in Billing > Proforma as a PENDING queue.
+- Pending code is the Job Card number.
+- When a linked Proforma is prepared after Job Card completion/sign-off, its invoice code is the same Job Card number.
+- Standalone Proformas keep the normal PI sequence.
+
+No database migration required.

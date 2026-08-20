@@ -24,5 +24,5 @@ t('V352 or later deployment audit release active',/const BELM_RELEASE = '(352-pu
 t('V352 or later PWA cache active',/const CACHE='belm-app-v(352-public-url-port-guard|353-web-db-availability|354-fast-wake-loading-guard|355-json-api-clean-response|356-bank-test-reset)';/.test(sw));
 t('no schema change from V351 protected schema',(crypto.createHash('sha256').update(schema).digest('hex')==='e5a4bd39aeeee396bd03b9d94b3d51f3ea733e2b57f8b2e92cfc381cddac99ce'||schema.includes('ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS is_test SMALLINT NOT NULL DEFAULT 0;')));
 t('V350 deployment safety remains active',migrate.includes('belm_predeploy_ids')&&migrate.includes('DATA_SAFETY_BLOCK'));
-t('changelog documents clean login URL',r('V352_CHANGELOG.txt').includes('https://portal.belmgeneraltech.co.tz/login'));
+t('changelog documents clean login URL',r('docs/history/V352_CHANGELOG.txt').includes('https://portal.belmgeneraltech.co.tz/login'));
 console.log(`V352 checks: ${pass}/${pass+fail} passed`); if(fail)process.exit(1);

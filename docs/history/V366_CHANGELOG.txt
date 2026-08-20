@@ -1,0 +1,7 @@
+BELM PORTAL V366 — MY C MACHINE CARD CLEANUP
+
+- Removed Edit from the machine cards opened through MY C > View Your Machine.
+- Removed Delete from the same machine cards.
+- Preserved Report, Check Up, Service Parts and Engineering / Job Cards.
+- Procurement remains only on the MY C main card as quick-action button #3.
+- No machine records or backend data were deleted; this is a UI action cleanup only.

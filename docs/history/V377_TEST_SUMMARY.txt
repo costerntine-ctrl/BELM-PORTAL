@@ -1,0 +1,15 @@
+BELM PORTAL V377 VERIFICATION
+
+Scope: BELM Admin > Customers & Machines > View Your Machine
+- Activity Status balanced inside the fixed 370 x 590 machine card.
+- Operational row remains: Report | Check Up | Service Parts | Job Card.
+- Admin management row: Edit Machine | Delete Machine | Forget Permanently.
+- Forget Permanently remains Super Admin protected and customer/other-machine safe.
+- Customer-facing runtime files remain unchanged from V376.
+
+Regression suites: 96 passed, 0 failed, 1 skipped.
+Skipped: ui-smoke.cjs because the external BELM_JS_TOOLS/jsdom harness is not packaged.
+V377 targeted regression: 19/19 passed.
+Function & Sync Guard: 24/24 passed.
+PHP syntax: 0 errors.
+Frontend JavaScript syntax: 0 errors.

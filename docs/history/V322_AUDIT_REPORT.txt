@@ -1,0 +1,24 @@
+BELM Operations Platform V322 - Registered User Actions Fix
+
+Issue confirmed
+- Access Applications > Registered users actions depended on the global Edit/Delete PIN controls.
+- A missing, changed, or unknown action PIN could make Edit, Delete, and Reset Password appear non-functional.
+
+Fix
+- Registered-user Edit and Reset Password now confirm with the currently signed-in admin's login password.
+- Registered-user Delete now confirms with the currently signed-in admin's login password plus a deletion reason.
+- Legacy action-PIN payloads remain accepted by the backend for compatibility with older cached clients.
+- Self-delete is blocked server-side.
+- Action click delegation was hardened.
+- Dedicated Registered User confirmation dialog added.
+- V322 cache busting added.
+
+Verification
+- V322 targeted checks: 16/16 PASS
+- Historical/current regression files excluding external ui-smoke: 41/41 PASS
+- PHP syntax: 41/41 files PASS
+- JS/CJS syntax: 79/79 files PASS
+- ui-smoke.cjs requires the external BELM_JS_TOOLS/jsdom environment and is not runnable in this container.
+
+Database
+- No database migration required.

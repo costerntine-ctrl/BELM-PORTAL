@@ -1,0 +1,39 @@
+V350 DATABASE SAFETY AUDIT
+==========================
+
+Audit focus: prevent data disappearance caused by ordinary code deployment.
+
+Findings from V349 baseline
+---------------------------
+- schema.sql contained historical UPDATE repairs that ran every startup.
+- migrate.php repeated Job Card/workflow UPDATE repairs every startup.
+- Admin seed used ON CONFLICT DO UPDATE for identity/role/active fields.
+- full reset code could DROP all public tables when explicitly invoked.
+- backup.php used a hand-maintained table list, so newer tables could be omitted.
+- start-render.sh retried all migration failures, including logical/safety failures.
+
+V350 controls
+-------------
+PASS: schema.sql has no deploy-time UPDATE/DELETE/TRUNCATE/DROP TABLE/DROP SEQUENCE business operations.
+PASS: existing Admin row uses ON CONFLICT DO NOTHING.
+PASS: migration is transactional and serialized with pg_advisory_xact_lock.
+PASS: unchanged schema is skipped using SHA-256 migration ledger.
+PASS: protected IDs and counts are validated before commit.
+PASS: empty production database bootstrap is fail-closed by default.
+PASS: full production reset is fail-closed by default.
+PASS: migration safety exit code is not retried by start-render.sh.
+PASS: backup enumerates every public PostgreSQL table dynamically.
+PASS: health exposes persistent installation identity and last guarded deploy.
+
+Result
+------
+Ordinary future bug-only deployments do not intentionally mutate business data. Schema-changing deployments are additive and rollback if protected records disappear during migration.
+
+Verification completed
+----------------------
+- V350 targeted data-safety checks: 23/23 passed
+- Runnable regression suites (excluding ui-smoke, which requires external BELM_JS_TOOLS/jsdom): 69/69 passed
+- PHP syntax: 48/48 files passed
+- JS/CJS syntax: 107/107 files passed
+- docker/start-render.sh shell syntax: passed
+- schema.sql executable business DML scan: no UPDATE, DELETE FROM, TRUNCATE, DROP TABLE or DROP SEQUENCE statements

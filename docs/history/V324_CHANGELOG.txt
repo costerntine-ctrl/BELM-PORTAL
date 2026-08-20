@@ -1,0 +1,35 @@
+BELM PORTAL V324 - TECHNICIAN ALERT + CONDITION + DELIVERY SYNC
+Date: 2026-08-18
+
+1. TECHNICIAN ACTION ALERTS
+- Job Cards button blinks and shows a badge only when the Technician has active assigned Job Cards.
+- Machine Job Cards button blinks only when that machine has an active assigned Job Card.
+- Tasks button blinks only when pending work exists.
+- Check-up button alerts when machine condition is UNKNOWN, YELLOW, or RED.
+- Motion-reduction accessibility is respected.
+
+2. MACHINE CARD CONDITION SYNC
+- Technician machine profile can now be force-refreshed with no-store instead of staying on a stale cached condition.
+- Machine cards re-apply GREEN / YELLOW / RED / UNKNOWN state from the same machines.status source updated by Check-up reports.
+- Last Checked, condition label, warning reasons, and operational status are refreshed together.
+- Refresh runs immediately after Technician data changes and on the existing 30-second/focus/pageshow sync cycle.
+
+3. TECHNICIAN -> CUSTOMER / BELM DELIVERY
+- Check-up reports are saved first, then Customer team notification and BELM workflow notification are attempted.
+- BELM Technician Check-up is also written to the persistent BELM_TO_CUSTOMER communication feed.
+- Technician Job Report updates are persisted to Customer communication history and notify BELM even for official BELM support on a self-managed Customer.
+- Technician machine activity-status changes are persisted to the Customer communication feed and notify Customer + BELM when the Technician is BELM-owned.
+- Recommend Spare now writes a Customer portal communication and alerts the Customer team immediately.
+- Add Spare / Inventory Request now explicitly alerts BELM Spare Parts page owners after the request is saved.
+- API responses return delivery state so the Technician UI can show a truthful synchronization confirmation.
+
+4. DELIVERY SAFETY
+- Operational records remain saved even if email transport fails. Portal/database records are the source of truth.
+- Email delivery remains best-effort and depends on configured mail/business-email settings.
+- Customer machine recent updates already read customer_communications, so these Technician communications appear in the shared portal history.
+
+5. CACHE / VERSION
+- Portal, Technician Tasks, Technician Job Cards, service worker, and health schema version bumped to 324-technician-alert-condition-sync.
+
+DATABASE
+- No database migration required.

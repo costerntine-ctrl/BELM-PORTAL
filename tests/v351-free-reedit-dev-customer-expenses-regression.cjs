@@ -15,7 +15,7 @@ const schema=r('backend/schema.sql');
 const migrate=r('backend/scripts/migrate.php');
 const health=r('backend/index.php');
 const sw=r('frontend/belm-sw.js');
-const changelog=r('V351_CHANGELOG.txt');
+const changelog=r('docs/history/V351_CHANGELOG.txt');
 let pass=0,fail=0;
 function t(name,ok){if(ok){console.log('PASS',name);pass++;}else{console.error('FAIL',name);fail++;}}
 t('development expense bypass defaults open',helpers.includes('BELM_DEVELOPMENT_OPEN_CUSTOMER_EXPENSE_ACCESS = true'));

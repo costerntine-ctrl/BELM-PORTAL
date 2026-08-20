@@ -1,0 +1,12 @@
+BELM PORTAL V320 - ENGINEERING SINGLE OWNER + MANUAL LOGIN
+
+1. BELM admin Maintenance Process is no longer a separate sidebar page.
+   The single admin owner is Engineering > Job Cards.
+2. Technician Dispatch stays inside the embedded Job Cards/Maintenance Process in Engineering.
+3. Legacy/direct admin Maintenance Process links redirect into Engineering > Job Cards.
+4. Customer/Machine admin shortcut now opens Engineering > Job Cards and preserves machine focus.
+5. Opening /login never resumes an existing saved portal token automatically.
+6. Browser password managers may still fill username/password, but the form cannot auto-submit;
+   login happens only after the user clicks Open My Workspace.
+7. Admin sidebar, Engineering, Customers Manager, workflow, login and PWA cache versions bumped.
+8. No database migration required.

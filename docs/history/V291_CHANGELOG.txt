@@ -1,0 +1,7 @@
+BELM Portal V291 - Breakdown Workflow Hide Buttons
+
+Changes:
+- Added Hide/Show button to the Job Cards section in Breakdown Workflow detail view.
+- Added Hide/Show button to the Timeline section in Breakdown Workflow detail view.
+- Panels collapse without affecting Download Job Card PDF, Job Report saving, or tab switching.
+- Added cache-bust version update for breakdown workflow CSS/JS assets.

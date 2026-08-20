@@ -30,5 +30,5 @@ t('Apache strips forwarded HTTPS port 10000',apache.includes('RewriteCond %{HTTP
 t('.htaccess strips forwarded HTTPS port 10000',ht.includes('RewriteCond %{HTTP_HOST} ^(.+):10000$')&&ht.includes('https://%1%{REQUEST_URI}'));
 t('schema remains unchanged from V352',(crypto.createHash('sha256').update(schema).digest('hex')==='e5a4bd39aeeee396bd03b9d94b3d51f3ea733e2b57f8b2e92cfc381cddac99ce'||schema.includes('ALTER TABLE bank_accounts ADD COLUMN IF NOT EXISTS is_test SMALLINT NOT NULL DEFAULT 0;')));
 t('V353 PWA cache active',/const CACHE='belm-app-v(353-web-db-availability|354-fast-wake-loading-guard|355-json-api-clean-response|356-bank-test-reset)';/.test(sw));
-t('changelog identifies DB guard availability regression',/unreachable[\s\S]*database hardening/i.test(r('V353_CHANGELOG.txt')));
+t('changelog identifies DB guard availability regression',/unreachable[\s\S]*database hardening/i.test(r('docs/history/V353_CHANGELOG.txt')));
 console.log(`V353 checks: ${pass}/${pass+fail} passed`); if(fail)process.exit(1);

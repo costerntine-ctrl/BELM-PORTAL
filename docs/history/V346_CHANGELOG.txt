@@ -1,0 +1,12 @@
+BELM PORTAL V346 - PERMANENT PI / INV NUMBER LINK
+
+1. New Proforma numbering is PI-0000000 (7 digits), starting from zero on the dedicated V346 sequence.
+2. New Invoice numbering is INV-000000 (6 digits).
+3. Invoice generated from a V346 Proforma uses the same numeric serial: PI-0000000 -> INV-000000; PI-0000123 -> INV-000123.
+4. Job Card number is no longer used as the Proforma number. Job Card remains linked through source_job_card_id and prints as Job Card Ref.
+5. Billing Invoices includes a PI Number field. Entering PI shows the predicted INV number and Generate Invoice resolves the Proforma server-side by PI number.
+6. Generate Invoice from a Proforma row and Generate by PI Number use the same backend path and exact Proforma copy.
+7. Historical PI/INV numbers are never rewritten. Dedicated sequences coexist with legacy sequences.
+8. No manual database migration: schema ensure creates permanent V346 sequences automatically.
+9. Technician Dispatch now labels JC Number separately; PI number is assigned only when Billing generates the Proforma.
+10. 'Invoice from Proforma' opens/focuses the PI Number generator in Invoices.

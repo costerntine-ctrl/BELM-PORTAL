@@ -1,0 +1,7 @@
+BELM PORTAL V380 - REMOVE MY C
+
+- Removed MY C from the BELM Admin sidebar.
+- Removed the /my-c/ frontend page, JavaScript, CSS, and route allowlist entry.
+- Removed legacy MY C regression tests that no longer apply.
+- Preserved Customers & Machines, customer login dashboard, machine management, permissions, backend APIs, and synchronization logic.
+- Added V380 regression guard to prevent MY C from returning to deployed frontend.

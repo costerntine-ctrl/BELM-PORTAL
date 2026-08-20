@@ -1,0 +1,19 @@
+BELM PORTAL V316 - TECHNICIAN DISPATCH RECEIVED JOB CARD SYNC
+
+Problem confirmed from the Engineering screenshots:
+- Received Job Card dropdown could remain empty after a customer Job Card / Service Request arrived.
+- Engineering Refresh reloaded the dashboard only; it did NOT reload Technician Dispatch options.
+- Older/interrupted machine-linked Service Requests could exist without being synchronized into the received Job Card dropdown until another workflow page was opened.
+- Create Job Card machine selector gave only a blank placeholder when a selected customer had no currently loaded active machine rows.
+
+Fixes:
+1. Engineering Refresh now reloads Technician Dispatch options as well as dashboard/role data.
+2. Added a dedicated Refresh Job Cards button beside the Received Job Card dropdown.
+3. Dispatch options now synchronize active machine-linked Service Requests before listing received Job Cards, repairing legacy/missed Job Card creation automatically.
+4. Received Job Card query accepts legacy unassigned ASSIGNED rows and no longer hides a valid Job Card merely because its machine row is unavailable to the join.
+5. Dropdown now shows an explicit empty-state message instead of a blank list.
+6. Machine dropdown now says Select Customer first / No active machines for this customer instead of appearing broken.
+7. Engineering page refreshes Dispatch automatically after the browser regains focus (with a 15-second guard), so newly-arrived Job Cards from another tab/device appear without a full page reload.
+8. Cache/health version bumped to V316.
+
+No database migration required.

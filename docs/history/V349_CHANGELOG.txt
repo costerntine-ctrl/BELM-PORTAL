@@ -1,0 +1,9 @@
+BELM PORTAL V349 - LOGIN PASSWORD STABILITY FIX
+
+- Existing Super Admin passwords are no longer silently rotated during a normal deploy.
+- INITIAL_ADMIN_PASSWORD is used only to initialize the locked placeholder on a fresh seeded database.
+- Legacy bcrypt passwords are transparently re-hashed after a successful login without changing the user's password.
+- Forgot Password + OTP, recovery-code reset, Registered User reset and Customer reset now clear stale unified-login lockouts immediately.
+- Correct credentials therefore work immediately after a password reset instead of waiting for the old 15-minute failed-attempt window.
+- No user records, business records, bank accounts, expenses, Proformas or Invoices are reset or deleted.
+- No manual database migration is required.

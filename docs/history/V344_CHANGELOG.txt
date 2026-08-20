@@ -1,0 +1,11 @@
+BELM PORTAL V344 - PROFORMA DIRECT GENERATE FIX
+
+- Generate buttons now create Proformas immediately; they no longer only open a preparation dialog.
+- Pending Job Card Generate uses the reserved JC Number as the Proforma code and refreshes PENDING -> generated in one action.
+- Pending Spare Request Generate creates one multi-line Proforma directly for grouped customer/machine requests.
+- Generate buttons show Generating... / Generated feedback and surface API errors visibly.
+- Duplicate/race generation refreshes the list instead of appearing to do nothing.
+- Generated Job Card draft includes the Job Card title/fault plus requested spares; pricing can be changed with Re-edit before sending.
+- Billing date uses the browser local day instead of UTC to avoid Tanzania midnight date shifts.
+- Billing assets/service worker cache bumped to V344.
+- No database migration required.

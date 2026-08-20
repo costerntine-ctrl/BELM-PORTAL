@@ -1,0 +1,7 @@
+BELM PORTAL V379 - MACHINE FLEET NUMBER IDENTITY
+
+- BELM Admin > View Your Machine: machine card desktop width increased slightly from 370px to 390px; height remains 590px.
+- BELM Admin machine header now shows Fleet No. in a compact fixed reference width beside the model.
+- Customer > View Your Machine: machine grid maximum width increased slightly and the native machine nameplate now shows Fleet No.
+- Fleet Number display uses the existing machine fleet_number/fleetNumber field. No database schema or sync route was changed.
+- Existing actions, Activity Status, service status, edit/delete/forget controls and customer permissions remain unchanged.

@@ -1,0 +1,8 @@
+BELM PORTAL V384 - BELM TECHNICIAN DASHBOARD HANDOFF
+
+- BELM Technician now lands on a dedicated assigned-customer dashboard card.
+- Added View Machine control to reveal the technician fleet workspace.
+- Machine fleet is hidden on initial technician landing to avoid confusion with Admin/Customer dashboards.
+- Direct /tech?view=machines access remains supported.
+- Existing technician machine functions remain intact: Check-up, Checked Reports, Machine Job Cards, Activity Status and sync.
+- BELM Admin and Customer dashboard flows are not changed by this version.

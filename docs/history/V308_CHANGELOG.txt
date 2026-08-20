@@ -1,0 +1,9 @@
+BELM PORTAL V308 - JOB CARD ASSIGNMENT STATE FIX
+
+- Active unassigned Job Cards now use TECHNICIAN_ASSIGNMENT owned by Workshop / Dispatch.
+- DIAGNOSIS/REPAIR cannot be entered until an active Job Card has an assigned Technician.
+- New manual Job Cards only move to DIAGNOSIS when a Technician is selected.
+- Service Request synchronization follows the same rule.
+- Existing stale live cases are repaired during deployment migration without resetting their waiting clock.
+- Job Card UI clearly marks AWAITING TECHNICIAN ASSIGNMENT.
+- PostgreSQL timestamps are normalized for Safari/iPhone so Created/Issued dates render correctly.

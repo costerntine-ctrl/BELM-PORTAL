@@ -1,0 +1,11 @@
+BELM PORTAL V284 - CUSTOMER OVERVIEW PERFORMANCE
+
+- Replaced Customers Overview N+1 data loading with batched machine, latest-checklist-alert, and portal-user queries.
+- /api/customers now uses a fixed handful of DB queries instead of growing by customer/machine count.
+- Added GET /api/customers/communication-feed for the newest 3 unread communications per customer in one request.
+- Customer-card communication feeds are cached so typing in Search no longer refetches every customer feed.
+- Full View All communication history remains unchanged and still loads on demand.
+- V283 Customer <-> BELM per-card switch behavior is unchanged.
+- Added PostgreSQL indexes for latest checklist lookup and alert answer filtering.
+- Communication feed batching is chunked for very large customer lists to avoid oversized URLs.
+- Customers Manager JS cache key bumped to v284-performance.

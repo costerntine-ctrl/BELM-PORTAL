@@ -1,0 +1,41 @@
+BELM PORTAL V249 - INSTALLABLE APP SHORTCUT (ADD TO HOME SCREEN)
+
+WHAT WAS MISSING
+- The portal had app icons ready (app-icon-192.png, app-icon-512.png)
+  and a service worker, but no web app manifest and no Apple PWA meta
+  tags anywhere. Without a manifest, "Add to Home Screen" on
+  Android/Chrome only creates a basic bookmark shortcut (still opens
+  with the browser's address bar visible) instead of a real app-style
+  icon/window.
+
+ADDED
+- frontend/manifest.json: proper Web App Manifest (name "BELM General
+  Tech Service Portal", standalone display mode, theme colors, both
+  icon sizes).
+- Linked it from frontend/index.html (the shared app shell that serves
+  the Customer Portal, Admin, and Technician areas), plus the Apple
+  equivalent meta tags (apple-mobile-web-app-capable, apple-touch-icon,
+  status bar style, app title) so both Android/Chrome and iOS/Safari
+  can properly install it as a home-screen app.
+
+HOW TO USE IT (for anyone sharing a link going forward)
+- Android/Chrome: open the portal link -> browser menu -> "Add to Home
+  screen" / "Install app". It will now open in its own app window with
+  the BELM icon, no address bar.
+- iPhone/Safari: open the portal link -> Share button -> "Add to Home
+  Screen".
+
+NOTED, NOT WIRED UP (found while working on this - flagging for you)
+- public_website_patch/belm_manifest.php already exists and can
+  generate a manifest personalized per customer (app name "BELM -
+  <CUSTOMER NAME>", start_url jumping straight to that customer's
+  /app/<slug>). It was never linked from any page, so it currently
+  does nothing. Wiring it in would mean loading it cross-origin from
+  portal.belmgeneraltech.co.tz, which needs the right CORS headers to
+  work reliably for installability - safer to build and test that as
+  its own follow-up rather than risk it silently failing here. For
+  now, everyone gets one shared "BELM Portal" app icon/name, which is
+  a solid, guaranteed-working improvement over no manifest at all.
+
+- Browser/PWA cache bumped to V249.
+- No database migration required.

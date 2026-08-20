@@ -7,7 +7,7 @@ const users=fs.readFileSync('backend/api/users.php','utf8');
 const customers=fs.readFileSync('backend/api/customers.php','utf8');
 const health=fs.readFileSync('backend/index.php','utf8');
 const sw=fs.readFileSync('frontend/belm-sw.js','utf8');
-const changelog=fs.readFileSync('V349_CHANGELOG.txt','utf8');
+const changelog=fs.readFileSync('docs/history/V349_CHANGELOG.txt','utf8');
 let pass=0; function t(n,fn){fn();console.log('PASS',n);pass++;}
 t('fresh locked seed still bootstraps securely',()=>{assert.match(migrate,/if \(\$currentHash === \$lockedSeedHash\)/);assert.match(migrate,/INITIAL_ADMIN_PASSWORD/);});
 t('legacy existing admin password is not auto-rotated',()=>{assert.doesNotMatch(migrate,/\$currentHash === \$lockedSeedHash \|\| \$currentHash === \$legacyKnownHash/);assert.match(migrate,/existing legacy Super Admin password preserved/);});

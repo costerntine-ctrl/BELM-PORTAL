@@ -1,0 +1,6 @@
+V357 AUDIT
+- Scope: admin navigation presentation and refresh-motion feedback only.
+- Database schema: unchanged from V356.
+- Spare Stock: no spare-parts backend/schema/manager logic modified.
+- Sidebar: categories removed from rendered navigation; visible destinations sorted by label A-Z.
+- Refresh: delegated UI feedback only; existing refresh handlers remain authoritative.

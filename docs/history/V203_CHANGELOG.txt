@@ -1,0 +1,8 @@
+BELM PORTAL V203 - ADMINISTRATION LABEL UPDATE
+
+- Renamed all user-facing "Boss" labels to "Administration".
+- "Boss Approval" now displays as "Administration Approval".
+- Spare request prompts, approval notes, status messages and workflow department labels now use Administration.
+- Management-email wording updated to Administration / management team.
+- Approval authority and workflow logic are unchanged.
+- Internal BOSS_APPROVAL stage key is retained for backward compatibility with existing data.

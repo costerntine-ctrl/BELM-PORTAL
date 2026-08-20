@@ -1,0 +1,9 @@
+BELM PORTAL V389 - CUSTOMER FINANCE REPORT
+
+Scope: Customer portal only.
+
+Changes:
+- Added Finance Report as the ninth category in Customer -> General Report.
+- Finance Report shows invoice totals, payments received, outstanding balance, published proformas, proforma value, machine expenses, fuel cost, and Petty Cash figures.
+- Added recent Invoice and Proforma tables with PDF access using existing customer-secured endpoints.
+- BELM Admin and BELM Technician flows are unchanged.

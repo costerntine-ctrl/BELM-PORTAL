@@ -10,7 +10,7 @@ const css=read('frontend/customers-manager/manager.css');
 const checklist=read('backend/api/checklist_reports.php');
 const breakdown=read('backend/api/breakdown_workflow.php');
 const router=read('backend/index.php');
-const log=read('V290_CHANGELOG.txt');
+const log=read('docs/history/V290_CHANGELOG.txt');
 check('V290 changelog', log.includes('Machine Report Center'));
 check('three report tabs', html.includes('Checklist Report')&&html.includes('Job Card Report')&&html.includes('Daily Report'));
 check('date month year filter', html.includes('<option value="day">Date</option>')&&html.includes('<option value="month">Month</option>')&&html.includes('<option value="year">Year</option>'));

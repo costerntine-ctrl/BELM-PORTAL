@@ -1,0 +1,15 @@
+BELM PORTAL V317 - ENGINEERING LANDING CLEANUP
+
+Requested change
+- Remove the Technician Dispatch form from the page that appears immediately after opening Engineering.
+
+What changed
+1. Technician Dispatch is no longer rendered on frontend/engineering-manager/index.html.
+2. Engineering Refresh no longer requests Technician Dispatch options.
+3. Engineering startup no longer initializes, refreshes, or auto-opens Technician Dispatch.
+4. Existing dispatch backend logic is retained for compatibility/future relocation; it is simply not exposed on the Engineering landing page.
+5. Service Requests and Job Cards workspace now follows the role-access cards directly.
+6. Cache/schema version bumped to 317-engineering-no-dispatch.
+
+Database migration
+- None.

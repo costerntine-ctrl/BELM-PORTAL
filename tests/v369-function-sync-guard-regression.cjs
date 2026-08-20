@@ -26,7 +26,7 @@ const baseline = {
   'backend/api/engineering.php': '6ea6d5f2f3ad16a9b6343dd7666c7304f7de30b51a915b7452741b2aa6dca63e',
   'backend/api/service_requests.php': '66c9e8378092db5c0e914e994d12e8b41521fb8ca004850099358131fd602d05',
   'backend/api/spare_recommendations.php': 'eeec8df6b3f4c631000b3d09b5ad032c2f7ecf289879955cee05892713359507',
-  'frontend/customers-manager/manager.js': 'b27548f7eeaaa46549f67ec94743119654ae272e5008789006c1a6f8825a3400',
+  'frontend/customers-manager/manager.js': '22114a4a8ebc2f8a14cc2d9018a5e423f8f10a96e8ef5d430aa35d694e4c89ff',
   'frontend/engineering-manager/manager.js': '401c91e9731e257a31f67ee09a4b84602149e10c817c04b9e761052fb7e18695',
   'frontend/spare-parts-manager/manager.js': 'befcbfb959dbbca87f258f2e3d6ec9e7725a273dac6fc3d206ba5aebe9e5ea2c',
   'frontend/reports-manager/app.js': '387a3a0964839d8d4c6dbf17c0d0d89e09f82bc957dc9e972003491b2a4ece97',
@@ -68,7 +68,7 @@ test('procurement/spare confirmation still synchronizes linked process',
   spare.includes('belm_sync_breakdown_case_from_service_request'));
 
 test('machine view keeps only intended operational controls',
-  ['Report', 'Check Up', 'Service Parts', 'Engineering / Job Cards'].every(x => customers.includes(x)) &&
+  ['Report', 'Check Up', 'Service Parts', '>Job Card</a>'].every(x => customers.includes(x)) &&
   !customers.includes('privacyButton("Procurement Receipts"'));
 
 const machineCard = customers.match(/function machineCard\([\s\S]*?\n  function renderCustomers\(\)/)?.[0] || '';

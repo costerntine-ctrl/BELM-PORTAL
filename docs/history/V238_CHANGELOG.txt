@@ -1,0 +1,51 @@
+BELM PORTAL V238 - FINANCE AUDIT: SPARE INVENTORY, PROFORMA, BILLING
+
+Requested audit of Spare Inventory, Proforma, and finance calculations.
+Findings:
+
+FIXED - Proforma quantity validation mismatch (real bug)
+- The database column `proforma_invoice_items.qty` is INTEGER only -
+  fractional quantities are not supported at the database level.
+- The PUT (edit) endpoint correctly rejected non-whole quantities with
+  a clean error message.
+- The POST (create) endpoint's shared validator, proforma_validate_items(),
+  did NOT have this check - it only required qty > 0. A fractional
+  quantity (e.g. 2.5) would pass PHP validation, then fail with a raw,
+  unhandled PostgreSQL error when the INSERT hit the INTEGER column
+  ("invalid input syntax for integer"), instead of the same clean
+  message the edit screen gives.
+- Fixed: create now validates whole-number quantities up front too, so
+  the person sees the friendly "Proforma quantity must be a whole
+  number greater than zero." message on both create and edit, and the
+  subtotal math + insert now consistently use integer quantity math
+  matching the database column type.
+- Verified compute_totals() (subtotal / discount / VAT / grand total)
+  math is correct: VAT is applied after discount, discount is clamped
+  to the subtotal, all values rounded to 2dp - no issues found there.
+
+CHECKED - Regular Invoices / Billing (backend/api/billing.php)
+- Quantity validation, subtotal, tax, and total math all correct and
+  already consistent (whole-number quantities enforced the way
+  Proforma now is too). No changes needed.
+
+FINDING TO CONFIRM WITH YOU - Spare Parts Inventory stock_qty
+- stock_qty is only ever changed by: (a) creating a spare part, or
+  (b) an Admin manually editing a spare part's record.
+- Nothing in the system automatically decreases stock_qty when parts
+  are actually used - not when a Spare Part Request is approved/
+  fulfilled, not when a Proforma/Invoice is created or sent, not when
+  a Digital Job Card is completed with parts used.
+- service_due_helper.php has an explicit comment confirming this is
+  intentional: it "PREPARES only... never decrements inventory."
+  This may well be your intended workflow (a human physically counts
+  and adjusts stock after issuing parts, to avoid double-counting
+  against paper stock takes) - but I'm flagging it explicitly since it
+  means stock_qty shown in the portal will drift from real warehouse
+  stock unless someone manually updates it after every job.
+  Let me know if you'd like automatic deduction added at a specific
+  point (e.g. when a Spare Part Request status becomes PARTS_READY),
+  and I'll wire it in a follow-up.
+
+- Browser/PWA cache bumped to V238 is NOT required - this change is
+  backend-only (PHP), no frontend cache-busted files were touched.
+- No database migration required.

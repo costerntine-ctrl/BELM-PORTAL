@@ -1,0 +1,11 @@
+V358 AUDIT - TECHNICIAN JOB CARD REPORT VISIBILITY
+
+Scope: reporting visibility only.
+Backend source: digital_job_cards joined to breakdown_cases/customers/machines.
+A report is visible when both diagnosis and work_done have been saved.
+Daily date uses COALESCE(completed_at, updated_at, started_at, created_at) in Africa/Dar_es_Salaam.
+Service Request final-status reporting remains unchanged and is shown separately.
+No write query was added to Daily Report.
+No schema.sql change.
+No bank reset/migrate.php change.
+No spare_parts.php or spare-parts-manager change.

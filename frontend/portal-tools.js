@@ -1799,7 +1799,6 @@
   }
 
   // V376 customer direct row labels: Report, Check Up, Service Parts, Job Card.
-  // Historical labels retained as reference only: Operator Reports, Checkup Report, Spare & Service Request, Maintenance Process, Machine Job Cards.
   function organizeMachineActions(panel) {
     const container = panel.querySelector(".belm-machine-quick-actions");
     if (!container) return;
@@ -4262,8 +4261,116 @@
     return ["UNKNOWN", "YELLOW", "RED"].includes(String(status || "UNKNOWN").toUpperCase());
   }
 
+
+  function technicianTanzaniaDateKey(value = Date.now()) {
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Dar_es_Salaam",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }).formatToParts(date);
+    const get = (type) => parts.find((part) => part.type === type)?.value || "";
+    return `${get("year")}-${get("month")}-${get("day")}`;
+  }
+
+  function formatTechnicianCheckedMoment(value) {
+    if (!value) return "Not recorded";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not recorded";
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Africa/Dar_es_Salaam",
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(date);
+    const get = (type) => parts.find((part) => part.type === type)?.value || "";
+    return `${get("day")}/${get("month")}/${get("year")} - ${get("hour")}.${get("minute")}`;
+  }
+
+  function technicianChecklistNumber(report) {
+    const provided = String(report?.checklistNo || report?.checklist_no || "").trim();
+    if (provided) return provided;
+    const createdAt = report?.createdAt || report?.created_at || new Date().toISOString();
+    const dateKey = technicianTanzaniaDateKey(createdAt).replace(/-/g, "") || "00000000";
+    const compactId = String(report?.id || "AUTO").replace(/[^a-z0-9]/gi, "").toUpperCase();
+    return `CHK-${dateKey}-${(compactId.slice(0, 8) || "AUTO")}`;
+  }
+
+  function technicianCheckedToday(value) {
+    const checkedKey = technicianTanzaniaDateKey(value);
+    return Boolean(checkedKey && checkedKey === technicianTanzaniaDateKey(Date.now()));
+  }
+
+  function technicianMillisecondsToTanzaniaMidnight(nowMs = Date.now()) {
+    // Tanzania is permanently UTC+03:00 (no DST). Convert to an EAT calendar,
+    // then calculate tomorrow 00.00 EAT back in UTC.
+    const eatOffsetMs = 3 * 60 * 60 * 1000;
+    const eatNow = new Date(nowMs + eatOffsetMs);
+    const nextMidnightUtc = Date.UTC(
+      eatNow.getUTCFullYear(),
+      eatNow.getUTCMonth(),
+      eatNow.getUTCDate() + 1,
+      0, 0, 0, 0,
+    ) - eatOffsetMs;
+    return Math.max(1000, nextMidnightUtc - nowMs + 150);
+  }
+
+  function technicianRenderDailyCheckStamp(card, report) {
+    if (!card) return;
+    const stamp = card.querySelector("[data-tech-check-stamp]");
+    if (!stamp) return;
+    clearTimeout(card._belmDailyCheckStampTimer);
+    const createdAt = report?.createdAt || report?.created_at || null;
+    if (!createdAt || !technicianCheckedToday(createdAt)) {
+      stamp.hidden = true;
+      card._belmLatestChecklistReport = null;
+      return;
+    }
+    card._belmLatestChecklistReport = report;
+    const technicianName = String(report?.filledBy || report?.filled_by || "Technician").trim() || "Technician";
+    const text = stamp.querySelector("[data-tech-check-stamp-text]");
+    const number = stamp.querySelector("[data-tech-check-stamp-number]");
+    if (text) text.textContent = `${technicianName} checked ${formatTechnicianCheckedMoment(createdAt)}`;
+    if (number) number.textContent = `Checklist No. ${technicianChecklistNumber(report)} · Auto reset 00.00`;
+    stamp.hidden = false;
+    card._belmDailyCheckStampTimer = window.setTimeout(() => {
+      stamp.hidden = true;
+      card._belmLatestChecklistReport = null;
+      const machine = card._belmMachineSnapshot;
+      if (machine) updateTechnicianMachineCardState(card, machine);
+    }, technicianMillisecondsToTanzaniaMidnight());
+  }
+
+  async function technicianLoadLatestDailyCheckStamp(card, machine) {
+    const checkedAt = machine?.lastCheckedAt || machine?.last_checked_at || null;
+    if (!checkedAt || !technicianCheckedToday(checkedAt)) {
+      technicianRenderDailyCheckStamp(card, null);
+      return;
+    }
+    const token = localStorage.getItem("belm_tech_token");
+    if (!token || !machine?.id) return;
+    try {
+      const response = await fetch(`/api/checklist-reports/machine/${encodeURIComponent(machine.id)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      });
+      const reports = await response.json().catch(() => []);
+      if (!response.ok || !Array.isArray(reports)) return;
+      const latest = reports.find((report) => technicianCheckedToday(report.createdAt || report.created_at));
+      technicianRenderDailyCheckStamp(card, latest || null);
+    } catch (_) {
+      // Machine lastCheckedAt still drives the daily due state if history is temporarily unavailable.
+    }
+  }
+
   function updateTechnicianMachineCardState(card, machine) {
     if (!card || !machine) return;
+    card._belmMachineSnapshot = machine;
     const condition = technicianCondition(machine.status);
     ["green", "yellow", "red", "unknown"].forEach((value) => card.classList.remove(`status-${value}`));
     card.classList.add(`status-${condition.status.toLowerCase()}`);
@@ -4311,13 +4418,22 @@
     if (opSelect && document.activeElement !== opSelect && !opSelect.disabled) opSelect.value = opStatus;
 
     const checkup = card.querySelector("[data-tech-checkup-machine]");
-    const needsCheck = technicianMachineNeedsCheck(condition.status);
-    technicianSetActionAlert(checkup, needsCheck ? 1 : 0, condition.status === "RED" ? "Critical machine condition" : "Machine check-up required");
+    const checkedAt = machine.lastCheckedAt || machine.last_checked_at || null;
+    const checkedToday = technicianCheckedToday(checkedAt);
+    const needsCheck = technicianMachineNeedsCheck(condition.status) || !checkedToday;
+    const checkAlertLabel = condition.status === "RED"
+      ? "Critical machine condition"
+      : !checkedToday
+        ? "Daily machine check-up required"
+        : "Machine check-up required";
+    technicianSetActionAlert(checkup, needsCheck ? 1 : 0, checkAlertLabel);
     if (checkup) {
       checkup.dataset.alertCount = needsCheck ? "!" : "";
       checkup.title = needsCheck
-        ? `${condition.status}: ${condition.label}. Open Check-up.`
-        : `Start a check-up for ${machine.model || machine.machineType || "machine"}`;
+        ? !checkedToday && condition.status === "GREEN"
+          ? `Daily check-up required. Last checked ${checkedAt ? formatTechnicianCheckedMoment(checkedAt) : "not recorded"}.`
+          : `${condition.status}: ${condition.label}. Open Check-up.`
+        : `Checked today. Start another check-up for ${machine.model || machine.machineType || "machine"}`;
       if (!needsCheck) delete checkup.dataset.alertCount;
     }
   }
@@ -4550,6 +4666,10 @@
         <div><span>Machine Status</span><strong data-tech-machine-status>${escapeHtml(condition.status)}</strong></div>
         <div><span>Condition</span><strong data-tech-condition-label>${escapeHtml(condition.label)}</strong><small data-tech-condition-note>${escapeHtml(condition.note)}</small></div>
       </div>
+      <div class="belm-technician-check-stamp" data-tech-check-stamp hidden aria-live="polite">
+        <strong data-tech-check-stamp-text></strong>
+        <span data-tech-check-stamp-number></span>
+      </div>
       <div class="belm-technician-machine-alert-copy belm-customer-machine-alert-copy" aria-live="polite">
         <strong>${escapeHtml(conditionMessage)}</strong>
         <span data-tech-service-alert-copy>Service range: checking…</span>
@@ -4755,7 +4875,7 @@
       if (!card) return;
 
       card.dataset.belmTechnicianReportsReady = "1";
-      card.classList.add("belm-technician-machine-card", "belm-customer-machine-card", "belm-technician-machine-card-v390");
+      card.classList.add("belm-technician-machine-card", "belm-customer-machine-card", "belm-technician-machine-card-v390", "belm-technician-machine-card-v391");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       card.dataset.belmConditionRange = technicianCondition(machine.status).status;
       applyCustomerMachineRange(card);
@@ -4774,7 +4894,7 @@
       technicianMachineInfoCard(card, machine);
 
       const actionsRow = document.createElement("div");
-      actionsRow.className = "belm-technician-card-actions belm-technician-card-actions-v390";
+      actionsRow.className = "belm-technician-card-actions belm-technician-card-actions-v390 belm-technician-card-actions-v391";
 
       const reportLink = document.createElement("span");
       reportLink.className = "belm-technician-report-link";
@@ -4796,7 +4916,6 @@
       // Historical V384 label reference kept for regression compatibility:
       // checkupButton.textContent = "Check-up"
       // Historical V323 counter-label reference kept for regression compatibility:
-      // workflowButton.textContent = "Machine Job Cards"
       const checkupButton = document.createElement("button");
       checkupButton.type = "button";
       checkupButton.className = "belm-technician-checkup-button";
@@ -4849,6 +4968,7 @@
       card.appendChild(actionsRow);
       technicianServiceDuePanel(card, machine);
       updateTechnicianMachineCardState(card, machine);
+      technicianLoadLatestDailyCheckStamp(card, machine);
       scheduleTechnicianShortcutSync(180);
     });
   }
@@ -4927,9 +5047,22 @@
             }
           }
           if (!saved?.id || !machineId) return;
+          const savedAt = saved.createdAt || saved.created_at || new Date().toISOString();
+          const savedCard = Array.from(document.querySelectorAll(".belm-technician-machine-card"))
+            .find((item) => String(item.dataset.belmMachineId || "") === String(machineId));
+          if (savedCard) {
+            const snapshot = savedCard._belmMachineSnapshot;
+            if (snapshot) {
+              snapshot.lastCheckedAt = savedAt;
+              snapshot.last_checked_at = savedAt;
+              snapshot.status = saved.overallStatus || saved.overall_status || snapshot.status;
+              updateTechnicianMachineCardState(savedCard, snapshot);
+            }
+            technicianRenderDailyCheckStamp(savedCard, saved);
+          }
           technicianCustomerProfile = null;
           technicianReportMachines = null;
-          window.dispatchEvent(new CustomEvent("belm-technician-data-changed", { detail: { machineId, reportId: saved.id } }));
+          window.dispatchEvent(new CustomEvent("belm-technician-data-changed", { detail: { machineId, reportId: saved.id, checklistNo: technicianChecklistNumber(saved), checkedAt: savedAt } }));
           refreshTechnicianMachineConditionSync().catch(() => {});
           const customerSynced = saved?.delivery?.customer?.portalRecorded !== false;
           const belmRequired = Boolean(saved?.delivery?.belm?.required);
@@ -5104,7 +5237,7 @@
 
   function improvePhotoInputs() {
     document.querySelectorAll(
-      'input[placeholder="Photo upload — wire up file input for production"], input[data-checklist-photo="1"]'
+      'input[placeholder="Checklist photo"], input[data-checklist-photo="1"]'
     ).forEach((input) => {
       if (
         input.dataset.belmPhotoUploader === "ready"
@@ -5301,7 +5434,7 @@
     if (inputType === "PHOTO") {
       const photoValue = answer.photoUrl || answer.photo_url || value;
       return `<input ${common} type="text" value="${escapeHtml(photoValue)}"
-        data-checklist-photo="1" placeholder="Photo upload — wire up file input for production" />`;
+        data-checklist-photo="1" placeholder="Checklist photo" />`;
     }
     return `<input ${common} type="text" value="${escapeHtml(value)}" />`;
   }

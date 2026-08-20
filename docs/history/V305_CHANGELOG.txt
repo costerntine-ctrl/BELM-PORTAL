@@ -1,0 +1,29 @@
+BELM PORTAL V305 - TECHNICIAN JOB CARD WORKSPACE
+
+1. Technician Dispatch is Job-Card-first
+   - Select Received Job Card
+   - Create Job Card
+   - Assigns the selected/created Job Card directly to the Technician
+   - Temporary Override remains supported without changing permanent customer assignment
+   - Priority and Due Date are stored on the Digital Job Card
+
+2. Dedicated Technician My Job Cards workspace
+   - Active Job Cards
+   - My Reports
+   - Simplified work process only (Assigned / Diagnosis / Repair / Testing / Completed)
+   - Waiting spare/approval state shown without full department-management workflow
+   - Update Job Report from the Job Card
+   - Request Spare from the Job Card
+   - Download Job Card / completed Report PDF for reference
+
+3. Full Maintenance Process removed from Technician UI
+   - Old Technician workflow links redirect to My Job Cards
+   - Customer/Workshop/BELM management workflow remains unchanged for authorized management users
+
+4. Received Service Job Card sync
+   - Assigning a received Job Card advances the case to Technician Diagnosis
+   - Official Service Request assignment is synchronized to the same Technician
+
+5. Deploy safety
+   - Health schema version: 305-technician-job-cards
+   - Health checks priority/due_date Job Card columns

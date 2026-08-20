@@ -1,0 +1,5 @@
+BELM PORTAL V381
+
+- BELM Admin > Customers & Machines: renamed the black quick-action button from "View Your Machine" to "Customer Machine".
+- Button hook/route/function remains unchanged.
+- Customer-facing dashboard remains "View Your Machine".

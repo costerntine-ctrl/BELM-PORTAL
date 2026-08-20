@@ -1,0 +1,8 @@
+V353 AUDIT - AVAILABILITY WITHOUT DATA LOSS
+- Database schema: unchanged from V352/V351/V350.
+- Startup: Apache begins immediately on $PORT; migration no longer gates web availability.
+- Migration safety: existing V350 transaction, advisory lock, protected-ID snapshots and rollback remain.
+- Data operations added by V353: none.
+- Render health: /api/live (no DB dependency); /api/health remains detailed DB readiness.
+- Public URL: canonical portal origin; internal HTTPS :10000 is never intentionally published.
+- Full database reset: still production-protected.

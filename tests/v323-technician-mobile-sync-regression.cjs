@@ -1,8 +1,8 @@
 const fs=require('fs'),path=require('path');const root=path.resolve(__dirname,'..');
 const read=p=>fs.readFileSync(path.join(root,p),'utf8');let pass=0,fail=0;function t(n,c){if(c){console.log('PASS',n);pass++}else{console.error('FAIL',n);fail++}}
 const tools=read('frontend/portal-tools.js'),theme=read('frontend/belm-theme.css'),tasksApi=read('backend/api/tasks.php'),tasksJs=read('frontend/technician-tasks/tasks.js'),tasksHtml=read('frontend/technician-tasks/index.html'),jobsJs=read('frontend/technician-job-cards/job-cards.js'),index=read('frontend/index.html'),health=read('backend/index.php'),sw=read('frontend/belm-sw.js');
-t('machine Job Card button is machine-specific and syncable',tools.includes('data-tech-jobcards-machine')&&tools.includes('Machine Job Cards'));
-t('technician machine card Job Card button is wired to the same machine counter',tools.includes('workflowButton.dataset.techJobcardsMachine')&&tools.includes('workflowButton.textContent = "Machine Job Cards"'));
+t('machine Job Card button is machine-specific and syncable',tools.includes('data-tech-jobcards-machine')&&tools.includes('Job Card'));
+t('technician machine card Job Card button is wired to the same machine counter',tools.includes('workflowButton.dataset.techJobcardsMachine')&&tools.includes('workflowButton.textContent = "Job Card"'));
 t('Technician dock centralizes mobile quick actions',tools.includes('ensureTechnicianActionDock')&&theme.includes('.belm-tech-action-dock'));
 t('dock contains Job Cards and Tasks actions',tools.includes('belm-tech-dock-jobcards')&&tools.includes('belm-tech-dock-tasks'));
 t('spare actions mount into the same dock',tools.includes('mountTechnicianDockAction(button, 30)')&&tools.includes('mountTechnicianDockAction(button, 40)'));

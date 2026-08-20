@@ -1,0 +1,28 @@
+BELM PORTAL V201 - SERVICE AUTO CALCULATE + OWNER ALERTS
+
+1. Service Auto Calculate
+- 250/500/1000/2000 hierarchy remains automatic.
+- Machine cards show Service Type, Current Hours, Next Service At, Service Status, and Remaining/Overdue hours.
+- Exact milestone shows DUE NOW; passed milestone shows OVERDUE BY X HRS.
+
+2. Machine owner notifications
+- At <=60 hours remaining: one DUE SOON notification per milestone.
+- At due/past due: one OVERDUE notification per milestone.
+- Email goes automatically to the registered customer/machine owner email.
+- WhatsApp uses the registered customer/machine owner phone.
+- Duplicate daily check-ups do not repeat the same notification state.
+
+3. WhatsApp auto-send
+- Set BELM_WHATSAPP_API_URL to an HTTPS provider/webhook accepting JSON: {"to":"255...","message":"..."}.
+- Optional BELM_WHATSAPP_API_TOKEN is sent as Bearer token.
+- If no provider is configured, status is PENDING_PROVIDER; it is never falsely marked SENT.
+- Existing WhatsApp alerts toggle is respected.
+
+4. BELM visibility
+- Engineering Service Reminder shows owner Email and WhatsApp delivery status.
+- BELM Service Provider preventive PI/inventory preparation from V200 remains unchanged.
+
+DEPLOYMENT
+- Run backend/schema.sql after deploying V201.
+- Configure SMTP for automatic owner email.
+- Configure BELM_WHATSAPP_API_URL (+ optional token) for automatic WhatsApp delivery.

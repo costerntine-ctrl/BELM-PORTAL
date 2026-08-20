@@ -1,0 +1,11 @@
+BELM PORTAL V335 - DAILY REPORT FINAL-STATUS SYNC
+
+1. Daily Report now resolves COMPLETED/CANCELLED dates in Africa/Dar_es_Salaam instead of PostgreSQL session date.
+2. Legacy final Service Requests with missing completed_at/cancelled_at are recovered from final STATUS History, then updated_at/created_at as audit fallback.
+3. Daily Report returns one canonical actionAt/handledBy value so frontend and backend use the same final action.
+4. The modal shows selected-date Completed/Cancelled counts plus the all-date visible status-tab totals, making the scope difference explicit.
+5. Daily Report default date now uses browser-local calendar date instead of UTC toISOString date.
+6. Hidden final records remain available in historical Daily Report, while visible status totals remain aligned with the normal status tabs.
+7. Cache version bumped to v335-daily-report-sync.
+
+No database migration required.

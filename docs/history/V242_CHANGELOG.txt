@@ -1,0 +1,38 @@
+BELM PORTAL V242 - GENERAL CLEANUP PASS
+
+Requested full cleanup sweep. No functional/runtime code was changed;
+this pass cleaned up the project's own housekeeping:
+
+FULL PROJECT SWEEP - all clean, nothing to fix
+- JavaScript: every frontend .js file passes `node --check`.
+- CSS: every file brace-balanced, no dangling rules.
+- PHP: every file brace/paren-balanced.
+- No leftover console.log/debugger statements anywhere.
+- No orphaned CSS classes referencing markup removed in earlier
+  versions (checked belm-breakdown-process-rail-card, belm-quick-
+  actions-row and related classes retired in V227/V228 - confirmed
+  zero remaining references anywhere in the project).
+- Cache-busting version strings (portal-tools.js, belm-theme.css,
+  customers-manager/manager.js, belm-sw.js x2) all consistently point
+  to the latest version - no file left pointing at a stale one.
+
+FIXED - regression test suite itself
+- tests/v219 through v223 hardcoded exact old cache-version strings
+  (e.g. "belm-app-v222-button-contrast") as their pass condition. Once
+  the cache was legitimately bumped again for a later feature, these
+  assertions permanently false-failed on every future run - not real
+  bugs, just brittle tests (first flagged in the V231 bug sweep).
+- Replaced the exact-string checks with version-number comparisons
+  (e.g. "cache version parsed from belm-sw.js is >= 219") so these
+  tests keep passing correctly as the project version continues to
+  climb, instead of needing a manual edit every single release.
+- Also fixed one of these checks that was accidentally matching
+  "theme-manager.js?v=198-..." instead of the intended
+  "customers-manager/manager.js?v=..." (a false-positive/false-match
+  bug in the test itself, caught while fixing the above).
+- Full suite now: 211/215/217/218/219/220/221/222/223 all passing
+  cleanly, 0 failures.
+
+- Browser/PWA cache bumped to V242 is NOT required - only the tests/
+  folder changed, no runtime frontend/backend files were touched.
+- No database migration required.

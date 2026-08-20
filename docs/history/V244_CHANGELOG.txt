@@ -1,0 +1,28 @@
+BELM PORTAL V244 - SPARE PART REQUEST ROW: DARK MODE FIX
+
+ROOT CAUSE
+- On the Request BELM Support page, each "Spare request" row
+  (Spare name / Reference / Quantity) is its own box, class
+  .part-request-row, separate from the outer .panel it sits inside.
+- theme-global.css (the shared Dark Mode stylesheet used across the
+  whole portal) already correctly turns label text like "Spare name"
+  a light color in Dark Mode - but .part-request-row was missing from
+  the list of boxes that get a dark BACKGROUND. So the box stayed
+  stuck on its original light gray-white background while its label
+  text turned light too - light text on a light box, effectively
+  invisible. That's what read as "washed out" with big blank-looking
+  gaps in the screenshot; the labels were there, just unreadable.
+
+FIXED
+- Added .part-request-row to the same dark-background treatment as
+  .panel/.card/.machine-card/etc. (matches every other card style in
+  Dark Mode).
+- Also gave the "Remove" button and the spare-source toggle buttons
+  proper Dark Mode colors while in the area (same missing-from-the-
+  list issue, smaller version of the same bug).
+- Since theme-global.css is shared by ~23 pages across the portal,
+  bumped its cache-busting version on all of them so every page picks
+  up the fix immediately rather than serving the old cached file.
+
+- Browser/PWA cache bumped to V244.
+- No database migration required.

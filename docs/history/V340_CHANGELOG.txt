@@ -1,0 +1,7 @@
+BELM PORTAL V340 - Customer Login Button Blue
+
+1. Open customer login button now uses a blue filled background.
+2. White label is preserved for contrast.
+3. Hover, pressed and keyboard-focus states are blue and visibly reactive.
+4. Customer Manager asset cache and PWA cache are bumped so the new button color appears after deployment.
+5. No database migration required.

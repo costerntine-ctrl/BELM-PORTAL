@@ -1,0 +1,39 @@
+BELM PORTAL V307 - SECOND PASS REGRESSION & HARDENING AUDIT
+Date: 2026-08-18
+Source audited: V306 FULL REGRESSION HARDENING
+
+KEY V307 FIXES
+- Service Request cannot be closed before linked Job Card and Workshop test are completed.
+- Completed/cancelled Service Requests cannot be resurrected by reassignment.
+- Started Job Cards must be reassigned through Job Card Dispatch, preserving technician history.
+- OPEN/ASSIGNED/IN_PROGRESS Service Request states now enforce consistent technician assignment.
+- Technician Job Card work synchronizes the Service Request into IN_PROGRESS without bypassing Workshop closure.
+- Customer billing ignores cancelled invoices and uses payment-derived invoice status.
+- Cancelled invoices are final; paid invoices cannot be cancelled until payment/Receipt is reversed.
+- Invoice edit recomputes billing status for both the old and new linked Job Cards.
+- Receipt and Payment records are explicitly linked; delete/restore/edit/reversal stay synchronized.
+- Manual payments can be reversed; receipt-linked payments must be reversed through the Receipt.
+- Customer permanent delete/reset order covers checklist, service, billing, operator and newer workflow foreign keys.
+- Customer merge moves current operational data, blocks Store part-number collisions and permanently removes the source shell.
+- Reset All preserves the current Super Admin password hash instead of accepting/creating an empty password.
+- Unified and legacy login endpoints fail closed for ambiguous legacy duplicate-email accounts.
+- Health response reports ok=false and HTTP 503 when schema/admin readiness is incomplete.
+
+FINAL STATIC / REGRESSION RESULTS
+- PHP syntax: 41/41 clean
+- JavaScript/CJS syntax: 65/65 clean
+- V307 second-pass regression: 42/42 PASS
+- V299 session regression: 15/15 PASS
+- V301 Job Card/Billing regression: 23/23 PASS
+- V303 unified-login regression: 20/20 PASS
+- HTML static scan: 33 pages, 340 refs, 0 missing, 0 duplicate IDs
+- PHP literal includes: 72 checked, 1 dynamic skipped, 0 missing
+- render.yaml parsed: 1 service, 1 database
+- docker/start-render.sh syntax: PASS
+- Git conflict markers: 0
+
+HISTORICAL TEST NOTES
+Several old version suites intentionally fail only where later versions replaced their expected cache strings or workflow architecture. Examples: V295-V297 procurement behavior was superseded by V298; V211 expected Technician access to the full Breakdown workflow, intentionally removed by V305. V298 is 19/20 with only its old cache-version assertion failing. V305 is 17/18 with only its old health-version assertion failing. V306 is 47/49 with only old V306 health/cache version assertions failing.
+
+LIMITATION
+The bundled ui-smoke.cjs requires the external BELM_JS_TOOLS/jsdom test environment, which is not present in this container. Static DOM checks were run instead. A final live PostgreSQL + real browser smoke test is still recommended immediately after deployment.

@@ -1,0 +1,9 @@
+BELM PORTAL V219 - COMMUNICATION VIEW / HIDE
+
+- Communication History summary on Customers & Machines now shows unread/new items only.
+- Viewing one communication marks it read for the logged-in BELM staff user and removes it from the dashboard summary.
+- View all keeps the complete communication history, marks newly viewed items read, and refreshes the summary.
+- Read state is per BELM system user; another authorized staff member can still see items they have not viewed.
+- Nothing is deleted. Read items remain available in View all / Communication History.
+- Added customer_communication_reads table; run backend/schema.sql once after deployment.
+- Cache-busted Customers Manager JavaScript to V219.

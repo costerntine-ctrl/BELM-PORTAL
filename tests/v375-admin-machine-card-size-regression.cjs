@@ -11,7 +11,7 @@ t('Machine card desktop width matches current approved footprint',css.includes('
 t('Machine card desktop height matches approved customer-card footprint',css.includes('height: 590px;')&&css.includes('min-height: 590px;'));
 t('Machine list uses current fixed approved card columns',css.includes('grid-template-columns: repeat(auto-fill, 390px);'));
 t('Mobile machine card remains responsive',css.includes('#machineListDialog .machine-card {\n    width: 100%;'));
-t('Operational machine controls remain unchanged',['Report','Check Up','Service Parts','Engineering / Job Cards'].every(x=>js.includes(x)));
+t('Operational machine controls remain unchanged',['Report','Check Up','Service Parts','>Job Card</a>'].every(x=>js.includes(x)));
 t('Activity status remains available',js.includes('Activity status')&&js.includes('data-operational-status'));
 t('Add machine function remains wired',js.includes('machineListAddButton')&&js.includes('dataset.addMachine'));
 console.log(`V375 admin machine-card size regression: ${pass}/${pass+fail} passed`);process.exit(fail?1:0);

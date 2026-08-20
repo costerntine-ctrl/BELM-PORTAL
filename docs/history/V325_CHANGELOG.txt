@@ -1,0 +1,10 @@
+BELM PORTAL V325 - TECHNICIAN MACHINE-CARD BUTTON COLORS
+
+1. Technician machine card action colors are fixed and easy to identify:
+   - Checked Reports = YELLOW
+   - Check-up = GREEN
+   - Machine Job Cards = BLUE
+2. Machine Job Cards now has its own semantic CSS class so it cannot inherit the Check-up color.
+3. Existing actionable blink/badge alerts remain active as an overlay without changing the button's base identity color.
+4. SPA asset query versions and service-worker cache key were bumped to V325 so browsers do not keep the older V323/V324 styling.
+5. No database migration is required.

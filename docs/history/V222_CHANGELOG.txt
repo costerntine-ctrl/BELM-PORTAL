@@ -1,0 +1,7 @@
+BELM PORTAL V222 - BREAKDOWN BUTTON CONTRAST
+
+- Fixed unreadable white Sync / Refresh button on Breakdown Process in Dark Mode.
+- Added explicit high-contrast light and dark styles for Sync / Refresh.
+- Added dark-mode contrast guards for Digital Job Card, Spare and approval action buttons.
+- Bumped Breakdown Workflow stylesheet and PWA cache version so browsers receive the fix after deployment.
+- No database migration required.

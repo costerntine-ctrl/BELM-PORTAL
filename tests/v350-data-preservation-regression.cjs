@@ -10,7 +10,7 @@ const health=read('backend/index.php');
 const start=read('docker/start-render.sh');
 const render=read('render.yaml');
 const sw=read('frontend/belm-sw.js');
-const changelog=read('V350_CHANGELOG.txt');
+const changelog=read('docs/history/V350_CHANGELOG.txt');
 let pass=0,fail=0;
 function t(name,ok){if(ok){console.log('PASS',name);pass++;}else{console.error('FAIL',name);fail++;}}
 const executableLines=schema.split('\n').map(line=>line.trim()).filter(line=>line&&!line.startsWith('--'));

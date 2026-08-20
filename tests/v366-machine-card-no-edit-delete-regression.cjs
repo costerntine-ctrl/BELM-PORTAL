@@ -9,7 +9,7 @@ const machineCardSource = manager.match(/function machineCard\([\s\S]*?\n  }\n\n
 t('machine card keeps Report', machineCardSource.includes('Report'));
 t('machine card keeps Check Up', machineCardSource.includes('Check Up'));
 t('machine card keeps Service Parts', machineCardSource.includes('Service Parts'));
-t('machine card keeps Engineering Job Cards', machineCardSource.includes('Engineering / Job Cards'));
+t('machine card keeps Engineering Job Cards', machineCardSource.includes('>Job Card</a>'));
 t('V377 supersedes V366 by restoring Edit only in BELM Admin management row', machineCardSource.includes('class=\"machine-admin-actions\"') && machineCardSource.includes('data-edit-machine='));
 t('V377 supersedes V366 by restoring Delete only in BELM Admin management row', machineCardSource.includes('class=\"machine-admin-actions\"') && machineCardSource.includes('data-delete-machine='));
 t('machine card still has no Procurement Receipts duplicate', !machineCardSource.includes('Procurement Receipts'));

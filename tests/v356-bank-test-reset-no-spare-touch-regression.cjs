@@ -9,7 +9,7 @@ const router=r('backend/index.php');
 const html=r('frontend/bank-controller/index.html');
 const js=r('frontend/bank-controller/app.js');
 const sw=r('frontend/belm-sw.js');
-const audit=r('V356_AUDIT_REPORT.txt');
+const audit=r('docs/history/V356_AUDIT_REPORT.txt');
 let pass=0,fail=0;
 function t(name,cond){try{const ok=typeof cond==='function'?cond():cond;if(!ok)throw new Error('failed');console.log('PASS',name);pass++;}catch(e){console.error('FAIL',name,e.message);fail++;}}
 

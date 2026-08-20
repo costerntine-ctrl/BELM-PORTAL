@@ -1,0 +1,22 @@
+BELM PORTAL V329 - ACTION FEEDBACK / TECHNICIAN DISPATCH RESET AUDIT
+
+Scope
+- Engineering > Job Cards > Technician Dispatch.
+- Visible button feedback on Maintenance Process / Job Cards workflow.
+- Post-assignment form state.
+
+Implemented
+1. Every workflow button receives an immediate pressed-state visual response on pointer/touch input.
+2. Assign Job Card exposes BUSY, SUCCESS and ERROR visual states.
+3. Dispatch status is announced locally with aria-live so the result is visible where the user is working.
+4. After a successful assignment/reassignment, the dispatch form is reset before reloading data.
+5. Reset clears Technician, selected Job Card, JC/Proforma code, Customer, Machine, title, description, priority and due date.
+6. Refresh then reloads active RECEIVED/OPEN/ASSIGNED cards, so the newly assigned card can still be found as ASSIGNED without stale selections remaining in the form.
+7. V328 assigned-card selection/reassignment and JC/Proforma behavior is retained.
+
+Verification
+- V329 regression checks: 12/12 passed.
+- Runnable regression files: 48/48 passed (ui-smoke.cjs is an argument-driven harness and was not counted as a standalone runnable suite).
+- PHP syntax: 41/41 files passed.
+- JS/CJS syntax: 86/86 files passed.
+- No database migration required.

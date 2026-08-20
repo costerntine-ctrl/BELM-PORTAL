@@ -1,0 +1,10 @@
+BELM PORTAL V392 — TECHNICIAN DAILY CHECK STAMP
+
+- Technician machine card shows the completed daily Check Up immediately after save.
+- Stamp format: Technician checked DD/MM/YYYY - HH.MM · Checklist No. CHK-YYYYMMDD-XXXXXXXX.
+- Checklist number is generated automatically and deterministically from the persisted checklist report.
+- Time is Tanzania time and intentionally contains no seconds.
+- Daily checked stamp auto-hides at 00.00 Tanzania time.
+- At the new Tanzania day, Check Up becomes due again even if the last condition remains GREEN.
+- Machine card updates immediately after save and then refreshes from the server sync source of truth.
+- No BELM Admin or Customer machine-management behavior is changed.

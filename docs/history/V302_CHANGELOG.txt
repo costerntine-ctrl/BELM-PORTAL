@@ -1,0 +1,19 @@
+BELM Portal V302 - Full Deploy Readiness Audit
+
+Deploy blockers fixed
+- Docker Apache /app route now accepts @ for TECH@BELM and name@BELM direct portal links.
+- Removed usable documented default Admin password from schema bootstrap.
+- Fresh/legacy-default bootstrap now requires INITIAL_ADMIN_PASSWORD (12+ chars) before Apache starts.
+- Full database reset preserves the current Admin identity/password and edit/delete PINs instead of restoring public defaults.
+- repair_admin.sql no longer resets to a known password/PIN.
+
+Health/deployment
+- /api/health schemaVersion updated to 301-customer-job-billing.
+- Health checks V301 billing tables and critical Job Card/billing columns.
+- Incomplete schema returns HTTP 503 so Render does not mark a broken migration healthy.
+- Seeded Admin health lookup uses the stable seeded Admin ID instead of the obsolete email.
+
+Preserved
+- V299 session stability.
+- V300 night-friendly check-up/report UI.
+- V301 Customer Job Card + signed copy + Proforma/Invoice/payment sync.

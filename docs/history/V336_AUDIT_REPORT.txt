@@ -1,0 +1,24 @@
+BELM Operations Platform V336 - Assigned Technician Name Audit
+
+Scope
+- Main Job Card inline Technician assignment display.
+- Legacy Service Request -> Job Card assignment fallback.
+- Frontend field normalization and cache refresh.
+
+Fixes verified
+1. ASSIGNED / IN_PROGRESS Main Job Cards show the assigned Technician name in the dropdown.
+2. Current assigned Technician is selected instead of displaying Select Technician.
+3. Dropdown label changes to Assigned Technician when a current assignment exists.
+4. Status text states Assigned to <Technician Name>.
+5. Reassignment remains available by selecting another Technician.
+6. Job Card payload normalizes technicianId/technician_id and technicianName/technician_name consistently.
+7. If a Job Card copied Technician name is blank but technician_id exists, the account name is used.
+8. For legacy Service Request records, the source request assignment is used as a display fallback for ASSIGNED/IN_PROGRESS Job Cards.
+9. No database migration required.
+
+Verification
+- V336 targeted checks: 10/10 passed.
+- Runnable regression suites: 55/55 passed (ui-smoke requires BELM_JS_TOOLS/jsdom, unavailable in this container).
+- PHP syntax: 41/41 passed.
+- JS/CJS syntax: 93/93 passed.
+- ZIP integrity: checked after packaging.

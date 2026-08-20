@@ -1,0 +1,14 @@
+BELM PORTAL V281 - REMOVED "EDIT MACHINE" SHORTCUT, CARD IS SHORTER
+
+- Removed the "✎ Edit Machine" button from the customer card entirely
+  (it was redundant - editing a machine is already one click away
+  inside View Machines, which has its own Edit button per machine).
+  Its click handler was removed too, not just hidden.
+- Merged the two separate action rows into ONE row: View Machines,
+  🗑 Delete Machine, Edit customer, Reset login, Delete, Forget
+  permanently - all together, instead of Delete Machine sitting alone
+  in its own row above. The customer card is noticeably shorter now.
+- Cleaned up the now-unused CSS for the row that no longer exists.
+
+- Browser/PWA cache bumped to V281.
+- No database migration required.

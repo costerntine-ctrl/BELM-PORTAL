@@ -1,0 +1,11 @@
+BELM PORTAL V217 - ACCESS APPLICATIONS USER LIST
+
+- Added Registered Users list below Access Applications.
+- Shows user name, email, phone, role(s), assigned customer and active/inactive status.
+- Added search and refresh for registered users.
+- Added inline Edit flow for name, phone, role(s), technician customer assignment and active status.
+- Edit remains protected by the existing Edit PIN confirmation.
+- Added Delete action using existing Delete PIN + admin password + deletion reason confirmation.
+- Deleted users continue to move to Recycle Bin; the currently signed-in admin cannot delete their own row.
+- New system users/technicians refresh into the list immediately after registration.
+- No database migration required.

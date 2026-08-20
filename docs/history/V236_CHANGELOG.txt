@@ -1,0 +1,17 @@
+BELM PORTAL V236 - MACHINES NEEDING ACTION: CORRECT COLOR + BLINK
+
+- Fixed: in the "Machines Needing Action" list (Action Required card),
+  the status badge (GREEN/YELLOW/RED) always showed the machine's
+  general condition status, even when the ONLY reason the machine was
+  listed there was an overdue/soon-due service. Example from the
+  report: KALMA RS45 showed a GREEN badge while its listed reason was
+  "Service overdue" - a genuinely confusing/contradictory combination.
+- The badge now shows whichever is worse: the machine's general
+  status or its service level (RED > YELLOW > GREEN), so the color
+  always matches the real urgency shown to the customer.
+- Added a gentle blinking highlight (border pulse) on machines at RED
+  level for extra visibility, so the most urgent items stand out at a
+  glance. Respects the "reduce motion" accessibility setting (steady
+  red border instead of blinking, if the browser/OS requests it).
+- Browser/PWA cache bumped to V236.
+- No database migration required.

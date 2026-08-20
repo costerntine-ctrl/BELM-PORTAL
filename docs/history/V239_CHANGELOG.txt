@@ -1,0 +1,33 @@
+BELM PORTAL V239 - CUSTOMER ANALYSIS: FINANCIAL DATA ACCESS FIX
+
+FOUND (following up on the finance audit) - a real access-control gap
+specifically affecting customer sub-users:
+
+- /api/customer-portal/analysis (which powers the dashboard Action
+  Center and the General Analysis dialog) returned full financial
+  figures - Machine Expenses total, Petty Cash balance/used/topped-up,
+  Invoices total/outstanding, Fuel cost total, and each machine's own
+  expense total - to ANY authenticated customer account, regardless of
+  that sub-user's Role Manager permissions.
+- The frontend only visually hides the Petty Cash card etc. for a
+  restricted sub-user (e.g. an Operator) via CSS/DOM. That is not real
+  security: the raw numbers were still sitting in the JSON response,
+  so a restricted sub-user could see the customer's full Petty Cash
+  balance or outstanding invoices via the browser's Network tab even
+  though the interface never displays them.
+
+FIXED
+- The backend now redacts these figures server-side using the same
+  permission keys the frontend already uses to hide the cards:
+  - machine-expenses total, per-machine expenses, Petty Cash
+    (balance/used/topped-up), and Invoices (total/outstanding) are
+    zeroed out unless the account has the "machine-expenses"
+    permission (or is the Owner / a full-access sub-user).
+  - Fuel cost total is zeroed out unless the account has the
+    "fuel-usage" permission.
+- Non-financial figures (machine status counts, service requests,
+  checklist reports count, containers handled) are unaffected - every
+  role still sees those, matching current behavior.
+
+- No frontend files changed, so no cache bump needed.
+- No database migration required.

@@ -1,0 +1,11 @@
+BELM PORTAL V347 — EXPENSE PERSISTENCE & BILLING VISIBILITY
+
+- Company Expenses are explicitly stored in PostgreSQL company_expenses and survive normal deploy/restart cycles.
+- Company Expense API self-ensures additive schema/indexes instead of failing silently on an older DB.
+- Fixed expense receipt GET routing so Receipt no longer gets swallowed by the generic expense-list GET.
+- Expense create/edit returns the persisted row and the Billing UI verifies the saved ID after refresh.
+- Billing sections now load independently. A Proforma/Invoice endpoint failure cannot hide saved Expenses or make them look deleted.
+- Expenses tab shows database sync status, saved record count, total, and explicit sync errors instead of misleading TZS 0.
+- Added a storage rule note: customer/machine procurement/fuel/petty cash remain separate customer usage records and are not mixed into BELM company P&L.
+- Added updated_at and date index for company_expenses; migration is automatic and non-destructive.
+- No reset/truncate is performed by this version.

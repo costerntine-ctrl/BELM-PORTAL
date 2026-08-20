@@ -1,0 +1,11 @@
+V347 AUDIT
+
+User symptom: Billing Manager showed Expenses = TZS 0 / blank after records had been saved.
+
+Root hardening:
+1. Billing used one Promise.all for multiple independent APIs; one failure blanked unrelated panels.
+2. company_expenses did not self-ensure its additive receipt/update schema.
+3. Expense Receipt GET was below the generic GET branch and therefore unreachable.
+4. Save returned only an ID, so UI had no immediate persisted-row verification.
+
+V347 makes Expense storage authoritative in PostgreSQL, fault-isolates Billing loads, verifies saves, and surfaces sync errors visibly.

@@ -1,0 +1,19 @@
+BELM PORTAL V334 AUDIT REPORT
+==============================
+Change: Live Breakdown Queue shows latest unfinished jobs only.
+
+Verified:
+- Backend live breakdown list excludes COMPLETED cases.
+- Frontend independently filters COMPLETED/CANCELLED/CLOSED final states.
+- Unfinished cases are sorted newest first by openedAt/updatedAt/createdAt.
+- Completed jobs remain available through Timeline / History / reports.
+- Company FROM badge and delayed blink behavior remain intact for unfinished jobs.
+- Search cannot bring completed jobs back into Live Breakdown Queue.
+- Cache/schema version: 334-latest-open-job.
+- No database migration required.
+
+Checks:
+- PHP syntax: 47 files passed.
+- JS/CJS syntax: 91 files passed.
+- V334 regression: 11/11 passed.
+- Full runnable regression suites: 52/52 passed.

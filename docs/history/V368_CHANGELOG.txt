@@ -1,0 +1,7 @@
+BELM PORTAL V368 - CUSTOMER CONTACT LINES
+
+- Kept the customer name at the same established size on Customers & Machines cards.
+- Added Phone, Email and Address directly below the customer name.
+- Contact values are compact single-line rows with full values available in the title tooltip.
+- Communication History remains on the card and gives back only the vertical space used by the three new contact rows.
+- Customer card width, customer data, permissions, machine workflows and action functions were not changed.

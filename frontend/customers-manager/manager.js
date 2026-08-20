@@ -198,9 +198,7 @@
     GROUNDED: "Grounded (not operational)",
   };
 
-  // V376 visible label: Job Card. Historical label kept for regression reference: Engineering / Job Cards.
   function machineCard(customerId, machine, belmServiceProviderActive, privacyAccess = {}) {
-    // Historical visible label before V376: Engineering / Job Cards. Function/route remains the same.
     const status = String(machine.status || "NOT_CHECKED").toUpperCase();
     const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
     const opStatus = String(machine.operationalStatus || "NORMAL").toUpperCase();

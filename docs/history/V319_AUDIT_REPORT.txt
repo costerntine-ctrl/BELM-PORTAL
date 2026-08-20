@@ -1,0 +1,52 @@
+BELM PORTAL V319 - FULL SYSTEM SYNC / REGRESSION AUDIT
+Date: 2026-08-18
+Source audited: V318 TECHNICIAN DISPATCH BELOW SYNC / REFRESH
+
+SYNC GRAPH AUDITED
+- Customer Service Request -> Breakdown Case -> customer-issued Digital Job Card
+- Service Request assignment/status <-> Job Card technician/status
+- Technician Job Card -> Maintenance Process stage -> Service Request progress
+- Workshop completion -> Service Request completion
+- Operator Problem Report -> Breakdown Case and closure
+- Technician Dispatch -> received Job Card -> Service Request assignment/history
+- Technician spare recommendation -> confirmed Service Request -> Breakdown Case/Job Card
+- Existing billing/receipt/procurement regressions were rerun as part of the complete historical regression suite.
+
+BUGS FOUND AND FIXED
+- Sync / Refresh could display success after a sync routine internally failed because lower-level helpers swallowed exceptions.
+- The old Service Request state could regress an already-advanced Job Card process.
+- IN_PROGRESS Service Request could leave the linked Job Card visually stuck at ASSIGNED.
+- Technician Dispatch recovery only inspected a capped subset of Service Requests / received Job Cards.
+- Engineering access and Technician Dispatch API access could disagree for an Engineer with Service Requests access.
+- Job Card UI could render "undefined" when payload casing/legacy fields differed.
+- Confirmed technician spare recommendations did not immediately enter the unified Maintenance Process.
+- Customer cancellation lacked a matching Service Request history STATUS event.
+- Operator Report closure sync could close a case without adding a process timeline event.
+- Engineering landing still contained a stale, unused copy of Technician Dispatch JavaScript after the UI had been moved.
+
+V319 SYNC HEALTH RULES
+A full reconciliation now reports attention required when any of these remain after repair:
+- active machine-linked Service Request missing a Breakdown Case or Job Card;
+- Service Request technician does not match its Job Card technician;
+- IN_PROGRESS Service Request has a Job Card that is neither IN_PROGRESS nor COMPLETED;
+- completed/cancelled Service Request still has an open Breakdown Case;
+- completed Service Request still has a non-completed Job Card.
+
+FINAL STATIC / REGRESSION RESULTS
+- PHP syntax: 41/41 clean
+- JavaScript/CJS syntax: 76/76 clean
+- Historical + current regression files (excluding external ui-smoke): 38/38 PASS
+- V319 full-sync hardening checks: 22/22 PASS
+- HTML static scan: 33 pages, 0 duplicate IDs, 0 missing local static assets
+- Relevant Breakdown Workflow / Engineering static DOM references: 0 missing
+- PHP literal __DIR__ includes: 72 checked, 1 dynamic skipped, 0 missing
+- render.yaml parse: PASS
+- docker/start-render.sh syntax: PASS
+- Git conflict markers in PHP/JS/CJS/HTML: 0
+
+UI SMOKE LIMITATION
+- tests/ui-smoke.cjs requires the external BELM_JS_TOOLS/jsdom environment. That environment is not present in this container, so this one external browser-style test could not run here.
+- A live PostgreSQL/Render deployment and real-browser smoke test cannot be performed from this offline build container. After deployment, press Sync / Refresh once and verify the returned consistency warning/counts are zero on production data.
+
+DATABASE MIGRATION
+- None required.

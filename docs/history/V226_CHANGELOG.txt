@@ -1,0 +1,22 @@
+BELM PORTAL V226 - CUSTOMER DASHBOARD LANGUAGE TOGGLE (EN / SW)
+
+- Added a language toggle ("🌐 English" / "🌐 Kiswahili") on the Customer
+  Dashboard (/portal/dashboard), fixed bottom-left, next to the existing
+  Dark mode toggle. Default language is English.
+- Preference is saved per-browser (localStorage) and applies to the
+  Customer Dashboard overlay text that BELM Portal itself renders:
+  Action Center / Action Required card, Petty Cash card, Breakdown
+  Process card, More Tools card, operating-mode notice, and the
+  "<NAME> MACHINES" heading.
+- Switching language reloads the dashboard so all translated text
+  updates consistently.
+- SCOPE NOTE: this covers the Customer Dashboard overlay only, as
+  agreed. The base app shell (login screen, "Add machine" dialog, and
+  other screens rendered by the compiled React bundle) is not covered
+  by this change since its source is not included in this project and
+  cannot be translated from the built JS bundle alone. Other customer
+  pages (Petty Cash page, Machine Expenses, Fuel Usage, Service
+  Request, Breakdown Workflow, etc.) are separate modules and are not
+  covered yet either — happy to extend this to them next.
+- Browser/PWA cache bumped to V226.
+- No database migration required.

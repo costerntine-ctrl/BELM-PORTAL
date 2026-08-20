@@ -1,0 +1,15 @@
+BELM PORTAL V340 - Customer Login Button Blue Audit
+
+Change
+- Customer Manager > Open customer login action now uses a blue filled button.
+- White text preserved for contrast.
+- Blue hover, pressed and keyboard-focus states added.
+- Customers Manager stylesheet cache version bumped to V340.
+- PWA cache and backend schemaVersion bumped to V340.
+
+Verification
+- PHP syntax: 47/47 passed.
+- JS/CJS syntax: 98/98 passed.
+- Runnable CJS regression suites: 59/59 passed.
+- tests/ui-smoke.cjs remains excluded because BELM_JS_TOOLS/jsdom is not configured in this build container.
+- No database migration required.

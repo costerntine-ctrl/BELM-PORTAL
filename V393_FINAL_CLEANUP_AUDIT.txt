@@ -1,0 +1,36 @@
+V393 FINAL CLEANUP AUDIT
+========================
+- Moved historical V*.txt changelog/audit files from root to docs/history/.
+- Updated regression tests that intentionally read those historical documents.
+- Removed obsolete checklist PHOTO placeholder wording that said production
+  upload was not wired; the real photo uploader remains unchanged.
+- Removed historical source comments for labels that are no longer displayed.
+- Rewrote README_RENDER.txt and FUNCTIONS_ZOTE.txt to describe the current portal.
+- No database schema, invoice/proforma logic, customer data logic or machine sync
+  logic was intentionally changed by this cleanup.
+
+FINAL-AUDIT ITEMS TO REVIEW BEFORE CALLING THE PRODUCT 100% FINISHED
+-------------------------------------------------------------------
+1. Technician dashboard button "Expenses Rec" is still a dashboard placeholder;
+   it currently does not open a dedicated persisted Technician expense workflow.
+2. Customer expense/privacy code still contains the intentional development-era
+   BELM expense-access override (BELM_OPEN_CUSTOMER_EXPENSES_FOR_DEVELOPMENT,
+   default currently open). Closing that changes access policy and should be an
+   explicit product decision, not a silent cleanup edit.
+
+VERIFICATION RESULTS
+--------------------
+- Full runnable regression suites: 104/104 PASS
+- UI smoke: skipped because external BELM_JS_TOOLS/jsdom harness is not bundled
+- JavaScript syntax: 37/37 PASS
+- PHP syntax: 42/42 PASS
+- Static local frontend references: 0 missing
+- Invoice/Proforma targeted regressions: PASS
+- Technician daily Check Up regression: PASS
+- Invoice/Proforma source/template checksums vs V392: unchanged
+
+FINAL STATUS
+------------
+The current deployed runtime is clean and regression-safe after today's edits.
+The portal should NOT yet be called 100% product-final because the two product
+policy/workflow items listed above remain intentional open decisions.

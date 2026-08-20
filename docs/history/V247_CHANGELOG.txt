@@ -1,0 +1,8 @@
+BELM PORTAL V247 - CUSTOMER MACHINE CARD BUTTON RENAME
+
+- The per-machine "Check Up" quick-action button on the Customer
+  Dashboard (opens the Checklist ya Siku / Checked Reports dialog) is
+  now labeled "Checkup Report". Same button, same destination - label
+  only.
+- Browser/PWA cache bumped to V247.
+- No database migration required.

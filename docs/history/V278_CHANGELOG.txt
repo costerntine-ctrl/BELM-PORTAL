@@ -1,0 +1,19 @@
+BELM PORTAL V278 - REMOVED "MESSAGE CUSTOMER", "EDIT MACHINE" MOVED IN
+
+- Removed the standalone "Message Customer" button from the customer
+  card's bottom action row - as of V277, Edit Machine already has its
+  own "✉ Send Message to Customer" button, so this was a leftover
+  duplicate path to the same dialog. Its click handler was removed
+  too, not just hidden.
+- Moved "✎ Edit Machine" out of its own separate row and into that
+  same bottom action row, right after "View Machines" - same button,
+  same behavior (acts directly on the one machine if there's exactly
+  one, opens View Machines to pick if there are several), just
+  reorganized into one row instead of two.
+- "🗑 Delete Machine" stays in its own row above, on its own now.
+- The bottom action row now wraps onto a second line on narrow
+  screens instead of overflowing, since it holds one more button than
+  before.
+
+- Browser/PWA cache bumped to V278.
+- No database migration required.

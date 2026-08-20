@@ -5499,3 +5499,149 @@ html[data-theme="dark"] .belm-customer-machine-editor-card select { border-color
   .belm-customer-report-row { grid-template-columns:minmax(0,1fr) auto; }
   .belm-customer-report-row-actions { grid-column:1/-1; }
 }
+
+/* ========================================================================
+   V390 - Technician machine view uses the same compact machine-card language
+   as Admin/Customer. Legacy technician dock remains available internally but
+   is hidden from the /tech landing/machine workspace to avoid duplicate UI.
+   ======================================================================== */
+body[data-belm-area="tech"] #belm-tech-action-dock {
+  display: none !important;
+}
+body[data-belm-area="tech"] .belm-technician-machine-grid {
+  grid-template-columns: repeat(auto-fill, minmax(390px, 390px)) !important;
+  gap: 18px !important;
+  align-items: start;
+}
+body[data-belm-area="tech"] .belm-technician-machine-card-v390 {
+  width: 390px !important;
+  max-width: 100% !important;
+  min-height: 590px !important;
+  height: auto !important;
+  padding: 20px !important;
+  align-content: start;
+}
+body[data-belm-area="tech"] .belm-technician-machine-card-v390 > .belm-machine-native-head {
+  margin: -20px -20px 0 !important;
+  padding: 22px 132px 16px 20px !important;
+}
+body[data-belm-area="tech"] .belm-technician-machine-card-v390 > .belm-machine-last-checked {
+  margin: 0 -20px 10px !important;
+  padding: 8px 20px !important;
+}
+body[data-belm-area="tech"] .belm-technician-machine-info-v390 {
+  display: grid;
+  gap: 9px;
+  margin-top: 0;
+}
+body[data-belm-area="tech"] .belm-technician-machine-info-v390 .belm-technician-machine-health {
+  margin: 0;
+}
+body[data-belm-area="tech"] .belm-tech-machine-details-v390 {
+  margin: 0;
+}
+body[data-belm-area="tech"] .belm-technician-op-status-v390 {
+  display: grid;
+  grid-template-columns: minmax(0, .82fr) minmax(150px, 1.18fr);
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(148,163,184,.35);
+  border-radius: 10px;
+  background: rgba(248,250,252,.86);
+}
+body[data-belm-area="tech"] .belm-technician-op-status-v390 > div > span {
+  display: block;
+  color: #52657b !important;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+body[data-belm-area="tech"] .belm-technician-op-status-v390 > div > small {
+  display: block;
+  margin-top: 2px;
+  color: #7b8ca0;
+  font-size: 7.5px;
+  font-weight: 750;
+}
+body[data-belm-area="tech"] .belm-technician-op-status-v390 select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid #b8c6d6;
+  border-radius: 9px;
+  background: #fff;
+  color: #172033;
+  font-size: 9px;
+  font-weight: 850;
+  padding: 0 9px;
+}
+body[data-belm-area="tech"] .belm-technician-service-panel-v390 {
+  margin-top: 9px !important;
+  padding: 10px !important;
+}
+body[data-belm-area="tech"] .belm-technician-service-panel-v390 .belm-service-due-grid-v210 {
+  grid-template-columns: repeat(3, minmax(0,1fr)) !important;
+}
+body[data-belm-area="tech"] .belm-technician-card-actions-v390 {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px !important;
+  margin-top: 10px !important;
+}
+body[data-belm-area="tech"] .belm-technician-card-actions-v390 > * {
+  min-width: 0 !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  padding: 7px 4px !important;
+  border-radius: 9px !important;
+  font-size: 8.5px !important;
+  font-weight: 900 !important;
+  line-height: 1.05 !important;
+  white-space: normal !important;
+  text-align: center;
+}
+body[data-belm-area="tech"] .belm-technician-card-actions-v390 .belm-technician-report-link {
+  color: #fff !important;
+  border-color: #111827 !important;
+  background: #111827 !important;
+}
+body[data-belm-area="tech"] .belm-technician-card-actions-v390 .belm-technician-checkup-button:not(.belm-technician-jobcards-button):not(.belm-technician-service-parts-button) {
+  color: #fff !important;
+  border-color: #2196f3 !important;
+  background: #2196f3 !important;
+}
+body[data-belm-area="tech"] .belm-technician-card-actions-v390 .belm-technician-service-parts-button {
+  color: #fff !important;
+  border-color: #56c94f !important;
+  background: #56c94f !important;
+}
+body[data-belm-area="tech"] .belm-technician-card-actions-v390 .belm-technician-jobcards-button {
+  color: #2b2200 !important;
+  border-color: #f4b400 !important;
+  background: #f4b400 !important;
+}
+html.dark body[data-belm-area="tech"] .belm-technician-op-status-v390,
+html[data-theme="dark"] body[data-belm-area="tech"] .belm-technician-op-status-v390 {
+  border-color: #31465d;
+  background: #0e1826;
+}
+html.dark body[data-belm-area="tech"] .belm-technician-op-status-v390 select,
+html[data-theme="dark"] body[data-belm-area="tech"] .belm-technician-op-status-v390 select {
+  border-color: #31465d;
+  color: #e8f0f8;
+  background: #101b2a;
+}
+@media (max-width: 520px) {
+  body[data-belm-area="tech"] .belm-technician-machine-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  body[data-belm-area="tech"] .belm-technician-machine-card-v390 {
+    width: 100% !important;
+    min-height: 0 !important;
+  }
+  body[data-belm-area="tech"] .belm-technician-card-actions-v390 { gap: 4px !important; }
+  body[data-belm-area="tech"] .belm-technician-card-actions-v390 > * { font-size: 7.5px !important; padding: 6px 2px !important; }
+}

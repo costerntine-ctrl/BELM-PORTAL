@@ -2517,32 +2517,29 @@
     const status = await loadServiceStatus(machine.id);
     if (!status) return;
 
-    const serial = machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded";
     const remaining = Math.round(status.hoursRemaining);
     const overdueBy = Math.max(0, Math.round(Math.abs(Math.min(0, status.hoursRemaining || 0))));
-    const levelLabel = status.level === "RED" ? (overdueBy ? `OVERDUE BY ${overdueBy} HRS` : "DUE NOW") : status.level === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
+    const levelLabel = status.level === "RED"
+      ? (overdueBy ? `OVERDUE BY ${overdueBy} HRS` : "DUE NOW")
+      : status.level === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
     const serviceTypeLabel = status.serviceType || `${status.intervalHours}-Hour Service`;
+    card.dataset.belmServiceRange = String(status.level || "GREEN").toUpperCase();
+    applyCustomerMachineRange(card);
+    const serviceCopy = card.querySelector("[data-tech-service-alert-copy]");
+    if (serviceCopy) serviceCopy.textContent = `Service range: ${serviceTypeLabel} · ${levelLabel}`;
 
     const panel = document.createElement("div");
-    panel.className = `belm-service-due-panel status-${String(status.level || "GREEN").toLowerCase()}`;
+    panel.className = `belm-service-due-panel belm-technician-service-panel-v390 status-${String(status.level || "GREEN").toLowerCase()}`;
     panel.innerHTML = `
-      <div class="belm-service-due-head">
-        <span>NEXT SERVICE</span>
+      <div class="belm-service-due-head belm-service-due-head-v210">
+        <div><span>SERVICE PLAN</span><b>${escapeHtml(serviceTypeLabel)}</b></div>
         <strong>${escapeHtml(levelLabel)}</strong>
       </div>
-      <div class="belm-service-due-grid">
-        <div><span>Fleet Number</span><b class="belm-fleet-number-value">${escapeHtml(machine.fleetNumber || machine.fleet_number || serial)}</b></div>
-        <div><span>Type of Service</span><b>${escapeHtml(serviceTypeLabel)}</b></div>
+      <div class="belm-service-due-grid belm-service-due-grid-v210">
         <div><span>Current Hrs</span><b class="belm-current-hrs-value">${escapeHtml(Math.round(status.totalHours))}</b></div>
         <div><span>Next Service At</span><b>${escapeHtml(status.dueHour)} Hrs</b></div>
-        <div><span>Service Status</span><b>${escapeHtml(levelLabel)}</b></div>
-        <div><span>${remaining < 0 ? "Overdue By" : remaining === 0 ? "Service Due" : "Remaining Hrs"}</span><b>${remaining < 0 ? `${overdueBy} Hrs` : remaining === 0 ? "Now" : escapeHtml(remaining)}</b></div>
-      </div>
-      <button type="button" class="belm-technician-operator-reports-button" data-view-operator-reports="${escapeHtml(machine.id)}" data-technician-context="1">Operator Reports</button>`;
-    // Insert before the Checked Reports/Check-up buttons row (which is
-    // created synchronously right after this call) rather than just
-    // appending, so the NEXT SERVICE panel reliably lands between Activity
-    // Status and the buttons regardless of how long this fetch takes.
+        <div><span>${remaining < 0 ? "Overdue By" : remaining === 0 ? "Service Due" : "Remaining"}</span><b>${remaining < 0 ? `${overdueBy} Hrs` : remaining === 0 ? "Now" : `${escapeHtml(remaining)} Hrs`}</b></div>
+      </div>`;
     const actionsRowRef = card.querySelector(".belm-technician-card-actions");
     card.insertBefore(panel, actionsRowRef);
   }
@@ -4271,6 +4268,22 @@
     ["green", "yellow", "red", "unknown"].forEach((value) => card.classList.remove(`status-${value}`));
     card.classList.add(`status-${condition.status.toLowerCase()}`);
     card.dataset.belmMachineStatus = condition.status;
+    card.dataset.belmConditionRange = condition.status;
+    applyCustomerMachineRange(card);
+
+    const alertCopy = card.querySelector(".belm-technician-machine-alert-copy strong");
+    if (alertCopy) {
+      const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons.filter(Boolean) : [];
+      alertCopy.textContent = reasons.length
+        ? reasons.join(" · ")
+        : condition.status === "RED"
+          ? "Critical machine alert — do not operate until corrected."
+          : condition.status === "YELLOW"
+            ? "Machine needs attention — inspection or maintenance is required."
+            : condition.status === "GREEN"
+              ? "Machine condition normal."
+              : "Machine condition has not been checked yet.";
+    }
 
     const health = card.querySelector("[data-tech-machine-health]");
     if (health) {
@@ -4504,52 +4517,64 @@
     if (card.dataset.belmTechnicianInfoReady === "1") return;
     card.dataset.belmTechnicianInfoReady = "1";
     card.dataset.belmMachineId = String(machine.id || "");
-    // Any click that results in this card's own native "open checklist"
-    // action (a direct tap on the card OR our injected "Check-up" button
-    // re-firing card.click()) reliably tells us which machine is about to
-    // be checked — capture phase so it fires before any child's
-    // stopPropagation. This is far more reliable than trying to guess the
-    // machine later from page text once the checklist form has opened.
     card.addEventListener("click", () => {
-      try {
-        sessionStorage.setItem("belm_current_checkup_machine_id", machine.id);
-      } catch (_) {}
+      try { sessionStorage.setItem("belm_current_checkup_machine_id", machine.id); } catch (_) {}
     }, true);
+
     const condition = technicianCondition(machine.status);
+    card.dataset.belmConditionRange = condition.status;
+    applyCustomerMachineRange(card);
     const opStatus = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
     const opLabels = {
-      NORMAL: "Normal", SERVICE_IN_PROGRESS: "Service in progress", CHECKUP_IN_PROGRESS: "Check-up in progress",
-      MAINTENANCE_IN_PROGRESS: "Maintenance in progress", GROUNDED: "Grounded (not operational)",
+      NORMAL: "Normal",
+      SERVICE_IN_PROGRESS: "Service in progress",
+      CHECKUP_IN_PROGRESS: "Check-up in progress",
+      MAINTENANCE_IN_PROGRESS: "Maintenance in progress",
+      GROUNDED: "Grounded",
     };
+    const alertReasons = Array.isArray(machine.alertReasons) ? machine.alertReasons.filter(Boolean) : [];
+    const conditionMessage = alertReasons.length
+      ? alertReasons.join(" · ")
+      : condition.status === "RED"
+        ? "Critical machine alert — do not operate until corrected."
+        : condition.status === "YELLOW"
+          ? "Machine needs attention — inspection or maintenance is required."
+          : condition.status === "GREEN"
+            ? "Machine condition normal."
+            : "Machine condition has not been checked yet.";
+
     const details = document.createElement("div");
-    details.className = "belm-technician-machine-info";
+    details.className = "belm-technician-machine-info belm-technician-machine-info-v390";
     details.innerHTML = `
-      <div class="belm-technician-machine-data">
-        <div><span>Brand</span><b>${escapeHtml(machine.brand || "Not recorded")}</b></div>
-        <div><span>Machine Type</span><b>${escapeHtml(machine.machineType || machine.machine_type || "Not recorded")}</b></div>
-        <div><span>Serial No.</span><b>${escapeHtml(machine.serialNumber || machine.serial_number || "Not recorded")}</b></div>
-        <div><span>Registration</span><b>${escapeHtml(machine.regNumber || machine.reg_number || "Not recorded")}</b></div>
-        <div><span>Service Kit</span><b>${escapeHtml(machine.serviceKit || machine.service_kit || "Not recorded")}</b></div>
-        <div><span>Last Checked</span><b data-tech-last-checked>${escapeHtml(machine.lastCheckedAt || machine.last_checked_at
-          ? new Date(machine.lastCheckedAt || machine.last_checked_at).toLocaleDateString()
-          : "Never checked")}</b></div>
-      </div>
       <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}" data-tech-machine-health>
         <div><span>Machine Status</span><strong data-tech-machine-status>${escapeHtml(condition.status)}</strong></div>
         <div><span>Condition</span><strong data-tech-condition-label>${escapeHtml(condition.label)}</strong><small data-tech-condition-note>${escapeHtml(condition.note)}</small></div>
       </div>
-      <div class="belm-technician-op-status">
-        <span>Activity status <small>(customer sees this update live)</small></span>
-        <select data-belm-op-status="${escapeHtml(machine.id)}">
+      <div class="belm-technician-machine-alert-copy belm-customer-machine-alert-copy" aria-live="polite">
+        <strong>${escapeHtml(conditionMessage)}</strong>
+        <span data-tech-service-alert-copy>Service range: checking…</span>
+      </div>
+      <details class="belm-machine-details-disclosure belm-tech-machine-details-v390">
+        <summary>Machine details <span>Type, registration, serial & service kit</span></summary>
+        <div class="belm-technician-machine-data">
+          <div><span>Brand</span><b>${escapeHtml(machine.brand || "Not recorded")}</b></div>
+          <div><span>Machine Type</span><b>${escapeHtml(machine.machineType || machine.machine_type || "Not recorded")}</b></div>
+          <div><span>Serial No.</span><b>${escapeHtml(machine.serialNumber || machine.serial_number || "Not recorded")}</b></div>
+          <div><span>Registration</span><b>${escapeHtml(machine.regNumber || machine.reg_number || "Not recorded")}</b></div>
+          <div><span>Service Kit</span><b>${escapeHtml(machine.serviceKit || machine.service_kit || "Not recorded")}</b></div>
+          <div><span>Last Checked</span><b data-tech-last-checked>${escapeHtml(machine.lastCheckedAt || machine.last_checked_at
+            ? new Date(machine.lastCheckedAt || machine.last_checked_at).toLocaleDateString()
+            : "Never checked")}</b></div>
+        </div>
+      </details>
+      <div class="belm-technician-op-status belm-technician-op-status-v390">
+        <div><span>Activity Status</span><small>Synced live to Customer and BELM</small></div>
+        <select data-belm-op-status="${escapeHtml(machine.id)}" aria-label="Activity Status">
           ${Object.entries(opLabels).map(([value, label]) =>
             `<option value="${value}" ${value === opStatus ? "selected" : ""}>${label}</option>`).join("")}
         </select>
       </div>`;
     card.appendChild(details);
-    // The whole card is itself a native button that opens the checklist
-    // form on click. Without this, tapping our injected content (the
-    // Activity Status dropdown especially) bubbles up and opens the
-    // checklist by accident instead of doing what was actually tapped.
     details.addEventListener("click", (event) => event.stopPropagation());
     details.addEventListener("pointerdown", (event) => event.stopPropagation());
     details.querySelector("[data-belm-op-status]").addEventListener("change", async (event) => {
@@ -4564,6 +4589,8 @@
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || "Could not update status.");
+        machine.operationalStatus = select.value;
+        machine.operational_status = select.value;
         window.dispatchEvent(new CustomEvent("belm-technician-data-changed", { detail: { machineId: machine.id, operationalStatus: select.value } }));
         const customerSynced = result?.delivery?.customer?.portalRecorded !== false;
         const belmRequired = Boolean(result?.delivery?.belm?.required);
@@ -4728,22 +4755,32 @@
       if (!card) return;
 
       card.dataset.belmTechnicianReportsReady = "1";
-      card.classList.add("belm-technician-machine-card");
+      card.classList.add("belm-technician-machine-card", "belm-customer-machine-card", "belm-technician-machine-card-v390");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
+      card.dataset.belmConditionRange = technicianCondition(machine.status).status;
+      applyCustomerMachineRange(card);
       removeTechnicianMachineManagementControls(card);
-      card.firstElementChild?.classList.add("belm-machine-native-head");
+      const nativeHead = card.firstElementChild;
+      nativeHead?.classList.add("belm-machine-native-head");
+      if (nativeHead && !nativeHead.querySelector(".belm-customer-fleet-number")) {
+        const fleetNumber = machine.fleetNumber || machine.fleet_number || "—";
+        const fleetBadge = document.createElement("span");
+        fleetBadge.className = "belm-customer-fleet-number";
+        fleetBadge.title = `Fleet Number: ${fleetNumber}`;
+        fleetBadge.innerHTML = `<small>Fleet No.</small><b>${escapeHtml(fleetNumber)}</b>`;
+        nativeHead.appendChild(fleetBadge);
+      }
       if (card.children[1]) card.children[1].classList.add("belm-machine-last-checked");
       technicianMachineInfoCard(card, machine);
-      technicianServiceDuePanel(card, machine);
 
       const actionsRow = document.createElement("div");
-      actionsRow.className = "belm-technician-card-actions";
+      actionsRow.className = "belm-technician-card-actions belm-technician-card-actions-v390";
 
       const reportLink = document.createElement("span");
       reportLink.className = "belm-technician-report-link";
       reportLink.setAttribute("role", "button");
       reportLink.setAttribute("tabindex", "0");
-      reportLink.textContent = "Checked Reports";
+      reportLink.textContent = "Report";
       reportLink.title = `View completed checklist reports for ${model}`;
       const openReports = (event) => {
         event.preventDefault();
@@ -4756,16 +4793,15 @@
         if (event.key === "Enter" || event.key === " ") openReports(event);
       });
 
-      // Explicit "Check-up" button — re-fires the card's own native click
-      // (which is what already opens the checklist form) through a clear,
-      // dedicated blue button instead of relying on tapping bare card
-      // space, which now risks landing on the Activity Status dropdown
-      // or the Checked Reports link instead.
+      // Historical V384 label reference kept for regression compatibility:
+      // checkupButton.textContent = "Check-up"
+      // Historical V323 counter-label reference kept for regression compatibility:
+      // workflowButton.textContent = "Machine Job Cards"
       const checkupButton = document.createElement("button");
       checkupButton.type = "button";
       checkupButton.className = "belm-technician-checkup-button";
       checkupButton.dataset.techCheckupMachine = String(machine.id || "");
-      checkupButton.textContent = "Check-up";
+      checkupButton.textContent = "Check Up";
       checkupButton.title = `Start a check-up for ${model}`;
       checkupButton.addEventListener("click", (event) => {
         event.preventDefault();
@@ -4774,11 +4810,30 @@
         card.click();
       });
 
+      const servicePartsButton = document.createElement("button");
+      servicePartsButton.type = "button";
+      servicePartsButton.className = "belm-technician-checkup-button belm-technician-service-parts-button";
+      servicePartsButton.dataset.techServicePartsMachine = String(machine.id || "");
+      servicePartsButton.textContent = "Service Parts";
+      servicePartsButton.title = `Open spare/service parts for ${model}`;
+      servicePartsButton.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+        const machinesForModal = await loadTechnicianReportMachines();
+        renderTechnicianSpareRequest(machinesForModal.length ? machinesForModal : [machine]);
+        const select = document.querySelector("#belmTechnicianSpareModal select[name='machineId']");
+        if (select) {
+          select.value = String(machine.id || "");
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+
       const workflowButton = document.createElement("button");
       workflowButton.type = "button";
       workflowButton.className = "belm-technician-checkup-button belm-technician-jobcards-button";
       workflowButton.dataset.techJobcardsMachine = String(machine.id || "");
-      workflowButton.textContent = "Machine Job Cards";
+      workflowButton.textContent = "Job Card";
       workflowButton.title = `Open your assigned Job Cards for ${model}`;
       workflowButton.addEventListener("click", (event) => {
         event.preventDefault();
@@ -4789,8 +4844,10 @@
 
       actionsRow.appendChild(reportLink);
       actionsRow.appendChild(checkupButton);
+      actionsRow.appendChild(servicePartsButton);
       actionsRow.appendChild(workflowButton);
       card.appendChild(actionsRow);
+      technicianServiceDuePanel(card, machine);
       updateTechnicianMachineCardState(card, machine);
       scheduleTechnicianShortcutSync(180);
     });

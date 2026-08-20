@@ -1,8 +1,0 @@
-BELM Portal V292 - One-Time BELM Admin Message Hide
-
-Changes:
-- Fixed BELM Admin announcement dismissal persistence so a hidden message does not return after refresh/login.
-- Normalized announcement IDs before comparing/saving dismissed messages.
-- Changed the announcement action label from OK to HIDE for clearer behavior.
-- Each old hidden announcement stays hidden; a newly created BELM Admin announcement still appears normally.
-- Added portal-tools cache-bust so browsers load the updated behavior immediately.

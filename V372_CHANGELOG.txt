@@ -1,9 +1,0 @@
-BELM PORTAL V372 - CUSTOMER LOGIN DASHBOARD FACE
-
-1. Main customer owner login now lands on one authenticated customer dashboard card before the existing operational dashboard.
-2. Card shows the signed-in company only: name, Active/service-provider state, Phone, Email, Address and Communication History. Address is carried in the authenticated customer JWT so the protected customer_portal sync runtime remains unchanged.
-3. Four approved actions are kept in one row: View Your Machine (black), Workshop (blue), Procurement (green), General Report (yellow).
-4. View Your Machine opens /portal/dashboard?view=machines so the existing customer machine functions stay unchanged.
-5. Workshop uses the existing customer maintenance workflow; Procurement uses the customer Procurement workspace; General Report reuses the existing customer General Analysis dialog.
-6. No customer selector or external customer id is accepted by the new face; profile/machines/history are loaded only from the authenticated customer token.
-7. Existing Admin Customers & Machines card, backend sync workflows, Technician flows, Job Cards, Dispatch, Proforma and Procurement logic are unchanged.

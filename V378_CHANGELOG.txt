@@ -1,9 +1,0 @@
-BELM PORTAL V378
-
-Scope: Customer -> View Your Machine
-- Added a balanced Activity Status selector directly below the four primary action buttons.
-- Selector writes to a customer-scoped API endpoint and persists to machines.operational_status.
-- Status changes are logged CUSTOMER_TO_BELM in Communication History so BELM Admin sees the update.
-- Current Activity text on the customer machine card updates immediately after save.
-- BELM Admin V377 machine card/actions remain unchanged.
-- Customer machine actions remain: Report | Check Up | Service Parts | Job Card.

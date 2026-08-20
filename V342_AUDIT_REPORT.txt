@@ -1,9 +1,0 @@
-V342 AUDIT
-Issue reproduced from UI: Technician workspace showed 0 Active Job Cards while the operational Service Request/Job Card was already assigned.
-Root cause: technician-jobs filtered only digital_job_cards.technician_id. Legacy/interrupted synchronization could leave Service Request assigned_to_id populated while the linked Job Card technician_id remained NULL.
-Fix: self-heal the missing Job Card assignment from the linked Service Request for the logged-in Technician; never replace a non-null different Technician assignment.
-Authorization: the same narrow recovery is used by assigned Job Card actions so a recovered card is usable, not merely visible.
-UI: logged-in Technician identity is shown in the My Job Cards hero and on each Job Card heading.
-Cache: technician assets and service worker moved to V342.
-Schema: unchanged; no migration.
-Verification: PHP syntax, JS/CJS syntax, V342 regression and all runnable regression suites.

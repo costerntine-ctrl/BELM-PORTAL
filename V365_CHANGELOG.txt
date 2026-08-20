@@ -1,7 +1,0 @@
-BELM PORTAL V365 - SINGLE PROCUREMENT ON MY C MAIN CARD
-
-- Kept MY C Procurement as quick-action button #3 (green).
-- Removed the duplicate Procurement Receipts button from each machine card opened by View Your Machine.
-- Preserved the existing Procurement destination/function on the MY C main card.
-- Preserved Report, Check Up, Service Parts, Engineering / Job Cards, Edit and Delete on machine cards.
-- No database/API schema changes.

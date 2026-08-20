@@ -1,9 +1,0 @@
-BELM Portal V285 - Uniform Customer Cards
-
-- Customer card header now reserves consistent space so long names do not push the rest of the card down.
-- Customer names are limited to two visible lines on cards; the full stored name remains available as a hover tooltip.
-- Customer info and portal-link regions have consistent desktop heights.
-- Communication History preview has a fixed card height with internal scrolling; View all still opens the full history.
-- Customer action buttons use a stable grid so all customer cards align consistently.
-- Mobile layout remains responsive with compact two-column actions.
-- Keeps V284 performance optimizations and V283 Customer <-> BELM switch behavior.

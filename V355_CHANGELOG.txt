@@ -1,9 +1,0 @@
-BELM PORTAL V355 - JSON API CLEAN RESPONSE / LOGIN RECOVERY
-
-- Fixed backend/index.php emitting a regression comment before the opening PHP tag.
-- That stray text prefixed every API response and caused login JSON parsing to fail with Unexpected token '/'.
-- Front controller now begins with <?php at byte 1 and enables output buffering.
-- json_out() discards accidental buffered debug/notices before sending JSON.
-- Login client now reports a friendly invalid-response message instead of exposing JSON parser text.
-- Service-worker/login assets cache-busted to V355.
-- No schema.sql changes; V350 data-preservation protections remain in place.

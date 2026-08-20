@@ -1,8 +1,0 @@
-BELM PORTAL V389 TEST SUMMARY
-
-- Runnable CJS regression suites: 101/101 passed
-- JavaScript syntax checks: 37/37 passed
-- PHP syntax checks: 42/42 passed
-- ui-smoke.cjs not counted because it requires the external BELM_JS_TOOLS/jsdom harness.
-
-Scope verified: Customer Finance Report added to General Report Center without changing BELM Admin or BELM Technician flows.

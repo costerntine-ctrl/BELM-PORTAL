@@ -1,9 +1,0 @@
-BELM PORTAL V329 - ACTION FEEDBACK + DISPATCH RESET
-
-- Every button inside Maintenance Process / Engineering Job Cards now gives immediate press feedback.
-- Assign Job Card shows Assigning/Reassigning, then a visible success or error state.
-- Successful Technician assignment clears Technician, Job Card, JC/Proforma code, Customer, Machine, title, description, priority and due date.
-- Dispatch reloads after the reset, so stale selections cannot remain from the previous assignment.
-- A local Dispatch status message confirms the assigned Job Card and that the form is ready for the next card.
-- Existing V328 behaviour remains: active RECEIVED/OPEN/ASSIGNED Job Cards remain visible in the selector after refresh.
-- No database migration required.

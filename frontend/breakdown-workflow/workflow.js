@@ -14,7 +14,7 @@
   const token=actorToken[source]||null;
 
   let cases=[],selected=null,machines=[],jobTechnicians=[],inlineTechnicians=[];
-  let dispatchTechnicians=[],dispatchCustomers=[],dispatchMachines=[],dispatchJobCards=[];
+  let dispatchTechnicians=[],dispatchCustomers=[],dispatchMachines=[],dispatchJobCards=[],jobProcessRows=[];
   const machineFilter=params.get('machine')||'';
   const payload=parseToken(token);
   const customerRole=payload?.customerRole||payload?.role||'';
@@ -25,6 +25,8 @@
   const isProcurement=isBelmAdmin||isOwner||customerRole==='procurement';
   const isAccounts=isBelmAdmin||isOwner||customerRole==='accounts';
   const isTechnician=source==='tech';
+  const adminJobCardsDispatchOnly=Boolean(isBelmAdmin&&embedded);
+  if(adminJobCardsDispatchOnly)document.documentElement.classList.add('admin-job-cards-dispatch-only');
 
   // V320: BELM staff use one Maintenance Process owner only: Engineering > Job Cards.
   // Customer workflow remains standalone for customer teams, while any legacy admin
@@ -95,6 +97,28 @@
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close)?.close());
   document.getElementById('refreshButton').onclick=load;
   document.getElementById('searchBox').oninput=renderList;
+
+
+  function jobProcessClass(code){return String(code||'ASSIGNED').toLowerCase().replaceAll('_','-')}
+  function renderJobProcess(){
+    const panel=document.getElementById('jobProcessPanel'),body=document.getElementById('jobProcessBody');
+    if(!panel||!body)return;
+    if(!isBelmAdmin){panel.classList.add('hidden');return}
+    panel.classList.remove('hidden');
+    body.innerHTML=jobProcessRows.length?jobProcessRows.map(row=>`<tr>
+      <td>${esc(row.job_card_no||row.jobCardNo||'Job Card')}<span class="job-process-updated">${esc(fmtDate(row.updated_at||row.updatedAt))}</span></td>
+      <td>${esc(row.technicianName||'Unassigned')}</td>
+      <td><b>${esc(row.fleetNumber||'—')}</b></td>
+      <td>${esc(row.companyName||'Customer')}</td>
+      <td class="job-process-address">${esc(row.address||'—')}</td>
+      <td><span class="job-process-state ${jobProcessClass(row.processCode)}">${esc(row.processLabel||'Assigned')}</span>${row.processDetail?`<small class="job-process-detail">${esc(row.processDetail)}</small>`:''}</td>
+    </tr>`).join(''):'<tr><td colspan="6" class="job-process-empty">No assigned Job Card process yet.</td></tr>';
+  }
+  async function loadJobProcess(){
+    if(!isBelmAdmin)return;
+    try{jobProcessRows=await engineeringApi('/engineering?action=job-process');renderJobProcess()}
+    catch(error){const body=document.getElementById('jobProcessBody');if(body)body.innerHTML=`<tr><td colspan="6" class="job-process-empty">${esc(error.message||'Could not load Job Card process.')}</td></tr>`}
+  }
 
   function dispatchMode(){return document.querySelector('input[name="jobCardMode"]:checked')?.value||'existing'}
   function dispatchCustomerAddress(customerId){const row=dispatchCustomers.find(c=>String(c.id)===String(customerId));return String(row?.address||row?.customerAddress||'').trim()}
@@ -273,18 +297,19 @@
     if(reassigning&&!confirm(`${existingJob?.jobCardNo||'This Job Card'} is currently assigned to ${existingJob?.technicianName||'another Technician'}. Reassign it to ${tech?.name||'the selected Technician'}?`))return;
     const temporary=Boolean(tech?.assignedCustomerId&&customerId&&String(tech.assignedCustomerId)!==String(customerId));
     if(temporary&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Assign this Job Card to ${customer?.name||'the selected customer'} as a Temporary Override?`))return;
-    setActionButtonState(submitBtn,'busy',reassigning?'Reassigning...':'Assigning...');
-    showDispatchResult(reassigning?'Reassigning Job Card...':'Assigning Job Card...');
+    setActionButtonState(submitBtn,'busy',reassigning?'Reassigning...':'Assigning to Customer & BELM...');
+    showDispatchResult(reassigning?'Reassigning Job Card...':'Assigning Job Card to Customer & BELM...');
     try{
       const currentCaseId=selected?.case?.id||'';
       const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({jobCardMode:mode,jobCardId,jobCardNo,technicianId,customerId,machineId:document.getElementById('dispatchMachine')?.value||'',title:document.getElementById('dispatchTitle')?.value.trim()||'',description:document.getElementById('dispatchDescription')?.value.trim()||'',priority:document.getElementById('dispatchPriority').value,dueDate:document.getElementById('dispatchDueDate').value||null,jobLocation:document.getElementById('dispatchLocation')?.value.trim()||'',temporaryOverride:temporary})});
       const verb=result.reassigned?'reassigned':'assigned';
-      const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} to ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · PI number is assigned in Billing when generated.`;
-      show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} to Technician${result.temporaryOverride?' as Temporary Override':''}. Proforma sync: ${result.proformaStatus||'PENDING'} · PI number will be created in Billing.`,false);
+      const successMessage=`✓ ${result.jobCardNo||'Job Card'} ${verb} and shared with Customer & BELM. Technician: ${tech?.name||'Technician'}. Dispatch reset and ready for the next Job Card. Proforma: ${result.proformaStatus||'PENDING'} · PI number is assigned in Billing when generated.`;
+      show(`${result.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned/confirmed'} and shared with Customer & BELM${result.temporaryOverride?' as Temporary Override':''}. Technician: ${tech?.name||'Technician'}. Proforma sync: ${result.proformaStatus||'PENDING'} · PI number will be created in Billing.`,false);
       setActionButtonState(submitBtn,'success',result.reassigned?'✓ Reassigned':'✓ Assigned');
       // Clear every dispatch choice BEFORE reload so loadDispatchOptions cannot preserve stale selections.
       resetTechnicianDispatchForm();
       await load();
+      await loadJobProcess();
       if(currentCaseId)try{await openCase(currentCaseId)}catch{}
       showDispatchResult(successMessage,false);
       window.setTimeout(()=>setActionButtonState(submitBtn,'idle'),1200);
@@ -303,7 +328,8 @@
     document.getElementById('dispatchJobCard')?.addEventListener('change',syncJobCardSource);
     document.getElementById('dispatchJobCardNo')?.addEventListener('change',resolveDispatchJobCardNumber);
     document.getElementById('dispatchJobCardNo')?.addEventListener('blur',resolveDispatchJobCardNumber);
-    document.getElementById('refreshReceivedJobCards')?.addEventListener('click',()=>loadDispatchOptions({announce:true}));
+    document.getElementById('refreshReceivedJobCards')?.addEventListener('click',async()=>{await loadDispatchOptions({announce:true});await loadJobProcess()});
+    document.getElementById('refreshJobProcess')?.addEventListener('click',loadJobProcess);
     document.querySelectorAll('input[name="jobCardMode"]').forEach(input=>input.addEventListener('change',syncJobCardSource));
     document.getElementById('dispatchForm')?.addEventListener('submit',dispatchTechnician);
   }
@@ -701,6 +727,12 @@
   document.getElementById('techReportForm').onsubmit=async e=>{e.preventDefault();try{await api(`/job-report/${document.getElementById('techJobId').value}`,{method:'PUT',body:JSON.stringify({diagnosis:document.getElementById('techDiagnosis').value,workDone:document.getElementById('techWork').value,testResult:document.getElementById('techTest').value,completionNote:document.getElementById('techNote').value,repeatIssue:document.getElementById('techRepeat').checked,complete:document.getElementById('techComplete').checked})});document.getElementById('techReportDialog').close();show('Digital Job Card report saved.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function loadPerformance(){try{const rows=await api('/performance');document.getElementById('performanceGrid').innerHTML=rows.length?rows.map(r=>`<article class="tech-card"><strong>${esc(r.technicianName)}</strong><div class="metrics"><div><span>Completed</span><b>${r.completedJobs}/${r.totalJobs}</b></div><div><span>Completion rate</span><b>${r.completionRate}%</b></div><div><span>First-time fix</span><b>${r.firstTimeFixRate}%</b></div><div><span>Avg resolution</span><b>${duration(r.avgResolutionHours)}</b></div><div><span>Repeat / rework</span><b>${r.repeatJobs}</b></div></div></article>`).join(''):'<div class="empty">No completed Job Card data yet.</div>'}catch(x){document.getElementById('performanceGrid').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
   async function load(){
+    if(adminJobCardsDispatchOnly){
+      try{
+        await Promise.all([loadDispatchOptions({announce:false,syncSources:true}),loadJobProcess()]);
+      }catch(x){show(x.message||'Could not load Job Card Dispatch.',true)}
+      return;
+    }
     const syncStatus=document.getElementById('syncStatus');
     try{
       if(syncStatus){
@@ -760,4 +792,9 @@
     window.setTimeout(reportEmbedHeight,100);
   }
   initTechnicianDispatch();loadMachines();load();
+  if(adminJobCardsDispatchOnly){
+    window.addEventListener('focus',loadJobProcess);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadJobProcess()});
+    window.setInterval(()=>{if(!document.hidden)loadJobProcess()},15000);
+  }
 })();

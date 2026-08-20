@@ -107,6 +107,9 @@ main { max-width:520px; margin:0 auto; padding:20px 16px 60px; }
 .op-machine-actions .report { color:#fff; background:#111827; border-color:#111827; }
 .op-machine-actions .checkup { color:#fff; background:#2196f3; border-color:#2196f3; }
 .op-machine-actions .parts { color:#fff; background:#56c94f; border-color:#56c94f; }
+.op-machine-actions .parts.is-closed,
+.op-machine-actions .parts:disabled { color:#98a6b8; background:#202b38; border-color:#45566a; cursor:not-allowed; opacity:.78; box-shadow:none; filter:none; }
+.op-machine-actions .parts.is-closed span { display:block; margin-top:3px; font-size:6.5px; letter-spacing:.07em; text-transform:uppercase; color:#f0b94d; }
 .op-machine-actions .jobcard { color:#2b2200; background:#f4b400; border-color:#f4b400; }
 .op-shift-tools { margin-top:0; }
 

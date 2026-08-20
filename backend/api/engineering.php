@@ -16,7 +16,7 @@ $action = $_GET['action'] ?? '';
 // V319: Engineering landing administration still requires Roles access, but
 // Technician Dispatch lives inside Maintenance Process and must also work for
 // an Engineer who has service-requests access. This mirrors sidebar anyKeys.
-$isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch'], true);
+$isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch','job-process'], true);
 if ($isDispatchAction) {
     require_any_page_access($user, ['roles','service-requests']);
 } else {
@@ -67,7 +67,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
          WHERE is_active=1 AND deleted_at IS NULL ORDER BY name"
     )->fetchAll();
     $machines = db()->query(
-        "SELECT m.id,m.customer_id,m.brand,m.model,m.machine_type,m.serial_number,c.name AS customer_name
+        "SELECT m.id,m.customer_id,m.brand,m.model,m.machine_type,m.serial_number,m.fleet_number,c.name AS customer_name
          FROM machines m JOIN customers c ON c.id=m.customer_id
          WHERE m.deleted_at IS NULL AND c.is_active=1 AND c.deleted_at IS NULL
          ORDER BY c.name,m.brand,m.model"
@@ -75,7 +75,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
     $receivedJobCards = db()->query(
         "SELECT j.id,j.job_card_no,j.title,j.customer_id,j.machine_id,j.status,j.priority,j.due_date,j.job_location,
                 j.technician_id,j.technician_name,j.issued_by_name,j.issued_at,
-                bc.source_type,bc.source_id,c.name AS customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,
+                bc.source_type,bc.source_id,c.name AS customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,m.fleet_number,
                 pi.invoice_no AS proforma_invoice_no
          FROM digital_job_cards j
          JOIN breakdown_cases bc ON bc.id=j.case_id
@@ -102,6 +102,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         $job['customerName']=$job['customer_name'];
         $job['machineLabel']=trim(($job['brand']??'').' '.($job['model']??'')) ?: ($job['machine_type']??'Machine unavailable');
         $job['machineSerial']=$job['serial_number']??null;
+        $job['fleetNumber']=$job['fleet_number']??null;
         $job['jobLocation']=trim((string)($job['job_location']??'')) ?: trim((string)($job['customer_address']??''));
         $job['sourceType']=$job['source_type'];
         $job['issuedByName']=$job['issued_by_name'];
@@ -139,6 +140,78 @@ if ($method === 'GET' && $action === 'dispatch-options') {
             'skipped'=>!empty($dispatchSync['skipped']),
         ],
     ]);
+}
+
+
+// V403 - lightweight Job Card process board shown directly below Technician Dispatch.
+// It tracks the same Digital Job Card; no duplicate Job Card or parallel workflow is created.
+if ($method === 'GET' && $action === 'job-process') {
+    if (!belm_can_override_technician_customer($user)) {
+        json_error('Only BELM Super Admin or Engineer can view the Job Card process board.', 403);
+    }
+    $rows = db()->query(
+        "SELECT j.id,j.job_card_no,j.status,j.started_at,j.completed_at,j.diagnosis,j.repeat_issue,j.updated_at,
+                j.technician_id,COALESCE(NULLIF(TRIM(j.technician_name),''),u.name,'Unassigned') AS technician_name,
+                bc.status AS case_status,bc.current_stage,bc.blocker_reason,
+                c.name AS company_name,c.address AS company_address,
+                COALESCE(NULLIF(TRIM(j.job_location),''),NULLIF(TRIM(c.address),''),'—') AS job_address,
+                m.fleet_number,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
+                (SELECT COUNT(*) FROM breakdown_spare_requests sr
+                 WHERE sr.job_card_id=j.id AND UPPER(COALESCE(sr.status,'')) NOT IN ('REJECTED','PARTS_READY')) AS open_spare_requests,
+                (SELECT string_agg(sr.spare_name, ', ' ORDER BY sr.requested_at)
+                 FROM breakdown_spare_requests sr
+                 WHERE sr.job_card_id=j.id AND UPPER(COALESCE(sr.status,'')) NOT IN ('REJECTED','PARTS_READY')) AS active_spares
+         FROM digital_job_cards j
+         JOIN breakdown_cases bc ON bc.id=j.case_id
+         JOIN customers c ON c.id=j.customer_id
+         JOIN machines m ON m.id=j.machine_id
+         LEFT JOIN users u ON u.id=j.technician_id
+         WHERE UPPER(COALESCE(j.status,'')) <> 'CANCELLED'
+           AND (j.technician_id IS NOT NULL OR NULLIF(TRIM(COALESCE(j.technician_name,'')),'') IS NOT NULL)
+         ORDER BY CASE WHEN UPPER(COALESCE(bc.status,''))='COMPLETED' THEN 1 ELSE 0 END,
+                  COALESCE(j.updated_at,j.created_at) DESC
+         LIMIT 100"
+    )->fetchAll();
+    foreach ($rows as &$row) {
+        $stage = strtoupper(trim((string)($row['current_stage'] ?? '')));
+        $caseStatus = strtoupper(trim((string)($row['case_status'] ?? '')));
+        $openSpares = (int)($row['open_spare_requests'] ?? 0);
+        $hasDiagnosis = trim((string)($row['diagnosis'] ?? '')) !== '';
+        $hasOpened = !empty($row['started_at']);
+        $code = 'ASSIGNED';
+        $label = 'Assigned - waiting Technician to open';
+        $detail = '';
+        if ($caseStatus === 'COMPLETED' || $stage === 'COMPLETED') {
+            $code = 'COMPLETED';
+            $label = 'Completed';
+        } elseif ($stage === 'TESTING') {
+            $code = 'TESTING';
+            $label = 'Testing';
+        } elseif ($openSpares > 0 || in_array($stage, ['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS'], true)) {
+            $code = 'WAITING_FOR_SPARE';
+            $label = 'Waiting for Spare';
+            $detail = trim((string)($row['active_spares'] ?? ''));
+        } elseif ($hasDiagnosis) {
+            $code = 'DIAGNOSIS_REPORT';
+            $label = 'Diagnosis Report';
+            $detail = 'Repeated issue: '.(!empty($row['repeat_issue']) ? 'YES' : 'NO');
+        } elseif ($hasOpened) {
+            $code = 'OPENED';
+            $label = 'Opened';
+        }
+        $row['processCode'] = $code;
+        $row['processLabel'] = $label;
+        $row['processDetail'] = $detail;
+        $row['technicianName'] = $row['technician_name'];
+        $row['fleetNumber'] = trim((string)($row['fleet_number'] ?? '')) ?: '—';
+        $row['companyName'] = $row['company_name'];
+        $row['address'] = $row['job_address'];
+        $row['repeatedIssue'] = $hasDiagnosis ? !empty($row['repeat_issue']) : null;
+        $row['openSpareRequests'] = $openSpares;
+        unset($row['technician_name'],$row['fleet_number'],$row['company_name'],$row['company_address'],$row['job_address'],$row['active_spares'],$row['open_spare_requests']);
+    }
+    unset($row);
+    json_out($rows);
 }
 
 if ($method === 'POST' && $action === 'dispatch') {

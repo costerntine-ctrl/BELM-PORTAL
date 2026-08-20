@@ -200,8 +200,8 @@
         <div class="op-machine-actions" aria-label="Operator machine actions">
           <button type="button" class="report" data-operator-action="report">Report</button>
           <button type="button" class="checkup" data-operator-action="checkup">Check Up</button>
-          <button type="button" class="parts" data-operator-action="parts">Service Parts</button>
-          <button type="button" class="jobcard" data-operator-action="jobcard">Job Card</button>
+          <button type="button" class="parts is-closed" data-operator-action="parts" disabled aria-disabled="true" title="Closed by default for Machine Operator">Service Parts<span>Closed</span></button>
+          <button type="button" class="jobcard" data-operator-action="operation-card">Operation Card</button>
         </div>
       </article>`;
   }

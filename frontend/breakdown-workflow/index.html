@@ -7,12 +7,12 @@
   <!-- V336 regression baseline assets: /breakdown-workflow/workflow.css?v=336-assigned-tech-name /breakdown-workflow/workflow.js?v=336-assigned-tech-name -->
   <!-- V338 baseline assets: /breakdown-workflow/workflow.css?v=338-process-stage-drilldown /breakdown-workflow/workflow.js?v=338-process-stage-drilldown -->
   <!-- V339 regression baseline assets: /breakdown-workflow/workflow.css?v=339-dispatch-machine-sync /breakdown-workflow/workflow.js?v=339-dispatch-machine-sync -->
-  <!-- Current assets: /breakdown-workflow/workflow.css?v=343-mobile-field-dispatch /breakdown-workflow/workflow.js?v=343-mobile-field-dispatch -->
+  <!-- Current assets: /breakdown-workflow/workflow.css?v=403-job-process-row /breakdown-workflow/workflow.js?v=403-job-process-row -->
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BELM Breakdown Workflow</title>
   <script>(function(){if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("embed-mode");})();</script>
   <link rel="stylesheet" href="/theme-global.css"><link rel="stylesheet" href="/belm-theme.css?v=216-breakdown-rail">
-  <link rel="stylesheet" href="/breakdown-workflow/workflow.css?v=343-mobile-field-dispatch">
+  <link rel="stylesheet" href="/breakdown-workflow/workflow.css?v=403-job-process-row">
   <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
@@ -48,8 +48,18 @@
         <label>Due date<input id="dispatchDueDate" type="date"></label>
         <label class="wide" id="dispatchLocationField">Job site / location<input id="dispatchLocation" autocomplete="street-address" placeholder="Site address, landmark or GPS coordinates"><small>This location travels with the Job Card. Technician can open navigation from My Job Cards.</small></label>
         <div id="dispatchNote" class="workflow-dispatch-note wide" role="status" aria-live="polite">Select a received or assigned Job Card and Technician.</div>
-        <div class="wide workflow-dispatch-actions"><button class="primary" id="dispatchSubmit" type="submit">Assign Job Card</button></div>
+        <div class="wide workflow-dispatch-actions"><button class="primary" id="dispatchSubmit" type="submit">Assign Job Card to Customer &amp; BELM</button></div>
       </form>
+    </section>
+
+    <section id="jobProcessPanel" class="panel job-process-panel hidden" aria-label="Job Card Process">
+      <div class="panel-head"><div><h2>Job Card Process</h2><p>Live process generated after assignment. The same Job Card moves from Technician open through diagnosis, spare waiting, testing and completion.</p></div><button type="button" id="refreshJobProcess">Refresh Process</button></div>
+      <div class="job-process-table-wrap">
+        <table class="job-process-table">
+          <thead><tr><th>JC Number</th><th>Technician Name</th><th>Machine Fleet No.</th><th>Company Name</th><th>Address</th><th>Process</th></tr></thead>
+          <tbody id="jobProcessBody"><tr><td colspan="6" class="job-process-empty">Loading Job Card process...</td></tr></tbody>
+        </table>
+      </div>
     </section>
     <section class="grid">
       <div class="panel"><div class="panel-head"><div><h2>Live Breakdown Queue</h2><p>Latest unfinished jobs only. FROM shows the customer/company. Completed jobs stay in Timeline / History and reports. Red means the current department is over its stage SLA.</p></div></div><div id="caseList" class="case-list"><div class="empty">Loading...</div></div></div>
@@ -75,5 +85,5 @@
   <dialog id="spareDialog"><form id="spareForm"><h2>Request Spare - Administration Approval Required</h2><input id="spareCaseId" type="hidden"><label>Spare name<input id="spareName" required></label><label>Part number / reference<input id="sparePart"></label><div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div><label>Why required<textarea id="spareReason" rows="3"></textarea></label><div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send for Administration Approval</button></div></form></dialog>
   <dialog id="techReportDialog"><form id="techReportForm"><h2>Technician Job Card Report</h2><input id="techJobId" type="hidden"><label>Diagnosis<textarea id="techDiagnosis" required rows="3"></textarea></label><label>Work done<textarea id="techWork" required rows="4"></textarea></label><label>Test result<textarea id="techTest" rows="2"></textarea></label><label>Completion note<textarea id="techNote" rows="2"></textarea></label><label class="check"><input id="techRepeat" type="checkbox"> This is repeat/rework of the same fault</label><label class="check"><input id="techComplete" type="checkbox"> Repair work completed - send to Workshop testing</label><div class="dialog-actions"><button type="button" data-close="techReportDialog">Cancel</button><button class="primary" type="submit">Save Job Report</button></div></form></dialog>
 
-  <script src="/theme-manager.js?v=299-session-stability"></script><script src="/admin-sidebar.js?v=380-admin-cleanup"></script><script src="/breakdown-workflow/workflow.js?v=343-mobile-field-dispatch"></script>
+  <script src="/theme-manager.js?v=299-session-stability"></script><script src="/admin-sidebar.js?v=380-admin-cleanup"></script><script src="/breakdown-workflow/workflow.js?v=403-job-process-row"></script>
 </body></html>

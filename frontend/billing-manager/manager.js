@@ -165,7 +165,7 @@
         <td class="money">${money(invoice.balance)}</td>
         <td>${invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</td>
         <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}" ${invoice.status === "CANCELLED" ? "disabled" : ""}><option value="${escapeHtml(invoice.status)}" selected>${escapeHtml(invoice.status.replaceAll("_", " "))}</option>${invoice.status !== "CANCELLED" ? '<option value="CANCELLED">CANCEL INVOICE</option>' : ""}</select></td>
-        <td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${invoice.sourceProformaId ? `<span class="muted">Linked to ${escapeHtml(invoice.sourceProformaNo || 'Proforma')} · editable independently</span>` : ``}${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><button class="export-row-button" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</button><button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
+        <td><div class="row-actions"><div class="row-actions-line"><button type="button" class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${invoice.sourceProformaId ? `<span class="muted">Linked to ${escapeHtml(invoice.sourceProformaNo || 'Proforma')} · editable independently</span>` : ``}${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button type="button" class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button type="button" class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><a class="export-row-button" href="/api/billing?action=export-invoice&id=${encodeURIComponent(invoice.id)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</a><button type="button" class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
@@ -603,7 +603,7 @@
 
   function openPayment(invoiceId, paymentId = "") {
     const invoice = invoices.find((item) => item.id === invoiceId);
-    if (!invoice) return;
+    if (!invoice) { showAlert("Invoice could not be loaded. Press Refresh and try again.", true); return; }
     const payment = (invoice.payments || []).find((item) => item.id === paymentId);
     document.getElementById("paymentForm").reset();
     document.getElementById("paymentInvoiceId").value = invoiceId;
@@ -650,6 +650,7 @@
 
   function openReceipt(invoiceId, customerId) {
     const invoice = invoices.find((item) => item.id === invoiceId);
+    if (!invoice) { showAlert("Invoice could not be loaded. Press Refresh and try again.", true); return; }
     document.getElementById("receiptForm").reset();
     document.getElementById("receiptInvoiceId").value = invoiceId || "";
     document.getElementById("receiptCustomerId").value = customerId || invoice?.customer?.id || "";
@@ -1127,14 +1128,37 @@
     const edit = event.target.closest("[data-edit-invoice]");
     const reviewButton = event.target.closest("[data-review-invoice]");
     const removeButton = event.target.closest("[data-delete-invoice]");
-    if (edit) openInvoice(edit.dataset.editInvoice);
-    if (pay) openPayment(pay.dataset.payment);
-    if (receiptButton) openReceipt(receiptButton.dataset.receipt, receiptButton.dataset.receiptCustomer);
-    if (reviewButton) {
-      const invoice = invoices.find((item) => item.id === reviewButton.dataset.reviewInvoice);
-      if (invoice) openReviewExport("invoice", invoice);
+    try {
+      if (reviewButton) {
+        const invoice = invoices.find((item) => item.id === reviewButton.dataset.reviewInvoice);
+        if (invoice) {
+          event.preventDefault();
+          openReviewExport("invoice", invoice);
+          return;
+        }
+      }
+      if (edit) {
+        event.preventDefault();
+        await openInvoice(edit.dataset.editInvoice);
+        return;
+      }
+      if (pay) {
+        event.preventDefault();
+        openPayment(pay.dataset.payment);
+        return;
+      }
+      if (receiptButton) {
+        event.preventDefault();
+        openReceipt(receiptButton.dataset.receipt, receiptButton.dataset.receiptCustomer);
+        return;
+      }
+      if (removeButton) {
+        event.preventDefault();
+        await remove(`/billing/invoices/${removeButton.dataset.deleteInvoice}`, "Delete this invoice? It will move to the Recycle Bin.");
+      }
+    } catch (error) {
+      showAlert(`Invoice action failed: ${error?.message || "Please refresh and try again."}`, true);
     }
-    if (removeButton) remove(`/billing/invoices/${removeButton.dataset.deleteInvoice}`, "Delete this invoice? It will move to the Recycle Bin.");
   });
   document.getElementById("paymentsPanel").addEventListener("click", async (event) => {
     const editPayment = event.target.closest("[data-edit-payment]");

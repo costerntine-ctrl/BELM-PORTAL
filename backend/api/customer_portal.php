@@ -12,6 +12,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 $sub = $_GET['sub'] ?? '';
 $sub2 = $_GET['sub2'] ?? '';
 $sub3 = $_GET['sub3'] ?? '';
+// V411: Job Card is the only customer-to-BELM work object. Keep the legacy
+// service_requests storage path behind the API so existing records are preserved.
+if ($sub === 'job-cards') $sub = 'service-requests';
 
 // V273 - turns a day/month/year (or explicit date) filter from the
 // "Job Card Reports" / "Daily Report" tabs into an inclusive from/to
@@ -1127,7 +1130,7 @@ if ($sub === 'privacy') {
             'alwaysShared' => [
                 'Basic company identity and contact details',
                 'Registered machine identity and operational status',
-                'Official support/service requests sent to BELM and customer-owned Procurement spare requests',
+                'Official Job Cards sent to BELM and customer-owned Procurement spare requests',
                 'BELM <-> Customer communications',
             ],
             'serviceProviderException' => 'While BELM Service Provider is ON, maintenance/check-up and service-kit records required to perform the service remain accessible. An open official support request also grants temporary machine-scoped maintenance/service-kit access.',
@@ -1514,7 +1517,7 @@ if ($sub === 'analysis') {
 
 // ---- Machine-aware service types and their synchronized parts ---------------
 if ($sub === 'service-options' && $sub2 && $method === 'GET') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
+    require_customer_feature_access($customer, 'service-request', 'Job Card');
     $stmt = db()->prepare(
         'SELECT id, machine_type, model, serial_number, reg_number, brand
          FROM machines
@@ -1684,7 +1687,7 @@ if ($sub === 'store') {
 // supplier. Procurement owns the sourcing decision and Maintenance Process
 // mirrors each status until the part is ready.
 if ($sub === 'spare-search' && $sub2 && $method === 'GET') {
-    require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+    require_customer_feature_access($customer, 'service-request', 'Job Card & Service Parts');
     customer_machine_for_action((string)$customer['id'], (string)$sub2);
     $q = trim((string)($_GET['q'] ?? ''));
     if ($q === '') json_out(['items' => []]);
@@ -1852,7 +1855,7 @@ if ($sub === 'procurement-requests' && $sub2) {
     }
 
     if ($method === 'POST') {
-        require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+        require_customer_feature_access($customer, 'service-request', 'Job Card & Service Parts');
         require_customer_write_access($customer);
         $machine = customer_machine_for_action((string)$customer['id'], (string)$sub2);
         $b = body();
@@ -2130,7 +2133,7 @@ if ($sub === 'procurement-requests' && $sub2) {
 // against the Customer Store. Store stock is deducted only after an explicit
 // Accounts/Owner/Admin approval.
 if ($sub === 'spare-store-check' && $sub2 && $method === 'POST') {
-    require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+    require_customer_feature_access($customer, 'service-request', 'Job Card & Service Parts');
     customer_machine_for_action((string)$customer['id'], (string)$sub2);
     $b = body();
     $items = $b['items'] ?? [];
@@ -2140,7 +2143,7 @@ if ($sub === 'spare-store-check' && $sub2 && $method === 'POST') {
 }
 
 if ($sub === 'spare-workspace' && $sub2) {
-    require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+    require_customer_feature_access($customer, 'service-request', 'Job Card & Service Parts');
     $machine = customer_machine_for_action((string)$customer['id'], (string)$sub2);
 
     if ($method === 'GET') {
@@ -2237,7 +2240,7 @@ if ($sub === 'store-issue-requests' && $sub2) {
     }
 
     if ($method === 'POST') {
-        require_customer_feature_access($customer, 'service-request', 'Spare & Service Request');
+        require_customer_feature_access($customer, 'service-request', 'Job Card & Service Parts');
         require_customer_write_access($customer);
         $machine = customer_machine_for_action((string)$customer['id'], (string)$sub2);
         $b = body();
@@ -3920,8 +3923,8 @@ if ($sub === 'machine-recent-updates' && $sub2 && $method === 'GET') {
     $srStmt->execute([$machineId]);
     $updates = array_map(function ($row) {
         $text = $row['event_type'] === 'ASSIGNMENT'
-            ? "Service request assigned to {$row['actor_name']}"
-            : "Service request status changed to {$row['to_value']}" . ($row['actor_name'] ? " by {$row['actor_name']}" : '');
+            ? "Job Card assigned to {$row['actor_name']}"
+            : "Job Card status changed to {$row['to_value']}" . ($row['actor_name'] ? " by {$row['actor_name']}" : '');
         return ['id' => 'srh-' . $row['id'], 'text' => $text, 'createdAt' => $row['created_at']];
     }, $srStmt->fetchAll());
 
@@ -4172,7 +4175,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
         'BELM Technical Support — Problem Report', $message, 'OPERATOR_REPORT', $newId, $operatorName, 'SENT'
     );
     $alertResult = belm_send_customer_to_belm_alert(
-        ['service-requests'],
+        ['job-cards','service-requests'],
         'OFFICIAL SUPPORT REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
         "CUSTOMER TECHNICAL SUPPORT REQUEST
 
@@ -4189,7 +4192,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
 "
         . "Report ID: $newId
 
-Open BELM Portal > Service Requests / Customer Communication and take action.",
+Open BELM Portal > Engineering > Job Cards / Customer Communication and take action.",
         $customer['actorEmail'] ?? null
     );
     $businessEmailSent = !empty($alertResult['businessEmailSent']);
@@ -4587,7 +4590,7 @@ if ($sub === 'users' && $sub2 && $method === 'DELETE') {
 // official Business Email from System Settings, with Reply-To set to the
 // customer's login email when available.
 if ($sub === 'belm-support' && $method === 'POST') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
+    require_customer_feature_access($customer, 'service-request', 'Job Card');
     require_customer_write_access($customer);
     $b = body();
     $topic = strtoupper(trim((string)($b['topic'] ?? 'TECHNICAL_SUPPORT')));
@@ -4631,7 +4634,7 @@ if ($sub === 'belm-support' && $method === 'POST') {
         : 'General / account level';
     $serial = $machine ? ($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')) : 'N/A';
     $alertResult = belm_send_customer_to_belm_alert(
-        ['service-requests'],
+        ['job-cards','service-requests'],
         'OFFICIAL CUSTOMER MESSAGE — ' . ($customer['name'] ?? 'Customer') . ' — ' . $subject,
         "OFFICIAL CUSTOMER MESSAGE FROM BELM PORTAL\n\n"
         . "Customer: " . ($customer['name'] ?? 'Unknown') . "\n"
@@ -4653,9 +4656,9 @@ if ($sub === 'belm-support' && $method === 'POST') {
     ], 201);
 }
 
-// ---- Service requests -------------------------------------------------------
+// ---- Job Cards -------------------------------------------------------
 if ($sub === 'service-requests' && $method === 'GET') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
+    require_customer_feature_access($customer, 'service-request', 'Job Card');
     $showHidden = !empty($_GET['hidden']);
     $stmt = db()->prepare(
         'SELECT sr.*, m.model AS machine_model, m.machine_type,
@@ -4701,13 +4704,13 @@ if ($sub === 'service-requests' && $method === 'GET') {
 // can — hide a COMPLETED/CANCELLED request from the default list without
 // deleting anything (still fully intact, retrievable via ?hidden=1).
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
+    require_customer_feature_access($customer, 'service-request', 'Job Card');
     $stmt = db()->prepare(
         "SELECT status FROM service_requests WHERE id = ? AND customer_id = ?"
     );
     $stmt->execute([$sub2, $customer['id']]);
     $status = $stmt->fetchColumn();
-    if ($status === false) json_error('Service request not found.', 404);
+    if ($status === false) json_error('Job Card not found.', 404);
     if (!in_array($status, ['COMPLETED', 'CANCELLED'], true)) {
         json_error('Only completed or cancelled requests can be hidden.', 422);
     }
@@ -4716,15 +4719,15 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT
 }
 
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'unhide' && $method === 'PUT') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
+    require_customer_feature_access($customer, 'service-request', 'Job Card');
     $stmt = db()->prepare('UPDATE service_requests SET hidden_at = NULL WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
-    if ($stmt->rowCount() === 0) json_error('Service request not found.', 404);
+    if ($stmt->rowCount() === 0) json_error('Job Card not found.', 404);
     json_out(['ok' => true]);
 }
 
 if ($sub === 'service-requests' && $method === 'POST') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
+    require_customer_feature_access($customer, 'service-request', 'Job Card');
     require_customer_write_access($customer);
     $b = body();
     $description = trim((string)($b['description'] ?? ''));
@@ -4845,15 +4848,15 @@ if ($sub === 'service-requests' && $method === 'POST') {
     }
     belm_log_customer_communication(
         (string)$customer['id'], $machineId !== '' ? $machineId : null,
-        'CUSTOMER_TO_BELM', 'EMAIL', 'Service Request',
+        'CUSTOMER_TO_BELM', 'EMAIL', 'Job Card',
         $description, 'SERVICE_REQUEST', $newId, $actorName, 'SENT'
     );
     $alertResult = ['sent' => 0];
     try {
         $machineLabel = $machine ? trim(($machine['model'] ?? '') . ' ' . ($machine['machine_type'] ?? '')) : 'No machine selected';
         $alertResult = belm_send_customer_to_belm_alert(
-            ['service-requests'],
-            'OFFICIAL SERVICE REQUEST — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
+            ['job-cards','service-requests'],
+            'OFFICIAL JOB CARD — ' . ($customer['name'] ?? 'Customer') . ' — ' . $machineLabel,
             "CUSTOMER REQUEST FOR BELM TECHNICAL SUPPORT
 
 "
@@ -4870,7 +4873,7 @@ Priority: $priority
             . "Description:
 $description
 
-Open Service Requests in BELM Portal to review and assign it.",
+Open Engineering > Job Cards in BELM Portal to review and assign it.",
             $customer['actorEmail'] ?? null
         );
     } catch (Throwable $error) { /* notification only */ }
@@ -4884,7 +4887,7 @@ Open Service Requests in BELM Portal to review and assign it.",
 }
 
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'PUT') {
-    require_customer_feature_access($customer, 'service-request', 'Request BELM Support');
+    require_customer_feature_access($customer, 'service-request', 'Job Card');
     require_customer_write_access($customer);
     $stmt = db()->prepare('SELECT * FROM service_requests WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
@@ -4897,17 +4900,17 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'P
         'INSERT INTO service_request_history(id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at) VALUES(?,?,?,?,?,?,?,?,NOW())'
     )->execute([uuid(),$sub2,'STATUS',(string)$req['status'],'CANCELLED',null,$actorName,'Cancelled by customer']);
     belm_sync_breakdown_case_from_service_request($sub2, $actorName);
-    $cancelMessage = 'Customer cancelled service request: ' . ($req['description'] ?? '');
+    $cancelMessage = 'Customer cancelled Job Card: ' . ($req['description'] ?? '');
     belm_log_customer_communication(
         (string)$customer['id'], $req['machine_id'] ?: null,
-        'CUSTOMER_TO_BELM', 'EMAIL', 'Service Request Cancelled',
+        'CUSTOMER_TO_BELM', 'EMAIL', 'Job Card Cancelled',
         $cancelMessage, 'SERVICE_REQUEST', $sub2, $actorName, 'SENT'
     );
     $cancelAlert = ['businessEmailSent' => false];
     try {
         $cancelAlert = belm_send_customer_to_belm_alert(
-            ['service-requests'],
-            'SERVICE REQUEST CANCELLED — ' . ($customer['name'] ?? 'Customer'),
+            ['job-cards','service-requests'],
+            'JOB CARD CANCELLED — ' . ($customer['name'] ?? 'Customer'),
             $cancelMessage . "\nCustomer: " . ($customer['name'] ?? 'Unknown') . "\nCancelled by: $actorName\nRequest ID: $sub2",
             $customer['actorEmail'] ?? null
         );

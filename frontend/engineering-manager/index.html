@@ -68,18 +68,12 @@
         </form>
       </dialog>
 
-      <section id="service-requests" class="eng-service-requests-host" aria-label="Engineering service and Job Card workspace">
-        <div id="engineeringWorkspaceTabs" class="eng-workspace-tabs" role="tablist" aria-label="Engineering workspace">
-          <button type="button" class="active" data-eng-workspace="service-requests" role="tab" aria-selected="true">Service Requests</button>
-          <button type="button" data-eng-workspace="job-cards" role="tab" aria-selected="false">Job Cards</button>
+      <section id="job-cards" class="eng-service-requests-host" aria-label="Engineering Job Card workspace">
+        <div class="panel-head"><div><h2>Job Cards</h2><p>Receive Customer Admin Job Cards, assign BELM Technicians, track work, parts waiting, approval and completion.</p></div></div>
+        <div id="engineeringJobCardsPanel" class="eng-workspace-panel">
+          <iframe id="engineeringJobCardsFrame" title="Engineering Job Cards" data-src="/breakdown-workflow/?embed=1&amp;source=admin" loading="eager"></iframe>
         </div>
-        <div id="engineeringServiceRequestsPanel" class="eng-workspace-panel">
-          <iframe id="engineeringServiceRequestsFrame" title="Engineering Service Requests" data-src="/service-request-manager/?embed=1" loading="eager"></iframe>
-        </div>
-        <div id="engineeringJobCardsPanel" class="eng-workspace-panel hidden">
-          <iframe id="engineeringJobCardsFrame" title="Engineering Job Cards" data-src="/breakdown-workflow/?embed=1&amp;source=admin" loading="lazy"></iframe>
-        </div>
-        <div id="engineeringServiceRequestsLocked" class="panel eng-service-requests-locked hidden">Service Requests / Job Cards access is not enabled for this role.</div>
+        <div id="engineeringJobCardsLocked" class="panel eng-service-requests-locked hidden">Job Card access is not enabled for this role.</div>
       </section>
 
       <section id="engineeringOverviewGrid" class="eng-grid">
@@ -115,9 +109,9 @@
       </section>
     </main>
 
-    <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=380-admin-cleanup"></script>
+    <script src="/admin-access.js?v=411-job-card-only"></script>
+    <script src="/admin-sidebar.js?v=411-job-card-only"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/engineering-manager/manager.js?v=320-engineering-single-owner"></script>
+    <script src="/engineering-manager/manager.js?v=411-job-card-only"></script>
   </body>
 </html>

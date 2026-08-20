@@ -18,7 +18,7 @@ $action = $_GET['action'] ?? '';
 // an Engineer who has service-requests access. This mirrors sidebar anyKeys.
 $isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch','job-process'], true);
 if ($isDispatchAction) {
-    require_any_page_access($user, ['roles','service-requests']);
+    require_any_page_access($user, ['roles','job-cards','service-requests']);
 } else {
     require_page_access($user, 'roles');
 }
@@ -122,7 +122,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         'customers'=>$customers,
         'machines'=>$machines,
         // V328: keep receivedJobCards as a backward-compatible alias while
-        // returning every active Customer-Admin Service Request Job Card, including
+        // returning every active Customer-Admin Job Card, including
         // cards that already have a BELM Technician and can be selected/reassigned.
         'jobCards'=>$receivedJobCards,
         'receivedJobCards'=>$receivedJobCards,
@@ -278,7 +278,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             if(!$job) throw new RuntimeException('Selected Job Card was not found.');
             $jobStatus=strtoupper(trim((string)($job['status']??'RECEIVED')));
             if(!in_array($jobStatus,['RECEIVED','OPEN','ASSIGNED'],true) || strtoupper((string)$job['case_status'])==='COMPLETED') throw new RuntimeException('This Job Card is no longer waiting for Technician Dispatch. Refresh the received Job Cards list.');
-            if((string)$job['source_type']!=='SERVICE_REQUEST') throw new RuntimeException('BELM Technician Dispatch accepts only an official Customer Admin Job Card / Service Request. Customer internal Job Cards stay inside the customer workshop.');
+            if((string)$job['source_type']!=='SERVICE_REQUEST') throw new RuntimeException('BELM Technician Dispatch accepts only an official Customer Admin Job Card. Customer internal Job Cards stay inside the customer workshop.');
             $previousTechnicianId=trim((string)($job['technician_id']??''));
             $previousTechnicianName=trim((string)($job['technician_name']??''));
             $wasAlreadyAssigned=$previousTechnicianId!=='' || $previousTechnicianName!=='';

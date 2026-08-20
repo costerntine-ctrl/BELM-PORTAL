@@ -129,7 +129,7 @@ dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
 .eng-dispatch-form .hidden{display:none!important}
 
 
-/* V310 - Service Requests live inside Engineering. */
+/* V310 - Job Cards live inside Engineering. */
 .eng-service-requests-host {
   margin: 18px 0;
   scroll-margin-top: 86px;
@@ -152,7 +152,7 @@ dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
 }
 
 
-/* V311 - Service Requests + Job Cards share one Engineering shell; no nested sidebar/page. */
+/* V311 - Job Cards use one Engineering shell; no nested sidebar/page. */
 .eng-workspace-tabs{display:flex;gap:8px;margin:0 0 10px;padding:7px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
 .eng-workspace-tabs button{min-height:36px;padding:8px 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:850;cursor:pointer}
 .eng-workspace-tabs button.active{color:#fff;border-color:#2563eb;background:#2563eb;box-shadow:0 4px 12px rgba(37,99,235,.18)}

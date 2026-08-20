@@ -26,7 +26,7 @@ $categories = [
     'spare-parts' => ['label' => 'Spare Parts & Requests', 'tables' => ['spare_parts', 'spare_part_requests']],
     'suppliers' => ['label' => 'Suppliers', 'tables' => ['suppliers']],
     'billing' => ['label' => 'Billing & Finance', 'tables' => ['invoice_items', 'payments', 'receipts', 'invoices', 'proforma_invoice_items', 'proforma_invoices', 'company_expenses']],
-    'service-requests' => ['label' => 'Service Requests', 'tables' => []],
+    'service-requests' => ['label' => 'Job Cards', 'tables' => []],
     'bank' => ['label' => 'Bank Manager', 'tables' => []],
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
@@ -336,7 +336,7 @@ try {
 
         json_out([
             'ok' => true,
-            'message' => "Customer \"$customerName\" and everything tied to them (their own machines, invoices, checklist reports, service requests) has been permanently deleted. All other customers, machines and users are untouched.",
+            'message' => "Customer \"$customerName\" and everything tied to them (their own machines, invoices, checklist reports, Job Cards) has been permanently deleted. All other customers, machines and users are untouched.",
         ]);
     }
 
@@ -519,7 +519,7 @@ try {
         }
         json_out([
             'ok' => true,
-            'message' => 'Checklist templates & reports cleared successfully. Service requests, customers, machines and users are untouched.',
+            'message' => 'Checklist templates & reports cleared successfully. Job Cards, customers, machines and users are untouched.',
         ]);
     }
 
@@ -535,7 +535,7 @@ try {
         }
         json_out([
             'ok' => true,
-            'message' => 'Service requests cleared successfully. Spare parts, customers, machines and users are untouched.',
+            'message' => 'Job Cards cleared successfully. Spare parts, customers, machines and users are untouched.',
         ]);
     }
 

@@ -4,7 +4,7 @@
     ["customers", "Customers"],
     ["overview", "All Overview"],
     ["roles", "Roles & system users"],
-    ["service-requests", "Service requests (inside Engineering)"],
+    ["job-cards", "Job Cards"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
     ["bank-manager", "Bank Manager"],
@@ -185,12 +185,12 @@
       const engineer = rolesCache.find((role) => role.name === "Engineer");
       const technician = rolesCache.find((role) => role.name === "Technician");
       document.getElementById("engineerRoleAccess").textContent =
-        engineer?.allowedPages?.length ? engineer.allowedPages.join(", ") : "No pages assigned yet.";
+        engineer?.allowedPages?.length ? engineer.allowedPages.map((page) => page === "service-requests" ? "job-cards" : page).filter((value,index,list)=>list.indexOf(value)===index).join(", ") : "No pages assigned yet.";
       if (technician) {
         document.getElementById("technicianRoleAccess").textContent =
           technician.allowedPages === null
             ? "Technician app only / no admin dashboard pages"
-            : (technician.allowedPages?.length ? technician.allowedPages.join(", ") : "No pages assigned yet.");
+            : (technician.allowedPages?.length ? technician.allowedPages.map((page) => page === "service-requests" ? "job-cards" : page).filter((value,index,list)=>list.indexOf(value)===index).join(", ") : "No pages assigned yet.");
       }
     } catch (_) {
       document.getElementById("engineerRoleAccess").textContent = "—";
@@ -199,7 +199,7 @@
 
   function renderAllowedPages(selected = []) {
     document.getElementById("allowedPages").innerHTML = pageOptions.map(([key, label]) =>
-      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${selected.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>`
+      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${(selected.includes(key) || (key === "job-cards" && selected.includes("service-requests"))) ? "checked" : ""}> ${escapeHtml(label)}</label>`
     ).join("");
   }
 
@@ -260,65 +260,31 @@
   });
 
   function initEngineeringWorkspace() {
-    const serviceFrame = document.getElementById("engineeringServiceRequestsFrame");
     const jobFrame = document.getElementById("engineeringJobCardsFrame");
-    const servicePanel = document.getElementById("engineeringServiceRequestsPanel");
     const jobPanel = document.getElementById("engineeringJobCardsPanel");
-    const locked = document.getElementById("engineeringServiceRequestsLocked");
-    const tabs = [...document.querySelectorAll("[data-eng-workspace]")];
-    if (!serviceFrame || !jobFrame) return;
-    const allowed = hasPageAccess("service-requests");
+    const locked = document.getElementById("engineeringJobCardsLocked");
+    if (!jobFrame) return;
+    // V411: Job Cards are the only support-work object. Legacy service-requests
+    // permission is accepted only so existing deployed roles do not lose access.
+    const allowed = hasPageAccess("job-cards") || hasPageAccess("service-requests");
     if (!allowed) {
-      serviceFrame.removeAttribute("src");
       jobFrame.removeAttribute("src");
-      servicePanel?.classList.add("hidden");
       jobPanel?.classList.add("hidden");
-      document.getElementById("engineeringWorkspaceTabs")?.classList.add("hidden");
       locked?.classList.remove("hidden");
       return;
     }
-    serviceFrame.src = serviceFrame.dataset.src || "/service-request-manager/?embed=1";
     const routeParams = new URLSearchParams(window.location.search);
     const machineFocus = String(routeParams.get("machine") || "").trim();
-    const jobCardsSource = () => {
-      const url = new URL(jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin", window.location.origin);
-      if (machineFocus) url.searchParams.set("machine", machineFocus);
-      return `${url.pathname}${url.search}`;
-    };
-
-    const setWorkspace = (name, updateHash = true) => {
-      const jobCards = name === "job-cards";
-      servicePanel?.classList.toggle("hidden", jobCards);
-      jobPanel?.classList.toggle("hidden", !jobCards);
-      tabs.forEach((button) => {
-        const active = button.dataset.engWorkspace === (jobCards ? "job-cards" : "service-requests");
-        button.classList.toggle("active", active);
-        button.setAttribute("aria-selected", active ? "true" : "false");
-      });
-      if (jobCards && !jobFrame.src) jobFrame.src = jobCardsSource();
-      if (updateHash) history.replaceState(null, "", jobCards ? "#job-cards" : "#service-requests");
-      window.setTimeout(() => document.getElementById("service-requests")?.scrollIntoView({ behavior: "smooth", block: "start" }), 40);
-    };
-
-    tabs.forEach((button) => button.addEventListener("click", () => setWorkspace(button.dataset.engWorkspace)));
+    const url = new URL(jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin", window.location.origin);
+    if (machineFocus) url.searchParams.set("machine", machineFocus);
+    jobFrame.src = `${url.pathname}${url.search}`;
     window.addEventListener("message", (event) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.source === serviceFrame.contentWindow) {
-        if (event.data?.type === "belm-service-requests-height") {
-          const height = Math.max(620, Math.min(1400, Number(event.data.height) || 0));
-          serviceFrame.style.height = `${height}px`;
-        }
-        if (event.data?.type === "belm-engineering-open-job-cards") setWorkspace("job-cards");
-      }
-      if (event.source === jobFrame.contentWindow) {
-        if (event.data?.type === "belm-breakdown-workflow-height") {
-          const height = Math.max(760, Math.min(1800, Number(event.data.height) || 0));
-          jobFrame.style.height = `${height}px`;
-        }
-        if (event.data?.type === "belm-engineering-open-service-requests") setWorkspace("service-requests");
+      if (event.origin !== window.location.origin || event.source !== jobFrame.contentWindow) return;
+      if (event.data?.type === "belm-breakdown-workflow-height") {
+        const height = Math.max(760, Math.min(1800, Number(event.data.height) || 0));
+        jobFrame.style.height = `${height}px`;
       }
     });
-    setWorkspace(window.location.hash === "#job-cards" || machineFocus ? "job-cards" : "service-requests", false);
   }
 
   initEngineeringWorkspace();

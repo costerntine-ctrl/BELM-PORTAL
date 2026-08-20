@@ -92,7 +92,7 @@
   async function engineeringApi(path,opt={}){const r=await fetch(`/api${path}`,{...opt,cache:'no-store',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${adminToken||''}`,...(opt.headers||{})}});const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch{}if(!r.ok){const error=new Error(data?.error||`Request failed (${r.status}).`);error.status=r.status;throw error}return data}
   if(!token){location.href='/';return}
 
-  document.getElementById('backButton').onclick=()=>{if(embedded){window.parent.postMessage({type:'belm-engineering-open-service-requests'},window.location.origin);return;}location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/engineering-manager/#service-requests'};
+  document.getElementById('backButton').onclick=()=>{if(embedded){window.parent.postMessage({type:'belm-engineering-open-service-requests'},window.location.origin);return;}location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/engineering-manager/#job-cards'};
   if(source!=='customer'||!isWorkshop) document.querySelectorAll('.customer-only').forEach(e=>e.classList.add('hidden'));
   if(!isWorkshop||isTechnician){document.getElementById('workshopReportPanel')?.classList.add('hidden');document.querySelector('.performance-panel')?.classList.add('hidden');}
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close)?.close());
@@ -161,7 +161,7 @@
     const assigned=rows.filter(job=>job.technicianId||job.technicianName||String(job.dispatchStatus||'').toUpperCase()==='ASSIGNED').length;
     const waiting=rows.length-assigned;
     const help=document.getElementById('receivedJobCardHelp');
-    if(help)help.textContent=rows.length?`${rows.length} active Job Card${rows.length===1?'':'s'}${customerId?' for this customer':''}: ${waiting} waiting, ${assigned} assigned. Assigned cards are selectable for confirmation or reassignment.`:(customerId?'No active received/assigned Job Card for this customer. You can still type a known JC Number in the field on the right.':'No active Customer Admin Job Cards are available. Official Service Requests are synchronized automatically when this list refreshes.');
+    if(help)help.textContent=rows.length?`${rows.length} active Job Card${rows.length===1?'':'s'}${customerId?' for this customer':''}: ${waiting} waiting, ${assigned} assigned. Assigned cards are selectable for confirmation or reassignment.`:(customerId?'No active received/assigned Job Card for this customer. You can still type a known JC Number in the field on the right.':'No active Customer Admin Job Cards are available. Official Job Cards are synchronized automatically when this list refreshes.');
   }
   function syncDispatchJcNumberFromSelection(){
     const input=document.getElementById('dispatchJobCardNo');if(!input)return;
@@ -551,7 +551,7 @@
     document.getElementById('generateJob')?.addEventListener('click',openJob);
     document.getElementById('sendJobToBelm')?.addEventListener('click',sendSelectedCaseToBelm);
     document.getElementById('requestSpare')?.addEventListener('click',()=>{
-      if(source==='customer'){location.href=`/customer-service-request/?machine=${encodeURIComponent(selected.case.machineId||selected.case.machine_id||machineFilter)}#procurement-spares`;return;}
+      if(source==='customer'){location.href=`/customer-job-card/?machine=${encodeURIComponent(selected.case.machineId||selected.case.machine_id||machineFilter)}#procurement-spares`;return;}
       document.getElementById('spareCaseId').value=selected.case.id;const mainJob=(selected.jobCards||[]).find(j=>!['COMPLETED','CANCELLED'].includes(String(j.status||'').toUpperCase()))||(selected.jobCards||[])[0];document.getElementById('spareForm').dataset.jobCardId=mainJob?.id||'';document.getElementById('spareDialog').showModal();
     });
     document.getElementById('completeCase')?.addEventListener('click',async()=>{
@@ -703,7 +703,7 @@
     if(!isCustomerAdmin){show('Only Customer Admin can send a machine Job Card to BELM.',true);return}
     const machineId=selected?.case?.machineId||'';
     const description=selected?.case?.description||selected?.case?.title||'';
-    const url=`/customer-service-request/?machine=${encodeURIComponent(machineId)}${description?`&note=${encodeURIComponent(description)}`:''}`;
+    const url=`/customer-job-card/?machine=${encodeURIComponent(machineId)}${description?`&note=${encodeURIComponent(description)}`:''}`;
     location.href=url;
   }
   document.getElementById('jobSendToBelm')?.addEventListener('click',sendSelectedCaseToBelm);
@@ -784,9 +784,9 @@
           syncStatus.textContent=`Workflow loaded, but source sync needs attention: ${syncError.message}${detail}`;
           syncStatus.classList.add('sync-error');
         }else if(made>0){
-          syncStatus.textContent=`${made} missing workflow case${made===1?'':'s'} restored. ${requests} Service Request${requests===1?'':'s'} and ${reports} Problem Report${reports===1?'':'s'} checked.`;
+          syncStatus.textContent=`${made} missing workflow case${made===1?'':'s'} restored. ${requests} Job Card${requests===1?'':'s'} and ${reports} Problem Report${reports===1?'':'s'} checked.`;
         }else{
-          syncStatus.textContent=`Synced: ${requests} Service Request${requests===1?'':'s'} + ${reports} Problem Report${reports===1?'':'s'} + Digital Job Cards.`;
+          syncStatus.textContent=`Synced: ${requests} Job Card${requests===1?'':'s'} + ${reports} Problem Report${reports===1?'':'s'} + Digital Job Cards.`;
         }
       }
 

@@ -1906,7 +1906,7 @@ function belm_ensure_breakdown_case_from_service_request(string $requestId, ?str
         )->execute([uuid(),$id,'WORKSHOP_REVIEW','Workshop','Official BELM Support Request synced',$row['description'],'customer',$creator,$openedAt]);
         return $id;
     } catch (Throwable $error) {
-        error_log('Service Request breakdown sync failed: ' . $error->getMessage());
+        error_log('Job Card breakdown sync failed: ' . $error->getMessage());
         if ($strict) throw $error;
         return null;
     }
@@ -1939,7 +1939,7 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
             // its machine-work instructions synchronized until the Technician
             // has actually started work. Once IN_PROGRESS, preserve the field
             // report exactly as the Technician received it.
-            $requestTitle = trim((string)($row['service_type'] ?: 'BELM Service Request'));
+            $requestTitle = trim((string)($row['service_type'] ?: 'BELM Job Card'));
             $requestInstructions = trim((string)($row['description'] ?? ''));
             db()->prepare(
                 "UPDATE digital_job_cards
@@ -1957,7 +1957,7 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
 
         $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
         $jobId=uuid();
-        $title=trim((string)($row['service_type'] ?: 'BELM Service Request'));
+        $title=trim((string)($row['service_type'] ?: 'BELM Job Card'));
         db()->prepare(
             "INSERT INTO digital_job_cards
              (id,case_id,customer_id,machine_id,job_card_no,title,fault_description,status,job_location,generated_by_name,
@@ -1973,7 +1973,7 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
         )->execute([uuid(),(string)$row['case_id'],'WORKSHOP_REVIEW','Workshop','Customer-issued Job Card '.$num,'Issued by '.$issuer,'customer',$issuer]);
         return $jobId;
     } catch (Throwable $error) {
-        error_log('Service Request Job Card auto-create failed: ' . $error->getMessage());
+        error_log('Job Card auto-create failed: ' . $error->getMessage());
         if ($strict) throw $error;
         return null;
     }
@@ -2101,17 +2101,17 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         } elseif ($status === 'OPEN' && $caseStatus !== 'COMPLETED' && empty($row['assigned_to_id'])
             && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED'],true)) {
             $newStage='TECHNICIAN_ASSIGNMENT'; $department='Workshop / Dispatch';
-            $blocker='Awaiting Technician Assignment'; $action='Service Request waiting Technician assignment';
+            $blocker='Awaiting Technician Assignment'; $action='Job Card waiting Technician assignment';
         } elseif ($status === 'ASSIGNED' && $caseStatus !== 'COMPLETED' && !empty($row['assigned_to_id']) && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT'],true)) {
-            $newStage='JOB_CARD_ASSIGNED'; $department='Technician'; $action='Service Request assigned - Job Card waiting Technician start';
+            $newStage='JOB_CARD_ASSIGNED'; $department='Technician'; $action='Job Card assigned - waiting Technician start';
         } elseif ($status === 'IN_PROGRESS' && $caseStatus !== 'COMPLETED' && (!empty($row['assigned_to_id']) || $jobTechnicianId !== '') && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS'],true)) {
-            $newStage='REPAIR'; $department='Technician'; $action='Service Request in progress';
+            $newStage='REPAIR'; $department='Technician'; $action='Job Card in progress';
         } elseif ($status === 'ON_HOLD' && $caseStatus !== 'COMPLETED') {
-            $blocker='Service Request is ON HOLD'; $action='Service Request placed on hold';
+            $blocker='Job Card is ON HOLD'; $action='Job Card placed on hold';
         } elseif (in_array($status,['COMPLETED','CANCELLED'],true) && $caseStatus !== 'COMPLETED') {
             $newStage='COMPLETED'; $department='Completed'; $close=true;
             $blocker=$status==='CANCELLED' ? 'Official BELM Support Request cancelled.' : null;
-            $action=$status==='CANCELLED' ? 'Service Request cancelled - case closed' : 'Service Request completed - case closed';
+            $action=$status==='CANCELLED' ? 'Job Card cancelled - case closed' : 'Job Card completed - case closed';
         }
 
         if ($newStage !== null) {
@@ -2147,7 +2147,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         }
         return $caseId;
     } catch (Throwable $error) {
-        error_log('Service Request case state sync failed: ' . $error->getMessage());
+        error_log('Job Card case state sync failed: ' . $error->getMessage());
         if ($strict) throw $error;
         return $caseId;
     }
@@ -2233,11 +2233,11 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
                     $syncedRequests++;
                 } else {
                     $failedSources++;
-                    error_log('Service Request sync did not produce a breakdown case: '.(string)$r['id']);
+                    error_log('Job Card sync did not produce a breakdown case: '.(string)$r['id']);
                 }
             } catch (Throwable $sourceError) {
                 $failedSources++;
-                error_log('Service Request source sync failed for '.(string)$r['id'].': '.$sourceError->getMessage());
+                error_log('Job Card source sync failed for '.(string)$r['id'].': '.$sourceError->getMessage());
             }
         }
 

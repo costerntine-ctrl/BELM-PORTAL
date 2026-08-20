@@ -963,7 +963,7 @@ if ($method === 'DELETE' && !$action) {
                     'Your BELM Portal account has been permanently deleted',
                     "This confirms that the BELM Portal account for \"{$row['name']}\" has been permanently deleted, "
                     . "as requested.\n\nEverything associated with this account has been completely removed from "
-                    . "BELM's systems - login access, machines, checklist/check-up reports, service requests, job "
+                    . "BELM's systems - login access, machines, checklist/check-up reports, Job Cards, job "
                     . "cards, invoices, receipts, proforma invoices, petty cash records, operator and shift history, "
                     . "and saved communications. Nothing was kept as a backup and none of it can be recovered or "
                     . "restored.\n\nIf you did not request this, or believe this was done in error, please contact "
@@ -1349,7 +1349,7 @@ Note: " . $note : '');
             $belmDelivery = ['sent' => 0, 'failed' => 0];
             try {
                 $belmDelivery = belm_send_customer_to_belm_alert(
-                    ['service-requests'],
+                    ['job-cards','service-requests'],
                     'BELM TECHNICIAN MACHINE STATUS - ' . $machineLabel . ' - ' . $status,
                     $statusText
                 );

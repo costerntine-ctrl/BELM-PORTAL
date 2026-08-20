@@ -51,7 +51,7 @@ function role_payload(array $body, ?string $excludeRoleId = null): array {
     if ($stmt->fetch()) json_error('A role with this name already exists.', 409);
 
     $allowedPageKeys = [
-        'customers', 'overview', 'roles', 'service-requests', 'spare-parts',
+        'customers', 'overview', 'roles', 'job-cards', 'service-requests', 'spare-parts',
         'billing', 'bank-manager', 'reports', 'settings', 'checklist-templates', 'suppliers',
         'activity-log',
     ];

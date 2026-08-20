@@ -17,7 +17,8 @@
     customers: "/customers-manager/",
     overview: "/overview-manager/",
     roles: "/roles-manager/",
-    "service-requests": "/engineering-manager/#service-requests",
+    "job-cards": "/engineering-manager/#job-cards",
+    "service-requests": "/engineering-manager/#job-cards",
     "spare-parts": "/spare-parts-manager/",
     billing: "/billing-manager/",
     reports: "/reports-manager/",
@@ -32,7 +33,7 @@
     [/^\/overview-manager(?:\/|$)/, "overview"],
     [/^\/checklist-manager(?:\/|$)/, "checklist-templates"],
     [/^\/controller-pinouts-manager(?:\/|$)/, "checklist-templates"],
-    [/^\/service-request-manager(?:\/|$)/, "service-requests"],
+    [/^\/service-request-manager(?:\/|$)/, "job-cards"],
     [/^\/spare-parts-manager(?:\/|$)/, "spare-parts"],
     [/^\/billing-manager(?:\/|$)/, "billing"],
     [/^\/bank-controller(?:\/|$)/, "bank-manager"],
@@ -58,13 +59,13 @@
     const href = new URL(link.getAttribute("href"), window.location.origin).pathname;
     const key = keyForPath(href);
     const engineeringLink = /^\/engineering-manager(?:\/|$)/.test(href);
-    const engineeringAllowed = engineeringLink && (allowedPages.includes("roles") || allowedPages.includes("service-requests"));
+    const engineeringAllowed = engineeringLink && (allowedPages.includes("roles") || allowedPages.includes("job-cards") || allowedPages.includes("service-requests"));
     if (key && !engineeringAllowed && !allowedPages.includes(key)) link.hidden = true;
   });
 
   const currentKey = keyForPath(window.location.pathname);
   const engineeringAccess = /^\/engineering-manager(?:\/|$)/.test(window.location.pathname)
-    && (allowedPages.includes("roles") || allowedPages.includes("service-requests"));
+    && (allowedPages.includes("roles") || allowedPages.includes("job-cards") || allowedPages.includes("service-requests"));
   if (engineeringAccess || !currentKey || allowedPages.includes(currentKey)) return;
 
   const firstAllowed = allowedPages.find(key => routes[key]);

@@ -525,9 +525,9 @@
 
   async function resolveCustomerMessage(type, id) {
     if (type === "operator-report") {
-      await api(`/service-requests?action=operator-reports&id=${encodeURIComponent(id)}`, { method: "PUT" });
+      await api(`/job-cards?action=operator-reports&id=${encodeURIComponent(id)}`, { method: "PUT" });
     } else {
-      await api(`/service-requests/${encodeURIComponent(id)}/status`, {
+      await api(`/job-cards/${encodeURIComponent(id)}/status`, {
         method: "PUT",
         body: JSON.stringify({ status: "COMPLETED" }),
       });
@@ -1053,7 +1053,7 @@
     if (!customer) return;
     const confirmation = await window.belmConfirmDelete({
       title: "Forget customer permanently?",
-      message: `This permanently erases "${customer.name}" and all their machines, invoices, checklist reports and service requests. It skips the Recycle Bin entirely — there is no undo and no restore. Use "Delete" instead if you might need this back later.`,
+      message: `This permanently erases "${customer.name}" and all their machines, invoices, checklist reports and Job Cards. It skips the Recycle Bin entirely — there is no undo and no restore. Use "Delete" instead if you might need this back later.`,
     });
     if (!confirmation) return;
     try {

@@ -591,7 +591,7 @@
     }
   }
 
-  document.getElementById("serviceRequestLink").href = `/customer-service-request/?machine=${encodeURIComponent(machineId)}`;
+  document.getElementById("serviceRequestLink").href = `/customer-job-card/?machine=${encodeURIComponent(machineId)}`;
   document.getElementById("expenseDate").value = new Date().toISOString().slice(0, 10);
   document.getElementById("quantity").addEventListener("input", () => { calculateTotal(); syncStoreIssueForm(); });
   document.getElementById("unitPrice").addEventListener("input", calculateTotal);

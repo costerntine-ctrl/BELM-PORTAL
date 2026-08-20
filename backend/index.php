@@ -374,6 +374,18 @@ switch ($resource) {
         // REST-style Operator routes: /api/operator/login, /dashboard, /sign-in, etc.
         dispatch('operator.php', ['action' => $segments[1] ?? ($_GET['action'] ?? '')]);
 
+    case 'job-cards':
+        // V411 canonical support-work API. The legacy service_requests table/file is retained
+        // only for zero-loss migration of existing records.
+        if (($segments[1] ?? '') === 'assignees') dispatch('service_requests.php', ['action' => 'assignees']);
+        if (isset($segments[2]) && $segments[2] === 'status') dispatch('service_requests.php', ['action' => 'status', 'id' => $segments[1]]);
+        if (isset($segments[2]) && $segments[2] === 'assign') dispatch('service_requests.php', ['action' => 'assign', 'id' => $segments[1]]);
+        if (isset($segments[2]) && $segments[2] === 'activate-job-card') dispatch('service_requests.php', ['action' => 'activate-job-card', 'id' => $segments[1]]);
+        if (isset($segments[2]) && $segments[2] === 'hide') dispatch('service_requests.php', ['action' => 'hide', 'id' => $segments[1]]);
+        if (isset($segments[2]) && $segments[2] === 'unhide') dispatch('service_requests.php', ['action' => 'unhide', 'id' => $segments[1]]);
+        if (isset($segments[2]) && $segments[2] === 'notes') dispatch('service_requests.php', ['action' => 'notes', 'id' => $segments[1]]);
+        dispatch('service_requests.php');
+
     case 'service-requests':
         if (($segments[1] ?? '') === 'assignees') dispatch('service_requests.php', ['action' => 'assignees']);
         if (isset($segments[2]) && $segments[2] === 'status') dispatch('service_requests.php', ['action' => 'status', 'id' => $segments[1]]);

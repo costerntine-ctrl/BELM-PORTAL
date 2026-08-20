@@ -441,7 +441,7 @@ if ($action === 'sign-out' && $method === 'POST') {
             );
             try {
                 belm_send_customer_to_belm_alert(
-                    ['service-requests'],
+                    ['job-cards','service-requests'],
                     'OFFICIAL OPERATOR REPORT - ' . ($context['customer_name'] ?? 'Customer') . ' - ' . $machineLabel,
                     $bodyText . "
 

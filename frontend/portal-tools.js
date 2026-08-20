@@ -90,8 +90,8 @@
     "Invoices total": { sw: "Jumla ya ankara" },
     "Invoices outstanding": { sw: "Ankara zisizolipwa" },
     "SERVICE & SUPPORT": { sw: "HUDUMA NA MSAADA" },
-    "Total service requests": { sw: "Jumla ya maombi ya huduma" },
-    "Open service requests": { sw: "Maombi wazi ya huduma" },
+    "Total Job Cards": { sw: "Jumla ya maombi ya huduma" },
+    "Open Job Cards": { sw: "Maombi wazi ya huduma" },
     "Checklist reports": { sw: "Ripoti za ukaguzi" },
     "Containers handled": { sw: "Makontena yaliyoshughulikiwa" },
     "PER-MACHINE BREAKDOWN": { sw: "UCHAMBUZI WA KILA MASHINE" },
@@ -216,8 +216,8 @@
         <section class="belm-analysis-section">
           <h3>${belmT("SERVICE & SUPPORT")}</h3>
           <div class="belm-analysis-grid">
-            <div><span>${belmT("Total service requests")}</span><b>${sr.total ?? 0}</b></div>
-            <div><span>${belmT("Open service requests")}</span><b>${sr.open ?? 0}</b></div>
+            <div><span>${belmT("Total Job Cards")}</span><b>${sr.total ?? 0}</b></div>
+            <div><span>${belmT("Open Job Cards")}</span><b>${sr.open ?? 0}</b></div>
             <div><span>${belmT("Checklist reports")}</span><b>${data.checklistReportsCount ?? 0}</b></div>
             <div><span>${belmT("Containers handled")}</span><b>${data.totalContainersHandled ?? 0}</b></div>
           </div>
@@ -1199,7 +1199,7 @@
     }
 
     const serviceHeading = Array.from(document.querySelectorAll("h1,h2,h3"))
-      .find((el) => (el.textContent || "").trim() === "Your service requests");
+      .find((el) => (el.textContent || "").trim() === "Your Job Cards");
     if (serviceHeading) {
       serviceHeading.style.display = "none";
       if (serviceHeading.nextElementSibling) serviceHeading.nextElementSibling.style.display = "none";
@@ -1207,7 +1207,7 @@
 
     document.querySelectorAll("button,a").forEach((element) => {
       const text = (element.textContent || "").trim();
-      if (["+ Request service", "+ Request Service", "+ Spare & Service Request", "+ Add user", "+ Manage assistants"].includes(text)) {
+      if (["+ Request service", "+ Request Service", "+ Job Card & Service Parts", "+ Add user", "+ Manage assistants"].includes(text)) {
         element.style.display = "none";
       }
     });
@@ -2008,7 +2008,7 @@
       <div class="belm-machine-quick-actions">
         <a href="/customer-procurement/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Procurement</a>
         <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
-        <a href="/customer-service-request/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="service-request">Service Parts</a>
+        <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-view-operator-reports="${escapeHtml(machine.id)}">Report</button>
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Check Up</button>
@@ -2992,7 +2992,7 @@
         const needingAttention = (machines.yellow ?? 0) + (machines.red ?? 0);
         toolsEmailButton.dataset.reportMessage =
           `BELM Portal account report: ${machines.total ?? "—"} machine(s), ${needingAttention} needing attention. ` +
-          `Open service requests: ${data.serviceRequests?.open ?? "—"}. Checklist reports: ${data.checklistReportsCount ?? "—"}. ` +
+          `Open Job Cards: ${data.serviceRequests?.open ?? "—"}. Checklist reports: ${data.checklistReportsCount ?? "—"}. ` +
           `Procurement total: ${data.machineExpensesTotal != null ? `TZS ${Number(data.machineExpensesTotal).toLocaleString("en-TZ")}` : "—"}. ` +
           `Fuel top-up total: ${data.fuelCostTotal != null ? `TZS ${Number(data.fuelCostTotal).toLocaleString("en-TZ")}` : "—"}. ` +
           `Running hrs due for service: ${data.dueForServiceCount ?? "—"}.`;
@@ -3036,7 +3036,7 @@
           const target = actionButton.dataset.belmActionCenterTarget;
           if (target === "requests") {
             const requestsHeading = Array.from(document.querySelectorAll("h1,h2,h3"))
-              .find((el) => /service requests/i.test(el.textContent || ""));
+              .find((el) => /Job Cards/i.test(el.textContent || ""));
             requestsHeading?.scrollIntoView({ behavior: "smooth", block: "start" });
             return;
           }
@@ -3064,7 +3064,7 @@
     if (isCustomerOperatorRole()) return;
     if (window.location.pathname !== "/portal/dashboard") return;
     const heading = Array.from(document.querySelectorAll("h2"))
-      .find((h) => (h.textContent || "").trim() === "Your service requests");
+      .find((h) => (h.textContent || "").trim() === "Your Job Cards");
     if (!heading) return;
     const table = heading.parentElement?.querySelector("table");
     if (!table || table.dataset.belmHandledBy === "1") return;
@@ -3072,7 +3072,7 @@
     const token = localStorage.getItem("belm_customer_token");
     let requests;
     try {
-      const response = await fetch("/api/customer-portal/service-requests", {
+      const response = await fetch("/api/customer-portal/job-cards", {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) return;
@@ -3120,7 +3120,7 @@
           hideButton.disabled = true;
           hideButton.textContent = "Hiding…";
           try {
-            const response = await fetch(`/api/customer-portal/service-requests/${encodeURIComponent(request.id)}/hide`, {
+            const response = await fetch(`/api/customer-portal/job-cards/${encodeURIComponent(request.id)}/hide`, {
               method: "PUT",
               headers: { Authorization: `Bearer ${token}` },
             });
@@ -3138,12 +3138,12 @@
 
     // A small link above the table to view/restore anything hidden —
     // matches the same "still there, just tidied away" behaviour Admin
-    // already has for their own Service Request Manager.
+    // already has for their own Job Card Manager.
     if (!document.getElementById("belmShowHiddenRequestsLink")) {
       const link = document.createElement("button");
       link.id = "belmShowHiddenRequestsLink";
       link.type = "button";
-      link.textContent = "View hidden requests";
+      link.textContent = "View hidden Job Cards";
       link.className = "belm-show-hidden-requests-link";
       link.addEventListener("click", () => openHiddenRequestsDialog(token));
       heading.insertAdjacentElement("afterend", link);
@@ -3159,7 +3159,7 @@
       dialog.innerHTML = `
         <div class="belm-analysis-dialog-card">
           <div class="belm-analysis-head">
-            <span>HIDDEN SERVICE REQUESTS</span>
+            <span>HIDDEN JOB CARDS</span>
             <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
           </div>
           <div id="belmHiddenRequestsBody" class="belm-operator-reports-body"></div>
@@ -3171,7 +3171,7 @@
     body.innerHTML = '<p class="muted">Loading…</p>';
     dialog.showModal();
     try {
-      const response = await fetch("/api/customer-portal/service-requests?hidden=1", {
+      const response = await fetch("/api/customer-portal/job-cards?hidden=1", {
         headers: { Authorization: `Bearer ${token}` },
       });
       const hidden = response.ok ? await response.json() : [];
@@ -3179,7 +3179,7 @@
         ? hidden.map((request) => `
             <div class="belm-operator-report-row">
               <div class="belm-operator-report-head">
-                <b>${escapeHtml(request.description || request.serviceType || "Service request")}</b>
+                <b>${escapeHtml(request.description || request.serviceType || "Job Card")}</b>
                 <span class="belm-operator-report-status status-resolved">${escapeHtml(request.status)}</span>
               </div>
               <small>${formatTanzaniaDateTime(request.createdAt)}</small>
@@ -3190,7 +3190,7 @@
         button.addEventListener("click", async () => {
           button.disabled = true;
           try {
-            await fetch(`/api/customer-portal/service-requests/${encodeURIComponent(button.dataset.unhide)}/unhide`, {
+            await fetch(`/api/customer-portal/job-cards/${encodeURIComponent(button.dataset.unhide)}/unhide`, {
               method: "PUT",
               headers: { Authorization: `Bearer ${token}` },
             });
@@ -4081,7 +4081,7 @@
 
     const buttons = Array.from(document.querySelectorAll("button"));
     buttons
-      .filter(button => /^\s*\+\s*(?:Request service|Spare & Service Request)\s*$/i.test(button.textContent || ""))
+      .filter(button => /^\s*\+\s*(?:Request service|Job Card & Service Parts)\s*$/i.test(button.textContent || ""))
       .forEach(button => {
         button.hidden = true;
         button.dataset.belmReplacedByMachineService = "1";
@@ -5141,8 +5141,8 @@
   }
 
   function redirectServiceRequestManager() {
-    if (window.location.pathname === "/admin/service-requests") {
-      window.location.replace("/engineering-manager/#service-requests");
+    if (["/admin/job-cards", "/admin/service-requests"].includes(window.location.pathname)) {
+      window.location.replace("/engineering-manager/#job-cards");
     }
   }
 
@@ -5356,7 +5356,7 @@
 
     document.querySelectorAll("button").forEach((button) => {
       const text = (button.textContent || "").trim().toLowerCase();
-      if (text.includes("request service") || text.includes("spare & service request") || (text === "cancel" && button.classList.contains("text-red-600"))) {
+      if (text.includes("request service") || text.includes("spare & Job Card") || (text === "cancel" && button.classList.contains("text-red-600"))) {
         button.hidden = true;
         button.disabled = true;
       }

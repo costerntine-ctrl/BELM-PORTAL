@@ -471,7 +471,7 @@
     const roleLabel = isRoles ? rolePicker.options[rolePicker.selectedIndex].text : "";
 
     const confirmMessage = isCustomers
-      ? `This will permanently delete customer "${customerLabel}" and everything tied to them (their own machines, invoices, checklist reports, service requests). This cannot be undone. Continue?`
+      ? `This will permanently delete customer "${customerLabel}" and everything tied to them (their own machines, invoices, checklist reports, Job Cards). This cannot be undone. Continue?`
       : isMachineLog
         ? `This will permanently clear the hour meter readings, checklist logs and expense entries for "${machineLabel}". The machine record and customer stay untouched. This cannot be undone. Continue?`
         : isMachines

@@ -512,7 +512,7 @@ if ($method === 'POST' && $action === 'submit') {
         );
         try {
             $belmAlertResult = belm_send_customer_to_belm_alert(
-                ['service-requests'],
+                ['job-cards','service-requests'],
                 'BELM TECHNICIAN ' . $subject,
                 $bodyText
             );

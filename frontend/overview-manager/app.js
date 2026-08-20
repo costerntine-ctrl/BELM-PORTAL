@@ -55,7 +55,7 @@
       `${data.period?.label || "Selected period"} · ${data.period?.from || ""} → ${data.period?.to || ""}`;
     document.getElementById("actionMetrics").innerHTML = [
       metric("Registration approvals", number.format(totals.pendingApplications || 0), "Waiting for Administration decision", totals.pendingApplications ? "yellow" : "green"),
-      metric("Open service requests", number.format(totals.openRequests || 0), "Customer work still open", totals.openRequests ? "yellow" : "green"),
+      metric("Open Job Cards", number.format(totals.openRequests || 0), "Customer work still open", totals.openRequests ? "yellow" : "green"),
       metric("Pending tasks", number.format(totals.pendingTasks || 0), "Work waiting for completion", totals.pendingTasks ? "yellow" : "green"),
       metric("Low stock parts", number.format(totals.lowStockParts || 0), "At or below reorder point", totals.lowStockParts ? "red" : "green"),
     ].join("");

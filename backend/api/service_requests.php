@@ -6,7 +6,7 @@ $user = require_auth();
 // The shared Technician role is used by both BELM field technicians and
 // customer-owned technicians. In Customer Self-Service mode, technicians work
 // only inside the customer's machine/checklist/operator workflow; BELM's
-// central Service Requests workspace remains private. The customer explicitly
+// central Job Cards workspace remains private. The customer explicitly
 // opens a BELM support request from the Customer Portal when help is needed.
 if (($user['roleName'] ?? '') === 'Technician' && !empty($user['assignedCustomerId'])) {
     $modeStmt = db()->prepare(
@@ -17,16 +17,16 @@ if (($user['roleName'] ?? '') === 'Technician' && !empty($user['assignedCustomer
     $modeStmt->execute([(string)$user['id'], (string)$user['assignedCustomerId']]);
     $modeRow = $modeStmt->fetch();
     if ($modeRow && !empty($modeRow['is_machinery_admin']) && !empty($modeRow['is_customer_managed'])) {
-        json_error('BELM Service Requests workspace is not available to Customer Self-Service technicians.', 403);
+        json_error('BELM Job Cards workspace is not available to Customer Self-Service technicians.', 403);
     }
 }
-require_page_access($user, 'service-requests');
+require_any_page_access($user, ['job-cards','service-requests']);
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 $allowedStatuses = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
 
-// Records one entry in a service request's audit trail — every status
+// Records one entry in a Job Card's audit trail — every status
 // change and every (re)assignment, who did it, and when. This is what
 // "Opened -> Assigned -> In Progress -> Completed/Cancelled by ..." on
 // the History panel is built from.
@@ -62,7 +62,7 @@ function notify_service_request_customer(string $requestId, string $subject, str
             'SERVICE_REQUEST', $requestId, (string)($user['name'] ?? 'BELM')
         );
     } catch (Throwable $error) {
-        error_log('Service request customer notification failed: ' . $error->getMessage());
+        error_log('Job Card customer notification failed: ' . $error->getMessage());
     }
 }
 
@@ -209,8 +209,8 @@ if ($method === 'GET' && $action === 'daily-report') {
     unset($r);
 
     // V358: Daily Report must also show the technical Job Card report that the
-    // assigned Technician actually saved. The Service Request reaches COMPLETED
-    // only after Workshop testing, so using only final Service Request actions
+    // assigned Technician actually saved. The Job Card reaches COMPLETED
+    // only after Workshop testing, so using only final Job Card actions
     // hid a Technician report that may have been submitted hours/days earlier.
     // We expose the latest technical snapshot for Job Cards whose report was
     // updated on the selected Tanzania calendar date. No Job Card history/data is
@@ -312,7 +312,7 @@ if ($method === 'GET' && $action === 'history') {
     if ($requestId === '') json_error('requestId is required.');
     $stmt = db()->prepare('SELECT 1 FROM service_requests WHERE id = ?');
     $stmt->execute([$requestId]);
-    if (!$stmt->fetch()) json_error('Service request not found.', 404);
+    if (!$stmt->fetch()) json_error('Job Card not found.', 404);
 
     $stmt = db()->prepare(
         "SELECT 'STATUS' AS kind, event_type, from_value, to_value, actor_name, note, created_at
@@ -338,7 +338,7 @@ if ($method === 'GET' && $action === 'history') {
     json_out($timeline);
 }
 
-// V332 - downloadable Service Request History report. The PDF is generated
+// V332 - downloadable Job Card History report. The PDF is generated
 // from the same audit trail shown in the History dialog, so the screen and
 // downloaded record cannot drift apart. Notes are merged into the same timeline.
 if ($method === 'GET' && $action === 'history-pdf') {
@@ -366,7 +366,7 @@ if ($method === 'GET' && $action === 'history-pdf') {
     );
     $stmt->execute([$requestId]);
     $request = $stmt->fetch();
-    if (!$request) json_error('Service request not found.', 404);
+    if (!$request) json_error('Job Card not found.', 404);
 
     $historyStmt = db()->prepare(
         "SELECT 'STATUS' AS kind, event_type, from_value, to_value, actor_name, note, created_at
@@ -447,13 +447,13 @@ if ($method === 'GET' && $action === 'history-pdf') {
     $safeId = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$requestId) ?: 'request';
     output_table_pdf(
         'BELM-Service-Request-History-' . $safeCompany . '-' . $safeId . '.pdf',
-        'SERVICE REQUEST HISTORY REPORT',
+        'JOB CARD HISTORY REPORT',
         [
             'Generated: ' . date('d/m/Y H:i'),
             'Company: ' . $pdfText($request['customer_name'] ?? 'Unknown customer'),
             'Machine: ' . $pdfText($machine),
             'Serial / Registration: ' . $pdfText($request['serial_number'] ?: ($request['reg_number'] ?: 'Not recorded')),
-            'Service type: ' . $pdfText($request['service_type'] ?? 'Service request'),
+            'Job type: ' . $pdfText($request['service_type'] ?? 'Job Card'),
             'Priority: ' . $pdfText($request['priority'] ?? 'NORMAL'),
             'Current status: ' . $pdfText(str_replace('_', ' ', (string)($request['status'] ?? 'OPEN'))),
             'Assigned Technician: ' . $pdfText($request['technician_name'] ?? 'Unassigned'),
@@ -466,7 +466,7 @@ if ($method === 'GET' && $action === 'history-pdf') {
     );
 }
 
-// ---- Customer inbox: service requests + operator reports for ONE customer -
+// ---- Customer inbox: Job Cards + operator reports for ONE customer -
 if ($method === 'GET' && $action === 'customer-inbox') {
     $customerId = trim((string)($_GET['customerId'] ?? ''));
     if ($customerId === '') json_error('customerId is required.');
@@ -484,7 +484,7 @@ if ($method === 'GET' && $action === 'customer-inbox') {
         return [
             'type' => 'service-request',
             'id' => $row['id'],
-            'title' => 'Service Request' . ($row['machine_model'] ? " — {$row['machine_model']}" : ''),
+            'title' => 'Job Card' . ($row['machine_model'] ? " — {$row['machine_model']}" : ''),
             'detail' => $row['description'] ?: ($row['service_type'] ?: ''),
             'status' => $row['status'],
             'createdAt' => $row['created_at'],
@@ -619,21 +619,21 @@ if ($method === 'GET' && !$action) {
 if ($method === 'PUT' && $action === 'status') {
     $b = body();
     $status = strtoupper(trim((string)($b['status'] ?? '')));
-    if (!in_array($status, $allowedStatuses, true)) json_error('Invalid service request status.');
+    if (!in_array($status, $allowedStatuses, true)) json_error('Invalid Job Card status.');
 
     $stmt = db()->prepare('SELECT status,machine_id,assigned_to_id FROM service_requests WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
-    if (!$existing) json_error('Service request not found.', 404);
+    if (!$existing) json_error('Job Card not found.', 404);
     $previousStatus = $existing['status'];
     if (in_array($previousStatus, ['COMPLETED','CANCELLED'], true) && $status !== $previousStatus) {
-        json_error('A completed/cancelled Service Request cannot be reopened from this status control.', 409);
+        json_error('A completed/cancelled Job Card cannot be reopened from this status control.', 409);
     }
     if ($status === 'OPEN' && !empty($existing['assigned_to_id'])) {
-        json_error('Unassign the Technician first before returning this Service Request to OPEN.', 409);
+        json_error('Unassign the Technician first before returning this Job Card to OPEN.', 409);
     }
     if (in_array($status, ['ASSIGNED','IN_PROGRESS'], true) && empty($existing['assigned_to_id'])) {
-        json_error('Assign a Technician before setting this Service Request to ' . str_replace('_', ' ', $status) . '.', 409);
+        json_error('Assign a Technician before setting this Job Card to ' . str_replace('_', ' ', $status) . '.', 409);
     }
     if (!empty($existing['machine_id']) && in_array($status, ['OPEN','ASSIGNED','IN_PROGRESS'], true)) {
         $jobStateStmt = db()->prepare(
@@ -647,7 +647,7 @@ if ($method === 'PUT' && $action === 'status') {
         if ($jobState) {
             $jobStatus = strtoupper((string)($jobState['status'] ?? ''));
             if ($previousStatus !== $status && $status === 'OPEN' && !in_array($jobStatus, ['OPEN','RECEIVED'], true)) {
-                json_error('The linked Job Card has already been assigned/started. Keep the Service Request in progress and manage the work from Job Card Dispatch.', 409);
+                json_error('The linked Job Card has already been assigned/started. Keep the Job Card in progress and manage the work from Job Card Dispatch.', 409);
             }
             if ($previousStatus !== $status && $status === 'ASSIGNED' && !in_array($jobStatus, ['OPEN','RECEIVED','ASSIGNED'], true)) {
                 json_error('The linked Job Card has already started. Manage Technician handover from Job Card Dispatch.', 409);
@@ -658,7 +658,7 @@ if ($method === 'PUT' && $action === 'status') {
         }
     }
     if ($status === 'COMPLETED' && !empty($existing['machine_id'])) {
-        // Official machine Service Requests are one operational record with
+        // Official machine Job Cards are one operational record with
         // their Job Card. Ensure legacy requests receive a Job Card too, then
         // refuse completion until the technician has completed that card.
         belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
@@ -671,10 +671,10 @@ if ($method === 'PUT' && $action === 'status') {
         $jobCheck->execute([$id]);
         $jobStatus = strtoupper((string)($jobCheck->fetchColumn() ?: ''));
         if ($jobStatus !== 'COMPLETED') {
-            json_error('The Technician Job Card must be approved and Completed before closing this Service Request.', 409);
+            json_error('The Technician Job Card must be approved and Completed before closing this Job Card.', 409);
         }
         // V307: Technician completion only advances the operational case to
-        // TESTING. The Service Request must not be closed manually until the
+        // TESTING. The Job Card must not be closed manually until the
         // Workshop has actually accepted the test and closed the synced case.
         $caseCheck = db()->prepare(
             "SELECT status,current_stage FROM breakdown_cases
@@ -685,7 +685,7 @@ if ($method === 'PUT' && $action === 'status') {
         if (!$caseState
             || strtoupper((string)$caseState['status']) !== 'COMPLETED'
             || strtoupper((string)$caseState['current_stage']) !== 'COMPLETED') {
-            json_error('Job Card approval / Maintenance Process closure is still pending. Approve the Job Card before closing this Service Request.', 409);
+            json_error('Job Card approval / Maintenance Process closure is still pending. Approve the Job Card before closing this Job Card.', 409);
         }
     }
 
@@ -708,13 +708,13 @@ if ($method === 'PUT' && $action === 'status') {
         $stmt = db()->prepare('UPDATE service_requests SET status=?, updated_at=NOW() WHERE id=?');
         $stmt->execute([$status, $id]);
     }
-    if ($stmt->rowCount() === 0) json_error('Service request not found.', 404);
+    if ($stmt->rowCount() === 0) json_error('Job Card not found.', 404);
     if ($previousStatus !== $status) {
         log_service_request_history($id, 'STATUS', $previousStatus, $status, $user, trim((string)($b['note'] ?? '')) ?: null);
         notify_service_request_customer(
             (string)$id,
-            'Service Request Update — ' . str_replace('_', ' ', $status),
-            'BELM changed your service request status from ' . str_replace('_', ' ', $previousStatus) . ' to ' . str_replace('_', ' ', $status) . '.',
+            'Job Card Update — ' . str_replace('_', ' ', $status),
+            'BELM changed your Job Card status from ' . str_replace('_', ' ', $previousStatus) . ' to ' . str_replace('_', ' ', $status) . '.',
             $user
         );
     }
@@ -728,10 +728,10 @@ if ($method === 'PUT' && $action === 'assign') {
     $stmt = db()->prepare('SELECT customer_id, assigned_to_id, status FROM service_requests WHERE id = ?');
     $stmt->execute([$id]);
     $request = $stmt->fetch();
-    if (!$request) json_error('Service request not found.', 404);
+    if (!$request) json_error('Job Card not found.', 404);
 
     if (in_array((string)$request['status'], ['COMPLETED','CANCELLED'], true)) {
-        json_error('A completed/cancelled Service Request cannot be assigned again.', 409);
+        json_error('A completed/cancelled Job Card cannot be assigned again.', 409);
     }
 
     $linkedJobStmt = db()->prepare(
@@ -747,10 +747,10 @@ if ($method === 'PUT' && $action === 'assign') {
     // after assignment must go through Job Card Dispatch so handover is audited.
     if ($assignedToId === '') {
         if ($linkedJobStatus !== '' && !in_array($linkedJobStatus, ['OPEN','RECEIVED','ASSIGNED'], true)) {
-            json_error('This Service Request Job Card has already started. Use Job Card Dispatch/Workshop flow to change assignment.', 409);
+            json_error('This Job Card Job Card has already started. Use Job Card Dispatch/Workshop flow to change assignment.', 409);
         }
         if (!in_array((string)$request['status'], ['OPEN','ASSIGNED'], true)) {
-            json_error('Only an Open/Assigned Service Request can be unassigned. Put active work back through the Job Card/Workshop flow.', 409);
+            json_error('Only an Open/Assigned Job Card can be unassigned. Put active work back through the Job Card/Workshop flow.', 409);
         }
         db()->prepare(
             "UPDATE service_requests
@@ -767,7 +767,7 @@ if ($method === 'PUT' && $action === 'assign') {
     }
 
     if ($linkedJobStatus !== '' && !in_array($linkedJobStatus, ['OPEN','RECEIVED'], true)) {
-        json_error('This Service Request Job Card is already assigned/started. Change Technician from Job Card Dispatch so the handover remains auditable.', 409);
+        json_error('This Job Card Job Card is already assigned/started. Change Technician from Job Card Dispatch so the handover remains auditable.', 409);
     }
 
     $stmt = db()->prepare(
@@ -801,7 +801,7 @@ if ($method === 'PUT' && $action === 'assign') {
          WHERE id=?"
     )->execute([$assignedToId, $user['id'], $nextRequestStatus, $id]);
     $overrideNote = $isTemporaryOverride
-        ? 'TEMPORARY OVERRIDE - Technician home customer: ' . ($technician['home_customer_name'] ?: 'Unassigned') . '. This override applies to this service request only.'
+        ? 'TEMPORARY OVERRIDE - Technician home customer: ' . ($technician['home_customer_name'] ?: 'Unassigned') . '. This override applies to this Job Card only.'
         : null;
     log_service_request_history($id, 'ASSIGNMENT', $request['assigned_to_id'], $technician['name'], $user, $overrideNote);
     if ((string)$request['status'] !== $nextRequestStatus) {
@@ -810,17 +810,17 @@ if ($method === 'PUT' && $action === 'assign') {
     notify_service_request_customer(
         (string)$id,
         'Technician Assigned — ' . $technician['name'],
-        'BELM assigned Technician ' . $technician['name'] . ' to your service request.' . ($isTemporaryOverride ? ' This is a temporary job assignment.' : ''),
+        'BELM assigned Technician ' . $technician['name'] . ' to your Job Card.' . ($isTemporaryOverride ? ' This is a temporary job assignment.' : ''),
         $user
     );
     belm_sync_breakdown_case_from_service_request((string)$id, (string)($user['name'] ?? 'BELM'));
     json_out(['ok' => true]);
 }
 
-// V331 - one-click handoff from Service Requests to the operational Job Card.
+// V331 - one-click handoff from Job Cards to the operational Job Card.
 // The customer request already IS the Job Card source: description = work instructions.
 // OK/Activate verifies/repairs the linked Job Card and then removes the request from
-// the active Service Requests inbox. The request remains intact in History/HIDDEN and
+// the active Job Cards inbox. The request remains intact in History/HIDDEN and
 // the work continues in Engineering -> Job Cards.
 if ($method === 'PUT' && $action === 'activate-job-card') {
     $stmt = db()->prepare(
@@ -829,7 +829,7 @@ if ($method === 'PUT' && $action === 'activate-job-card') {
     );
     $stmt->execute([$id]);
     $request = $stmt->fetch();
-    if (!$request) json_error('Service request not found.', 404);
+    if (!$request) json_error('Job Card not found.', 404);
     if (empty($request['machine_id'])) {
         json_error('Select/link a machine before activating a Job Card.', 409);
     }
@@ -866,7 +866,7 @@ if ($method === 'PUT' && $action === 'activate-job-card') {
         }
 
         // Activation is the inbox handoff. Keep the source record for audit/customer
-        // history, but hide it from the active BELM Service Request inbox so there is
+        // history, but hide it from the active BELM Job Card inbox so there is
         // only one operational work item: the Digital Job Card.
         db()->prepare(
             'UPDATE service_requests
@@ -882,14 +882,14 @@ if ($method === 'PUT' && $action === 'activate-job-card') {
             'Activated '.$job['job_card_no'].' and handed work to Engineering Job Cards.'
         );
         // V338: make the Received process button auditable. The person who
-        // confirms the Service Request -> Job Card handoff is recorded on the
+        // confirms the Job Card -> Job Card handoff is recorded on the
         // same Breakdown Case timeline used by the Main Job Card Process UI.
         db()->prepare(
             'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,NOW())'
         )->execute([
             uuid(),(string)$caseId,'TECHNICIAN_ASSIGNMENT','Workshop / Dispatch',
             'Job Card '.$job['job_card_no'].' received by BELM / activation confirmed',
-            'Service Request handed to Engineering Job Cards.',
+            'Job Card handed to Engineering Job Cards.',
             'belm',$user['id']??null,$user['name']??'BELM'
         ]);
 
@@ -907,7 +907,7 @@ if ($method === 'PUT' && $action === 'activate-job-card') {
         ]);
     } catch (Throwable $error) {
         if ($error instanceof RuntimeException) throw $error;
-        error_log('Service Request Job Card activation failed: '.$error->getMessage());
+        error_log('Job Card Job Card activation failed: '.$error->getMessage());
         json_error('Could not activate the Job Card. Use Sync / Refresh and try again.', 500);
     }
 }
@@ -919,7 +919,7 @@ if ($method === 'PUT' && $action === 'hide') {
     $stmt = db()->prepare('SELECT status FROM service_requests WHERE id = ?');
     $stmt->execute([$id]);
     $existing = $stmt->fetch();
-    if (!$existing) json_error('Service request not found.', 404);
+    if (!$existing) json_error('Job Card not found.', 404);
     if (!in_array($existing['status'], ['COMPLETED', 'CANCELLED'], true)) {
         json_error('Only Completed or Cancelled requests can be hidden.');
     }
@@ -942,7 +942,7 @@ if ($method === 'POST' && $action === 'notes') {
     if ($note === '') json_error('Write a service note before saving.');
     $stmt = db()->prepare('SELECT 1 FROM service_requests WHERE id = ?');
     $stmt->execute([$id]);
-    if (!$stmt->fetch()) json_error('Service request not found.', 404);
+    if (!$stmt->fetch()) json_error('Job Card not found.', 404);
     db()->prepare('INSERT INTO service_notes (id, request_id, author, note, created_at) VALUES (?,?,?,?,NOW())')
         ->execute([uuid(), $id, $user['name'], $note]);
     json_out(['ok' => true], 201);

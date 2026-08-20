@@ -11,7 +11,7 @@
     ["customers", "Customers"],
     ["overview", "All Overview"],
     ["roles", "Roles & system users"],
-    ["service-requests", "Service requests"],
+    ["job-cards", "Job Cards"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
     ["bank-manager", "Bank Manager"],
@@ -126,7 +126,10 @@
       const pages = role.name === "Super Admin"
         ? "Full dashboard access"
         : (role.allowedPages || []).length
-          ? (role.allowedPages || []).map((page) => pageOptions.find(([key]) => key === page)?.[1] || page).join(", ")
+          ? (role.allowedPages || []).map((page) => {
+            const normalized = page === "service-requests" ? "job-cards" : page;
+            return pageOptions.find(([key]) => key === normalized)?.[1] || normalized;
+          }).filter((value, index, list) => list.indexOf(value) === index).join(", ")
           : "Technician app only / no admin dashboard pages";
       return `<article class="role-card">
         <h3>${escapeHtml(role.name)}</h3>
@@ -303,7 +306,7 @@
 
   function renderAllowedPages(selected = []) {
     document.getElementById("allowedPages").innerHTML = pageOptions.map(([key, label]) =>
-      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${selected.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>`
+      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${(selected.includes(key) || (key === "job-cards" && selected.includes("service-requests"))) ? "checked" : ""}> ${escapeHtml(label)}</label>`
     ).join("");
   }
 

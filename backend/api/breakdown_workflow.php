@@ -49,7 +49,7 @@ function bw_context(array $payload): array {
         $ownership->execute([(string)$user['id']]);
         $isCustomerManaged = !empty($ownership->fetchColumn());
     }
-    if (!$isTech) require_page_access($user, 'service-requests');
+    if (!$isTech) require_any_page_access($user, ['job-cards','service-requests']);
     return [
         'kind' => $isCustomerManaged ? 'customer-tech' : 'belm',
         'customerId' => (string)($user['assignedCustomerId'] ?? ''),
@@ -117,7 +117,7 @@ function bw_require_assigned_job(array $ctx, array $job): void {
     $jobTechId = trim((string)($job['technician_id'] ?? ''));
     if ($actorId !== '' && $jobTechId === $actorId) return;
 
-    // V342: legacy/interrupted Service Request sync can leave the source request
+    // V342: legacy/interrupted Job Card sync can leave the source request
     // assigned to the Technician while digital_job_cards.technician_id is still
     // NULL. Recover only that safe missing-assignment case; never override a Job
     // Card that is explicitly assigned to a different Technician.
@@ -731,7 +731,7 @@ if ($method === 'PUT' && $action === 'signed-job-card' && $id !== '') {
     if(!$job) json_error('Job Card not found.',404);
     $case=bw_case_access($ctx,(string)$job['case_id']);
     if (($case['source_type'] ?? '') !== 'SERVICE_REQUEST') {
-        json_error('Customer signed-copy upload is used for BELM Service Request Job Cards.', 422);
+        json_error('Customer signed-copy upload is used for BELM Job Cards.', 422);
     }
     if (strtoupper((string)$job['status']) !== 'COMPLETED') {
         json_error('Complete the Technician Job Card before uploading the customer-signed copy.', 409);
@@ -781,7 +781,7 @@ if ($method === 'GET' && $action === 'technician-jobs') {
     $actorId=trim((string)($ctx['actorId']??''));
     if($actorId==='') json_error('Technician account identity is missing. Please log in again.',401);
 
-    // V342 self-heal: Service Request assignment and Digital Job Card assignment
+    // V342 self-heal: Job Card assignment and Digital Job Card assignment
     // are one operational record. If an older/interrupted sync left the Job Card
     // without technician_id, repair it when that source request is assigned to
     // the logged-in Technician. Do not overwrite an explicit different assignee.
@@ -855,9 +855,9 @@ if ($method === 'GET' && $action === 'case' && $id !== '') {
         WHERE j.case_id=? ORDER BY j.created_at DESC'); $jobs->execute([$id]);
     $jobRows=$jobs->fetchAll();
 
-    // V336: an older/interrupted Service Request may already be ASSIGNED while
+    // V336: an older/interrupted Job Card may already be ASSIGNED while
     // the linked Job Card row is missing its copied Technician name/id. The
-    // Service Request assignment remains authoritative for that legacy case, so
+    // Job Card assignment remains authoritative for that legacy case, so
     // expose it as the effective assignment instead of showing "Select Technician".
     $sourceTechnicianId=''; $sourceTechnicianName='';
     if (strtoupper((string)($case['source_type'] ?? '')) === 'SERVICE_REQUEST' && !empty($case['source_id'])) {
@@ -1229,7 +1229,7 @@ Open Breakdown Workflow to approve or reject.");
         );
         try {
             $belmDelivery=belm_send_customer_to_belm_alert(
-                ['service-requests'],
+                ['job-cards','service-requests'],
                 'BELM TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'],
                 "Technician: {$ctx['actorName']}\nMachine: ".$case['brand'].' '.$case['model']."\nDiagnosis: $diagnosis\nWork done: $work\nStatus: $jobReportStatus".(($requiredSpare!==''||$activeSpareNames!=='')?"\nRequired spare: ".($requiredSpare?:$activeSpareNames):'')
             );
@@ -1312,7 +1312,7 @@ if ($method === 'PUT' && $action === 'stage' && $id !== '') {
         }
     }
     if ($stage === 'COMPLETED') {
-        // V307: a Service Request cannot skip the Technician Job Card / Workshop
+        // V307: a Job Card cannot skip the Technician Job Card / Workshop
         // test simply by moving the main process directly to COMPLETED.
         $jobCount = db()->prepare(
             "SELECT COUNT(*) AS total,
@@ -1324,7 +1324,7 @@ if ($method === 'PUT' && $action === 'stage' && $id !== '') {
         $totalJobs = (int)($jobs['total'] ?? 0);
         $completedJobs = (int)($jobs['completed'] ?? 0);
         if (($case['source_type'] ?? '') === 'SERVICE_REQUEST' && $totalJobs === 0) {
-            json_error('Create and complete the Service Request Job Card before Workshop closure.',409);
+            json_error('Create and complete the Job Card before Workshop closure.',409);
         }
         if ($totalJobs > 0 && $completedJobs !== $totalJobs) {
             json_error('All Job Cards must be completed before Workshop can return the machine to service.',409);

@@ -57,7 +57,7 @@ function bw_context(array $payload): array {
         'actorId' => (string)($user['id'] ?? ''), 'actorName' => (string)($user['name'] ?? 'BELM'),
         'isTechnician' => $isTech, 'isCustomerManaged' => $isCustomerManaged,
         'canOverrideTechnician' => !$isTech && belm_can_override_technician_customer($user),
-        'canApproveJob' => !$isTech && belm_user_has_named_role($user, ['Super Admin','Engineer']),
+        'canApproveJob' => !$isTech && belm_user_has_named_role($user, ['Super Admin','Engineer','Workshop Manager']),
     ];
 }
 
@@ -478,7 +478,7 @@ if ($method === 'GET' && $action === 'technicians') {
     // runs its own workshop, Customer Admin / Workshop Manager may assign only
     // customer-managed Technicians. When BELM is the active provider, the customer
     // does not receive BELM staff in this roster; Customer Admin sends a Job Card to
-    // BELM and BELM Admin/Engineer performs the BELM-side assignment.
+    // BELM and BELM Admin/Workshop Manager performs the BELM-side assignment.
     if ($ctx['kind']==='customer' && !$selfService) {
         json_out([]);
     }
@@ -934,7 +934,7 @@ if ($method === 'GET' && $action === '') {
                 $params[]=$ctx['actorId'];
             }
         } else {
-            // BELM Admin/Engineer normally sees provider-ON customers.
+            // BELM Admin/Workshop Manager normally sees provider-ON customers.
             // Exception: an official BELM Support Request is intentionally
             // visible even when the customer uses its own maintenance team.
             $where[]='(c.is_machinery_admin=0 OR bc.source_type=\'SERVICE_REQUEST\')';
@@ -957,15 +957,18 @@ if ($method === 'POST' && $action === 'case') {
 }
 
 if ($method === 'POST' && $action === 'job-card') {
-    if (bw_is_technician_actor($ctx)) json_error('Technicians cannot issue Job Cards. Workshop/Administration must issue and assign them.',403);
+    if (bw_is_technician_actor($ctx)) json_error('Technicians cannot issue or reassign Job Cards. Workshop/Administration must assign them.',403);
     $b=body(); $caseId=trim((string)($b['caseId']??'')); $case=bw_case_access($ctx,$caseId);
-    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Customer Admin or Workshop Manager can issue an internal Customer Job Card.',403);
-    if($ctx['kind']==='customer' && empty($case['is_machinery_admin'])) json_error('BELM is the active service provider for this customer. Customer staff cannot assign BELM employees. Customer Admin must send the Job Card to BELM Support, then BELM Admin/Engineer assigns a BELM Technician.',403);
+    $jobCardMode=strtolower(trim((string)($b['jobCardMode']??'auto')));
+    if(!in_array($jobCardMode,['auto','create','existing'],true)) json_error('Invalid Job Card source.',422);
+    if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Customer Admin or Workshop Manager can issue or reassign an internal Customer Job Card.',403);
+    if($ctx['kind']==='customer' && empty($case['is_machinery_admin'])) json_error('BELM is the active service provider for this customer. Customer staff cannot assign BELM employees. Customer Admin must send the Job Card to BELM, then BELM Admin/Workshop Manager assigns a BELM Technician.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate or assign Job Cards. Customer Admin / Workshop Manager must issue the Job Card.',403);
-    if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('This customer uses its own maintenance team. BELM can work here only after an official Job Card / Support Request is sent by Customer Admin.',403);
-    $techId=trim((string)($b['technicianId']??'')); $techName=null; $temporaryOverride=false; $techHomeName=null;
+    if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('This customer uses its own maintenance team. BELM can work here only after an official Customer Admin Job Card is sent to BELM.',403);
+
+    $techId=trim((string)($b['technicianId']??'')); $techName=null; $temporaryOverride=false; $techHomeName=null; $tech=null;
     if($techId!==''){
-        $t=db()->prepare("SELECT u.name,u.assigned_customer_id,u.is_customer_managed,hc.name AS home_customer_name
+        $t=db()->prepare("SELECT u.name,u.email,u.assigned_customer_id,u.is_customer_managed,hc.name AS home_customer_name
                           FROM users u JOIN roles r ON r.id=u.role_id
                           LEFT JOIN customers hc ON hc.id=u.assigned_customer_id
                           WHERE u.id=? AND u.is_active=1 AND u.deleted_at IS NULL
@@ -980,28 +983,71 @@ if ($method === 'POST' && $action === 'job-card') {
             if(!empty($tech['is_customer_managed'])) json_error('Customer-managed Technicians cannot be borrowed by BELM. Select a BELM Technician.',403);
             if($temporaryOverride) {
                 if(empty($b['temporaryOverride'])) json_error('Selected Technician belongs to another customer. Confirm Temporary Override for this Job Card.',409);
-                if(empty($ctx['canOverrideTechnician'])) json_error('Only BELM Super Admin or Engineer can use a Temporary Technician Override.',403);
+                if(empty($ctx['canOverrideTechnician'])) json_error('Only BELM Super Admin or Workshop Manager can use a Temporary Technician Override.',403);
             }
         } else {
+            if(empty($tech['is_customer_managed'])) json_error('Select one of this customer\'s own Technicians. BELM Technicians are assigned only by BELM Admin/Workshop Manager.',403);
             if($temporaryOverride || (string)$tech['assigned_customer_id']!==(string)$case['customer_id']) json_error('Selected Technician is not available for this customer.',403);
         }
     }
-    if($ctx['kind']==='customer' && $techId==='') json_error('Select one of your customer-managed Technicians before issuing this internal Job Card.',422);
+    if($ctx['kind']==='customer' && $techId==='') json_error('Select one of your customer-managed Technicians.',422);
+
     $title=trim((string)($b['title']??$case['title']));
     $jobLocation=trim((string)($b['jobLocation']??''));
     if($jobLocation==='') $jobLocation=trim((string)($case['customer_address']??''));
     $initialJobStatus=$techId!==''?'ASSIGNED':'RECEIVED';
-    // V314 - a case created FROM a customer's Service Request already gets
-    // its Job Card auto-issued the moment the request comes in (see
-    // belm_ensure_service_request_job_card()) — that's the one card
-    // Engineering "receives" per the intended flow: Customer Service
-    // Request -> BELM Engineering receives the Job Card -> BELM Admin
-    // assigns a Technician. This button had no check at all for that
-    // already-existing card and always inserted a brand new one, so
-    // every case with a Service-Request-issued card ended up with two
-    // Job Cards the moment anyone used this button too. Now: if an
-    // open (not completed/cancelled) Job Card already exists for this
-    // case, assign/update THAT one instead of creating a second.
+
+    // V413 - Customer Existing Job Card handover/reassignment.
+    // The same card remains the official work record; diagnosis, work history,
+    // parts and timeline are preserved when responsibility moves to another
+    // customer-managed Technician.
+    if($ctx['kind']==='customer' && $jobCardMode==='existing') {
+        if(strtoupper((string)($case['source_type']??''))==='SERVICE_REQUEST') json_error('This is an official Job Card sent to BELM. Only BELM Admin/Workshop Manager can reassign its BELM Technician.',403);
+        $requestedJobId=trim((string)($b['jobCardId']??''));
+        if($requestedJobId==='') json_error('Select an existing Job Card.',422);
+        $jobStmt=db()->prepare("SELECT id,job_card_no,title,status,technician_id,technician_name,job_location
+                                FROM digital_job_cards
+                                WHERE id=? AND case_id=? AND customer_id=? LIMIT 1");
+        $jobStmt->execute([$requestedJobId,$caseId,$case['customer_id']]);
+        $job=$jobStmt->fetch();
+        if(!$job) json_error('Selected Job Card was not found for this customer case.',404);
+        $currentStatus=strtoupper(trim((string)($job['status']??'')));
+        if(in_array($currentStatus,['PENDING_APPROVAL','COMPLETED','CANCELLED'],true)) json_error('This Job Card can no longer be reassigned. Pending Approval must be reviewed; Completed/Cancelled cards are closed.',409);
+        $previousTechnicianId=trim((string)($job['technician_id']??''));
+        $previousTechnicianName=trim((string)($job['technician_name']??''));
+        $reassigned=$previousTechnicianId!=='' && $previousTechnicianId!==$techId;
+        $sameAssignment=$previousTechnicianId!=='' && $previousTechnicianId===$techId;
+        $preservedStatus=in_array($currentStatus,['IN_PROGRESS','WAITING_FOR_PARTS'],true)?$currentStatus:'ASSIGNED';
+        db()->prepare("UPDATE digital_job_cards
+                       SET technician_id=?,technician_name=?,status=?,job_location=COALESCE(NULLIF(?,''),job_location),updated_at=NOW()
+                       WHERE id=?")
+            ->execute([$techId,$techName,$preservedStatus,$jobLocation,$requestedJobId]);
+        $handoverReason=trim((string)($b['handoverReason']??''));
+        $action=$reassigned
+            ? 'Customer Job Card '.$job['job_card_no'].' reassigned to '.$techName
+            : ($sameAssignment ? 'Customer Job Card '.$job['job_card_no'].' assignment confirmed for '.$techName : 'Customer Job Card '.$job['job_card_no'].' assigned to '.$techName);
+        $note=$reassigned
+            ? 'Handover from '.($previousTechnicianName?:'previous Technician').($handoverReason!==''?'. Reason: '.$handoverReason:'')
+            : ($handoverReason!==''?$handoverReason:'Customer workshop assignment.');
+        if(in_array($preservedStatus,['ASSIGNED','RECEIVED','OPEN'],true)) {
+            bw_set_stage($caseId,'JOB_CARD_ASSIGNED',null,$ctx,$action);
+            if($note!=='Customer workshop assignment.') bw_log($caseId,'JOB_CARD_ASSIGNED','Technician',$action,$note,$ctx);
+        } else {
+            bw_log($caseId,(string)($case['current_stage']?:'JOB_CARD_ASSIGNED'),(string)($case['current_department']?:'Technician'),$action,$note,$ctx);
+        }
+        try {
+            $email=trim((string)($tech['email']??''));
+            if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$job['job_card_no'],
+                "Job Card {$job['job_card_no']} has been ".($reassigned?'reassigned':'assigned')." to you by {$ctx['actorName']}.\n".
+                ($reassigned && $previousTechnicianName!==''?"Previous Technician: $previousTechnicianName\n":'').
+                ($handoverReason!==''?"Handover note: $handoverReason\n":'').
+                "Machine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'').
+                "\nFault: ".$case['description']."\nOpen Technician > My Job Cards. Existing Job Card history remains available.");
+        } catch(Throwable $e) {}
+        json_out(['id'=>$requestedJobId,'jobCardNo'=>$job['job_card_no'],'mode'=>'existing','reassigned'=>$reassigned,'previousTechnicianName'=>$previousTechnicianName?:null,'status'=>$preservedStatus],200);
+    }
+
+    // Create/legacy auto mode: one active Job Card per maintenance case.
     $existingJob = db()->prepare(
         "SELECT id, job_card_no, status, technician_id FROM digital_job_cards
          WHERE case_id = ? AND status NOT IN ('COMPLETED','CANCELLED')
@@ -1009,9 +1055,11 @@ if ($method === 'POST' && $action === 'job-card') {
     );
     $existingJob->execute([$caseId]);
     $existingJobRow = $existingJob->fetch();
+    $createdNew=false;
     if ($existingJobRow) {
+        if($jobCardMode==='create') json_error('An active Job Card already exists for this case. Select Existing Job Card to assign/reassign it instead of creating a duplicate.',409);
         if (!empty($existingJobRow['technician_id'] ?? null) || in_array(strtoupper((string)$existingJobRow['status']), ['ASSIGNED', 'IN_PROGRESS', 'WAITING_FOR_PARTS', 'PENDING_APPROVAL'], true)) {
-            json_error('Job Card '.$existingJobRow['job_card_no'].' already exists for this case and is already assigned. Use Technician Dispatch / handover instead of generating a new one.', 409);
+            json_error('Job Card '.$existingJobRow['job_card_no'].' already exists for this case and is already assigned. Select Existing Job Card / handover instead of generating a new one.', 409);
         }
         $jobId = (string)$existingJobRow['id'];
         $num = (string)$existingJobRow['job_card_no'];
@@ -1022,14 +1070,14 @@ if ($method === 'POST' && $action === 'job-card') {
         )->execute([$techId?:null,$techName?:null,$initialJobStatus,$jobLocation,$jobId]);
     } else {
         $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
-        $jobId=uuid();
+        $jobId=uuid(); $createdNew=true;
         db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,job_location,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$initialJobStatus,$jobLocation?:null,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind']),date('c')]);
     }
-    if ($ctx['kind']==='customer') {
+    if ($ctx['kind']==='customer' && $createdNew) {
         bw_log($caseId,'TECHNICIAN_ASSIGNMENT','Workshop','Digital Job Card '.$num.' created','Internal Customer Job Card - remains inside the customer workshop team.',$ctx);
     }
     if ($techId !== '') {
-        bw_set_stage($caseId,'JOB_CARD_ASSIGNED',null,$ctx,'Digital Job Card '.$num.' generated and assigned');
+        bw_set_stage($caseId,'JOB_CARD_ASSIGNED',null,$ctx,'Digital Job Card '.$num.($createdNew?' created and assigned':' assigned'));
     } else {
         bw_set_stage($caseId,'TECHNICIAN_ASSIGNMENT','Awaiting Technician Assignment',$ctx,'Digital Job Card '.$num.' generated - waiting Technician assignment');
     }
@@ -1038,9 +1086,9 @@ if ($method === 'POST' && $action === 'job-card') {
             'Home customer: '.($techHomeName ?: 'Unassigned').'. Override applies only to Job Card '.$num.'.', $ctx);
     }
     if ($techId!=='') {
-        try { $te=db()->prepare('SELECT email FROM users WHERE id=?'); $te->execute([$techId]); $email=trim((string)$te->fetchColumn()); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":"")."\nMachine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'')."\nFault: ".$case['description']."\nOpen Technician > My Job Cards."); } catch(Throwable $e) {}
+        try { $email=trim((string)($tech['email']??'')); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":'')."\nMachine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'')."\nFault: ".$case['description']."\nOpen Technician > My Job Cards."); } catch(Throwable $e) {}
     }
-    json_out(['id'=>$jobId,'jobCardNo'=>$num],201);
+    json_out(['id'=>$jobId,'jobCardNo'=>$num,'mode'=>$jobCardMode==='auto'?'create':$jobCardMode,'reassigned'=>false],201);
 }
 
 if ($method === 'POST' && $action === 'spare') {
@@ -1270,7 +1318,7 @@ if ($method === 'PUT' && $action === 'job-approval' && $id !== '') {
     if(bw_is_technician_actor($ctx)) json_error('Technicians cannot approve their own Job Cards.',403);
     $officialBelmJob=strtoupper((string)($job['source_type']??''))==='SERVICE_REQUEST' || $ctx['kind']==='belm';
     if($officialBelmJob){
-        if($ctx['kind']!=='belm' || empty($ctx['canApproveJob'])) json_error('BELM Super Admin or Engineer approval is required for this Job Card.',403);
+        if($ctx['kind']!=='belm' || empty($ctx['canApproveJob'])) json_error('BELM Super Admin or Workshop Manager approval is required for this Job Card.',403);
     }else{
         if($ctx['kind']!=='customer' || empty($ctx['canApproveJob']) || empty($job['is_machinery_admin'])) json_error('Customer Admin or Workshop Manager approval is required for this internal Job Card.',403);
     }

@@ -1,0 +1,8 @@
+BELM PORTAL V412 - JOB CARD SOURCE COLORS
+
+Technician Dispatch Job Card Source selector updated:
+- Select Existing Job Card: yellow when selected; yellow-accented neutral state when not selected.
+- Create Job Card: blue when selected; blue-accented neutral state when not selected.
+- Radio control accents match each option.
+- Selected styling is synchronized in JavaScript and also supported by CSS :has as a visual fallback.
+- Existing Job Card remains the default selection.

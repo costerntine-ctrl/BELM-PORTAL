@@ -790,7 +790,7 @@ if ($method === 'PUT' && $action === 'assign') {
             json_error('This Technician belongs to another customer. Confirm Temporary Override to assign this specific job.', 409);
         }
         if (!belm_can_override_technician_customer($user)) {
-            json_error('Only BELM Super Admin or Engineer can use a Temporary Technician Override.', 403);
+            json_error('Only BELM Super Admin or Workshop Manager can use a Temporary Technician Override.', 403);
         }
     }
 
@@ -879,7 +879,7 @@ if ($method === 'PUT' && $action === 'activate-job-card') {
             (string)$request['status'],
             (string)$job['status'],
             $user,
-            'Activated '.$job['job_card_no'].' and handed work to Engineering Job Cards.'
+            'Activated '.$job['job_card_no'].' and handed work to TECHNICAL DEP Job Cards.'
         );
         // V338: make the Received process button auditable. The person who
         // confirms the Job Card -> Job Card handoff is recorded on the
@@ -889,7 +889,7 @@ if ($method === 'PUT' && $action === 'activate-job-card') {
         )->execute([
             uuid(),(string)$caseId,'TECHNICIAN_ASSIGNMENT','Workshop / Dispatch',
             'Job Card '.$job['job_card_no'].' received by BELM / activation confirmed',
-            'Job Card handed to Engineering Job Cards.',
+            'Job Card handed to TECHNICAL DEP Job Cards.',
             'belm',$user['id']??null,$user['name']??'BELM'
         ]);
 

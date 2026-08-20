@@ -25,7 +25,7 @@ if ($isDispatchAction) {
 
 if ($method === 'GET' && $action === 'dispatch-options') {
     if (!belm_can_override_technician_customer($user)) {
-        json_error('Only BELM Super Admin or Engineer can use Technician Dispatch.', 403);
+        json_error('Only BELM Super Admin or Workshop Manager can use Technician Dispatch.', 403);
     }
 
     // V319: use the same authoritative reconciliation routine as the main
@@ -147,7 +147,7 @@ if ($method === 'GET' && $action === 'dispatch-options') {
 // It tracks the same Digital Job Card; no duplicate Job Card or parallel workflow is created.
 if ($method === 'GET' && $action === 'job-process') {
     if (!belm_can_override_technician_customer($user)) {
-        json_error('Only BELM Super Admin or Engineer can view the Job Card process board.', 403);
+        json_error('Only BELM Super Admin or Workshop Manager can view the Job Card process board.', 403);
     }
     $rows = db()->query(
         "SELECT j.id,j.job_card_no,j.status,j.started_at,j.completed_at,j.diagnosis,j.repeat_issue,j.updated_at,
@@ -220,7 +220,7 @@ if ($method === 'GET' && $action === 'job-process') {
 
 if ($method === 'POST' && $action === 'dispatch') {
     if (!belm_can_override_technician_customer($user)) {
-        json_error('Only BELM Super Admin or Engineer can use Technician Dispatch.', 403);
+        json_error('Only BELM Super Admin or Workshop Manager can use Technician Dispatch.', 403);
     }
     $b=body();
     $mode=strtolower(trim((string)($b['jobCardMode']??'existing')));

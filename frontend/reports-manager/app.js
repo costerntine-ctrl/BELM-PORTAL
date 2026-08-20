@@ -15,7 +15,9 @@
   const money = (value) => moneyFormatter.format(Number(value) || 0);
   const number = (value) => numberFormatter.format(Number(value) || 0);
 
-  async function api(path, options = {}) {
+  function displayRoleName(name) { return name === "Engineer" ? "Workshop Manager" : (name || ""); }
+
+async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
       cache: "no-store",
@@ -129,7 +131,7 @@
         <tbody>${roles.map((role) => {
           const total = Number(role.pendingTasks || 0) + Number(role.completedTasks || 0);
           const completion = total ? `${(Number(role.completedTasks || 0) / total * 100).toFixed(0)}%` : "—";
-          return `<tr><td><strong>${escapeHtml(role.name)}</strong></td><td>${number(role.activeUsers)}</td><td>${number(role.activities)}</td>
+          return `<tr><td><strong>${escapeHtml(displayRoleName(role.name))}</strong></td><td>${number(role.activeUsers)}</td><td>${number(role.activities)}</td>
           <td>${number(role.pendingTasks)}</td><td>${number(role.completedTasks)}</td><td>${completion}</td></tr>`;
         }).join("")}</tbody></table>`
       : '<div class="empty-state">No role activity recorded for this period.</div>';
@@ -192,7 +194,7 @@
         ? `<table><thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>Check in</th><th>Check out</th><th>Notes</th><th class="no-print">Action</th></tr></thead>
           <tbody>${employees.map((employee) => `<tr data-user="${escapeHtml(employee.userId)}">
             <td><strong>${escapeHtml(employee.name)}</strong><br><small>${escapeHtml(employee.email)}</small></td>
-            <td>${escapeHtml(employee.roleName)}</td>
+            <td>${escapeHtml(displayRoleName(employee.roleName))}</td>
             <td><select data-field="status">
               ${["NOT_RECORDED", "PRESENT", "LATE", "ABSENT", "LEAVE", "REMOTE"].map((status) =>
                 `<option value="${status}" ${status === employee.status ? "selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}

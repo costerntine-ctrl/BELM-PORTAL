@@ -26,12 +26,15 @@
   const isProcurement=isBelmAdmin||isOwner||customerRole==='procurement';
   const isAccounts=isBelmAdmin||isOwner||customerRole==='accounts';
   const isTechnician=source==='tech';
-  const adminJobCardsDispatchOnly=Boolean(isBelmAdmin&&embedded);
+  const requestedView=String(params.get('view')||'').toLowerCase();
+  const adminWorkshopAnalysisOnly=Boolean(isBelmAdmin&&embedded&&requestedView==='analysis');
+  const adminJobCardsDispatchOnly=Boolean(isBelmAdmin&&embedded&&!adminWorkshopAnalysisOnly);
   if(adminJobCardsDispatchOnly)document.documentElement.classList.add('admin-job-cards-dispatch-only');
+  if(adminWorkshopAnalysisOnly)document.documentElement.classList.add('admin-workshop-analysis-only');
 
-  // V320: BELM staff use one Maintenance Process owner only: Engineering > Job Cards.
+  // V320: BELM staff use one Maintenance Process owner only: TECHNICAL DEP > Job Card.
   // Customer workflow remains standalone for customer teams, while any legacy admin
-  // bookmark is folded back into Engineering. Embedded mode is the canonical admin view.
+  // bookmark is folded back into TECHNICAL DEP. Embedded mode is the canonical admin view.
   if(isBelmAdmin&&!embedded){
     const target=new URL('/engineering-manager/',location.origin);
     if(machineFilter)target.searchParams.set('machine',machineFilter);
@@ -221,6 +224,7 @@
   }
   function syncJobCardSource(){
     const existing=dispatchMode()==='existing';
+    document.querySelectorAll('.workflow-job-source .job-source-option').forEach(label=>{const radio=label.querySelector('input[name="jobCardMode"]');label.classList.toggle('is-selected',Boolean(radio?.checked));});
     document.getElementById('receivedJobCardField')?.classList.toggle('hidden',!existing);
     document.getElementById('dispatchJobCardNoField')?.classList.toggle('hidden',!existing);
     document.getElementById('dispatchMachineField')?.classList.toggle('hidden',existing);
@@ -448,11 +452,11 @@
 
     if(key==='RECEIVED'){
       const officialBelmJob=String(c.sourceType||'').toUpperCase()==='SERVICE_REQUEST';
-      const receivedBy=receivedEvent?.actor_name||(officialBelmJob?'BELM Engineering / automatic receipt':(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer Workshop'));
+      const receivedBy=receivedEvent?.actor_name||(officialBelmJob?'BELM TECHNICAL DEP / automatic receipt':(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer Workshop'));
       const receivedAt=receivedEvent?.created_at||mainJob.issued_at||mainJob.created_at;
       const canAssign=isBelmAdmin&&!['COMPLETED','CANCELLED'].includes(jobStatus);
       const assignControl=canAssign?`<label class="main-job-tech-control stage-tech-control"><span>${techName?'Assigned Technician':'Assign Technician'}</span><select class="main-job-technician-select" data-job-id="${esc(mainJob.id)}" data-current-technician-id="${esc(techId)}" data-current-technician-name="${esc(techName)}"><option value="${esc(techId)}">${techName?esc(techName+' · ASSIGNED'):'Loading Technicians...'}</option></select><small class="main-job-tech-status">${techName?`Assigned to ${esc(techName)}. Select another Technician only to reassign.`:'Select a Technician to assign this Job Card.'}</small></label>`:'';
-      return `<div class="stage-detail-head"><div><span>STAGE 1</span><h4>${officialBelmJob?'Received by BELM':'Created'}</h4></div><span class="pill green">${officialBelmJob?'RECEIVED':'CREATED'}</span></div><div class="stage-detail-grid">${info('Job Card',esc(mainJob.job_card_no||'-'))}${info(officialBelmJob?'Received by':'Created by',esc(receivedBy))}${info(officialBelmJob?'Received at':'Created at',fmtDate(receivedAt))}${info('Issued by',esc(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer'))}</div>${receivedEvent?note(receivedEvent):(officialBelmJob?'<div class="stage-detail-event"><b>Automatic BELM receipt</b><p>This Job Card was synchronized into Engineering from its source request.</p></div>':'<div class="stage-detail-event"><b>Customer workshop Job Card</b><p>This Job Card stays inside the customer team unless Customer Admin sends a separate official Job Card to BELM.</p></div>')}${assignControl}`;
+      return `<div class="stage-detail-head"><div><span>STAGE 1</span><h4>${officialBelmJob?'Received by BELM':'Created'}</h4></div><span class="pill green">${officialBelmJob?'RECEIVED':'CREATED'}</span></div><div class="stage-detail-grid">${info('Job Card',esc(mainJob.job_card_no||'-'))}${info(officialBelmJob?'Received by':'Created by',esc(receivedBy))}${info(officialBelmJob?'Received at':'Created at',fmtDate(receivedAt))}${info('Issued by',esc(mainJob.issued_by_name||mainJob.generated_by_name||c.customerName||'Customer'))}</div>${receivedEvent?note(receivedEvent):(officialBelmJob?'<div class="stage-detail-event"><b>Automatic BELM receipt</b><p>This Job Card was synchronized into TECHNICAL DEP from its source Job Card.</p></div>':'<div class="stage-detail-event"><b>Customer workshop Job Card</b><p>This Job Card stays inside the customer team unless Customer Admin sends a separate official Job Card to BELM.</p></div>')}${assignControl}`;
     }
     if(key==='ASSIGNED'){
       return `<div class="stage-detail-head"><div><span>STAGE 2</span><h4>Assigned Technician</h4></div><span class="pill yellow">${techName?'ASSIGNED':'WAITING'}</span></div><div class="stage-detail-grid">${info('Technician',esc(techName||'Not assigned yet'))}${info('Assigned by',esc(assignedEvent?.actor_name||'-'))}${info('Assigned at',assignedEvent?fmtDate(assignedEvent.created_at):'-')}${info('Job status',esc(jobStatus||'RECEIVED'))}</div>${note(assignedEvent)}`;
@@ -525,7 +529,7 @@
       <div class="workflow-focus ${focusClass}"><div><span>CURRENT PROCESS OWNER</span><strong>${focusTitle}</strong><small>Waiting here: ${esc(duration(c.stageHours))}${c.delayed?` · SLA exceeded by ${esc(duration(c.delayHours))}`:''}</small></div><div class="workflow-focus-reason"><span>WHY / BLOCKER</span><b>${blockerText}</b></div></div>
       <div class="status-box"><div><span>Breakdown Time</span><b>${esc(duration(c.breakdownHours))}</b></div><div><span>Current Stage</span><b>${esc(c.stage.replaceAll('_',' '))}</b></div><div><span>Department</span><b>${esc(c.department)}</b></div><div><span>Waiting Here</span><b>${esc(duration(c.stageHours))}</b></div></div>
       ${processHtml}
-      <div class="actions workflow-primary-actions">${isWorkshop&&c.status!=='COMPLETED'&&d.jobCards.length===0&&(source!=='customer'||c.customerManagesWorkshop)?'<button class="blue" id="generateJob">+ Digital Job Card</button>':''}${source==='customer'&&isCustomerAdmin&&c.status!=='COMPLETED'&&d.jobCards.length===0&&!c.customerManagesWorkshop?'<button class="blue" id="sendJobToBelm">Send Job Card to BELM</button>':''}</div>
+      <div class="actions workflow-primary-actions">${isWorkshop&&c.status!=='COMPLETED'&&(source!=='customer'||(c.customerManagesWorkshop&&!officialBelmJob))&&(!mainJob||!['PENDING_APPROVAL','COMPLETED','CANCELLED'].includes(jobStatus))?`<button class="${source==='customer'&&mainJob?'yellow':'blue'}" id="generateJob">${source==='customer'&&mainJob?'Manage / Reassign Job Card':'+ Digital Job Card'}</button>`:''}${source==='customer'&&isCustomerAdmin&&c.status!=='COMPLETED'&&d.jobCards.length===0&&!c.customerManagesWorkshop?'<button class="blue" id="sendJobToBelm">Send Job Card to BELM</button>':''}</div>
       <div class="workflow-tabs" role="tablist"><button type="button" class="active" data-workflow-tab="overview">Overview</button><button type="button" data-workflow-tab="jobs">Job Cards <span>${d.jobCards.length}</span></button><button type="button" data-workflow-tab="spares">Spares <span>${d.spares.length}</span></button><button type="button" data-workflow-tab="timeline">Timeline <span>${d.events.length}</span></button></div>
       <section class="workflow-tab-panel active" data-workflow-panel="overview">${mainJobHtml}<div class="workflow-overview-grid"><div><span>Reported issue</span><b>${esc(c.description||c.title||'-')}</b></div><div><span>Next responsible team</span><b>${esc(c.department)}</b></div><div><span>Open Job Cards</span><b>${d.jobCards.filter(j=>j.status!=='COMPLETED').length}</b></div><div><span>Open Spare Requests</span><b>${d.spares.filter(s=>!['REJECTED','PARTS_READY'].includes(s.status)).length}</b></div></div></section>
       <section class="workflow-tab-panel" data-workflow-panel="jobs"><div class="section tab-section collapsible-section" data-collapsible-section="jobs"><div class="section-head"><h3>Digital Job Cards</h3><button type="button" class="section-toggle" data-collapse-panel="jobs" aria-expanded="true">Hide</button></div><div class="section-content" data-collapse-content="jobs">${jobsHtml}</div></div></section>
@@ -662,6 +666,52 @@
       show(x.message,true);
     }
   }
+  function customerJobMode(){return document.querySelector('input[name="customerJobCardMode"]:checked')?.value||'create'}
+  function customerActiveJobs(){
+    return (selected?.jobCards||[]).filter(job=>!['PENDING_APPROVAL','COMPLETED','CANCELLED'].includes(String(job.status||'').toUpperCase()));
+  }
+  function selectedCustomerExistingJob(){
+    const id=String(document.getElementById('jobExistingCard')?.value||'');
+    return customerActiveJobs().find(job=>String(job.id)===id)||null;
+  }
+  function syncCustomerExistingJobAssignment(){
+    const job=selectedCustomerExistingJob();
+    const techSelect=document.getElementById('jobTechnician');
+    const help=document.getElementById('jobExistingHelp');
+    if(!job){if(help)help.textContent='Choose an active customer Job Card to assign or reassign.';return}
+    const currentId=String(job.technician_id||job.technicianId||'');
+    const currentName=String(job.technician_name||job.technicianName||'').trim();
+    if(techSelect&&currentId&&jobTechnicians.some(x=>String(x.id)===currentId))techSelect.value=currentId;
+    if(help)help.textContent=currentId?`${job.job_card_no||job.jobCardNo} is currently assigned to ${currentName||'a Technician'}. Select another Technician to hand over/reassign this same Job Card.`:`${job.job_card_no||job.jobCardNo} is not assigned yet. Select one of your Technicians.`;
+  }
+  function updateCustomerJobSourceUi(){
+    const mode=customerJobMode();
+    const jobs=customerActiveJobs();
+    const existingField=document.getElementById('customerExistingJobField');
+    const titleField=document.getElementById('customerJobTitleField');
+    const reasonField=document.getElementById('customerHandoverReasonField');
+    const titleInput=document.getElementById('jobTitle');
+    const submit=document.getElementById('jobGenerateSubmit');
+    const existingRadio=document.querySelector('input[name="customerJobCardMode"][value="existing"]');
+    const createRadio=document.querySelector('input[name="customerJobCardMode"][value="create"]');
+    if(existingRadio)existingRadio.disabled=jobs.length===0;
+    if(createRadio)createRadio.disabled=jobs.length>0;
+    if(existingField)existingField.classList.toggle('hidden',mode!=='existing');
+    if(titleField)titleField.classList.toggle('hidden',mode==='existing');
+    if(reasonField)reasonField.classList.toggle('hidden',mode!=='existing');
+    if(titleInput)titleInput.required=mode!=='existing';
+    if(submit)submit.textContent=mode==='existing'?'Assign / Reassign Job Card':'Create Job Card';
+    document.querySelectorAll('.customer-job-source .job-source-option').forEach(label=>label.classList.toggle('is-selected',Boolean(label.querySelector('input:checked'))));
+    if(mode==='existing')syncCustomerExistingJobAssignment();
+  }
+  function populateCustomerExistingJobs(){
+    const select=document.getElementById('jobExistingCard');
+    const jobs=customerActiveJobs();
+    if(!select)return jobs;
+    select.innerHTML=jobs.length?jobs.map(job=>{const status=String(job.status||'').replaceAll('_',' ');const tech=String(job.technician_name||job.technicianName||'').trim();return `<option value="${esc(job.id)}">${esc(job.job_card_no||job.jobCardNo||'Job Card')} · ${esc(status)}${tech?` · ${esc(tech)}`:''}</option>`}).join(''):'<option value="">No active Job Card</option>';
+    return jobs;
+  }
+
   async function loadJobTechnicians(showToast=false){
     const select=document.getElementById('jobTechnician');
     const status=document.getElementById('jobTechSyncStatus');
@@ -671,16 +721,17 @@
     if(status)status.textContent='Syncing...';
     try{
       jobTechnicians=await api(`/technicians?customerId=${encodeURIComponent(selected.case.customerId)}&_=${Date.now()}`);
-      select.innerHTML='<option value="">Unassigned</option>'+jobTechnicians.map(x=>{
+      select.innerHTML='<option value="">Select Technician...</option>'+jobTechnicians.map(x=>{
         const home=x.assignedCustomerName?` · Home: ${x.assignedCustomerName}`:'';
         const tag=x.temporaryForCustomer?' · TEMP OVERRIDE':'';
         return `<option value="${esc(x.id)}">${esc(x.name+home+tag)}</option>`;
       }).join('');
       if(status)status.textContent=jobTechnicians.length?`${jobTechnicians.length} technician${jobTechnicians.length===1?'':'s'} synced`:'0 technicians synced';
+      if(customerJobMode()==='existing')syncCustomerExistingJobAssignment();
       if(showToast)show(jobTechnicians.length?`Customer team synced: ${jobTechnicians.length} Technician${jobTechnicians.length===1?'':'s'}.`:'No customer-managed Technician is available. Customer Admin can send the Job Card to BELM instead.',!jobTechnicians.length);
     }catch(x){
       jobTechnicians=[];
-      select.innerHTML='<option value="">Unassigned</option>';
+      select.innerHTML='<option value="">Select Technician...</option>';
       if(status)status.textContent='Sync failed';
       show(`Technician sync failed: ${x.message}`,true);
     }finally{if(btn)btn.disabled=false;}
@@ -688,16 +739,25 @@
   async function openJob(){
     document.getElementById('jobCaseId').value=selected.case.id;
     document.getElementById('jobTitle').value=selected.case.title;
+    document.getElementById('jobHandoverReason').value='';
+    const jobs=populateCustomerExistingJobs();
+    const existingRadio=document.querySelector('input[name="customerJobCardMode"][value="existing"]');
+    const createRadio=document.querySelector('input[name="customerJobCardMode"][value="create"]');
+    if(jobs.length){existingRadio.checked=true;createRadio.checked=false}else{existingRadio.checked=false;createRadio.checked=true}
     const note=document.getElementById('jobOverrideNote');
     if(note){note.classList.add('hidden');note.textContent='';}
     // Only Customer Admin/Owner may issue the official machine Job Card to BELM.
-    // Workshop Manager can issue internal Customer Job Cards to the customer's own
-    // team, but cannot assign BELM personnel or send a Job Card directly to BELM.
+    // Workshop Manager can issue/reassign internal Customer Job Cards to the customer's
+    // own team, but cannot assign BELM personnel or send a Job Card directly to BELM.
     const sendRow=document.getElementById('jobSendToBelm')?.closest('.belm-send-row');
     if(sendRow) sendRow.classList.toggle('hidden', !isCustomerAdmin);
+    updateCustomerJobSourceUi();
     document.getElementById('jobDialog').showModal();
     await loadJobTechnicians(false);
+    updateCustomerJobSourceUi();
   }
+  document.querySelectorAll('input[name="customerJobCardMode"]').forEach(input=>input.addEventListener('change',updateCustomerJobSourceUi));
+  document.getElementById('jobExistingCard')?.addEventListener('change',syncCustomerExistingJobAssignment);
   document.getElementById('jobTechSync')?.addEventListener('click',()=>loadJobTechnicians(true));
   function sendSelectedCaseToBelm(){
     if(!isCustomerAdmin){show('Only Customer Admin can send a machine Job Card to BELM.',true);return}
@@ -725,31 +785,43 @@
     if(isGeneratingJobCard)return;
     isGeneratingJobCard=true;
     const submitBtn=document.getElementById('jobGenerateSubmit');
-    const originalLabel=submitBtn.textContent;
-    submitBtn.disabled=true;
-    submitBtn.textContent='Generating…';
     try{
+      const mode=customerJobMode();
       const techId=document.getElementById('jobTechnician').value;
       const tech=jobTechnicians.find(x=>String(x.id)===String(techId));
-      const temporaryOverride=Boolean(tech?.temporaryForCustomer);
-      if(temporaryOverride&&!confirm(`${tech.name} is attached to ${tech.assignedCustomerName||'another customer'}. Use Temporary Override for this Job Card only?`)){
-        submitBtn.disabled=false;submitBtn.textContent=originalLabel;isGeneratingJobCard=false;return;
+      if(!techId||!tech)throw new Error('Select one of your customer Technicians.');
+      const existingJob=mode==='existing'?selectedCustomerExistingJob():null;
+      if(mode==='existing'&&!existingJob)throw new Error('Select an existing Job Card.');
+      const previousId=String(existingJob?.technician_id||existingJob?.technicianId||'');
+      const previousName=String(existingJob?.technician_name||existingJob?.technicianName||'').trim();
+      if(mode==='existing'&&previousId&&previousId!==String(techId)&&!confirm(`${existingJob.job_card_no||existingJob.jobCardNo} is assigned to ${previousName||'another Technician'}. Reassign this same Job Card to ${tech.name}? Existing diagnosis/history will remain on the Job Card.`)){
+        isGeneratingJobCard=false;return;
       }
-      const r=await api('/job-card',{method:'POST',body:JSON.stringify({caseId:document.getElementById('jobCaseId').value,title:document.getElementById('jobTitle').value,technicianId:techId,temporaryOverride})});
-      submitBtn.textContent='✓ Sent';
+      const title=mode==='create'?document.getElementById('jobTitle').value.trim():String(existingJob?.title||selected.case.title||'Job Card');
+      if(mode==='create'&&!title)throw new Error('Enter the Job Card title.');
+      setActionButtonState(submitBtn,'busy',mode==='existing'?'Reassigning...':'Creating...');
+      const r=await api('/job-card',{method:'POST',body:JSON.stringify({
+        caseId:document.getElementById('jobCaseId').value,title,technicianId:techId,
+        jobCardMode:mode,jobCardId:existingJob?.id||'',handoverReason:document.getElementById('jobHandoverReason').value.trim()
+      })});
+      setActionButtonState(submitBtn,'success',mode==='existing'?(r.reassigned?'✓ Reassigned':'✓ Assignment Confirmed'):'✓ Created');
       await new Promise(resolve=>setTimeout(resolve,900));
       document.getElementById('jobForm').reset();
       document.getElementById('jobDialog').close();
-      show(`Job Card ${r.jobCardNo} generated${temporaryOverride?' with Temporary Override':''}.`);
+      show(mode==='existing'?`${r.jobCardNo} ${r.reassigned?'reassigned':'assignment confirmed'} for ${tech.name}. Previous Job Card history has been kept.`:`Job Card ${r.jobCardNo} created and assigned to ${tech.name}.`);
       await load();await openCase(selected.case.id);
-    }catch(x){show(x.message,true)}
-    finally{submitBtn.disabled=false;submitBtn.textContent=originalLabel;isGeneratingJobCard=false;}
+    }catch(x){setActionButtonState(submitBtn,'error','Try Again');show(x.message,true)}
+    finally{window.setTimeout(()=>setActionButtonState(submitBtn,'idle'),900);isGeneratingJobCard=false;}
   };
   document.getElementById('spareForm').onsubmit=async e=>{e.preventDefault();try{await api('/spare',{method:'POST',body:JSON.stringify({caseId:document.getElementById('spareCaseId').value,jobCardId:document.getElementById('spareForm').dataset.jobCardId||'',spareName:document.getElementById('spareName').value,partNumber:document.getElementById('sparePart').value,quantity:Number(document.getElementById('spareQty').value),unit:document.getElementById('spareUnit').value,reason:document.getElementById('spareReason').value})});document.getElementById('spareDialog').close();show('Spare request sent to Administration for approval.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function approveSpare(id,approve){const note=prompt(approve?'Administration approval note (optional):':'Reason for rejection:')||'';try{await api(`/approve-spare/${id}`,{method:'PUT',body:JSON.stringify({approve,note})});show(approve?'Spare approved by Administration.':'Spare request rejected.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}}
   document.getElementById('techReportForm').onsubmit=async e=>{e.preventDefault();try{await api(`/job-report/${document.getElementById('techJobId').value}`,{method:'PUT',body:JSON.stringify({diagnosis:document.getElementById('techDiagnosis').value,workDone:document.getElementById('techWork').value,testResult:document.getElementById('techTest').value,completionNote:document.getElementById('techNote').value,repeatIssue:document.getElementById('techRepeat').checked,complete:document.getElementById('techComplete').checked})});document.getElementById('techReportDialog').close();show(document.getElementById('techComplete').checked?'Digital Job Card submitted for approval.':'Digital Job Card progress saved.');await load();await openCase(selected.case.id)}catch(x){show(x.message,true)}};
   async function loadPerformance(){try{const rows=await api('/performance');document.getElementById('performanceGrid').innerHTML=rows.length?rows.map(r=>`<article class="tech-card"><strong>${esc(r.technicianName)}</strong><div class="metrics"><div><span>Completed</span><b>${r.completedJobs}/${r.totalJobs}</b></div><div><span>Completion rate</span><b>${r.completionRate}%</b></div><div><span>First-time fix</span><b>${r.firstTimeFixRate}%</b></div><div><span>Avg resolution</span><b>${duration(r.avgResolutionHours)}</b></div><div><span>Repeat / rework</span><b>${r.repeatJobs}</b></div></div></article>`).join(''):'<div class="empty">No completed Job Card data yet.</div>'}catch(x){document.getElementById('performanceGrid').innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
   async function load(){
+    if(adminWorkshopAnalysisOnly){
+      await Promise.allSettled([loadPerformance(),loadDepartmentReport()]);
+      return;
+    }
     if(adminJobCardsDispatchOnly){
       try{
         await Promise.all([loadDispatchOptions({announce:false,syncSources:true}),loadJobProcess()]);
@@ -814,7 +886,9 @@
     if(window.ResizeObserver)new ResizeObserver(reportEmbedHeight).observe(document.body);
     window.setTimeout(reportEmbedHeight,100);
   }
-  initTechnicianDispatch();loadMachines();load();
+  if(!adminWorkshopAnalysisOnly)initTechnicianDispatch();
+  if(!adminWorkshopAnalysisOnly)loadMachines();
+  load();
   if(adminJobCardsDispatchOnly){
     window.addEventListener('focus',loadJobProcess);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadJobProcess()});

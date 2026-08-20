@@ -11,7 +11,9 @@
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
   })[character]);
 
-  async function api(path) {
+  function displayRoleName(name) { return name === "Engineer" ? "Workshop Manager" : (name || ""); }
+
+async function api(path) {
     const response = await fetch(`/api${path}`, {
       cache: "no-store",
       headers: { Authorization: `Bearer ${token || ""}` },
@@ -106,7 +108,7 @@
     const roles = data.roles || [];
     document.getElementById("roleGrid").innerHTML = roles.length
       ? roles.map((role) => `<article class="role-card">
-          <h3>${escapeHtml(role.name)}</h3>
+          <h3>${escapeHtml(displayRoleName(role.name))}</h3>
           <div class="role-stats">
             <div><span>Staff</span><strong>${number.format(role.staffTotal || 0)}</strong></div>
             <div><span>Active</span><strong>${number.format(role.activeTotal || 0)}</strong></div>
@@ -128,7 +130,7 @@
             <span class="belm-sidebar-activity-icon">${escapeHtml((activity.roleName || "U").slice(0, 2).toUpperCase())}</span>
             <div class="belm-sidebar-activity-copy">
               <strong>${escapeHtml(activity.userName || "System user")} · ${escapeHtml(activity.action || "Activity")}</strong>
-              <span>${escapeHtml(activity.roleName || "")} · ${escapeHtml(activity.entity || "System")}</span>
+              <span>${escapeHtml(displayRoleName(activity.roleName))} · ${escapeHtml(activity.entity || "System")}</span>
               <time>${activity.createdAt ? escapeHtml(new Date(activity.createdAt).toLocaleString()) : ""}</time>
             </div>
           </article>`).join("")

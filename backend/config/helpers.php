@@ -456,7 +456,7 @@ function belm_user_has_named_role(array $user, array $roleNames): bool {
 }
 
 function belm_can_override_technician_customer(array $user): bool {
-    return belm_user_has_named_role($user, ['Super Admin', 'Engineer']);
+    return belm_user_has_named_role($user, ['Super Admin', 'Engineer', 'Workshop Manager']);
 }
 
 // ---- Multi-role support -----------------------------------------------------
@@ -1449,7 +1449,7 @@ function log_activity(array $user, string $action, ?string $entity = null, ?stri
 
 // Silent inventory match — tries to identify which BELM Spare Parts
 // Inventory item (if any) a customer's freely-typed reference/description
-// corresponds to. Never shown to the customer; purely for Admin/Engineer
+// corresponds to. Never shown to the customer; purely for Admin/Workshop Manager
 // visibility when preparing a Proforma. Exact part-number/reference match
 // first, then a loose name match as a fallback.
 function match_spare_part_by_text(?string $reference, ?string $description): ?string {

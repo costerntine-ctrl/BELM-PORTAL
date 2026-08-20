@@ -168,3 +168,27 @@ html[data-theme="dark"] .eng-workspace-tabs{background:#0f1c2c}
 @media(max-width:760px){.eng-dispatch-inline-control{grid-template-columns:1fr}.eng-dispatch-inline-control button{width:100%}}
 
 /* V317 - Technician Dispatch removed from Engineering landing page. */
+
+
+/* V414 - TECHNICAL DEP navigation */
+.technical-dep-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0 18px;padding:8px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+.technical-dep-nav a{display:flex;align-items:center;gap:9px;min-height:46px;padding:9px 12px;border:1px solid transparent;border-radius:10px;color:var(--ink);text-decoration:none;font-size:12px;font-weight:850}
+.technical-dep-nav a span{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--canvas);color:var(--muted);font-size:10px;font-weight:900}
+.technical-dep-nav a:hover,.technical-dep-nav a.active{border-color:#2563eb;background:color-mix(in srgb,#2563eb 10%,var(--paper));color:#2563eb}
+.technical-dep-nav a.active span{background:#2563eb;color:#fff}
+.technical-tools-panel{margin:18px 0;scroll-margin-top:86px}
+.technical-tools-panel .panel-head p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.technical-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px 18px 18px}
+.technical-tools-grid a{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--canvas);color:var(--ink);text-decoration:none}
+.technical-tools-grid a>span{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#2563eb;color:#fff;font-size:11px;font-weight:900}
+.technical-tools-grid b,.technical-tools-grid small{display:block}.technical-tools-grid b{font-size:13px}.technical-tools-grid small{margin-top:3px;color:var(--muted);font-size:10.5px;font-weight:600}
+.technical-tools-grid a:hover{border-color:#2563eb;transform:translateY(-1px)}
+@media(max-width:760px){.technical-dep-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.technical-tools-grid{grid-template-columns:1fr}}
+
+
+/* V415 - Workshop Analysis embedded inside TECHNICAL DEP. */
+.eng-workshop-analysis-host{margin:18px 0;scroll-margin-top:86px}
+.eng-analysis-panel{border:1px solid var(--line);border-radius:16px;background:var(--paper);overflow:hidden}
+#engineeringWorkshopAnalysisFrame{display:block;width:100%;min-height:940px;border:0;background:var(--canvas)}
+@media(max-width:1100px){.technical-dep-nav{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.technical-dep-nav{grid-template-columns:repeat(2,minmax(0,1fr))}#engineeringWorkshopAnalysisFrame{min-height:1180px}}

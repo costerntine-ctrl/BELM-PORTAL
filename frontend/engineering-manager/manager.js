@@ -175,17 +175,17 @@
         showAlert(error.message);
         return;
       }
-      showAlert("Could not load the Engineering dashboard.");
+      showAlert("Could not load the Technical Department dashboard.");
     }
   }
 
-  async function loadEngineerRoleSummary() {
+  async function loadTechnicalRoleSummary() {
     try {
       rolesCache = await api("/users/roles");
-      const engineer = rolesCache.find((role) => role.name === "Engineer");
+      const workshopManager = rolesCache.find((role) => role.name === "Workshop Manager" || role.name === "Engineer");
       const technician = rolesCache.find((role) => role.name === "Technician");
-      document.getElementById("engineerRoleAccess").textContent =
-        engineer?.allowedPages?.length ? engineer.allowedPages.map((page) => page === "service-requests" ? "job-cards" : page).filter((value,index,list)=>list.indexOf(value)===index).join(", ") : "No pages assigned yet.";
+      document.getElementById("workshopManagerRoleAccess").textContent =
+        workshopManager?.allowedPages?.length ? workshopManager.allowedPages.map((page) => page === "service-requests" ? "job-cards" : page).filter((value,index,list)=>list.indexOf(value)===index).join(", ") : "No pages assigned yet.";
       if (technician) {
         document.getElementById("technicianRoleAccess").textContent =
           technician.allowedPages === null
@@ -193,7 +193,7 @@
             : (technician.allowedPages?.length ? technician.allowedPages.map((page) => page === "service-requests" ? "job-cards" : page).filter((value,index,list)=>list.indexOf(value)===index).join(", ") : "No pages assigned yet.");
       }
     } catch (_) {
-      document.getElementById("engineerRoleAccess").textContent = "—";
+      document.getElementById("workshopManagerRoleAccess").textContent = "—";
     }
   }
 
@@ -204,11 +204,11 @@
   }
 
   function openRoleDialog(roleName) {
-    const role = rolesCache.find((item) => item.name === roleName);
+    const role = rolesCache.find((item) => item.name === roleName || (roleName === "Engineer" && item.name === "Workshop Manager"));
     if (!role) return;
     document.getElementById("roleForm").reset();
     document.getElementById("roleId").value = role.id;
-    document.getElementById("roleDialogTitle").textContent = `Edit role — ${role.name}`;
+    document.getElementById("roleDialogTitle").textContent = `Edit role — ${role.name === "Engineer" ? "Workshop Manager" : role.name}`;
     document.getElementById("roleFormAlert").className = "alert error hidden";
     renderAllowedPages(role.allowedPages || []);
     document.getElementById("roleDialog").showModal();
@@ -225,7 +225,7 @@
     };
     const confirmation = await window.belmConfirmEdit({
       title: "Save role changes?",
-      message: `Confirm changes to the "${payload.name}" role's access.`,
+      message: `Confirm changes to the "${payload.name === "Engineer" ? "Workshop Manager" : payload.name}" role's access.`,
     });
     if (!confirmation) return;
     Object.assign(payload, confirmation);
@@ -236,7 +236,7 @@
     try {
       await api(`/users/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) });
       document.getElementById("roleDialog").close();
-      await loadEngineerRoleSummary();
+      await loadTechnicalRoleSummary();
       showAlert("Role access updated successfully.", false);
     } catch (error) {
       const box = document.getElementById("roleFormAlert");
@@ -256,38 +256,59 @@
   document.getElementById("cancelRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
 
   document.getElementById("refreshButton").addEventListener("click", async () => {
-    await Promise.all([load(), loadEngineerRoleSummary()]);
+    await Promise.all([load(), loadTechnicalRoleSummary()]);
   });
 
   function initEngineeringWorkspace() {
     const jobFrame = document.getElementById("engineeringJobCardsFrame");
     const jobPanel = document.getElementById("engineeringJobCardsPanel");
-    const locked = document.getElementById("engineeringJobCardsLocked");
-    if (!jobFrame) return;
-    // V411: Job Cards are the only support-work object. Legacy service-requests
-    // permission is accepted only so existing deployed roles do not lose access.
+    const jobLocked = document.getElementById("engineeringJobCardsLocked");
+    const analysisFrame = document.getElementById("engineeringWorkshopAnalysisFrame");
+    const analysisPanel = document.getElementById("engineeringWorkshopAnalysisPanel");
+    const analysisLocked = document.getElementById("engineeringWorkshopAnalysisLocked");
+    if (!jobFrame && !analysisFrame) return;
+
+    // Job Cards and Workshop Analysis share the same technical-work permission.
+    // Legacy service-requests permission is accepted only for deployed role compatibility.
     const allowed = hasPageAccess("job-cards") || hasPageAccess("service-requests");
     if (!allowed) {
-      jobFrame.removeAttribute("src");
+      [jobFrame, analysisFrame].forEach((frame) => frame?.removeAttribute("src"));
       jobPanel?.classList.add("hidden");
-      locked?.classList.remove("hidden");
+      analysisPanel?.classList.add("hidden");
+      jobLocked?.classList.remove("hidden");
+      analysisLocked?.classList.remove("hidden");
       return;
     }
+
     const routeParams = new URLSearchParams(window.location.search);
     const machineFocus = String(routeParams.get("machine") || "").trim();
-    const url = new URL(jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin", window.location.origin);
-    if (machineFocus) url.searchParams.set("machine", machineFocus);
-    jobFrame.src = `${url.pathname}${url.search}`;
+    if (jobFrame) {
+      const url = new URL(jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin", window.location.origin);
+      if (machineFocus) url.searchParams.set("machine", machineFocus);
+      jobFrame.src = `${url.pathname}${url.search}`;
+    }
+    if (analysisFrame) {
+      const url = new URL(analysisFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin&view=analysis", window.location.origin);
+      analysisFrame.src = `${url.pathname}${url.search}`;
+    }
+
     window.addEventListener("message", (event) => {
-      if (event.origin !== window.location.origin || event.source !== jobFrame.contentWindow) return;
-      if (event.data?.type === "belm-breakdown-workflow-height") {
-        const height = Math.max(760, Math.min(1800, Number(event.data.height) || 0));
-        jobFrame.style.height = `${height}px`;
-      }
+      if (event.origin !== window.location.origin || event.data?.type !== "belm-breakdown-workflow-height") return;
+      const frame = [jobFrame, analysisFrame].find((candidate) => candidate && event.source === candidate.contentWindow);
+      if (!frame) return;
+      const minHeight = frame === analysisFrame ? 880 : 760;
+      const maxHeight = frame === analysisFrame ? 2200 : 1800;
+      const height = Math.max(minHeight, Math.min(maxHeight, Number(event.data.height) || 0));
+      frame.style.height = `${height}px`;
     });
   }
 
   initEngineeringWorkspace();
+
+  document.querySelectorAll("[data-tool-page]").forEach((link) => {
+    const key = link.dataset.toolPage;
+    if (key && !hasPageAccess(key)) link.classList.add("hidden");
+  });
 
   if (!token) {
     showAlert("Administrator login required.");
@@ -300,7 +321,7 @@
     } else {
       // V317: Technician Dispatch is intentionally not mounted on the Engineering landing page.
       load();
-      loadEngineerRoleSummary();
+      loadTechnicalRoleSummary();
     }
   }
 })();

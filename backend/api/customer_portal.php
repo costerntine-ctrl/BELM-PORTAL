@@ -4192,7 +4192,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
 "
         . "Report ID: $newId
 
-Open BELM Portal > Engineering > Job Cards / Customer Communication and take action.",
+Open BELM Portal > TECHNICAL DEP > Job Card / Customer Communication and take action.",
         $customer['actorEmail'] ?? null
     );
     $businessEmailSent = !empty($alertResult['businessEmailSent']);
@@ -4873,7 +4873,7 @@ Priority: $priority
             . "Description:
 $description
 
-Open Engineering > Job Cards in BELM Portal to review and assign it.",
+Open TECHNICAL DEP > Job Card in BELM Portal to review and assign it.",
             $customer['actorEmail'] ?? null
         );
     } catch (Throwable $error) { /* notification only */ }

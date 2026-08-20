@@ -118,9 +118,9 @@ if ($method === 'POST') {
     if (!$assignee) json_error('Select an active system user.', 422);
     // BELM task assignment never reaches customer-owned accounts. Customer Admin /
     // Workshop Manager owns assignment of customer-managed staff inside the customer
-    // workspace; BELM Admin/Engineer assigns only BELM employees.
+    // workspace; BELM Admin/Workshop Manager assigns only BELM employees.
     if (!empty($assignee['is_customer_managed'])) {
-        json_error('BELM Admin/Engineer can assign tasks only to BELM employees. Customer-managed staff must be assigned by Customer Admin / Workshop Manager.', 403);
+        json_error('BELM Admin/Workshop Manager can assign tasks only to BELM employees. Customer-managed staff must be assigned by Customer Admin / Workshop Manager.', 403);
     }
     if ($customerId !== '') {
         $stmt = db()->prepare('SELECT 1 FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
@@ -136,7 +136,7 @@ if ($method === 'POST') {
             $customerId = $homeCustomerId;
         } elseif ($customerId !== $homeCustomerId) {
             if (!belm_can_override_technician_customer($user)) {
-                json_error('Only BELM Super Admin or Engineer can temporarily assign this Technician to another customer.', 403);
+                json_error('Only BELM Super Admin or Workshop Manager can temporarily assign this Technician to another customer.', 403);
             }
         }
     }

@@ -61,11 +61,11 @@
     { section: "Operations", key: "overview", label: "Overview", short: "OV", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
     { section: "Operations", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
     { section: "Operations", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
-    // V320: Maintenance Process is owned by Engineering > Job Cards only.
+    // V414: Job Cards are owned by TECHNICAL DEP > Job Card only.
     // Do not expose a second standalone admin navigation entry.
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    { section: "Maintenance", key: "roles", anyKeys: ["roles", "job-cards", "service-requests"], label: "Engineering", short: "EG", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
+    { section: "Maintenance", key: "roles", anyKeys: ["roles", "job-cards", "service-requests"], label: "TECHNICAL DEP", short: "TD", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
     { section: "Maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
@@ -115,7 +115,7 @@
   const userName = document.createElement("strong");
   userName.textContent = user.name || "System user";
   const userRole = document.createElement("span");
-  userRole.textContent = user.role || "Assigned role";
+  userRole.textContent = user.role === "Engineer" ? "Workshop Manager" : (user.role || "Assigned role");
   userCopy.append(userName, userRole);
   userCard.append(userAvatar, userCopy);
 

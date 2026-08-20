@@ -100,6 +100,8 @@ function confirmRegisteredUserAction(options = {}) {
   });
 }
 
+function displayRoleName(name) { return name === "Engineer" ? "Workshop Manager" : (name || ""); }
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -139,7 +141,7 @@ function renderCard(application) {
         ["Phone", application.phone],
         ["Requested role", application.requestedRole],
         ["Work responsibility", application.reason],
-        ["Assigned role", application.assignedRoleName],
+        ["Assigned role", displayRoleName(application.assignedRoleName)],
         ["Assigned customer", application.assignedCustomerName],
         ["Reviewed by", application.reviewedByName],
         ["Reviewed at", formatDate(application.reviewedAt)]
@@ -301,7 +303,7 @@ function openRegisteredUserEditor(user) {
   document.getElementById("editRegisteredUserActive").checked = Number(user.isActive) === 1;
   const selectedRoles = new Set(user.roleIds || (user.role?.id ? [user.role.id] : []));
   document.getElementById("editRegisteredUserRoles").innerHTML = registeredUserRoles.map(role => `
-    <label class="user-role-option"><input type="checkbox" value="${escapeHtml(role.id)}" ${selectedRoles.has(role.id) ? "checked" : ""}> <span>${escapeHtml(role.name)}</span></label>
+    <label class="user-role-option"><input type="checkbox" value="${escapeHtml(role.id)}" ${selectedRoles.has(role.id) ? "checked" : ""}> <span>${escapeHtml(displayRoleName(role.name))}</span></label>
   `).join("");
   document.getElementById("editRegisteredUserCustomer").innerHTML =
     '<option value="">Select customer…</option>' + registeredUserCustomers.map(customer =>
@@ -439,8 +441,8 @@ async function completeApproval(application, payload) {
     lastApproval = result;
     document.getElementById("approvedCustomer").textContent = result.displayName || result.customerName;
     document.getElementById("approvedRole").textContent = result.assignedCustomerName
-      ? `${result.assignedRole} — ${result.assignedCustomerName}`
-      : result.assignedRole;
+      ? `${displayRoleName(result.assignedRole)} — ${result.assignedCustomerName}`
+      : displayRoleName(result.assignedRole);
     document.getElementById("approvedEmail").textContent = result.loginEmail;
     document.getElementById("approvedPassword").textContent = result.temporaryPassword;
     document.getElementById("approvedRecovery").textContent = result.recoveryCode;
@@ -472,7 +474,7 @@ async function openAssignment(application) {
     ]);
     const roleSelect = document.getElementById("assignmentRole");
     roleSelect.innerHTML = '<option value="">Select exact role…</option>' + roles.map(role =>
-      `<option value="${escapeHtml(role.id)}" ${role.name === application.requestedRole ? "selected" : ""}>${escapeHtml(role.name)}</option>`
+      `<option value="${escapeHtml(role.id)}" ${role.name === application.requestedRole ? "selected" : ""}>${escapeHtml(displayRoleName(role.name))}</option>`
     ).join("");
     document.getElementById("assignmentCustomer").innerHTML =
       '<option value="">Select customer…</option>' + customers.map(customer =>
@@ -541,7 +543,7 @@ document.getElementById("copyMessageButton").addEventListener("click", async () 
   const message = [
     `Hello ${lastApproval.displayName || lastApproval.customerName},`,
     "Your BELM Portal registration has been approved.",
-    `Assigned role: ${lastApproval.assignedRole}${lastApproval.assignedCustomerName ? ` — ${lastApproval.assignedCustomerName}` : ""}`,
+    `Assigned role: ${displayRoleName(lastApproval.assignedRole)}${lastApproval.assignedCustomerName ? ` — ${lastApproval.assignedCustomerName}` : ""}`,
     `Login: ${lastApproval.loginUrl}`,
     `Email: ${lastApproval.loginEmail}`,
     `Temporary password: ${lastApproval.temporaryPassword}`,
@@ -781,7 +783,7 @@ document.getElementById("registerTechnicianButton").addEventListener("click", as
     const [roleList, customerList] = await ensureRolesAndCustomersLoaded();
     const roleSelect = document.getElementById("regUserRole");
     roleSelect.innerHTML = '<option value="">Select role…</option>' + roleList.map(role =>
-      `<option value="${escapeHtml(role.id)}" ${role.name === "Technician" ? "selected" : ""}>${escapeHtml(role.name)}</option>`
+      `<option value="${escapeHtml(role.id)}" ${role.name === "Technician" ? "selected" : ""}>${escapeHtml(displayRoleName(role.name))}</option>`
     ).join("");
     document.getElementById("regUserCustomer").innerHTML =
       '<option value="">Select customer…</option>' + customerList.map(customer =>

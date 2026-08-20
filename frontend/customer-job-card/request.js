@@ -507,7 +507,7 @@
       const jobReceipt = result.jobCard;
       const jobReceiptText = jobReceipt?.jobCardNo
         ? ` JOB CARD RECEIVED BY BELM: ${jobReceipt.jobCardNo} · ${String(jobReceipt.status || 'RECEIVED').replaceAll('_', ' ')}${jobReceipt.receivedAt ? ` · ${formatDate(jobReceipt.receivedAt)}` : ''}.`
-        : " Job Card receipt is not yet confirmed; open Engineering > Job Cards and refresh.";
+        : " Job Card receipt is not yet confirmed; open TECHNICAL DEP > Job Card and refresh.";
       showAlert(
         `${result.emailSent ? "BELM received your Job Card by official business email." : "Job Card saved in BELM Portal; email delivery needs attention."}${jobReceiptText} Reference: ${result.id}`
       );

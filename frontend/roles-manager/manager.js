@@ -82,19 +82,23 @@
     return roles.find((role) => role.id === roleId)?.name || "";
   }
 
+  function displayRoleName(name) {
+    return name === "Engineer" ? "Workshop Manager" : (name || "");
+  }
+
   function isTechnicianRole(roleId) {
     return roleName(roleId) === "Technician";
   }
 
   function renderRoleOptions(selected = "") {
     return `<option value="">Select role…</option>${roles.map((role) =>
-      `<option value="${escapeHtml(role.id)}" ${role.id === selected ? "selected" : ""}>${escapeHtml(role.name)}</option>`
+      `<option value="${escapeHtml(role.id)}" ${role.id === selected ? "selected" : ""}>${escapeHtml(displayRoleName(role.name))}</option>`
     ).join("")}`;
   }
 
   function renderUserRoleCheckboxes(selectedIds = []) {
     document.getElementById("userRoles").innerHTML = roles.map((role) =>
-      `<label class="check-option"><input type="checkbox" value="${escapeHtml(role.id)}" ${selectedIds.includes(role.id) ? "checked" : ""}> ${escapeHtml(role.name)}</label>`
+      `<label class="check-option"><input type="checkbox" value="${escapeHtml(role.id)}" ${selectedIds.includes(role.id) ? "checked" : ""}> ${escapeHtml(displayRoleName(role.name))}</label>`
     ).join("");
   }
 
@@ -132,7 +136,7 @@
           }).filter((value, index, list) => list.indexOf(value) === index).join(", ")
           : "Technician app only / no admin dashboard pages";
       return `<article class="role-card">
-        <h3>${escapeHtml(role.name)}</h3>
+        <h3>${escapeHtml(displayRoleName(role.name))}</h3>
         <p>${escapeHtml(pages)}</p>
         ${builtIn
           ? '<span class="badge">Built-in role</span>'
@@ -143,9 +147,14 @@
 
   function renderUsers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
-    const filtered = users.filter((user) => [
-      user.name, user.email, ...(user.roleNames || [user.role?.name]), user.assignedCustomer?.name,
-    ].some((value) => String(value || "").toLowerCase().includes(query)));
+    const filtered = users.filter((user) => {
+      const rawRoles = user.roleNames || [user.role?.name];
+      const roleAliases = rawRoles.flatMap((name) => name === "Engineer"
+        ? ["Engineer", "Workshop Manager"]
+        : (name === "Workshop Manager" ? ["Workshop Manager", "Engineer"] : [name]));
+      return [user.name, user.email, ...rawRoles, ...roleAliases, user.assignedCustomer?.name]
+        .some((value) => String(value || "").toLowerCase().includes(query));
+    });
     const panel = document.getElementById("usersPanel");
     if (!filtered.length) {
       panel.className = "empty";
@@ -157,7 +166,7 @@
       <thead><tr><th>Name</th><th>Email / phone</th><th>Role(s)</th><th>Assigned customer</th><th>Status</th><th></th></tr></thead>
       <tbody>${filtered.map((user) => {
         const isSelf = user.id === currentUser.id;
-        const roleLabel = (user.roleNames && user.roleNames.length ? user.roleNames : [user.role?.name || "—"]).join(", ");
+        const roleLabel = (user.roleNames && user.roleNames.length ? user.roleNames : [user.role?.name || "—"]).map(displayRoleName).join(", ");
         return `<tr>
           <td><strong>${escapeHtml(user.name)}</strong>${isSelf ? ' <span class="badge">You</span>' : ""}</td>
           <td><div>${escapeHtml(user.email)}</div><div class="muted">${escapeHtml(user.phone || "—")}</div></td>
@@ -191,7 +200,8 @@
       if (roleParam) {
         document.getElementById("searchInput").value = roleParam;
         const heading = document.querySelector("h1, .page-title h1, header h1");
-        if (heading && roleParam === "Technician") heading.textContent = "Engineering — Technicians";
+        if (heading && roleParam === "Technician") heading.textContent = "TECHNICAL DEP — Technicians";
+        if (heading && roleParam === "Engineer") heading.textContent = "TECHNICAL DEP — Engineers";
       }
       renderUsers();
       const openParam = new URLSearchParams(window.location.search).get("open");

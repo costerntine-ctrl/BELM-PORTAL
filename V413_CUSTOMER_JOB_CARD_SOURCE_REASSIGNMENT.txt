@@ -1,0 +1,11 @@
+BELM PORTAL V413 - CUSTOMER JOB CARD SOURCE + REASSIGNMENT
+
+- Customer Workshop now uses the same Job Card Source selector as BELM Dispatch.
+- Select Existing Job Card is YELLOW.
+- Create Job Card is BLUE.
+- Customer Admin / Workshop Manager can reassign an active internal Customer Job Card to another customer-managed Technician when the first Technician cannot continue.
+- Reassignment keeps the same Job Card number and preserves diagnosis, work history, parts and timeline.
+- Reassignment is recorded in the maintenance Timeline, with optional handover reason.
+- Customer-side assignment is strictly limited to that customer's own customer-managed Technicians. BELM Technicians remain assignable only by BELM Admin/Engineer.
+- Pending Approval, Completed and Cancelled Job Cards cannot be reassigned.
+- Create mode refuses a duplicate when an active Job Card already exists; the user must use Existing Job Card.

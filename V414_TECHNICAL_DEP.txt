@@ -1,0 +1,9 @@
+BELM PORTAL V414 - TECHNICAL DEP
+
+1. BELM Admin sidebar Engineering is renamed to TECHNICAL DEP.
+2. The former Engineer manager label is shown as Workshop Manager in BELM Admin. The internal Engineer role key remains supported for deployed-data compatibility.
+3. Backend privileged technical checks accept both Engineer and Workshop Manager during migration/transition.
+4. TECHNICAL DEP now exposes Job Card, Tools, Technicians and Engineers navigation.
+5. Job Card keeps the existing V413 workflow and assignment boundaries.
+6. Tools provides the existing technical Checklist Templates and Controller Pin Out workspaces.
+7. Technicians opens BELM Staff Access filtered to Technician. Engineers opens BELM Staff Access filtered to the legacy Engineer technical group while the manager-facing role label is Workshop Manager.

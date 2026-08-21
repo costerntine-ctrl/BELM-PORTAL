@@ -1,0 +1,8 @@
+BELM Portal V429 - Check Up / Checklist Template Sync
+
+- Customer Machine Card Check Up is explicitly synced to the active Checklist Template for that machine type.
+- One matching template is selected automatically; no unnecessary template choice is shown.
+- Multiple valid matching templates remain selectable.
+- Missing template state clearly identifies the machine type that needs a matching active Checklist Template.
+- The customer endpoint now returns sync metadata (SYNCED/MISSING, matched template count and primary template).
+- Report, Job Card, Service Parts and BELM Admin machine-card behavior are unchanged.

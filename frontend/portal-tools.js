@@ -2021,7 +2021,7 @@
         <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-machine-report="${escapeHtml(machine.id)}">Report</button>
-        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Check Up</button>
+        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}" title="Open the Checklist Template synced to this machine">Check Up</button>
         <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>
       </div>`;
     card.appendChild(panel);
@@ -2158,8 +2158,14 @@
 
   function renderDailyChecklistPanel(machine, data, body) {
     const templates = Array.isArray(data.templates) ? data.templates : [];
+    const sync = data.sync || {};
+    const machineType = String(sync.machineType || machine.machineType || machine.machine_type || "").trim();
     if (!templates.length) {
-      body.innerHTML = '<div class="belm-report-empty">No active Checklist Template is assigned to this machine type yet.</div>';
+      body.innerHTML = `<div class="belm-report-empty belm-checkup-sync-missing">
+        <strong>Checklist Template not synced.</strong><br>
+        No active Checklist Template matches <b>${escapeHtml(machineType || "this machine type")}</b>.
+        Add or activate a Checklist Template with the same Machine Type, then Check Up will load it automatically.
+      </div>`;
       return;
     }
     const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
@@ -2167,7 +2173,12 @@
     const displayPhoto = safeReportPhotoUrl(telemetry.displayPhotoUrl || "");
     const fuelLevel = String(telemetry.fuelLevel || "").trim();
     const displayCaptured = telemetry.capturedAt ? formatTanzaniaDateTime(telemetry.capturedAt) : "No display photo yet";
+    const primaryTemplateId = String(sync.primaryTemplateId || templates[0]?.id || "");
     body.innerHTML = `
+      <div class="belm-checkup-sync-banner">
+        <div><span>Checklist Template Sync</span><strong>${escapeHtml(sync.primaryTemplateName || templates[0]?.name || "Checklist")}</strong></div>
+        <b>${escapeHtml(String(sync.status || "SYNCED").toUpperCase())}</b>
+      </div>
       <div class="belm-checkup-display-strip">
         <div class="belm-checkup-display-photo-wrap">
           ${displayPhoto ? `<img src="${escapeHtml(displayPhoto)}" alt="Latest machine display" class="belm-checkup-display-thumb" data-checkup-display-photo>` : `<div class="belm-checkup-display-placeholder">DISPLAY PHOTO<br><small>Not captured yet</small></div>`}
@@ -2176,12 +2187,15 @@
         <div class="belm-checkup-display-stat"><span>Fuel Level</span><strong>${escapeHtml(fuelLevel || (displayPhoto ? "See display" : "—"))}</strong></div>
         <div class="belm-checkup-display-stat belm-checkup-display-time"><span>Display captured</span><strong>${escapeHtml(displayCaptured)}</strong></div>
       </div>
-      <div class="belm-customer-checkup-toolbar">
-        <label>Checklist Template
-          <select data-daily-template-select>
-            ${templates.map((template, index) => `<option value="${escapeHtml(template.id)}" ${index === 0 ? "selected" : ""}>${escapeHtml(template.name)}</option>`).join("")}
-          </select>
-        </label>
+      <div class="belm-customer-checkup-toolbar ${templates.length === 1 ? "is-single-template" : ""}">
+        ${templates.length === 1
+          ? `<div class="belm-checkup-template-fixed"><span>Machine Type</span><strong>${escapeHtml(machineType || templates[0].machineType || "—")}</strong><small>Template selected automatically from Checklist Templates.</small></div>`
+          : `<label>Checklist Template
+              <select data-daily-template-select>
+                ${templates.map((template) => `<option value="${escapeHtml(template.id)}" ${String(template.id) === primaryTemplateId ? "selected" : ""}>${escapeHtml(template.name)}</option>`).join("")}
+              </select>
+             </label>`}
+        ${templates.length === 1 ? `<select data-daily-template-select class="hidden" aria-hidden="true"><option value="${escapeHtml(templates[0].id)}" selected>${escapeHtml(templates[0].name)}</option></select>` : ""}
       </div>
       <div data-daily-template-body></div>`;
 
@@ -2196,7 +2210,7 @@
           <div><span>Machine</span><strong>${escapeHtml(machineName)}</strong></div>
           <div><span>Checklist</span><strong>${escapeHtml(template.name)}</strong></div>
           <div><span>Today</span><strong>${todayReport ? "Checked" : "Pending"}</strong></div>
-          <div><span>Template Sync</span><strong>Live</strong></div>
+          <div><span>Template Sync</span><strong>${escapeHtml(String(sync.status || "SYNCED").toUpperCase())}</strong></div>
         </div>
         ${todayReport ? `<div class="belm-daily-checklist-complete">Today's checklist has already been completed by ${escapeHtml(todayReport.filledBy || "Technician")} at ${escapeHtml(formatTanzaniaDateTime(todayReport.createdAt))}.</div>` : '<div class="belm-daily-checklist-pending">This is today\'s checklist generated from the current Checklist Template.</div>'}
         <div class="belm-daily-checklist-items">
@@ -2233,7 +2247,7 @@
       });
     };
     body.querySelector("[data-checkup-display-photo]")?.addEventListener("click", () => openReportPhotoLightbox(displayPhoto));
-    select.addEventListener("change", renderTemplate);
+    if (templates.length > 1) select.addEventListener("change", renderTemplate);
     renderTemplate();
   }
 
@@ -2580,7 +2594,7 @@
     modal.innerHTML = `<section class="belm-checked-report-card belm-customer-checkup-card">
       <header class="belm-checked-report-head">
         <div>
-          <p>MACHINE CHECKLIST / CHECK UP</p>
+          <p>CHECK UP · CHECKLIST TEMPLATE</p>
           <h2>${escapeHtml(machineName)}</h2>
           <span>${escapeHtml(machine.machineType || machine.machine_type || "")} · ${escapeHtml(machine.serialNumber || machine.serial_number || machine.regNumber || machine.reg_number || "No serial recorded")}</span>
         </div>

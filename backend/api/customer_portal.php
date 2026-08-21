@@ -3742,6 +3742,16 @@ if ($sub === 'machines' && $sub2) {
             unset($template['machine_type'], $template['service_type']);
         }
         unset($template);
+        $primaryTemplate = $templates[0] ?? null;
+        $primaryMatchedBy = null;
+        if ($primaryTemplate) {
+            $primaryMachineType = trim((string)($primaryTemplate['machineType'] ?? ''));
+            if ($primaryMachineType !== '' && strcasecmp($primaryMachineType, trim((string)$machine['machine_type'])) === 0) {
+                $primaryMatchedBy = 'machine_type';
+            } elseif ($primaryMachineType !== '' && strcasecmp($primaryMachineType, trim((string)$machine['model'])) === 0) {
+                $primaryMatchedBy = 'model';
+            }
+        }
         json_out([
             'date' => $today,
             'machine' => [
@@ -3753,6 +3763,14 @@ if ($sub === 'machines' && $sub2) {
                 'brand' => $machine['brand'],
             ],
             'telemetry' => $displayTelemetry,
+            'sync' => [
+                'status' => $primaryTemplate ? 'SYNCED' : 'MISSING',
+                'machineType' => $machine['machine_type'],
+                'matchedBy' => $primaryMatchedBy,
+                'matchedTemplateCount' => count($templates),
+                'primaryTemplateId' => $primaryTemplate['id'] ?? null,
+                'primaryTemplateName' => $primaryTemplate['name'] ?? null,
+            ],
             'templates' => $templates,
         ]);
     }

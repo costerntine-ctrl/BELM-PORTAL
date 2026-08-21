@@ -6815,3 +6815,17 @@ body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-spare-recom
     padding-top: 92px !important;
   }
 }
+
+/* V429 - Customer Check Up is a live Checklist Template sync. */
+.belm-checkup-sync-banner {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  margin:0 0 12px; padding:11px 13px; border:1px solid rgba(34,197,94,.45);
+  border-radius:12px; background:rgba(22,163,74,.08);
+}
+.belm-checkup-sync-banner span, .belm-checkup-template-fixed span { display:block; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; opacity:.72; }
+.belm-checkup-sync-banner strong, .belm-checkup-template-fixed strong { display:block; margin-top:3px; }
+.belm-checkup-sync-banner > b { color:#16a34a; font-size:11px; letter-spacing:.06em; }
+.belm-checkup-template-fixed { width:100%; padding:10px 12px; border:1px solid var(--belm-line, rgba(100,116,139,.25)); border-radius:10px; }
+.belm-checkup-template-fixed small { display:block; margin-top:4px; opacity:.7; }
+.belm-customer-checkup-toolbar.is-single-template { display:block; }
+.belm-checkup-sync-missing strong { color:#dc2626; }

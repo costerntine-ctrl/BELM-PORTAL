@@ -413,3 +413,16 @@ html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(6,mi
 [data-theme="dark"] .queue-message-block.report-message>span{
   color:#65efaa;
 }
+
+
+/* V440 - Technician workload visibility and assignment capacity protection. */
+.technician-workload-panel{margin-top:14px}
+.technician-workload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.technician-workload-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(11,103,194,.025)}
+.technician-workload-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.technician-workload-head strong{font-size:12px;overflow-wrap:anywhere}
+.workload-status{padding:5px 8px;border-radius:999px;font-size:9px;font-weight:950;letter-spacing:.04em;border:1px solid currentColor}.workload-status.available{color:#0b944f;background:rgba(11,148,79,.09)}.workload-status.busy{color:#a87800;background:rgba(242,195,24,.12)}.workload-status.full{color:#d83a3a;background:rgba(216,58,58,.10)}
+.technician-workload-metrics{display:grid;gap:5px;font-size:10px}.technician-workload-metrics span{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}.technician-workload-metrics b{color:var(--text)}
+.workload-label{display:flex;justify-content:space-between;margin-top:10px;font-size:9.5px;font-weight:900}.workload-track{height:7px;border-radius:999px;background:rgba(120,140,160,.18);overflow:hidden;margin-top:5px}.workload-track i{display:block;height:100%;border-radius:inherit;background:#18a957}.technician-workload-card.busy .workload-track i{background:#e1ad00}.technician-workload-card.full .workload-track i{background:#d83a3a}
+.queue-technician-select option:disabled{color:#d83a3a}
+[data-theme="dark"] .technician-workload-card{background:rgba(58,166,255,.035)}
+@media(max-width:620px){.technician-workload-grid{grid-template-columns:1fr}.technician-workload-card{padding:11px}}

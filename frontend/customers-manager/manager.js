@@ -414,7 +414,7 @@
         </div>
         <nav class="customer-card-actions customer-card-quick-actions" aria-label="Customer quick actions">
           <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">View Your Machine</button>
-          <a class="customer-quick-action action-blue" href="/engineering-manager/">Workshop</a>
+          <a class="customer-quick-action action-blue" href="/customer-workshop/?actor=belm&amp;customerId=${encodeURIComponent(customer.id)}">Workshop</a>
           <a class="customer-quick-action action-green" href="/spare-parts-manager/">Procurement</a>
           <a class="customer-quick-action action-yellow" href="/reports-manager/">General Report</a>
           <button type="button" class="customer-quick-action action-manage customer-quick-action-wide" data-manage-customer="${escapeHtml(customer.id)}">Manage Customer</button>

@@ -77,7 +77,14 @@ function bw_case_access(array $ctx, string $caseId): array {
         if ((string)$case['customer_id'] !== $ctx['customerId']) json_error('Not allowed.', 403);
     } elseif ($ctx['kind'] === 'customer-tech') {
         if ((string)$case['customer_id'] !== $ctx['customerId']) json_error('This machine is not assigned to this Technician.', 403);
-        if (empty($case['is_machinery_admin'])) json_error('Customer Technician access is paused while BELM Service Provider is active.', 403);
+        // When BELM provider mode is ON, customer Technicians do not gain broad fleet
+        // access. They may still work an internal Job Card explicitly assigned to them
+        // by their Customer Admin / Workshop Manager.
+        if (empty($case['is_machinery_admin'])) {
+            $assigned = db()->prepare("SELECT 1 FROM digital_job_cards WHERE case_id=? AND technician_id=? AND status NOT IN ('COMPLETED','CANCELLED') LIMIT 1");
+            $assigned->execute([$caseId, $ctx['actorId']]);
+            if (!$assigned->fetchColumn()) json_error('Customer Technician access is limited to Job Cards assigned to you while BELM Service Provider is active.', 403);
+        }
     } else {
         $officialSupport = (($case['source_type'] ?? '') === 'SERVICE_REQUEST');
         // Provider-OFF customers remain private to their own workshop, except
@@ -522,21 +529,54 @@ function bw_department_report_data(array $ctx, string $period, string $anchorDat
     ];
 }
 
+
+function bw_technician_workload(array $rows): array {
+    if (!$rows) return $rows;
+    $jobCounts = db()->prepare("SELECT
+        SUM(CASE WHEN status NOT IN ('COMPLETED','CANCELLED') THEN 1 ELSE 0 END) AS active_jobs,
+        SUM(CASE WHEN status='IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress,
+        SUM(CASE WHEN status='WAITING_FOR_PARTS' THEN 1 ELSE 0 END) AS waiting_parts,
+        SUM(CASE WHEN status='COMPLETED' AND DATE(completed_at)=CURDATE() THEN 1 ELSE 0 END) AS completed_today
+        FROM digital_job_cards WHERE technician_id=?");
+    $activeCases = db()->prepare("SELECT bc.current_stage,bc.stage_started_at,bc.status
+        FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id
+        WHERE j.technician_id=? AND j.status NOT IN ('COMPLETED','CANCELLED') AND bc.status<>'COMPLETED'");
+    foreach ($rows as &$row) {
+        $id = (string)($row['id'] ?? '');
+        $jobCounts->execute([$id]);
+        $c = $jobCounts->fetch() ?: [];
+        $active = (int)($c['active_jobs'] ?? 0);
+        $delayed = 0;
+        $activeCases->execute([$id]);
+        foreach ($activeCases->fetchAll() as $caseRow) {
+            $stage = (string)($caseRow['current_stage'] ?? '');
+            $meta = BREAKDOWN_STAGE_META[$stage] ?? ['slaHours'=>0];
+            $sla = (float)($meta['slaHours'] ?? 0);
+            $start = !empty($caseRow['stage_started_at']) ? strtotime((string)$caseRow['stage_started_at']) : false;
+            if ($sla > 0 && $start && (time()-$start)/3600 > $sla) $delayed++;
+        }
+        $availability = $active >= 5 ? 'FULL' : ($active >= 3 ? 'BUSY' : 'AVAILABLE');
+        $row['activeJobs'] = $active;
+        $row['inProgress'] = (int)($c['in_progress'] ?? 0);
+        $row['waitingParts'] = (int)($c['waiting_parts'] ?? 0);
+        $row['completedToday'] = (int)($c['completed_today'] ?? 0);
+        $row['delayedJobs'] = $delayed;
+        $row['availability'] = $availability;
+        $row['workloadPct'] = min(100, (int)round($active * 20));
+        $row['assignmentBlocked'] = $availability === 'FULL';
+    }
+    unset($row);
+    return $rows;
+}
+
 if ($method === 'GET' && $action === 'technicians') {
     if (bw_is_technician_actor($ctx)) json_error('Technicians use My Job Cards; technician roster management is restricted.',403);
     $customerId = trim((string)($_GET['customerId'] ?? $ctx['customerId']));
     if (in_array($ctx['kind'],['customer','customer-tech'],true) && $customerId !== $ctx['customerId']) json_error('Not allowed.',403);
-    $mode = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id=?'); $mode->execute([$customerId]);
-    $selfService = !empty($mode->fetchColumn());
-
-    // Customer-side assignment is strictly organization-owned: when the customer
-    // runs its own workshop, Customer Admin / Workshop Manager may assign only
-    // customer-managed Technicians. When BELM is the active provider, the customer
-    // does not receive BELM staff in this roster; Customer Admin sends a Job Card to
-    // BELM and BELM Admin/Workshop Manager performs the BELM-side assignment.
-    if ($ctx['kind']==='customer' && !$selfService) {
-        json_out([]);
-    }
+    // Customer-side assignment is strictly organization-owned. Customer Admin /
+    // Workshop Manager may always see only this customer's own customer-managed
+    // Technicians for internal breakdown Job Cards. BELM provider mode does not
+    // expose BELM staff here; official SERVICE_REQUEST cards remain BELM-owned.
 
     if ($ctx['kind']==='belm' && empty($ctx['isTechnician']) && !empty($ctx['canOverrideTechnician'])) {
         // Super Admin / Engineer sees every active BELM-owned Technician.
@@ -562,7 +602,7 @@ if ($method === 'GET' && $action === 'technicians') {
             unset($row['assigned_customer_id'],$row['assigned_customer_name']);
         }
         unset($row);
-        json_out($rows);
+        json_out(bw_technician_workload($rows));
     }
 
     $sql = "SELECT u.id,u.name,u.email,u.is_customer_managed,u.assigned_customer_id, hc.name AS assigned_customer_name
@@ -585,7 +625,7 @@ if ($method === 'GET' && $action === 'technicians') {
         unset($row['assigned_customer_id'],$row['assigned_customer_name']);
     }
     unset($row);
-    json_out($rows);
+    json_out(bw_technician_workload($rows));
 }
 
 if ($method === 'GET' && $action === 'performance') {
@@ -1149,7 +1189,7 @@ if ($method === 'POST' && $action === 'job-card') {
     $jobCardMode=strtolower(trim((string)($b['jobCardMode']??'auto')));
     if(!in_array($jobCardMode,['auto','create','existing'],true)) json_error('Invalid Job Card source.',422);
     if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Customer Admin or Workshop Manager can issue or reassign an internal Customer Job Card.',403);
-    if($ctx['kind']==='customer' && empty($case['is_machinery_admin'])) json_error('BELM is the active service provider for this customer. Customer staff cannot assign BELM employees. Customer Admin must send the Job Card to BELM, then BELM Admin/Workshop Manager assigns a BELM Technician.',403);
+    if($ctx['kind']==='customer' && strtoupper((string)($case['source_type']??''))==='SERVICE_REQUEST') json_error('This is an official Job Card sent to BELM. BELM Admin / Workshop Manager assigns the BELM Technician.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate or assign Job Cards. Customer Admin / Workshop Manager must issue the Job Card.',403);
     if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('This customer uses its own maintenance team. BELM can work here only after an official Customer Admin Job Card is sent to BELM.',403);
 
@@ -1176,6 +1216,13 @@ if ($method === 'POST' && $action === 'job-card') {
             if(empty($tech['is_customer_managed'])) json_error('Select one of this customer\'s own Technicians. BELM Technicians are assigned only by BELM Admin/Workshop Manager.',403);
             if($temporaryOverride || (string)$tech['assigned_customer_id']!==(string)$case['customer_id']) json_error('Selected Technician is not available for this customer.',403);
         }
+        // Workload protection: do not add a new active Job Card to a Technician
+        // who already has five or more active jobs. The current case is excluded
+        // so confirming the same assignment does not block itself.
+        $loadStmt=db()->prepare("SELECT COUNT(*) FROM digital_job_cards WHERE technician_id=? AND status NOT IN ('COMPLETED','CANCELLED') AND case_id<>?");
+        $loadStmt->execute([$techId,$caseId]);
+        $activeJobs=(int)$loadStmt->fetchColumn();
+        if($activeJobs>=5) json_error($techName.' is FULL with '.$activeJobs.' active jobs. Complete or reassign an existing job before adding another.',409);
     }
     if($ctx['kind']==='customer' && $techId==='') json_error('Select one of your customer-managed Technicians.',422);
 

@@ -359,17 +359,38 @@
   function renderSummary(){const open=cases.filter(c=>c.status!=='COMPLETED');const delayed=open.filter(c=>c.delayed);const administration=open.filter(c=>c.stage==='PROCUREMENT'||c.stage==='BOSS_APPROVAL');const avg=open.length?open.reduce((a,c)=>a+Number(c.breakdownHours||0),0)/open.length:0;document.getElementById('summaryCards').innerHTML=`<div class="summary-card"><b>${open.length}</b><span>Open breakdowns</span></div><div class="summary-card red"><b>${delayed.length}</b><span>Service Level Agreement</span></div><div class="summary-card yellow"><b>${administration.length}</b><span>Waiting Procurement / approval</span></div><div class="summary-card green"><b>${duration(avg)}</b><span>Average open time</span></div>`}
   function queueAssignmentAllowed(c){
     const jobStatus=String(c.jobStatus||'').toUpperCase();
-    return source==='customer'&&isWorkshop&&Boolean(c.customerManagesWorkshop)
+    // Customer Admin / Workshop Manager may assign only their own customer-managed
+    // Technicians on internal breakdown Job Cards. BELM provider mode must not hide
+    // this control; SERVICE_REQUEST cards remain BELM-owned and are excluded.
+    return source==='customer'&&isWorkshop
       && String(c.sourceType||'').toUpperCase()!=='SERVICE_REQUEST'
       && !['PENDING_APPROVAL','COMPLETED','CANCELLED'].includes(jobStatus);
+  }
+  function techAvailability(t){
+    const active=Number(t?.activeJobs||0);
+    return String(t?.availability||(active>=5?'FULL':active>=3?'BUSY':'AVAILABLE')).toUpperCase();
   }
   function queueTechnicianOptions(c){
     const currentId=String(c.technicianId||'');
     const currentName=String(c.technicianName||'').trim();
     let options='<option value="">Assign Technician...</option>';
     if(currentId&&!queueTechnicians.some(x=>String(x.id)===currentId))options+=`<option value="${esc(currentId)}">${esc((currentName||'Current Technician')+' · ASSIGNED')}</option>`;
-    options+=queueTechnicians.map(t=>`<option value="${esc(t.id)}" ${String(t.id)===currentId?'selected':''}>${esc(t.name+(String(t.id)===currentId?' · ASSIGNED':''))}</option>`).join('');
+    options+=queueTechnicians.map(t=>{
+      const id=String(t.id),active=Number(t.activeJobs||0),availability=techAvailability(t),current=id===currentId;
+      const label=`${t.name} — ${active} Active Job${active===1?'':'s'} · ${availability}${current?' · ASSIGNED':''}`;
+      return `<option value="${esc(id)}" ${current?'selected':''} ${availability==='FULL'&&!current?'disabled':''}>${esc(label)}</option>`;
+    }).join('');
     return options;
+  }
+  function renderTechnicianWorkload(){
+    const panel=document.getElementById('technicianWorkloadPanel'),grid=document.getElementById('technicianWorkloadGrid');
+    if(!panel||!grid)return;
+    if(source!=='customer'||!isWorkshop){panel.classList.add('hidden');return;}
+    panel.classList.remove('hidden');
+    grid.innerHTML=queueTechnicians.length?queueTechnicians.map(t=>{
+      const active=Number(t.activeJobs||0),availability=techAvailability(t),cls=availability.toLowerCase(),pct=Math.max(0,Math.min(100,Number(t.workloadPct??active*20)));
+      return `<article class="technician-workload-card ${cls}"><div class="technician-workload-head"><strong>${esc(t.name||'Technician')}</strong><span class="workload-status ${cls}">${esc(availability)}</span></div><div class="technician-workload-metrics"><span>Active Jobs <b>${active}</b></span><span>In Progress <b>${Number(t.inProgress||0)}</b></span><span>Waiting Parts <b>${Number(t.waitingParts||0)}</b></span><span>Delayed <b>${Number(t.delayedJobs||0)}</b></span><span>Completed Today <b>${Number(t.completedToday||0)}</b></span></div><div class="workload-label"><span>Workload</span><b>${pct}%</b></div><div class="workload-track"><i style="width:${pct}%"></i></div></article>`;
+    }).join(''):'<div class="empty">No customer Technician accounts are available.</div>';
   }
   function renderList(){
     const q=document.getElementById('searchBox').value.toLowerCase().trim();
@@ -392,7 +413,7 @@
               <label><span>Select Technician</span><select class="queue-technician-select" data-queue-assign="${esc(c.id)}" data-current-tech="${esc(c.technicianId||'')}" data-current-name="${esc(assignedName)}" ${queueTechnicians.length?'':'disabled'}>${queueTechnicianOptions(c)}</select></label>
               <label class="queue-instruction-label"><span>Workshop Manager Instruction</span><textarea class="queue-manager-instruction" data-queue-instruction="${esc(c.id)}" rows="2" maxlength="1000" placeholder="Optional instruction to Technician...">${esc(instruction)}</textarea></label>
               <div class="queue-assign-actions"><button type="button" class="queue-assign-ok" data-queue-assign-ok="${esc(c.id)}">OK</button><button type="button" class="queue-assign-cancel" data-queue-assign-cancel="${esc(c.id)}">Cancel</button></div>
-              <small>${assignedName?`Currently assigned: ${esc(assignedName)}. Select another Technician to reassign.`:(queueTechnicians.length?'Select a Technician, add instruction if needed, then press OK.':'No customer Technician available.')}</small>
+              <small>${assignedName?`Currently assigned: ${esc(assignedName)}. Select another Technician to reassign.`:(queueTechnicians.length?'Select a Technician, review Active Jobs, add instruction if needed, then press OK. FULL Technicians cannot receive another active job.':'No customer Technician available.')}</small>
             </div>
           </div>`
         : (assignedName?`<div class="queue-assigned-readonly"><span>Technician</span><b>${esc(assignedName)}</b></div>`:'');
@@ -444,6 +465,7 @@
     if(!technicianId){show('Select Technician before pressing OK.',true);select?.focus();return;}
     const tech=queueTechnicians.find(x=>String(x.id)===technicianId);
     const previousId=String(c.technicianId||'');
+    if(techAvailability(tech)==='FULL'&&previousId!==technicianId){show(`${tech?.name||'Technician'} is FULL with ${Number(tech?.activeJobs||0)} active jobs. Select another Technician.`,true);select?.focus();return;}
     const previousName=String(c.technicianName||'').trim();
     if(previousId&&previousId!==technicianId&&!confirm(`${c.jobCardNo||'This Job Card'} is assigned to ${previousName||'another Technician'}. Reassign it to ${tech?.name||'the selected Technician'}?`)){
       if(select)select.value=previousId;return;
@@ -949,6 +971,7 @@
 
       cases=await api(machineFilter?`?machineId=${encodeURIComponent(machineFilter)}`:'');
       await loadQueueTechnicians();
+      renderTechnicianWorkload();
       renderSummary();
       renderList();
 

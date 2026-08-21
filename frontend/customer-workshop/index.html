@@ -1,1 +1,170 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Workshop | BELM</title><link rel="stylesheet" href="/customer-workshop/app.css"></head><body><header><a href="/portal">← Portal</a><div><b>Customer Workshop</b><span>Powered by BELM Operations</span></div><button id="logout">Log out</button></header><main><section class="hero"><span>WORKSHOP CONTROL</span><h1>Your team. Your machines. BELM support when you need it.</h1><p>Manage internal workshop jobs first, then escalate difficult breakdowns to BELM without losing diagnosis or job history.</p></section><section id="stats" class="stats"></section><section class="grid"><div class="panel"><div class="head"><div><h2>Work orders</h2><p>Workshop jobs and BELM escalations</p></div><button id="newOrder">+ Work order</button></div><div id="orders"></div></div><aside><div class="panel"><div class="head"><h2>Workshop team</h2><button id="newStaff">+ Staff</button></div><div id="staff"></div></div><div class="panel"><div class="head"><h2>Sites</h2><button id="newSite">+ Site</button></div><div id="sites"></div></div></aside></section></main><dialog id="modal"><form id="form"><h2 id="formTitle"></h2><div id="fields"></div><div class="actions"><button type="button" id="close">Cancel</button><button type="submit">Save</button></div></form></dialog><script src="/customer-workshop/app.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workshop — BELM Operations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=443-workshop-roles">
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" id="backLink" href="/portal/dashboard"><span class="brand-mark">B</span><span>BELM Operations <small>WORKSHOP</small></span></a>
+    <div class="top-actions"><button id="refreshButton" type="button">Refresh</button></div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">WORKSHOP DEPARTMENT</p>
+        <h1 id="workshopTitle">Workshop</h1>
+        <p id="workshopSubtitle">Loading workshop roles…</p>
+      </div>
+      <span class="mode-pill" id="modePill">CUSTOMER WORKSHOP</span>
+    </section>
+
+    <div id="pageAlert" class="alert hidden" role="status"></div>
+
+    <section class="role-grid" aria-label="Workshop roles">
+      <article class="role-card manager-card">
+        <div class="role-icon">WM</div>
+        <div class="role-head"><div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div><span class="role-status">CONTROL</span></div>
+        <p class="role-description">Owns Job Cards, assignments, workshop instructions, workload balance, progress and final review.</p>
+        <div class="responsibilities">
+          <span>Job Cards</span><span>Assign / Reassign</span><span>Workshop Instruction</span><span>Workload</span><span>Testing & Review</span>
+        </div>
+        <div class="role-actions">
+          <a id="managerJobCardLink" class="primary-action" href="/breakdown-workflow/?actor=customer">Open Job Cards</a>
+          <a id="managerAnalysisLink" class="secondary-action" href="/breakdown-workflow/?actor=customer#workshopReportPanel">Workshop Analysis</a>
+        </div>
+      </article>
+
+      <article class="role-card store-card">
+        <div class="role-icon">SK</div>
+        <div class="role-head"><div><p>STORE KEEPER</p><h2>Tools & Spare Parts</h2></div><span class="role-status">STORE</span></div>
+        <p class="role-description">Controls workshop tools and customer spare stock, and records every tool handed to a Technician and returned.</p>
+        <div class="responsibilities">
+          <span>Tools</span><span>Spare Stock</span><span>Issue Document</span><span>Return Document</span><span>Audit Trail</span>
+        </div>
+        <div class="role-actions">
+          <a id="storeLink" class="primary-action" href="#workshop-store">Open Store & Spares</a>
+          <button id="toolDocumentsButton" class="secondary-action" type="button">Tool Issue Documents</button>
+        </div>
+      </article>
+
+      <article class="role-card technician-card">
+        <div class="role-icon">TC</div>
+        <div class="role-head"><div><p>TECHNICIANS</p><h2>Repair Team</h2></div><span class="role-status" id="technicianCount">TEAM</span></div>
+        <p class="role-description">Receives Job Cards from the Workshop Manager, diagnoses, repairs, requests tools/spares, tests and submits the Technician Report.</p>
+        <div class="specialization-grid">
+          <div><b>Mechanic</b><small>Engine, transmission, brakes, hydraulic & mechanisms</small></div>
+          <div><b>Electrical</b><small>Wiring, power, sensors, controllers & electrical faults</small></div>
+          <div><b>Mechatronics</b><small>CAN, control systems, electronics, electro-hydraulics & diagnosis</small></div>
+        </div>
+        <div class="role-actions">
+          <a id="technicianManageLink" class="primary-action" href="/customer-users/">Manage Technicians</a>
+          <a id="technicianWorkLink" class="secondary-action" href="/breakdown-workflow/?actor=customer">View Assigned Work</a>
+        </div>
+      </article>
+    </section>
+
+    <section class="workflow-panel">
+      <div class="panel-head"><div><p class="eyebrow">WORKSHOP FLOW</p><h2>One Job Card — clear responsibility</h2></div></div>
+      <div class="workflow-line">
+        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair & Testing</span><b>→</b><span>Manager Review</span>
+      </div>
+    </section>
+
+
+    <section id="workshop-store" class="tool-documents-panel workshop-store-panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">STORE KEEPER</p><h2>Customer Workshop Store</h2><p>Customer-owned tools/spares stock. This is separate from BELM Inventory.</p></div>
+        <button id="receiveStockButton" type="button" class="primary-action button-like">+ Receive Spare / Material</button>
+      </div>
+      <div class="tool-kpis">
+        <div><span>STOCK ITEMS</span><strong id="storeItemCount">0</strong></div>
+        <div><span>TOTAL QTY ON HAND</span><strong id="storeQtyCount">0</strong></div>
+        <div><span>OUT OF STOCK</span><strong id="storeOutCount">0</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Part No.</th><th>Description</th><th>Unit</th><th>Received</th><th>Issued</th><th>Balance</th><th>Avg Cost</th></tr></thead>
+          <tbody id="storeRows"><tr><td colspan="7" class="empty">Loading Customer Store…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="toolDocumentsPanel" class="tool-documents-panel hidden">
+      <div class="panel-head">
+        <div><p class="eyebrow">STORE KEEPER DOCUMENTS</p><h2>Tool Issue & Return Register</h2><p>Every tool handed to a Technician stays linked to the responsible person until it is returned.</p></div>
+        <button id="newToolIssueButton" type="button" class="primary-action button-like">+ Issue Tool</button>
+      </div>
+      <div class="tool-kpis">
+        <div><span>OUT WITH TECHNICIANS</span><strong id="toolsOutCount">0</strong></div>
+        <div><span>RETURNED</span><strong id="toolsReturnedCount">0</strong></div>
+        <div><span>TOTAL DOCUMENTS</span><strong id="toolDocumentCount">0</strong></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Document</th><th>Job Card</th><th>Technician</th><th>Tool / ID</th><th>Qty</th><th>Issued</th><th>Status</th><th>Return / Action</th></tr></thead>
+          <tbody id="toolIssueRows"><tr><td colspan="8" class="empty">Open Tool Issue Documents to load records.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="receiveStockDialog">
+    <form id="receiveStockForm" class="dialog-form">
+      <div class="dialog-head"><div><p class="eyebrow">STORE KEEPER</p><h2>Receive Spare / Material</h2></div><button type="button" data-close="receiveStockDialog">×</button></div>
+      <div class="form-grid">
+        <label>Part number<input id="receivePartNumber" maxlength="100" required></label>
+        <label>Unit<select id="receiveUnit"><option value="PC">PC</option><option value="SET">SET</option><option value="L">Litre</option><option value="KG">KG</option></select></label>
+        <label class="wide">Description<input id="receiveDescription" maxlength="255" required></label>
+        <label>Quantity received<input id="receiveQuantity" type="number" min="0.01" step="0.01" required></label>
+        <label>Unit cost (TZS)<input id="receiveUnitCost" type="number" min="0" step="0.01" value="0" required></label>
+        <label class="wide">Receiving note<input id="receiveNote" maxlength="500" placeholder="PO / GRN / supplier reference"></label>
+      </div>
+      <div id="receiveStockError" class="dialog-error hidden"></div>
+      <div class="dialog-actions"><button type="button" data-close="receiveStockDialog">Cancel</button><button type="submit" class="primary-action button-like">Receive into Store</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="toolIssueDialog">
+    <form id="toolIssueForm" class="dialog-form">
+      <div class="dialog-head"><div><p class="eyebrow">STORE KEEPER</p><h2>Issue Tool to Technician</h2></div><button type="button" data-close="toolIssueDialog">×</button></div>
+      <div class="form-grid">
+        <label>Job Card No.<input id="toolJobCardNo" maxlength="40" placeholder="e.g. JC-21-08-26-12"></label>
+        <label>Technician<select id="toolTechnician" required><option value="">Select Technician…</option></select></label>
+        <label>Tool name<input id="toolName" maxlength="255" required placeholder="e.g. Hydraulic pressure gauge"></label>
+        <label>Tool / Serial ID<input id="toolAssetId" maxlength="100" placeholder="e.g. TL-0042"></label>
+        <label>Quantity<input id="toolQuantity" type="number" min="0.01" step="0.01" value="1" required></label>
+        <label>Expected return<input id="toolExpectedReturn" type="datetime-local"></label>
+        <label class="wide">Condition out<input id="toolConditionOut" maxlength="255" placeholder="e.g. Good / complete set"></label>
+        <label class="wide">Note<textarea id="toolIssueNote" rows="3" maxlength="500" placeholder="Optional issue note…"></textarea></label>
+      </div>
+      <div id="toolIssueError" class="dialog-error hidden"></div>
+      <div class="dialog-actions"><button type="button" data-close="toolIssueDialog">Cancel</button><button type="submit" class="primary-action button-like">Issue Tool</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="toolReturnDialog">
+    <form id="toolReturnForm" class="dialog-form">
+      <div class="dialog-head"><div><p class="eyebrow">STORE KEEPER</p><h2>Receive Tool Return</h2></div><button type="button" data-close="toolReturnDialog">×</button></div>
+      <input id="toolReturnId" type="hidden">
+      <div class="form-grid">
+        <label class="wide">Condition in<input id="toolConditionIn" maxlength="255" required placeholder="e.g. Good / damaged / missing accessory"></label>
+        <label>Received by<input id="toolReceivedBy" maxlength="255" placeholder="Store Keeper name"></label>
+        <label class="wide">Return note<textarea id="toolReturnNote" rows="3" maxlength="500" placeholder="Optional return note…"></textarea></label>
+      </div>
+      <div id="toolReturnError" class="dialog-error hidden"></div>
+      <div class="dialog-actions"><button type="button" data-close="toolReturnDialog">Cancel</button><button type="submit" class="primary-action button-like">Confirm Return</button></div>
+    </form>
+  </dialog>
+
+  <script src="/customer-workshop/workshop.js?v=443-workshop-roles"></script>
+</body>
+</html>

@@ -81,13 +81,22 @@
 
     <section id="entryPanel" class="panel entry-panel">
       <div class="panel-head">
-        <div><h2>Add petty cash entry</h2><p>Record a small cash cost and select the machine that used it.</p></div>
+        <div><h2 id="entryPanelTitle">Add petty cash entry</h2><p id="entryPanelHelp">Record a small cash cost and select the machine that used it.</p></div>
         <strong id="calculatedTotal">Amount: TZS 0</strong>
       </div>
       <form id="expenseForm">
         <label>Date<input id="expenseDate" type="date" required></label>
         <label>Machine<select id="machineSelect" required><option value="">Select machine…</option></select></label>
         <label class="wide">Receipt for<input id="description" maxlength="500" required placeholder="e.g. Transport for technician visit"></label>
+
+        <div class="petty-spares wide">
+          <div class="petty-spares-head">
+            <div><b>Spare entry</b><small>Optional · add spare parts/materials used or purchased with this Petty Cash entry.</small></div>
+            <button class="secondary compact" id="addSpareButton" type="button">+ Add another spare</button>
+          </div>
+          <div id="spareItems" class="petty-spare-list"></div>
+        </div>
+
         <label>Amount (TZS)<input id="amount" type="number" min="0.01" step="0.01" required></label>
         <label class="receipt-field">Receipt photo <small>(optional)</small>
           <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
@@ -97,7 +106,7 @@
           <img id="receiptPreview" alt="Receipt preview">
           <button id="removeReceiptButton" type="button">Remove receipt</button>
         </div>
-        <div class="form-actions"><button class="primary" id="saveButton" type="submit">Save petty cash entry</button></div>
+        <div class="form-actions petty-entry-actions"><button class="primary" id="saveButton" type="submit">Save petty cash entry</button><button class="secondary hidden" id="cancelEditButton" type="button">Cancel Edit</button></div>
       </form>
     </section>
 
@@ -108,8 +117,8 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date</th><th>Machine</th><th>Description</th><th>Amount</th><th>Receipt</th><th>Recorded by</th></tr></thead>
-          <tbody id="expenseRows"><tr><td colspan="6" class="empty">Loading entries…</td></tr></tbody>
+          <thead><tr><th>Date</th><th>Machine</th><th>Description</th><th>Spare details</th><th>Amount</th><th>Receipt</th><th>Recorded by</th><th>Action</th></tr></thead>
+          <tbody id="expenseRows"><tr><td colspan="8" class="empty">Loading entries…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -120,6 +129,6 @@
     <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
   </dialog>
 
-  <script src="/customer-petty-cash/petty-cash.js?v=215-account"></script>
+  <script src="/customer-petty-cash/petty-cash.js?v=442-spare-details"></script>
 </body>
 </html>

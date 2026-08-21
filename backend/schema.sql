@@ -460,6 +460,7 @@ ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS part_number VARCHAR(100);
 ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_data TEXT;
 ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_mime VARCHAR(50);
 ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS receipt_photo_name VARCHAR(255);
+ALTER TABLE usage_logs ADD COLUMN IF NOT EXISTS petty_cash_items_json TEXT;
 
 CREATE TABLE IF NOT EXISTS admin_announcements (
   id VARCHAR(36) PRIMARY KEY,
@@ -1385,3 +1386,31 @@ CREATE INDEX IF NOT EXISTS idx_job_cards_billing_status ON digital_job_cards(cus
 -- Historical V308/V312/V313 data-repair UPDATE statements were intentionally
 -- removed from schema.sql. Workflow state is changed only by explicit user/API
 -- actions, never merely because a new code build was deployed.
+
+-- V443 - Customer Workshop Store Keeper Tool Issue / Return documents.
+CREATE TABLE IF NOT EXISTS customer_tool_issues (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  document_no VARCHAR(50) NOT NULL UNIQUE,
+  job_card_no VARCHAR(40) NULL,
+  technician_id VARCHAR(36) NULL REFERENCES users(id) ON DELETE SET NULL,
+  technician_name VARCHAR(255) NOT NULL,
+  tool_name VARCHAR(255) NOT NULL,
+  tool_asset_id VARCHAR(100) NULL,
+  quantity NUMERIC(12,2) NOT NULL DEFAULT 1,
+  condition_out VARCHAR(255) NULL,
+  expected_return_at TIMESTAMPTZ NULL,
+  issued_by VARCHAR(255) NOT NULL,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  returned_at TIMESTAMPTZ NULL,
+  condition_in VARCHAR(255) NULL,
+  received_by VARCHAR(255) NULL,
+  issue_note VARCHAR(500) NULL,
+  return_note VARCHAR(500) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_tool_issues_customer
+  ON customer_tool_issues(customer_id, returned_at, issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_tool_issues_technician
+  ON customer_tool_issues(technician_id, returned_at, issued_at DESC);

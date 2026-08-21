@@ -777,6 +777,7 @@ function petty_cash_rows(string $customerId, string $machineId, ?string $from = 
 
 function petty_cash_account_rows(string $customerId, ?string $from = null, ?string $to = null): array {
     $sql = "SELECT ul.id, ul.machine_id, ul.date, ul.description, ul.cost, ul.logged_by, ul.receipt_photo_name,
+                ul.part_number, ul.quantity, ul.unit, ul.petty_cash_items_json,
                 CASE WHEN ul.receipt_photo_data IS NOT NULL AND ul.receipt_photo_data <> '' THEN 1 ELSE 0 END AS has_receipt,
                 ul.created_at, m.brand, m.model, m.machine_type, m.serial_number, m.reg_number
          FROM usage_logs ul
@@ -789,6 +790,58 @@ function petty_cash_account_rows(string $customerId, ?string $from = null, ?stri
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
     return $stmt->fetchAll();
+}
+
+function normalize_petty_cash_spare_items($raw): array {
+    if ($raw === null || $raw === '') return [];
+    if (!is_array($raw)) json_error('Spare details must be a list.');
+    if (count($raw) > 20) json_error('A Petty Cash entry can contain up to 20 spare items.');
+    $items = [];
+    foreach ($raw as $item) {
+        if (!is_array($item)) continue;
+        $description = trim((string)($item['description'] ?? ''));
+        $partNumber = trim((string)($item['partNumber'] ?? ''));
+        $quantityRaw = $item['quantity'] ?? null;
+        $unit = strtoupper(trim((string)($item['unit'] ?? 'PCS')));
+        $hasAny = $description !== '' || $partNumber !== '' || ($quantityRaw !== null && $quantityRaw !== '');
+        if (!$hasAny) continue;
+        if ($description === '') json_error('Spare Description is required for each spare item.');
+        if (strlen($description) > 220) json_error('Spare Description is too long.');
+        if (strlen($partNumber) > 100) json_error('Part Number is too long.');
+        if (!in_array($unit, ['PCS','LITER'], true)) json_error('Quantity unit must be PCS or Liter.');
+        $quantity = (float)$quantityRaw;
+        if ($quantity <= 0) json_error('Spare quantity must be greater than zero.');
+        $items[] = ['description'=>$description,'partNumber'=>$partNumber,'quantity'=>round($quantity,3),'unit'=>$unit];
+    }
+    return $items;
+}
+
+function petty_cash_spare_items_from_row(array $row): array {
+    $json = trim((string)($row['petty_cash_items_json'] ?? ''));
+    if ($json !== '') {
+        $decoded = json_decode($json, true);
+        if (is_array($decoded)) return $decoded;
+    }
+    $part = trim((string)($row['part_number'] ?? ''));
+    $qty = (float)($row['quantity'] ?? 0);
+    $unit = strtoupper(trim((string)($row['unit'] ?? '')));
+    if ($part !== '' || $qty > 0) {
+        return [['description'=>(string)($row['description'] ?? 'Spare item'),'partNumber'=>$part,'quantity'=>$qty > 0 ? $qty : 1,'unit'=>in_array($unit,['PCS','LITER'],true)?$unit:'PCS']];
+    }
+    return [];
+}
+
+function petty_cash_spare_summary(array $items): string {
+    if (!$items) return '—';
+    $parts=[];
+    foreach ($items as $item) {
+        $qty=rtrim(rtrim(number_format((float)($item['quantity'] ?? 0),3,'.',''),'0'),'.');
+        $unit=strtoupper((string)($item['unit'] ?? 'PCS'))==='LITER'?'Liter':'PCS';
+        $part=trim((string)($item['partNumber'] ?? ''));
+        $label=trim((string)($item['description'] ?? 'Spare'));
+        $parts[]=$label . ($part!==''?' ['.$part.']':'') . ' - ' . ($qty!==''?$qty:'0') . ' ' . $unit;
+    }
+    return implode('; ', $parts);
 }
 
 function customer_can_manage_petty_cash(array $customer): bool {
@@ -1607,6 +1660,119 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
             'phone' => $company['companyPhone'] ?? '',
         ],
     ]);
+}
+
+
+// ---- V443 Workshop Store Keeper Tool Issue / Return Documents ---------------
+// These documents are customer-owned workshop records. A tool remains OUT WITH
+// TECHNICIAN until the Store Keeper records its return.
+if ($sub === 'tool-issues') {
+    require_customer_feature_access($customer, 'store', 'Store Keeper Tool Documents');
+    if ($method === 'GET' && $sub2 === '') {
+        $stmt = db()->prepare(
+            "SELECT id, document_no, job_card_no, technician_id, technician_name, tool_name, tool_asset_id,
+                    quantity, condition_out, expected_return_at, issued_by, issued_at, returned_at,
+                    condition_in, received_by, issue_note, return_note, updated_at
+             FROM customer_tool_issues
+             WHERE customer_id = ?
+             ORDER BY issued_at DESC
+             LIMIT 250"
+        );
+        $stmt->execute([$customer['id']]);
+        $items = array_map(static function(array $row): array {
+            return [
+                'id'=>$row['id'], 'documentNo'=>$row['document_no'], 'jobCardNo'=>$row['job_card_no'],
+                'technicianId'=>$row['technician_id'], 'technicianName'=>$row['technician_name'],
+                'toolName'=>$row['tool_name'], 'toolAssetId'=>$row['tool_asset_id'],
+                'quantity'=>(float)$row['quantity'], 'conditionOut'=>$row['condition_out'],
+                'expectedReturnAt'=>$row['expected_return_at'], 'issuedBy'=>$row['issued_by'],
+                'issuedAt'=>$row['issued_at'], 'returnedAt'=>$row['returned_at'],
+                'conditionIn'=>$row['condition_in'], 'receivedBy'=>$row['received_by'],
+                'issueNote'=>$row['issue_note'], 'returnNote'=>$row['return_note'],
+            ];
+        }, $stmt->fetchAll());
+        json_out(['items'=>$items, 'canManage'=>customer_can_manage_store($customer)]);
+    }
+
+    if ($method === 'POST' && $sub2 === '') {
+        require_customer_write_access($customer);
+        if (!customer_can_manage_store($customer)) json_error('Only Store Keeper, Workshop Manager, Admin or Owner can issue workshop tools.', 403);
+        $b = body();
+        $technicianId = trim((string)($b['technicianId'] ?? ''));
+        $technicianName = trim((string)($b['technicianName'] ?? ''));
+        $toolName = trim((string)($b['toolName'] ?? ''));
+        $toolAssetId = trim((string)($b['toolAssetId'] ?? ''));
+        $jobCardNo = strtoupper(trim((string)($b['jobCardNo'] ?? '')));
+        $quantity = (float)($b['quantity'] ?? 1);
+        $conditionOut = trim((string)($b['conditionOut'] ?? ''));
+        $expectedReturnAt = trim((string)($b['expectedReturnAt'] ?? ''));
+        $note = trim((string)($b['note'] ?? ''));
+        if ($technicianId === '') json_error('Select a Technician.');
+        if ($toolName === '') json_error('Tool name is required.');
+        if ($quantity <= 0) json_error('Tool quantity must be greater than zero.');
+        $techStmt = db()->prepare(
+            "SELECT u.id,u.name FROM users u JOIN roles r ON r.id=u.role_id
+             WHERE u.id=? AND u.assigned_customer_id=? AND u.is_customer_managed=1
+               AND u.is_active=1 AND u.deleted_at IS NULL AND LOWER(r.name)='technician' LIMIT 1"
+        );
+        $techStmt->execute([$technicianId, $customer['id']]);
+        $tech = $techStmt->fetch();
+        if (!$tech) json_error('Selected Technician does not belong to this customer workshop.', 403);
+        $technicianName = trim((string)$tech['name']);
+        if ($jobCardNo !== '') {
+            $jobStmt = db()->prepare('SELECT 1 FROM digital_job_cards WHERE customer_id=? AND UPPER(job_card_no)=UPPER(?) LIMIT 1');
+            $jobStmt->execute([$customer['id'], $jobCardNo]);
+            if (!$jobStmt->fetchColumn()) json_error('Job Card number was not found for this customer.', 404);
+        }
+        $today = (new DateTimeImmutable('now', new DateTimeZone('Africa/Dar_es_Salaam')))->format('d-m-y');
+        $countStmt = db()->prepare("SELECT COUNT(*) FROM customer_tool_issues WHERE issued_at >= date_trunc('day', NOW())");
+        $countStmt->execute();
+        $seq = ((int)$countStmt->fetchColumn()) + 1;
+        do {
+            $documentNo = 'TI-' . $today . '-' . str_pad((string)$seq, 2, '0', STR_PAD_LEFT);
+            $exists = db()->prepare('SELECT 1 FROM customer_tool_issues WHERE document_no=? LIMIT 1');
+            $exists->execute([$documentNo]);
+            if (!$exists->fetchColumn()) break;
+            $seq++;
+        } while ($seq < 1000);
+        $id = uuid();
+        $issuedBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Store Keeper')) ?: 'Store Keeper';
+        $expectedSql = $expectedReturnAt !== '' ? $expectedReturnAt : null;
+        db()->prepare(
+            'INSERT INTO customer_tool_issues
+             (id,customer_id,document_no,job_card_no,technician_id,technician_name,tool_name,tool_asset_id,quantity,
+              condition_out,expected_return_at,issued_by,issued_at,issue_note,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),?,NOW(),NOW())'
+        )->execute([
+            $id,$customer['id'],$documentNo,$jobCardNo !== '' ? $jobCardNo : null,$technicianId,$technicianName,$toolName,
+            $toolAssetId !== '' ? $toolAssetId : null,round($quantity,2),$conditionOut !== '' ? $conditionOut : null,
+            $expectedSql,$issuedBy,$note !== '' ? $note : null,
+        ]);
+        log_customer_activity($customer, "Tool {$toolName} issued to Technician {$technicianName} under {$documentNo}.");
+        json_out(['ok'=>true,'id'=>$id,'documentNo'=>$documentNo,'message'=>'Tool Issue Document created.'],201);
+    }
+
+    if ($method === 'POST' && $sub2 !== '' && $sub3 === 'return') {
+        require_customer_write_access($customer);
+        if (!customer_can_manage_store($customer)) json_error('Only Store Keeper, Workshop Manager, Admin or Owner can receive tool returns.', 403);
+        $stmt = db()->prepare('SELECT * FROM customer_tool_issues WHERE id=? AND customer_id=? LIMIT 1');
+        $stmt->execute([$sub2,$customer['id']]);
+        $issue = $stmt->fetch();
+        if (!$issue) json_error('Tool Issue Document not found.',404);
+        if (!empty($issue['returned_at'])) json_error('This tool has already been returned.',409);
+        $b=body();
+        $conditionIn=trim((string)($b['conditionIn']??''));
+        $receivedBy=trim((string)($b['receivedBy']??''));
+        $returnNote=trim((string)($b['note']??''));
+        if ($conditionIn==='') json_error('Condition on return is required.');
+        if ($receivedBy==='') $receivedBy=trim((string)($customer['actorName']??$customer['name']??'Store Keeper')) ?: 'Store Keeper';
+        db()->prepare('UPDATE customer_tool_issues SET returned_at=NOW(),condition_in=?,received_by=?,return_note=?,updated_at=NOW() WHERE id=?')
+            ->execute([$conditionIn,$receivedBy,$returnNote!==''?$returnNote:null,$sub2]);
+        log_customer_activity($customer, "Tool {$issue['tool_name']} returned by {$issue['technician_name']} under {$issue['document_no']}.");
+        json_out(['ok'=>true,'message'=>'Tool return recorded.']);
+    }
+
+    json_error('Method not allowed.',405);
 }
 
 // ---- Customer-owned Store Ledger -------------------------------------------
@@ -3350,6 +3516,7 @@ if ($sub === 'petty-cash-account') {
         $amount = (float)($b['amount'] ?? 0);
         $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
         $receiptName = trim((string)($b['receiptName'] ?? ''));
+        $spareItems = normalize_petty_cash_spare_items($b['spareItems'] ?? []);
         $receiptData = null; $receiptMime = null;
         $parsedDate = DateTime::createFromFormat('!Y-m-d', $date);
         if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date) json_error('Enter a valid date.');
@@ -3361,12 +3528,49 @@ if ($sub === 'petty-cash-account') {
         if ($receiptPhoto !== '') [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
         $entryId = uuid();
         $loggedBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer'));
+        $firstSpare = $spareItems[0] ?? null;
+        $spareJson = $spareItems ? json_encode($spareItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null;
         db()->prepare(
-            "INSERT INTO usage_logs (id, customer_id, machine_id, date, category, description, cost, logged_by, receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at)
-             VALUES (?,?,?,?,'PETTY_CASH',?,?,?,?,?,?,NOW())"
-        )->execute([$entryId, $customer['id'], $machineId, $date, $description, round($amount, 2), $loggedBy ?: 'Customer', $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null]);
+            "INSERT INTO usage_logs (id, customer_id, machine_id, date, category, description, cost, logged_by, receipt_photo_data, receipt_photo_mime, receipt_photo_name, part_number, quantity, unit, petty_cash_items_json, created_at)
+             VALUES (?,?,?,?,'PETTY_CASH',?,?,?,?,?,?,?,?,?,?,NOW())"
+        )->execute([$entryId, $customer['id'], $machineId, $date, $description, round($amount, 2), $loggedBy ?: 'Customer', $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null, $firstSpare['partNumber'] ?? null, $firstSpare['quantity'] ?? null, $firstSpare['unit'] ?? null, $spareJson]);
         log_customer_activity($customer, 'Recorded Petty Cash expense: TZS ' . number_format($amount, 2));
         json_out(['id' => $entryId, 'message' => 'Petty Cash entry saved successfully.'], 201);
+    }
+
+    if ($method === 'PUT' && $sub2 === 'entry' && $sub3 !== '') {
+        require_customer_write_access($customer);
+        $entryId = trim((string)$sub3);
+        $b = body();
+        $machineId = trim((string)($b['machineId'] ?? ''));
+        $date = trim((string)($b['date'] ?? date('Y-m-d')));
+        $description = trim((string)($b['description'] ?? ''));
+        $amount = (float)($b['amount'] ?? 0);
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        $spareItems = normalize_petty_cash_spare_items($b['spareItems'] ?? []);
+        $parsedDate = DateTime::createFromFormat('!Y-m-d', $date);
+        if (!$parsedDate || $parsedDate->format('Y-m-d') !== $date) json_error('Enter a valid date.');
+        if ($description === '') json_error('Description is required.');
+        if ($amount <= 0) json_error('Amount must be greater than zero.');
+        $machineStmt = db()->prepare('SELECT id FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+        $machineStmt->execute([$machineId, $customer['id']]);
+        if (!$machineStmt->fetch()) json_error('Choose a valid machine for this Petty Cash entry.');
+        $entryStmt = db()->prepare("SELECT id FROM usage_logs WHERE id = ? AND customer_id = ? AND category = 'PETTY_CASH'");
+        $entryStmt->execute([$entryId, $customer['id']]);
+        if (!$entryStmt->fetch()) json_error('Petty Cash entry was not found.', 404);
+        $firstSpare = $spareItems[0] ?? null;
+        $spareJson = $spareItems ? json_encode($spareItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null;
+        if ($receiptPhoto !== '') {
+            [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
+            db()->prepare("UPDATE usage_logs SET machine_id = ?, date = ?, description = ?, cost = ?, receipt_photo_data = ?, receipt_photo_mime = ?, receipt_photo_name = ?, part_number = ?, quantity = ?, unit = ?, petty_cash_items_json = ? WHERE id = ? AND customer_id = ? AND category = 'PETTY_CASH'")
+                ->execute([$machineId, $date, $description, round($amount, 2), $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null, $firstSpare['partNumber'] ?? null, $firstSpare['quantity'] ?? null, $firstSpare['unit'] ?? null, $spareJson, $entryId, $customer['id']]);
+        } else {
+            db()->prepare("UPDATE usage_logs SET machine_id = ?, date = ?, description = ?, cost = ?, part_number = ?, quantity = ?, unit = ?, petty_cash_items_json = ? WHERE id = ? AND customer_id = ? AND category = 'PETTY_CASH'")
+                ->execute([$machineId, $date, $description, round($amount, 2), $firstSpare['partNumber'] ?? null, $firstSpare['quantity'] ?? null, $firstSpare['unit'] ?? null, $spareJson, $entryId, $customer['id']]);
+        }
+        log_customer_activity($customer, 'Edited Petty Cash expense: TZS ' . number_format($amount, 2));
+        json_out(['id' => $entryId, 'message' => 'Petty Cash entry updated successfully.']);
     }
 
     if ($method === 'GET' && $sub2 === 'receipt') {
@@ -3404,9 +3608,9 @@ if ($sub === 'petty-cash-account') {
         fputcsv($output, [strtoupper($customer['name']) . ' - PETTY CASH ACCOUNT REPORT']);
         fputcsv($output, ['Period', $rangeFrom ? "$rangeFrom to $rangeTo" : 'All time']);
         fputcsv($output, []);
-        fputcsv($output, ['Date','Machine','Description','Amount TZS','Receipt','Recorded By']);
+        fputcsv($output, ['Date','Machine','Description','Spare Description / Part Number / Qty','Amount TZS','Receipt','Recorded By']);
         foreach ($entries as $entry) {
-            fputcsv($output, [$entry['date'], trim(($entry['brand'] ?? '') . ' ' . ($entry['model'] ?? '')), $entry['description'], $entry['cost'], $entry['has_receipt'] ? 'Yes' : 'No', $entry['logged_by']]);
+            fputcsv($output, [$entry['date'], trim(($entry['brand'] ?? '') . ' ' . ($entry['model'] ?? '')), $entry['description'], petty_cash_spare_summary(petty_cash_spare_items_from_row($entry)), $entry['cost'], $entry['has_receipt'] ? 'Yes' : 'No', $entry['logged_by']]);
         }
         fclose($output); exit;
     }
@@ -3416,7 +3620,7 @@ if ($sub === 'petty-cash-account') {
         $lines = [strtoupper($customer['name']) . ' - PETTY CASH ACCOUNT REPORT', 'Service system: BELM General Tech Service Limited', 'Period: ' . ($rangeFrom ? display_date($rangeFrom) . ' to ' . display_date($rangeTo) : 'All time'), 'Generated: ' . date('d/m/Y H:i'), str_repeat('-', 78)];
         foreach ($entries as $entry) {
             $machineName = trim(($entry['brand'] ?? '') . ' ' . ($entry['model'] ?? '')) ?: ($entry['machine_type'] ?? 'Machine');
-            $lines[] = sprintf('%s | %s | TZS %s | %s', display_date($entry['date']), $machineName, number_format((float)$entry['cost'], 2), $entry['description']);
+            $lines[] = sprintf('%s | %s | TZS %s | %s | Spare: %s', display_date($entry['date']), $machineName, number_format((float)$entry['cost'], 2), $entry['description'], petty_cash_spare_summary(petty_cash_spare_items_from_row($entry)));
         }
         $lines[] = str_repeat('-', 78);
         $lines[] = 'TOTAL USED: TZS ' . number_format($total, 2);
@@ -3440,7 +3644,7 @@ if ($sub === 'petty-cash-account') {
         $machines = array_map(static fn(array $m): array => ['id'=>$m['id'], 'name'=>trim(($m['brand'] ?? '') . ' ' . ($m['model'] ?? '')) ?: ($m['machine_type'] ?? 'Machine'), 'serialNumber'=>$m['serial_number'], 'regNumber'=>$m['reg_number']], $machineStmt->fetchAll());
         $mappedEntries = array_map(static fn(array $e): array => [
             'id'=>$e['id'], 'machineId'=>$e['machine_id'], 'machineName'=>trim(($e['brand'] ?? '') . ' ' . ($e['model'] ?? '')) ?: ($e['machine_type'] ?? 'Machine'),
-            'date'=>$e['date'], 'description'=>$e['description'], 'cost'=>(float)$e['cost'], 'loggedBy'=>$e['logged_by'], 'hasReceipt'=>(bool)$e['has_receipt'], 'createdAt'=>$e['created_at']
+            'date'=>$e['date'], 'description'=>$e['description'], 'spareItems'=>petty_cash_spare_items_from_row($e), 'cost'=>(float)$e['cost'], 'loggedBy'=>$e['logged_by'], 'hasReceipt'=>(bool)$e['has_receipt'], 'createdAt'=>$e['created_at']
         ], $entries);
         $filteredTotal = array_reduce($mappedEntries, static fn(float $sum, array $e): float => $sum + (float)$e['cost'], 0.0);
         json_out([

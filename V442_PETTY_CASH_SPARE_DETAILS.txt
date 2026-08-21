@@ -1,0 +1,13 @@
+BELM PORTAL V442 - PETTY CASH SPARE DETAILS
+
+Customer Petty Cash entry form restored/enhanced with:
+- Spare Description
+- Part Number
+- Quantity
+- Unit dropdown: PCS / Liter
+- Add another spare (up to 20 spare lines per Petty Cash entry)
+- Existing Edit workflow reloads and updates all spare lines without creating a duplicate entry
+- Petty Cash history displays spare details
+- CSV and PDF exports include spare description / part number / quantity
+- First spare is mirrored into legacy usage_logs part_number/quantity/unit columns for compatibility
+- Full spare list is stored in usage_logs.petty_cash_items_json

@@ -149,3 +149,32 @@ html[data-theme="dark"] .reject-store-issue { background:#32191b; color:#ffb0aa;
 #workshopAccountDialog .dialog-note{padding-left:0;padding-right:0}
 html[data-theme="dark"] .workshop-account-card{background:linear-gradient(155deg,#081726,#0c2940);border-color:#24445f}
 @media(max-width:620px){.workshop-account-actions{grid-template-columns:1fr 1fr}.workshop-account-card>strong{font-size:24px}}
+
+
+/* V441 - Petty Cash edit controls */
+.petty-entry-actions{display:flex;gap:8px;align-items:stretch}.petty-entry-actions button{width:auto;flex:1}.petty-edit-button{border-color:#3b82f6!important;color:#1d4ed8!important;background:#eff6ff!important}.petty-edit-button:hover{filter:brightness(.98)}[data-theme="dark"] .petty-edit-button{background:#13243a!important;color:#9ecbff!important;border-color:#31557d!important}@media(max-width:760px){.petty-entry-actions{flex-direction:column}}
+
+/* V442 - Petty Cash spare details: description / part no / qty + unit */
+.petty-spares{padding:13px;border:1px solid #d9e5df;border-radius:12px;background:#f8fbf9}
+.petty-spares-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.petty-spares-head b{display:block;color:var(--navy);font-size:13px}
+.petty-spares-head small{display:block;margin-top:3px;color:var(--muted);font-size:10px;line-height:1.4;font-weight:600}
+.petty-spare-list{display:grid;gap:9px}
+.petty-spare-row{display:grid;grid-template-columns:minmax(220px,2fr) minmax(145px,1fr) 100px 110px 34px;gap:8px;align-items:end;padding:10px;border:1px solid #e2ebe6;border-radius:10px;background:#fff}
+.petty-spare-row label{margin:0}
+.petty-spare-row .spare-remove{width:34px;min-height:42px;border:1px solid #efc2bd;border-radius:8px;background:#fff4f3;color:#b42318;font-size:20px;font-weight:900;cursor:pointer}
+.petty-spare-row .spare-remove:hover{background:#ffe9e7}
+.petty-spare-row .spare-remove.first{opacity:.55}
+.petty-spare-summary{display:grid;gap:5px;min-width:190px}
+.petty-spare-summary span{display:block;padding:5px 7px;border:1px solid #dce8e1;border-radius:7px;background:#f8fbf9;color:#3e5163;font-size:10px;line-height:1.3}
+.petty-spare-summary b{color:var(--navy);font-size:10px}
+.petty-spare-summary small{display:block;margin-top:2px;color:var(--green2);font-size:9px;font-weight:850}
+[data-theme="dark"] .petty-spares{background:#0f1d31;border-color:#2a3c56}
+[data-theme="dark"] .petty-spares-head b{color:#f4f7fb}
+[data-theme="dark"] .petty-spare-row{background:#101e32;border-color:#2b3f59}
+[data-theme="dark"] .petty-spare-row .spare-remove{background:#351d20;color:#ffaaa4;border-color:#63373b}
+[data-theme="dark"] .petty-spare-summary span{background:#102033;border-color:#29445a;color:#cbd6e3}
+[data-theme="dark"] .petty-spare-summary b{color:#f4f7fb}
+[data-theme="dark"] .petty-spare-summary small{color:#86e6af}
+@media(max-width:900px){.petty-spare-row{grid-template-columns:1.7fr 1fr 90px 100px 34px}}
+@media(max-width:720px){.petty-spares-head{flex-direction:column}.petty-spares-head button{width:100%}.petty-spare-row{grid-template-columns:1fr 1fr}.petty-spare-row .spare-description{grid-column:1/-1}.petty-spare-row .spare-remove{grid-column:2;justify-self:end}.petty-spare-row .spare-remove.first{display:none}}

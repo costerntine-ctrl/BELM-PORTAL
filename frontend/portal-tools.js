@@ -1428,7 +1428,7 @@
         </section>
         <nav class="belm-customer-face-actions belm-customer-face-primary-actions" aria-label="Customer dashboard primary actions">
           <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">View Your Machine</a>
-          <a class="belm-customer-face-action action-blue" href="/breakdown-workflow/?actor=customer">Workshop</a>
+          <a class="belm-customer-face-action action-blue" href="/customer-workshop/?actor=customer">Workshop</a>
           <a class="belm-customer-face-action action-green" href="/customer-procurement/">Procurement</a>
           <button type="button" class="belm-customer-face-action action-yellow" data-customer-face-general-report>General Report</button>
           <a class="belm-customer-face-action action-purple" href="/customer-users/">Manage Users</a>

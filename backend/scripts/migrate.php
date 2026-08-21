@@ -59,7 +59,7 @@ $protectedTables = [
     'proforma_invoices', 'proforma_invoice_items', 'invoices', 'invoice_items', 'payments', 'receipts',
     'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests',
     'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
-    'customer_communications', 'tasks', 'activity_logs', 'trash_entries',
+    'customer_communications', 'customer_tool_issues', 'tasks', 'activity_logs', 'trash_entries',
 ];
 
 try {

@@ -4453,6 +4453,7 @@ html[data-theme="dark"] .belm-machine-update-progress { background: #26384d; }
 .belm-customer-report-actions button:hover,
 .belm-report-date-filter [data-jc-apply]:hover,
 .belm-report-date-filter [data-dr-apply]:hover,
+.belm-report-date-filter [data-op-apply]:hover,
 .belm-report-date-download:hover {
   transform: translateY(-1px);
   filter: brightness(.97);
@@ -4497,6 +4498,16 @@ html[data-theme="dark"] .belm-machine-update-progress { background: #26384d; }
   background: #facc15;
   color: #111827;
 }
+.belm-customer-checkup-tabs button[data-checkup-tab="operator"] {
+  border-color: #fb923c;
+  background: #fff7ed;
+  color: #c2410c;
+}
+.belm-customer-checkup-tabs button[data-checkup-tab="operator"].active {
+  border-color: #f97316;
+  background: #f97316;
+  color: #fff;
+}
 .belm-checkup-display-strip,
 .belm-report-date-filter,
 .belm-daily-checklist-summary > div,
@@ -4512,6 +4523,7 @@ html[data-theme="dark"] .belm-machine-update-progress { background: #26384d; }
 .belm-customer-report-actions button,
 .belm-report-date-filter [data-jc-apply],
 .belm-report-date-filter [data-dr-apply],
+.belm-report-date-filter [data-op-apply],
 .belm-report-date-download {
   min-height: 36px;
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
@@ -4542,7 +4554,8 @@ html[data-theme="dark"] .belm-machine-update-progress { background: #26384d; }
   color: #111827;
 }
 .belm-report-date-filter [data-jc-apply],
-.belm-report-date-filter [data-dr-apply] {
+.belm-report-date-filter [data-dr-apply],
+.belm-report-date-filter [data-op-apply] {
   border-color: #3b82f6;
   background: #3b82f6;
   color: #fff;
@@ -6254,4 +6267,283 @@ body[data-belm-area="portal"] .belm-customer-machine-card-v409 .belm-machine-mor
   border-radius: 9px !important;
   background: #0a1726 !important;
   box-shadow: 0 14px 30px rgba(0,0,0,.42) !important;
+}
+
+/* ========================================================================
+   V417 - Customer Dashboard > View Your Machine: wide overview layout.
+   Uses the same centered 720px visual footprint as the BELM Customer Overview
+   instead of the old fixed 390 x 590 compact tile. Machine-specific actions,
+   service status and ownership controls are unchanged; only presentation is
+   expanded for readability and PC/tablet use.
+   ======================================================================== */
+body[data-belm-area="portal"] .belm-customer-machine-grid {
+  grid-template-columns: minmax(0, 720px) !important;
+  justify-content: center !important;
+  gap: 22px !important;
+}
+body[data-belm-area="portal"] .belm-dashboard-layout > .belm-customer-machine-grid {
+  flex: 1 1 720px !important;
+  min-width: min(100%, 620px) !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 {
+  position: relative !important;
+  width: min(720px, 100%) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  max-width: 720px !important;
+  padding: 28px 30px 24px !important;
+  gap: 0 !important;
+  overflow: visible !important;
+  border-width: 1px !important;
+  border-radius: 22px !important;
+  background: linear-gradient(180deg,#10233a 0%,#0b1a2d 48%,#091725 100%) !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,.34), inset 0 0 0 1px rgba(99,168,233,.04) !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417::before {
+  display: block !important;
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 0 auto !important;
+  z-index: 4 !important;
+  height: 7px !important;
+  border-radius: 22px 22px 0 0 !important;
+  background: #708195 !important;
+  box-shadow: 0 0 18px rgba(112,129,149,.42) !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417.belm-range-green::before,
+body[data-belm-area="portal"] .belm-customer-machine-card-v417.status-green::before { background:#5cd85e !important; box-shadow:0 0 18px rgba(66,220,101,.58) !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417.belm-range-yellow::before,
+body[data-belm-area="portal"] .belm-customer-machine-card-v417.status-yellow::before { background:#ffc928 !important; box-shadow:0 0 18px rgba(255,201,40,.52) !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417.belm-range-red::before,
+body[data-belm-area="portal"] .belm-customer-machine-card-v417.status-red::before { background:#ef5350 !important; box-shadow:0 0 18px rgba(239,83,80,.54) !important; }
+
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head {
+  min-height: 112px !important;
+  margin: -28px -30px 0 !important;
+  padding: 34px 170px 20px 30px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head > div:first-child > div:first-child,
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .font-medium {
+  font-size: clamp(24px,3.2vw,32px) !important;
+  line-height: 1.05 !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .text-slate-500,
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .text-xs {
+  margin-top: 7px !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .belm-customer-fleet-number {
+  top: 31px !important;
+  right: 30px !important;
+  width: 126px !important;
+  min-width: 126px !important;
+  max-width: 126px !important;
+  min-height: 66px !important;
+  padding: 10px 13px !important;
+  border-radius: 13px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .belm-customer-fleet-number small { font-size: 9px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .belm-customer-fleet-number b { margin-top:4px !important; font-size:14px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-last-checked {
+  min-height: 34px !important;
+  margin: 0 0 12px !important;
+  padding: 8px 12px !important;
+  border-radius: 9px !important;
+  font-size: 10.5px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-technician-machine-info { gap: 10px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-technician-machine-health > div:first-child {
+  padding: 7px 11px !important;
+  border-radius: 9px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-technician-machine-health > div:first-child strong { font-size: 10.5px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-alert-copy {
+  min-height: 94px !important;
+  max-height: none !important;
+  padding: 16px 18px !important;
+  gap: 8px !important;
+  border-radius: 14px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-alert-copy strong { font-size: 14px !important; line-height: 1.35 !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-alert-copy span { font-size: 11px !important; line-height: 1.35 !important; }
+
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-service-due-panel { margin-top: 14px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-service-due-head-v210 {
+  min-height: 58px !important;
+  padding: 11px 15px !important;
+  border-radius: 12px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-service-due-head-v210 > div b { font-size: 14px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-service-due-head-v210 > strong { font-size: 11px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-machine-quick-actions {
+  grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+  gap: 10px !important;
+  margin-top: 14px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-machine-quick-actions > a,
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-machine-quick-actions > button {
+  min-height: 66px !important;
+  padding: 9px 7px !important;
+  gap: 5px !important;
+  border-radius: 12px !important;
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-machine-quick-actions [data-ui-icon]::before {
+  width: 24px !important; height: 24px !important; flex-basis:24px !important; font-size:9px !important; border-radius:7px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-activity-selector {
+  grid-template-columns: 145px minmax(0,1fr) !important;
+  min-height: 66px !important;
+  margin-top: 12px !important;
+  padding: 10px 12px !important;
+  gap: 12px !important;
+  border-radius: 12px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-activity-selector span { font-size: 10px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-activity-selector select {
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 34px 0 13px !important;
+  border-radius: 10px !important;
+  font-size: 11px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-machine-more-actions { margin-top: 10px !important; border-radius: 10px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-machine-more-actions > summary { min-height: 34px !important; padding: 7px 11px !important; font-size: 9px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-management {
+  margin-top: 12px !important;
+  padding-top: 12px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-management-buttons { gap: 8px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-management-buttons button {
+  min-height: 46px !important;
+  padding: 8px 6px !important;
+  border-radius: 10px !important;
+  font-size: 9px !important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-management > small { margin-top:6px !important; font-size:8px !important; }
+body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-spare-recommendation-panel {
+  max-height: none !important;
+  margin-top: 10px !important;
+  padding: 9px 11px !important;
+  border-radius: 10px !important;
+}
+
+@media (max-width: 760px) {
+  body[data-belm-area="portal"] .belm-customer-machine-grid { grid-template-columns:minmax(0,1fr) !important; justify-content:stretch !important; }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 {
+    width:100% !important; max-width:none !important; padding:22px 16px 18px !important; border-radius:17px !important;
+  }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head {
+    min-height:104px !important; margin:-22px -16px 0 !important; padding:30px 126px 16px 16px !important;
+  }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head > div:first-child > div:first-child,
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .font-medium { font-size:22px !important; }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .belm-customer-fleet-number {
+    top:26px !important; right:16px !important; width:104px !important; min-width:104px !important; max-width:104px !important; min-height:58px !important;
+  }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-machine-quick-actions { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-machine-management-buttons { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+}
+@media (max-width: 430px) {
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head { padding-right:16px !important; padding-top:92px !important; }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 > .belm-machine-native-head .belm-customer-fleet-number { top:24px !important; left:16px !important; right:auto !important; }
+  body[data-belm-area="portal"] .belm-customer-machine-card-v417 .belm-customer-activity-selector { grid-template-columns:1fr !important; }
+}
+
+
+/* V418 - Technician General Report Center: every assigned-customer machine
+   report category is visible from the yellow General Report entry, with a
+   server-generated PDF download per category. */
+body[data-belm-area="tech"] .belm-tech-general-report-dialog {
+  width:min(980px,calc(100vw - 22px)); max-height:92vh;
+}
+body[data-belm-area="tech"] .belm-tech-general-toolbar {
+  display:grid; grid-template-columns:repeat(2,minmax(130px,1fr)) auto auto; gap:8px;
+  padding:12px 16px; border-bottom:1px solid #284158; background:#0d2034;
+}
+body[data-belm-area="tech"] .belm-tech-general-toolbar label { display:grid; gap:4px; }
+body[data-belm-area="tech"] .belm-tech-general-toolbar label span { color:#8fa8c1; font:800 9px/1 Inter,system-ui,sans-serif; text-transform:uppercase; letter-spacing:.08em; }
+body[data-belm-area="tech"] .belm-tech-general-toolbar input,
+body[data-belm-area="tech"] .belm-tech-general-toolbar button {
+  min-height:38px; border:1px solid #365875; border-radius:9px; padding:8px 10px; color:#fff; background:#10263d; font-weight:800;
+}
+body[data-belm-area="tech"] .belm-tech-general-toolbar button { cursor:pointer; background:#176bb4; }
+body[data-belm-area="tech"] .belm-tech-general-toolbar [data-tech-general-all] { background:#162536; }
+body[data-belm-area="tech"] .belm-tech-general-body { max-height:73vh; gap:14px; }
+body[data-belm-area="tech"] .belm-tech-general-loading,
+body[data-belm-area="tech"] .belm-tech-general-empty { padding:24px 16px; border:1px dashed rgba(139,177,235,.3); border-radius:12px; color:#9fb3c8; text-align:center; font-weight:800; }
+body[data-belm-area="tech"] .belm-tech-general-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+body[data-belm-area="tech"] .belm-tech-general-overview > div { padding:11px 12px; border:1px solid rgba(124,164,205,.25); border-radius:11px; background:#0e2134; }
+body[data-belm-area="tech"] .belm-tech-general-overview span { display:block; color:#8fa8c1; font-size:9px; font-weight:900; text-transform:uppercase; }
+body[data-belm-area="tech"] .belm-tech-general-overview b { display:block; margin-top:4px; color:#fff; font-size:14px; overflow-wrap:anywhere; }
+body[data-belm-area="tech"] .belm-tech-general-category-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+body[data-belm-area="tech"] .belm-tech-general-category {
+  min-width:0; padding:13px; border:1px solid #334c67; border-radius:13px; background:#0e1d2e; display:grid; gap:11px; cursor:pointer;
+}
+body[data-belm-area="tech"] .belm-tech-general-category.active { box-shadow:0 0 0 2px rgba(69,162,255,.28) inset; }
+body[data-belm-area="tech"] .belm-tech-general-category.tone-blue { border-left:4px solid #39a7ff; }
+body[data-belm-area="tech"] .belm-tech-general-category.tone-yellow { border-left:4px solid #ffc21c; }
+body[data-belm-area="tech"] .belm-tech-general-category.tone-green { border-left:4px solid #41d36e; }
+body[data-belm-area="tech"] .belm-tech-general-category.tone-purple { border-left:4px solid #a480ff; }
+body[data-belm-area="tech"] .belm-tech-general-category > div:first-child { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 10px; align-items:start; }
+body[data-belm-area="tech"] .belm-tech-general-category span { color:#edf6ff; font-size:13px; font-weight:900; }
+body[data-belm-area="tech"] .belm-tech-general-category b { color:#fff; font-size:24px; line-height:1; }
+body[data-belm-area="tech"] .belm-tech-general-category small { grid-column:1/-1; color:#8fa8c1; font-size:10px; line-height:1.35; }
+body[data-belm-area="tech"] .belm-tech-general-category-actions { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+body[data-belm-area="tech"] .belm-tech-general-category-actions button,
+body[data-belm-area="tech"] .belm-tech-general-row-pdf {
+  min-height:34px; border:1px solid #3b678c; border-radius:8px; background:#123253; color:#fff; font-size:10px; font-weight:900; cursor:pointer;
+}
+body[data-belm-area="tech"] .belm-tech-general-category-actions button:last-child,
+body[data-belm-area="tech"] .belm-tech-general-row-pdf { background:#14763a; border-color:#279652; }
+body[data-belm-area="tech"] .belm-tech-general-section { padding:13px; border:1px solid #304a65; border-radius:14px; background:#091827; }
+body[data-belm-area="tech"] .belm-tech-general-section-head { display:flex; align-items:end; justify-content:space-between; gap:12px; padding-bottom:10px; border-bottom:1px solid #273e55; }
+body[data-belm-area="tech"] .belm-tech-general-section-head span { color:#7f9bb5; font-size:9px; font-weight:900; text-transform:uppercase; }
+body[data-belm-area="tech"] .belm-tech-general-section-head h3 { margin:3px 0 0; color:#fff; font-size:18px; }
+body[data-belm-area="tech"] .belm-tech-general-section-head > strong { color:#9cb5ca; font-size:10px; }
+body[data-belm-area="tech"] .belm-tech-general-list { display:grid; gap:7px; margin-top:10px; }
+body[data-belm-area="tech"] .belm-tech-general-row { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:9px; align-items:center; padding:10px; border:1px solid rgba(93,132,168,.28); border-radius:10px; background:#0d2032; }
+body[data-belm-area="tech"] .belm-tech-general-row-main { min-width:0; display:grid; gap:3px; }
+body[data-belm-area="tech"] .belm-tech-general-row-main strong { color:#fff; font-size:12px; overflow-wrap:anywhere; }
+body[data-belm-area="tech"] .belm-tech-general-row-main span { color:#c8d8e7; font-size:11px; }
+body[data-belm-area="tech"] .belm-tech-general-row-main small { color:#7f9ab4; font-size:9.5px; line-height:1.35; }
+body[data-belm-area="tech"] .belm-tech-general-row-main p { margin:2px 0; color:#aebfd0; font-size:10.5px; line-height:1.4; overflow-wrap:anywhere; }
+body[data-belm-area="tech"] .belm-tech-general-status { min-width:72px; padding:6px 8px; border:1px solid #45617b; border-radius:999px; color:#d7e8f7; background:#17283a; text-align:center; font-size:9px; font-weight:900; }
+body[data-belm-area="tech"] .belm-tech-general-status.status-green { color:#8cff9d; border-color:#298144; background:#0c351e; }
+body[data-belm-area="tech"] .belm-tech-general-status.status-yellow { color:#ffda58; border-color:#87670a; background:#3a2e09; }
+body[data-belm-area="tech"] .belm-tech-general-status.status-red { color:#ff8d8d; border-color:#8c3434; background:#3c1515; }
+body[data-belm-area="tech"] .belm-tech-general-status.status-blue { color:#8dccff; border-color:#28689a; background:#0d3150; }
+body[data-belm-area="tech"] .belm-tech-general-row-pdf { min-width:62px; padding:6px 10px; }
+body[data-belm-area="tech"] .belm-tech-general-subtitle { margin:14px 0 6px; color:#dceafb; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+body[data-belm-area="tech"] .belm-tech-maintenance-summary { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine { padding:10px; border:1px solid rgba(80,150,110,.32); border-radius:10px; background:#0d221b; display:grid; gap:4px; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine > strong { color:#fff; font-size:11px; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine > span { color:#a7c9b3; font-size:10px; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine > div { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine b { font-size:10px; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine .level-green { color:#61e883; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine .level-yellow { color:#ffd33f; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine .level-red { color:#ff7474; }
+body[data-belm-area="tech"] .belm-tech-maintenance-machine small { color:#77968a; font-size:9px; line-height:1.35; }
+@media (max-width:720px){
+  body[data-belm-area="tech"] .belm-tech-general-report-dialog { width:calc(100vw - 10px); max-height:94vh; }
+  body[data-belm-area="tech"] .belm-tech-general-toolbar { grid-template-columns:1fr 1fr; padding:10px; }
+  body[data-belm-area="tech"] .belm-tech-general-overview { grid-template-columns:1fr 1fr; }
+  body[data-belm-area="tech"] .belm-tech-general-category-grid { grid-template-columns:1fr; }
+  body[data-belm-area="tech"] .belm-tech-general-row { grid-template-columns:minmax(0,1fr) auto; }
+  body[data-belm-area="tech"] .belm-tech-general-row-pdf { grid-column:1/-1; width:100%; }
+  body[data-belm-area="tech"] .belm-tech-maintenance-summary { grid-template-columns:1fr; }
+}
+
+
+/* V419 - Machine Report Center lives behind each machine Report button. */
+.belm-machine-report-center-card { width: min(980px, calc(100vw - 24px)); }
+.belm-machine-report-center-tabs button { min-width: 150px; }
+.belm-operator-reported-row small { max-width: 640px; line-height: 1.45; }
+@media (max-width: 720px) {
+  .belm-machine-report-center-tabs { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .belm-machine-report-center-tabs button { min-width: 0; }
 }

@@ -1536,3 +1536,71 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ========================================================================
+   V421 - BELM Admin Customer Fleet: preserve the same preferred ordering.
+   Operator Message/Condition get the vertical room; Activity Status is the
+   final control above a single-row set of primary actions.
+   ======================================================================== */
+#machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+  grid-template-columns: 1fr !important;
+  min-height: 0 !important;
+  gap: 10px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+  min-height: 150px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-condition-message {
+  min-height: 88px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+  order: 20 !important;
+  margin-top: 18px !important;
+  margin-bottom: 0 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions {
+  order: 21 !important;
+  grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+  padding-top: 0 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+  order: 22 !important;
+}
+@media (max-width:760px) {
+  #machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+    min-height: 170px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-condition-message {
+    min-height: 94px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+    grid-template-columns: 105px minmax(0,1fr) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions {
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+    gap: 6px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions > button,
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions > a {
+    min-width: 0 !important;
+    min-height: 58px !important;
+    padding: 7px 2px !important;
+    font-size: 8.3px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: repeat(3, minmax(0,1fr)) !important;
+    gap: 6px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions > button {
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 7px 2px !important;
+    font-size: 7.7px !important;
+  }
+}

@@ -1176,6 +1176,32 @@ if ($sub === 'dashboard') {
         $machine['serviceKit'] = $machine['service_kit'];
     }
     unset($machine);
+
+    // V422: preload the latest Operator Report for each customer machine so
+    // Customer > View Your Machine can use the same large Operator Message
+    // panel as BELM Customer Fleet without issuing one request per card.
+    $operatorStmt = db()->prepare(
+        "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, message, status, created_at
+         FROM operator_reports
+         WHERE customer_id = ?
+         ORDER BY machine_id, created_at DESC, id DESC"
+    );
+    $operatorStmt->execute([$customer['id']]);
+    $operatorByMachine = [];
+    foreach ($operatorStmt->fetchAll() as $report) {
+        $operatorByMachine[(string)$report['machine_id']] = [
+            'id' => (string)$report['id'],
+            'operatorName' => (string)$report['operator_name'],
+            'message' => (string)$report['message'],
+            'status' => (string)$report['status'],
+            'createdAt' => (string)$report['created_at'],
+        ];
+    }
+    foreach ($machines as &$machine) {
+        $machine['latestOperatorMessage'] = $operatorByMachine[(string)$machine['id']] ?? null;
+    }
+    unset($machine);
+
     $stmt = db()->prepare(
         'SELECT id, name, email, phone, portal_link, is_machinery_admin, privacy_preferences
          FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'

@@ -1,0 +1,12 @@
+BELM PORTAL V423 - MAIN CUSTOMER DASHBOARD
+
+Customer owner dashboard actions:
+1. View Your Machine -> approved Customer Machine Card / machine fleet.
+2. Workshop -> customer workshop and Job Card workflow.
+3. Procurement -> customer procurement/store workflow.
+4. General Report -> customer report center.
+5. Manage Users -> customer users and role permissions.
+6. Petty Cash -> customer petty cash workspace.
+7. General Analysis -> existing authenticated customer analysis engine/dialog.
+
+This change is CUSTOMER DASHBOARD only. It does not change the BELM Admin customer card or BELM Admin machine card.

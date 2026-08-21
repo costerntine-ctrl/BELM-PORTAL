@@ -1378,11 +1378,16 @@
             <p class="belm-customer-face-empty">Loading communication history…</p>
           </div>
         </section>
-        <nav class="belm-customer-face-actions" aria-label="Customer dashboard actions">
+        <nav class="belm-customer-face-actions belm-customer-face-primary-actions" aria-label="Customer dashboard primary actions">
           <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">View Your Machine</a>
           <a class="belm-customer-face-action action-blue" href="/breakdown-workflow/?actor=customer">Workshop</a>
           <a class="belm-customer-face-action action-green" href="/customer-procurement/">Procurement</a>
           <button type="button" class="belm-customer-face-action action-yellow" data-customer-face-general-report>General Report</button>
+          <a class="belm-customer-face-action action-purple" href="/customer-users/">Manage Users</a>
+        </nav>
+        <nav class="belm-customer-face-actions belm-customer-face-secondary-actions" aria-label="Customer dashboard finance and analysis actions">
+          <a class="belm-customer-face-action action-petty" href="/customer-petty-cash/">Petty Cash</a>
+          <button type="button" class="belm-customer-face-action action-analysis" data-customer-face-general-analysis>General Analysis</button>
         </nav>
       </article>`;
 
@@ -1393,6 +1398,7 @@
     });
     face.querySelector("[data-customer-face-view-all]")?.addEventListener("click", () => openCustomerFaceCommunicationHistory(face, name));
     face.querySelector("[data-customer-face-general-report]")?.addEventListener("click", () => openCustomerGeneralReportCenter());
+    face.querySelector("[data-customer-face-general-analysis]")?.addEventListener("click", () => openCustomerGeneralAnalysisDialog());
     loadCustomerFaceCommunications(face, name);
   }
 
@@ -1456,13 +1462,6 @@
     const condition = technicianCondition(machine.status);
     card.dataset.belmConditionRange = condition.status;
     applyCustomerMachineRange(card);
-    const opStatus = String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase();
-    const opLabels = {
-      NORMAL: "Normal - no active work", SERVICE_IN_PROGRESS: "Service in progress",
-      CHECKUP_IN_PROGRESS: "Check-up in progress", MAINTENANCE_IN_PROGRESS: "Maintenance in progress",
-      GROUNDED: "Grounded - not operational",
-    };
-    const lastChecked = machine.lastCheckedAt || machine.last_checked_at;
     const alertReasons = Array.isArray(machine.alertReasons) ? machine.alertReasons.filter(Boolean) : [];
     const conditionMessage = alertReasons.length
       ? alertReasons.join(" · ")
@@ -1473,39 +1472,39 @@
           : condition.status === "GREEN"
             ? "Machine condition normal."
             : "Machine condition has not been checked yet.";
+    const conditionLabel = {
+      GREEN: "Green — Normal",
+      YELLOW: "Yellow — Attention",
+      RED: "Red — Don't operate",
+      UNKNOWN: "Not checked",
+    }[condition.status] || "Not checked";
+    const operatorReport = machine.latestOperatorMessage || machine.latest_operator_message || null;
+    const operatorText = String(operatorReport?.message || "").trim() || "No operator message reported yet.";
+    const operatorName = String(operatorReport?.operatorName || operatorReport?.operator_name || "Operator").trim() || "Operator";
+    const operatorStatus = String(operatorReport?.status || "NONE").toUpperCase();
+    const operatorCreated = operatorReport?.createdAt || operatorReport?.created_at || null;
+    const operatorMeta = operatorReport
+      ? `${operatorName}${operatorCreated ? ` · ${formatTanzaniaDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
+      : "Waiting for Operator report";
+
     const details = document.createElement("div");
-    details.className = "belm-technician-machine-info belm-machine-info-v210";
+    details.className = "belm-technician-machine-info belm-machine-info-v210 belm-customer-machine-info-v422";
     details.innerHTML = `
-      <div class="belm-machine-state-row">
-        <div class="belm-technician-machine-health status-${escapeHtml(condition.status.toLowerCase())}">
-          <div><span>Machine Status</span><strong>${escapeHtml(condition.status)}</strong></div>
-          <div><span>Condition</span><strong>${escapeHtml(condition.label)}</strong><small>${escapeHtml(condition.note)}</small></div>
+      <div class="belm-customer-condition-badge-v422 status-${escapeHtml(condition.status.toLowerCase())}">${escapeHtml(conditionLabel)}</div>
+      <div class="belm-customer-machine-alert-copy belm-customer-machine-alert-v422" aria-live="polite">
+        <div class="belm-customer-operator-message-v422${operatorStatus === "OPEN" ? " is-open" : ""}">
+          <span>Operator Message</span>
+          <strong>${escapeHtml(operatorText)}</strong>
+          <small>${escapeHtml(operatorMeta)}</small>
         </div>
-        <div class="belm-customer-op-status op-${escapeHtml(opStatus)}">
-          <span>Current Activity</span>
-          <strong>${escapeHtml(opLabels[opStatus] || "Normal")}</strong>
+        <div class="belm-customer-condition-copy-v422">
+          <strong>${escapeHtml(conditionMessage)}</strong>
+          <span data-belm-service-alert-copy>Service range: checking…</span>
         </div>
-      </div>
-      <div class="belm-customer-machine-alert-copy" aria-live="polite">
-        <strong>${escapeHtml(conditionMessage)}</strong>
-        <span data-belm-service-alert-copy>Service range: checking…</span>
-      </div>
-      <details class="belm-machine-details-disclosure">
-        <summary>Machine details <span>Brand, type, serial, registration & service kit</span></summary>
-        <div class="belm-technician-machine-data">
-          <div><span>Brand</span><b>${escapeHtml(machine.brand || "Not recorded")}</b></div>
-          <div><span>Machine Type</span><b>${escapeHtml(machine.machineType || machine.machine_type || "Not recorded")}</b></div>
-          <div><span>Serial No.</span><b>${escapeHtml(machine.serialNumber || machine.serial_number || "Not recorded")}</b></div>
-          <div><span>Registration</span><b>${escapeHtml(machine.regNumber || machine.reg_number || "Not recorded")}</b></div>
-          <div><span>Service Kit</span><b>${escapeHtml(machine.serviceKit || machine.service_kit || "Not recorded")}</b></div>
-          <div><span>Last Checked</span><b>${escapeHtml(lastChecked ? new Date(lastChecked).toLocaleDateString() : "Never checked")}</b></div>
-        </div>
-      </details>
-      <div class="belm-machine-recent-updates" id="belmRecentUpdates-${escapeHtml(machine.id)}"></div>`;
+      </div>`;
     card.appendChild(details);
     details.addEventListener("click", (event) => event.stopPropagation());
     details.addEventListener("pointerdown", (event) => event.stopPropagation());
-    if (localStorage.getItem("belm_customer_token")) loadCustomerMachineRecentUpdates(machine.id, machine);
   }
 
   function dismissedUpdateIds() {
@@ -1942,7 +1941,6 @@
     row.dataset.customerMachineManagement = "1";
     row.innerHTML = `
       <div class="belm-customer-machine-management-buttons">
-        <button type="button" class="add" data-customer-add-machine ${providerOn ? "disabled" : ""}>Add Machine</button>
         <button type="button" class="edit" data-customer-edit-machine ${providerOn ? "disabled" : ""}>Edit Machine</button>
         <button type="button" class="delete" data-customer-delete-machine ${providerOn ? "disabled" : ""}>Delete Machine</button>
         <button type="button" class="forget" data-customer-forget-machine ${providerOn ? "disabled" : ""}>Forget Permanently</button>
@@ -2005,15 +2003,6 @@
         <div><span>Next Service At</span><b>${escapeHtml(status.dueHour)} Hrs</b></div>
         <div><span>${remaining < 0 ? "Overdue By" : remaining === 0 ? "Service Due" : "Remaining"}</span><b>${remaining < 0 ? `${overdueBy} Hrs` : remaining === 0 ? "Now" : `${escapeHtml(remaining)} Hrs`}</b></div>
       </div>
-      <div class="belm-machine-quick-actions">
-        <a href="/customer-procurement/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Procurement</a>
-        <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
-        <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-machine-report="${escapeHtml(machine.id)}">Report</button>
-        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Check Up</button>
-        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>
-      </div>
       <div class="belm-customer-activity-selector" data-customer-activity-control>
         <div><span>Activity Status</span><small>Synced with BELM</small></div>
         <select data-customer-activity-status="${escapeHtml(machine.id)}" aria-label="Activity Status">
@@ -2025,6 +2014,15 @@
             GROUNDED: "Grounded",
           }).map(([value, label]) => `<option value="${value}" ${value === String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase() ? "selected" : ""}>${label}</option>`).join("")}
         </select>
+      </div>
+      <div class="belm-machine-quick-actions">
+        <a href="/customer-procurement/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Procurement</a>
+        <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
+        <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-machine-report="${escapeHtml(machine.id)}">Report</button>
+        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Check Up</button>
+        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>
       </div>`;
     card.appendChild(panel);
     panel.addEventListener("click", (event) => event.stopPropagation());
@@ -4188,7 +4186,7 @@
       if (!card) return;
 
       card.dataset.belmMachineExpenseReady = "1";
-      card.classList.add("belm-customer-machine-card", "belm-customer-machine-card-v409", "belm-customer-machine-card-v417");
+      card.classList.add("belm-customer-machine-card", "belm-customer-machine-card-v409", "belm-customer-machine-card-v417", "belm-customer-machine-card-v422");
       card.dataset.belmMachineId = String(machine.id || "");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       card.dataset.belmConditionRange = technicianCondition(machine.status).status;

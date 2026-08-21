@@ -242,6 +242,23 @@ function bw_reported_context(array $row): array {
     return ['reportedAt'=>$reportedAt,'machineHours'=>$machineHours];
 }
 
+function bw_latest_workshop_instruction(string $caseId): array {
+    if ($caseId === '') return ['instruction'=>null,'by'=>null,'at'=>null];
+    try {
+        $q = db()->prepare("SELECT note,actor_name,created_at FROM breakdown_case_events WHERE case_id=? AND action='WORKSHOP_MANAGER_INSTRUCTION' AND COALESCE(TRIM(note),'')<>'' ORDER BY created_at DESC LIMIT 1");
+        $q->execute([$caseId]);
+        $r = $q->fetch() ?: [];
+        return [
+            'instruction'=>isset($r['note']) && trim((string)$r['note'])!=='' ? trim((string)$r['note']) : null,
+            'by'=>isset($r['actor_name']) && trim((string)$r['actor_name'])!=='' ? trim((string)$r['actor_name']) : null,
+            'at'=>$r['created_at'] ?? null,
+        ];
+    } catch (Throwable $e) {
+        error_log('Breakdown workshop instruction lookup failed: '.$e->getMessage());
+        return ['instruction'=>null,'by'=>null,'at'=>null];
+    }
+}
+
 function bw_case_view(array $row): array {
     $stage = (string)$row['current_stage'];
     $jobCardNo = trim((string)($row['job_card_no'] ?? ''));
@@ -268,6 +285,7 @@ function bw_case_view(array $row): array {
     $sla = (float)($meta['slaHours'] ?? 0);
     $delayed = $row['status'] !== 'COMPLETED' && $sla > 0 && $stageHours > $sla;
     $reportedContext = bw_reported_context($row);
+    $workshopInstruction = bw_latest_workshop_instruction((string)($row['id'] ?? ''));
     return [
         'id'=>$row['id'],'customerId'=>$row['customer_id'],'machineId'=>$row['machine_id'],
         'customerName'=>$row['customer_name'] ?? null,'machineLabel'=>trim(($row['brand'] ?? '').' '.($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine'),
@@ -279,7 +297,9 @@ function bw_case_view(array $row): array {
         'customerManagesWorkshop'=>!empty($row['is_machinery_admin']),
         'status'=>$row['status'],'stage'=>$stage,'department'=>$row['current_department'],'blockerReason'=>$row['blocker_reason'],
         'openedAt'=>$row['opened_at'],'reportedAt'=>$reportedContext['reportedAt'] ?? $row['opened_at'],
-        'machineHours'=>$reportedContext['machineHours'],'stageStartedAt'=>$row['stage_started_at'],'closedAt'=>$row['closed_at'],
+        'machineHours'=>$reportedContext['machineHours'],
+        'workshopInstruction'=>$workshopInstruction['instruction'],'workshopInstructionBy'=>$workshopInstruction['by'],'workshopInstructionAt'=>$workshopInstruction['at'],
+        'stageStartedAt'=>$row['stage_started_at'],'closedAt'=>$row['closed_at'],
         'breakdownHours'=>$breakdownHours,'breakdownDays'=>round($breakdownHours/24,1),'stageHours'=>$stageHours,
         'slaHours'=>$sla,'delayed'=>$delayed,'delayHours'=>$delayed ? round($stageHours-$sla,1) : 0,
     ];
@@ -1163,6 +1183,8 @@ if ($method === 'POST' && $action === 'job-card') {
     $jobLocation=trim((string)($b['jobLocation']??''));
     if($jobLocation==='') $jobLocation=trim((string)($case['customer_address']??''));
     $initialJobStatus=$techId!==''?'ASSIGNED':'RECEIVED';
+    $workshopInstruction=trim((string)($b['workshopInstruction']??''));
+    if(mb_strlen($workshopInstruction)>1000) json_error('Workshop Manager instruction is too long (max 1000 characters).',422);
 
     // V413 - Customer Existing Job Card handover/reassignment.
     // The same card remains the official work record; diagnosis, work history,
@@ -1202,12 +1224,16 @@ if ($method === 'POST' && $action === 'job-card') {
         } else {
             bw_log($caseId,(string)($case['current_stage']?:'JOB_CARD_ASSIGNED'),(string)($case['current_department']?:'Technician'),$action,$note,$ctx);
         }
+        if($workshopInstruction!=='') {
+            bw_log($caseId,(string)($case['current_stage']?:'JOB_CARD_ASSIGNED'),'Workshop','WORKSHOP_MANAGER_INSTRUCTION',$workshopInstruction,$ctx);
+        }
         try {
             $email=trim((string)($tech['email']??''));
             if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$job['job_card_no'],
                 "Job Card {$job['job_card_no']} has been ".($reassigned?'reassigned':'assigned')." to you by {$ctx['actorName']}.\n".
                 ($reassigned && $previousTechnicianName!==''?"Previous Technician: $previousTechnicianName\n":'').
                 ($handoverReason!==''?"Handover note: $handoverReason\n":'').
+                ($workshopInstruction!==''?"Workshop Manager Instruction: $workshopInstruction\n":'').
                 "Machine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'').
                 "\nFault: ".$case['description']."\nOpen Technician > My Job Cards. Existing Job Card history remains available.");
         } catch(Throwable $e) {}
@@ -1248,12 +1274,15 @@ if ($method === 'POST' && $action === 'job-card') {
     } else {
         bw_set_stage($caseId,'TECHNICIAN_ASSIGNMENT','Awaiting Technician Assignment',$ctx,'Digital Job Card '.$num.' generated - waiting Technician assignment');
     }
+    if($workshopInstruction!=='') {
+        bw_log($caseId,$techId!==''?'JOB_CARD_ASSIGNED':'TECHNICIAN_ASSIGNMENT','Workshop','WORKSHOP_MANAGER_INSTRUCTION',$workshopInstruction,$ctx);
+    }
     if ($temporaryOverride && $techId!=='') {
         bw_log($caseId,'JOB_CARD_ASSIGNED','Technician','Temporary Technician Override - '.$techName,
             'Home customer: '.($techHomeName ?: 'Unassigned').'. Override applies only to Job Card '.$num.'.', $ctx);
     }
     if ($techId!=='') {
-        try { $email=trim((string)($tech['email']??'')); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":'')."\nMachine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'')."\nFault: ".$case['description']."\nOpen Technician > My Job Cards."); } catch(Throwable $e) {}
+        try { $email=trim((string)($tech['email']??'')); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":'')."\nMachine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'')."\nFault: ".$case['description'].($workshopInstruction!==''?"\nWorkshop Manager Instruction: $workshopInstruction":'')."\nOpen Technician > My Job Cards."); } catch(Throwable $e) {}
     }
     json_out(['id'=>$jobId,'jobCardNo'=>$num,'mode'=>$jobCardMode==='auto'?'create':$jobCardMode,'reassigned'=>false],201);
 }

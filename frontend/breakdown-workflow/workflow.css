@@ -244,3 +244,31 @@ html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(6,mi
 [data-theme="light"] .queue-technician-select{background:#fff;color:#10243a;border-color:#bdcad8}
 [data-theme="dark"] .queue-assign-row{background:rgba(58,166,255,.06)}
 @media(max-width:620px){.case-queue-head h3{font-size:16px}.case-origin-row,.case-meta{gap:5px}.queue-assign-row label{grid-template-columns:1fr}.queue-assign-row label>span{white-space:normal}.queue-technician-select{min-height:42px}.case-report-context{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}.case-report-context span{display:block}}
+
+
+/* V428 - Breakdown card message display + confirmable inline Technician assignment. */
+.queue-message-display{display:grid;gap:7px;margin-top:7px}
+.queue-message-block{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:rgba(11,103,194,.025)}
+.queue-message-block>span{display:block;margin-bottom:3px;font-size:9px;letter-spacing:.07em;font-weight:900;color:var(--muted)}
+.queue-message-block p{margin:0;font-size:12px;line-height:1.42;font-weight:760;overflow-wrap:anywhere;white-space:pre-wrap}
+.queue-message-block small{display:block;margin-top:4px;color:var(--muted);font-size:9px}
+.manager-instruction{border-color:rgba(242,195,24,.55);background:rgba(242,195,24,.08)}
+.manager-instruction>span{color:#9b7900}
+[data-theme="dark"] .queue-message-block{background:rgba(58,166,255,.035)}
+[data-theme="dark"] .manager-instruction{background:rgba(242,195,24,.075);border-color:rgba(242,195,24,.4)}
+[data-theme="dark"] .manager-instruction>span{color:#ffd84e}
+.queue-assign-toggle{width:100%;min-height:40px;border:1px solid #2f89d8;border-radius:9px;background:#0b67c2;color:#fff;font:inherit;font-weight:900;cursor:pointer}
+.queue-assign-toggle:hover{filter:brightness(1.06)}
+.queue-assign-controls{margin-top:8px;display:grid;gap:8px}
+.queue-assign-controls[hidden]{display:none!important}
+.queue-assign-controls label{display:grid;grid-template-columns:150px minmax(180px,1fr);align-items:center;gap:10px;margin:0;font-weight:900}
+.queue-instruction-label{align-items:start!important}
+.queue-manager-instruction{width:100%;min-height:58px;resize:vertical;border:1px solid #355373;border-radius:9px;padding:8px 10px;background:#0a1728;color:#f8fafc;font:inherit;line-height:1.35}
+.queue-manager-instruction:focus{outline:2px solid rgba(58,166,255,.35);outline-offset:1px;border-color:#3aa6ff}
+.queue-assign-actions{display:flex;gap:8px;justify-content:flex-end}
+.queue-assign-ok,.queue-assign-cancel{min-width:90px;border-radius:8px;padding:8px 14px;font:inherit;font-weight:900;cursor:pointer}
+.queue-assign-ok{background:#09834a;color:#fff;border:1px solid #09834a}
+.queue-assign-cancel{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.queue-assign-ok:disabled{opacity:.6;cursor:wait}
+[data-theme="light"] .queue-manager-instruction{background:#fff;color:#10243a;border-color:#bdcad8}
+@media(max-width:620px){.queue-assign-controls label{grid-template-columns:1fr}.queue-assign-actions{justify-content:stretch}.queue-assign-ok,.queue-assign-cancel{flex:1}.queue-message-block p{font-size:11.5px}}

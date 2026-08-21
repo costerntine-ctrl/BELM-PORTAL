@@ -1,0 +1,7 @@
+V428 - BREAKDOWN MESSAGE DISPLAY + ASSIGN TECHNICIAN CONFIRMATION
+
+- Live Breakdown cards show Reported Problem.
+- Workshop Manager instructions are stored in the case timeline and displayed when present.
+- Assign Technician button opens Select Technician + optional instruction + OK/Cancel.
+- Assignment/reassignment occurs only after OK.
+- Instructions are included in Technician assignment email and remain visible on the live case.

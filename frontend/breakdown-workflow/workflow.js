@@ -378,12 +378,25 @@
       const company=String(c.customerName||'Customer').trim()||'Customer';
       const canAssign=queueAssignmentAllowed(c);
       const assignedName=String(c.technicianName||'').trim();
+      const instruction=String(c.workshopInstruction||'').trim();
+      const messageDisplay=`<div class="queue-message-display ${instruction?'has-instruction':''}">
+        <div class="queue-message-block report-message"><span>REPORTED PROBLEM</span><p>${esc(c.description||'No problem description recorded.')}</p></div>
+        ${instruction?`<div class="queue-message-block manager-instruction"><span>WORKSHOP MANAGER INSTRUCTION</span><p>${esc(instruction)}</p>${c.workshopInstructionBy?`<small>By ${esc(c.workshopInstructionBy)}</small>`:''}</div>`:''}
+      </div>`;
       const assignment=canAssign
-        ? `<div class="queue-assign-row"><label><span>Assign Technician</span><select class="queue-technician-select" data-queue-assign="${esc(c.id)}" data-current-tech="${esc(c.technicianId||'')}" data-current-name="${esc(assignedName)}" ${queueTechnicians.length?'':'disabled'}>${queueTechnicianOptions(c)}</select></label><small>${assignedName?`Assigned: ${esc(assignedName)} · choose another Technician to reassign.`:(queueTechnicians.length?'Select a Technician for this Job Card.':'No customer Technician available.')}</small></div>`
+        ? `<div class="queue-assign-row" data-assign-wrap="${esc(c.id)}">
+            <button type="button" class="queue-assign-toggle" data-assign-toggle="${esc(c.id)}">Assign Technician</button>
+            <div class="queue-assign-controls" data-assign-panel="${esc(c.id)}" hidden>
+              <label><span>Select Technician</span><select class="queue-technician-select" data-queue-assign="${esc(c.id)}" data-current-tech="${esc(c.technicianId||'')}" data-current-name="${esc(assignedName)}" ${queueTechnicians.length?'':'disabled'}>${queueTechnicianOptions(c)}</select></label>
+              <label class="queue-instruction-label"><span>Workshop Manager Instruction</span><textarea class="queue-manager-instruction" data-queue-instruction="${esc(c.id)}" rows="2" maxlength="1000" placeholder="Optional instruction to Technician...">${esc(instruction)}</textarea></label>
+              <div class="queue-assign-actions"><button type="button" class="queue-assign-ok" data-queue-assign-ok="${esc(c.id)}">OK</button><button type="button" class="queue-assign-cancel" data-queue-assign-cancel="${esc(c.id)}">Cancel</button></div>
+              <small>${assignedName?`Currently assigned: ${esc(assignedName)}. Select another Technician to reassign.`:(queueTechnicians.length?'Select a Technician, add instruction if needed, then press OK.':'No customer Technician available.')}</small>
+            </div>
+          </div>`
         : (assignedName?`<div class="queue-assigned-readonly"><span>Technician</span><b>${esc(assignedName)}</b></div>`:'');
       return `<article class="case-card attention ${c.delayed?'delayed':''}" data-case="${esc(c.id)}">
         <div class="case-queue-head"><h3>${esc(c.machineLabel)}</h3></div>
-        <div class="case-description">${esc(c.description)}</div>
+        ${messageDisplay}
         <div class="case-report-context"><span><b>Reported:</b> ${esc(fmtDate(c.reportedAt||c.openedAt))}</span><span><b>Machine Hrs:</b> ${c.machineHours===null||c.machineHours===undefined||c.machineHours===''?'—':esc(String(Number(c.machineHours).toLocaleString(undefined,{maximumFractionDigits:1})))+' HRS'}</span></div>
         <div class="case-origin-row"><span class="pill company-pill company-alert ${c.delayed?'red':''}">FROM: ${esc(company)}</span><span class="pill source-pill">${esc(sourceLabel(c))}</span>${c.jobCardNo?`<span class="pill job-card-pill">${esc(c.jobCardNo)}</span>`:''}</div>
         <div class="case-meta"><span class="pill ${c.delayed?'red':'yellow'}">${esc(c.delayed?'DELAYED':c.status)}</span><span class="pill">${esc(c.department)}</span><span class="pill">Breakdown ${esc(duration(c.breakdownHours))}</span>${c.delayed?`<span class="pill red">Delay ${esc(duration(c.delayHours))}</span>`:''}</div>
@@ -391,11 +404,25 @@
       </article>`;
     }).join(''):`<div class="empty">${q?'No unfinished job matches this search.':'No unfinished breakdown job. Completed work stays in Timeline / History and reports.'}</div>`;
     document.querySelectorAll('[data-case]').forEach(e=>e.onclick=()=>openCase(e.dataset.case));
-    document.querySelectorAll('[data-queue-assign]').forEach(select=>{
-      select.addEventListener('click',event=>event.stopPropagation());
-      select.addEventListener('pointerdown',event=>event.stopPropagation());
-      select.addEventListener('change',event=>{event.stopPropagation();assignQueueTechnician(select)});
+    document.querySelectorAll('[data-assign-toggle]').forEach(button=>button.addEventListener('click',event=>{
+      event.stopPropagation();
+      const id=button.dataset.assignToggle;
+      const panel=document.querySelector(`[data-assign-panel="${CSS.escape(id)}"]`);
+      if(panel)panel.hidden=!panel.hidden;
+    }));
+    document.querySelectorAll('[data-queue-assign],[data-queue-instruction]').forEach(el=>{
+      el.addEventListener('click',event=>event.stopPropagation());
+      el.addEventListener('pointerdown',event=>event.stopPropagation());
     });
+    document.querySelectorAll('[data-queue-assign-ok]').forEach(button=>button.addEventListener('click',event=>{
+      event.stopPropagation();assignQueueTechnician(button.dataset.queueAssignOk);
+    }));
+    document.querySelectorAll('[data-queue-assign-cancel]').forEach(button=>button.addEventListener('click',event=>{
+      event.stopPropagation();
+      const id=button.dataset.queueAssignCancel;
+      const panel=document.querySelector(`[data-assign-panel="${CSS.escape(id)}"]`);
+      if(panel)panel.hidden=true;
+    }));
   }
   async function loadQueueTechnicians(){
     if(source!=='customer'||!isWorkshop){queueTechnicians=[];return}
@@ -403,26 +430,32 @@
     if(!customerId){queueTechnicians=[];return}
     try{queueTechnicians=await api(`/technicians?customerId=${encodeURIComponent(customerId)}&_=${Date.now()}`)}catch{queueTechnicians=[]}
   }
-  async function assignQueueTechnician(select){
-    const caseId=String(select?.dataset.queueAssign||'');
+  async function assignQueueTechnician(caseId){
+    caseId=String(caseId||'');
+    const select=document.querySelector(`[data-queue-assign="${CSS.escape(caseId)}"]`);
+    const instructionEl=document.querySelector(`[data-queue-instruction="${CSS.escape(caseId)}"]`);
+    const okButton=document.querySelector(`[data-queue-assign-ok="${CSS.escape(caseId)}"]`);
     const technicianId=String(select?.value||'');
+    const workshopInstruction=String(instructionEl?.value||'').trim();
     const c=cases.find(x=>String(x.id)===caseId);
-    if(!c||!technicianId)return;
+    if(!c)return;
+    if(!technicianId){show('Select Technician before pressing OK.',true);select?.focus();return;}
     const tech=queueTechnicians.find(x=>String(x.id)===technicianId);
     const previousId=String(c.technicianId||'');
     const previousName=String(c.technicianName||'').trim();
     if(previousId&&previousId!==technicianId&&!confirm(`${c.jobCardNo||'This Job Card'} is assigned to ${previousName||'another Technician'}. Reassign it to ${tech?.name||'the selected Technician'}?`)){
-      select.value=previousId;return;
+      if(select)select.value=previousId;return;
     }
-    select.disabled=true;
+    if(select)select.disabled=true;if(okButton)okButton.disabled=true;if(instructionEl)instructionEl.disabled=true;
     try{
       const result=await api('/job-card',{method:'POST',body:JSON.stringify({
-        caseId,technicianId,title:c.title||'Machine Breakdown',jobCardMode:c.jobCardId?'existing':'auto',jobCardId:c.jobCardId||'',handoverReason:'Assigned from Live Breakdown Queue'
+        caseId,technicianId,title:c.title||'Machine Breakdown',jobCardMode:c.jobCardId?'existing':'auto',jobCardId:c.jobCardId||'',
+        handoverReason:workshopInstruction||'Assigned from Live Breakdown Queue',workshopInstruction
       })});
       show(`✓ ${result.jobCardNo||c.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned'} to ${tech?.name||'Technician'}.`);
       await load();
     }catch(x){
-      select.value=previousId;select.disabled=false;show(x.message,true);
+      if(select){select.value=previousId;select.disabled=false;}if(okButton)okButton.disabled=false;if(instructionEl)instructionEl.disabled=false;show(x.message,true);
     }
   }
 

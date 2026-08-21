@@ -272,3 +272,104 @@ html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(6,mi
 .queue-assign-ok:disabled{opacity:.6;cursor:wait}
 [data-theme="light"] .queue-manager-instruction{background:#fff;color:#10243a;border-color:#bdcad8}
 @media(max-width:620px){.queue-assign-controls label{grid-template-columns:1fr}.queue-assign-actions{justify-content:stretch}.queue-assign-ok,.queue-assign-cancel{flex:1}.queue-message-block p{font-size:11.5px}}
+
+/* V430 - full Breakdown card attention blink for delayed / Service Level Agreement exceeded cases */
+.case-card.delayed{
+  border:1px solid rgba(199,47,47,.78);
+  border-left:6px solid var(--red);
+  animation:belmBreakdownDelayedCardBlink 1.35s ease-in-out infinite;
+  will-change:background-color,border-color,box-shadow;
+}
+@keyframes belmBreakdownDelayedCardBlink{
+  0%,100%{
+    background:rgba(199,47,47,.045);
+    border-color:rgba(199,47,47,.56);
+    box-shadow:0 0 0 0 rgba(199,47,47,0);
+  }
+  50%{
+    background:rgba(199,47,47,.22);
+    border-color:rgba(239,68,68,.98);
+    box-shadow:0 0 0 3px rgba(199,47,47,.13),0 0 22px rgba(199,47,47,.24);
+  }
+}
+[data-theme="dark"] .case-card.delayed{
+  animation-name:belmBreakdownDelayedCardBlinkDark;
+}
+@keyframes belmBreakdownDelayedCardBlinkDark{
+  0%,100%{
+    background:#0f1c2c;
+    border-color:rgba(199,47,47,.62);
+    box-shadow:0 0 0 0 rgba(239,68,68,0);
+  }
+  50%{
+    background:rgba(112,24,31,.68);
+    border-color:#ef4444;
+    box-shadow:0 0 0 3px rgba(239,68,68,.16),0 0 24px rgba(239,68,68,.28);
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .case-card.delayed{
+    animation:none;
+    background:rgba(199,47,47,.15);
+    border-color:var(--red);
+  }
+}
+
+
+/* V431 - Fleet number shown on Live Breakdown Queue cards. */
+.case-queue-head{justify-content:space-between}
+.case-fleet-number{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;color:var(--muted);font-size:11px;line-height:1.25}
+.case-fleet-number b{color:var(--ink);font-size:11px;font-weight:850;letter-spacing:0}
+[data-theme="dark"] .case-fleet-number b{color:#e9f1fb}
+@media(max-width:620px){.case-queue-head{flex-wrap:wrap}.case-fleet-number{font-size:10.5px}.case-fleet-number b{font-size:10.5px}}
+
+/* V432 - semantic color system for Live Breakdown Queue labels only. */
+/* Origin / information */
+.case-origin-row .company-pill{
+  background:#e7f2ff;
+  color:#075a9a;
+  border-color:#a9d0f3;
+}
+/* Source type: color identifies where the case came from. */
+.source-pill.source-breakdown{background:#efe9ff;color:#5b36a5;border-color:#c9b8f3}
+.source-pill.source-checklist{background:#e7f8ee;color:#087244;border-color:#9edbb8}
+.source-pill.source-operator{background:#fff1dc;color:#9a5500;border-color:#efc37f}
+.source-pill.source-technician{background:#e9efff;color:#354f9f;border-color:#b8c7f2}
+.source-pill.source-job-card{background:#e7f4ff;color:#075a9a;border-color:#9fcdf2}
+.source-pill.source-procurement{background:#fff7d1;color:#735d00;border-color:#ead779}
+/* Job Card is a confirmed workflow reference. */
+.job-card-pill{background:#e5f8ed;color:#076d3c;border-color:#8bd7aa}
+/* Current state. OPEN stays amber; DELAYED remains red. */
+.status-pill.yellow{background:#fff3bf;color:#765b00;border:1px solid #e7c94e}
+.status-pill.red{background:#fee3e3;color:#a11f1f;border:1px solid #efaaaa}
+/* Department ownership. */
+.department-pill.department-workshop{background:#e7f4ff;color:#075a9a;border:1px solid #a9d0f3}
+.department-pill.department-technician{background:#efe9ff;color:#5b36a5;border:1px solid #c9b8f3}
+.department-pill.department-procurement{background:#fff7d1;color:#735d00;border:1px solid #ead779}
+.department-pill.department-administration{background:#fff0dc;color:#8b4c00;border:1px solid #efc37f}
+/* Time: elapsed breakdown is amber/orange; overdue delay is red. */
+.breakdown-time-pill{background:#fff0dc;color:#8b4c00;border:1px solid #efc37f}
+.delay-time-pill{background:#fee3e3!important;color:#a11f1f!important;border:1px solid #efaaaa!important}
+/* Keep Reported and Machine Hours readable, neutral operational data. */
+.case-report-context{color:#687789}
+.case-report-context b{color:#22354a}
+.case-fleet-number{color:#687789}
+.case-fleet-number b{color:#22354a}
+[data-theme="dark"] .case-origin-row .company-pill{background:#123451;color:#b8dcff;border-color:#2b6294}
+[data-theme="dark"] .source-pill.source-breakdown{background:#2d2347;color:#dfd1ff;border-color:#735eb0}
+[data-theme="dark"] .source-pill.source-checklist{background:#0d2b20;color:#bff3d9;border-color:#1f8f62}
+[data-theme="dark"] .source-pill.source-operator{background:#3b260d;color:#ffd39b;border-color:#965f20}
+[data-theme="dark"] .source-pill.source-technician{background:#1d2948;color:#cbd7ff;border-color:#526aa9}
+[data-theme="dark"] .source-pill.source-job-card{background:#0b2c43;color:#b9e5ff;border-color:#2b86b8}
+[data-theme="dark"] .source-pill.source-procurement{background:#3a3108;color:#ffe58f;border-color:#7d6817}
+[data-theme="dark"] .job-card-pill{background:#0e3524;color:#85efad;border-color:#26764a}
+[data-theme="dark"] .status-pill.yellow{background:#3a3108;color:#ffe58f;border-color:#7d6817}
+[data-theme="dark"] .status-pill.red{background:#431f24;color:#ffc5c5;border-color:#8e313c}
+[data-theme="dark"] .department-pill.department-workshop{background:#102b43;color:#9ed1ff;border-color:#244d6e}
+[data-theme="dark"] .department-pill.department-technician{background:#2d2347;color:#dfd1ff;border-color:#735eb0}
+[data-theme="dark"] .department-pill.department-procurement{background:#3a3108;color:#ffe58f;border-color:#7d6817}
+[data-theme="dark"] .department-pill.department-administration{background:#3b260d;color:#ffd39b;border-color:#965f20}
+[data-theme="dark"] .breakdown-time-pill{background:#3b260d;color:#ffd39b;border-color:#965f20}
+[data-theme="dark"] .delay-time-pill{background:#431f24!important;color:#ffc5c5!important;border-color:#8e313c!important}
+[data-theme="dark"] .case-report-context{color:#94a6ba}
+[data-theme="dark"] .case-report-context b,[data-theme="dark"] .case-fleet-number b{color:#e9f1fb}

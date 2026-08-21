@@ -1,0 +1,7 @@
+BELM PORTAL V430 - FULL BREAKDOWN CARD BLINK
+
+- Live Breakdown Queue DELAYED / Service Level Agreement exceeded cases now pulse the full card red.
+- The complete card background, border and soft glow blink together so delayed jobs are immediately visible.
+- OPEN/non-delayed cards remain steady so the warning animation is reserved for overdue work.
+- Dark mode has its own readable red pulse.
+- Reduced-motion accessibility preference disables animation and keeps a static red attention state.

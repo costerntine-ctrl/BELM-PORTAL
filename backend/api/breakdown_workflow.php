@@ -64,7 +64,7 @@ function bw_context(array $payload): array {
 function bw_case_access(array $ctx, string $caseId): array {
     $stmt = db()->prepare(
         'SELECT bc.*, c.name AS customer_name, c.address AS customer_address, c.is_machinery_admin,
-                m.brand, m.model, m.machine_type, m.serial_number, m.reg_number
+                m.brand, m.model, m.machine_type, m.serial_number, m.reg_number, m.fleet_number
          FROM breakdown_cases bc
          JOIN customers c ON c.id = bc.customer_id
          JOIN machines m ON m.id = bc.machine_id
@@ -290,7 +290,7 @@ function bw_case_view(array $row): array {
         'id'=>$row['id'],'customerId'=>$row['customer_id'],'machineId'=>$row['machine_id'],
         'customerName'=>$row['customer_name'] ?? null,'machineLabel'=>trim(($row['brand'] ?? '').' '.($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine'),
         'brand'=>$row['brand'] ?? null,'model'=>$row['model'] ?? null,'machineType'=>$row['machine_type'] ?? null,
-        'serialNumber'=>$row['serial_number'] ?? null,'title'=>$row['title'],'description'=>$row['description'],
+        'serialNumber'=>$row['serial_number'] ?? null,'fleetNumber'=>trim((string)($row['fleet_number'] ?? '')) ?: null,'title'=>$row['title'],'description'=>$row['description'],
         'sourceType'=>$row['source_type'] ?? 'MANUAL','sourceId'=>$row['source_id'] ?? null,
         'jobCardId'=>$jobCardId !== '' ? $jobCardId : null,'jobCardNo'=>$jobCardNo !== '' ? $jobCardNo : null,'jobStatus'=>$jobStatus !== '' ? $jobStatus : null,
         'technicianId'=>$technicianId !== '' ? $technicianId : null,'technicianName'=>$technicianName !== '' ? $technicianName : null,
@@ -407,7 +407,7 @@ function bw_department_report_data(array $ctx, string $period, string $anchorDat
     $caseBase = ' FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE ' . $scope['sql'];
     $jobBase = ' FROM digital_job_cards j JOIN breakdown_cases bcj ON bcj.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id WHERE ' . $scope['jobSql'];
 
-    $stmt = db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number' . $caseBase . " AND bc.status='OPEN' ORDER BY bc.opened_at ASC");
+    $stmt = db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,m.fleet_number' . $caseBase . " AND bc.status='OPEN' ORDER BY bc.opened_at ASC");
     $stmt->execute($scope['params']);
     $openRows = $stmt->fetchAll();
     $openCases = [];
@@ -1127,7 +1127,7 @@ if ($method === 'GET' && $action === '') {
     }
     $machineId=trim((string)($_GET['machineId'] ?? '')); if($machineId!==''){ $where[]='bc.machine_id=?'; $params[]=$machineId; }
     $where[]="bc.status <> 'COMPLETED'";
-    $stmt=db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE '.implode(' AND ',$where).' ORDER BY bc.opened_at DESC, bc.updated_at DESC');
+    $stmt=db()->prepare('SELECT bc.*,c.name customer_name,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,m.fleet_number FROM breakdown_cases bc JOIN customers c ON c.id=bc.customer_id JOIN machines m ON m.id=bc.machine_id WHERE '.implode(' AND ',$where).' ORDER BY bc.opened_at DESC, bc.updated_at DESC');
     $stmt->execute($params); $out=[]; foreach($stmt->fetchAll() as $r)$out[]=bw_case_view($r); json_out($out);
 }
 

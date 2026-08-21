@@ -1,0 +1,6 @@
+BELM Portal V431 - Breakdown Fleet Number
+
+- Live Breakdown Queue cards now show the machine FLEET NUMBER in the top row.
+- Fleet number uses the same compact text sizing as the existing Reported / Machine Hrs context.
+- Added fleet_number to breakdown workflow case queries and API output.
+- Existing full-card delayed blink, Job Card, message display, and technician assignment workflows are unchanged.

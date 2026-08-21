@@ -62,6 +62,8 @@
   function fmtDate(v){if(!v)return '-';const raw=String(v).trim();const iso=/^\d{4}-\d{2}-\d{2} /.test(raw)?raw.replace(' ','T').replace(/([+-]\d{2})(?!:?\d{2})$/,'$1:00'):raw;const d=new Date(iso);if(Number.isNaN(d.getTime()))return raw;return d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
   function duration(h){h=Number(h||0);return h>=24?`${(h/24).toFixed(h>=72?0:1)} days`:`${Math.round(h)} hrs`}
   function sourceLabel(c){const s=String(c?.sourceType||'BREAKDOWN_CASE').toUpperCase();return s==='SERVICE_REQUEST'?'CUSTOMER JOB CARD':s==='OPERATOR_REPORT'?'OPERATOR REPORTED':s==='CHECKLIST_REPORT'?'CHECKLIST / TECH REPORT':s==='TECHNICIAN_REPORT'?'TECHNICIAN REPORT':s==='JOB_CARD'?'JOB CARD':s==='PROCUREMENT'?'PROCUREMENT':'BREAKDOWN CASE'}
+  function sourceColorClass(c){const s=String(c?.sourceType||'BREAKDOWN_CASE').toUpperCase();return s==='CHECKLIST_REPORT'?'source-checklist':s==='OPERATOR_REPORT'?'source-operator':s==='TECHNICIAN_REPORT'?'source-technician':s==='JOB_CARD'||s==='SERVICE_REQUEST'?'source-job-card':s==='PROCUREMENT'?'source-procurement':'source-breakdown'}
+  function departmentColorClass(c){const d=String(c?.department||'').toUpperCase();return d.includes('TECHNICIAN')?'department-technician':d.includes('PROCUREMENT')?'department-procurement':d.includes('ADMIN')||d.includes('APPROVAL')?'department-administration':'department-workshop'}
   function show(msg,error=false){const e=document.getElementById('alertBox');e.textContent=msg;e.className=`alert${error?' error':''}`;setTimeout(()=>e.classList.add('hidden'),5000)}
   // V329: every workflow button gives immediate tactile/visual feedback on click.
   document.addEventListener('pointerdown',event=>{
@@ -395,11 +397,11 @@
           </div>`
         : (assignedName?`<div class="queue-assigned-readonly"><span>Technician</span><b>${esc(assignedName)}</b></div>`:'');
       return `<article class="case-card attention ${c.delayed?'delayed':''}" data-case="${esc(c.id)}">
-        <div class="case-queue-head"><h3>${esc(c.machineLabel)}</h3></div>
+        <div class="case-queue-head"><h3>${esc(c.machineLabel)}</h3>${c.fleetNumber?`<span class="case-fleet-number"><b>FLEET NUMBER:</b> ${esc(c.fleetNumber)}</span>`:''}</div>
         ${messageDisplay}
         <div class="case-report-context"><span><b>Reported:</b> ${esc(fmtDate(c.reportedAt||c.openedAt))}</span><span><b>Machine Hrs:</b> ${c.machineHours===null||c.machineHours===undefined||c.machineHours===''?'—':esc(String(Number(c.machineHours).toLocaleString(undefined,{maximumFractionDigits:1})))+' HRS'}</span></div>
-        <div class="case-origin-row"><span class="pill company-pill company-alert ${c.delayed?'red':''}">FROM: ${esc(company)}</span><span class="pill source-pill">${esc(sourceLabel(c))}</span>${c.jobCardNo?`<span class="pill job-card-pill">${esc(c.jobCardNo)}</span>`:''}</div>
-        <div class="case-meta"><span class="pill ${c.delayed?'red':'yellow'}">${esc(c.delayed?'DELAYED':c.status)}</span><span class="pill">${esc(c.department)}</span><span class="pill">Breakdown ${esc(duration(c.breakdownHours))}</span>${c.delayed?`<span class="pill red">Delay ${esc(duration(c.delayHours))}</span>`:''}</div>
+        <div class="case-origin-row"><span class="pill company-pill company-alert ${c.delayed?'red':''}">FROM: ${esc(company)}</span><span class="pill source-pill ${sourceColorClass(c)}">${esc(sourceLabel(c))}</span>${c.jobCardNo?`<span class="pill job-card-pill">${esc(c.jobCardNo)}</span>`:''}</div>
+        <div class="case-meta"><span class="pill status-pill ${c.delayed?'red':'yellow'}">${esc(c.delayed?'DELAYED':c.status)}</span><span class="pill department-pill ${departmentColorClass(c)}">${esc(c.department)}</span><span class="pill breakdown-time-pill">Breakdown ${esc(duration(c.breakdownHours))}</span>${c.delayed?`<span class="pill red delay-time-pill">Delay ${esc(duration(c.delayHours))}</span>`:''}</div>
         ${assignment}
       </article>`;
     }).join(''):`<div class="empty">${q?'No unfinished job matches this search.':'No unfinished breakdown job. Completed work stays in Timeline / History and reports.'}</div>`;

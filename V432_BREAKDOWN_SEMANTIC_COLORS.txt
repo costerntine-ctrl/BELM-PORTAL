@@ -1,0 +1,23 @@
+BELM PORTAL V432 - BREAKDOWN SEMANTIC COLORS
+
+Change scope: Live Breakdown Queue colors only. No workflow, text, layout, permissions, timing, assignment, or Job Card logic changed.
+
+Semantic colors:
+- FROM/customer origin: blue
+- BREAKDOWN CASE: purple
+- CHECKLIST / TECH REPORT: green
+- OPERATOR REPORTED: orange
+- TECHNICIAN REPORT: indigo/purple
+- JOB CARD / CUSTOMER JOB CARD: blue
+- PROCUREMENT source: yellow
+- Job Card number: green
+- OPEN: amber/yellow
+- DELAYED / Delay / Service Level Agreement exceeded: red
+- Workshop: blue
+- Technician: purple
+- Procurement: yellow
+- Administration/Approval: orange
+- Breakdown elapsed time: orange
+- Reported time, Machine Hrs and Fleet Number: neutral readable operational text
+
+Dark-mode equivalents included.

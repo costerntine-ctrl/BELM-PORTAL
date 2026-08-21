@@ -92,6 +92,16 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_machinery_admin SMALLINT NOT N
 -- Maintenance/service-kit access is automatically available while BELM is the
 -- active Service Provider, or for a machine with an open official support request.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NULL DEFAULT '{"maintenanceRecords":false,"expenseReceipts":false,"teamDirectory":false,"storeAndParts":false}'::jsonb;
+-- V444: Workshop Module billing gate. This is intentionally SEPARATE from
+-- is_active ("Stop Portal Service") and from the customer's own 'store'
+-- Role Manager permission. is_active is an all-or-nothing kill switch for
+-- non-payment of the whole portal. The customer's 'store' permission (Role
+-- Manager) only controls WHICH of the customer's own staff can use Store /
+-- Workshop features once the module itself is enabled. workshop_module_active
+-- is the BELM-controlled paid add-on switch: only BELM Admin can turn it on,
+-- and turning it off blocks Store Ledger + Tool Issue/Return regardless of
+-- what permissions the customer has assigned internally.
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS workshop_module_active SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- Distinguishes a Technician created by a customer's Self-Service admin from
 -- a BELM Technician temporarily assigned to that customer for support.

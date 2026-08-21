@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <!-- V444: force a fresh reload if this page is restored from the browser's
+       back-forward cache (bfcache) on Back/Forward navigation. Without this,
+       a bfcache restore shows the exact stale DOM/state from before the
+       person navigated away — dead buttons, half-loaded panels — which reads
+       as the page "starting over" or getting stuck when moving between
+       Workshop and other departments. See portal-tools.js for the same fix
+       already applied to the main React shell. -->
+  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Workshop — BELM Operations</title>

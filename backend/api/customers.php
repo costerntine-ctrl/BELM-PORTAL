@@ -381,6 +381,7 @@ if ($method === 'GET' && !$action) {
         unset($privacyMachine);
         $c['isMachineryAdmin'] = !empty($c['is_machinery_admin']);
         $c['belmServiceProviderActive'] = $providerActive;
+        $c['isWorkshopModuleActive'] = !empty($c['workshop_module_active']);
         $c['privacyPreferences'] = $prefs;
         $c['privacyAccess'] = [
             'maintenanceRecords' => $maintenanceVisible,
@@ -437,6 +438,7 @@ if ($method === 'GET' && $action === 'one') {
     unset($privacyMachine);
     $customer['isMachineryAdmin'] = !empty($customer['is_machinery_admin']);
     $customer['belmServiceProviderActive'] = $providerActive;
+    $customer['isWorkshopModuleActive'] = !empty($customer['workshop_module_active']);
     $customer['privacyPreferences'] = $prefs;
     $customer['privacyAccess'] = [
         'maintenanceRecords' => $maintenanceVisible,
@@ -875,6 +877,25 @@ if ($method === 'PUT' && $action === 'machinery-admin') {
         'belmServiceProviderActive' => (bool)$providerEnabled,
         'customerTechnicianAccessPaused' => (bool)$providerEnabled,
     ]);
+}
+
+// V444: Workshop Module paid add-on toggle. Separate from is_active
+// ("Stop portal service" — kills the whole account) and separate from the
+// customer's own 'store' Role Manager permission (which only decides which
+// of the customer's own staff can use Store/Workshop once this is ON).
+// Turning this OFF immediately blocks Store Ledger + Tool Issue/Return
+// Documents for the customer's whole team, regardless of their internal
+// Role Manager settings, without touching any other part of their account.
+if ($method === 'PUT' && $action === 'workshop-module') {
+    require_page_access($user, 'customers');
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $enabled = !empty($b['enabled']) ? 1 : 0;
+    $stmt = db()->prepare('UPDATE customers SET workshop_module_active = ? WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([$enabled, $id]);
+    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
+    log_activity($user, 'customer-workshop-module-changed', 'customer', $id, ['enabled' => (bool)$enabled]);
+    json_out(['ok' => true, 'workshopModuleActive' => (bool)$enabled]);
 }
 
 // Quick "Stop portal service" toggle — for a customer who hasn't paid,

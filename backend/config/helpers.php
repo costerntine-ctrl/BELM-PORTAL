@@ -1565,7 +1565,8 @@ function require_customer_auth(): array {
             "SELECT u.id AS user_id, u.name AS user_name, u.email AS user_email,
                     u.customer_permissions, u.is_active,
                     c.id AS customer_id, c.email AS customer_email,
-                    c.is_active AS customer_active, c.is_machinery_admin
+                    c.is_active AS customer_active, c.is_machinery_admin,
+                    c.workshop_module_active
              FROM users u
              JOIN customers c ON c.id = u.assigned_customer_id
              JOIN roles r ON r.id = u.role_id
@@ -1599,6 +1600,7 @@ function require_customer_auth(): array {
         $payload['actorEmail'] = (string)$live['user_email'];
         $payload['customerRole'] = 'technician';
         $payload['permissions'] = $permissions;
+        $payload['workshopModuleActive'] = !empty($live['workshop_module_active']);
         return $payload;
     }
 
@@ -1609,11 +1611,14 @@ function require_customer_auth(): array {
         json_error('Your session has expired after a security update. Please log in again.', 401);
     }
 
-    $stmt = db()->prepare('SELECT id, email FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt = db()->prepare('SELECT id, email, workshop_module_active FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
     $stmt->execute([$payload['id'] ?? '']);
     $ownerRow = $stmt->fetch();
     if (!$ownerRow) json_error('Customer account is not available.', 401);
     if ($actorType === 'owner') $payload['actorEmail'] = $ownerRow['email'] ?? null;
+    // V444: Workshop Module billing gate — resolved fresh on every request so
+    // BELM can switch it off instantly, the same way is_active already works.
+    $payload['workshopModuleActive'] = !empty($ownerRow['workshop_module_active']);
 
     if ($actorType === 'assistant') {
         $stmt = db()->prepare(

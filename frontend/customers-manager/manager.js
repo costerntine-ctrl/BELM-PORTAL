@@ -403,6 +403,14 @@
               </label>
               <strong class="customer-nonpayment-state">${Number(customer.isActive) === 1 ? "PORTAL ON" : "STOPPED"}</strong>
             </div>
+            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="Workshop Module paid add-on for ${escapeHtml(customer.name)}">
+              <span class="customer-workshop-label">Workshop Module</span>
+              <label class="customer-workshop-switch">
+                <input type="checkbox" data-card-workshop-toggle="${escapeHtml(customer.id)}" ${customer.isWorkshopModuleActive ? "checked" : ""} aria-label="Workshop Module for ${escapeHtml(customer.name)}">
+                <span class="customer-workshop-slider" aria-hidden="true"></span>
+              </label>
+              <strong class="customer-workshop-state">${customer.isWorkshopModuleActive ? "ON" : "OFF"}</strong>
+            </div>
           </div>
         </div>
         <div class="customer-feed" id="feed-${escapeHtml(customer.id)}" data-customer-id="${escapeHtml(customer.id)}" data-customer-name="${escapeHtml(customer.name)}">
@@ -2180,6 +2188,59 @@
     document.getElementById("manageCustomerDialog").close();
     await forgetCustomer(customer.id);
   });
+  // V444 - Workshop Module paid add-on switch, lives on each customer card.
+  // Checked means the customer's own Workshop Manager/Store Keeper/Technician
+  // roles can use Store Ledger + Tool Issue/Return Documents. This is
+  // deliberately independent from the "Non-payment" portal switch above and
+  // from the customer's own internal Role Manager 'store' permission — this
+  // one is the only switch that reflects whether BELM has been paid for the
+  // Workshop module itself.
+  document.getElementById("customerGrid").addEventListener("change", async (event) => {
+    const toggle = event.target.closest("[data-card-workshop-toggle]");
+    if (!toggle) return;
+
+    const customerId = toggle.dataset.cardWorkshopToggle;
+    const customer = customers.find((item) => item.id === customerId);
+    if (!customer) {
+      toggle.checked = !toggle.checked;
+      showAlert("Customer record was not found. Refresh customers and try again.", true);
+      return;
+    }
+
+    const enabled = toggle.checked;
+    toggle.disabled = true;
+    try {
+      const confirmation = await window.belmConfirmEdit({
+        title: enabled ? "Activate Workshop Module?" : "Deactivate Workshop Module?",
+        message: enabled
+          ? `Activate the paid Workshop Module for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
+          : `Deactivate the Workshop Module for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until this is switched back ON, even if their own Role Manager still grants Store access.`,
+      });
+      if (!confirmation) {
+        toggle.checked = !enabled;
+        return;
+      }
+
+      const result = await api(`/customers/${customerId}/workshop-module`, {
+        method: "PUT",
+        body: JSON.stringify({ enabled, ...confirmation }),
+      });
+      customer.isWorkshopModuleActive = Boolean(result?.workshopModuleActive ?? enabled);
+      showAlert(
+        enabled
+          ? `${customer.name}: Workshop Module activated.`
+          : `${customer.name}: Workshop Module deactivated.`,
+        false,
+      );
+      await load();
+    } catch (error) {
+      toggle.checked = !enabled;
+      showAlert(error.message || "Could not change Workshop Module.", true);
+    } finally {
+      toggle.disabled = false;
+    }
+  });
+
   // V283 - compact per-customer BELM <-> Customer maintenance switch.
   // Checked means BELM Service Provider is ON; unchecked hands maintenance
   // back to the customer's own Technician team. The existing API and edit

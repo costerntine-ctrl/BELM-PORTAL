@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
+  <!-- V444: bfcache back-navigation guard, see /customer-workshop/index.html -->
+  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
   <!-- Regression baseline: 301-job-signoff -->
   <!-- Regression baseline assets: /breakdown-workflow/workflow.css?v=329-action-feedback-reset /breakdown-workflow/workflow.js?v=329-action-feedback-reset -->
   <!-- Regression baseline assets: /breakdown-workflow/workflow.css?v=330-queue-company-blink /breakdown-workflow/workflow.js?v=330-queue-company-blink -->

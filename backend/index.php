@@ -281,6 +281,9 @@ switch ($resource) {
         if (isset($segments[2]) && $segments[2] === 'portal-access') {
             dispatch('customers.php', ['action' => 'portal-access', 'id' => $segments[1]]);
         }
+        if (isset($segments[2]) && $segments[2] === 'workshop-module') {
+            dispatch('customers.php', ['action' => 'workshop-module', 'id' => $segments[1]]);
+        }
         if (isset($segments[2]) && $segments[2] === 'message') {
             dispatch('customers.php', ['action' => 'send-message', 'id' => $segments[1]]);
         }

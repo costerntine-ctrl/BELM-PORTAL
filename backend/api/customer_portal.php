@@ -174,6 +174,23 @@ function require_customer_any_feature_access(array $customer, array $permissionK
     json_error('Your Role Manager access does not include ' . $label . '.', 403);
 }
 
+// V444: Workshop Module billing gate. Deliberately separate from
+// customer_has_feature_access('store', ...) below — that one is the
+// customer's OWN Role Manager permission (which staff of theirs can use
+// Store/Workshop), while this one is the BELM-controlled paid add-on switch.
+// An Owner/Admin on the customer side can freely grant 'store' permission to
+// their own staff, but that permission is meaningless while BELM has not
+// enabled the module for the account.
+function customer_workshop_module_active(array $customer): bool {
+    return !empty($customer['workshopModuleActive']);
+}
+
+function require_customer_workshop_module(array $customer, string $label = 'the Workshop module'): void {
+    if (!customer_workshop_module_active($customer)) {
+        json_error('Workshop module haijaamilishwa kwa akaunti hii. Wasiliana na BELM kuamilisha ' . $label . '.', 402);
+    }
+}
+
 function customer_can_manage_store(array $customer): bool {
     if (($customer['actorType'] ?? '') === 'owner') return true;
     $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
@@ -1667,6 +1684,7 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
 // These documents are customer-owned workshop records. A tool remains OUT WITH
 // TECHNICIAN until the Store Keeper records its return.
 if ($sub === 'tool-issues') {
+    require_customer_workshop_module($customer, 'Store Keeper Tool Documents');
     require_customer_feature_access($customer, 'store', 'Store Keeper Tool Documents');
     if ($method === 'GET' && $sub2 === '') {
         $stmt = db()->prepare(
@@ -1779,6 +1797,7 @@ if ($sub === 'tool-issues') {
 // Separate from BELM Inventory. Customers can receive their own stock here;
 // Procurement can then issue it to a machine with an auditable balance.
 if ($sub === 'store') {
+    require_customer_workshop_module($customer, 'Store Keeper');
     require_customer_feature_access($customer, 'store', 'Store Keeper');
     if ($method === 'GET') {
         $items = customer_store_item_rows((string)$customer['id']);

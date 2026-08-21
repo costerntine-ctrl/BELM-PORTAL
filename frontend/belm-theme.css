@@ -4292,6 +4292,17 @@ html[data-theme="dark"] .belm-lang-toggle {
 .belm-privacy-head p { margin:4px 0 0; color:#9db0c8; font-size:11px; }
 .belm-privacy-head button { border:1px solid #344963; border-radius:8px; padding:7px 11px; background:#16233d; color:#fff; font-weight:800; cursor:pointer; }
 .belm-privacy-body { padding:18px 22px 22px; }
+.belm-customer-settings-body { display:grid; gap:10px; }
+.belm-customer-setting-option {
+  width:100%; min-height:68px; padding:12px 14px; border:1px solid #2d4560; border-radius:12px;
+  display:flex; align-items:center; justify-content:space-between; gap:14px; box-sizing:border-box;
+  background:#102238; color:#fff; text-align:left; text-decoration:none; cursor:pointer;
+}
+.belm-customer-setting-option span { display:grid; gap:4px; }
+.belm-customer-setting-option b { font-size:13px; }
+.belm-customer-setting-option small { color:#9db0c8; font-size:10px; line-height:1.35; }
+.belm-customer-setting-option strong { color:#75e667; font-size:10px; text-transform:uppercase; white-space:nowrap; }
+.belm-customer-setting-option:hover { border-color:#4c8cd1; background:#132a44; }
 .belm-privacy-note,.belm-privacy-provider-note { display:grid; gap:5px; padding:12px 14px; border:1px solid #2c4868; border-radius:10px; background:#10243a; }
 .belm-privacy-note b,.belm-privacy-provider-note b { color:#b9d9ff; font-size:11px; }
 .belm-privacy-note span,.belm-privacy-provider-note span { color:#c7d4e2; font-size:10.5px; line-height:1.45; }
@@ -4885,8 +4896,9 @@ body.belm-customer-dashboard-face-active #root { display: none !important; }
 .belm-customer-face-action.action-purple { color:#fff; background:#6f58d9; border-color:#8069e7; }
 .belm-customer-face-action.action-petty { color:#fff; background:#0f8d75; border-color:#20b493; }
 .belm-customer-face-action.action-analysis { color:#fff; background:#174f86; border-color:#2d76b8; }
+.belm-customer-face-action.action-settings { color:#fff; background:#334155; border-color:#52647a; }
 .belm-customer-face-primary-actions { grid-template-columns: repeat(5,minmax(0,1fr)); }
-.belm-customer-face-secondary-actions { margin-top: 9px; grid-template-columns: repeat(2,minmax(0,1fr)); }
+.belm-customer-face-secondary-actions { margin-top: 9px; grid-template-columns: repeat(3,minmax(0,1fr)); }
 .belm-customer-face-secondary-actions .belm-customer-face-action { min-height: 54px; }
 .belm-customer-face-loading { margin: auto; padding: 30px; color: #d7e4f2; font-size: 14px; font-weight: 800; }
 .belm-customer-face-communication-dialog {
@@ -4918,6 +4930,7 @@ body.belm-customer-dashboard-face-active #root { display: none !important; }
   .belm-customer-face-primary-actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .belm-customer-face-primary-actions .belm-customer-face-action:last-child { grid-column: 1 / -1; }
   .belm-customer-face-secondary-actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .belm-customer-face-secondary-actions .belm-customer-face-action:last-child { grid-column: 1 / -1; }
   .belm-customer-face-action { min-height: 58px; padding: 6px 6px; font-size: 10.5px; border-radius: 10px; }
 }
 @media (max-width: 430px) {

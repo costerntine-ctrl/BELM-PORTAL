@@ -654,6 +654,54 @@
     }
   }
 
+  // V437 - Customer Settings: one compact place for the dashboard preferences
+  // that are already supported by the portal. This avoids adding a dead button.
+  function openCustomerSettingsDialog() {
+    document.getElementById("belmCustomerSettingsDialog")?.remove();
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmCustomerSettingsDialog";
+    dialog.className = "belm-privacy-dialog belm-customer-settings-dialog";
+    const darkNow = document.documentElement.getAttribute("data-theme") === "dark";
+    const langNow = belmLang();
+    dialog.innerHTML = `
+      <div class="belm-privacy-head">
+        <div><h2>SETTINGS</h2><p>Customer dashboard preferences and account controls</p></div>
+        <button type="button" data-close-customer-settings>Close</button>
+      </div>
+      <div class="belm-privacy-body belm-customer-settings-body">
+        <button type="button" class="belm-customer-setting-option" data-setting-theme>
+          <span><b>Appearance</b><small>Switch between Light mode and Dark mode</small></span>
+          <strong>${darkNow ? "Dark" : "Light"}</strong>
+        </button>
+        <button type="button" class="belm-customer-setting-option" data-setting-language>
+          <span><b>Language</b><small>Switch dashboard language</small></span>
+          <strong>${langNow === "sw" ? "Kiswahili" : "English"}</strong>
+        </button>
+        <button type="button" class="belm-customer-setting-option" data-setting-privacy>
+          <span><b>Privacy &amp; BELM Access</b><small>Control internal company data sharing with BELM</small></span>
+          <strong>Open</strong>
+        </button>
+        <a class="belm-customer-setting-option" href="/forgot-password/">
+          <span><b>Password Recovery</b><small>Reset your portal password securely</small></span>
+          <strong>Open</strong>
+        </a>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector("[data-close-customer-settings]")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.querySelector("[data-setting-theme]")?.addEventListener("click", () => {
+      const toggle = document.querySelector(".belm-global-theme-toggle,[data-belm-theme-toggle]");
+      if (toggle) toggle.click();
+      dialog.close();
+    });
+    dialog.querySelector("[data-setting-language]")?.addEventListener("click", () => belmSetLang(langNow === "sw" ? "en" : "sw"));
+    dialog.querySelector("[data-setting-privacy]")?.addEventListener("click", () => {
+      dialog.close();
+      openCustomerPrivacyDialog();
+    });
+    dialog.showModal();
+  }
+
   // V254 - "UPDATE" button in MORE TOOLS: a single place to see recent
   // BELM messages, Technician daily check-up activity, and a small 7-day
   // activity graph. The button itself keeps a gentle red blink whenever
@@ -1385,9 +1433,10 @@
           <button type="button" class="belm-customer-face-action action-yellow" data-customer-face-general-report>General Report</button>
           <a class="belm-customer-face-action action-purple" href="/customer-users/">Manage Users</a>
         </nav>
-        <nav class="belm-customer-face-actions belm-customer-face-secondary-actions" aria-label="Customer dashboard finance and analysis actions">
+        <nav class="belm-customer-face-actions belm-customer-face-secondary-actions" aria-label="Customer dashboard finance, analysis and settings actions">
           <a class="belm-customer-face-action action-petty" href="/customer-petty-cash/">Petty Cash</a>
           <button type="button" class="belm-customer-face-action action-analysis" data-customer-face-general-analysis>General Analysis</button>
+          <button type="button" class="belm-customer-face-action action-settings" data-customer-face-settings>Settings</button>
         </nav>
       </article>`;
 
@@ -1399,6 +1448,7 @@
     face.querySelector("[data-customer-face-view-all]")?.addEventListener("click", () => openCustomerFaceCommunicationHistory(face, name));
     face.querySelector("[data-customer-face-general-report]")?.addEventListener("click", () => openCustomerGeneralReportCenter());
     face.querySelector("[data-customer-face-general-analysis]")?.addEventListener("click", () => openCustomerGeneralAnalysisDialog());
+    face.querySelector("[data-customer-face-settings]")?.addEventListener("click", () => openCustomerSettingsDialog());
     loadCustomerFaceCommunications(face, name);
   }
 
@@ -2845,10 +2895,44 @@
   // and above the machine grid. Stays in view while the machine list
   // below it scrolls — a quick-glance summary of what's happening across
   // every machine, not tied to any one of them.
+  function isCustomerMachineView() {
+    return window.location.pathname === "/portal/dashboard"
+      && new URLSearchParams(window.location.search).get("view") === "machines";
+  }
+
+  // V433 - View Your Machine is a focused machine workspace. The customer
+  // owner already has Action Required, Petty Cash, Workshop, Procurement and
+  // General Analysis on the main Customer Dashboard, so do not duplicate that
+  // right-side summary rail beside the machine cards. If navigation reaches
+  // ?view=machines after the rail was already mounted, unwrap the machine grid
+  // safely before removing the rail.
+  function removeCustomerMachineViewSidebar() {
+    if (!isCustomerMachineView()) return;
+
+    const layout = document.getElementById("belmDashboardLayout");
+    const grid = layout?.querySelector(".belm-customer-machine-grid");
+    if (layout && grid && layout.parentElement) {
+      layout.parentElement.insertBefore(grid, layout);
+      layout.remove();
+    }
+
+    [
+      "belmOverviewCard",
+      "belmActivityOverviewCard",
+      "belmPettyCashAccountCard",
+      "belmAccountToolsCard",
+      "belmBreakdownProcessRailCard",
+    ].forEach((id) => document.getElementById(id)?.remove());
+  }
+
   let belmOverviewInsertInFlight = false;
   async function insertCustomerActivityOverview() {
     if (isCustomerOperatorRole()) return;
     if (window.location.pathname !== "/portal/dashboard") return;
+    if (isCustomerMachineView()) {
+      removeCustomerMachineViewSidebar();
+      return;
+    }
     if (document.getElementById("belmActivityOverviewCard")) return;
     // V241 - this function awaits up to ~3s (machineGrid poll below) before
     // it actually creates+inserts the card with this id. The dashboard's

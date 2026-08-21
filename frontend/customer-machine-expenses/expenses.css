@@ -126,3 +126,26 @@ html[data-theme="dark"] .reject-store-issue { background:#32191b; color:#ffb0aa;
 
 /* V301 - signed BELM service Job Cards + synchronized billing */
 .service-billing-panel{margin-bottom:16px;border-top:3px solid #1d4ed8}.service-billing-table td small{display:block;margin-top:3px;color:var(--muted,#64748b);font-size:10px}.sync-status{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:10px;font-weight:900;white-space:nowrap}.sync-status.outstanding{background:#facc15;color:#3f3000;border:1px solid #d9a900}.sync-status.paid{background:#16a34a;color:#fff;border:1px solid #12823c}.sync-status.pending{background:#334155;color:#fff;border:1px solid #475569}.doc-button{margin:4px 4px 0 0;padding:5px 8px;border:1px solid #3b82f6;border-radius:7px;background:#eff6ff;color:#1d4ed8;font-size:10px;font-weight:850;cursor:pointer}[data-theme="dark"] .doc-button{background:#13243a;color:#9ecbff;border-color:#31557d}[data-theme="dark"] .sync-status.outstanding{background:#5a4700;color:#ffe98b;border-color:#8a6f00}
+
+/* V438 - Customer Workshop Account card inside Procurement */
+.workshop-account-card{background:linear-gradient(155deg,#0f2139,#163552);border:1px solid #28506e;color:#fff;box-shadow:0 10px 28px rgba(10,28,48,.16)}
+.workshop-account-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.workshop-account-card .sidebar-card-label{color:#8de1b3;font-size:10px}
+.workshop-account-head small{display:block;margin-top:4px;color:#91a8c1;font-size:9px;line-height:1.35}
+.workshop-account-auto{display:inline-flex;align-items:center;justify-content:center;min-height:23px;padding:4px 8px;border-radius:999px;background:rgba(0,166,81,.18);border:1px solid rgba(90,225,148,.35);color:#7de8a9;font-size:8px;font-weight:900;letter-spacing:.08em}
+.workshop-account-card>strong{display:block;margin-top:10px;color:#fff;font-family:"Space Grotesk",Inter,sans-serif;font-size:26px;letter-spacing:-.5px}
+.workshop-account-card.is-negative>strong{color:#ff9b95}
+.workshop-account-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.workshop-account-metrics span{padding:8px 9px;border:1px solid rgba(255,255,255,.11);border-radius:9px;background:rgba(255,255,255,.045);color:#94a9bf;font-size:9px}
+.workshop-account-metrics b{display:block;margin-top:3px;color:#fff;font-size:11px}
+.workshop-account-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.workshop-account-actions button{min-height:34px;padding:7px 8px;border:1px solid rgba(255,255,255,.16);border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:9.5px;font-weight:850;cursor:pointer}
+.workshop-account-actions button:hover{background:rgba(255,255,255,.14)}
+#workshopAccountAddButton{border-color:rgba(76,220,139,.45);background:rgba(0,166,81,.18)}
+#workshopAccountUploadButton{border-color:rgba(255,212,0,.42);color:#ffe987}
+.workshop-account-updated{display:block;margin-top:8px;color:#7890a9;font-size:8.5px;line-height:1.35}
+#workshopAccountDialog .dialog-form{padding:0 20px 20px}
+#workshopAccountDialog .receipt-dialog-head{margin:0 -20px 0}
+#workshopAccountDialog .dialog-note{padding-left:0;padding-right:0}
+html[data-theme="dark"] .workshop-account-card{background:linear-gradient(155deg,#081726,#0c2940);border-color:#24445f}
+@media(max-width:620px){.workshop-account-actions{grid-template-columns:1fr 1fr}.workshop-account-card>strong{font-size:24px}}

@@ -200,11 +200,6 @@ if ($method === 'POST' && !$id) {
         $phone = clean_required($body, 'phone', 'Phone number', 50);
         $tinNumber = clean_required($body, 'tinNumber', 'TIN number', 50);
         $vrn = clean_required($body, 'vrn', 'VRN number', 50);
-        $machineType = clean_required($body, 'machineType', 'Machine type', 100);
-        $brand = clean_required($body, 'brand', 'Machine brand', 100);
-        $model = clean_required($body, 'model', 'Machine model');
-        $regNumber = clean_required($body, 'regNumber', 'Machine registration number', 100);
-
         // The real password is generated only after administrator approval.
         // This placeholder preserves compatibility with existing databases.
         $pendingSecret = password_hash(secure_account_secret(24), PASSWORD_BCRYPT);
@@ -222,10 +217,10 @@ if ($method === 'POST' && !$id) {
             $phone,
             $tinNumber,
             $vrn,
-            $machineType,
-            $brand,
-            $model,
-            $regNumber,
+            '',
+            '',
+            '',
+            '',
             $pendingSecret,
             'PENDING',
         ]);
@@ -325,9 +320,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 json_error('This email already belongs to another portal account.', 409);
             }
 
-            $checklist = sync_checklist_for_machine_type($application['machine_type']);
             $customerId = uuid();
-            $machineId = uuid();
             $portalLink = customer_portal_slug($application['company_name']);
             $temporaryPassword = secure_account_secret();
             $recoveryCode = account_recovery_code();
@@ -350,32 +343,14 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 password_hash($recoveryCode, PASSWORD_BCRYPT),
             ]);
 
-            $pdo->prepare(
-                'INSERT INTO machines
-                 (id, customer_id, machine_type, model, serial_number, reg_number,
-                  brand, status, created_at)
-                 VALUES (?,?,?,?,NULL,?,?,?,NOW())'
-            )->execute([
-                $machineId,
-                $customerId,
-                $checklist['machineType'],
-                $application['model'],
-                $application['reg_number'],
-                $application['brand'],
-                'UNKNOWN',
-            ]);
-
-            // Seed the registered machine with its 250/500/1000/2000-hour
-            // service parts from matching Checklist Templates. BELM can edit
-            // the machine-specific copy later from Customers > Service Parts.
-            belm_seed_machine_service_parts_from_templates($machineId, $checklist['machineType']);
-
+            // Registration approval creates the customer account only. Machines are
+            // registered later from the customer machine workspace or BELM Admin.
             $pdo->prepare(
                 "UPDATE customer_applications
                  SET status = 'APPROVED', reviewed_at = NOW(), reviewed_by = ?,
-                     customer_id = ?, machine_id = ?
+                     customer_id = ?, machine_id = NULL
                  WHERE id = ?"
-            )->execute([$user['id'], $customerId, $machineId, $id]);
+            )->execute([$user['id'], $customerId, $id]);
 
             $pdo->prepare(
                 'INSERT INTO activity_logs (id, user_id, action, entity, entity_id, metadata, created_at)
@@ -386,7 +361,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'APPROVE_CUSTOMER_APPLICATION',
                 'customerApplication',
                 $id,
-                json_encode(['customerId' => $customerId, 'machineId' => $machineId]),
+                json_encode(['customerId' => $customerId, 'machineCreated' => false]),
             ]);
 
             $pdo->commit();
@@ -395,7 +370,6 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'status' => 'APPROVED',
                 'applicationType' => 'CUSTOMER',
                 'customerId' => $customerId,
-                'machineId' => $machineId,
                 'customerName' => $application['company_name'],
                 'displayName' => $application['company_name'],
                 'assignedRole' => 'Customer',
@@ -404,9 +378,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'recoveryCode' => $recoveryCode,
                 'portalLink' => $portalLink,
                 'loginUrl' => customer_portal_url($portalLink, $application['email']),
-                'checklistTemplateId' => $checklist['templateId'],
-                'checklistCreated' => $checklist['created'],
-                'message' => 'Customer, machine and checklist access are ready.',
+                'message' => 'Customer account is ready. Machines can be registered after login.',
             ]);
         }
 

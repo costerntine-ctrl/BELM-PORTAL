@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Procurement — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=315-job-card-received-confirmation">
+  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=438-workshop-account">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -137,6 +137,26 @@
       </section>
 
       <aside class="expenses-sidebar">
+        <article class="sidebar-card workshop-account-card" id="workshopAccountCard">
+          <div class="workshop-account-head">
+            <div><span class="sidebar-card-label">Workshop Account</span><small>Auto deducts direct procurement spending</small></div>
+            <span class="workshop-account-auto">AUTO</span>
+          </div>
+          <strong id="workshopAccountBalance">TZS 0</strong>
+          <div class="workshop-account-metrics">
+            <span>Funded <b id="workshopAccountFunded">TZS 0</b></span>
+            <span>Spending <b id="workshopAccountSpent">TZS 0</b></span>
+          </div>
+          <div class="workshop-account-actions" id="workshopAccountActions">
+            <button type="button" id="workshopAccountAddButton">+ Add</button>
+            <button type="button" id="workshopAccountEditButton">Edit</button>
+            <button type="button" id="workshopAccountUploadButton">Upload receipt</button>
+            <button type="button" id="workshopAccountViewReceiptButton" class="hidden">View receipt</button>
+            <input id="workshopAccountReceiptQuick" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" hidden>
+          </div>
+          <small id="workshopAccountUpdated" class="workshop-account-updated">No account funding recorded yet.</small>
+        </article>
+
         <section class="summary-grid" aria-label="Machine procurement analysis">
           <article><span>Total procurement cost</span><strong id="totalCost">TZS 0</strong></article>
           <article><span>Total item quantity</span><strong id="totalQuantity">0</strong></article>
@@ -200,6 +220,22 @@
     </section>
   </main>
 
+
+  <dialog id="workshopAccountDialog">
+    <form id="workshopAccountForm" class="dialog-form">
+      <div class="receipt-dialog-head"><b id="workshopAccountDialogTitle">Add Workshop Account funds</b><button type="button" id="closeWorkshopAccountDialog" aria-label="Close">×</button></div>
+      <p class="dialog-note" id="workshopAccountDialogNote">Add cash available for workshop procurement.</p>
+      <div id="workshopAccountError" class="alert error hidden"></div>
+      <label><span id="workshopAccountAmountLabel">Amount to add (TZS)</span><input id="workshopAccountAmount" type="number" min="0" step="0.01" required></label>
+      <label>Note<input id="workshopAccountNote" maxlength="255" placeholder="e.g. Workshop procurement float"></label>
+      <label>Receipt / proof (optional)<input id="workshopAccountReceipt" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small>Photo or PDF, up to the normal receipt upload limit.</small></label>
+      <div class="form-actions dialog-actions-inline">
+        <button type="button" class="secondary" id="cancelWorkshopAccountDialog">Cancel</button>
+        <button type="submit" class="primary" id="saveWorkshopAccountButton">Save</button>
+      </div>
+    </form>
+  </dialog>
+
   <dialog id="receiveStockDialog">
     <form id="receiveStockForm" class="dialog-form">
       <div class="receipt-dialog-head"><b>Receive Customer Store stock</b><button type="button" data-close-dialog="receiveStockDialog" aria-label="Close">×</button></div>
@@ -225,6 +261,6 @@
     <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
   </dialog>
 
-  <script src="/customer-machine-expenses/expenses.js?v=315-job-card-received-confirmation"></script>
+  <script src="/customer-machine-expenses/expenses.js?v=438-workshop-account"></script>
 </body>
 </html>

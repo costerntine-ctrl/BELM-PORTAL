@@ -413,11 +413,16 @@
           <div class="customer-feed-body">Loading recent updates…</div>
         </div>
         <nav class="customer-card-actions customer-card-quick-actions" aria-label="Customer quick actions">
-          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">View Machine</button>
+          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">View Your Machine</button>
           <a class="customer-quick-action action-blue" href="/engineering-manager/">Workshop</a>
           <a class="customer-quick-action action-green" href="/spare-parts-manager/">Procurement</a>
           <a class="customer-quick-action action-yellow" href="/reports-manager/">General Report</a>
-          <button type="button" class="customer-quick-action action-manage" data-manage-customer="${escapeHtml(customer.id)}">Manage Customer</button>
+          <button type="button" class="customer-quick-action action-manage customer-quick-action-wide" data-manage-customer="${escapeHtml(customer.id)}">Manage Customer</button>
+        </nav>
+        <nav class="customer-card-actions customer-card-secondary-actions" aria-label="Customer finance, analysis and settings actions">
+          <button type="button" class="customer-quick-action action-petty" data-admin-customer-petty="${escapeHtml(customer.id)}">Petty Cash</button>
+          <a class="customer-quick-action action-analysis" href="/overview-manager/?customerId=${encodeURIComponent(customer.id)}">General Analysis</a>
+          <a class="customer-quick-action action-settings" href="/settings-manager/">Settings</a>
         </nav>
         <div class="customer-card-legacy-actions" hidden aria-hidden="true">
           <button type="button" data-quick-delete-machine="${escapeHtml(customer.id)}">Delete Machine</button>
@@ -2331,6 +2336,7 @@
     const viewMachines = event.target.closest("[data-view-machines]");
     const viewMessages = event.target.closest("[data-view-messages]");
     const manageCustomer = event.target.closest("[data-manage-customer]");
+    const adminCustomerPetty = event.target.closest("[data-admin-customer-petty]");
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
@@ -2339,6 +2345,14 @@
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
     if (manageCustomer) openManageCustomer(customers.find((customer) => customer.id === manageCustomer.dataset.manageCustomer));
+    if (adminCustomerPetty) {
+      const customer = customers.find((item) => item.id === adminCustomerPetty.dataset.adminCustomerPetty);
+      if (customer) {
+        sessionStorage.setItem("belm_admin_selected_customer_id", String(customer.id));
+        sessionStorage.setItem("belm_admin_selected_customer_name", String(customer.name || "Customer"));
+      }
+      window.location.href = `/customer-petty-cash/?adminCustomerId=${encodeURIComponent(adminCustomerPetty.dataset.adminCustomerPetty)}`;
+    }
     if (editCustomer) {
       const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
       confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));

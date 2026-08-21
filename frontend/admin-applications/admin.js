@@ -152,10 +152,6 @@ function renderCard(application) {
         ["Company address", application.address],
         ["TIN", application.tinNumber],
         ["VRN", application.vrn],
-        ["Machine type", application.machineType],
-        ["Machine / brand", application.brand],
-        ["Model", application.model],
-        ["Registration no.", application.regNumber],
         ["Reviewed by", application.reviewedByName],
         ["Reviewed at", formatDate(application.reviewedAt)]
       ];

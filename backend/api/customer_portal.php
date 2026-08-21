@@ -799,6 +799,16 @@ function customer_can_manage_petty_cash(array $customer): bool {
     return in_array($role, ['admin', 'accounts'], true);
 }
 
+// V438 - Workshop Account is a shared customer workshop float shown inside
+// Procurement. Procurement can view it; financial/workshop control roles can
+// add or edit funds. Spending is calculated from direct procurement records.
+function customer_can_manage_workshop_account(array $customer): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    if (!customer_has_feature_access($customer, 'machine-expenses')) return false;
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    return in_array($role, ['admin', 'accounts', 'procurement', 'workshop_manager'], true);
+}
+
 // Daily fuel usage — same usage_logs table, its own category. quantity is
 // litres, unit_price is price/litre, cost is the total for that day's
 // fill-up, mirroring the same shape as Procurement / Petty Cash so
@@ -2472,6 +2482,173 @@ if ($sub === 'store-issue-requests' && $sub2) {
             'expenseId' => $expenseId,
             'storeBalanceAfter' => $balanceAfter,
             'message' => 'Approved. Store balance deducted and Procurement record created.',
+        ]);
+    }
+
+    json_error('Method not allowed.', 405);
+}
+
+// ---- Customer Workshop Account ---------------------------------------------
+// One customer-level workshop float shared by all machines. The available
+// balance is always computed as funded amount minus DIRECT_PURCHASE
+// procurement spending. Customer Store issues are inventory movements and do
+// not deduct cash a second time.
+if ($sub === 'workshop-account') {
+    require_customer_feature_access($customer, 'machine-expenses', 'Workshop Account');
+
+    $accountStmt = db()->prepare(
+        'SELECT id, funded_amount, note, receipt_photo_name, receipt_photo_mime,
+                CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data <> \'\' THEN 1 ELSE 0 END AS has_receipt,
+                updated_by_name, created_at, updated_at
+         FROM customer_workshop_accounts WHERE customer_id = ? LIMIT 1'
+    );
+    $accountStmt->execute([$customer['id']]);
+    $account = $accountStmt->fetch() ?: null;
+
+    if ($method === 'POST' && $sub2 === 'add') {
+        require_customer_write_access($customer);
+        if (!customer_can_manage_workshop_account($customer)) {
+            json_error('Your account cannot add Workshop Account funds.', 403);
+        }
+        $b = body();
+        $amount = (float)($b['amount'] ?? 0);
+        $note = trim((string)($b['note'] ?? ''));
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        if ($amount <= 0) json_error('Amount must be greater than zero.');
+        if (strlen($note) > 255) json_error('Workshop Account note is too long.');
+        $receiptData = null; $receiptMime = null;
+        if ($receiptPhoto !== '') {
+            [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
+        }
+        $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        if ($account) {
+            $sql = 'UPDATE customer_workshop_accounts
+                    SET funded_amount = funded_amount + ?, note = ?, updated_by_name = ?, updated_at = NOW()';
+            $params = [round($amount, 2), $note !== '' ? $note : $account['note'], $actorName];
+            if ($receiptData !== null) {
+                $sql .= ', receipt_photo_data = ?, receipt_photo_mime = ?, receipt_photo_name = ?';
+                array_push($params, $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null);
+            }
+            $sql .= ' WHERE customer_id = ?';
+            $params[] = $customer['id'];
+            db()->prepare($sql)->execute($params);
+        } else {
+            db()->prepare(
+                'INSERT INTO customer_workshop_accounts
+                 (id, customer_id, funded_amount, note, receipt_photo_data, receipt_photo_mime, receipt_photo_name, updated_by_name, created_at, updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())'
+            )->execute([
+                uuid(), $customer['id'], round($amount, 2), $note !== '' ? $note : null,
+                $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null, $actorName,
+            ]);
+        }
+        log_customer_activity($customer, 'Added Workshop Account funds: TZS ' . number_format($amount, 2));
+        json_out(['ok'=>true, 'message'=>'Workshop Account funds added successfully.'], 201);
+    }
+
+    if ($method === 'PUT' && $sub2 === 'edit') {
+        require_customer_write_access($customer);
+        if (!customer_can_manage_workshop_account($customer)) {
+            json_error('Your account cannot edit the Workshop Account.', 403);
+        }
+        $b = body();
+        $amount = (float)($b['amount'] ?? 0);
+        $note = trim((string)($b['note'] ?? ''));
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        if ($amount < 0) json_error('Funded amount cannot be negative.');
+        if (strlen($note) > 255) json_error('Workshop Account note is too long.');
+        $receiptData = null; $receiptMime = null;
+        if ($receiptPhoto !== '') {
+            [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
+        }
+        $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        if ($account) {
+            $sql = 'UPDATE customer_workshop_accounts SET funded_amount = ?, note = ?, updated_by_name = ?, updated_at = NOW()';
+            $params = [round($amount, 2), $note !== '' ? $note : null, $actorName];
+            if ($receiptData !== null) {
+                $sql .= ', receipt_photo_data = ?, receipt_photo_mime = ?, receipt_photo_name = ?';
+                array_push($params, $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null);
+            }
+            $sql .= ' WHERE customer_id = ?';
+            $params[] = $customer['id'];
+            db()->prepare($sql)->execute($params);
+        } else {
+            db()->prepare(
+                'INSERT INTO customer_workshop_accounts
+                 (id, customer_id, funded_amount, note, receipt_photo_data, receipt_photo_mime, receipt_photo_name, updated_by_name, created_at, updated_at)
+                 VALUES (?,?,?,?,?,?,?,?,NOW(),NOW())'
+            )->execute([
+                uuid(), $customer['id'], round($amount, 2), $note !== '' ? $note : null,
+                $receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null, $actorName,
+            ]);
+        }
+        log_customer_activity($customer, 'Edited Workshop Account funded amount: TZS ' . number_format($amount, 2));
+        json_out(['ok'=>true, 'message'=>'Workshop Account updated successfully.']);
+    }
+
+    if ($method === 'PUT' && $sub2 === 'receipt') {
+        require_customer_write_access($customer);
+        if (!customer_can_manage_workshop_account($customer)) {
+            json_error('Your account cannot upload a Workshop Account receipt.', 403);
+        }
+        if (!$account) json_error('Add Workshop Account funds before uploading a receipt.', 409);
+        $b = body();
+        $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
+        $receiptName = trim((string)($b['receiptName'] ?? ''));
+        if ($receiptPhoto === '') json_error('Choose a receipt photo or PDF.');
+        [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, $receiptName);
+        $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer')) ?: 'Customer';
+        db()->prepare(
+            'UPDATE customer_workshop_accounts
+             SET receipt_photo_data=?, receipt_photo_mime=?, receipt_photo_name=?, updated_by_name=?, updated_at=NOW()
+             WHERE customer_id=?'
+        )->execute([$receiptData, $receiptMime, $receiptName !== '' ? $receiptName : null, $actorName, $customer['id']]);
+        log_customer_activity($customer, 'Uploaded Workshop Account receipt.');
+        json_out(['ok'=>true, 'message'=>'Workshop Account receipt uploaded successfully.']);
+    }
+
+    if ($method === 'GET' && $sub2 === 'receipt') {
+        if (!$account || empty($account['has_receipt'])) json_error('Workshop Account receipt was not found.', 404);
+        $stmt = db()->prepare(
+            'SELECT receipt_photo_data, receipt_photo_mime, receipt_photo_name
+             FROM customer_workshop_accounts WHERE customer_id = ? LIMIT 1'
+        );
+        $stmt->execute([$customer['id']]);
+        $receipt = $stmt->fetch();
+        $binary = base64_decode((string)($receipt['receipt_photo_data'] ?? ''), true);
+        if ($binary === false || $binary === '') json_error('Workshop Account receipt is damaged.', 500);
+        $mime = in_array($receipt['receipt_photo_mime'], ['image/jpeg','image/png','image/webp','application/pdf'], true)
+            ? $receipt['receipt_photo_mime'] : 'image/jpeg';
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . strlen($binary));
+        $disposition = !empty($_GET['download']) ? 'attachment' : 'inline';
+        header('Content-Disposition: ' . $disposition . '; filename="' .
+            preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($receipt['receipt_photo_name'] ?: 'workshop-account-receipt')) . '"');
+        echo $binary; exit;
+    }
+
+    if ($method === 'GET' && $sub2 === '') {
+        $spendStmt = db()->prepare(
+            "SELECT COALESCE(SUM(cost),0)
+             FROM usage_logs
+             WHERE customer_id = ? AND category = 'SPARE_PART'
+               AND COALESCE(stock_source,'DIRECT_PURCHASE') = 'DIRECT_PURCHASE'"
+        );
+        $spendStmt->execute([$customer['id']]);
+        $totalSpent = (float)$spendStmt->fetchColumn();
+        $funded = $account ? (float)$account['funded_amount'] : 0.0;
+        json_out([
+            'fundedAmount'=>round($funded,2),
+            'totalSpent'=>round($totalSpent,2),
+            'balance'=>round($funded-$totalSpent,2),
+            'note'=>$account['note'] ?? null,
+            'hasReceipt'=>$account ? (bool)$account['has_receipt'] : false,
+            'receiptName'=>$account['receipt_photo_name'] ?? null,
+            'updatedBy'=>$account['updated_by_name'] ?? null,
+            'updatedAt'=>$account['updated_at'] ?? null,
+            'canManage'=>customer_can_manage_workshop_account($customer),
         ]);
     }
 

@@ -1,0 +1,10 @@
+BELM PORTAL V438 - WORKSHOP ACCOUNT IN CUSTOMER PROCUREMENT
+
+- Adds a small Workshop Account card to Customer Procurement.
+- Add funds and edit total funded amount.
+- Available balance auto-calculates as Workshop Account funded amount minus customer DIRECT_PURCHASE procurement spending across workshop machines.
+- Customer Store issues do not deduct cash again.
+- Workshop Account receipt/proof supports JPG, PNG, WebP and PDF.
+- Receipt can be uploaded during Add/Edit or from the card Upload receipt button.
+- Financial/workshop control roles can manage the account; other authorized Procurement users can view the live balance.
+- Existing Procurement, Customer Store, receipt, Petty Cash and dashboard workflows remain separate.

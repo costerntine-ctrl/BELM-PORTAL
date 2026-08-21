@@ -729,6 +729,23 @@ ALTER TABLE petty_cash_topups ALTER COLUMN machine_id DROP NOT NULL;
 ALTER TABLE petty_cash_topups ADD COLUMN IF NOT EXISTS added_by_name VARCHAR(255) NULL;
 CREATE INDEX IF NOT EXISTS idx_petty_cash_topups_customer ON petty_cash_topups(customer_id);
 
+-- V438: Customer Workshop Account. One shared workshop float is visible from
+-- Procurement. Direct-purchase procurement spending is deducted dynamically
+-- from this funded amount; Customer Store issues do not consume cash again.
+CREATE TABLE IF NOT EXISTS customer_workshop_accounts (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL UNIQUE REFERENCES customers(id) ON DELETE CASCADE,
+  funded_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+  note VARCHAR(255) NULL,
+  receipt_photo_data TEXT NULL,
+  receipt_photo_mime VARCHAR(50) NULL,
+  receipt_photo_name VARCHAR(255) NULL,
+  updated_by_name VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_workshop_accounts_customer ON customer_workshop_accounts(customer_id);
+
 CREATE TABLE IF NOT EXISTS customer_saved_emails (
   id VARCHAR(36) PRIMARY KEY,
   customer_id VARCHAR(36) NOT NULL REFERENCES customers(id),
@@ -764,6 +781,9 @@ CREATE TABLE IF NOT EXISTS attendance_records (
   UNIQUE(user_id, work_date)
 );
 
+-- machine_type / brand / model / reg_number are legacy compatibility columns.
+-- Public customer registration no longer collects a first machine; new requests
+-- store empty strings in these fields and machines are registered after approval.
 CREATE TABLE IF NOT EXISTS customer_applications (
   id VARCHAR(36) PRIMARY KEY,
   reference_no VARCHAR(30) NOT NULL UNIQUE,

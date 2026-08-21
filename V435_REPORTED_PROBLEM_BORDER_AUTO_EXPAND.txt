@@ -1,0 +1,7 @@
+BELM PORTAL V435
+Reported Problem Border + Auto Expand
+
+- Live Breakdown Queue Reported Problem field now has a full green border around the entire message area.
+- Message field height is content-driven (auto): short messages stay compact; long messages expand vertically.
+- No internal scrollbar and no clipped report text.
+- Existing Breakdown card blink, semantic colors, Fleet Number, Job Card, assignment, Workshop Manager instructions, and workflow logic are unchanged.

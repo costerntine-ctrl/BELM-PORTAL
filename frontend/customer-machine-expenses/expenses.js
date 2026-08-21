@@ -10,6 +10,10 @@
   let canApproveStoreIssue = false;
   let canManageProcurement = false;
   let procurementRequestsCache = [];
+  let workshopAccountData = null;
+  let workshopAccountMode = "add";
+  let workshopAccountReceiptData = "";
+  let workshopAccountReceiptName = "";
   const money = new Intl.NumberFormat("en-TZ", {
     style: "currency",
     currency: "TZS",
@@ -153,6 +157,81 @@
       throw new Error(message);
     }
     return response.status === 204 ? null : response.json();
+  }
+
+  function renderWorkshopAccount(data) {
+    workshopAccountData = data || { fundedAmount: 0, totalSpent: 0, balance: 0, canManage: false };
+    const funded = Number(workshopAccountData.fundedAmount || 0);
+    const spent = Number(workshopAccountData.totalSpent || 0);
+    const balance = Number(workshopAccountData.balance || 0);
+    document.getElementById("workshopAccountBalance").textContent = money.format(balance);
+    document.getElementById("workshopAccountFunded").textContent = money.format(funded);
+    document.getElementById("workshopAccountSpent").textContent = money.format(spent);
+    document.getElementById("workshopAccountCard").classList.toggle("is-negative", balance < 0);
+    document.getElementById("workshopAccountAddButton").classList.toggle("hidden", !workshopAccountData.canManage);
+    document.getElementById("workshopAccountEditButton").classList.toggle("hidden", !workshopAccountData.canManage);
+    document.getElementById("workshopAccountUploadButton").classList.toggle("hidden", !workshopAccountData.canManage);
+    document.getElementById("workshopAccountViewReceiptButton").classList.toggle("hidden", !workshopAccountData.hasReceipt);
+    const updated = document.getElementById("workshopAccountUpdated");
+    if (workshopAccountData.updatedAt) {
+      const by = workshopAccountData.updatedBy ? ` by ${workshopAccountData.updatedBy}` : "";
+      updated.textContent = `Updated ${formatDateTime(workshopAccountData.updatedAt)}${by}`;
+    } else {
+      updated.textContent = "No account funding recorded yet.";
+    }
+  }
+
+  async function loadWorkshopAccount() {
+    try {
+      renderWorkshopAccount(await api("/workshop-account"));
+    } catch (error) {
+      document.getElementById("workshopAccountUpdated").textContent = error.message || "Could not load Workshop Account.";
+    }
+  }
+
+  function resetWorkshopAccountReceipt() {
+    workshopAccountReceiptData = "";
+    workshopAccountReceiptName = "";
+    document.getElementById("workshopAccountReceipt").value = "";
+  }
+
+  async function prepareWorkshopAccountReceipt(file) {
+    if (!file) {
+      resetWorkshopAccountReceipt();
+      return;
+    }
+    workshopAccountReceiptData = await compressReceipt(file);
+    workshopAccountReceiptName = file.name || "workshop-account-receipt";
+  }
+
+  function openWorkshopAccountDialog(mode) {
+    workshopAccountMode = mode;
+    resetWorkshopAccountReceipt();
+    const isEdit = mode === "edit";
+    document.getElementById("workshopAccountDialogTitle").textContent = isEdit ? "Edit Workshop Account" : "Add Workshop Account funds";
+    document.getElementById("workshopAccountDialogNote").textContent = isEdit
+      ? "Set the total funded amount. Spending remains auto-deducted from Procurement."
+      : "Add cash available for workshop procurement. Spending will deduct automatically.";
+    document.getElementById("workshopAccountAmountLabel").textContent = isEdit ? "Total funded amount (TZS)" : "Amount to add (TZS)";
+    document.getElementById("workshopAccountAmount").value = isEdit ? Number(workshopAccountData?.fundedAmount || 0).toFixed(2) : "";
+    document.getElementById("workshopAccountNote").value = isEdit ? (workshopAccountData?.note || "") : "";
+    document.getElementById("workshopAccountError").classList.add("hidden");
+    document.getElementById("workshopAccountDialog").showModal();
+  }
+
+  async function viewWorkshopAccountReceipt() {
+    try {
+      const response = await fetch("/api/customer-portal/workshop-account/receipt", {
+        headers: { Authorization: `Bearer ${token}` }, cache: "no-store",
+      });
+      if (!response.ok) throw new Error("Could not load Workshop Account receipt.");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) {
+      showAlert(error.message || "Could not load Workshop Account receipt.", true);
+    }
   }
 
   function calculateTotal() {
@@ -461,6 +540,7 @@
     try {
       render(await api(`/machine-expenses/${encodeURIComponent(machineId)}${currentRangeQuery()}`));
       loadSidebarAnalysis();
+      loadWorkshopAccount();
     } catch (error) {
       showAlert(error.message || "Could not load procurement records.", true);
     }
@@ -870,6 +950,73 @@
       target.textContent = original;
     }
   });
+
+  document.getElementById("workshopAccountAddButton").addEventListener("click", () => openWorkshopAccountDialog("add"));
+  document.getElementById("workshopAccountEditButton").addEventListener("click", () => openWorkshopAccountDialog("edit"));
+  document.getElementById("closeWorkshopAccountDialog").addEventListener("click", () => document.getElementById("workshopAccountDialog").close());
+  document.getElementById("cancelWorkshopAccountDialog").addEventListener("click", () => document.getElementById("workshopAccountDialog").close());
+  document.getElementById("workshopAccountReceipt").addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+    try {
+      await prepareWorkshopAccountReceipt(file);
+      clearAlert();
+    } catch (error) {
+      resetWorkshopAccountReceipt();
+      showAlert(error.message || "Could not prepare Workshop Account receipt.", true);
+    }
+  });
+  document.getElementById("workshopAccountForm").addEventListener("submit", async event => {
+    event.preventDefault();
+    const button = document.getElementById("saveWorkshopAccountButton");
+    const errorBox = document.getElementById("workshopAccountError");
+    errorBox.classList.add("hidden");
+    button.disabled = true;
+    button.textContent = "Saving…";
+    try {
+      const amount = Number(document.getElementById("workshopAccountAmount").value || 0);
+      const path = workshopAccountMode === "edit" ? "/workshop-account/edit" : "/workshop-account/add";
+      const result = await api(path, {
+        method: workshopAccountMode === "edit" ? "PUT" : "POST",
+        body: JSON.stringify({
+          amount,
+          note: document.getElementById("workshopAccountNote").value.trim(),
+          receiptPhoto: workshopAccountReceiptData,
+          receiptName: workshopAccountReceiptName,
+        }),
+      });
+      document.getElementById("workshopAccountDialog").close();
+      await loadWorkshopAccount();
+      showAlert(result.message || "Workshop Account updated.");
+    } catch (error) {
+      errorBox.textContent = error.message || "Could not update Workshop Account.";
+      errorBox.classList.remove("hidden");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Save";
+    }
+  });
+  document.getElementById("workshopAccountUploadButton").addEventListener("click", () => {
+    document.getElementById("workshopAccountReceiptQuick").click();
+  });
+  document.getElementById("workshopAccountReceiptQuick").addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const input = event.target;
+    try {
+      const data = await compressReceipt(file);
+      const result = await api("/workshop-account/receipt", {
+        method: "PUT",
+        body: JSON.stringify({ receiptPhoto: data, receiptName: file.name || "workshop-account-receipt" }),
+      });
+      await loadWorkshopAccount();
+      showAlert(result.message || "Workshop Account receipt uploaded.");
+    } catch (error) {
+      showAlert(error.message || "Could not upload Workshop Account receipt.", true);
+    } finally {
+      input.value = "";
+    }
+  });
+  document.getElementById("workshopAccountViewReceiptButton").addEventListener("click", viewWorkshopAccountReceipt);
 
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");

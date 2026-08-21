@@ -1822,6 +1822,161 @@ function belm_send_customer_alert(
     return ['sent' => $sent, 'failed' => $failed, 'recipients' => $recipientEmails];
 }
 
+// V424 - one central Job Card number generator for every workflow source.
+// Tanzania-local daily counter format: JC-DD-MM-YY-01, -02, ...
+function belm_next_job_card_number(): string {
+    $tz = new DateTimeZone('Africa/Dar_es_Salaam');
+    $now = new DateTimeImmutable('now', $tz);
+    $counterDate = $now->format('Y-m-d');
+    $prefix = 'JC-' . $now->format('d-m-y') . '-';
+    $stmt = db()->prepare(
+        "INSERT INTO job_card_daily_counters(counter_date,last_number,updated_at)
+         VALUES(CAST(? AS date),1,NOW())
+         ON CONFLICT(counter_date) DO UPDATE
+         SET last_number=job_card_daily_counters.last_number+1,updated_at=NOW()
+         RETURNING last_number"
+    );
+    $stmt->execute([$counterDate]);
+    $n = max(1, (int)$stmt->fetchColumn());
+    return $prefix . str_pad((string)$n, 2, '0', STR_PAD_LEFT);
+}
+
+// V424 - every real Breakdown Case owns one Digital Job Card number immediately.
+// The card starts unassigned and is later assigned/reassigned by the correct
+// Workshop/Administration role. This never bypasses BELM/customer boundaries.
+function belm_ensure_job_card_for_breakdown_case(string $caseId, ?string $actorName = null, bool $strict = false): ?array {
+    try {
+        $existing = db()->prepare(
+            "SELECT id,job_card_no,status FROM digital_job_cards
+             WHERE case_id=? ORDER BY created_at ASC LIMIT 1"
+        );
+        $existing->execute([$caseId]);
+        $row = $existing->fetch();
+        if ($row) return [
+            'id' => (string)$row['id'],
+            'jobCardNo' => (string)$row['job_card_no'],
+            'status' => (string)$row['status'],
+            'created' => false,
+        ];
+
+        $caseStmt = db()->prepare(
+            "SELECT bc.id,bc.customer_id,bc.machine_id,bc.title,bc.description,bc.source_type,bc.created_by_name,
+                    c.name AS customer_name,c.address AS customer_address,c.is_machinery_admin
+             FROM breakdown_cases bc
+             JOIN customers c ON c.id=bc.customer_id
+             WHERE bc.id=?"
+        );
+        $caseStmt->execute([$caseId]);
+        $case = $caseStmt->fetch();
+        if (!$case) return null;
+
+        $jobId = uuid();
+        $jobNo = belm_next_job_card_number();
+        $issuer = trim((string)($actorName ?: $case['created_by_name'] ?: $case['customer_name'] ?: 'System'));
+        $sourceType = strtoupper(trim((string)($case['source_type'] ?? 'BREAKDOWN_CASE')));
+        $isOfficialCustomerJob = $sourceType === 'SERVICE_REQUEST';
+        $isCustomerWorkshop = !empty($case['is_machinery_admin']);
+        $status = $isOfficialCustomerJob ? 'RECEIVED' : ($isCustomerWorkshop ? 'CREATED' : 'RECEIVED');
+        $issuedByType = $isOfficialCustomerJob ? 'CUSTOMER' : 'SYSTEM';
+
+        db()->prepare(
+            "INSERT INTO digital_job_cards
+             (id,case_id,customer_id,machine_id,job_card_no,title,fault_description,status,job_location,generated_by_name,
+              issued_by_name,issued_by_type,issued_at,created_at,updated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW(),NOW())"
+        )->execute([
+            $jobId,$caseId,(string)$case['customer_id'],(string)$case['machine_id'],$jobNo,
+            trim((string)($case['title'] ?: 'Machine Breakdown')),
+            trim((string)($case['description'] ?: 'Machine breakdown detected.')),
+            $status,trim((string)($case['customer_address'] ?? '')) ?: null,
+            $issuer,$issuer,$issuedByType,
+        ]);
+        db()->prepare(
+            'INSERT INTO breakdown_case_events
+             (id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
+             VALUES (?,?,?,?,?,?,?,?,NOW())'
+        )->execute([
+            uuid(),$caseId,'WORKSHOP_REVIEW','Workshop',
+            'Digital Job Card '.$jobNo.' auto-generated',
+            'Generated automatically from '.str_replace('_',' ',strtolower($sourceType)).'.',
+            'system',$issuer,
+        ]);
+        return ['id'=>$jobId,'jobCardNo'=>$jobNo,'status'=>$status,'created'=>true];
+    } catch (Throwable $error) {
+        error_log('Auto Job Card generation failed: ' . $error->getMessage());
+        if ($strict) throw $error;
+        return null;
+    }
+}
+
+// V424 - RED / Don't Operate checklist reports become live Breakdown Cases.
+function belm_ensure_breakdown_case_from_checklist_report(string $reportId, ?string $actorName = null, bool $strict = false): ?string {
+    try {
+        $stmt = db()->prepare(
+            "SELECT cr.id,cr.machine_id,cr.filled_by,cr.overall_status,cr.created_at,
+                    m.customer_id,m.brand,m.model,m.machine_type,c.name AS customer_name
+             FROM checklist_reports cr
+             JOIN machines m ON m.id=cr.machine_id
+             JOIN customers c ON c.id=m.customer_id
+             WHERE cr.id=?"
+        );
+        $stmt->execute([$reportId]);
+        $row = $stmt->fetch();
+        if (!$row || strtoupper((string)($row['overall_status'] ?? 'GREEN')) !== 'RED') return null;
+
+        $find = db()->prepare("SELECT id FROM breakdown_cases WHERE source_type='CHECKLIST_REPORT' AND source_id=?");
+        $find->execute([$reportId]);
+        $existing = $find->fetchColumn();
+        if ($existing) {
+            belm_ensure_job_card_for_breakdown_case((string)$existing, $actorName ?: (string)$row['filled_by'], $strict);
+            return (string)$existing;
+        }
+
+        $answerStmt = db()->prepare(
+            "SELECT label,value,note FROM checklist_answers
+             WHERE report_id=? AND UPPER(COALESCE(safety_level,''))='RED'
+             ORDER BY label ASC"
+        );
+        $answerStmt->execute([$reportId]);
+        $faults = [];
+        foreach ($answerStmt->fetchAll() as $answer) {
+            $label = trim((string)($answer['label'] ?? ''));
+            $value = trim((string)($answer['value'] ?? ''));
+            $note = trim((string)($answer['note'] ?? ''));
+            $text = $label;
+            if ($value !== '') $text .= ($text !== '' ? ': ' : '') . $value;
+            if ($note !== '') $text .= ($text !== '' ? ' - ' : '') . $note;
+            if ($text !== '') $faults[] = $text;
+        }
+        $description = $faults
+            ? 'RED checklist / Don\'t Operate: ' . implode('; ', array_slice($faults, 0, 8))
+            : 'RED checklist / Don\'t Operate condition detected.';
+        $label = trim((string)($row['brand'] ?? '') . ' ' . (string)($row['model'] ?? '')) ?: (string)($row['machine_type'] ?? 'Machine');
+        $creator = trim((string)($actorName ?: $row['filled_by'] ?: 'Technician'));
+        $id = uuid();
+        db()->prepare(
+            "INSERT INTO breakdown_cases
+             (id,customer_id,machine_id,source_type,source_id,title,description,status,current_stage,current_department,stage_started_at,opened_at,updated_at,created_by_name)
+             VALUES (?,?,?,?,?,?,?,'OPEN','WORKSHOP_REVIEW','Workshop',?,?,NOW(),?)"
+        )->execute([
+            $id,(string)$row['customer_id'],(string)$row['machine_id'],'CHECKLIST_REPORT',$reportId,
+            'Checklist Breakdown - '.$label,$description,
+            $row['created_at'] ?: date('c'),$row['created_at'] ?: date('c'),$creator,
+        ]);
+        db()->prepare(
+            'INSERT INTO breakdown_case_events
+             (id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
+             VALUES (?,?,?,?,?,?,?,?,NOW())'
+        )->execute([uuid(),$id,'WORKSHOP_REVIEW','Workshop','RED checklist auto-detected',$description,'technician',$creator]);
+        belm_ensure_job_card_for_breakdown_case($id,$creator,$strict);
+        return $id;
+    } catch (Throwable $error) {
+        error_log('Checklist breakdown auto-create failed: ' . $error->getMessage());
+        if ($strict) throw $error;
+        return null;
+    }
+}
+
 // V202 - create one live breakdown-process record from an Operator Problem Report.
 // Kept in helpers so reports created from the customer portal and from the
 // operator shift screen enter the same workflow automatically.
@@ -1837,7 +1992,10 @@ function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?stri
         $find = db()->prepare("SELECT id FROM breakdown_cases WHERE source_type='OPERATOR_REPORT' AND source_id=?");
         $find->execute([$reportId]);
         $existing = $find->fetchColumn();
-        if ($existing) return (string)$existing;
+        if ($existing) {
+            belm_ensure_job_card_for_breakdown_case((string)$existing, $actorName ?: (string)$row['operator_name'], $strict);
+            return (string)$existing;
+        }
         $id = uuid();
         $label = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine');
         $creator = trim((string)($actorName ?: $row['operator_name'] ?: 'Operator'));
@@ -1851,6 +2009,7 @@ function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?stri
              (id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
              VALUES (?,?,?,?,?,?,?,?,NOW())'
         )->execute([uuid(),$id,'WORKSHOP_REVIEW','Workshop','Breakdown reported',$row['message'],'customer',$creator]);
+        belm_ensure_job_card_for_breakdown_case($id,$creator,$strict);
         return $id;
     } catch (Throwable $error) {
         // Older deployments can briefly run before schema migration; never
@@ -1955,7 +2114,7 @@ function belm_ensure_service_request_job_card(string $requestId, ?string $actorN
             return (string)$existing;
         }
 
-        $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
+        $num=belm_next_job_card_number();
         $jobId=uuid();
         $title=trim((string)($row['service_type'] ?: 'BELM Job Card'));
         db()->prepare(
@@ -2161,6 +2320,8 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
     $createdAfter = 0;
     $syncedRequests = 0;
     $syncedReports = 0;
+    $syncedChecklists = 0;
+    $autoJobCards = 0;
     $failedSources = 0;
     $inconsistencies = 0;
     $errorMessage = null;
@@ -2172,6 +2333,27 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
             $createdBefore=(int)$c->fetchColumn();
         } else {
             $createdBefore=(int)db()->query($countSql)->fetchColumn();
+        }
+
+        // V424: every RED checklist / Don't Operate result is a breakdown source.
+        $sql = "SELECT cr.id FROM checklist_reports cr
+                JOIN machines m ON m.id=cr.machine_id
+                WHERE UPPER(COALESCE(cr.overall_status,'GREEN'))='RED'";
+        $params=[];
+        if ($customerId !== null && $customerId !== '') {
+            $sql.=' AND m.customer_id=?';
+            $params[]=$customerId;
+        }
+        $q=db()->prepare($sql);
+        $q->execute($params);
+        foreach ($q->fetchAll() as $r) {
+            try {
+                $caseId=belm_ensure_breakdown_case_from_checklist_report((string)$r['id'],'System Sync',true);
+                if ($caseId) $syncedChecklists++;
+            } catch (Throwable $sourceError) {
+                $failedSources++;
+                error_log('Checklist breakdown source sync failed for '.(string)$r['id'].': '.$sourceError->getMessage());
+            }
         }
 
         $sql = "SELECT o.id,o.status FROM operator_reports o
@@ -2241,6 +2423,28 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
             }
         }
 
+        // V424: backfill a Job Card number for every open Breakdown Case,
+        // including historical/manual cases that predate automatic generation.
+        $caseSql = "SELECT bc.id FROM breakdown_cases bc
+                    WHERE bc.status<>'COMPLETED'
+                      AND NOT EXISTS (SELECT 1 FROM digital_job_cards j WHERE j.case_id=bc.id)";
+        $caseParams=[];
+        if ($customerId !== null && $customerId !== '') {
+            $caseSql.=' AND bc.customer_id=?';
+            $caseParams[]=$customerId;
+        }
+        $caseQ=db()->prepare($caseSql);
+        $caseQ->execute($caseParams);
+        foreach ($caseQ->fetchAll() as $caseRow) {
+            try {
+                $job=belm_ensure_job_card_for_breakdown_case((string)$caseRow['id'],'System Sync',true);
+                if ($job && !empty($job['created'])) $autoJobCards++;
+            } catch (Throwable $sourceError) {
+                $failedSources++;
+                error_log('Breakdown Job Card backfill failed for '.(string)$caseRow['id'].': '.$sourceError->getMessage());
+            }
+        }
+
         // V319: verify the key cross-table invariants after reconciliation.
         // These checks make Sync / Refresh honest: a partial repair is reported
         // as a warning instead of displaying a green-looking "Synced" message.
@@ -2300,6 +2504,8 @@ function belm_sync_breakdown_sources(?string $customerId = null): array {
         'created'=>max(0,$createdAfter-$createdBefore),
         'serviceRequests'=>$syncedRequests,
         'operatorReports'=>$syncedReports,
+        'checklistReports'=>$syncedChecklists,
+        'autoJobCards'=>$autoJobCards,
         'failedSources'=>$failedSources,
         'inconsistencies'=>$inconsistencies,
         'error'=>$errorMessage,

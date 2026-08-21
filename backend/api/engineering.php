@@ -337,7 +337,7 @@ if ($method === 'POST' && $action === 'dispatch') {
             $pdo->prepare("INSERT INTO breakdown_cases(id,customer_id,machine_id,source_type,title,description,status,current_stage,current_department,opened_at,stage_started_at,updated_at,created_by_name)
                            VALUES(?,?,?,'MANUAL',?,?,'OPEN','JOB_CARD_ASSIGNED','Technician',NOW(),NOW(),NOW(),?)")
                 ->execute([$caseId,$customerId,$machineId,$title,$description?:$title,$user['name']]);
-            $jobNo='JC-'.date('ym').'-'.str_pad((string)$pdo->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
+            $jobNo=belm_next_job_card_number();
             $jobId=uuid();
             $pdo->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,priority,due_date,job_location,generated_by_name,issued_by_name,issued_by_type,issued_at,billing_status,created_at,updated_at)
                            VALUES(?,?,?,?,?,?,?,?,?,'ASSIGNED',?,?,?,?,?,? ,NOW(),'PROFORMA_PENDING',NOW(),NOW())")

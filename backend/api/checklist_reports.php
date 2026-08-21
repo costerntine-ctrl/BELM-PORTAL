@@ -691,6 +691,21 @@ if ($method === 'POST' && $action === 'submit') {
         json_error('Checklist was saved, but the Checked Report could not be loaded.', 500);
     }
 
+    // V424: a RED / Don't Operate checklist is itself a breakdown source.
+    // Create/link the Breakdown Case and reserve its Job Card number immediately.
+    $autoBreakdownCaseId = null;
+    $autoJobCard = null;
+    if (strtoupper((string)$worst) === 'RED') {
+        try {
+            $autoBreakdownCaseId = belm_ensure_breakdown_case_from_checklist_report($reportId, $filledBy, true);
+            if ($autoBreakdownCaseId) {
+                $autoJobCard = belm_ensure_job_card_for_breakdown_case($autoBreakdownCaseId, $filledBy, true);
+            }
+        } catch (Throwable $error) {
+            error_log('Checklist saved but breakdown auto-detection failed: ' . $error->getMessage());
+        }
+    }
+
     // V324: every Technician check-up has two synchronized destinations:
     // 1) the Customer portal/team, and 2) BELM when the Technician is BELM-owned.
     // The database report remains the source of truth even if email delivery fails.
@@ -781,6 +796,11 @@ if ($method === 'POST' && $action === 'submit') {
         'checklist_report_answer_view',
         $answerStmt->fetchAll()
     );
+    if ($autoBreakdownCaseId) {
+        $savedReport['breakdownCaseId'] = $autoBreakdownCaseId;
+        $savedReport['jobCardNo'] = $autoJobCard['jobCardNo'] ?? null;
+        $savedReport['breakdownAutoDetected'] = true;
+    }
     $savedReport['delivery'] = [
         'customer' => [
             'portalRecorded' => true,

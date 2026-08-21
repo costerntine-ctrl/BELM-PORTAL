@@ -190,27 +190,8 @@ function bw_set_stage(string $caseId, string $stage, ?string $blocker, array $ct
 }
 
 function bw_ensure_case_from_report(string $reportId, array $ctx): ?string {
-    $stmt = db()->prepare(
-        'SELECT o.id, o.customer_id, o.machine_id, o.message, o.operator_name,
-                m.brand, m.model, c.is_machinery_admin
-         FROM operator_reports o JOIN machines m ON m.id=o.machine_id JOIN customers c ON c.id=o.customer_id
-         WHERE o.id=?'
-    );
-    $stmt->execute([$reportId]);
-    $r = $stmt->fetch();
-    if (!$r) return null;
-    $existing = db()->prepare("SELECT id FROM breakdown_cases WHERE source_type='OPERATOR_REPORT' AND source_id=?");
-    $existing->execute([$reportId]);
-    $found = $existing->fetchColumn();
-    if ($found) return (string)$found;
-    $caseId = uuid();
-    $label = trim(($r['brand'] ?? '') . ' ' . ($r['model'] ?? '')) ?: 'Machine';
-    db()->prepare(
-        "INSERT INTO breakdown_cases
-         (id,customer_id,machine_id,source_type,source_id,title,description,status,current_stage,current_department,opened_at,stage_started_at,updated_at,created_by_name)
-         VALUES (?,?,?,?,?,?,?,'OPEN','WORKSHOP_REVIEW','Workshop',NOW(),NOW(),NOW(),?)"
-    )->execute([$caseId,$r['customer_id'],$r['machine_id'],'OPERATOR_REPORT',$reportId,'Breakdown - '.$label,$r['message'],$r['operator_name']]);
-    bw_log($caseId,'WORKSHOP_REVIEW','Workshop','Breakdown reported',$r['message'],$ctx);
+    $caseId = belm_ensure_breakdown_case_from_operator_report($reportId, (string)($ctx['actorName'] ?? 'Operator'), true);
+    if ($caseId) belm_ensure_job_card_for_breakdown_case($caseId, (string)($ctx['actorName'] ?? 'System'), true);
     return $caseId;
 }
 
@@ -226,8 +207,49 @@ function bw_signed_copy_upload(string $dataUrl, string $name): array {
     return [base64_encode($binary), $m[1], $safeName];
 }
 
+function bw_reported_context(array $row): array {
+    $reportedAt = $row['opened_at'] ?? null;
+    $machineHours = null;
+    $sourceType = strtoupper(trim((string)($row['source_type'] ?? 'BREAKDOWN_CASE')));
+    $sourceId = trim((string)($row['source_id'] ?? ''));
+    try {
+        if ($sourceType === 'CHECKLIST_REPORT' && $sourceId !== '') {
+            $q = db()->prepare('SELECT created_at,hour_meter_reading FROM checklist_reports WHERE id=? LIMIT 1');
+            $q->execute([$sourceId]);
+            $src = $q->fetch() ?: [];
+            if (!empty($src['created_at'])) $reportedAt = $src['created_at'];
+            if (isset($src['hour_meter_reading']) && is_numeric($src['hour_meter_reading'])) $machineHours = (float)$src['hour_meter_reading'];
+        } elseif ($sourceType === 'OPERATOR_REPORT' && $sourceId !== '') {
+            $q = db()->prepare('SELECT created_at FROM operator_reports WHERE id=? LIMIT 1');
+            $q->execute([$sourceId]);
+            $src = $q->fetch() ?: [];
+            if (!empty($src['created_at'])) $reportedAt = $src['created_at'];
+        } elseif ($sourceType === 'SERVICE_REQUEST' && $sourceId !== '') {
+            $q = db()->prepare('SELECT created_at FROM service_requests WHERE id=? LIMIT 1');
+            $q->execute([$sourceId]);
+            $src = $q->fetch() ?: [];
+            if (!empty($src['created_at'])) $reportedAt = $src['created_at'];
+        }
+        if ($machineHours === null && !empty($row['machine_id'])) {
+            $sql = 'SELECT hour_meter_reading FROM checklist_reports WHERE machine_id=?';
+            $params = [(string)$row['machine_id']];
+            if (!empty($reportedAt)) { $sql .= ' AND created_at<=?'; $params[] = $reportedAt; }
+            $sql .= ' ORDER BY created_at DESC LIMIT 1';
+            $q = db()->prepare($sql); $q->execute($params); $v = $q->fetchColumn();
+            if ($v !== false && $v !== null && is_numeric($v)) $machineHours = (float)$v;
+        }
+    } catch (Throwable $e) { error_log('Breakdown reported context failed: '.$e->getMessage()); }
+    return ['reportedAt'=>$reportedAt,'machineHours'=>$machineHours];
+}
+
 function bw_case_view(array $row): array {
     $stage = (string)$row['current_stage'];
+    $jobCardNo = trim((string)($row['job_card_no'] ?? ''));
+    if ($jobCardNo === '' && !empty($row['id'])) {
+        $jobStmt = db()->prepare('SELECT job_card_no FROM digital_job_cards WHERE case_id=? ORDER BY created_at ASC LIMIT 1');
+        $jobStmt->execute([(string)$row['id']]);
+        $jobCardNo = trim((string)($jobStmt->fetchColumn() ?: ''));
+    }
     $meta = BREAKDOWN_STAGE_META[$stage] ?? ['slaHours'=>0];
     $opened = strtotime((string)$row['opened_at']);
     $stageStart = strtotime((string)$row['stage_started_at']);
@@ -236,15 +258,17 @@ function bw_case_view(array $row): array {
     $stageHours = $stageStart ? max(0, round(($now-$stageStart)/3600,1)) : 0;
     $sla = (float)($meta['slaHours'] ?? 0);
     $delayed = $row['status'] !== 'COMPLETED' && $sla > 0 && $stageHours > $sla;
+    $reportedContext = bw_reported_context($row);
     return [
         'id'=>$row['id'],'customerId'=>$row['customer_id'],'machineId'=>$row['machine_id'],
         'customerName'=>$row['customer_name'] ?? null,'machineLabel'=>trim(($row['brand'] ?? '').' '.($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine'),
         'brand'=>$row['brand'] ?? null,'model'=>$row['model'] ?? null,'machineType'=>$row['machine_type'] ?? null,
         'serialNumber'=>$row['serial_number'] ?? null,'title'=>$row['title'],'description'=>$row['description'],
-        'sourceType'=>$row['source_type'] ?? 'MANUAL','sourceId'=>$row['source_id'] ?? null,
+        'sourceType'=>$row['source_type'] ?? 'MANUAL','sourceId'=>$row['source_id'] ?? null,'jobCardNo'=>$jobCardNo !== '' ? $jobCardNo : null,
         'customerManagesWorkshop'=>!empty($row['is_machinery_admin']),
         'status'=>$row['status'],'stage'=>$stage,'department'=>$row['current_department'],'blockerReason'=>$row['blocker_reason'],
-        'openedAt'=>$row['opened_at'],'stageStartedAt'=>$row['stage_started_at'],'closedAt'=>$row['closed_at'],
+        'openedAt'=>$row['opened_at'],'reportedAt'=>$reportedContext['reportedAt'] ?? $row['opened_at'],
+        'machineHours'=>$reportedContext['machineHours'],'stageStartedAt'=>$row['stage_started_at'],'closedAt'=>$row['closed_at'],
         'breakdownHours'=>$breakdownHours,'breakdownDays'=>round($breakdownHours/24,1),'stageHours'=>$stageHours,
         'slaHours'=>$sla,'delayed'=>$delayed,'delayHours'=>$delayed ? round($stageHours-$sla,1) : 0,
     ];
@@ -1082,8 +1106,10 @@ if ($method === 'POST' && $action === 'case') {
     $b=body(); $machineId=trim((string)($b['machineId']??'')); $desc=trim((string)($b['description']??'')); $title=trim((string)($b['title']??'Machine Breakdown'));
     if($machineId===''||$desc==='') json_error('Machine and problem description are required.');
     $m=db()->prepare('SELECT 1 FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL'); $m->execute([$machineId,$ctx['customerId']]); if(!$m->fetch())json_error('Machine not found.',404);
-    $caseId=uuid(); db()->prepare("INSERT INTO breakdown_cases(id,customer_id,machine_id,title,description,status,current_stage,current_department,opened_at,stage_started_at,updated_at,created_by_name) VALUES(?,?,?,?,?,'OPEN','WORKSHOP_REVIEW','Workshop',NOW(),NOW(),NOW(),?)")->execute([$caseId,$ctx['customerId'],$machineId,$title,$desc,$ctx['actorName']]);
-    bw_log($caseId,'WORKSHOP_REVIEW','Workshop','Breakdown case opened',$desc,$ctx); json_out(['id'=>$caseId],201);
+    $caseId=uuid(); db()->prepare("INSERT INTO breakdown_cases(id,customer_id,machine_id,source_type,title,description,status,current_stage,current_department,opened_at,stage_started_at,updated_at,created_by_name) VALUES(?,?,?,'BREAKDOWN_CASE',?,?,'OPEN','WORKSHOP_REVIEW','Workshop',NOW(),NOW(),NOW(),?)")->execute([$caseId,$ctx['customerId'],$machineId,$title,$desc,$ctx['actorName']]);
+    bw_log($caseId,'WORKSHOP_REVIEW','Workshop','Breakdown case opened',$desc,$ctx);
+    $autoJob=belm_ensure_job_card_for_breakdown_case($caseId,$ctx['actorName'],true);
+    json_out(['id'=>$caseId,'jobCardNo'=>$autoJob['jobCardNo']??null],201);
 }
 
 if ($method === 'POST' && $action === 'job-card') {
@@ -1199,7 +1225,7 @@ if ($method === 'POST' && $action === 'job-card') {
              WHERE id=?"
         )->execute([$techId?:null,$techName?:null,$initialJobStatus,$jobLocation,$jobId]);
     } else {
-        $num='JC-'.date('ym').'-'.str_pad((string)db()->query("SELECT nextval('breakdown_job_card_seq')")->fetchColumn(),4,'0',STR_PAD_LEFT);
+        $num=belm_next_job_card_number();
         $jobId=uuid(); $createdNew=true;
         db()->prepare("INSERT INTO digital_job_cards(id,case_id,customer_id,machine_id,job_card_no,title,fault_description,technician_id,technician_name,status,job_location,generated_by_name,issued_by_name,issued_by_type,issued_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())")->execute([$jobId,$caseId,$case['customer_id'],$case['machine_id'],$num,$title,$case['description'],$techId?:null,$techName?:null,$initialJobStatus,$jobLocation?:null,$ctx['actorName'],$ctx['actorName'],strtoupper((string)$ctx['kind']),date('c')]);
     }

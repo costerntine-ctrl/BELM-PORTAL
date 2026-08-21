@@ -216,3 +216,13 @@ html.admin-workshop-analysis-only .performance-panel{margin:0 0 4px}
 html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
 @media(max-width:1100px){html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:620px){html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* V424 auto-generated Job Card reference shown directly in the Live Breakdown Queue. */
+.job-card-pill{background:#eafaf0;color:#08763a;border:1px solid #8bd7aa;font-weight:900}
+[data-theme="dark"] .job-card-pill{background:#0e3524;color:#85efad;border-color:#26764a}
+
+/* V425 - reported timestamp and hour-meter snapshot on live queue cards */
+.case-report-context{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:7px;color:var(--muted);font-size:11px}
+.case-report-context span{display:inline-flex;gap:4px;align-items:center}
+.case-report-context b{color:var(--ink);font-weight:850}
+[data-theme="dark"] .case-report-context b{color:#e9f1fb}
+@media(max-width:620px){.case-report-context{flex-direction:column;gap:3px}}

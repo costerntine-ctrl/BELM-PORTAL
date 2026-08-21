@@ -1190,6 +1190,14 @@ ALTER TABLE machines ADD COLUMN IF NOT EXISTS service_schedule_baseline_hours DO
 -- V202 - live breakdown workflow, spare approval and digital job cards.
 CREATE SEQUENCE IF NOT EXISTS breakdown_job_card_seq START 1;
 
+-- V424 - Job Card numbers reset every Tanzania calendar day.
+-- Format: JC-DD-MM-YY-01, JC-DD-MM-YY-02, ...
+CREATE TABLE IF NOT EXISTS job_card_daily_counters (
+  counter_date DATE PRIMARY KEY,
+  last_number INTEGER NOT NULL DEFAULT 0,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS breakdown_cases (
   id VARCHAR(36) PRIMARY KEY,
   customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,

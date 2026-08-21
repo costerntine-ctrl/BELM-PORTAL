@@ -226,3 +226,21 @@ html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(6,mi
 .case-report-context b{color:var(--ink);font-weight:850}
 [data-theme="dark"] .case-report-context b{color:#e9f1fb}
 @media(max-width:620px){.case-report-context{flex-direction:column;gap:3px}}
+
+
+/* V426 - Live Breakdown Queue: ordered lower rows + direct Technician assignment on the card. */
+.case-queue-head{display:flex;align-items:flex-start;gap:8px}.case-queue-head h3{margin:0;font-size:18px;line-height:1.2}
+.case-description{margin-top:5px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.case-origin-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.case-origin-row .company-pill{max-width:100%}
+.queue-assign-row{margin-top:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(11,103,194,.045)}
+.queue-assign-row label{display:grid;grid-template-columns:auto minmax(180px,1fr);align-items:center;gap:10px;margin:0;font-weight:900}
+.queue-assign-row label>span{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+.queue-technician-select{width:100%;min-height:38px;border:1px solid #355373;border-radius:9px;padding:7px 30px 7px 10px;background:#0a1728;color:#f8fafc;font:inherit;font-weight:850;cursor:pointer}
+.queue-technician-select:focus{outline:2px solid rgba(58,166,255,.35);outline-offset:1px;border-color:#3aa6ff}
+.queue-technician-select:disabled{opacity:.55;cursor:not-allowed}
+.queue-assign-row small{display:block;margin-top:5px;color:var(--muted);font-size:9.5px;line-height:1.3}
+.queue-assigned-readonly{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:10px}.queue-assigned-readonly span{color:var(--muted);font-weight:850;text-transform:uppercase}.queue-assigned-readonly b{font-size:11px}
+[data-theme="light"] .queue-technician-select{background:#fff;color:#10243a;border-color:#bdcad8}
+[data-theme="dark"] .queue-assign-row{background:rgba(58,166,255,.06)}
+@media(max-width:620px){.case-queue-head h3{font-size:16px}.case-origin-row,.case-meta{gap:5px}.queue-assign-row label{grid-template-columns:1fr}.queue-assign-row label>span{white-space:normal}.queue-technician-select{min-height:42px}.case-report-context{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}.case-report-context span{display:block}}

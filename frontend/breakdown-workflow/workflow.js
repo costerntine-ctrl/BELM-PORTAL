@@ -13,7 +13,7 @@
   if(!source || !actorToken[source]) source=customerToken?'customer':techToken?'tech':'admin';
   const token=actorToken[source]||null;
 
-  let cases=[],selected=null,machines=[],jobTechnicians=[],inlineTechnicians=[];
+  let cases=[],selected=null,machines=[],jobTechnicians=[],inlineTechnicians=[],queueTechnicians=[];
   let dispatchTechnicians=[],dispatchCustomers=[],dispatchMachines=[],dispatchJobCards=[],jobProcessRows=[];
   const machineFilter=params.get('machine')||'';
   const payload=parseToken(token);
@@ -354,8 +354,77 @@
   document.getElementById('newCaseButton').onclick=()=>document.getElementById('caseDialog').showModal();
   document.getElementById('caseForm').onsubmit=async e=>{e.preventDefault();try{const d=await api('/case',{method:'POST',body:JSON.stringify({machineId:document.getElementById('caseMachine').value,description:document.getElementById('caseDescription').value})});document.getElementById('caseDialog').close();show('Breakdown case opened. Workshop now owns the next action.');await load();await openCase(d.id)}catch(x){show(x.message,true)}};
 
-  function renderSummary(){const open=cases.filter(c=>c.status!=='COMPLETED');const delayed=open.filter(c=>c.delayed);const administration=open.filter(c=>c.stage==='PROCUREMENT'||c.stage==='BOSS_APPROVAL');const avg=open.length?open.reduce((a,c)=>a+Number(c.breakdownHours||0),0)/open.length:0;document.getElementById('summaryCards').innerHTML=`<div class="summary-card"><b>${open.length}</b><span>Open breakdowns</span></div><div class="summary-card red"><b>${delayed.length}</b><span>Delayed / SLA exceeded</span></div><div class="summary-card yellow"><b>${administration.length}</b><span>Waiting Procurement / approval</span></div><div class="summary-card green"><b>${duration(avg)}</b><span>Average open time</span></div>`}
-  function renderList(){const q=document.getElementById('searchBox').value.toLowerCase().trim();const list=cases.filter(c=>!['COMPLETED','CANCELLED','CLOSED'].includes(String(c.status||'').toUpperCase())).filter(c=>!q||[c.machineLabel,c.customerName,c.department,c.stage,c.status,c.description,c.sourceType,c.jobCardNo,sourceLabel(c)].join(' ').toLowerCase().includes(q)).sort((a,b)=>(Date.parse(b.openedAt||b.updatedAt||b.createdAt||'')||0)-(Date.parse(a.openedAt||a.updatedAt||a.createdAt||'')||0));document.getElementById('caseList').innerHTML=list.length?list.map(c=>{const company=String(c.customerName||'Customer').trim()||'Customer';return `<article class="case-card attention ${c.delayed?'delayed':''}" data-case="${esc(c.id)}"><div class="case-title-line"><h3>${esc(c.machineLabel)}</h3><div class="case-title-badges"><span class="pill company-pill company-alert ${c.delayed?'red':''}">FROM: ${esc(company)}</span><span class="pill source-pill">${esc(sourceLabel(c))}</span>${c.jobCardNo?`<span class="pill job-card-pill">${esc(c.jobCardNo)}</span>`:''}</div></div><div>${esc(c.description)}</div><div class="case-report-context"><span><b>Reported:</b> ${esc(fmtDate(c.reportedAt||c.openedAt))}</span><span><b>Machine Hrs:</b> ${c.machineHours===null||c.machineHours===undefined||c.machineHours===''?'—':esc(String(Number(c.machineHours).toLocaleString(undefined,{maximumFractionDigits:1})))+' HRS'}</span></div><div class="case-meta"><span class="pill ${c.delayed?'red':'yellow'}">${esc(c.delayed?'DELAYED':c.status)}</span><span class="pill">${esc(c.department)}</span><span class="pill">Breakdown ${esc(duration(c.breakdownHours))}</span>${c.delayed?`<span class="pill red">Delay ${esc(duration(c.delayHours))}</span>`:''}</div></article>`}).join(''):`<div class="empty">${q?'No unfinished job matches this search.':'No unfinished breakdown job. Completed work stays in Timeline / History and reports.'}</div>`;document.querySelectorAll('[data-case]').forEach(e=>e.onclick=()=>openCase(e.dataset.case))}
+  function renderSummary(){const open=cases.filter(c=>c.status!=='COMPLETED');const delayed=open.filter(c=>c.delayed);const administration=open.filter(c=>c.stage==='PROCUREMENT'||c.stage==='BOSS_APPROVAL');const avg=open.length?open.reduce((a,c)=>a+Number(c.breakdownHours||0),0)/open.length:0;document.getElementById('summaryCards').innerHTML=`<div class="summary-card"><b>${open.length}</b><span>Open breakdowns</span></div><div class="summary-card red"><b>${delayed.length}</b><span>Service Level Agreement</span></div><div class="summary-card yellow"><b>${administration.length}</b><span>Waiting Procurement / approval</span></div><div class="summary-card green"><b>${duration(avg)}</b><span>Average open time</span></div>`}
+  function queueAssignmentAllowed(c){
+    const jobStatus=String(c.jobStatus||'').toUpperCase();
+    return source==='customer'&&isWorkshop&&Boolean(c.customerManagesWorkshop)
+      && String(c.sourceType||'').toUpperCase()!=='SERVICE_REQUEST'
+      && !['PENDING_APPROVAL','COMPLETED','CANCELLED'].includes(jobStatus);
+  }
+  function queueTechnicianOptions(c){
+    const currentId=String(c.technicianId||'');
+    const currentName=String(c.technicianName||'').trim();
+    let options='<option value="">Assign Technician...</option>';
+    if(currentId&&!queueTechnicians.some(x=>String(x.id)===currentId))options+=`<option value="${esc(currentId)}">${esc((currentName||'Current Technician')+' · ASSIGNED')}</option>`;
+    options+=queueTechnicians.map(t=>`<option value="${esc(t.id)}" ${String(t.id)===currentId?'selected':''}>${esc(t.name+(String(t.id)===currentId?' · ASSIGNED':''))}</option>`).join('');
+    return options;
+  }
+  function renderList(){
+    const q=document.getElementById('searchBox').value.toLowerCase().trim();
+    const list=cases.filter(c=>!['COMPLETED','CANCELLED','CLOSED'].includes(String(c.status||'').toUpperCase()))
+      .filter(c=>!q||[c.machineLabel,c.customerName,c.department,c.stage,c.status,c.description,c.sourceType,c.jobCardNo,c.technicianName,sourceLabel(c)].join(' ').toLowerCase().includes(q))
+      .sort((a,b)=>(Date.parse(b.openedAt||b.updatedAt||b.createdAt||'')||0)-(Date.parse(a.openedAt||a.updatedAt||a.createdAt||'')||0));
+    document.getElementById('caseList').innerHTML=list.length?list.map(c=>{
+      const company=String(c.customerName||'Customer').trim()||'Customer';
+      const canAssign=queueAssignmentAllowed(c);
+      const assignedName=String(c.technicianName||'').trim();
+      const assignment=canAssign
+        ? `<div class="queue-assign-row"><label><span>Assign Technician</span><select class="queue-technician-select" data-queue-assign="${esc(c.id)}" data-current-tech="${esc(c.technicianId||'')}" data-current-name="${esc(assignedName)}" ${queueTechnicians.length?'':'disabled'}>${queueTechnicianOptions(c)}</select></label><small>${assignedName?`Assigned: ${esc(assignedName)} · choose another Technician to reassign.`:(queueTechnicians.length?'Select a Technician for this Job Card.':'No customer Technician available.')}</small></div>`
+        : (assignedName?`<div class="queue-assigned-readonly"><span>Technician</span><b>${esc(assignedName)}</b></div>`:'');
+      return `<article class="case-card attention ${c.delayed?'delayed':''}" data-case="${esc(c.id)}">
+        <div class="case-queue-head"><h3>${esc(c.machineLabel)}</h3></div>
+        <div class="case-description">${esc(c.description)}</div>
+        <div class="case-report-context"><span><b>Reported:</b> ${esc(fmtDate(c.reportedAt||c.openedAt))}</span><span><b>Machine Hrs:</b> ${c.machineHours===null||c.machineHours===undefined||c.machineHours===''?'—':esc(String(Number(c.machineHours).toLocaleString(undefined,{maximumFractionDigits:1})))+' HRS'}</span></div>
+        <div class="case-origin-row"><span class="pill company-pill company-alert ${c.delayed?'red':''}">FROM: ${esc(company)}</span><span class="pill source-pill">${esc(sourceLabel(c))}</span>${c.jobCardNo?`<span class="pill job-card-pill">${esc(c.jobCardNo)}</span>`:''}</div>
+        <div class="case-meta"><span class="pill ${c.delayed?'red':'yellow'}">${esc(c.delayed?'DELAYED':c.status)}</span><span class="pill">${esc(c.department)}</span><span class="pill">Breakdown ${esc(duration(c.breakdownHours))}</span>${c.delayed?`<span class="pill red">Delay ${esc(duration(c.delayHours))}</span>`:''}</div>
+        ${assignment}
+      </article>`;
+    }).join(''):`<div class="empty">${q?'No unfinished job matches this search.':'No unfinished breakdown job. Completed work stays in Timeline / History and reports.'}</div>`;
+    document.querySelectorAll('[data-case]').forEach(e=>e.onclick=()=>openCase(e.dataset.case));
+    document.querySelectorAll('[data-queue-assign]').forEach(select=>{
+      select.addEventListener('click',event=>event.stopPropagation());
+      select.addEventListener('pointerdown',event=>event.stopPropagation());
+      select.addEventListener('change',event=>{event.stopPropagation();assignQueueTechnician(select)});
+    });
+  }
+  async function loadQueueTechnicians(){
+    if(source!=='customer'||!isWorkshop){queueTechnicians=[];return}
+    const customerId=String(cases[0]?.customerId||payload?.id||payload?.customerId||'');
+    if(!customerId){queueTechnicians=[];return}
+    try{queueTechnicians=await api(`/technicians?customerId=${encodeURIComponent(customerId)}&_=${Date.now()}`)}catch{queueTechnicians=[]}
+  }
+  async function assignQueueTechnician(select){
+    const caseId=String(select?.dataset.queueAssign||'');
+    const technicianId=String(select?.value||'');
+    const c=cases.find(x=>String(x.id)===caseId);
+    if(!c||!technicianId)return;
+    const tech=queueTechnicians.find(x=>String(x.id)===technicianId);
+    const previousId=String(c.technicianId||'');
+    const previousName=String(c.technicianName||'').trim();
+    if(previousId&&previousId!==technicianId&&!confirm(`${c.jobCardNo||'This Job Card'} is assigned to ${previousName||'another Technician'}. Reassign it to ${tech?.name||'the selected Technician'}?`)){
+      select.value=previousId;return;
+    }
+    select.disabled=true;
+    try{
+      const result=await api('/job-card',{method:'POST',body:JSON.stringify({
+        caseId,technicianId,title:c.title||'Machine Breakdown',jobCardMode:c.jobCardId?'existing':'auto',jobCardId:c.jobCardId||'',handoverReason:'Assigned from Live Breakdown Queue'
+      })});
+      show(`✓ ${result.jobCardNo||c.jobCardNo||'Job Card'} ${result.reassigned?'reassigned':'assigned'} to ${tech?.name||'Technician'}.`);
+      await load();
+    }catch(x){
+      select.value=previousId;select.disabled=false;show(x.message,true);
+    }
+  }
 
   async function openCase(id){try{selected=await api(`/case/${encodeURIComponent(id)}`);selected={...selected,jobCards:(selected?.jobCards||[]).map(normalizeJobCard),spares:selected?.spares||[],events:selected?.events||[]};renderDetail()}catch(x){show(x.message,true)}}
   function spareActions(s){if(s.procurementRequestId||s.procurement_request_id)return `<span class="pill yellow">Managed in Procurement</span>`;if(s.status==='WAITING_BOSS_APPROVAL'&&isOwner)return `<button class="approve" data-approve="${s.id}">Administration Approve</button><button class="reject" data-reject="${s.id}">Reject</button>`;if(s.status==='APPROVED'&&isStore)return `<button class="approve" data-spare-status="${s.id}|STORE_AVAILABLE">Available in Store</button><button class="yellow" data-spare-status="${s.id}|PROCUREMENT_REQUIRED">Send Procurement</button>`;if(['PROCUREMENT_REQUIRED','ORDERED'].includes(s.status)&&isProcurement)return `<button class="yellow" data-spare-status="${s.id}|PI_WAITING_ACCOUNTS">Send to Accounts / PI</button><button class="blue" data-spare-status="${s.id}|ORDERED">Mark Ordered</button>`;if(s.status==='PI_WAITING_ACCOUNTS'&&isAccounts)return `<button class="blue" data-spare-status="${s.id}|ORDERED">Accounts cleared / Ordered</button>`;if(['STORE_AVAILABLE','ORDERED'].includes(s.status)&&(isStore||isWorkshop))return `<button class="approve" data-spare-status="${s.id}|PARTS_READY">Parts Ready for Repair</button>`;return ''}
@@ -526,7 +595,7 @@
 
     document.getElementById('caseDetail').innerHTML=`<div class="detail">
       <div class="detail-title-row"><div><h2>${esc(c.machineLabel)}</h2><div class="detail-sub">${esc(c.title)} · ${esc(c.machineType||'')} · ${esc(c.serialNumber||'No serial')} · <b>${esc(sourceLabel(c))}</b>${c.jobCardNo?` · <b>${esc(c.jobCardNo)}</b>`:''}</div></div><span class="pill ${c.status==='COMPLETED'?'green':c.delayed?'red':'yellow'}">${esc(c.status)}</span></div>
-      <div class="workflow-focus ${focusClass}"><div><span>CURRENT PROCESS OWNER</span><strong>${focusTitle}</strong><small>Waiting here: ${esc(duration(c.stageHours))}${c.delayed?` · SLA exceeded by ${esc(duration(c.delayHours))}`:''}</small></div><div class="workflow-focus-reason"><span>WHY / BLOCKER</span><b>${blockerText}</b></div></div>
+      <div class="workflow-focus ${focusClass}"><div><span>CURRENT PROCESS OWNER</span><strong>${focusTitle}</strong><small>Waiting here: ${esc(duration(c.stageHours))}${c.delayed?` · Service Level Agreement exceeded by ${esc(duration(c.delayHours))}`:''}</small></div><div class="workflow-focus-reason"><span>WHY / BLOCKER</span><b>${blockerText}</b></div></div>
       <div class="status-box"><div><span>Breakdown Time</span><b>${esc(duration(c.breakdownHours))}</b></div><div><span>Current Stage</span><b>${esc(c.stage.replaceAll('_',' '))}</b></div><div><span>Department</span><b>${esc(c.department)}</b></div><div><span>Waiting Here</span><b>${esc(duration(c.stageHours))}</b></div></div>
       ${processHtml}
       <div class="actions workflow-primary-actions">${isWorkshop&&c.status!=='COMPLETED'&&(source!=='customer'||(c.customerManagesWorkshop&&!officialBelmJob))&&(!mainJob||!['PENDING_APPROVAL','COMPLETED','CANCELLED'].includes(jobStatus))?`<button class="${source==='customer'&&mainJob?'yellow':'blue'}" id="generateJob">${source==='customer'&&mainJob?'Manage / Reassign Job Card':'+ Digital Job Card'}</button>`:''}${source==='customer'&&isCustomerAdmin&&c.status!=='COMPLETED'&&d.jobCards.length===0&&!c.customerManagesWorkshop?'<button class="blue" id="sendJobToBelm">Send Job Card to BELM</button>':''}</div>
@@ -843,6 +912,7 @@
       }
 
       cases=await api(machineFilter?`?machineId=${encodeURIComponent(machineFilter)}`:'');
+      await loadQueueTechnicians();
       renderSummary();
       renderList();
 

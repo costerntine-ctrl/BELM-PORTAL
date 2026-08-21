@@ -245,10 +245,19 @@ function bw_reported_context(array $row): array {
 function bw_case_view(array $row): array {
     $stage = (string)$row['current_stage'];
     $jobCardNo = trim((string)($row['job_card_no'] ?? ''));
-    if ($jobCardNo === '' && !empty($row['id'])) {
-        $jobStmt = db()->prepare('SELECT job_card_no FROM digital_job_cards WHERE case_id=? ORDER BY created_at ASC LIMIT 1');
+    $jobCardId = trim((string)($row['job_card_id'] ?? ''));
+    $jobStatus = trim((string)($row['job_status'] ?? ''));
+    $technicianId = trim((string)($row['technician_id'] ?? ''));
+    $technicianName = trim((string)($row['technician_name'] ?? ''));
+    if (!empty($row['id']) && ($jobCardNo === '' || $jobCardId === '')) {
+        $jobStmt = db()->prepare('SELECT id,job_card_no,status,technician_id,technician_name FROM digital_job_cards WHERE case_id=? ORDER BY created_at ASC LIMIT 1');
         $jobStmt->execute([(string)$row['id']]);
-        $jobCardNo = trim((string)($jobStmt->fetchColumn() ?: ''));
+        $jobRow = $jobStmt->fetch() ?: [];
+        if ($jobCardId === '') $jobCardId = trim((string)($jobRow['id'] ?? ''));
+        if ($jobCardNo === '') $jobCardNo = trim((string)($jobRow['job_card_no'] ?? ''));
+        if ($jobStatus === '') $jobStatus = trim((string)($jobRow['status'] ?? ''));
+        if ($technicianId === '') $technicianId = trim((string)($jobRow['technician_id'] ?? ''));
+        if ($technicianName === '') $technicianName = trim((string)($jobRow['technician_name'] ?? ''));
     }
     $meta = BREAKDOWN_STAGE_META[$stage] ?? ['slaHours'=>0];
     $opened = strtotime((string)$row['opened_at']);
@@ -264,7 +273,9 @@ function bw_case_view(array $row): array {
         'customerName'=>$row['customer_name'] ?? null,'machineLabel'=>trim(($row['brand'] ?? '').' '.($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine'),
         'brand'=>$row['brand'] ?? null,'model'=>$row['model'] ?? null,'machineType'=>$row['machine_type'] ?? null,
         'serialNumber'=>$row['serial_number'] ?? null,'title'=>$row['title'],'description'=>$row['description'],
-        'sourceType'=>$row['source_type'] ?? 'MANUAL','sourceId'=>$row['source_id'] ?? null,'jobCardNo'=>$jobCardNo !== '' ? $jobCardNo : null,
+        'sourceType'=>$row['source_type'] ?? 'MANUAL','sourceId'=>$row['source_id'] ?? null,
+        'jobCardId'=>$jobCardId !== '' ? $jobCardId : null,'jobCardNo'=>$jobCardNo !== '' ? $jobCardNo : null,'jobStatus'=>$jobStatus !== '' ? $jobStatus : null,
+        'technicianId'=>$technicianId !== '' ? $technicianId : null,'technicianName'=>$technicianName !== '' ? $technicianName : null,
         'customerManagesWorkshop'=>!empty($row['is_machinery_admin']),
         'status'=>$row['status'],'stage'=>$stage,'department'=>$row['current_department'],'blockerReason'=>$row['blocker_reason'],
         'openedAt'=>$row['opened_at'],'reportedAt'=>$reportedContext['reportedAt'] ?? $row['opened_at'],
@@ -612,7 +623,7 @@ if ($method === 'GET' && $action === 'department-report-pdf') {
         ['Job Cards created', (string)$s['jobCardsCreated']],
         ['Jobs completed', (string)$s['completedJobs']],
         ['Open breakdowns now', (string)$s['openBreakdowns']],
-        ['Delayed / SLA exceeded', (string)$s['delayedBreakdowns']],
+        ['Service Level Agreement', (string)$s['delayedBreakdowns']],
         ['Waiting Administration approval', (string)$s['waitingAdministration']],
         ['Waiting Store / Procurement / Accounts', (string)$s['waitingParts']],
         ['First-time-fix rate', $s['firstTimeFixRate'].'%'],

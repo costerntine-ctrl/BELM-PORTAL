@@ -4064,52 +4064,18 @@ if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'DELETE') {
 // own maintenance team unless the sender explicitly asks BELM for Technical
 // Support. In BELM-managed mode, problem reports always notify BELM.
 if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
-    require_customer_feature_access($customer, 'operator-reports', 'Operator Reported');
+    require_customer_feature_access($customer, 'operator-reports', 'Operator Reports');
     $machineId = $sub2;
-    $machineStmt = db()->prepare(
-        'SELECT id, brand, model, machine_type, serial_number, reg_number
-         FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
+    $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
+    $stmt->execute([$machineId, $customer['id']]);
+    if (!$stmt->fetch()) json_error('Machine not found for this customer.', 404);
+
+    $stmt = db()->prepare(
+        'SELECT id, operator_name, operator_contact, message, status, notify_belm, created_at, resolved_at
+         FROM operator_reports WHERE machine_id = ? ORDER BY created_at DESC'
     );
-    $machineStmt->execute([$machineId, $customer['id']]);
-    $machine = $machineStmt->fetch();
-    if (!$machine) json_error('Machine not found for this customer.', 404);
-
-    [$fromDate, $toDate] = customer_portal_date_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
-    $sql = 'SELECT id, operator_name, operator_contact, message, status, notify_belm, created_at, resolved_at
-            FROM operator_reports WHERE machine_id = ?';
-    $params = [$machineId];
-    if ($fromDate !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromDate; }
-    if ($toDate !== null) { $sql .= ' AND created_at < ?'; $params[] = $toDate; }
-    $sql .= ' ORDER BY created_at DESC';
-    $stmt = db()->prepare($sql);
-    $stmt->execute($params);
+    $stmt->execute([$machineId]);
     $rows = $stmt->fetchAll();
-
-    if ($sub3 === 'pdf') {
-        $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''));
-        if ($machineLabel === '') $machineLabel = (string)($machine['machine_type'] ?? 'Machine');
-        $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', $machineLabel);
-        $pdfRows = array_map(static fn(array $r): array => [
-            display_date_billing($r['created_at']),
-            (string)($r['operator_name'] ?: 'Operator'),
-            (string)($r['operator_contact'] ?: '-'),
-            strtoupper((string)($r['status'] ?: 'OPEN')),
-            (string)($r['message'] ?: '-'),
-        ], $rows);
-        output_table_pdf(
-            'BELM-operator-reported-' . $safeMachine . '.pdf',
-            'OPERATOR REPORTED',
-            [
-                'Customer: ' . (string)($customer['name'] ?? 'Customer'),
-                'Machine: ' . $machineLabel,
-                'Serial / Registration: ' . (string)($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
-                'Period: ' . ($fromDate ?? 'All time') . ' to ' . ($toDate ?? 'now'),
-                'Date  |  Operator  |  Contact  |  Status  |  Reported issue',
-            ],
-            $pdfRows
-        );
-    }
-
     foreach ($rows as &$row) {
         $row['notifyBelm'] = !empty($row['notify_belm']);
         unset($row['notify_belm']);

@@ -229,7 +229,7 @@
     const operatorMeta = operatorReport
       ? `${operatorName}${operatorCreated ? ` · ${formatDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
       : "Waiting for Operator report";
-    return `<article class="machine-card machine-card-v409 machine-card-v417 ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
+    return `<article class="machine-card machine-card-v409 ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <div class="machine-title-row">
           <h4>${escapeHtml(machineTitle)}</h4>
@@ -249,13 +249,13 @@
           </div>
         </div>
         <span class="service-due-badge" ${canMaintenance ? `data-service-due-badge="${escapeHtml(machine.id)}"` : ""}>${canMaintenance ? "Service due: checking…" : "Service due: 🔒 Customer private"}</span>
+        <label class="operational-status-picker op-${escapeHtml(opStatus)}">Activity status
+          <select data-operational-status="${escapeHtml(machine.id)}">
+            ${Object.entries(OPERATIONAL_STATUS_LABELS).map(([value, label]) =>
+              `<option value="${value}" ${value === opStatus ? "selected" : ""}>${label}</option>`).join("")}
+          </select>
+        </label>
       </div>
-      <label class="operational-status-picker machine-activity-status-bottom op-${escapeHtml(opStatus)}">Activity status
-        <select data-operational-status="${escapeHtml(machine.id)}">
-          ${Object.entries(OPERATIONAL_STATUS_LABELS).map(([value, label]) =>
-            `<option value="${value}" ${value === opStatus ? "selected" : ""}>${label}</option>`).join("")}
-        </select>
-      </label>
       <div class="machine-actions">
         ${privacyButton("Report", canMaintenance, `data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Check Up", canMaintenance, `data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
@@ -1129,8 +1129,6 @@
   let cachedMachineReportsKey = "";
   let cachedMachineJobCards = [];
   let cachedMachineJobCardsKey = "";
-  let cachedMachineOperatorReports = [];
-  let cachedMachineOperatorReportsKey = "";
   let currentReportMachineId = "";
   let currentReportMachineName = "";
   let currentReportTab = "checklist";
@@ -1296,90 +1294,6 @@
     return cachedMachineJobCards;
   }
 
-  async function getOperatorReportsForRange(range) {
-    const key = machineReportRangeKey(currentReportMachineId, range);
-    if (cachedMachineOperatorReportsKey === key) return cachedMachineOperatorReports;
-    const qs = machineReportQuery(range);
-    cachedMachineOperatorReports = await api(`/checklist-reports/operator-reports/${encodeURIComponent(currentReportMachineId)}${qs ? `?${qs}` : ""}`);
-    cachedMachineOperatorReportsKey = key;
-    return cachedMachineOperatorReports;
-  }
-
-  function percent(value, total) {
-    return total > 0 ? Math.round((value / total) * 100) : 0;
-  }
-
-  function machineAnalysisHtml(reports, jobCards, operatorReports) {
-    const checkups = Array.isArray(reports) ? reports : [];
-    const jobs = Array.isArray(jobCards) ? jobCards : [];
-    const ops = Array.isArray(operatorReports) ? operatorReports : [];
-    const statusOf = (value) => String(value || "").toUpperCase();
-    const completed = jobs.filter((j) => statusOf(j.status) === "COMPLETED");
-    const openJobs = jobs.filter((j) => !["COMPLETED", "CANCELLED"].includes(statusOf(j.status)));
-    const repeats = completed.filter((j) => Number(j.repeatIssue ?? j.repeat_issue ?? 0) === 1);
-    const firstFix = Math.max(0, completed.length - repeats.length);
-    const redChecks = checkups.filter((r) => ["RED", "CRITICAL"].includes(statusOf(r.overallStatus || r.overall_status)));
-    const yellowChecks = checkups.filter((r) => ["YELLOW", "ATTENTION"].includes(statusOf(r.overallStatus || r.overall_status)));
-    const openOperator = ops.filter((r) => statusOf(r.status) !== "RESOLVED");
-    const resolvedOperator = ops.filter((r) => statusOf(r.status) === "RESOLVED");
-    const latestCheck = checkups[0] || null;
-    const hourValues = checkups.map((r) => Number(r.hourMeterReading ?? r.hour_meter_reading)).filter(Number.isFinite);
-    const latestHours = hourValues.length ? hourValues[0] : null;
-    const oldestHours = hourValues.length ? hourValues[hourValues.length - 1] : null;
-    const hourMovement = latestHours !== null && oldestHours !== null ? Math.max(0, latestHours - oldestHours) : null;
-    const resolutionHours = completed.map((j) => {
-      const start = new Date(j.startedAt || j.started_at || j.createdAt || j.created_at || "");
-      const end = new Date(j.completedAt || j.completed_at || "");
-      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) return null;
-      return (end.getTime() - start.getTime()) / 3600000;
-    }).filter((v) => v !== null);
-    const avgRepair = resolutionHours.length ? (resolutionHours.reduce((a,b)=>a+b,0) / resolutionHours.length) : 0;
-    const faultCounts = new Map();
-    jobs.forEach((j) => {
-      const key = String(j.faultDescription || j.fault_description || j.title || "Unspecified job").trim() || "Unspecified job";
-      const item = faultCounts.get(key) || { count: 0, repeat: 0 };
-      item.count += 1;
-      if (Number(j.repeatIssue ?? j.repeat_issue ?? 0) === 1) item.repeat += 1;
-      faultCounts.set(key, item);
-    });
-    const commonFaults = [...faultCounts.entries()].sort((a,b) => b[1].count - a[1].count || b[1].repeat - a[1].repeat).slice(0,5);
-    const condition = latestCheck ? statusLabel(String(latestCheck.overallStatus || latestCheck.overall_status || "GREEN").toUpperCase()) : "Not checked";
-    return `<div class="machine-analysis-shell">
-      <div class="machine-analysis-kpis">
-        <div class="machine-analysis-kpi"><span>Machine Condition</span><strong>${escapeHtml(condition)}</strong></div>
-        <div class="machine-analysis-kpi"><span>Open Job Cards</span><strong>${openJobs.length}</strong></div>
-        <div class="machine-analysis-kpi"><span>First-Time Fix</span><strong>${percent(firstFix, completed.length)}%</strong></div>
-        <div class="machine-analysis-kpi"><span>Open Operator Issues</span><strong>${openOperator.length}</strong></div>
-      </div>
-      <div class="machine-analysis-grid">
-        <section class="machine-analysis-panel"><h3>Machine Health</h3><div class="machine-analysis-list">
-          <div class="machine-analysis-row"><span>Checklist reports</span><b>${checkups.length}</b></div>
-          <div class="machine-analysis-row"><span>Red / Don't operate</span><b>${redChecks.length}</b></div>
-          <div class="machine-analysis-row"><span>Yellow / Attention</span><b>${yellowChecks.length}</b></div>
-          <div class="machine-analysis-row"><span>Latest hour meter</span><b>${latestHours === null ? "—" : escapeHtml(latestHours)}</b></div>
-          <div class="machine-analysis-row"><span>Hours movement in period</span><b>${hourMovement === null ? "—" : `${escapeHtml(hourMovement)} HRS`}</b></div>
-        </div></section>
-        <section class="machine-analysis-panel"><h3>Job Card Performance</h3><div class="machine-analysis-list">
-          <div class="machine-analysis-row"><span>Job Cards</span><b>${jobs.length}</b></div>
-          <div class="machine-analysis-row"><span>Completed</span><b>${completed.length}</b></div>
-          <div class="machine-analysis-row"><span>Repeat / rework</span><b>${repeats.length}</b></div>
-          <div class="machine-analysis-row"><span>Completion rate</span><b>${percent(completed.length, jobs.length)}%</b></div>
-          <div class="machine-analysis-row"><span>Average repair time</span><b>${avgRepair.toFixed(1)} hrs</b></div>
-        </div></section>
-        <section class="machine-analysis-panel"><h3>Operator Reports</h3><div class="machine-analysis-list">
-          <div class="machine-analysis-row"><span>Total reports</span><b>${ops.length}</b></div>
-          <div class="machine-analysis-row"><span>Open</span><b>${openOperator.length}</b></div>
-          <div class="machine-analysis-row"><span>Resolved</span><b>${resolvedOperator.length}</b></div>
-          <div class="machine-analysis-row"><span>Resolution rate</span><b>${percent(resolvedOperator.length, ops.length)}%</b></div>
-        </div></section>
-        <section class="machine-analysis-panel"><h3>Common Faults / Jobs</h3><div class="machine-analysis-faults">
-          ${commonFaults.length ? commonFaults.map(([name,info]) => `<div class="machine-analysis-fault"><span title="${escapeHtml(name)}">${escapeHtml(name)}</span><b>${info.count}${info.repeat ? ` · ${info.repeat} repeat` : ""}</b></div>`).join("") : '<p class="muted">No Job Card fault history in this period.</p>'}
-        </div></section>
-      </div>
-      <p class="muted">This analysis is limited to <strong>${escapeHtml(currentReportMachineName)}</strong> only and follows the selected reporting period.</p>
-    </div>`;
-  }
-
   function reportDownloadHref(path, range) {
     const qs = new URLSearchParams();
     if (range?.from) qs.set("from", range.from);
@@ -1392,22 +1306,13 @@
     const range = reportFilterRange();
     const list = document.getElementById("reportsList");
     const periodLabel = document.getElementById("machineReportPeriodLabel");
-    const downloadButton = document.getElementById("machineReportDownloadButton");
     if (range.invalid || ((document.getElementById("machineReportFilterMode")?.value || "all") !== "all" && !range.from)) {
       list.innerHTML = '<p class="alert error">Choose a valid Date, Month or Year, then click View Reports.</p>';
       periodLabel.textContent = range.label || "Choose a reporting period.";
       return;
     }
-    const tabLabels = {
-      checklist: "Checklist Reports",
-      jobcard: "Job Card Reports",
-      daily: "Daily Reports",
-      operator: "Operator Reported",
-      analysis: "Machine Analysis",
-    };
-    periodLabel.textContent = `Showing ${range.label.toLowerCase()} · ${tabLabels[currentReportTab] || "Reports"} · ${currentReportMachineName} only.`;
+    periodLabel.textContent = `Showing ${range.label.toLowerCase()} · ${currentReportTab === "jobcard" ? "Job Card Reports" : currentReportTab === "daily" ? "Daily Reports" : "Checklist Reports"}.`;
     document.querySelectorAll("[data-report-tab]").forEach((button) => button.classList.toggle("active", button.dataset.reportTab === currentReportTab));
-    if (downloadButton) downloadButton.textContent = currentReportTab === "analysis" ? "Download Analysis" : "Download Report";
     list.innerHTML = '<p class="muted">Loading reports…</p>';
 
     try {
@@ -1425,33 +1330,6 @@
               <a class="report-download-link" href="/api/breakdown-workflow/job-card-pdf/${encodeURIComponent(jc.id)}?token=${encodeURIComponent(token || "")}" target="_blank" rel="noopener">Download Report</a>
             </div>
           </article>`).join("") : '<p class="muted">No Job Card reports found for this period.</p>';
-        return;
-      }
-
-      if (currentReportTab === "operator") {
-        const operatorReports = await getOperatorReportsForRange(range);
-        list.innerHTML = Array.isArray(operatorReports) && operatorReports.length ? operatorReports.map((report) => {
-          const status = String(report.status || "OPEN").toUpperCase();
-          return `<article class="report-item operator-report-item">
-            <div class="operator-report-message">
-              <strong>${escapeHtml(report.operatorName || report.operator_name || "Operator")}${(report.operatorContact || report.operator_contact) ? ` · ${escapeHtml(report.operatorContact || report.operator_contact)}` : ""}</strong>
-              <span>${formatDateTime(report.createdAt || report.created_at)}${(report.resolvedAt || report.resolved_at) ? ` · Resolved ${formatDateTime(report.resolvedAt || report.resolved_at)}` : ""}</span>
-              <p>${escapeHtml(report.message || "No message recorded.")}</p>
-            </div>
-            <span class="machine-status ${status === "RESOLVED" ? "GREEN" : "YELLOW"}">${escapeHtml(status)}</span>
-            <div></div>
-          </article>`;
-        }).join("") : '<p class="muted">No Operator Reported records found for this machine in this period.</p>';
-        return;
-      }
-
-      if (currentReportTab === "analysis") {
-        const [reports, jobCards, operatorReports] = await Promise.all([
-          getChecklistReportsForRange(range),
-          getJobCardsForRange(range),
-          getOperatorReportsForRange(range),
-        ]);
-        list.innerHTML = machineAnalysisHtml(reports, jobCards, operatorReports);
         return;
       }
 
@@ -1509,7 +1387,6 @@
     currentReportTab = "checklist";
     cachedMachineReportsKey = "";
     cachedMachineJobCardsKey = "";
-    cachedMachineOperatorReportsKey = "";
     document.getElementById("reportsDialogTitle").textContent =
       `${currentMachineListCustomerName ? currentMachineListCustomerName.toUpperCase() + " — " : ""}${currentReportMachineName} Reports`;
     const mode = document.getElementById("machineReportFilterMode");
@@ -1583,16 +1460,9 @@
       showAlert("Choose a valid Date, Month or Year before downloading.", true);
       return;
     }
-    let path;
-    if (currentReportTab === "jobcard") {
-      path = `/api/breakdown-workflow/machine-job-cards-pdf?machineId=${encodeURIComponent(currentReportMachineId)}`;
-    } else if (currentReportTab === "operator") {
-      path = `/api/checklist-reports/operator-reports/${encodeURIComponent(currentReportMachineId)}/pdf`;
-    } else if (currentReportTab === "analysis") {
-      path = `/api/breakdown-workflow/machine-analysis-pdf?machineId=${encodeURIComponent(currentReportMachineId)}`;
-    } else {
-      path = `/api/checklist-reports/machine/${encodeURIComponent(currentReportMachineId)}/history-pdf`;
-    }
+    const path = currentReportTab === "jobcard"
+      ? `/api/breakdown-workflow/machine-job-cards-pdf?machineId=${encodeURIComponent(currentReportMachineId)}`
+      : `/api/checklist-reports/machine/${encodeURIComponent(currentReportMachineId)}/history-pdf`;
     const href = reportDownloadHref(path, range);
     const link = document.createElement("a");
     link.href = href;

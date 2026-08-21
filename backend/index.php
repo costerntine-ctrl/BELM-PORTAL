@@ -346,20 +346,6 @@ switch ($resource) {
         // PUT /checklist-reports/:id -> update until 00:00 Tanzania time
         // GET /checklist-reports/machine/:machineId -> for-machine
         // GET/POST /checklist-reports/service-status/:machineId[/log-service]
-        // V416: GET /checklist-reports/operator-reports/:machineId[/pdf]
-        // V418: GET /checklist-reports/technician-general[/pdf?category=...]
-        if (($segments[1] ?? '') === 'technician-general' && ($segments[2] ?? '') === 'pdf') {
-            dispatch('checklist_reports.php', ['action' => 'technician-general-report-pdf']);
-        }
-        if (($segments[1] ?? '') === 'technician-general') {
-            dispatch('checklist_reports.php', ['action' => 'technician-general-report']);
-        }
-        if (($segments[1] ?? '') === 'operator-reports' && isset($segments[2]) && ($segments[3] ?? '') === 'pdf') {
-            dispatch('checklist_reports.php', ['action' => 'operator-reports-pdf', 'machineId' => $segments[2]]);
-        }
-        if (($segments[1] ?? '') === 'operator-reports' && isset($segments[2])) {
-            dispatch('checklist_reports.php', ['action' => 'operator-reports', 'machineId' => $segments[2]]);
-        }
         if (($segments[1] ?? '') === 'machine' && isset($segments[2]) && ($segments[3] ?? '') === 'history-pdf') {
             dispatch('checklist_reports.php', ['action' => 'machine-history-pdf', 'machineId' => $segments[2]]);
         }

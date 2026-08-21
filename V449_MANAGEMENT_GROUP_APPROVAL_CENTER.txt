@@ -1,0 +1,59 @@
+BELM PORTAL V449 - CUSTOMER WORKSHOP MANAGEMENT GROUP / APPROVAL CENTER
+=====================================================================
+
+Purpose
+-------
+Create one shared customer-owned approval inbox so Workshop Manager, Machine
+Operator, Store Keeper / Tools, Procurement and Accounts / Finance do not need
+to chase the Boss individually. Portal state is the official record; email is
+notification only.
+
+Management Group roles
+----------------------
+- Customer Owner / Customer Admin (Boss): sees all requests and can Approve / Reject.
+- Workshop Manager: group member; can submit requests and progress WORKSHOP actions.
+- Store Keeper / Tools: group member; can submit requests and progress STORE actions.
+- Procurement: group member; can submit requests and progress PROCUREMENT actions.
+- Accounts / Finance: group member; can submit requests and progress ACCOUNTS actions.
+- Machine Operator: can submit/follow OPERATOR / SAFETY requests only; cannot start/complete department actions and cannot see Store, Procurement or Finance requests.
+- Technician is NOT a Management Group role.
+
+Workflow
+--------
+REQUESTED -> WAITING BOSS APPROVAL -> APPROVED / REJECTED -> IN PROCESS -> COMPLETED
+
+Every request records:
+- Request number (REQ-DD-MM-YY-##)
+- Requester + role
+- Request type/category
+- Title/details
+- Machine reference (optional)
+- Amount (optional)
+- Priority
+- Responsible department
+- Boss decision + note
+- Start/completion actor and timestamps
+- Full immutable event history
+
+Email behavior
+--------------
+- On submit, approval/rejection, start, completion and cancellation, the portal
+  sends alerts to the permitted Management Group members using each person's
+  existing account email.
+- Sensitive Store/Procurement/Finance requests never email Operator accounts.
+- If SMTP is not configured, the portal inbox still works and clearly shows
+  that email setup is required.
+
+Deployment safety
+-----------------
+- Additive database tables only; no existing business rows are deleted.
+- V356 one-time TEST BANK reset is explicitly pinned to V356 and cannot be
+  re-triggered by V449.
+- Existing bank, stock, machines, Job Cards and customer data are preserved.
+
+Frontend
+--------
+- New /management-group/ responsive page.
+- Customer Workshop now has a Management Group panel and links from the five
+  management roles plus Boss Approval Center on Customer Admin / Owner.
+- Role Manager includes Management Group / Boss Approvals access.

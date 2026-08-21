@@ -188,7 +188,7 @@ if ($method === 'GET' && $action === 'job-process') {
         } elseif ($jobStatus === 'PENDING_APPROVAL' || $stage === 'PENDING_APPROVAL') {
             $code = 'PENDING_APPROVAL';
             $label = 'Pending Approval';
-        } elseif ($stage === 'TESTING') {
+        } elseif ($jobStatus === 'TESTING' || $stage === 'TESTING') {
             $code = 'TESTING';
             $label = 'Testing';
         } elseif ($jobStatus === 'WAITING_FOR_PARTS' || $openSpares > 0 || in_array($stage, ['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS'], true)) {
@@ -199,9 +199,9 @@ if ($method === 'GET' && $action === 'job-process') {
             $code = 'DIAGNOSIS_REPORT';
             $label = 'Diagnosis Report';
             $detail = 'Repeated issue: '.(!empty($row['repeat_issue']) ? 'YES' : 'NO');
-        } elseif ($hasOpened) {
-            $code = 'OPENED';
-            $label = 'Opened';
+        } elseif ($jobStatus === 'RECEIVED' || $hasOpened) {
+            $code = 'RECEIVED';
+            $label = 'Received by Technician';
         }
         $row['processCode'] = $code;
         $row['processLabel'] = $label;

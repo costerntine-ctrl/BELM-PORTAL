@@ -14,7 +14,7 @@ h1 { margin:0; color:var(--navy); font-size:clamp(30px,4vw,42px); letter-spacing
 button { font:inherit; }.primary,.secondary { min-height:42px; padding:10px 16px; border-radius:9px; cursor:pointer; font-size:13px; font-weight:800; }
 .primary { color:#fff; border:0; background:var(--green); box-shadow:0 7px 18px rgba(0,166,81,.2); }.primary:hover { background:var(--green2); }.compact { white-space:nowrap; }
 .secondary { color:#33475a; border:1px solid var(--line); background:#fff; }.secondary:hover { border-color:var(--green); color:var(--green2); }
-.summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:30px 0 18px; }.summary-grid article { padding:18px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.045); }.summary-grid strong,.summary-grid span { display:block; }.summary-grid strong { color:var(--navy); font-size:25px; }.summary-grid span { margin-top:3px; color:var(--muted); font-size:11px; }
+.summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:30px 0 18px; }.summary-grid article { padding:18px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.045); }.summary-grid strong,.summary-grid span { display:block; }.summary-grid strong { color:var(--navy); font-size:25px; }.summary-grid span { margin-top:3px; color:var(--muted); font-size:11px; }
 .share-link-row { display:flex; align-items:stretch; gap:14px; margin:0 0 18px; flex-wrap:wrap; }
 .share-link { display:grid; grid-template-columns:minmax(160px,auto) minmax(220px,1fr) auto; align-items:center; gap:14px; margin:0; padding:14px 16px; border:1px solid #efd65d; border-radius:14px; background:#fff9cf; max-width:760px; flex:1 1 480px; }.share-link strong,.share-link span { display:block; }.share-link strong { color:var(--navy); font-size:13px; }.share-link span { margin-top:4px; color:#6d6440; font-size:11px; line-height:1.45; }.share-link code { overflow-wrap:anywhere; color:var(--green2); font-size:11px; font-weight:800; }
 .access-legend { flex:1 1 260px; max-width:320px; padding:14px 16px; border:1px solid var(--line); border-radius:14px; background:#f9fbfa; }
@@ -112,3 +112,35 @@ input,select { width:100%; padding:11px 12px; border:1px solid #cad6d0; border-r
 .operator-card-only-note b { color:var(--text,#101828); }
 .operator-card-only-note span { color:var(--muted,#667085); }
 .operator-card-only-note.hidden { display:none !important; }
+
+
+/* V450 - Customer Team Bin + complete Technician account controls */
+.team-bin-panel { margin-top:18px; }
+.bin-summary-card { border-color:#ead8d6 !important; background:linear-gradient(180deg,#fff,#fff8f7) !important; }
+.bin-summary-card strong { color:var(--red) !important; }
+.bin-safety-note { margin:14px 20px 0; padding:11px 13px; border:1px solid #efdca5; border-left:4px solid var(--yellow); border-radius:10px; background:#fffbea; display:flex; flex-direction:column; gap:3px; }
+.bin-safety-note b { color:var(--navy); font-size:12px; }
+.bin-safety-note span { color:var(--muted); font-size:11px; line-height:1.45; }
+.team-bin-list { padding:14px 20px 20px; display:grid; gap:9px; }
+.bin-item { display:grid; grid-template-columns:minmax(230px,1.5fr) 130px minmax(150px,.8fr) auto; align-items:center; gap:14px; padding:13px; border:1px solid #eadfdd; border-radius:11px; background:#fffafa; }
+.bin-item-main { min-width:0; display:flex; align-items:center; gap:10px; }
+.bin-icon { width:34px; height:34px; display:grid; place-items:center; border-radius:9px; background:#fff0ef; font-size:16px; }
+.bin-item-main strong,.bin-item-main span { display:block; }
+.bin-item-main strong { color:var(--navy); font-size:13px; }
+.bin-item-main span { margin-top:3px; color:var(--muted); font-size:10.5px; overflow-wrap:anywhere; }
+.bin-date small,.bin-date b { display:block; }
+.bin-date small { color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:.5px; }
+.bin-date b { margin-top:2px; color:#465467; font-size:10.5px; }
+.bin-actions,.technician-account-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
+.bin-actions button,.technician-account-actions button { padding:6px 9px; border-radius:7px; font-size:10px; font-weight:850; cursor:pointer; white-space:nowrap; }
+.bin-actions .restore { border:1px solid #b9d8c8; color:var(--green2); background:#eefaf3; }
+.bin-actions .clear-bin { border:1px solid #efc2be; color:var(--red); background:#fff1f0; }
+.technician-account-actions .edit { border:1px solid #d7e0e8; color:#30455b; background:#fff; }
+.bin-empty { display:flex; flex-direction:column; gap:4px; padding:28px 20px; }
+.bin-empty strong { color:var(--navy); font-size:14px; }
+.bin-empty span { font-size:11px; }
+@media(max-width:900px){ .summary-grid{grid-template-columns:repeat(2,1fr)} .bin-item{grid-template-columns:1fr 1fr}.bin-actions{justify-content:flex-start} }
+@media(max-width:620px){ .summary-grid{grid-template-columns:1fr} .bin-item{grid-template-columns:1fr}.bin-actions,.technician-account-actions{justify-content:flex-start} }
+
+/* V453 - system-generated starting credentials */
+.starting-password-note{border:1px solid #d7e3ef;background:#f7fbff;border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}.starting-password-note b{font-size:.92rem}.starting-password-note span{font-size:.8rem;color:#5d6b78;line-height:1.45}.credential-dialog{width:min(94vw,520px);border:0;border-radius:16px;padding:0;box-shadow:0 24px 80px rgba(15,23,42,.28)}.credential-dialog::backdrop{background:rgba(15,23,42,.55)}.credential-card{padding:22px;display:grid;gap:15px}.credential-card label{display:grid;gap:6px;font-weight:700;font-size:.86rem}.credential-card input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:9px;padding:10px 11px;background:#f8fafc}.credential-warning,.credential-recovery{margin:0;border-radius:10px;padding:11px 12px;line-height:1.45;font-size:.85rem}.credential-warning{background:#fff8e6;border:1px solid #f2d38b}.credential-recovery{background:#eef8f2;border:1px solid #b9dfc6}.credential-copy-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}@media(max-width:520px){.credential-copy-row{grid-template-columns:1fr}.credential-copy-row button{width:100%}}

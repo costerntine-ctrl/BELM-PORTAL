@@ -1,0 +1,12 @@
+BELM PORTAL V450 - CUSTOMER TEAM BIN + ROLE CONTROLS
+
+Customer Workshop Role Manager updates:
+- Customer Technician now has Edit, Activate/Deactivate and Delete controls.
+- Delete for Customer Technician is soft-delete and moves the account to Team Bin.
+- Delete for Workshop Manager, Store Keeper, Procurement, Accounts and Operator portal users now moves the account to Team Bin instead of hard-deleting it.
+- Team Bin shows deleted customer team accounts with Restore and Clear Permanently actions.
+- Restore returns the account as Active.
+- Clear Permanently removes reusable login/contact credentials and removes the item from the visible Bin while retaining Job Card, approval and workshop audit history.
+- Deleted accounts are excluded from active Role Manager lists, analysis and user-limit counts.
+- Existing machine, Job Card, approval, store, procurement, finance and BELM data are not deleted by these changes.
+- V449 Management Group and V447 Job Card flow remain intact.

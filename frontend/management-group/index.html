@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Management Group — Customer Workshop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+  <link rel="stylesheet" href="/management-group/app.css?v=451-proof-documents">
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/customer-workshop/"><span class="mark">B</span><span><b>Customer Workshop</b><small>MANAGEMENT GROUP</small></span></a>
+    <div class="top-actions">
+      <a class="back" href="/customer-workshop/">← Workshop</a>
+      <button id="refreshButton" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">SHARED APPROVAL & PROCESS INBOX</p>
+        <h1>Management Group</h1>
+        <p>Submit requests once, let Boss approve inside the portal, and let the whole permitted management group follow the live process without chasing the Boss.</p>
+      </div>
+      <button id="newRequestButton" class="primary" type="button">+ Request to Boss</button>
+    </section>
+
+    <div id="alertBox" class="alert hidden" role="status"></div>
+
+    <section class="overview-grid">
+      <article class="summary-card"><span>Waiting Boss Approval</span><strong id="waitingCount">0</strong><small>Boss action required</small></article>
+      <article class="summary-card"><span>Approved</span><strong id="approvedCount">0</strong><small>Ready for department action</small></article>
+      <article class="summary-card"><span>In Process</span><strong id="processCount">0</strong><small>Department is working</small></article>
+      <article class="summary-card"><span>Completed</span><strong id="completedCount">0</strong><small>Closed process</small></article>
+    </section>
+
+    <section class="group-panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">GROUP VISIBILITY</p><h2>Management Group Members</h2><p>Portal inbox is the source of truth. Email is an alert sent to each permitted member's existing company email.</p></div>
+        <div class="email-state" id="emailState"><span class="pulse"></span><b id="emailStateText">Checking email alerts…</b></div>
+      </div>
+      <div id="memberChips" class="member-chips"><span class="muted">Loading group…</span></div>
+      <p id="visibilityNote" class="visibility-note"></p>
+    </section>
+
+    <section class="request-panel">
+      <div class="panel-head request-head">
+        <div><p class="eyebrow">LIVE REQUEST BOARD</p><h2>Requests & Approvals</h2></div>
+        <div class="filters" id="filters">
+          <button class="active" data-filter="ALL" type="button">All</button>
+          <button data-filter="WAITING_BOSS_APPROVAL" type="button">Waiting</button>
+          <button data-filter="APPROVED" type="button">Approved</button>
+          <button data-filter="IN_PROCESS" type="button">In Process</button>
+          <button data-filter="REJECTED" type="button">Rejected</button>
+          <button data-filter="COMPLETED" type="button">Completed</button>
+        </div>
+      </div>
+      <div id="requestList" class="request-list"><div class="empty">Loading Management Group requests…</div></div>
+    </section>
+  </main>
+
+  <dialog id="requestDialog">
+    <form id="requestForm" class="dialog-form">
+      <div class="dialog-head"><div><p class="eyebrow">NEW MANAGEMENT REQUEST</p><h2>Request to Boss</h2></div><button type="button" class="icon" data-close="requestDialog">×</button></div>
+      <p class="dialog-note">This request will appear in the shared Management Group board as <b>Waiting Boss Approval</b>. Email alerts are sent automatically.</p>
+      <div id="requestError" class="alert error hidden"></div>
+      <div class="form-grid">
+        <label>Request type<select id="requestType" required></select></label>
+        <label>Priority<select id="priority"><option value="NORMAL">Normal</option><option value="HIGH">High</option><option value="URGENT">Urgent</option><option value="LOW">Low</option></select></label>
+        <label class="wide">Title<input id="requestTitle" maxlength="255" required placeholder="What needs approval?"></label>
+        <label class="wide">Request details<textarea id="requestDescription" maxlength="5000" rows="5" required placeholder="Explain what is needed, why, and any important deadline or condition."></textarea></label>
+        <label>Machine (optional)<select id="machineId"><option value="">Not machine-specific</option></select></label>
+        <label>Amount TZS (optional)<input id="amount" type="number" min="0" step="0.01" placeholder="0"></label>
+        <label class="wide">Reference / document no. (optional)<input id="referenceText" maxlength="255" placeholder="Quotation, Job Card, PO, report or other reference"></label>
+        <label class="wide">Receipt / invoice / quotation / proof (optional at request stage)<input id="requestAttachment" type="file" accept="image/jpeg,image/png,image/webp,application/pdf"><small>JPG, PNG, WebP or PDF. Monetary requests must have a proof document before they can be Completed.</small></label>
+        <label id="targetDepartmentWrap">After approval, responsible department<select id="targetDepartment"><option value="WORKSHOP">Workshop</option><option value="STORE">Store</option><option value="PROCUREMENT">Procurement</option><option value="ACCOUNTS">Accounts / Finance</option><option value="ADMINISTRATION">Administration</option></select></label>
+      </div>
+      <div class="dialog-actions"><button type="button" class="secondary" data-close="requestDialog">Cancel</button><button id="submitRequestButton" class="primary" type="submit">Send to Boss</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="historyDialog">
+    <div class="dialog-form history-dialog">
+      <div class="dialog-head"><div><p class="eyebrow">AUDIT HISTORY</p><h2 id="historyTitle">Request History</h2></div><button type="button" class="icon" data-close="historyDialog">×</button></div>
+      <div id="historyRows" class="history-rows"></div>
+      <div class="dialog-actions"><button type="button" class="primary" data-close="historyDialog">Close</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="attachmentDialog">
+    <form id="attachmentForm" class="dialog-form compact-dialog">
+      <div class="dialog-head"><div><p class="eyebrow">SUPPORTING DOCUMENT</p><h2>Upload / Replace Proof</h2></div><button type="button" class="icon" data-close="attachmentDialog">×</button></div>
+      <p class="dialog-note">Attach a receipt, invoice, quotation or payment proof. JPG, PNG, WebP and PDF are accepted. This upload is recorded in the request history.</p>
+      <input id="attachmentRequestId" type="hidden">
+      <label>Document<input id="attachmentFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+      <div id="attachmentError" class="alert error hidden"></div>
+      <div class="dialog-actions"><button type="button" class="secondary" data-close="attachmentDialog">Cancel</button><button id="uploadAttachmentButton" class="primary" type="submit">Upload Document</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="actionDialog">
+    <form id="actionForm" class="dialog-form compact-dialog">
+      <div class="dialog-head"><div><p class="eyebrow" id="actionEyebrow">REQUEST ACTION</p><h2 id="actionTitle">Action</h2></div><button type="button" class="icon" data-close="actionDialog">×</button></div>
+      <p id="actionNoteText" class="dialog-note"></p>
+      <input id="actionRequestId" type="hidden">
+      <input id="actionName" type="hidden">
+      <label>Note / comment<textarea id="actionNote" rows="4" maxlength="2000" placeholder="Optional note"></textarea></label>
+      <div id="actionError" class="alert error hidden"></div>
+      <div class="dialog-actions"><button type="button" class="secondary" data-close="actionDialog">Cancel</button><button id="confirmActionButton" class="primary" type="submit">Confirm</button></div>
+    </form>
+  </dialog>
+
+  <script src="/management-group/app.js?v=451-proof-documents"></script>
+</body>
+</html>

@@ -49,7 +49,8 @@ if ($action === 'refresh' && $method === 'POST') {
             "SELECT u.id, u.name, u.email, u.assigned_customer_id, u.is_customer_managed,
                     r.id AS role_id, r.name AS role_name, r.allowed_pages,
                     c.name AS assigned_customer_name, c.portal_link AS assigned_customer_portal_link,
-                    c.deleted_at AS customer_deleted_at, c.is_active AS customer_active
+                    c.deleted_at AS customer_deleted_at, c.is_active AS customer_active,
+                    c.workshop_module_active AS assigned_customer_workshop_active
              FROM users u
              JOIN roles r ON r.id = u.role_id
              LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -62,6 +63,9 @@ if ($action === 'refresh' && $method === 'POST') {
         if ($user['role_name'] === 'Technician' && $user['assigned_customer_id']) {
             if (!$user['assigned_customer_name'] || $user['customer_deleted_at'] !== null || empty($user['customer_active'])) {
                 json_error('The customer assigned to this Technician account is no longer available.', 401);
+            }
+            if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_workshop_active'])) {
+                json_error('Customer Workshop System is not active for this company. Customer Technician workshop access is locked until the Workshop System is activated.', 402);
             }
         }
 
@@ -441,7 +445,8 @@ if ($action === 'unified-login' && $method === 'POST') {
             'SELECT u.*, r.name AS role_name, r.allowed_pages,
                     c.name AS assigned_customer_name,
                     c.portal_link AS assigned_customer_portal_link,
-                    c.is_machinery_admin AS assigned_customer_self_service
+                    c.is_machinery_admin AS assigned_customer_self_service,
+                    c.workshop_module_active AS assigned_customer_workshop_active
              FROM users u
              JOIN roles r ON r.id = u.role_id
              LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -466,6 +471,9 @@ if ($action === 'unified-login' && $method === 'POST') {
                 }
                 if (!$user['assigned_customer_name']) {
                     json_error('The customer assigned to this Technician account is not available.', 403);
+                }
+                if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_workshop_active'])) {
+                    json_error('Customer Workshop System is not active for this company. Customer Technician workshop access is locked until the Workshop System is activated.', 402);
                 }
                 if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_self_service'])) {
                     json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
@@ -644,7 +652,8 @@ if ($action === 'login' && $method === 'POST') {
     $stmt = db()->prepare(
         'SELECT u.*, r.name AS role_name, r.allowed_pages,
                 c.name AS assigned_customer_name,
-                c.is_machinery_admin AS assigned_customer_self_service
+                c.is_machinery_admin AS assigned_customer_self_service,
+                c.workshop_module_active AS assigned_customer_workshop_active
          FROM users u
          JOIN roles r ON r.id = u.role_id
          LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -676,6 +685,9 @@ if ($action === 'login' && $method === 'POST') {
         }
         if (!$user['assigned_customer_name']) {
             json_error('The customer assigned to this Technician account is not available.', 403);
+        }
+        if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_workshop_active'])) {
+            json_error('Customer Workshop System is not active for this company. Customer Technician workshop access is locked until the Workshop System is activated.', 402);
         }
         if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_self_service'])) {
             json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);

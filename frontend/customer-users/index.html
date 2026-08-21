@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Role Manager — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-users/users.css">
+  <link rel="stylesheet" href="/customer-users/users.css?v=453-starting-password">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -39,11 +39,12 @@
       <article><strong id="totalCount">0</strong><span>Total portal users</span></article>
       <article><strong id="activeCount">0</strong><span>Active accounts</span></article>
       <article><strong>6</strong><span>Operational roles + custom dashboard access</span></article>
+      <article class="bin-summary-card"><strong id="binCount">0</strong><span>Users in Team Bin</span></article>
     </section>
 
     <div class="share-link-row">
       <section class="share-link">
-        <div><strong>One customer portal link</strong><span>Share this same login link with your team. Each person uses their own email and initial password, then Forgot Password + OTP if needed.</span></div>
+        <div><strong>One customer portal link</strong><span>Share this same login link with your team. Each person gets a system-generated starting password once. After that, password recovery is self-service through Forgot Password + email OTP.</span></div>
         <code id="customerPortalUrl">Loading link…</code>
         <button class="secondary" id="copyLinkButton" type="button">Copy link</button>
       </section>
@@ -58,6 +59,7 @@
           <li><b>Check Up</b> — daily checklist and checked reports</li>
           <li><b>Maintenance Process</b> — approvals, delays and Digital Job Cards</li>
           <li><b>Store Keeper</b> — customer store, materials, balances and audit</li>
+          <li><b>Management Group</b> — shared requests, Boss approvals and live process status</li>
         </ul>
       </aside>
     </div>
@@ -82,7 +84,7 @@
       </div>
     </section>
 
-    <section class="panel">
+    <section class="panel" id="operatorRosterSection">
       <div class="panel-head">
         <div><h2>Machine Operator roster</h2><p>These are the people who physically operate each machine. Give them a 4–6 digit PIN so they can sign in on their own shift screen — log containers, and sign out with an OK or a challenge report.</p></div>
       </div>
@@ -106,15 +108,30 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Portal user accounts</h2><p>Use Edit to change a role, dashboard access or deactivate an account. Password recovery is self-service through Forgot Password + email OTP.</p></div>
+        <div><h2>Portal user accounts</h2><p>Use Edit to change a role, dashboard access or deactivate an account. Role Manager cannot change passwords after creation; users use Forgot Password + email OTP.</p></div>
         <button class="secondary" id="refreshButton" type="button">Refresh</button>
       </div>
       <div id="userList" class="user-list"><div class="loading">Loading users…</div></div>
     </section>
 
+    <section class="panel team-bin-panel" id="teamBinSection">
+      <div class="panel-head">
+        <div><h2>Team Bin</h2><p>Deleted team accounts stay here for recovery. Restore brings the login back. Clear Permanently removes reusable credentials but keeps workshop and Job Card audit history.</p></div>
+        <button class="secondary" id="refreshBinButton" type="button">Refresh Bin</button>
+      </div>
+      <div class="bin-safety-note"><b>Audit-safe deletion</b><span>Delete never removes completed Job Cards, approvals, machine history or technician work records.</span></div>
+      <div id="teamBinList" class="team-bin-list"><div class="loading">Loading Team Bin…</div></div>
+    </section>
+
     <section id="belmProviderNotice" class="panel hidden">
       <div class="panel-head">
         <div><h2>BELM Service Provider Active</h2><p>Only the Customer Technician role is temporarily paused while BELM handles machine problems and maintenance. Machinery Admin, Accounts, Machine Operators, Fuel Consumption, Workshop, Store, Procurement and other permitted functions remain available.</p></div>
+      </div>
+    </section>
+
+    <section id="workshopModuleNotice" class="panel hidden">
+      <div class="panel-head">
+        <div><h2>Customer Workshop System Inactive</h2><p>Customer Technician management is locked while the paid Workshop System is OFF. Customer Admin can still use the general portal and Request BELM Support.</p></div>
       </div>
     </section>
 
@@ -149,13 +166,15 @@
           </select>
         </label>
         <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>
-        <label id="passwordWrap">Initial password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">Customer Admin sets the first password and gives it to the user securely.</small></label>
-        <label id="confirmPasswordWrap">Confirm initial password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
+        <div id="passwordWrap" class="starting-password-note wide"><b>Starting password</b><span>The system will generate a secure starting password after you save this user. It is shown once so you can give it to the user securely.</span></div>
+        <input id="password" type="hidden">
+        <input id="confirmPassword" type="hidden">
+        <div id="confirmPasswordWrap" class="hidden"></div>
       </div>
       <div class="field-block" id="accessRoleWrap">
         <div class="dashboard-access-title"><b>Dashboard Access</b><small>Select what this user can open. Role presets are applied automatically, then you can adjust them.</small></div>
         <label class="check-option access-all"><input type="checkbox" id="accessAll"> <b id="accessAllLabelText">Access All Dashboard Functions</b></label>
-        <div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator ataona machine cards pekee. Dashboard Access hapa inachagua buttons/functions zinazoonekana ndani ya kila machine card; account-level tools, Store, Management Email na +USER hazipatikani kwa Operator.</span></div>
+        <div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator ataona machine operations pamoja na Management Group kwa maombi yake. Spare Parts, Store, Procurement/Manunuzi, Job Card administration, Management Email na +USER hazipatikani kwa Operator; Procurement/Finance requests hazionekani kwake.</span></div>
         <div id="technicianAccessNote" class="operator-card-only-note hidden"><b>Fundi / Technician Access</b><span>Fundi anaendelea kuwa na Technician Workspace kwa kazi za field. Administration anaweza pia kumpa Dashboard Access maalum au Full Customer Control. Hii haimpi BELM Admin/Inventory internal access.</span></div>
         <div id="accessOptions" class="access-options">
           <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Procurement</label>
@@ -166,6 +185,8 @@
           <label class="check-option"><input type="checkbox" class="access-item" value="check-up"> Check Up</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="store"> Store Keeper / Materials</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="workflow"> Maintenance Process / Job Cards</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="management-group"> Management Group / Boss Approvals</label>
+          <label class="check-option"><input type="checkbox" class="access-item" value="checklist-templates"> Workshop Checklist Templates</label>
         </div>
         <div class="secondary-access">
           <label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label>
@@ -180,6 +201,21 @@
     </form>
   </dialog>
 
-  <script src="/customer-users/users.js?v=296-procurement-label"></script>
+  <dialog id="credentialDialog" class="credential-dialog">
+    <div class="credential-card">
+      <div class="dialog-head">
+        <div><p class="eyebrow">NEW USER LOGIN</p><h2>Starting Password</h2></div>
+        <button class="icon-button" id="closeCredentialButton" type="button" aria-label="Close">×</button>
+      </div>
+      <p class="credential-warning"><b>Shown once.</b> Give these details to the user securely. Role Manager cannot retrieve this password later.</p>
+      <label>Email<input id="credentialEmail" readonly></label>
+      <label>Starting password<div class="credential-copy-row"><input id="credentialPassword" readonly><button id="copyCredentialPassword" type="button" class="secondary">Copy</button></div></label>
+      <label>Login link<div class="credential-copy-row"><input id="credentialLoginUrl" readonly><button id="copyCredentialLogin" type="button" class="secondary">Copy</button></div></label>
+      <p class="credential-recovery">After the starting password, the user manages password recovery through <b>Forgot Password → email OTP</b>.</p>
+      <div class="dialog-actions"><button id="credentialDoneButton" type="button" class="primary">Done</button></div>
+    </div>
+  </dialog>
+
+  <script src="/customer-users/users.js?v=453-starting-password"></script>
 </body>
 </html>

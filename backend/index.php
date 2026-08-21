@@ -36,7 +36,7 @@ if (($segments[0] ?? '') === 'live') {
     json_out([
         'ok' => true,
         'api' => 'BELM PHP web service',
-        'schemaVersion' => '356-bank-test-reset',
+        'schemaVersion' => '450-customer-team-bin',
         'databaseReadiness' => '/api/health',
     ], 200);
 }
@@ -60,6 +60,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'customer_machine_spare_list_items',
             'customer_store_issue_requests',
             'customer_procurement_requests',
+            'customer_management_requests',
+            'customer_management_request_events',
             'checklist_template_parts',
             'service_request_parts',
             'spare_parts',
@@ -105,6 +107,9 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             ['password_reset_codes', 'account_id'],
             ['payments', 'receipt_id'],
             ['bank_accounts', 'is_test'],
+            ['customer_users', 'deleted_at'],
+            ['customer_users', 'customer_bin_cleared_at'],
+            ['users', 'customer_bin_cleared_at'],
         ];
         $columnChecks = [];
         $columnStatement = db()->prepare(
@@ -189,7 +194,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
             // Regression baseline: 'schemaVersion' => '347-expense-persistence-sync'
-            'schemaVersion' => '356-bank-test-reset',
+            'schemaVersion' => '450-customer-team-bin',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,

@@ -6,6 +6,7 @@
   const form = document.getElementById("userForm");
   let users = [];
   let technicians = [];
+  let teamBin = [];
 
   function tokenPayload() {
     if (!token) return null;
@@ -33,6 +34,29 @@
   function clearAlert() {
     alertBox.className = "alert hidden";
     alertBox.textContent = "";
+  }
+
+  const credentialDialog = document.getElementById("credentialDialog");
+  function showStartingCredentials({ email, temporaryPassword, loginUrl }) {
+    if (!credentialDialog) return;
+    document.getElementById("credentialEmail").value = email || "";
+    document.getElementById("credentialPassword").value = temporaryPassword || "";
+    document.getElementById("credentialLoginUrl").value = loginUrl || "/portal/login";
+    credentialDialog.showModal();
+  }
+
+  async function copyCredentialValue(id, button) {
+    const value = document.getElementById(id)?.value || "";
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      const previous = button.textContent;
+      button.textContent = "Copied";
+      setTimeout(() => { button.textContent = previous; }, 1200);
+    } catch (_) {
+      document.getElementById(id)?.select();
+      document.execCommand("copy");
+    }
   }
 
   async function api(path, options = {}) {
@@ -66,14 +90,14 @@
     assistant: "Legacy Assistant",
   };
 
-  const OPERATOR_CARD_PERMISSIONS = ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "workflow"];
+  const OPERATOR_CARD_PERMISSIONS = ["fuel-usage", "operator-reports", "report-problem", "check-up", "management-group"];
 
   const ROLE_ACCESS_PRESETS = {
-    workshop_manager: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store", "workflow"],
-    store_keeper: ["machine-expenses", "store", "workflow"],
-    accounts: ["machine-expenses", "fuel-usage", "email", "workflow"],
-    procurement: ["machine-expenses", "store", "service-request", "workflow"],
-    operator: ["fuel-usage", "operator-reports", "report-problem"],
+    workshop_manager: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store", "workflow", "management-group", "checklist-templates"],
+    store_keeper: ["machine-expenses", "store", "workflow", "management-group"],
+    accounts: ["machine-expenses", "fuel-usage", "email", "workflow", "management-group"],
+    procurement: ["machine-expenses", "store", "service-request", "workflow", "management-group"],
+    operator: ["fuel-usage", "operator-reports", "report-problem", "check-up", "management-group"],
     technician: ["operator-reports", "report-problem", "check-up", "workflow"],
     admin: "all",
     assistant: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store"],
@@ -244,12 +268,16 @@
         document.getElementById("customerPortalUrl").textContent = dashboard.customer.portalUrl;
         document.getElementById("copyLinkButton").dataset.portalUrl = dashboard.customer.portalUrl;
       }
-      const customerTechEnabled = Boolean(dashboard?.customer?.isMachineryAdmin);
+      const workshopActive = Boolean(dashboard?.customer?.workshopModuleActive);
+      const selfManaged = Boolean(dashboard?.customer?.isMachineryAdmin);
+      const customerTechEnabled = workshopActive && selfManaged;
       document.getElementById("technicianSection").classList.toggle("hidden", !customerTechEnabled);
-      document.getElementById("belmProviderNotice")?.classList.toggle("hidden", customerTechEnabled);
+      document.getElementById("workshopModuleNotice")?.classList.toggle("hidden", workshopActive);
+      document.getElementById("belmProviderNotice")?.classList.toggle("hidden", !workshopActive || selfManaged);
       const technicianOption = document.getElementById("role").querySelector('option[value="technician"]');
       if (technicianOption) technicianOption.disabled = !customerTechEnabled;
-      loadTechnicians();
+      if (workshopActive) loadTechnicians();
+      else { technicians = []; render(); }
     } catch {
       // The user list already shows the actionable authentication error.
     }
@@ -268,7 +296,11 @@
                 ${(tech.isActive ?? tech.is_active) ? '<em class="roster-pin-set">Active</em>' : '<em class="roster-pin-missing">Inactive</em>'}
                 <em class="${tech.permissions === null ? 'roster-pin-set' : 'roster-pin-missing'}">${tech.permissions === null ? 'Full Customer Control' : `${Array.isArray(tech.permissions) ? tech.permissions.length : 0} dashboard access`}</em>
               </span>
-              <button type="button" class="edit" data-edit-technician="${escapeHtml(tech.id)}">Edit access</button>
+              <div class="roster-item-actions technician-account-actions">
+                <button type="button" class="edit" data-edit-technician="${escapeHtml(tech.id)}">Edit</button>
+                <button type="button" data-toggle-technician="${escapeHtml(tech.id)}" data-next-active="${(tech.isActive ?? tech.is_active) ? "0" : "1"}">${(tech.isActive ?? tech.is_active) ? "Deactivate" : "Activate"}</button>
+                <button type="button" class="delete" data-delete-technician="${escapeHtml(tech.id)}">Delete</button>
+              </div>
             </div>`).join("")
         : '<p class="empty-role">No Technicians added yet.</p>';
     } catch (error) {
@@ -349,14 +381,14 @@
     const isTechnician = document.getElementById("role").value === "technician";
     const isEdit = Boolean(document.getElementById("userId").value);
     applyRoleAccessVisibility();
-    // Customer Admin sets the initial password only when creating an account.
+    // V453: the system generates the starting password only when creating an account.
     // After creation, password recovery belongs to the user through Forgot Password + email OTP.
     document.getElementById("passwordWrap")?.classList.toggle("hidden", isEdit);
-    document.getElementById("confirmPasswordWrap")?.classList.toggle("hidden", isEdit);
+    document.getElementById("confirmPasswordWrap")?.classList.add("hidden");
     document.getElementById("accessRoleWrap")?.classList.remove("hidden");
     document.getElementById("technicianAccessNote")?.classList.toggle("hidden", !isTechnician);
-    document.getElementById("password").required = !isEdit;
-    document.getElementById("confirmPassword").required = !isEdit;
+    document.getElementById("password").required = false;
+    document.getElementById("confirmPassword").required = false;
   }
   document.getElementById("role").addEventListener("change", (event) => {
     if (!document.getElementById("userId").value) applyRolePreset(event.target.value);
@@ -369,9 +401,10 @@
     document.getElementById("accountKind").value = "new";
     document.getElementById("role").disabled = false;
     document.getElementById("dialogTitle").textContent = "Add user";
-    document.getElementById("password").required = true;
-    document.getElementById("confirmPassword").required = true;
-    document.getElementById("passwordHint").textContent = "Required · at least 8 characters. Give this first password to the user securely.";
+    document.getElementById("password").required = false;
+    document.getElementById("confirmPassword").required = false;
+    document.getElementById("password").value = "";
+    document.getElementById("confirmPassword").value = "";
     document.getElementById("statusWrap").classList.add("hidden");
     document.getElementById("formError").className = "alert error hidden";
     document.querySelectorAll("#role option[data-legacy='1']").forEach((option) => option.remove());
@@ -440,13 +473,8 @@
     const role = document.getElementById("role").value;
     const errorBox = document.getElementById("formError");
 
-    const password = document.getElementById("password").value;
-    const confirmation = document.getElementById("confirmPassword").value;
-    if (!id && password !== confirmation) {
-      errorBox.textContent = "Passwords do not match.";
-      errorBox.className = "alert error";
-      return;
-    }
+    // Starting passwords are generated server-side and returned once after creation.
+    const password = "";
 
     // Technician uses the dedicated field workspace, but V207 also allows
     // Administration to grant selected customer-dashboard functions or Full Control.
@@ -469,7 +497,6 @@
         permissions: readAccessPayload(),
       };
       if (id) techPayload.isActive = document.getElementById("isActive").checked;
-      else techPayload.password = document.getElementById("password").value;
 
       const saveButton = document.getElementById("saveButton");
       saveButton.disabled = true;
@@ -483,12 +510,13 @@
         await loadUsers();
         await loadTechnicians();
         if (!id) {
-          alert(`Technician added. Share the email and initial password securely.
-
-Technician workspace: ${result.loginUrl || "/login"}
-Customer Dashboard access follows Role Manager permissions.`);
+          showStartingCredentials({
+            email: techPayload.email,
+            temporaryPassword: result.temporaryPassword,
+            loginUrl: result.loginUrl || "/login",
+          });
         }
-        showAlert(id ? "Technician profile and dashboard access updated." : "Technician added successfully.", false);
+        showAlert(id ? "Technician profile and dashboard access updated." : "Technician added. Give the generated starting password to the user securely.", false);
       } catch (error) {
         errorBox.textContent = error.message;
         errorBox.className = "alert error";
@@ -509,8 +537,6 @@ Customer Dashboard access follows Role Manager permissions.`);
     };
     if (id) {
       payload.isActive = document.getElementById("isActive").checked;
-    } else {
-      payload.password = password;
     }
 
     const saveButton = document.getElementById("saveButton");
@@ -523,10 +549,17 @@ Customer Dashboard access follows Role Manager permissions.`);
       });
       dialog.close();
       await loadUsers();
+      if (!id) {
+        showStartingCredentials({
+          email: payload.email,
+          temporaryPassword: result.temporaryPassword,
+          loginUrl: result.loginUrl || document.getElementById("customerPortalUrl")?.textContent || "/portal/login",
+        });
+      }
       showAlert(
         id
           ? "User account updated. Password changes are self-service through Forgot Password + email OTP."
-          : "User created. Give the user the email and initial password you entered; future password recovery uses Forgot Password + email OTP.",
+          : "User created. Give the generated starting password to the user securely; future password recovery uses Forgot Password + email OTP.",
         false
       );
     } catch (error) {
@@ -540,18 +573,124 @@ Customer Dashboard access follows Role Manager permissions.`);
 
   async function deleteUser(id) {
     const user = users.find((item) => item.id === id);
-    if (!user || !confirm(`Delete user ${user.name}? Their login will stop working immediately.`)) return;
+    if (!user || !confirm(`Move ${user.name} to Team Bin? Their login will stop immediately, but workshop history will be retained and the account can be restored.`)) return;
     try {
       await api(`/users/${id}`, { method: "DELETE" });
-      await loadUsers();
-      showAlert("User deleted successfully.", false);
+      await Promise.all([loadUsers(), loadTeamBin(), loadTeamAnalysis(), loadActivityLog()]);
+      showAlert("User moved to Team Bin.", false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
+  async function deleteTechnician(id) {
+    const tech = technicians.find((item) => item.id === id);
+    if (!tech || !confirm(`Move Technician ${tech.name} to Team Bin? Login access will stop immediately. Existing Job Cards, diagnosis, testing and technical history will remain.`)) return;
+    try {
+      await api(`/technicians/${id}`, { method: "DELETE" });
+      await Promise.all([loadUsers(), loadTechnicians(), loadTeamBin(), loadTeamAnalysis(), loadActivityLog()]);
+      showAlert("Technician moved to Team Bin. Technical history was retained.", false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
+  async function toggleTechnician(id, active) {
+    const tech = technicians.find((item) => item.id === id);
+    if (!tech) return;
+    const verb = active ? "activate" : "deactivate";
+    if (!confirm(`${active ? "Activate" : "Deactivate"} Technician ${tech.name}?`)) return;
+    try {
+      await api(`/technicians/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name: tech.name,
+          email: tech.email,
+          phone: tech.phone || "",
+          permissions: tech.permissions,
+          isActive: active,
+        }),
+      });
+      await Promise.all([loadTechnicians(), loadTeamAnalysis(), loadActivityLog()]);
+      showAlert(`Technician ${verb}d successfully.`, false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
+  function renderTeamBin() {
+    const list = document.getElementById("teamBinList");
+    const count = document.getElementById("binCount");
+    if (count) count.textContent = teamBin.length;
+    if (!list) return;
+    if (!teamBin.length) {
+      list.innerHTML = '<div class="empty bin-empty"><strong>Team Bin is empty.</strong><span>Deleted users and Customer Technicians will appear here.</span></div>';
+      return;
+    }
+    list.innerHTML = teamBin.map((item) => `
+      <article class="bin-item">
+        <div class="bin-item-main">
+          <span class="bin-icon" aria-hidden="true">🗑</span>
+          <div><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.email || "No email")}${item.phone ? ` · ${escapeHtml(item.phone)}` : ""}</span></div>
+        </div>
+        <span class="badge ${escapeHtml(item.role)}">${escapeHtml(roleLabels[item.role] || item.role || "User")}</span>
+        <div class="bin-date"><small>Deleted</small><b>${item.deletedAt ? new Date(item.deletedAt).toLocaleString([], { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }) : "-"}</b></div>
+        <div class="bin-actions">
+          <button type="button" class="restore" data-restore-bin="${escapeHtml(item.id)}">Restore</button>
+          <button type="button" class="clear-bin" data-clear-bin="${escapeHtml(item.id)}">Clear Permanently</button>
+        </div>
+      </article>`).join("");
+  }
+
+  async function loadTeamBin() {
+    const list = document.getElementById("teamBinList");
+    if (list && !teamBin.length) list.innerHTML = '<div class="loading">Loading Team Bin…</div>';
+    try {
+      teamBin = await api("/team-bin");
+      renderTeamBin();
+    } catch (error) {
+      if (list) list.innerHTML = `<div class="empty">${escapeHtml(error.message || "Could not load Team Bin.")}</div>`;
+    }
+  }
+
+  async function restoreTeamBinItem(id) {
+    const item = teamBin.find((entry) => entry.id === id);
+    if (!item || !confirm(`Restore ${item.name}? The account will return as ACTIVE and login access will be restored, subject to Workshop System permissions.`)) return;
+    try {
+      await api(`/team-bin/${id}/restore`, { method: "POST", body: JSON.stringify({}) });
+      await Promise.all([loadUsers(), loadTechnicians(), loadTeamBin(), loadTeamAnalysis(), loadActivityLog()]);
+      showAlert(`${item.name} restored from Team Bin.`, false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
+  async function clearTeamBinItem(id) {
+    const item = teamBin.find((entry) => entry.id === id);
+    if (!item) return;
+    const ok = confirm(`CLEAR ${item.name} PERMANENTLY FROM TEAM BIN?
+
+This cannot be restored. Login credentials and reusable contact data will be removed. Job Cards, approvals and workshop audit history will remain.`);
+    if (!ok) return;
+    try {
+      await api(`/team-bin/${id}`, { method: "DELETE" });
+      await Promise.all([loadTeamBin(), loadTeamAnalysis(), loadActivityLog()]);
+      showAlert(`${item.name} cleared from Team Bin. Audit history was retained.`, false);
     } catch (error) {
       showAlert(error.message, true);
     }
   }
 
   document.getElementById("addButton").addEventListener("click", openCreate);
-  document.getElementById("refreshButton").addEventListener("click", loadUsers);
+  document.getElementById("closeCredentialButton")?.addEventListener("click", () => credentialDialog?.close());
+  document.getElementById("credentialDoneButton")?.addEventListener("click", () => credentialDialog?.close());
+  document.getElementById("copyCredentialPassword")?.addEventListener("click", (event) => copyCredentialValue("credentialPassword", event.currentTarget));
+  document.getElementById("copyCredentialLogin")?.addEventListener("click", (event) => copyCredentialValue("credentialLoginUrl", event.currentTarget));
+  document.getElementById("refreshButton").addEventListener("click", () => {
+    loadUsers();
+    loadTechnicians();
+    loadTeamBin();
+  });
   document.getElementById("closeDialogButton").addEventListener("click", () => dialog.close());
   document.getElementById("cancelButton").addEventListener("click", () => dialog.close());
   document.getElementById("logoutButton").addEventListener("click", () => {
@@ -576,8 +715,20 @@ Customer Dashboard access follows Role Manager permissions.`);
   });
 
   document.getElementById("technicianList")?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-edit-technician]");
-    if (button) openEditTechnician(button.dataset.editTechnician);
+    const editButton = event.target.closest("[data-edit-technician]");
+    const toggleButton = event.target.closest("[data-toggle-technician]");
+    const deleteButton = event.target.closest("[data-delete-technician]");
+    if (editButton) openEditTechnician(editButton.dataset.editTechnician);
+    if (toggleButton) toggleTechnician(toggleButton.dataset.toggleTechnician, toggleButton.dataset.nextActive === "1");
+    if (deleteButton) deleteTechnician(deleteButton.dataset.deleteTechnician);
+  });
+
+  document.getElementById("refreshBinButton")?.addEventListener("click", loadTeamBin);
+  document.getElementById("teamBinList")?.addEventListener("click", (event) => {
+    const restoreButton = event.target.closest("[data-restore-bin]");
+    const clearButton = event.target.closest("[data-clear-bin]");
+    if (restoreButton) restoreTeamBinItem(restoreButton.dataset.restoreBin);
+    if (clearButton) clearTeamBinItem(clearButton.dataset.clearBin);
   });
   form.addEventListener("submit", saveUser);
   document.getElementById("rosterMachineSelect").addEventListener("change", (event) => {
@@ -673,4 +824,5 @@ Customer Dashboard access follows Role Manager permissions.`);
   loadTeamAnalysis();
   loadRosterMachines();
   loadActivityLog();
+  loadTeamBin();
 })();

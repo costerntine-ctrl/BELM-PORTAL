@@ -879,13 +879,11 @@ if ($method === 'PUT' && $action === 'machinery-admin') {
     ]);
 }
 
-// V444: Workshop Module paid add-on toggle. Separate from is_active
-// ("Stop portal service" — kills the whole account) and separate from the
-// customer's own 'store' Role Manager permission (which only decides which
-// of the customer's own staff can use Store/Workshop once this is ON).
-// Turning this OFF immediately blocks Store Ledger + Tool Issue/Return
-// Documents for the customer's whole team, regardless of their internal
-// Role Manager settings, without touching any other part of their account.
+// V448: Customer Workshop System paid add-on toggle. Separate from is_active
+// (whole portal ON/OFF) and from the customer's own Role Manager permissions.
+// ON means the customer can run its complete internal workshop layer with its
+// own Manager, Technicians, Store/Tools, Procurement, Accounts and Job Cards.
+// BELM remains an external support provider and is invited explicitly.
 if ($method === 'PUT' && $action === 'workshop-module') {
     require_page_access($user, 'customers');
     $b = body();

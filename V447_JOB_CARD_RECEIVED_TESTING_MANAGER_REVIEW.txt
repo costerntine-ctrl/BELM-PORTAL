@@ -1,0 +1,15 @@
+BELM PORTAL V447 - JOB CARD RECEIVED + TESTING + MANAGER REVIEW
+
+Workflow corrected:
+ASSIGNED -> RECEIVED -> DIAGNOSIS / REPAIR -> WAITING FOR PARTS (when required) -> TESTING -> COMPLETED BY TECHNICIAN / MANAGER REVIEW -> CLOSED.
+
+Key controls:
+- Opening an assigned Job Card records RECEIVED and first-open time; it no longer jumps directly to IN_PROGRESS.
+- Diagnosis/repair save moves work into IN_PROGRESS.
+- Required spare still moves the Job Card to WAITING_FOR_PARTS; Parts Ready returns it to repair.
+- Saving Work Done + Test Result without final submit moves the Job Card to TESTING.
+- Technician cannot submit completion unless the Job Card is already in TESTING and Test Result is present.
+- Final technician submit moves the Job Card to PENDING_APPROVAL, displayed as Completed by Technician / Manager Review.
+- Workshop Manager/Admin approval closes the Job Card as COMPLETED.
+- Reviewer return sends it back to IN_PROGRESS for correction and re-testing.
+- Operator spare/procurement restrictions from V446 are preserved.

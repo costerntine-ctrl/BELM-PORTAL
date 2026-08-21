@@ -79,7 +79,7 @@ if ($method === 'GET') {
                 'job_card_no' => $job['job_card_no'],
                 'machine_id' => $job['machine_id'],
                 'machine_label' => $machineLabel,
-                'case_stage' => $job['current_stage'],
+                'case_stage' => in_array($jobStatus, ['RECEIVED','TESTING','PENDING_APPROVAL','COMPLETED'], true) ? $jobStatus : $job['current_stage'],
             ];
         }
     }

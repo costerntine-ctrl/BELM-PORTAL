@@ -1861,7 +1861,7 @@
       accounts: ["operator-reports", "check-up", "service-request", "workflow"],
       procurement: ["operator-reports", "check-up", "service-request", "workflow"],
       technician: ["operator-reports", "check-up", "service-request", "workflow"],
-      operator: ["operator-reports", "check-up", "service-request", "workflow"],
+      operator: ["operator-reports", "check-up", "report-problem", "fuel-usage"],
       owner: ["operator-reports", "check-up", "service-request", "workflow"],
       admin: ["operator-reports", "check-up", "service-request", "workflow"],
     };
@@ -3391,7 +3391,12 @@
 
   function enforceCustomerFeaturePermissions(scope) {
     const payload = tokenPayload("belm_customer_token");
-    const permissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
+    const role = String(payload?.customerRole || "").toLowerCase();
+    const rawPermissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
+    const operatorPermissions = ["fuel-usage", "operator-reports", "report-problem", "check-up"];
+    const permissions = role === "operator"
+      ? (Array.isArray(rawPermissions) ? rawPermissions.filter((key) => operatorPermissions.includes(key)) : operatorPermissions)
+      : rawPermissions;
     scope.querySelectorAll("[data-belm-feature]").forEach((element) => {
       element.style.removeProperty("display");
     });
@@ -3402,7 +3407,6 @@
         }
       });
     }
-    const role = payload?.customerRole;
     const hasAssignUsersPermission = Array.isArray(permissions) && permissions.includes("assign-users");
     scope.querySelectorAll("[data-belm-owner-admin-only]").forEach((element) => {
       if (role !== "owner" && role !== "admin" && !hasAssignUsersPermission) element.style.display = "none";
@@ -7117,6 +7121,14 @@
   if (redirectIfAlreadyLoggedIn()) return;
   if (enforceUnifiedTechnicianLogin()) return;
   if (handoffTechnicianSession()) return;
+
+  // V448: Customer Workshop keeps BELM outside the internal role chain. The
+  // Workshop page links here with ?action=belm-support for an explicit bridge.
+  if (new URLSearchParams(window.location.search).get('action') === 'belm-support') {
+    setTimeout(() => {
+      openBelmSupportDialog().catch((error) => alert(error.message || 'Could not open BELM Support.'));
+    }, 700);
+  }
 
   installCheckedReportViewer();
   installAuthenticatedReportDownloads();

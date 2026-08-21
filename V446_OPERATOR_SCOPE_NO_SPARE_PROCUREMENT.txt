@@ -1,0 +1,8 @@
+BELM PORTAL V446 - OPERATOR SCOPE CORRECTION
+
+- Machine Operator is operation/reporting only.
+- Operator has no Spare Parts, Store, Procurement/purchasing, or Job Card administration access.
+- Operator Role Manager permissions are restricted to Fuel Usage, Operator Reports, Report Problem, and Check Up.
+- Server-side permission checks enforce the restriction even for legacy Operator accounts with older saved permissions.
+- Dedicated Operator machine card no longer shows Service Parts.
+- Workshop flow is split: Operator report ends at Workshop Manager; spare/procurement flow begins only from Technician/Workshop requirements.

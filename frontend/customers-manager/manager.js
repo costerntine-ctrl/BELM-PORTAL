@@ -403,8 +403,8 @@
               </label>
               <strong class="customer-nonpayment-state">${Number(customer.isActive) === 1 ? "PORTAL ON" : "STOPPED"}</strong>
             </div>
-            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="Workshop Module paid add-on for ${escapeHtml(customer.name)}">
-              <span class="customer-workshop-label">Workshop Module</span>
+            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="Customer Workshop System paid add-on for ${escapeHtml(customer.name)}">
+              <span class="customer-workshop-label">Workshop System</span>
               <label class="customer-workshop-switch">
                 <input type="checkbox" data-card-workshop-toggle="${escapeHtml(customer.id)}" ${customer.isWorkshopModuleActive ? "checked" : ""} aria-label="Workshop Module for ${escapeHtml(customer.name)}">
                 <span class="customer-workshop-slider" aria-hidden="true"></span>
@@ -2188,13 +2188,11 @@
     document.getElementById("manageCustomerDialog").close();
     await forgetCustomer(customer.id);
   });
-  // V444 - Workshop Module paid add-on switch, lives on each customer card.
-  // Checked means the customer's own Workshop Manager/Store Keeper/Technician
-  // roles can use Store Ledger + Tool Issue/Return Documents. This is
-  // deliberately independent from the "Non-payment" portal switch above and
-  // from the customer's own internal Role Manager 'store' permission — this
-  // one is the only switch that reflects whether BELM has been paid for the
-  // Workshop module itself.
+  // V448 - Customer Workshop System paid add-on switch, lives on each customer card.
+  // Checked means the customer owns a complete internal workshop workspace:
+  // Admin/Owner, Workshop Manager, Customer Technicians, Store/Tools, Procurement,
+  // Accounts/Finance and internal Job Card operations. BELM remains external.
+  // This is deliberately independent from the Non-payment portal switch.
   document.getElementById("customerGrid").addEventListener("change", async (event) => {
     const toggle = event.target.closest("[data-card-workshop-toggle]");
     if (!toggle) return;
@@ -2211,10 +2209,10 @@
     toggle.disabled = true;
     try {
       const confirmation = await window.belmConfirmEdit({
-        title: enabled ? "Activate Workshop Module?" : "Deactivate Workshop Module?",
+        title: enabled ? "Activate Customer Workshop System?" : "Deactivate Customer Workshop System?",
         message: enabled
-          ? `Activate the paid Workshop Module for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
-          : `Deactivate the Workshop Module for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until this is switched back ON, even if their own Role Manager still grants Store access.`,
+          ? `Activate the paid Customer Workshop System for ${customer.name}? This enables their complete internal workshop workspace: Customer Admin/Owner, Workshop Manager, Customer Technicians, Store/Tools, Procurement, Accounts/Finance and internal Job Card operations. BELM remains an external support provider unless requested.`
+          : `Deactivate the Customer Workshop System for ${customer.name}? Internal Workshop functions and Customer Technician management will be locked until this is switched back ON. Request BELM Support remains available outside the customer workshop.`,
       });
       if (!confirmation) {
         toggle.checked = !enabled;
@@ -2228,14 +2226,14 @@
       customer.isWorkshopModuleActive = Boolean(result?.workshopModuleActive ?? enabled);
       showAlert(
         enabled
-          ? `${customer.name}: Workshop Module activated.`
-          : `${customer.name}: Workshop Module deactivated.`,
+          ? `${customer.name}: Customer Workshop System activated.`
+          : `${customer.name}: Customer Workshop System deactivated.`,
         false,
       );
       await load();
     } catch (error) {
       toggle.checked = !enabled;
-      showAlert(error.message || "Could not change Workshop Module.", true);
+      showAlert(error.message || "Could not change Customer Workshop System.", true);
     } finally {
       toggle.disabled = false;
     }

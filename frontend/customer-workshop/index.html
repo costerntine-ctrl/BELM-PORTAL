@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=443-workshop-roles">
+  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=452-digital-tools">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
 </head>
 <body>
@@ -28,7 +28,7 @@
   <main class="shell">
     <section class="hero">
       <div>
-        <p class="eyebrow">WORKSHOP DEPARTMENT</p>
+        <p class="eyebrow">INDEPENDENT CUSTOMER WORKSHOP</p>
         <h1 id="workshopTitle">Workshop</h1>
         <p id="workshopSubtitle">Loading workshop roles…</p>
       </div>
@@ -37,58 +37,151 @@
 
     <div id="pageAlert" class="alert hidden" role="status"></div>
 
-    <section class="role-grid" aria-label="Workshop roles">
-      <article class="role-card manager-card">
-        <div class="role-icon">WM</div>
-        <div class="role-head"><div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div><span class="role-status">CONTROL</span></div>
-        <p class="role-description">Owns Job Cards, assignments, workshop instructions, workload balance, progress and final review.</p>
+    <section class="system-status" id="workshopSystemStatus" aria-label="Customer Workshop system status">
+      <div><span>INTERNAL WORKSHOP SYSTEM</span><strong id="moduleStatusText">Checking module…</strong><small id="moduleStatusNote">Customer-owned people, Job Cards, Store, Procurement and workshop records stay inside the customer company.</small></div>
+      <div><span>MAINTENANCE CONTROL</span><strong id="maintenanceModeText">Checking mode…</strong><small id="maintenanceModeNote">BELM joins technical work only when Customer Admin explicitly requests BELM support.</small></div>
+    </section>
+
+    <section class="management-group-panel" data-workshop-internal data-management-group aria-label="Management Group approval center">
+      <div>
+        <p class="eyebrow">MANAGEMENT GROUP / APPROVAL CENTER</p>
+        <h2>One shared request board — no chasing the Boss</h2>
+        <p>Workshop Manager, Machine Operator, Store Keeper / Tools, Procurement and Accounts / Finance submit requests here. Boss approves or rejects once; permitted members see the live status, next department and full history. Email is an alert — the portal board is the official record.</p>
+      </div>
+      <div class="management-group-flow"><span>REQUESTED</span><b>→</b><span>WAITING BOSS</span><b>→</b><span>APPROVED / REJECTED</span><b>→</b><span>IN PROCESS</span><b>→</b><span>COMPLETED</span></div>
+      <a class="management-group-action" href="/management-group/">Open Management Group</a>
+    </section>
+
+
+    <section class="digital-tools-panel" data-workshop-internal aria-label="Workshop digital tools">
+      <div class="digital-tools-head"><div><p class="eyebrow">WORKSHOP DIGITAL TOOLS</p><h2>Digital Tools</h2><p>Operational tools owned by the customer workshop. Management tools are separated from day-to-day operator and technician use.</p></div></div>
+      <div class="digital-tools-grid">
+        <a id="checklistTemplatesTool" class="digital-tool-card" href="/customer-workshop-checklists/">
+          <span class="digital-tool-icon">CL</span><div><strong>Checklist Templates</strong><small>Create, CSV upload, edit, duplicate, activate/deactivate, Bin and restore.</small></div><b>OPEN →</b>
+        </a>
+      </div>
+    </section>
+
+    <section class="role-grid" aria-label="Customer-owned Workshop roles and departments">
+      <article class="role-card admin-card" data-workshop-internal>
+        <div class="role-icon">CA</div>
+        <div class="role-head"><div><p>CUSTOMER ADMIN / OWNER</p><h2>Workshop Administration</h2></div><span class="role-status">OWNER</span></div>
+        <p class="role-description">Owns the customer Workshop System: creates users, controls permissions, reviews workshop performance and is the only customer role that can formally send a machine Job Card to BELM.</p>
         <div class="responsibilities">
-          <span>Job Cards</span><span>Assign / Reassign</span><span>Workshop Instruction</span><span>Workload</span><span>Testing & Review</span>
+          <span>Role Manager</span><span>Permissions</span><span>Workshop Oversight</span><span>Approvals</span><span>BELM Support Gateway</span>
+        </div>
+        <div class="role-actions">
+          <a id="adminUsersLink" class="primary-action" href="/customer-users/">Manage Workshop Team</a>
+          <a id="adminOverviewLink" class="secondary-action" href="/portal/dashboard">Customer Overview</a>
+          <a class="secondary-action management-link" data-management-group href="/management-group/">Boss Approval Center</a>
+        </div>
+      </article>
+
+      <article class="role-card manager-card" data-workshop-internal>
+        <div class="role-icon">WM</div>
+        <div class="role-head"><div><p>WORKSHOP MANAGER</p><h2>Technical Control</h2></div><span class="role-status">CONTROL</span></div>
+        <p class="role-description">Controls the customer's own technical work. Reviews machine problems, creates/controls internal Job Cards, assigns Customer Technicians and reviews repair/testing before close.</p>
+        <div class="responsibilities">
+          <span>Internal Job Cards</span><span>Assign / Reassign</span><span>Instructions</span><span>Workload</span><span>Testing & Review</span>
         </div>
         <div class="role-actions">
           <a id="managerJobCardLink" class="primary-action" href="/breakdown-workflow/?actor=customer">Open Job Cards</a>
           <a id="managerAnalysisLink" class="secondary-action" href="/breakdown-workflow/?actor=customer#workshopReportPanel">Workshop Analysis</a>
+          <a class="secondary-action management-link" data-management-group href="/management-group/">Management Group</a>
         </div>
       </article>
 
-      <article class="role-card store-card">
-        <div class="role-icon">SK</div>
-        <div class="role-head"><div><p>STORE KEEPER</p><h2>Tools & Spare Parts</h2></div><span class="role-status">STORE</span></div>
-        <p class="role-description">Controls workshop tools and customer spare stock, and records every tool handed to a Technician and returned.</p>
-        <div class="responsibilities">
-          <span>Tools</span><span>Spare Stock</span><span>Issue Document</span><span>Return Document</span><span>Audit Trail</span>
-        </div>
-        <div class="role-actions">
-          <a id="storeLink" class="primary-action" href="#workshop-store">Open Store & Spares</a>
-          <button id="toolDocumentsButton" class="secondary-action" type="button">Tool Issue Documents</button>
-        </div>
-      </article>
-
-      <article class="role-card technician-card">
+      <article class="role-card technician-card" data-workshop-internal>
         <div class="role-icon">TC</div>
-        <div class="role-head"><div><p>TECHNICIANS</p><h2>Repair Team</h2></div><span class="role-status" id="technicianCount">TEAM</span></div>
-        <p class="role-description">Receives Job Cards from the Workshop Manager, diagnoses, repairs, requests tools/spares, tests and submits the Technician Report.</p>
-        <div class="specialization-grid">
-          <div><b>Mechanic</b><small>Engine, transmission, brakes, hydraulic & mechanisms</small></div>
-          <div><b>Electrical</b><small>Wiring, power, sensors, controllers & electrical faults</small></div>
-          <div><b>Mechatronics</b><small>CAN, control systems, electronics, electro-hydraulics & diagnosis</small></div>
+        <div class="role-head"><div><p>CUSTOMER TECHNICIANS</p><h2>Repair Team</h2></div><span class="role-status" id="technicianCount">TEAM</span></div>
+        <p class="role-description">Customer-owned Technicians receive only their assigned Job Cards, diagnose faults, repair, request required spare/tools, test the machine and submit work for Workshop Manager review.</p>
+        <div class="specialization-grid compact-specializations">
+          <div><b>Mechanic</b><small>Engine, transmission, hydraulic, brakes & mechanisms</small></div>
+          <div><b>Electrical / Mechatronics</b><small>Wiring, sensors, controllers, CAN & electro-hydraulics</small></div>
         </div>
         <div class="role-actions">
-          <a id="technicianManageLink" class="primary-action" href="/customer-users/">Manage Technicians</a>
-          <a id="technicianWorkLink" class="secondary-action" href="/breakdown-workflow/?actor=customer">View Assigned Work</a>
+          <a id="technicianWorkLink" class="primary-action" href="/breakdown-workflow/?actor=customer">Technician Job Cards</a>
+          <a id="technicianManageLink" class="secondary-action" href="/customer-users/#technicianSection">Manage Technicians</a>
+        </div>
+      </article>
+
+      <article class="role-card operator-card" data-workshop-internal>
+        <div class="role-icon">OP</div>
+        <div class="role-head"><div><p>MACHINE OPERATOR</p><h2>Machine Condition</h2></div><span class="role-status">FIELD</span></div>
+        <p class="role-description">Operates and checks the machine, records hours/fuel/condition and reports problems to the customer's Workshop Manager. Operator stops at reporting and has no spare, Store or Procurement duty.</p>
+        <div class="responsibilities">
+          <span>Operator Report</span><span>Report Problem</span><span>Check Up</span><span>Fuel / Hours</span><span>Machine Condition</span>
+        </div>
+        <div class="role-actions">
+          <a id="operatorDashboardLink" class="primary-action" href="/portal/dashboard">Open Machine Cards</a>
+          <a id="operatorManageLink" class="secondary-action" href="/customer-users/#operatorRosterSection">Manage Operators</a>
+          <a class="secondary-action management-link" data-management-group href="/management-group/">My Approvals</a>
+        </div>
+      </article>
+
+      <article class="role-card store-card" data-workshop-internal>
+        <div class="role-icon">SK</div>
+        <div class="role-head"><div><p>STORE KEEPER / TOOLS</p><h2>Store & Tool Control</h2></div><span class="role-status">STORE</span></div>
+        <p class="role-description">Checks customer stock, issues available spare/tools against the Job Card, receives purchased items into Store and keeps issue/return/audit documents. Store Keeper does not purchase.</p>
+        <div class="responsibilities">
+          <span>Stock Check</span><span>Receive to Store</span><span>Issue Spare</span><span>Issue / Return Tools</span><span>Audit Trail</span>
+        </div>
+        <div class="role-actions">
+          <a id="storeLink" class="primary-action" href="#workshop-store">Open Customer Store</a>
+          <button id="toolDocumentsButton" class="secondary-action" type="button">Tool Issue Documents</button>
+          <a class="secondary-action management-link" data-management-group href="/management-group/">Management Group</a>
+        </div>
+      </article>
+
+      <article class="role-card procurement-card" data-workshop-internal>
+        <div class="role-icon">PR</div>
+        <div class="role-head"><div><p>PROCUREMENT</p><h2>External Purchasing</h2></div><span class="role-status">SUPPLY</span></div>
+        <p class="role-description">Acts after a spare/material requirement reaches Procurement. Handles RFQ, supplier quotation, approval, order and delivery tracking when Store cannot fully satisfy the requirement.</p>
+        <div class="responsibilities">
+          <span>Purchase Requests</span><span>RFQ / Quotations</span><span>Approvals</span><span>PO / Order</span><span>Delivery Tracking</span>
+        </div>
+        <div class="role-actions">
+          <a id="procurementLink" class="primary-action" href="/customer-procurement/">Open Procurement</a>
+          <a id="procurementQueueLink" class="secondary-action" href="/customer-procurement/#procurementQueuePanel">Purchase Queue</a>
+          <a class="secondary-action management-link" data-management-group href="/management-group/">Management Group</a>
+        </div>
+      </article>
+
+      <article class="role-card accounts-card" data-workshop-internal>
+        <div class="role-icon">AC</div>
+        <div class="role-head"><div><p>ACCOUNTS / FINANCE</p><h2>Workshop Funds</h2></div><span class="role-status">FINANCE</span></div>
+        <p class="role-description">Controls workshop funding records, petty cash and payment/financial visibility required for approved purchases. Accounts does not diagnose machines or issue technical instructions.</p>
+        <div class="responsibilities">
+          <span>Petty Cash</span><span>Funding</span><span>Purchase Payment</span><span>Cost Records</span><span>Financial Review</span>
+        </div>
+        <div class="role-actions">
+          <a id="accountsFinanceLink" class="primary-action" href="/customer-petty-cash/">Workshop Funds</a>
+          <a id="accountsProcurementLink" class="secondary-action" href="/customer-procurement/">Procurement Costs</a>
+          <a class="secondary-action management-link" data-management-group href="/management-group/">Management Group</a>
         </div>
       </article>
     </section>
 
-    <section class="workflow-panel">
-      <div class="panel-head"><div><p class="eyebrow">WORKSHOP FLOW</p><h2>One Job Card — clear responsibility</h2></div></div>
-      <div class="workflow-line">
-        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair & Testing</span><b>→</b><span>Manager Review</span>
+    <section class="workflow-panel" data-workshop-internal>
+      <div class="panel-head"><div><p class="eyebrow">INTERNAL WORKSHOP FLOW</p><h2>Customer company runs the complete maintenance cycle</h2></div></div>
+      <div class="workflow-split">
+        <div class="workflow-lane operator-lane"><strong>OPERATOR SCOPE</strong><span>Machine Operation</span><b>→</b><span>Report / Check Up</span><b>→</b><span>Workshop Manager</span><em>Operator stops here</em></div>
+        <div class="workflow-lane technical-lane"><strong>TECHNICAL FLOW</strong><span>Internal Job Card</span><b>→</b><span>Customer Technician</span><b>→</b><span>Diagnosis / Repair</span><b>→</b><span>Spare / Tool Request if required</span><b>→</b><span>Store Keeper</span><b>→</b><span>Procurement only for shortage / purchase</span><b>→</b><span>Testing</span><b>→</b><span>Workshop Manager Review / Close</span></div>
       </div>
     </section>
 
+    <section class="external-support-panel" id="belmExternalSupportPanel">
+      <div>
+        <p class="eyebrow">EXTERNAL SERVICE PROVIDER</p>
+        <h2>BELM Support Bridge</h2>
+        <p>BELM is outside the customer's internal Workshop System. Customer Admin/Owner uses this bridge only when BELM technical support, service or contract assistance is required.</p>
+      </div>
+      <div class="external-support-flow"><span>CUSTOMER WORKSHOP</span><b>→</b><span>Customer Admin requests BELM</span><b>→</b><span>BELM accepts support job</span><b>→</b><span>BELM Technician / Report</span><b>→</b><span>Result returned to Customer</span></div>
+      <a id="belmSupportLink" class="external-support-action" href="/portal/dashboard?action=belm-support">Request BELM Support</a>
+    </section>
 
-    <section id="workshop-store" class="tool-documents-panel workshop-store-panel">
+
+    <section id="workshop-store" class="tool-documents-panel workshop-store-panel" data-workshop-internal>
       <div class="panel-head">
         <div><p class="eyebrow">STORE KEEPER</p><h2>Customer Workshop Store</h2><p>Customer-owned tools/spares stock. This is separate from BELM Inventory.</p></div>
         <button id="receiveStockButton" type="button" class="primary-action button-like">+ Receive Spare / Material</button>
@@ -106,7 +199,7 @@
       </div>
     </section>
 
-    <section id="toolDocumentsPanel" class="tool-documents-panel hidden">
+    <section id="toolDocumentsPanel" class="tool-documents-panel hidden" data-workshop-internal>
       <div class="panel-head">
         <div><p class="eyebrow">STORE KEEPER DOCUMENTS</p><h2>Tool Issue & Return Register</h2><p>Every tool handed to a Technician stays linked to the responsible person until it is returned.</p></div>
         <button id="newToolIssueButton" type="button" class="primary-action button-like">+ Issue Tool</button>
@@ -173,6 +266,6 @@
     </form>
   </dialog>
 
-  <script src="/customer-workshop/workshop.js?v=443-workshop-roles"></script>
+  <script src="/customer-workshop/workshop.js?v=452-digital-tools"></script>
 </body>
 </html>

@@ -17,8 +17,8 @@
     customers: "/customers-manager/",
     overview: "/overview-manager/",
     roles: "/roles-manager/",
-    "job-cards": "/engineering-manager/#job-cards",
-    "service-requests": "/engineering-manager/#job-cards",
+    "job-cards": "/customers-manager/#job-cards",
+    "service-requests": "/customers-manager/#job-cards",
     "spare-parts": "/spare-parts-manager/",
     billing: "/billing-manager/",
     reports: "/reports-manager/",
@@ -38,7 +38,6 @@
     [/^\/billing-manager(?:\/|$)/, "billing"],
     [/^\/bank-controller(?:\/|$)/, "bank-manager"],
     [/^\/roles-manager(?:\/|$)/, "roles"],
-    [/^\/engineering-manager(?:\/|$)/, "roles"],
     [/^\/suppliers-manager(?:\/|$)/, "suppliers"],
     [/^\/reports-manager(?:\/|$)/, "reports"],
     [/^\/settings-manager(?:\/|$)/, "settings"],
@@ -55,18 +54,27 @@
     return null;
   }
 
+  // V445: /customers-manager/ now also hosts TECHNICAL DEP (Job Cards,
+  // Workshop Analysis, Technicians) merged in from the deleted
+  // /engineering-manager/ page. Anyone with "customers" OR any of the old
+  // Technical Dep keys ("roles", "job-cards", "service-requests") can reach
+  // it - mirrors the anyKeys on this same merged entry in admin-sidebar.js.
+  function customersManagerAllowed(path) {
+    return /^\/customers-manager(?:\/|$)/.test(path)
+      && (allowedPages.includes("customers") || allowedPages.includes("roles")
+          || allowedPages.includes("job-cards") || allowedPages.includes("service-requests"));
+  }
+
   document.querySelectorAll("a[href]").forEach(link => {
     const href = new URL(link.getAttribute("href"), window.location.origin).pathname;
     const key = keyForPath(href);
-    const engineeringLink = /^\/engineering-manager(?:\/|$)/.test(href);
-    const engineeringAllowed = engineeringLink && (allowedPages.includes("roles") || allowedPages.includes("job-cards") || allowedPages.includes("service-requests"));
-    if (key && !engineeringAllowed && !allowedPages.includes(key)) link.hidden = true;
+    const technicalAllowed = customersManagerAllowed(href);
+    if (key && !technicalAllowed && !allowedPages.includes(key)) link.hidden = true;
   });
 
   const currentKey = keyForPath(window.location.pathname);
-  const engineeringAccess = /^\/engineering-manager(?:\/|$)/.test(window.location.pathname)
-    && (allowedPages.includes("roles") || allowedPages.includes("job-cards") || allowedPages.includes("service-requests"));
-  if (engineeringAccess || !currentKey || allowedPages.includes(currentKey)) return;
+  const technicalAccess = customersManagerAllowed(window.location.pathname);
+  if (technicalAccess || !currentKey || allowedPages.includes(currentKey)) return;
 
   const firstAllowed = allowedPages.find(key => routes[key]);
   if (firstAllowed) {

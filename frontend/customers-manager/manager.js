@@ -1,15 +1,6 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
   let customers = [];
-  // V444: ?embed=1 lets another BELM admin page (currently TECHNICAL DEP /
-  // engineering-manager, which iframes this URL) show the exact same "BELM
-  // FLEET — All Machines" list as its own main/first content, instead of
-  // this being a click-through destination. Same page, same IDs, same
-  // click handlers below — only the CSS presentation changes (see
-  // "body.embed-mode" in manager.css): the dialog renders inline instead
-  // of as a modal, and the rest of this page (header, customer grid) hides.
-  const isEmbedMode = new URLSearchParams(window.location.search).get("embed") === "1";
-  if (isEmbedMode) document.body.classList.add("embed-mode");
   let pendingEditPin = null;
   let servicePartsState = null;
   let isSuperAdmin = false;
@@ -276,7 +267,7 @@
         ${privacyButton("Report", canMaintenance, `data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Check Up", canMaintenance, `data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Service Parts", canParts, `data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
-        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/engineering-manager/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
+        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/customers-manager/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
       </div>
       <div class="machine-admin-actions" aria-label="BELM Admin machine management">
         ${!isTechnicianRole ? `<button type="button" class="machine-admin-edit" data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit Machine</button>` : ""}
@@ -657,16 +648,16 @@
     document.getElementById("machineListBody").innerHTML = machines.length
       ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {})).join("")}</div>`
       : '<div class="empty">No machines registered for this customer yet.</div>';
-    document.getElementById("machineListDialog")[isEmbedMode ? "show" : "showModal"]();
+    document.getElementById("machineListDialog").showModal();
     if (machines.length) loadServiceDueBadges();
   }
 
-  // V444: "BELM-WORKSHOP" (engineering-manager) links its "View Your
-  // Machine" button here with ?view=all-machines — the BELM-wide fleet,
-  // every machine from every registered customer in one list, reusing the
-  // exact same card (and Edit/Delete/Forget wiring) as a single customer's
-  // machine list. "Add machine" is hidden here since there's no single
-  // customer to attach a new machine to from this combined view.
+  // V444: "BELM FLEET — All Machines" — accessible via
+  // /customers-manager/?view=all-machines, showing every customer's
+  // machines in one list, reusing the exact same card (and Edit/Delete/
+  // Forget wiring) as a single customer's machine list. "Add machine" is
+  // hidden here since there's no single customer to attach a new machine
+  // to from this combined view.
   function openAllMachinesList() {
     currentMachineListCustomerName = "";
     const allMachines = customers.flatMap((customer) =>
@@ -678,7 +669,7 @@
           .map(({ machine, customer }) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {}, customer.name))
           .join("")}</div>`
       : '<div class="empty">No machines registered on the portal yet.</div>';
-    document.getElementById("machineListDialog")[isEmbedMode ? "show" : "showModal"]();
+    document.getElementById("machineListDialog").showModal();
     if (allMachines.length) loadServiceDueBadges();
   }
 

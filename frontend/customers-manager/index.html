@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BELM Customers Overview</title>
+    <title>BELM Technical Department</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -11,6 +11,10 @@
     <!-- Regression baseline: /customers-manager/manager.css?v=377-admin-machine-management-activity-status -->
     <!-- Regression baseline: /customers-manager/manager.css?v=382-full-card-alert-range -->
     <link rel="stylesheet" href="/customers-manager/manager.css?v=417-wide-machine-overview">
+    <!-- V445: TECHNICAL DEP was merged into this page (Customers & Machines)
+         at the customer's request — the old /engineering-manager/ page and its sidebar entry
+         sidebar entry were removed. This page now uses BOTH stylesheets. -->
+    <link rel="stylesheet" href="/customers-manager/technical-dept.css?v=445-merged-technical-dep">
     <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
     <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
@@ -21,7 +25,7 @@
     <header class="topbar">
       <a class="brand" href="/overview-manager/">
         <span class="brand-mark">B</span>
-        <span>BELM General Tech <small>Admin Overview</small></span>
+        <span>BELM General Tech <small>TECHNICAL DEP</small></span>
       </a>
       <div class="top-actions">
         <a class="ghost" href="/overview-manager/">← All Overview</a>
@@ -31,9 +35,8 @@
     </header>
 
     <nav class="admin-menu" aria-label="Admin navigation">
-      <a class="active" href="/customers-manager/">Customers</a>
+      <a class="active" href="/customers-manager/">TECHNICAL DEP</a>
       <a href="/checklist-manager/">Checklists</a>
-      <a href="/engineering-manager/#job-cards">TECHNICAL DEP</a>
       <a href="/spare-parts-manager/">Spare Parts</a>
       <a href="/billing-manager/">Billing</a>
       <a href="/roles-manager/">Roles & Users</a>
@@ -41,6 +44,110 @@
       <a href="/reports-manager/">Reports</a>
       <a href="/settings-manager/">Settings</a>
     </nav>
+
+    <!-- V445: TECHNICAL DEP content, merged in from the old
+         /engineering-manager/ page (now deleted). All ids from that page
+         were kept as-is except pageAlert -> engPageAlert (this page already
+         had its own #pageAlert for Customers & Machines' own alerts). -->
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Technical Operations</p>
+        <h1>TECHNICAL DEP</h1>
+        <p>Job Cards, technical tools, Technicians and Engineers in one BELM technical workspace.</p>
+      </div>
+    </section>
+
+    <nav class="technical-dep-nav" aria-label="Technical Department sections">
+      <a class="active" href="#job-cards"><span>JC</span><b>Job Card</b></a>
+      <a href="#workshop-analysis"><span>WA</span><b>Workshop Analysis</b></a>
+      <a href="#technical-tools"><span>TL</span><b>Tools</b></a>
+      <a href="/roles-manager/?role=Technician&amp;technical=1"><span>TC</span><b>Technicians</b></a>
+      <a href="/roles-manager/?role=Engineer&amp;technical=1"><span>EN</span><b>Engineers</b></a>
+    </nav>
+
+    <div id="engPageAlert" class="alert hidden" role="status"></div>
+
+    <section id="engineeringRolesStrip" class="eng-roles-strip">
+      <article class="eng-role-card">
+        <h3>Workshop Manager</h3>
+        <p id="workshopManagerRoleAccess" class="muted">Loading…</p>
+        <button class="eng-role-edit" type="button" data-edit-role="Engineer">Edit role access</button>
+      </article>
+      <article class="eng-role-card">
+        <h3>Technician</h3>
+        <p id="technicianRoleAccess" class="muted">Technician app only / no admin dashboard pages</p>
+        <button class="eng-role-edit" type="button" data-edit-role="Technician">Edit role access</button>
+      </article>
+    </section>
+
+    <dialog id="roleDialog">
+      <form id="roleForm" class="eng-role-form">
+        <div class="panel-head"><h2 id="roleDialogTitle">Edit role access</h2><button type="button" id="closeRoleDialog" aria-label="Close">×</button></div>
+        <input type="hidden" id="roleId">
+        <div id="roleFormAlert" class="alert error hidden"></div>
+        <label>Allowed pages</label>
+        <div id="allowedPages" class="eng-allowed-pages"></div>
+        <div class="eng-role-form-actions">
+          <button type="button" class="secondary" id="cancelRoleDialog">Cancel</button>
+          <button type="submit" class="primary" id="saveRoleButton">Save role</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section id="job-cards" class="eng-service-requests-host" aria-label="Technical Department Job Card workspace">
+      <div class="panel-head"><div><h2>Job Cards</h2><p>Receive Customer Admin Job Cards, assign BELM Technicians, track work, parts waiting, approval and completion.</p></div></div>
+      <div id="engineeringJobCardsPanel" class="eng-workspace-panel">
+        <iframe id="engineeringJobCardsFrame" title="Technical Department Job Cards" data-src="/breakdown-workflow/?embed=1&amp;source=admin" loading="eager"></iframe>
+      </div>
+      <div id="engineeringJobCardsLocked" class="panel eng-service-requests-locked hidden">Job Card access is not enabled for this role.</div>
+    </section>
+
+    <section id="workshop-analysis" class="eng-workshop-analysis-host" aria-label="Workshop Analysis">
+      <div id="engineeringWorkshopAnalysisPanel" class="eng-workspace-panel eng-analysis-panel">
+        <iframe id="engineeringWorkshopAnalysisFrame" title="Workshop Analysis" data-src="/breakdown-workflow/?embed=1&amp;source=admin&amp;view=analysis" loading="eager"></iframe>
+      </div>
+      <div id="engineeringWorkshopAnalysisLocked" class="panel eng-service-requests-locked hidden">Workshop Analysis access is not enabled for this role.</div>
+    </section>
+
+    <section id="technical-tools" class="panel technical-tools-panel">
+      <div class="panel-head"><div><h2>Tools</h2><p>Technical references used by the BELM technical team.</p></div></div>
+      <div class="technical-tools-grid">
+        <a href="/checklist-manager/" data-tool-page="checklist-templates"><span>CL</span><div><b>Checklist Templates</b><small>Inspection and check-up templates</small></div></a>
+        <a href="/controller-pinouts-manager/" data-tool-page="checklist-templates"><span>CP</span><div><b>Controller Pin Out</b><small>Controller and electrical pin-out reference</small></div></a>
+      </div>
+    </section>
+
+    <section id="engineeringOverviewGrid" class="eng-grid">
+      <article class="panel eng-card">
+        <div class="panel-head"><h2>Machine activity</h2><span id="activityCount" class="eng-count">0</span></div>
+        <div id="activityList" class="eng-card-body"><p class="muted">Loading…</p></div>
+      </article>
+
+      <article class="panel eng-card">
+        <div class="panel-head"><h2>Operator messages</h2><span id="operatorCount" class="eng-count">0</span></div>
+        <div id="operatorList" class="eng-card-body"><p class="muted">Loading…</p></div>
+      </article>
+
+      <article class="panel eng-card">
+        <div class="panel-head"><h2>Machine status</h2></div>
+        <div id="statusSummary" class="eng-status-summary"><p class="muted">Loading…</p></div>
+      </article>
+
+      <article class="panel eng-card">
+        <div class="panel-head"><h2>Service reminders</h2><span id="reminderCount" class="eng-count">0</span></div>
+        <div id="reminderList" class="eng-card-body"><p class="muted">Loading…</p></div>
+      </article>
+
+      <article class="panel eng-card eng-card-wide">
+        <div class="panel-head"><h2>Service PI review</h2><span id="servicePrepCount" class="eng-count">0</span></div>
+        <div id="servicePrepList" class="eng-card-body"><p class="muted">Loading…</p></div>
+      </article>
+
+      <article class="panel eng-card eng-card-wide">
+        <div class="panel-head"><h2>Spare parts needed</h2><span id="spareCount" class="eng-count">0</span></div>
+        <div id="spareList" class="eng-card-body"><p class="muted">Loading…</p></div>
+      </article>
+    </section>
 
     <main class="shell">
       <section class="hero">
@@ -409,5 +516,9 @@
     <script src="/edit-confirm.js"></script>
     <!-- Regression baseline: /customers-manager/manager.js?v=377-admin-machine-management -->
     <script src="/customers-manager/manager.js?v=411-job-card-only"></script>
+    <!-- V445: TECHNICAL DEP logic, merged in from the old
+         /engineering-manager/manager.js (now deleted). Self-contained IIFE,
+         no shared globals with customers-manager/manager.js above. -->
+    <script src="/customers-manager/technical-dept.js?v=445-merged-technical-dep"></script>
   </body>
 </html>

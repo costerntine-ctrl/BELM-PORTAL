@@ -5727,7 +5727,7 @@
 
   function redirectServiceRequestManager() {
     if (["/admin/job-cards", "/admin/service-requests"].includes(window.location.pathname)) {
-      window.location.replace("/engineering-manager/#job-cards");
+      window.location.replace("/customers-manager/#job-cards");
     }
   }
 

@@ -36,7 +36,7 @@
   // Customer workflow remains standalone for customer teams, while any legacy admin
   // bookmark is folded back into TECHNICAL DEP. Embedded mode is the canonical admin view.
   if(isBelmAdmin&&!embedded){
-    const target=new URL('/engineering-manager/',location.origin);
+    const target=new URL('/customers-manager/',location.origin);
     if(machineFilter)target.searchParams.set('machine',machineFilter);
     target.hash='job-cards';
     location.replace(`${target.pathname}${target.search}${target.hash}`);
@@ -97,7 +97,7 @@
   async function engineeringApi(path,opt={}){const r=await fetch(`/api${path}`,{...opt,cache:'no-store',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${adminToken||''}`,...(opt.headers||{})}});const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch{}if(!r.ok){const error=new Error(data?.error||`Request failed (${r.status}).`);error.status=r.status;throw error}return data}
   if(!token){location.href='/';return}
 
-  document.getElementById('backButton').onclick=()=>{if(embedded){window.parent.postMessage({type:'belm-engineering-open-service-requests'},window.location.origin);return;}location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/engineering-manager/#job-cards'};
+  document.getElementById('backButton').onclick=()=>{if(embedded){window.parent.postMessage({type:'belm-engineering-open-service-requests'},window.location.origin);return;}location.href=source==='customer'?'/portal/dashboard':source==='tech'?'/tech':'/customers-manager/#job-cards'};
   if(source!=='customer'||!isWorkshop) document.querySelectorAll('.customer-only').forEach(e=>e.classList.add('hidden'));
   if(!isWorkshop||isTechnician){document.getElementById('workshopReportPanel')?.classList.add('hidden');document.querySelector('.performance-panel')?.classList.add('hidden');}
   document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.close)?.close());

@@ -23,7 +23,6 @@
     "/settings-manager/",
     "/bank-controller/",
     "/recycle-bin/",
-    "/engineering-manager/",
   ];
   const isAdminArea = pathname.startsWith("/admin/")
     || standaloneAdminPaths.some((path) => pathname === path || pathname.startsWith(path))
@@ -65,8 +64,7 @@
     // Do not expose a second standalone admin navigation entry.
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    { section: "Maintenance", key: "roles", anyKeys: ["roles", "job-cards", "service-requests"], label: "TECHNICAL DEP", short: "TD", href: "/engineering-manager/", paths: ["/engineering-manager/"] },
-    { section: "Maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Maintenance", key: "customers", anyKeys: ["customers", "roles", "job-cards", "service-requests"], label: "TECHNICAL DEP", short: "TD", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },

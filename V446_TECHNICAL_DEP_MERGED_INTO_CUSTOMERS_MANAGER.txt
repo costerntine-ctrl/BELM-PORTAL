@@ -1,0 +1,43 @@
+V446 - TECHNICAL DEP merged into Customers & Machines
+
+Per direct instruction: Customers & Machines keeps every one of its
+existing functions unchanged. It is now ALSO labelled/branded "TECHNICAL
+DEP", and the old standalone /engineering-manager/ page (Job Cards,
+Workshop Analysis, Technical Tools, Technicians/Engineers role summary,
+overview grid) was deleted entirely and its content merged directly into
+this same page (added below the top nav, above the existing Customers
+Overview / Fleet Status content).
+
+What moved:
+- Hero ("Technical Operations" / "TECHNICAL DEP"), the Job Card / Workshop
+  Analysis / Tools / Technicians / Engineers section nav, the Workshop
+  Manager & Technician role-access cards + edit-role dialog, the Job Cards
+  iframe (breakdown-workflow embed), the Workshop Analysis iframe, the
+  Technical Tools grid, and the 6-card technical overview grid (Machine
+  activity, Operator messages, Machine status, Service reminders, Service
+  PI review, Spare parts needed).
+- The page's own two scripts (engineering-manager/manager.js,
+  engineering-manager/manager.css) were copied to
+  customers-manager/technical-dept.js and technical-dept.css and are loaded
+  alongside customers-manager/manager.js - both are separate, independent
+  IIFEs with their own local helper functions (api/escapeHtml/formatDateTime/
+  hasPageAccess/showAlert), so nothing is shared or can collide between them.
+- One id collision was found and fixed: both pages had id="pageAlert" for
+  their own alert banner. The merged-in one is now id="engPageAlert";
+  customers-manager's own #pageAlert is untouched.
+
+Every reference to /engineering-manager/ across the whole codebase was
+updated to /customers-manager/ (with the same #job-cards / #workshop-analysis
+hash and ?machine= query param support preserved): admin-sidebar.js (the
+two separate sidebar entries were merged into one "TECHNICAL DEP" entry,
+anyKeys: customers/roles/job-cards/service-requests), admin-access.js
+(page-access gating rewritten so anyone with the old roles/job-cards/
+service-requests permissions can still reach this page, not just
+"customers"), portal-tools.js, service-request-manager (legacy redirect
+stub), customer-workshop/workshop.js (BELM/Technician quick links),
+breakdown-workflow/workflow.js (admin back-button/bookmark redirect), the
+compiled React shell (frontend/assets/index-CAwFm9Z4.js - the admin
+sidebar's own hardcoded "Job Cards" link), and customers-manager/manager.js
+itself (the per-machine "Job Card" quick-action link).
+
+frontend/engineering-manager/ was deleted from the project entirely.

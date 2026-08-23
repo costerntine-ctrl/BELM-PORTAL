@@ -189,11 +189,19 @@
   }
 
   function updateMetrics() {
+    // V450: the metrics cards themselves were removed from the page (see
+    // customers-manager/index.html) - this stays as a safe no-op instead
+    // of deleting the function outright, so any future re-add of the
+    // cards works without touching manager.js again.
     const machines = customers.flatMap((customer) => customer.machines || []);
-    document.getElementById("customerCount").textContent = customers.length.toLocaleString();
-    document.getElementById("machineCount").textContent = machines.length.toLocaleString();
-    document.getElementById("greenCount").textContent = machines.filter((machine) => ["GREEN", "OK"].includes(machine.status)).length.toLocaleString();
-    document.getElementById("attentionCount").textContent = machines.filter((machine) => isAttention(machine.status)).length.toLocaleString();
+    const customerCountEl = document.getElementById("customerCount");
+    const machineCountEl = document.getElementById("machineCount");
+    const greenCountEl = document.getElementById("greenCount");
+    const attentionCountEl = document.getElementById("attentionCount");
+    if (customerCountEl) customerCountEl.textContent = customers.length.toLocaleString();
+    if (machineCountEl) machineCountEl.textContent = machines.length.toLocaleString();
+    if (greenCountEl) greenCountEl.textContent = machines.filter((machine) => ["GREEN", "OK"].includes(machine.status)).length.toLocaleString();
+    if (attentionCountEl) attentionCountEl.textContent = machines.filter((machine) => isAttention(machine.status)).length.toLocaleString();
   }
 
   const OPERATIONAL_STATUS_LABELS = {

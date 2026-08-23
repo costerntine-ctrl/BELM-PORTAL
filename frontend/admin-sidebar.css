@@ -746,3 +746,12 @@
   .belm-refresh-working { animation: none !important; }
   .belm-refresh-working::before { animation: none; }
 }
+
+/* V451: every sidebar label in ALL CAPITAL LETTERS - brand, user name/role,
+   section links, footer (theme toggle / log out). The search box is
+   excluded so what the person types/sees typed isn't forced uppercase. */
+.belm-admin-sidebar { text-transform: uppercase; }
+.belm-admin-sidebar input,
+.belm-admin-sidebar input::placeholder {
+  text-transform: none;
+}

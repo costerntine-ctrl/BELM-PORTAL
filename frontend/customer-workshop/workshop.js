@@ -23,15 +23,15 @@
     document.getElementById('workshopTitle').textContent=`${customer?.name||'Customer'} — Workshop`;
     document.getElementById('workshopSubtitle').textContent='Customer workshop role structure viewed from BELM. Customer-owned team controls remain separated from BELM staff.';
     const suffix=customerId?`?customerId=${encodeURIComponent(customerId)}`:'';
-    document.getElementById('managerJobCardLink').href='/customers-manager/#job-cards';
-    document.getElementById('managerAnalysisLink').href='/customers-manager/#workshop-analysis';
+    document.getElementById('managerJobCardLink').href='/belm-workshop/#job-cards';
+    document.getElementById('managerAnalysisLink').href='/belm-workshop/#workshop-analysis';
     document.getElementById('storeLink').href='/spare-parts-manager/';
     document.getElementById('storeLink').textContent='BELM Spare / Support View';
     document.getElementById('workshop-store').classList.add('hidden');
     document.getElementById('toolDocumentsButton').classList.add('hidden');
     document.getElementById('technicianManageLink').href='/roles-manager/?role=Technician&technical=1';
     document.getElementById('technicianManageLink').textContent='BELM Technician Directory';
-    document.getElementById('technicianWorkLink').href='/customers-manager/#job-cards';
+    document.getElementById('technicianWorkLink').href='/belm-workshop/#job-cards';
     document.getElementById('technicianWorkLink').textContent='Technical Department';
     document.getElementById('toolDocumentsPanel').classList.add('hidden');
   }

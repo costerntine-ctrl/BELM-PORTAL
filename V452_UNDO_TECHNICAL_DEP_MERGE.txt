@@ -1,0 +1,34 @@
+V452 - Undid the TECHNICAL DEP merge (V446): Customers & Machines is
+       Customer Overview only again
+
+Per direct instruction, Customers & Machines was reverted back to
+showing ONLY the customer overview / cards (Fleet Status hero, the four
+metric cards, the Machine Type <-> Checklist Template Sync panel, the
+search/filter toolbar, and the customer card grid) - exactly as it was
+before V446.
+
+Removed from this page: the TECHNICAL DEP hero, the Job Card / Workshop
+Analysis / Tools / Technicians / Engineers section nav, the Workshop
+Manager & Technician role-access cards + edit-role dialog, the Job Cards
+iframe, the Workshop Analysis iframe, the Technical Tools grid, and the
+6-card technical overview grid. customers-manager/technical-dept.js and
+technical-dept.css (created for the merge) were deleted.
+
+Sidebar entry reverted: "TECHNICAL DEP" / anyKeys is gone from
+admin-sidebar.js; it's "Customers & Machines" (CM) again, gated on the
+plain "customers" key, same as before V446. admin-access.js was rewritten
+back to its pre-merge form (no job-cards/service-requests route, no
+customersManagerAllowed special-case).
+
+IMPORTANT - flagged, not fixed: Job Cards and Workshop Analysis (the
+breakdown-workflow embed) no longer have ANY page in the admin sidebar.
+Every place that used to link to them (the customer's own machine-card
+"Job Card" quick-action, customer-workshop's BELM/Technician quick links,
+breakdown-workflow's own back-button/bookmark redirect, portal-tools.js,
+the compiled React shell's sidebar link, and the legacy
+/service-request-manager/ redirect stub) now falls back to plain
+/customers-manager/ (Customer Overview) instead of a dead #job-cards
+anchor, so nothing 404s or shows a blank/broken section - but there is
+currently no admin screen where BELM staff can actually work a Job Card
+or view Workshop Analysis. This needs a decision: recreate a dedicated
+page for it (e.g. restore /engineering-manager/), or somewhere else.

@@ -275,7 +275,9 @@
         ${privacyButton("Report", canMaintenance, `data-view-reports="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Check Up", canMaintenance, `data-checkup="${escapeHtml(machine.id)}" data-machine-type="${escapeHtml(machine.machineType)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         ${privacyButton("Service Parts", canParts, `data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
-        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/customers-manager/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
+        <!-- V453: "Job Card" quick-action restored, now pointing to the
+             new standalone BELM WORKSHOP page. -->
+        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/belm-workshop/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
       </div>
       <div class="machine-admin-actions" aria-label="BELM Admin machine management">
         ${!isTechnicianRole ? `<button type="button" class="machine-admin-edit" data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit Machine</button>` : ""}

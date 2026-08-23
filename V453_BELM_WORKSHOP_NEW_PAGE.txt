@@ -1,0 +1,32 @@
+V453 - Job Cards / Workshop Analysis restored as a new page: BELM WORKSHOP
+
+New standalone admin page at /belm-workshop/, sidebar-labelled "BELM
+WORKSHOP" (short: BW), section Maintenance, gated the same way the old
+TECHNICAL DEP page was (anyKeys: roles / job-cards / service-requests).
+
+Content is the same workspace that lived at the old /engineering-manager/
+(deleted in V446) and was briefly merged into, then removed from,
+Customers & Machines (V446 -> V452): hero, the Job Card / Workshop
+Analysis / Tools / Technicians / Engineers section nav, Workshop Manager &
+Technician role-access cards + edit-role dialog, the Job Cards iframe
+(breakdown-workflow embed), the Workshop Analysis iframe, the Technical
+Tools grid, and the 6-card technical overview grid (Machine activity,
+Operator messages, Machine status, Service reminders, Service PI review,
+Spare parts needed). Restored from the last known-good backup of that
+page's manager.js/manager.css.
+
+Customers & Machines is unaffected - it stays Customer Overview only, per
+V452.
+
+Every place that used to point at Job Cards was updated to /belm-workshop/
+(with #job-cards / #workshop-analysis anchors and ?machine= support
+preserved): the customer's own machine-card "Job Card" quick-action,
+customer-workshop's BELM/Technician quick links, breakdown-workflow's own
+admin bookmark-redirect and embedded back-button, portal-tools.js's
+/admin/job-cards legacy redirect, the /service-request-manager/ legacy
+redirect stub, and the compiled React shell's own sidebar link.
+
+admin-access.js: "job-cards"/"service-requests" route back to
+/belm-workshop/#job-cards; a belmWorkshopAllowed() check (mirroring the
+sidebar's anyKeys) lets anyone with roles/job-cards/service-requests reach
+/belm-workshop/ even without the "customers" key.

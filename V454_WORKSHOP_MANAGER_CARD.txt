@@ -1,0 +1,19 @@
+V454 - "Workshop Manager" card added to BELM WORKSHOP
+
+New card at the top of /belm-workshop/ (right after the hero, before the
+section nav) - visual/structural match to the customer-side Workshop
+Manager role card: WM badge, CONTROL pill, "WORKSHOP MANAGER" eyebrow,
+"Managing Workshop" heading, description, 5 tag pills (Job Cards /
+Assign-Reassign / Workshop Instruction / Workload / Testing & Review),
+and 3 working action buttons:
+
+- Open Job Cards -> #job-cards (scrolls to the existing Job Cards section
+  on this same page)
+- Workshop Analysis -> #workshop-analysis (scrolls to the existing
+  Workshop Analysis section)
+- Technicians -> /roles-manager/?role=Technician&technical=1 (same
+  Technicians link already used in the section nav on this page)
+
+These are real links, not placeholders - clicking them does something
+immediately. Local to /belm-workshop/ only; admin-sidebar.js was not
+touched, so this card does not create or affect any sidebar entry.

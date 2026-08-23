@@ -17,8 +17,8 @@
     customers: "/customers-manager/",
     overview: "/overview-manager/",
     roles: "/roles-manager/",
-    "job-cards": "/customers-manager/#job-cards",
-    "service-requests": "/customers-manager/#job-cards",
+    "job-cards": "/belm-workshop/#job-cards",
+    "service-requests": "/belm-workshop/#job-cards",
     "spare-parts": "/spare-parts-manager/",
     billing: "/billing-manager/",
     reports: "/reports-manager/",
@@ -55,27 +55,25 @@
     return null;
   }
 
-  // V445: /customers-manager/ now also hosts TECHNICAL DEP (Job Cards,
-  // Workshop Analysis, Technicians) merged in from the deleted
-  // /engineering-manager/ page. Anyone with "customers" OR any of the old
-  // Technical Dep keys ("roles", "job-cards", "service-requests") can reach
-  // it - mirrors the anyKeys on this same merged entry in admin-sidebar.js.
-  function customersManagerAllowed(path) {
-    return /^\/customers-manager(?:\/|$)/.test(path)
-      && (allowedPages.includes("customers") || allowedPages.includes("roles")
-          || allowedPages.includes("job-cards") || allowedPages.includes("service-requests"));
+  // V453: /belm-workshop/ (Job Cards, Workshop Analysis, Technicians) is
+  // reachable by anyone with "roles" OR "job-cards" OR "service-requests" -
+  // same three keys admin-sidebar.js uses for this entry's anyKeys.
+  function belmWorkshopAllowed(path) {
+    return /^\/belm-workshop(?:\/|$)/.test(path)
+      && (allowedPages.includes("roles") || allowedPages.includes("job-cards")
+          || allowedPages.includes("service-requests"));
   }
 
   document.querySelectorAll("a[href]").forEach(link => {
     const href = new URL(link.getAttribute("href"), window.location.origin).pathname;
     const key = keyForPath(href);
-    const technicalAllowed = customersManagerAllowed(href);
-    if (key && !technicalAllowed && !allowedPages.includes(key)) link.hidden = true;
+    const workshopAllowed = belmWorkshopAllowed(href);
+    if (key && !workshopAllowed && !allowedPages.includes(key)) link.hidden = true;
   });
 
   const currentKey = keyForPath(window.location.pathname);
-  const technicalAccess = customersManagerAllowed(window.location.pathname);
-  if (technicalAccess || !currentKey || allowedPages.includes(currentKey)) return;
+  const workshopAccess = belmWorkshopAllowed(window.location.pathname);
+  if (workshopAccess || !currentKey || allowedPages.includes(currentKey)) return;
 
   const firstAllowed = allowedPages.find(key => routes[key]);
   if (firstAllowed) {

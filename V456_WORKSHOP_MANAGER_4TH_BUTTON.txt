@@ -1,0 +1,17 @@
+V456 - Workshop Manager card: 4th button added
+
+Added "Checklist Templates" -> /checklist-manager/ as a 4th button
+alongside Open Job Card / Open Store & Spare / Manage Technicians on the
+BELM WORKSHOP "Workshop Manager" card (wm-actions row already wraps, no
+layout change needed).
+
+Note: the customer asked for this button to "show all machines and their
+sync [status]" - that specific view (Machine Type <-> Checklist Template
+Sync, listing every machine and whether it matches an active template)
+currently only exists as a collapsible panel on Customers & Machines
+(id="machineTypeSyncPanel"), not as a standalone page that this button
+could link to directly. This button links to the Checklist Templates
+page itself (create/edit templates) since that's the existing, real
+destination matching the button's name. If the customer wants the actual
+sync-status list surfaced here instead, that needs a small follow-up
+(either a dedicated page/anchor for it, or embedding that panel here).

@@ -66,8 +66,10 @@
     // Do not expose a second standalone admin navigation entry.
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    { section: "Maintenance", key: "roles", anyKeys: ["roles", "job-cards", "service-requests"], label: "BELM WORKSHOP", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
-    { section: "Maintenance", key: "customers", label: "Customers & Machines", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    // V459: "BELM WORKSHOP" removed from the main sidebar list - it's
+    // reached from TECHNICAL DEP's nested sidebar ("Workshop" link, see
+    // nestedPages below) instead of being a top-level entry here.
+    { section: "Maintenance", key: "customers", label: "TECHNICAL DEP", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     { section: "Maintenance", key: "customers", label: "PORTAL-CWM", short: "WM", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
@@ -81,9 +83,21 @@
 
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
   const allowedPages = Array.isArray(user.allowedPages) ? user.allowedPages : [];
-  const visiblePages = pages.filter((page) =>
-    page.key === null || isSuperAdmin || (Array.isArray(page.anyKeys) ? page.anyKeys.some((key) => allowedPages.includes(key)) : allowedPages.includes(page.key))
-  );
+  // V458: nested/sub-navigation. On TECHNICAL DEP and BELM WORKSHOP, the
+  // full admin menu is replaced by a small 2-item sidebar (Customer
+  // Overview / Workshop) plus a "Back to Main Menu" link at the top -
+  // every other admin page keeps the full menu unchanged.
+  const NESTED_SIDEBAR_PATHS = ["/customers-manager/", "/belm-workshop/"];
+  const isNestedSidebar = NESTED_SIDEBAR_PATHS.some((p) => pathname === p || pathname.startsWith(p));
+  const nestedPages = [
+    { section: "Nested", key: null, label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Nested", key: null, label: "Workshop", short: "WS", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+  ];
+  const visiblePages = isNestedSidebar
+    ? nestedPages
+    : pages.filter((page) =>
+        page.key === null || isSuperAdmin || (Array.isArray(page.anyKeys) ? page.anyKeys.some((key) => allowedPages.includes(key)) : allowedPages.includes(page.key))
+      );
 
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";
@@ -125,6 +139,14 @@
   nav.className = "belm-sidebar-nav belm-sidebar-nav-flat";
   const currentPath = pathname;
   const currentHash = window.location.hash || "";
+
+  if (isNestedSidebar) {
+    const backLink = document.createElement("a");
+    backLink.className = "belm-sidebar-link belm-sidebar-back-link";
+    backLink.href = "/overview-manager/";
+    backLink.innerHTML = `<span class="belm-sidebar-icon">←</span><span>Back to Main Menu</span>`;
+    nav.appendChild(backLink);
+  }
 
   // V357: one simple A-Z navigation list. Category headings intentionally
   // stay out of the UI so every destination is visible and predictable.
@@ -195,7 +217,11 @@
     <input type="search" id="belmSidebarSearch" placeholder="Search menu…" aria-label="Search sidebar menu">
     <button type="button" class="belm-sidebar-search-clear hidden" aria-label="Clear search">×</button>`;
 
-  sidebar.append(brand, userCard, searchWrap, nav);
+  if (isNestedSidebar) {
+    sidebar.append(brand, userCard, nav);
+  } else {
+    sidebar.append(brand, userCard, searchWrap, nav);
+  }
   sidebar.appendChild(footer);
 
   const toggle = document.createElement("button");

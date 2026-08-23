@@ -755,3 +755,14 @@
 .belm-admin-sidebar input::placeholder {
   text-transform: none;
 }
+
+/* V458 - nested sidebar (TECHNICAL DEP / BELM WORKSHOP): the "Back to
+   Main Menu" link gets a visible separator below it so it reads as a
+   distinct escape-hatch, not just a third page in the same list. */
+.belm-sidebar-back-link {
+  margin-bottom: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, .14);
+  opacity: .85;
+}
+.belm-sidebar-back-link:hover { opacity: 1; }

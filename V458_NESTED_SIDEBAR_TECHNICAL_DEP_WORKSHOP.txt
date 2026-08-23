@@ -1,0 +1,21 @@
+V458 - Nested sidebar navigation for TECHNICAL DEP / BELM WORKSHOP
+
+On /customers-manager/ (TECHNICAL DEP) and /belm-workshop/ (BELM
+WORKSHOP) only, the full BELM Admin sidebar (Overview, Registrations,
+Billing, Checklist Templates, PORTAL-CWM, etc.) is replaced by a small
+2-item sidebar:
+
+  <- Back to Main Menu   (-> /overview-manager/, the full sidebar)
+  Customer Overview      (-> /customers-manager/)
+  Workshop                (-> /belm-workshop/)
+
+Every other admin page (Billing & Finance, Spare Parts Inventory, BELM
+Staff Access, Settings, PORTAL-CWM, etc.) is completely unaffected and
+keeps the full sidebar exactly as before.
+
+Implementation: admin-sidebar.js detects the current path and swaps the
+full "pages" list for a 2-item "nestedPages" list; the search box is
+skipped (not needed for 2 items); the brand header, user card, theme
+toggle and Log out button stay the same for visual consistency. No new
+files, no new script includes - both pages already load admin-sidebar.js,
+so this activates automatically on both.

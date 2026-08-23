@@ -1,0 +1,22 @@
+V449 - PORTAL-CWM rebuilt as a customer card (structure only)
+
+Per direct instruction, PORTAL-CWM no longer shows a table. Each customer
+now gets its own card, matching the same structure as the customer card
+in Customers & Machines:
+
+- CUSTOMER eyebrow, name, Active/Inactive pill
+- Phone / Email / Address
+- Two live switches: Non-Payment (portal-access, stops/restores the whole
+  account) and Workshop Module (workshop-module) - both reuse the exact
+  same backend endpoints already used in Customers & Machines, so toggling
+  here or there updates the same customer record.
+- A Communication History strip with a "View all" link into that
+  customer's record in Customers & Machines.
+- A grid of 8 numbered placeholder buttons (1-8), each a distinct color,
+  with NO function, endpoint, or navigation wired to them - per instruction,
+  their job will be assigned later.
+
+Backend: GET /customers?action=cwm-overview (backend/api/customers.php)
+now also returns email, phone, address and isActive alongside the
+existing selfServiceEnabled/workshopModuleActive/staff counts, so the
+card can render its header without a second request per customer.

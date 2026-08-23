@@ -1,0 +1,122 @@
+.cwm-search {
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 12.5px;
+  min-width: 220px;
+}
+
+.cwm-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+/* V448 - PORTAL-CWM customer card, structural twin of the Customers &
+   Machines card. The 8 grid buttons at the bottom are numbered
+   placeholders (no function) until their job is assigned. */
+.cwm-card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+.cwm-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.cwm-eyebrow { margin: 0 0 2px; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.cwm-card-head h2 { margin: 0; font: 800 18px "Space Grotesk", sans-serif; }
+.cwm-active-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.cwm-active-pill.on { background: color-mix(in srgb, #1a9c5c 18%, transparent); color: #1a9c5c; }
+.cwm-active-pill.off { background: color-mix(in srgb, #c0392b 18%, transparent); color: #c0392b; }
+
+.cwm-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; }
+.cwm-info-grid div { display: flex; flex-direction: column; gap: 1px; }
+.cwm-info-grid span { color: var(--muted); font-size: 8.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.cwm-info-grid b { font-size: 12px; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
+
+.cwm-switch-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cwm-switch-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+  cursor: pointer;
+}
+.cwm-switch-item > span:first-child { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.cwm-switch-item b { font-size: 9.5px; font-weight: 900; color: var(--ink); }
+
+.cwm-toggle { position: relative; display: inline-flex; width: 34px; height: 19px; }
+.cwm-toggle input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; }
+.cwm-toggle-slider {
+  position: absolute; inset: 0;
+  border-radius: 999px;
+  background: #9aa1ab;
+  transition: background .18s ease;
+}
+.cwm-toggle-slider::after {
+  content: "";
+  position: absolute; top: 2px; left: 2px;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.24);
+  transition: transform .18s ease;
+}
+.cwm-toggle input:checked + .cwm-toggle-slider { background: #1a9c5c; }
+.cwm-toggle-workshop input:checked + .cwm-toggle-slider { background: #2a6fdb; }
+.cwm-toggle input:checked + .cwm-toggle-slider::after { transform: translateX(15px); }
+.cwm-toggle input:disabled + .cwm-toggle-slider { opacity: .55; cursor: wait; }
+
+.cwm-comm-history {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: var(--canvas);
+}
+.cwm-comm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.cwm-comm-head strong { font-size: 12px; }
+.cwm-comm-viewall {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #2a6fdb;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.cwm-comm-history p.muted { margin: 0; font-size: 11px; }
+
+.cwm-button-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.cwm-placeholder-button {
+  padding: 14px 0;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  font: 800 15px "Space Grotesk", sans-serif;
+  cursor: not-allowed;
+  opacity: .92;
+}
+.cwm-btn-1 { background: #101b31; }
+.cwm-btn-2 { background: #1a9c5c; }
+.cwm-btn-3 { background: #2a6fdb; }
+.cwm-btn-4 { background: #d99a12; color: #101b31; }
+.cwm-btn-5 { background: #6a5acd; }
+.cwm-btn-6 { background: #17a2b8; }
+.cwm-btn-7 { background: #4b5666; }
+.cwm-btn-8 { background: #1abc9c; }

@@ -200,14 +200,16 @@ if ($method === 'POST' && !$id) {
         $phone = clean_required($body, 'phone', 'Phone number', 50);
         $tinNumber = clean_required($body, 'tinNumber', 'TIN number', 50);
         $vrn = clean_required($body, 'vrn', 'VRN number', 50);
+        $registrationMode = in_array($body['registrationMode'] ?? '', ['TECHNICAL_DEP', 'PORTAL_CWM'], true)
+            ? $body['registrationMode'] : 'TECHNICAL_DEP';
         // The real password is generated only after administrator approval.
         // This placeholder preserves compatibility with existing databases.
         $pendingSecret = password_hash(secure_account_secret(24), PASSWORD_BCRYPT);
         db()->prepare(
             'INSERT INTO customer_applications
              (id, reference_no, company_name, email, address, phone, tin_number, vrn,
-              machine_type, brand, model, reg_number, password_hash, status, submitted_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,? ,?,NOW())'
+              machine_type, brand, model, reg_number, password_hash, status, registration_mode, submitted_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,? ,?,?,NOW())'
         )->execute([
             $applicationId,
             $reference,
@@ -223,6 +225,7 @@ if ($method === 'POST' && !$id) {
             '',
             $pendingSecret,
             'PENDING',
+            $registrationMode,
         ]);
     }
 
@@ -324,12 +327,19 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             $portalLink = customer_portal_slug($application['company_name']);
             $temporaryPassword = secure_account_secret();
             $recoveryCode = account_recovery_code();
+            // V447: PORTAL-CWM applicants start already Self-Service +
+            // Workshop Module ON (independent from day one); TECHNICAL_DEP
+            // applicants start with BELM as Service Provider, both OFF, as
+            // before. BELM Admin can still flip either from PORTAL-CWM or
+            // Customers & Machines afterwards - this only sets the start.
+            $isPortalCwm = ($application['registration_mode'] ?? 'TECHNICAL_DEP') === 'PORTAL_CWM';
 
             $pdo->prepare(
                 'INSERT INTO customers
                  (id, name, tin_number, vrn, email, phone, address, portal_link,
-                  password, recovery_code_hash, is_active, created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())'
+                  password, recovery_code_hash, is_active, is_machinery_admin,
+                  workshop_module_active, created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())'
             )->execute([
                 $customerId,
                 $application['company_name'],
@@ -341,6 +351,8 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 $portalLink,
                 password_hash($temporaryPassword, PASSWORD_BCRYPT),
                 password_hash($recoveryCode, PASSWORD_BCRYPT),
+                $isPortalCwm ? 1 : 0,
+                $isPortalCwm ? 1 : 0,
             ]);
 
             // Registration approval creates the customer account only. Machines are

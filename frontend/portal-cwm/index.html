@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+  <!-- V446: bfcache back-navigation guard, see /customer-workshop/index.html -->
+  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM PORTAL-CWM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/portal-cwm/manager.css?v=446-cwm">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
+    <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+</head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/overview-manager/">
+        <span class="brand-mark">B</span>
+        <span>BELM General Tech <small>PORTAL-CWM</small></span>
+      </a>
+      <div class="top-actions">
+        <a class="ghost" href="/overview-manager/">← All Overview</a>
+        <a class="ghost" href="/customers-manager/">TECHNICAL DEP</a>
+        <button id="refreshButton" class="ghost" type="button">Refresh</button>
+        <button id="logoutButton" class="ghost" type="button">Log out</button>
+      </div>
+    </header>
+
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Customer Workshop Management</p>
+          <h1>PORTAL-CWM</h1>
+          <p>Customers running independently — their own Admins, Technicians and Operators handle day-to-day maintenance,
+             and/or their own Workshop Manager / Store Keeper / Technician team uses the paid Workshop Module.
+             Non-Payment and Workshop Module switches below are live and update the same customer record as
+             <a href="/customers-manager/">Customers &amp; Machines</a>. The 8 numbered buttons on each card are
+             placeholders — their function has not been assigned yet.</p>
+        </div>
+      </section>
+
+      <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Customers</h2><p>PORTAL-CWM card per customer — Non-Payment and Workshop Module switches are live; the 8 numbered buttons are placeholders, awaiting their function.</p></div>
+          <input id="cwmSearch" type="search" placeholder="Search customer…" class="cwm-search">
+        </div>
+      </section>
+
+      <div id="cwmCardGrid" class="cwm-card-grid">
+        <p class="muted">Loading…</p>
+      </div>
+    </main>
+
+    <script src="/admin-access.js?v=411-job-card-only"></script>
+    <script src="/admin-sidebar.js?v=414-technical-dep"></script>
+    <script src="/edit-confirm.js"></script>
+    <script src="/portal-cwm/manager.js?v=446-cwm"></script>
+  </body>
+</html>

@@ -820,6 +820,13 @@ CREATE TABLE IF NOT EXISTS customer_applications (
   customer_id VARCHAR(36) NULL REFERENCES customers(id),
   machine_id VARCHAR(36) NULL REFERENCES machines(id)
 );
+-- V447: which BELM Portal experience the customer asked for at registration
+-- time — TECHNICAL_DEP (standard, BELM is the active Service Provider) or
+-- PORTAL_CWM (independent Customer Workshop Management: Self-Service mode
+-- + the paid Workshop Module both switched on automatically on approval).
+-- BELM Admin can still change either setting afterwards from PORTAL-CWM or
+-- Customers & Machines - this only sets the starting point.
+ALTER TABLE customer_applications ADD COLUMN IF NOT EXISTS registration_mode VARCHAR(20) NOT NULL DEFAULT 'TECHNICAL_DEP';
 
 CREATE TABLE IF NOT EXISTS user_applications (
   id VARCHAR(36) PRIMARY KEY,

@@ -29,6 +29,7 @@
   };
   const pathRules = [
     [/^\/customers-manager(?:\/|$)/, "customers"],
+    [/^\/portal-cwm(?:\/|$)/, "customers"],
     [/^\/admin-applications(?:\/|$)/, "customers"],
     [/^\/overview-manager(?:\/|$)/, "overview"],
     [/^\/checklist-manager(?:\/|$)/, "checklist-templates"],

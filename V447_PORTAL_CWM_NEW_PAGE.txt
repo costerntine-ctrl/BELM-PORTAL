@@ -1,0 +1,32 @@
+V447 - New sidebar page: PORTAL-CWM (Customer Workshop Management)
+
+New BELM-Admin-only sidebar entry, "PORTAL-CWM" (short: WM), at
+/portal-cwm/. Section: Maintenance, gated on the "customers" permission key
+(same as Customers & Machines / TECHNICAL DEP).
+
+Purpose: a focused overview of customers who run independently -
+Self-Service mode ON (BELM is not the active Service Provider; the
+customer's own Admins/Technicians/Operators handle day-to-day
+maintenance) and/or the paid Workshop Module ON (their own Workshop
+Manager / Store Keeper / Technician staff can use Store Ledger and Tool
+Issue/Return Documents).
+
+What it shows, per customer:
+- Self-Service toggle (reuses PUT /customers/{id}/machinery-admin,
+  unchanged) and Workshop Module toggle (reuses
+  PUT /customers/{id}/workshop-module, unchanged) - both switches remain
+  fully functional here, in addition to Customers & Machines.
+- Live counts of that customer's own Workshop Manager, Store Keeper,
+  Technician and Operator staff (customer_users, grouped by role).
+- Metrics strip: how many customers are Self-Service, how many have the
+  Workshop Module on, how many are both, and total customer count.
+- Search box, and an "Open ->" link straight into that customer's machine
+  list in Customers & Machines / TECHNICAL DEP.
+
+New backend endpoint: GET /customers?action=cwm-overview
+(backend/api/customers.php) - read-only, require_page_access('customers').
+No schema changes; reads existing customers.is_machinery_admin,
+customers.workshop_module_active, and customer_users.role.
+
+Wired into admin-sidebar.js (new entry + standaloneAdminPaths) and
+admin-access.js (new pathRule mapping /portal-cwm/ to the "customers" key).

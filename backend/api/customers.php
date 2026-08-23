@@ -254,6 +254,53 @@ if ($method === 'POST' && $action === 'machine-type-sync') {
 // Helps distinguish UI/filter problems from a deployment that is connected
 // to an empty/new PostgreSQL database. No database name, URL or credentials
 // are returned to the browser.
+// V446: PORTAL-CWM ("Customer Workshop Management") — a dedicated overview
+// of customers running independently: BELM Service Provider mode OFF
+// (is_machinery_admin = 1, i.e. the customer's own Admins/Technicians/
+// Operators handle day-to-day maintenance themselves) and/or the paid
+// Workshop Module switched ON (Store Ledger + Tool Issue/Return for their
+// own Workshop Manager/Store Keeper/Technician staff). Read-only summary;
+// the actual ON/OFF switches remain on each customer's own card in this
+// same Customers & Machines (TECHNICAL DEP) page.
+if ($method === 'GET' && $action === 'cwm-overview') {
+    require_page_access($user, 'customers');
+    $rows = db()->query(
+        "SELECT id, name, email, phone, address, is_active, is_machinery_admin, workshop_module_active
+         FROM customers WHERE deleted_at IS NULL ORDER BY name ASC"
+    )->fetchAll();
+
+    $staffCounts = db()->query(
+        "SELECT customer_id, LOWER(role) AS role_lower, COUNT(*) AS total
+         FROM customer_users WHERE is_active = 1
+         GROUP BY customer_id, LOWER(role)"
+    )->fetchAll();
+    $staffByCustomer = [];
+    foreach ($staffCounts as $row) {
+        $staffByCustomer[$row['customer_id']][$row['role_lower']] = (int)$row['total'];
+    }
+
+    $result = array_map(static function (array $c) use ($staffByCustomer): array {
+        $staff = $staffByCustomer[$c['id']] ?? [];
+        return [
+            'id' => $c['id'],
+            'name' => $c['name'],
+            'email' => $c['email'],
+            'phone' => $c['phone'],
+            'address' => $c['address'],
+            'isActive' => !empty($c['is_active']),
+            // "Independent" = self-service (BELM is NOT the Service Provider).
+            'selfServiceEnabled' => !empty($c['is_machinery_admin']),
+            'workshopModuleActive' => !empty($c['workshop_module_active']),
+            'workshopManagerCount' => $staff['workshop_manager'] ?? 0,
+            'storeKeeperCount' => $staff['store_keeper'] ?? 0,
+            'technicianCount' => $staff['technician'] ?? 0,
+            'operatorCount' => $staff['operator'] ?? 0,
+        ];
+    }, $rows);
+
+    json_out($result);
+}
+
 if ($method === 'GET' && $action === 'diagnostics') {
     require_page_access($user, 'customers');
 

@@ -128,9 +128,11 @@ function renderCard(application) {
   const title = element("div");
   const displayName = application.displayName || application.companyName || application.fullName;
   const applicationType = application.applicationType === "SYSTEM_USER" ? "Staff / Technician" : "Customer";
+  const cwmTag = application.applicationType !== "SYSTEM_USER" && application.registrationMode === "PORTAL_CWM"
+    ? " · PORTAL-CWM" : "";
   title.append(
     element("h2", "", displayName),
-    element("div", "reference", `${application.referenceNo} · ${applicationType} · Submitted ${formatDate(application.submittedAt)}`)
+    element("div", "reference", `${application.referenceNo} · ${applicationType}${cwmTag} · Submitted ${formatDate(application.submittedAt)}`)
   );
   head.append(title, element("span", `status ${application.status}`, application.status));
 
@@ -152,6 +154,7 @@ function renderCard(application) {
         ["Company address", application.address],
         ["TIN", application.tinNumber],
         ["VRN", application.vrn],
+        ["Registration type", application.registrationMode === "PORTAL_CWM" ? "PORTAL-CWM (Independent)" : "TECHNICAL DEP (BELM Service Provider)"],
         ["Reviewed by", application.reviewedByName],
         ["Reviewed at", formatDate(application.reviewedAt)]
       ];

@@ -24,6 +24,24 @@
 .belm-workshop-action.action-blue { background: #2a6fdb; }
 .belm-workshop-action.action-settings { background: #4b5666; }
 
+/* V444 - "View Your Machine" MAIN card: iframes the working machine-list
+   page from Customers & Machines (see belm-fleet-main-card note in
+   index.html) so it's the first/primary content on TECHNICAL DEP. */
+.belm-fleet-main-card {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+}
+.belm-fleet-iframe {
+  width: 100%;
+  min-height: 70vh;
+  border: 0;
+  border-radius: 12px;
+  background: var(--canvas);
+}
+
 /* V444 - BELM-wide Communication History card beneath the hero. */
 .belm-workshop-feed-card {
   margin: 18px 0;

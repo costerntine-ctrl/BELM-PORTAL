@@ -1,6 +1,15 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
   let customers = [];
+  // V444: ?embed=1 lets another BELM admin page (currently TECHNICAL DEP /
+  // engineering-manager, which iframes this URL) show the exact same "BELM
+  // FLEET — All Machines" list as its own main/first content, instead of
+  // this being a click-through destination. Same page, same IDs, same
+  // click handlers below — only the CSS presentation changes (see
+  // "body.embed-mode" in manager.css): the dialog renders inline instead
+  // of as a modal, and the rest of this page (header, customer grid) hides.
+  const isEmbedMode = new URLSearchParams(window.location.search).get("embed") === "1";
+  if (isEmbedMode) document.body.classList.add("embed-mode");
   let pendingEditPin = null;
   let servicePartsState = null;
   let isSuperAdmin = false;
@@ -648,7 +657,7 @@
     document.getElementById("machineListBody").innerHTML = machines.length
       ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {})).join("")}</div>`
       : '<div class="empty">No machines registered for this customer yet.</div>';
-    document.getElementById("machineListDialog").showModal();
+    document.getElementById("machineListDialog")[isEmbedMode ? "show" : "showModal"]();
     if (machines.length) loadServiceDueBadges();
   }
 
@@ -669,7 +678,7 @@
           .map(({ machine, customer }) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {}, customer.name))
           .join("")}</div>`
       : '<div class="empty">No machines registered on the portal yet.</div>';
-    document.getElementById("machineListDialog").showModal();
+    document.getElementById("machineListDialog")[isEmbedMode ? "show" : "showModal"]();
     if (allMachines.length) loadServiceDueBadges();
   }
 

@@ -46,7 +46,7 @@
                dropped since neither corresponds to a BELM-wide sidebar page
                (Workshop is this page itself; Petty Cash is customer-only). -->
           <nav class="belm-workshop-actions" aria-label="BELM-WORKSHOP quick links">
-            <a class="belm-workshop-action action-black" href="/customers-manager/?view=all-machines">View Your Machine</a>
+            <a class="belm-workshop-action action-black" href="#belm-fleet-main">View Your Machine</a>
             <a class="belm-workshop-action action-green" href="/spare-parts-manager/">Spare Parts Inventory</a>
             <a class="belm-workshop-action action-yellow" href="/reports-manager/">Reports &amp; Analysis</a>
             <a class="belm-workshop-action action-purple" href="/roles-manager/">BELM Staff Access</a>
@@ -54,6 +54,30 @@
             <a class="belm-workshop-action action-settings" href="/settings-manager/">System Settings</a>
           </nav>
         </div>
+      </section>
+
+      <!-- V444: "View Your Machine" is now the MAIN card on this page —
+           the full BELM fleet (every customer's machines) renders here
+           immediately, first, instead of behind a click to another page.
+           This iframes /customers-manager/?view=all-machines&embed=1 rather
+           than re-implementing the machine card, Edit/Delete/Forget,
+           Report/Check Up/Service Parts dialogs, and service-due badges a
+           second time — embed=1 makes that same page (same IDs, same click
+           handlers, fully working) render inline with its own header/list
+           hidden, so nothing here can drift out of sync with Customers &
+           Machines. Same-origin, so the shared belm_admin_token in
+           localStorage carries straight through — no separate login. -->
+      <section id="belm-fleet-main" class="belm-fleet-main-card">
+        <div class="belm-workshop-feed-head">
+          <h3>BELM FLEET — All Machines</h3>
+          <a href="/customers-manager/" class="belm-workshop-feed-viewall">Open full page</a>
+        </div>
+        <iframe
+          id="belmFleetFrame"
+          class="belm-fleet-iframe"
+          src="/customers-manager/?view=all-machines&embed=1"
+          title="BELM Fleet — All Machines"
+          loading="eager"></iframe>
       </section>
 
       <!-- V444: BELM-wide Communication History — the same feed shown on

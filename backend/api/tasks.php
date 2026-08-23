@@ -79,7 +79,7 @@ if ($method === 'GET') {
                 'job_card_no' => $job['job_card_no'],
                 'machine_id' => $job['machine_id'],
                 'machine_label' => $machineLabel,
-                'case_stage' => in_array($jobStatus, ['RECEIVED','TESTING','PENDING_APPROVAL','COMPLETED'], true) ? $jobStatus : $job['current_stage'],
+                'case_stage' => $job['current_stage'],
             ];
         }
     }
@@ -152,18 +152,27 @@ if ($method === 'POST') {
             $priority,
             $user['name'],
         ]);
+    log_activity($user, 'task-created', 'task', $newId, ['title' => $title, 'assignedToId' => $assignedToId, 'priority' => $priority]);
     json_out(['id' => $newId], 201);
 }
 
 if ($method === 'PUT') {
+    $taskStmt = db()->prepare('SELECT title FROM tasks WHERE id = ?');
+    $taskStmt->execute([$id]);
+    $taskTitle = $taskStmt->fetchColumn();
     $stmt = db()->prepare("UPDATE tasks SET status='DONE' WHERE id=?");
     $stmt->execute([$id]);
     if ($stmt->rowCount() === 0) json_error('Task not found.', 404);
+    log_activity($user, 'task-completed', 'task', $id, ['title' => $taskTitle !== false ? $taskTitle : null]);
     json_out(['ok' => true]);
 }
 
 if ($method === 'DELETE') {
+    $taskStmt = db()->prepare('SELECT title FROM tasks WHERE id = ?');
+    $taskStmt->execute([$id]);
+    $taskTitle = $taskStmt->fetchColumn();
     db()->prepare('DELETE FROM tasks WHERE id = ?')->execute([$id]);
+    log_activity($user, 'task-deleted', 'task', $id, ['title' => $taskTitle !== false ? $taskTitle : null]);
     json_out(null, 204);
 }
 

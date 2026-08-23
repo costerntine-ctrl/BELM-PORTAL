@@ -4,10 +4,15 @@
   let pendingEditPin = null;
   let servicePartsState = null;
   let isSuperAdmin = false;
+  let isTechnicianRole = false;
   let currentUser = null;
   try {
     currentUser = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
     isSuperAdmin = currentUser?.role === "Super Admin";
+    // V444: defense-in-depth to match the backend's require_not_technician_role
+    // guard — a Technician account should never see machine admin controls
+    // here even if their allowedPages was misconfigured to include this page.
+    isTechnicianRole = currentUser?.role === "Technician";
   } catch (_) {}
 
   // V276 - "Back" must reliably close whatever dialog is open (Report,
@@ -199,7 +204,7 @@
     GROUNDED: "Grounded (not operational)",
   };
 
-  function machineCard(customerId, machine, belmServiceProviderActive, privacyAccess = {}) {
+  function machineCard(customerId, machine, belmServiceProviderActive, privacyAccess = {}, customerName = "") {
     const status = String(machine.status || "NOT_CHECKED").toUpperCase();
     const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons : [];
     const opStatus = String(machine.operationalStatus || "NORMAL").toUpperCase();
@@ -224,10 +229,11 @@
     const operatorReport = machine.latestOperatorMessage || machine.latest_operator_message || null;
     const operatorText = String(operatorReport?.message || "").trim() || "No operator message reported yet.";
     const operatorName = String(operatorReport?.operatorName || operatorReport?.operator_name || "Operator").trim() || "Operator";
+    const operatorContact = String(operatorReport?.operatorContact || operatorReport?.operator_contact || "").trim();
     const operatorStatus = String(operatorReport?.status || "NONE").toUpperCase();
     const operatorCreated = operatorReport?.createdAt || operatorReport?.created_at || null;
     const operatorMeta = operatorReport
-      ? `${operatorName}${operatorCreated ? ` · ${formatDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
+      ? `Role: Operator · ${operatorName}${operatorContact ? ` · ${operatorContact}` : ""}${operatorCreated ? ` · ${formatDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
       : "Waiting for Operator report";
     return `<article class="machine-card machine-card-v409 machine-card-v417 ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
@@ -235,6 +241,7 @@
           <h4>${escapeHtml(machineTitle)}</h4>
           <span class="machine-fleet-number" title="Fleet Number: ${escapeHtml(fleetNumber)}"><small>Fleet No.</small><b>${escapeHtml(fleetNumber)}</b></span>
         </div>
+        ${customerName ? `<span class="machine-customer-tag" title="Registered customer">${escapeHtml(customerName)}</span>` : ""}
         <p>${escapeHtml(machine.machineType)} · Reg: ${escapeHtml(machine.regNumber || "—")} · Serial: ${escapeHtml(machine.serialNumber || "—")}</p>
         <span class="machine-status">${escapeHtml(statusLabel(status))}</span>
         <div class="machine-alert-copy" aria-live="polite">
@@ -263,9 +270,9 @@
         ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/engineering-manager/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
       </div>
       <div class="machine-admin-actions" aria-label="BELM Admin machine management">
-        <button type="button" class="machine-admin-edit" data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit Machine</button>
-        <button type="button" class="machine-admin-delete" data-delete-machine="${escapeHtml(machine.id)}">Delete Machine</button>
-        ${isSuperAdmin ? `<button type="button" class="machine-admin-forget" data-forget-machine="${escapeHtml(machine.id)}">Forget Permanently</button>` : ""}
+        ${!isTechnicianRole ? `<button type="button" class="machine-admin-edit" data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit Machine</button>` : ""}
+        ${!isTechnicianRole ? `<button type="button" class="machine-admin-delete" data-delete-machine="${escapeHtml(machine.id)}">Delete Machine</button>` : ""}
+        ${isSuperAdmin && !isTechnicianRole ? `<button type="button" class="machine-admin-forget" data-forget-machine="${escapeHtml(machine.id)}">Forget Permanently</button>` : ""}
       </div>
     </article>`;
   }
@@ -403,8 +410,8 @@
               </label>
               <strong class="customer-nonpayment-state">${Number(customer.isActive) === 1 ? "PORTAL ON" : "STOPPED"}</strong>
             </div>
-            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="Customer Workshop System paid add-on for ${escapeHtml(customer.name)}">
-              <span class="customer-workshop-label">Workshop System</span>
+            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="Workshop Module paid add-on for ${escapeHtml(customer.name)}">
+              <span class="customer-workshop-label">Workshop Module</span>
               <label class="customer-workshop-switch">
                 <input type="checkbox" data-card-workshop-toggle="${escapeHtml(customer.id)}" ${customer.isWorkshopModuleActive ? "checked" : ""} aria-label="Workshop Module for ${escapeHtml(customer.name)}">
                 <span class="customer-workshop-slider" aria-hidden="true"></span>
@@ -637,11 +644,33 @@
     currentMachineListCustomerName = customer.name || "";
     document.getElementById("machineListTitle").textContent = `${customer.name} — Machines (${machines.length})`;
     document.getElementById("machineListAddButton").dataset.addMachine = customer.id;
+    document.getElementById("machineListAddButton").classList.remove("hidden");
     document.getElementById("machineListBody").innerHTML = machines.length
       ? `<div class="machine-list">${machines.map((machine) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {})).join("")}</div>`
       : '<div class="empty">No machines registered for this customer yet.</div>';
     document.getElementById("machineListDialog").showModal();
     if (machines.length) loadServiceDueBadges();
+  }
+
+  // V444: "BELM-WORKSHOP" (engineering-manager) links its "View Your
+  // Machine" button here with ?view=all-machines — the BELM-wide fleet,
+  // every machine from every registered customer in one list, reusing the
+  // exact same card (and Edit/Delete/Forget wiring) as a single customer's
+  // machine list. "Add machine" is hidden here since there's no single
+  // customer to attach a new machine to from this combined view.
+  function openAllMachinesList() {
+    currentMachineListCustomerName = "";
+    const allMachines = customers.flatMap((customer) =>
+      (customer.machines || []).map((machine) => ({ machine, customer })));
+    document.getElementById("machineListTitle").textContent = `BELM FLEET — All Machines (${allMachines.length})`;
+    document.getElementById("machineListAddButton").classList.add("hidden");
+    document.getElementById("machineListBody").innerHTML = allMachines.length
+      ? `<div class="machine-list">${allMachines
+          .map(({ machine, customer }) => machineCard(customer.id, machine, customer.belmServiceProviderActive, customer.privacyAccess || {}, customer.name))
+          .join("")}</div>`
+      : '<div class="empty">No machines registered on the portal yet.</div>';
+    document.getElementById("machineListDialog").showModal();
+    if (allMachines.length) loadServiceDueBadges();
   }
 
   async function load() {
@@ -666,6 +695,9 @@
         if (requestedCustomer) {
           window.setTimeout(() => openMachineList(requestedCustomer), 0);
         }
+      }
+      if (!requestedCustomerId && requestedView === "all-machines") {
+        window.setTimeout(() => openAllMachinesList(), 0);
       }
       if (!customers.length) await showCustomerDataDiagnostic();
     } catch (error) {
@@ -2188,11 +2220,13 @@
     document.getElementById("manageCustomerDialog").close();
     await forgetCustomer(customer.id);
   });
-  // V448 - Customer Workshop System paid add-on switch, lives on each customer card.
-  // Checked means the customer owns a complete internal workshop workspace:
-  // Admin/Owner, Workshop Manager, Customer Technicians, Store/Tools, Procurement,
-  // Accounts/Finance and internal Job Card operations. BELM remains external.
-  // This is deliberately independent from the Non-payment portal switch.
+  // V444 - Workshop Module paid add-on switch, lives on each customer card.
+  // Checked means the customer's own Workshop Manager/Store Keeper/Technician
+  // roles can use Store Ledger + Tool Issue/Return Documents. This is
+  // deliberately independent from the "Non-payment" portal switch above and
+  // from the customer's own internal Role Manager 'store' permission — this
+  // one is the only switch that reflects whether BELM has been paid for the
+  // Workshop module itself.
   document.getElementById("customerGrid").addEventListener("change", async (event) => {
     const toggle = event.target.closest("[data-card-workshop-toggle]");
     if (!toggle) return;
@@ -2209,10 +2243,10 @@
     toggle.disabled = true;
     try {
       const confirmation = await window.belmConfirmEdit({
-        title: enabled ? "Activate Customer Workshop System?" : "Deactivate Customer Workshop System?",
+        title: enabled ? "Activate Workshop Module?" : "Deactivate Workshop Module?",
         message: enabled
-          ? `Activate the paid Customer Workshop System for ${customer.name}? This enables their complete internal workshop workspace: Customer Admin/Owner, Workshop Manager, Customer Technicians, Store/Tools, Procurement, Accounts/Finance and internal Job Card operations. BELM remains an external support provider unless requested.`
-          : `Deactivate the Customer Workshop System for ${customer.name}? Internal Workshop functions and Customer Technician management will be locked until this is switched back ON. Request BELM Support remains available outside the customer workshop.`,
+          ? `Activate the paid Workshop Module for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
+          : `Deactivate the Workshop Module for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until this is switched back ON, even if their own Role Manager still grants Store access.`,
       });
       if (!confirmation) {
         toggle.checked = !enabled;
@@ -2226,14 +2260,14 @@
       customer.isWorkshopModuleActive = Boolean(result?.workshopModuleActive ?? enabled);
       showAlert(
         enabled
-          ? `${customer.name}: Customer Workshop System activated.`
-          : `${customer.name}: Customer Workshop System deactivated.`,
+          ? `${customer.name}: Workshop Module activated.`
+          : `${customer.name}: Workshop Module deactivated.`,
         false,
       );
       await load();
     } catch (error) {
       toggle.checked = !enabled;
-      showAlert(error.message || "Could not change Customer Workshop System.", true);
+      showAlert(error.message || "Could not change Workshop Module.", true);
     } finally {
       toggle.disabled = false;
     }

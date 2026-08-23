@@ -238,6 +238,7 @@ if ($method === 'POST' && !$action) {
         throw $error;
     }
 
+    log_activity($user, 'receipt-created', 'receipt', $newId, ['receiptNo' => $receiptNo, 'amount' => $amount, 'customerId' => $customerId, 'invoiceId' => $invoiceId]);
     json_out(['id' => $newId, 'receiptNo' => $receiptNo], 201);
 }
 
@@ -301,6 +302,7 @@ if ($method === 'DELETE') {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'receipt-deleted', 'receipt', $id, ['receiptNo' => $row['receipt_no'], 'amount' => $row['amount'], 'reason' => $reason]);
     json_out(null, 204);
 }
 

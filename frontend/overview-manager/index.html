@@ -107,6 +107,15 @@
         <div id="attendanceBars" class="bar-list"></div>
       </article>
     </section>
+
+    <!-- V444: was already fetched and formatted by app.js (data.recentActivities)
+         but had no container to render into — the feed silently no-op'd.
+         This closes that gap so BELM staff "who did what" logging (today's
+         additions and everything already recorded) is actually visible. -->
+    <section class="panel">
+      <div class="section-head"><div><h2>Recent activity</h2><p>Latest actions recorded by BELM staff, across every department</p></div></div>
+      <div id="activityList" class="belm-sidebar-activity-list"></div>
+    </section>
   </main>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>

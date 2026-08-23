@@ -1531,10 +1531,11 @@
     const operatorReport = machine.latestOperatorMessage || machine.latest_operator_message || null;
     const operatorText = String(operatorReport?.message || "").trim() || "No operator message reported yet.";
     const operatorName = String(operatorReport?.operatorName || operatorReport?.operator_name || "Operator").trim() || "Operator";
+    const operatorContact = String(operatorReport?.operatorContact || operatorReport?.operator_contact || "").trim();
     const operatorStatus = String(operatorReport?.status || "NONE").toUpperCase();
     const operatorCreated = operatorReport?.createdAt || operatorReport?.created_at || null;
     const operatorMeta = operatorReport
-      ? `${operatorName}${operatorCreated ? ` · ${formatTanzaniaDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
+      ? `Role: Operator · ${operatorName}${operatorContact ? ` · ${operatorContact}` : ""}${operatorCreated ? ` · ${formatTanzaniaDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
       : "Waiting for Operator report";
 
     const details = document.createElement("div");
@@ -1861,7 +1862,7 @@
       accounts: ["operator-reports", "check-up", "service-request", "workflow"],
       procurement: ["operator-reports", "check-up", "service-request", "workflow"],
       technician: ["operator-reports", "check-up", "service-request", "workflow"],
-      operator: ["operator-reports", "check-up", "report-problem", "fuel-usage"],
+      operator: ["operator-reports", "check-up", "service-request", "workflow"],
       owner: ["operator-reports", "check-up", "service-request", "workflow"],
       admin: ["operator-reports", "check-up", "service-request", "workflow"],
     };
@@ -2066,19 +2067,22 @@
         </select>
       </div>
       <div class="belm-machine-quick-actions">
+        ${isCustomerOperatorRole() ? `
+        <button type="button" class="belm-operator-report-menu-button" data-operator-report-menu="${escapeHtml(machine.id)}">Report</button>` : `
         <a href="/customer-procurement/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Procurement</a>
         <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
         <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
         <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
         <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-machine-report="${escapeHtml(machine.id)}">Report</button>
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}" title="Open the Checklist Template synced to this machine">Check Up</button>
-        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>
+        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>`}
       </div>`;
     card.appendChild(panel);
     panel.addEventListener("click", (event) => event.stopPropagation());
     panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     panel.querySelector("[data-customer-checkup]")?.addEventListener("click", () => openCustomerCheckupDialog(machine));
     panel.querySelector("[data-customer-machine-report]")?.addEventListener("click", () => openCustomerMachineReportDialog(machine));
+    panel.querySelector("[data-operator-report-menu]")?.addEventListener("click", () => openOperatorReportMenu(machine));
     const activityControl = panel.querySelector("[data-customer-activity-control]");
     const activitySelect = panel.querySelector("[data-customer-activity-status]");
     const customerToken = localStorage.getItem("belm_customer_token");
@@ -3391,12 +3395,7 @@
 
   function enforceCustomerFeaturePermissions(scope) {
     const payload = tokenPayload("belm_customer_token");
-    const role = String(payload?.customerRole || "").toLowerCase();
-    const rawPermissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
-    const operatorPermissions = ["fuel-usage", "operator-reports", "report-problem", "check-up"];
-    const permissions = role === "operator"
-      ? (Array.isArray(rawPermissions) ? rawPermissions.filter((key) => operatorPermissions.includes(key)) : operatorPermissions)
-      : rawPermissions;
+    const permissions = customerCurrentPermissions !== undefined ? customerCurrentPermissions : payload?.permissions;
     scope.querySelectorAll("[data-belm-feature]").forEach((element) => {
       element.style.removeProperty("display");
     });
@@ -3407,6 +3406,7 @@
         }
       });
     }
+    const role = payload?.customerRole;
     const hasAssignUsersPermission = Array.isArray(permissions) && permissions.includes("assign-users");
     scope.querySelectorAll("[data-belm-owner-admin-only]").forEach((element) => {
       if (role !== "owner" && role !== "admin" && !hasAssignUsersPermission) element.style.display = "none";
@@ -4100,6 +4100,193 @@
     });
   }
 
+  // V444 - Operator's machine-card "Report" button opens one consolidated
+  // menu instead of five separate buttons: Machine Checkup and Fuel Usage
+  // reuse the same flows every other role uses, Machine Handover is a new
+  // internal-only comment (never opens a Job Card), and Report reuses the
+  // existing Report a Problem flow (which already auto-opens a Job Card).
+  function closeOperatorReportMenu() {
+    document.getElementById("belmOperatorReportMenuDialog")?.remove();
+  }
+  function openOperatorReportMenu(machine) {
+    closeOperatorReportMenu();
+    const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmOperatorReportMenuDialog";
+    dialog.className = "belm-analysis-dialog belm-operator-report-menu-dialog";
+    dialog.innerHTML = `
+      <div class="belm-analysis-dialog-card">
+        <div class="belm-analysis-head">
+          <span>REPORT — ${escapeHtml(machineName)}</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-operator-report-menu-body">
+          <div class="belm-operator-report-menu-row">
+            <button type="button" class="belm-operator-report-menu-item" data-operator-menu-checkup>
+              <strong>Machine Checkup</strong><span>Open today's Checklist Template</span>
+            </button>
+          </div>
+          <div class="belm-operator-report-menu-row">
+            <button type="button" class="belm-operator-report-menu-item" data-operator-menu-fuel>
+              <strong>Fuel Usage</strong><span>Record fuel top-up for this machine</span>
+            </button>
+          </div>
+          <div class="belm-operator-report-menu-row">
+            <button type="button" class="belm-operator-report-menu-item" data-operator-menu-handover>
+              <strong>Machine Handover</strong><span>Leave a handover comment for the next operator/shift</span>
+            </button>
+            <button type="button" class="belm-operator-report-menu-pdf" data-operator-menu-pdf="HANDOVER" title="Download Machine Handover history PDF for this machine">PDF</button>
+          </div>
+          <div class="belm-operator-report-menu-row">
+            <button type="button" class="belm-operator-report-menu-item" data-operator-menu-report>
+              <strong>Report</strong><span>Report a problem — starts a Job Card</span>
+            </button>
+            <button type="button" class="belm-operator-report-menu-pdf" data-operator-menu-pdf="PROBLEM" title="Download Report history PDF for this machine">PDF</button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.querySelector("[data-operator-menu-checkup]").addEventListener("click", () => {
+      dialog.close();
+      openCustomerCheckupDialog(machine);
+    });
+    dialog.querySelector("[data-operator-menu-fuel]").addEventListener("click", () => {
+      window.location.href = `/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}`;
+    });
+    dialog.querySelector("[data-operator-menu-handover]").addEventListener("click", () => {
+      dialog.close();
+      openOperatorHandoverDialog(machine.id);
+    });
+    dialog.querySelector("[data-operator-menu-report]").addEventListener("click", () => {
+      dialog.close();
+      openProblemReportDialog(machine.id);
+    });
+    dialog.querySelectorAll("[data-operator-menu-pdf]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        openOperatorReportPdfDialog(machine.id, button.dataset.operatorMenuPdf, machineName);
+      });
+    });
+    dialog.showModal();
+  }
+
+  // V444 - date/month/year/range picker before downloading either the
+  // Machine Handover or Report PDF, matching the same filter bar already
+  // used for Job Card Reports / Daily Reports elsewhere in the portal —
+  // each of the two PDFs stays independently filterable, never mixed.
+  function openOperatorReportPdfDialog(machineId, type, machineName) {
+    document.getElementById("belmOperatorReportPdfDialog")?.remove();
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmOperatorReportPdfDialog";
+    dialog.className = "belm-analysis-dialog";
+    const label = type === "HANDOVER" ? "Machine Handover" : "Report";
+    dialog.innerHTML = `
+      <div class="belm-analysis-dialog-card">
+        <div class="belm-analysis-head">
+          <span>${escapeHtml(label.toUpperCase())} PDF — ${escapeHtml(machineName)}</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-operator-report-pdf-body">${belmDateFilterBarHtml("opmenu")}</div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    const { readRange } = wireBelmDateFilterBar(dialog, "opmenu", () => {});
+    dialog.querySelector("[data-opmenu-download]").addEventListener("click", async (event) => {
+      const button = event.currentTarget;
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = "Preparing…";
+      try {
+        const range = readRange();
+        const qs = new URLSearchParams();
+        qs.set("type", type);
+        if (range.from) qs.set("from", range.from);
+        if (range.to) qs.set("to", range.to);
+        await customerPdfAction(
+          `/api/customer-portal/operator-reports/${encodeURIComponent(machineId)}/pdf?${qs.toString()}`,
+          "download",
+          `BELM-${type === "HANDOVER" ? "machine-handover" : "report"}-${machineId}.pdf`
+        );
+        dialog.close();
+      } catch (error) {
+        alert(error.message || "Could not prepare the PDF.");
+      } finally {
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
+    dialog.showModal();
+  }
+
+  function ensureOperatorHandoverDialog() {
+    let dialog = document.getElementById("belmOperatorHandoverDialog");
+    if (dialog) return dialog;
+    dialog = document.createElement("dialog");
+    dialog.id = "belmOperatorHandoverDialog";
+    dialog.className = "belm-analysis-dialog";
+    dialog.innerHTML = `
+      <form class="belm-analysis-dialog-card belm-email-form">
+        <div class="belm-analysis-head">
+          <span>MACHINE HANDOVER</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-email-body">
+          <p class="belm-email-intro">Leave a short handover note for the next operator or shift. This stays with your internal maintenance team and does not open a Job Card.</p>
+          <div id="belmHandoverError" class="belm-email-error" hidden></div>
+          <label>Handover comment
+            <textarea id="belmHandoverMessage" rows="5" maxlength="2000" placeholder="e.g. Machine handed over with full fuel tank, no faults noticed." required></textarea>
+          </label>
+          <button type="submit" class="belm-email-send" id="belmHandoverSendButton">Save handover note</button>
+        </div>
+      </form>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close").addEventListener("click", () => dialog.close());
+    dialog.querySelector("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const errorBox = document.getElementById("belmHandoverError");
+      const button = document.getElementById("belmHandoverSendButton");
+      const token = localStorage.getItem("belm_customer_token");
+      const message = document.getElementById("belmHandoverMessage").value.trim();
+      if (!message) {
+        errorBox.textContent = "Write a short handover comment.";
+        errorBox.hidden = false;
+        return;
+      }
+      errorBox.hidden = true;
+      button.disabled = true;
+      button.textContent = "Saving…";
+      try {
+        const response = await fetch(`/api/customer-portal/operator-reports/${encodeURIComponent(dialog.dataset.machineId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ message, reportType: "HANDOVER" }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not save the handover note.");
+        dialog.close();
+        alert(result.message || "Handover note saved.");
+      } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.hidden = false;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Save handover note";
+      }
+    });
+    return dialog;
+  }
+
+  function openOperatorHandoverDialog(machineId) {
+    const dialog = ensureOperatorHandoverDialog();
+    dialog.dataset.machineId = machineId;
+    document.getElementById("belmHandoverMessage").value = "";
+    document.getElementById("belmHandoverError").hidden = true;
+    dialog.showModal();
+  }
+
   function ensureOperatorReportsDialog() {
     let dialog = document.getElementById("belmOperatorReportsDialog");
     if (dialog) return dialog;
@@ -4571,11 +4758,12 @@
       };
     }
     const operator = String(report.operatorName || report.operator_name || "Operator").trim() || "Operator";
+    const operatorContact = String(report.operatorContact || report.operator_contact || "").trim();
     const status = String(report.status || "OPEN").toUpperCase();
     const created = report.createdAt || report.created_at || null;
     return {
       text: String(report.message || "").trim(),
-      meta: `${operator}${created ? ` · ${formatTanzaniaDateTime(created)}` : ""} · ${status}`,
+      meta: `Role: Operator · ${operator}${operatorContact ? ` · ${operatorContact}` : ""}${created ? ` · ${formatTanzaniaDateTime(created)}` : ""} · ${status}`,
       status,
     };
   }
@@ -7121,14 +7309,6 @@
   if (redirectIfAlreadyLoggedIn()) return;
   if (enforceUnifiedTechnicianLogin()) return;
   if (handoffTechnicianSession()) return;
-
-  // V448: Customer Workshop keeps BELM outside the internal role chain. The
-  // Workshop page links here with ?action=belm-support for an explicit bridge.
-  if (new URLSearchParams(window.location.search).get('action') === 'belm-support') {
-    setTimeout(() => {
-      openBelmSupportDialog().catch((error) => alert(error.message || 'Could not open BELM Support.'));
-    }, 700);
-  }
 
   installCheckedReportViewer();
   installAuthenticatedReportDownloads();

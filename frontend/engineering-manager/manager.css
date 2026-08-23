@@ -1,3 +1,73 @@
+/* V444 - BELM-WORKSHOP quick links inside the hero card. Colors mirror the
+   customer-face-card action palette (portal-tools.js) for visual
+   consistency across BELM's own dashboard and the customer's. */
+.belm-workshop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.belm-workshop-action {
+  padding: 11px 18px;
+  border-radius: 12px;
+  color: #fff;
+  font: 800 12.5px Inter, system-ui, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .18);
+}
+.belm-workshop-action:hover { filter: brightness(1.08); }
+.belm-workshop-action.action-black { background: #101b31; border: 1px solid rgba(255, 255, 255, .18); }
+.belm-workshop-action.action-green { background: #1a9c5c; }
+.belm-workshop-action.action-yellow { background: #d99a12; color: #101b31; }
+.belm-workshop-action.action-purple { background: #6a5acd; }
+.belm-workshop-action.action-blue { background: #2a6fdb; }
+.belm-workshop-action.action-settings { background: #4b5666; }
+
+/* V444 - BELM-wide Communication History card beneath the hero. */
+.belm-workshop-feed-card {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+}
+.belm-workshop-feed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.belm-workshop-feed-head h3 { margin: 0; font: 800 15px "Space Grotesk", sans-serif; }
+.belm-workshop-feed-viewall {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: #2a6fdb;
+  color: #fff;
+  font: 800 11.5px Inter, sans-serif;
+  text-decoration: none;
+}
+.belm-workshop-feed-body { display: grid; gap: 8px; }
+.belm-workshop-feed-empty { margin: 0; padding: 12px 0; color: var(--muted); font-size: 12.5px; }
+.belm-workshop-feed-row {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+.belm-workshop-feed-row-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.belm-workshop-feed-row strong { font-size: 12.5px; }
+.belm-workshop-feed-row span.direction { color: #1a9c5c; font-size: 10.5px; font-weight: 800; }
+.belm-workshop-feed-row p { margin: 4px 0 2px; color: var(--ink); font-size: 12px; }
+.belm-workshop-feed-row small { color: var(--muted); font-size: 10.5px; }
+
 .eng-roles-strip {
   display: grid;
   grid-template-columns: 1fr 1fr;

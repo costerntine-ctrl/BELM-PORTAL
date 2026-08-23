@@ -123,8 +123,8 @@
           <label>Unit cost (TZS)<input id="unitPrice" type="number" min="0" step="0.01" value="0" required></label>
           <label>Received / used by<input id="receivedBy" maxlength="255" placeholder="Technician, operator or department"></label>
           <div id="storeIssueHint" class="store-issue-hint wide hidden"></div>
-          <label class="receipt-field">Receipt / proof <small>(Photo or PDF)</small>
-            <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp,application/pdf">
+          <label class="receipt-field">Receipt photo
+            <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment">
             <small>Camera, gallery, or PDF scan · JPG/PNG/WebP/PDF</small>
           </label>
           <div id="receiptPreviewWrap" class="receipt-preview hidden">
@@ -141,7 +141,7 @@
           <article><span>Total item quantity</span><strong id="totalQuantity">0</strong></article>
           <article><span>Procurement records</span><strong id="recordCount">0</strong></article>
           <article><span>Average procurement record</span><strong id="averageCost">TZS 0</strong></article>
-          <article><span>Receipt documents</span><strong id="receiptCount">0</strong></article>
+          <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
           <article><span>Store material used on machine</span><strong id="machineStoreIssued">TZS 0</strong></article>
           <article><span>Customer Store stock value</span><strong id="customerStoreValue">TZS 0</strong></article>
         </section>
@@ -220,7 +220,7 @@
   </dialog>
 
   <dialog id="receiptDialog">
-    <div class="receipt-dialog-head"><b>Receipt / proof</b><button id="closeReceiptButton" type="button" aria-label="Close receipt">×</button></div>
+    <div class="receipt-dialog-head"><b>Receipt photo</b><button id="closeReceiptButton" type="button" aria-label="Close receipt">×</button></div>
     <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
   </dialog>
 

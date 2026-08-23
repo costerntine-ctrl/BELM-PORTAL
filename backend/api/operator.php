@@ -197,6 +197,8 @@ if ($action === 'sign-in' && $method === 'POST') {
          (id, operator_id, machine_id, customer_id, signed_in_at, container_count, status)
          VALUES (?,?,?,?,NOW(),0,'OPEN')"
     )->execute([$shiftId, $operatorId, $machineId, $payload['customerId']]);
+    db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
+        ->execute([uuid(), $payload['customerId'], (string)($payload['name'] ?? 'Operator'), 'Operator signed in for a shift.']);
     json_out(['id' => $shiftId, 'containerCount' => 0, 'resumed' => false], 201);
 }
 
@@ -364,6 +366,8 @@ if ($action === 'sign-out' && $method === 'POST') {
          SET signed_out_at = NOW(), has_problem = ?, problem_description = ?, status = 'CLOSED'
          WHERE id = ?"
     )->execute([$hasProblem ? 1 : 0, $hasProblem ? $problemDescription : null, $shift['id']]);
+    db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
+        ->execute([uuid(), $payload['customerId'], (string)($payload['name'] ?? 'Operator'), 'Operator signed out' . ($hasProblem ? ' (reported a challenge).' : '.')]);
 
     // A reported challenge also becomes a normal Operator Report, so it
     // shows up everywhere the customer/BELM team already reviews problems.

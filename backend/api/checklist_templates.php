@@ -79,7 +79,7 @@ function fetch_service_parts(string $templateId): array {
 }
 
 function fetch_template(string $templateId): ?array {
-    $stmt = db()->prepare('SELECT * FROM checklist_templates WHERE id = ? AND deleted_at IS NULL AND customer_id IS NULL');
+    $stmt = db()->prepare('SELECT * FROM checklist_templates WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$templateId]);
     $template = $stmt->fetch();
     if (!$template) return null;
@@ -239,19 +239,14 @@ if ($method === 'GET' && !$action) {
     $machineType = $_GET['machineType'] ?? null;
     if ($machineType) {
         $activeClause = ($user['roleName'] ?? '') === 'Technician' ? ' AND is_active = 1' : '';
-        $scopeClause = ($user['roleName'] ?? '') === 'Technician' && $assignedCustomerId
-            ? ' AND (customer_id IS NULL OR customer_id = ?)'
-            : ' AND customer_id IS NULL';
         $stmt = db()->prepare(
             "SELECT * FROM checklist_templates
-             WHERE deleted_at IS NULL AND LOWER(machine_type) = LOWER(?)$activeClause$scopeClause
-             ORDER BY CASE WHEN customer_id IS NULL THEN 1 ELSE 0 END, created_at DESC"
+             WHERE deleted_at IS NULL AND LOWER(machine_type) = LOWER(?)$activeClause
+             ORDER BY created_at DESC"
         );
-        $params = [$machineType];
-        if (($user['roleName'] ?? '') === 'Technician' && $assignedCustomerId) $params[] = $assignedCustomerId;
-        $stmt->execute($params);
+        $stmt->execute([$machineType]);
     } else {
-        $stmt = db()->query('SELECT * FROM checklist_templates WHERE deleted_at IS NULL AND customer_id IS NULL ORDER BY created_at DESC');
+        $stmt = db()->query('SELECT * FROM checklist_templates WHERE deleted_at IS NULL ORDER BY created_at DESC');
     }
     $templates = $stmt->fetchAll();
     foreach ($templates as &$t) {

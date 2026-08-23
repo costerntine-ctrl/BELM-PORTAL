@@ -178,6 +178,3 @@ html[data-theme="dark"] .workshop-account-card{background:linear-gradient(155deg
 [data-theme="dark"] .petty-spare-summary small{color:#86e6af}
 @media(max-width:900px){.petty-spare-row{grid-template-columns:1.7fr 1fr 90px 100px 34px}}
 @media(max-width:720px){.petty-spares-head{flex-direction:column}.petty-spares-head button{width:100%}.petty-spare-row{grid-template-columns:1fr 1fr}.petty-spare-row .spare-description{grid-column:1/-1}.petty-spare-row .spare-remove{grid-column:2;justify-self:end}.petty-spare-row .spare-remove.first{display:none}}
-
-/* V451 - PDF/photo proof labels */
-.receipt-file-name{padding:12px 14px;border:1px solid #d7e2dc;border-radius:8px;background:#fff;color:#334155;font-size:11px;font-weight:800;overflow-wrap:anywhere}[data-theme="dark"] .receipt-file-name{background:#101e32;border-color:#2b3f59;color:#d9e5f2}

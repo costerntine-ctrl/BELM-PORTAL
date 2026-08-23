@@ -29,12 +29,12 @@
     <div class="dialog-head"><div><small>TECHNICIAN JOB REPORT</small><h2 id="reportTitle">Job Card</h2></div><button type="button" data-close="reportDialog">×</button></div>
     <input type="hidden" id="reportJobId">
     <label>Diagnosis<textarea id="reportDiagnosis" rows="3" required></textarea></label>
-    <label>Work done<textarea id="reportWork" rows="4" placeholder="Optional during diagnosis; required before Manager Review"></textarea></label>
-    <label>Test result<textarea id="reportTest" rows="2" placeholder="Save the test result first to enter TESTING"></textarea></label>
+    <label>Work done<textarea id="reportWork" rows="4" placeholder="Optional during diagnosis; required before submitting for approval"></textarea></label>
+    <label>Test result<textarea id="reportTest" rows="2"></textarea></label>
     <label>Completion note<textarea id="reportNote" rows="2"></textarea></label>
     <label>Repeated issue?<select id="reportRepeat"><option value="0">No - new issue</option><option value="1">Yes - repeated issue / rework</option></select></label>
     <div class="split"><label>Required Spare (optional)<input id="reportRequiredSpare" placeholder="Enter spare only if the job must wait for a spare"></label><label>Qty<input id="reportRequiredSpareQty" type="number" min="0.01" step="0.01" value="1"></label></div>
-    <label class="check"><input id="reportComplete" type="checkbox"> Testing is completed — submit my completed work for Manager Review</label>
+    <label class="check"><input id="reportComplete" type="checkbox"> My repair work is completed — submit Job Card for approval</label>
     <div class="dialog-actions"><button type="button" data-close="reportDialog">Cancel</button><button class="primary" type="submit">Save Job Report</button></div>
   </form></dialog>
 

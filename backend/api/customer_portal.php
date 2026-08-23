@@ -144,34 +144,18 @@ function customer_forget_machine_permanently(PDO $pdo, string $machineId): void 
 // full access — represented internally as NULL, not an exhaustive list.
 const CUSTOMER_PERMISSION_KEYS = [
     'machine-expenses', 'fuel-usage', 'email', 'whatsapp', 'check-up', 'service-request',
-    'report-problem', 'operator-reports', 'assign-users', 'store', 'workflow', 'management-group', 'checklist-templates',
-];
-
-// V446: Machine Operator is an operations/reporting role only. It never owns
-// spare parts, Store, Procurement/purchasing or Job Card administration.
-// Keep this server-side so old saved permissions or a crafted request cannot
-// reopen those departments for an Operator account.
-const CUSTOMER_OPERATOR_PERMISSION_KEYS = [
-    'fuel-usage', 'operator-reports', 'report-problem', 'check-up', 'management-group',
+    'report-problem', 'operator-reports', 'assign-users', 'store', 'workflow',
 ];
 
 // Role Manager roles for customer-owned portal users. Legacy admin/assistant
 // values remain accepted so existing accounts keep working after upgrade.
 const CUSTOMER_PORTAL_USER_ROLES = [
-    'workshop_manager', 'store_keeper', 'accounts', 'procurement', 'operator', 'technician',
+    'workshop_manager', 'store_keeper', 'accounts', 'procurement', 'operator',
     'admin', 'assistant',
 ];
 
 function customer_has_feature_access(array $customer, string $permissionKey): bool {
     if (($customer['actorType'] ?? '') === 'owner') return true;
-    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
-    // V449 Management Group is inherent to these customer management roles.
-    // This keeps existing V448 accounts working without a destructive data rewrite.
-    if ($permissionKey === 'management-group' && in_array($role, ['workshop_manager','store_keeper','procurement','accounts','operator','admin'], true)) return true;
-    // V452 Checklist Template Manager is a core Workshop Manager digital tool.
-    // Make it upgrade-safe for Workshop Managers created before this permission key existed.
-    if ($permissionKey === 'checklist-templates' && in_array($role, ['workshop_manager','admin'], true)) return true;
-    if ($role === 'operator' && !in_array($permissionKey, CUSTOMER_OPERATOR_PERMISSION_KEYS, true)) return false;
     $permissions = $customer['permissions'] ?? null;
     if ($permissions === null) return true;
     return is_array($permissions) && in_array($permissionKey, $permissions, true);
@@ -207,333 +191,9 @@ function require_customer_workshop_module(array $customer, string $label = 'the 
     }
 }
 
-
-
-// V452 - Customer Workshop Digital Tool: customer-owned Checklist Templates.
-// Customer Admin/Owner and Workshop Manager can create/manage templates.
-// Operator/Technician use active templates through Check Up only; they cannot edit them.
-function customer_workshop_checklist_require_manager(array $customer): void {
-    require_customer_workshop_module($customer, 'Checklist Templates');
-    require_customer_write_access($customer);
-    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
-    $isOwner = ($customer['actorType'] ?? '') === 'owner';
-    if (!$isOwner && !in_array($role, ['admin', 'workshop_manager'], true)) {
-        json_error('Only Customer Admin/Owner or Workshop Manager can manage Checklist Templates.', 403);
-    }
-    if (!$isOwner && $role === 'workshop_manager') {
-        require_customer_feature_access($customer, 'checklist-templates', 'Checklist Templates');
-    }
-}
-
-function customer_workshop_checklist_items(string $templateId): array {
-    $stmt = db()->prepare('SELECT * FROM checklist_template_items WHERE template_id = ? ORDER BY "order" ASC');
-    $stmt->execute([$templateId]);
-    $rows = $stmt->fetchAll();
-    foreach ($rows as &$row) {
-        $row['inputType'] = $row['input_type'];
-        $row['safetyLevel'] = $row['safety_level'];
-        $row['options'] = $row['options'] ? json_decode((string)$row['options'], true) : null;
-        $row['optionSafety'] = $row['option_safety'] ? json_decode((string)$row['option_safety'], true) : null;
-        $row['isRequired'] = (bool)$row['is_required'];
-        unset($row['input_type'], $row['safety_level'], $row['option_safety'], $row['is_required']);
-    }
-    unset($row);
-    return $rows;
-}
-
-function customer_workshop_checklist_parts(string $templateId): array {
-    $stmt = db()->prepare('SELECT id, spare_name, part_number, quantity, "order" FROM checklist_template_parts WHERE template_id = ? ORDER BY "order" ASC');
-    $stmt->execute([$templateId]);
-    $rows = $stmt->fetchAll();
-    foreach ($rows as &$row) {
-        $row['spareName'] = $row['spare_name'];
-        $row['partNumber'] = $row['part_number'];
-        unset($row['spare_name'], $row['part_number']);
-    }
-    unset($row);
-    return $rows;
-}
-
-function customer_workshop_checklist_fetch(string $templateId, string $customerId, bool $includeDeleted = false): ?array {
-    $sql = 'SELECT * FROM checklist_templates WHERE id = ? AND customer_id = ?';
-    if (!$includeDeleted) $sql .= ' AND deleted_at IS NULL';
-    $stmt = db()->prepare($sql);
-    $stmt->execute([$templateId, $customerId]);
-    $row = $stmt->fetch();
-    if (!$row) return null;
-    $row['machineType'] = $row['machine_type'];
-    $row['serviceType'] = $row['service_type'] ?: 'General Service';
-    $row['isActive'] = (bool)$row['is_active'];
-    $row['items'] = customer_workshop_checklist_items($templateId);
-    $row['serviceParts'] = customer_workshop_checklist_parts($templateId);
-    unset($row['machine_type'], $row['service_type'], $row['is_active'], $row['customer_id']);
-    return $row;
-}
-
-function customer_workshop_checklist_normalize_item(array $item, int $order): array {
-    $label = trim((string)($item['label'] ?? ''));
-    $inputType = strtoupper(trim((string)($item['inputType'] ?? 'TEXT')));
-    $safetyLevel = strtoupper(trim((string)($item['safetyLevel'] ?? 'GREEN')));
-    $allowedTypes = ['TEXT','NUMBER','YES_NO','DROPDOWN','PHOTO','DATE'];
-    $allowedSafety = ['NONE','GREEN','YELLOW','RED'];
-    if ($label === '') json_error('Every checklist item must have a label.');
-    if (!in_array($inputType, $allowedTypes, true)) json_error('Unsupported checklist input type: ' . $inputType . '.');
-    if ($inputType === 'PHOTO') $safetyLevel = 'NONE';
-    if (!in_array($safetyLevel, $allowedSafety, true)) json_error('Unsupported safety level: ' . $safetyLevel . '.');
-    $options = [];
-    foreach ((array)($item['options'] ?? []) as $option) {
-        $value = trim((string)$option);
-        if ($value !== '' && !in_array($value, $options, true)) $options[] = $value;
-    }
-    if ($inputType === 'YES_NO' && !$options) $options = ['YES','NO'];
-    if ($inputType === 'DROPDOWN' && !$options) json_error('Add at least one dropdown value for "' . $label . '".');
-    $optionSafety = [];
-    foreach ((array)($item['optionSafety'] ?? []) as $option => $level) {
-        $level = strtoupper(trim((string)$level));
-        if (in_array((string)$option, $options, true) && in_array($level, $allowedSafety, true)) $optionSafety[(string)$option] = $level;
-    }
-    return [
-        'label'=>$label, 'inputType'=>$inputType, 'safetyLevel'=>$safetyLevel,
-        'options'=>$options ?: null, 'optionSafety'=>$optionSafety ?: null,
-        'order'=>$order, 'isRequired'=>array_key_exists('isRequired',$item) ? (bool)$item['isRequired'] : true,
-    ];
-}
-
-function customer_workshop_checklist_normalize(array $body, bool $requireItems = true): array {
-    $name = trim((string)($body['name'] ?? ''));
-    $machineType = trim((string)($body['machineType'] ?? ''));
-    $serviceType = trim((string)($body['serviceType'] ?? 'General Service'));
-    if ($name === '') json_error('Template name is required.');
-    if ($machineType === '') json_error('Machine type is required.');
-    if ($serviceType === '') json_error('Service type is required.');
-    $items = [];
-    foreach ((array)($body['items'] ?? []) as $order => $item) {
-        if (!is_array($item)) json_error('Invalid checklist item.');
-        $items[] = customer_workshop_checklist_normalize_item($item, (int)$order);
-    }
-    if ($requireItems && !$items) json_error('Add at least one checklist item before saving.');
-    $parts = [];
-    foreach ((array)($body['serviceParts'] ?? []) as $order => $part) {
-        if (!is_array($part)) continue;
-        $spareName = trim((string)($part['spareName'] ?? ''));
-        $partNumber = strtoupper(trim((string)($part['partNumber'] ?? '')));
-        $quantity = (float)($part['quantity'] ?? 0);
-        if ($spareName === '' && $partNumber === '') continue;
-        if ($spareName === '' || $partNumber === '' || $quantity <= 0) json_error('Every service part needs name, part number and quantity greater than zero.');
-        $parts[] = ['spareName'=>$spareName,'partNumber'=>$partNumber,'quantity'=>$quantity,'order'=>(int)$order];
-    }
-    return ['name'=>$name,'machineType'=>$machineType,'serviceType'=>$serviceType,'isActive'=>array_key_exists('isActive',$body)?((bool)$body['isActive']?1:0):1,'items'=>$items,'serviceParts'=>$parts];
-}
-
-function customer_workshop_checklist_write_children(PDO $pdo, string $templateId, array $payload): void {
-    $pdo->prepare('DELETE FROM checklist_template_items WHERE template_id = ?')->execute([$templateId]);
-    $pdo->prepare('DELETE FROM checklist_template_parts WHERE template_id = ?')->execute([$templateId]);
-    foreach ($payload['items'] as $item) {
-        $pdo->prepare('INSERT INTO checklist_template_items (id,template_id,label,input_type,safety_level,options,option_safety,"order",is_required) VALUES (?,?,?,?,?,CAST(? AS JSONB),CAST(? AS JSONB),?,?)')
-            ->execute([uuid(),$templateId,$item['label'],$item['inputType'],$item['safetyLevel'],$item['options']!==null?json_encode($item['options']):null,$item['optionSafety']!==null?json_encode($item['optionSafety']):null,$item['order'],$item['isRequired']?1:0]);
-    }
-    foreach ($payload['serviceParts'] as $part) {
-        $pdo->prepare('INSERT INTO checklist_template_parts (id,template_id,spare_name,part_number,quantity,"order") VALUES (?,?,?,?,?,?)')
-            ->execute([uuid(),$templateId,$part['spareName'],$part['partNumber'],$part['quantity'],$part['order']]);
-    }
-}
-
-// V449 - Customer Workshop Management Group / Approval Center ---------------
-// The portal inbox is the source of truth. Email is only a notification layer.
-// Boss = main Customer Owner or a customer user with role "admin".
-function customer_management_actor_role(array $customer): string {
-    if (($customer['actorType'] ?? '') === 'owner') return 'owner';
-    return strtolower(trim((string)($customer['customerRole'] ?? 'assistant')));
-}
-
-function customer_management_actor_name(array $customer): string {
-    return trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer User')) ?: 'Customer User';
-}
-
-function customer_management_actor_id(array $customer): ?string {
-    $id = trim((string)($customer['actorId'] ?? ''));
-    return $id !== '' ? $id : null;
-}
-
-function customer_management_is_boss(array $customer): bool {
-    if (($customer['actorType'] ?? '') === 'owner') return true;
-    return customer_management_actor_role($customer) === 'admin';
-}
-
-function customer_management_group_roles(): array {
-    return ['workshop_manager', 'store_keeper', 'procurement', 'accounts', 'operator', 'admin'];
-}
-
-function customer_management_require_access(array $customer): void {
-    require_customer_workshop_module($customer, 'Management Group');
-    $role = customer_management_actor_role($customer);
-    if (customer_management_is_boss($customer)) return;
-    if (!in_array($role, customer_management_group_roles(), true)) {
-        json_error('This account is not part of the Management Group.', 403);
-    }
-    require_customer_feature_access($customer, 'management-group', 'Management Group');
-}
-
-function customer_management_department_for_role(string $role): string {
-    return match (strtolower(trim($role))) {
-        'workshop_manager' => 'WORKSHOP',
-        'store_keeper' => 'STORE',
-        'procurement' => 'PROCUREMENT',
-        'accounts' => 'ACCOUNTS',
-        'operator' => 'WORKSHOP',
-        'admin', 'owner' => 'ADMINISTRATION',
-        default => 'ADMINISTRATION',
-    };
-}
-
-function customer_management_allowed_types(string $role, bool $boss = false): array {
-    if ($boss) return ['GENERAL','WORKSHOP','TECHNICAL','OPERATOR','SAFETY','STORE','TOOLS','PROCUREMENT','PURCHASE','FINANCE','PAYMENT','FUNDING'];
-    return match (strtolower(trim($role))) {
-        'workshop_manager' => ['GENERAL','WORKSHOP','TECHNICAL','SAFETY'],
-        'store_keeper' => ['GENERAL','STORE','TOOLS'],
-        'procurement' => ['GENERAL','PROCUREMENT','PURCHASE'],
-        'accounts' => ['GENERAL','FINANCE','PAYMENT','FUNDING'],
-        'operator' => ['OPERATOR','SAFETY'],
-        default => [],
-    };
-}
-
-function customer_management_type_category(string $type): string {
-    $type = strtoupper(trim($type));
-    return match ($type) {
-        'OPERATOR', 'SAFETY' => 'OPERATOR',
-        'STORE', 'TOOLS' => 'STORE',
-        'PROCUREMENT', 'PURCHASE' => 'PROCUREMENT',
-        'FINANCE', 'PAYMENT', 'FUNDING' => 'FINANCE',
-        'WORKSHOP', 'TECHNICAL' => 'WORKSHOP',
-        default => 'GENERAL',
-    };
-}
-
-function customer_management_operator_can_see(array $row, array $customer): bool {
-    $category = strtoupper(trim((string)($row['category'] ?? 'GENERAL')));
-    if (in_array($category, ['STORE','PROCUREMENT','FINANCE'], true)) return false;
-    // Operators may see general/workshop/operator approvals but not private
-    // purchasing/financial details. This preserves V446 separation.
-    return true;
-}
-
-function customer_management_row_visible(array $customer, array $row): bool {
-    if (customer_management_is_boss($customer)) return true;
-    $role = customer_management_actor_role($customer);
-    if ($role === 'operator') return customer_management_operator_can_see($row, $customer);
-    return in_array($role, ['workshop_manager','store_keeper','procurement','accounts','admin'], true);
-}
-
-function customer_management_can_progress(array $customer, array $row): bool {
-    if (customer_management_is_boss($customer)) return true;
-    $role = customer_management_actor_role($customer);
-    // Operator submits/follows requests only. Workshop Manager owns the next
-    // operational action after Boss approval; Operator never starts/closes it.
-    if ($role === 'operator') return false;
-    return customer_management_department_for_role($role) === strtoupper(trim((string)($row['target_department'] ?? '')));
-}
-
-function customer_management_add_event(array $row, string $eventType, string $status, string $stage, array $customer, ?string $note = null): void {
-    db()->prepare(
-        'INSERT INTO customer_management_request_events
-         (id,request_id,customer_id,event_type,status,stage,actor_name,actor_role,note,created_at)
-         VALUES (?,?,?,?,?,?,?,?,?,NOW())'
-    )->execute([
-        uuid(), $row['id'], $row['customer_id'], $eventType, $status, $stage,
-        customer_management_actor_name($customer), customer_management_actor_role($customer),
-        ($note !== null && trim($note) !== '') ? trim($note) : null,
-    ]);
-}
-
-function customer_management_notification_roles(array $row): array {
-    $category = strtoupper(trim((string)($row['category'] ?? 'GENERAL')));
-    if (in_array($category, ['STORE','PROCUREMENT','FINANCE'], true)) {
-        return ['workshop_manager','store_keeper','procurement','accounts','admin'];
-    }
-    return ['workshop_manager','store_keeper','procurement','accounts','operator','admin'];
-}
-
-function customer_management_notify(array $row, string $subject, string $message): void {
-    try {
-        belm_send_customer_alert(
-            (string)$row['customer_id'],
-            !empty($row['machine_id']) ? (string)$row['machine_id'] : null,
-            customer_management_notification_roles($row),
-            $subject,
-            $message . "\n\nOpen Customer Workshop > Management Group to view the live status and full history.",
-            'MANAGEMENT_REQUEST',
-            (string)$row['id'],
-            'Management Group',
-            $message
-        );
-    } catch (Throwable $error) {
-        error_log('V449 Management Group notification failed: ' . $error->getMessage());
-    }
-}
-
-function customer_management_next_request_no(string $customerId): string {
-    $tz = new DateTimeZone('Africa/Dar_es_Salaam');
-    $now = new DateTimeImmutable('now', $tz);
-    $prefix = 'REQ-' . $now->format('d-m-y') . '-';
-    $stmt = db()->prepare(
-        "SELECT request_no FROM customer_management_requests
-         WHERE customer_id=? AND request_no LIKE ?
-         ORDER BY requested_at DESC LIMIT 200"
-    );
-    $stmt->execute([$customerId, $prefix . '%']);
-    $max = 0;
-    foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $requestNo) {
-        if (preg_match('/-(\d+)$/', (string)$requestNo, $m)) $max = max($max, (int)$m[1]);
-    }
-    return $prefix . str_pad((string)($max + 1), 2, '0', STR_PAD_LEFT);
-}
-
-function customer_management_request_row(string $customerId, string $id): array {
-    $stmt = db()->prepare(
-        'SELECT cmr.*, m.brand AS machine_brand, m.model AS machine_model, m.fleet_number AS machine_fleet_number
-         FROM customer_management_requests cmr
-         LEFT JOIN machines m ON m.id=cmr.machine_id
-         WHERE cmr.id=? AND cmr.customer_id=? LIMIT 1'
-    );
-    $stmt->execute([$id, $customerId]);
-    $row = $stmt->fetch();
-    if (!$row) json_error('Management request not found.', 404);
-    return $row;
-}
-
-
-// V451 - proof document helpers. Raw attachment bytes never travel in normal
-// list/history JSON responses; they are served only by the protected endpoint.
-function customer_management_public_row(array $row): array {
-    $row['has_attachment'] = !empty($row['attachment_data']);
-    unset($row['attachment_data']);
-    return $row;
-}
-
-function customer_management_requires_proof(array $row): bool {
-    $amount = (float)($row['amount'] ?? 0);
-    $category = strtoupper(trim((string)($row['category'] ?? 'GENERAL')));
-    $type = strtoupper(trim((string)($row['request_type'] ?? '')));
-    return $amount > 0
-        || in_array($category, ['PROCUREMENT','FINANCE'], true)
-        || in_array($type, ['PURCHASE','PAYMENT','FUNDING'], true);
-}
-
-function customer_management_can_manage_attachment(array $customer, array $row): bool {
-    if (customer_management_is_boss($customer)) return true;
-    $actorId = customer_management_actor_id($customer);
-    $isRequester = $actorId !== null
-        && !empty($row['requested_by_actor_id'])
-        && (string)$row['requested_by_actor_id'] === $actorId;
-    if ($isRequester) return true;
-    return customer_management_can_progress($customer, $row);
-}
-
 function customer_can_manage_store(array $customer): bool {
     if (($customer['actorType'] ?? '') === 'owner') return true;
     $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
-    if ($role === 'operator') return false;
     $permissions = $customer['permissions'] ?? null;
     if ($permissions === null) return true;
     if (is_array($permissions)) return in_array('store', $permissions, true);
@@ -892,7 +552,10 @@ function technician_permissions_from_body(array $body): string {
 
 function customer_role_permissions_json(string $role, ?string $permissionsJson): ?string {
     if ($role !== 'operator') return $permissionsJson;
-    $operatorCardPermissions = CUSTOMER_OPERATOR_PERMISSION_KEYS;
+    $operatorCardPermissions = [
+        'machine-expenses', 'fuel-usage', 'operator-reports',
+        'service-request', 'report-problem', 'check-up', 'workflow',
+    ];
     if ($permissionsJson === null) return json_encode($operatorCardPermissions);
     $decoded = json_decode($permissionsJson, true);
     if (!is_array($decoded)) $decoded = [];
@@ -902,7 +565,7 @@ function customer_role_permissions_json(string $role, ?string $permissionsJson):
 function customer_portal_user_count(string $customerId): int {
     $stmt = db()->prepare(
         "SELECT
-           (SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1 AND deleted_at IS NULL)
+           (SELECT COUNT(*) FROM customer_users WHERE customer_id = ? AND is_active = 1)
            +
            (SELECT COUNT(*) FROM users u JOIN roles r ON r.id = u.role_id
             WHERE u.assigned_customer_id = ? AND u.is_customer_managed = 1
@@ -1424,6 +1087,7 @@ if ($sub === 'saved-emails' && $method === 'POST') {
     $newId = uuid();
     db()->prepare('INSERT INTO customer_saved_emails (id, customer_id, label, email, created_at) VALUES (?,?,?,?,NOW())')
         ->execute([$newId, $customer['id'], $label, $email]);
+    log_customer_activity($customer, "Added saved email \"$label\" ($email).");
     json_out(['id' => $newId, 'label' => $label, 'email' => $email], 201);
 }
 
@@ -1449,6 +1113,7 @@ if ($sub === 'saved-emails' && $sub2 && $method === 'PUT') {
     );
     $stmt->execute([$label, $email, $sub2, $customer['id']]);
     if ($stmt->rowCount() === 0) json_error('Saved email not found.', 404);
+    log_customer_activity($customer, "Updated saved email \"$label\" ($email).");
     json_out(['id' => $sub2, 'label' => $label, 'email' => $email]);
 }
 
@@ -1456,6 +1121,7 @@ if ($sub === 'saved-emails' && $sub2 && $method === 'DELETE') {
     require_customer_feature_access($customer, 'email', 'Management Email');
     require_customer_write_access($customer);
     db()->prepare('DELETE FROM customer_saved_emails WHERE id = ? AND customer_id = ?')->execute([$sub2, $customer['id']]);
+    log_customer_activity($customer, "Removed a saved email from the communication list.");
     json_out(null, 204);
 }
 
@@ -1522,6 +1188,7 @@ if ($sub === 'email-report' && $method === 'POST') {
         json_error('Could not send the email right now. Please try again shortly.', 500);
     }
 
+    log_customer_activity($customer, "Emailed report \"$subject\" to $to.");
     json_out(['ok' => true, 'message' => "Report emailed to $to" . ($cc ? ' (cc: ' . implode(', ', $cc) . ')' : '') . " successfully."]);
 }
 
@@ -1598,7 +1265,7 @@ if ($sub === 'dashboard') {
     // Customer > View Your Machine can use the same large Operator Message
     // panel as BELM Customer Fleet without issuing one request per card.
     $operatorStmt = db()->prepare(
-        "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, message, status, created_at
+        "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, operator_contact, message, status, created_at
          FROM operator_reports
          WHERE customer_id = ?
          ORDER BY machine_id, created_at DESC, id DESC"
@@ -1609,6 +1276,7 @@ if ($sub === 'dashboard') {
         $operatorByMachine[(string)$report['machine_id']] = [
             'id' => (string)$report['id'],
             'operatorName' => (string)$report['operator_name'],
+            'operatorContact' => (string)($report['operator_contact'] ?? ''),
             'message' => (string)$report['message'],
             'status' => (string)$report['status'],
             'createdAt' => (string)$report['created_at'],
@@ -1620,7 +1288,7 @@ if ($sub === 'dashboard') {
     unset($machine);
 
     $stmt = db()->prepare(
-        'SELECT id, name, email, phone, portal_link, is_machinery_admin, workshop_module_active, privacy_preferences
+        'SELECT id, name, email, phone, portal_link, is_machinery_admin, privacy_preferences
          FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
     );
     $stmt->execute([$customer['id']]);
@@ -1629,18 +1297,11 @@ if ($sub === 'dashboard') {
         $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
         $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
         $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
-        $profile['workshopModuleActive'] = !empty($profile['workshop_module_active']);
         $profile['privacyPreferences'] = belm_customer_privacy_normalize($profile['privacy_preferences'] ?? null);
-        unset($profile['privacy_preferences'], $profile['workshop_module_active']);
+        unset($profile['privacy_preferences']);
         $profile['actorType'] = $customer['actorType'] ?? 'owner';
         $profile['actorRole'] = $customer['customerRole'] ?? 'owner';
-        $profilePermissions = $customer['permissions'] ?? null;
-        if (strtolower(trim((string)($customer['customerRole'] ?? ''))) === 'operator') {
-            $profilePermissions = is_array($profilePermissions)
-                ? array_values(array_intersect($profilePermissions, CUSTOMER_OPERATOR_PERMISSION_KEYS))
-                : CUSTOMER_OPERATOR_PERMISSION_KEYS;
-        }
-        $profile['actorPermissions'] = $profilePermissions;
+        $profile['actorPermissions'] = $customer['permissions'] ?? null;
     }
     json_out(['customer' => $profile, 'machines' => $machines]);
 }
@@ -2027,343 +1688,6 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
 // ---- V443 Workshop Store Keeper Tool Issue / Return Documents ---------------
 // These documents are customer-owned workshop records. A tool remains OUT WITH
 // TECHNICIAN until the Store Keeper records its return.
-
-// ---- V449 Management Group / Approval Center ------------------------------
-if ($sub === 'management-requests') {
-    customer_management_require_access($customer);
-    $customerId = (string)$customer['id'];
-    $actorRole = customer_management_actor_role($customer);
-    $isBoss = customer_management_is_boss($customer);
-
-    if ($method === 'GET' && !$sub2) {
-        $statusFilter = strtoupper(trim((string)($_GET['status'] ?? '')));
-        $params = [$customerId];
-        $sql =
-            "SELECT cmr.*, m.brand AS machine_brand, m.model AS machine_model, m.fleet_number AS machine_fleet_number
-             FROM customer_management_requests cmr
-             LEFT JOIN machines m ON m.id=cmr.machine_id
-             WHERE cmr.customer_id=?";
-        if ($statusFilter !== '' && $statusFilter !== 'ALL') {
-            $allowedStatuses = ['WAITING_BOSS_APPROVAL','APPROVED','REJECTED','IN_PROCESS','COMPLETED','CANCELLED'];
-            if (!in_array($statusFilter, $allowedStatuses, true)) json_error('Invalid Management Group status filter.');
-            $sql .= ' AND cmr.status=?';
-            $params[] = $statusFilter;
-        }
-        $sql .= " ORDER BY CASE cmr.status
-                    WHEN 'WAITING_BOSS_APPROVAL' THEN 0
-                    WHEN 'APPROVED' THEN 1
-                    WHEN 'IN_PROCESS' THEN 2
-                    WHEN 'REJECTED' THEN 3
-                    WHEN 'COMPLETED' THEN 4
-                    ELSE 5 END,
-                  cmr.requested_at DESC LIMIT 300";
-        $stmt = db()->prepare($sql);
-        $stmt->execute($params);
-        $items = [];
-        foreach ($stmt->fetchAll() as $row) {
-            if (!customer_management_row_visible($customer, $row)) continue;
-            $row['canApprove'] = $isBoss && ($row['status'] ?? '') === 'WAITING_BOSS_APPROVAL';
-            $row['canProgress'] = customer_management_can_progress($customer, $row)
-                && in_array(($row['status'] ?? ''), ['APPROVED','IN_PROCESS'], true);
-            $row['canCancel'] = ($row['status'] ?? '') === 'WAITING_BOSS_APPROVAL'
-                && ($isBoss || (
-                    !empty($row['requested_by_actor_id'])
-                    && (string)$row['requested_by_actor_id'] === (string)(customer_management_actor_id($customer) ?? '')
-                ));
-            $row['canManageAttachment'] = customer_management_can_manage_attachment($customer, $row);
-            $row['requiresProof'] = customer_management_requires_proof($row);
-            $items[] = customer_management_public_row($row);
-        }
-
-        $members = [];
-        $ownerStmt = db()->prepare('SELECT name,email FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1');
-        $ownerStmt->execute([$customerId]);
-        if ($owner = $ownerStmt->fetch()) {
-            $members[] = ['name' => $owner['name'], 'email' => $owner['email'], 'role' => 'owner', 'roleLabel' => 'Boss / Customer Owner'];
-        }
-        $memberStmt = db()->prepare(
-            "SELECT name,email,role FROM customer_users
-             WHERE customer_id=? AND is_active=1
-               AND LOWER(role) IN ('workshop_manager','store_keeper','procurement','accounts','operator','admin')
-             ORDER BY CASE LOWER(role)
-                WHEN 'admin' THEN 0 WHEN 'workshop_manager' THEN 1 WHEN 'store_keeper' THEN 2
-                WHEN 'procurement' THEN 3 WHEN 'accounts' THEN 4 ELSE 5 END, name ASC"
-        );
-        $memberStmt->execute([$customerId]);
-        foreach ($memberStmt->fetchAll() as $member) {
-            $roleKey = strtolower((string)$member['role']);
-            $label = match ($roleKey) {
-                'admin' => 'Customer Admin / Boss',
-                'workshop_manager' => 'Workshop Manager',
-                'store_keeper' => 'Store Keeper / Tools',
-                'procurement' => 'Procurement',
-                'accounts' => 'Accounts / Finance',
-                'operator' => 'Machine Operator',
-                default => $member['role'],
-            };
-            $members[] = ['name' => $member['name'], 'email' => $member['email'], 'role' => $roleKey, 'roleLabel' => $label];
-        }
-
-        $machineStmt = db()->prepare(
-            'SELECT id,brand,model,fleet_number,serial_number,reg_number FROM machines WHERE customer_id=? AND deleted_at IS NULL ORDER BY created_at DESC'
-        );
-        $machineStmt->execute([$customerId]);
-
-        json_out([
-            'items' => $items,
-            'members' => $members,
-            'machines' => $machineStmt->fetchAll(),
-            'actorRole' => $actorRole,
-            'actorDepartment' => customer_management_department_for_role($actorRole),
-            'isBoss' => $isBoss,
-            'allowedRequestTypes' => customer_management_allowed_types($actorRole, $isBoss),
-            'emailAlerts' => true,
-            'emailAlertsConfigured' => function_exists('smtp_config') && trim((string)(smtp_config()['host'] ?? '')) !== '',
-            'portalInboxIsSourceOfTruth' => true,
-        ]);
-    }
-
-    if ($method === 'GET' && $sub2 && $sub3 === 'history') {
-        $row = customer_management_request_row($customerId, (string)$sub2);
-        if (!customer_management_row_visible($customer, $row)) json_error('This Management Group request is not visible to your role.', 403);
-        $stmt = db()->prepare(
-            'SELECT id,event_type,status,stage,actor_name,actor_role,note,created_at
-             FROM customer_management_request_events
-             WHERE request_id=? AND customer_id=? ORDER BY created_at ASC'
-        );
-        $stmt->execute([$row['id'], $customerId]);
-        json_out(['request' => customer_management_public_row($row), 'events' => $stmt->fetchAll()]);
-    }
-
-    if ($sub2 && $sub3 === 'attachment' && $method === 'GET') {
-        $row = customer_management_request_row($customerId, (string)$sub2);
-        if (!customer_management_row_visible($customer, $row)) json_error('This Management Group request is not visible to your role.', 403);
-        if (empty($row['attachment_data'])) json_error('No supporting document is attached to this request.', 404);
-        $binary = base64_decode((string)$row['attachment_data'], true);
-        if ($binary === false) json_error('Supporting document is damaged.', 500);
-        $mime = in_array((string)$row['attachment_mime'], ['image/jpeg','image/png','image/webp','application/pdf'], true)
-            ? (string)$row['attachment_mime'] : 'application/octet-stream';
-        $safeName = preg_replace('/[^A-Za-z0-9._-]+/', '-', (string)($row['attachment_name'] ?: ('request-' . $row['request_no'] . '-document')));
-        header('Content-Type: ' . $mime);
-        header('Content-Length: ' . strlen($binary));
-        header('Content-Disposition: ' . (!empty($_GET['download']) ? 'attachment' : 'inline') . '; filename="' . $safeName . '"');
-        echo $binary; exit;
-    }
-
-    if ($sub2 && $sub3 === 'attachment' && $method === 'PUT') {
-        require_customer_write_access($customer);
-        $row = customer_management_request_row($customerId, (string)$sub2);
-        if (!customer_management_row_visible($customer, $row)) json_error('This Management Group request is not visible to your role.', 403);
-        if (!customer_management_can_manage_attachment($customer, $row)) json_error('Only the requester, responsible department or Boss can upload/replace this document.', 403);
-        if (in_array((string)$row['status'], ['REJECTED','CANCELLED'], true)) json_error('A closed rejected/cancelled request cannot be changed.', 409);
-        if ((string)$row['status'] === 'COMPLETED' && !empty($row['attachment_data']) && !$isBoss) {
-            json_error('Completed request proof is locked. Only Boss can replace it as an audited correction.', 409);
-        }
-        $data = body();
-        $attachmentData = trim((string)($data['attachmentData'] ?? ''));
-        $attachmentName = trim((string)($data['attachmentName'] ?? ''));
-        if ($attachmentData === '') json_error('Choose a receipt, invoice, quotation or proof document to upload.');
-        [$storedData, $storedMime, $storedName] = validate_receipt_upload($attachmentData, $attachmentName);
-        $actorName = customer_management_actor_name($customer);
-        db()->prepare(
-            "UPDATE customer_management_requests
-             SET attachment_data=?, attachment_mime=?, attachment_name=?, attachment_uploaded_by_name=?, attachment_uploaded_at=NOW(), updated_at=NOW()
-             WHERE id=? AND customer_id=?"
-        )->execute([$storedData, $storedMime, $storedName, $actorName, $row['id'], $customerId]);
-        $updated = customer_management_request_row($customerId, (string)$row['id']);
-        customer_management_add_event($updated, 'DOCUMENT_UPLOADED', (string)$updated['status'], (string)$updated['current_stage'], $customer, 'Supporting document uploaded/replaced: ' . $storedName);
-        customer_management_notify($updated, '[Management Group] ' . $row['request_no'] . ' - Document Updated', $row['request_no'] . "
-" . $row['title'] . "
-Document uploaded by: " . $actorName . "
-File: " . $storedName);
-        json_out(['request' => customer_management_public_row($updated)]);
-    }
-
-    if ($method === 'POST' && !$sub2) {
-        require_customer_write_access($customer);
-        $data = body();
-        $type = strtoupper(trim((string)($data['requestType'] ?? 'GENERAL')));
-        $allowedTypes = customer_management_allowed_types($actorRole, $isBoss);
-        if (!in_array($type, $allowedTypes, true)) {
-            json_error('This request type is not available for your Management Group role.', 403);
-        }
-        $category = customer_management_type_category($type);
-        $title = trim((string)($data['title'] ?? ''));
-        $description = trim((string)($data['description'] ?? ''));
-        if ($title === '') json_error('Request title is required.');
-        if ($description === '') json_error('Request details are required.');
-        if (mb_strlen($title) > 255) json_error('Request title is too long.');
-        if (mb_strlen($description) > 5000) json_error('Request details are too long.');
-
-        $amountRaw = $data['amount'] ?? null;
-        $amount = ($amountRaw === null || $amountRaw === '') ? null : max(0, (float)$amountRaw);
-        $referenceText = trim((string)($data['referenceText'] ?? ''));
-        $attachmentInput = trim((string)($data['attachmentData'] ?? ''));
-        $attachmentNameInput = trim((string)($data['attachmentName'] ?? ''));
-        $attachmentData = null; $attachmentMime = null; $attachmentName = null;
-        if ($attachmentInput !== '') {
-            [$attachmentData, $attachmentMime, $attachmentName] = validate_receipt_upload($attachmentInput, $attachmentNameInput);
-        }
-        $priority = strtoupper(trim((string)($data['priority'] ?? 'NORMAL')));
-        if (!in_array($priority, ['LOW','NORMAL','HIGH','URGENT'], true)) $priority = 'NORMAL';
-        $machineId = trim((string)($data['machineId'] ?? ''));
-        if ($machineId !== '') customer_machine_for_action($customerId, $machineId);
-        else $machineId = null;
-
-        $targetDepartment = customer_management_department_for_role($actorRole);
-        if ($category === 'OPERATOR') $targetDepartment = 'WORKSHOP';
-        elseif ($category === 'STORE') $targetDepartment = 'STORE';
-        elseif ($category === 'PROCUREMENT') $targetDepartment = 'PROCUREMENT';
-        elseif ($category === 'FINANCE') $targetDepartment = 'ACCOUNTS';
-        elseif ($category === 'WORKSHOP') $targetDepartment = 'WORKSHOP';
-        elseif ($category === 'GENERAL') {
-            $requestedTarget = strtoupper(trim((string)($data['targetDepartment'] ?? '')));
-            if (in_array($requestedTarget, ['WORKSHOP','STORE','PROCUREMENT','ACCOUNTS','ADMINISTRATION'], true)) {
-                $targetDepartment = $requestedTarget;
-            }
-            if ($actorRole === 'operator') $targetDepartment = 'WORKSHOP';
-        }
-
-        $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $pdo->prepare("SELECT pg_advisory_xact_lock(hashtext(?))")
-                ->execute(['customer-management-request:' . $customerId]);
-            $requestNo = customer_management_next_request_no($customerId);
-            $id = uuid();
-            $row = [
-                'id' => $id,
-                'customer_id' => $customerId,
-                'machine_id' => $machineId,
-                'category' => $category,
-                'request_no' => $requestNo,
-                'target_department' => $targetDepartment,
-            ];
-            $pdo->prepare(
-                'INSERT INTO customer_management_requests
-                 (id,request_no,customer_id,machine_id,category,request_type,title,description,amount,reference_text,
-                  attachment_data,attachment_mime,attachment_name,attachment_uploaded_by_name,attachment_uploaded_at,priority,
-                  target_department,status,current_stage,requested_by_actor_id,requested_by_name,requested_by_role,requested_at,updated_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,CASE WHEN ? IS NULL THEN NULL ELSE NOW() END,?,?,?,?,?,?,?,NOW(),NOW())'
-            )->execute([
-                $id, $requestNo, $customerId, $machineId, $category, $type, $title, $description,
-                $amount, $referenceText !== '' ? $referenceText : null,
-                $attachmentData, $attachmentMime, $attachmentName, $attachmentData !== null ? customer_management_actor_name($customer) : null, $attachmentData,
-                $priority, $targetDepartment, 'WAITING_BOSS_APPROVAL', 'BOSS APPROVAL', customer_management_actor_id($customer),
-                customer_management_actor_name($customer), $actorRole,
-            ]);
-            customer_management_add_event($row, 'REQUESTED', 'WAITING_BOSS_APPROVAL', 'BOSS APPROVAL', $customer, 'Request submitted to Boss for approval.');
-            if ($attachmentData !== null && $attachmentName !== null) {
-                customer_management_add_event($row, 'DOCUMENT_ATTACHED', 'WAITING_BOSS_APPROVAL', 'BOSS APPROVAL', $customer, 'Supporting document attached with request: ' . $attachmentName);
-            }
-            $pdo->commit();
-        } catch (Throwable $error) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            throw $error;
-        }
-        $created = customer_management_request_row($customerId, $id);
-        $amountText = $amount !== null && $amount > 0 ? "\nAmount: TZS " . number_format($amount, 2) : '';
-        customer_management_notify(
-            $created,
-            '[Management Group] ' . $requestNo . ' - Waiting Boss Approval',
-            $requestNo . "\n" . $title . "\nRequested by: " . customer_management_actor_name($customer) . " (" . $actorRole . ")" . $amountText . "\nStatus: WAITING BOSS APPROVAL"
-        );
-        log_customer_activity($customer, 'Management Group request ' . $requestNo . ' submitted for Boss approval');
-        json_out(['request' => customer_management_public_row($created)], 201);
-    }
-
-    if ($method === 'PUT' && $sub2 && in_array($sub3, ['approve','reject','start','complete','cancel'], true)) {
-        require_customer_write_access($customer);
-        $row = customer_management_request_row($customerId, (string)$sub2);
-        if (!customer_management_row_visible($customer, $row)) json_error('This Management Group request is not visible to your role.', 403);
-        $data = body();
-        $note = trim((string)($data['note'] ?? ''));
-        $action = (string)$sub3;
-        $actorName = customer_management_actor_name($customer);
-        $nowStatus = (string)$row['status'];
-
-        if ($action === 'approve') {
-            if (!$isBoss) json_error('Only Customer Owner / Customer Admin (Boss) can approve this request.', 403);
-            if ($nowStatus !== 'WAITING_BOSS_APPROVAL') json_error('Only requests waiting for Boss approval can be approved.', 409);
-            db()->prepare(
-                "UPDATE customer_management_requests
-                 SET status='APPROVED', current_stage=?, decided_by_name=?, decided_by_role=?, decision_note=?, decided_at=NOW(), updated_at=NOW()
-                 WHERE id=? AND customer_id=?"
-            )->execute([$row['target_department'] . ' ACTION', $actorName, $actorRole, $note !== '' ? $note : null, $row['id'], $customerId]);
-            $updated = customer_management_request_row($customerId, (string)$row['id']);
-            customer_management_add_event($updated, 'APPROVED', 'APPROVED', (string)$updated['current_stage'], $customer, $note !== '' ? $note : 'Boss approved the request.');
-            customer_management_notify($updated, '[Management Group] ' . $row['request_no'] . ' - APPROVED', $row['request_no'] . "\n" . $row['title'] . "\nApproved by: " . $actorName . "\nNext: " . $row['target_department']);
-            log_customer_activity($customer, 'Approved Management Group request ' . $row['request_no']);
-            json_out(['request' => customer_management_public_row($updated)]);
-        }
-
-        if ($action === 'reject') {
-            if (!$isBoss) json_error('Only Customer Owner / Customer Admin (Boss) can reject this request.', 403);
-            if ($nowStatus !== 'WAITING_BOSS_APPROVAL') json_error('Only requests waiting for Boss approval can be rejected.', 409);
-            if ($note === '') json_error('Enter a rejection reason so the team can see why it was rejected.');
-            db()->prepare(
-                "UPDATE customer_management_requests
-                 SET status='REJECTED', current_stage='CLOSED - REJECTED', decided_by_name=?, decided_by_role=?, decision_note=?, decided_at=NOW(), updated_at=NOW()
-                 WHERE id=? AND customer_id=?"
-            )->execute([$actorName, $actorRole, $note, $row['id'], $customerId]);
-            $updated = customer_management_request_row($customerId, (string)$row['id']);
-            customer_management_add_event($updated, 'REJECTED', 'REJECTED', 'CLOSED - REJECTED', $customer, $note);
-            customer_management_notify($updated, '[Management Group] ' . $row['request_no'] . ' - REJECTED', $row['request_no'] . "\n" . $row['title'] . "\nRejected by: " . $actorName . "\nReason: " . $note);
-            log_customer_activity($customer, 'Rejected Management Group request ' . $row['request_no']);
-            json_out(['request' => customer_management_public_row($updated)]);
-        }
-
-        if ($action === 'start') {
-            if (!customer_management_can_progress($customer, $row)) json_error('Only the responsible department or Boss can start this approved request.', 403);
-            if ($nowStatus !== 'APPROVED') json_error('This request must be approved before work starts.', 409);
-            db()->prepare(
-                "UPDATE customer_management_requests
-                 SET status='IN_PROCESS', current_stage=?, started_by_name=?, started_at=NOW(), updated_at=NOW()
-                 WHERE id=? AND customer_id=?"
-            )->execute([$row['target_department'] . ' IN PROCESS', $actorName, $row['id'], $customerId]);
-            $updated = customer_management_request_row($customerId, (string)$row['id']);
-            customer_management_add_event($updated, 'STARTED', 'IN_PROCESS', (string)$updated['current_stage'], $customer, $note !== '' ? $note : 'Responsible department started processing the approved request.');
-            customer_management_notify($updated, '[Management Group] ' . $row['request_no'] . ' - In Process', $row['request_no'] . "\n" . $row['title'] . "\nStarted by: " . $actorName . "\nDepartment: " . $row['target_department']);
-            json_out(['request' => customer_management_public_row($updated)]);
-        }
-
-        if ($action === 'complete') {
-            if (!customer_management_can_progress($customer, $row)) json_error('Only the responsible department or Boss can complete this request.', 403);
-            if (!in_array($nowStatus, ['APPROVED','IN_PROCESS'], true)) json_error('Only an approved/in-process request can be completed.', 409);
-            if (customer_management_requires_proof($row) && empty($row['attachment_data'])) {
-                json_error('Upload a receipt, invoice, quotation or payment proof before completing this monetary request.', 409);
-            }
-            db()->prepare(
-                "UPDATE customer_management_requests
-                 SET status='COMPLETED', current_stage='COMPLETED', completed_by_name=?, completed_at=NOW(), updated_at=NOW()
-                 WHERE id=? AND customer_id=?"
-            )->execute([$actorName, $row['id'], $customerId]);
-            $updated = customer_management_request_row($customerId, (string)$row['id']);
-            customer_management_add_event($updated, 'COMPLETED', 'COMPLETED', 'COMPLETED', $customer, $note !== '' ? $note : 'Request process completed.');
-            customer_management_notify($updated, '[Management Group] ' . $row['request_no'] . ' - COMPLETED', $row['request_no'] . "\n" . $row['title'] . "\nCompleted by: " . $actorName);
-            json_out(['request' => customer_management_public_row($updated)]);
-        }
-
-        if ($action === 'cancel') {
-            $actorId = customer_management_actor_id($customer);
-            $isRequester = $actorId !== null && !empty($row['requested_by_actor_id']) && (string)$row['requested_by_actor_id'] === $actorId;
-            if (!$isBoss && !$isRequester) json_error('Only the requester or Boss can cancel this request.', 403);
-            if ($nowStatus !== 'WAITING_BOSS_APPROVAL') json_error('Only a request still waiting for Boss approval can be cancelled.', 409);
-            db()->prepare(
-                "UPDATE customer_management_requests
-                 SET status='CANCELLED', current_stage='CANCELLED', updated_at=NOW()
-                 WHERE id=? AND customer_id=?"
-            )->execute([$row['id'], $customerId]);
-            $updated = customer_management_request_row($customerId, (string)$row['id']);
-            customer_management_add_event($updated, 'CANCELLED', 'CANCELLED', 'CANCELLED', $customer, $note !== '' ? $note : 'Request cancelled before Boss decision.');
-            customer_management_notify($updated, '[Management Group] ' . $row['request_no'] . ' - CANCELLED', $row['request_no'] . "\n" . $row['title'] . "\nCancelled by: " . $actorName);
-            json_out(['request' => customer_management_public_row($updated)]);
-        }
-    }
-
-    json_error('Management Group action not found.', 404);
-}
-
 if ($sub === 'tool-issues') {
     require_customer_workshop_module($customer, 'Store Keeper Tool Documents');
     require_customer_feature_access($customer, 'store', 'Store Keeper Tool Documents');
@@ -4014,6 +3338,7 @@ if ($sub === 'fuel-usage' && $sub2) {
             $receiptMime,
             $receiptName !== '' ? $receiptName : null,
         ]);
+        log_customer_activity($customer, "Recorded fuel usage: {$litres}L for TZS " . number_format($cost, 2) . " — $loggedBy.");
         json_out([
             'id' => $fuelId,
             'cost' => $cost,
@@ -4409,6 +3734,7 @@ if ($sub === 'petty-cash' && $sub2) {
             $receiptMime,
             $receiptName !== '' ? $receiptName : null,
         ]);
+        log_customer_activity($customer, "Recorded Petty Cash: $description — TZS " . number_format($amount, 2) . " — $loggedBy.");
         json_out([
             'id' => $entryId,
             'amount' => round($amount, 2),
@@ -4747,12 +4073,10 @@ if ($sub === 'machines' && $sub2) {
             'SELECT id, name, machine_type, service_type
              FROM checklist_templates
              WHERE deleted_at IS NULL AND is_active = 1
-               AND (customer_id = ? OR customer_id IS NULL)
                AND (LOWER(TRIM(machine_type)) = LOWER(TRIM(?)) OR LOWER(TRIM(machine_type)) = LOWER(TRIM(?)))
-             ORDER BY CASE WHEN customer_id = ? THEN 0 ELSE 1 END,
-                      CASE WHEN LOWER(TRIM(machine_type)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END, name ASC'
+             ORDER BY CASE WHEN LOWER(TRIM(machine_type)) = LOWER(TRIM(?)) THEN 0 ELSE 1 END, name ASC'
         );
-        $templateStmt->execute([$customer['id'], $machine['machine_type'], $machine['model'], $customer['id'], $machine['machine_type']]);
+        $templateStmt->execute([$machine['machine_type'], $machine['model'], $machine['machine_type']]);
         $templates = $templateStmt->fetchAll();
 
         $latestDisplayStmt = db()->prepare(
@@ -4872,10 +4196,9 @@ if ($sub === 'machines' && $sub2) {
         $templateStmt = db()->prepare(
             'SELECT id, name, machine_type FROM checklist_templates
              WHERE id = ? AND deleted_at IS NULL AND is_active = 1
-               AND (customer_id = ? OR customer_id IS NULL)
                AND (LOWER(TRIM(machine_type)) = LOWER(TRIM(?)) OR LOWER(TRIM(machine_type)) = LOWER(TRIM(?)))'
         );
-        $templateStmt->execute([$templateId, $customer['id'], $machine['machine_type'], $machine['model']]);
+        $templateStmt->execute([$templateId, $machine['machine_type'], $machine['model']]);
         $template = $templateStmt->fetch();
         if (!$template) json_error('Checklist Template is not assigned to this machine.', 404);
         $itemStmt = db()->prepare(
@@ -5150,6 +4473,7 @@ if ($sub === 'machine-operators' && $sub2 && $sub3 && $method === 'PUT') {
     );
     $stmt->execute([password_hash($pin, PASSWORD_BCRYPT), $sub3, $customer['id'], $sub2]);
     if ($stmt->rowCount() === 0) json_error('Operator not found.', 404);
+    log_customer_activity($customer, 'Reset the PIN for a Machine Operator.');
     json_out(['ok' => true, 'message' => 'Operator PIN updated successfully.']);
 }
 
@@ -5203,9 +4527,16 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
     if (!$machine) json_error('Machine not found for this customer.', 404);
 
     [$fromDate, $toDate] = customer_portal_date_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
-    $sql = 'SELECT id, operator_name, operator_contact, message, status, notify_belm, created_at, resolved_at
+    // V444: filter=PROBLEM or filter=HANDOVER keeps each section's history
+    // and PDF completely independent — a Machine Handover PDF never mixes
+    // in Report/breakdown entries and vice versa. Omit the param for the
+    // combined list (used by the existing Operator Reported view).
+    $typeFilter = strtoupper(trim((string)($_GET['type'] ?? '')));
+    if (!in_array($typeFilter, ['PROBLEM', 'HANDOVER'], true)) $typeFilter = '';
+    $sql = 'SELECT id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at, resolved_at
             FROM operator_reports WHERE machine_id = ?';
     $params = [$machineId];
+    if ($typeFilter !== '') { $sql .= ' AND report_type = ?'; $params[] = $typeFilter; }
     if ($fromDate !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromDate; }
     if ($toDate !== null) { $sql .= ' AND created_at < ?'; $params[] = $toDate; }
     $sql .= ' ORDER BY created_at DESC';
@@ -5217,6 +4548,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
         $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''));
         if ($machineLabel === '') $machineLabel = (string)($machine['machine_type'] ?? 'Machine');
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', $machineLabel);
+        $pdfTitle = $typeFilter === 'HANDOVER' ? 'MACHINE HANDOVER' : ($typeFilter === 'PROBLEM' ? 'REPORT' : 'OPERATOR REPORTED');
         $pdfRows = array_map(static fn(array $r): array => [
             display_date_billing($r['created_at']),
             (string)($r['operator_name'] ?: 'Operator'),
@@ -5225,14 +4557,14 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
             (string)($r['message'] ?: '-'),
         ], $rows);
         output_table_pdf(
-            'BELM-operator-reported-' . $safeMachine . '.pdf',
-            'OPERATOR REPORTED',
+            'BELM-' . strtolower(str_replace(' ', '-', $pdfTitle)) . '-' . $safeMachine . '.pdf',
+            $pdfTitle,
             [
                 'Customer: ' . (string)($customer['name'] ?? 'Customer'),
                 'Machine: ' . $machineLabel,
                 'Serial / Registration: ' . (string)($machine['serial_number'] ?: ($machine['reg_number'] ?: 'Not recorded')),
                 'Period: ' . ($fromDate ?? 'All time') . ' to ' . ($toDate ?? 'now'),
-                'Date  |  Operator  |  Contact  |  Status  |  Reported issue',
+                'Date  |  Operator  |  Contact  |  Status  |  Message',
             ],
             $pdfRows
         );
@@ -5240,7 +4572,8 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
 
     foreach ($rows as &$row) {
         $row['notifyBelm'] = !empty($row['notify_belm']);
-        unset($row['notify_belm']);
+        $row['reportType'] = $row['report_type'] ?: 'PROBLEM';
+        unset($row['notify_belm'], $row['report_type']);
     }
     unset($row);
     json_out($rows);
@@ -5258,6 +4591,11 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
     $message = trim((string)($b['message'] ?? ''));
     $operatorId = trim((string)($b['operatorId'] ?? ''));
     if ($message === '') json_error('Write a short message describing the problem.');
+    // V444: Operator "Report" sub-menu distinguishes a Machine Handover note
+    // (internal-only comment, never opens a Job Card) from a Report (the
+    // existing flow below, which auto-opens a breakdown case / Job Card).
+    $reportType = strtoupper(trim((string)($b['reportType'] ?? 'PROBLEM')));
+    if (!in_array($reportType, ['PROBLEM', 'HANDOVER'], true)) $reportType = 'PROBLEM';
 
     $operatorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Operator'));
     $operatorContact = null;
@@ -5279,21 +4617,49 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
     $newId = uuid();
     db()->prepare(
         "INSERT INTO operator_reports
-            (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, created_at)
-         VALUES (?,?,?,?,?,?,?,'OPEN',?,NOW())"
+            (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at)
+         VALUES (?,?,?,?,?,?,?,'OPEN',?,?,NOW())"
     )->execute([
         $newId, $machineId, $customer['id'],
         $operatorId !== '' ? $operatorId : null,
-        $operatorName, $operatorContact, $message, $notifyBelm ? 1 : 0,
+        $operatorName, $operatorContact, $message, $notifyBelm ? 1 : 0, $reportType,
     ]);
-
-    belm_ensure_breakdown_case_from_operator_report($newId, $operatorName);
 
     $machineInfoStmt = db()->prepare('SELECT brand, model, machine_type, serial_number, reg_number FROM machines WHERE id = ?');
     $machineInfoStmt->execute([$machineId]);
     $machineInfo = $machineInfoStmt->fetch() ?: [];
     $machineLabel = trim(($machineInfo['brand'] ?? '') . ' ' . ($machineInfo['model'] ?? '')) ?: ($machineInfo['machine_type'] ?? 'Machine');
     $serial = $machineInfo['serial_number'] ?: ($machineInfo['reg_number'] ?: 'Not recorded');
+
+    // Machine Handover is an internal-only comment: log it, alert the
+    // customer's own team, but never open a breakdown case / Job Card and
+    // never contact BELM — a handover note is not a support request.
+    if ($reportType === 'HANDOVER') {
+        try {
+            customer_send_team_alert(
+                (string)$customer['id'],
+                ['operator-reports', 'report-problem'],
+                'MACHINE HANDOVER NOTE - ' . $machineLabel,
+                "MACHINE HANDOVER\n\n"
+                    . "Customer: " . ($customer['name'] ?? 'Customer') . "\n"
+                    . "Left by: $operatorName\n"
+                    . "Machine: $machineLabel\n"
+                    . "Serial / Reg: $serial\n"
+                    . "Note: $message\n\n"
+                    . "Open the Customer Portal > Operator Reports to review.",
+                true
+            );
+        } catch (Throwable $ignored) {}
+        log_customer_activity($customer, "Machine handover note by $operatorName: $message");
+        json_out([
+            'id' => $newId,
+            'message' => 'Handover note saved for your internal maintenance team.',
+            'belmAlertSent' => false,
+            'internalOnly' => true,
+        ], 201);
+    }
+
+    belm_ensure_breakdown_case_from_operator_report($newId, $operatorName);
 
     // Internal customer-team alert is always sent to the owner and users who
     // have Operator Reports / Report Problem dashboard access. BELM is added
@@ -5373,7 +4739,7 @@ if ($sub === 'users' && $sub2 === 'analysis' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
         "SELECT role, COUNT(*) FILTER (WHERE is_active = 1) AS active_count, COUNT(*) AS total_count
-         FROM customer_users WHERE customer_id = ? AND deleted_at IS NULL GROUP BY role"
+         FROM customer_users WHERE customer_id = ? GROUP BY role"
     );
     $stmt->execute([$customer['id']]);
     $rows = $stmt->fetchAll();
@@ -5443,7 +4809,7 @@ if ($sub === 'users' && !$sub2 && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
         'SELECT id, name, email, phone, role, is_active, permissions, created_at
-         FROM customer_users WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
+         FROM customer_users WHERE customer_id = ? ORDER BY created_at DESC'
     );
     $stmt->execute([$customer['id']]);
     $assistants = $stmt->fetchAll();
@@ -5460,7 +4826,6 @@ if ($sub === 'users' && !$sub2 && $method === 'GET') {
 // meaningful once BELM has turned on Customer Self-Service mode).
 if ($sub === 'technicians' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
-    require_customer_workshop_module($customer, 'Customer Technician Management');
     $stmt = db()->prepare(
         "SELECT u.id, u.name, u.email, u.phone, u.is_active, u.customer_permissions, u.created_at
          FROM users u JOIN roles r ON r.id = u.role_id
@@ -5491,7 +4856,6 @@ if ($sub === 'technicians' && $method === 'GET') {
 // entirely unless BELM has switched Customer Self-Service ON for this customer.
 if ($sub === 'technicians' && $method === 'POST') {
     require_customer_owner_or_admin($customer);
-    require_customer_workshop_module($customer, 'Customer Technician Management');
     $customerRow = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ?');
     $customerRow->execute([$customer['id']]);
     if (empty($customerRow->fetchColumn())) {
@@ -5502,7 +4866,7 @@ if ($sub === 'technicians' && $method === 'POST') {
     $name = trim((string)($b['name'] ?? ''));
     $email = strtolower(trim((string)($b['email'] ?? '')));
     $phone = trim((string)($b['phone'] ?? ''));
-    $password = secure_account_secret();
+    $password = (string)($b['password'] ?? '');
     $permissionsJson = technician_permissions_from_body($b);
 
     $limitStmt = db()->prepare('SELECT user_limit FROM customers WHERE id = ?');
@@ -5515,10 +4879,7 @@ if ($sub === 'technicians' && $method === 'POST') {
 
     if ($name === '') json_error('Technician name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid email for this Technician.');
-    // V453: the system issues the one-time starting password. After account
-    // creation, password changes/recovery are owned by the user through
-    // Forgot Password + email OTP; Customer Admin never sets/resets it.
-    if (strlen($password) < 8) json_error('Could not generate a secure starting Technician password.');
+    if (strlen($password) < 8) json_error('Initial Technician password must contain at least 8 characters.');
 
     $emailCheck = db()->prepare(
         'SELECT 1 FROM users WHERE LOWER(email) = ? AND deleted_at IS NULL
@@ -5553,9 +4914,7 @@ if ($sub === 'technicians' && $method === 'POST') {
     $customerSlug = (string)$slugStmt->fetchColumn();
     json_out([
         'id' => $newId,
-        'temporaryPassword' => $password,
         'loginUrl' => customer_portal_url($customerSlug),
-        'passwordRecovery' => 'Forgot Password + email OTP',
     ], 201);
 }
 
@@ -5564,7 +4923,6 @@ if ($sub === 'technicians' && $method === 'POST') {
 // self-service through Forgot Password + OTP.
 if ($sub === 'technicians' && $sub2 && $method === 'PUT') {
     require_customer_owner_or_admin($customer);
-    require_customer_workshop_module($customer, 'Customer Technician Management');
     $stmt = db()->prepare(
         "SELECT u.* FROM users u JOIN roles r ON r.id=u.role_id
          WHERE u.id=? AND u.assigned_customer_id=? AND u.is_customer_managed=1
@@ -5605,141 +4963,7 @@ if ($sub === 'technicians' && $sub2 && $method === 'PUT') {
     json_out(['ok' => true]);
 }
 
-// V450: removing a customer-owned Technician is a soft delete. The login is
-// disabled immediately, but the users row stays available for Job Card/audit
-// references and can be restored from the Customer Team Bin.
-if ($sub === 'technicians' && $sub2 && $method === 'DELETE') {
-    require_customer_owner_or_admin($customer);
-    require_customer_workshop_module($customer, 'Customer Technician Management');
-    $stmt = db()->prepare(
-        "SELECT u.id,u.name FROM users u JOIN roles r ON r.id=u.role_id
-         WHERE u.id=? AND u.assigned_customer_id=? AND u.is_customer_managed=1
-           AND r.name='Technician' AND u.deleted_at IS NULL"
-    );
-    $stmt->execute([$sub2, $customer['id']]);
-    $tech = $stmt->fetch();
-    if (!$tech) json_error('Technician not found.', 404);
-    db()->prepare(
-        'UPDATE users SET is_active=0, deleted_at=NOW(), customer_bin_cleared_at=NULL
-         WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1'
-    )->execute([$sub2, $customer['id']]);
-    log_customer_activity($customer, 'Moved Technician "' . $tech['name'] . '" to Team Bin.');
-    json_out(['ok' => true, 'movedToBin' => true]);
-}
-
-// V450 Customer Team Bin. It contains deleted Role Manager users and
-// customer-managed Technicians only; BELM staff and other customers are never
-// exposed here. Restore reactivates the account. Clear removes the account
-// from the visible Bin and irreversibly disables its credentials while keeping
-// the technical/audit row required by historical Job Cards.
-if ($sub === 'team-bin' && !$sub2 && $method === 'GET') {
-    require_customer_owner_or_admin($customer);
-    $items = [];
-    $portalStmt = db()->prepare(
-        "SELECT id,name,email,phone,role,deleted_at
-         FROM customer_users
-         WHERE customer_id=? AND deleted_at IS NOT NULL AND customer_bin_cleared_at IS NULL
-         ORDER BY deleted_at DESC"
-    );
-    $portalStmt->execute([$customer['id']]);
-    foreach ($portalStmt->fetchAll() as $row) {
-        $items[] = [
-            'id' => $row['id'], 'kind' => 'portal_user', 'name' => $row['name'],
-            'email' => $row['email'], 'phone' => $row['phone'], 'role' => $row['role'],
-            'deletedAt' => $row['deleted_at'],
-        ];
-    }
-    $techStmt = db()->prepare(
-        "SELECT u.id,u.name,u.email,u.phone,u.deleted_at
-         FROM users u JOIN roles r ON r.id=u.role_id
-         WHERE r.name='Technician' AND u.assigned_customer_id=? AND u.is_customer_managed=1
-           AND u.deleted_at IS NOT NULL AND u.customer_bin_cleared_at IS NULL
-         ORDER BY u.deleted_at DESC"
-    );
-    $techStmt->execute([$customer['id']]);
-    foreach ($techStmt->fetchAll() as $row) {
-        $items[] = [
-            'id' => $row['id'], 'kind' => 'technician', 'name' => $row['name'],
-            'email' => $row['email'], 'phone' => $row['phone'], 'role' => 'technician',
-            'deletedAt' => $row['deleted_at'],
-        ];
-    }
-    usort($items, static fn($a, $b) => strcmp((string)$b['deletedAt'], (string)$a['deletedAt']));
-    json_out($items);
-}
-
-if ($sub === 'team-bin' && $sub2 && $sub3 === 'restore' && $method === 'POST') {
-    require_customer_owner_or_admin($customer);
-    $portalStmt = db()->prepare(
-        'SELECT id,name,email FROM customer_users
-         WHERE id=? AND customer_id=? AND deleted_at IS NOT NULL AND customer_bin_cleared_at IS NULL'
-    );
-    $portalStmt->execute([$sub2, $customer['id']]);
-    $portalUser = $portalStmt->fetch();
-    if ($portalUser) {
-        db()->prepare(
-            'UPDATE customer_users SET deleted_at=NULL, customer_bin_cleared_at=NULL, is_active=1
-             WHERE id=? AND customer_id=?'
-        )->execute([$sub2, $customer['id']]);
-        log_customer_activity($customer, 'Restored "' . $portalUser['name'] . '" from Team Bin.');
-        json_out(['ok' => true, 'kind' => 'portal_user']);
-    }
-
-    $techStmt = db()->prepare(
-        "SELECT u.id,u.name,u.email FROM users u JOIN roles r ON r.id=u.role_id
-         WHERE u.id=? AND u.assigned_customer_id=? AND u.is_customer_managed=1
-           AND r.name='Technician' AND u.deleted_at IS NOT NULL AND u.customer_bin_cleared_at IS NULL"
-    );
-    $techStmt->execute([$sub2, $customer['id']]);
-    $tech = $techStmt->fetch();
-    if (!$tech) json_error('Team Bin item not found.', 404);
-    db()->prepare(
-        'UPDATE users SET deleted_at=NULL, customer_bin_cleared_at=NULL, is_active=1
-         WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1'
-    )->execute([$sub2, $customer['id']]);
-    log_customer_activity($customer, 'Restored Technician "' . $tech['name'] . '" from Team Bin.');
-    json_out(['ok' => true, 'kind' => 'technician']);
-}
-
-if ($sub === 'team-bin' && $sub2 && !$sub3 && $method === 'DELETE') {
-    require_customer_owner_or_admin($customer);
-    $portalStmt = db()->prepare(
-        'SELECT id,name FROM customer_users
-         WHERE id=? AND customer_id=? AND deleted_at IS NOT NULL AND customer_bin_cleared_at IS NULL'
-    );
-    $portalStmt->execute([$sub2, $customer['id']]);
-    $portalUser = $portalStmt->fetch();
-    $anonymizedEmail = 'deleted+' . strtolower(str_replace('-', '', (string)$sub2)) . '@archive.belm.local';
-    $deadPassword = password_hash(bin2hex(random_bytes(24)), PASSWORD_BCRYPT);
-    if ($portalUser) {
-        db()->prepare(
-            'UPDATE customer_users
-             SET email=?, phone=NULL, password=?, recovery_code_hash=NULL, permissions=?, is_active=0,
-                 customer_bin_cleared_at=NOW()
-             WHERE id=? AND customer_id=?'
-        )->execute([$anonymizedEmail, $deadPassword, '[]', $sub2, $customer['id']]);
-        log_customer_activity($customer, 'Cleared "' . $portalUser['name'] . '" from Team Bin; audit history retained.');
-        json_out(['ok' => true, 'cleared' => true, 'auditRetained' => true]);
-    }
-
-    $techStmt = db()->prepare(
-        "SELECT u.id,u.name FROM users u JOIN roles r ON r.id=u.role_id
-         WHERE u.id=? AND u.assigned_customer_id=? AND u.is_customer_managed=1
-           AND r.name='Technician' AND u.deleted_at IS NOT NULL AND u.customer_bin_cleared_at IS NULL"
-    );
-    $techStmt->execute([$sub2, $customer['id']]);
-    $tech = $techStmt->fetch();
-    if (!$tech) json_error('Team Bin item not found.', 404);
-    db()->prepare(
-        'UPDATE users
-         SET email=?, phone=NULL, password_hash=?, recovery_code_hash=NULL, customer_permissions=?, is_active=0,
-             customer_bin_cleared_at=NOW()
-         WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1'
-    )->execute([$anonymizedEmail, $deadPassword, '[]', $sub2, $customer['id']]);
-    log_customer_activity($customer, 'Cleared Technician "' . $tech['name'] . '" from Team Bin; Job Card history retained.');
-    json_out(['ok' => true, 'cleared' => true, 'auditRetained' => true]);
-}
-
+// the frontend can show "2 of 3 users used" before the customer even
 // tries to add one, without changing the existing assistants-list shape.
 if ($sub === 'users' && $sub2 === 'limit' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
@@ -5762,7 +4986,7 @@ if ($sub === 'users' && $method === 'POST') {
     $b = body();
     $name = trim((string)($b['name'] ?? ''));
     $email = strtolower(trim((string)($b['email'] ?? '')));
-    $password = secure_account_secret();
+    $password = (string)($b['password'] ?? '');
     $phone = trim((string)($b['phone'] ?? ''));
     $role = strtolower(trim((string)($b['role'] ?? 'operator')));
     $permissionsJson = customer_permissions_from_body($b);
@@ -5785,9 +5009,7 @@ if ($sub === 'users' && $method === 'POST') {
 
     if ($name === '') json_error('User name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
-    // V453: Role Manager does not choose the password. Generate a secure
-    // starting password once and return it only in this create response.
-    if (strlen($password) < 8) json_error('Could not generate a secure starting password.');
+    if (strlen($password) < 8) json_error('Initial password must contain at least 8 characters.');
     if (!in_array($role, CUSTOMER_PORTAL_USER_ROLES, true)) json_error('Select a valid Role Manager role.');
     $permissionsJson = customer_role_permissions_json($role, $permissionsJson);
 
@@ -5817,9 +5039,6 @@ if ($sub === 'users' && $method === 'POST') {
         $permissionsJson,
     ]);
     log_customer_activity($customer, "Added \"$name\" as $role.");
-    $slugStmt = db()->prepare('SELECT portal_link FROM customers WHERE id = ?');
-    $slugStmt->execute([$customer['id']]);
-    $customerSlug = (string)$slugStmt->fetchColumn();
     json_out([
         'id' => $newId,
         'name' => $name,
@@ -5827,9 +5046,6 @@ if ($sub === 'users' && $method === 'POST') {
         'phone' => $phone !== '' ? $phone : null,
         'role' => $role,
         'isActive' => true,
-        'temporaryPassword' => $password,
-        'loginUrl' => customer_portal_url($customerSlug),
-        'passwordRecovery' => 'Forgot Password + email OTP',
     ], 201);
 }
 
@@ -5880,25 +5096,20 @@ if ($sub === 'users' && $sub2 && $method === 'PUT') {
         $sub2,
         $customer['id'],
     ]);
+    log_customer_activity($customer, "Updated Role Manager user \"$name\" (role: $role).");
     json_out(['ok' => true]);
 }
 
 if ($sub === 'users' && $sub2 && $method === 'DELETE') {
     require_customer_owner_or_admin($customer);
-    $nameStmt = db()->prepare(
-        'SELECT name FROM customer_users WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
-    );
+    $nameStmt = db()->prepare('SELECT name FROM customer_users WHERE id = ? AND customer_id = ?');
     $nameStmt->execute([$sub2, $customer['id']]);
     $removedName = $nameStmt->fetchColumn();
-    if (!$removedName) json_error('User not found.', 404);
-    $stmt = db()->prepare(
-        'UPDATE customer_users SET is_active=0, deleted_at=NOW(), customer_bin_cleared_at=NULL
-         WHERE id = ? AND customer_id = ? AND deleted_at IS NULL'
-    );
+    $stmt = db()->prepare('DELETE FROM customer_users WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
-    if ($stmt->rowCount() === 0) json_error('User not found.', 404);
-    log_customer_activity($customer, 'Moved "' . $removedName . '" to Team Bin.');
-    json_out(['ok' => true, 'movedToBin' => true]);
+    if ($stmt->rowCount() === 0) json_error('Assistant not found.', 404);
+    if ($removedName) log_customer_activity($customer, "Removed assistant \"$removedName\".");
+    json_out(null, 204);
 }
 
 // ---- Direct BELM support message -------------------------------------------
@@ -5965,6 +5176,7 @@ if ($sub === 'belm-support' && $method === 'POST') {
         $customer['actorEmail'] ?? null
     );
 
+    log_customer_activity($customer, "Sent BELM Support message: \"$subject\" — $actorName.");
     json_out([
         'id' => $communicationId,
         'message' => !empty($alertResult['businessEmailSent'])
@@ -6033,6 +5245,7 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT
         json_error('Only completed or cancelled requests can be hidden.', 422);
     }
     db()->prepare('UPDATE service_requests SET hidden_at = NOW() WHERE id = ?')->execute([$sub2]);
+    log_customer_activity($customer, 'Hid a completed/cancelled Job Card from the list.');
     json_out(['ok' => true]);
 }
 
@@ -6041,6 +5254,7 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'unhide' && $method === 'P
     $stmt = db()->prepare('UPDATE service_requests SET hidden_at = NULL WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
     if ($stmt->rowCount() === 0) json_error('Job Card not found.', 404);
+    log_customer_activity($customer, 'Unhid a Job Card.');
     json_out(['ok' => true]);
 }
 
@@ -6081,13 +5295,12 @@ if ($sub === 'service-requests' && $method === 'POST') {
             'SELECT id, service_type
              FROM checklist_templates
              WHERE id = ? AND deleted_at IS NULL AND is_active = 1
-               AND (customer_id = ? OR customer_id IS NULL)
                AND (
                  LOWER(TRIM(machine_type)) = LOWER(TRIM(?))
                  OR LOWER(TRIM(machine_type)) = LOWER(TRIM(?))
                )'
         );
-        $stmt->execute([$templateId, $customer['id'], $machine['machine_type'], $machine['model']]);
+        $stmt->execute([$templateId, $machine['machine_type'], $machine['model']]);
         $template = $stmt->fetch();
         if (!$template) {
             json_error('The selected service type does not match this machine model.', 422);
@@ -6196,6 +5409,7 @@ Open TECHNICAL DEP > Job Card in BELM Portal to review and assign it.",
             $customer['actorEmail'] ?? null
         );
     } catch (Throwable $error) { /* notification only */ }
+    log_customer_activity($customer, "Submitted Job Card ($serviceType) — $actorName.");
     json_out([
         'id' => $newId,
         'serviceType' => $serviceType,
@@ -6234,6 +5448,7 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'cancel' && $method === 'P
             $customer['actorEmail'] ?? null
         );
     } catch (Throwable $ignored) {}
+    log_customer_activity($customer, "Cancelled Job Card — $actorName.");
     json_out(['ok' => true, 'emailSent' => !empty($cancelAlert['businessEmailSent'])]);
 }
 
@@ -6352,132 +5567,8 @@ if ($sub === 'proformas' && $sub2 && $sub3 === 'respond' && $method === 'PUT') {
         $messageText . "\nCustomer: " . ($customer['name'] ?? 'Unknown') . "\nResponded by: $actorName",
         $customer['actorEmail'] ?? null
     );
+    log_customer_activity($customer, $messageText);
     json_out(['ok' => true, 'deliveryStatus' => 'RESPONDED', 'customerResponse' => $response]);
-}
-
-
-// ---- V452 Customer Workshop Digital Tool: Checklist Template Manager -------
-if ($sub === 'workshop-checklists') {
-    customer_workshop_checklist_require_manager($customer);
-
-    if ($method === 'GET' && $sub2 === '') {
-        $stmt = db()->prepare('SELECT id FROM checklist_templates WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at DESC');
-        $stmt->execute([$customer['id']]);
-        $items = [];
-        foreach ($stmt->fetchAll() as $row) {
-            $template = customer_workshop_checklist_fetch((string)$row['id'], (string)$customer['id']);
-            if ($template) $items[] = $template;
-        }
-        json_out($items);
-    }
-
-    if ($method === 'GET' && $sub2 !== '') {
-        $template = customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']);
-        if (!$template) json_error('Checklist template not found.', 404);
-        json_out($template);
-    }
-
-    if ($method === 'POST' && $sub2 === '') {
-        $payload = customer_workshop_checklist_normalize(body(), true);
-        $id = uuid();
-        $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $pdo->prepare('INSERT INTO checklist_templates (id,customer_id,name,machine_type,service_type,is_active,created_at) VALUES (?,?,?,?,?,?,NOW())')
-                ->execute([$id,$customer['id'],$payload['name'],$payload['machineType'],$payload['serviceType'],$payload['isActive']]);
-            customer_workshop_checklist_write_children($pdo, $id, $payload);
-            $pdo->commit();
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            throw $e;
-        }
-        log_customer_activity($customer, 'Created Workshop Checklist Template: ' . $payload['name']);
-        json_out(customer_workshop_checklist_fetch($id, (string)$customer['id']), 201);
-    }
-
-    if ($method === 'PUT' && $sub2 !== '') {
-        $existing = customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']);
-        if (!$existing) json_error('Checklist template not found.', 404);
-        $payload = customer_workshop_checklist_normalize(body(), true);
-        $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $pdo->prepare('UPDATE checklist_templates SET name=?,machine_type=?,service_type=?,is_active=? WHERE id=? AND customer_id=? AND deleted_at IS NULL')
-                ->execute([$payload['name'],$payload['machineType'],$payload['serviceType'],$payload['isActive'],$sub2,$customer['id']]);
-            customer_workshop_checklist_write_children($pdo, (string)$sub2, $payload);
-            $pdo->commit();
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            throw $e;
-        }
-        log_customer_activity($customer, 'Edited Workshop Checklist Template: ' . $payload['name']);
-        json_out(customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']));
-    }
-
-    if ($method === 'POST' && $sub2 !== '' && $sub3 === 'duplicate') {
-        $existing = customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']);
-        if (!$existing) json_error('Checklist template not found.', 404);
-        $payload = customer_workshop_checklist_normalize([
-            'name' => $existing['name'] . ' - Copy',
-            'machineType' => $existing['machineType'],
-            'serviceType' => $existing['serviceType'],
-            'isActive' => false,
-            'items' => $existing['items'],
-            'serviceParts' => $existing['serviceParts'],
-        ], true);
-        $id = uuid();
-        $pdo = db();
-        $pdo->beginTransaction();
-        try {
-            $pdo->prepare('INSERT INTO checklist_templates (id,customer_id,name,machine_type,service_type,is_active,created_at) VALUES (?,?,?,?,?,?,NOW())')
-                ->execute([$id,$customer['id'],$payload['name'],$payload['machineType'],$payload['serviceType'],0]);
-            customer_workshop_checklist_write_children($pdo, $id, $payload);
-            $pdo->commit();
-        } catch (Throwable $e) {
-            if ($pdo->inTransaction()) $pdo->rollBack();
-            throw $e;
-        }
-        log_customer_activity($customer, 'Duplicated Workshop Checklist Template: ' . $existing['name']);
-        json_out(customer_workshop_checklist_fetch($id, (string)$customer['id']), 201);
-    }
-
-    if ($method === 'POST' && $sub2 !== '' && $sub3 === 'toggle') {
-        $existing = customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']);
-        if (!$existing) json_error('Checklist template not found.', 404);
-        $newStatus = !$existing['isActive'];
-        db()->prepare('UPDATE checklist_templates SET is_active=? WHERE id=? AND customer_id=? AND deleted_at IS NULL')
-            ->execute([$newStatus ? 1 : 0,$sub2,$customer['id']]);
-        log_customer_activity($customer, ($newStatus ? 'Activated' : 'Deactivated') . ' Workshop Checklist Template: ' . $existing['name']);
-        json_out(customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']));
-    }
-
-    if ($method === 'DELETE' && $sub2 !== '') {
-        $existing = customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']);
-        if (!$existing) json_error('Checklist template not found.', 404);
-        db()->prepare('UPDATE checklist_templates SET deleted_at=NOW(), is_active=0 WHERE id=? AND customer_id=?')
-            ->execute([$sub2,$customer['id']]);
-        log_customer_activity($customer, 'Moved Workshop Checklist Template to Bin: ' . $existing['name']);
-        json_out(['ok'=>true]);
-    }
-}
-
-if ($sub === 'workshop-checklists-bin') {
-    customer_workshop_checklist_require_manager($customer);
-    if ($method === 'GET' && $sub2 === '') {
-        $stmt = db()->prepare('SELECT id,name,machine_type,service_type,deleted_at FROM checklist_templates WHERE customer_id=? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC');
-        $stmt->execute([$customer['id']]);
-        $rows = array_map(static function(array $row): array {
-            return ['id'=>$row['id'],'name'=>$row['name'],'machineType'=>$row['machine_type'],'serviceType'=>$row['service_type'],'deletedAt'=>$row['deleted_at']];
-        }, $stmt->fetchAll());
-        json_out($rows);
-    }
-    if ($method === 'POST' && $sub2 !== '' && $sub3 === 'restore') {
-        $existing = customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id'], true);
-        if (!$existing || empty($existing['deleted_at'])) json_error('Checklist template is not in the Bin.', 404);
-        db()->prepare('UPDATE checklist_templates SET deleted_at=NULL WHERE id=? AND customer_id=?')->execute([$sub2,$customer['id']]);
-        log_customer_activity($customer, 'Restored Workshop Checklist Template: ' . $existing['name']);
-        json_out(customer_workshop_checklist_fetch((string)$sub2, (string)$customer['id']));
-    }
 }
 
 // ---- Download a checklist report (JSON for now — swap in a real PDF

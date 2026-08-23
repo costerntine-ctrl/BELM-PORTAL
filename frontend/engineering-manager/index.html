@@ -33,10 +33,39 @@
     <main class="shell">
       <section class="hero">
         <div>
-          <p class="eyebrow">Technical Operations</p>
+          <p class="eyebrow">BELM-WORKSHOP</p>
           <h1>TECHNICAL DEP</h1>
           <p>Job Cards, technical tools, Technicians and Engineers in one BELM technical workspace.</p>
+          <!-- V444: "BELM-WORKSHOP" replaces the old "Technical Operations"
+               label. Each action below links straight to its matching
+               existing sidebar page (admin-sidebar.js) with the SAME name
+               used there, instead of duplicating a separate workflow —
+               "View Your Machine" is the one new capability: it opens the
+               combined BELM-wide fleet (every customer's machines in one
+               list), not a single customer's. Workshop and Petty Cash were
+               dropped since neither corresponds to a BELM-wide sidebar page
+               (Workshop is this page itself; Petty Cash is customer-only). -->
+          <nav class="belm-workshop-actions" aria-label="BELM-WORKSHOP quick links">
+            <a class="belm-workshop-action action-black" href="/customers-manager/?view=all-machines">View Your Machine</a>
+            <a class="belm-workshop-action action-green" href="/spare-parts-manager/">Spare Parts Inventory</a>
+            <a class="belm-workshop-action action-yellow" href="/reports-manager/">Reports &amp; Analysis</a>
+            <a class="belm-workshop-action action-purple" href="/roles-manager/">BELM Staff Access</a>
+            <a class="belm-workshop-action action-blue" href="/overview-manager/">Overview</a>
+            <a class="belm-workshop-action action-settings" href="/settings-manager/">System Settings</a>
+          </nav>
         </div>
+      </section>
+
+      <!-- V444: BELM-wide Communication History — the same feed shown on
+           each customer's own card in Customers & Machines, merged across
+           EVERY customer here (newest first), matching how "View Your
+           Machine" above shows the combined fleet instead of one customer's. -->
+      <section class="belm-workshop-feed-card">
+        <div class="belm-workshop-feed-head">
+          <h3>Communication history</h3>
+          <a href="/customers-manager/" class="belm-workshop-feed-viewall">View all</a>
+        </div>
+        <div id="belmWorkshopFeedBody" class="belm-workshop-feed-body">Loading recent updates…</div>
       </section>
 
       <nav class="technical-dep-nav" aria-label="Technical Department sections">

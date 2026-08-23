@@ -9,24 +9,6 @@
   let technicians=[];
   let toolIssues=[];
 
-  function tokenPayload(token){
-    if(!token)return null;
-    try{const part=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(decodeURIComponent(Array.from(atob(part)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')))}catch(_){return null}
-  }
-  function applyManagementGroupVisibility(){
-    const payload=tokenPayload(customerToken)||{};
-    const role=String(payload.customerRole||((payload.roleName==='Technician')?'technician':'')).toLowerCase();
-    const allowed=(payload.actorType==='owner')||['owner','admin','workshop_manager','store_keeper','procurement','accounts','operator'].includes(role);
-    document.querySelectorAll('[data-management-group]').forEach(el=>el.classList.toggle('hidden',!allowed));
-  }
-  function applyDigitalToolsVisibility(){
-    const payload=tokenPayload(customerToken)||{};
-    const role=String(payload.customerRole||((payload.roleName==='Technician')?'technician':'')).toLowerCase();
-    const canManageChecklists=(payload.actorType==='owner')||['owner','admin','workshop_manager'].includes(role);
-    const tool=document.getElementById('checklistTemplatesTool');
-    if(tool)tool.classList.toggle('hidden',!canManageChecklists);
-  }
-
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function show(message,error=false){alertBox.textContent=message;alertBox.className=`alert${error?' error':''}`}
   function clear(){alertBox.className='alert hidden';alertBox.textContent=''}
@@ -38,48 +20,20 @@
   function setBelmMode(customer){
     document.getElementById('modePill').textContent='BELM CUSTOMER VIEW';
     document.getElementById('backLink').href='/customers-manager/';
-    document.getElementById('workshopTitle').textContent=`${customer?.name||'Customer'} — Customer Workshop`;
-    document.getElementById('workshopSubtitle').textContent='Read-only structure of the customer-owned Workshop System. BELM remains an external service/support provider unless the customer explicitly requests BELM assistance.';
-    document.getElementById('moduleStatusText').textContent=customer?.isWorkshopModuleActive?'ACTIVE — COMPLETE CUSTOMER WORKSHOP':'INACTIVE';
-    document.getElementById('moduleStatusText').className=customer?.isWorkshopModuleActive?'status-on':'status-off';
-    document.getElementById('moduleStatusNote').textContent='BELM controls the commercial Workshop Module switch; the customer controls its own internal roles and daily workshop records.';
-    document.getElementById('maintenanceModeText').textContent=customer?.isMachineryAdmin?'CUSTOMER SELF-MANAGED':'BELM SERVICE PROVIDER ACTIVE';
-    document.getElementById('maintenanceModeText').className=customer?.isMachineryAdmin?'status-on':'status-off';
-    document.getElementById('maintenanceModeNote').textContent=customer?.isMachineryAdmin?'Customer-owned Technicians run normal maintenance. BELM joins only through an explicit support request.':'Customer Technician technical access is paused while BELM handles maintenance; the customer business roles remain separate.';
-    document.getElementById('managerJobCardLink').href='/customers-manager/';
-    document.getElementById('managerJobCardLink').textContent='Customer Workshop Overview';
-    document.getElementById('managerAnalysisLink').href='/customers-manager/';
-    document.getElementById('managerAnalysisLink').textContent='Customer Controls';
-    document.getElementById('technicianManageLink').href='/customers-manager/';
-    document.getElementById('technicianManageLink').textContent='Customer-owned Technicians';
-    document.getElementById('technicianWorkLink').href='/customers-manager/';
-    document.getElementById('technicianWorkLink').textContent='Customer Job Status';
-    document.getElementById('operatorDashboardLink').href='/customers-manager/';
-    document.getElementById('operatorDashboardLink').textContent='Customer Machine Reports';
-    document.getElementById('operatorManageLink').href='/customers-manager/';
-    document.getElementById('operatorManageLink').textContent='Customer-owned Operators';
-    document.getElementById('storeLink').href='/customers-manager/';
-    document.getElementById('storeLink').textContent='Customer-owned Store';
-    document.getElementById('toolDocumentsButton').classList.add('hidden');
-    document.getElementById('procurementLink').href='/customers-manager/';
-    document.getElementById('procurementLink').textContent='Customer Procurement';
-    document.getElementById('procurementQueueLink').href='/customers-manager/';
-    document.getElementById('procurementQueueLink').textContent='Customer Purchase Status';
-    document.getElementById('adminUsersLink').href='/customers-manager/';
-    document.getElementById('adminUsersLink').textContent='Customer Controls';
-    document.getElementById('adminOverviewLink').href='/customers-manager/';
-    document.getElementById('adminOverviewLink').textContent='Customer Overview';
-    document.getElementById('accountsFinanceLink').href='/customers-manager/';
-    document.getElementById('accountsFinanceLink').textContent='Customer Finance View';
-    document.getElementById('accountsProcurementLink').href='/customers-manager/';
-    document.getElementById('accountsProcurementLink').textContent='Customer Procurement View';
-    document.getElementById('belmSupportLink').href='/engineering-manager/#job-cards';
-    document.getElementById('belmSupportLink').textContent='Open BELM Support Jobs';
+    document.getElementById('workshopTitle').textContent=`${customer?.name||'Customer'} — Workshop`;
+    document.getElementById('workshopSubtitle').textContent='Customer workshop role structure viewed from BELM. Customer-owned team controls remain separated from BELM staff.';
+    const suffix=customerId?`?customerId=${encodeURIComponent(customerId)}`:'';
+    document.getElementById('managerJobCardLink').href='/engineering-manager/#job-cards';
+    document.getElementById('managerAnalysisLink').href='/engineering-manager/#workshop-analysis';
+    document.getElementById('storeLink').href='/spare-parts-manager/';
+    document.getElementById('storeLink').textContent='BELM Spare / Support View';
     document.getElementById('workshop-store').classList.add('hidden');
+    document.getElementById('toolDocumentsButton').classList.add('hidden');
+    document.getElementById('technicianManageLink').href='/roles-manager/?role=Technician&technical=1';
+    document.getElementById('technicianManageLink').textContent='BELM Technician Directory';
+    document.getElementById('technicianWorkLink').href='/engineering-manager/#job-cards';
+    document.getElementById('technicianWorkLink').textContent='Technical Department';
     document.getElementById('toolDocumentsPanel').classList.add('hidden');
-    document.querySelectorAll('[data-workshop-internal]').forEach(el=>el.classList.add('belm-readonly'));
-    document.querySelectorAll('[data-management-group]').forEach(el=>el.classList.add('hidden'));
-    document.getElementById('checklistTemplatesTool')?.classList.add('hidden');
   }
   async function loadBelm(){
     if(!adminToken){location.href='/app/belm';return}
@@ -89,34 +43,14 @@
   }
   async function loadCustomer(){
     if(!customerToken){location.href='/portal/login';return}
-    applyManagementGroupVisibility();
-    applyDigitalToolsVisibility();
-    document.getElementById('modePill').textContent='CUSTOMER WORKSHOP SYSTEM';
+    document.getElementById('modePill').textContent='CUSTOMER WORKSHOP';
     document.getElementById('backLink').href='/portal/dashboard';
-    let profile=null;
     try{
       const dashboard=await customerApi('/dashboard');
-      profile=dashboard?.customer||{};
-      const name=profile?.name||'Customer';
-      const moduleActive=Boolean(profile?.workshopModuleActive);
-      const selfManaged=Boolean(profile?.isMachineryAdmin);
+      const name=dashboard?.customer?.name||'Customer';
       document.getElementById('workshopTitle').textContent=`${name} — Workshop`;
-      document.getElementById('workshopSubtitle').textContent='Complete customer-owned workshop management: people, internal Job Cards, Technicians, Store/Tools, Procurement, finance and reporting. BELM stays outside unless Customer Admin requests support.';
-      document.getElementById('moduleStatusText').textContent=moduleActive?'ACTIVE — COMPLETE CUSTOMER WORKSHOP':'WORKSHOP MODULE INACTIVE';
-      document.getElementById('moduleStatusText').className=moduleActive?'status-on':'status-off';
-      document.getElementById('moduleStatusNote').textContent=moduleActive?'Customer internal workshop functions are enabled. Customer records remain separate from BELM operations.':'Internal Workshop functions are locked. Customer can still use the BELM Support Bridge.';
-      document.getElementById('maintenanceModeText').textContent=selfManaged?'CUSTOMER SELF-MANAGED':'BELM SERVICE PROVIDER ACTIVE';
-      document.getElementById('maintenanceModeText').className=selfManaged?'status-on':'status-off';
-      document.getElementById('maintenanceModeNote').textContent=selfManaged?'Customer Workshop Manager and Customer Technicians control normal maintenance.':'BELM is currently handling machine maintenance; Customer Technician technical access is paused until Self-Managed mode is restored.';
-      document.body.classList.toggle('workshop-module-locked',!moduleActive);
-      document.body.classList.toggle('provider-active',!selfManaged);
-      if(!moduleActive){
-        show('Customer Workshop Module is not active. Internal Workshop controls are locked; Request BELM Support remains available.',true);
-        document.getElementById('workshop-store').classList.add('hidden');
-        document.getElementById('toolDocumentsPanel').classList.add('hidden');
-        return;
-      }
-    }catch(e){show(e.message,true);return}
+      document.getElementById('workshopSubtitle').textContent='Workshop Manager, Store Keeper and Technicians work through one controlled Job Card flow.';
+    }catch(e){show(e.message,true)}
     try{technicians=await customerApi('/technicians');document.getElementById('technicianCount').textContent=`${technicians.length} TECH${technicians.length===1?'':'S'}`;renderTechnicianOptions()}catch(_){technicians=[];renderTechnicianOptions()}
     await loadStore();
   }

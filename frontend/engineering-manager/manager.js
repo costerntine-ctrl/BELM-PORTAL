@@ -303,6 +303,51 @@
     });
   }
 
+  // V444 - BELM-WORKSHOP Communication History: batches the same
+  // /customers/communication-feed endpoint Customers & Machines already
+  // uses per-customer, but across every customer at once, merged and
+  // sorted newest-first — same combined-fleet idea as "View Your Machine".
+  async function loadBelmWorkshopFeed() {
+    const container = document.getElementById("belmWorkshopFeedBody");
+    if (!container) return;
+    try {
+      const customersList = await api("/customers");
+      const byId = new Map(customersList.map((customer) => [customer.id, customer.name]));
+      const ids = customersList.map((customer) => customer.id).filter(Boolean);
+      if (!ids.length) {
+        container.innerHTML = '<p class="belm-workshop-feed-empty">No customers registered yet.</p>';
+        return;
+      }
+      const chunks = [];
+      for (let index = 0; index < ids.length; index += 75) chunks.push(ids.slice(index, index + 75));
+      const responses = await Promise.all(
+        chunks.map((chunk) => api(`/customers/communication-feed?ids=${encodeURIComponent(chunk.join(","))}`))
+      );
+      const grouped = Object.assign({}, ...responses);
+      const merged = [];
+      Object.keys(grouped).forEach((customerId) => {
+        (Array.isArray(grouped[customerId]) ? grouped[customerId] : []).forEach((item) => {
+          merged.push({ ...item, customerId, customerName: byId.get(customerId) || "Customer" });
+        });
+      });
+      merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      const top = merged.slice(0, 8);
+      container.innerHTML = top.length
+        ? top.map((item) => `
+            <div class="belm-workshop-feed-row">
+              <div class="belm-workshop-feed-row-head">
+                <strong>${escapeHtml(item.subject || "Communication")}</strong>
+                <span class="direction">BELM ↔ ${escapeHtml(item.customerName)}</span>
+              </div>
+              <p>${escapeHtml(item.message || "—")}</p>
+              <small>${escapeHtml(item.machineLabel || item.customerName)} · ${formatDateTime(item.createdAt)}</small>
+            </div>`).join("")
+        : '<p class="belm-workshop-feed-empty">No communication history yet.</p>';
+    } catch (error) {
+      container.innerHTML = `<p class="belm-workshop-feed-empty">${escapeHtml(error.message || "Could not load communication history.")}</p>`;
+    }
+  }
+
   initEngineeringWorkspace();
 
   document.querySelectorAll("[data-tool-page]").forEach((link) => {
@@ -313,6 +358,7 @@
   if (!token) {
     showAlert("Administrator login required.");
   } else {
+    loadBelmWorkshopFeed();
     const rolesAccess = hasPageAccess("roles");
     if (!rolesAccess) {
       document.getElementById("engineeringRolesStrip")?.classList.add("hidden");

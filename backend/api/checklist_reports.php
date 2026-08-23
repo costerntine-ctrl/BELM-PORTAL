@@ -327,8 +327,7 @@ function require_report_machine_access(array $user, string $machineId, ?string $
     $params = [];
     if ($templateId !== null) {
         $sql .= ', t.id AS template_id, t.machine_type AS template_machine_type,
-                  t.deleted_at AS template_deleted_at, t.is_active AS template_is_active,
-                  t.customer_id AS template_customer_id';
+                  t.deleted_at AS template_deleted_at, t.is_active AS template_is_active';
     }
     $sql .= ' FROM machines m
               JOIN customers c ON c.id = m.customer_id';
@@ -372,9 +371,6 @@ function require_report_machine_access(array $user, string $machineId, ?string $
     if ($templateId !== null) {
         if (!$machine['template_id'] || $machine['template_deleted_at'] || !$machine['template_is_active']) {
             json_error('Checklist template not found or inactive.', 404);
-        }
-        if (!empty($machine['template_customer_id']) && (string)$machine['template_customer_id'] !== (string)$machine['customer_id']) {
-            json_error('This customer-owned checklist belongs to another workshop.', 403);
         }
         if (strcasecmp($machine['machine_type'], $machine['template_machine_type']) !== 0) {
             json_error('This checklist is not assigned to the selected machine type.', 403);

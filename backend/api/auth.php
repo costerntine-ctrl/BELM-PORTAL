@@ -49,8 +49,7 @@ if ($action === 'refresh' && $method === 'POST') {
             "SELECT u.id, u.name, u.email, u.assigned_customer_id, u.is_customer_managed,
                     r.id AS role_id, r.name AS role_name, r.allowed_pages,
                     c.name AS assigned_customer_name, c.portal_link AS assigned_customer_portal_link,
-                    c.deleted_at AS customer_deleted_at, c.is_active AS customer_active,
-                    c.workshop_module_active AS assigned_customer_workshop_active
+                    c.deleted_at AS customer_deleted_at, c.is_active AS customer_active
              FROM users u
              JOIN roles r ON r.id = u.role_id
              LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -63,9 +62,6 @@ if ($action === 'refresh' && $method === 'POST') {
         if ($user['role_name'] === 'Technician' && $user['assigned_customer_id']) {
             if (!$user['assigned_customer_name'] || $user['customer_deleted_at'] !== null || empty($user['customer_active'])) {
                 json_error('The customer assigned to this Technician account is no longer available.', 401);
-            }
-            if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_workshop_active'])) {
-                json_error('Customer Workshop System is not active for this company. Customer Technician workshop access is locked until the Workshop System is activated.', 402);
             }
         }
 
@@ -302,6 +298,27 @@ if ($action === 'reset-with-code' && $method === 'POST') {
     db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
     clear_unified_login_lockout($email);
 
+    // V444: password reset is anonymous (verified only by the emailed OTP,
+    // no logged-in $user), so this writes directly to the matching audit
+    // table per account type instead of going through log_activity().
+    try {
+        if ($accountType === 'staff') {
+            db()->prepare('INSERT INTO activity_logs (id, user_id, action, created_at) VALUES (?,?,?,NOW())')
+                ->execute([uuid(), $accountId, 'password-reset-via-otp']);
+        } elseif ($accountType === 'customer') {
+            db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
+                ->execute([uuid(), $accountId, 'Customer', 'Password reset via emailed verification code.']);
+        } elseif ($accountType === 'customer-assistant') {
+            $ownerStmt = db()->prepare('SELECT customer_id, name FROM customer_users WHERE id = ?');
+            $ownerStmt->execute([$accountId]);
+            $ownerRow = $ownerStmt->fetch();
+            if ($ownerRow) {
+                db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
+                    ->execute([uuid(), $ownerRow['customer_id'], $ownerRow['name'] ?: 'Assistant', 'Password reset via emailed verification code.']);
+            }
+        }
+    } catch (Throwable $ignored) { /* the audit log must never break the actual reset */ }
+
     json_out(['ok' => true, 'message' => 'Password reset successfully. You can now log in with your new password.']);
 }
 
@@ -379,6 +396,26 @@ if ($action === 'recover' && $method === 'POST') {
 
     clear_unified_login_lockout($email);
 
+    // V444: same reasoning as reset-with-code above — no logged-in $user
+    // here, write directly to the matching audit table per account type.
+    try {
+        if ($accountType === 'staff') {
+            db()->prepare('INSERT INTO activity_logs (id, user_id, action, created_at) VALUES (?,?,?,NOW())')
+                ->execute([uuid(), $account['id'], 'password-reset-via-recovery-code']);
+        } elseif ($accountType === 'customer') {
+            db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
+                ->execute([uuid(), $account['id'], 'Customer', 'Password reset via recovery code.']);
+        } else {
+            $ownerStmt = db()->prepare('SELECT customer_id, name FROM customer_users WHERE id = ?');
+            $ownerStmt->execute([$account['id']]);
+            $ownerRow = $ownerStmt->fetch();
+            if ($ownerRow) {
+                db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
+                    ->execute([uuid(), $ownerRow['customer_id'], $ownerRow['name'] ?: 'Assistant', 'Password reset via recovery code.']);
+            }
+        }
+    } catch (Throwable $ignored) { /* the audit log must never break the actual reset */ }
+
     json_out([
         'ok' => true,
         'message' => 'Password changed successfully. Save the new recovery code.',
@@ -445,8 +482,7 @@ if ($action === 'unified-login' && $method === 'POST') {
             'SELECT u.*, r.name AS role_name, r.allowed_pages,
                     c.name AS assigned_customer_name,
                     c.portal_link AS assigned_customer_portal_link,
-                    c.is_machinery_admin AS assigned_customer_self_service,
-                    c.workshop_module_active AS assigned_customer_workshop_active
+                    c.is_machinery_admin AS assigned_customer_self_service
              FROM users u
              JOIN roles r ON r.id = u.role_id
              LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -471,9 +507,6 @@ if ($action === 'unified-login' && $method === 'POST') {
                 }
                 if (!$user['assigned_customer_name']) {
                     json_error('The customer assigned to this Technician account is not available.', 403);
-                }
-                if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_workshop_active'])) {
-                    json_error('Customer Workshop System is not active for this company. Customer Technician workshop access is locked until the Workshop System is activated.', 402);
                 }
                 if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_self_service'])) {
                     json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
@@ -652,8 +685,7 @@ if ($action === 'login' && $method === 'POST') {
     $stmt = db()->prepare(
         'SELECT u.*, r.name AS role_name, r.allowed_pages,
                 c.name AS assigned_customer_name,
-                c.is_machinery_admin AS assigned_customer_self_service,
-                c.workshop_module_active AS assigned_customer_workshop_active
+                c.is_machinery_admin AS assigned_customer_self_service
          FROM users u
          JOIN roles r ON r.id = u.role_id
          LEFT JOIN customers c ON c.id = u.assigned_customer_id
@@ -685,9 +717,6 @@ if ($action === 'login' && $method === 'POST') {
         }
         if (!$user['assigned_customer_name']) {
             json_error('The customer assigned to this Technician account is not available.', 403);
-        }
-        if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_workshop_active'])) {
-            json_error('Customer Workshop System is not active for this company. Customer Technician workshop access is locked until the Workshop System is activated.', 402);
         }
         if (!empty($user['is_customer_managed']) && empty($user['assigned_customer_self_service'])) {
             json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);

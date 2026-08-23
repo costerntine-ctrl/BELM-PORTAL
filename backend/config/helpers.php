@@ -385,7 +385,7 @@ function require_auth(): array {
             // without blocking BELM technicians who are temporarily assigned to
             // the same customer for an explicit support request.
             $stmt = db()->prepare(
-                'SELECT u.is_customer_managed, c.is_machinery_admin, c.workshop_module_active
+                'SELECT u.is_customer_managed, c.is_machinery_admin
                  FROM users u
                  JOIN customers c ON c.id = u.assigned_customer_id
                  WHERE u.id = ?
@@ -397,9 +397,6 @@ function require_auth(): array {
             $live = $stmt->fetch();
             if (!$live) {
                 json_error('Your assigned customer has changed. Please log out and log in again.', 401);
-            }
-            if (!empty($live['is_customer_managed']) && empty($live['workshop_module_active'])) {
-                json_error('Customer Workshop System is not active for this company. Customer Technician workshop access is locked until the Workshop System is activated.', 402);
             }
             if (!empty($live['is_customer_managed']) && empty($live['is_machinery_admin'])) {
                 json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
@@ -822,11 +819,11 @@ function calculated_invoice_status(float $total, float $paid, ?string $dueDate):
 function customer_role_default_dashboard_permissions(string $role): array {
     $role = strtolower(trim($role));
     return match ($role) {
-        'workshop_manager' => ['machine-expenses', 'fuel-usage', 'operator-reports', 'service-request', 'report-problem', 'check-up', 'store', 'workflow', 'management-group'],
-        'store_keeper' => ['machine-expenses', 'store', 'workflow', 'management-group'],
-        'accounts' => ['machine-expenses', 'fuel-usage', 'email', 'workflow', 'management-group'],
-        'procurement' => ['machine-expenses', 'store', 'service-request', 'workflow', 'management-group'],
-        'operator' => ['fuel-usage', 'operator-reports', 'report-problem', 'check-up', 'management-group'],
+        'workshop_manager' => ['machine-expenses', 'fuel-usage', 'operator-reports', 'service-request', 'report-problem', 'check-up', 'store', 'workflow'],
+        'store_keeper' => ['machine-expenses', 'store', 'workflow'],
+        'accounts' => ['machine-expenses', 'fuel-usage', 'email', 'workflow'],
+        'procurement' => ['machine-expenses', 'store', 'service-request', 'workflow'],
+        'operator' => ['fuel-usage', 'operator-reports', 'report-problem'],
         'technician' => ['operator-reports', 'report-problem', 'check-up', 'workflow'],
         'admin', 'assistant' => ['*'],
         default => [],
@@ -1604,9 +1601,6 @@ function require_customer_auth(): array {
         $payload['customerRole'] = 'technician';
         $payload['permissions'] = $permissions;
         $payload['workshopModuleActive'] = !empty($live['workshop_module_active']);
-        if (!$payload['workshopModuleActive']) {
-            json_error('Customer Workshop Module is not active for this company. Contact Customer Admin / BELM to activate the Workshop System.', 402);
-        }
         return $payload;
     }
 
@@ -1644,13 +1638,17 @@ function require_customer_auth(): array {
         // Operator portal users are intentionally machine-card-only. Even a
         // legacy Operator account that previously had NULL (= full access)
         // is restricted here at request time so account-level tools such as
-        // Store, Procurement, Finance, Management Email and Role Manager can never be reached by
-        // typing a URL manually. V449 adds only the filtered Management Group inbox
-        // so Operator can submit/follow operational approvals without seeing purchasing data.
+        // Store, Management Email and Role Manager can never be reached by
+        // typing a URL manually. Role Manager may still choose which of the
+        // machine-card actions below the Operator can use.
         if (strtolower(trim((string)$assistant['role'])) === 'operator') {
+            // V444: Procurement (machine-expenses) and Service Parts / Job
+            // Card (service-request) removed from the Operator ceiling by
+            // request — Operator can never be granted these, even if Role
+            // Manager tries to select them for a specific Operator account.
             $operatorCardPermissions = [
-                'fuel-usage', 'operator-reports', 'report-problem', 'check-up',
-                'management-group',
+                'fuel-usage', 'operator-reports',
+                'report-problem', 'check-up', 'workflow',
             ];
             if ($payload['permissions'] === null) {
                 $payload['permissions'] = $operatorCardPermissions;
@@ -2187,7 +2185,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         // maintenance case backwards to Assignment/Diagnosis. Repair the source
         // request forward from the operational Job Card first.
         if (!in_array($status, ['COMPLETED','CANCELLED'], true) && $jobTechnicianId !== '') {
-            if (in_array($jobStatus, ['IN_PROGRESS','WAITING_FOR_PARTS','TESTING','PENDING_APPROVAL','COMPLETED'], true) && in_array($status, ['OPEN','ASSIGNED'], true)) {
+            if (in_array($jobStatus, ['IN_PROGRESS','WAITING_FOR_PARTS','PENDING_APPROVAL','COMPLETED'], true) && in_array($status, ['OPEN','ASSIGNED'], true)) {
                 db()->prepare(
                     "UPDATE service_requests SET assigned_to_id=?,status='IN_PROGRESS',started_at=COALESCE(started_at,NOW()),updated_at=NOW() WHERE id=?"
                 )->execute([$jobTechnicianId,$requestId]);
@@ -2201,7 +2199,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
                 $status = 'ASSIGNED';
                 $row['assigned_to_id'] = $jobTechnicianId;
                 $row['assigned_to_name'] = $jobTechnicianName ?: ($row['assigned_to_name'] ?? 'Technician');
-            } elseif (in_array($jobStatus, ['ASSIGNED','RECEIVED','IN_PROGRESS','WAITING_FOR_PARTS','TESTING','PENDING_APPROVAL','COMPLETED'], true)
+            } elseif (in_array($jobStatus, ['ASSIGNED','IN_PROGRESS','WAITING_FOR_PARTS','PENDING_APPROVAL','COMPLETED'], true)
                 && (string)($row['assigned_to_id'] ?? '') !== $jobTechnicianId) {
                 db()->prepare('UPDATE service_requests SET assigned_to_id=?,updated_at=NOW() WHERE id=?')
                     ->execute([$jobTechnicianId,$requestId]);
@@ -2244,7 +2242,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
                  SET technician_id=?,technician_name=?,
                      status=CASE
                          WHEN ?='IN_PROGRESS' AND status IN ('OPEN','RECEIVED','ASSIGNED') THEN 'IN_PROGRESS'
-                         WHEN ?='ASSIGNED' AND status='OPEN' THEN 'ASSIGNED'
+                         WHEN ?='ASSIGNED' AND status IN ('OPEN','RECEIVED') THEN 'ASSIGNED'
                          ELSE status
                      END,
                      started_at=CASE WHEN ?='IN_PROGRESS' THEN COALESCE(started_at,NOW()) ELSE started_at END,

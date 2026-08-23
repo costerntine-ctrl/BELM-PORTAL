@@ -133,6 +133,7 @@ if ($method === 'POST') { // restore
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'trash-restored', $entry['entity_type'], $entry['entity_id'], ['label' => $entry['label'] ?? null]);
     json_out(['ok' => true]);
 }
 
@@ -154,6 +155,7 @@ if ($method === 'DELETE') { // permanently delete
         throw $error;
     }
     db()->prepare('DELETE FROM trash_entries WHERE id = ?')->execute([$id]);
+    log_activity($user, 'trash-permanently-deleted', $entry['entity_type'], $entry['entity_id'], ['label' => $entry['label'] ?? null, 'reason' => $reason]);
     json_out(null, 204);
 }
 

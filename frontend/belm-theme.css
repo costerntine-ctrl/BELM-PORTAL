@@ -1497,6 +1497,59 @@ body[data-belm-area="tech"] .belm-technician-dashboard-shell {
   line-height: 1;
   cursor: pointer;
 }
+/* V444 - Operator "Report" consolidated menu (Machine Checkup / Fuel Usage /
+   Machine Handover / Report), opened from the single machine-card button. */
+.belm-operator-report-menu-body {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+}
+.belm-operator-report-menu-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: stretch;
+}
+.belm-operator-report-menu-item {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .04);
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.belm-operator-report-menu-item:hover {
+  background: rgba(255, 212, 0, .1);
+  border-color: rgba(255, 212, 0, .35);
+}
+.belm-operator-report-menu-item strong {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #fff;
+}
+.belm-operator-report-menu-item span {
+  font-size: 10.5px;
+  color: #9fb0c8;
+  font-weight: 600;
+}
+.belm-operator-report-menu-pdf {
+  padding: 0 14px;
+  border: 1px solid rgba(255, 212, 0, .35);
+  border-radius: 10px;
+  background: rgba(255, 212, 0, .08);
+  color: #ffd400;
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  cursor: pointer;
+  font-family: inherit;
+}
+.belm-operator-report-menu-pdf:hover { background: rgba(255, 212, 0, .18); }
+.belm-operator-report-menu-pdf:disabled { opacity: .6; cursor: wait; }
 .belm-analysis-loading {
   padding: 20px 16px;
   margin: 0;

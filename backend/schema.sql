@@ -75,9 +75,6 @@ CREATE TABLE IF NOT EXISTS customer_users (
 
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS permissions TEXT NULL;
-ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ NULL;
-ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS customer_bin_cleared_at TIMESTAMPTZ NULL;
-ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_bin_cleared_at TIMESTAMPTZ NULL;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- Caps how many portal users (assistants) a customer can add for
 -- themselves before they must contact BELM Admin for more. NULL means
@@ -95,14 +92,15 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS is_machinery_admin SMALLINT NOT N
 -- Maintenance/service-kit access is automatically available while BELM is the
 -- active Service Provider, or for a machine with an open official support request.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NULL DEFAULT '{"maintenanceRecords":false,"expenseReceipts":false,"teamDirectory":false,"storeAndParts":false}'::jsonb;
--- V448: Customer Workshop System commercial gate. This remains separate from
--- is_active (whole portal ON/OFF) and from the customer's Role Manager access.
--- When ON, the customer can operate a complete standalone workshop layer with
--- Customer Admin/Owner, Workshop Manager, Customer Technicians, Store/Tools,
--- Procurement, Accounts/Finance and internal Job Card operations. BELM is not
--- an internal workshop role; it is reached through an explicit Support Bridge.
--- When OFF, customer-managed Technician workshop access and paid Store/Tool
--- functions are locked while general portal access / BELM Support can remain.
+-- V444: Workshop Module billing gate. This is intentionally SEPARATE from
+-- is_active ("Stop Portal Service") and from the customer's own 'store'
+-- Role Manager permission. is_active is an all-or-nothing kill switch for
+-- non-payment of the whole portal. The customer's 'store' permission (Role
+-- Manager) only controls WHICH of the customer's own staff can use Store /
+-- Workshop features once the module itself is enabled. workshop_module_active
+-- is the BELM-controlled paid add-on switch: only BELM Admin can turn it on,
+-- and turning it off blocks Store Ledger + Tool Issue/Return regardless of
+-- what permissions the customer has assigned internally.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS workshop_module_active SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- Distinguishes a Technician created by a customer's Self-Service admin from
@@ -157,11 +155,6 @@ CREATE TABLE IF NOT EXISTS checklist_templates (
 
 ALTER TABLE checklist_templates
   ADD COLUMN IF NOT EXISTS service_type VARCHAR(150) NOT NULL DEFAULT 'General Service';
-
--- V452: customer-owned Workshop Digital Tool templates. NULL = BELM/global template.
-ALTER TABLE checklist_templates
-  ADD COLUMN IF NOT EXISTS customer_id VARCHAR(36) NULL REFERENCES customers(id) ON DELETE CASCADE;
-CREATE INDEX IF NOT EXISTS idx_checklist_templates_customer ON checklist_templates(customer_id, deleted_at, is_active);
 
 CREATE TABLE IF NOT EXISTS checklist_template_items (
   id VARCHAR(36) PRIMARY KEY,
@@ -732,6 +725,10 @@ CREATE TABLE IF NOT EXISTS operator_reports (
 -- customer's own team. Set notify_belm=1 only when BELM support was
 -- explicitly requested. Existing records default to 1 for compatibility.
 ALTER TABLE operator_reports ADD COLUMN IF NOT EXISTS notify_belm SMALLINT NOT NULL DEFAULT 1;
+-- V444: distinguishes a Machine Handover note (internal-only, never opens a
+-- Job Card) from a Report (existing PROBLEM flow, auto-opens a breakdown
+-- case / Job Card). Both share the same operator_reports table/UI.
+ALTER TABLE operator_reports ADD COLUMN IF NOT EXISTS report_type VARCHAR(20) NOT NULL DEFAULT 'PROBLEM';
 
 CREATE TABLE IF NOT EXISTS petty_cash_topups (
   id VARCHAR(36) PRIMARY KEY,
@@ -1431,71 +1428,3 @@ CREATE INDEX IF NOT EXISTS idx_customer_tool_issues_customer
   ON customer_tool_issues(customer_id, returned_at, issued_at DESC);
 CREATE INDEX IF NOT EXISTS idx_customer_tool_issues_technician
   ON customer_tool_issues(technician_id, returned_at, issued_at DESC);
-
--- V449 - Customer Workshop Management Group / Approval Center.
--- Shared customer-owned approval inbox. Portal records are the source of truth;
--- email is notification only. Operator visibility is filtered in the API so
--- Procurement/Store/Finance requests are never exposed to Operator accounts.
-CREATE TABLE IF NOT EXISTS customer_management_requests (
-  id VARCHAR(36) PRIMARY KEY,
-  request_no VARCHAR(50) NOT NULL,
-  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  machine_id VARCHAR(36) NULL REFERENCES machines(id) ON DELETE SET NULL,
-  category VARCHAR(30) NOT NULL,
-  request_type VARCHAR(50) NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL,
-  amount NUMERIC(14,2) NULL,
-  reference_text VARCHAR(255) NULL,
-  attachment_data TEXT NULL,
-  attachment_mime VARCHAR(50) NULL,
-  attachment_name VARCHAR(255) NULL,
-  attachment_uploaded_by_name VARCHAR(255) NULL,
-  attachment_uploaded_at TIMESTAMPTZ NULL,
-  priority VARCHAR(20) NOT NULL DEFAULT 'NORMAL',
-  target_department VARCHAR(50) NOT NULL,
-  status VARCHAR(30) NOT NULL DEFAULT 'WAITING_BOSS_APPROVAL',
-  current_stage VARCHAR(80) NOT NULL DEFAULT 'BOSS APPROVAL',
-  requested_by_actor_id VARCHAR(36) NULL,
-  requested_by_name VARCHAR(255) NOT NULL,
-  requested_by_role VARCHAR(50) NOT NULL,
-  requested_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  decided_by_name VARCHAR(255) NULL,
-  decided_by_role VARCHAR(50) NULL,
-  decision_note TEXT NULL,
-  decided_at TIMESTAMPTZ NULL,
-  started_by_name VARCHAR(255) NULL,
-  started_at TIMESTAMPTZ NULL,
-  completed_by_name VARCHAR(255) NULL,
-  completed_at TIMESTAMPTZ NULL,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE UNIQUE INDEX IF NOT EXISTS uq_customer_management_request_no
-  ON customer_management_requests(customer_id, request_no);
-CREATE INDEX IF NOT EXISTS idx_customer_management_requests_customer
-  ON customer_management_requests(customer_id, status, requested_at DESC);
-CREATE INDEX IF NOT EXISTS idx_customer_management_requests_target
-  ON customer_management_requests(customer_id, target_department, status, requested_at DESC);
-
--- V451 - supporting proof for monetary/approval requests. Additive only; no
--- existing request or finance data is changed.
-ALTER TABLE customer_management_requests ADD COLUMN IF NOT EXISTS attachment_data TEXT NULL;
-ALTER TABLE customer_management_requests ADD COLUMN IF NOT EXISTS attachment_mime VARCHAR(50) NULL;
-ALTER TABLE customer_management_requests ADD COLUMN IF NOT EXISTS attachment_name VARCHAR(255) NULL;
-ALTER TABLE customer_management_requests ADD COLUMN IF NOT EXISTS attachment_uploaded_by_name VARCHAR(255) NULL;
-ALTER TABLE customer_management_requests ADD COLUMN IF NOT EXISTS attachment_uploaded_at TIMESTAMPTZ NULL;
-
-CREATE TABLE IF NOT EXISTS customer_management_request_events (
-  id VARCHAR(36) PRIMARY KEY,
-  request_id VARCHAR(36) NOT NULL REFERENCES customer_management_requests(id) ON DELETE CASCADE,
-  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-  event_type VARCHAR(40) NOT NULL,
-  status VARCHAR(30) NOT NULL,
-  stage VARCHAR(80) NOT NULL,
-  actor_name VARCHAR(255) NOT NULL,
-  actor_role VARCHAR(50) NOT NULL,
-  note TEXT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_customer_management_request_events_request
-  ON customer_management_request_events(request_id, created_at ASC);

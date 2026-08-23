@@ -499,6 +499,7 @@ if ($action === 'attendance' && $method === 'POST') {
         $notes !== '' ? $notes : null,
         $user['id'],
     ]);
+    log_activity($user, 'attendance-recorded', 'attendance_record', $userId, ['workDate' => $workDate, 'status' => $status]);
     json_out(['ok' => true, 'message' => 'Attendance saved successfully.']);
 }
 

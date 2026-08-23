@@ -3,8 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-const BELM_RELEASE = '452-customer-workshop-digital-checklists';
-const BELM_BANK_RESET_RELEASE = '356-bank-test-reset';
+const BELM_RELEASE = '356-bank-test-reset';
 const BELM_DATA_SAFETY_EXIT = 78;
 
 function belm_env_true(string $name): bool {
@@ -60,7 +59,7 @@ $protectedTables = [
     'proforma_invoices', 'proforma_invoice_items', 'invoices', 'invoice_items', 'payments', 'receipts',
     'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests',
     'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
-    'customer_communications', 'customer_tool_issues', 'customer_management_requests', 'customer_management_request_events', 'tasks', 'activity_logs', 'trash_entries',
+    'customer_communications', 'customer_tool_issues', 'tasks', 'activity_logs', 'trash_entries',
 ];
 
 try {
@@ -123,10 +122,8 @@ try {
     // deployment audit row is the durable one-time marker, so restarts do not
     // reset the test bank again.
     $bankResetDoneStmt = $pdo->prepare('SELECT 1 FROM belm_deployment_audits WHERE release=? LIMIT 1');
-    $bankResetDoneStmt->execute([BELM_BANK_RESET_RELEASE]);
-    // The explicit bank reset belonged only to V356. Never repeat it merely
-    // because a later release changes BELM_RELEASE or schema.sql.
-    $bankResetPending = BELM_RELEASE === BELM_BANK_RESET_RELEASE && !$bankResetDoneStmt->fetchColumn();
+    $bankResetDoneStmt->execute([BELM_RELEASE]);
+    $bankResetPending = !$bankResetDoneStmt->fetchColumn();
 
     // Strong no-touch guard for BELM Spare Stock. Record counts/IDs are already
     // protected below; this hash additionally protects stock quantities and

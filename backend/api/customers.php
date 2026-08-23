@@ -879,11 +879,13 @@ if ($method === 'PUT' && $action === 'machinery-admin') {
     ]);
 }
 
-// V448: Customer Workshop System paid add-on toggle. Separate from is_active
-// (whole portal ON/OFF) and from the customer's own Role Manager permissions.
-// ON means the customer can run its complete internal workshop layer with its
-// own Manager, Technicians, Store/Tools, Procurement, Accounts and Job Cards.
-// BELM remains an external support provider and is invited explicitly.
+// V444: Workshop Module paid add-on toggle. Separate from is_active
+// ("Stop portal service" — kills the whole account) and separate from the
+// customer's own 'store' Role Manager permission (which only decides which
+// of the customer's own staff can use Store/Workshop once this is ON).
+// Turning this OFF immediately blocks Store Ledger + Tool Issue/Return
+// Documents for the customer's whole team, regardless of their internal
+// Role Manager settings, without touching any other part of their account.
 if ($method === 'PUT' && $action === 'workshop-module') {
     require_page_access($user, 'customers');
     $b = body();
@@ -1381,8 +1383,22 @@ Note: " . $note : '');
     json_out(['ok' => true, 'delivery' => $delivery]);
 }
 
+// V444: Edit/Delete/Forget Machine must never be reachable by a BELM staff
+// account whose role is Technician — not even if their allowedPages was
+// misconfigured to include "customers". Technicians only ever need read
+// access to their assigned customer (see the Technician-scoped SELECT
+// branches above); machine administration stays Admin/Assistant-only. This
+// is deliberately independent of require_page_access() so a Role Manager
+// misconfiguration cannot expose these destructive actions.
+function require_not_technician_role(array $user): void {
+    if (($user['roleName'] ?? '') === 'Technician') {
+        json_error('Technician accounts cannot edit, delete or forget machines.', 403);
+    }
+}
+
 if ($method === 'PUT' && $action === 'edit-machine') {
     require_page_access($user, 'customers');
+    require_not_technician_role($user);
     $b = body();
     require_edit_confirmation($user, $b);
     $stmt = db()->prepare('SELECT customer_id FROM machines WHERE id = ? AND deleted_at IS NULL');
@@ -1418,6 +1434,7 @@ if ($method === 'PUT' && $action === 'edit-machine') {
 
 if ($method === 'DELETE' && $action === 'delete-machine') {
     require_page_access($user, 'customers');
+    require_not_technician_role($user);
     $machineId = $_GET['machineId'];
     $stmt = db()->prepare('SELECT model, customer_id FROM machines WHERE id = ?');
     $stmt->execute([$machineId]);
@@ -1597,7 +1614,7 @@ function fetch_machines_for_customers(array $customerIds): array {
     // existing 30-second Technician profile refresh keeps it live without an
     // N+1 request for every card.
     $operatorStmt = db()->prepare(
-        "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, message, status, created_at
+        "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, operator_contact, message, status, created_at
          FROM operator_reports
          WHERE machine_id IN ($machineIn)
          ORDER BY machine_id, created_at DESC, id DESC"
@@ -1608,6 +1625,7 @@ function fetch_machines_for_customers(array $customerIds): array {
         $operatorByMachine[(string)$report['machine_id']] = [
             'id' => (string)$report['id'],
             'operatorName' => (string)$report['operator_name'],
+            'operatorContact' => (string)($report['operator_contact'] ?? ''),
             'message' => (string)$report['message'],
             'status' => (string)$report['status'],
             'createdAt' => (string)$report['created_at'],

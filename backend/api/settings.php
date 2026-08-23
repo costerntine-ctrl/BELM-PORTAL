@@ -30,6 +30,8 @@ if ($action === 'change-pin' && $method === 'PUT') {
                    ON CONFLICT ("key") DO UPDATE
                    SET "value" = EXCLUDED."value", updated_at = NOW()')
         ->execute([uuid(), $pinKey, json_encode($b['newPin'])]);
+    // Never log the PIN value itself — only which security PIN was changed.
+    log_activity($pinUser, 'security-pin-changed', 'system_settings', $pinKey, ['pinKey' => $pinKey]);
     json_out(['ok' => true, 'message' => 'PIN updated successfully.']);
 }
 
@@ -55,6 +57,7 @@ if ($method === 'PUT') {
                    ON CONFLICT ("key") DO UPDATE
                    SET "value" = EXCLUDED."value", updated_at = NOW()')
         ->execute([uuid(), $key, json_encode($b['value'] ?? null)]);
+    log_activity($user, 'system-setting-changed', 'system_settings', $key, ['key' => $key]);
     json_out(['ok' => true]);
 }
 

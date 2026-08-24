@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../config/helpers.php';
 require_once __DIR__ . '/checklist_reports_helpers.php';
 require_once __DIR__ . '/service_due_helper.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 require_once __DIR__ . '/../config/mailer.php';
 
 // GET /api/engineering?action=dashboard
@@ -16,13 +17,51 @@ $action = $_GET['action'] ?? '';
 // V319: Engineering landing administration still requires Roles access, but
 // Technician Dispatch lives inside Maintenance Process and must also work for
 // an Engineer who has service-requests access. This mirrors sidebar anyKeys.
-$isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch','job-process','workshop-tool-options','workshop-tool-issues','workshop-tool-return'], true);
+$isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch','job-process','workshop-tool-options','workshop-tool-issues','workshop-tool-return','workshop-tool-report-pdf'], true);
 if ($isDispatchAction) {
     require_any_page_access($user, ['roles','job-cards','service-requests','spare-parts']);
 } else {
     require_page_access($user, 'roles');
 }
 
+
+// V493 - downloadable report for the Store Keeper / equipment issuer.
+// Uses the same belm_workshop_tool_issues records shown on the Tool Issue page.
+if ($method === 'GET' && $action === 'workshop-tool-report-pdf') {
+    $rows = db()->query(
+        "SELECT document_no,job_card_no,technician_name,tool_name,tool_asset_id,quantity,
+                condition_out,expected_return_at,issue_note,issued_by_name,issued_at,
+                returned_at,condition_in,received_by,return_note
+         FROM belm_workshop_tool_issues
+         ORDER BY issued_at DESC
+         LIMIT 1000"
+    )->fetchAll();
+    $pdfRows=[];
+    foreach ($rows as $row) {
+        $status = !empty($row['returned_at']) ? 'RETURNED'
+            : (!empty($row['expected_return_at']) && strtotime((string)$row['expected_return_at']) < time() ? 'RETURN OVERDUE' : 'OUT WITH TECHNICIAN');
+        $pdfRows[]=[
+            (string)$row['document_no'],
+            'Job Card: ' . ((string)($row['job_card_no'] ?? '') ?: '—'),
+            'Technician: ' . ((string)($row['technician_name'] ?? '') ?: '—'),
+            'Tool: ' . ((string)($row['tool_name'] ?? '') ?: '—') . (!empty($row['tool_asset_id']) ? ' / ' . $row['tool_asset_id'] : ''),
+            'Qty: ' . rtrim(rtrim(number_format((float)$row['quantity'],2,'.',''), '0'), '.'),
+            'Issued by: ' . ((string)($row['issued_by_name'] ?? '') ?: '—'),
+            'Issued: ' . (!empty($row['issued_at']) ? date('d/m/Y H:i', strtotime((string)$row['issued_at'])) : '—'),
+            'Status: ' . $status,
+        ];
+    }
+    output_table_pdf(
+        'BELM-Tool-Issue-Report-' . date('Ymd-His') . '.pdf',
+        'BELM General Tech Service Limited — Tool / Equipment Issue Report',
+        [
+            'Generated: ' . date('d/m/Y H:i'),
+            'Downloaded by: ' . (($user['name'] ?? '') ?: 'BELM User') . ' | Role: ' . (($user['roleName'] ?? $user['role'] ?? '') ?: '—'),
+            'Total issue documents: ' . count($pdfRows),
+        ],
+        $pdfRows
+    );
+}
 
 // V463 - BELM WORKSHOP standalone Tool Issue / Return register. These records
 // belong to BELM's own workshop (not a customer's private Workshop Store) and

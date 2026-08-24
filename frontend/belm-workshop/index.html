@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/admin-tools.css">
-  <link rel="stylesheet" href="/belm-workshop/manager.css?v=490-checklist-template">
-  <link rel="stylesheet" href="/theme-global.css?v=490-checklist-template">
-  <script src="/theme-manager.js?v=490-checklist-template"></script>
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=494-back-no-white">
+  <link rel="stylesheet" href="/theme-global.css?v=494-back-no-white">
+  <script src="/theme-manager.js?v=494-back-no-white"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -92,18 +92,18 @@
         </div>
         <div class="bw-workspace-actions">
           <button id="workshopWindowReload" type="button">Sync / Refresh</button>
-          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Back to PORTAL-BELM WM Home">← Back</button>
+          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Back to PORTAL-BELM WM Main Dashboard">← Main Dashboard</button>
         </div>
       </header>
       <div class="bw-workspace-body">
         <div id="workshopWindowLoading" class="bw-window-loading">Opening Workshop module…</div>
-        <iframe id="workshopWindowFrame" title="BELM Workshop module" loading="eager"></iframe>
+        <iframe id="workshopWindowFrame" title="BELM Workshop module" loading="eager" srcdoc="<!doctype html><html><body style=&quot;margin:0;background:#0b1728;color:#b8c7d9;font:700 13px system-ui;min-height:100vh&quot;></body></html>"></iframe>
       </div>
     </div>
   </dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
   <script src="/edit-confirm.js"></script>
-  <script src="/belm-workshop/manager.js?v=490-checklist-template"></script>
+  <script src="/belm-workshop/manager.js?v=494-back-no-white"></script>
 </body>
 </html>

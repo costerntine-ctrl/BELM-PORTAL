@@ -154,6 +154,10 @@
     title.textContent=module.title;
     subtitle.textContent=module.subtitle;
     loading.classList.remove('hidden');
+    // V494: never navigate through about:blank. It causes a visible white
+    // frame between Workshop modules on dark displays. Remove any temporary
+    // srcdoc and navigate directly to the real module.
+    frame.removeAttribute('srcdoc');
     frame.src=module.url();
     if(pushHash && location.hash!==module.hash){
       const nextUrl=`${location.pathname}${location.search}${module.hash}`;
@@ -164,31 +168,43 @@
     document.body.classList.add('bw-workspace-open');
   }
   function resetWorkspace(){
+    // V494: Back must be deterministic. Close the workspace immediately and
+    // leave the user on the PORTAL-BELM WM home, instead of relying on browser
+    // history state that can be stale after refresh/back-forward cache restores.
     if(dialog.open)dialog.close();
     document.body.classList.remove('bw-workspace-open');
-    frame.src='about:blank';
     activeKey='';
     activeMachine=machine;
   }
-  function closeModule({clearHash=true,useHistory=true}={}){
-    if(clearHash && location.hash && useHistory && history.state?.belmWorkshopModule){
-      history.back();
-      return;
-    }
+  function closeModule({clearHash=true}={}){
     resetWorkspace();
-    if(clearHash && location.hash)history.replaceState(null,'',`${location.pathname}${location.search}`);
+    if(clearHash && location.hash){
+      history.replaceState(null,'',`${location.pathname}${location.search}`);
+    }
   }
 
   document.querySelectorAll('[data-workshop-window]').forEach(link=>link.addEventListener('click',event=>{
     event.preventDefault();openModule(link.dataset.workshopWindow);
   }));
-  document.getElementById('workshopWindowClose').addEventListener('click',()=>closeModule());
+  document.getElementById('workshopWindowClose').addEventListener('click',(event)=>{
+    event.preventDefault();
+    event.stopPropagation();
+    closeModule();
+  });
   document.getElementById('workshopWindowReload').addEventListener('click',()=>{
     if(!activeKey)return;
     loading.classList.remove('hidden');
-    const current=frame.src;
-    frame.src='about:blank';
-    requestAnimationFrame(()=>{frame.src=current});
+    // V494: reloading through about:blank produced the white page the user
+    // could see. Reload the current same-origin module in place.
+    try{
+      frame.contentWindow.location.reload();
+    }catch(_){
+      const current=modules[activeKey]?.url?.() || frame.src;
+      const next=new URL(current,location.origin);
+      next.searchParams.set('_sync',String(Date.now()));
+      frame.removeAttribute('srcdoc');
+      frame.src=next.pathname+next.search+next.hash;
+    }
   });
   frame.addEventListener('load',()=>{
     if(frame.src==='about:blank')return;

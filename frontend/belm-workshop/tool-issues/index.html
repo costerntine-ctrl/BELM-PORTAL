@@ -4,11 +4,11 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <title>BELM Workshop Tool Issue Documents</title>
   <script>(function(){if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('embed-mode');})();</script>
-  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <link rel="stylesheet" href="/theme-global.css?v=494-back-no-white">
   <link rel="stylesheet" href="/admin-tools.css?v=341-multi-proforma-request">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
-  <link rel="stylesheet" href="/belm-workshop/tool-issues/tool-issues.css?v=463-workshop-tools">
-  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/admin-sidebar.css?v=494-back-no-white">
+  <link rel="stylesheet" href="/belm-workshop/tool-issues/tool-issues.css?v=494-back-no-white">
+  <script src="/theme-manager.js?v=494-back-no-white"></script>
 </head>
 <body>
   <header class="topbar">
@@ -18,7 +18,11 @@
   <main class="shell">
     <section class="hero">
       <div><p class="eyebrow">STORE KEEPER</p><h1>Tool Issue &amp; Return Documents</h1><p>BELM-owned workshop tools. Every issue stays linked to the responsible Technician and can be linked to a live Digital Job Card.</p></div>
-      <button id="newIssueButton" class="primary" type="button">+ Issue Tool</button>
+      <div class="hero-actions">
+        <button id="deliveryNoteButton" class="delivery" type="button">Delivery Note</button>
+        <button id="downloadReportButton" class="report" type="button">Download Report PDF</button>
+        <button id="newIssueButton" class="primary" type="button">+ Issue Tool</button>
+      </div>
     </section>
     <div id="pageAlert" class="alert hidden" role="status"></div>
     <section class="metrics">
@@ -31,8 +35,8 @@
       <div class="panel-head"><div><h2>Tool Register</h2><p class="muted">Issue → Technician responsibility → Return. Records remain in history after return.</p></div><input id="searchInput" placeholder="Search document, Job Card, Technician or tool"></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Document</th><th>Job Card</th><th>Technician</th><th>Tool / Asset ID</th><th>Qty</th><th>Issued</th><th>Expected Return</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody id="issueRows"><tr><td colspan="9" class="empty">Loading Tool Issue Documents…</td></tr></tbody>
+          <thead><tr><th>Document</th><th>Job Card</th><th>Technician</th><th>Tool / Asset ID</th><th>Qty</th><th>Issued By</th><th>Issued</th><th>Expected Return</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="issueRows"><tr><td colspan="10" class="empty">Loading Tool Issue Documents…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -66,7 +70,7 @@
   </form></dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=488-text-fit"></script>
-  <script src="/belm-workshop/tool-issues/tool-issues.js?v=463-workshop-tools"></script>
+  <script src="/admin-sidebar.js?v=494-back-no-white"></script>
+  <script src="/belm-workshop/tool-issues/tool-issues.js?v=494-back-no-white"></script>
 </body>
 </html>

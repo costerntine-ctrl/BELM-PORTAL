@@ -624,3 +624,42 @@ main.shell{width:min(1480px,96vw);margin:22px auto 48px}
 @media(max-width:560px){
   .bw-customer-overview-action,.bw-checklist-template-action{min-width:0 !important;flex:1 1 46%;padding:9px 12px !important;}
 }
+
+
+/* ========================================================================
+   V494 - WORKSPACE BACK + NO-WHITE-FLASH HARDENING
+   The WM workspace never exposes a white about:blank frame while opening,
+   refreshing or closing embedded modules. Back always returns to WM home.
+   ======================================================================== */
+.bw-workspace-shell{
+  background:#0d1b2e;
+  border-color:#263951;
+}
+.bw-workspace-body,
+#workshopWindowFrame,
+.bw-window-loading{
+  background:#0b1728 !important;
+}
+.bw-window-loading{
+  color:#b8c7d9;
+}
+html[data-theme="light"] .bw-workspace-shell{
+  background:#eef3f8;
+  border-color:#d7e0e9;
+}
+html[data-theme="light"] .bw-workspace-body,
+html[data-theme="light"] #workshopWindowFrame,
+html[data-theme="light"] .bw-window-loading{
+  background:#eef3f8 !important;
+}
+html[data-theme="light"] .bw-window-loading{color:#526276}
+.bw-workspace-actions .bw-close-button{
+  min-width:112px;
+  width:auto;
+  padding:0 14px;
+  font-size:11px;
+}
+@media(max-width:560px){
+  .bw-workspace-actions .bw-close-button{min-width:44px;width:44px;padding:0;font-size:0}
+  .bw-workspace-actions .bw-close-button::after{content:"←";font-size:21px;font-weight:900}
+}

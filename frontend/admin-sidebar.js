@@ -168,7 +168,11 @@
     const backLink = document.createElement("a");
     backLink.className = "belm-sidebar-link belm-sidebar-back-link";
     backLink.href = "/overview-manager/";
-    backLink.innerHTML = `<span class="belm-sidebar-icon">←</span><span>Back to Main Menu</span>`;
+    backLink.innerHTML = `<span class="belm-sidebar-icon">←</span><span>Back to Main Dashboard</span>`;
+    backLink.addEventListener("click", (event) => {
+      event.preventDefault();
+      window.location.assign("/overview-manager/");
+    });
     nav.appendChild(backLink);
   }
 

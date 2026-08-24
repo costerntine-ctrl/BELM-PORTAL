@@ -220,3 +220,11 @@ html.belm-embedded main,html.belm-embedded .shell{max-width:100%!important;min-w
 .table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
 iframe,img,video,canvas,svg{max-width:100%}
 input,select,textarea,button{min-width:0}
+
+
+/* V494 - embedded dark-canvas fallback. Prevent iframe/page gaps from flashing
+   white before module-specific styles finish painting. */
+html[data-theme="dark"].belm-embedded,
+html[data-theme="dark"].belm-embedded body{
+  background:#0b1728 !important;
+}

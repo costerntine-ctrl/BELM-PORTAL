@@ -1,6 +1,7 @@
 (function(){
   const params=new URLSearchParams(location.search);
   const preferTech=params.get('actor')==='tech';
+  const toolIssuePrefill={source:params.get('source')||'',toolIssueId:params.get('toolIssueId')||'',jobCardNo:params.get('jobCardNo')||'',toolName:params.get('toolName')||'',toolAssetId:params.get('toolAssetId')||'',quantity:Number(params.get('quantity')||1),conditionOut:params.get('conditionOut')||'',technicianName:params.get('technicianName')||''};
   const techToken=localStorage.getItem('belm_tech_token')||'';
   const adminToken=localStorage.getItem('belm_admin_token')||'';
   const token=preferTech?(techToken||adminToken):(adminToken||techToken);
@@ -67,7 +68,17 @@
   function resetForm(){
     editingId='';$('deliveryNoteForm').reset();$('formEyebrow').textContent='NEW DOCUMENT';$('formTitle').textContent='Prepare Delivery Note';$('deliveryNoteNo').value='Generated when saved';$('deliveryDate').value=new Date().toISOString().slice(0,10);$('technicianName').value=meta.actor?.name||payload.name||'BELM Staff';$('itemsBody').innerHTML='';addItem();$('damageField').classList.add('hidden');signatureTouched=false;sizeCanvas();setCustomerOptions();refreshMachineJobOptions();
   }
-  function openForm(){resetForm();$('noteFormPanel').classList.remove('hidden');requestAnimationFrame(sizeCanvas);$('noteFormPanel').scrollIntoView({behavior:'smooth',block:'start'})}
+  function applyToolIssuePrefill(){
+    if(toolIssuePrefill.source!=='tool-issue')return;
+    const job=toolIssuePrefill.jobCardNo?meta.jobCards.find(j=>String(j.jobCardNo||'').toUpperCase()===String(toolIssuePrefill.jobCardNo).toUpperCase()):null;
+    if(job){$('customerId').value=job.customerId||'';refreshMachineJobOptions(job.machineId||'',job.id||'');applyCustomerDefaults();if(job.machineId){$('machineId').value=job.machineId;refreshMachineJobOptions(job.machineId,job.id)}}
+    if(toolIssuePrefill.technicianName)$('technicianName').value=toolIssuePrefill.technicianName;
+    if(toolIssuePrefill.toolName||toolIssuePrefill.toolAssetId){$('itemsBody').innerHTML='';addItem({partNumber:toolIssuePrefill.toolAssetId,description:toolIssuePrefill.toolName||'Tool / equipment',quantity:toolIssuePrefill.quantity||1,unit:'pcs',condition:toolIssuePrefill.conditionOut||'Good'});}
+    if(toolIssuePrefill.toolIssueId)$('otherComments').value=`Source Tool Issue Document: ${toolIssuePrefill.toolIssueId}`;
+    $('formEyebrow').textContent='FROM TOOL ISSUE';
+    $('formTitle').textContent='Prepare Customer Delivery Note';
+  }
+  function openForm(){resetForm();applyToolIssuePrefill();$('noteFormPanel').classList.remove('hidden');requestAnimationFrame(sizeCanvas);$('noteFormPanel').scrollIntoView({behavior:'smooth',block:'start'})}
   $('newNoteButton').addEventListener('click',openForm);$('closeFormButton').addEventListener('click',()=>$('noteFormPanel').classList.add('hidden'));
   $('addItemButton').addEventListener('click',()=>addItem());
   $('conditionStatus').addEventListener('change',()=>{$('damageField').classList.toggle('hidden',$('conditionStatus').value!=='DAMAGED')});
@@ -114,6 +125,6 @@
   $('recordSearch').addEventListener('input',renderRecords);$('statusFilter').addEventListener('change',renderRecords);$('refreshButton').addEventListener('click',async()=>{await loadMeta();await loadRecords();alertMsg('Delivery Notes synchronized.')});
 
   async function loadMeta(){meta=await api('/delivery-notes/meta');setCustomerOptions();$('technicianName').value=meta.actor?.name||payload.name||'BELM Staff'}
-  async function init(){try{await loadMeta();resetForm();await loadRecords()}catch(e){alertMsg(e.message||'Could not open Delivery Notes.',true)}}
+  async function init(){try{await loadMeta();resetForm();await loadRecords();if(toolIssuePrefill.source==='tool-issue')openForm()}catch(e){alertMsg(e.message||'Could not open Delivery Notes.',true)}}
   init();
 })();

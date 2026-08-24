@@ -663,3 +663,13 @@ html[data-theme="light"] .bw-window-loading{color:#526276}
   .bw-workspace-actions .bw-close-button{min-width:44px;width:44px;padding:0;font-size:0}
   .bw-workspace-actions .bw-close-button::after{content:"←";font-size:21px;font-weight:900}
 }
+
+
+/* V505 - Customer Overview / embedded WM workspace must never paint white. */
+.bw-workspace-shell{background:#0d1b2e!important;border-color:#263951!important}
+.bw-workspace-body,#workshopWindowFrame,.bw-window-loading{background:#0b1728!important}
+html[data-theme="light"] .bw-workspace-shell{background:#0d1b2e!important;border-color:#263951!important}
+html[data-theme="light"] .bw-workspace-body,
+html[data-theme="light"] #workshopWindowFrame,
+html[data-theme="light"] .bw-window-loading{background:#0b1728!important}
+html[data-theme="light"] .bw-window-loading{color:#b8c7d9!important}

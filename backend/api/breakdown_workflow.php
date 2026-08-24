@@ -536,7 +536,7 @@ function bw_technician_workload(array $rows): array {
         SUM(CASE WHEN status NOT IN ('COMPLETED','CANCELLED') THEN 1 ELSE 0 END) AS active_jobs,
         SUM(CASE WHEN status='IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress,
         SUM(CASE WHEN status='WAITING_FOR_PARTS' THEN 1 ELSE 0 END) AS waiting_parts,
-        SUM(CASE WHEN status='COMPLETED' AND DATE(completed_at)=CURDATE() THEN 1 ELSE 0 END) AS completed_today
+        SUM(CASE WHEN status='COMPLETED' AND DATE(completed_at)=CURRENT_DATE THEN 1 ELSE 0 END) AS completed_today
         FROM digital_job_cards WHERE technician_id=?");
     $activeCases = db()->prepare("SELECT bc.current_stage,bc.stage_started_at,bc.status
         FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id

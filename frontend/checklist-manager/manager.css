@@ -58,3 +58,112 @@ input,select { width:100%; padding:10px 11px; border:1px solid #cad6d0; border-r
 #formError { margin:5px 26px 0; }.dialog-actions { position:sticky; bottom:0; z-index:3; display:flex; justify-content:flex-end; gap:9px; padding:18px 26px; border-top:1px solid #edf2ef; background:#fff; }.dialog-actions button { min-width:130px; }
 @media(max-width:900px){.item-card{grid-template-columns:32px 1fr 1fr}.item-card .label-field,.item-card .options-field{grid-column:span 2}.template-list{grid-template-columns:1fr}.template-fields{grid-template-columns:1fr 1fr}.service-part-row{grid-template-columns:1fr 1fr}}
 @media(max-width:620px){.heading{align-items:start;flex-direction:column}.template-fields{grid-template-columns:1fr}.item-card{grid-template-columns:1fr}.item-card .label-field,.item-card .options-field{grid-column:auto}.item-number{display:none}.service-part-row{grid-template-columns:1fr}.dialog-actions{flex-direction:column-reverse}.dialog-actions button{width:100%}}
+
+
+/* V506 - Checklist editor display fit and usable function selectors */
+dialog#templateDialog{
+  width:min(1280px,calc(100vw - 20px));
+  max-width:none;
+}
+#templateForm{
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+}
+.item-list{
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:visible;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-inline:contain;
+  scrollbar-gutter:stable both-edges;
+  padding-bottom:24px;
+}
+.item-card{
+  grid-template-columns:40px minmax(260px,1.6fr) minmax(170px,.8fr) minmax(190px,.9fr) minmax(320px,1.5fr) minmax(110px,.5fr) 42px;
+  min-width:1180px;
+  gap:12px;
+  align-items:end;
+}
+.item-card .item-number{grid-column:1}
+.item-card .label-field{grid-column:2}
+.item-card .input-type-field{grid-column:3}
+.item-card .safety-field{grid-column:4}
+.item-card .options-field{grid-column:5;min-width:0}
+.item-card .required{grid-column:6}
+.item-card .remove-item{grid-column:7}
+.item-card label{min-width:0}
+.item-card input,
+.item-card select{
+  min-height:44px;
+  font-size:13px;
+}
+.item-card .input-type-field select,
+.item-card .safety-field select{
+  min-width:165px;
+  padding-left:12px;
+  padding-right:32px;
+  font-weight:700;
+}
+.item-card .safety-field small{
+  display:block;
+  max-width:190px;
+  color:var(--muted);
+  font-size:9px;
+  font-weight:600;
+  line-height:1.25;
+}
+.dropdown-option{
+  grid-template-columns:minmax(160px,1fr) minmax(110px,.5fr) 34px;
+  gap:7px;
+}
+.yes-no-safety-editor{
+  grid-template-columns:minmax(130px,1fr) minmax(130px,1fr);
+  gap:10px;
+}
+.items-head{
+  flex-wrap:wrap;
+}
+.items-head-actions{
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+@media(max-width:900px){
+  dialog#templateDialog{width:calc(100vw - 12px);max-height:96vh}
+  #templateForm{max-height:96vh}
+  .item-list{padding-left:12px;padding-right:12px}
+  .item-card{min-width:1080px}
+}
+
+@media(max-width:620px){
+  .item-list{overflow-x:visible;padding:14px 12px 20px}
+  .item-card{
+    min-width:0;
+    grid-template-columns:1fr;
+    gap:12px;
+    padding:14px 12px;
+  }
+  .item-card .item-number,
+  .item-card .label-field,
+  .item-card .input-type-field,
+  .item-card .safety-field,
+  .item-card .options-field,
+  .item-card .required,
+  .item-card .remove-item{grid-column:1}
+  .item-card .item-number{display:grid}
+  .item-card .input-type-field select,
+  .item-card .safety-field select{min-width:0;width:100%;min-height:48px}
+  .item-card .safety-field small{max-width:none}
+  .yes-no-safety-editor{grid-template-columns:1fr}
+  .dropdown-option{grid-template-columns:minmax(0,1fr) 110px 36px}
+  .required{justify-content:flex-start!important}
+  .remove-item{justify-self:end}
+  .items-head-actions{width:100%;justify-content:stretch}
+  .items-head-actions button{flex:1;min-width:130px}
+}
+
+@media(max-width:400px){
+  .dropdown-option{grid-template-columns:1fr 100px 34px}
+  .dialog-head,.template-fields,.items-head,.dialog-actions{padding-left:14px;padding-right:14px}
+}

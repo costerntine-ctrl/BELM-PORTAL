@@ -1858,3 +1858,21 @@ html.belm-embedded .customer-grid{min-width:0}
   html.belm-embedded .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
   html.belm-embedded .customer-toolbar{grid-template-columns:1fr}
 }
+
+
+/* V505 - Customer Overview embedded in PORTAL-BELM WM inherits the dark workspace.
+   This only affects ?embed=1; standalone Customers Manager keeps its chosen theme. */
+html.belm-embedded{
+  --ink:#e7eef8!important;
+  --muted:#a7b2c4!important;
+  --line:#35445a!important;
+  --paper:#182235!important;
+  --canvas:#0c1322!important;
+  --shadow:0 18px 50px rgba(0,0,0,.35)!important;
+  background:#0b1728!important;
+  color-scheme:dark!important;
+}
+html.belm-embedded body,html.belm-embedded .shell{
+  background:#0b1728!important;
+  color:#e7eef8!important;
+}

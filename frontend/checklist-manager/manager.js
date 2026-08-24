@@ -136,13 +136,13 @@
       <article class="item-card" data-key="${escapeHtml(item.key)}">
         <span class="item-number">${index + 1}</span>
         <label class="label-field">Item label<input data-field="label" value="${escapeHtml(item.label)}" maxlength="255" required placeholder="e.g. Hydraulic oil level"></label>
-        <label>Input type
+        <label class="input-type-field">Input type
           <select data-field="inputType">
             ${["TEXT", "NUMBER", "YES_NO", "DROPDOWN", "DATE", "PHOTO"].map((value) => `<option value="${value}" ${item.inputType === value ? "selected" : ""}>${value.replace("_", " / ")}</option>`).join("")}
           </select>
         </label>
         ${isPhoto ? "" : `
-        <label>Safety <small>(NONE = informational only, no color shown on the report)</small>
+        <label class="safety-field">Safety <small>(NONE = informational only, no color shown on the report)</small>
           <select data-field="safetyLevel">
             ${["NONE", "GREEN", "YELLOW", "RED"].map((value) => `<option value="${value}" ${(item.safetyLevel || "GREEN") === value ? "selected" : ""}>${value === "NONE" ? "No color (informational)" : value}</option>`).join("")}
           </select>

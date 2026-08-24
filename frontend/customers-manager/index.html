@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>if(new URLSearchParams(location.search).get("embed")==="1")document.documentElement.classList.add("belm-embedded");</script>
+    <script>if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("belm-embedded");document.documentElement.style.background="#0b1728";}</script>
+    <style>html.belm-embedded,html.belm-embedded body{background:#0b1728!important;color:#e7eef8!important}</style>
     <title>BELM Customers Overview</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,7 +12,7 @@
     <link rel="stylesheet" href="/admin-tools.css">
     <!-- Regression baseline: /customers-manager/manager.css?v=377-admin-machine-management-activity-status -->
     <!-- Regression baseline: /customers-manager/manager.css?v=382-full-card-alert-range -->
-    <link rel="stylesheet" href="/customers-manager/manager.css?v=480-workshop-embed-back-fit">
+    <link rel="stylesheet" href="/customers-manager/manager.css?v=505-no-white-customer-overview">
     <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
     <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>

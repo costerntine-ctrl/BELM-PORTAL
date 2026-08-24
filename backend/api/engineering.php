@@ -47,8 +47,10 @@ if ($method === 'GET' && $action === 'workshop-tool-options') {
          FROM digital_job_cards j
          JOIN customers c ON c.id=j.customer_id
          JOIN machines m ON m.id=j.machine_id
+         LEFT JOIN breakdown_cases bc ON bc.id=j.case_id
          LEFT JOIN users u ON u.id=j.technician_id
          WHERE UPPER(COALESCE(j.status,'')) NOT IN ('COMPLETED','CANCELLED')
+           AND (COALESCE(c.is_machinery_admin,0)=0 OR UPPER(COALESCE(bc.source_type,''))='SERVICE_REQUEST')
          ORDER BY COALESCE(j.updated_at,j.created_at) DESC
          LIMIT 200"
     )->fetchAll();
@@ -99,9 +101,17 @@ if ($method === 'POST' && $action === 'workshop-tool-issues') {
     $tech->execute([$technicianId]);$technician=$tech->fetch();
     if(!$technician) json_error('Selected BELM Technician is not available.',404);
     if($jobCardNo!=='') {
-        $jc=db()->prepare('SELECT id FROM digital_job_cards WHERE UPPER(job_card_no)=? LIMIT 1');
+        $jc=db()->prepare(
+            "SELECT j.id
+             FROM digital_job_cards j
+             JOIN customers c ON c.id=j.customer_id
+             LEFT JOIN breakdown_cases bc ON bc.id=j.case_id
+             WHERE UPPER(j.job_card_no)=?
+               AND (COALESCE(c.is_machinery_admin,0)=0 OR UPPER(COALESCE(bc.source_type,''))='SERVICE_REQUEST')
+             LIMIT 1"
+        );
         $jc->execute([$jobCardNo]);
-        if(!$jc->fetchColumn()) json_error('Job Card number was not found. Select a current Job Card or leave it blank.',404);
+        if(!$jc->fetchColumn()) json_error('Job Card is not available to BELM Workshop. For a self-managed customer, an official BELM Support Request is required.',404);
     }
     $dayPrefix='BTI-'.date('dmy').'-';
     $countStmt=db()->prepare("SELECT COUNT(*) FROM belm_workshop_tool_issues WHERE issued_at >= date_trunc('day',NOW())");

@@ -1,0 +1,12 @@
+BELM PORTAL V471
+
+Commercial workshop portal naming and direct sidebar access.
+
+1. Main admin sidebar now includes:
+   - PORTAL-BELM WM -> /belm-workshop/
+   - PORTAL-CWM -> /portal-cwm/
+2. TECHNICAL DEP remains available unchanged.
+3. Nested TECHNICAL DEP/BELM Workshop sidebar shows Customer Overview, PORTAL-BELM WM and PORTAL-CWM for direct switching/testing.
+4. Workshop Module UI/business label is renamed to PORTAL-CWM while the existing backend field and behavior remain unchanged.
+5. PORTAL-CWM means Portal Customer Workshop Manager.
+6. No database duplication or route migration was introduced.

@@ -1,0 +1,17 @@
+BELM PORTAL V469 - CUSTOMERS IN REGISTRATION & ROLE APPROVAL
+
+Base: V468 MACHINE CARDS AUTO DISPLAY FIT.
+
+Registration & Role Approval now shows registered Customer accounts separately from BELM system users.
+Clicking a Customer name opens an in-page Customer Control window with:
+- Edit customer details
+- Reset customer portal login
+- Delete customer to Recycle Bin
+- Add Machine (customer preselected)
+- Remove Machine (customer-scoped machine selector)
+- BELM Service Provider ON/OFF
+- Portal Service Lock / Unlock
+- Customer Users Control (used users and allowed user limit)
+
+The controls reuse the existing customer, machine, service-provider, portal-access and user-limit backend APIs, so the data remains synchronized with TECHNICAL DEP / Customers Manager.
+No duplicate customer or machine database was added.

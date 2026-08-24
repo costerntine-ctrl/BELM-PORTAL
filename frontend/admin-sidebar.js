@@ -66,11 +66,10 @@
     // Do not expose a second standalone admin navigation entry.
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    // V459: "BELM WORKSHOP" removed from the main sidebar list - it's
-    // reached from TECHNICAL DEP's nested sidebar ("Workshop" link, see
-    // nestedPages below) instead of being a top-level entry here.
     { section: "Maintenance", key: "customers", label: "TECHNICAL DEP", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Maintenance", key: "customers", label: "PORTAL-CWM", short: "WM", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
+    // V471: direct commercial workshop portals for fast testing and operations.
+    { section: "Maintenance", key: "customers", label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+    { section: "Maintenance", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
@@ -84,14 +83,15 @@
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
   const allowedPages = Array.isArray(user.allowedPages) ? user.allowedPages : [];
   // V458: nested/sub-navigation. On TECHNICAL DEP and BELM WORKSHOP, the
-  // full admin menu is replaced by a small 2-item sidebar (Customer
-  // Overview / Workshop) plus a "Back to Main Menu" link at the top -
+  // full admin menu is replaced by a compact workshop sidebar (Customer
+  // Overview / PORTAL-BELM WM / PORTAL-CWM) plus a "Back to Main Menu" link at the top -
   // every other admin page keeps the full menu unchanged.
-  const NESTED_SIDEBAR_PATHS = ["/customers-manager/", "/belm-workshop/"];
+  const NESTED_SIDEBAR_PATHS = ["/customers-manager/", "/belm-workshop/", "/portal-cwm/"];
   const isNestedSidebar = NESTED_SIDEBAR_PATHS.some((p) => pathname === p || pathname.startsWith(p));
   const nestedPages = [
     { section: "Nested", key: null, label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Nested", key: null, label: "Workshop", short: "WS", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+    { section: "Nested", key: null, label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+    { section: "Nested", key: null, label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
   ];
   const visiblePages = isNestedSidebar
     ? nestedPages

@@ -1,7 +1,7 @@
 BELM PORTAL V423 - MAIN CUSTOMER DASHBOARD
 
 Customer owner dashboard actions:
-1. View Your Machine -> approved Customer Machine Card / machine fleet.
+1. View Customer Machine -> approved Customer Machine Card / machine fleet.
 2. Workshop -> customer workshop and Job Card workflow.
 3. Procurement -> customer procurement/store workflow.
 4. General Report -> customer report center.

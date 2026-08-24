@@ -420,10 +420,10 @@
               </label>
               <strong class="customer-nonpayment-state">${Number(customer.isActive) === 1 ? "PORTAL ON" : "STOPPED"}</strong>
             </div>
-            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="Workshop Module paid add-on for ${escapeHtml(customer.name)}">
-              <span class="customer-workshop-label">Workshop Module</span>
+            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="PORTAL-CWM (Customer Workshop Manager) paid add-on for ${escapeHtml(customer.name)}">
+              <span class="customer-workshop-label">PORTAL-CWM</span>
               <label class="customer-workshop-switch">
-                <input type="checkbox" data-card-workshop-toggle="${escapeHtml(customer.id)}" ${customer.isWorkshopModuleActive ? "checked" : ""} aria-label="Workshop Module for ${escapeHtml(customer.name)}">
+                <input type="checkbox" data-card-workshop-toggle="${escapeHtml(customer.id)}" ${customer.isWorkshopModuleActive ? "checked" : ""} aria-label="PORTAL-CWM for ${escapeHtml(customer.name)}">
                 <span class="customer-workshop-slider" aria-hidden="true"></span>
               </label>
               <strong class="customer-workshop-state">${customer.isWorkshopModuleActive ? "ON" : "OFF"}</strong>
@@ -438,16 +438,8 @@
           <div class="customer-feed-body">Loading recent updates…</div>
         </div>
         <nav class="customer-card-actions customer-card-quick-actions" aria-label="Customer quick actions">
-          <button type="button" class="customer-quick-action action-black" data-view-machines="${escapeHtml(customer.id)}">View Your Machine</button>
-          <a class="customer-quick-action action-blue" href="/customer-workshop/?actor=belm&amp;customerId=${encodeURIComponent(customer.id)}">Workshop</a>
-          <a class="customer-quick-action action-green" href="/spare-parts-manager/">Procurement</a>
-          <a class="customer-quick-action action-yellow" href="/reports-manager/">General Report</a>
+          <button type="button" class="customer-quick-action action-black customer-quick-action-wide" data-view-machines="${escapeHtml(customer.id)}">View Customer Machine</button>
           <button type="button" class="customer-quick-action action-manage customer-quick-action-wide" data-manage-customer="${escapeHtml(customer.id)}">Manage Customer</button>
-        </nav>
-        <nav class="customer-card-actions customer-card-secondary-actions" aria-label="Customer finance, analysis and settings actions">
-          <button type="button" class="customer-quick-action action-petty" data-admin-customer-petty="${escapeHtml(customer.id)}">Petty Cash</button>
-          <a class="customer-quick-action action-analysis" href="/overview-manager/?customerId=${encodeURIComponent(customer.id)}">General Analysis</a>
-          <a class="customer-quick-action action-settings" href="/settings-manager/">Settings</a>
         </nav>
         <div class="customer-card-legacy-actions" hidden aria-hidden="true">
           <button type="button" data-quick-delete-machine="${escapeHtml(customer.id)}">Delete Machine</button>
@@ -2230,7 +2222,7 @@
     document.getElementById("manageCustomerDialog").close();
     await forgetCustomer(customer.id);
   });
-  // V444 - Workshop Module paid add-on switch, lives on each customer card.
+  // V444 - PORTAL-CWM (Customer Workshop Manager) paid add-on switch, lives on each customer card.
   // Checked means the customer's own Workshop Manager/Store Keeper/Technician
   // roles can use Store Ledger + Tool Issue/Return Documents. This is
   // deliberately independent from the "Non-payment" portal switch above and
@@ -2253,10 +2245,10 @@
     toggle.disabled = true;
     try {
       const confirmation = await window.belmConfirmEdit({
-        title: enabled ? "Activate Workshop Module?" : "Deactivate Workshop Module?",
+        title: enabled ? "Activate PORTAL-CWM?" : "Deactivate PORTAL-CWM?",
         message: enabled
-          ? `Activate the paid Workshop Module for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
-          : `Deactivate the Workshop Module for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until this is switched back ON, even if their own Role Manager still grants Store access.`,
+          ? `Activate PORTAL-CWM for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
+          : `Deactivate PORTAL-CWM for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until this is switched back ON, even if their own Role Manager still grants Store access.`,
       });
       if (!confirmation) {
         toggle.checked = !enabled;
@@ -2270,14 +2262,14 @@
       customer.isWorkshopModuleActive = Boolean(result?.workshopModuleActive ?? enabled);
       showAlert(
         enabled
-          ? `${customer.name}: Workshop Module activated.`
-          : `${customer.name}: Workshop Module deactivated.`,
+          ? `${customer.name}: PORTAL-CWM activated.`
+          : `${customer.name}: PORTAL-CWM deactivated.`,
         false,
       );
       await load();
     } catch (error) {
       toggle.checked = !enabled;
-      showAlert(error.message || "Could not change Workshop Module.", true);
+      showAlert(error.message || "Could not change PORTAL-CWM.", true);
     } finally {
       toggle.disabled = false;
     }
@@ -2439,7 +2431,6 @@
     const viewMachines = event.target.closest("[data-view-machines]");
     const viewMessages = event.target.closest("[data-view-messages]");
     const manageCustomer = event.target.closest("[data-manage-customer]");
-    const adminCustomerPetty = event.target.closest("[data-admin-customer-petty]");
     const editCustomer = event.target.closest("[data-edit-customer]");
     const resetCustomer = event.target.closest("[data-reset-customer]");
     const deleteCustomer = event.target.closest("[data-delete-customer]");
@@ -2448,14 +2439,6 @@
     if (viewMachines) openMachineList(customers.find((customer) => customer.id === viewMachines.dataset.viewMachines));
     if (viewMessages) openCustomerMessages(viewMessages.dataset.viewMessages, viewMessages.dataset.customerName);
     if (manageCustomer) openManageCustomer(customers.find((customer) => customer.id === manageCustomer.dataset.manageCustomer));
-    if (adminCustomerPetty) {
-      const customer = customers.find((item) => item.id === adminCustomerPetty.dataset.adminCustomerPetty);
-      if (customer) {
-        sessionStorage.setItem("belm_admin_selected_customer_id", String(customer.id));
-        sessionStorage.setItem("belm_admin_selected_customer_name", String(customer.name || "Customer"));
-      }
-      window.location.href = `/customer-petty-cash/?adminCustomerId=${encodeURIComponent(adminCustomerPetty.dataset.adminCustomerPetty)}`;
-    }
     if (editCustomer) {
       const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
       confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));

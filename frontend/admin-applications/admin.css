@@ -117,3 +117,72 @@ html[data-theme="dark"] .same-login-link-note { background:#17243a; color:#c7d7e
 .user-row-actions button:disabled { opacity:.55; cursor:not-allowed; }
 html[data-theme="dark"] .registered-user-action-dialog textarea { background:#0c1626; border-color:#34465f; color:#edf4fb; }
 @media(max-width:500px){.registered-user-action-buttons{grid-template-columns:1fr}}
+
+/* V469 - Registered customers + customer control inside Registration & Role Approval */
+.registered-customers-section { margin-top:34px; }
+.registered-customers-table { min-width:720px; }
+.registered-customers-table td:first-child { min-width:260px; }
+.customer-name-button { width:100%; padding:0; border:0; background:transparent; text-align:left; cursor:pointer; font:inherit; }
+.customer-name-button strong,.customer-name-button small { display:block; }
+.customer-name-button strong { color:var(--navy); font-size:13px; margin-bottom:3px; text-decoration:underline; text-decoration-color:rgba(0,166,81,.35); text-underline-offset:3px; }
+.customer-name-button small { color:#7a8998; line-height:1.45; }
+.customer-name-button:hover strong { color:var(--green2); text-decoration-color:var(--green); }
+.table-subtext { color:#7a8998; font-size:10px; }
+.customer-manage-dialog { width:min(720px,calc(100% - 28px)); text-align:left; }
+.customer-control-status-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:18px 0 12px; }
+.customer-control-switch { min-height:76px; display:flex; justify-content:space-between; align-items:center; gap:16px; padding:13px 14px; border:1px solid #d8e2eb; border-radius:12px; background:#f8fafc; }
+.customer-control-switch span { display:grid; gap:4px; }
+.customer-control-switch strong { color:var(--navy); font-size:12px; }
+.customer-control-switch small { color:var(--muted); font-size:10px; line-height:1.4; }
+.customer-control-switch input { width:44px; height:22px; flex:0 0 auto; accent-color:var(--green); cursor:pointer; }
+.customer-control-meta { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 14px; }
+.customer-control-meta span { padding:7px 9px; border-radius:999px; background:#eef3f7; color:#506579; font-size:10px; font-weight:800; }
+.customer-manage-actions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.customer-manage-actions button { min-height:76px; display:grid; align-content:center; gap:4px; padding:12px; border:1px solid #d8e2eb; border-radius:11px; background:#fff; color:#284057; text-align:left; cursor:pointer; }
+.customer-manage-actions button:hover { border-color:var(--green); background:#effaf4; }
+.customer-manage-actions button strong { font-size:12px; }
+.customer-manage-actions button span { color:#718194; font-size:10px; line-height:1.35; }
+.customer-manage-actions button.danger { border-color:#efc7c3; background:#fff7f6; color:var(--red); }
+.customer-users-stats { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:18px 0 4px; }
+.customer-users-stats div { padding:12px; border-radius:11px; background:#f5f8fb; text-align:left; }
+.customer-users-stats span,.customer-users-stats strong { display:block; }
+.customer-users-stats span { color:#778697; font-size:10px; text-transform:uppercase; letter-spacing:.45px; }
+.customer-users-stats strong { margin-top:5px; color:var(--navy); font-size:20px; }
+.customer-machine-control-dialog { width:min(700px,calc(100% - 28px)); text-align:left; }
+.customer-machine-control-list { display:grid; gap:9px; margin-top:18px; }
+.customer-machine-control-row { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px; border:1px solid #d8e2eb; border-radius:11px; background:#f8fafc; }
+.customer-machine-control-row span { min-width:0; }
+.customer-machine-control-row strong,.customer-machine-control-row small { display:block; overflow-wrap:anywhere; }
+.customer-machine-control-row strong { color:var(--navy); font-size:12px; }
+.customer-machine-control-row small { margin-top:4px; color:#718194; font-size:10px; }
+.customer-machine-control-row button { flex:0 0 auto; border:0; border-radius:8px; padding:8px 10px; font-weight:850; font-size:10px; cursor:pointer; }
+.compact-empty { padding:24px 16px; }
+html[data-theme="dark"] .customer-name-button strong { color:#eef4fb; }
+html[data-theme="dark"] .customer-name-button small { color:#95a5b8; }
+html[data-theme="dark"] .customer-control-switch,
+html[data-theme="dark"] .customer-machine-control-row,
+html[data-theme="dark"] .customer-users-stats div { background:#0c1626; border-color:#34465f; }
+html[data-theme="dark"] .customer-control-switch strong,
+html[data-theme="dark"] .customer-machine-control-row strong,
+html[data-theme="dark"] .customer-users-stats strong { color:#edf4fb; }
+html[data-theme="dark"] .customer-control-switch small,
+html[data-theme="dark"] .customer-machine-control-row small { color:#9eb0c4; }
+html[data-theme="dark"] .customer-control-meta span { background:#17243a; color:#c3d1df; }
+html[data-theme="dark"] .customer-manage-actions button { background:#111b2e; border-color:#34465f; color:#dce6f1; }
+html[data-theme="dark"] .customer-manage-actions button:hover { background:#142c25; border-color:#00a651; }
+html[data-theme="dark"] .customer-manage-actions button span { color:#9eb0c4; }
+html[data-theme="dark"] .customer-manage-actions button.danger { background:#2a1719; border-color:#6d3437; color:#ffaaa4; }
+@media(max-width:700px){
+  .customer-control-status-grid{grid-template-columns:1fr}
+  .customer-manage-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:460px){
+  .customer-manage-actions{grid-template-columns:1fr 1fr}
+  .customer-machine-control-row{align-items:flex-start;flex-direction:column}
+  .customer-machine-control-row button{width:100%}
+}
+.customer-control-switch input { appearance:none; -webkit-appearance:none; position:relative; border-radius:999px; background:#aeb9c6; transition:.18s ease; }
+.customer-control-switch input::after { content:""; position:absolute; top:3px; left:3px; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.25); transition:.18s ease; }
+.customer-control-switch input:checked { background:var(--green); }
+.customer-control-switch input:checked::after { transform:translateX(22px); }
+.customer-control-switch input:disabled { opacity:.55; cursor:not-allowed; }

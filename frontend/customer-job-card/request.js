@@ -27,7 +27,7 @@
   }
 
   if (!token) {
-    window.location.replace("/portal/login");
+    window.location.replace("/login");
     return;
   }
   if (!machineId) {
@@ -471,7 +471,7 @@
   });
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
-    window.location.href = "/portal/login";
+    window.location.href = "/login";
   });
   let isSubmittingServiceRequest = false;
   document.getElementById("serviceForm").addEventListener("submit", async event => {

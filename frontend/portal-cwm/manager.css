@@ -45,6 +45,13 @@
 .cwm-info-grid span { color: var(--muted); font-size: 8.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .cwm-info-grid b { font-size: 12px; color: var(--ink); font-weight: 700; overflow-wrap: anywhere; }
 
+.cwm-sync-strip { display:flex; align-items:center; flex-wrap:wrap; gap:6px; padding:7px 9px; border:1px solid var(--line); border-radius:10px; background:var(--canvas); color:var(--muted); font-size:9px; font-weight:800; }
+.cwm-sync-strip > span:not(.cwm-owner) { padding:3px 6px; border-radius:999px; border:1px solid var(--line); }
+.cwm-sync-strip b { color:var(--ink); }
+.cwm-owner { padding:4px 8px; border-radius:999px; font-weight:900; letter-spacing:.03em; }
+.cwm-owner.customer { background:color-mix(in srgb,#1a9c5c 18%,transparent); color:#1a9c5c; }
+.cwm-owner.belm { background:color-mix(in srgb,#2a6fdb 18%,transparent); color:#2a6fdb; }
+
 .cwm-switch-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .cwm-switch-item {
   display: flex; flex-direction: column; align-items: flex-start; gap: 5px;

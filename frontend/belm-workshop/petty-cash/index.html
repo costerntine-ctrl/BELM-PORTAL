@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BELM Workshop Petty Cash</title>
+  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+  <link rel="stylesheet" href="/belm-workshop/petty-cash/petty-cash.css?v=472-sync-audit">
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+  <script defer src="/edit-confirm.js"></script>
+  <script defer src="/belm-workshop/petty-cash/petty-cash.js?v=472-sync-audit"></script>
+</head>
+<body>
+  <main class="pc-shell">
+    <section class="pc-head">
+      <div>
+        <p class="eyebrow">PORTAL-BELM WM · SHARED DATA</p>
+        <h1>Petty Cash</h1>
+        <p class="lead">Reads the same customer Petty Cash records used by PORTAL-CWM. BELM does not impersonate the customer's login.</p>
+      </div>
+      <div class="pc-select-wrap">
+        <label for="customerSelect">Customer</label>
+        <select id="customerSelect"><option value="">Select customer…</option></select>
+        <button id="refreshButton" type="button">Refresh</button>
+      </div>
+    </section>
+
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+
+    <section id="customerState" class="state-row hidden" aria-live="polite"></section>
+
+    <section class="summary-grid">
+      <article><span>Balance</span><strong id="balanceAmount">TZS 0</strong></article>
+      <article><span>Total topped up</span><strong id="totalToppedUp">TZS 0</strong></article>
+      <article><span>Total used</span><strong id="totalUsed">TZS 0</strong></article>
+      <article><span>Entries</span><strong id="recordCount">0</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <div><h2>Add funds</h2><p>Top-up is written to the shared customer Petty Cash account and appears in PORTAL-CWM immediately.</p></div>
+      </div>
+      <form id="topupForm" class="topup-form">
+        <label>Amount (TZS)<input id="topupAmount" type="number" min="1" step="0.01" required></label>
+        <label class="note">Note<input id="topupNote" maxlength="255" placeholder="e.g. Workshop petty cash replenishment"></label>
+        <button id="topupButton" type="submit">Add Funds</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title"><div><h2>Petty Cash history</h2><p>Expenses recorded by the customer team, synchronized from the same usage records.</p></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Machine</th><th>Description</th><th>Spare/Material</th><th>Amount</th><th>Receipt</th><th>Recorded by</th></tr></thead>
+          <tbody id="entryRows"><tr><td colspan="7" class="empty">Select a customer.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title"><div><h2>Top-up history</h2><p>Funds added from either customer Administration/Accounts or BELM Workshop access.</p></div></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Amount</th><th>Note</th><th>Added by</th></tr></thead>
+          <tbody id="topupRows"><tr><td colspan="4" class="empty">Select a customer.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

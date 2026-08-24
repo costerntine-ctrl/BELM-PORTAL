@@ -1,0 +1,7 @@
+V467 - GENERAL REPORT TO WORKSHOP MANAGER CARD
+
+- Removed General Report from TECHNICAL DEP Customer Overview customer card.
+- Added General Report to TECHNICAL DEP -> WORKSHOP -> WORKSHOP MANAGER (Managing Workshop).
+- General Report opens inside the standalone Workshop workspace/dialog via reports-manager embed.
+- WM controls remain within the existing card footprint: 6 buttons arranged 3 + 3 in two compact rows.
+- Existing V465 Technician cleanup and V466 customer-card cleanup retained.

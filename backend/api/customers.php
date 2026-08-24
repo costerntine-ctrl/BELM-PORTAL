@@ -26,7 +26,7 @@ function belm_in_clause(array $ids): string {
     return implode(',', array_fill(0, count($ids), '?'));
 }
 
-// V377 - Permanent deletion for ONE machine from BELM Admin > View Your Machine.
+// V377 - Permanent deletion for ONE machine from BELM Admin > View Customer Machine.
 // Mirrors the proven Danger Zone machine hard-delete behavior: machine-owned
 // operational history is removed, while independent customer billing/service
 // records are detached so the customer and every other machine stay intact.
@@ -279,7 +279,22 @@ if ($method === 'GET' && $action === 'cwm-overview') {
         $staffByCustomer[$row['customer_id']][$row['role_lower']] = (int)$row['total'];
     }
 
-    $result = array_map(static function (array $c) use ($staffByCustomer): array {
+    // Customer-managed Technicians are real staff users (users table), not
+    // customer_users. Count them from the same source used by Customer Workshop.
+    $technicianCounts = db()->query(
+        "SELECT u.assigned_customer_id AS customer_id, COUNT(*) AS total
+         FROM users u
+         JOIN roles r ON r.id=u.role_id
+         WHERE u.is_customer_managed=1 AND u.is_active=1 AND u.deleted_at IS NULL
+           AND r.name='Technician' AND u.assigned_customer_id IS NOT NULL
+         GROUP BY u.assigned_customer_id"
+    )->fetchAll();
+    $techniciansByCustomer = [];
+    foreach ($technicianCounts as $row) {
+        $techniciansByCustomer[$row['customer_id']] = (int)$row['total'];
+    }
+
+    $result = array_map(static function (array $c) use ($staffByCustomer, $techniciansByCustomer): array {
         $staff = $staffByCustomer[$c['id']] ?? [];
         return [
             'id' => $c['id'],
@@ -293,7 +308,7 @@ if ($method === 'GET' && $action === 'cwm-overview') {
             'workshopModuleActive' => !empty($c['workshop_module_active']),
             'workshopManagerCount' => $staff['workshop_manager'] ?? 0,
             'storeKeeperCount' => $staff['store_keeper'] ?? 0,
-            'technicianCount' => $staff['technician'] ?? 0,
+            'technicianCount' => $techniciansByCustomer[$c['id']] ?? 0,
             'operatorCount' => $staff['operator'] ?? 0,
         ];
     }, $rows);
@@ -943,6 +958,103 @@ if ($method === 'PUT' && $action === 'workshop-module') {
     if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
     log_activity($user, 'customer-workshop-module-changed', 'customer', $id, ['enabled' => (bool)$enabled]);
     json_out(['ok' => true, 'workshopModuleActive' => (bool)$enabled]);
+}
+
+// V472 - BELM Workshop Petty Cash bridge. The Workshop Manager uses an
+// admin token, while the Customer Petty Cash page uses a customer token. This
+// endpoint reads/writes the SAME petty_cash_topups + usage_logs records, so the
+// two portals stay synchronized without sharing/impersonating login tokens.
+if ($action === 'workshop-petty-cash' || $action === 'workshop-petty-cash-topup' || $action === 'workshop-petty-cash-receipt') {
+    require_page_access($user, 'customers');
+    $customerId = trim((string)$id);
+    if ($customerId === '') json_error('Customer was not specified.');
+
+    $customerStmt = db()->prepare('SELECT id,name,email,is_active,is_machinery_admin,workshop_module_active FROM customers WHERE id=? AND deleted_at IS NULL LIMIT 1');
+    $customerStmt->execute([$customerId]);
+    $customerRow = $customerStmt->fetch();
+    if (!$customerRow) json_error('Customer not found.', 404);
+    require_belm_customer_privacy($customerId, 'expenseReceipts', 'Customer Petty Cash records');
+
+    if ($method === 'GET' && $action === 'workshop-petty-cash-receipt') {
+        $expenseId = trim((string)($_GET['expenseId'] ?? ''));
+        if ($expenseId === '') json_error('Petty Cash receipt was not specified.');
+        $receiptStmt = db()->prepare("SELECT receipt_photo_data,receipt_photo_mime,receipt_photo_name FROM usage_logs WHERE id=? AND customer_id=? AND category='PETTY_CASH' LIMIT 1");
+        $receiptStmt->execute([$expenseId,$customerId]);
+        $receipt = $receiptStmt->fetch();
+        if (!$receipt || empty($receipt['receipt_photo_data'])) json_error('Receipt photo was not found.',404);
+        $binary = base64_decode((string)$receipt['receipt_photo_data'], true);
+        if ($binary === false) json_error('Receipt photo is damaged.',500);
+        $mime = in_array($receipt['receipt_photo_mime'], ['image/jpeg','image/png','image/webp','application/pdf'], true) ? $receipt['receipt_photo_mime'] : 'image/jpeg';
+        header('Content-Type: '.$mime);
+        header('Content-Length: '.strlen($binary));
+        header('Content-Disposition: inline; filename="'.preg_replace('/[^A-Za-z0-9._-]+/','-',(string)($receipt['receipt_photo_name'] ?: 'petty-cash-receipt')).'"');
+        echo $binary; exit;
+    }
+
+    if ($method === 'POST' && $action === 'workshop-petty-cash-topup') {
+        $b = body();
+        require_edit_confirmation($user, $b);
+        $amount = (float)($b['amount'] ?? 0);
+        $note = trim((string)($b['note'] ?? ''));
+        if ($amount <= 0) json_error('Top-up amount must be greater than zero.');
+        if (strlen($note) > 255) json_error('Top-up note is too long.');
+        $topupId = uuid();
+        db()->prepare('INSERT INTO petty_cash_topups (id,machine_id,customer_id,amount,note,added_by,added_by_name,created_at) VALUES (?,NULL,?,?,?,?,?,NOW())')
+            ->execute([$topupId,$customerId,round($amount,2),$note !== '' ? $note : null,$user['id'] ?? null,$user['name'] ?? 'BELM Workshop Manager']);
+        log_activity($user,'workshop-petty-cash-topup','customer',$customerId,['amount'=>round($amount,2),'note'=>$note]);
+        json_out(['ok'=>true,'id'=>$topupId,'message'=>'Petty Cash funds added. Customer Portal reads the same balance.'],201);
+    }
+
+    if ($method === 'GET' && $action === 'workshop-petty-cash') {
+        $topupStmt = db()->prepare("SELECT pct.id,pct.amount,pct.note,pct.created_at,COALESCE(NULLIF(TRIM(pct.added_by_name),''),u.name,'Administration') AS added_by_name FROM petty_cash_topups pct LEFT JOIN users u ON u.id=pct.added_by WHERE pct.customer_id=? ORDER BY pct.created_at DESC LIMIT 250");
+        $topupStmt->execute([$customerId]);
+        $topups = $topupStmt->fetchAll();
+        $topupTotalStmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM petty_cash_topups WHERE customer_id=?');
+        $topupTotalStmt->execute([$customerId]);
+        $totalToppedUp = (float)$topupTotalStmt->fetchColumn();
+        $usedStmt = db()->prepare("SELECT COALESCE(SUM(cost),0),COUNT(*) FROM usage_logs WHERE customer_id=? AND category='PETTY_CASH'");
+        $usedStmt->execute([$customerId]);
+        $usedRow = $usedStmt->fetch(PDO::FETCH_NUM) ?: [0,0];
+        $totalUsed = (float)$usedRow[0];
+        $recordCount = (int)$usedRow[1];
+
+        $entryStmt = db()->prepare(
+            "SELECT ul.id,ul.machine_id,ul.date,ul.description,ul.cost,ul.logged_by,ul.created_at,ul.part_number,ul.quantity,ul.unit,ul.petty_cash_items_json,\n                    CASE WHEN COALESCE(ul.receipt_photo_data,'')<>'' THEN 1 ELSE 0 END AS has_receipt,\n                    m.brand,m.model,m.machine_type,m.fleet_number\n             FROM usage_logs ul\n             JOIN machines m ON m.id=ul.machine_id\n             WHERE ul.customer_id=? AND ul.category='PETTY_CASH'\n             ORDER BY ul.date DESC,ul.created_at DESC LIMIT 250"
+        );
+        $entryStmt->execute([$customerId]);
+        $entries = array_map(static function(array $e): array {
+            $items=[];
+            if (!empty($e['petty_cash_items_json'])) {
+                $decoded=json_decode((string)$e['petty_cash_items_json'],true);
+                if (is_array($decoded)) $items=$decoded;
+            }
+            if (!$items && (!empty($e['part_number']) || !empty($e['quantity']) || !empty($e['unit']))) {
+                $items[]=['partNumber'=>$e['part_number'],'quantity'=>$e['quantity'] !== null ? (float)$e['quantity'] : null,'unit'=>$e['unit']];
+            }
+            return [
+                'id'=>$e['id'],'machineId'=>$e['machine_id'],
+                'machineName'=>trim((string)($e['brand'] ?? '').' '.(string)($e['model'] ?? '')) ?: ($e['machine_type'] ?? 'Machine'),
+                'fleetNumber'=>$e['fleet_number'] ?? null,'date'=>$e['date'],'description'=>$e['description'],
+                'cost'=>(float)$e['cost'],'loggedBy'=>$e['logged_by'],'createdAt'=>$e['created_at'],
+                'hasReceipt'=>!empty($e['has_receipt']),'spareItems'=>$items,
+            ];
+        },$entryStmt->fetchAll());
+
+        json_out([
+            'customer'=>[
+                'id'=>$customerRow['id'],'name'=>$customerRow['name'],'email'=>$customerRow['email'],
+                'isActive'=>!empty($customerRow['is_active']),
+                'belmServiceProviderActive'=>empty($customerRow['is_machinery_admin']),
+                'workshopModuleActive'=>!empty($customerRow['workshop_module_active']),
+            ],
+            'account'=>[
+                'totalToppedUp'=>round($totalToppedUp,2),'totalUsed'=>round($totalUsed,2),
+                'balance'=>round($totalToppedUp-$totalUsed,2),'recordCount'=>$recordCount,
+                'topups'=>array_map(static fn(array $t): array => ['id'=>$t['id'],'amount'=>(float)$t['amount'],'note'=>$t['note'],'addedBy'=>$t['added_by_name'],'createdAt'=>$t['created_at']],$topups),
+            ],
+            'entries'=>$entries,
+        ]);
+    }
 }
 
 // Quick "Stop portal service" toggle — for a customer who hasn't paid,

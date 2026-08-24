@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Access Applications — BELM Admin</title>
-  <link rel="stylesheet" href="/admin-applications/admin.css?v=322-user-actions-fix">
+  <link rel="stylesheet" href="/admin-applications/admin.css?v=469-customer-control">
   <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
@@ -40,6 +40,24 @@
     <div id="alertBox" class="alert hidden"></div>
     <section id="applicationList" class="application-list">
       <div class="loading">Loading applications…</div>
+    </section>
+
+
+    <section class="registered-users-section registered-customers-section" aria-labelledby="registeredCustomersTitle">
+      <div class="registered-users-head">
+        <div>
+          <p>REGISTERED CUSTOMERS</p>
+          <h2 id="registeredCustomersTitle">Customers <span id="registeredCustomersCount">0</span></h2>
+          <span>Click a customer name to open account, machine, service and user controls.</span>
+        </div>
+        <div class="registered-users-tools">
+          <input id="registeredCustomersSearch" type="search" placeholder="Search customer, email, phone or machine" aria-label="Search registered customers">
+          <button class="refresh" id="refreshCustomersButton" type="button">Refresh customers</button>
+        </div>
+      </div>
+      <div id="registeredCustomersList" class="registered-users-list">
+        <div class="loading">Loading registered customers…</div>
+      </div>
     </section>
 
     <section class="registered-users-section" aria-labelledby="registeredUsersTitle">
@@ -185,6 +203,84 @@
     </form>
   </dialog>
 
+
+  <dialog id="customerManageDialog" class="customer-manage-dialog">
+    <button class="dialog-close" id="closeCustomerManage" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER CONTROL</p>
+      <h2 id="customerManageTitle">Manage customer</h2>
+      <p id="customerManageSummary">Customer account, service control, machines and portal users.</p>
+    </div>
+    <div class="customer-control-status-grid">
+      <label class="customer-control-switch">
+        <span><strong>BELM Service Provider</strong><small>ON = BELM controls maintenance workflow</small></span>
+        <input id="customerBelmServiceToggle" type="checkbox">
+      </label>
+      <label class="customer-control-switch">
+        <span><strong>Portal Service / Lock</strong><small>OFF = customer and customer users cannot log in</small></span>
+        <input id="customerPortalServiceToggle" type="checkbox">
+      </label>
+    </div>
+    <div class="customer-control-meta" id="customerControlMeta"></div>
+    <div class="customer-manage-actions">
+      <button type="button" data-customer-control="edit"><strong>Edit</strong><span>Customer details</span></button>
+      <button type="button" data-customer-control="reset"><strong>Reset</strong><span>New login password</span></button>
+      <button type="button" data-customer-control="add-machine"><strong>Add Machine</strong><span>Register machine</span></button>
+      <button type="button" data-customer-control="remove-machine"><strong>Remove Machine</strong><span>Select machine</span></button>
+      <button type="button" data-customer-control="users"><strong>Customer Users Control</strong><span>User limit & access</span></button>
+      <button type="button" class="danger" data-customer-control="delete"><strong>Delete</strong><span>Move to Recycle Bin</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="editCustomerDialog">
+    <button class="dialog-close" id="closeEditCustomer" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER ACCOUNT</p>
+      <h2 id="editCustomerTitle">Edit customer</h2>
+      <p>Update the registered company details. Login identity follows the customer email.</p>
+    </div>
+    <form id="editCustomerForm" class="assignment-form">
+      <input id="editCustomerId" type="hidden">
+      <label>Company name<input id="editCustomerName" required maxlength="255"></label>
+      <label>Email<input id="editCustomerEmail" required type="email" maxlength="255"></label>
+      <label>Phone<input id="editCustomerPhone" required maxlength="50"></label>
+      <label>Address<input id="editCustomerAddress" maxlength="500"></label>
+      <label>TIN<input id="editCustomerTin" maxlength="50"></label>
+      <label>VRN<input id="editCustomerVrn" maxlength="50"></label>
+      <div id="editCustomerError" class="alert hidden"></div>
+      <button id="saveEditCustomer" class="primary" type="submit">Save customer</button>
+    </form>
+  </dialog>
+
+  <dialog id="customerUsersControlDialog">
+    <button class="dialog-close" id="closeCustomerUsersControl" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER MANAGE</p>
+      <h2 id="customerUsersControlTitle">Customer Users Control</h2>
+      <p>Control how many portal users this customer is allowed to create.</p>
+    </div>
+    <div class="customer-users-stats">
+      <div><span>Users in use</span><strong id="customerUsersUsed">0</strong></div>
+      <div><span>Current limit</span><strong id="customerUsersLimit">3</strong></div>
+    </div>
+    <form id="customerUsersControlForm" class="assignment-form">
+      <input id="customerUsersCustomerId" type="hidden">
+      <label>Allowed portal users<input id="customerUsersLimitInput" type="number" min="0" step="1" value="3" required></label>
+      <div id="customerUsersControlError" class="alert hidden"></div>
+      <button id="saveCustomerUsersControl" class="primary" type="submit">Save User Limit</button>
+    </form>
+  </dialog>
+
+  <dialog id="customerMachineControlDialog" class="customer-machine-control-dialog">
+    <button class="dialog-close" id="closeCustomerMachineControl" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER MACHINES</p>
+      <h2 id="customerMachineControlTitle">Remove machine</h2>
+      <p>Select only the machine you want to remove. The customer and other machines remain unchanged.</p>
+    </div>
+    <div id="customerMachineControlList" class="customer-machine-control-list"></div>
+  </dialog>
+
   <dialog id="editRegisteredUserDialog">
     <button class="dialog-close" id="closeEditRegisteredUser" aria-label="Close">×</button>
     <div class="assignment-head">
@@ -258,8 +354,8 @@
   <dialog id="registerCredentialsDialog">
     <button class="dialog-close" id="closeRegisterCredentials" aria-label="Close">×</button>
     <div class="check">✓</div>
-    <h2>Account created</h2>
-    <p>Copy these credentials now. The password and recovery code are shown only once.</p>
+    <h2 id="regCredTitle">Account created</h2>
+    <p id="regCredSubtitle">Copy these credentials now. The password and recovery code are shown only once.</p>
     <div class="login-summary">
       <label>Name</label><strong id="regCredName"></strong>
       <label>Role / type</label><strong id="regCredRole"></strong>
@@ -272,7 +368,9 @@
   </dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=414-technical-dep"></script>
-  <script src="/admin-applications/admin.js?v=414-technical-dep"></script>
+  <script src="/admin-sidebar.js?v=472-sync-audit"></script>
+  <script src="/edit-confirm.js?v=469-customer-control"></script>
+  <script src="/delete-confirm.js?v=469-customer-control"></script>
+  <script src="/admin-applications/admin.js?v=469-customer-control"></script>
 </body>
 </html>

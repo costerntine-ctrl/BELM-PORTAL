@@ -12,6 +12,7 @@ let customers = [];
 let registeredUsers = [];
 let registeredUserRoles = [];
 let registeredUserCustomers = [];
+let registeredCustomers = [];
 const currentAdminUser = (() => {
   try { return JSON.parse(localStorage.getItem("belm_admin_user") || "{}"); } catch (_) { return {}; }
 })();
@@ -215,6 +216,290 @@ function registeredUserRoleLabel(user) {
 function registeredUserCustomerLabel(user) {
   if (user.assignedCustomer?.name) return user.assignedCustomer.name;
   return (user.roleNames || [user.role?.name]).includes("Technician") ? "Not assigned" : "All customers";
+}
+
+
+function customerMachineLabel(machine) {
+  return [machine.fleetNumber, machine.brand, machine.model, machine.machineType, machine.regNumber, machine.serialNumber]
+    .filter(Boolean).join(" · ");
+}
+
+function renderRegisteredCustomers() {
+  const panel = document.getElementById("registeredCustomersList");
+  const count = document.getElementById("registeredCustomersCount");
+  const search = document.getElementById("registeredCustomersSearch").value.trim().toLowerCase();
+  count.textContent = String(registeredCustomers.length);
+  const rows = registeredCustomers.filter(customer => [
+    customer.name,
+    customer.email,
+    customer.phone,
+    customer.address,
+    customer.tinNumber,
+    customer.vrn,
+    ...(customer.machines || []).map(customerMachineLabel),
+  ].some(value => String(value || "").toLowerCase().includes(search)));
+
+  if (!rows.length) {
+    panel.innerHTML = `<div class="empty">${search ? "No registered customers match this search." : "No registered customers found."}</div>`;
+    return;
+  }
+
+  panel.innerHTML = `<div class="registered-users-table-wrap"><table class="registered-users-table registered-customers-table">
+    <thead><tr><th>Customer</th><th>Machines</th><th>Customer Users</th><th>BELM Service</th><th>Portal</th></tr></thead>
+    <tbody>${rows.map(customer => {
+      const active = Number(customer.isActive) === 1;
+      const belmOn = Boolean(customer.belmServiceProviderActive);
+      const machineCount = Array.isArray(customer.machines) ? customer.machines.length : 0;
+      const userCount = Number.isFinite(Number(customer.portalUserCount)) ? Number(customer.portalUserCount) : 0;
+      return `<tr>
+        <td><button type="button" class="customer-name-button" data-manage-registered-customer="${escapeHtml(customer.id)}"><strong>${escapeHtml(customer.name)}</strong><small>${escapeHtml(customer.email || "—")}</small><small>${escapeHtml(customer.phone || "—")}</small></button></td>
+        <td><strong>${machineCount}</strong></td>
+        <td><strong>${userCount}</strong>${customer.userLimit != null ? `<small class="table-subtext"> / limit ${escapeHtml(customer.userLimit)}</small>` : ""}</td>
+        <td><span class="user-status ${belmOn ? "active" : "inactive"}">${belmOn ? "BELM ON" : "BELM OFF"}</span></td>
+        <td><span class="user-status ${active ? "active" : "inactive"}">${active ? "PORTAL ON" : "LOCKED"}</span></td>
+      </tr>`;
+    }).join("")}</tbody>
+  </table></div>`;
+}
+
+async function loadRegisteredCustomers() {
+  const panel = document.getElementById("registeredCustomersList");
+  panel.innerHTML = '<div class="loading">Loading registered customers…</div>';
+  try {
+    const customerList = await api("/api/customers");
+    registeredCustomers = Array.isArray(customerList) ? customerList : [];
+    registeredCustomers.sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    renderRegisteredCustomers();
+  } catch (error) {
+    document.getElementById("registeredCustomersCount").textContent = "—";
+    panel.innerHTML = `<div class="empty">Could not load registered customers. ${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function currentManagedCustomer() {
+  const id = document.getElementById("customerManageDialog").dataset.customerId || "";
+  return registeredCustomers.find(customer => String(customer.id) === String(id)) || null;
+}
+
+function fillCustomerManage(customer) {
+  if (!customer) return;
+  const dialog = document.getElementById("customerManageDialog");
+  dialog.dataset.customerId = customer.id;
+  document.getElementById("customerManageTitle").textContent = `Manage ${customer.name}`;
+  document.getElementById("customerManageSummary").textContent = `${customer.email || "No email"} · ${customer.phone || "No phone"}`;
+  document.getElementById("customerBelmServiceToggle").checked = Boolean(customer.belmServiceProviderActive);
+  document.getElementById("customerPortalServiceToggle").checked = Number(customer.isActive) === 1;
+  const machineCount = Array.isArray(customer.machines) ? customer.machines.length : 0;
+  const used = Number.isFinite(Number(customer.portalUserCount)) ? Number(customer.portalUserCount) : 0;
+  const limit = customer.userLimit != null ? Number(customer.userLimit) : 3;
+  document.getElementById("customerControlMeta").innerHTML = `
+    <span><b>${machineCount}</b> machine${machineCount === 1 ? "" : "s"}</span>
+    <span><b>${used}</b> / ${limit} portal users</span>
+    <span>${Number(customer.isActive) === 1 ? "Account active" : "Account locked"}</span>`;
+}
+
+function openCustomerManage(customer) {
+  if (!customer) return;
+  fillCustomerManage(customer);
+  document.getElementById("customerManageDialog").showModal();
+}
+
+function openEditCustomer(customer) {
+  if (!customer) return;
+  document.getElementById("editCustomerForm").reset();
+  document.getElementById("editCustomerError").classList.add("hidden");
+  document.getElementById("editCustomerId").value = customer.id;
+  document.getElementById("editCustomerTitle").textContent = `Edit ${customer.name}`;
+  document.getElementById("editCustomerName").value = customer.name || "";
+  document.getElementById("editCustomerEmail").value = customer.email || "";
+  document.getElementById("editCustomerPhone").value = customer.phone || "";
+  document.getElementById("editCustomerAddress").value = customer.address || "";
+  document.getElementById("editCustomerTin").value = customer.tinNumber || "";
+  document.getElementById("editCustomerVrn").value = customer.vrn || "";
+  document.getElementById("editCustomerDialog").showModal();
+}
+
+async function saveEditedCustomer(event) {
+  event.preventDefault();
+  const id = document.getElementById("editCustomerId").value;
+  const customer = registeredCustomers.find(item => String(item.id) === String(id));
+  if (!customer) return;
+  const payload = {
+    name: document.getElementById("editCustomerName").value.trim(),
+    email: document.getElementById("editCustomerEmail").value.trim(),
+    phone: document.getElementById("editCustomerPhone").value.trim(),
+    address: document.getElementById("editCustomerAddress").value.trim(),
+    tinNumber: document.getElementById("editCustomerTin").value.trim(),
+    vrn: document.getElementById("editCustomerVrn").value.trim(),
+  };
+  const errorBox = document.getElementById("editCustomerError");
+  errorBox.classList.add("hidden");
+  if (!payload.name || !payload.email || !payload.phone) {
+    errorBox.textContent = "Company name, email and phone are required.";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  const confirmation = await window.belmConfirmEdit({
+    title: "Save customer changes?",
+    message: `Save the updated account details for ${payload.name}?`,
+  });
+  if (!confirmation) return;
+  const button = document.getElementById("saveEditCustomer");
+  button.disabled = true;
+  button.textContent = "Saving…";
+  try {
+    await api(`/api/customers/${id}`, { method: "PUT", body: JSON.stringify({ ...payload, ...confirmation }) });
+    document.getElementById("editCustomerDialog").close();
+    customersForRegisterCache = null;
+    await loadRegisteredCustomers();
+    showAlert("Customer updated successfully.");
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove("hidden");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save customer";
+  }
+}
+
+async function resetManagedCustomer(customer) {
+  if (!customer) return;
+  const confirmation = await window.belmConfirmEdit({
+    title: "Reset customer login?",
+    message: `Generate a new temporary password and recovery code for ${customer.name}?`,
+  });
+  if (!confirmation) return;
+  try {
+    const result = await api(`/api/customers/${customer.id}/reset-password`, {
+      method: "PUT",
+      body: JSON.stringify(confirmation),
+    });
+    openRegisterCredentials({
+      name: customer.name,
+      role: "Customer",
+      email: customer.email,
+      password: result.temporaryPassword,
+      recoveryCode: result.recoveryCode,
+      loginUrl: result.loginUrl,
+      title: "Customer login reset",
+      subtitle: "The old password no longer works. Copy the new temporary password and recovery code now.",
+    });
+  } catch (error) {
+    showAlert(error.message);
+  }
+}
+
+async function deleteManagedCustomer(customer) {
+  if (!customer) return;
+  const confirmation = await window.belmConfirmDelete({
+    title: "Delete customer?",
+    message: `Move ${customer.name} to the Recycle Bin? Machines and linked records stay recoverable through the Recycle Bin workflow.`,
+  });
+  if (!confirmation) return;
+  try {
+    await api(`/api/customers/${customer.id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
+    customersForRegisterCache = null;
+    await loadRegisteredCustomers();
+    showAlert(`${customer.name} moved to the Recycle Bin.`);
+  } catch (error) {
+    showAlert(error.message);
+  }
+}
+
+function openCustomerUsersControl(customer) {
+  if (!customer) return;
+  const used = Number.isFinite(Number(customer.portalUserCount)) ? Number(customer.portalUserCount) : 0;
+  const limit = customer.userLimit != null ? Number(customer.userLimit) : 3;
+  document.getElementById("customerUsersControlError").classList.add("hidden");
+  document.getElementById("customerUsersCustomerId").value = customer.id;
+  document.getElementById("customerUsersControlTitle").textContent = `Customer Users Control — ${customer.name}`;
+  document.getElementById("customerUsersUsed").textContent = String(used);
+  document.getElementById("customerUsersLimit").textContent = String(limit);
+  document.getElementById("customerUsersLimitInput").value = String(limit);
+  document.getElementById("customerUsersControlDialog").showModal();
+}
+
+async function saveCustomerUsersControl(event) {
+  event.preventDefault();
+  const customerId = document.getElementById("customerUsersCustomerId").value;
+  const customer = registeredCustomers.find(item => String(item.id) === String(customerId));
+  if (!customer) return;
+  const input = document.getElementById("customerUsersLimitInput");
+  const requestedLimit = Number(input.value);
+  const used = Number.isFinite(Number(customer.portalUserCount)) ? Number(customer.portalUserCount) : 0;
+  const errorBox = document.getElementById("customerUsersControlError");
+  errorBox.classList.add("hidden");
+  if (!Number.isInteger(requestedLimit) || requestedLimit < 0) {
+    errorBox.textContent = "Enter a valid whole-number user limit.";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  if (requestedLimit < used) {
+    errorBox.textContent = `This customer already has ${used} active portal user(s).`;
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  const confirmation = await window.belmConfirmEdit({
+    title: "Save customer user limit?",
+    message: `Allow ${customer.name} up to ${requestedLimit} portal user(s)?`,
+  });
+  if (!confirmation) return;
+  const button = document.getElementById("saveCustomerUsersControl");
+  button.disabled = true;
+  try {
+    await api(`/api/customers/${customerId}/user-limit`, {
+      method: "PUT",
+      body: JSON.stringify({ userLimit: requestedLimit, ...confirmation }),
+    });
+    document.getElementById("customerUsersControlDialog").close();
+    await loadRegisteredCustomers();
+    showAlert(`Customer Users Control updated for ${customer.name}.`);
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.classList.remove("hidden");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function openCustomerMachineControl(customer) {
+  if (!customer) return;
+  const list = document.getElementById("customerMachineControlList");
+  document.getElementById("customerMachineControlTitle").textContent = `Remove machine — ${customer.name}`;
+  list.dataset.customerId = customer.id;
+  const machines = Array.isArray(customer.machines) ? customer.machines : [];
+  list.innerHTML = machines.length ? machines.map(machine => `
+    <div class="customer-machine-control-row">
+      <span><strong>${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType || "Machine")}</strong><small>${escapeHtml([machine.fleetNumber ? `Fleet ${machine.fleetNumber}` : "", machine.regNumber ? `Reg ${machine.regNumber}` : "", machine.serialNumber ? `Serial ${machine.serialNumber}` : ""].filter(Boolean).join(" · ") || "No identification recorded")}</small></span>
+      <button type="button" class="user-delete" data-remove-customer-machine="${escapeHtml(machine.id)}">Remove Machine</button>
+    </div>`).join("") : '<div class="empty compact-empty">No machines registered for this customer.</div>';
+  document.getElementById("customerMachineControlDialog").showModal();
+}
+
+async function removeManagedCustomerMachine(machineId) {
+  const customerId = document.getElementById("customerMachineControlList").dataset.customerId || "";
+  const customer = registeredCustomers.find(item => String(item.id) === String(customerId));
+  const machine = customer?.machines?.find(item => String(item.id) === String(machineId));
+  if (!customer || !machine) return;
+  const label = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType || "this machine";
+  const confirmation = await window.belmConfirmDelete({
+    title: "Remove machine?",
+    message: `Remove ${label} from ${customer.name}? Only this machine will be moved to the Recycle Bin.`,
+  });
+  if (!confirmation) return;
+  try {
+    await api(`/api/customers/machines/${machine.id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
+    customersForRegisterCache = null;
+    await loadRegisteredCustomers();
+    const refreshed = registeredCustomers.find(item => String(item.id) === String(customer.id));
+    if (document.getElementById("customerMachineControlDialog").open && refreshed) {
+      document.getElementById("customerMachineControlDialog").close();
+      openCustomerMachineControl(refreshed);
+    }
+    showAlert(`${label} removed from ${customer.name}.`);
+  } catch (error) {
+    showAlert(error.message);
+  }
 }
 
 function renderRegisteredUsers() {
@@ -450,7 +735,7 @@ async function completeApproval(application, payload) {
     link.textContent = result.loginUrl;
     if (assignmentDialog.open) assignmentDialog.close();
     dialog.showModal();
-    await loadApplications();
+    await Promise.all([loadApplications(), loadRegisteredCustomers(), loadRegisteredUsers()]);
   } catch (error) {
     if (assignmentDialog.open) {
       const errorBox = document.getElementById("assignmentError");
@@ -513,7 +798,7 @@ tabs.forEach(tab => tab.addEventListener("click", () => {
 }));
 
 document.getElementById("refreshButton").addEventListener("click", async () => {
-  await Promise.all([loadApplications(), loadRegisteredUsers()]);
+  await Promise.all([loadApplications(), loadRegisteredUsers(), loadRegisteredCustomers()]);
 });
 document.getElementById("logoutButton").addEventListener("click", () => {
   localStorage.removeItem("belm_admin_token");
@@ -562,6 +847,107 @@ document.getElementById("copyApprovedPasswordButton").addEventListener("click", 
   if (!lastApproval) return;
   await copyText(lastApproval.temporaryPassword || "");
   document.getElementById("copyApprovedPasswordButton").textContent = "Password copied";
+});
+
+
+document.getElementById("registeredCustomersSearch").addEventListener("input", renderRegisteredCustomers);
+document.getElementById("refreshCustomersButton").addEventListener("click", loadRegisteredCustomers);
+document.getElementById("registeredCustomersList").addEventListener("click", event => {
+  const button = event.target.closest("[data-manage-registered-customer]");
+  if (!button) return;
+  openCustomerManage(registeredCustomers.find(customer => String(customer.id) === String(button.dataset.manageRegisteredCustomer)));
+});
+document.getElementById("closeCustomerManage").addEventListener("click", () => document.getElementById("customerManageDialog").close());
+document.getElementById("closeEditCustomer").addEventListener("click", () => document.getElementById("editCustomerDialog").close());
+document.getElementById("closeCustomerUsersControl").addEventListener("click", () => document.getElementById("customerUsersControlDialog").close());
+document.getElementById("closeCustomerMachineControl").addEventListener("click", () => document.getElementById("customerMachineControlDialog").close());
+document.getElementById("editCustomerForm").addEventListener("submit", saveEditedCustomer);
+document.getElementById("customerUsersControlForm").addEventListener("submit", saveCustomerUsersControl);
+document.getElementById("customerMachineControlList").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-customer-machine]");
+  if (button) removeManagedCustomerMachine(button.dataset.removeCustomerMachine);
+});
+document.getElementById("customerManageDialog").addEventListener("click", async event => {
+  const action = event.target.closest("[data-customer-control]")?.dataset.customerControl;
+  if (!action) return;
+  const customer = currentManagedCustomer();
+  if (!customer) return;
+  if (action === "edit") {
+    document.getElementById("customerManageDialog").close();
+    openEditCustomer(customer);
+  } else if (action === "reset") {
+    document.getElementById("customerManageDialog").close();
+    await resetManagedCustomer(customer);
+  } else if (action === "add-machine") {
+    document.getElementById("customerManageDialog").close();
+    await openAddMachineDialog(customer.id);
+  } else if (action === "remove-machine") {
+    document.getElementById("customerManageDialog").close();
+    openCustomerMachineControl(customer);
+  } else if (action === "users") {
+    document.getElementById("customerManageDialog").close();
+    openCustomerUsersControl(customer);
+  } else if (action === "delete") {
+    document.getElementById("customerManageDialog").close();
+    await deleteManagedCustomer(customer);
+  }
+});
+document.getElementById("customerBelmServiceToggle").addEventListener("change", async event => {
+  const customer = currentManagedCustomer();
+  if (!customer) return;
+  const enabled = event.target.checked;
+  event.target.disabled = true;
+  try {
+    const confirmation = await window.belmConfirmEdit({
+      title: enabled ? "Turn BELM Service ON?" : "Turn BELM Service OFF?",
+      message: enabled
+        ? `BELM will control ${customer.name}'s machine maintenance workflow.`
+        : `${customer.name}'s own maintenance team will control its workshop workflow.`,
+    });
+    if (!confirmation) { event.target.checked = !enabled; return; }
+    const result = await api(`/api/customers/${customer.id}/machinery-admin`, {
+      method: "PUT",
+      body: JSON.stringify({ serviceProviderEnabled: enabled, ...confirmation }),
+    });
+    customer.belmServiceProviderActive = Boolean(result.belmServiceProviderActive ?? enabled);
+    customer.isMachineryAdmin = Boolean(result.isMachineryAdmin ?? !enabled);
+    renderRegisteredCustomers();
+    fillCustomerManage(customer);
+    showAlert(`${customer.name}: BELM Service ${enabled ? "ON" : "OFF"}.`);
+  } catch (error) {
+    event.target.checked = !enabled;
+    showAlert(error.message);
+  } finally {
+    event.target.disabled = false;
+  }
+});
+document.getElementById("customerPortalServiceToggle").addEventListener("change", async event => {
+  const customer = currentManagedCustomer();
+  if (!customer) return;
+  const enabled = event.target.checked;
+  event.target.disabled = true;
+  try {
+    const confirmation = await window.belmConfirmEdit({
+      title: enabled ? "Unlock customer portal?" : "Lock customer portal?",
+      message: enabled
+        ? `Restore portal login for ${customer.name} and its customer users?`
+        : `Lock portal login for ${customer.name} and its customer users?`,
+    });
+    if (!confirmation) { event.target.checked = !enabled; return; }
+    const result = await api(`/api/customers/${customer.id}/portal-access`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled, ...confirmation }),
+    });
+    customer.isActive = Boolean(result.isActive ?? enabled) ? 1 : 0;
+    renderRegisteredCustomers();
+    fillCustomerManage(customer);
+    showAlert(`${customer.name}: portal ${enabled ? "unlocked" : "locked"}.`);
+  } catch (error) {
+    event.target.checked = !enabled;
+    showAlert(error.message);
+  } finally {
+    event.target.disabled = false;
+  }
 });
 
 document.getElementById("registeredUsersSearch").addEventListener("input", renderRegisteredUsers);
@@ -633,6 +1019,7 @@ document.getElementById("registeredUserActionDialog").addEventListener("cancel",
 
 loadApplications();
 loadRegisteredUsers();
+loadRegisteredCustomers();
 
 // ---------------------------------------------------------------------
 // MANUAL REGISTRATION — Register Customer (+ optional first machine) and
@@ -687,7 +1074,9 @@ function showRegisterError(boxId, message) {
   box.classList.remove("hidden");
 }
 
-function openRegisterCredentials({ name, role, email, password, recoveryCode, loginUrl }) {
+function openRegisterCredentials({ name, role, email, password, recoveryCode, loginUrl, title = "Account created", subtitle = "Copy these credentials now. The password and recovery code are shown only once." }) {
+  document.getElementById("regCredTitle").textContent = title;
+  document.getElementById("regCredSubtitle").textContent = subtitle;
   document.getElementById("regCredName").textContent = name;
   document.getElementById("regCredRole").textContent = role;
   document.getElementById("regCredEmail").textContent = email;
@@ -766,7 +1155,7 @@ document.getElementById("registerCustomerForm").addEventListener("submit", async
       recoveryCode: customer.portalLoginInfo.recoveryCode,
       loginUrl: customer.portalLoginInfo.portalUrl
     });
-    await loadApplications();
+    await Promise.all([loadApplications(), loadRegisteredCustomers()]);
   } catch (error) {
     showRegisterError("registerCustomerError", error.message);
   } finally {
@@ -862,22 +1251,25 @@ document.getElementById("copyRegCredButton").addEventListener("click", async () 
 // ---------------------------------------------------------------------
 const addMachineDialog = document.getElementById("addMachineDialog");
 
-document.getElementById("addMachineButton").addEventListener("click", async () => {
+async function openAddMachineDialog(preselectedCustomerId = "") {
   document.getElementById("addMachineForm").reset();
   document.getElementById("addMachineTypeOtherWrap").classList.add("hidden");
   document.getElementById("addMachineError").classList.add("hidden");
   try {
     const [, customerList] = await ensureRolesAndCustomersLoaded();
-    document.getElementById("addMachineCustomer").innerHTML =
+    const select = document.getElementById("addMachineCustomer");
+    select.innerHTML =
       '<option value="">Select customer…</option>' + customerList.map(customer =>
         `<option value="${escapeHtml(customer.id)}">${escapeHtml(customer.name)}</option>`
       ).join("");
+    if (preselectedCustomerId) select.value = String(preselectedCustomerId);
     await populateMachineTypeSelect("addMachineType");
     addMachineDialog.showModal();
   } catch (error) {
     alert(error.message);
   }
-});
+}
+document.getElementById("addMachineButton").addEventListener("click", () => openAddMachineDialog());
 document.getElementById("closeAddMachine").addEventListener("click", () => addMachineDialog.close());
 document.getElementById("addMachineType").addEventListener("change", event => {
   document.getElementById("addMachineTypeOtherWrap").classList.toggle("hidden", event.target.value !== "__other__");
@@ -915,6 +1307,8 @@ document.getElementById("addMachineForm").addEventListener("submit", async event
       })
     });
     addMachineDialog.close();
+    customersForRegisterCache = null;
+    await loadRegisteredCustomers();
     showAlert("Machine added successfully.");
   } catch (error) {
     showRegisterError("addMachineError", error.message);

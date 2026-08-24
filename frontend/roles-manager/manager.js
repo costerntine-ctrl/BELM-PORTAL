@@ -195,8 +195,10 @@
         api("/customers"),
       ]);
       updateMetrics();
-      renderRoles();
-      const roleParam = new URLSearchParams(window.location.search).get("role");
+      const pageParams = new URLSearchParams(window.location.search);
+      const roleParam = pageParams.get("role");
+      const technicianFocus = pageParams.get("technical") === "1" && roleParam === "Technician";
+      if (!technicianFocus) renderRoles();
       if (roleParam) {
         document.getElementById("searchInput").value = roleParam;
         const heading = document.querySelector("h1, .page-title h1, header h1");

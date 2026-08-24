@@ -57,6 +57,34 @@
       hash:'#assigned-work',
       permissions:['roles','job-cards','service-requests'],
       url:()=>'/breakdown-workflow/?actor=admin&embed=1&view=assigned'
+    },
+    'general-report':{
+      title:'General Report',
+      subtitle:'BELM workshop and customer service reports inside the Workshop workspace.',
+      hash:'#general-report',
+      permissions:['reports'],
+      url:()=>'/reports-manager/?embed=1&from=belm-workshop'
+    },
+    'petty-cash':{
+      title:'Petty Cash',
+      subtitle:'Customer-linked Petty Cash balances and top-ups using the shared portal records.',
+      hash:'#petty-cash',
+      permissions:['customers'],
+      url:()=>'/belm-workshop/petty-cash/?embed=1'
+    },
+    'general-analysis':{
+      title:'General Analysis',
+      subtitle:'BELM operational overview and performance analysis inside the Workshop workspace.',
+      hash:'#general-analysis',
+      permissions:['overview','customers','reports'],
+      url:()=>'/overview-manager/?embed=1&from=belm-workshop'
+    },
+    settings:{
+      title:'Settings',
+      subtitle:'BELM portal and Workshop settings without leaving the Workshop shell.',
+      hash:'#settings',
+      permissions:['settings'],
+      url:()=>'/settings-manager/?embed=1&from=belm-workshop'
     }
   };
 
@@ -68,7 +96,7 @@
   }
   function keyFromHash(hash){
     const h=String(hash||'').replace(/^#/,'').toLowerCase();
-    const map={'job-cards':'job-cards','workshop-analysis':'analysis','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned'};
+    const map={'job-cards':'job-cards','workshop-analysis':'analysis','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings'};
     return map[h]||'';
   }
   function openModule(key,{pushHash=true}={}){

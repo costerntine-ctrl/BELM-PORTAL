@@ -1,6 +1,6 @@
 BELM PORTAL V422 - CUSTOMER MACHINE CARD MATCH ADMIN
 
-- Customer > View Your Machine now follows the approved BELM Customer Fleet card hierarchy.
+- Customer > View Customer Machine now follows the approved BELM Customer Fleet card hierarchy.
 - Existing card width is preserved; card uses a tall fixed visual composition with flexible breathing space before actions.
 - Added live Operator Message to customer machine payload and card.
 - Activity Status sits below Service and above the large spacer.

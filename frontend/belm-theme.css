@@ -4870,7 +4870,7 @@ body[data-belm-area="tech"] .belm-technician-card-actions .belm-technician-jobca
 /* ========================================================================
    V372 - Customer main-login dashboard face
    One authenticated company card first; existing operational dashboard is
-   available through View Your Machine (?view=machines).
+   available through View Customer Machine (?view=machines).
    ======================================================================== */
 body.belm-customer-dashboard-face-active {
   min-height: 100vh !important;
@@ -4993,7 +4993,7 @@ body.belm-customer-dashboard-face-active #root { display: none !important; }
 }
 
 
-/* V376 - Customer > View Your Machine: four direct actions in one readable row.
+/* V376 - Customer > View Customer Machine: four direct actions in one readable row.
    Extra established actions remain available under More actions. */
 .belm-service-due-panel .belm-machine-quick-actions {
   display: grid !important;
@@ -5038,7 +5038,7 @@ body.belm-customer-dashboard-face-active #root { display: none !important; }
 }
 
 
-/* V378 - Customer > View Your Machine: balanced Activity Status selector directly below the four primary actions. */
+/* V378 - Customer > View Customer Machine: balanced Activity Status selector directly below the four primary actions. */
 .belm-service-due-panel .belm-customer-activity-selector {
   display: grid;
   grid-template-columns: minmax(0, .8fr) minmax(145px, 1.2fr);
@@ -5107,7 +5107,7 @@ html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector
 }
 
 
-/* V379 - Customer > View Your Machine: compact Fleet Number badge in the machine nameplate.
+/* V379 - Customer > View Customer Machine: compact Fleet Number badge in the machine nameplate.
    The 12ch reference is intentionally close to the visual width of "SANY RSC45V". */
 .belm-customer-machine-card > .belm-machine-native-head {
   padding-right: 132px !important;
@@ -5159,7 +5159,7 @@ html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector
   .belm-customer-machine-card > .belm-machine-native-head .belm-customer-fleet-number { top: 16px; left: 18px; right: auto; }
 }
 
-/* V382 - Customer > View Your Machine: the strongest machine/service range
+/* V382 - Customer > View Customer Machine: the strongest machine/service range
    colors the whole card (RED > YELLOW > GREEN), with readable alert text. */
 .belm-customer-machine-card.belm-range-green {
   border-color: #22c55e !important;
@@ -5206,7 +5206,7 @@ html[data-theme="dark"] .belm-service-due-panel .belm-customer-activity-selector
 .belm-customer-machine-card.belm-range-red .belm-customer-machine-alert-copy { border-color: rgba(220,38,38,.46); background: rgba(254,226,226,.94); }
 .belm-customer-machine-card.belm-range-red .belm-customer-machine-alert-copy strong { color: #7f1d1d !important; }
 
-/* V383 - Customer > View Your Machine alert blinking.
+/* V383 - Customer > View Customer Machine alert blinking.
    RED blinks clearly, YELLOW pulses slowly, GREEN stays steady.
    Only the whole-card alert ring animates so machine messages remain readable. */
 .belm-customer-machine-card.belm-range-red,
@@ -5903,7 +5903,7 @@ html:not(.dark):not([data-theme="dark"]) body[data-belm-area="tech"] .belm-techn
 
 
 /* ========================================================================
-   V409 - Customer Dashboard > View Your Machine
+   V409 - Customer Dashboard > View Customer Machine
    Same 390 x 590 machine-card footprint and visual hierarchy as BELM Admin.
    The card keeps the established Report / Check Up / Service Parts / Job Card
    workflow and customer ownership controls while removing tall default panels.
@@ -6345,7 +6345,7 @@ body[data-belm-area="portal"] .belm-customer-machine-card-v409 .belm-machine-mor
 }
 
 /* ========================================================================
-   V417 - Customer Dashboard > View Your Machine: wide overview layout.
+   V417 - Customer Dashboard > View Customer Machine: wide overview layout.
    Uses the same centered 720px visual footprint as the BELM Customer Overview
    instead of the old fixed 390 x 590 compact tile. Machine-specific actions,
    service status and ownership controls are unchanged; only presentation is

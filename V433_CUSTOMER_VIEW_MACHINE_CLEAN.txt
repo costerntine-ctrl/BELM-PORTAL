@@ -1,7 +1,7 @@
 BELM PORTAL V433 - CUSTOMER VIEW YOUR MACHINE CLEAN WORKSPACE
 
 Change requested:
-- Customer Dashboard -> View Your Machine must show Customer Machine Cards only.
+- Customer Dashboard -> View Customer Machine must show Customer Machine Cards only.
 - Remove the right-side Action Required / Machines Needing Action / Petty Cash / More Tools rail from ?view=machines.
 - Keep Petty Cash, General Analysis, Workshop, Procurement and other customer overview functions on the Main Customer Dashboard.
 - Do not change Customer Machine Card design, machine workflows, reports, Check Up/Checklist sync, Job Card or Breakdown logic.

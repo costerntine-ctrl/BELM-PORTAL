@@ -204,7 +204,7 @@
     clearAlert();
     userList.innerHTML = '<div class="loading">Loading users…</div>';
     if (!token) {
-      userList.innerHTML = '<div class="locked"><strong>Customer login required</strong>Please log in using the main customer account.<br><a href="/portal/login">Go to portal login</a></div>';
+      userList.innerHTML = '<div class="locked"><strong>Customer login required</strong>Please log in using the main customer account.<br><a href="/login">Go to portal login</a></div>';
       return;
     }
     try {
@@ -213,7 +213,7 @@
       loadUserLimitInfo();
     } catch (error) {
       if (error.status === 401 || error.status === 403) {
-        userList.innerHTML = `<div class="locked"><strong>Owner access required</strong>${escapeHtml(error.message)}<br><a href="/portal/login">Log in as main customer</a></div>`;
+        userList.innerHTML = `<div class="locked"><strong>Owner access required</strong>${escapeHtml(error.message)}<br><a href="/login">Log in as main customer</a></div>`;
         document.getElementById("addButton").disabled = true;
       } else {
         userList.innerHTML = '<div class="empty">Could not load portal user accounts.</div>';

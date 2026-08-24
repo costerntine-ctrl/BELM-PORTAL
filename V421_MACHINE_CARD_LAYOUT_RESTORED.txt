@@ -1,6 +1,6 @@
 BELM PORTAL V421 - MACHINE CARD LAYOUT RESTORED
 
-- Restored preferred control order on Customer View Your Machine and BELM Admin Customer Fleet.
+- Restored preferred control order on Customer View Customer Machine and BELM Admin Customer Fleet.
 - Message/condition content stays above the controls and has more vertical room.
 - Activity Status is immediately above the four primary actions.
 - Report / Check Up / Service Parts / Job Card remain in one row on desktop and phone.

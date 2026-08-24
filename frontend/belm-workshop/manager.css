@@ -420,3 +420,45 @@ body.bw-workspace-open{overflow:hidden}
 .bw-manager-card .bw-responsibilities span{border-color:rgba(42,156,245,.42);background:rgba(42,156,245,.07)}
 .bw-store-card .bw-responsibilities span{border-color:rgba(30,203,122,.42);background:rgba(30,203,122,.07)}
 @media(max-width:560px){.bw-responsibilities span{font-size:10px;padding:6px 10px}}
+
+
+/* V467 - General Report moved into Workshop Manager without card growth.
+   All six WM controls use two compact rows (3 buttons per row), keeping
+   the existing card footprint and leaving the standalone Workshop shell intact. */
+.bw-manager-card .bw-role-description { margin-bottom: 10px; }
+.bw-manager-card .bw-responsibilities { gap: 5px; margin-bottom: 10px; }
+.bw-manager-card .bw-responsibilities span { padding: 5px 9px; }
+.bw-manager-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+.bw-manager-actions > a {
+  grid-column: span 2;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 4px;
+  border-radius: 8px;
+  font-size: 9.3px;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 800;
+}
+.bw-manager-utility { color: #fff; border: 1px solid rgba(255,255,255,.26); }
+.bw-general-report-action { background: #d8a900; border-color: #f0c62f; color: #171b22; }
+.bw-petty-action { background: #0f8d75; border-color: #20b493; }
+.bw-general-analysis-action { background: #174f86; border-color: #2d76b8; }
+.bw-settings-action { background: #334155; border-color: #52647a; }
+.bw-manager-utility:hover { filter: brightness(1.08); }
+@media (max-width: 900px) {
+  .bw-manager-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .bw-manager-actions > a { grid-column: span 2; font-size: 8.8px; padding: 8px 3px; }
+}
+

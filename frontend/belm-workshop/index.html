@@ -4,13 +4,13 @@
   <script>window.addEventListener("pageshow",function(e){if(e.persisted)window.location.reload();});</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BELM WORKSHOP</title>
+  <title>PORTAL-BELM WM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/admin-tools.css">
   <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
-  <link rel="stylesheet" href="/belm-workshop/manager.css?v=464-v443-role-structure">
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=466-wm-controls">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -20,7 +20,7 @@
   <header class="topbar">
     <a class="brand" href="/belm-workshop/">
       <span class="brand-mark">B</span>
-      <span>BELM General Tech <small>BELM WORKSHOP</small></span>
+      <span>BELM General Tech <small>PORTAL-BELM WM</small></span>
     </a>
     <div class="top-actions">
       <button class="ghost" id="workshopSyncButton" type="button">Sync Workshop</button>
@@ -32,7 +32,7 @@
     <section class="hero">
       <div>
         <p class="eyebrow">TECHNICAL DEP → WORKSHOP</p>
-        <h1>BELM WORKSHOP</h1>
+        <h1>PORTAL-BELM WM</h1>
         <p>Standalone workshop department for BELM operations. Workshop Manager, Store Keeper and Technicians work from one Job Card flow without returning to the BELM Admin main dashboard.</p>
       </div>
       <span class="bw-live-pill"><i></i> LIVE SYNC</span>
@@ -56,9 +56,13 @@
           <span>Testing &amp; Review</span>
           <span>Workshop Analysis</span>
         </div>
-        <div class="bw-role-actions">
+        <div class="bw-role-actions bw-manager-actions" aria-label="Workshop Manager controls">
           <a class="bw-primary-action" href="#job-cards" data-workshop-window="job-cards">Open Job Cards</a>
           <a class="bw-secondary-action" href="#workshop-analysis" data-workshop-window="analysis">Workshop Analysis</a>
+          <a class="bw-manager-utility bw-general-report-action" href="#general-report" data-workshop-window="general-report">General Report</a>
+          <a class="bw-manager-utility bw-petty-action" href="#petty-cash" data-workshop-window="petty-cash">Petty Cash</a>
+          <a class="bw-manager-utility bw-general-analysis-action" href="#general-analysis" data-workshop-window="general-analysis">General Analysis</a>
+          <a class="bw-manager-utility bw-settings-action" href="#settings" data-workshop-window="settings">Settings</a>
         </div>
       </article>
 
@@ -141,8 +145,8 @@
   </dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=458-nested-technical-dep"></script>
+  <script src="/admin-sidebar.js?v=472-sync-audit"></script>
   <script src="/edit-confirm.js"></script>
-  <script src="/belm-workshop/manager.js?v=464-v443-role-structure"></script>
+  <script src="/belm-workshop/manager.js?v=472-sync-audit"></script>
 </body>
 </html>

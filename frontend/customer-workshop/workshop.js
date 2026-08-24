@@ -36,20 +36,25 @@
     document.getElementById('toolDocumentsPanel').classList.add('hidden');
   }
   async function loadBelm(){
-    if(!adminToken){location.href='/app/belm';return}
+    if(!adminToken){location.href='/login';return}
     let selected=null;
     try{const customers=await adminApi('/customers');selected=(Array.isArray(customers)?customers:(customers?.customers||[])).find(c=>String(c.id)===String(customerId))||null}catch(e){show(e.message,true)}
     setBelmMode(selected);
   }
   async function loadCustomer(){
-    if(!customerToken){location.href='/portal/login';return}
+    if(!customerToken){location.href='/login';return}
     document.getElementById('modePill').textContent='CUSTOMER WORKSHOP';
     document.getElementById('backLink').href='/portal/dashboard';
     try{
       const dashboard=await customerApi('/dashboard');
+      if(dashboard?.customer?.workshopModuleActive===false){
+        location.replace('/portal/dashboard');
+        return;
+      }
       const name=dashboard?.customer?.name||'Customer';
-      document.getElementById('workshopTitle').textContent=`${name} — Workshop`;
-      document.getElementById('workshopSubtitle').textContent='Workshop Manager, Store Keeper and Technicians work through one controlled Job Card flow.';
+      document.getElementById('modePill').textContent='PORTAL-CWM HOME';
+      document.getElementById('workshopTitle').textContent=`${name} — PORTAL-CWM`;
+      document.getElementById('workshopSubtitle').textContent='Customer Workshop Manager home — Workshop Manager, Store Keeper and Technicians work through one controlled Job Card flow.';
     }catch(e){show(e.message,true)}
     try{technicians=await customerApi('/technicians');document.getElementById('technicianCount').textContent=`${technicians.length} TECH${technicians.length===1?'':'S'}`;renderTechnicianOptions()}catch(_){technicians=[];renderTechnicianOptions()}
     await loadStore();

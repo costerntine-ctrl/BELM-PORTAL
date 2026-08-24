@@ -1,0 +1,20 @@
+BELM PORTAL V466 — CUSTOMER BUTTONS TO WORKSHOP MANAGER CARD
+
+Requested UI change:
+1. TECHNICAL DEP > Customer Overview customer cards:
+   - Removed Workshop button.
+   - Removed Procurement button.
+   - Removed Petty Cash, General Analysis and Settings from the customer card.
+   - Remaining card actions: View Customer Machine, General Report, Manage Customer.
+
+2. TECHNICAL DEP > WORKSHOP > WORKSHOP MANAGER / Managing Workshop:
+   - Added Petty Cash.
+   - Added General Analysis.
+   - Added Settings.
+   - Existing Open Job Cards and Workshop Analysis remain.
+   - Five controls are arranged in two compact rows inside the existing WM card footprint.
+   - No WM card width/min-height/card-size increase was added.
+
+3. Standalone Workshop rule remains:
+   - New WM controls open through the existing Workshop workspace window/shell.
+   - Job Card and other Workshop modules continue to use the shared backend/data sync.

@@ -41,7 +41,7 @@
   // V448: the 8 grid buttons below are placeholders only, on purpose - the
   // customer said he will assign what each one does later. They are
   // numbered 1-8 and carry NO click handler / endpoint / navigation. Only
-  // the two switches above them (Non-Payment / Workshop Module) are wired,
+  // the two switches above them (Non-Payment / PORTAL-CWM) are wired,
   // since those already exist and are the actual point of PORTAL-CWM
   // (independent customers).
   const PLACEHOLDER_BUTTON_COLORS = [
@@ -65,6 +65,14 @@
         <div><span>Address</span><b>${escapeHtml(customer.address || "—")}</b></div>
       </div>
 
+      <div class="cwm-sync-strip">
+        <span class="cwm-owner ${customer.selfServiceEnabled ? "customer" : "belm"}">${customer.selfServiceEnabled ? "CUSTOMER WORKSHOP" : "BELM SERVICE"}</span>
+        <span>WM <b>${Number(customer.workshopManagerCount || 0)}</b></span>
+        <span>STORE <b>${Number(customer.storeKeeperCount || 0)}</b></span>
+        <span>TECH <b>${Number(customer.technicianCount || 0)}</b></span>
+        <span>OP <b>${Number(customer.operatorCount || 0)}</b></span>
+      </div>
+
       <div class="cwm-switch-row">
         <label class="cwm-switch-item">
           <span>Non-Payment</span>
@@ -75,7 +83,7 @@
           <b>${customer.isActive ? "PORTAL ON" : "STOPPED"}</b>
         </label>
         <label class="cwm-switch-item">
-          <span>Workshop Module</span>
+          <span>PORTAL-CWM</span>
           <span class="cwm-toggle cwm-toggle-workshop">
             <input type="checkbox" data-toggle="workshop-module" data-customer="${escapeHtml(customer.id)}" ${customer.workshopModuleActive ? "checked" : ""}>
             <span class="cwm-toggle-slider"></span>
@@ -142,10 +150,10 @@
         body = { enabled };
       } else {
         confirmation = await window.belmConfirmEdit({
-          title: enabled ? "Activate Workshop Module?" : "Deactivate Workshop Module?",
+          title: enabled ? "Activate PORTAL-CWM?" : "Deactivate PORTAL-CWM?",
           message: enabled
-            ? `Activate the paid Workshop Module for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
-            : `Deactivate the Workshop Module for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until switched back ON.`,
+            ? `Activate PORTAL-CWM for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
+            : `Deactivate PORTAL-CWM for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until switched back ON.`,
         });
         endpoint = `/customers/${customerId}/workshop-module`;
         body = { enabled };

@@ -1297,7 +1297,7 @@
   // V372 - Customer main-login face. The customer owner lands on one compact
   // company card first (the same layout approved in Customers & Machines),
   // while the existing operational dashboard remains available behind
-  // View Your Machine. Data is always loaded from the authenticated customer
+  // View Customer Machine. Data is always loaded from the authenticated customer
   // token, so no customer selector/id is accepted by this landing card.
   function shouldShowCustomerDashboardFace() {
     if (window.location.pathname !== "/portal/dashboard") return false;
@@ -1427,7 +1427,7 @@
           </div>
         </section>
         <nav class="belm-customer-face-actions belm-customer-face-primary-actions" aria-label="Customer dashboard primary actions">
-          <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">View Your Machine</a>
+          <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">View Customer Machine</a>
           <a class="belm-customer-face-action action-blue" href="/customer-workshop/?actor=customer">Workshop</a>
           <a class="belm-customer-face-action action-green" href="/customer-procurement/">Procurement</a>
           <button type="button" class="belm-customer-face-action action-yellow" data-customer-face-general-report>General Report</button>
@@ -2904,7 +2904,7 @@
       && new URLSearchParams(window.location.search).get("view") === "machines";
   }
 
-  // V433 - View Your Machine is a focused machine workspace. The customer
+  // V433 - View Customer Machine is a focused machine workspace. The customer
   // owner already has Action Required, Petty Cash, Workshop, Procurement and
   // General Analysis on the main Customer Dashboard, so do not duplicate that
   // right-side summary rail beside the machine cards. If navigation reaches

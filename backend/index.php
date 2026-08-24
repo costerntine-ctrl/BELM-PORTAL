@@ -285,6 +285,12 @@ switch ($resource) {
         if (isset($segments[2]) && $segments[2] === 'workshop-module') {
             dispatch('customers.php', ['action' => 'workshop-module', 'id' => $segments[1]]);
         }
+        if (isset($segments[2]) && $segments[2] === 'workshop-petty-cash') {
+            $pettyAction = ($segments[3] ?? '') === 'topup'
+                ? 'workshop-petty-cash-topup'
+                : ((($segments[3] ?? '') === 'receipt') ? 'workshop-petty-cash-receipt' : 'workshop-petty-cash');
+            dispatch('customers.php', ['action' => $pettyAction, 'id' => $segments[1]]);
+        }
         if (isset($segments[2]) && $segments[2] === 'message') {
             dispatch('customers.php', ['action' => 'send-message', 'id' => $segments[1]]);
         }

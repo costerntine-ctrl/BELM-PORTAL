@@ -1262,7 +1262,7 @@ if ($sub === 'dashboard') {
     unset($machine);
 
     // V422: preload the latest Operator Report for each customer machine so
-    // Customer > View Your Machine can use the same large Operator Message
+    // Customer > View Customer Machine can use the same large Operator Message
     // panel as BELM Customer Fleet without issuing one request per card.
     $operatorStmt = db()->prepare(
         "SELECT DISTINCT ON (machine_id) machine_id, id, operator_name, operator_contact, message, status, created_at
@@ -1288,7 +1288,7 @@ if ($sub === 'dashboard') {
     unset($machine);
 
     $stmt = db()->prepare(
-        'SELECT id, name, email, phone, portal_link, is_machinery_admin, privacy_preferences
+        'SELECT id, name, email, phone, portal_link, is_machinery_admin, workshop_module_active, privacy_preferences
          FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
     );
     $stmt->execute([$customer['id']]);
@@ -1297,6 +1297,8 @@ if ($sub === 'dashboard') {
         $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
         $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
         $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
+        $profile['workshopModuleActive'] = !empty($profile['workshop_module_active']);
+        unset($profile['workshop_module_active']);
         $profile['privacyPreferences'] = belm_customer_privacy_normalize($profile['privacy_preferences'] ?? null);
         unset($profile['privacy_preferences']);
         $profile['actorType'] = $customer['actorType'] ?? 'owner';
@@ -4013,7 +4015,7 @@ if ($sub === 'machines' && $sub2) {
     $stmt->execute([$machineId, $customer['id']]);
     if (!$stmt->fetch()) json_error('Not found', 404);
 
-    // V378 - Customer > View Your Machine can update the same live Activity Status
+    // V378 - Customer > View Customer Machine can update the same live Activity Status
     // shown to BELM Admin. The customer-scoped endpoint prevents cross-customer edits.
     if ($sub3 === 'activity-status' && $method === 'PUT') {
         require_customer_any_feature_access($customer, ['check-up', 'workflow'], 'Activity Status');

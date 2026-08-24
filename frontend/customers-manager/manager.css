@@ -589,7 +589,7 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
   gap: 8px;
   min-height: 0;
   margin-top: auto;
-  padding: 12px 20px 5px;
+  padding: 12px 20px 14px;
   border-top: 1px solid var(--line);
   box-sizing: border-box;
 }
@@ -710,7 +710,7 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
 .customer-users-control-limit-field input { width: 100%; }
 .customer-users-control-note { margin: 8px 0 0; font-size: 9.5px; line-height: 1.45; }
 
-/* V375 - BELM Admin > Customers & Machines > View Your Machine.
+/* V375 - BELM Admin > Customers & Machines > View Customer Machine.
    Match each machine card to the approved customer-card footprint while
    keeping + Add machine outside the card and preserving all machine actions. */
 #machineListDialog .machine-list {
@@ -738,7 +738,7 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
 }
 
 
-/* V376 - Admin View Your Machine: four readable actions on one bottom row. */
+/* V376 - Admin View Customer Machine: four readable actions on one bottom row. */
 #machineListDialog .machine-card .machine-actions {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -778,7 +778,7 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
 
 
 /* V377 - BELM Admin only: machine management row below the four operational actions.
-   Customer View Your Machine is intentionally untouched. */
+   Customer View Customer Machine is intentionally untouched. */
 #machineListDialog .machine-card .machine-admin-actions {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -818,7 +818,7 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
 }
 
 /* V377 - Balance Activity Status inside the fixed-size BELM Admin machine card.
-   This is admin View Your Machine only; the customer-facing machine view is untouched. */
+   This is admin View Customer Machine only; the customer-facing machine view is untouched. */
 #machineListDialog .machine-card .operational-status-picker {
   display: grid;
   grid-template-columns: 86px minmax(0, 1fr);
@@ -1650,5 +1650,130 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
     min-height: 44px !important;
     padding: 7px 2px !important;
     font-size: 7.7px !important;
+  }
+}
+
+/* ========================================================================
+   V468 - BELM Admin > Customer Fleet: responsive AUTO DISPLAY FIT.
+   - The fleet dialog grows with the viewport without becoming edge-to-edge.
+   - Machine cards auto-fit: two columns only when there is genuinely enough
+     horizontal room; otherwise one centered card is used.
+   - Cards keep their approved visual design, use natural content height and
+     their action buttons reflow from 4 -> 2 -> 1 columns as space narrows.
+   ======================================================================== */
+#machineListDialog .dialog-card {
+  width: min(1560px, 96vw) !important;
+  max-width: 1560px !important;
+  box-sizing: border-box !important;
+}
+
+#machineListDialog .machine-list {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(640px, 100%), 1fr)) !important;
+  align-items: start !important;
+  justify-content: stretch !important;
+  justify-items: center !important;
+  gap: clamp(16px, 1.8vw, 26px) !important;
+  width: 100% !important;
+}
+
+#machineListDialog .machine-card.machine-card-v417 {
+  container-type: inline-size;
+  width: 100% !important;
+  max-width: 760px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Auto-fit the operational buttons to the actual card width. */
+#machineListDialog .machine-card.machine-card-v417 .machine-actions {
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)) !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)) !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > button,
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > a,
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions > button {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Card-container breakpoints make the layout react to the card itself, even
+   when two cards share a large desktop window. */
+@container (max-width: 560px) {
+  #machineListDialog .machine-card.machine-card-v417 {
+    padding: 22px 16px 18px !important;
+    border-radius: 17px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row {
+    grid-template-columns: minmax(0, 1fr) 104px !important;
+    gap: 10px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row h4 {
+    font-size: clamp(20px, 6cqw, 25px) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-fleet-number {
+    width: 104px !important;
+    min-width: 104px !important;
+    max-width: 104px !important;
+    min-height: 58px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+    grid-template-columns: 105px minmax(0, 1fr) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+  }
+}
+
+@container (max-width: 360px) {
+  #machineListDialog .machine-card.machine-card-v417 {
+    padding: 19px 12px 15px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row {
+    grid-template-columns: 1fr !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-fleet-number {
+    width: min(150px, 100%) !important;
+    min-width: 0 !important;
+    max-width: 150px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+    grid-template-columns: 1fr !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions,
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Fallback/mobile rules for browsers or layouts where the card is narrower
+   than the normal desktop minimum. */
+@media (max-width: 700px) {
+  #machineListDialog .dialog-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+  }
+  #machineListDialog .machine-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 390px) {
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions,
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: 1fr !important;
   }
 }

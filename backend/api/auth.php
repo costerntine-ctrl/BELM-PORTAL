@@ -655,8 +655,13 @@ if ($action === 'unified-login' && $method === 'POST') {
         'permissions' => $permissions,
     ], 30 * 24 * 3600);
 
-    $customerDestination = $customerRole === 'workshop_manager'
-        ? '/breakdown-workflow/?actor=customer'
+    // V473: PORTAL-CWM customers land on their workshop HOME first.
+    // The Workshop Manager no longer jumps straight into Job Cards. The live
+    // customer workshop-module flag remains the single routing source of truth.
+    $workshopModuleActive = !empty($customer['workshop_module_active']);
+    $cwmHomeRoles = ['owner', 'admin', 'workshop_manager'];
+    $customerDestination = ($workshopModuleActive && in_array((string)$customerRole, $cwmHomeRoles, true))
+        ? '/customer-workshop/?actor=customer'
         : '/portal/dashboard';
 
     json_out([
@@ -669,6 +674,7 @@ if ($action === 'unified-login' && $method === 'POST') {
             'loggedInAs' => $loggedInAs,
             'actorType' => $actorType,
             'role' => $customerRole,
+            'workshopModuleActive' => $workshopModuleActive,
             'canManageAssistants' => $actorType === 'owner',
         ],
     ]);

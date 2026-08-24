@@ -766,3 +766,49 @@
   opacity: .85;
 }
 .belm-sidebar-back-link:hover { opacity: 1; }
+
+/* ========================================================================
+   V488 - CONTENT-FIT SIDEBAR
+   Desktop sidebar width follows the longest visible label, within safe
+   bounds. Long labels wrap instead of being cut with an ellipsis. Mobile
+   width is capped to the viewport so the close area remains reachable.
+   ======================================================================== */
+:root {
+  --belm-sidebar-width: 271px;
+}
+
+.belm-sidebar-link {
+  height: auto;
+}
+
+.belm-sidebar-link > span:nth-child(2) {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+
+.belm-sidebar-brand-copy strong,
+.belm-sidebar-brand-copy small,
+.belm-sidebar-user-copy strong,
+.belm-sidebar-user-copy > span,
+.belm-sidebar-theme-toggle,
+.belm-sidebar-logout {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 981px) {
+  .belm-admin-sidebar {
+    min-width: 235px;
+    max-width: 360px;
+  }
+}
+
+@media (max-width: 980px) {
+  .belm-admin-sidebar {
+    width: min(var(--belm-sidebar-width), calc(100vw - 54px));
+    min-width: min(235px, calc(100vw - 54px));
+    max-width: calc(100vw - 54px);
+  }
+}

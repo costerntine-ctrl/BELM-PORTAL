@@ -269,6 +269,29 @@
   document.body.prepend(toggle);
   document.body.classList.add("belm-sidebar-ready");
 
+  // V488: size the desktop sidebar from the actual menu text instead of a
+  // fixed width. This keeps short nested menus compact while longer labels
+  // remain fully readable. Width is deliberately capped for display fit.
+  function fitSidebarToText() {
+    const desktop = window.matchMedia("(min-width: 981px)").matches;
+    const labels = Array.from(sidebar.querySelectorAll(".belm-sidebar-link > span:nth-child(2)"));
+    const labelWidth = labels.reduce((max, label) => Math.max(max, label.scrollWidth || 0), 0);
+    const brandCopy = sidebar.querySelector(".belm-sidebar-brand-copy");
+    const userCopy = sidebar.querySelector(".belm-sidebar-user-copy");
+    const brandWidth = brandCopy ? (brandCopy.scrollWidth + 96) : 0;
+    const userWidth = userCopy ? (userCopy.scrollWidth + 84) : 0;
+    // icon 30 + gap 10 + horizontal link padding 20 + safe room for badge/border
+    const menuWidth = labelWidth + 92;
+    const desired = Math.ceil(Math.max(235, menuWidth, brandWidth, userWidth));
+    const fitted = Math.min(360, Math.max(235, desired));
+    document.documentElement.style.setProperty("--belm-sidebar-width", `${fitted}px`);
+    sidebar.dataset.contentFit = desktop ? "desktop" : "mobile";
+  }
+
+  fitSidebarToText();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitSidebarToText).catch(() => {});
+  window.addEventListener("resize", fitSidebarToText, { passive: true });
+
   // V357: flat A-Z list search; there are no category/group containers.
   (function wireSidebarSearch() {
     const input = document.getElementById("belmSidebarSearch");
@@ -330,6 +353,7 @@
         badge.className = "belm-sidebar-badge";
         badge.textContent = String(count);
         applications.appendChild(badge);
+        fitSidebarToText();
       })
       .catch(() => {});
   }

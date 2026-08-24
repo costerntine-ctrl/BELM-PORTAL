@@ -17,12 +17,12 @@
 // Regression baseline: const CACHE='belm-app-v347-expense-persistence-sync';
 // Regression baseline: const CACHE='belm-app-v349-login-password-stability';
 // Regression baseline: const CACHE='belm-app-v350-data-preservation-guard';
-const CACHE='belm-portal-v495-main-home';
+const CACHE='belm-portal-v496-back-menu-manual-login';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline
 // const CACHE='belm-app-v303-unified-login'; // regression baseline
-const SHELL=['/customer-app.html','/customer-app.css?v=327-login-legal','/customer-app.js?v=486-report-record','/password-visibility.css?v=209-eye-toggle','/password-visibility.js?v=209-eye-toggle','/belm-watermark.jpg'];
+const SHELL=['/customer-app.html','/customer-app.css?v=327-login-legal','/customer-app.js?v=496-manual-confirm-login','/password-visibility.css?v=209-eye-toggle','/password-visibility.js?v=209-eye-toggle','/belm-watermark.jpg'];
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{

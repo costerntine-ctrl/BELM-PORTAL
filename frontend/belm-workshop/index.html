@@ -26,7 +26,6 @@
       <div class="top-actions">
         <a class="ghost" href="/overview-manager/">← All Overview</a>
         <a class="ghost" href="/customers-manager/">Customers &amp; Machines</a>
-        <button id="refreshButton" class="ghost" type="button">Refresh</button>
       </div>
     </header>
 
@@ -95,103 +94,10 @@
           <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span>
         </div>
       </section>
-
-      <nav class="technical-dep-nav" aria-label="BELM Workshop sections">
-        <a class="active" href="#job-cards"><span>JC</span><b>Job Card</b></a>
-        <a href="#workshop-analysis"><span>WA</span><b>Workshop Analysis</b></a>
-        <a href="#technical-tools"><span>TL</span><b>Tools</b></a>
-        <a href="/roles-manager/?role=Technician&amp;technical=1"><span>TC</span><b>Technicians</b></a>
-        <a href="/roles-manager/?role=Engineer&amp;technical=1"><span>EN</span><b>Engineers</b></a>
-      </nav>
-
-      <div id="pageAlert" class="alert hidden" role="status"></div>
-
-      <section id="engineeringRolesStrip" class="eng-roles-strip">
-        <article class="eng-role-card">
-          <h3>Workshop Manager</h3>
-          <p id="workshopManagerRoleAccess" class="muted">Loading…</p>
-          <button class="eng-role-edit" type="button" data-edit-role="Engineer">Edit role access</button>
-        </article>
-        <article class="eng-role-card">
-          <h3>Technician</h3>
-          <p id="technicianRoleAccess" class="muted">Technician app only / no admin dashboard pages</p>
-          <button class="eng-role-edit" type="button" data-edit-role="Technician">Edit role access</button>
-        </article>
-      </section>
-
-      <dialog id="roleDialog">
-        <form id="roleForm" class="eng-role-form">
-          <div class="panel-head"><h2 id="roleDialogTitle">Edit role access</h2><button type="button" id="closeRoleDialog" aria-label="Close">×</button></div>
-          <input type="hidden" id="roleId">
-          <div id="roleFormAlert" class="alert error hidden"></div>
-          <label>Allowed pages</label>
-          <div id="allowedPages" class="eng-allowed-pages"></div>
-          <div class="eng-role-form-actions">
-            <button type="button" class="secondary" id="cancelRoleDialog">Cancel</button>
-            <button type="submit" class="primary" id="saveRoleButton">Save role</button>
-          </div>
-        </form>
-      </dialog>
-
-      <section id="job-cards" class="eng-service-requests-host" aria-label="BELM Workshop Job Card workspace">
-        <div class="panel-head"><div><h2>Job Cards</h2><p>Receive Customer Admin Job Cards, assign BELM Technicians, track work, parts waiting, approval and completion.</p></div></div>
-        <div id="engineeringJobCardsPanel" class="eng-workspace-panel">
-          <iframe id="engineeringJobCardsFrame" title="BELM Workshop Job Cards" data-src="/breakdown-workflow/?embed=1&amp;source=admin" loading="eager"></iframe>
-        </div>
-        <div id="engineeringJobCardsLocked" class="panel eng-service-requests-locked hidden">Job Card access is not enabled for this role.</div>
-      </section>
-
-      <section id="workshop-analysis" class="eng-workshop-analysis-host" aria-label="Workshop Analysis">
-        <div id="engineeringWorkshopAnalysisPanel" class="eng-workspace-panel eng-analysis-panel">
-          <iframe id="engineeringWorkshopAnalysisFrame" title="Workshop Analysis" data-src="/breakdown-workflow/?embed=1&amp;source=admin&amp;view=analysis" loading="eager"></iframe>
-        </div>
-        <div id="engineeringWorkshopAnalysisLocked" class="panel eng-service-requests-locked hidden">Workshop Analysis access is not enabled for this role.</div>
-      </section>
-
-      <section id="technical-tools" class="panel technical-tools-panel">
-        <div class="panel-head"><div><h2>Tools</h2><p>Technical references used by the BELM technical team.</p></div></div>
-        <div class="technical-tools-grid">
-          <a href="/checklist-manager/" data-tool-page="checklist-templates"><span>CL</span><div><b>Checklist Templates</b><small>Inspection and check-up templates</small></div></a>
-          <a href="/controller-pinouts-manager/" data-tool-page="checklist-templates"><span>CP</span><div><b>Controller Pin Out</b><small>Controller and electrical pin-out reference</small></div></a>
-        </div>
-      </section>
-
-      <section id="engineeringOverviewGrid" class="eng-grid">
-        <article class="panel eng-card">
-          <div class="panel-head"><h2>Machine activity</h2><span id="activityCount" class="eng-count">0</span></div>
-          <div id="activityList" class="eng-card-body"><p class="muted">Loading…</p></div>
-        </article>
-
-        <article class="panel eng-card">
-          <div class="panel-head"><h2>Operator messages</h2><span id="operatorCount" class="eng-count">0</span></div>
-          <div id="operatorList" class="eng-card-body"><p class="muted">Loading…</p></div>
-        </article>
-
-        <article class="panel eng-card">
-          <div class="panel-head"><h2>Machine status</h2></div>
-          <div id="statusSummary" class="eng-status-summary"><p class="muted">Loading…</p></div>
-        </article>
-
-        <article class="panel eng-card">
-          <div class="panel-head"><h2>Service reminders</h2><span id="reminderCount" class="eng-count">0</span></div>
-          <div id="reminderList" class="eng-card-body"><p class="muted">Loading…</p></div>
-        </article>
-
-        <article class="panel eng-card eng-card-wide">
-          <div class="panel-head"><h2>Service PI review</h2><span id="servicePrepCount" class="eng-count">0</span></div>
-          <div id="servicePrepList" class="eng-card-body"><p class="muted">Loading…</p></div>
-        </article>
-
-        <article class="panel eng-card eng-card-wide">
-          <div class="panel-head"><h2>Spare parts needed</h2><span id="spareCount" class="eng-count">0</span></div>
-          <div id="spareList" class="eng-card-body"><p class="muted">Loading…</p></div>
-        </article>
-      </section>
     </main>
 
     <script src="/admin-access.js?v=411-job-card-only"></script>
     <script src="/admin-sidebar.js?v=415-workshop-analysis"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/belm-workshop/manager.js?v=453-belm-workshop"></script>
   </body>
 </html>

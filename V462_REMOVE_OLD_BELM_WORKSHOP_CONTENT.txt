@@ -1,0 +1,29 @@
+V462 - BELM WORKSHOP cleaned up: only the 3-card design remains
+
+Removed entirely from /belm-workshop/ (the old, now-duplicate content
+confirmed unwanted):
+- technical-dep-nav (Job Card / Workshop Analysis / Tools / Technicians /
+  Engineers section links)
+- the old "Workshop Manager" / "Technician" role-access cards
+  (engineeringRolesStrip) with their "Loading..." / "Edit role access"
+  buttons, and the Edit role access dialog (#roleDialog)
+- the Job Cards section (iframe + description text) and Technician
+  Dispatch panel
+- the Workshop Analysis section (iframe)
+- the Technical Tools grid
+- the 6-card technical overview grid (Machine activity, Operator
+  messages, Machine status, Service reminders, Service PI review, Spare
+  parts needed)
+- the "Refresh" button in the header (had nothing left to refresh)
+
+/belm-workshop/manager.js was deleted outright - every function in it
+targeted elements that no longer exist on this page, so keeping it would
+throw errors and silently break the rest of the script (including the
+role-dialog wiring that ran before anything else). The 3-card Workshop
+Role Structure + Workflow strip (V461) need no JavaScript at all, since
+every action is still a plain placeholder.
+
+What's left on /belm-workshop/ now: header, hero, the 3 role cards
+(Workshop Manager / Store Keeper / Technicians), and the "WORKSHOP FLOW"
+strip - nothing else. admin-sidebar.js and admin-access.js (nested
+sidebar, page access) are untouched and still load normally.

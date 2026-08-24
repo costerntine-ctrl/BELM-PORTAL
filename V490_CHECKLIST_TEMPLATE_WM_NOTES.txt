@@ -1,0 +1,8 @@
+BELM PORTAL V490 - WM CHECKLIST TEMPLATE BUTTON
+
+- Added Checklist Template button beside Customer Overview on PORTAL-BELM WM.
+- Button opens the existing Checklist Templates module inside the WM workspace; no duplicate checklist page/database was created.
+- Uses the existing checklist-templates permission and API.
+- Button styling matches the requested long black control style.
+- Mobile layout allows the two responsibility controls to fit/wrap cleanly.
+- Cache/version updated to V490.

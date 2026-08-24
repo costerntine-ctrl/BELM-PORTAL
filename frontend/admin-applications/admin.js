@@ -103,6 +103,26 @@ function confirmRegisteredUserAction(options = {}) {
 
 function displayRoleName(name) { return name === "Engineer" ? "Workshop Manager" : (name || ""); }
 
+function customerSyncSummary(sync) {
+  if (!sync?.ok) return 'Sync verification unavailable';
+  const targets = sync.targets || {};
+  const labels = [];
+  if (targets.customersOverview) labels.push('Customer Overview');
+  if (targets.belmWorkshopCustomerOverview) labels.push('WM Customer Overview');
+  if (targets.customerDashboard) labels.push('Customer Dashboard');
+  if (targets.portalCwm) labels.push('PORTAL-CWM');
+  if (targets.machineScope) labels.push('Machines');
+  if (targets.manageUsers) labels.push('Manage Users');
+  if (targets.workshopProcurementReports) labels.push('Workshop/Procurement/Reports');
+  return labels.join(' · ') || 'Customer registry';
+}
+
+function announceCustomerRegistryChange(customerId) {
+  try {
+    localStorage.setItem('belm_customer_registry_changed', JSON.stringify({ customerId, at: Date.now() }));
+  } catch (_) {}
+}
+
 async function api(path, options = {}) {
   const response = await fetch(path, {
     ...options,
@@ -733,6 +753,16 @@ async function completeApproval(application, payload) {
     const link = document.getElementById("approvedLink");
     link.href = result.loginUrl;
     link.textContent = result.loginUrl;
+    const isCustomerApproval = result.applicationType === "CUSTOMER";
+    document.getElementById("approvedModeLabel").classList.toggle("hidden", !isCustomerApproval);
+    document.getElementById("approvedMode").classList.toggle("hidden", !isCustomerApproval);
+    document.getElementById("approvedSyncLabel").classList.toggle("hidden", !isCustomerApproval);
+    document.getElementById("approvedSync").classList.toggle("hidden", !isCustomerApproval);
+    if (isCustomerApproval) {
+      document.getElementById("approvedMode").textContent = result.registrationModeLabel || result.registrationMode || "TECHNICAL DEP";
+      document.getElementById("approvedSync").textContent = customerSyncSummary(result.registrationSync);
+      announceCustomerRegistryChange(result.customerId);
+    }
     if (assignmentDialog.open) assignmentDialog.close();
     dialog.showModal();
     await Promise.all([loadApplications(), loadRegisteredCustomers(), loadRegisteredUsers()]);
@@ -1074,7 +1104,7 @@ function showRegisterError(boxId, message) {
   box.classList.remove("hidden");
 }
 
-function openRegisterCredentials({ name, role, email, password, recoveryCode, loginUrl, title = "Account created", subtitle = "Copy these credentials now. The password and recovery code are shown only once." }) {
+function openRegisterCredentials({ name, role, email, password, recoveryCode, loginUrl, registrationMode = null, registrationSync = null, title = "Account created", subtitle = "Copy these credentials now. The password and recovery code are shown only once." }) {
   document.getElementById("regCredTitle").textContent = title;
   document.getElementById("regCredSubtitle").textContent = subtitle;
   document.getElementById("regCredName").textContent = name;
@@ -1085,6 +1115,15 @@ function openRegisterCredentials({ name, role, email, password, recoveryCode, lo
   const link = document.getElementById("regCredLink");
   link.href = loginUrl || "#";
   link.textContent = loginUrl || "—";
+  const customerRegistration = Boolean(registrationMode || registrationSync);
+  document.getElementById("regCredModeLabel").classList.toggle("hidden", !customerRegistration);
+  document.getElementById("regCredMode").classList.toggle("hidden", !customerRegistration);
+  document.getElementById("regCredSyncLabel").classList.toggle("hidden", !customerRegistration);
+  document.getElementById("regCredSync").classList.toggle("hidden", !customerRegistration);
+  if (customerRegistration) {
+    document.getElementById("regCredMode").textContent = registrationMode === "PORTAL_CWM" ? "PORTAL-CWM" : "TECHNICAL DEP";
+    document.getElementById("regCredSync").textContent = customerSyncSummary(registrationSync);
+  }
   registerCredentialsDialog.showModal();
 }
 
@@ -1120,7 +1159,8 @@ document.getElementById("registerCustomerForm").addEventListener("submit", async
         phone: document.getElementById("regCustomerPhone").value.trim(),
         address: document.getElementById("regCustomerAddress").value.trim(),
         tinNumber: document.getElementById("regCustomerTin").value.trim(),
-        vrn: document.getElementById("regCustomerVrn").value.trim()
+        vrn: document.getElementById("regCustomerVrn").value.trim(),
+        registrationMode: document.getElementById("regCustomerMode").value
       })
     });
 
@@ -1153,8 +1193,11 @@ document.getElementById("registerCustomerForm").addEventListener("submit", async
       email: document.getElementById("regCustomerEmail").value.trim(),
       password: customer.portalLoginInfo.temporaryPassword,
       recoveryCode: customer.portalLoginInfo.recoveryCode,
-      loginUrl: customer.portalLoginInfo.portalUrl
+      loginUrl: customer.portalLoginInfo.portalUrl,
+      registrationMode: customer.registrationMode,
+      registrationSync: customer.registrationSync
     });
+    announceCustomerRegistryChange(customer.id);
     await Promise.all([loadApplications(), loadRegisteredCustomers()]);
   } catch (error) {
     showRegisterError("registerCustomerError", error.message);

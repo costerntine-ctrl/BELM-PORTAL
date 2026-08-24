@@ -250,11 +250,24 @@
         document.getElementById("copyLinkButton").dataset.portalUrl = dashboard.customer.portalUrl;
       }
       const customerTechEnabled = Boolean(dashboard?.customer?.isMachineryAdmin);
+      document.body.classList.toggle("customer-technician-locked", !customerTechEnabled);
       document.getElementById("technicianSection").classList.toggle("hidden", !customerTechEnabled);
       document.getElementById("belmProviderNotice")?.classList.toggle("hidden", customerTechEnabled);
       const technicianOption = document.getElementById("role").querySelector('option[value="technician"]');
-      if (technicianOption) technicianOption.disabled = !customerTechEnabled;
-      loadTechnicians();
+      if (technicianOption) {
+        technicianOption.disabled = !customerTechEnabled;
+        technicianOption.textContent = customerTechEnabled
+          ? "Fundi / Technician — Technician Workspace + optional Customer Dashboard"
+          : "Fundi / Technician — LOCKED WHILE BELM SERVICE IS ON";
+      }
+      if (customerTechEnabled) {
+        loadTechnicians();
+      } else {
+        technicians = [];
+        render();
+        const list = document.getElementById("technicianList");
+        if (list) list.innerHTML = '';
+      }
     } catch {
       // The user list already shows the actionable authentication error.
     }

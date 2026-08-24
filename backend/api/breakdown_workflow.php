@@ -1174,6 +1174,8 @@ if ($method === 'GET' && $action === '') {
 if ($method === 'POST' && $action === 'case') {
     if($ctx['kind']!=='customer') json_error('Create the case from the customer workflow or problem report.',403);
     if(!$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Administration/Customer Admin or Workshop Manager can open a manual Breakdown Case. Operators should use Report Problem.',403);
+    $modeStmt=db()->prepare('SELECT is_machinery_admin FROM customers WHERE id=?'); $modeStmt->execute([$ctx['customerId']]);
+    if(empty($modeStmt->fetchColumn())) json_error('BELM Service is ON. Customer internal Technician workflow is locked. Use Send Job Card to BELM for this machine.',403);
     $b=body(); $machineId=trim((string)($b['machineId']??'')); $desc=trim((string)($b['description']??'')); $title=trim((string)($b['title']??'Machine Breakdown'));
     if($machineId===''||$desc==='') json_error('Machine and problem description are required.');
     $m=db()->prepare('SELECT 1 FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL'); $m->execute([$machineId,$ctx['customerId']]); if(!$m->fetch())json_error('Machine not found.',404);
@@ -1190,6 +1192,7 @@ if ($method === 'POST' && $action === 'job-card') {
     if(!in_array($jobCardMode,['auto','create','existing'],true)) json_error('Invalid Job Card source.',422);
     if($ctx['kind']==='customer' && !$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Customer Admin or Workshop Manager can issue or reassign an internal Customer Job Card.',403);
     if($ctx['kind']==='customer' && strtoupper((string)($case['source_type']??''))==='SERVICE_REQUEST') json_error('This is an official Job Card sent to BELM. BELM Admin / Workshop Manager assigns the BELM Technician.',403);
+    if($ctx['kind']==='customer' && empty($case['is_machinery_admin'])) json_error('BELM Service is ON. Customer Technician assignment is locked. Send or follow the BELM Job Card; BELM Workshop Manager assigns the BELM Technician.',403);
     if($ctx['kind']==='customer-tech') json_error('Technicians cannot generate or assign Job Cards. Customer Admin / Workshop Manager must issue the Job Card.',403);
     if($ctx['kind']==='belm' && empty($case['is_machinery_admin'])===false) json_error('This customer uses its own maintenance team. BELM can work here only after an official Customer Admin Job Card is sent to BELM.',403);
 

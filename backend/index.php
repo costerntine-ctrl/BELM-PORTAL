@@ -71,6 +71,8 @@ if (($segments[0] ?? '') === 'readiness' || !isset($segments[0])) {
             'customer_machine_spare_list_items',
             'customer_store_issue_requests',
             'belm_workshop_tool_issues',
+            'delivery_notes',
+            'delivery_note_items',
             'customer_procurement_requests',
             'checklist_template_parts',
             'service_request_parts',
@@ -203,7 +205,7 @@ if (($segments[0] ?? '') === 'readiness' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
             // Regression baseline: 'schemaVersion' => '347-expense-persistence-sync'
-            'schemaVersion' => '356-bank-test-reset',
+            'schemaVersion' => '489-delivery-note-workflow',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,
@@ -282,6 +284,9 @@ switch ($resource) {
         }
         if (($segments[1] ?? '') === 'users' && isset($segments[2])) {
             dispatch('customers.php', ['action' => 'remove-user', 'subUserId' => $segments[2]]);
+        }
+        if (isset($segments[2]) && $segments[2] === 'registration-sync') {
+            dispatch('customers.php', ['action' => 'registration-sync', 'id' => $segments[1]]);
         }
         if (isset($segments[2]) && $segments[2] === 'reset-password') {
             dispatch('customers.php', ['action' => 'reset-password', 'id' => $segments[1]]);
@@ -517,6 +522,12 @@ switch ($resource) {
         if (isset($segments[2]) && $segments[2] === 'restore') dispatch('trash.php', ['id' => $segments[1]]);
         if (isset($segments[1])) dispatch('trash.php', ['id' => $segments[1]]);
         dispatch('trash.php');
+
+    case 'delivery-notes':
+        // GET /delivery-notes/meta, GET/POST /delivery-notes, GET/PUT/DELETE /delivery-notes/:id
+        if (($segments[1] ?? '') === 'meta') dispatch('delivery_notes.php', ['action' => 'meta']);
+        if (isset($segments[1])) dispatch('delivery_notes.php', ['id' => $segments[1]]);
+        dispatch('delivery_notes.php');
 
     case 'tasks':
         // GET /tasks/user/:userId, POST /tasks, PUT /tasks/:id/done, DELETE /tasks/:id

@@ -73,6 +73,15 @@
     });
   }
 
+
+  // V491: if Registration & Role Approval creates/approves a customer in
+  // another tab, refresh this Customer Overview immediately. Every workspace
+  // still reads the same backend customer/company_id; this only refreshes UI.
+  window.addEventListener('storage', (event) => {
+    if (event.key !== 'belm_customer_registry_changed' || !event.newValue) return;
+    load().catch(() => {});
+  });
+
   async function confirmThenOpen(title, message, openFn) {
     const confirmation = await window.belmConfirmEdit({ title, message });
     if (!confirmation) return;

@@ -45,17 +45,17 @@
     if(!customerToken){location.href='/login';return}
     document.getElementById('modePill').textContent='CUSTOMER WORKSHOP';
     document.getElementById('backLink').href='/portal/dashboard';
+    let workshopModuleActive=true;
     try{
       const dashboard=await customerApi('/dashboard');
-      if(dashboard?.customer?.workshopModuleActive===false){
-        location.replace('/portal/dashboard');
-        return;
-      }
       const profile=dashboard?.customer||{};
+      workshopModuleActive=profile.workshopModuleActive!==false;
       const name=profile.name||'Customer';
       document.getElementById('modePill').textContent='PORTAL-CWM HOME';
       document.getElementById('workshopTitle').textContent=`${name} — PORTAL-CWM`;
-      document.getElementById('workshopSubtitle').textContent='Customer Workshop Manager home — customer records stay company-scoped; BELM Job Cards are opened only when BELM support is requested.';
+      document.getElementById('workshopSubtitle').textContent=Boolean(profile.belmServiceProviderActive)
+        ? 'BELM Service Mode — customer records remain company-scoped; machine updates stay in Report Record and BELM Job Cards go directly to TECHNICAL DEP.'
+        : 'Customer Workshop Manager home — customer records stay company-scoped; BELM Job Cards are opened only when BELM support is requested.';
       document.getElementById('cwmCompanyName').textContent=name;
       document.getElementById('cwmCompanyAddress').textContent=profile.address||'Not recorded';
       document.getElementById('cwmCompanyEmail').textContent=profile.email||'Not recorded';
@@ -64,11 +64,35 @@
       const belmStatus=document.getElementById('cwmBelmStatus');
       belmStatus.textContent=belmOn?'BELM ON · SERVICE ACTIVE':'BELM OFF · CUSTOMER WORKSHOP';
       belmStatus.classList.toggle('is-on',belmOn);belmStatus.classList.toggle('is-off',!belmOn);
+      const techManage=document.getElementById('technicianManageLink');
+      const techWork=document.getElementById('technicianWorkLink');
+      if(belmOn){
+        technicians=[];
+        document.getElementById('technicianCount').textContent='LOCKED · BELM ON';
+        if(techManage){techManage.textContent='Technicians Locked · BELM ON';techManage.removeAttribute('href');techManage.setAttribute('aria-disabled','true');techManage.classList.add('locked-action')}
+        if(techWork){techWork.textContent='View BELM Job Progress';techWork.href='/breakdown-workflow/?actor=customer';techWork.classList.remove('locked-action');techWork.removeAttribute('aria-disabled')}
+        const newToolIssue=document.getElementById('newToolIssueButton');
+        if(newToolIssue){newToolIssue.disabled=true;newToolIssue.textContent='Issue Tool Locked · BELM ON';newToolIssue.title='Customer Technician section is locked while BELM Service is ON.'}
+      }else{
+        if(techManage){techManage.textContent='Manage Technicians';techManage.href='/customer-users/';techManage.removeAttribute('aria-disabled');techManage.classList.remove('locked-action')}
+        if(techWork){techWork.textContent='View Assigned Work';techWork.href='/breakdown-workflow/?actor=customer';techWork.removeAttribute('aria-disabled');techWork.classList.remove('locked-action')}
+        const newToolIssue=document.getElementById('newToolIssueButton');
+        if(newToolIssue){newToolIssue.disabled=false;newToolIssue.textContent='+ Issue Tool';newToolIssue.title=''}
+      }
       const machineLink=document.getElementById('cwmMachinesLink');
       machineLink.textContent=`${name.toUpperCase()} MACHINES`;
+      if(!workshopModuleActive){
+        document.getElementById('storeLink')?.classList.add('hidden');
+        document.getElementById('toolDocumentsButton')?.classList.add('hidden');
+        document.getElementById('workshop-store')?.classList.add('hidden');
+        document.getElementById('toolDocumentsPanel')?.classList.add('hidden');
+      }
     }catch(e){show(e.message,true)}
-    try{technicians=await customerApi('/technicians');document.getElementById('technicianCount').textContent=`${technicians.length} TECH${technicians.length===1?'':'S'}`;renderTechnicianOptions()}catch(_){technicians=[];renderTechnicianOptions()}
-    await loadStore();
+    const techLocked=document.getElementById('technicianManageLink')?.getAttribute('aria-disabled')==='true';
+    if(!techLocked){
+      try{technicians=await customerApi('/technicians');document.getElementById('technicianCount').textContent=`${technicians.length} TECH${technicians.length===1?'':'S'}`;renderTechnicianOptions()}catch(_){technicians=[];renderTechnicianOptions()}
+    }else{technicians=[];renderTechnicianOptions()}
+    if(workshopModuleActive) await loadStore();
   }
   async function loadStore(){
     if(isBelm)return;

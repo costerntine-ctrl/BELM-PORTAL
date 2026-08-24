@@ -613,7 +613,7 @@ if ($action === 'unified-login' && $method === 'POST') {
         $customer = null;
         if ($isEmailLogin && ($resolvedEmailIdentity['account_type'] ?? '') === 'assistant') {
             $stmt = db()->prepare(
-                'SELECT cu.*,c.name AS customer_name,c.portal_link
+                'SELECT cu.*,c.name AS customer_name,c.portal_link,c.is_machinery_admin AS customer_self_service
                  FROM customer_users cu JOIN customers c ON c.id=cu.customer_id
                  WHERE cu.id=? AND cu.is_active=1 AND c.deleted_at IS NULL AND c.is_active=1'
             );
@@ -624,6 +624,9 @@ if ($action === 'unified-login' && $method === 'POST') {
                 json_error('This customer app link belongs to a different company.',403);
             }
             if ($subUser && verify_portal_password($password, $subUser['password'] ?? null, 'assistant', (string)$subUser['id'])) {
+                if (strtolower((string)($subUser['role'] ?? '')) === 'technician' && empty($subUser['customer_self_service'])) {
+                    json_error('BELM Service is ON. Customer Technician login is locked while BELM handles maintenance.', 403);
+                }
                 $stmt = db()->prepare(
                     'SELECT * FROM customers
                      WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
@@ -658,12 +661,14 @@ if ($action === 'unified-login' && $method === 'POST') {
         'permissions' => $permissions,
     ], 30 * 24 * 3600);
 
-    // V473: PORTAL-CWM customers land on their workshop HOME first.
-    // The Workshop Manager no longer jumps straight into Job Cards. The live
-    // customer workshop-module flag remains the single routing source of truth.
+    // V491: Customer Owner/Admin/Workshop Manager always land on the same
+    // PORTAL-CWM home. BELM Service ON/OFF changes responsibility, not the
+    // customer's home. workshop_module_active remains a feature gate for the
+    // customer-owned Store / Tool module inside CWM; it no longer changes the
+    // entire dashboard destination.
     $workshopModuleActive = !empty($customer['workshop_module_active']);
     $cwmHomeRoles = ['owner', 'admin', 'workshop_manager'];
-    $customerDestination = ($workshopModuleActive && in_array((string)$customerRole, $cwmHomeRoles, true))
+    $customerDestination = in_array((string)$customerRole, $cwmHomeRoles, true)
         ? '/customer-workshop/?actor=customer'
         : '/portal/dashboard';
 
@@ -858,6 +863,9 @@ if ($action === 'customer-login' && $method === 'POST') {
     if (!$customer || !$customer['is_active']) {
         record_failed_attempt('customer-login', $rawLoginId);
         json_error('Invalid credentials', 401);
+    }
+    if ($actorType === 'assistant' && strtolower((string)$customerRole) === 'technician' && empty($customer['is_machinery_admin'])) {
+        json_error('BELM Service is ON. Customer Technician login is locked while BELM handles maintenance.', 403);
     }
     clear_rate_limit('customer-login', $rawLoginId);
 

@@ -66,6 +66,13 @@
       permissions:['roles','job-cards','service-requests','spare-parts'],
       url:()=>'/belm-workshop/tool-issues/?embed=1'
     },
+    'delivery-notes':{
+      title:'Delivery Notes',
+      subtitle:'Prepare, sign, store, print and manage customer Delivery Note records.',
+      hash:'#delivery-notes',
+      permissions:['roles','job-cards','service-requests','spare-parts'],
+      url:()=>'/delivery-notes/?embed=1'
+    },
     technicians:{
       title:'Manage Technicians',
       subtitle:'BELM Technician users, roles and customer assignment.',
@@ -86,6 +93,13 @@
       hash:'#customer-overview',
       permissions:['customers'],
       url:()=>'/customers-manager/?embed=1&from=belm-workshop'
+    },
+    'checklist-template':{
+      title:'Checklist Template',
+      subtitle:'Create, edit and maintain machine inspection Checklist Templates inside PORTAL-BELM WM.',
+      hash:'#checklist-template',
+      permissions:['checklist-templates'],
+      url:()=>'/checklist-manager/?embed=1&from=belm-workshop'
     },
     'general-report':{
       title:'General Report',
@@ -126,7 +140,7 @@
   }
   function keyFromHash(hash){
     const h=String(hash||'').replace(/^#/,'').toLowerCase();
-    const map={'job-cards':'job-cards','workshop-analysis':'analysis','procurement':'procurement','suppliers':'suppliers','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings','customer-overview':'customer-overview'};
+    const map={'job-cards':'job-cards','workshop-analysis':'analysis','procurement':'procurement','suppliers':'suppliers','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','delivery-notes':'delivery-notes','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings','customer-overview':'customer-overview','checklist-template':'checklist-template'};
     return map[h]||'';
   }
   function openModule(key,{pushHash=true,machineId=''}={}){

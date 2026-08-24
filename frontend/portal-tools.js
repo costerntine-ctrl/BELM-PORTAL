@@ -2492,7 +2492,7 @@
               <span>${escapeHtml(r.occurredAt ? formatTanzaniaDateTime(r.occurredAt) : "Date not recorded")} · ${escapeHtml(type)}</span>
               <small>Reported by: ${escapeHtml(r.reportedBy || "Not recorded")}${r.technicianName ? ` · Technician: ${escapeHtml(r.technicianName)}` : ""}</small>
               <p>${escapeHtml(r.message || "—")}</p>${r.finalResult ? `<em>Final result: ${escapeHtml(r.finalResult)}</em>` : ""}
-            </div><span class="belm-report-status status-${escapeHtml(status === "COMPLETED" || status === "GREEN" || status === "RECORDED" ? "green" : status === "OPEN" || status === "RED" ? "red" : "yellow")}">${escapeHtml(status)}</span>
+            </div><span class="belm-report-status status-${escapeHtml(status === "COMPLETED" || status === "GREEN" || status === "RECORDED" || status === "SIGNED" ? "green" : status === "OPEN" || status === "RED" ? "red" : "yellow")}">${escapeHtml(status)}</span>
           </article>`;
         }).join("") : '<div class="belm-report-empty">No Report Record entries found for this period.</div>';
       } catch (error) { list.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load Report Record.")}</p>`; }

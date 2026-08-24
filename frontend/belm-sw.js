@@ -8,7 +8,7 @@
 // Regression baseline: belm-app-v215-petty-checkup
 // Regression baseline: belm-app-v211-bug-audit
 // Regression baseline: belm-app-v326-jc-proforma-sync
-// const CACHE='belm-app-v355-json-api-clean-response'; // regression baseline
+// const CACHE='belm-app-v491-customer-registration-sync'; // regression baseline
 // const CACHE='belm-app-v329-action-feedback-reset'; // regression baseline
 // const CACHE='belm-app-v330-queue-company-blink'; // regression baseline
 // const CACHE='belm-app-v332-service-request-history-pdf-report'; // regression baseline
@@ -17,7 +17,7 @@
 // Regression baseline: const CACHE='belm-app-v347-expense-persistence-sync';
 // Regression baseline: const CACHE='belm-app-v349-login-password-stability';
 // Regression baseline: const CACHE='belm-app-v350-data-preservation-guard';
-const CACHE='belm-portal-v488-sidebar-text-fit';
+const CACHE='belm-portal-v492-belm-customer-tech-lock';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline

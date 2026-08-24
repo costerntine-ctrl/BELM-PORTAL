@@ -1,0 +1,11 @@
+BELM PORTAL V492 - BELM ON CUSTOMER TECHNICIAN LOCK
+
+Rule:
+- BELM Service ON: customer-owned Technician section is locked.
+- Existing customer Technician records are preserved; nothing is deleted.
+- Customer cannot add/edit/reset/delete/login/assign its own Technicians while BELM ON.
+- Customer can still use machines, Daily Reports, Report Record, operators and Send Job Card to BELM according to permissions.
+- BELM Workshop Manager assigns BELM Technicians to official BELM Job Cards.
+- BELM Service OFF: customer Technician management becomes available again.
+
+Protection is enforced in both UI and backend API.

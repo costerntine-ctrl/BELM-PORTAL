@@ -826,7 +826,8 @@ if ($method === 'POST' && !$action) {
     $recoveryCode = account_recovery_code();
     $newId = uuid();
     $portalLink = customer_portal_slug($details['name']);
-    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())')
+    $registration = belm_customer_registration_profile($b['registrationMode'] ?? null);
+    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, is_machinery_admin, workshop_module_active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())')
         ->execute([
             $newId,
             $details['name'],
@@ -838,11 +839,20 @@ if ($method === 'POST' && !$action) {
             $portalLink,
             password_hash($tempPassword, PASSWORD_BCRYPT),
             password_hash($recoveryCode, PASSWORD_BCRYPT),
+            $registration['isMachineryAdmin'],
+            $registration['workshopModuleActive'],
         ]);
 
-    log_activity($user, 'customer-created', 'customer', $newId, ['name' => $details['name']]);
+    log_activity($user, 'customer-created', 'customer', $newId, [
+        'name' => $details['name'],
+        'registrationMode' => $registration['mode'],
+        'belmServiceProviderActive' => $registration['belmServiceProviderActive'],
+        'workshopModuleActive' => (bool)$registration['workshopModuleActive'],
+    ]);
     json_out([
         'id' => $newId,
+        'registrationMode' => $registration['mode'],
+        'registrationModeLabel' => $registration['label'],
         'portalLoginInfo' => [
             'portalLink' => customer_portal_url($portalLink, $details['email']),
             'portalId' => $portalLink,
@@ -850,7 +860,21 @@ if ($method === 'POST' && !$action) {
             'temporaryPassword' => $tempPassword,
             'recoveryCode' => $recoveryCode,
         ],
+        'registrationSync' => belm_customer_registration_sync_status($newId),
     ], 201);
+}
+
+
+// V491: verify the newly registered customer is visible from every workspace
+// that reads the shared customer/company_id record. This is a read-only
+// diagnostic; it never creates a second customer or copies business data.
+if ($method === 'GET' && $action === 'registration-sync') {
+    require_page_access($user, 'customers');
+    $customerId = trim((string)$id);
+    if ($customerId === '') json_error('Customer was not specified.');
+    $sync = belm_customer_registration_sync_status($customerId);
+    if (empty($sync['ok'])) json_error($sync['error'] ?? 'Customer sync could not be verified.', 404);
+    json_out($sync);
 }
 
 if ($method === 'PUT' && $action === 'reset-password') {

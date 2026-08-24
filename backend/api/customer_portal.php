@@ -60,6 +60,22 @@ function log_customer_activity(array $customer, string $action): void {
     )->execute([uuid(), $customer['id'], $actorName, $action]);
 }
 
+// V492 - Customer Technician ownership follows the BELM Service switch.
+// BELM ON (is_machinery_admin=0): the customer's own Technician section is
+// paused. Existing records stay intact for history, but customer-side create,
+// edit, reset, delete, login and assignment actions are blocked until BELM OFF.
+function customer_technician_management_enabled(array $customer): bool {
+    $stmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([$customer['id']]);
+    return !empty($stmt->fetchColumn());
+}
+
+function require_customer_technician_management_access(array $customer): void {
+    if (!customer_technician_management_enabled($customer)) {
+        json_error('BELM Service is ON. Customer Technician management is locked while BELM handles maintenance. Turn BELM Service OFF to manage your own Technicians.', 403);
+    }
+}
+
 
 // V387 - Customer machine self-management is available only when BELM is NOT
 // the active service provider. The UI mirrors this rule, but the API enforces
@@ -1704,6 +1720,7 @@ if ($sub === 'tool-issues') {
     if ($method === 'POST' && $sub2 === '') {
         require_customer_write_access($customer);
         if (!customer_can_manage_store($customer)) json_error('Only Store Keeper, Workshop Manager, Admin or Owner can issue workshop tools.', 403);
+        require_customer_technician_management_access($customer);
         $b = body();
         $technicianId = trim((string)($b['technicianId'] ?? ''));
         $technicianName = trim((string)($b['technicianName'] ?? ''));
@@ -4052,7 +4069,7 @@ if ($sub === 'machines' && $sub2) {
         require_customer_any_feature_access($customer, ['operator-reports', 'check-up', 'workflow'], 'Report Record');
         [$fromDate, $toDate] = customer_portal_date_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
         $category = strtoupper(trim((string)($_GET['category'] ?? 'ALL')));
-        if (!in_array($category, ['ALL','DAILY','JOB_CARD','CHECKLIST','OPERATOR'], true)) $category = 'ALL';
+        if (!in_array($category, ['ALL','DAILY','JOB_CARD','CHECKLIST','OPERATOR','DELIVERY'], true)) $category = 'ALL';
 
         $sql = "SELECT * FROM (
             SELECT
@@ -4119,14 +4136,38 @@ if ($sub === 'machines' && $sub2) {
                 COALESCE(j.issued_at,j.created_at) AS occurred_at
             FROM digital_job_cards j
             WHERE j.machine_id = ? AND j.customer_id = ?
+
+            UNION ALL
+
+            SELECT
+                'DELIVERY-' || dn.id AS record_id,
+                'DELIVERY_NOTE' AS report_type,
+                dn.id AS source_id,
+                dn.job_card_id,
+                dj.job_card_no,
+                'Delivery Note ' || dn.delivery_note_no AS title,
+                'Delivered ' || (SELECT COUNT(*) FROM delivery_note_items di WHERE di.delivery_note_id=dn.id)::text ||
+                    ' item(s) · Received by ' || COALESCE(NULLIF(dn.received_by,''),'Customer') AS message,
+                dn.status,
+                dn.technician_name AS reported_by,
+                'BELM Delivery Note' AS reported_by_type,
+                dn.technician_name,
+                CASE WHEN dn.status='SIGNED'
+                    THEN 'Signed by ' || COALESCE(NULLIF(dn.recipient_name,''),NULLIF(dn.received_by,''),'Customer')
+                    ELSE 'Draft - awaiting customer signature' END AS final_result,
+                COALESCE(dn.signed_at,dn.created_at) AS occurred_at
+            FROM delivery_notes dn
+            LEFT JOIN digital_job_cards dj ON dj.id=dn.job_card_id
+            WHERE dn.machine_id = ? AND dn.customer_id = ? AND dn.status='SIGNED'
         ) records WHERE 1=1";
-        $params = [$machineId, $customer['id'], $machineId, $machineId, $customer['id']];
+        $params = [$machineId, $customer['id'], $machineId, $machineId, $customer['id'], $machineId, $customer['id']];
         if ($fromDate !== null) { $sql .= ' AND occurred_at >= ?'; $params[] = $fromDate; }
         if ($toDate !== null) { $sql .= ' AND occurred_at < ?'; $params[] = $toDate; }
         if ($category === 'DAILY') $sql .= " AND report_type IN ('DAILY_REPORT','CHECKLIST')";
         elseif ($category === 'JOB_CARD') $sql .= " AND report_type = 'JOB_CARD'";
         elseif ($category === 'CHECKLIST') $sql .= " AND report_type = 'CHECKLIST'";
         elseif ($category === 'OPERATOR') $sql .= " AND report_type IN ('OPERATOR_REPORT','MACHINE_HANDOVER','DAILY_REPORT')";
+        elseif ($category === 'DELIVERY') $sql .= " AND report_type = 'DELIVERY_NOTE'";
         $sql .= ' ORDER BY occurred_at DESC, record_id DESC';
         $recordStmt = db()->prepare($sql);
         $recordStmt->execute($params);
@@ -4152,7 +4193,7 @@ if ($sub === 'machines' && $sub2) {
         require_customer_any_feature_access($customer, ['operator-reports', 'check-up', 'workflow'], 'Report Record');
         [$fromDate, $toDate] = customer_portal_date_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
         $category = strtoupper(trim((string)($_GET['category'] ?? 'ALL')));
-        if (!in_array($category, ['ALL','DAILY','JOB_CARD','CHECKLIST','OPERATOR'], true)) $category = 'ALL';
+        if (!in_array($category, ['ALL','DAILY','JOB_CARD','CHECKLIST','OPERATOR','DELIVERY'], true)) $category = 'ALL';
         $machineStmt = db()->prepare('SELECT brand,model,machine_type,fleet_number,serial_number,reg_number FROM machines WHERE id=? AND customer_id=?');
         $machineStmt->execute([$machineId,$customer['id']]);
         $machine = $machineStmt->fetch() ?: [];
@@ -4169,14 +4210,22 @@ if ($sub === 'machines' && $sub2) {
             SELECT COALESCE(j.issued_at,j.created_at),'JOB CARD',COALESCE(NULLIF(j.issued_by_name,''),NULLIF(j.generated_by_name,''),'Customer / BELM'),j.status,j.job_card_no,
                    j.title || CASE WHEN COALESCE(j.fault_description,'')<>'' THEN ' - ' || j.fault_description ELSE '' END
             FROM digital_job_cards j WHERE j.machine_id=? AND j.customer_id=?
+            UNION ALL
+            SELECT COALESCE(dn.signed_at,dn.created_at),'DELIVERY NOTE',dn.technician_name,dn.status,dj.job_card_no,
+                   dn.delivery_note_no || ' - ' || (SELECT COUNT(*) FROM delivery_note_items di WHERE di.delivery_note_id=dn.id)::text ||
+                   ' item(s) received by ' || COALESCE(NULLIF(dn.received_by,''),'Customer')
+            FROM delivery_notes dn
+            LEFT JOIN digital_job_cards dj ON dj.id=dn.job_card_id
+            WHERE dn.machine_id=? AND dn.customer_id=? AND dn.status='SIGNED'
         ) r WHERE 1=1";
-        $params = [$machineId,$customer['id'],$machineId,$machineId,$customer['id']];
+        $params = [$machineId,$customer['id'],$machineId,$machineId,$customer['id'],$machineId,$customer['id']];
         if ($fromDate !== null) { $sql .= ' AND occurred_at >= ?'; $params[] = $fromDate; }
         if ($toDate !== null) { $sql .= ' AND occurred_at < ?'; $params[] = $toDate; }
         if ($category === 'DAILY') $sql .= " AND type_label IN ('DAILY REPORT','CHECKLIST')";
         elseif ($category === 'JOB_CARD') $sql .= " AND type_label='JOB CARD'";
         elseif ($category === 'CHECKLIST') $sql .= " AND type_label='CHECKLIST'";
         elseif ($category === 'OPERATOR') $sql .= " AND type_label IN ('DAILY REPORT','HANDOVER','OPERATOR REPORT')";
+        elseif ($category === 'DELIVERY') $sql .= " AND type_label='DELIVERY NOTE'";
         $sql .= ' ORDER BY occurred_at DESC';
         $q=db()->prepare($sql); $q->execute($params); $records=$q->fetchAll();
         $pdfRows=array_map(static fn(array $r): array => [
@@ -5028,11 +5077,7 @@ if ($sub === 'technicians' && $method === 'GET') {
 // entirely unless BELM has switched Customer Self-Service ON for this customer.
 if ($sub === 'technicians' && $method === 'POST') {
     require_customer_owner_or_admin($customer);
-    $customerRow = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ?');
-    $customerRow->execute([$customer['id']]);
-    if (empty($customerRow->fetchColumn())) {
-        json_error('Customer Self-Service is not enabled for your account. Contact BELM Admin to turn it on.', 403);
-    }
+    require_customer_technician_management_access($customer);
 
     $b = body();
     $name = trim((string)($b['name'] ?? ''));
@@ -5095,6 +5140,7 @@ if ($sub === 'technicians' && $method === 'POST') {
 // plaintext password/recovery code are returned only once and are never stored.
 if ($sub === 'technicians' && $sub2 && $sub3 === 'reset-password' && $method === 'PUT') {
     require_customer_owner_or_admin($customer);
+    require_customer_technician_management_access($customer);
     $stmt = db()->prepare(
         "SELECT u.id,u.name,u.email FROM users u JOIN roles r ON r.id=u.role_id
          WHERE u.id=? AND r.name='Technician' AND u.assigned_customer_id=?
@@ -5128,6 +5174,7 @@ if ($sub === 'technicians' && $sub2 && $sub3 === 'reset-password' && $method ===
 // customer. BELM-owned Technicians can never be deleted from Customer Portal.
 if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'DELETE') {
     require_customer_owner_or_admin($customer);
+    require_customer_technician_management_access($customer);
     $stmt = db()->prepare(
         "SELECT u.id,u.name FROM users u JOIN roles r ON r.id=u.role_id
          WHERE u.id=? AND r.name='Technician' AND u.assigned_customer_id=?
@@ -5149,6 +5196,7 @@ if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'DELETE') {
 // self-service through Forgot Password + OTP.
 if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'PUT') {
     require_customer_owner_or_admin($customer);
+    require_customer_technician_management_access($customer);
     $stmt = db()->prepare(
         "SELECT u.* FROM users u JOIN roles r ON r.id=u.role_id
          WHERE u.id=? AND u.assigned_customer_id=? AND u.is_customer_managed=1
@@ -5216,6 +5264,7 @@ if ($sub === 'users' && $method === 'POST') {
     $phone = trim((string)($b['phone'] ?? ''));
     $role = strtolower(trim((string)($b['role'] ?? 'operator')));
     $permissionsJson = customer_permissions_from_body($b);
+    if ($role === 'technician') require_customer_technician_management_access($customer);
 
     // Enforce this customer's user limit — set by BELM Admin per
     // customer, or the system default if they haven't set one. Once
@@ -5280,10 +5329,11 @@ if ($sub === 'users' && $method === 'POST') {
 // continues to work afterwards; this action is an administrator recovery path.
 if ($sub === 'users' && $sub2 && $sub3 === 'reset-password' && $method === 'PUT') {
     require_customer_owner_or_admin($customer);
-    $stmt = db()->prepare('SELECT id,name,email FROM customer_users WHERE id=? AND customer_id=? LIMIT 1');
+    $stmt = db()->prepare('SELECT id,name,email,role FROM customer_users WHERE id=? AND customer_id=? LIMIT 1');
     $stmt->execute([$sub2, $customer['id']]);
     $target = $stmt->fetch();
     if (!$target) json_error('User not found.', 404);
+    if (strtolower((string)($target['role'] ?? '')) === 'technician') require_customer_technician_management_access($customer);
 
     $temporaryPassword = secure_account_secret();
     $recoveryCode = account_recovery_code();
@@ -5316,6 +5366,9 @@ if ($sub === 'users' && $sub2 && !$sub3 && $method === 'PUT') {
     $email = strtolower(trim((string)($b['email'] ?? $existing['email'])));
     $phone = trim((string)($b['phone'] ?? ($existing['phone'] ?? '')));
     $role = strtolower(trim((string)($b['role'] ?? $existing['role'])));
+    if ($role === 'technician' || strtolower((string)($existing['role'] ?? '')) === 'technician') {
+        require_customer_technician_management_access($customer);
+    }
     $isActive = array_key_exists('isActive', $b) ? ((bool)$b['isActive'] ? 1 : 0) : (int)$existing['is_active'];
     $permissionsJson = array_key_exists('permissions', $b)
         ? customer_permissions_from_body($b)
@@ -5357,9 +5410,13 @@ if ($sub === 'users' && $sub2 && !$sub3 && $method === 'PUT') {
 
 if ($sub === 'users' && $sub2 && $method === 'DELETE') {
     require_customer_owner_or_admin($customer);
-    $nameStmt = db()->prepare('SELECT name FROM customer_users WHERE id = ? AND customer_id = ?');
+    $nameStmt = db()->prepare('SELECT name,role FROM customer_users WHERE id = ? AND customer_id = ?');
     $nameStmt->execute([$sub2, $customer['id']]);
-    $removedName = $nameStmt->fetchColumn();
+    $removedUser = $nameStmt->fetch();
+    $removedName = $removedUser['name'] ?? null;
+    if ($removedUser && strtolower((string)($removedUser['role'] ?? '')) === 'technician') {
+        require_customer_technician_management_access($customer);
+    }
     $stmt = db()->prepare('DELETE FROM customer_users WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
     if ($stmt->rowCount() === 0) json_error('Assistant not found.', 404);

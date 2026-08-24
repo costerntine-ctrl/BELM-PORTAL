@@ -607,3 +607,20 @@ main.shell{width:min(1480px,96vw);margin:22px auto 48px}
   box-shadow:0 8px 18px rgba(0,0,0,.18);
 }
 .bw-customer-overview-action:hover{background:#151b24 !important;}
+
+
+/* V490 - Checklist Template control requested beside Customer Overview on WM home. */
+.bw-checklist-template-action{
+  min-width:220px !important;
+  padding:11px 26px !important;
+  background:#090d14 !important;
+  border:1px solid #05070a !important;
+  color:#fff !important;
+  text-align:center;
+  justify-content:center;
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+.bw-checklist-template-action:hover,.bw-checklist-template-action:focus-visible{background:#151b24 !important;}
+@media(max-width:560px){
+  .bw-customer-overview-action,.bw-checklist-template-action{min-width:0 !important;flex:1 1 46%;padding:9px 12px !important;}
+}

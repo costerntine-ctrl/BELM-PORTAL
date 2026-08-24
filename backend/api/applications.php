@@ -332,7 +332,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             // applicants start with BELM as Service Provider, both OFF, as
             // before. BELM Admin can still flip either from PORTAL-CWM or
             // Customers & Machines afterwards - this only sets the start.
-            $isPortalCwm = ($application['registration_mode'] ?? 'TECHNICAL_DEP') === 'PORTAL_CWM';
+            $registration = belm_customer_registration_profile($application['registration_mode'] ?? 'TECHNICAL_DEP');
 
             $pdo->prepare(
                 'INSERT INTO customers
@@ -351,8 +351,8 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 $portalLink,
                 password_hash($temporaryPassword, PASSWORD_BCRYPT),
                 password_hash($recoveryCode, PASSWORD_BCRYPT),
-                $isPortalCwm ? 1 : 0,
-                $isPortalCwm ? 1 : 0,
+                $registration['isMachineryAdmin'],
+                $registration['workshopModuleActive'],
             ]);
 
             // Registration approval creates the customer account only. Machines are
@@ -373,7 +373,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'APPROVE_CUSTOMER_APPLICATION',
                 'customerApplication',
                 $id,
-                json_encode(['customerId' => $customerId, 'machineCreated' => false]),
+                json_encode(['customerId' => $customerId, 'machineCreated' => false, 'registrationMode' => $registration['mode']]),
             ]);
 
             $pdo->commit();
@@ -390,7 +390,10 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'recoveryCode' => $recoveryCode,
                 'portalLink' => $portalLink,
                 'loginUrl' => customer_portal_url($portalLink, $application['email']),
-                'message' => 'Customer account is ready. Machines can be registered after login.',
+                'registrationMode' => $registration['mode'],
+                'registrationModeLabel' => $registration['label'],
+                'registrationSync' => belm_customer_registration_sync_status($customerId),
+                'message' => 'Customer account is ready and synchronized to the customer workspaces. Machines can be registered after login.',
             ]);
         }
 

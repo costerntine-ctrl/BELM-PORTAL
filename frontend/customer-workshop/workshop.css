@@ -20,3 +20,14 @@
 /* V486 CWM visual parity with the approved BELM WM home card. */
 .cwm-manager-home-card{min-height:clamp(430px,58vh,680px);padding:clamp(22px,2.6vw,36px);background:linear-gradient(150deg,#0d3c69 0%,#075a83 48%,#083c63 100%)!important;box-shadow:0 22px 58px rgba(3,24,45,.28)}
 .cwm-home-tags span b{margin-left:4px;color:#fff;font-size:8px}
+
+/* V492: customer Technician controls are locked whenever BELM Service is ON. */
+.locked-action,
+.locked-action:hover,
+.locked-action:focus {
+  cursor: not-allowed !important;
+  opacity: .62;
+  filter: grayscale(.35);
+  pointer-events: none;
+  text-decoration: none;
+}

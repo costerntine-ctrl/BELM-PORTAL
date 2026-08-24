@@ -177,6 +177,79 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
     }
 }
 
+
+// V491: one authoritative customer-registration profile for every onboarding
+// path (public application approval and manual admin registration).  All
+// customer-facing modules read the same customers.id/company row, so this
+// helper also reports where the newly registered account is live immediately.
+function belm_customer_registration_profile(?string $mode): array {
+    $normalized = strtoupper(trim((string)$mode));
+    if (!in_array($normalized, ['TECHNICAL_DEP', 'PORTAL_CWM'], true)) {
+        $normalized = 'TECHNICAL_DEP';
+    }
+    $isPortalCwm = $normalized === 'PORTAL_CWM';
+    return [
+        'mode' => $normalized,
+        // Historical DB flag: 1 means customer self-manages maintenance;
+        // 0 means BELM is the active Service Provider.
+        'isMachineryAdmin' => $isPortalCwm ? 1 : 0,
+        // Independent PORTAL-CWM customers receive the Workshop module from
+        // registration. TECHNICAL_DEP remains controlled by BELM's module
+        // switch, preserving the existing commercial gate.
+        'workshopModuleActive' => $isPortalCwm ? 1 : 0,
+        'belmServiceProviderActive' => !$isPortalCwm,
+        'label' => $isPortalCwm ? 'PORTAL-CWM' : 'TECHNICAL DEP',
+    ];
+}
+
+function belm_customer_registration_sync_status(string $customerId): array {
+    $stmt = db()->prepare(
+        'SELECT id,name,email,phone,address,portal_link,is_active,is_machinery_admin,workshop_module_active
+         FROM customers WHERE id=? AND deleted_at IS NULL LIMIT 1'
+    );
+    $stmt->execute([$customerId]);
+    $row = $stmt->fetch();
+    if (!$row) return ['ok' => false, 'customerId' => $customerId, 'error' => 'Customer record was not found.'];
+
+    $machineStmt = db()->prepare('SELECT COUNT(*) FROM machines WHERE customer_id=? AND deleted_at IS NULL');
+    $machineStmt->execute([$customerId]);
+    $machineCount = (int)$machineStmt->fetchColumn();
+    $userStmt = db()->prepare('SELECT COUNT(*) FROM customer_users WHERE customer_id=? AND is_active=1');
+    $userStmt->execute([$customerId]);
+    $portalUserCount = (int)$userStmt->fetchColumn();
+
+    $belmOn = empty($row['is_machinery_admin']);
+    $workshopOn = !empty($row['workshop_module_active']);
+    $mode = (!$belmOn && $workshopOn) ? 'PORTAL_CWM' : 'TECHNICAL_DEP';
+    $portalReady = !empty($row['is_active']) && trim((string)$row['portal_link']) !== '';
+
+    return [
+        'ok' => true,
+        'customerId' => (string)$row['id'],
+        'companyName' => (string)$row['name'],
+        'registrationMode' => $mode,
+        'registrationModeLabel' => $mode === 'PORTAL_CWM' ? 'PORTAL-CWM' : 'TECHNICAL DEP',
+        'portalReady' => $portalReady,
+        'belmServiceProviderActive' => $belmOn,
+        'workshopModuleActive' => $workshopOn,
+        'machineCount' => $machineCount,
+        'portalUserCount' => $portalUserCount,
+        // These are not copied tables. They are verified views of the same
+        // customer/company_id record, which prevents duplicate customers.
+        'targets' => [
+            'registrationAndRoleApproval' => true,
+            'customersOverview' => true,
+            'belmWorkshopCustomerOverview' => true,
+            'customerLogin' => $portalReady,
+            'customerDashboard' => $portalReady,
+            'portalCwm' => $portalReady,
+            'machineScope' => true,
+            'manageUsers' => true,
+            'workshopProcurementReports' => true,
+        ],
+    ];
+}
+
 function public_app_base_url(): string {
     $configured = trim((string)(getenv('PUBLIC_APP_URL') ?: ''));
     if ($configured !== '') {
@@ -1611,7 +1684,7 @@ function require_customer_auth(): array {
         json_error('Your session has expired after a security update. Please log in again.', 401);
     }
 
-    $stmt = db()->prepare('SELECT id, email, workshop_module_active FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt = db()->prepare('SELECT id, email, workshop_module_active, is_machinery_admin FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
     $stmt->execute([$payload['id'] ?? '']);
     $ownerRow = $stmt->fetch();
     if (!$ownerRow) json_error('Customer account is not available.', 401);
@@ -1634,6 +1707,10 @@ function require_customer_auth(): array {
         $payload['permissions'] = $assistant['permissions'] !== null
             ? (json_decode((string)$assistant['permissions'], true) ?: [])
             : null;
+
+        if (strtolower((string)($assistant['role'] ?? '')) === 'technician' && empty($ownerRow['is_machinery_admin'])) {
+            json_error('BELM Service is ON. Customer Technician access is locked while BELM handles maintenance.', 403);
+        }
 
         // Operator portal users are intentionally machine-card-only. Even a
         // legacy Operator account that previously had NULL (= full access)

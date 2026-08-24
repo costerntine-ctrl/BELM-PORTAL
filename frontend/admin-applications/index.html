@@ -90,6 +90,8 @@
       <label>Temporary password</label><strong id="approvedPassword"></strong>
       <label>Recovery code</label><strong id="approvedRecovery"></strong>
       <label>Login link</label><a id="approvedLink" target="_blank" rel="noopener"></a>
+      <label id="approvedModeLabel">Registration mode</label><strong id="approvedMode">—</strong>
+      <label id="approvedSyncLabel">Synced to</label><strong id="approvedSync">—</strong>
     </div>
     <button id="copyMessageButton" class="primary">Copy link + password + recovery</button>
     <button id="copyApprovedLinkButton" class="primary" type="button">Copy login link</button>
@@ -129,6 +131,13 @@
       <label>Company address<input id="regCustomerAddress" maxlength="500"></label>
       <label>TIN number<input id="regCustomerTin" maxlength="50"></label>
       <label>VRN number<input id="regCustomerVrn" maxlength="50"></label>
+      <label>Customer operation mode
+        <select id="regCustomerMode" required>
+          <option value="TECHNICAL_DEP">TECHNICAL DEP — BELM Service Provider ON</option>
+          <option value="PORTAL_CWM">PORTAL-CWM — Customer Workshop / BELM OFF</option>
+        </select>
+      </label>
+      <div class="field-block registration-sync-note"><strong>Registration sync</strong><small>After Save, this same customer/company ID is available in Registration, Customer Overview, PORTAL-CWM/Customer Dashboard, WM Customer Overview, Manage Users, Machines, Procurement and Reports.</small></div>
       <div class="field-block"><span class="check-option"><input id="regAddMachineToggle" type="checkbox"> Also register a first machine now</span></div>
       <div id="regMachineFields" class="hidden">
         <label>Machine type
@@ -363,6 +372,8 @@
       <label>Temporary password</label><strong id="regCredPassword"></strong>
       <label>Recovery code</label><strong id="regCredRecovery"></strong>
       <label>Login link</label><a id="regCredLink" target="_blank" rel="noopener"></a>
+      <label id="regCredModeLabel">Registration mode</label><strong id="regCredMode">—</strong>
+      <label id="regCredSyncLabel">Synced to</label><strong id="regCredSync">—</strong>
     </div>
     <button id="copyRegCredButton" class="primary" type="button">Copy link + password + recovery</button>
   </dialog>
@@ -371,6 +382,6 @@
   <script src="/admin-sidebar.js?v=488-text-fit"></script>
   <script src="/edit-confirm.js?v=469-customer-control"></script>
   <script src="/delete-confirm.js?v=469-customer-control"></script>
-  <script src="/admin-applications/admin.js?v=469-customer-control"></script>
+  <script src="/admin-applications/admin.js?v=491-customer-registration-sync"></script>
 </body>
 </html>

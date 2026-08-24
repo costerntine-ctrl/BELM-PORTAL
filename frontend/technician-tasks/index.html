@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>My Tasks — BELM Technician</title>
-  <link rel="stylesheet" href="/technician-tasks/tasks.css?v=324-technician-alert-condition-sync">
+  <link rel="stylesheet" href="/technician-tasks/tasks.css?v=489-delivery-note">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -14,13 +14,13 @@
   <!-- Regression baseline: technician-tasks/tasks.js?v=218-tech-override -->
 </head>
 <body>
-  <header><a class="brand" href="/tech"><span class="mark">B</span><span><b>BELM Technician</b><small>Assigned Work Tasks</small></span></a><nav><a href="/tech">← Checklist app</a><button id="logoutButton" type="button">Log out</button></nav></header>
+  <header><a class="brand" href="/tech"><span class="mark">B</span><span><b>BELM Technician</b><small>Assigned Work Tasks</small></span></a><nav><a href="/tech">← Checklist app</a><a href="/delivery-notes/?actor=tech">Delivery Notes</a><button id="logoutButton" type="button">Log out</button></nav></header>
   <main>
     <section class="heading"><div><p>FIELD WORK PLAN</p><h1>My tasks</h1><span>Manual tasks and TECHNICAL DEP Job Cards assigned to you are synchronized here automatically.</span></div><button id="refreshButton" type="button">Refresh</button></section>
     <div id="alertBox" class="alert hidden"></div>
     <section class="tabs"><button class="active" data-filter="PENDING">Pending</button><button data-filter="DONE">Completed</button><button data-filter="">All</button></section>
     <section id="taskList" class="task-list"><div class="loading">Loading tasks…</div></section>
   </main>
-  <script src="/technician-tasks/tasks.js?v=324-technician-alert-condition-sync"></script>
+  <script src="/technician-tasks/tasks.js?v=489-delivery-note"></script>
 </body>
 </html>

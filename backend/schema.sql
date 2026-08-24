@@ -1490,3 +1490,57 @@ CREATE INDEX IF NOT EXISTS idx_belm_workshop_tool_issues_technician
   ON belm_workshop_tool_issues(technician_id, returned_at, issued_at DESC);
 CREATE INDEX IF NOT EXISTS idx_belm_workshop_tool_issues_job_card
   ON belm_workshop_tool_issues(job_card_no, issued_at DESC);
+
+-- V489 - BELM field Delivery Note / Delivery Receipt workflow.
+-- A Technician can prepare a note for filters, spares, tools or other goods,
+-- hand the device to the customer for signature, then preserve the signed
+-- record against the customer, machine and optional Job Card.
+CREATE SEQUENCE IF NOT EXISTS belm_delivery_note_no_seq START WITH 1;
+
+CREATE TABLE IF NOT EXISTS delivery_notes (
+  id VARCHAR(36) PRIMARY KEY,
+  delivery_note_no VARCHAR(50) NOT NULL UNIQUE,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NULL REFERENCES machines(id) ON DELETE SET NULL,
+  job_card_id VARCHAR(36) NULL REFERENCES digital_job_cards(id) ON DELETE SET NULL,
+  technician_id VARCHAR(36) NULL REFERENCES users(id) ON DELETE SET NULL,
+  technician_name VARCHAR(255) NOT NULL,
+  delivery_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  received_by VARCHAR(255) NULL,
+  on_behalf_of VARCHAR(255) NULL,
+  address VARCHAR(500) NULL,
+  phone VARCHAR(80) NULL,
+  fax VARCHAR(80) NULL,
+  email VARCHAR(255) NULL,
+  condition_status VARCHAR(20) NOT NULL DEFAULT 'GOOD',
+  condition_summary VARCHAR(500) NULL,
+  damage_description TEXT NULL,
+  other_comments TEXT NULL,
+  recipient_name VARCHAR(255) NULL,
+  signature_data TEXT NULL,
+  signature_mime VARCHAR(50) NULL,
+  signed_at TIMESTAMPTZ NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+  created_by_id VARCHAR(36) NULL REFERENCES users(id) ON DELETE SET NULL,
+  created_by_name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_customer ON delivery_notes(customer_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_machine ON delivery_notes(machine_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_job_card ON delivery_notes(job_card_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_technician ON delivery_notes(technician_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_delivery_notes_status ON delivery_notes(status, signed_at DESC, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS delivery_note_items (
+  id VARCHAR(36) PRIMARY KEY,
+  delivery_note_id VARCHAR(36) NOT NULL REFERENCES delivery_notes(id) ON DELETE CASCADE,
+  item_no INTEGER NOT NULL,
+  part_number VARCHAR(120) NULL,
+  description VARCHAR(500) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  unit VARCHAR(60) NULL,
+  item_condition VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_delivery_note_items_note ON delivery_note_items(delivery_note_id, item_no);

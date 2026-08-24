@@ -74,7 +74,7 @@
           if(dash.ok){
             const info=await dash.json();
             const role=String(payload.customerRole||'owner').toLowerCase();
-            if(info?.customer?.workshopModuleActive!==false && ['owner','admin','workshop_manager'].includes(role)) destination='/customer-workshop/?actor=customer';
+            if(['owner','admin','workshop_manager'].includes(role)) destination='/customer-workshop/?actor=customer';
           }
         }catch(_){}
         location.replace(destination);return true;

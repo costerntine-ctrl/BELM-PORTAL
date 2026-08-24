@@ -1,0 +1,14 @@
+BELM PORTAL V489 - DELIVERY NOTE WORKFLOW
+
+- Added BELM Delivery Note / Delivery Receipt register for field Technicians and Workshop Management.
+- Technician can prepare filters, spares, tools or other goods against a Customer, optional Machine and optional Job Card.
+- Receiver details follow the supplied BELM Delivery Receipt Form: Date, Received by, On behalf of, Address, Phone, Fax, Email, condition, damage, comments, signature/name/date.
+- Customer signs directly on phone/tablet signature pad. Signed record is locked from editing.
+- Draft can be saved and continued later.
+- Signed notes are stored in PostgreSQL with the signature and item lines.
+- View and Print / Save PDF are available from the Delivery Note Register.
+- Creator Technician can delete own draft. Signed record deletion requires BELM Workshop Manager/Administration authorization using the existing Delete PIN + current account password + reason; deletion is activity-logged.
+- BELM customer-managed Technicians cannot issue BELM-branded Delivery Notes.
+- Machine-linked SIGNED Delivery Notes appear automatically in the Customer Machine Report Record and its report export; drafts stay internal until signed.
+- Delivery Notes are reachable from PORTAL-BELM WM, Technician My Tasks and Technician My Job Cards.
+- Schema migration is additive only; existing business records are preserved.

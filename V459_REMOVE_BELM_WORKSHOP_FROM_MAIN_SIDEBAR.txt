@@ -1,7 +1,0 @@
-V459 - BELM WORKSHOP removed from the main sidebar
-
-The "BELM WORKSHOP" entry no longer appears in the full BELM Admin
-sidebar list. It's still fully reachable via the "Workshop" link in
-TECHNICAL DEP's nested sidebar (V458), and the page itself
-(/belm-workshop/) and its permission gating (admin-access.js) are
-unchanged - only the top-level menu entry was removed.

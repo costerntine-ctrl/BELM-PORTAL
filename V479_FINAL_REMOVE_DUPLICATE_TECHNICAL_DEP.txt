@@ -1,8 +1,0 @@
-BELM PORTAL V479 - FINAL REMOVE DUPLICATE TECHNICAL DEP
-
-- Removed the remaining legacy TECHNICAL DEP navigation shortcut that could be rendered by the old React shell after the new BELM sidebar loaded.
-- The cleanup watches late/dynamic renders as well, so the duplicate cannot reappear after page hydration.
-- /customers-manager/ and all customer-management functionality remain intact.
-- The nested Customer Overview entry remains intact.
-- PORTAL-BELM WM and PORTAL-CWM remain the workshop entry points.
-- Bumped the admin sidebar asset version and PWA cache to force browsers to drop the old navigation asset.

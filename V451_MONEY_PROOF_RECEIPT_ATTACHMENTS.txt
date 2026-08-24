@@ -1,9 +1,0 @@
-BELM PORTAL V451 - MONEY PROOF / RECEIPT ATTACHMENTS
-
-1. Petty Cash receipt upload now accepts JPG, PNG, WebP and PDF.
-2. Management Group requests accept receipt/invoice/quotation/payment-proof attachments.
-3. Existing Management requests can View, Download and Replace supporting documents according to role permissions.
-4. Monetary Management requests cannot be marked COMPLETED until a supporting document is attached.
-5. Upload/replace actions are written to Management Group audit history.
-6. Operator visibility restrictions remain unchanged; Operator cannot see Store/Procurement/Finance requests.
-7. Schema migration is additive only and does not reset/delete existing business data.

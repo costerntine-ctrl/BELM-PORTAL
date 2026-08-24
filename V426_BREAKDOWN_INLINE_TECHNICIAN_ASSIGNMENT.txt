@@ -1,7 +1,0 @@
-BELM PORTAL V426
-
-- Live Breakdown Queue cards now show content in ordered lower rows.
-- Added direct Assign Technician dropdown on eligible customer workshop breakdown cards.
-- Existing Job Card is assigned/reassigned in-place; no duplicate Job Card is created.
-- Current Technician is shown and can be replaced by Customer Admin / Workshop Manager.
-- Reported time, machine hours, origin/source, Job Card number, status, department, breakdown duration and delay remain visible in compact ordered rows.

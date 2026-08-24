@@ -1,7 +1,0 @@
-BELM PORTAL V437 - CUSTOMER + BELM SETTINGS BUTTON
-
-- Added Settings to the approved Customer Dashboard card.
-- Customer Settings opens a functional panel for Appearance, Language, Privacy & BELM Access, and Password Recovery.
-- Added Settings to BELM Admin Customer Overview; it opens the existing System Settings manager.
-- Customer button remains Manage Users. BELM Admin equivalent remains Manage Customer.
-- Existing customer overview layout, communication history and customer ON/OFF switches are unchanged.

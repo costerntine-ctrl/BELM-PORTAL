@@ -1,7 +1,0 @@
-V473 — PORTAL-CWM LOGIN HOME
-
-- Customer owner, Customer Admin and Workshop Manager now land on PORTAL-CWM Home when PORTAL-CWM is ON.
-- Workshop Manager no longer opens Job Cards immediately after login.
-- PORTAL-CWM Home uses the live customers.workshop_module_active flag.
-- If PORTAL-CWM is OFF and a customer opens the home URL directly, they are returned to Customer Dashboard.
-- Existing Job Card/Store/Technician backend sync is unchanged.

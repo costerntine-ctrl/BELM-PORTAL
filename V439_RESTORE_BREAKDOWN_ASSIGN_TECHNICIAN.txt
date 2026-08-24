@@ -1,8 +1,0 @@
-BELM Portal V439 - Restore Breakdown Assign Technician
-
-- Restored Assign Technician on customer Live Breakdown Queue internal breakdown cards.
-- Customer Admin / Workshop Manager can use: Assign Technician -> Select Technician -> Workshop Manager Instruction -> OK.
-- The customer roster exposes customer-managed Technicians only; BELM Technicians remain assignable only by BELM.
-- BELM Service Provider ON no longer hides the customer's internal technician assignment control.
-- Official Customer Job Cards sent to BELM (SERVICE_REQUEST) remain BELM-owned and cannot be assigned by customer staff.
-- When BELM Service Provider is ON, a customer Technician gets case access only after explicit assignment to that Job Card; no broad fleet access is granted.

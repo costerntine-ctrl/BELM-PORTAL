@@ -1,9 +1,0 @@
-BELM PORTAL V419 - MACHINE REPORT + OPERATOR REPORTED
-
-- Customer machine card Report button now opens a Machine Report Center.
-- Machine Report Center tabs: Checklist Report, Job Card Report, Daily Report, Operator Reported.
-- Check Up is checklist-only; report history is no longer mixed into the Check Up flow.
-- Operator Reported supports Date / Month / Year / Custom Range filtering.
-- Operator Reported has customer-authorized PDF download for the selected machine and period.
-- Existing standalone Operator Reported view remains available where already used.
-- Admin Customers & Machines report-center label updated to Operator Reported for consistent wording.

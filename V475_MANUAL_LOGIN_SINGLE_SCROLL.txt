@@ -1,7 +1,0 @@
-BELM Portal V475
-
-1. Login page no longer auto-resumes a stored session. Browser-saved username/password may autofill, but the user must press Open My Workspace.
-2. Session persistence remains unchanged after successful login.
-3. BELM Admin Customer Fleet uses one vertical scroll owner only.
-4. Machine Operator Message no longer traps mouse-wheel/touch scrolling; the panel grows with content.
-5. Fleet dialog prevents horizontal overflow and keeps its header/close button sticky while scrolling.

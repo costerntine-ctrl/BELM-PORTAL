@@ -1,6 +1,0 @@
-V478 - BELM Procurement separated from Customer Procurement
-
-PORTAL-BELM WM now includes a dedicated PROCUREMENT role card and synchronized Procurement window.
-Flow: Technician spare request -> BELM Store Check -> BELM Procurement -> Supplier / Accounts / Order -> BELM Store receipt -> Parts Ready -> Technician.
-PORTAL-CWM customer procurement remains isolated and private unless an official BELM Support Request is sent.
-BELM Procurement users can access PORTAL-BELM WM without receiving Customer Management permission.

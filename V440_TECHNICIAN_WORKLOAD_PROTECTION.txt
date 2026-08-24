@@ -1,9 +1,0 @@
-BELM PORTAL V440
-
-Technician workload protection:
-- Assign Technician dropdown shows each Technician active-job count and AVAILABLE / BUSY / FULL.
-- 0-2 active jobs = AVAILABLE; 3-4 = BUSY; 5+ = FULL.
-- FULL technicians are disabled in the dropdown for new assignments.
-- Backend also blocks adding another active Job Card at 5+ jobs.
-- Technical Department - Technicians panel shows Active Jobs, In Progress, Waiting Parts, Delayed, Completed Today and workload percentage.
-- Current assignment can still be confirmed without counting the same case against itself.

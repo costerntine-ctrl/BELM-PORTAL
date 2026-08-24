@@ -1,8 +1,0 @@
-BELM PORTAL V436
-
-- BELM Admin > Customers & Machines customer overview now mirrors the approved Customer Dashboard action content.
-- Visible actions: View Customer Machine, Workshop, Procurement, General Report, Manage Customer, Petty Cash, General Analysis.
-- Manage Customer is the only deliberate button-name difference from the customer-owner dashboard (which remains Manage Users).
-- Existing customer control switches remain at the top of the BELM customer card: BELM service-provider ON/OFF and Non-payment / Portal ON/OFF.
-- Existing customer communication history is preserved.
-- Approved Job Card status colour rule is also preserved: RECEIVED renders green.

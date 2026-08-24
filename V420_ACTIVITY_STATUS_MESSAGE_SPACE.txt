@@ -1,6 +1,0 @@
-BELM Portal V420 - Activity Status / Message Space
-
-- BELM Admin > Customers & Machines > View Machine: Activity Status is moved to the lower control area, directly above the primary machine action buttons.
-- Operator Message / machine-condition area receives additional vertical room so longer operator messages remain readable.
-- Existing Activity Status API, Report, Check Up, Service Parts, Job Card and machine-management behavior is unchanged.
-- Mobile layout keeps Activity Status full-width and preserves readable message wrapping.

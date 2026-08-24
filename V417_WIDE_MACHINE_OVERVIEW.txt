@@ -1,9 +1,0 @@
-BELM Portal V417 - Wide Machine Overview
-
-Changes
-- Customer Dashboard > View Customer Machine now uses a centered 720px overview-style machine card instead of the fixed 390x590 compact tile.
-- BELM Admin > Customers & Machines > View Machine uses the same wide overview scale for parity.
-- Machine identity, Fleet No., condition/service alert, service strip, actions, Activity Status and management controls are enlarged for desktop readability.
-- Customer card proportions now follow the BELM Customer Overview visual language: 720px centered card, 22px radius, top status accent, larger header and wider action spacing.
-- Mobile remains responsive and collapses actions/details without horizontal overflow.
-- Existing permissions, Job Card workflow, Operator Report, Machine Analysis and service logic are unchanged.

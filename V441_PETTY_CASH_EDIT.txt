@@ -1,7 +1,0 @@
-BELM Portal V441 - Petty Cash Edit
-
-- Added Edit action to each Customer Petty Cash history entry.
-- Edit loads the existing date, machine, description and amount into the existing form.
-- Save Changes updates the same record; it does not create a duplicate.
-- Existing receipt is preserved unless a replacement receipt is uploaded.
-- Added Cancel Edit control and backend ownership validation.

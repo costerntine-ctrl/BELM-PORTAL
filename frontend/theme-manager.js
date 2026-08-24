@@ -9,9 +9,10 @@
   // from a stale JWT before individual pages interpret one 401 as a logout.
   const nativeFetch = window.fetch.bind(window);
   const sessionRefreshes = new Map();
+  const sessionRefreshStatus = new Map();
   const SESSION_KEYS = ["belm_admin_token", "belm_customer_token", "belm_tech_token", "belm_operator_token"];
-  const SESSION_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000;
-  const SESSION_REFRESH_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+  const SESSION_REFRESH_INTERVAL_MS = 2 * 60 * 60 * 1000;
+  const SESSION_REFRESH_WINDOW_MS = 21 * 24 * 60 * 60 * 1000;
 
   function tokenStorageKey(token) {
     if (!token) return null;
@@ -36,7 +37,9 @@
     if (sessionRefreshes.has(tokenKey)) return sessionRefreshes.get(tokenKey);
     const token = localStorage.getItem(tokenKey);
     const payload = decodeJwt(token);
-    if (!token || !payload || (typeof payload.exp === "number" && payload.exp * 1000 <= Date.now())) return null;
+    // Do not reject only because the device clock says the JWT is expired.
+    // The server is the authority; this also tolerates phones/laptops with clock skew.
+    if (!token || !payload) return null;
 
     const last = Number(localStorage.getItem(sessionLastRefreshKey(tokenKey)) || 0);
     const remaining = typeof payload.exp === "number" ? payload.exp * 1000 - Date.now() : 0;
@@ -49,6 +52,7 @@
           cache: "no-store",
           headers: { Authorization: `Bearer ${token}` },
         });
+        sessionRefreshStatus.set(tokenKey, response.status);
         if (!response.ok) return null;
         const data = await response.json().catch(() => ({}));
         if (!data.token) return null;
@@ -59,6 +63,9 @@
         }
         return localStorage.getItem(tokenKey) || data.token;
       } catch (_) {
+        // Network/Render wake-up failure is NOT a logout. Keep the current token
+        // and let the next request/focus/online event retry session renewal.
+        sessionRefreshStatus.set(tokenKey, 0);
         return null;
       } finally {
         sessionRefreshes.delete(tokenKey);
@@ -100,7 +107,25 @@
     if (response.status !== 401 || !tokenKey || isRefreshCall) return response;
 
     const refreshed = await refreshSessionToken(tokenKey, true);
-    if (!refreshed) return response;
+    if (!refreshed) {
+      const refreshStatus = sessionRefreshStatus.get(tokenKey);
+      if (refreshStatus === 401) {
+        // Only a server-confirmed invalid/expired session may clear login data.
+        localStorage.removeItem(tokenKey);
+        localStorage.removeItem(sessionLastRefreshKey(tokenKey));
+        if (tokenKey === "belm_admin_token") localStorage.removeItem("belm_admin_user");
+        if (tokenKey === "belm_tech_token") localStorage.removeItem("belm_tech_user");
+        return response;
+      }
+      // If refresh failed because the network/Render was temporarily unavailable,
+      // never expose a 401 to legacy page code that would delete a valid token.
+      const body = await response.blob();
+      return new Response(body, {
+        status: 503,
+        statusText: "Session verification temporarily unavailable",
+        headers: response.headers,
+      });
+    }
 
     // Session was proven valid by /auth/refresh. Retry the original request once
     // with the fresh token. This also fixes pages that captured an old token in
@@ -354,6 +379,13 @@
     injectPersonalToggle();
   }
 
+  window.BELMSession = {
+    refresh: (tokenKey, force = true) => refreshSessionToken(tokenKey, force),
+    maintain: maintainSessions,
+    current: currentSession,
+    isLive: tokenIsLive,
+  };
+
   window.BELMTheme = {
     get: currentTheme,
     set: setTheme,
@@ -370,6 +402,14 @@
     setInterval(initializeForSession, 1200);
     // Keep active sessions rolling without generating frequent API traffic.
     setInterval(maintainSessions, 5 * 60 * 1000);
+    // Mobile browsers frequently suspend timers while the app is backgrounded.
+    // Re-validate when the user returns instead of treating a stale request as logout.
+    window.addEventListener("focus", maintainSessions);
+    window.addEventListener("online", maintainSessions);
+    window.addEventListener("pageshow", maintainSessions);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) maintainSessions();
+    });
   }
 
   if (document.readyState === "loading") {

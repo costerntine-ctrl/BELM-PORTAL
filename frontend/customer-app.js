@@ -37,6 +37,52 @@
   function clearRoleSessions(){['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token'].forEach(k=>localStorage.removeItem(k))}
   function setActiveAccount(type){localStorage.setItem('belm_active_account_type',type)}
 
+  function decodeToken(token){
+    try{
+      const raw=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+      const padded=raw+'='.repeat((4-raw.length%4)%4);
+      return JSON.parse(decodeURIComponent(Array.from(atob(padded)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')));
+    }catch(_){return null}
+  }
+
+  async function resumeActiveSession(){
+    // Only resume the account type that was explicitly active. Logout removes
+    // its token, so this never prevents a deliberate account switch.
+    const active=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
+    const key=active==='customer'?'belm_customer_token':active==='technician'?'belm_tech_token':active==='admin'?'belm_admin_token':'';
+    const token=key?localStorage.getItem(key):'';
+    if(!token)return false;
+    try{
+      const res=await fetchWithTimeout('/api/auth/refresh',{method:'POST',cache:'no-store',headers:{Authorization:`Bearer ${token}`}},12000);
+      if(!res.ok){
+        // Only a definite 401 means the stored login is no longer valid. A
+        // network/Render problem leaves the session untouched.
+        if(res.status===401){localStorage.removeItem(key);localStorage.removeItem(`belm_session_refreshed_${key}`)}
+        return false;
+      }
+      const data=await readJsonResponse(res);
+      if(!data.token)return false;
+      localStorage.setItem(key,data.token);
+      localStorage.setItem(`belm_session_refreshed_${key}`,String(Date.now()));
+      if(active==='technician'){location.replace('/tech');return true}
+      if(active==='admin'){location.replace('/overview-manager/');return true}
+      if(active==='customer'){
+        let destination='/portal/dashboard';
+        const payload=decodeToken(data.token)||{};
+        try{
+          const dash=await fetchWithTimeout('/api/customer-portal/dashboard',{cache:'no-store',headers:{Authorization:`Bearer ${data.token}`}},12000);
+          if(dash.ok){
+            const info=await dash.json();
+            const role=String(payload.customerRole||'owner').toLowerCase();
+            if(info?.customer?.workshopModuleActive!==false && ['owner','admin','workshop_manager'].includes(role)) destination='/customer-workshop/?actor=customer';
+          }
+        }catch(_){}
+        location.replace(destination);return true;
+      }
+    }catch(_){/* transient connectivity is not logout */}
+    return false;
+  }
+
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
     if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account email or Customer Portal ID and password, then click Open My Workspace.';return}
@@ -82,5 +128,5 @@
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
   if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js').catch(()=>{}))}
 
-  loadContext();
+  (async()=>{if(!(await resumeActiveSession()))await loadContext()})();
 })();

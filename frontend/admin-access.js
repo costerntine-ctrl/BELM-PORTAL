@@ -81,8 +81,17 @@
   } else if (user.role === "Technician") {
     window.location.replace("/tech");
   } else {
-    localStorage.removeItem("belm_admin_token");
-    localStorage.removeItem("belm_admin_user");
-    window.location.replace("/admin/login?access=not-assigned");
+    // Permission assignment is not authentication failure. Keep the login alive
+    // so an administrator can correct access without forcing a false logout loop.
+    const showDenied = () => {
+      if (document.getElementById("belmNoAssignedAccess")) return;
+      const box = document.createElement("div");
+      box.id = "belmNoAssignedAccess";
+      box.style.cssText = "position:fixed;inset:20px;z-index:99999;display:grid;place-items:center;background:rgba(15,23,42,.58);padding:20px";
+      box.innerHTML = '<div style="max-width:520px;background:#fff;border-radius:16px;padding:24px;box-shadow:0 18px 50px rgba(0,0,0,.24);font:14px Inter,system-ui,sans-serif;color:#172033"><h2 style="margin:0 0 10px">Access not assigned</h2><p style="margin:0">Your login is still active, but this role has no dashboard page assigned. Ask Super Admin to update the role permissions.</p></div>';
+      document.body.appendChild(box);
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showDenied, { once: true });
+    else showDenied();
   }
 })();

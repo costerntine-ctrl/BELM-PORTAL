@@ -29,21 +29,32 @@ if (($segments[0] ?? '') === 'reset-database') {
     exit;
 }
 
-// V353 lightweight liveness endpoint for Render. It deliberately performs no
-// database query: a slow/guarded migration must never make the web service look
-// dead to the platform. Use /api/health for detailed PostgreSQL/schema readiness.
+// V481 liveness endpoints for Render. They deliberately perform no database query:
+// a slow/guarded migration must never make the web service look dead to the platform.
+// Use /api/readiness for detailed PostgreSQL/schema readiness.
 if (($segments[0] ?? '') === 'live') {
     json_out([
         'ok' => true,
         'api' => 'BELM PHP web service',
-        'schemaVersion' => '356-bank-test-reset',
-        'databaseReadiness' => '/api/health',
+        'schemaVersion' => '481-render-health-liveness',
+        'databaseReadiness' => '/api/readiness',
     ], 200);
 }
 
-// Regression baseline: 309-received-job-card-dispatch
-// Detailed health/setup check. This deliberately exposes no credentials.
-if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
+// V481 Render-compatible health endpoint. Existing Render services may still be
+// configured to probe /api/health, so keep this endpoint database-independent.
+if (($segments[0] ?? '') === 'health') {
+    json_out([
+        'ok' => true,
+        'api' => 'BELM PHP web service',
+        'status' => 'live',
+        'schemaVersion' => '481-render-health-liveness',
+        'databaseReadiness' => '/api/readiness',
+    ], 200);
+}
+
+// Detailed database/schema readiness check. This deliberately exposes no credentials.
+if (($segments[0] ?? '') === 'readiness' || !isset($segments[0])) {
     try {
         $databaseVersion = db()->query('SELECT VERSION()')->fetchColumn();
         $requiredTables = [

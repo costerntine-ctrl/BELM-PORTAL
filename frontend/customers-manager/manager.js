@@ -1,5 +1,6 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
+  const embeddedInBelmWorkshop = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
   let customers = [];
   let pendingEditPin = null;
   let servicePartsState = null;
@@ -57,6 +58,20 @@
       }
     });
   })();
+
+  // V480 - when Customer Overview is opened inside PORTAL-BELM WM, keep
+  // Job Card navigation in the parent Workshop shell instead of nesting a
+  // second Workshop page inside this iframe.
+  if (embeddedInBelmWorkshop) {
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest('a[href^="/belm-workshop/"]');
+      if (!link) return;
+      event.preventDefault();
+      let machine = "";
+      try { machine = new URL(link.href, location.origin).searchParams.get("machine") || ""; } catch (_) {}
+      window.parent.postMessage({ type: "belm-workshop-open-module", module: "job-cards", machine }, location.origin);
+    });
+  }
 
   async function confirmThenOpen(title, message, openFn) {
     const confirmation = await window.belmConfirmEdit({ title, message });

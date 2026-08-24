@@ -1843,3 +1843,18 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
     padding: 14px 10px 10px !important;
   }
 }
+
+
+/* V480 - Customer Overview embedded inside PORTAL-BELM WM.
+   Remove duplicate admin chrome; the parent Workshop window owns Back/Sync. */
+html.belm-embedded body{overflow-x:hidden}
+html.belm-embedded .topbar,
+html.belm-embedded .admin-menu{display:none!important}
+html.belm-embedded .shell{width:min(100%,1440px);max-width:100%;padding-top:14px;padding-left:clamp(10px,2vw,24px);padding-right:clamp(10px,2vw,24px);box-sizing:border-box}
+html.belm-embedded .hero{margin-top:0}
+html.belm-embedded .customer-grid{min-width:0}
+@media(max-width:760px){
+  html.belm-embedded .shell{padding:10px 10px 24px}
+  html.belm-embedded .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html.belm-embedded .customer-toolbar{grid-template-columns:1fr}
+}

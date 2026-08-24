@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/admin-tools.css">
   <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
-  <link rel="stylesheet" href="/belm-workshop/manager.css?v=478-belm-procurement">
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=480-simple-home-back-fit">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script src="/theme-manager.js?v=474-session-persistence"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -24,7 +24,6 @@
     </a>
     <div class="top-actions">
       <button class="ghost" id="workshopSyncButton" type="button">Sync Workshop</button>
-      <a class="ghost" id="customerOverviewTopLink" href="/customers-manager/">Customer Overview</a>
     </div>
   </header>
 
@@ -55,6 +54,7 @@
           <span>Technician Workload</span>
           <span>Testing &amp; Review</span>
           <span>Workshop Analysis</span>
+          <a class="bw-responsibility-action bw-customer-overview-action" href="#customer-overview" data-workshop-window="customer-overview">Customer Overview</a>
         </div>
         <div class="bw-role-actions bw-manager-actions" aria-label="Workshop Manager controls">
           <a class="bw-primary-action" href="#job-cards" data-workshop-window="job-cards">Open Job Cards</a>
@@ -155,7 +155,7 @@
         </div>
         <div class="bw-workspace-actions">
           <button id="workshopWindowReload" type="button">Sync / Refresh</button>
-          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Close Workshop window">×</button>
+          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Back to PORTAL-BELM WM Home">← Back</button>
         </div>
       </header>
       <div class="bw-workspace-body">
@@ -168,6 +168,6 @@
   <script src="/admin-access.js?v=411-job-card-only"></script>
   <script src="/admin-sidebar.js?v=479-final-remove-technical-dep"></script>
   <script src="/edit-confirm.js"></script>
-  <script src="/belm-workshop/manager.js?v=478-belm-procurement"></script>
+  <script src="/belm-workshop/manager.js?v=480-simple-home-back-fit"></script>
 </body>
 </html>

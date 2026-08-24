@@ -28,7 +28,7 @@ run_safe_migration() {
         fi
 
         if [ "$attempt" -ge 5 ]; then
-            echo "BELM database migration is still unavailable after 5 attempts; web service remains online. Check /api/health and Render database logs." >&2
+            echo "BELM database migration is still unavailable after 5 attempts; web service remains online. Check /api/readiness and Render database logs." >&2
             return 0
         fi
 

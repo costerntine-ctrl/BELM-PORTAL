@@ -10,14 +10,15 @@
   const allowedPages=Array.isArray(adminUser?.allowedPages)?adminUser.allowedPages:[];
   const params=new URLSearchParams(location.search);
   const machine=params.get('machine')||'';
+  let activeMachine=machine;
   const dialog=document.getElementById('workshopWindow');
   const frame=document.getElementById('workshopWindowFrame');
   const loading=document.getElementById('workshopWindowLoading');
   const title=document.getElementById('workshopWindowTitle');
   const subtitle=document.getElementById('workshopWindowSubtitle');
   const alertBox=document.getElementById('bwAlert');
-  const customerOverviewTopLink=document.getElementById('customerOverviewTopLink');
-  if(customerOverviewTopLink && !isSuperAdmin && !allowedPages.includes('customers')) customerOverviewTopLink.hidden=true;
+  const customerOverviewAction=document.querySelector('.bw-customer-overview-action');
+  if(customerOverviewAction && !isSuperAdmin && !allowedPages.includes('customers')) customerOverviewAction.hidden=true;
   let activeKey='';
 
   const modules={
@@ -26,7 +27,7 @@
       subtitle:'Create, receive, assign and follow the live Digital Job Card process.',
       hash:'#job-cards',
       permissions:['roles','job-cards','service-requests'],
-      url:()=>`/breakdown-workflow/?actor=admin&embed=1&view=job-cards${machine?`&machine=${encodeURIComponent(machine)}`:''}`
+      url:()=>`/breakdown-workflow/?actor=admin&embed=1&view=job-cards${activeMachine?`&machine=${encodeURIComponent(activeMachine)}`:''}`
     },
     analysis:{
       title:'Workshop Analysis',
@@ -79,6 +80,13 @@
       permissions:['roles','job-cards','service-requests'],
       url:()=>'/breakdown-workflow/?actor=admin&embed=1&view=assigned'
     },
+    'customer-overview':{
+      title:'Customer Overview',
+      subtitle:'Customers, machine fleet and service controls inside PORTAL-BELM WM.',
+      hash:'#customer-overview',
+      permissions:['customers'],
+      url:()=>'/customers-manager/?embed=1&from=belm-workshop'
+    },
     'general-report':{
       title:'General Report',
       subtitle:'BELM workshop and customer service reports inside the Workshop workspace.',
@@ -118,28 +126,42 @@
   }
   function keyFromHash(hash){
     const h=String(hash||'').replace(/^#/,'').toLowerCase();
-    const map={'job-cards':'job-cards','workshop-analysis':'analysis','procurement':'procurement','suppliers':'suppliers','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings'};
+    const map={'job-cards':'job-cards','workshop-analysis':'analysis','procurement':'procurement','suppliers':'suppliers','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings','customer-overview':'customer-overview'};
     return map[h]||'';
   }
-  function openModule(key,{pushHash=true}={}){
+  function openModule(key,{pushHash=true,machineId=''}={}){
     const module=modules[key];if(!module)return;
     const namedPermitted=(module.namedAccess==='workshop-controller'&&isWorkshopController)||(module.namedAccess==='procurement-controller'&&isProcurementController);
     const permitted=isSuperAdmin||namedPermitted||!module.permissions?.length||module.permissions.some(p=>allowedPages.includes(p));
     if(!permitted){show(`Your BELM role does not have access to ${module.title}.`,true);return}
+    const wasWorkspaceOpen=dialog.open||!!activeKey;
     activeKey=key;
+    if(machineId) activeMachine=machineId;
     title.textContent=module.title;
     subtitle.textContent=module.subtitle;
     loading.classList.remove('hidden');
     frame.src=module.url();
-    if(pushHash && location.hash!==module.hash)history.replaceState(null,'',`${location.pathname}${location.search}${module.hash}`);
+    if(pushHash && location.hash!==module.hash){
+      const nextUrl=`${location.pathname}${location.search}${module.hash}`;
+      if(wasWorkspaceOpen && history.state?.belmWorkshopModule) history.replaceState({belmWorkshopModule:key},'',nextUrl);
+      else history.pushState({belmWorkshopModule:key},'',nextUrl);
+    }
     if(!dialog.open)dialog.showModal();
     document.body.classList.add('bw-workspace-open');
   }
-  function closeModule({clearHash=true}={}){
+  function resetWorkspace(){
     if(dialog.open)dialog.close();
     document.body.classList.remove('bw-workspace-open');
     frame.src='about:blank';
     activeKey='';
+    activeMachine=machine;
+  }
+  function closeModule({clearHash=true,useHistory=true}={}){
+    if(clearHash && location.hash && useHistory && history.state?.belmWorkshopModule){
+      history.back();
+      return;
+    }
+    resetWorkspace();
     if(clearHash && location.hash)history.replaceState(null,'',`${location.pathname}${location.search}`);
   }
 
@@ -167,15 +189,20 @@
 
   window.addEventListener('message',event=>{
     if(event.origin!==location.origin)return;
-    if(event.data?.type==='belm-engineering-open-service-requests')closeModule();
-    if(event.data?.type==='belm-workshop-open-module'&&event.data?.module)openModule(String(event.data.module));
+    if(event.data?.type==='belm-engineering-open-service-requests'||event.data?.type==='belm-workshop-back-home'){closeModule();return}
+    if(event.data?.type==='belm-workshop-open-module'&&event.data?.module)openModule(String(event.data.module),{machineId:String(event.data.machine||'')});
   });
 
-  window.addEventListener('hashchange',()=>{
+  function syncWorkspaceFromLocation(){
     const key=keyFromHash(location.hash);
-    if(key)openModule(key,{pushHash:false});
-    else if(dialog.open)closeModule({clearHash:false});
-  });
+    if(key){
+      if(activeKey!==key || !dialog.open) openModule(key,{pushHash:false});
+      return;
+    }
+    if(dialog.open || activeKey) resetWorkspace();
+  }
+  window.addEventListener('hashchange',syncWorkspaceFromLocation);
+  window.addEventListener('popstate',syncWorkspaceFromLocation);
 
   const initialKey=keyFromHash(location.hash);
   if(initialKey)openModule(initialKey,{pushHash:false});

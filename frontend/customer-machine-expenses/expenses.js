@@ -400,40 +400,6 @@
     syncStoreIssueForm();
   }
 
-  async function openBelmDocument(url, downloadName="") {
-    try {
-      const response=await fetch(url,{headers:{Authorization:`Bearer ${token}`}});
-      if(!response.ok){let message='Could not open document.';try{const e=await response.json();message=e.error||message}catch(_){}throw new Error(message)}
-      const blob=await response.blob();const objectUrl=URL.createObjectURL(blob);
-      if(downloadName){const a=document.createElement('a');a.href=objectUrl;a.download=downloadName;a.click();setTimeout(()=>URL.revokeObjectURL(objectUrl),1500)}
-      else{window.open(objectUrl,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(objectUrl),60000)}
-    } catch(error){showAlert(error.message,true)}
-  }
-
-  function renderServiceJobBilling(items) {
-    const rows=Array.isArray(items)?items:[];
-    const body=document.getElementById('serviceBillingRows');if(!body)return;
-    body.innerHTML=rows.length?rows.map(item=>{
-      const paid=String(item.invoice_status||'').toUpperCase()==='PAID'||(item.invoice_id&&Number(item.balance||0)<=0.005);
-      const paymentLabel=item.invoice_id?(paid?'PAID':'OUTSTANDING'):'NO INVOICE';
-      const paymentClass=item.invoice_id?(paid?'paid':'outstanding'):'pending';
-      const proformaReady=item.proforma_id&&['SENT','RESPONDED'].includes(String(item.proforma_status||''));
-      return `<tr>
-        <td><strong>${escapeHtml(item.job_card_no||'-')}</strong><small>${escapeHtml(item.title||'')}</small></td>
-        <td>${escapeHtml(item.issued_by_name||'Customer')}<small>${formatDateTime(item.issued_at)}</small></td>
-        <td><span class="sync-status paid">RECEIVED BY BELM</span><small>${formatDateTime(item.issued_at)}</small><small>Current: ${escapeHtml(String(item.status||'RECEIVED').replaceAll('_',' '))}</small></td>
-        <td>${item.hasSignedCopy?`<span class="sync-status paid">SIGNED</span><button class="doc-button" type="button" data-signed-copy="${escapeHtml(item.id)}">View</button>`:'<span class="sync-status outstanding">WAITING SIGNATURE</span>'}</td>
-        <td>${item.proforma_id?`<strong>${escapeHtml(item.proforma_no||'Proforma')}</strong>${proformaReady?`<button class="doc-button" type="button" data-proforma-download="${escapeHtml(item.proforma_id)}">Download</button>`:`<small>${escapeHtml(item.proforma_status||'DRAFT')}</small>`}`:'<span class="muted">Not prepared</span>'}</td>
-        <td>${item.invoice_id?`<strong>${escapeHtml(item.invoice_no||'Invoice')}</strong><button class="doc-button" type="button" data-invoice-download="${escapeHtml(item.invoice_id)}">Download</button>`:'<span class="muted">Not issued</span>'}</td>
-        <td>${item.invoice_id?money.format(Number(item.balance||0)):'—'}</td>
-        <td><span class="sync-status ${paymentClass}">${paymentLabel}</span></td>
-      </tr>`;
-    }).join(''):'<tr><td colspan="8" class="empty">No BELM Service Job Card billing records for this machine yet.</td></tr>';
-    body.querySelectorAll('[data-signed-copy]').forEach(b=>b.onclick=()=>openBelmDocument(`/api/breakdown-workflow/signed-job-card-file/${encodeURIComponent(b.dataset.signedCopy)}`));
-    body.querySelectorAll('[data-proforma-download]').forEach(b=>b.onclick=()=>openBelmDocument(`/api/customer-portal/proformas/${encodeURIComponent(b.dataset.proformaDownload)}/download`,`BELM-Proforma-${b.dataset.proformaDownload}.pdf`));
-    body.querySelectorAll('[data-invoice-download]').forEach(b=>b.onclick=()=>openBelmDocument(`/api/customer-portal/invoices/${encodeURIComponent(b.dataset.invoiceDownload)}/download`,`BELM-Invoice-${b.dataset.invoiceDownload}.pdf`));
-  }
-
   function render(data) {
     const machine = data.machine || {};
     const summary = data.summary || {};
@@ -461,7 +427,6 @@
       if (control) control.classList.toggle("hidden", !canManageProcurement);
     });
     renderProcurementRequests(data.procurementRequests || []);
-    renderServiceJobBilling(data.serviceJobBilling || []);
     renderStoreApprovals(data.storeIssueRequests || []);
     document.getElementById("receiveStockButton").classList.toggle("hidden", !canManageStore);
     const storeOption = document.querySelector('#stockSource option[value="CUSTOMER_STORE"]');

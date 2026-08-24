@@ -1,0 +1,59 @@
+BELM PORTAL V464 - TECHNICAL DEP > WORKSHOP (V443 ROLE STRUCTURE)
+================================================================
+Base: BELM_PORTAL_V462_CLEAN_BW.zip
+Reference: BELM_PORTAL_V443_WORKSHOP_ROLE_STRUCTURE(1).zip
+
+Implemented:
+1. TECHNICAL DEP > WORKSHOP preserves the V443 three-role structure:
+   - WORKSHOP MANAGER
+   - STORE KEEPER
+   - TECHNICIANS (Mechanic / Electrical / Mechatronics)
+
+2. WORKSHOP MANAGER functions are explicitly shown:
+   - Open Job Cards
+   - Assign / Reassign Technician
+   - Workshop Instructions
+   - Technician Workload
+   - Testing & Review
+   - Workshop Analysis
+
+3. STORE KEEPER functions are explicitly shown:
+   - BELM Spare Stock
+   - Receive Spare / Material
+   - Tools
+   - Tool Issue Document
+   - Tool Return Document
+   - Store Audit Trail
+
+4. TECHNICIAN functions are explicitly shown:
+   - Receive Assigned Job Cards
+   - Diagnosis
+   - Repair
+   - Request Spare
+   - Testing
+   - Submit Technician Report
+
+5. Standalone Workshop rule:
+   - Workshop actions open inside a Workshop modal/workspace.
+   - They do NOT navigate back to the BELM Admin main dashboard.
+   - Closing a module returns to the Workshop role cards.
+
+6. Live synchronization:
+   - Digital Job Cards use the existing breakdown_workflow / digital_job_cards backend.
+   - Store & Spares uses the existing BELM Spare Parts Manager data.
+   - Manage Technicians uses the existing BELM Roles/User data.
+   - No duplicate Job Card database is created.
+
+7. BELM Workshop Tool Issue/Return register added:
+   - BELM-owned tools are separate from customer_tool_issues.
+   - Can link a Tool Issue Document to a live Job Card.
+   - Tracks Technician, asset ID, quantity, condition out, expected return,
+     return date, condition in, received by, and return note.
+
+8. Embedded module support added for:
+   - Breakdown Workflow / Digital Job Cards
+   - Workshop Analysis
+   - Assigned Work + Technician Workload
+   - Spare Parts Manager
+   - Roles Manager / Technicians
+   - Tool Issue / Return Documents

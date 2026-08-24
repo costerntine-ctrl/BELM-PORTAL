@@ -78,8 +78,8 @@
 
 /* V461 - Workshop Role Structure (3 cards), built independently for
    /belm-workshop/: own class prefix (bw-), own colors, no shared files
-   with /customer-workshop/. All 6 action links are plain placeholders
-   (href="#") until their function is assigned. */
+   with /customer-workshop/. The six primary role actions are wired to synchronized Workshop windows
+   while the role responsibilities remain visible on each card. */
 .bw-role-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -411,3 +411,12 @@ body.bw-workspace-open{overflow:hidden}
   .bw-role-actions{display:grid;grid-template-columns:1fr}
   .bw-role-actions a{width:100%;text-align:center}
 }
+
+/* V464 - preserve the V443 Workshop Role Structure inside TECHNICAL DEP > WORKSHOP. */
+.bw-role-card{display:flex;flex-direction:column;min-height:100%}
+.bw-role-actions{margin-top:auto;padding-top:4px}
+.bw-technician-functions{margin-top:2px}
+.bw-technician-functions span{border-color:rgba(245,184,42,.46);background:rgba(245,184,42,.08)}
+.bw-manager-card .bw-responsibilities span{border-color:rgba(42,156,245,.42);background:rgba(42,156,245,.07)}
+.bw-store-card .bw-responsibilities span{border-color:rgba(30,203,122,.42);background:rgba(30,203,122,.07)}
+@media(max-width:560px){.bw-responsibilities span{font-size:10px;padding:6px 10px}}

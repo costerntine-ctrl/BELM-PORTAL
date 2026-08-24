@@ -114,6 +114,11 @@
     show('Workshop is connected to the live BELM operational database. Open a module and use Sync / Refresh for its latest records.');
   });
 
+  window.addEventListener('message',event=>{
+    if(event.origin!==location.origin)return;
+    if(event.data?.type==='belm-engineering-open-service-requests')closeModule();
+  });
+
   window.addEventListener('hashchange',()=>{
     const key=keyFromHash(location.hash);
     if(key)openModule(key,{pushHash:false});

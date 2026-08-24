@@ -452,7 +452,12 @@
     }));
   }
   async function loadQueueTechnicians(){
-    if(source!=='customer'||!isWorkshop){queueTechnicians=[];return}
+    if(!isWorkshop){queueTechnicians=[];return}
+    if(source==='admin'){
+      try{queueTechnicians=await api(`/technicians?_=${Date.now()}`)}catch{queueTechnicians=[]}
+      return;
+    }
+    if(source!=='customer'){queueTechnicians=[];return}
     const customerId=String(cases[0]?.customerId||payload?.id||payload?.customerId||'');
     if(!customerId){queueTechnicians=[];return}
     try{queueTechnicians=await api(`/technicians?customerId=${encodeURIComponent(customerId)}&_=${Date.now()}`)}catch{queueTechnicians=[]}

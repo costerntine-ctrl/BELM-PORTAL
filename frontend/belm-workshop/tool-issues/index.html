@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BELM Workshop Tool Issue Documents</title>
+  <script>(function(){if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('embed-mode');})();</script>
+  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+  <link rel="stylesheet" href="/admin-tools.css?v=341-multi-proforma-request">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
+  <link rel="stylesheet" href="/belm-workshop/tool-issues/tool-issues.css?v=463-workshop-tools">
+  <script defer src="/theme-manager.js?v=299-session-stability"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/belm-workshop/"><span class="brand-mark">B</span><span>BELM General Tech <small>Workshop Tools</small></span></a>
+    <div class="top-actions"><a class="ghost" href="/belm-workshop/">← BELM Workshop</a><button id="refreshButton" class="ghost" type="button">Refresh</button></div>
+  </header>
+  <main class="shell">
+    <section class="hero">
+      <div><p class="eyebrow">STORE KEEPER</p><h1>Tool Issue &amp; Return Documents</h1><p>BELM-owned workshop tools. Every issue stays linked to the responsible Technician and can be linked to a live Digital Job Card.</p></div>
+      <button id="newIssueButton" class="primary" type="button">+ Issue Tool</button>
+    </section>
+    <div id="pageAlert" class="alert hidden" role="status"></div>
+    <section class="metrics">
+      <article class="metric"><span>OUT WITH TECHNICIANS</span><strong id="outCount">0</strong></article>
+      <article class="metric"><span>RETURNED</span><strong id="returnedCount">0</strong></article>
+      <article class="metric"><span>TOTAL DOCUMENTS</span><strong id="documentCount">0</strong></article>
+      <article class="metric"><span>OVERDUE RETURN</span><strong id="overdueCount">0</strong></article>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><div><h2>Tool Register</h2><p class="muted">Issue → Technician responsibility → Return. Records remain in history after return.</p></div><input id="searchInput" placeholder="Search document, Job Card, Technician or tool"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Document</th><th>Job Card</th><th>Technician</th><th>Tool / Asset ID</th><th>Qty</th><th>Issued</th><th>Expected Return</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="issueRows"><tr><td colspan="9" class="empty">Loading Tool Issue Documents…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="issueDialog"><form id="issueForm" class="dialog-card">
+    <div class="dialog-head"><div><p class="eyebrow">BELM WORKSHOP</p><h2>Issue Tool to Technician</h2></div><button class="icon-close" type="button" data-close="issueDialog">×</button></div>
+    <div id="issueError" class="alert error hidden"></div>
+    <div class="form-grid">
+      <label>Job Card<select id="jobCardNo"><option value="">Not linked to a Job Card</option></select></label>
+      <label>Technician<select id="technicianId" required><option value="">Select Technician…</option></select></label>
+      <label class="full">Tool name<input id="toolName" required maxlength="255" placeholder="e.g. Hydraulic pressure gauge"></label>
+      <label>Tool / Asset ID<input id="toolAssetId" maxlength="100" placeholder="e.g. TL-0042"></label>
+      <label>Quantity<input id="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
+      <label>Expected return<input id="expectedReturnAt" type="datetime-local"></label>
+      <label class="full">Condition out<input id="conditionOut" maxlength="255" placeholder="Condition when issued"></label>
+      <label class="full">Issue note<textarea id="issueNote" rows="3" maxlength="1000" placeholder="Purpose / accessories / instructions"></textarea></label>
+    </div>
+    <div class="dialog-actions"><button class="ghost" type="button" data-close="issueDialog">Cancel</button><button class="primary" type="submit">Create Issue Document</button></div>
+  </form></dialog>
+
+  <dialog id="returnDialog"><form id="returnForm" class="dialog-card">
+    <div class="dialog-head"><div><p class="eyebrow">STORE KEEPER</p><h2>Receive Tool Return</h2></div><button class="icon-close" type="button" data-close="returnDialog">×</button></div>
+    <input id="returnId" type="hidden"><div id="returnContext" class="return-context"></div><div id="returnError" class="alert error hidden"></div>
+    <div class="form-grid">
+      <label class="full">Condition in<input id="conditionIn" maxlength="255" placeholder="Condition after return"></label>
+      <label>Received by<input id="receivedBy" maxlength="255"></label>
+      <label class="full">Return note<textarea id="returnNote" rows="3" maxlength="1000"></textarea></label>
+    </div>
+    <div class="dialog-actions"><button class="ghost" type="button" data-close="returnDialog">Cancel</button><button class="primary" type="submit">Confirm Return</button></div>
+  </form></dialog>
+
+  <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=415-workshop-analysis"></script>
+  <script src="/belm-workshop/tool-issues/tool-issues.js?v=463-workshop-tools"></script>
+</body>
+</html>

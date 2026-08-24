@@ -28,9 +28,13 @@
   const isTechnician=source==='tech';
   const requestedView=String(params.get('view')||'').toLowerCase();
   const adminWorkshopAnalysisOnly=Boolean(isBelmAdmin&&embedded&&requestedView==='analysis');
-  const adminJobCardsDispatchOnly=Boolean(isBelmAdmin&&embedded&&!adminWorkshopAnalysisOnly);
+  const adminAssignedWorkOnly=Boolean(isBelmAdmin&&embedded&&requestedView==='assigned');
+  const adminJobCardsFullView=Boolean(isBelmAdmin&&embedded&&requestedView==='job-cards');
+  const adminJobCardsDispatchOnly=Boolean(isBelmAdmin&&embedded&&!adminWorkshopAnalysisOnly&&!adminAssignedWorkOnly&&!adminJobCardsFullView);
   if(adminJobCardsDispatchOnly)document.documentElement.classList.add('admin-job-cards-dispatch-only');
   if(adminWorkshopAnalysisOnly)document.documentElement.classList.add('admin-workshop-analysis-only');
+  if(adminAssignedWorkOnly)document.documentElement.classList.add('admin-assigned-work-only');
+  if(adminJobCardsFullView)document.documentElement.classList.add('admin-job-cards-full-view');
 
   // V320: BELM staff use one Maintenance Process owner only: TECHNICAL DEP > Job Card.
   // Customer workflow remains standalone for customer teams, while any legacy admin
@@ -955,6 +959,13 @@
       }catch(x){show(x.message||'Could not load Job Card Dispatch.',true)}
       return;
     }
+    if(adminAssignedWorkOnly){
+      try{
+        await Promise.all([loadJobProcess(),loadQueueTechnicians()]);
+        renderTechnicianWorkload();
+      }catch(x){show(x.message||'Could not load assigned Workshop work.',true)}
+      return;
+    }
     const syncStatus=document.getElementById('syncStatus');
     try{
       if(syncStatus){
@@ -993,7 +1004,10 @@
 
       // If the main source sync succeeded, Dispatch only reads the already
       // reconciled rows. If it failed, Dispatch gets one independent retry.
-      if(isBelmAdmin)await loadDispatchOptions({syncSources:Boolean(syncError)});
+      if(isBelmAdmin){
+        await loadDispatchOptions({syncSources:Boolean(syncError)});
+        await loadJobProcess();
+      }
       await Promise.allSettled([loadPerformance(),loadDepartmentReport()]);
       if(syncError)show('Maintenance data loaded, but full source synchronization did not complete. Use Sync / Refresh again after checking the API.',true);
     }catch(x){
@@ -1015,12 +1029,13 @@
     if(window.ResizeObserver)new ResizeObserver(reportEmbedHeight).observe(document.body);
     window.setTimeout(reportEmbedHeight,100);
   }
-  if(!adminWorkshopAnalysisOnly)initTechnicianDispatch();
-  if(!adminWorkshopAnalysisOnly)loadMachines();
+  if(!adminWorkshopAnalysisOnly&&!adminAssignedWorkOnly)initTechnicianDispatch();
+  if(!adminWorkshopAnalysisOnly&&!adminAssignedWorkOnly)loadMachines();
   load();
-  if(adminJobCardsDispatchOnly){
-    window.addEventListener('focus',loadJobProcess);
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadJobProcess()});
-    window.setInterval(()=>{if(!document.hidden)loadJobProcess()},15000);
+  if(adminJobCardsDispatchOnly||adminAssignedWorkOnly){
+    const refreshLiveWork=async()=>{await loadJobProcess();if(adminAssignedWorkOnly){await loadQueueTechnicians();renderTechnicianWorkload()}};
+    window.addEventListener('focus',refreshLiveWork);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshLiveWork()});
+    window.setInterval(()=>{if(!document.hidden)refreshLiveWork()},15000);
   }
 })();

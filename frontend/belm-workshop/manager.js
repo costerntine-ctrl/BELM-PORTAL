@@ -1,327 +1,125 @@
-(function () {
-  const token = localStorage.getItem("belm_admin_token");
-  const pageOptions = [
-    ["customers", "Customers"],
-    ["overview", "All Overview"],
-    ["roles", "Roles & system users"],
-    ["job-cards", "Job Cards"],
-    ["spare-parts", "Spare parts"],
-    ["billing", "Billing"],
-    ["bank-manager", "Bank Manager"],
-    ["reports", "Reports & comparisons"],
-    ["settings", "System settings"],
-    ["checklist-templates", "Checklist templates"],
-    ["suppliers", "Suppliers"],
-    ["activity-log", "Activity log"],
-  ];
-  let rolesCache = [];
+(function(){
+  const token=localStorage.getItem('belm_admin_token')||'';
+  if(!token){location.href='/login';return}
 
-  function currentAdminUser() {
-    try { return JSON.parse(localStorage.getItem("belm_admin_user") || "null"); } catch (_) { return null; }
-  }
-  function hasPageAccess(key) {
-    const user = currentAdminUser();
-    if (!user) return false;
-    if (user.role === "Super Admin" || user.allowedPages === null) return true;
-    return Array.isArray(user.allowedPages) && user.allowedPages.includes(key);
-  }
+  let adminUser=null;try{adminUser=JSON.parse(localStorage.getItem('belm_admin_user')||'null')}catch{}
+  const isSuperAdmin=adminUser?.role==='Super Admin'||adminUser?.allowedPages===null;
+  const allowedPages=Array.isArray(adminUser?.allowedPages)?adminUser.allowedPages:[];
+  const params=new URLSearchParams(location.search);
+  const machine=params.get('machine')||'';
+  const dialog=document.getElementById('workshopWindow');
+  const frame=document.getElementById('workshopWindowFrame');
+  const loading=document.getElementById('workshopWindowLoading');
+  const title=document.getElementById('workshopWindowTitle');
+  const subtitle=document.getElementById('workshopWindowSubtitle');
+  const alertBox=document.getElementById('bwAlert');
+  let activeKey='';
 
-  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
-  }[character]));
-
-  const formatDateTime = (value) => {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${day}/${month}/${date.getFullYear()}, ${hours}:${minutes}`;
+  const modules={
+    'job-cards':{
+      title:'Job Cards',
+      subtitle:'Create, receive, assign and follow the live Digital Job Card process.',
+      hash:'#job-cards',
+      permissions:['roles','job-cards','service-requests'],
+      url:()=>`/breakdown-workflow/?actor=admin&embed=1&view=job-cards${machine?`&machine=${encodeURIComponent(machine)}`:''}`
+    },
+    analysis:{
+      title:'Workshop Analysis',
+      subtitle:'Daily / monthly workshop performance using the same Job Card records.',
+      hash:'#workshop-analysis',
+      permissions:['roles','job-cards','service-requests'],
+      url:()=>'/breakdown-workflow/?actor=admin&embed=1&view=analysis'
+    },
+    store:{
+      title:'Store & Spare Parts',
+      subtitle:'BELM workshop inventory, spare requests, stock and equivalent parts.',
+      hash:'#store-spares',
+      permissions:['spare-parts'],
+      url:()=>'/spare-parts-manager/?embed=1&from=belm-workshop'
+    },
+    tools:{
+      title:'Tool Issue Documents',
+      subtitle:'Issue BELM workshop tools to Technicians and record every return.',
+      hash:'#tool-issue-documents',
+      permissions:['roles','job-cards','service-requests','spare-parts'],
+      url:()=>'/belm-workshop/tool-issues/?embed=1'
+    },
+    technicians:{
+      title:'Manage Technicians',
+      subtitle:'BELM Technician users, roles and customer assignment.',
+      hash:'#manage-technicians',
+      permissions:['roles'],
+      url:()=>'/roles-manager/?embed=1&from=belm-workshop&role=Technician&technical=1'
+    },
+    assigned:{
+      title:'Assigned Work',
+      subtitle:'Live Job Card process and Technician workload without leaving BELM Workshop.',
+      hash:'#assigned-work',
+      permissions:['roles','job-cards','service-requests'],
+      url:()=>'/breakdown-workflow/?actor=admin&embed=1&view=assigned'
+    }
   };
 
-  async function api(path, options = {}) {
-    const response = await fetch(`/api${path}`, {
-      ...options,
-      cache: "no-store",
-      headers: {
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${token || ""}`,
-        ...(options.headers || {}),
-      },
-    });
-    const text = await response.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch (_) {}
-    if (!response.ok) {
-      const error = new Error(data?.error || `Request failed (${response.status}).`);
-      error.status = response.status;
-      throw error;
-    }
-    return data;
+  function show(message,error=false){
+    alertBox.textContent=message;
+    alertBox.className=`bw-alert${error?' error':''}`;
+    clearTimeout(show.timer);
+    show.timer=setTimeout(()=>alertBox.classList.add('hidden'),4200);
+  }
+  function keyFromHash(hash){
+    const h=String(hash||'').replace(/^#/,'').toLowerCase();
+    const map={'job-cards':'job-cards','workshop-analysis':'analysis','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned'};
+    return map[h]||'';
+  }
+  function openModule(key,{pushHash=true}={}){
+    const module=modules[key];if(!module)return;
+    const permitted=isSuperAdmin||!module.permissions?.length||module.permissions.some(p=>allowedPages.includes(p));
+    if(!permitted){show(`Your BELM role does not have access to ${module.title}.`,true);return}
+    activeKey=key;
+    title.textContent=module.title;
+    subtitle.textContent=module.subtitle;
+    loading.classList.remove('hidden');
+    frame.src=module.url();
+    if(pushHash && location.hash!==module.hash)history.replaceState(null,'',`${location.pathname}${location.search}${module.hash}`);
+    if(!dialog.open)dialog.showModal();
+    document.body.classList.add('bw-workspace-open');
+  }
+  function closeModule({clearHash=true}={}){
+    if(dialog.open)dialog.close();
+    document.body.classList.remove('bw-workspace-open');
+    frame.src='about:blank';
+    activeKey='';
+    if(clearHash && location.hash)history.replaceState(null,'',`${location.pathname}${location.search}`);
   }
 
-  function showAlert(message, isError = true) {
-    const box = document.getElementById("pageAlert");
-    box.textContent = message;
-    box.className = isError ? "alert error" : "alert";
-    box.classList.remove("hidden");
-  }
-
-  const STATUS_LABELS = { GREEN: "Normal", YELLOW: "Attention", RED: "Don't operate", NOT_CHECKED: "Not checked" };
-
-  function renderActivity(items) {
-    document.getElementById("activityCount").textContent = items.length;
-    document.getElementById("activityList").innerHTML = items.length
-      ? items.map((item) => `
-          <div class="eng-row">
-            <div>
-              <b>${escapeHtml(item.machine)}</b>
-              <span class="eng-row-sub">${escapeHtml(item.customer || "—")} · Filled by ${escapeHtml(item.filledBy || "—")}</span>
-            </div>
-            <span class="eng-badge status-${escapeHtml(String(item.status || "GREEN").toLowerCase())}">${escapeHtml(item.status || "—")}</span>
-            <small>${formatDateTime(item.createdAt)}</small>
-          </div>`).join("")
-      : '<p class="muted">No recent checklist activity.</p>';
-  }
-
-  function renderOperatorMessages(items) {
-    document.getElementById("operatorCount").textContent = items.length;
-    document.getElementById("operatorList").innerHTML = items.length
-      ? items.map((item) => `
-          <div class="eng-row">
-            <div>
-              <b>${escapeHtml(item.machine)}</b>
-              <span class="eng-row-sub">${escapeHtml(item.customer || "—")} · ${escapeHtml(item.operatorName || "Operator")}</span>
-              <p class="eng-row-message">${escapeHtml(item.message)}</p>
-            </div>
-            <small>${formatDateTime(item.createdAt)}</small>
-          </div>`).join("")
-      : '<p class="muted">No open operator messages.</p>';
-  }
-
-  function renderStatusSummary(summary) {
-    const total = Object.values(summary).reduce((sum, count) => sum + count, 0) || 1;
-    document.getElementById("statusSummary").innerHTML = Object.entries(summary).map(([key, count]) => `
-      <div class="eng-status-bar-row">
-        <span>${escapeHtml(STATUS_LABELS[key] || key)}</span>
-        <div class="eng-status-bar-track"><div class="eng-status-bar-fill status-${escapeHtml(key.toLowerCase())}" style="width:${Math.round((count / total) * 100)}%"></div></div>
-        <b>${count}</b>
-      </div>`).join("");
-  }
-
-  function renderReminders(items) {
-    document.getElementById("reminderCount").textContent = items.length;
-    document.getElementById("reminderList").innerHTML = items.length
-      ? items.map((item) => `
-          <div class="eng-row">
-            <div>
-              <b>${escapeHtml(item.machine)}</b>
-              <span class="eng-row-sub">${escapeHtml(item.customer || "—")} · ${escapeHtml(item.machineType || "Machine")} · Due ${escapeHtml(item.dueHour || "—")} hrs · ${escapeHtml(item.serviceIntervalHours || item.intervalHours)}-Hour Service${item.draftProformaNo ? ` · ${escapeHtml(item.draftProformaNo)}` : ""}</span>
-              <span class="eng-row-sub">Owner alert: Email ${escapeHtml(item.ownerEmailStatus || "NOT SENT")} · WhatsApp ${escapeHtml(item.ownerWhatsAppStatus || "NOT SENT")}</span>
-            </div>
-            <span class="eng-badge status-${escapeHtml(item.level.toLowerCase())}">${item.hoursRemaining <= 0 ? "Overdue" : `${item.hoursRemaining} hrs left`}</span>
-          </div>`).join("")
-      : '<p class="muted">Nothing due soon.</p>';
-  }
-
-
-  function renderServicePreparations(items) {
-    document.getElementById("servicePrepCount").textContent = items.length;
-    document.getElementById("servicePrepList").innerHTML = items.length
-      ? items.map((item) => `
-          <div class="eng-row">
-            <div>
-              <b>${escapeHtml(item.draftProformaNo || "Service kit review")}</b>
-              <span class="eng-row-sub">${escapeHtml(item.customer || "—")} · ${escapeHtml(item.machine)} · ${escapeHtml(item.machineType || "Machine")} · ${escapeHtml(item.serviceIntervalHours)}-Hour Service @ ${escapeHtml(item.dueHour)} hrs</span>
-              <span class="eng-row-sub">Inventory: ${escapeHtml(item.inventoryStatus || "NOT CHECKED")} · Current hours: ${escapeHtml(item.currentHours)}</span>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;">
-              ${item.draftProformaId ? '<a class="eng-badge" href="/billing-manager/">Review PI</a>' : '<span class="eng-badge status-yellow">Add service parts</span>'}
-            </div>
-          </div>`).join("")
-      : '<p class="muted">No automatic service preparations waiting for review.</p>';
-  }
-
-  function renderSpareRequests(items) {
-    document.getElementById("spareCount").textContent = items.length;
-    document.getElementById("spareList").innerHTML = items.length
-      ? items.map((item) => `
-          <div class="eng-row">
-            <div>
-              <b>${escapeHtml(item.name)} <span class="eng-row-sub">× ${escapeHtml(item.quantity)}</span></b>
-              <span class="eng-row-sub">${escapeHtml(item.machine || item.customer || "—")} · Requested by ${escapeHtml(item.requestedBy || "—")}</span>
-            </div>
-            <small>${formatDateTime(item.createdAt)}</small>
-          </div>`).join("")
-      : '<p class="muted">No pending spare-part requests.</p>';
-  }
-
-  // V319: Technician Dispatch has one UI owner: Breakdown Workflow.
-  // The old Engineering landing-page copy was removed to prevent stale sync logic.
-
-  async function load() {
-    try {
-      const data = await api("/engineering?action=dashboard");
-      renderActivity(data.activity || []);
-      renderOperatorMessages(data.operatorMessages || []);
-      renderStatusSummary(data.machineStatus || {});
-      renderReminders(data.serviceReminders || []);
-      renderServicePreparations(data.servicePreparations || []);
-      renderSpareRequests(data.spareRequests || []);
-    } catch (error) {
-      if (error.status === 401 || error.status === 403) {
-        showAlert(error.message);
-        return;
-      }
-      showAlert("Could not load the Technical Department dashboard.");
-    }
-  }
-
-  async function loadTechnicalRoleSummary() {
-    try {
-      rolesCache = await api("/users/roles");
-      const workshopManager = rolesCache.find((role) => role.name === "Workshop Manager" || role.name === "Engineer");
-      const technician = rolesCache.find((role) => role.name === "Technician");
-      document.getElementById("workshopManagerRoleAccess").textContent =
-        workshopManager?.allowedPages?.length ? workshopManager.allowedPages.map((page) => page === "service-requests" ? "job-cards" : page).filter((value,index,list)=>list.indexOf(value)===index).join(", ") : "No pages assigned yet.";
-      if (technician) {
-        document.getElementById("technicianRoleAccess").textContent =
-          technician.allowedPages === null
-            ? "Technician app only / no admin dashboard pages"
-            : (technician.allowedPages?.length ? technician.allowedPages.map((page) => page === "service-requests" ? "job-cards" : page).filter((value,index,list)=>list.indexOf(value)===index).join(", ") : "No pages assigned yet.");
-      }
-    } catch (_) {
-      document.getElementById("workshopManagerRoleAccess").textContent = "—";
-    }
-  }
-
-  function renderAllowedPages(selected = []) {
-    document.getElementById("allowedPages").innerHTML = pageOptions.map(([key, label]) =>
-      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${(selected.includes(key) || (key === "job-cards" && selected.includes("service-requests"))) ? "checked" : ""}> ${escapeHtml(label)}</label>`
-    ).join("");
-  }
-
-  function openRoleDialog(roleName) {
-    const role = rolesCache.find((item) => item.name === roleName || (roleName === "Engineer" && item.name === "Workshop Manager"));
-    if (!role) return;
-    document.getElementById("roleForm").reset();
-    document.getElementById("roleId").value = role.id;
-    document.getElementById("roleDialogTitle").textContent = `Edit role — ${role.name === "Engineer" ? "Workshop Manager" : role.name}`;
-    document.getElementById("roleFormAlert").className = "alert error hidden";
-    renderAllowedPages(role.allowedPages || []);
-    document.getElementById("roleDialog").showModal();
-  }
-
-  async function saveRole(event) {
-    event.preventDefault();
-    const id = document.getElementById("roleId").value;
-    const role = rolesCache.find((item) => item.id === id);
-    const payload = {
-      name: role?.name,
-      allowedPages: [...document.querySelectorAll("#allowedPages input:checked")].map((input) => input.value),
-      permissions: {},
-    };
-    const confirmation = await window.belmConfirmEdit({
-      title: "Save role changes?",
-      message: `Confirm changes to the "${payload.name === "Engineer" ? "Workshop Manager" : payload.name}" role's access.`,
-    });
-    if (!confirmation) return;
-    Object.assign(payload, confirmation);
-
-    const button = document.getElementById("saveRoleButton");
-    button.disabled = true;
-    button.textContent = "Saving…";
-    try {
-      await api(`/users/roles/${id}`, { method: "PUT", body: JSON.stringify(payload) });
-      document.getElementById("roleDialog").close();
-      await loadTechnicalRoleSummary();
-      showAlert("Role access updated successfully.", false);
-    } catch (error) {
-      const box = document.getElementById("roleFormAlert");
-      box.textContent = error.message;
-      box.className = "alert error";
-    } finally {
-      button.disabled = false;
-      button.textContent = "Save role";
-    }
-  }
-
-  document.querySelectorAll("[data-edit-role]").forEach((button) => {
-    button.addEventListener("click", () => openRoleDialog(button.dataset.editRole));
+  document.querySelectorAll('[data-workshop-window]').forEach(link=>link.addEventListener('click',event=>{
+    event.preventDefault();openModule(link.dataset.workshopWindow);
+  }));
+  document.getElementById('workshopWindowClose').addEventListener('click',()=>closeModule());
+  document.getElementById('workshopWindowReload').addEventListener('click',()=>{
+    if(!activeKey)return;
+    loading.classList.remove('hidden');
+    const current=frame.src;
+    frame.src='about:blank';
+    requestAnimationFrame(()=>{frame.src=current});
   });
-  document.getElementById("roleForm").addEventListener("submit", saveRole);
-  document.getElementById("closeRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
-  document.getElementById("cancelRoleDialog").addEventListener("click", () => document.getElementById("roleDialog").close());
-
-  document.getElementById("refreshButton").addEventListener("click", async () => {
-    await Promise.all([load(), loadTechnicalRoleSummary()]);
+  frame.addEventListener('load',()=>{
+    if(frame.src==='about:blank')return;
+    loading.classList.add('hidden');
+  });
+  dialog.addEventListener('cancel',event=>{event.preventDefault();closeModule()});
+  dialog.addEventListener('close',()=>document.body.classList.remove('bw-workspace-open'));
+  document.getElementById('workshopSyncButton').addEventListener('click',()=>{
+    if(activeKey){loading.classList.remove('hidden');frame.contentWindow?.location?.reload();show('Workshop module synchronized.');return}
+    show('Workshop is connected to the live BELM operational database. Open a module and use Sync / Refresh for its latest records.');
   });
 
-  function initEngineeringWorkspace() {
-    const jobFrame = document.getElementById("engineeringJobCardsFrame");
-    const jobPanel = document.getElementById("engineeringJobCardsPanel");
-    const jobLocked = document.getElementById("engineeringJobCardsLocked");
-    const analysisFrame = document.getElementById("engineeringWorkshopAnalysisFrame");
-    const analysisPanel = document.getElementById("engineeringWorkshopAnalysisPanel");
-    const analysisLocked = document.getElementById("engineeringWorkshopAnalysisLocked");
-    if (!jobFrame && !analysisFrame) return;
-
-    // Job Cards and Workshop Analysis share the same technical-work permission.
-    // Legacy service-requests permission is accepted only for deployed role compatibility.
-    const allowed = hasPageAccess("job-cards") || hasPageAccess("service-requests");
-    if (!allowed) {
-      [jobFrame, analysisFrame].forEach((frame) => frame?.removeAttribute("src"));
-      jobPanel?.classList.add("hidden");
-      analysisPanel?.classList.add("hidden");
-      jobLocked?.classList.remove("hidden");
-      analysisLocked?.classList.remove("hidden");
-      return;
-    }
-
-    const routeParams = new URLSearchParams(window.location.search);
-    const machineFocus = String(routeParams.get("machine") || "").trim();
-    if (jobFrame) {
-      const url = new URL(jobFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin", window.location.origin);
-      if (machineFocus) url.searchParams.set("machine", machineFocus);
-      jobFrame.src = `${url.pathname}${url.search}`;
-    }
-    if (analysisFrame) {
-      const url = new URL(analysisFrame.dataset.src || "/breakdown-workflow/?embed=1&source=admin&view=analysis", window.location.origin);
-      analysisFrame.src = `${url.pathname}${url.search}`;
-    }
-
-    window.addEventListener("message", (event) => {
-      if (event.origin !== window.location.origin || event.data?.type !== "belm-breakdown-workflow-height") return;
-      const frame = [jobFrame, analysisFrame].find((candidate) => candidate && event.source === candidate.contentWindow);
-      if (!frame) return;
-      const minHeight = frame === analysisFrame ? 880 : 760;
-      const maxHeight = frame === analysisFrame ? 2200 : 1800;
-      const height = Math.max(minHeight, Math.min(maxHeight, Number(event.data.height) || 0));
-      frame.style.height = `${height}px`;
-    });
-  }
-
-  initEngineeringWorkspace();
-
-  document.querySelectorAll("[data-tool-page]").forEach((link) => {
-    const key = link.dataset.toolPage;
-    if (key && !hasPageAccess(key)) link.classList.add("hidden");
+  window.addEventListener('hashchange',()=>{
+    const key=keyFromHash(location.hash);
+    if(key)openModule(key,{pushHash:false});
+    else if(dialog.open)closeModule({clearHash:false});
   });
 
-  if (!token) {
-    showAlert("Administrator login required.");
-  } else {
-    const rolesAccess = hasPageAccess("roles");
-    if (!rolesAccess) {
-      document.getElementById("engineeringRolesStrip")?.classList.add("hidden");
-      document.getElementById("engineeringOverviewGrid")?.classList.add("hidden");
-      document.getElementById("refreshButton")?.classList.add("hidden");
-    } else {
-      // V317: Technician Dispatch is intentionally not mounted on the Engineering landing page.
-      load();
-      loadTechnicalRoleSummary();
-    }
-  }
+  const initialKey=keyFromHash(location.hash);
+  if(initialKey)openModule(initialKey,{pushHash:false});
 })();

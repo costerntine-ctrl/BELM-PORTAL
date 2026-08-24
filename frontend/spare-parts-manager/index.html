@@ -5,6 +5,13 @@
     <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>(function(){if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('embed-mode');})();</script>
+    <style>
+      html.embed-mode body>.topbar,html.embed-mode #belmAdminSidebar,html.embed-mode .belm-admin-sidebar,html.embed-mode .belm-global-theme-toggle,html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display:none!important}
+      html.embed-mode body,html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
+      html.embed-mode main.shell{width:100%;max-width:none;margin:0;padding:12px}
+      @media(max-width:620px){html.embed-mode main.shell{padding:8px}}
+    </style>
     <title>BELM Spare Parts Manager</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +24,6 @@
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
   <body>
-    <script>if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embed-mode");</script>
     <header class="topbar">
       <a class="brand" href="/overview-manager/">
         <span class="brand-mark">B</span>

@@ -1435,3 +1435,35 @@ CREATE INDEX IF NOT EXISTS idx_customer_tool_issues_customer
   ON customer_tool_issues(customer_id, returned_at, issued_at DESC);
 CREATE INDEX IF NOT EXISTS idx_customer_tool_issues_technician
   ON customer_tool_issues(technician_id, returned_at, issued_at DESC);
+
+-- V463 BELM WORKSHOP standalone Tool Issue / Return register.
+-- Separate from customer_tool_issues because these are BELM-owned workshop tools.
+CREATE TABLE IF NOT EXISTS belm_workshop_tool_issues (
+  id VARCHAR(36) PRIMARY KEY,
+  document_no VARCHAR(40) NOT NULL UNIQUE,
+  job_card_no VARCHAR(60),
+  technician_id VARCHAR(36),
+  technician_name VARCHAR(255) NOT NULL,
+  tool_name VARCHAR(255) NOT NULL,
+  tool_asset_id VARCHAR(100),
+  quantity NUMERIC(14,2) NOT NULL DEFAULT 1 CHECK (quantity > 0),
+  condition_out VARCHAR(255),
+  expected_return_at TIMESTAMPTZ,
+  issue_note TEXT,
+  issued_by_id VARCHAR(36),
+  issued_by_name VARCHAR(255),
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  returned_at TIMESTAMPTZ,
+  condition_in VARCHAR(255),
+  received_by VARCHAR(255),
+  return_note TEXT,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_belm_workshop_tool_technician FOREIGN KEY (technician_id) REFERENCES users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_belm_workshop_tool_issuer FOREIGN KEY (issued_by_id) REFERENCES users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_belm_workshop_tool_issues_status
+  ON belm_workshop_tool_issues(returned_at, issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_belm_workshop_tool_issues_technician
+  ON belm_workshop_tool_issues(technician_id, returned_at, issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_belm_workshop_tool_issues_job_card
+  ON belm_workshop_tool_issues(job_card_no, issued_at DESC);

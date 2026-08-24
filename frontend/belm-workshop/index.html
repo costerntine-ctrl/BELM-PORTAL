@@ -1,172 +1,121 @@
 <!doctype html>
 <html lang="en">
-  <head>
-  <!-- V453: bfcache back-navigation guard -->
-  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BELM WORKSHOP</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
-    <link rel="stylesheet" href="/belm-workshop/manager.css?v=453-belm-workshop">
-    <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+<head>
+  <script>window.addEventListener("pageshow",function(e){if(e.persisted)window.location.reload();});</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BELM WORKSHOP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin-tools.css">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=463-workshop-standalone">
+  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script defer src="/theme-manager.js?v=299-session-stability"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
-  <body>
-    <header class="topbar">
-      <a class="brand" href="/overview-manager/">
-        <span class="brand-mark">B</span>
-        <span>BELM General Tech <small>BELM WORKSHOP</small></span>
-      </a>
-      <div class="top-actions">
-        <a class="ghost" href="/overview-manager/">← All Overview</a>
-        <a class="ghost" href="/customers-manager/">Customers &amp; Machines</a>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/belm-workshop/">
+      <span class="brand-mark">B</span>
+      <span>BELM General Tech <small>BELM WORKSHOP</small></span>
+    </a>
+    <div class="top-actions">
+      <button class="ghost" id="workshopSyncButton" type="button">Sync Workshop</button>
+      <a class="ghost" href="/customers-manager/">Customers &amp; Machines</a>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Technical Operations</p>
+        <h1>BELM WORKSHOP</h1>
+        <p>Independent BELM technical workspace. Job Cards, workshop analysis, store, tools and technicians open here while sharing the same live operational data with BELM Admin.</p>
       </div>
-    </header>
+      <span class="bw-live-pill"><i></i> LIVE SYNC</span>
+    </section>
 
-    <main class="shell">
-      <section class="hero">
+    <div id="bwAlert" class="bw-alert hidden" role="status" aria-live="polite"></div>
+
+    <section class="bw-role-grid" aria-label="Workshop roles">
+      <article class="bw-role-card bw-manager-card">
+        <div class="bw-role-icon">WM</div>
+        <div class="bw-role-head"><div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div><span class="bw-role-status">CONTROL</span></div>
+        <p class="bw-role-description">Owns Job Cards, assignments, workshop instructions, workload balance, progress and final review.</p>
+        <div class="bw-responsibilities">
+          <span>Job Cards</span><span>Assign / Reassign</span><span>Workshop Instruction</span><span>Workload</span><span>Testing &amp; Review</span>
+        </div>
+        <div class="bw-role-actions">
+          <a class="bw-primary-action" href="#job-cards" data-workshop-window="job-cards">Open Job Cards</a>
+          <a class="bw-secondary-action" href="#workshop-analysis" data-workshop-window="analysis">Workshop Analysis</a>
+        </div>
+      </article>
+
+      <article class="bw-role-card bw-store-card">
+        <div class="bw-role-icon">SK</div>
+        <div class="bw-role-head"><div><p>STORE KEEPER</p><h2>Tools &amp; Spare Parts</h2></div><span class="bw-role-status">STORE</span></div>
+        <p class="bw-role-description">Controls BELM workshop tools and spare stock, and records every tool handed to a Technician and returned.</p>
+        <div class="bw-responsibilities">
+          <span>Tools</span><span>Spare Stock</span><span>Issue Document</span><span>Return Document</span><span>Audit Trail</span>
+        </div>
+        <div class="bw-role-actions">
+          <a class="bw-primary-action" href="#store-spares" data-workshop-window="store">Open Store &amp; Spares</a>
+          <a class="bw-secondary-action" href="#tool-issue-documents" data-workshop-window="tools">Tool Issue Documents</a>
+        </div>
+      </article>
+
+      <article class="bw-role-card bw-technician-card">
+        <div class="bw-role-icon">TC</div>
+        <div class="bw-role-head"><div><p>TECHNICIANS</p><h2>Repair Team</h2></div><span class="bw-role-status">TEAM</span></div>
+        <p class="bw-role-description">Receives Job Cards from the Workshop Manager, diagnoses, repairs, requests tools/spares, tests and submits the Technician Report.</p>
+        <div class="bw-specialization-grid">
+          <div><b>Mechanic</b><small>Engine, transmission, brakes, hydraulic &amp; mechanisms</small></div>
+          <div><b>Electrical</b><small>Wiring, power, sensors, controllers &amp; electrical faults</small></div>
+          <div><b>Mechatronics</b><small>CAN, control systems, electronics, electro-hydraulics &amp; diagnosis</small></div>
+        </div>
+        <div class="bw-role-actions">
+          <a class="bw-primary-action" href="#manage-technicians" data-workshop-window="technicians">Manage Technicians</a>
+          <a class="bw-secondary-action" href="#assigned-work" data-workshop-window="assigned">View Assigned Work</a>
+        </div>
+      </article>
+    </section>
+
+    <section class="bw-workflow-panel">
+      <p class="bw-eyebrow">WORKSHOP FLOW</p>
+      <h2>One Job Card — clear responsibility</h2>
+      <div class="bw-workflow-line">
+        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span>
+      </div>
+      <p class="bw-sync-note">All Job Card changes use the same backend records used by BELM Admin, customer reports, technicians and procurement. This page does not create a duplicate Job Card database.</p>
+    </section>
+  </main>
+
+  <dialog id="workshopWindow" class="bw-workspace-dialog">
+    <div class="bw-workspace-shell">
+      <header class="bw-workspace-head">
         <div>
-          <p class="eyebrow">Technical Operations</p>
-          <h1>BELM WORKSHOP</h1>
-          <p>Job Cards, technical tools, Technicians and Engineers in one BELM technical workspace.</p>
+          <p>BELM WORKSHOP</p>
+          <h2 id="workshopWindowTitle">Workshop Window</h2>
+          <span id="workshopWindowSubtitle">Live synchronized workspace</span>
         </div>
-      </section>
-
-      <!-- V461: full Workshop Role Structure (3 cards), matching the
-           existing customer-workshop design, but built here as its OWN
-           independent HTML/CSS - no shared files, no API calls to
-           customer-workshop's endpoints, no data sync with any other
-           page. Every one of the 6 buttons below is a plain placeholder
-           (href="#", does nothing) until told what each should do. -->
-      <section class="bw-role-grid" aria-label="Workshop roles">
-        <article class="bw-role-card bw-manager-card">
-          <div class="bw-role-icon">WM</div>
-          <div class="bw-role-head"><div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div><span class="bw-role-status">CONTROL</span></div>
-          <p class="bw-role-description">Owns Job Cards, assignments, workshop instructions, workload balance, progress and final review.</p>
-          <div class="bw-responsibilities">
-            <span>Job Cards</span><span>Assign / Reassign</span><span>Workshop Instruction</span><span>Workload</span><span>Testing &amp; Review</span>
-          </div>
-          <div class="bw-role-actions">
-            <a class="bw-primary-action" href="#">Open Job Cards</a>
-            <a class="bw-secondary-action" href="#">Workshop Analysis</a>
-          </div>
-        </article>
-
-        <article class="bw-role-card bw-store-card">
-          <div class="bw-role-icon">SK</div>
-          <div class="bw-role-head"><div><p>STORE KEEPER</p><h2>Tools &amp; Spare Parts</h2></div><span class="bw-role-status">STORE</span></div>
-          <p class="bw-role-description">Controls workshop tools and customer spare stock, and records every tool handed to a Technician and returned.</p>
-          <div class="bw-responsibilities">
-            <span>Tools</span><span>Spare Stock</span><span>Issue Document</span><span>Return Document</span><span>Audit Trail</span>
-          </div>
-          <div class="bw-role-actions">
-            <a class="bw-primary-action" href="#">Open Store &amp; Spares</a>
-            <a class="bw-secondary-action" href="#">Tool Issue Documents</a>
-          </div>
-        </article>
-
-        <article class="bw-role-card bw-technician-card">
-          <div class="bw-role-icon">TC</div>
-          <div class="bw-role-head"><div><p>TECHNICIANS</p><h2>Repair Team</h2></div><span class="bw-role-status">TEAM</span></div>
-          <p class="bw-role-description">Receives Job Cards from the Workshop Manager, diagnoses, repairs, requests tools/spares, tests and submits the Technician Report.</p>
-          <div class="bw-specialization-grid">
-            <div><b>Mechanic</b><small>Engine, transmission, brakes, hydraulic &amp; mechanisms</small></div>
-            <div><b>Electrical</b><small>Wiring, power, sensors, controllers &amp; electrical faults</small></div>
-            <div><b>Mechatronics</b><small>CAN, control systems, electronics, electro-hydraulics &amp; diagnosis</small></div>
-          </div>
-          <div class="bw-role-actions">
-            <a class="bw-primary-action" href="#">Manage Technicians</a>
-            <a class="bw-secondary-action" href="#">View Assigned Work</a>
-          </div>
-        </article>
-      </section>
-
-      <section class="bw-workflow-panel">
-        <p class="bw-eyebrow">WORKSHOP FLOW</p>
-        <h2>One Job Card — clear responsibility</h2>
-        <div class="bw-workflow-line">
-          <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span>
+        <div class="bw-workspace-actions">
+          <button id="workshopWindowReload" type="button">Sync / Refresh</button>
+          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Close Workshop window">×</button>
         </div>
-      </section>
+      </header>
+      <div class="bw-workspace-body">
+        <div id="workshopWindowLoading" class="bw-window-loading">Opening Workshop module…</div>
+        <iframe id="workshopWindowFrame" title="BELM Workshop module" loading="eager"></iframe>
+      </div>
+    </div>
+  </dialog>
 
-      <!-- V463: "Open Job Cards" opens this dialog with the real Job Card
-           workflow (breakdown-workflow, same embed already used elsewhere
-           in the portal) - lazy-loaded (data-src -> src) only when opened. -->
-      <dialog id="bwJobCardDialog" class="bw-frame-dialog">
-        <div class="bw-frame-dialog-head">
-          <span>Job Cards</span>
-          <button type="button" class="bw-frame-close" data-close-dialog="bwJobCardDialog" aria-label="Close">×</button>
-        </div>
-        <iframe title="Job Cards" data-src="/breakdown-workflow/?embed=1&amp;source=admin" loading="eager"></iframe>
-      </dialog>
-
-      <!-- V464: same pattern for Workshop Analysis, Open Store & Spares,
-           and Manage Technicians - each opens its own dialog right here,
-           nothing navigates to the main BELM admin dashboard. -->
-      <dialog id="bwAnalysisDialog" class="bw-frame-dialog">
-        <div class="bw-frame-dialog-head">
-          <span>Workshop Analysis</span>
-          <button type="button" class="bw-frame-close" data-close-dialog="bwAnalysisDialog" aria-label="Close">×</button>
-        </div>
-        <iframe title="Workshop Analysis" data-src="/breakdown-workflow/?embed=1&amp;source=admin&amp;view=analysis" loading="eager"></iframe>
-      </dialog>
-
-      <dialog id="bwStoreDialog" class="bw-frame-dialog">
-        <div class="bw-frame-dialog-head">
-          <span>Store &amp; Spares</span>
-          <button type="button" class="bw-frame-close" data-close-dialog="bwStoreDialog" aria-label="Close">×</button>
-        </div>
-        <iframe title="Store &amp; Spares" data-src="/spare-parts-manager/?embed=1" loading="eager"></iframe>
-      </dialog>
-
-      <dialog id="bwTechniciansDialog" class="bw-frame-dialog">
-        <div class="bw-frame-dialog-head">
-          <span>Technicians</span>
-          <button type="button" class="bw-frame-close" data-close-dialog="bwTechniciansDialog" aria-label="Close">×</button>
-        </div>
-        <iframe title="Technicians" data-src="/roles-manager/?embed=1&amp;role=Technician&amp;technical=1" loading="eager"></iframe>
-      </dialog>
-    </main>
-
-    <script>
-      (function () {
-        // V463/V464: every role-card button that has a matching dialog
-        // opens it right here (lazy-loaded iframe) - nothing leaves
-        // BELM WORKSHOP. Buttons with no data-open-dialog yet are still
-        // plain placeholders, unchanged.
-        var openMap = {
-          '.bw-manager-card .bw-primary-action': 'bwJobCardDialog',
-          '.bw-manager-card .bw-secondary-action': 'bwAnalysisDialog',
-          '.bw-store-card .bw-primary-action': 'bwStoreDialog',
-          '.bw-technician-card .bw-primary-action': 'bwTechniciansDialog',
-        };
-        Object.keys(openMap).forEach(function (selector) {
-          var link = document.querySelector(selector);
-          var dialog = document.getElementById(openMap[selector]);
-          if (!link || !dialog) return;
-          link.addEventListener('click', function (event) {
-            event.preventDefault();
-            var frame = dialog.querySelector('iframe');
-            if (frame && !frame.src) frame.src = frame.dataset.src;
-            dialog.showModal();
-          });
-        });
-        document.querySelectorAll('[data-close-dialog]').forEach(function (button) {
-          button.addEventListener('click', function () {
-            document.getElementById(button.dataset.closeDialog).close();
-          });
-        });
-      })();
-    </script>
-
-    <script src="/admin-access.js?v=411-job-card-only"></script>
-    <script src="/admin-sidebar.js?v=415-workshop-analysis"></script>
-    <script src="/edit-confirm.js"></script>
-  </body>
+  <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=415-workshop-analysis"></script>
+  <script src="/edit-confirm.js"></script>
+  <script src="/belm-workshop/manager.js?v=463-workshop-standalone"></script>
+</body>
 </html>

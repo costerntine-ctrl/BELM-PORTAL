@@ -426,3 +426,19 @@ html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(6,mi
 .queue-technician-select option:disabled{color:#d83a3a}
 [data-theme="dark"] .technician-workload-card{background:rgba(58,166,255,.035)}
 @media(max-width:620px){.technician-workload-grid{grid-template-columns:1fr}.technician-workload-card{padding:11px}}
+
+/* V463 BELM WORKSHOP internal windows. Full Job Cards stays inside the
+   workshop iframe; Assigned Work shows only live assigned Job Card process
+   and Technician workload. */
+html.admin-assigned-work-only .summary,
+html.admin-assigned-work-only .filters,
+html.admin-assigned-work-only .workflow-dispatch,
+html.admin-assigned-work-only .grid,
+html.admin-assigned-work-only .workshop-report-panel,
+html.admin-assigned-work-only .performance-panel{display:none!important}
+html.admin-assigned-work-only main{max-width:none;width:100%;margin:0;padding:4px 4px 18px}
+html.admin-assigned-work-only .job-process-panel{display:block!important;margin-top:0}
+html.admin-assigned-work-only .technician-workload-panel{display:block!important}
+html.admin-job-cards-full-view main{max-width:none;width:100%;margin:0;padding:4px 4px 18px}
+html.admin-job-cards-full-view .workshop-report-panel,
+html.admin-job-cards-full-view .performance-panel{display:none!important}

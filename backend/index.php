@@ -59,6 +59,7 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             'customer_store_movements',
             'customer_machine_spare_list_items',
             'customer_store_issue_requests',
+            'belm_workshop_tool_issues',
             'customer_procurement_requests',
             'checklist_template_parts',
             'service_request_parts',

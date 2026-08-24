@@ -348,20 +348,6 @@
   }
 }
 
-/* V464: generic embed mode - any admin page that includes
-   admin-sidebar.css gets ?embed=1 support so it can be shown inside a
-   dialog/iframe on another admin page (used by BELM WORKSHOP's role-card
-   buttons) without a duplicate header. <main> itself stays visible. */
-body.embed-mode > header.topbar,
-body.embed-mode > header.management-topbar {
-  display: none !important;
-}
-body.embed-mode > main.shell,
-body.embed-mode > main.management-shell {
-  padding-top: 0 !important;
-  margin-top: 0 !important;
-}
-
 @media (max-width: 980px) {
   .belm-admin-sidebar {
     transform: translateX(-105%);

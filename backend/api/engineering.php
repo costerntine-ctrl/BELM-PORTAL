@@ -16,11 +16,126 @@ $action = $_GET['action'] ?? '';
 // V319: Engineering landing administration still requires Roles access, but
 // Technician Dispatch lives inside Maintenance Process and must also work for
 // an Engineer who has service-requests access. This mirrors sidebar anyKeys.
-$isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch','job-process'], true);
+$isDispatchAction = in_array((string)$action, ['dispatch-options','dispatch','job-process','workshop-tool-options','workshop-tool-issues','workshop-tool-return'], true);
 if ($isDispatchAction) {
-    require_any_page_access($user, ['roles','job-cards','service-requests']);
+    require_any_page_access($user, ['roles','job-cards','service-requests','spare-parts']);
 } else {
     require_page_access($user, 'roles');
+}
+
+
+// V463 - BELM WORKSHOP standalone Tool Issue / Return register. These records
+// belong to BELM's own workshop (not a customer's private Workshop Store) and
+// may be linked to the same Digital Job Card used across Technical Operations.
+if ($method === 'GET' && $action === 'workshop-tool-options') {
+    $technicians = db()->query(
+        "SELECT DISTINCT u.id,u.name,u.email,u.assigned_customer_id,c.name AS assigned_customer_name
+         FROM users u
+         JOIN roles r ON r.id=u.role_id
+         LEFT JOIN customers c ON c.id=u.assigned_customer_id
+         WHERE u.is_active=1 AND u.deleted_at IS NULL AND u.is_customer_managed=0
+           AND (r.name='Technician' OR EXISTS (
+             SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id
+             WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL
+           ))
+         ORDER BY u.name"
+    )->fetchAll();
+    $jobCards = db()->query(
+        "SELECT j.id,j.job_card_no,j.title,j.status,j.technician_id,
+                COALESCE(NULLIF(TRIM(j.technician_name),''),u.name,'') AS technician_name,
+                c.name AS customer_name,m.fleet_number,m.brand,m.model,m.machine_type
+         FROM digital_job_cards j
+         JOIN customers c ON c.id=j.customer_id
+         JOIN machines m ON m.id=j.machine_id
+         LEFT JOIN users u ON u.id=j.technician_id
+         WHERE UPPER(COALESCE(j.status,'')) NOT IN ('COMPLETED','CANCELLED')
+         ORDER BY COALESCE(j.updated_at,j.created_at) DESC
+         LIMIT 200"
+    )->fetchAll();
+    json_out(['technicians'=>$technicians,'jobCards'=>$jobCards]);
+}
+
+if ($method === 'GET' && $action === 'workshop-tool-issues') {
+    $rows = db()->query(
+        "SELECT t.*,u.name AS technician_account_name
+         FROM belm_workshop_tool_issues t
+         LEFT JOIN users u ON u.id=t.technician_id
+         ORDER BY CASE WHEN t.returned_at IS NULL THEN 0 ELSE 1 END,t.issued_at DESC
+         LIMIT 500"
+    )->fetchAll();
+    json_out(['items'=>array_map(static function(array $row): array {
+        return [
+            'id'=>$row['id'],'documentNo'=>$row['document_no'],'jobCardNo'=>$row['job_card_no'],
+            'technicianId'=>$row['technician_id'],'technicianName'=>$row['technician_name'] ?: ($row['technician_account_name'] ?? ''),
+            'toolName'=>$row['tool_name'],'toolAssetId'=>$row['tool_asset_id'],'quantity'=>(float)$row['quantity'],
+            'conditionOut'=>$row['condition_out'],'expectedReturnAt'=>$row['expected_return_at'],
+            'issuedByName'=>$row['issued_by_name'],'issuedAt'=>$row['issued_at'],'returnedAt'=>$row['returned_at'],
+            'conditionIn'=>$row['condition_in'],'receivedBy'=>$row['received_by'],'returnNote'=>$row['return_note'],
+            'updatedAt'=>$row['updated_at'],
+        ];
+    },$rows)]);
+}
+
+if ($method === 'POST' && $action === 'workshop-tool-issues') {
+    $b=body();
+    $technicianId=trim((string)($b['technicianId']??''));
+    $toolName=trim((string)($b['toolName']??''));
+    $toolAssetId=trim((string)($b['toolAssetId']??''));
+    $jobCardNo=strtoupper(trim((string)($b['jobCardNo']??'')));
+    $quantity=(float)($b['quantity']??1);
+    $conditionOut=trim((string)($b['conditionOut']??''));
+    $note=trim((string)($b['note']??''));
+    $expectedReturnAt=trim((string)($b['expectedReturnAt']??''));
+    if($technicianId===''||$toolName==='') json_error('Technician and tool name are required.');
+    if($quantity<=0) json_error('Tool quantity must be above zero.');
+    $tech=db()->prepare(
+        "SELECT u.id,u.name FROM users u JOIN roles r ON r.id=u.role_id
+         WHERE u.id=? AND u.is_active=1 AND u.deleted_at IS NULL AND u.is_customer_managed=0
+           AND (r.name='Technician' OR EXISTS (
+             SELECT 1 FROM user_roles ur JOIN roles rr ON rr.id=ur.role_id
+             WHERE ur.user_id=u.id AND rr.name='Technician' AND rr.deleted_at IS NULL
+           )) LIMIT 1"
+    );
+    $tech->execute([$technicianId]);$technician=$tech->fetch();
+    if(!$technician) json_error('Selected BELM Technician is not available.',404);
+    if($jobCardNo!=='') {
+        $jc=db()->prepare('SELECT id FROM digital_job_cards WHERE UPPER(job_card_no)=? LIMIT 1');
+        $jc->execute([$jobCardNo]);
+        if(!$jc->fetchColumn()) json_error('Job Card number was not found. Select a current Job Card or leave it blank.',404);
+    }
+    $dayPrefix='BTI-'.date('dmy').'-';
+    $countStmt=db()->prepare("SELECT COUNT(*) FROM belm_workshop_tool_issues WHERE issued_at >= date_trunc('day',NOW())");
+    $countStmt->execute();
+    $documentNo=$dayPrefix.str_pad((string)(((int)$countStmt->fetchColumn())+1),3,'0',STR_PAD_LEFT);
+    for($i=0;$i<10;$i++) {
+        $exists=db()->prepare('SELECT 1 FROM belm_workshop_tool_issues WHERE document_no=? LIMIT 1');
+        $exists->execute([$documentNo]);
+        if(!$exists->fetchColumn()) break;
+        $documentNo=$dayPrefix.str_pad((string)(((int)substr($documentNo,-3))+1),3,'0',STR_PAD_LEFT);
+    }
+    $id=uuid();
+    db()->prepare(
+        'INSERT INTO belm_workshop_tool_issues
+         (id,document_no,job_card_no,technician_id,technician_name,tool_name,tool_asset_id,quantity,condition_out,expected_return_at,issue_note,issued_by_id,issued_by_name,issued_at,updated_at)
+         VALUES(?,?,?,?,?,?,?,?,?,NULLIF(?,\'\')::timestamptz,?,?,?,NOW(),NOW())'
+    )->execute([$id,$documentNo,$jobCardNo?:null,$technicianId,$technician['name'],$toolName,$toolAssetId?:null,$quantity,$conditionOut?:null,$expectedReturnAt,$note?:null,$user['id']??null,$user['name']??'BELM']);
+    log_activity($user,'workshop-tool-issue','workshop-tool',$id,['documentNo'=>$documentNo,'jobCardNo'=>$jobCardNo?:null,'technician'=>$technician['name'],'tool'=>$toolName,'quantity'=>$quantity]);
+    json_out(['ok'=>true,'id'=>$id,'documentNo'=>$documentNo],201);
+}
+
+if ($method === 'POST' && $action === 'workshop-tool-return') {
+    $b=body();$id=trim((string)($b['id']??''));
+    $conditionIn=trim((string)($b['conditionIn']??''));
+    $receivedBy=trim((string)($b['receivedBy']??''));
+    $note=trim((string)($b['note']??''));
+    if($id==='') json_error('Tool Issue Document is required.');
+    $stmt=db()->prepare('SELECT * FROM belm_workshop_tool_issues WHERE id=? LIMIT 1');$stmt->execute([$id]);$issue=$stmt->fetch();
+    if(!$issue) json_error('Tool Issue Document was not found.',404);
+    if(!empty($issue['returned_at'])) json_error('This tool has already been returned.',409);
+    db()->prepare('UPDATE belm_workshop_tool_issues SET returned_at=NOW(),condition_in=?,received_by=?,return_note=?,updated_at=NOW() WHERE id=?')
+        ->execute([$conditionIn?:null,$receivedBy?:($user['name']??'BELM'),$note?:null,$id]);
+    log_activity($user,'workshop-tool-return','workshop-tool',$id,['documentNo'=>$issue['document_no'],'tool'=>$issue['tool_name'],'technician'=>$issue['technician_name']]);
+    json_out(['ok'=>true,'status'=>'RETURNED']);
 }
 
 if ($method === 'GET' && $action === 'dispatch-options') {

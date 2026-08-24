@@ -57,11 +57,11 @@
 
   // V453: /belm-workshop/ (Job Cards, Workshop Analysis, Technicians) is
   // reachable by anyone with "roles" OR "job-cards" OR "service-requests" -
-  // same three keys admin-sidebar.js uses for this entry's anyKeys.
+  // workshop permissions, including BELM Store / Spare Parts access.
   function belmWorkshopAllowed(path) {
     return /^\/belm-workshop(?:\/|$)/.test(path)
       && (allowedPages.includes("roles") || allowedPages.includes("job-cards")
-          || allowedPages.includes("service-requests"));
+          || allowedPages.includes("service-requests") || allowedPages.includes("spare-parts"));
   }
 
   document.querySelectorAll("a[href]").forEach(link => {

@@ -1,9 +1,0 @@
-BELM PORTAL V216 - CUSTOMER BREAKDOWN STICKY RAIL
-
-- Confirmed Breakdown Process already existed in Customer MORE TOOLS.
-- Removed the duplicate/hidden-style Breakdown Process action from MORE TOOLS.
-- Added a dedicated Breakdown Process card directly below the shared Petty Cash card.
-- The card remains inside the existing sticky customer right rail on desktop/PC.
-- On mobile/tablet it follows normal page flow to avoid obstructing the machine cards.
-- Workflow permission remains enforced: users without Breakdown Process/Job Cards access do not see the card.
-- No database migration required.

@@ -1,8 +1,0 @@
-V359 - MY C SIDEBAR BUTTON
-
-- Added a new sidebar navigation button labeled "MY C" with icon initials "MC".
-- MY C opens the Company profile section in System Settings.
-- Added a stable #company-profile anchor to the Company profile panel.
-- Kept System Settings as a separate sidebar destination and prevented both entries from appearing active at the same time.
-- Bumped admin-sidebar.js cache version across admin pages so the new sidebar item loads immediately after deployment.
-- No database schema, banking, spare-parts, or technician Job Card reporting logic changed.

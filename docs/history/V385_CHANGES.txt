@@ -1,9 +1,0 @@
-V385 - BELM Technician Dashboard Renamed Actions
-- First technician card includes assigned customer Phone, Email, Address and Communication History before machine view.
-- Five technician dashboard buttons: View Machines, BELM Workshop, BELM Store, General Report, Expenses Rec.
-- View Machines opens/collapses assigned customer machine fleet.
-- BELM Workshop opens technician breakdown/workshop workflow.
-- BELM Store uses the existing technician inventory request tool.
-- General Report opens a read-only assigned fleet status summary.
-- Expenses Rec is present as the requested technician dashboard entry; the accounting expense workflow remains permission-controlled.
-- Technician communication history is read-only and limited to the assigned customer.

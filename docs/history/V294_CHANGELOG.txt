@@ -1,9 +1,0 @@
-BELM Portal V294 - Company Name Communication Direction
-
-Changes:
-- Customer machine live-update communication direction now uses the real customer/company name.
-- Example: ECL ICD → BELM instead of CUSTOMER → BELM.
-- Example: BELM → ECL ICD instead of BELM → CUSTOMER.
-- The same naming is used in View all updates / machine communication history.
-- FROM BELM / TO BELM remain compact update-category labels.
-- Authentication, privacy controls, rotating updates, reports, and workflow logic are unchanged.

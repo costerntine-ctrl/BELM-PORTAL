@@ -1,7 +1,0 @@
-BELM PORTAL V357 - A-Z SIDEBAR + REFRESH MOTION
-
-1. BELM Admin sidebar is now a single flat A-Z list.
-2. Visual category headings/groups were removed from the sidebar.
-3. Sidebar search filters the flat A-Z list directly.
-4. Admin Refresh/Sync controls now visibly wiggle/pulse and show a spinning refresh glyph for immediate click feedback.
-5. This is a UI-only release. No schema, database migration, Spare Stock quantity, price or stock-history logic was changed.

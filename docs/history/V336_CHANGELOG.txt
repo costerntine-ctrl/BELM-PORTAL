@@ -1,8 +1,0 @@
-BELM Operations Platform V336 - Assigned Technician Name
-
-- Main Job Card now shows the currently assigned Technician by name when the Job Card is ASSIGNED/IN_PROGRESS.
-- The assigned Technician is selected in the inline dropdown instead of displaying a generic Select Technician placeholder.
-- Reassignment remains available by choosing another Technician.
-- Job Card normalization keeps camelCase and snake_case Technician fields aligned.
-- Legacy Service Request assignments are used as a safe display fallback when an older Job Card row missed its copied Technician fields.
-- No database migration required.

@@ -1,9 +1,0 @@
-BELM PORTAL V488 - SIDEBAR TEXT FIT
-
-- Admin/navigation sidebars now size themselves from the longest visible menu label on desktop.
-- Safe desktop width range: 235px to 360px.
-- Long labels wrap instead of being cut with ellipsis.
-- Nested sidebars remain compact when their labels are shorter.
-- Mobile sidebar width is capped to the viewport with room left for closing the drawer.
-- Body left padding follows the calculated sidebar width automatically.
-- Asset/cache version bumped to V488 to avoid stale sidebar CSS/JS.

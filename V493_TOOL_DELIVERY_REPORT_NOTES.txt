@@ -1,8 +1,0 @@
-BELM PORTAL V493 - TOOL DELIVERY NOTE + ISSUER REPORT
-
-- BELM Workshop > Tool Issue & Return Documents now has Delivery Note and Download Report PDF buttons.
-- Every tool issue row has a Delivery Note action.
-- Delivery Note reuses the existing signed customer Delivery Note workflow and prefills Job Card/customer/machine/tool details where available.
-- Tool register now shows Issued By as its own column.
-- Store Keeper/equipment issuer can download the Tool / Equipment Issue Report as PDF.
-- No duplicate Delivery Note table/module was created.

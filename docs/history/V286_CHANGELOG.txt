@@ -1,9 +1,0 @@
-BELM Portal V286 - Customer Card Button Color Update
-
-Changes:
-- Edit customer button changed to yellow.
-- Reset login button changed to blue.
-- View Machines button remains green.
-- Delete, Delete Machine, and Forget permanently remain red/destructive.
-- No backend/API logic changed.
-- V284 performance fixes and V285 uniform card layout remain intact.

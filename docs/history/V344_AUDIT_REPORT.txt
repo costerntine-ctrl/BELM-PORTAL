@@ -1,5 +1,0 @@
-V344 audit target: Proforma buttons visibly react but do not persist/generate.
-
-Root cause: Pending "Generate" actions only prepared/opened the Proforma form. Persistence happened only after a second Save action, so users reasonably saw PENDING remain and reported generation failure.
-
-Fix: Generate actions now POST a DRAFT Proforma immediately, refresh Billing, and show success/error feedback. Re-edit remains available for commercial pricing changes before Send to Customer.

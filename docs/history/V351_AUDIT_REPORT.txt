@@ -1,7 +1,0 @@
-V351 AUDIT TARGETS
-- No schema.sql business-data mutation added.
-- V350 deployment row/ID preservation guard retained.
-- Proforma and Invoice linked-document hard locks removed; Billing page authorization + audit remain, while Proforma/Invoice Re-edit no longer requires Edit PIN.
-- Existing payment > edited invoice total protection remains.
-- Customer expense privacy bypass is development-only, staff-side, reversible by environment flag, and does not modify saved customer preferences.
-- Customer team directory and all non-expense privacy settings remain unchanged.

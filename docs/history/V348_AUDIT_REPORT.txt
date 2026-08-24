@@ -1,6 +1,0 @@
-V348 AUDIT REPORT
-
-Observed symptom: saved Bank Account rows existed and balances calculated, but dropdown labels rendered blank/partial.
-Root cause: backend json_out() converts database snake_case keys to camelCase, while frontend/bank-controller/app.js still read bank_name/account_name/account_number/opening_balance and withdrawal snake_case fields.
-Fix: normalize reads to camelCase with legacy fallbacks and retain saved account selection after reload.
-Data impact: none; this is a display/sync fix and preserves PostgreSQL bank_accounts and bank_withdrawals data.

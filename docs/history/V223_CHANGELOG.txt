@@ -1,9 +1,0 @@
-BELM PORTAL V223 - DIGITAL JOB CARD TECHNICIAN SYNC
-
-- Generate Digital Job Card now has Sync Technicians and live sync status/count.
-- Technician picker no longer silently falls back to Unassigned when sync fails.
-- Technician eligibility uses effective role: primary Technician OR additional Technician role in user_roles.
-- Same effective-role rule applied to Breakdown Job Card, Engineering Technician Dispatch, and Service Request assignment.
-- Customer self-service/provider rules and BELM Temporary Override rules remain enforced.
-- Browser/PWA cache bumped to V223.
-- No database migration required.

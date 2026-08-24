@@ -1,8 +1,0 @@
-BELM PORTAL V494 - BACK / WHITE FLASH REPAIR
-
-1. PORTAL-BELM WM workspace Back is deterministic and no longer depends on browser history state.
-2. Workspace Sync/Refresh reloads the iframe in place; it no longer navigates through about:blank.
-3. WM workspace iframe/loading canvas uses a dark-safe background, with light-theme override.
-4. Nested admin sidebar Back is renamed Back to Main Dashboard and explicitly navigates to /overview-manager/.
-5. Embedded Tool Issue BELM Workshop back link posts back to the outer WM shell instead of nesting the WM page inside the iframe.
-6. Service-worker cache bumped to V494 to force stale UI assets out.

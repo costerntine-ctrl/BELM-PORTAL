@@ -1,8 +1,0 @@
-BELM PORTAL V391
-================
-Scope: BELM Technician -> View Machines only.
-
-- Moved the four direct machine action buttons (Report, Check Up, Service Parts, Job Card) to the bottom of each technician machine card.
-- Added flexible vertical card layout so alert/message and service information keep readable space above the action row.
-- Increased technician alert/message area slightly for clearer long machine messages.
-- No backend, sync, permissions, Admin, or Customer workflow logic changed.

@@ -176,6 +176,40 @@
   .bw-role-grid { grid-template-columns: 1fr; }
 }
 
+/* V463 - Job Cards dialog, opened from "Open Job Cards". */
+.bw-frame-dialog {
+  width: min(1200px, 94vw);
+  height: 88vh;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.bw-frame-dialog::backdrop { background: rgba(5, 11, 22, .65); }
+.bw-frame-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  font: 800 14px "Space Grotesk", sans-serif;
+}
+.bw-frame-dialog-head button {
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+}
+.bw-frame-dialog iframe {
+  display: block;
+  width: 100%;
+  height: calc(88vh - 49px);
+  border: 0;
+}
+
 .eng-roles-strip {
   display: grid;
   grid-template-columns: 1fr 1fr;

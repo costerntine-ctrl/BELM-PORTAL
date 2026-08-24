@@ -94,7 +94,76 @@
           <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span>
         </div>
       </section>
+
+      <!-- V463: "Open Job Cards" opens this dialog with the real Job Card
+           workflow (breakdown-workflow, same embed already used elsewhere
+           in the portal) - lazy-loaded (data-src -> src) only when opened. -->
+      <dialog id="bwJobCardDialog" class="bw-frame-dialog">
+        <div class="bw-frame-dialog-head">
+          <span>Job Cards</span>
+          <button type="button" class="bw-frame-close" data-close-dialog="bwJobCardDialog" aria-label="Close">×</button>
+        </div>
+        <iframe title="Job Cards" data-src="/breakdown-workflow/?embed=1&amp;source=admin" loading="eager"></iframe>
+      </dialog>
+
+      <!-- V464: same pattern for Workshop Analysis, Open Store & Spares,
+           and Manage Technicians - each opens its own dialog right here,
+           nothing navigates to the main BELM admin dashboard. -->
+      <dialog id="bwAnalysisDialog" class="bw-frame-dialog">
+        <div class="bw-frame-dialog-head">
+          <span>Workshop Analysis</span>
+          <button type="button" class="bw-frame-close" data-close-dialog="bwAnalysisDialog" aria-label="Close">×</button>
+        </div>
+        <iframe title="Workshop Analysis" data-src="/breakdown-workflow/?embed=1&amp;source=admin&amp;view=analysis" loading="eager"></iframe>
+      </dialog>
+
+      <dialog id="bwStoreDialog" class="bw-frame-dialog">
+        <div class="bw-frame-dialog-head">
+          <span>Store &amp; Spares</span>
+          <button type="button" class="bw-frame-close" data-close-dialog="bwStoreDialog" aria-label="Close">×</button>
+        </div>
+        <iframe title="Store &amp; Spares" data-src="/spare-parts-manager/?embed=1" loading="eager"></iframe>
+      </dialog>
+
+      <dialog id="bwTechniciansDialog" class="bw-frame-dialog">
+        <div class="bw-frame-dialog-head">
+          <span>Technicians</span>
+          <button type="button" class="bw-frame-close" data-close-dialog="bwTechniciansDialog" aria-label="Close">×</button>
+        </div>
+        <iframe title="Technicians" data-src="/roles-manager/?embed=1&amp;role=Technician&amp;technical=1" loading="eager"></iframe>
+      </dialog>
     </main>
+
+    <script>
+      (function () {
+        // V463/V464: every role-card button that has a matching dialog
+        // opens it right here (lazy-loaded iframe) - nothing leaves
+        // BELM WORKSHOP. Buttons with no data-open-dialog yet are still
+        // plain placeholders, unchanged.
+        var openMap = {
+          '.bw-manager-card .bw-primary-action': 'bwJobCardDialog',
+          '.bw-manager-card .bw-secondary-action': 'bwAnalysisDialog',
+          '.bw-store-card .bw-primary-action': 'bwStoreDialog',
+          '.bw-technician-card .bw-primary-action': 'bwTechniciansDialog',
+        };
+        Object.keys(openMap).forEach(function (selector) {
+          var link = document.querySelector(selector);
+          var dialog = document.getElementById(openMap[selector]);
+          if (!link || !dialog) return;
+          link.addEventListener('click', function (event) {
+            event.preventDefault();
+            var frame = dialog.querySelector('iframe');
+            if (frame && !frame.src) frame.src = frame.dataset.src;
+            dialog.showModal();
+          });
+        });
+        document.querySelectorAll('[data-close-dialog]').forEach(function (button) {
+          button.addEventListener('click', function () {
+            document.getElementById(button.dataset.closeDialog).close();
+          });
+        });
+      })();
+    </script>
 
     <script src="/admin-access.js?v=411-job-card-only"></script>
     <script src="/admin-sidebar.js?v=415-workshop-analysis"></script>

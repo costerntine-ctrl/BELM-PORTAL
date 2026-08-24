@@ -15,6 +15,7 @@
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
   <body>
+    <script>if (new URLSearchParams(location.search).get("embed") === "1") document.body.classList.add("embed-mode");</script>
     <header class="topbar">
       <a class="brand" href="/overview-manager/">
         <span class="brand-mark">B</span>

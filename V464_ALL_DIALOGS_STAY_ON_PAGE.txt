@@ -1,0 +1,23 @@
+V464 - Workshop Analysis / Open Store & Spares / Manage Technicians now
+       functional - every button opens its window right on this page
+
+Re-added generic ?embed=1 support (admin-sidebar.css + a one-line script
+in each page's <body>) to spare-parts-manager and roles-manager, matching
+the pattern already used for the Job Cards dialog.
+
+4 of 6 buttons on BELM WORKSHOP's role cards now open their own dialog,
+lazy-loaded, nothing navigates away from /belm-workshop/:
+
+- Open Job Cards -> Job Card workflow (breakdown-workflow)
+- Workshop Analysis -> same breakdown-workflow, analysis view
+- Open Store & Spares -> Spare Parts Inventory
+- Manage Technicians -> BELM Staff Access, filtered to Technician role
+
+Still plain placeholders (href="#"), because there's no clear BELM-wide
+admin destination for them yet - flagging rather than guessing:
+- Tool Issue Documents: Tool Issue/Return records currently only exist
+  per-customer (customer_portal.php), there's no BELM-wide admin screen
+  listing them across every customer.
+- View Assigned Work: unclear what this should show - Job Cards assigned
+  to BELM Technicians specifically? A per-technician workload view?
+  Needs a decision before it can be wired to something real.

@@ -519,3 +519,77 @@ body.bw-workspace-open{overflow:hidden}
   .bw-manager-actions{gap:5px}
   .bw-manager-actions>a{font-size:8.2px;padding:7px 2px}
 }
+
+/* V484 - PORTAL-BELM WM becomes a single, display-fit Workshop Manager home hub.
+   The sidebar is intentionally not loaded on this page. Store, Procurement and
+   Technician entry points now live in the WM card; their secondary actions live
+   inside the opened modules. */
+body{overflow-x:hidden}
+main.shell{width:min(1480px,96vw);margin:22px auto 48px}
+.bw-role-grid{grid-template-columns:1fr;gap:0;margin:18px 0}
+.bw-manager-card{
+  width:100%;
+  min-height:clamp(430px,58vh,680px);
+  padding:clamp(22px,2.6vw,36px);
+  border-radius:22px;
+  background:linear-gradient(150deg,#0d3c69 0%,#075a83 48%,#083c63 100%);
+  box-shadow:0 22px 58px rgba(3,24,45,.28);
+}
+.bw-manager-card::before{height:5px;background:linear-gradient(90deg,#22c55e 0 25%,#1ea7fd 25% 52%,#f4c430 52% 73%,#7c6df2 73%)}
+.bw-manager-card .bw-role-description{max-width:1020px;font-size:clamp(12px,1.3vw,15px);min-height:0;margin-bottom:14px}
+.bw-manager-card .bw-responsibilities{max-width:1180px;margin-bottom:18px;gap:7px}
+.bw-manager-actions{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  width:100%;
+  margin-top:auto;
+  padding-top:10px;
+}
+.bw-manager-actions>a{
+  grid-column:auto;
+  min-height:48px;
+  padding:11px 12px;
+  border-radius:11px;
+  font-size:clamp(10px,1vw,12.5px);
+  line-height:1.18;
+  border:1px solid rgba(255,255,255,.24);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .16s ease,filter .16s ease,box-shadow .16s ease;
+}
+.bw-manager-actions>a:hover,.bw-manager-actions>a:focus-visible{transform:translateY(-1px);filter:brightness(1.07);box-shadow:0 8px 18px rgba(2,18,34,.18);outline:none}
+/* Work / operational entry points */
+.bw-work-action{background:#19c779!important;color:#062819!important;border-color:#35e39a!important}
+.bw-store-entry{background:#079a8f!important;color:#fff!important;border-color:#19c8b9!important}
+.bw-proc-entry{background:#6657d9!important;color:#fff!important;border-color:#8b7cf3!important}
+.bw-tech-entry{background:#1676c8!important;color:#fff!important;border-color:#3b98e8!important}
+/* Control / analysis */
+.bw-analysis-entry{background:#214f78!important;color:#fff!important;border-color:#3a719f!important}
+.bw-general-analysis-action{background:#185f94!important;border-color:#3383b9!important}
+/* Support / document / settings */
+.bw-general-report-action{background:#e0ad16!important;border-color:#f4cb55!important;color:#1d2128!important}
+.bw-petty-action{background:#078f78!important;border-color:#24b69c!important}
+.bw-settings-action{background:#405267!important;border-color:#60748b!important}
+.bw-customer-overview-action{background:rgba(30,156,245,.32)!important;border-color:#66bdf6!important}
+
+/* The single-card home can use the full display width cleanly. */
+@media(max-width:980px){
+  main.shell{width:min(100% - 24px,1480px)}
+  .bw-manager-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bw-manager-actions>a{font-size:11px;min-height:46px}
+}
+@media(max-width:560px){
+  main.shell{width:calc(100% - 16px);margin-top:12px}
+  .topbar{padding-left:14px!important;padding-right:14px!important;flex-direction:row;align-items:center}
+  .topbar .brand{min-width:0}
+  .topbar .brand>span:last-child{font-size:15px}
+  .topbar .top-actions{width:auto;max-width:none}
+  .topbar .top-actions .ghost{width:auto;white-space:nowrap;font-size:10px;padding:8px 10px}
+  .bw-manager-card{min-height:auto;padding:18px 16px;border-radius:18px}
+  .bw-manager-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .bw-manager-actions>a{min-height:43px;font-size:9.4px;padding:8px 6px}
+}
+@media(max-width:360px){
+  .bw-manager-actions{grid-template-columns:1fr}
+  .bw-manager-actions>a{font-size:10.5px}
+}

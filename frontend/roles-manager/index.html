@@ -9,7 +9,14 @@
       html.embed-mode body,html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
       html.embed-mode main.shell{width:100%;max-width:none;margin:0;padding:12px}
       html.technician-focus #addRoleButton,html.technician-focus #rolesSection{display:none!important}
-      @media(max-width:620px){html.embed-mode main.shell{padding:8px}}
+      html:not(.technician-focus) .technician-only-action{display:none!important}
+      html.technician-focus .metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
+      button.metric.technician-only-action{appearance:none;text-align:left;color:var(--ink);font:inherit;cursor:pointer;background:#fff8d9;border-color:#e7bd32}
+      button.metric.technician-only-action span{color:#765b00}
+      button.metric.technician-only-action strong{color:#6f5200;font-size:16px}
+      button.metric.technician-only-action:hover{filter:brightness(1.03)}
+      @media(max-width:980px){html.technician-focus .metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @media(max-width:620px){html.embed-mode main.shell{padding:8px}html.technician-focus .metrics{grid-template-columns:1fr 1fr}}
     </style>
     <title>BELM Staff Access</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -52,6 +59,7 @@
         <article class="metric"><span>System users</span><strong id="userCount">0</strong></article>
         <article class="metric"><span>Technicians</span><strong id="technicianCount">0</strong></article>
         <article class="metric"><span>Active users</span><strong id="activeCount">0</strong></article>
+        <button id="assignedWorkMetric" class="metric technician-only-action" type="button"><span>Assigned Work</span><strong>View Assigned Work</strong></button>
       </section>
 
       <div id="pageAlert" class="alert hidden" role="status"></div>
@@ -135,10 +143,24 @@
       </div>
     </dialog>
 
+    <script>
+      (function(){
+        const b=document.getElementById('assignedWorkMetric');
+        if(!b)return;
+        b.addEventListener('click',function(){
+          const q=new URLSearchParams(location.search);
+          if(q.get('embed')==='1'){
+            parent.postMessage({type:'belm-workshop-open-module',module:'assigned'},location.origin);
+          }else{
+            location.href='/breakdown-workflow/?actor=admin&view=assigned';
+          }
+        });
+      })();
+    </script>
     <script src="/admin-access.js?v=411-job-card-only"></script>
     <script src="/admin-sidebar.js?v=479-final-remove-technical-dep"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/roles-manager/manager.js?v=465-technician-clean"></script>
+    <script src="/roles-manager/manager.js?v=484-technician-assigned-tile"></script>
   </body>
 </html>

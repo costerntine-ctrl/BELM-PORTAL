@@ -11,6 +11,8 @@
       html.embed-mode body,html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
       html.embed-mode main.shell{width:100%;max-width:none;margin:0;padding:12px}
       @media(max-width:620px){html.embed-mode main.shell{padding:8px}}
+      .workshop-inner-action{background:#e0ad16!important;border-color:#f4cb55!important;color:#1d2128!important;font-weight:850!important}
+      .workshop-inner-action:hover{filter:brightness(1.06)}
     </style>
     <title>BELM Spare Parts Manager</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,6 +45,7 @@
           <p>Save stock, prices and reorder levels with clear confirmation.</p>
         </div>
         <div class="top-actions">
+          <button id="workshopToolIssueButton" class="secondary workshop-inner-action hidden" type="button">Tool Issue Documents</button>
           <button id="importButton" class="ghost" type="button">Import CSV</button>
           <input id="importFileInput" type="file" accept=".csv,text/csv" class="hidden">
           <button id="addButton" class="secondary" type="button">+ Add spare part</button>
@@ -170,6 +173,18 @@
       </form>
     </dialog>
 
+    <script>
+      (function(){
+        const q=new URLSearchParams(location.search);
+        const b=document.getElementById('workshopToolIssueButton');
+        if(b && q.get('embed')==='1' && q.get('from')==='belm-workshop'){
+          b.classList.remove('hidden');
+          b.addEventListener('click',function(){
+            parent.postMessage({type:'belm-workshop-open-module',module:'tools'},location.origin);
+          });
+        }
+      })();
+    </script>
     <script src="/admin-access.js?v=411-job-card-only"></script>
     <script src="/admin-sidebar.js?v=479-final-remove-technical-dep"></script>
     <script src="/delete-confirm.js"></script>

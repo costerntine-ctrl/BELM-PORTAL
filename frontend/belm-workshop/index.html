@@ -9,8 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/admin-tools.css">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
-  <link rel="stylesheet" href="/belm-workshop/manager.css?v=480-simple-home-back-fit">
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=484-wm-home-hub">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script src="/theme-manager.js?v=474-session-persistence"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -57,8 +56,11 @@
           <a class="bw-responsibility-action bw-customer-overview-action" href="#customer-overview" data-workshop-window="customer-overview">Customer Overview</a>
         </div>
         <div class="bw-role-actions bw-manager-actions" aria-label="Workshop Manager controls">
-          <a class="bw-primary-action" href="#job-cards" data-workshop-window="job-cards">Open Job Cards</a>
-          <a class="bw-secondary-action" href="#workshop-analysis" data-workshop-window="analysis">Workshop Analysis</a>
+          <a class="bw-primary-action bw-work-action" href="#job-cards" data-workshop-window="job-cards">Open Job Cards</a>
+          <a class="bw-primary-action bw-store-entry" href="#store-spares" data-workshop-window="store">Open Store &amp; Spares</a>
+          <a class="bw-primary-action bw-proc-entry" href="#procurement" data-workshop-window="procurement">Open Procurement</a>
+          <a class="bw-primary-action bw-tech-entry" href="#manage-technicians" data-workshop-window="technicians">Manage Technicians</a>
+          <a class="bw-secondary-action bw-analysis-entry" href="#workshop-analysis" data-workshop-window="analysis">Workshop Analysis</a>
           <a class="bw-manager-utility bw-general-report-action" href="#general-report" data-workshop-window="general-report">General Report</a>
           <a class="bw-manager-utility bw-petty-action" href="#petty-cash" data-workshop-window="petty-cash">Petty Cash</a>
           <a class="bw-manager-utility bw-general-analysis-action" href="#general-analysis" data-workshop-window="general-analysis">General Analysis</a>
@@ -66,73 +68,6 @@
         </div>
       </article>
 
-      <article class="bw-role-card bw-store-card">
-        <div class="bw-role-icon">SK</div>
-        <div class="bw-role-head">
-          <div><p>STORE KEEPER</p><h2>Tools &amp; Spare Parts</h2></div>
-          <span class="bw-role-status">STORE</span>
-        </div>
-        <p class="bw-role-description">Controls BELM workshop spare stock and tools, receives material and keeps issue, return and audit records linked to workshop work.</p>
-        <div class="bw-responsibilities" aria-label="Store Keeper functions">
-          <span>BELM Spare Stock</span>
-          <span>Receive Spare / Material</span>
-          <span>Tools</span>
-          <span>Tool Issue Document</span>
-          <span>Tool Return Document</span>
-          <span>Store Audit Trail</span>
-        </div>
-        <div class="bw-role-actions">
-          <a class="bw-primary-action" href="#store-spares" data-workshop-window="store">Open Store &amp; Spares</a>
-          <a class="bw-secondary-action" href="#tool-issue-documents" data-workshop-window="tools">Tool Issue Documents</a>
-        </div>
-      </article>
-
-      <article class="bw-role-card bw-procurement-card">
-        <div class="bw-role-icon">PR</div>
-        <div class="bw-role-head">
-          <div><p>PROCUREMENT</p><h2>Sourcing &amp; Orders</h2></div>
-          <span class="bw-role-status">BUYING</span>
-        </div>
-        <p class="bw-role-description">Receives shortages from BELM Store, sources suppliers, coordinates Accounts / PI when required, tracks orders and hands arriving parts back to BELM Store.</p>
-        <div class="bw-responsibilities" aria-label="Procurement functions">
-          <span>Procurement Queue</span>
-          <span>Supplier Sourcing</span>
-          <span>Accounts / PI</span>
-          <span>Purchase Order Tracking</span>
-          <span>Expected Delivery</span>
-          <span>Handover to Store</span>
-        </div>
-        <div class="bw-role-actions">
-          <a class="bw-primary-action" href="#procurement" data-workshop-window="procurement">Open Procurement</a>
-          <a class="bw-secondary-action" href="#suppliers" data-workshop-window="suppliers">Supplier Directory</a>
-        </div>
-      </article>
-
-      <article class="bw-role-card bw-technician-card">
-        <div class="bw-role-icon">TC</div>
-        <div class="bw-role-head">
-          <div><p>TECHNICIANS</p><h2>Repair Team</h2></div>
-          <span class="bw-role-status">TEAM</span>
-        </div>
-        <p class="bw-role-description">Receives assigned Job Cards from the Workshop Manager and performs diagnosis, repair, spare requests, testing and Technician reporting.</p>
-        <div class="bw-specialization-grid" aria-label="Technician specializations">
-          <div><b>Mechanic</b><small>Engine, transmission, brakes, hydraulic &amp; mechanisms</small></div>
-          <div><b>Electrical</b><small>Wiring, power, sensors, controllers &amp; electrical faults</small></div>
-          <div><b>Mechatronics</b><small>CAN, control systems, electronics, electro-hydraulics &amp; diagnosis</small></div>
-        </div>
-        <div class="bw-responsibilities bw-technician-functions" aria-label="Technician functions">
-          <span>Receive Assigned Job Cards</span>
-          <span>Diagnosis</span>
-          <span>Repair</span>
-          <span>Request Spare</span>
-          <span>Testing</span>
-          <span>Submit Technician Report</span>
-        </div>
-        <div class="bw-role-actions">
-          <a class="bw-primary-action" href="#manage-technicians" data-workshop-window="technicians">Manage Technicians</a>
-          <a class="bw-secondary-action" href="#assigned-work" data-workshop-window="assigned">View Assigned Work</a>
-        </div>
-      </article>
     </section>
 
     <section class="bw-workflow-panel">
@@ -166,8 +101,7 @@
   </dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=479-final-remove-technical-dep"></script>
   <script src="/edit-confirm.js"></script>
-  <script src="/belm-workshop/manager.js?v=480-simple-home-back-fit"></script>
+  <script src="/belm-workshop/manager.js?v=484-wm-home-hub"></script>
 </body>
 </html>

@@ -17,7 +17,7 @@
 // Regression baseline: const CACHE='belm-app-v347-expense-persistence-sync';
 // Regression baseline: const CACHE='belm-app-v349-login-password-stability';
 // Regression baseline: const CACHE='belm-app-v350-data-preservation-guard';
-const CACHE='belm-app-v478-belm-procurement';
+const CACHE='belm-app-v479-final-remove-technical-dep';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline

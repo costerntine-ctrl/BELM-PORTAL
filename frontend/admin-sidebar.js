@@ -31,6 +31,29 @@
     || sharedBreakdownAdmin;
   if (!isAdminArea || pathname === "/login") return;
 
+  // V479: final duplicate TECHNICAL DEP cleanup.
+  // The current BELM sidebar no longer owns a TECHNICAL DEP main-menu item,
+  // but the legacy React shell can render its old /customers-manager/ shortcut
+  // after this script has already started. Remove only that legacy navigation
+  // row; the /customers-manager/ route and Customer Overview nested entry stay
+  // fully functional.
+  const removeLegacyTechnicalDepNavigation = () => {
+    if (pathname.startsWith("/customers-manager/")) return;
+    document.querySelectorAll('#root a[href^="/customers-manager/"], #root [role="link"][href^="/customers-manager/"]').forEach((link) => {
+      const label = String(link.textContent || link.getAttribute("aria-label") || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toUpperCase();
+      if (!label.includes("TECHNICAL DEP") && !label.includes("CUSTOMERS & MACHINES")) return;
+      const row = link.closest('li, [role="listitem"], .nav-item, .menu-item, .sidebar-item') || link;
+      row.remove();
+    });
+  };
+  removeLegacyTechnicalDepNavigation();
+  const legacyTechDepObserver = new MutationObserver(removeLegacyTechnicalDepNavigation);
+  legacyTechDepObserver.observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("pagehide", () => legacyTechDepObserver.disconnect(), { once: true });
+
   const token = localStorage.getItem("belm_admin_token");
   let user = null;
   try {

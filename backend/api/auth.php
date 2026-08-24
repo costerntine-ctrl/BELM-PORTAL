@@ -533,11 +533,14 @@ if ($action === 'unified-login' && $method === 'POST') {
             } catch (Throwable $e) {}
 
             $isTechnician = $user['role_name'] === 'Technician';
+            $staffRoleLower = strtolower(trim((string)$user['role_name']));
+            $staffDestination = $isTechnician ? '/tech'
+                : ($staffRoleLower === 'procurement' ? '/belm-workshop/#procurement' : '/overview-manager/');
             clear_rate_limit('unified-login', $rawLoginId);
             json_out([
                 'token' => $token,
                 'accountType' => $isTechnician ? 'technician' : 'admin',
-                'destination' => $isTechnician ? '/tech' : '/overview-manager/',
+                'destination' => $staffDestination,
                 'user' => [
                     'id' => $user['id'],
                     'name' => $user['name'],

@@ -85,14 +85,17 @@
       const machineName = [request.machineBrand, request.machineModel].filter(Boolean).join(" ") || "Machine";
       const reference = request.serialNumber || request.regNumber || "No serial recorded";
       const purchaseRequired = request.status === "PURCHASE_REQUIRED";
+      const procurementOrdered = purchaseRequired && String(request.procurementOrderStatus || "").toUpperCase() === "ORDERED";
       const selected = Boolean(request.sparePartId);
       const stockQty = Number(request.stockQty || 0);
       const customerRequest = Boolean(request.customerId) && !request.requestedById;
       const title = selected
         ? `${request.partNumber || ""} — ${request.partName || request.description || "Spare part"}`
         : (request.referenceNumber ? `${request.referenceNumber} — ${request.description || ""}` : (request.description || "Spare request"));
-      const badgeText = purchaseRequired
-        ? "PURCHASE REQUIRED"
+      const badgeText = procurementOrdered
+        ? "ORDERED · WAITING BELM STORE"
+        : purchaseRequired
+          ? "PURCHASE REQUIRED"
         : selected
           ? (stockQty > 0 ? "BELM SPARE SELECTED · IN STOCK" : "BELM SPARE SELECTED · STOCK 0")
           : (customerRequest ? "CUSTOMER REQUEST · SELECT SPARE" : "TECHNICIAN REQUEST");
@@ -111,12 +114,13 @@
           <div><dt>Requested by</dt><dd>${escapeHtml(request.requestedByName || "Customer")}</dd></div>
           <div><dt>Quantity</dt><dd>${escapeHtml(request.quantity ?? 1)}</dd></div>
           ${selected && request.description ? `<div><dt>Customer asked</dt><dd>${escapeHtml(request.description)}</dd></div>` : ""}
+          ${procurementOrdered ? `<div><dt>Procurement</dt><dd>Ordered by ${escapeHtml(request.procurementOrderedByName || "BELM Procurement")} · Supplier ${escapeHtml(request.procurementSupplierName || "—")}${request.procurementSupplierReference ? ` · Ref ${escapeHtml(request.procurementSupplierReference)}` : ""}${request.procurementExpectedAt ? ` · Expected ${escapeHtml(request.procurementExpectedAt)}` : ""}</dd></div>` : ""}
         </dl>
         <div class="row-actions request-actions">
           ${request.customerId && selected ? `<label class="proforma-request-select"><input type="checkbox" data-select-proforma-request="${escapeHtml(request.id)}" ${selectedProformaRequestIds.has(request.id) ? "checked" : ""}> Add to Proforma</label>` : ""}
           ${!selected ? `<button data-choose-request="${escapeHtml(request.id)}">Choose BELM Spare</button>` : ""}
           ${selected && stockQty <= 0 ? `<button data-add-request="${escapeHtml(request.id)}">Add / Receive Stock</button>` : ""}
-          <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${purchaseRequired ? "Awaiting Purchase" : "Purchase Required"}</button>
+          <button class="purchase-button" data-purchase-request="${escapeHtml(request.id)}"${purchaseRequired ? " disabled" : ""}>${procurementOrdered ? "Ordered · Receive Stock" : purchaseRequired ? "Awaiting Procurement" : "Purchase Required"}</button>
           ${request.customerId && selected ? `<button class="proforma-button" data-generate-proforma="${escapeHtml(request.id)}">Generate Proforma</button>` : ""}
           ${selected && stockQty >= Number(request.quantity || 1) ? `<button data-resolve-request="${escapeHtml(request.id)}">Mark Fulfilled</button>` : ""}
         </div>

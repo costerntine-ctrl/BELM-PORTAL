@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/admin-tools.css">
   <link rel="stylesheet" href="/admin-sidebar.css?v=357-az-refresh-motion">
-  <link rel="stylesheet" href="/belm-workshop/manager.css?v=466-wm-controls">
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=478-belm-procurement">
   <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
   <script src="/theme-manager.js?v=474-session-persistence"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -24,7 +24,7 @@
     </a>
     <div class="top-actions">
       <button class="ghost" id="workshopSyncButton" type="button">Sync Workshop</button>
-      <a class="ghost" href="/customers-manager/">Customer Overview</a>
+      <a class="ghost" id="customerOverviewTopLink" href="/customers-manager/">Customer Overview</a>
     </div>
   </header>
 
@@ -33,7 +33,7 @@
       <div>
         <p class="eyebrow">TECHNICAL DEP → WORKSHOP</p>
         <h1>PORTAL-BELM WM</h1>
-        <p>Standalone workshop department for BELM operations. Workshop Manager, Store Keeper and Technicians work from one Job Card flow without returning to the BELM Admin main dashboard.</p>
+        <p>Standalone workshop department for BELM operations. Workshop Manager, Store Keeper, Procurement and Technicians work from one Job Card flow without returning to the BELM Admin main dashboard.</p>
       </div>
       <span class="bw-live-pill"><i></i> LIVE SYNC</span>
     </section>
@@ -87,6 +87,27 @@
         </div>
       </article>
 
+      <article class="bw-role-card bw-procurement-card">
+        <div class="bw-role-icon">PR</div>
+        <div class="bw-role-head">
+          <div><p>PROCUREMENT</p><h2>Sourcing &amp; Orders</h2></div>
+          <span class="bw-role-status">BUYING</span>
+        </div>
+        <p class="bw-role-description">Receives shortages from BELM Store, sources suppliers, coordinates Accounts / PI when required, tracks orders and hands arriving parts back to BELM Store.</p>
+        <div class="bw-responsibilities" aria-label="Procurement functions">
+          <span>Procurement Queue</span>
+          <span>Supplier Sourcing</span>
+          <span>Accounts / PI</span>
+          <span>Purchase Order Tracking</span>
+          <span>Expected Delivery</span>
+          <span>Handover to Store</span>
+        </div>
+        <div class="bw-role-actions">
+          <a class="bw-primary-action" href="#procurement" data-workshop-window="procurement">Open Procurement</a>
+          <a class="bw-secondary-action" href="#suppliers" data-workshop-window="suppliers">Supplier Directory</a>
+        </div>
+      </article>
+
       <article class="bw-role-card bw-technician-card">
         <div class="bw-role-icon">TC</div>
         <div class="bw-role-head">
@@ -118,7 +139,7 @@
       <p class="bw-eyebrow">WORKSHOP FLOW</p>
       <h2>One Job Card — clear responsibility</h2>
       <div class="bw-workflow-line">
-        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span><b>→</b><span>Completed</span>
+        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Procurement if shortage</span><b>→</b><span>BELM Store</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span><b>→</b><span>Completed</span>
       </div>
       <p class="bw-sync-note"><b>Synchronization rule:</b> this Workshop does not keep a duplicate Job Card database. Job Card number, customer, machine, assignment, status, spare requirement, Technician progress, testing and completion use the same backend records used by TECHNICAL DEP, customer views, procurement and Technician accounts.</p>
     </section>
@@ -145,8 +166,8 @@
   </dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=472-sync-audit"></script>
+  <script src="/admin-sidebar.js?v=477-remove-duplicate-tech-dep"></script>
   <script src="/edit-confirm.js"></script>
-  <script src="/belm-workshop/manager.js?v=476-petty-cash-fix"></script>
+  <script src="/belm-workshop/manager.js?v=478-belm-procurement"></script>
 </body>
 </html>

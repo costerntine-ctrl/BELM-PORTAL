@@ -320,15 +320,19 @@ if ($method === 'GET') {
         "SELECT spr.id, spr.spare_part_id, spr.reference_number, spr.procurement_request_id, spr.machine_id, spr.quantity,
                 spr.status, spr.requested_by_id, spr.requested_by_name, spr.description,
                 spr.machine_type, spr.created_at,
+                spr.procurement_order_status, spr.procurement_supplier_id, spr.procurement_supplier_reference,
+                spr.procurement_note, spr.procurement_ordered_at, spr.procurement_expected_at, spr.procurement_ordered_by_name,
                 sp.part_number, sp.name AS part_name, sp.stock_qty,
                 sp.reorder_threshold, sp.selling_price,
                 m.model AS machine_model, m.brand AS machine_brand,
                 m.serial_number, m.reg_number,
-                c.id AS customer_id, c.name AS customer_name
+                c.id AS customer_id, c.name AS customer_name,
+                ps.name AS procurement_supplier_name
          FROM spare_part_requests spr
          LEFT JOIN spare_parts sp ON sp.id = spr.spare_part_id
          LEFT JOIN machines m ON m.id = spr.machine_id
          LEFT JOIN customers c ON c.id = m.customer_id
+         LEFT JOIN suppliers ps ON ps.id = spr.procurement_supplier_id AND ps.deleted_at IS NULL
          WHERE spr.machine_id IS NOT NULL
            AND spr.status IN ('PENDING', 'PURCHASE_REQUIRED')
          ORDER BY

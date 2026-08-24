@@ -1,0 +1,7 @@
+V477 - Remove duplicate TECHNICAL DEP main-sidebar entry
+
+- Removed only the duplicate TECHNICAL DEP item from the full BELM Admin main sidebar.
+- /customers-manager/ and all TECHNICAL DEP functionality remain intact.
+- Customer Overview remains reachable from the nested workshop sidebar.
+- PORTAL-BELM WM and PORTAL-CWM direct entries remain unchanged.
+- Bumped admin-sidebar.js cache version so deployed browsers receive the updated menu.

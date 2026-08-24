@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BELM Procurement</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
+  <link rel="stylesheet" href="/belm-procurement/manager.css?v=478-belm-procurement">
+  <script src="/theme-manager.js?v=474-session-persistence"></script>
+</head>
+<body>
+  <main class="proc-shell">
+    <header class="proc-head">
+      <div>
+        <p>PORTAL-BELM WM → PROCUREMENT</p>
+        <h1>BELM Procurement</h1>
+        <span>Supplier sourcing and order tracking for BELM-owned Job Cards and BELM Inventory shortages.</span>
+      </div>
+      <div class="head-actions">
+        <button id="refreshButton" type="button">Refresh</button>
+        <button id="supplierDirectoryButton" type="button">Supplier Directory</button>
+      </div>
+    </header>
+
+    <div id="alertBox" class="alert hidden" role="status" aria-live="polite"></div>
+
+    <section class="metric-grid">
+      <article><span>Waiting Sourcing</span><b id="waitingSourcing">0</b></article>
+      <article><span>Waiting Accounts / PI</span><b id="waitingAccounts">0</b></article>
+      <article><span>Ordered / Waiting Store</span><b id="orderedCount">0</b></article>
+      <article><span>Suppliers</span><b id="supplierCount">0</b></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <div><p>JOB CARD PROCUREMENT</p><h2>Workshop Spare Queue</h2></div>
+        <span id="jobQueueCount" class="count-pill">0</span>
+      </div>
+      <p class="panel-note">Only BELM-owned work appears here. PORTAL-CWM internal Job Cards remain private unless the customer sent an official BELM Support Request.</p>
+      <div id="jobQueue" class="queue"><div class="empty">Loading Job Card procurement…</div></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">
+        <div><p>BELM INVENTORY PROCUREMENT</p><h2>Purchase Required</h2></div>
+        <span id="inventoryQueueCount" class="count-pill">0</span>
+      </div>
+      <p class="panel-note">These are purchase requests already handed from BELM Spare Parts to Procurement. After ordering, BELM Store receives the stock and closes the request.</p>
+      <div id="inventoryQueue" class="queue"><div class="empty">Loading Inventory procurement…</div></div>
+    </section>
+
+    <section class="panel" id="suppliers">
+      <div class="panel-title">
+        <div><p>SUPPLIER SOURCING</p><h2>Supplier Directory</h2></div>
+        <a id="manageSuppliersLink" class="manage-link" href="/suppliers-manager/" target="_top">Manage Suppliers</a>
+      </div>
+      <p class="panel-note">Read-only sourcing list for Procurement. Supplier administration remains controlled by the Suppliers permission.</p>
+      <div id="supplierRows" class="supplier-grid"><div class="empty">Loading suppliers…</div></div>
+    </section>
+  </main>
+
+  <dialog id="orderDialog">
+    <form id="orderForm">
+      <header><div><p>BELM PROCUREMENT</p><h2 id="orderTitle">Mark Ordered</h2></div><button type="button" id="closeOrder">×</button></header>
+      <div id="orderError" class="alert error hidden"></div>
+      <input id="orderId" type="hidden"><input id="orderSource" type="hidden">
+      <label>Supplier<select id="supplierSelect" required><option value="">Select supplier…</option></select></label>
+      <label>Supplier / PO Reference<input id="supplierReference" maxlength="120" placeholder="Quotation, PO or supplier reference"></label>
+      <label>Expected delivery<input id="expectedAt" type="date"></label>
+      <label>Procurement note<textarea id="orderNote" maxlength="500" rows="3" placeholder="Price, availability, delivery or sourcing note"></textarea></label>
+      <div class="dialog-actions"><button type="button" id="cancelOrder">Cancel</button><button type="submit" class="primary">Mark Ordered</button></div>
+    </form>
+  </dialog>
+
+  <script src="/belm-procurement/manager.js?v=478-belm-procurement"></script>
+</body>
+</html>

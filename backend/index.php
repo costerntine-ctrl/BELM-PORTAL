@@ -106,6 +106,8 @@ if (($segments[0] ?? '') === 'health' || !isset($segments[0])) {
             ['password_reset_codes', 'account_id'],
             ['payments', 'receipt_id'],
             ['bank_accounts', 'is_test'],
+            ['spare_part_requests', 'procurement_order_status'],
+            ['breakdown_spare_requests', 'procurement_supplier_id'],
         ];
         $columnChecks = [];
         $columnStatement = db()->prepare(
@@ -390,6 +392,9 @@ switch ($resource) {
 
     case 'breakdown-workflow':
         dispatch('breakdown_workflow.php', ['action' => $segments[1] ?? '', 'id' => $segments[2] ?? '']);
+
+    case 'belm-procurement':
+        dispatch('belm_procurement.php', ['id' => $segments[1] ?? '']);
 
     case 'engineering':
         dispatch('engineering.php');

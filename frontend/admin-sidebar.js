@@ -66,9 +66,8 @@
     // Do not expose a second standalone admin navigation entry.
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    { section: "Maintenance", key: "customers", label: "TECHNICAL DEP", short: "CM", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
     // V471: direct commercial workshop portals for fast testing and operations.
-    { section: "Maintenance", key: "customers", label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+    { section: "Maintenance", key: "job-cards", anyKeys: ["roles","job-cards","service-requests","spare-parts","suppliers"], namedRoles: ["Procurement","Workshop Manager","Engineer"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
     { section: "Maintenance", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
@@ -89,15 +88,17 @@
   const NESTED_SIDEBAR_PATHS = ["/customers-manager/", "/belm-workshop/", "/portal-cwm/"];
   const isNestedSidebar = NESTED_SIDEBAR_PATHS.some((p) => pathname === p || pathname.startsWith(p));
   const nestedPages = [
-    { section: "Nested", key: null, label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Nested", key: null, label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
-    { section: "Nested", key: null, label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
+    { section: "Nested", key: "customers", label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Nested", key: "job-cards", anyKeys: ["roles","job-cards","service-requests","spare-parts","suppliers"], namedRoles: ["Procurement","Workshop Manager","Engineer"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+    { section: "Nested", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
   ];
-  const visiblePages = isNestedSidebar
-    ? nestedPages
-    : pages.filter((page) =>
-        page.key === null || isSuperAdmin || (Array.isArray(page.anyKeys) ? page.anyKeys.some((key) => allowedPages.includes(key)) : allowedPages.includes(page.key))
-      );
+  const canSeePage = (page) => {
+    if (page.key === null || isSuperAdmin) return true;
+    if (Array.isArray(page.namedRoles) && page.namedRoles.some((role) => String(role).toLowerCase() === String(user.role || '').toLowerCase())) return true;
+    if (Array.isArray(page.anyKeys)) return page.anyKeys.some((key) => allowedPages.includes(key));
+    return allowedPages.includes(page.key);
+  };
+  const visiblePages = (isNestedSidebar ? nestedPages : pages).filter(canSeePage);
 
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";

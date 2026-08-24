@@ -4,7 +4,9 @@
 
   let adminUser=null;try{adminUser=JSON.parse(localStorage.getItem('belm_admin_user')||'null')}catch{}
   const isSuperAdmin=adminUser?.role==='Super Admin'||adminUser?.allowedPages===null;
-  const isWorkshopController=['Super Admin','Engineer','Workshop Manager'].includes(adminUser?.role||'');
+  const adminRole=String(adminUser?.role||'').toLowerCase();
+  const isWorkshopController=['super admin','engineer','workshop manager'].includes(adminRole);
+  const isProcurementController=adminRole==='procurement';
   const allowedPages=Array.isArray(adminUser?.allowedPages)?adminUser.allowedPages:[];
   const params=new URLSearchParams(location.search);
   const machine=params.get('machine')||'';
@@ -14,6 +16,8 @@
   const title=document.getElementById('workshopWindowTitle');
   const subtitle=document.getElementById('workshopWindowSubtitle');
   const alertBox=document.getElementById('bwAlert');
+  const customerOverviewTopLink=document.getElementById('customerOverviewTopLink');
+  if(customerOverviewTopLink && !isSuperAdmin && !allowedPages.includes('customers')) customerOverviewTopLink.hidden=true;
   let activeKey='';
 
   const modules={
@@ -30,6 +34,22 @@
       hash:'#workshop-analysis',
       permissions:['roles','job-cards','service-requests'],
       url:()=>'/breakdown-workflow/?actor=admin&embed=1&view=analysis'
+    },
+    procurement:{
+      title:'BELM Procurement',
+      subtitle:'Supplier sourcing, Accounts / PI handoff, purchase order tracking and Store handover.',
+      hash:'#procurement',
+      permissions:['spare-parts','suppliers','job-cards','service-requests'],
+      namedAccess:'procurement-controller',
+      url:()=>'/belm-procurement/?embed=1'
+    },
+    suppliers:{
+      title:'Supplier Directory',
+      subtitle:'BELM supplier directory for sourcing and procurement decisions.',
+      hash:'#suppliers',
+      permissions:['suppliers'],
+      namedAccess:'procurement-controller',
+      url:()=>'/belm-procurement/?embed=1#suppliers'
     },
     store:{
       title:'Store & Spare Parts',
@@ -98,12 +118,12 @@
   }
   function keyFromHash(hash){
     const h=String(hash||'').replace(/^#/,'').toLowerCase();
-    const map={'job-cards':'job-cards','workshop-analysis':'analysis','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings'};
+    const map={'job-cards':'job-cards','workshop-analysis':'analysis','procurement':'procurement','suppliers':'suppliers','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings'};
     return map[h]||'';
   }
   function openModule(key,{pushHash=true}={}){
     const module=modules[key];if(!module)return;
-    const namedPermitted=module.namedAccess==='workshop-controller'&&isWorkshopController;
+    const namedPermitted=(module.namedAccess==='workshop-controller'&&isWorkshopController)||(module.namedAccess==='procurement-controller'&&isProcurementController);
     const permitted=isSuperAdmin||namedPermitted||!module.permissions?.length||module.permissions.some(p=>allowedPages.includes(p));
     if(!permitted){show(`Your BELM role does not have access to ${module.title}.`,true);return}
     activeKey=key;
@@ -148,6 +168,7 @@
   window.addEventListener('message',event=>{
     if(event.origin!==location.origin)return;
     if(event.data?.type==='belm-engineering-open-service-requests')closeModule();
+    if(event.data?.type==='belm-workshop-open-module'&&event.data?.module)openModule(String(event.data.module));
   });
 
   window.addEventListener('hashchange',()=>{

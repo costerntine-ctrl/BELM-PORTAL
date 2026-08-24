@@ -374,6 +374,16 @@ CREATE INDEX IF NOT EXISTS idx_spare_part_requests_procurement ON spare_part_req
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_status ON spare_part_requests(status);
 CREATE INDEX IF NOT EXISTS idx_spare_part_requests_machine ON spare_part_requests(machine_id);
 
+-- V478: BELM Procurement order tracking. Procurement owns supplier/order
+-- information; Store/Inventory remains responsible for receiving stock.
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_order_status VARCHAR(30) NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_supplier_id VARCHAR(36) NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_supplier_reference VARCHAR(120) NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_note VARCHAR(500) NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_ordered_at TIMESTAMPTZ NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_expected_at DATE NULL;
+ALTER TABLE spare_part_requests ADD COLUMN IF NOT EXISTS procurement_ordered_by_name VARCHAR(255) NULL;
+
 CREATE TABLE IF NOT EXISTS bank_accounts (
   id VARCHAR(36) PRIMARY KEY,
   bank_name VARCHAR(120) NOT NULL,
@@ -628,6 +638,8 @@ CREATE TABLE IF NOT EXISTS suppliers (
 
 ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS website VARCHAR(500);
 ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS verified SMALLINT NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_spare_requests_procurement_supplier ON spare_part_requests(procurement_supplier_id);
+CREATE INDEX IF NOT EXISTS idx_breakdown_spares_procurement_supplier ON breakdown_spare_requests(procurement_supplier_id);
 
 CREATE TABLE IF NOT EXISTS trash_entries (
   id VARCHAR(36) PRIMARY KEY,
@@ -1296,6 +1308,14 @@ CREATE TABLE IF NOT EXISTS breakdown_spare_requests (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_breakdown_spares_case ON breakdown_spare_requests(case_id, status, requested_at DESC);
+
+-- V478: supplier/order fields for BELM-owned Job Card spare procurement.
+ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_supplier_id VARCHAR(36) NULL;
+ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_supplier_reference VARCHAR(120) NULL;
+ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_note VARCHAR(500) NULL;
+ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_ordered_at TIMESTAMPTZ NULL;
+ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_expected_at DATE NULL;
+ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_ordered_by_name VARCHAR(255) NULL;
 
 -- V297: all customer spare requirements enter one Procurement queue first.
 -- Procurement decides whether the item is issued from Customer Store or

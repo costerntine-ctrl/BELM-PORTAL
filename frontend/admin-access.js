@@ -35,6 +35,7 @@
     [/^\/checklist-manager(?:\/|$)/, "checklist-templates"],
     [/^\/controller-pinouts-manager(?:\/|$)/, "checklist-templates"],
     [/^\/service-request-manager(?:\/|$)/, "job-cards"],
+    [/^\/belm-procurement(?:\/|$)/, "spare-parts"],
     [/^\/spare-parts-manager(?:\/|$)/, "spare-parts"],
     [/^\/billing-manager(?:\/|$)/, "billing"],
     [/^\/bank-controller(?:\/|$)/, "bank-manager"],
@@ -59,9 +60,12 @@
   // reachable by anyone with "roles" OR "job-cards" OR "service-requests" -
   // same three keys admin-sidebar.js uses for this entry's anyKeys.
   function belmWorkshopAllowed(path) {
+    const role = String(user.role || "").toLowerCase();
     return /^\/belm-workshop(?:\/|$)/.test(path)
-      && (allowedPages.includes("roles") || allowedPages.includes("job-cards")
-          || allowedPages.includes("service-requests"));
+      && (role === "procurement" || role === "workshop manager" || role === "engineer"
+          || allowedPages.includes("roles") || allowedPages.includes("job-cards")
+          || allowedPages.includes("service-requests") || allowedPages.includes("spare-parts")
+          || allowedPages.includes("suppliers"));
   }
 
   document.querySelectorAll("a[href]").forEach(link => {

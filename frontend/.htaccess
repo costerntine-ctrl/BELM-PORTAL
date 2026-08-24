@@ -10,7 +10,7 @@
   RewriteRule ^api(?:/|$) - [L]
   RewriteRule ^portal-home\.html$ - [L]
   RewriteRule ^index\.html$ - [L]
-  RewriteRule ^admin-menu/?$ /overview-manager/ [R=302,L]
+  RewriteRule ^admin-menu/?$ /belm-workshop/ [R=302,L]
   # V303 one canonical login for all email/password portal accounts.
   RewriteRule ^login/?$ /customer-app.html [END]
   # Old friendly and role-specific login bookmarks converge on /login.

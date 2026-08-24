@@ -534,8 +534,10 @@ if ($action === 'unified-login' && $method === 'POST') {
 
             $isTechnician = $user['role_name'] === 'Technician';
             $staffRoleLower = strtolower(trim((string)$user['role_name']));
-            $staffDestination = $isTechnician ? '/tech'
-                : ($staffRoleLower === 'procurement' ? '/belm-workshop/#procurement' : '/overview-manager/');
+            // V495: PORTAL-BELM WM is the BELM Main Home for every non-Technician
+            // staff login. Role permissions still control which Main Home modules can open.
+            // Procurement no longer bypasses the home card; it opens Procurement from there.
+            $staffDestination = $isTechnician ? '/tech' : '/belm-workshop/';
             clear_rate_limit('unified-login', $rawLoginId);
             json_out([
                 'token' => $token,

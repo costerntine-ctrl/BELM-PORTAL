@@ -858,7 +858,7 @@
     }
 
     if (pathname === "/admin/login" && isValid("belm_admin_token")) {
-      window.location.replace("/overview-manager/");
+      window.location.replace("/belm-workshop/");
       return true;
     }
     if (pathname === "/portal/login" && isValid("belm_customer_token")) {

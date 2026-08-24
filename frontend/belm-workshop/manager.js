@@ -169,7 +169,7 @@
   }
   function resetWorkspace(){
     // V494: Back must be deterministic. Close the workspace immediately and
-    // leave the user on the PORTAL-BELM WM home, instead of relying on browser
+    // leave the user on the BELM Main Home (PORTAL-BELM WM), instead of relying on browser
     // history state that can be stale after refresh/back-forward cache restores.
     if(dialog.open)dialog.close();
     document.body.classList.remove('bw-workspace-open');

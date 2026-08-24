@@ -130,7 +130,7 @@
 
   const brand = document.createElement("a");
   brand.className = "belm-sidebar-brand";
-  brand.href = "/overview-manager/";
+  brand.href = "/belm-workshop/";
   brand.setAttribute("aria-label", "BELM General Tech home");
   brand.innerHTML = `
     <span class="belm-sidebar-brand-mark" aria-hidden="true"><span>B</span></span>
@@ -167,11 +167,11 @@
   if (isNestedSidebar) {
     const backLink = document.createElement("a");
     backLink.className = "belm-sidebar-link belm-sidebar-back-link";
-    backLink.href = "/overview-manager/";
-    backLink.innerHTML = `<span class="belm-sidebar-icon">←</span><span>Back to Main Dashboard</span>`;
+    backLink.href = "/belm-workshop/";
+    backLink.innerHTML = `<span class="belm-sidebar-icon">←</span><span>Back to Main Home</span>`;
     backLink.addEventListener("click", (event) => {
       event.preventDefault();
-      window.location.assign("/overview-manager/");
+      window.location.assign("/belm-workshop/");
     });
     nav.appendChild(backLink);
   }

@@ -4,14 +4,16 @@
   <script>window.addEventListener("pageshow",function(e){if(e.persisted)window.location.reload();});</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PORTAL-BELM WM</title>
+  <link rel="icon" type="image/png" href="/app-icon-192.png">
+  <link rel="apple-touch-icon" href="/app-icon-192.png">
+  <title>BELM Main Home — PORTAL-BELM WM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/admin-tools.css">
-  <link rel="stylesheet" href="/belm-workshop/manager.css?v=494-back-no-white">
-  <link rel="stylesheet" href="/theme-global.css?v=494-back-no-white">
-  <script src="/theme-manager.js?v=494-back-no-white"></script>
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=495-main-home">
+  <link rel="stylesheet" href="/theme-global.css?v=495-main-home">
+  <script src="/theme-manager.js?v=495-main-home"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -19,7 +21,7 @@
   <header class="topbar">
     <a class="brand" href="/belm-workshop/">
       <span class="brand-mark">B</span>
-      <span>BELM General Tech <small>PORTAL-BELM WM</small></span>
+      <span>BELM General Tech <small>PORTAL-BELM WM · MAIN HOME</small></span>
     </a>
     <div class="top-actions">
       <button class="ghost" id="workshopSyncButton" type="button">Sync Workshop</button>
@@ -29,9 +31,9 @@
   <main class="shell">
     <section class="hero">
       <div>
-        <p class="eyebrow">TECHNICAL DEP → WORKSHOP</p>
+        <p class="eyebrow">TECHNICAL DEP → MAIN HOME</p>
         <h1>PORTAL-BELM WM</h1>
-        <p>Standalone workshop department for BELM operations. Workshop Manager, Store Keeper, Procurement and Technicians work from one Job Card flow without returning to the BELM Admin main dashboard.</p>
+        <p>BELM Technical Department Main Home. Workshop Manager, Store Keeper, Procurement and Technicians work from one synchronized Job Card flow, with customer, report, delivery and workshop controls in one home.</p>
       </div>
       <span class="bw-live-pill"><i></i> LIVE SYNC</span>
     </section>
@@ -86,13 +88,13 @@
     <div class="bw-workspace-shell">
       <header class="bw-workspace-head">
         <div>
-          <p>TECHNICAL DEP → BELM WORKSHOP</p>
+          <p>TECHNICAL DEP → BELM MAIN HOME</p>
           <h2 id="workshopWindowTitle">Workshop Window</h2>
           <span id="workshopWindowSubtitle">Live synchronized workspace</span>
         </div>
         <div class="bw-workspace-actions">
           <button id="workshopWindowReload" type="button">Sync / Refresh</button>
-          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Back to PORTAL-BELM WM Main Dashboard">← Main Dashboard</button>
+          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Back to BELM Main Home">← Main Home</button>
         </div>
       </header>
       <div class="bw-workspace-body">
@@ -104,6 +106,6 @@
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
   <script src="/edit-confirm.js"></script>
-  <script src="/belm-workshop/manager.js?v=494-back-no-white"></script>
+  <script src="/belm-workshop/manager.js?v=495-main-home"></script>
 </body>
 </html>

@@ -65,7 +65,7 @@
       localStorage.setItem(key,data.token);
       localStorage.setItem(`belm_session_refreshed_${key}`,String(Date.now()));
       if(active==='technician'){location.replace('/tech');return true}
-      if(active==='admin'){location.replace('/overview-manager/');return true}
+      if(active==='admin'){location.replace('/belm-workshop/');return true}
       if(active==='customer'){
         let destination='/portal/dashboard';
         const payload=decodeToken(data.token)||{};

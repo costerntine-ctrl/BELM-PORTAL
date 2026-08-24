@@ -4,6 +4,7 @@
 
   let adminUser=null;try{adminUser=JSON.parse(localStorage.getItem('belm_admin_user')||'null')}catch{}
   const isSuperAdmin=adminUser?.role==='Super Admin'||adminUser?.allowedPages===null;
+  const isWorkshopController=['Super Admin','Engineer','Workshop Manager'].includes(adminUser?.role||'');
   const allowedPages=Array.isArray(adminUser?.allowedPages)?adminUser.allowedPages:[];
   const params=new URLSearchParams(location.search);
   const machine=params.get('machine')||'';
@@ -70,6 +71,7 @@
       subtitle:'Customer-linked Petty Cash balances and top-ups using the shared portal records.',
       hash:'#petty-cash',
       permissions:['customers'],
+      namedAccess:'workshop-controller',
       url:()=>'/belm-workshop/petty-cash/?embed=1'
     },
     'general-analysis':{
@@ -101,7 +103,8 @@
   }
   function openModule(key,{pushHash=true}={}){
     const module=modules[key];if(!module)return;
-    const permitted=isSuperAdmin||!module.permissions?.length||module.permissions.some(p=>allowedPages.includes(p));
+    const namedPermitted=module.namedAccess==='workshop-controller'&&isWorkshopController;
+    const permitted=isSuperAdmin||namedPermitted||!module.permissions?.length||module.permissions.some(p=>allowedPages.includes(p));
     if(!permitted){show(`Your BELM role does not have access to ${module.title}.`,true);return}
     activeKey=key;
     title.textContent=module.title;

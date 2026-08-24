@@ -128,5 +128,9 @@
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
   if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js').catch(()=>{}))}
 
-  (async()=>{if(!(await resumeActiveSession()))await loadContext()})();
+  // V475: the login screen is always manual. Browser/password-manager saved
+  // credentials may autofill the fields, but an existing local portal token must
+  // not skip this screen. Session persistence still applies everywhere after a
+  // successful login; the user explicitly presses Open My Workspace to enter.
+  (async()=>{await loadContext()})();
 })();

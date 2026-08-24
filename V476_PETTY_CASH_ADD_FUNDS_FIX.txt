@@ -1,0 +1,9 @@
+V476 - PORTAL-BELM WM Petty Cash Add Funds fix
+- Add Funds cannot be entered/submitted until a customer is selected.
+- Selected customer is shown directly beside the top-up workflow.
+- Last selected customer is retained during the Workshop browser session; a sole customer auto-selects.
+- Amount validation and all confirmation errors are shown beside Add Funds as well as in the page alert.
+- Add Funds no longer fails silently if the edit-confirm control did not load.
+- BELM Super Admin / Engineer (Workshop Manager legacy) / Workshop Manager can access the Workshop Petty Cash bridge even if their custom role lacks the Customers dashboard page.
+- Missing admin token redirects to the unified /login route.
+- Customer privacy and server-side Edit PIN confirmation remain enforced.

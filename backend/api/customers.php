@@ -7,6 +7,13 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 
+function require_belm_workshop_customer_access(array $user): void {
+    // PORTAL-BELM WM is owned by BELM Super Admin / Workshop Manager.
+    // A custom BELM role with Customers permission may also use the same customer-linked tools.
+    if (belm_user_has_named_role($user, ['Super Admin', 'Engineer', 'Workshop Manager'])) return;
+    require_page_access($user, 'customers');
+}
+
 function require_customer_read_access(array $user, ?string $customerId = null): void {
     if (($user['roleName'] ?? '') !== 'Technician') {
         require_page_access($user, 'customers');
@@ -263,7 +270,7 @@ if ($method === 'POST' && $action === 'machine-type-sync') {
 // the actual ON/OFF switches remain on each customer's own card in this
 // same Customers & Machines (TECHNICAL DEP) page.
 if ($method === 'GET' && $action === 'cwm-overview') {
-    require_page_access($user, 'customers');
+    require_belm_workshop_customer_access($user);
     $rows = db()->query(
         "SELECT id, name, email, phone, address, is_active, is_machinery_admin, workshop_module_active
          FROM customers WHERE deleted_at IS NULL ORDER BY name ASC"
@@ -965,7 +972,7 @@ if ($method === 'PUT' && $action === 'workshop-module') {
 // endpoint reads/writes the SAME petty_cash_topups + usage_logs records, so the
 // two portals stay synchronized without sharing/impersonating login tokens.
 if ($action === 'workshop-petty-cash' || $action === 'workshop-petty-cash-topup' || $action === 'workshop-petty-cash-receipt') {
-    require_page_access($user, 'customers');
+    require_belm_workshop_customer_access($user);
     $customerId = trim((string)$id);
     if ($customerId === '') json_error('Customer was not specified.');
 

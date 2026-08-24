@@ -1777,3 +1777,69 @@ html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
     grid-template-columns: 1fr !important;
   }
 }
+
+/* ========================================================================
+   V475 - Customer Fleet single-scroll behavior.
+   The full-screen Machine Fleet view previously had three possible scroll
+   owners: the <dialog>, its .dialog-card, and the Operator Message panel.
+   On laptops this could trap the mouse wheel or make the right scrollbar
+   feel disconnected from the machine cards. Keep exactly one vertical scroll
+   surface and never allow horizontal drift.
+   ======================================================================== */
+#machineListDialog {
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+}
+#machineListDialog .dialog-card {
+  width: min(1560px, 100vw) !important;
+  max-width: 1560px !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  margin: 0 auto !important;
+  padding: clamp(16px, 2vw, 28px) !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  scrollbar-gutter: stable !important;
+  -webkit-overflow-scrolling: touch;
+}
+#machineListDialog .dialog-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  margin: calc(-1 * clamp(16px, 2vw, 28px)) calc(-1 * clamp(16px, 2vw, 28px)) 18px !important;
+  padding: clamp(16px, 2vw, 28px) !important;
+  padding-bottom: 12px !important;
+  background: color-mix(in srgb, var(--paper) 94%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
+#machineListDialog #machineListBody,
+#machineListDialog .machine-list,
+#machineListDialog .machine-card {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+/* The message grows with its text; it must not capture wheel/touch scrolling. */
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+  max-height: none !important;
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+  overflow: visible !important;
+}
+@media (max-width: 700px) {
+  #machineListDialog .dialog-card {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 14px 10px 20px !important;
+  }
+  #machineListDialog .dialog-head {
+    margin: -14px -10px 14px !important;
+    padding: 14px 10px 10px !important;
+  }
+}

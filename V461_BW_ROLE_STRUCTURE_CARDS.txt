@@ -1,0 +1,24 @@
+V461 - BELM WORKSHOP: 3-card Workshop Role Structure (independent, no sync)
+
+Replaced the plain 4-button square card with a full 3-card role layout,
+matching the visual design of the existing /customer-workshop/ page
+(Workshop Manager / Store Keeper / Technicians with tags, description,
+and 2 action buttons each) plus a "WORKSHOP FLOW" strip below - but built
+entirely independently for /belm-workshop/:
+
+- Own CSS class prefix (bw-*), own colors - no shared stylesheet or
+  script with /customer-workshop/workshop.css / workshop.js.
+- No API calls, no data fetched, no sync with customer-workshop's
+  endpoints (Store, Tool Issues, Technicians) or any other page.
+- All 6 action buttons (Open Job Cards / Workshop Analysis / Open Store
+  & Spares / Tool Issue Documents / Manage Technicians / View Assigned
+  Work) are plain placeholders (href="#", do nothing) - structure only,
+  per instruction, awaiting their assigned function.
+
+Note not acted on: the OLDER "Workshop Manager / Technician" role-access
+cards (with "Loading..." / "Edit role access") and the Job Cards
+description text further down this same page still exist below the new
+cards - they weren't part of this request, so left untouched, but they
+now duplicate the "Workshop Manager" concept shown twice on one page.
+Flagging this now rather than silently leaving it, since removing it
+wasn't asked for.

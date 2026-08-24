@@ -8,6 +8,30 @@
   color: #fff;
   box-shadow: var(--shadow);
 }
+/* V460 - simplified square variant: just the 4 buttons, nothing else. */
+.wm-card-square {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.wm-card-square .wm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+}
+.wm-card-square .wm-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+}
 .wm-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .wm-badge {
   display: inline-flex; align-items: center; justify-content: center;
@@ -51,6 +75,106 @@
 .wm-action:hover { background: rgba(255,255,255,.18); }
 .wm-action-primary { background: #1ecb7a; border-color: #1ecb7a; color: #072a17; }
 .wm-action-primary:hover { background: #17b56d; }
+
+/* V461 - Workshop Role Structure (3 cards), built independently for
+   /belm-workshop/: own class prefix (bw-), own colors, no shared files
+   with /customer-workshop/. All 6 action links are plain placeholders
+   (href="#") until their function is assigned. */
+.bw-role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin: 18px 0;
+}
+.bw-role-card {
+  position: relative;
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, #14355f, #0e2647);
+  color: #fff;
+  overflow: hidden;
+}
+.bw-role-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+.bw-manager-card::before { background: #2a9cf5; }
+.bw-store-card::before { background: #1ecb7a; }
+.bw-technician-card::before { background: #f5b82a; }
+.bw-role-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.25);
+  font: 800 13px "Space Grotesk", sans-serif;
+  margin-bottom: 14px;
+}
+.bw-role-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.bw-role-head p { margin: 0 0 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+.bw-role-head h2 { margin: 0; font: 800 22px "Space Grotesk", sans-serif; }
+.bw-role-status {
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.bw-role-description { margin: 0 0 14px; color: rgba(255,255,255,.85); font-size: 12.5px; line-height: 1.5; min-height: 58px; }
+.bw-responsibilities { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+.bw-responsibilities span {
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.bw-specialization-grid { display: grid; gap: 8px; margin-bottom: 18px; }
+.bw-specialization-grid div { padding: 8px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; }
+.bw-specialization-grid b { display: block; font-size: 11.5px; margin-bottom: 2px; }
+.bw-specialization-grid small { display: block; color: rgba(255,255,255,.65); font-size: 10px; line-height: 1.4; }
+.bw-role-actions { display: flex; gap: 10px; margin-top: auto; }
+.bw-primary-action, .bw-secondary-action {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  color: #fff;
+}
+.bw-primary-action { background: #1ecb7a; color: #072a17; }
+.bw-primary-action:hover { background: #17b56d; }
+.bw-secondary-action { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.3); }
+.bw-secondary-action:hover { background: rgba(255,255,255,.18); }
+
+.bw-workflow-panel {
+  margin: 18px 0;
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.bw-eyebrow { margin: 0 0 6px; color: #1ecb7a; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.bw-workflow-panel h2 { margin: 0 0 16px; font: 800 22px "Space Grotesk", sans-serif; }
+.bw-workflow-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bw-workflow-line span {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #2a6fdb) 10%, var(--canvas));
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.bw-workflow-line b { color: var(--muted); font-weight: 900; }
+@media (max-width: 900px) {
+  .bw-role-grid { grid-template-columns: 1fr; }
+}
 
 .eng-roles-strip {
   display: grid;

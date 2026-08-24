@@ -39,30 +39,60 @@
         </div>
       </section>
 
-      <!-- V454: "Workshop Manager" card - visual/structural match to the
-           customer-side Workshop Manager role card (customer-workshop
-           page). Local to BELM WORKSHOP only - not a sidebar entry. All
-           three buttons are real, working links, not placeholders. -->
-      <section class="wm-card">
-        <div class="wm-card-top">
-          <span class="wm-badge">WM</span>
-          <span class="wm-control-pill">CONTROL</span>
-        </div>
-        <p class="wm-eyebrow">WORKSHOP MANAGER</p>
-        <h2>Managing Workshop</h2>
-        <p class="wm-description">Owns Job Cards, assignments, workshop instructions, workload balance, progress and final review.</p>
-        <div class="wm-tags">
-          <span>Job Cards</span>
-          <span>Assign / Reassign</span>
-          <span>Workshop Instruction</span>
-          <span>Workload</span>
-          <span>Testing &amp; Review</span>
-        </div>
-        <div class="wm-actions">
-          <a class="wm-action wm-action-primary" href="#job-cards">Open Job Card</a>
-          <a class="wm-action" href="/spare-parts-manager/">Open Store &amp; Spare</a>
-          <a class="wm-action" href="/roles-manager/?role=Technician&amp;technical=1">Manage Technicians</a>
-          <a class="wm-action" href="/checklist-manager/">Checklist Templates</a>
+      <!-- V461: full Workshop Role Structure (3 cards), matching the
+           existing customer-workshop design, but built here as its OWN
+           independent HTML/CSS - no shared files, no API calls to
+           customer-workshop's endpoints, no data sync with any other
+           page. Every one of the 6 buttons below is a plain placeholder
+           (href="#", does nothing) until told what each should do. -->
+      <section class="bw-role-grid" aria-label="Workshop roles">
+        <article class="bw-role-card bw-manager-card">
+          <div class="bw-role-icon">WM</div>
+          <div class="bw-role-head"><div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div><span class="bw-role-status">CONTROL</span></div>
+          <p class="bw-role-description">Owns Job Cards, assignments, workshop instructions, workload balance, progress and final review.</p>
+          <div class="bw-responsibilities">
+            <span>Job Cards</span><span>Assign / Reassign</span><span>Workshop Instruction</span><span>Workload</span><span>Testing &amp; Review</span>
+          </div>
+          <div class="bw-role-actions">
+            <a class="bw-primary-action" href="#">Open Job Cards</a>
+            <a class="bw-secondary-action" href="#">Workshop Analysis</a>
+          </div>
+        </article>
+
+        <article class="bw-role-card bw-store-card">
+          <div class="bw-role-icon">SK</div>
+          <div class="bw-role-head"><div><p>STORE KEEPER</p><h2>Tools &amp; Spare Parts</h2></div><span class="bw-role-status">STORE</span></div>
+          <p class="bw-role-description">Controls workshop tools and customer spare stock, and records every tool handed to a Technician and returned.</p>
+          <div class="bw-responsibilities">
+            <span>Tools</span><span>Spare Stock</span><span>Issue Document</span><span>Return Document</span><span>Audit Trail</span>
+          </div>
+          <div class="bw-role-actions">
+            <a class="bw-primary-action" href="#">Open Store &amp; Spares</a>
+            <a class="bw-secondary-action" href="#">Tool Issue Documents</a>
+          </div>
+        </article>
+
+        <article class="bw-role-card bw-technician-card">
+          <div class="bw-role-icon">TC</div>
+          <div class="bw-role-head"><div><p>TECHNICIANS</p><h2>Repair Team</h2></div><span class="bw-role-status">TEAM</span></div>
+          <p class="bw-role-description">Receives Job Cards from the Workshop Manager, diagnoses, repairs, requests tools/spares, tests and submits the Technician Report.</p>
+          <div class="bw-specialization-grid">
+            <div><b>Mechanic</b><small>Engine, transmission, brakes, hydraulic &amp; mechanisms</small></div>
+            <div><b>Electrical</b><small>Wiring, power, sensors, controllers &amp; electrical faults</small></div>
+            <div><b>Mechatronics</b><small>CAN, control systems, electronics, electro-hydraulics &amp; diagnosis</small></div>
+          </div>
+          <div class="bw-role-actions">
+            <a class="bw-primary-action" href="#">Manage Technicians</a>
+            <a class="bw-secondary-action" href="#">View Assigned Work</a>
+          </div>
+        </article>
+      </section>
+
+      <section class="bw-workflow-panel">
+        <p class="bw-eyebrow">WORKSHOP FLOW</p>
+        <h2>One Job Card — clear responsibility</h2>
+        <div class="bw-workflow-line">
+          <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span>
         </div>
       </section>
 

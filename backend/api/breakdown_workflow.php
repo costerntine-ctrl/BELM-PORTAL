@@ -21,7 +21,7 @@ const BREAKDOWN_STAGE_META = [
     'PARTS_READY' => ['department' => 'Workshop', 'slaHours' => 4],
     'REPAIR' => ['department' => 'Technician', 'slaHours' => 24],
     'TESTING' => ['department' => 'Workshop', 'slaHours' => 8],
-    'PENDING_APPROVAL' => ['department' => 'Administration / Engineering', 'slaHours' => 8],
+    'PENDING_APPROVAL' => ['department' => 'Administration / Technical Dep', 'slaHours' => 8],
     'COMPLETED' => ['department' => 'Completed', 'slaHours' => 0],
 ];
 

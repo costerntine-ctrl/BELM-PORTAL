@@ -203,7 +203,7 @@
         document.getElementById("searchInput").value = roleParam;
         const heading = document.querySelector("h1, .page-title h1, header h1");
         if (heading && roleParam === "Technician") heading.textContent = "TECHNICAL DEP — Technicians";
-        if (heading && roleParam === "Engineer") heading.textContent = "TECHNICAL DEP — Engineers";
+        if (heading && roleParam === "Engineer") heading.textContent = "TECHNICAL DEP — Workshop Managers";
       }
       renderUsers();
       const openParam = new URLSearchParams(window.location.search).get("open");

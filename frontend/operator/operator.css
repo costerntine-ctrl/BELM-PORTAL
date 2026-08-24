@@ -137,3 +137,11 @@ main { max-width:520px; margin:0 auto; padding:20px 16px 60px; }
 .op-checkup-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .op-checkup-actions .op-primary,.op-checkup-actions .op-secondary { margin:0; }
 @media (max-width:520px) { .op-checkup-grid { grid-template-columns:1fr; } .op-checkup-card { padding:16px; } }
+
+
+/* V486 - explicit Daily Report vs BELM Job Card choice */
+.op-report-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.op-report-mode-grid label{display:flex;gap:10px;align-items:flex-start;padding:13px;border:1px solid var(--op-line,#d7e1e8);border-radius:12px;cursor:pointer;background:rgba(255,255,255,.04)}
+.op-report-mode-grid input{margin-top:3px}
+.op-report-mode-grid span{display:grid;gap:3px}.op-report-mode-grid b{font-size:13px}.op-report-mode-grid small{font-size:11px;line-height:1.4;opacity:.75}
+@media(max-width:620px){.op-report-mode-grid{grid-template-columns:1fr}}

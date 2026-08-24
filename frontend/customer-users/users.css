@@ -83,7 +83,7 @@ button { font:inherit; }.primary,.secondary { min-height:42px; padding:10px 16px
 .check-option.access-all { background:#f4f7fb; font-weight:800; }
 .access-options { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:7px; margin-top:6px; }
 .access-options.hidden { display:none; }
-.actions { display:flex; justify-content:flex-end; gap:8px; }.actions button { padding:7px 10px; border-radius:7px; cursor:pointer; font-size:11px; font-weight:800; }.edit { color:var(--green2); border:1px solid #b9d8c8; background:#f4fbf7; }.delete { color:var(--red); border:1px solid #f2cbc7; background:#fff5f4; }
+.actions { display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap; }.actions button { padding:7px 10px; border-radius:7px; cursor:pointer; font-size:11px; font-weight:800; white-space:nowrap; }.edit { color:var(--green2); border:1px solid #b9d8c8; background:#f4fbf7; }.reset-password { color:#161616; border:1px solid #e0c14f; background:#ffdf62; }.reset-password:hover { background:#f5ce35; }.delete { color:var(--red); border:1px solid #f2cbc7; background:#fff5f4; }
 .loading,.empty,.locked { padding:56px 20px; color:var(--muted); text-align:center; }.locked strong { display:block; color:var(--navy); font-size:18px; margin-bottom:8px; }.locked a { display:inline-flex; margin-top:15px; color:#fff; background:var(--green); padding:10px 15px; border-radius:8px; text-decoration:none; font-size:12px; font-weight:800; }
 .alert { margin:18px 0; padding:12px 14px; border:1px solid #b9d8c8; border-radius:9px; color:#087039; background:#eefaf3; font-size:13px; }.alert.error,.error { color:var(--red); border-color:#f1c8c4; background:#fff1f0; }.hidden { display:none !important; }
 dialog { width:min(620px,calc(100% - 28px)); padding:0; border:0; border-radius:18px; box-shadow:0 25px 80px rgba(8,15,27,.35); }dialog::backdrop { background:rgba(9,16,29,.72); }.dialog-head { display:flex; justify-content:space-between; align-items:start; padding:24px 26px 17px; border-bottom:1px solid #edf2ef; }.dialog-head h2 { margin:0; font-size:22px; }.icon-button { border:0; background:none; color:#6d7988; cursor:pointer; font-size:27px; line-height:1; }
@@ -112,3 +112,16 @@ input,select { width:100%; padding:11px 12px; border:1px solid #cad6d0; border-r
 .operator-card-only-note b { color:var(--text,#101828); }
 .operator-card-only-note span { color:var(--muted,#667085); }
 .operator-card-only-note.hidden { display:none !important; }
+
+
+/* V487 - uniform customer account controls */
+.technician-actions { margin-left:auto; }
+.password-reset-dialog { width:min(590px,calc(100% - 28px)); }
+.reset-credentials { padding:22px 26px 4px; display:grid; gap:12px; }
+.reset-credentials p { margin:0 0 4px; color:#405266; font-size:12.5px; line-height:1.55; }
+.reset-credentials label { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:800; }
+.reset-credentials input { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-weight:800; letter-spacing:.3px; background:#f7f9fb; }
+.reset-credentials small { color:var(--muted); line-height:1.45; }
+.reset-dialog-actions { padding-bottom:22px; }
+@media(max-width:850px){ .technician-actions{margin-left:0; justify-content:flex-start;} }
+@media(max-width:620px){ .actions{width:100%; display:grid; grid-template-columns:1fr;}.actions button{width:100%;}.reset-credentials{padding:18px 20px 4px;} }

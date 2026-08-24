@@ -593,3 +593,17 @@ main.shell{width:min(1480px,96vw);margin:22px auto 48px}
   .bw-manager-actions{grid-template-columns:1fr}
   .bw-manager-actions>a{font-size:10.5px}
 }
+
+
+/* V486 - requested WM control: slightly longer, black Customer Overview button. */
+.bw-customer-overview-action{
+  min-width:260px !important;
+  padding:11px 28px !important;
+  background:#090d14 !important;
+  border:1px solid #05070a !important;
+  color:#fff !important;
+  text-align:center;
+  justify-content:center;
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+.bw-customer-overview-action:hover{background:#151b24 !important;}

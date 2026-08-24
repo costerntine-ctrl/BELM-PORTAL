@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Operator — BELM Portal</title>
-  <link rel="stylesheet" href="/operator/operator.css?v=401-operator-actions">
-  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <script src="/theme-manager.js?v=474-session-persistence"></script>
+  <link rel="stylesheet" href="/operator/operator.css?v=486-report-record">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -116,21 +116,25 @@
     <dialog id="operatorReportDialog" class="op-checkup-dialog">
       <form id="operatorReportForm" class="op-checkup-card">
         <div class="op-checkup-head">
-          <div><span>OPERATOR REPORT</span><h2>Send machine message</h2></div>
+          <div><span>MACHINE REPORT</span><h2>Daily Report or BELM Job Card</h2></div>
           <button type="button" id="closeOperatorReportButton" class="op-checkup-close" aria-label="Close">×</button>
         </div>
+        <div class="op-report-mode-grid">
+          <label><input type="radio" name="operatorReportMode" value="DAILY" checked><span><b>Daily Report</b><small>Routine machine information. Saved to this machine record; no Job Card.</small></span></label>
+          <label><input type="radio" name="operatorReportMode" value="BELM_JOB"><span><b>Send Job Card to BELM</b><small>Problem requiring BELM action. Creates an official Job Card.</small></span></label>
+        </div>
         <label class="op-checkup-comment">Comment
-          <textarea id="operatorReportComment" rows="7" maxlength="1000" required placeholder="Write machine problem, observation or message here..."></textarea>
-          <small>This message will be saved in Operator Reports and sent through the Operator Message workflow.</small>
+          <textarea id="operatorReportComment" rows="7" maxlength="1000" required placeholder="Write machine condition, observation or problem here..."></textarea>
+          <small id="operatorReportHint">Daily Report is recorded on this machine and does not open a Job Card.</small>
         </label>
         <div class="op-checkup-actions">
           <button type="button" id="cancelOperatorReportButton" class="op-secondary">Cancel</button>
-          <button type="submit" id="saveOperatorReportButton" class="op-primary">Send Report</button>
+          <button type="submit" id="saveOperatorReportButton" class="op-primary">Save Daily Report</button>
         </div>
       </form>
     </dialog>
   </main>
 
-  <script src="/operator/operator.js?v=401-operator-actions"></script>
+  <script src="/operator/operator.js?v=486-report-record"></script>
 </body>
 </html>

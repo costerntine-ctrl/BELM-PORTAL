@@ -56,7 +56,7 @@
 
   async function api(path, options={}) {
     const response = await fetch(`/api/customer-portal${path}`, { ...options, cache:"no-store", headers:{ ...(options.body ? {"Content-Type":"application/json"}:{}), Authorization:`Bearer ${token}`, ...(options.headers||{}) } });
-    if (!response.ok) { let message="Request failed."; try { const e=await response.json(); message=e.error||message; } catch(_){} if(response.status===401){ localStorage.removeItem("belm_customer_token"); window.location.replace("/login"); } throw new Error(message); }
+    if (!response.ok) { let message="Request failed."; try { const e=await response.json(); message=e.error||message; } catch(_){} if(response.status===401){ localStorage.removeItem("belm_customer_token"); window.location.replace("/login"); } const error=new Error(message); error.status=response.status; throw error; }
     return response.status===204 ? null : response.json();
   }
 
@@ -129,7 +129,7 @@
   }
   function compressReceipt(file){ return new Promise((resolve,reject)=>{ if(!/^image\/(jpeg|png|webp)$/i.test(file.type)){reject(new Error("Receipt must be JPG, PNG or WebP."));return;} const r=new FileReader(); r.onerror=()=>reject(new Error("Could not read receipt.")); r.onload=()=>{const im=new Image(); im.onerror=()=>reject(new Error("Receipt photo is invalid.")); im.onload=()=>{const max=1280, scale=Math.min(1,max/Math.max(im.width,im.height)); const c=document.createElement("canvas"); c.width=Math.max(1,Math.round(im.width*scale)); c.height=Math.max(1,Math.round(im.height*scale)); c.getContext("2d").drawImage(im,0,0,c.width,c.height); const data=c.toDataURL("image/jpeg",.78); if(data.length>2.8*1024*1024){reject(new Error("Receipt photo is too large."));return;} resolve(data);}; im.src=r.result;}; r.readAsDataURL(file); }); }
 
-  async function load(){ clearAlert(); try{ render(await api(`/petty-cash-account${currentRangeQuery()}`)); }catch(e){showAlert(e.message||"Could not load Petty Cash.",true);} }
+  async function load(retry=0){ clearAlert(); try{ render(await api(`/petty-cash-account${currentRangeQuery()}`)); }catch(e){ if(Number(e.status||0)===503&&retry<8){showAlert("Database update is finishing. Reconnecting Petty Cash…");setTimeout(()=>load(retry+1),2500);return;} showAlert(e.message||"Could not load Petty Cash.",true);} }
 
   async function download(format){ const button=document.getElementById(`${format}Button`), original=button.textContent; button.disabled=true; button.textContent="Preparing…"; try{ const sep=currentRangeQuery(); const response=await fetch(`/api/customer-portal/petty-cash-account/${format}${sep}`,{headers:{Authorization:`Bearer ${token}`}}); if(!response.ok) throw new Error(`Could not download ${format.toUpperCase()}.`); const blob=await response.blob(), url=URL.createObjectURL(blob), a=document.createElement("a"); const disposition=response.headers.get("Content-Disposition")||"", m=disposition.match(/filename="?([^";]+)"?/i); a.href=url; a.download=m?.[1]||`petty-cash-account.${format}`; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);}catch(e){showAlert(e.message,true);}finally{button.disabled=false;button.textContent=original;} }
 

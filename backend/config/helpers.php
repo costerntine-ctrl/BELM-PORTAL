@@ -1883,10 +1883,14 @@ function belm_ensure_job_card_for_breakdown_case(string $caseId, ?string $actorN
         $jobNo = belm_next_job_card_number();
         $issuer = trim((string)($actorName ?: $case['created_by_name'] ?: $case['customer_name'] ?: 'System'));
         $sourceType = strtoupper(trim((string)($case['source_type'] ?? 'BREAKDOWN_CASE')));
-        $isOfficialCustomerJob = $sourceType === 'SERVICE_REQUEST';
+        // V486: an Operator Report reaches this helper only when the sender
+        // explicitly requested BELM support (or BELM Service Mode is active).
+        // Therefore it is a customer-issued BELM Job Card and must arrive as
+        // RECEIVED even when the customer's own Workshop mode is enabled.
+        $isBelmBoundCustomerJob = in_array($sourceType, ['SERVICE_REQUEST', 'OPERATOR_REPORT'], true);
         $isCustomerWorkshop = !empty($case['is_machinery_admin']);
-        $status = $isOfficialCustomerJob ? 'RECEIVED' : ($isCustomerWorkshop ? 'CREATED' : 'RECEIVED');
-        $issuedByType = $isOfficialCustomerJob ? 'CUSTOMER' : 'SYSTEM';
+        $status = $isBelmBoundCustomerJob ? 'RECEIVED' : ($isCustomerWorkshop ? 'CREATED' : 'RECEIVED');
+        $issuedByType = $isBelmBoundCustomerJob ? 'CUSTOMER' : 'SYSTEM';
 
         db()->prepare(
             "INSERT INTO digital_job_cards
@@ -1992,38 +1996,75 @@ function belm_ensure_breakdown_case_from_checklist_report(string $reportId, ?str
 function belm_ensure_breakdown_case_from_operator_report(string $reportId, ?string $actorName = null, bool $strict = false): ?string {
     try {
         $stmt = db()->prepare(
-            'SELECT o.id,o.customer_id,o.machine_id,o.message,o.operator_name,m.brand,m.model,m.machine_type
+            'SELECT o.id,o.customer_id,o.machine_id,o.message,o.operator_name,o.notify_belm,o.service_request_id,
+                    m.brand,m.model,m.machine_type
              FROM operator_reports o JOIN machines m ON m.id=o.machine_id WHERE o.id=?'
         );
         $stmt->execute([$reportId]);
         $row = $stmt->fetch();
         if (!$row) return null;
+
+        // Legacy compatibility: reports from older builds may already own an
+        // OPERATOR_REPORT breakdown. Keep using it instead of creating a
+        // duplicate official request.
         $find = db()->prepare("SELECT id FROM breakdown_cases WHERE source_type='OPERATOR_REPORT' AND source_id=?");
         $find->execute([$reportId]);
-        $existing = $find->fetchColumn();
-        if ($existing) {
-            belm_ensure_job_card_for_breakdown_case((string)$existing, $actorName ?: (string)$row['operator_name'], $strict);
-            return (string)$existing;
+        $legacyCase = $find->fetchColumn();
+        if ($legacyCase) {
+            belm_ensure_job_card_for_breakdown_case((string)$legacyCase, $actorName ?: (string)$row['operator_name'], $strict);
+            return (string)$legacyCase;
         }
-        $id = uuid();
-        $label = trim(($row['brand'] ?? '') . ' ' . ($row['model'] ?? '')) ?: ($row['machine_type'] ?? 'Machine');
+
+        // V486: an Operator/Customer problem becomes BELM work only when
+        // notify_belm=1. Convert that explicit request into a normal official
+        // SERVICE_REQUEST so every BELM Technical Dep / Procurement / Job Card
+        // filter sees exactly the same work item as a Customer Admin Job Card.
+        if (empty($row['notify_belm'])) return null;
+
         $creator = trim((string)($actorName ?: $row['operator_name'] ?: 'Operator'));
-        db()->prepare(
-            "INSERT INTO breakdown_cases
-             (id,customer_id,machine_id,source_type,source_id,title,description,status,current_stage,current_department,stage_started_at,opened_at,updated_at,created_by_name)
-             VALUES (?,?,?,?,?,?,?,'OPEN','WORKSHOP_REVIEW','Workshop',NOW(),NOW(),NOW(),?)"
-        )->execute([$id,$row['customer_id'],$row['machine_id'],'OPERATOR_REPORT',$reportId,'Breakdown - '.$label,$row['message'],$creator]);
-        db()->prepare(
-            'INSERT INTO breakdown_case_events
-             (id,case_id,stage,department,action,note,actor_type,actor_name,created_at)
-             VALUES (?,?,?,?,?,?,?,?,NOW())'
-        )->execute([uuid(),$id,'WORKSHOP_REVIEW','Workshop','Breakdown reported',$row['message'],'customer',$creator]);
-        belm_ensure_job_card_for_breakdown_case($id,$creator,$strict);
-        return $id;
+        $requestId = trim((string)($row['service_request_id'] ?? ''));
+        if ($requestId === '') {
+            $requestId = uuid();
+            $pdo = db();
+            $ownsTx = !$pdo->inTransaction();
+            if ($ownsTx) $pdo->beginTransaction();
+            try {
+                // Recheck under the transaction in case two UI retries raced.
+                $recheck = $pdo->prepare('SELECT service_request_id FROM operator_reports WHERE id=?');
+                $recheck->execute([$reportId]);
+                $existingRequest = trim((string)($recheck->fetchColumn() ?: ''));
+                if ($existingRequest !== '') {
+                    $requestId = $existingRequest;
+                } else {
+                    $pdo->prepare(
+                        "INSERT INTO service_requests
+                         (id,customer_id,machine_id,service_type,description,status,priority,origin,created_at,updated_at)
+                         VALUES (?,?,?,?,?,'OPEN','NORMAL','OPERATOR_REPORT',NOW(),NOW())"
+                    )->execute([$requestId,(string)$row['customer_id'],(string)$row['machine_id'],'BELM Job Card',(string)$row['message']]);
+                    $pdo->prepare(
+                        'INSERT INTO service_request_history
+                         (id,request_id,event_type,from_value,to_value,actor_id,actor_name,note,created_at)
+                         VALUES (?,?,?,?,?,?,?,?,NOW())'
+                    )->execute([uuid(),$requestId,'OPENED',null,'OPEN',null,$creator,'Created from Customer/Operator Send Job Card to BELM action.']);
+                    $pdo->prepare('UPDATE operator_reports SET service_request_id=? WHERE id=?')->execute([$requestId,$reportId]);
+                }
+                if ($ownsTx) $pdo->commit();
+            } catch (Throwable $error) {
+                if ($ownsTx && $pdo->inTransaction()) $pdo->rollBack();
+                throw $error;
+            }
+        }
+
+        $caseId = belm_sync_breakdown_case_from_service_request($requestId, $creator, $strict);
+        if (!$caseId) {
+            $caseStmt = db()->prepare("SELECT id FROM breakdown_cases WHERE source_type='SERVICE_REQUEST' AND source_id=?");
+            $caseStmt->execute([$requestId]);
+            $caseId = $caseStmt->fetchColumn() ?: null;
+        }
+        if ($caseId) belm_ensure_job_card_for_breakdown_case((string)$caseId, $creator, $strict);
+        return $caseId ? (string)$caseId : null;
     } catch (Throwable $error) {
-        // Older deployments can briefly run before schema migration; never
-        // block the original problem report because the workflow table is new.
-        error_log('Breakdown case auto-create failed: ' . $error->getMessage());
+        error_log('BELM Job Card from operator report failed: ' . $error->getMessage());
         if ($strict) throw $error;
         return null;
     }
@@ -2261,7 +2302,7 @@ function belm_sync_breakdown_case_from_service_request(string $requestId, ?strin
         $newStage = null; $department = null; $action = null; $blocker = null; $close = false;
         if ($jobStatus === 'PENDING_APPROVAL' && $caseStatus !== 'COMPLETED'
             && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS','REPAIR','TESTING'],true)) {
-            $newStage='PENDING_APPROVAL'; $department='Administration / Engineering'; $action='Technician completed work - waiting Job Card approval';
+            $newStage='PENDING_APPROVAL'; $department='Administration / Technical Dep'; $action='Technician completed work - waiting Job Card approval';
         } elseif ($jobStatus === 'COMPLETED' && $caseStatus !== 'COMPLETED'
             && in_array($stage,['WORKSHOP_REVIEW','TECHNICIAN_ASSIGNMENT','JOB_CARD_ASSIGNED','DIAGNOSIS','REPAIR','TESTING','PENDING_APPROVAL'],true)) {
             // Legacy/recovered completed Job Cards may still need the case closure step.

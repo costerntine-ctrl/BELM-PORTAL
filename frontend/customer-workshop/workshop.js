@@ -51,10 +51,21 @@
         location.replace('/portal/dashboard');
         return;
       }
-      const name=dashboard?.customer?.name||'Customer';
+      const profile=dashboard?.customer||{};
+      const name=profile.name||'Customer';
       document.getElementById('modePill').textContent='PORTAL-CWM HOME';
       document.getElementById('workshopTitle').textContent=`${name} — PORTAL-CWM`;
-      document.getElementById('workshopSubtitle').textContent='Customer Workshop Manager home — Workshop Manager, Store Keeper and Technicians work through one controlled Job Card flow.';
+      document.getElementById('workshopSubtitle').textContent='Customer Workshop Manager home — customer records stay company-scoped; BELM Job Cards are opened only when BELM support is requested.';
+      document.getElementById('cwmCompanyName').textContent=name;
+      document.getElementById('cwmCompanyAddress').textContent=profile.address||'Not recorded';
+      document.getElementById('cwmCompanyEmail').textContent=profile.email||'Not recorded';
+      document.getElementById('cwmCompanyContact').textContent=profile.phone||'Not recorded';
+      const belmOn=Boolean(profile.belmServiceProviderActive);
+      const belmStatus=document.getElementById('cwmBelmStatus');
+      belmStatus.textContent=belmOn?'BELM ON · SERVICE ACTIVE':'BELM OFF · CUSTOMER WORKSHOP';
+      belmStatus.classList.toggle('is-on',belmOn);belmStatus.classList.toggle('is-off',!belmOn);
+      const machineLink=document.getElementById('cwmMachinesLink');
+      machineLink.textContent=`${name.toUpperCase()} MACHINES`;
     }catch(e){show(e.message,true)}
     try{technicians=await customerApi('/technicians');document.getElementById('technicianCount').textContent=`${technicians.length} TECH${technicians.length===1?'':'S'}`;renderTechnicianOptions()}catch(_){technicians=[];renderTechnicianOptions()}
     await loadStore();

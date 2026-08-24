@@ -119,18 +119,46 @@
       location.replace(data.destination||'/');
     }catch(err){const timedOut=err&&err.name==='AbortError';showError(timedOut?'Server did not respond in time. Tap Open My Workspace again.':(err.message||'Login failed.'));button.disabled=false;button.textContent='Open My Workspace'}
   }
-  // V320: saved credentials may be filled by the browser, but opening the login link
-  // never resumes a stored portal session and never submits automatically.
-  form.addEventListener('submit',event=>event.preventDefault());
-  button.addEventListener('click',login);
+  // V485: one-login flow. A still-valid portal session opens its workspace
+  // immediately. If the browser/password manager autofills both credentials,
+  // submit them automatically without forcing an extra tap. Manual typing still
+  // waits for the user to press Open My Workspace / Enter.
+  let userTypedCredentials=false;
+  let autofillLoginStarted=false;
+  [email,password].forEach(input=>{
+    input.addEventListener('keydown',()=>{userTypedCredentials=true},{passive:true});
+    input.addEventListener('paste',()=>{userTypedCredentials=true},{passive:true});
+  });
+  form.addEventListener('submit',event=>{event.preventDefault();login()});
+
+  function autofillLooksReady(){
+    if(!email.value.trim()||!password.value||userTypedCredentials||autofillLoginStarted)return false;
+    try{
+      if(email.matches(':-webkit-autofill')||password.matches(':-webkit-autofill'))return true;
+    }catch(_){/* pseudo selector unsupported */}
+    // Password managers may inject values without firing keyboard/input events.
+    return document.activeElement!==email&&document.activeElement!==password;
+  }
+  function watchSavedCredentials(){
+    const started=Date.now();
+    const timer=setInterval(()=>{
+      if(autofillLooksReady()){
+        autofillLoginStarted=true;
+        clearInterval(timer);
+        login();
+        return;
+      }
+      if(Date.now()-started>6000)clearInterval(timer);
+    },250);
+  }
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
   if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js').catch(()=>{}))}
 
-  // V475: the login screen is always manual. Browser/password-manager saved
-  // credentials may autofill the fields, but an existing local portal token must
-  // not skip this screen. Session persistence still applies everywhere after a
-  // successful login; the user explicitly presses Open My Workspace to enter.
-  (async()=>{await loadContext()})();
+  (async()=>{
+    if(await resumeActiveSession())return;
+    await loadContext();
+    watchSavedCredentials();
+  })();
 })();

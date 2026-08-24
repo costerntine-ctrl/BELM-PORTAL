@@ -15,9 +15,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=443-workshop-roles">
-  <script src="/theme-manager.js?v=474-session-persistence"></script>
+  <link rel="stylesheet" href="/theme-global.css?v=486-report-record">
+  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=486-cwm-single-home">
+  <script src="/theme-manager.js?v=486-report-record"></script>
 </head>
 <body>
   <header class="topbar">
@@ -37,45 +37,34 @@
 
     <div id="pageAlert" class="alert hidden" role="status"></div>
 
-    <section class="role-grid" aria-label="Workshop roles">
-      <article class="role-card manager-card">
+    <section class="role-grid cwm-single-home" aria-label="Customer Workshop Manager home">
+      <article class="role-card manager-card cwm-manager-home-card">
         <div class="role-icon">WM</div>
         <div class="role-head"><div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div><span class="role-status">CONTROL</span></div>
-        <p class="role-description">Owns Job Cards, assignments, workshop instructions, workload balance, progress and final review.</p>
-        <div class="responsibilities">
-          <span>Job Cards</span><span>Assign / Reassign</span><span>Workshop Instruction</span><span>Workload</span><span>Testing & Review</span>
+        <p class="role-description">One Customer Workshop home for Job Cards, Store, Procurement, Technicians, reports, finance and workshop control.</p>
+        <div id="cwmCompanyInfo" class="cwm-company-info">
+          <div><span>COMPANY</span><b id="cwmCompanyName">Loading…</b></div>
+          <div><span>ADDRESS</span><b id="cwmCompanyAddress">—</b></div>
+          <div><span>EMAIL</span><b id="cwmCompanyEmail">—</b></div>
+          <div><span>CONTACT</span><b id="cwmCompanyContact">—</b></div>
+          <div><span>BELM SERVICE</span><b id="cwmBelmStatus">Checking…</b></div>
         </div>
-        <div class="role-actions">
+        <div class="responsibilities cwm-home-tags">
+          <span>Job Cards</span><span>Technicians <b id="technicianCount">0 TECHS</b></span><span>Store</span><span>Procurement</span><span>Testing & Review</span><span>Report Record</span>
+        </div>
+        <div class="role-actions cwm-home-actions">
+          <a id="cwmMachinesLink" class="primary-action" href="/portal/dashboard?view=machines">CUSTOMER MACHINES</a>
           <a id="managerJobCardLink" class="primary-action" href="/breakdown-workflow/?actor=customer">Open Job Cards</a>
-          <a id="managerAnalysisLink" class="secondary-action" href="/breakdown-workflow/?actor=customer#workshopReportPanel">Workshop Analysis</a>
-        </div>
-      </article>
-
-      <article class="role-card store-card">
-        <div class="role-icon">SK</div>
-        <div class="role-head"><div><p>STORE KEEPER</p><h2>Tools & Spare Parts</h2></div><span class="role-status">STORE</span></div>
-        <p class="role-description">Controls workshop tools and customer spare stock, and records every tool handed to a Technician and returned.</p>
-        <div class="responsibilities">
-          <span>Tools</span><span>Spare Stock</span><span>Issue Document</span><span>Return Document</span><span>Audit Trail</span>
-        </div>
-        <div class="role-actions">
           <a id="storeLink" class="primary-action" href="#workshop-store">Open Store & Spares</a>
-          <button id="toolDocumentsButton" class="secondary-action" type="button">Tool Issue Documents</button>
-        </div>
-      </article>
-
-      <article class="role-card technician-card">
-        <div class="role-icon">TC</div>
-        <div class="role-head"><div><p>TECHNICIANS</p><h2>Repair Team</h2></div><span class="role-status" id="technicianCount">TEAM</span></div>
-        <p class="role-description">Receives Job Cards from the Workshop Manager, diagnoses, repairs, requests tools/spares, tests and submits the Technician Report.</p>
-        <div class="specialization-grid">
-          <div><b>Mechanic</b><small>Engine, transmission, brakes, hydraulic & mechanisms</small></div>
-          <div><b>Electrical</b><small>Wiring, power, sensors, controllers & electrical faults</small></div>
-          <div><b>Mechatronics</b><small>CAN, control systems, electronics, electro-hydraulics & diagnosis</small></div>
-        </div>
-        <div class="role-actions">
+          <a id="cwmProcurementLink" class="primary-action" href="/customer-procurement/">Open Procurement</a>
           <a id="technicianManageLink" class="primary-action" href="/customer-users/">Manage Technicians</a>
-          <a id="technicianWorkLink" class="secondary-action" href="/breakdown-workflow/?actor=customer">View Assigned Work</a>
+          <a id="technicianWorkLink" class="primary-action" href="/breakdown-workflow/?actor=customer">View Assigned Work</a>
+          <a id="managerAnalysisLink" class="primary-action" href="/breakdown-workflow/?actor=customer#workshopReportPanel">Workshop Analysis</a>
+          <button id="toolDocumentsButton" class="primary-action button-like" type="button">Tool Issue Documents</button>
+          <a id="cwmBillingLink" class="primary-action" href="/customer-billing/">BELM Invoices</a>
+          <a id="cwmGeneralReportLink" class="primary-action" href="/portal/dashboard?view=machines">General Report</a>
+          <a id="cwmPettyCashLink" class="primary-action" href="/customer-petty-cash/">Petty Cash</a>
+          <a id="cwmSettingsLink" class="primary-action" href="/portal/dashboard">Settings</a>
         </div>
       </article>
     </section>
@@ -173,6 +162,6 @@
     </form>
   </dialog>
 
-  <script src="/customer-workshop/workshop.js?v=473-cwm-home"></script>
+  <script src="/customer-workshop/workshop.js?v=486-cwm-single-home"></script>
 </body>
 </html>

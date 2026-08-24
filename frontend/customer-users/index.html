@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Role Manager — BELM Customer Portal</title>
   <link rel="stylesheet" href="/customer-users/users.css">
-  <link rel="stylesheet" href="/theme-global.css?v=244-part-request-dark-fix">
-  <script src="/theme-manager.js?v=474-session-persistence"></script>
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -106,7 +106,7 @@
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Portal user accounts</h2><p>Use Edit to change a role, dashboard access or deactivate an account. Password recovery is self-service through Forgot Password + email OTP.</p></div>
+        <div><h2>Portal user accounts</h2><p>Use Edit, Reset Password or Delete for each company user. Users can still use Forgot Password + email OTP at any time.</p></div>
         <button class="secondary" id="refreshButton" type="button">Refresh</button>
       </div>
       <div id="userList" class="user-list"><div class="loading">Loading users…</div></div>
@@ -180,6 +180,24 @@
     </form>
   </dialog>
 
-  <script src="/customer-users/users.js?v=472-sync-audit"></script>
+  <dialog id="passwordResetDialog" class="password-reset-dialog">
+    <div class="dialog-head">
+      <div><p class="eyebrow">ACCOUNT SECURITY</p><h2>Password reset complete</h2></div>
+      <button class="icon-button" id="closePasswordResetDialog" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="reset-credentials">
+      <p><strong id="resetAccountName">Portal user</strong> now has a new temporary password. The old password no longer works. Share these credentials securely; the user can later use Forgot Password + email OTP.</p>
+      <label>Temporary password<input id="resetTemporaryPassword" type="text" readonly></label>
+      <label>Recovery code<input id="resetRecoveryCode" type="text" readonly></label>
+      <label>Login URL<input id="resetLoginUrl" type="text" readonly></label>
+      <small>The temporary password and recovery code are shown here only after this reset. They are not stored as readable text.</small>
+    </div>
+    <div class="dialog-actions reset-dialog-actions">
+      <button class="secondary" id="donePasswordResetDialog" type="button">Done</button>
+      <button class="primary" id="copyResetCredentials" type="button">Copy Credentials</button>
+    </div>
+  </dialog>
+
+  <script src="/customer-users/users.js?v=487-account-controls"></script>
 </body>
 </html>

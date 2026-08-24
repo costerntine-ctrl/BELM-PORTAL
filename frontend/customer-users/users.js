@@ -98,6 +98,7 @@
           <span class="badge ${user.isActive ? "operator" : "inactive"}">${user.isActive ? "Active" : "Inactive"}</span>
           <div class="actions">
             <button class="edit" type="button" data-edit="${escapeHtml(user.id)}">Edit</button>
+            <button class="reset-password" type="button" data-reset-password="${escapeHtml(user.id)}">Reset Password</button>
             <button class="delete" type="button" data-delete="${escapeHtml(user.id)}">Delete</button>
           </div>
         </article>
@@ -272,7 +273,11 @@
                 ${(tech.isActive ?? tech.is_active) ? '<em class="roster-pin-set">Active</em>' : '<em class="roster-pin-missing">Inactive</em>'}
                 <em class="${tech.permissions === null ? 'roster-pin-set' : 'roster-pin-missing'}">${tech.permissions === null ? 'Full Customer Control' : `${Array.isArray(tech.permissions) ? tech.permissions.length : 0} dashboard access`}</em>
               </span>
-              <button type="button" class="edit" data-edit-technician="${escapeHtml(tech.id)}">Edit access</button>
+              <div class="actions technician-actions">
+                <button type="button" class="edit" data-edit-technician="${escapeHtml(tech.id)}">Edit</button>
+                <button type="button" class="reset-password" data-reset-technician="${escapeHtml(tech.id)}">Reset Password</button>
+                <button type="button" class="delete" data-delete-technician="${escapeHtml(tech.id)}">Delete</button>
+              </div>
             </div>`).join("")
         : '<p class="empty-role">No Technicians added yet.</p>';
     } catch (error) {
@@ -542,6 +547,58 @@ Customer Dashboard access follows Role Manager permissions.`);
     }
   }
 
+  function showResetCredentials(accountName, result) {
+    const resetDialog = document.getElementById("passwordResetDialog");
+    const tempPassword = result?.temporaryPassword || "";
+    const recoveryCode = result?.recoveryCode || "";
+    document.getElementById("resetAccountName").textContent = accountName || "Portal user";
+    document.getElementById("resetTemporaryPassword").value = tempPassword;
+    document.getElementById("resetRecoveryCode").value = recoveryCode;
+    document.getElementById("resetLoginUrl").value = result?.loginUrl || `${window.location.origin}/login`;
+    resetDialog.showModal();
+  }
+
+  async function resetUserPassword(id) {
+    const user = users.find((item) => item.id === id);
+    if (!user || !confirm(`Reset password for ${user.name}? Their current password will stop working immediately.`)) return;
+    try {
+      const result = await api(`/users/${encodeURIComponent(id)}/reset-password`, { method: "PUT", body: "{}" });
+      showResetCredentials(user.name, result);
+      showAlert("Password reset successfully. Share the temporary credentials securely.", false);
+      loadActivityLog();
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
+  async function resetTechnicianPassword(id) {
+    const tech = technicians.find((item) => item.id === id);
+    if (!tech || !confirm(`Reset password for ${tech.name}? Their current password will stop working immediately.`)) return;
+    try {
+      const result = await api(`/technicians/${encodeURIComponent(id)}/reset-password`, { method: "PUT", body: "{}" });
+      showResetCredentials(tech.name, result);
+      showAlert("Technician password reset successfully. Share the temporary credentials securely.", false);
+      loadActivityLog();
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
+  async function deleteTechnician(id) {
+    const tech = technicians.find((item) => item.id === id);
+    if (!tech || !confirm(`Delete Technician ${tech.name}? Their login will stop working immediately.`)) return;
+    try {
+      await api(`/technicians/${encodeURIComponent(id)}`, { method: "DELETE" });
+      await loadTechnicians();
+      await loadUsers();
+      loadTeamAnalysis();
+      loadActivityLog();
+      showAlert("Technician deleted successfully.", false);
+    } catch (error) {
+      showAlert(error.message, true);
+    }
+  }
+
   async function deleteUser(id) {
     const user = users.find((item) => item.id === id);
     if (!user || !confirm(`Delete user ${user.name}? Their login will stop working immediately.`)) return;
@@ -574,14 +631,36 @@ Customer Dashboard access follows Role Manager permissions.`);
   });
   userList.addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
+    const reset = event.target.closest("[data-reset-password]");
     const remove = event.target.closest("[data-delete]");
     if (edit) openEdit(edit.dataset.edit);
+    if (reset) resetUserPassword(reset.dataset.resetPassword);
     if (remove) deleteUser(remove.dataset.delete);
   });
 
   document.getElementById("technicianList")?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-edit-technician]");
-    if (button) openEditTechnician(button.dataset.editTechnician);
+    const edit = event.target.closest("[data-edit-technician]");
+    const reset = event.target.closest("[data-reset-technician]");
+    const remove = event.target.closest("[data-delete-technician]");
+    if (edit) openEditTechnician(edit.dataset.editTechnician);
+    if (reset) resetTechnicianPassword(reset.dataset.resetTechnician);
+    if (remove) deleteTechnician(remove.dataset.deleteTechnician);
+  });
+  document.getElementById("closePasswordResetDialog")?.addEventListener("click", () => document.getElementById("passwordResetDialog").close());
+  document.getElementById("donePasswordResetDialog")?.addEventListener("click", () => document.getElementById("passwordResetDialog").close());
+  document.getElementById("copyResetCredentials")?.addEventListener("click", async () => {
+    const name = document.getElementById("resetAccountName").textContent;
+    const password = document.getElementById("resetTemporaryPassword").value;
+    const recovery = document.getElementById("resetRecoveryCode").value;
+    const login = document.getElementById("resetLoginUrl").value;
+    const text = `${name}\nLogin: ${login}\nTemporary password: ${password}\nRecovery code: ${recovery}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      showAlert("Temporary login credentials copied.", false);
+    } catch (_) {
+      document.getElementById("resetTemporaryPassword").select();
+      showAlert("Could not copy automatically. Temporary password is selected.", true);
+    }
   });
   form.addEventListener("submit", saveUser);
   document.getElementById("rosterMachineSelect").addEventListener("change", (event) => {

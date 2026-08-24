@@ -45,6 +45,30 @@ function belm_procurement_order_payload(array $body): array {
 
 belm_procurement_access($user);
 
+function belm_procurement_schema_ready(): bool {
+    $required = [
+        'breakdown_spare_requests' => ['procurement_supplier_id','procurement_supplier_reference','procurement_note','procurement_ordered_at','procurement_expected_at','procurement_ordered_by_name'],
+        'spare_part_requests' => ['procurement_order_status','procurement_supplier_id','procurement_supplier_reference','procurement_note','procurement_ordered_at','procurement_expected_at','procurement_ordered_by_name'],
+        'customers' => ['is_machinery_admin'],
+        'suppliers' => ['verified','website'],
+    ];
+    foreach ($required as $table => $columns) {
+        $tableStmt = db()->prepare('SELECT to_regclass(?) IS NOT NULL');
+        $tableStmt->execute(['public.' . $table]);
+        if (!$tableStmt->fetchColumn()) return false;
+        foreach ($columns as $column) {
+            $stmt = db()->prepare("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND column_name=?)");
+            $stmt->execute([$table, $column]);
+            if (!$stmt->fetchColumn()) return false;
+        }
+    }
+    return true;
+}
+
+if (!belm_procurement_schema_ready()) {
+    json_error('BELM Procurement database update is still being applied. Refresh in a few seconds.', 503);
+}
+
 if ($method === 'GET') {
     $jobStmt = db()->query(
         "SELECT bsr.id,bsr.case_id,bsr.job_card_id,bsr.spare_name,bsr.part_number,bsr.quantity,bsr.unit,

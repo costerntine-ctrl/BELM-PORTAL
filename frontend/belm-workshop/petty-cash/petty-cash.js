@@ -21,7 +21,7 @@
   async function api(path,options={}){
     const response=await fetch(`/api${path}`,{...options,cache:'no-store',headers:{Authorization:`Bearer ${token}`,...(options.body?{'Content-Type':'application/json'}:{}),...(options.headers||{})}});
     const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch{}
-    if(!response.ok)throw new Error(data?.error||`Request failed (${response.status}).`);return data;
+    if(!response.ok){const error=new Error(data?.error||`Request failed (${response.status}).`);error.status=response.status;throw error;}return data;
   }
   function spareSummary(items){
     if(!Array.isArray(items)||!items.length)return '—';
@@ -72,14 +72,21 @@
     updateTopupState();
     if(select.value)await loadAccount(); else clearData();
   }
-  async function loadAccount(){
+  async function loadAccount(retry=0){
     const id=select.value;
     updateTopupState();
     if(!id){clearData();return;}
     sessionStorage.setItem('belm_workshop_petty_customer',id);
-    clearData('Loading…');
+    clearData(retry?'Database update is finishing. Reconnecting Petty Cash…':'Loading…');
     try{render(await api(`/customers/${encodeURIComponent(id)}/workshop-petty-cash`));}
-    catch(error){clearData(error.message);show(error.message,true);updateTopupState(error.message);}
+    catch(error){
+      if(Number(error.status||0)===503&&retry<8){
+        updateTopupState('Database update is finishing. Reconnecting Petty Cash…');
+        setTimeout(()=>{if(String(select.value)===String(id))loadAccount(retry+1)},2500);
+        return;
+      }
+      clearData(error.message);show(error.message,true);updateTopupState(error.message);
+    }
   }
   async function viewReceipt(id){
     const customerId=select.value;if(!customerId)return;

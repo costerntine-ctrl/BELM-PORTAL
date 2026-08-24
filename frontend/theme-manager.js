@@ -1,3 +1,5 @@
+// V485 embedded-module fit: Workshop modules use one outer WM shell.
+try{if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('belm-embedded')}catch(_){}
 (function () {
   const root = document.documentElement;
   const VALID = new Set(["light", "dark"]);

@@ -1,0 +1,13 @@
+BELM PORTAL V485 - SYSTEM REPAIR
+
+1. Fixed PostgreSQL migration ordering that created the breakdown procurement index before breakdown_spare_requests existed.
+2. Fixed a second fresh-database ordering issue where service_request_parts referenced spare_parts before spare_parts existed.
+3. Procurement now waits/retries during background schema migration instead of showing a permanent generic server error.
+4. Petty Cash/Add Funds now reports schema-update state cleanly and retries while the background database migration finishes.
+5. Unified login resumes a valid session and auto-submits browser/password-manager autofill credentials.
+6. Service worker cache bumped so the old manual-login JavaScript is removed after deploy.
+7. Embedded Workshop modules are display-fit and suppress nested admin chrome/sidebar.
+8. Customer Workshop Manager/CWM cannot manage BELM Proforma; Customer Owner/Administration/Accounts/Finance retain official Proforma access.
+9. Petty Cash Add Funds accepts Administration/Accounts/Accountant/Finance role aliases while preserving role control.
+10. User-visible Engineer wording cleaned to Workshop Manager / Technical Dep; old Engineer role aliases remain internally for backward compatibility with existing accounts.
+11. No production business-data DELETE/TRUNCATE/reset operation was added. Existing migration safety guards remain intact.

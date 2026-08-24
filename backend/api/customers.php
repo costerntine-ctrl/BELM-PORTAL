@@ -973,6 +973,8 @@ if ($method === 'PUT' && $action === 'workshop-module') {
 // two portals stay synchronized without sharing/impersonating login tokens.
 if ($action === 'workshop-petty-cash' || $action === 'workshop-petty-cash-topup' || $action === 'workshop-petty-cash-receipt') {
     require_belm_workshop_customer_access($user);
+    $pettyCashReady = db()->query("SELECT to_regclass('public.petty_cash_topups') IS NOT NULL")->fetchColumn();
+    if (!$pettyCashReady) json_error('Petty Cash database update is still being applied. Refresh in a few seconds.', 503);
     $customerId = trim((string)$id);
     if ($customerId === '') json_error('Customer was not specified.');
 

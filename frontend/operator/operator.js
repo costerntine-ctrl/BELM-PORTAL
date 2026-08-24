@@ -328,6 +328,18 @@
   operatorReportDialog.addEventListener("click", (event) => {
     if (event.target === operatorReportDialog) closeOperatorReport();
   });
+  document.querySelectorAll('input[name="operatorReportMode"]').forEach((radio) => radio.addEventListener("change", () => {
+    const mode = document.querySelector('input[name="operatorReportMode"]:checked')?.value || "DAILY";
+    const button = document.getElementById("saveOperatorReportButton");
+    const hint = document.getElementById("operatorReportHint");
+    if (mode === "BELM_JOB") {
+      button.textContent = "Send Job Card to BELM";
+      hint.textContent = "This creates an official BELM Job Card and sends it to TECHNICAL DEP.";
+    } else {
+      button.textContent = "Save Daily Report";
+      hint.textContent = "Daily Report is recorded on this machine and does not open a Job Card.";
+    }
+  }));
 
   operatorCheckupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -373,23 +385,20 @@
     try {
       const result = await api("/report", {
         method: "POST",
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, mode: document.querySelector('input[name="operatorReportMode"]:checked')?.value || "DAILY" }),
       });
       closeOperatorReport();
-      const delivery = result.whatsappDelivery || {};
-      const sent = Number(delivery.sent || 0);
-      const pending = Number(delivery.pending || 0);
-      showAlert(sent > 0
-        ? `Operator Report saved. WhatsApp sent to ${sent} team recipient${sent === 1 ? "" : "s"}.`
-        : pending > 0
-          ? "Operator Report saved. WhatsApp is waiting for the configured provider."
-          : "Operator Report saved for BELM and Customer teams.", false);
+      if (result.jobCardCreated) {
+        showAlert(`BELM Job Card ${result.jobCardNo || ""} created and sent to TECHNICAL DEP.`.trim(), false);
+      } else {
+        showAlert(result.message || "Daily Report saved to this machine Report Record.", false);
+      }
       await refreshOperatorDashboard();
     } catch (error) {
       showAlert(error.message || "Could not save Operator Report.");
     } finally {
       button.disabled = false;
-      button.textContent = "Send Report";
+      button.textContent = document.querySelector('input[name="operatorReportMode"]:checked')?.value === "BELM_JOB" ? "Send Job Card to BELM" : "Save Daily Report";
     }
   });
 

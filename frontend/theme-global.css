@@ -209,3 +209,14 @@ html[data-theme="dark"] .belm-customer-machine-alert-copy strong,
 html.dark .belm-customer-machine-alert-copy strong { color: #f8fafc !important; }
 html[data-theme="dark"] .belm-customer-machine-alert-copy span,
 html.dark .belm-customer-machine-alert-copy span { color: #cbd5e1 !important; }
+
+
+/* V485 embedded/display-fit hardening */
+html,body{max-width:100%}
+body{overflow-x:hidden}
+html.belm-embedded body>.topbar,html.belm-embedded #belmAdminSidebar,html.belm-embedded .belm-admin-sidebar,html.belm-embedded .belm-sidebar-toggle,html.belm-embedded .belm-sidebar-scrim{display:none!important}
+html.belm-embedded body{padding-left:0!important;margin-left:0!important;min-width:0!important;overflow-x:hidden!important}
+html.belm-embedded main,html.belm-embedded .shell{max-width:100%!important;min-width:0!important}
+.table-wrap{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+iframe,img,video,canvas,svg{max-width:100%}
+input,select,textarea,button{min-width:0}

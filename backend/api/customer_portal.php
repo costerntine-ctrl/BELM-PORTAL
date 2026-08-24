@@ -831,12 +831,24 @@ function petty_cash_spare_summary(array $items): string {
     return implode('; ', $parts);
 }
 
+function customer_can_view_belm_proforma(array $customer): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    return in_array($role, ['admin', 'accounts', 'accountant', 'finance', 'administration'], true);
+}
+
+function require_customer_belm_proforma_access(array $customer): void {
+    if (!customer_can_view_belm_proforma($customer)) {
+        json_error('BELM Proforma is available only to Customer Owner, Administration or Accounts. Workshop Manager/CWM does not manage Proforma.', 403);
+    }
+}
+
 function customer_can_manage_petty_cash(array $customer): bool {
     if (($customer['actorType'] ?? '') === 'owner') return true;
     $permissions = $customer['permissions'] ?? null;
     if ($permissions === null) return true;
     $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
-    return in_array($role, ['admin', 'accounts'], true);
+    return in_array($role, ['admin', 'accounts', 'accountant', 'finance', 'administration'], true);
 }
 
 // V438 - Workshop Account is a shared customer workshop float shown inside
@@ -1258,7 +1270,7 @@ if ($sub === 'dashboard') {
     unset($machine);
 
     $stmt = db()->prepare(
-        'SELECT id, name, email, phone, portal_link, is_machinery_admin, workshop_module_active, privacy_preferences
+        'SELECT id, name, email, phone, address, portal_link, is_machinery_admin, workshop_module_active, privacy_preferences
          FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
     );
     $stmt->execute([$customer['id']]);
@@ -3481,13 +3493,15 @@ if ($sub === 'fuel-usage' && $sub2) {
 // One float/account is shared by all machines. Spending remains tied to the
 // machine that consumed the cash, while top-ups belong to the customer account.
 if ($sub === 'petty-cash-account') {
+    $pettyCashReady = db()->query("SELECT to_regclass('public.petty_cash_topups') IS NOT NULL")->fetchColumn();
+    if (!$pettyCashReady) json_error('Petty Cash database update is still being applied. Refresh in a few seconds.', 503);
     require_customer_feature_access($customer, 'machine-expenses', 'Petty Cash');
     [$rangeFrom, $rangeTo] = usage_log_date_range_from_query();
 
     if ($method === 'POST' && $sub2 === 'topup') {
         require_customer_write_access($customer);
         if (!customer_can_manage_petty_cash($customer)) {
-            json_error('Only Administration/Accounts with full customer control can add Petty Cash funds.', 403);
+            json_error('Only Customer Owner, Administration or Accounts can add Petty Cash funds.', 403);
         }
         $b = body();
         $amount = (float)($b['amount'] ?? 0);
@@ -4030,6 +4044,161 @@ if ($sub === 'machines' && $sub2) {
         ]);
     }
 
+    // V486 - REPORT RECORD: one master, read-only machine history assembled from
+    // source-of-truth records. Nothing is copied into a second history table.
+    // DAILY updates, Checklist Reports and Digital Job Cards remain in their own
+    // operational tables while this endpoint presents them as one chronological record.
+    if ($sub3 === 'report-records' && $method === 'GET') {
+        require_customer_any_feature_access($customer, ['operator-reports', 'check-up', 'workflow'], 'Report Record');
+        [$fromDate, $toDate] = customer_portal_date_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
+        $category = strtoupper(trim((string)($_GET['category'] ?? 'ALL')));
+        if (!in_array($category, ['ALL','DAILY','JOB_CARD','CHECKLIST','OPERATOR'], true)) $category = 'ALL';
+
+        $sql = "SELECT * FROM (
+            SELECT
+                'OPERATOR-' || opr.id AS record_id,
+                CASE UPPER(COALESCE(opr.report_type,'PROBLEM'))
+                    WHEN 'DAILY' THEN 'DAILY_REPORT'
+                    WHEN 'HANDOVER' THEN 'MACHINE_HANDOVER'
+                    ELSE 'OPERATOR_REPORT'
+                END AS report_type,
+                opr.id AS source_id,
+                NULL::varchar AS job_card_id,
+                NULL::varchar AS job_card_no,
+                CASE UPPER(COALESCE(opr.report_type,'PROBLEM'))
+                    WHEN 'DAILY' THEN 'Daily machine update'
+                    WHEN 'HANDOVER' THEN 'Machine handover'
+                    ELSE 'Machine problem / support report'
+                END AS title,
+                opr.message AS message,
+                opr.status AS status,
+                opr.operator_name AS reported_by,
+                'Operator / Customer' AS reported_by_type,
+                NULL::varchar AS technician_name,
+                NULL::text AS final_result,
+                opr.created_at AS occurred_at
+            FROM operator_reports opr
+            WHERE opr.machine_id = ? AND opr.customer_id = ?
+
+            UNION ALL
+
+            SELECT
+                'CHECKLIST-' || cr.id AS record_id,
+                'CHECKLIST' AS report_type,
+                cr.id AS source_id,
+                NULL::varchar AS job_card_id,
+                NULL::varchar AS job_card_no,
+                COALESCE(ct.name,'Checklist Report') AS title,
+                'Overall: ' || COALESCE(cr.overall_status,'UNKNOWN') ||
+                    CASE WHEN cr.hour_meter_reading IS NOT NULL THEN ' · Hour meter: ' || cr.hour_meter_reading::text ELSE '' END AS message,
+                COALESCE(cr.overall_status,'RECORDED') AS status,
+                COALESCE(NULLIF(cr.filled_by,''),'Technician / Inspector') AS reported_by,
+                'Checklist' AS reported_by_type,
+                NULL::varchar AS technician_name,
+                NULL::text AS final_result,
+                cr.created_at AS occurred_at
+            FROM checklist_reports cr
+            LEFT JOIN checklist_templates ct ON ct.id = cr.template_id
+            WHERE cr.machine_id = ?
+
+            UNION ALL
+
+            SELECT
+                'JOB-' || j.id AS record_id,
+                'JOB_CARD' AS report_type,
+                j.id AS source_id,
+                j.id AS job_card_id,
+                j.job_card_no,
+                j.title,
+                j.fault_description AS message,
+                j.status,
+                COALESCE(NULLIF(j.issued_by_name,''),NULLIF(j.generated_by_name,''),'Customer / BELM') AS reported_by,
+                CASE WHEN LOWER(COALESCE(j.issued_by_type,''))='customer' THEN 'Customer Job Card' ELSE 'BELM Job Card' END AS reported_by_type,
+                j.technician_name,
+                COALESCE(NULLIF(j.completion_note,''),NULLIF(j.test_result,''),NULLIF(j.work_done,''),NULLIF(j.diagnosis,'')) AS final_result,
+                COALESCE(j.issued_at,j.created_at) AS occurred_at
+            FROM digital_job_cards j
+            WHERE j.machine_id = ? AND j.customer_id = ?
+        ) records WHERE 1=1";
+        $params = [$machineId, $customer['id'], $machineId, $machineId, $customer['id']];
+        if ($fromDate !== null) { $sql .= ' AND occurred_at >= ?'; $params[] = $fromDate; }
+        if ($toDate !== null) { $sql .= ' AND occurred_at < ?'; $params[] = $toDate; }
+        if ($category === 'DAILY') $sql .= " AND report_type IN ('DAILY_REPORT','CHECKLIST')";
+        elseif ($category === 'JOB_CARD') $sql .= " AND report_type = 'JOB_CARD'";
+        elseif ($category === 'CHECKLIST') $sql .= " AND report_type = 'CHECKLIST'";
+        elseif ($category === 'OPERATOR') $sql .= " AND report_type IN ('OPERATOR_REPORT','MACHINE_HANDOVER','DAILY_REPORT')";
+        $sql .= ' ORDER BY occurred_at DESC, record_id DESC';
+        $recordStmt = db()->prepare($sql);
+        $recordStmt->execute($params);
+        $rows = $recordStmt->fetchAll();
+        foreach ($rows as &$row) {
+            $row['recordId'] = $row['record_id'];
+            $row['reportType'] = $row['report_type'];
+            $row['sourceId'] = $row['source_id'];
+            $row['jobCardId'] = $row['job_card_id'];
+            $row['jobCardNo'] = $row['job_card_no'];
+            $row['reportedBy'] = $row['reported_by'];
+            $row['reportedByType'] = $row['reported_by_type'];
+            $row['technicianName'] = $row['technician_name'];
+            $row['finalResult'] = $row['final_result'];
+            $row['occurredAt'] = $row['occurred_at'];
+            unset($row['record_id'],$row['report_type'],$row['source_id'],$row['job_card_id'],$row['job_card_no'],$row['reported_by'],$row['reported_by_type'],$row['technician_name'],$row['final_result'],$row['occurred_at']);
+        }
+        unset($row);
+        json_out($rows);
+    }
+
+    if ($sub3 === 'report-records-pdf' && $method === 'GET') {
+        require_customer_any_feature_access($customer, ['operator-reports', 'check-up', 'workflow'], 'Report Record');
+        [$fromDate, $toDate] = customer_portal_date_range((string)($_GET['from'] ?? ''), (string)($_GET['to'] ?? ''));
+        $category = strtoupper(trim((string)($_GET['category'] ?? 'ALL')));
+        if (!in_array($category, ['ALL','DAILY','JOB_CARD','CHECKLIST','OPERATOR'], true)) $category = 'ALL';
+        $machineStmt = db()->prepare('SELECT brand,model,machine_type,fleet_number,serial_number,reg_number FROM machines WHERE id=? AND customer_id=?');
+        $machineStmt->execute([$machineId,$customer['id']]);
+        $machine = $machineStmt->fetch() ?: [];
+        $sql = "SELECT * FROM (
+            SELECT opr.created_at AS occurred_at,
+                   CASE UPPER(COALESCE(opr.report_type,'PROBLEM')) WHEN 'DAILY' THEN 'DAILY REPORT' WHEN 'HANDOVER' THEN 'HANDOVER' ELSE 'OPERATOR REPORT' END AS type_label,
+                   opr.operator_name AS actor, opr.status, NULL::varchar AS job_card_no, opr.message AS detail
+            FROM operator_reports opr WHERE opr.machine_id=? AND opr.customer_id=?
+            UNION ALL
+            SELECT cr.created_at,'CHECKLIST',COALESCE(NULLIF(cr.filled_by,''),'Inspector'),COALESCE(cr.overall_status,'RECORDED'),NULL::varchar,
+                   'Hour meter: ' || COALESCE(cr.hour_meter_reading::text,'-')
+            FROM checklist_reports cr WHERE cr.machine_id=?
+            UNION ALL
+            SELECT COALESCE(j.issued_at,j.created_at),'JOB CARD',COALESCE(NULLIF(j.issued_by_name,''),NULLIF(j.generated_by_name,''),'Customer / BELM'),j.status,j.job_card_no,
+                   j.title || CASE WHEN COALESCE(j.fault_description,'')<>'' THEN ' - ' || j.fault_description ELSE '' END
+            FROM digital_job_cards j WHERE j.machine_id=? AND j.customer_id=?
+        ) r WHERE 1=1";
+        $params = [$machineId,$customer['id'],$machineId,$machineId,$customer['id']];
+        if ($fromDate !== null) { $sql .= ' AND occurred_at >= ?'; $params[] = $fromDate; }
+        if ($toDate !== null) { $sql .= ' AND occurred_at < ?'; $params[] = $toDate; }
+        if ($category === 'DAILY') $sql .= " AND type_label IN ('DAILY REPORT','CHECKLIST')";
+        elseif ($category === 'JOB_CARD') $sql .= " AND type_label='JOB CARD'";
+        elseif ($category === 'CHECKLIST') $sql .= " AND type_label='CHECKLIST'";
+        elseif ($category === 'OPERATOR') $sql .= " AND type_label IN ('DAILY REPORT','HANDOVER','OPERATOR REPORT')";
+        $sql .= ' ORDER BY occurred_at DESC';
+        $q=db()->prepare($sql); $q->execute($params); $records=$q->fetchAll();
+        $pdfRows=array_map(static fn(array $r): array => [
+            display_date_billing($r['occurred_at']), (string)$r['type_label'], (string)($r['job_card_no'] ?: '-'),
+            (string)($r['actor'] ?: '-'), (string)($r['status'] ?: '-'), (string)($r['detail'] ?: '-')
+        ],$records);
+        $machineLabel=trim((string)($machine['brand']??'').' '.(string)($machine['model']??'')) ?: (string)($machine['machine_type']??'Machine');
+        output_table_pdf(
+            'BELM-report-record-' . preg_replace('/[^A-Za-z0-9_-]+/','-',$machineLabel) . '.pdf',
+            $category==='DAILY' ? 'DAILY REPORT RECORD' : 'MACHINE REPORT RECORD',
+            [
+                'Customer: '.(string)($customer['name']??'Customer'),
+                'Machine: '.$machineLabel,
+                'Fleet No: '.(string)($machine['fleet_number']??'-'),
+                'Serial / Reg: '.(string)($machine['serial_number'] ?: ($machine['reg_number'] ?: '-')),
+                'Period: '.($fromDate??'All time').' to '.($toDate??'now'),
+                'Date | Type | Job Card | Reported By | Status | Detail',
+            ],
+            $pdfRows
+        );
+    }
+
     if ($sub3 === 'daily-checklist' && $method === 'GET') {
         require_customer_feature_access($customer, 'check-up', 'Check Up');
         $machineStmt = db()->prepare(
@@ -4503,7 +4672,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
     // in Report/breakdown entries and vice versa. Omit the param for the
     // combined list (used by the existing Operator Reported view).
     $typeFilter = strtoupper(trim((string)($_GET['type'] ?? '')));
-    if (!in_array($typeFilter, ['PROBLEM', 'HANDOVER'], true)) $typeFilter = '';
+    if (!in_array($typeFilter, ['PROBLEM', 'HANDOVER', 'DAILY'], true)) $typeFilter = '';
     $sql = 'SELECT id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at, resolved_at
             FROM operator_reports WHERE machine_id = ?';
     $params = [$machineId];
@@ -4519,7 +4688,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
         $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''));
         if ($machineLabel === '') $machineLabel = (string)($machine['machine_type'] ?? 'Machine');
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', $machineLabel);
-        $pdfTitle = $typeFilter === 'HANDOVER' ? 'MACHINE HANDOVER' : ($typeFilter === 'PROBLEM' ? 'REPORT' : 'OPERATOR REPORTED');
+        $pdfTitle = $typeFilter === 'HANDOVER' ? 'MACHINE HANDOVER' : ($typeFilter === 'DAILY' ? 'DAILY REPORT' : ($typeFilter === 'PROBLEM' ? 'REPORT' : 'OPERATOR REPORTED'));
         $pdfRows = array_map(static fn(array $r): array => [
             display_date_billing($r['created_at']),
             (string)($r['operator_name'] ?: 'Operator'),
@@ -4551,7 +4720,6 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
 }
 
 if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
-    require_customer_feature_access($customer, 'report-problem', 'Report Problem');
     require_customer_write_access($customer);
     $machineId = $sub2;
     $stmt = db()->prepare('SELECT 1 FROM machines WHERE id = ? AND customer_id = ? AND deleted_at IS NULL');
@@ -4561,12 +4729,17 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
     $b = body();
     $message = trim((string)($b['message'] ?? ''));
     $operatorId = trim((string)($b['operatorId'] ?? ''));
-    if ($message === '') json_error('Write a short message describing the problem.');
-    // V444: Operator "Report" sub-menu distinguishes a Machine Handover note
-    // (internal-only comment, never opens a Job Card) from a Report (the
-    // existing flow below, which auto-opens a breakdown case / Job Card).
+    // V486: the same endpoint carries three intentionally separate records.
+    // Permissions are checked against the selected action rather than forcing
+    // routine Daily Report users to also have the Job Card permission.
     $reportType = strtoupper(trim((string)($b['reportType'] ?? 'PROBLEM')));
-    if (!in_array($reportType, ['PROBLEM', 'HANDOVER'], true)) $reportType = 'PROBLEM';
+    if (!in_array($reportType, ['PROBLEM', 'HANDOVER', 'DAILY'], true)) $reportType = 'PROBLEM';
+    if ($reportType === 'PROBLEM') {
+        require_customer_feature_access($customer, 'report-problem', 'Send Job Card to BELM');
+    } else {
+        require_customer_any_feature_access($customer, ['operator-reports', 'report-problem'], $reportType === 'DAILY' ? 'Daily Report' : 'Machine Handover');
+    }
+    if ($message === '') json_error($reportType === 'DAILY' ? 'Write the machine update first.' : 'Write a short message describing the problem.');
 
     $operatorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Operator'));
     $operatorContact = null;
@@ -4583,7 +4756,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
     $modeStmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ?');
     $modeStmt->execute([$customer['id']]);
     $selfServiceMode = !empty($modeStmt->fetchColumn());
-    $notifyBelm = !$selfServiceMode || !empty($b['sendToBelm']);
+    $notifyBelm = $reportType === 'PROBLEM' && (!$selfServiceMode || !empty($b['sendToBelm']));
 
     $newId = uuid();
     db()->prepare(
@@ -4601,6 +4774,23 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
     $machineInfo = $machineInfoStmt->fetch() ?: [];
     $machineLabel = trim(($machineInfo['brand'] ?? '') . ' ' . ($machineInfo['model'] ?? '')) ?: ($machineInfo['machine_type'] ?? 'Machine');
     $serial = $machineInfo['serial_number'] ?: ($machineInfo['reg_number'] ?: 'Not recorded');
+
+    // V486: a routine Daily Report is a machine record, not a work order.
+    // It never creates a Breakdown Case or Digital Job Card. In BELM Service
+    // mode it may remain visible as service context, but it cannot enter the
+    // BELM Job Card queue until the customer explicitly uses Send Job Card.
+    if ($reportType === 'DAILY') {
+        db()->prepare("UPDATE operator_reports SET status='RECORDED' WHERE id=?")->execute([$newId]);
+        log_customer_activity($customer, "Daily machine update by $operatorName: $message");
+        json_out([
+            'id' => $newId,
+            'reportType' => 'DAILY',
+            'status' => 'RECORDED',
+            'message' => 'Daily Report saved to this machine Report Record.',
+            'jobCardCreated' => false,
+            'belmAlertSent' => false,
+        ], 201);
+    }
 
     // Machine Handover is an internal-only comment: log it, alert the
     // customer's own team, but never open a breakdown case / Job Card and
@@ -4630,7 +4820,15 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
         ], 201);
     }
 
-    belm_ensure_breakdown_case_from_operator_report($newId, $operatorName);
+    $jobCardNo = null;
+    if ($notifyBelm) {
+        $caseId = belm_ensure_breakdown_case_from_operator_report($newId, $operatorName, true);
+        if ($caseId) {
+            $jobStmt = db()->prepare('SELECT job_card_no FROM digital_job_cards WHERE case_id=? ORDER BY created_at ASC LIMIT 1');
+            $jobStmt->execute([$caseId]);
+            $jobCardNo = $jobStmt->fetchColumn() ?: null;
+        }
+    }
 
     // Internal customer-team alert is always sent to the owner and users who
     // have Operator Reports / Report Problem dashboard access. BELM is added
@@ -4663,8 +4861,9 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
         log_customer_activity($customer, "Internal machine problem reported by $operatorName: $message");
         json_out([
             'id' => $newId,
-            'message' => 'Problem saved for your internal maintenance team. BELM was not notified.',
+            'message' => 'Problem saved for your internal maintenance team. No BELM Job Card was created.',
             'belmAlertSent' => false,
+            'jobCardCreated' => false,
             'internalOnly' => true,
         ], 201);
     }
@@ -4698,10 +4897,12 @@ Open BELM Portal > TECHNICAL DEP > Job Card / Customer Communication and take ac
     json_out([
         'id' => $newId,
         'message' => $businessEmailSent
-            ? 'Problem sent to BELM Technical Support and the official BELM business email.'
-            : 'Problem saved for BELM support, but official business-email delivery needs attention.',
+            ? 'BELM Job Card created and sent to BELM Technical Support.'
+            : 'BELM Job Card created. Business-email delivery needs attention, but the Job Card remains in the BELM workflow.',
         'belmAlertSent' => $businessEmailSent,
         'internalOnly' => false,
+        'jobCardCreated' => $jobCardNo !== null,
+        'jobCardNo' => $jobCardNo,
     ], 201);
 }
 
@@ -4889,10 +5090,64 @@ if ($sub === 'technicians' && $method === 'POST') {
     ], 201);
 }
 
+// PUT /technicians/{id}/reset-password — Customer Owner/Administration may
+// issue a fresh temporary password for a customer-managed Technician. The
+// plaintext password/recovery code are returned only once and are never stored.
+if ($sub === 'technicians' && $sub2 && $sub3 === 'reset-password' && $method === 'PUT') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare(
+        "SELECT u.id,u.name,u.email FROM users u JOIN roles r ON r.id=u.role_id
+         WHERE u.id=? AND r.name='Technician' AND u.assigned_customer_id=?
+           AND u.is_customer_managed=1 AND u.deleted_at IS NULL LIMIT 1"
+    );
+    $stmt->execute([$sub2, $customer['id']]);
+    $target = $stmt->fetch();
+    if (!$target) json_error('Technician not found.', 404);
+
+    $temporaryPassword = secure_account_secret();
+    $recoveryCode = account_recovery_code();
+    db()->prepare(
+        'UPDATE users SET password_hash=?, recovery_code_hash=?
+         WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1 AND deleted_at IS NULL'
+    )->execute([
+        password_hash($temporaryPassword, PASSWORD_BCRYPT),
+        password_hash($recoveryCode, PASSWORD_BCRYPT),
+        $sub2,
+        $customer['id'],
+    ]);
+    clear_unified_login_lockout((string)$target['email']);
+    log_customer_activity($customer, "Reset login password for Technician \"{$target['name']}\".");
+    json_out([
+        'temporaryPassword' => $temporaryPassword,
+        'recoveryCode' => $recoveryCode,
+        'loginUrl' => public_login_url(),
+    ]);
+}
+
+// DELETE /technicians/{id} — remove only a Technician created/managed by this
+// customer. BELM-owned Technicians can never be deleted from Customer Portal.
+if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'DELETE') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare(
+        "SELECT u.id,u.name FROM users u JOIN roles r ON r.id=u.role_id
+         WHERE u.id=? AND r.name='Technician' AND u.assigned_customer_id=?
+           AND u.is_customer_managed=1 AND u.deleted_at IS NULL LIMIT 1"
+    );
+    $stmt->execute([$sub2, $customer['id']]);
+    $target = $stmt->fetch();
+    if (!$target) json_error('Technician not found.', 404);
+    db()->prepare(
+        'UPDATE users SET is_active=0, deleted_at=NOW()
+         WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1 AND deleted_at IS NULL'
+    )->execute([$sub2, $customer['id']]);
+    log_customer_activity($customer, "Removed customer-managed Technician \"{$target['name']}\".");
+    json_out(null, 204);
+}
+
 // PUT /technicians/{id} — Administration may update a customer's own
 // Technician profile, status and dashboard access. Password changes remain
 // self-service through Forgot Password + OTP.
-if ($sub === 'technicians' && $sub2 && $method === 'PUT') {
+if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'PUT') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
         "SELECT u.* FROM users u JOIN roles r ON r.id=u.role_id
@@ -4945,9 +5200,9 @@ if ($sub === 'users' && $sub2 === 'limit' && $method === 'GET') {
     json_out(['limit' => $userLimit, 'used' => customer_portal_user_count((string)$customer['id'])]);
 }
 
-// Customer passwords are reset only through the public Forgot Password
-// email-OTP flow. Keeping this route explicit prevents old clients/bookmarks
-// from silently changing credentials by the legacy current-password method.
+// The signed-in account changes its own password only through Forgot Password
+// + email OTP. V487 separately lets an authorized Customer Owner/Administration
+// reset subordinate company users from Manage Users.
 if ($sub === 'change-password' && $method === 'PUT') {
     json_error('Use Forgot Password on the login page. A 6-digit OTP will be sent to your account email.', 410);
 }
@@ -5020,7 +5275,36 @@ if ($sub === 'users' && $method === 'POST') {
     ], 201);
 }
 
-if ($sub === 'users' && $sub2 && $method === 'PUT') {
+// PUT /users/{id}/reset-password — Customer Owner/Administration may issue
+// a fresh temporary password to a company portal user. Forgot Password + OTP
+// continues to work afterwards; this action is an administrator recovery path.
+if ($sub === 'users' && $sub2 && $sub3 === 'reset-password' && $method === 'PUT') {
+    require_customer_owner_or_admin($customer);
+    $stmt = db()->prepare('SELECT id,name,email FROM customer_users WHERE id=? AND customer_id=? LIMIT 1');
+    $stmt->execute([$sub2, $customer['id']]);
+    $target = $stmt->fetch();
+    if (!$target) json_error('User not found.', 404);
+
+    $temporaryPassword = secure_account_secret();
+    $recoveryCode = account_recovery_code();
+    db()->prepare(
+        'UPDATE customer_users SET password=?, recovery_code_hash=? WHERE id=? AND customer_id=?'
+    )->execute([
+        password_hash($temporaryPassword, PASSWORD_BCRYPT),
+        password_hash($recoveryCode, PASSWORD_BCRYPT),
+        $sub2,
+        $customer['id'],
+    ]);
+    clear_unified_login_lockout((string)$target['email']);
+    log_customer_activity($customer, "Reset login password for \"{$target['name']}\".");
+    json_out([
+        'temporaryPassword' => $temporaryPassword,
+        'recoveryCode' => $recoveryCode,
+        'loginUrl' => public_login_url(),
+    ]);
+}
+
+if ($sub === 'users' && $sub2 && !$sub3 && $method === 'PUT') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare('SELECT * FROM customer_users WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
@@ -5471,6 +5755,7 @@ if ($sub === 'invoices' && $sub2 && $sub3 === 'download' && $method === 'GET') {
 
 // ---- Proformas published by BELM to this customer --------------------------
 if ($sub === 'proformas' && $method === 'GET' && $sub2 === '') {
+    require_customer_belm_proforma_access($customer);
     $stmt = db()->prepare(
         "SELECT p.* FROM proforma_invoices p
          WHERE p.customer_id = ? AND p.deleted_at IS NULL
@@ -5491,6 +5776,7 @@ if ($sub === 'proformas' && $method === 'GET' && $sub2 === '') {
 }
 
 if ($sub === 'proformas' && $sub2 && $sub3 === 'download' && $method === 'GET') {
+    require_customer_belm_proforma_access($customer);
     $check = db()->prepare(
         "SELECT 1 FROM proforma_invoices
          WHERE id = ? AND customer_id = ? AND deleted_at IS NULL
@@ -5502,6 +5788,7 @@ if ($sub === 'proformas' && $sub2 && $sub3 === 'download' && $method === 'GET') 
 }
 
 if ($sub === 'proformas' && $sub2 && $sub3 === 'respond' && $method === 'PUT') {
+    require_customer_belm_proforma_access($customer);
     require_customer_write_access($customer);
     $b = body();
     $response = strtoupper(trim((string)($b['response'] ?? '')));

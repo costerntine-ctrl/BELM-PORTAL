@@ -6895,3 +6895,11 @@ body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-spare-recom
 .belm-checkup-template-fixed small { display:block; margin-top:4px; opacity:.7; }
 .belm-customer-checkup-toolbar.is-single-template { display:block; }
 .belm-checkup-sync-missing strong { color:#dc2626; }
+
+
+/* V486 - customer company face + Report Record */
+.belm-customer-face-provider-note{display:block;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--muted,#718096);text-align:right}
+.belm-report-record-toolbar{display:flex;justify-content:flex-end;gap:10px;margin:10px 0 14px}
+.belm-report-record-toolbar button{min-width:190px;padding:11px 18px;border:0;border-radius:10px;font-weight:800;cursor:pointer}
+.belm-report-record-row p{margin:7px 0 0;line-height:1.45;white-space:pre-wrap}
+.belm-report-record-row em{display:block;margin-top:6px;font-style:normal;font-size:11px;font-weight:800;color:#16794d}

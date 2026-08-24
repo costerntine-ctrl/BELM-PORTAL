@@ -1,0 +1,14 @@
+BELM PORTAL V486 - CWM + REPORT RECORD
+
+- PORTAL-BELM WM Customer Overview control is slightly longer and black.
+- PORTAL-CWM is a single Workshop Manager home aligned visually with PORTAL-BELM WM.
+- Customer company name, address, email, contact and BELM ON/OFF service state are shown at the top.
+- Customer machine entry is dynamically named <CUSTOMER NAME> MACHINES and remains customer-scoped.
+- Routine Daily Report records machine information without opening a Job Card.
+- Send Job Card to BELM creates an official Service Request + Digital Job Card and enters BELM TECHNICAL DEP as RECEIVED.
+- The source Operator/Customer report is linked to that official Service Request so BELM workflow filters do not lose the Job Card when the customer runs its own workshop.
+- Machine Report Record aggregates Daily updates, Operator/Handover records, Checklist Reports and Digital Job Cards from source tables; there is no duplicate master-history table.
+- Report Record and Daily Report PDF export are included.
+- Operator screen explicitly chooses Daily Report or Send Job Card to BELM.
+- Self-service abnormal reports/check-ups do not silently create BELM Job Cards unless BELM support is engaged.
+- Customer BELM Invoice page is read-only: View/Download only. PORTAL-CWM does not create/manage Proforma.

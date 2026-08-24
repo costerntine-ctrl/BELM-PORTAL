@@ -1371,7 +1371,7 @@
   }
 
   function customerFaceProviderText(profile) {
-    return profile?.belmServiceProviderActive ? "BELM ON" : `${profile?.name || "CUSTOMER"} ON`;
+    return profile?.belmServiceProviderActive ? "BELM ON" : "BELM OFF";
   }
 
   async function installCustomerDashboardFace() {
@@ -1415,6 +1415,7 @@
           <div class="belm-customer-face-statuses">
             <span class="belm-customer-face-active-pill">Active</span>
             <span class="belm-customer-face-provider">${escapeHtml(customerFaceProviderText(profile))}</span>
+            <small class="belm-customer-face-provider-note">${profile?.belmServiceProviderActive ? "BELM Service Mode" : "Customer Workshop Mode"}</small>
           </div>
         </header>
         <section class="belm-customer-face-communication">
@@ -1427,7 +1428,7 @@
           </div>
         </section>
         <nav class="belm-customer-face-actions belm-customer-face-primary-actions" aria-label="Customer dashboard primary actions">
-          <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">View Customer Machine</a>
+          <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">${escapeHtml(name.toUpperCase())} MACHINES</a>
           <a class="belm-customer-face-action action-blue" href="/customer-workshop/?actor=customer">Workshop</a>
           <a class="belm-customer-face-action action-green" href="/customer-procurement/">Procurement</a>
           <button type="button" class="belm-customer-face-action action-yellow" data-customer-face-general-report>General Report</button>
@@ -1461,6 +1462,8 @@
       .find((element) => /machines/i.test((element.textContent || "").trim()));
     const target = machineGrid || heading;
     if (!target) return;
+    const companyName = String(customerPortalProfile?.name || roleContextCustomerName() || "Customer").trim();
+    if (heading && companyName) heading.textContent = `${companyName.toUpperCase()} MACHINES`;
     document.documentElement.dataset.belmCustomerMachinesFocused = "1";
     target.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -2072,8 +2075,9 @@
         <a href="/customer-procurement/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Procurement</a>
         <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
         <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Report a Problem</button>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-machine-report="${escapeHtml(machine.id)}">Report</button>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Send Job Card to BELM</button>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-daily-update="${escapeHtml(machine.id)}">Daily Report</button>
+        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-machine-report="${escapeHtml(machine.id)}">Report Record</button>
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}" title="Open the Checklist Template synced to this machine">Check Up</button>
         <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>`}
       </div>`;
@@ -2081,7 +2085,8 @@
     panel.addEventListener("click", (event) => event.stopPropagation());
     panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     panel.querySelector("[data-customer-checkup]")?.addEventListener("click", () => openCustomerCheckupDialog(machine));
-    panel.querySelector("[data-customer-machine-report]")?.addEventListener("click", () => openCustomerMachineReportDialog(machine));
+    panel.querySelector("[data-customer-daily-update]")?.addEventListener("click", () => openCustomerDailyUpdateDialog(machine));
+    panel.querySelector("[data-customer-machine-report]")?.addEventListener("click", () => openCustomerMachineReportDialog(machine, "record"));
     panel.querySelector("[data-operator-report-menu]")?.addEventListener("click", () => openOperatorReportMenu(machine));
     const activityControl = panel.querySelector("[data-customer-activity-control]");
     const activitySelect = panel.querySelector("[data-customer-activity-status]");
@@ -2421,66 +2426,93 @@
     render(null);
   }
 
-  async function showCustomerDailyReportHistory(machine, body) {
-    body.innerHTML = `${belmDateFilterBarHtml("dr")}<div class="belm-customer-report-list"><p class="belm-analysis-loading">Loading daily reports…</p></div>`;
+  function openCustomerDailyUpdateDialog(machine) {
+    document.getElementById("belmCustomerDailyUpdateDialog")?.remove();
+    const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmCustomerDailyUpdateDialog";
+    dialog.className = "belm-analysis-dialog";
+    dialog.innerHTML = `<form class="belm-analysis-dialog-card belm-email-form">
+      <div class="belm-analysis-head"><span>DAILY REPORT — ${escapeHtml(machineName)}</span><button type="button" class="belm-analysis-close" aria-label="Close">×</button></div>
+      <div class="belm-email-form-grid">
+        <label class="full">Machine update<textarea rows="6" maxlength="1000" data-daily-update-message required placeholder="e.g. Machine operating normally, hydraulic temperature slightly high."></textarea></label>
+        <p class="belm-email-intro full">This is recorded in the machine Daily Report and Report Record. It does not create a Job Card.</p>
+        <div class="belm-checklist-edit-error full" data-daily-update-error hidden></div>
+      </div>
+      <div class="belm-email-dialog-actions"><button type="button" class="belm-analysis-close">Cancel</button><button type="submit" class="primary" data-daily-update-save>Save Daily Report</button></div>
+    </form>`;
+    document.body.appendChild(dialog);
+    const close = () => dialog.close();
+    dialog.querySelectorAll(".belm-analysis-close").forEach((b) => b.addEventListener("click", close));
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.querySelector("form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = dialog.querySelector("[data-daily-update-message]").value.trim();
+      const errorBox = dialog.querySelector("[data-daily-update-error]");
+      const button = dialog.querySelector("[data-daily-update-save]");
+      if (!message) return;
+      button.disabled = true; button.textContent = "Saving…"; errorBox.hidden = true;
+      try {
+        const token = localStorage.getItem("belm_customer_token");
+        const response = await fetch(`/api/customer-portal/operator-reports/${encodeURIComponent(machine.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ message, reportType: "DAILY", sendToBelm: false }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || "Could not save Daily Report.");
+        dialog.close();
+        alert(result.message || "Daily Report saved.");
+      } catch (error) {
+        errorBox.textContent = error.message || "Could not save Daily Report."; errorBox.hidden = false;
+      } finally { button.disabled = false; button.textContent = "Save Daily Report"; }
+    });
+    dialog.showModal();
+    setTimeout(() => dialog.querySelector("[data-daily-update-message]")?.focus(), 20);
+  }
+
+  async function showCustomerReportRecord(machine, body, category = "ALL") {
+    body.innerHTML = `${belmDateFilterBarHtml("rr")}<div class="belm-report-record-toolbar"><button type="button" class="primary" data-report-record-daily>+ Add Daily Update</button></div><div class="belm-customer-report-list"><p class="belm-analysis-loading">Loading Report Record…</p></div>`;
     const token = localStorage.getItem("belm_customer_token");
     const list = body.querySelector(".belm-customer-report-list");
     async function render(range) {
-      list.innerHTML = '<p class="belm-analysis-loading">Loading daily reports…</p>';
+      list.innerHTML = '<p class="belm-analysis-loading">Loading Report Record…</p>';
       try {
-        const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/reports`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const reports = await response.json().catch(() => []);
-        if (!response.ok) throw new Error(reports.error || "Could not load daily reports.");
-        const from = range?.from ? new Date(range.from.length === 4 ? `${range.from}-01-01` : range.from.length === 7 ? `${range.from}-01` : range.from) : null;
-        const to = range?.to ? new Date(range.to.length === 4 ? `${range.to}-12-31T23:59:59` : range.to.length === 7 ? `${range.to}-28T23:59:59` : `${range.to}T23:59:59`) : null;
-        const filtered = (Array.isArray(reports) ? reports : []).filter((r) => {
-          if (!from && !to) return true;
-          const created = new Date(r.createdAt);
-          if (from && created < from) return false;
-          if (to && created > to) return false;
-          return true;
-        });
-        list.innerHTML = filtered.length ? filtered.map((report) => {
-          const status = String(report.overallStatus || "GREEN").toUpperCase();
-          return `<article class="belm-customer-checkup-report-row">
-            <div>
-              <strong>${escapeHtml(report.templateName || "Daily Report")}</strong>
-              <span>${escapeHtml(report.createdAt ? formatTanzaniaDateTime(report.createdAt) : "Date not recorded")}</span>
-              <small>Technician: ${escapeHtml(report.filledBy || "Not recorded")} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")}</small>
-            </div>
-            <span class="belm-report-status status-${escapeHtml(status.toLowerCase())}">${escapeHtml(status)}</span>
+        const qs = new URLSearchParams({ category });
+        if (range?.from) qs.set("from", range.from);
+        if (range?.to) qs.set("to", range.to);
+        const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/report-records?${qs}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+        const records = await response.json().catch(() => []);
+        if (!response.ok) throw new Error(records.error || "Could not load Report Record.");
+        list.innerHTML = Array.isArray(records) && records.length ? records.map((r) => {
+          const type = String(r.reportType || "RECORD").replaceAll("_", " ");
+          const status = String(r.status || "RECORDED").toUpperCase();
+          return `<article class="belm-customer-checkup-report-row belm-report-record-row">
+            <div><strong>${escapeHtml(r.jobCardNo ? `${r.jobCardNo} · ${r.title || type}` : r.title || type)}</strong>
+              <span>${escapeHtml(r.occurredAt ? formatTanzaniaDateTime(r.occurredAt) : "Date not recorded")} · ${escapeHtml(type)}</span>
+              <small>Reported by: ${escapeHtml(r.reportedBy || "Not recorded")}${r.technicianName ? ` · Technician: ${escapeHtml(r.technicianName)}` : ""}</small>
+              <p>${escapeHtml(r.message || "—")}</p>${r.finalResult ? `<em>Final result: ${escapeHtml(r.finalResult)}</em>` : ""}
+            </div><span class="belm-report-status status-${escapeHtml(status === "COMPLETED" || status === "GREEN" || status === "RECORDED" ? "green" : status === "OPEN" || status === "RED" ? "red" : "yellow")}">${escapeHtml(status)}</span>
           </article>`;
-        }).join("") : '<div class="belm-report-empty">No daily reports found for this period. Nothing is ever deleted — try widening the date range or switch to All time.</div>';
-      } catch (error) {
-        list.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load daily reports.")}</p>`;
-      }
+        }).join("") : '<div class="belm-report-empty">No Report Record entries found for this period.</div>';
+      } catch (error) { list.innerHTML = `<p class="belm-analysis-error">${escapeHtml(error.message || "Could not load Report Record.")}</p>`; }
     }
-    const { readRange } = wireBelmDateFilterBar(body, "dr", render);
-    body.querySelector("[data-dr-download]").addEventListener("click", async (event) => {
-      const button = event.currentTarget;
-      const originalText = button.textContent;
-      button.disabled = true;
-      button.textContent = "Preparing…";
-      try {
-        const range = readRange();
-        const qs = new URLSearchParams();
-        if (range.from) qs.set("from", range.from);
-        if (range.to) qs.set("to", range.to);
-        await customerPdfAction(
-          `/api/customer-portal/machines/${encodeURIComponent(machine.id)}/reports-pdf${qs.toString() ? `?${qs}` : ""}`,
-          "download",
-          "BELM-daily-report-history.pdf"
-        );
-      } catch (error) {
-        alert(error.message || "Could not prepare the Daily Report PDF.");
-      } finally {
-        button.disabled = false;
-        button.textContent = originalText;
-      }
+    const { readRange } = wireBelmDateFilterBar(body, "rr", render);
+    body.querySelector("[data-report-record-daily]")?.addEventListener("click", () => openCustomerDailyUpdateDialog(machine));
+    body.querySelector("[data-rr-download]")?.addEventListener("click", async (event) => {
+      const button=event.currentTarget, original=button.textContent; button.disabled=true; button.textContent="Preparing…";
+      try { const range=readRange(); const qs=new URLSearchParams({category}); if(range.from)qs.set("from",range.from); if(range.to)qs.set("to",range.to);
+        await customerPdfAction(`/api/customer-portal/machines/${encodeURIComponent(machine.id)}/report-records-pdf?${qs}`,"download",`BELM-report-record-${machine.id}.pdf`);
+      } catch(error){ alert(error.message || "Could not prepare Report Record PDF."); }
+      finally { button.disabled=false; button.textContent=original; }
     });
     render(null);
+  }
+
+  async function showCustomerDailyReportHistory(machine, body) {
+    // V486: Daily Report now includes routine Operator/Customer updates plus
+    // the machine Checklist record. It remains separate from BELM Job Cards.
+    await showCustomerReportRecord(machine, body, "DAILY");
   }
 
   async function showCustomerOperatorReported(machine, body) {
@@ -2596,7 +2628,7 @@
     document.getElementById("belmCustomerMachineReportModal")?.remove();
   }
 
-  function openCustomerMachineReportDialog(machine) {
+  function openCustomerMachineReportDialog(machine, initialTab = "reports") {
     closeCustomerMachineReportDialog();
     const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
     const modal = document.createElement("div");
@@ -2618,6 +2650,7 @@
         <button type="button" data-checkup-tab="jobcards">Job Card Report</button>
         <button type="button" data-checkup-tab="dailyreport">Daily Report</button>
         <button type="button" data-checkup-tab="operator">Operator Reported</button>
+        <button type="button" data-checkup-tab="record">Report Record</button>
       </nav>
       <div class="belm-customer-checkup-body" data-customer-machine-report-body></div>
     </section>`;
@@ -2627,6 +2660,7 @@
       if (name === "jobcards") showCustomerJobCardReports(machine, body);
       else if (name === "dailyreport") showCustomerDailyReportHistory(machine, body);
       else if (name === "operator") showCustomerOperatorReported(machine, body);
+      else if (name === "record") showCustomerReportRecord(machine, body);
       else showCustomerCheckedReports(machine, body);
     };
     modal.querySelectorAll("[data-checkup-tab]").forEach((button) => button.addEventListener("click", () => setTab(button.dataset.checkupTab)));
@@ -2634,7 +2668,7 @@
       if (event.target === modal || event.target.closest("[data-close-customer-machine-report]")) closeCustomerMachineReportDialog();
     });
     document.body.appendChild(modal);
-    setTab("reports");
+    setTab(["reports", "jobcards", "dailyreport", "operator", "record"].includes(initialTab) ? initialTab : "reports");
   }
 
   function openCustomerCheckupDialog(machine) {
@@ -4036,7 +4070,10 @@
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.error || "Could not send this report.");
         dialog.close();
-        alert(result.message || "Problem reported successfully.");
+        const confirmation = result.jobCardNo
+          ? `${result.message || "BELM Job Card created."}\nJob Card: ${result.jobCardNo}`
+          : (result.message || "Problem reported successfully.");
+        alert(confirmation);
       } catch (error) {
         errorBox.textContent = error.message;
         errorBox.hidden = false;
@@ -4051,23 +4088,25 @@
     return dialog;
   }
 
-  async function openProblemReportDialog(machineId) {
+  async function openProblemReportDialog(machineId, forceBelm = false) {
     const dialog = ensureProblemReportDialog();
     dialog.dataset.machineId = machineId;
     const profile = await loadCustomerPortalProfile();
     const selfServiceMode = Boolean(profile?.isMachineryAdmin);
     const belmCheckbox = document.getElementById("belmProblemSendToBelm");
     const intro = document.getElementById("belmProblemIntro");
-    if (selfServiceMode) {
-      belmCheckbox.disabled = false;
-      belmCheckbox.checked = false;
-      intro.textContent = "Self-Service Mode: this report stays with your own maintenance team unless you select BELM Technical Support below.";
-      document.getElementById("belmProblemSendButton").textContent = "Save Internal Report";
-    } else {
+    if (forceBelm || !selfServiceMode) {
       belmCheckbox.checked = true;
       belmCheckbox.disabled = true;
-      intro.textContent = "BELM Service Provider is active: this machine problem will notify BELM automatically. Your other company operations remain under your own portal roles.";
-      document.getElementById("belmProblemSendButton").textContent = "Send Report to BELM";
+      intro.textContent = forceBelm
+        ? "This action sends an official Job Card directly to BELM TECHNICAL DEP. It is separate from the machine Daily Report."
+        : "BELM Service Provider is active: this problem will create a BELM Job Card automatically.";
+      document.getElementById("belmProblemSendButton").textContent = "Send Job Card to BELM";
+    } else {
+      belmCheckbox.disabled = false;
+      belmCheckbox.checked = false;
+      intro.textContent = "Internal problem report. Select BELM Technical Support only when you want an official BELM Job Card.";
+      document.getElementById("belmProblemSendButton").textContent = "Save Internal Report";
     }
     document.getElementById("belmProblemMessage").value = "";
     document.getElementById("belmProblemError").hidden = true;
@@ -4096,7 +4135,7 @@
     document.querySelectorAll("[data-report-problem]").forEach((button) => {
       if (button.dataset.belmWired === "1") return;
       button.dataset.belmWired = "1";
-      button.addEventListener("click", () => openProblemReportDialog(button.dataset.reportProblem));
+      button.addEventListener("click", () => openProblemReportDialog(button.dataset.reportProblem, true));
     });
   }
 
@@ -4132,6 +4171,12 @@
             </button>
           </div>
           <div class="belm-operator-report-menu-row">
+            <button type="button" class="belm-operator-report-menu-item" data-operator-menu-daily>
+              <strong>Daily Report</strong><span>Routine machine update — saved to this machine record, no Job Card</span>
+            </button>
+            <button type="button" class="belm-operator-report-menu-pdf" data-operator-menu-pdf="DAILY" title="Download Daily Report history PDF for this machine">PDF</button>
+          </div>
+          <div class="belm-operator-report-menu-row">
             <button type="button" class="belm-operator-report-menu-item" data-operator-menu-handover>
               <strong>Machine Handover</strong><span>Leave a handover comment for the next operator/shift</span>
             </button>
@@ -4139,7 +4184,7 @@
           </div>
           <div class="belm-operator-report-menu-row">
             <button type="button" class="belm-operator-report-menu-item" data-operator-menu-report>
-              <strong>Report</strong><span>Report a problem — starts a Job Card</span>
+              <strong>Send Job Card to BELM</strong><span>Problem requiring BELM action — creates an official Job Card</span>
             </button>
             <button type="button" class="belm-operator-report-menu-pdf" data-operator-menu-pdf="PROBLEM" title="Download Report history PDF for this machine">PDF</button>
           </div>
@@ -4155,13 +4200,17 @@
     dialog.querySelector("[data-operator-menu-fuel]").addEventListener("click", () => {
       window.location.href = `/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}`;
     });
+    dialog.querySelector("[data-operator-menu-daily]").addEventListener("click", () => {
+      dialog.close();
+      openCustomerDailyUpdateDialog(machine);
+    });
     dialog.querySelector("[data-operator-menu-handover]").addEventListener("click", () => {
       dialog.close();
       openOperatorHandoverDialog(machine.id);
     });
     dialog.querySelector("[data-operator-menu-report]").addEventListener("click", () => {
       dialog.close();
-      openProblemReportDialog(machine.id);
+      openProblemReportDialog(machine.id, true);
     });
     dialog.querySelectorAll("[data-operator-menu-pdf]").forEach((button) => {
       button.addEventListener("click", (event) => {
@@ -4181,7 +4230,7 @@
     const dialog = document.createElement("dialog");
     dialog.id = "belmOperatorReportPdfDialog";
     dialog.className = "belm-analysis-dialog";
-    const label = type === "HANDOVER" ? "Machine Handover" : "Report";
+    const label = type === "HANDOVER" ? "Machine Handover" : type === "DAILY" ? "Daily Report" : "Report";
     dialog.innerHTML = `
       <div class="belm-analysis-dialog-card">
         <div class="belm-analysis-head">
@@ -4208,7 +4257,7 @@
         await customerPdfAction(
           `/api/customer-portal/operator-reports/${encodeURIComponent(machineId)}/pdf?${qs.toString()}`,
           "download",
-          `BELM-${type === "HANDOVER" ? "machine-handover" : "report"}-${machineId}.pdf`
+          `BELM-${type === "HANDOVER" ? "machine-handover" : type === "DAILY" ? "daily-report" : "report"}-${machineId}.pdf`
         );
         dialog.close();
       } catch (error) {

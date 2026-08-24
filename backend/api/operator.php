@@ -251,16 +251,20 @@ if ($action === 'check-up' && $method === 'POST') {
     $reportMessage = implode("
 ", $lines);
 
+    $modeStmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id=? AND deleted_at IS NULL');
+    $modeStmt->execute([$payload['customerId']]);
+    $belmServiceActive = empty($modeStmt->fetchColumn());
+    $notifyBelm = $abnormal && $belmServiceActive;
     db()->prepare(
         "INSERT INTO operator_reports
-         (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, created_at)
-         VALUES (?,?,?,?,?,?,?, ?,1,NOW())"
+         (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at)
+         VALUES (?,?,?,?,?,?,?, ?,?,'PROBLEM',NOW())"
     )->execute([
-        $reportId, $machineId, $payload['customerId'], $operatorId, $operatorName, null, $reportMessage, $status,
+        $reportId, $machineId, $payload['customerId'], $operatorId, $operatorName, null, $reportMessage, $status, $notifyBelm ? 1 : 0,
     ]);
 
     $whatsappDelivery = null;
-    if ($abnormal) {
+    if ($abnormal && $notifyBelm) {
         belm_ensure_breakdown_case_from_operator_report($reportId, $operatorName);
         try {
             $machineStmt = db()->prepare(
@@ -304,21 +308,46 @@ if ($action === 'check-up' && $method === 'POST') {
 
 if ($action === 'report' && $method === 'POST') {
     $shift = operator_open_shift($operatorId);
-    if (!$shift) json_error('Sign in first before sending an Operator Report.', 422);
+    if (!$shift) json_error('Sign in first before sending a machine report.', 422);
     $b = body();
     $message = trim((string)($b['message'] ?? ''));
-    if ($message === '') json_error('Write the Operator Report message first.');
-    if (mb_strlen($message) > 1000) json_error('Operator Report message is too long.');
+    if ($message === '') json_error('Write the machine report message first.');
+    if (mb_strlen($message) > 1000) json_error('Machine report message is too long.');
+    $mode = strtoupper(trim((string)($b['mode'] ?? 'DAILY')));
+    if (!in_array($mode, ['DAILY','BELM_JOB'], true)) $mode = 'DAILY';
 
     $reportId = uuid();
     $operatorName = (string)($payload['name'] ?? 'Operator');
+    $isBelmJob = $mode === 'BELM_JOB';
     db()->prepare(
         "INSERT INTO operator_reports
-         (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, created_at)
-         VALUES (?,?,?,?,?,?,?,'OPEN',1,NOW())"
-    )->execute([$reportId, $machineId, $payload['customerId'], $operatorId, $operatorName, null, $message]);
+         (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at)
+         VALUES (?,?,?,?,?,?,?, ?,?,?,NOW())"
+    )->execute([
+        $reportId, $machineId, $payload['customerId'], $operatorId, $operatorName, null, $message,
+        $isBelmJob ? 'OPEN' : 'RECORDED', $isBelmJob ? 1 : 0, $isBelmJob ? 'PROBLEM' : 'DAILY',
+    ]);
 
-    belm_ensure_breakdown_case_from_operator_report($reportId, $operatorName);
+    if (!$isBelmJob) {
+        db()->prepare('INSERT INTO customer_activity_logs (id,customer_id,actor_name,action,created_at) VALUES (?,?,?,?,NOW())')
+            ->execute([uuid(),$payload['customerId'],$operatorName,'Daily machine update recorded: '.$message]);
+        json_out([
+            'id'=>$reportId,
+            'reportType'=>'DAILY',
+            'status'=>'RECORDED',
+            'message'=>'Daily Report saved to this machine Report Record.',
+            'jobCardCreated'=>false,
+        ],201);
+    }
+
+    $caseId = belm_ensure_breakdown_case_from_operator_report($reportId, $operatorName, true);
+    $jobCardNo = null;
+    if ($caseId) {
+        $jobStmt=db()->prepare('SELECT job_card_no FROM digital_job_cards WHERE case_id=? ORDER BY created_at ASC LIMIT 1');
+        $jobStmt->execute([$caseId]);
+        $jobCardNo=$jobStmt->fetchColumn() ?: null;
+    }
+
     $whatsappDelivery = null;
     try {
         $machineStmt = db()->prepare(
@@ -330,24 +359,26 @@ if ($action === 'report' && $method === 'POST') {
         $ctx = $machineStmt->fetch() ?: [];
         $machineLabel = trim(($ctx['brand'] ?? '') . ' ' . ($ctx['model'] ?? '')) ?: ($ctx['machine_type'] ?? 'Machine');
         $serial = $ctx['serial_number'] ?: ($ctx['reg_number'] ?: 'Not recorded');
-        $subject = 'OPERATOR REPORT - ' . $machineLabel;
-        $bodyText = "OPERATOR MESSAGE\n\n"
+        $subject = 'BELM JOB CARD REQUEST - ' . $machineLabel;
+        $bodyText = "BELM JOB CARD REQUEST\n\n"
             . 'Customer: ' . ($ctx['customer_name'] ?? 'Customer') . "\n"
             . "Operator: $operatorName\n"
             . "Machine: $machineLabel\n"
             . "Serial / Reg: $serial\n"
-            . "Message: $message";
-        $whatsappDelivery = belm_send_operator_message_whatsapp_group(
-            (string)$payload['customerId'], $subject, $bodyText
-        );
+            . ($jobCardNo ? "Job Card: $jobCardNo\n" : '')
+            . "Problem: $message";
+        $whatsappDelivery = belm_send_operator_message_whatsapp_group((string)$payload['customerId'], $subject, $bodyText);
     } catch (Throwable $ignored) {
         $whatsappDelivery = ['sent' => 0, 'failed' => 0, 'pending' => 0, 'skipped' => 0, 'recipients' => []];
     }
 
     json_out([
         'id' => $reportId,
+        'reportType' => 'PROBLEM',
         'status' => 'OPEN',
         'message' => $message,
+        'jobCardCreated' => (bool)$jobCardNo,
+        'jobCardNo' => $jobCardNo,
         'whatsappDelivery' => $whatsappDelivery,
     ], 201);
 }
@@ -397,7 +428,7 @@ if ($action === 'sign-out' && $method === 'POST') {
             null, $reportMessage, $notifyBelm ? 1 : 0,
         ]);
 
-        belm_ensure_breakdown_case_from_operator_report($reportId, $operatorName);
+        if ($notifyBelm) belm_ensure_breakdown_case_from_operator_report($reportId, $operatorName);
 
         $machineLabel = trim(($context['brand'] ?? '') . ' ' . ($context['model'] ?? '')) ?: ($context['machine_type'] ?? 'Machine');
         $serial = $context['serial_number'] ?: ($context['reg_number'] ?: 'Not recorded');

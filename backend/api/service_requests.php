@@ -100,7 +100,7 @@ if ($method === 'GET' && $action === 'operator-reports') {
             FROM operator_reports opr
             JOIN customers c ON c.id = opr.customer_id
             JOIN machines m ON m.id = opr.machine_id
-            WHERE opr.notify_belm = 1";
+            WHERE opr.notify_belm = 1 AND UPPER(COALESCE(opr.report_type,'PROBLEM')) = 'PROBLEM'";
     $params = [];
     if ($statusFilter !== '') {
         $sql .= ' AND opr.status = ?';

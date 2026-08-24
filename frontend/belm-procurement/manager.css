@@ -4,3 +4,11 @@
 /* V484 - secondary Procurement action lives inside the module and is visually distinct. */
 #supplierDirectoryButton{background:#e0ad16!important;border-color:#f4cb55!important;color:#1d2128!important}
 #supplierDirectoryButton:hover{filter:brightness(1.06)}
+
+/* V485 Procurement iframe/display fit */
+html,body{max-width:100%;overflow-x:hidden}
+.proc-shell,.panel,.proc-card,.supplier-card{min-width:0}
+.proc-head>*{min-width:0}
+.proc-head h1,.proc-head span,.panel-note,.details span,.order-meta{overflow-wrap:anywhere}
+@media(max-width:760px){.proc-actions{grid-template-columns:1fr 1fr}.proc-head{padding:15px}.panel{padding:14px}}
+@media(max-width:480px){.proc-actions{grid-template-columns:1fr}.head-actions{display:grid;grid-template-columns:1fr 1fr;width:100%}.head-actions>*{width:100%}.proc-head h1{font-size:23px}}

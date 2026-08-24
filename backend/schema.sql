@@ -290,14 +290,6 @@ CREATE TABLE IF NOT EXISTS service_request_parts (
 ALTER TABLE service_request_parts
   ADD COLUMN IF NOT EXISTS manufacturer_part_number VARCHAR(100) NULL;
 
--- Silent inventory match: when a customer types a spare part reference or
--- description, the backend tries to match it against BELM's own Spare
--- Parts Inventory (never shown to the customer) so Admin/Engineer and
--- whoever prepares the Proforma can immediately see which inventory item
--- (if any) it corresponds to.
-ALTER TABLE service_request_parts
-  ADD COLUMN IF NOT EXISTS matched_spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id);
-
 CREATE TABLE IF NOT EXISTS service_notes (
   id VARCHAR(36) PRIMARY KEY,
   request_id VARCHAR(36) NOT NULL REFERENCES service_requests(id),
@@ -318,6 +310,10 @@ CREATE TABLE IF NOT EXISTS spare_parts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at TIMESTAMPTZ NULL
 );
+-- Silent inventory match: resolve only after spare_parts exists so a fresh
+-- PostgreSQL bootstrap cannot fail on a forward foreign-key reference.
+ALTER TABLE service_request_parts
+  ADD COLUMN IF NOT EXISTS matched_spare_part_id VARCHAR(36) NULL REFERENCES spare_parts(id);
 ALTER TABLE spare_parts ADD COLUMN IF NOT EXISTS reference_number VARCHAR(100) NULL;
 -- Which machine brand/type this spare part is typically used on — helps
 -- staff quickly recognize "this filter is for a SANY reachstacker" etc.
@@ -639,7 +635,6 @@ CREATE TABLE IF NOT EXISTS suppliers (
 ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS website VARCHAR(500);
 ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS verified SMALLINT NOT NULL DEFAULT 0;
 CREATE INDEX IF NOT EXISTS idx_spare_requests_procurement_supplier ON spare_part_requests(procurement_supplier_id);
-CREATE INDEX IF NOT EXISTS idx_breakdown_spares_procurement_supplier ON breakdown_spare_requests(procurement_supplier_id);
 
 CREATE TABLE IF NOT EXISTS trash_entries (
   id VARCHAR(36) PRIMARY KEY,
@@ -737,10 +732,17 @@ CREATE TABLE IF NOT EXISTS operator_reports (
 -- customer's own team. Set notify_belm=1 only when BELM support was
 -- explicitly requested. Existing records default to 1 for compatibility.
 ALTER TABLE operator_reports ADD COLUMN IF NOT EXISTS notify_belm SMALLINT NOT NULL DEFAULT 1;
--- V444: distinguishes a Machine Handover note (internal-only, never opens a
--- Job Card) from a Report (existing PROBLEM flow, auto-opens a breakdown
--- case / Job Card). Both share the same operator_reports table/UI.
+-- V486: one operator report store supports three non-duplicated source records:
+-- DAILY = routine machine update saved to Daily Report (never opens a Job Card),
+-- HANDOVER = internal shift handover note, and PROBLEM = issue/support report.
+-- PROBLEM opens a BELM Job Card only when BELM support is explicitly requested
+-- (or BELM Service Provider mode is active). Report Record is an aggregated
+-- machine history view over these records, checklists and Digital Job Cards.
 ALTER TABLE operator_reports ADD COLUMN IF NOT EXISTS report_type VARCHAR(20) NOT NULL DEFAULT 'PROBLEM';
+-- V486: when a problem is explicitly sent to BELM, link the source report to
+-- the official Service Request that owns the BELM Job Card workflow.
+ALTER TABLE operator_reports ADD COLUMN IF NOT EXISTS service_request_id VARCHAR(36) NULL REFERENCES service_requests(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_operator_reports_service_request ON operator_reports(service_request_id);
 
 CREATE TABLE IF NOT EXISTS petty_cash_topups (
   id VARCHAR(36) PRIMARY KEY,
@@ -1316,6 +1318,7 @@ ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_note V
 ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_ordered_at TIMESTAMPTZ NULL;
 ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_expected_at DATE NULL;
 ALTER TABLE breakdown_spare_requests ADD COLUMN IF NOT EXISTS procurement_ordered_by_name VARCHAR(255) NULL;
+CREATE INDEX IF NOT EXISTS idx_breakdown_spares_procurement_supplier ON breakdown_spare_requests(procurement_supplier_id);
 
 -- V297: all customer spare requirements enter one Procurement queue first.
 -- Procurement decides whether the item is issued from Customer Store or

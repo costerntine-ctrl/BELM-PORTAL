@@ -1851,7 +1851,7 @@
     });
   }
 
-  // V376 customer direct row labels: Report, Check Up, Service Parts, Job Card.
+  // V512 customer direct row parity: Report, Check Up, Service Parts, Job Card.
   function organizeMachineActions(panel) {
     const container = panel.querySelector(".belm-machine-quick-actions");
     if (!container) return;
@@ -2069,24 +2069,22 @@
           }).map(([value, label]) => `<option value="${value}" ${value === String(machine.operationalStatus || machine.operational_status || "NORMAL").toUpperCase() ? "selected" : ""}>${label}</option>`).join("")}
         </select>
       </div>
-      <div class="belm-machine-quick-actions">
+      <div class="belm-machine-quick-actions belm-machine-quick-actions-parity">
         ${isCustomerOperatorRole() ? `
-        <button type="button" class="belm-operator-report-menu-button" data-operator-report-menu="${escapeHtml(machine.id)}">Report</button>` : `
-        <a href="/customer-procurement/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="machine-expenses">Procurement</a>
-        <a href="/customer-fuel-usage/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="fuel-usage">Fuel Usage</a>
-        <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="report-problem" data-report-problem="${escapeHtml(machine.id)}">Send Job Card to BELM</button>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-daily-update="${escapeHtml(machine.id)}">Daily Report</button>
-        <button type="button" class="belm-report-problem-button" data-belm-feature="operator-reports" data-customer-machine-report="${escapeHtml(machine.id)}">Report Record</button>
+        <button type="button" class="belm-operator-report-menu-button" data-belm-feature="operator-reports" data-operator-report-menu="${escapeHtml(machine.id)}">Report</button>
+        <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}">Check Up</button>
+        <button type="button" class="belm-customer-locked-action" disabled aria-disabled="true" title="Service Parts is closed for Operator">Service Parts</button>
+        <a href="/operator/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="workflow">Operation Card</a>` : `
+        <button type="button" class="belm-customer-report-menu-button" data-belm-feature="operator-reports" data-customer-report-menu="${escapeHtml(machine.id)}">Report</button>
         <button type="button" class="belm-customer-checkup-button" data-belm-feature="check-up" data-customer-checkup="${escapeHtml(machine.id)}" title="Open the Checklist Template synced to this machine">Check Up</button>
-        <a href="${customerWorkflowActor() === "tech" ? `/technician-job-cards/?machine=${encodeURIComponent(machine.id)}` : `/breakdown-workflow/?machine=${encodeURIComponent(machine.id)}&actor=${encodeURIComponent(customerWorkflowActor())}`}" data-belm-feature="workflow"${customerWorkflowActor() === "tech" ? ` data-tech-jobcards-machine="${escapeHtml(machine.id)}"` : ""}>Job Card</a>`}
+        <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}#procurement-spares" data-belm-feature="service-request">Service Parts</a>
+        <a href="/customer-job-card/?machine=${encodeURIComponent(machine.id)}" data-belm-feature="workflow">Job Card</a>`}
       </div>`;
     card.appendChild(panel);
     panel.addEventListener("click", (event) => event.stopPropagation());
     panel.addEventListener("pointerdown", (event) => event.stopPropagation());
     panel.querySelector("[data-customer-checkup]")?.addEventListener("click", () => openCustomerCheckupDialog(machine));
-    panel.querySelector("[data-customer-daily-update]")?.addEventListener("click", () => openCustomerDailyUpdateDialog(machine));
-    panel.querySelector("[data-customer-machine-report]")?.addEventListener("click", () => openCustomerMachineReportDialog(machine, "record"));
+    panel.querySelector("[data-customer-report-menu]")?.addEventListener("click", () => openCustomerReportMenu(machine));
     panel.querySelector("[data-operator-report-menu]")?.addEventListener("click", () => openOperatorReportMenu(machine));
     const activityControl = panel.querySelector("[data-customer-activity-control]");
     const activitySelect = panel.querySelector("[data-customer-activity-status]");
@@ -4137,6 +4135,43 @@
       button.dataset.belmWired = "1";
       button.addEventListener("click", () => openProblemReportDialog(button.dataset.reportProblem, true));
     });
+  }
+
+
+  // V512 - Customer machine card keeps the same four-button layout as BELM:
+  // Report / Check Up / Service Parts / Job Card. Routine updates and the
+  // machine master history live inside Report so the card stays clean.
+  function openCustomerReportMenu(machine) {
+    document.getElementById("belmCustomerReportMenuDialog")?.remove();
+    const machineName = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || "Machine";
+    const dialog = document.createElement("dialog");
+    dialog.id = "belmCustomerReportMenuDialog";
+    dialog.className = "belm-analysis-dialog belm-customer-report-menu-dialog";
+    dialog.innerHTML = `
+      <div class="belm-analysis-dialog-card">
+        <div class="belm-analysis-head">
+          <span>REPORT — ${escapeHtml(machineName)}</span>
+          <button type="button" class="belm-analysis-close" aria-label="Close">×</button>
+        </div>
+        <div class="belm-operator-report-menu-body">
+          <div class="belm-operator-report-menu-row">
+            <button type="button" class="belm-operator-report-menu-item" data-cwm-daily-report>
+              <strong>Daily Report</strong><span>Routine machine information/update. Saves to this machine record and does not create a Job Card.</span>
+            </button>
+          </div>
+          <div class="belm-operator-report-menu-row">
+            <button type="button" class="belm-operator-report-menu-item" data-cwm-report-record>
+              <strong>Report Record</strong><span>Open the complete machine history: Daily Reports, Checklists, Job Cards and signed operational records.</span>
+            </button>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(dialog);
+    dialog.querySelector(".belm-analysis-close")?.addEventListener("click", () => dialog.close());
+    dialog.addEventListener("close", () => dialog.remove());
+    dialog.querySelector("[data-cwm-daily-report]")?.addEventListener("click", () => { dialog.close(); openCustomerDailyUpdateDialog(machine); });
+    dialog.querySelector("[data-cwm-report-record]")?.addEventListener("click", () => { dialog.close(); openCustomerMachineReportDialog(machine, "record"); });
+    dialog.showModal();
   }
 
   // V444 - Operator's machine-card "Report" button opens one consolidated

@@ -22,5 +22,74 @@
   document.addEventListener('click',async e=>{const order=e.target.closest('[data-order]');if(order){openOrder(order.dataset.source||'',order.dataset.id||'',order.dataset.label||'Spare');return}const accounts=e.target.closest('[data-accounts]');if(accounts){const note=prompt('Procurement note to Accounts / PI (optional):')||'';try{await api(`/${encodeURIComponent(accounts.dataset.accounts)}`,{method:'PUT',body:JSON.stringify({source:'job-card',action:'send-accounts',note})});show('Spare sent to Accounts / PI.');await load()}catch(x){show(x.message,true)}}});
   document.getElementById('orderForm').onsubmit=async e=>{e.preventDefault();const error=document.getElementById('orderError');error.classList.add('hidden');try{await api(`/${encodeURIComponent(document.getElementById('orderId').value)}`,{method:'PUT',body:JSON.stringify({source:document.getElementById('orderSource').value,action:'order',supplierId:document.getElementById('supplierSelect').value,supplierReference:document.getElementById('supplierReference').value,expectedAt:document.getElementById('expectedAt').value,note:document.getElementById('orderNote').value})});document.getElementById('orderDialog').close();show('Order saved. BELM Store has been alerted for receipt.');await load()}catch(x){error.textContent=x.message;error.classList.remove('hidden')}};
   document.getElementById('closeOrder').onclick=()=>document.getElementById('orderDialog').close();document.getElementById('cancelOrder').onclick=()=>document.getElementById('orderDialog').close();document.getElementById('refreshButton').onclick=load;document.getElementById('supplierDirectoryButton').onclick=()=>document.getElementById('suppliers')?.scrollIntoView({behavior:'smooth',block:'start'});
+
+
+  // V507 Procurement Tools card
+  function today(){return new Date().toISOString().slice(0,10)}
+  function machineLabel(m){return [m.customerName,[m.brand,m.model].filter(Boolean).join(' ')||m.machineType,m.fleetNumber||m.serialNumber].filter(Boolean).join(' · ')}
+  function fillConsumableCustomers(){
+    const select=document.getElementById('consumableCustomer'); if(!select)return;
+    const map=new Map(); (data.machines||[]).forEach(m=>{if(m.customerId&&!map.has(m.customerId))map.set(m.customerId,m.customerName||'Customer')});
+    select.innerHTML='<option value="">BELM / General</option>'+[...map.entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]))).map(([id,name])=>`<option value="${esc(id)}">${esc(name)}</option>`).join('');
+    fillConsumableMachines();
+  }
+  function fillConsumableMachines(){
+    const customer=document.getElementById('consumableCustomer')?.value||''; const select=document.getElementById('consumableMachine'); if(!select)return;
+    const rows=(data.machines||[]).filter(m=>!customer||String(m.customerId)===customer);
+    select.innerHTML='<option value="">General / no machine</option>'+rows.map(m=>`<option value="${esc(m.id)}">${esc(machineLabel(m))}</option>`).join('');
+  }
+  function fillReceiptOrders(){
+    const select=document.getElementById('receiptRequest'); if(!select)return;
+    const job=(data.jobCardRequests||[]).map(r=>({value:`job-card|${r.id}`,label:`${r.jobCardNo||'Job Card'} · ${r.partNumber?`${r.partNumber} - `:''}${r.spareName||'Spare'} · ${r.customerName||''}`}));
+    const inv=(data.inventoryRequests||[]).map(r=>({value:`inventory|${r.id}`,label:`${r.referenceNumber||'Inventory'} · ${r.partNumber?`${r.partNumber} - `:''}${r.partName||r.description||'Spare'} · ${r.customerName||'BELM Stock'}`}));
+    select.innerHTML='<option value="">Select order…</option>'+[...job,...inv].map(r=>`<option value="${esc(r.value)}">${esc(r.label)}</option>`).join('');
+  }
+  function refreshToolData(){fillConsumableCustomers();fillReceiptOrders()}
+  const originalLoad=load;
+  load=async function(retry=0){await originalLoad(retry); if(retry===0)refreshToolData()};
+
+  document.getElementById('consumableCustomer')?.addEventListener('change',fillConsumableMachines);
+  document.querySelectorAll('[data-consumable]').forEach(btn=>btn.addEventListener('click',()=>{
+    const category=btn.dataset.consumable||'FUEL'; document.getElementById('consumableCategory').value=category; document.getElementById('consumableTitle').textContent=category==='FUEL'?'Fuel Consumption':'Oil'; document.getElementById('consumableDate').value=today(); document.getElementById('consumableQuantity').value=''; document.getElementById('consumableUnitPrice').value='0'; document.getElementById('consumableDescription').value=category==='FUEL'?'Fuel':'Oil'; fillConsumableCustomers(); document.getElementById('consumableDialog').showModal();
+  }));
+  document.getElementById('consumableForm')?.addEventListener('submit',async e=>{
+    e.preventDefault(); const button=e.submitter; if(button)button.disabled=true;
+    try{await api('?action=consumable',{method:'POST',body:JSON.stringify({category:document.getElementById('consumableCategory').value,customerId:document.getElementById('consumableCustomer').value,machineId:document.getElementById('consumableMachine').value,date:document.getElementById('consumableDate').value,quantity:Number(document.getElementById('consumableQuantity').value),unit:document.getElementById('consumableUnit').value,unitPrice:Number(document.getElementById('consumableUnitPrice').value||0),description:document.getElementById('consumableDescription').value.trim()})});document.getElementById('consumableDialog').close();show('Procurement record saved.');await load()}catch(x){show(x.message,true)}finally{if(button)button.disabled=false}
+  });
+  document.querySelectorAll('[data-close-dialog]').forEach(btn=>btn.addEventListener('click',()=>document.getElementById(btn.dataset.closeDialog)?.close()));
+
+  function fileToDataUrl(file){return new Promise((resolve,reject)=>{if(!file)return reject(new Error('Choose a receipt file.'));if(file.size>8*1024*1024)return reject(new Error('Receipt must be 8 MB or smaller.'));const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('Could not read receipt file.'));reader.readAsDataURL(file)})}
+  document.getElementById('uploadReceiptButton')?.addEventListener('click',()=>{fillReceiptOrders();document.getElementById('receiptDate').value=today();document.getElementById('receiptFile').value='';document.getElementById('receiptNote').value='';document.getElementById('receiptUploadError').classList.add('hidden');document.getElementById('receiptUploadDialog').showModal()});
+  document.getElementById('receiptUploadForm')?.addEventListener('submit',async e=>{
+    e.preventDefault();const error=document.getElementById('receiptUploadError');error.classList.add('hidden');const order=document.getElementById('receiptRequest').value;const [source,requestId]=order.split('|');const file=document.getElementById('receiptFile').files?.[0];const button=e.submitter;if(button)button.disabled=true;
+    try{const receiptPhoto=await fileToDataUrl(file);await api('?action=receipt-upload',{method:'POST',body:JSON.stringify({source,requestId,receiptDate:document.getElementById('receiptDate').value,receiptPhoto,receiptName:file.name,note:document.getElementById('receiptNote').value.trim()})});document.getElementById('receiptUploadDialog').close();show('Spare parts receipt uploaded.');await load()}catch(x){error.textContent=x.message;error.classList.remove('hidden')}finally{if(button)button.disabled=false}
+  });
+  async function openReceiptLibrary(){const dialog=document.getElementById('receiptLibraryDialog'),box=document.getElementById('receiptRows');dialog.showModal();box.innerHTML='<div class="empty">Loading receipts…</div>';try{const rows=await api('?action=receipts');box.innerHTML=rows.length?rows.map(r=>`<div class="receipt-row"><div><b>${esc(r.referenceLabel||r.receiptName||'Receipt')}</b><span>${esc(r.receiptDate||'')} · ${esc(r.supplierName||'Supplier not recorded')} · uploaded by ${esc(r.uploadedByName||'—')}</span>${r.note?`<span>${esc(r.note)}</span>`:''}</div><button type="button" data-proc-receipt="${esc(r.id)}" data-name="${esc(r.receiptName||'receipt')}">Download</button></div>`).join(''):'<div class="empty">No Procurement receipts uploaded yet.</div>'}catch(x){box.innerHTML=`<div class="empty">${esc(x.message)}</div>`}}
+  document.getElementById('receiptLibraryButton')?.addEventListener('click',openReceiptLibrary);
+  document.getElementById('receiptRows')?.addEventListener('click',async e=>{const btn=e.target.closest('[data-proc-receipt]');if(!btn)return;try{const r=await fetch(`/api/belm-procurement?action=receipt&receiptId=${encodeURIComponent(btn.dataset.procReceipt)}`,{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error('Could not download receipt.');const blob=await r.blob();const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=btn.dataset.name||'receipt';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}catch(x){show(x.message,true)}});
+  async function downloadReport(action,fallback){try{const r=await fetch(`/api/belm-procurement?action=${encodeURIComponent(action)}`,{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error(`Could not download ${action.toUpperCase()} report.`);const blob=await r.blob();const cd=r.headers.get('Content-Disposition')||'';const m=cd.match(/filename="?([^";]+)"?/i);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=m?m[1]:fallback;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}catch(x){show(x.message,true)}}
+  document.getElementById('csvDownloadButton')?.addEventListener('click',()=>downloadReport('csv','BELM-Procurement-Report.csv'));
+  document.getElementById('pdfDownloadButton')?.addEventListener('click',()=>downloadReport('pdf','BELM-Procurement-Report.pdf'));
+  document.getElementById('printProcurementButton')?.addEventListener('click',()=>window.print());
+
+  // V509 Procurement audit report
+  function procAuditQuery(action='audit'){
+    const q=new URLSearchParams({action});
+    [['from','procAuditFrom'],['to','procAuditTo'],['type','procAuditType'],['status','procAuditStatus'],['user','procAuditUser'],['search','procAuditSearch']].forEach(([k,id])=>{const v=document.getElementById(id)?.value?.trim()||'';if(v&&v!=='ALL')q.set(k,v)});
+    return q.toString();
+  }
+  function renderProcAudit(out){
+    const rows=out?.rows||[],s=out?.summary||{};
+    document.getElementById('procAuditSummary').innerHTML=`<div><span>Records</span><b>${Number(s.rows||rows.length)}</b></div><div><span>Ordered</span><b>${Number(s.ordered||0)}</b></div><div><span>Pending</span><b>${Number(s.pending||0)}</b></div><div><span>Receipts / Fuel-Oil</span><b>${Number(s.receipts||0)} / ${Number(s.fuelOil||0)}</b></div>`;
+    document.getElementById('procAuditRows').innerHTML=rows.length?rows.map(r=>`<tr><td>${esc(fmt(r.eventDate))}</td><td>${esc(r.type)}</td><td>${esc(r.reference||'—')}</td><td>${esc(r.customer||'—')}<br>${esc(r.machine||'—')}</td><td>${esc(r.item||'—')}${r.note?`<br><small>${esc(r.note)}</small>`:''}</td><td>${esc(r.quantity||'—')}</td><td>${esc(r.status||'—')}</td><td>${esc(r.supplier||'—')}${r.expectedAt?`<br><small>${esc(r.expectedAt)}</small>`:''}</td><td>${esc(r.actor||'—')}</td></tr>`).join(''):'<tr><td colspan="9">No audit records match the selected filters.</td></tr>';
+  }
+  async function loadProcAudit(){const body=document.getElementById('procAuditRows');body.innerHTML='<tr><td colspan="9">Loading audit records…</td></tr>';try{renderProcAudit(await api(`?${procAuditQuery('audit')}`))}catch(x){body.innerHTML=`<tr><td colspan="9">${esc(x.message)}</td></tr>`}}
+  document.getElementById('procurementAuditButton')?.addEventListener('click',()=>{document.getElementById('procurementAuditDialog').showModal();loadProcAudit()});
+  document.getElementById('procAuditApply')?.addEventListener('click',loadProcAudit);
+  async function downloadProcAudit(action,fallback){try{const r=await fetch(`/api/belm-procurement?${procAuditQuery(action)}`,{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});if(!r.ok)throw new Error('Could not download audit report.');const blob=await r.blob();const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=fallback;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}catch(x){show(x.message,true)}}
+  document.getElementById('procAuditCsv')?.addEventListener('click',()=>downloadProcAudit('audit-csv','BELM-Procurement-Audit-Report.csv'));
+  document.getElementById('procAuditPdf')?.addEventListener('click',()=>downloadProcAudit('audit-pdf','BELM-Procurement-Audit-Report.pdf'));
+  document.getElementById('procAuditPrint')?.addEventListener('click',()=>{const table=document.querySelector('#procurementAuditDialog .audit-table')?.outerHTML||'';const w=window.open('','_blank','width=1200,height=800');if(!w)return;w.document.write(`<html><head><title>Procurement Audit Report</title><style>body{font:12px Arial;padding:20px}h1{font-size:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}th{background:#eee}</style></head><body><h1>BELM PROCUREMENT AUDIT REPORT</h1>${table}</body></html>`);w.document.close();w.focus();w.print()});
+
   load();
 })();

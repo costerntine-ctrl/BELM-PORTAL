@@ -102,6 +102,14 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NUL
 -- and turning it off blocks Store Ledger + Tool Issue/Return regardless of
 -- what permissions the customer has assigned internally.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS workshop_module_active SMALLINT NOT NULL DEFAULT 0;
+-- V513: customer-owned CWM branding. Kept in a separate table so normal customer/login
+-- queries never carry multi-megabyte logo blobs. The watermark is a browser-generated faded JPEG.
+CREATE TABLE IF NOT EXISTS customer_branding (
+  customer_id VARCHAR(36) PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+  logo_data TEXT NOT NULL,
+  watermark_data TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- Distinguishes a Technician created by a customer's Self-Service admin from
 -- a BELM Technician temporarily assigned to that customer for support.
@@ -1544,3 +1552,45 @@ CREATE TABLE IF NOT EXISTS delivery_note_items (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_delivery_note_items_note ON delivery_note_items(delivery_note_id, item_no);
+
+
+-- V507 - BELM Procurement consumables and supplier receipt archive.
+CREATE TABLE IF NOT EXISTS belm_procurement_consumables (
+  id VARCHAR(36) PRIMARY KEY,
+  category VARCHAR(20) NOT NULL CHECK (category IN ('FUEL','OIL')),
+  customer_id VARCHAR(36) NULL REFERENCES customers(id) ON DELETE SET NULL,
+  machine_id VARCHAR(36) NULL REFERENCES machines(id) ON DELETE SET NULL,
+  usage_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  description VARCHAR(500) NOT NULL,
+  quantity NUMERIC(14,2) NOT NULL CHECK (quantity > 0),
+  unit VARCHAR(30) NOT NULL DEFAULT 'L',
+  unit_price NUMERIC(14,2) NOT NULL DEFAULT 0,
+  total_cost NUMERIC(14,2) NOT NULL DEFAULT 0,
+  recorded_by_id VARCHAR(36) NULL REFERENCES users(id) ON DELETE SET NULL,
+  recorded_by_name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_belm_procurement_consumables_date
+  ON belm_procurement_consumables(category, usage_date DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_belm_procurement_consumables_machine
+  ON belm_procurement_consumables(machine_id, usage_date DESC);
+
+CREATE TABLE IF NOT EXISTS belm_procurement_receipts (
+  id VARCHAR(36) PRIMARY KEY,
+  source_type VARCHAR(30) NOT NULL,
+  request_id VARCHAR(36) NOT NULL,
+  reference_label VARCHAR(500) NULL,
+  supplier_name VARCHAR(255) NULL,
+  receipt_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  receipt_data TEXT NOT NULL,
+  receipt_mime VARCHAR(50) NOT NULL,
+  receipt_name VARCHAR(255) NOT NULL,
+  note VARCHAR(500) NULL,
+  uploaded_by_id VARCHAR(36) NULL REFERENCES users(id) ON DELETE SET NULL,
+  uploaded_by_name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_belm_procurement_receipts_request
+  ON belm_procurement_receipts(source_type, request_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_belm_procurement_receipts_date
+  ON belm_procurement_receipts(receipt_date DESC, created_at DESC);

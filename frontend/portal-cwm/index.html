@@ -10,7 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/portal-cwm/manager.css?v=472-sync-audit">
+    <link rel="stylesheet" href="/portal-switcher.css?v=511-three-portal-menu">
+    <link rel="stylesheet" href="/portal-cwm/manager.css?v=512-cwm-parity">
     <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
     <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
@@ -30,6 +31,12 @@
         <button id="logoutButton" class="ghost" type="button">Log out</button>
       </div>
     </header>
+    <nav class="belm-portal-switcher" aria-label="BELM portal sections">
+      <a href="/customers-manager/">Customer Overview</a>
+      <a href="/belm-workshop/">PORTAL-BELM WM</a>
+      <a class="active" href="/portal-cwm/">PORTAL-CWM</a>
+    </nav>
+
 
     <main class="shell">
       <section class="hero">
@@ -39,8 +46,8 @@
           <p>Customers running independently — their own Admins, Technicians and Operators handle day-to-day maintenance,
              and/or their own Workshop Manager / Store Keeper / Technician team uses the PORTAL-CWM service.
              Non-Payment and PORTAL-CWM switches below are live and update the same customer record as
-             <a href="/customers-manager/">Customers &amp; Machines</a>. The 8 numbered buttons on each card are
-             placeholders — their function has not been assigned yet.</p>
+             <a href="/customers-manager/">Customers &amp; Machines</a>. This screen previews one customer at a time and
+             uses only live actions — no placeholder buttons.</p>
         </div>
       </section>
 
@@ -48,7 +55,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <div><h2>Customers</h2><p>PORTAL-CWM card per customer — Non-Payment and PORTAL-CWM switches are live; the 8 numbered buttons are placeholders, awaiting their function.</p></div>
+          <div><h2>Customer CWM Preview</h2><p>One customer card at a time. Use View Customer Machines or Open PORTAL-CWM; both use the live customer/company record.</p></div>
           <input id="cwmSearch" type="search" placeholder="Search customer…" class="cwm-search">
         </div>
       </section>
@@ -61,6 +68,6 @@
     <script src="/admin-access.js?v=411-job-card-only"></script>
     <script src="/admin-sidebar.js?v=488-text-fit"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/portal-cwm/manager.js?v=472-sync-audit"></script>
+    <script src="/portal-cwm/manager.js?v=512-cwm-parity"></script>
   </body>
 </html>

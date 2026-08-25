@@ -28,13 +28,18 @@ function checklist_report_decode_photo(?string $dataUrl): ?array {
 //
 // $photos: array of ['label' => string, 'photo' => ['data','width','height']]
 // as returned by checklist_report_decode_photo().
-function output_checklist_report_pdf(string $filename, array $lines, array $photos = []): void {
+function output_checklist_report_pdf(string $filename, array $lines, array $photos = [], ?array $watermarkOverride = null): void {
     $pages = array_chunk($lines, 50);
     if (!$pages) $pages = [['No data recorded.']];
 
-    $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
-    $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
-    $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    if ($watermarkOverride && !empty($watermarkOverride['data']) && !empty($watermarkOverride['size'])) {
+        $watermarkData = $watermarkOverride['data'];
+        $watermarkSize = $watermarkOverride['size'];
+    } else {
+        $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
+        $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
+        $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    }
 
     $objects = [];
     // Object numbering plan:

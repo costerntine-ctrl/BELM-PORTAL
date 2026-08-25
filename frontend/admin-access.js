@@ -35,6 +35,7 @@
     [/^\/checklist-manager(?:\/|$)/, "checklist-templates"],
     [/^\/controller-pinouts-manager(?:\/|$)/, "checklist-templates"],
     [/^\/service-request-manager(?:\/|$)/, "job-cards"],
+    [/^\/belm-workshop(?:\/|$)/, "job-cards"],
     [/^\/belm-procurement(?:\/|$)/, "spare-parts"],
     [/^\/spare-parts-manager(?:\/|$)/, "spare-parts"],
     [/^\/billing-manager(?:\/|$)/, "billing"],
@@ -62,24 +63,25 @@
   function belmWorkshopAllowed(path) {
     const role = String(user.role || "").toLowerCase();
     return /^\/belm-workshop(?:\/|$)/.test(path)
-      && (role === "procurement" || role === "workshop manager" || role === "engineer"
-          || allowedPages.includes("roles") || allowedPages.includes("job-cards")
-          || allowedPages.includes("service-requests") || allowedPages.includes("spare-parts")
-          || allowedPages.includes("suppliers"));
+      && ["procurement", "workshop manager", "engineer", "store keeper"].includes(role);
   }
 
   document.querySelectorAll("a[href]").forEach(link => {
     const href = new URL(link.getAttribute("href"), window.location.origin).pathname;
     const key = keyForPath(href);
+    const workshopRoute = /^\/belm-workshop(?:\/|$)/.test(href);
     const workshopAllowed = belmWorkshopAllowed(href);
-    if (key && !workshopAllowed && !allowedPages.includes(key)) link.hidden = true;
+    if (key === "bank-manager" || (workshopRoute && !workshopAllowed) || (key && !workshopRoute && !allowedPages.includes(key))) link.hidden = true;
   });
 
   const currentKey = keyForPath(window.location.pathname);
+  const isWorkshopRoute = /^\/belm-workshop(?:\/|$)/.test(window.location.pathname);
   const workshopAccess = belmWorkshopAllowed(window.location.pathname);
-  if (workshopAccess || !currentKey || allowedPages.includes(currentKey)) return;
+  const workshopBlocked = isWorkshopRoute && !workshopAccess;
+  const bankControllerBlocked = currentKey === "bank-manager";
+  if (!bankControllerBlocked && !workshopBlocked && (workshopAccess || !currentKey || allowedPages.includes(currentKey))) return;
 
-  const firstAllowed = allowedPages.find(key => routes[key]);
+  const firstAllowed = allowedPages.find(key => key !== "bank-manager" && routes[key]);
   if (firstAllowed) {
     window.location.replace(routes[firstAllowed]);
   } else if (user.role === "Technician") {

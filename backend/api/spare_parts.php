@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/table_pdf_helper.php';
 
 $user = require_auth();
 // Customer Self-Service technicians must never see BELM's internal Inventory,
@@ -28,6 +29,47 @@ $action = $_GET['action'] ?? '';
 // backend still accepts/stores whatever is sent regardless of category,
 // so this never blocks an edge-case part that doesn't fit neatly.
 const SPARE_PART_CATEGORIES = ['BEARING', 'FILTER', 'AIR_CLEANER', 'VALVE', 'OTHER'];
+
+function spare_store_audit_rows(): array {
+    $stmt = db()->query(
+        "SELECT a.id,a.action,a.entity_id,a.metadata,a.created_at,u.name actor_name,
+                sp.part_number,sp.name part_name,sp.stock_qty current_stock
+         FROM activity_logs a
+         LEFT JOIN users u ON u.id=a.user_id
+         LEFT JOIN spare_parts sp ON sp.id=a.entity_id
+         WHERE a.entity='sparePart' AND a.action IN ('spare-part-created','spare-part-edited','spare-part-deleted')
+         ORDER BY a.created_at DESC LIMIT 2000"
+    );
+    $rows=[];
+    foreach($stmt->fetchAll() as $r){
+        $meta=$r['metadata'] ?? []; if(is_string($meta)){ $decoded=json_decode($meta,true); $meta=is_array($decoded)?$decoded:[]; }
+        $before=array_key_exists('stockBefore',$meta)?(int)$meta['stockBefore']:null;
+        $after=array_key_exists('stockAfter',$meta)?(int)$meta['stockAfter']:null;
+        $delta=array_key_exists('stockDelta',$meta)?(int)$meta['stockDelta']:(($before!==null&&$after!==null)?$after-$before:null);
+        $action=(string)$r['action'];
+        if($action==='spare-part-created') $type=($after!==null&&$after>0)?'STOCK IN':'CREATED';
+        elseif($action==='spare-part-deleted') $type='DELETED';
+        elseif($delta!==null&&$delta>0) $type='STOCK IN';
+        elseif($delta!==null&&$delta<0) $type='STOCK OUT';
+        else $type='EDIT';
+        $rows[]=[
+            'eventDate'=>$r['created_at'], 'type'=>$type,
+            'partNumber'=>$meta['partNumber'] ?? ($r['part_number'] ?? '—'), 'partName'=>$meta['name'] ?? ($r['part_name'] ?? 'Spare part'),
+            'quantityChange'=>$delta, 'balanceAfter'=>$after, 'currentStock'=>$r['current_stock'] !== null ? (int)$r['current_stock'] : null,
+            'actor'=>$r['actor_name'] ?: '—',
+            'note'=>($delta===null && $action==='spare-part-edited')?'Historical edit; stock delta was not captured before the audit upgrade.':($meta['note'] ?? ''),
+        ];
+    }
+    $from=trim((string)($_GET['from']??'')); $to=trim((string)($_GET['to']??'')); $type=strtoupper(trim((string)($_GET['type']??'')));
+    $userFilter=mb_strtolower(trim((string)($_GET['user']??''))); $search=mb_strtolower(trim((string)($_GET['search']??'')));
+    return array_values(array_filter($rows,function($r)use($from,$to,$type,$userFilter,$search){
+        $day=substr((string)$r['eventDate'],0,10); if($from!==''&&$day<$from)return false; if($to!==''&&$day>$to)return false;
+        if($type!==''&&$type!=='ALL'&&strtoupper((string)$r['type'])!==$type)return false;
+        if($userFilter!==''&&strpos(mb_strtolower((string)$r['actor']),$userFilter)===false)return false;
+        if($search!==''&&strpos(mb_strtolower((string)$r['partNumber'].' '.(string)$r['partName'].' '.(string)$r['note']),$search)===false)return false;
+        return true;
+    }));
+}
 
 function spare_part_payload(array $body, ?string $excludeId = null): array {
     $partNumber = strtoupper(trim((string)($body['partNumber'] ?? '')));
@@ -110,6 +152,23 @@ function fetch_equivalents(string $partId): array {
 // reference number and name, but ALSO surfaces parts that are marked
 // equivalent to a direct match (so searching "670" for "LF670" also
 // brings back whatever other brand's part is linked as its equivalent).
+if ($method === 'GET' && $action === 'audit') {
+    $rows=spare_store_audit_rows(); $summary=['rows'=>count($rows),'stockIn'=>0,'stockOut'=>0,'edits'=>0];
+    foreach($rows as $r){if($r['type']==='STOCK IN')$summary['stockIn']++;elseif($r['type']==='STOCK OUT')$summary['stockOut']++;else $summary['edits']++;}
+    json_out(['rows'=>$rows,'summary'=>$summary]);
+}
+if ($method === 'GET' && $action === 'audit-csv') {
+    $rows=spare_store_audit_rows(); header('Content-Type: text/csv; charset=utf-8'); header('Content-Disposition: attachment; filename="BELM-Store-Keeper-Audit-Report.csv"');
+    $out=fopen('php://output','w'); fputcsv($out,['BELM STORE KEEPER AUDIT REPORT']); fputcsv($out,['Generated',date('d/m/Y H:i')]); fputcsv($out,[]);
+    fputcsv($out,['Date','Movement','Part Number','Spare Part','Quantity Change','Balance After','Current Stock','Handled By','Note']);
+    foreach($rows as $r)fputcsv($out,[$r['eventDate'],$r['type'],$r['partNumber'],$r['partName'],$r['quantityChange']===null?'—':$r['quantityChange'],$r['balanceAfter']===null?'—':$r['balanceAfter'],$r['currentStock']===null?'—':$r['currentStock'],$r['actor'],$r['note']]); fclose($out); exit;
+}
+if ($method === 'GET' && $action === 'audit-pdf') {
+    $table=[['DATE','MOVEMENT','PART NO.','SPARE PART','CHANGE','BALANCE','CURRENT','HANDLED BY']];
+    foreach(spare_store_audit_rows() as $r)$table[]=[substr((string)$r['eventDate'],0,16),$r['type'],$r['partNumber'],$r['partName'],$r['quantityChange']===null?'—':(string)$r['quantityChange'],$r['balanceAfter']===null?'—':(string)$r['balanceAfter'],$r['currentStock']===null?'—':(string)$r['currentStock'],$r['actor']];
+    output_table_pdf('BELM-Store-Keeper-Audit-Report.pdf','BELM STORE KEEPER AUDIT REPORT',['Generated: '.date('d/m/Y H:i')],$table);
+}
+
 if ($method === 'GET' && $action === 'search-with-equivalents') {
     $q = trim((string)($_GET['q'] ?? ''));
     if ($q === '') json_out([]);
@@ -268,7 +327,7 @@ if ($method === 'POST' && !$action) {
         $part['machineBrand'], $part['machineType'],
         $part['heightMm'], $part['lengthMm'], $part['outerDiameterMm'], $part['innerDiameterMm'], $part['threadSize'],
     ]);
-    log_activity($user, 'spare-part-created', 'sparePart', $newId, ['name' => $part['name']]);
+    log_activity($user, 'spare-part-created', 'sparePart', $newId, ['name'=>$part['name'],'partNumber'=>$part['partNumber'],'stockBefore'=>0,'stockAfter'=>$part['stockQty'],'stockDelta'=>$part['stockQty']]);
     json_out(['id' => $newId, 'message' => 'Spare part saved successfully.'], 201);
 }
 
@@ -277,6 +336,8 @@ if ($method === 'PUT' && !$action) {
     $b = body();
     require_edit_confirmation($user, $b);
     $part = spare_part_payload($b, $id);
+    $beforeStmt = db()->prepare('SELECT part_number,name,stock_qty FROM spare_parts WHERE id=? AND deleted_at IS NULL');
+    $beforeStmt->execute([$id]); $beforeRow = $beforeStmt->fetch(); if(!$beforeRow) json_error('Spare part not found.',404);
     $stmt = db()->prepare(
         'UPDATE spare_parts
          SET part_number=?, reference_number=?, name=?, category=?, stock_qty=?, reorder_threshold=?,
@@ -293,18 +354,19 @@ if ($method === 'PUT' && !$action) {
         $id,
     ]);
     if ($stmt->rowCount() === 0) json_error('Spare part not found.', 404);
-    log_activity($user, 'spare-part-edited', 'sparePart', $id, ['name' => $part['name']]);
+    log_activity($user, 'spare-part-edited', 'sparePart', $id, ['name'=>$part['name'],'partNumber'=>$part['partNumber'],'stockBefore'=>(int)$beforeRow['stock_qty'],'stockAfter'=>$part['stockQty'],'stockDelta'=>$part['stockQty']-(int)$beforeRow['stock_qty']]);
     json_out(['ok' => true, 'message' => 'Spare part updated successfully.']);
 }
 
 if ($method === 'DELETE' && !$action) {
-    $stmt = db()->prepare('SELECT name FROM spare_parts WHERE id = ?');
+    $stmt = db()->prepare('SELECT name,stock_qty FROM spare_parts WHERE id = ?');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
     $reason = require_delete_confirmation($user, body());
     send_to_trash('sparePart', $id, $row['name'], $user['id'], $reason);
     soft_delete('spare_parts', $id);
+    log_activity($user,'spare-part-deleted','sparePart',$id,['name'=>$row['name'],'stockBefore'=>(int)($row['stock_qty']??0),'stockAfter'=>null,'stockDelta'=>null]);
     json_out(null, 204);
 }
 

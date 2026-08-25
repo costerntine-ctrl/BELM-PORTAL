@@ -8,6 +8,25 @@ function table_pdf_escape(string $value): string {
     return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], $value);
 }
 
+function pdf_customer_watermark(string $customerId): ?array {
+    if ($customerId === '') return null;
+    try {
+        $stmt = db()->prepare('SELECT cb.watermark_data, cb.logo_data FROM customer_branding cb JOIN customers c ON c.id=cb.customer_id WHERE cb.customer_id = ? AND c.deleted_at IS NULL LIMIT 1');
+        $stmt->execute([$customerId]);
+        $row = $stmt->fetch() ?: [];
+        $encoded = trim((string)($row['watermark_data'] ?? $row['logo_data'] ?? ''));
+        if ($encoded === '') return null;
+        $binary = base64_decode($encoded, true);
+        if ($binary === false) return null;
+        $size = @getimagesizefromstring($binary);
+        if ($size === false || ($size['mime'] ?? '') !== 'image/jpeg') return null;
+        return ['data' => $binary, 'size' => $size];
+    } catch (Throwable $e) {
+        error_log('Customer PDF watermark load failed: ' . $e->getMessage());
+        return null;
+    }
+}
+
 function display_date_billing(?string $value): string {
     if (!$value) return '—';
     $timestamp = strtotime($value);
@@ -20,7 +39,7 @@ function display_date_billing(?string $value): string {
  * @param array  $summaryLines extra lines under the title (e.g. "Generated: ...")
  * @param array  $rows       each row is an array of strings, already formatted for display
  */
-function output_table_pdf(string $filename, string $title, array $summaryLines, array $rows): void {
+function output_table_pdf(string $filename, string $title, array $summaryLines, array $rows, ?array $watermarkOverride = null): void {
     $lines = [strtoupper($title)];
     foreach ($summaryLines as $line) $lines[] = $line;
     $lines[] = str_repeat('-', 100);
@@ -42,9 +61,14 @@ function output_table_pdf(string $filename, string $title, array $summaryLines, 
     $pages = array_chunk($wrapped, 58);
     if (!$pages) $pages = [['No data recorded.']];
 
-    $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
-    $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
-    $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    if ($watermarkOverride && !empty($watermarkOverride['data']) && !empty($watermarkOverride['size'])) {
+        $watermarkData = $watermarkOverride['data'];
+        $watermarkSize = $watermarkOverride['size'];
+    } else {
+        $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
+        $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
+        $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    }
 
     $objects = [];
     $watermarkObject = null;

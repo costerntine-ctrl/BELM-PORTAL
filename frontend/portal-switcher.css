@@ -1,0 +1,50 @@
+.belm-portal-switcher{
+  max-width:1500px;
+  margin:12px auto 0;
+  padding:0 22px;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(170px,1fr));
+  gap:10px;
+}
+.belm-portal-switcher a{
+  min-height:46px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:10px 16px;
+  border-radius:13px;
+  border:1px solid rgba(148,163,184,.38);
+  background:#13243a;
+  color:#e8f1fb;
+  text-decoration:none;
+  font:800 13px/1.2 Inter,Arial,sans-serif;
+  text-align:center;
+  box-shadow:0 4px 14px rgba(2,12,27,.10);
+  white-space:nowrap;
+}
+.belm-portal-switcher a:hover{border-color:#55a7e8;background:#17304d;color:#fff}
+.belm-portal-switcher a.active{
+  background:#07182d;
+  color:#fff;
+  border-color:#f2c318;
+  box-shadow:inset 0 -3px 0 #f2c318,0 5px 16px rgba(2,12,27,.16);
+}
+[data-theme="light"] .belm-portal-switcher a{
+  background:#eef4fb;
+  color:#17324d;
+  border-color:#c6d4e3;
+}
+[data-theme="light"] .belm-portal-switcher a:hover{background:#e2eefb;color:#0b3154}
+[data-theme="light"] .belm-portal-switcher a.active{background:#07182d;color:#fff;border-color:#f2c318}
+@media(max-width:700px){
+  .belm-portal-switcher{
+    display:flex;
+    overflow-x:auto;
+    overscroll-behavior-inline:contain;
+    scrollbar-width:thin;
+    padding:0 12px 6px;
+    gap:8px;
+  }
+  .belm-portal-switcher a{flex:0 0 auto;min-width:170px;min-height:44px}
+}
+html.belm-embedded .belm-portal-switcher{display:none!important}

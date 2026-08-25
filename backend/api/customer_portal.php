@@ -578,10 +578,15 @@ function machine_expense_pdf_escape(string $value): string {
     return str_replace(['\\', '(', ')'], ['\\\\', '\\(', '\\)'], (string)$converted);
 }
 
-function output_single_receipt_pdf(string $filename, array $captionLines, string $jpegData): void {
-    $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
-    $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
-    $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+function output_single_receipt_pdf(string $filename, array $captionLines, string $jpegData, ?array $watermarkOverride = null): void {
+    if ($watermarkOverride && !empty($watermarkOverride['data']) && !empty($watermarkOverride['size'])) {
+        $watermarkData = $watermarkOverride['data'];
+        $watermarkSize = $watermarkOverride['size'];
+    } else {
+        $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
+        $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
+        $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    }
     $receiptSize = @getimagesizefromstring($jpegData);
     if ($receiptSize === false) json_error('Receipt photo could not be processed for PDF export.', 500);
 
@@ -654,13 +659,18 @@ function output_single_receipt_pdf(string $filename, array $captionLines, string
     exit;
 }
 
-function output_machine_expense_pdf(string $filename, array $lines): void {
+function output_machine_expense_pdf(string $filename, array $lines, ?array $watermarkOverride = null): void {
     $pages = array_chunk($lines, 48);
     if (!$pages) $pages = [['No procurement records recorded.']];
 
-    $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
-    $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
-    $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    if ($watermarkOverride && !empty($watermarkOverride['data']) && !empty($watermarkOverride['size'])) {
+        $watermarkData = $watermarkOverride['data'];
+        $watermarkSize = $watermarkOverride['size'];
+    } else {
+        $watermarkPath = __DIR__ . '/../assets/watermark.jpg';
+        $watermarkData = is_file($watermarkPath) ? file_get_contents($watermarkPath) : false;
+        $watermarkSize = $watermarkData !== false ? @getimagesizefromstring($watermarkData) : false;
+    }
 
     $objects = [];
     $watermarkObject = null;
@@ -1245,6 +1255,60 @@ if ($sub === 'privacy') {
     json_error('Unsupported privacy request.', 405);
 }
 
+// V513 - PORTAL-CWM company branding. Owner/Admin can upload one company logo.
+// The browser also sends a pre-faded JPEG copy which is used as the PDF background watermark.
+if ($sub === 'company-logo') {
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    $canManageLogo = (($customer['actorType'] ?? '') === 'owner')
+        || (($customer['actorType'] ?? '') === 'assistant' && $role === 'admin');
+
+    if ($method === 'GET') {
+        $stmt = db()->prepare('SELECT cb.logo_data, cb.updated_at FROM customer_branding cb JOIN customers c ON c.id=cb.customer_id WHERE cb.customer_id = ? AND c.deleted_at IS NULL LIMIT 1');
+        $stmt->execute([$customer['id']]);
+        $row = $stmt->fetch() ?: [];
+        $encoded = trim((string)($row['logo_data'] ?? ''));
+        json_out([
+            'hasLogo' => $encoded !== '',
+            'logoDataUrl' => $encoded !== '' ? 'data:image/jpeg;base64,' . $encoded : null,
+            'updatedAt' => $row['updated_at'] ?? null,
+            'canManage' => $canManageLogo,
+        ]);
+    }
+
+    if ($method === 'PUT') {
+        require_customer_write_access($customer);
+        if (!$canManageLogo) json_error('Only the Customer Owner/Admin can change the company logo.', 403);
+        $b = body();
+        $decodeJpeg = static function ($value, string $label): string {
+            $value = trim((string)$value);
+            if (!preg_match('#^data:image/jpeg;base64,([A-Za-z0-9+/=]+)$#', $value, $m)) {
+                json_error($label . ' must be a JPEG image.', 422);
+            }
+            $binary = base64_decode($m[1], true);
+            if ($binary === false || strlen($binary) < 100) json_error($label . ' is invalid.', 422);
+            if (strlen($binary) > 2 * 1024 * 1024) json_error($label . ' is too large (max 2MB after optimization).', 422);
+            $size = @getimagesizefromstring($binary);
+            if ($size === false || ($size['mime'] ?? '') !== 'image/jpeg') json_error($label . ' is not a valid JPEG.', 422);
+            return base64_encode($binary);
+        };
+        $logo = $decodeJpeg($b['logoDataUrl'] ?? '', 'Company logo');
+        $watermark = $decodeJpeg($b['watermarkDataUrl'] ?? '', 'Company watermark');
+        db()->prepare('INSERT INTO customer_branding(customer_id,logo_data,watermark_data,updated_at) VALUES(?,?,?,NOW()) ON CONFLICT (customer_id) DO UPDATE SET logo_data=EXCLUDED.logo_data, watermark_data=EXCLUDED.watermark_data, updated_at=NOW()')
+            ->execute([$customer['id'], $logo, $watermark]);
+        log_customer_activity($customer, 'Updated company logo / document watermark');
+        json_out(['ok' => true, 'message' => 'Company logo saved. CWM documents will use it as the background watermark.']);
+    }
+
+    if ($method === 'DELETE') {
+        require_customer_write_access($customer);
+        if (!$canManageLogo) json_error('Only the Customer Owner/Admin can remove the company logo.', 403);
+        db()->prepare('DELETE FROM customer_branding WHERE customer_id=?')->execute([$customer['id']]);
+        log_customer_activity($customer, 'Removed company logo / document watermark');
+        json_out(['ok' => true, 'message' => 'Company logo removed.']);
+    }
+    json_error('Unsupported company logo request.', 405);
+}
+
 if ($sub === 'dashboard') {
     $stmt = db()->prepare('SELECT * FROM machines WHERE customer_id = ? AND deleted_at IS NULL');
     $stmt->execute([$customer['id']]);
@@ -1286,8 +1350,10 @@ if ($sub === 'dashboard') {
     unset($machine);
 
     $stmt = db()->prepare(
-        'SELECT id, name, email, phone, address, portal_link, is_machinery_admin, workshop_module_active, privacy_preferences
-         FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+        "SELECT c.id, c.name, c.email, c.phone, c.address, c.portal_link, c.is_machinery_admin, c.workshop_module_active, c.privacy_preferences,
+                (SELECT cb.updated_at FROM customer_branding cb WHERE cb.customer_id=c.id) AS company_logo_updated_at,
+                CASE WHEN EXISTS (SELECT 1 FROM customer_branding cb WHERE cb.customer_id=c.id AND COALESCE(cb.logo_data,'')<>'') THEN 1 ELSE 0 END AS has_company_logo
+         FROM customers c WHERE c.id = ? AND c.deleted_at IS NULL AND c.is_active = 1"
     );
     $stmt->execute([$customer['id']]);
     $profile = $stmt->fetch();
@@ -1297,6 +1363,9 @@ if ($sub === 'dashboard') {
         $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
         $profile['workshopModuleActive'] = !empty($profile['workshop_module_active']);
         unset($profile['workshop_module_active']);
+        $profile['hasCompanyLogo'] = !empty($profile['has_company_logo']);
+        $profile['companyLogoUpdatedAt'] = $profile['company_logo_updated_at'] ?? null;
+        unset($profile['has_company_logo'], $profile['company_logo_updated_at']);
         $profile['privacyPreferences'] = belm_customer_privacy_normalize($profile['privacy_preferences'] ?? null);
         unset($profile['privacy_preferences']);
         $profile['actorType'] = $customer['actorType'] ?? 'owner';
@@ -3197,6 +3266,8 @@ if ($sub === 'machine-expenses' && $sub2) {
                 'Generated: ' . date('d/m/Y H:i'),
             ],
             $auditRows
+        ,
+            pdf_customer_watermark((string)$customer['id'])
         );
     }
 
@@ -3238,7 +3309,7 @@ if ($sub === 'machine-expenses' && $sub2) {
         $lines[] = str_repeat('-', 78);
         $lines[] = 'TOTAL PROCUREMENT: TZS ' . number_format($totalCost, 2);
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
-        output_machine_expense_pdf('procurement-' . $safeMachine . '.pdf', $lines);
+        output_machine_expense_pdf('procurement-' . $safeMachine . '.pdf', $lines, pdf_customer_watermark((string)$customer['id']));
     }
 
     if ($method === 'GET' && $sub3 === '') {
@@ -3472,7 +3543,7 @@ if ($sub === 'fuel-usage' && $sub2) {
         $lines[] = 'TOTAL LITRES: ' . rtrim(rtrim(number_format($totalLitres, 2, '.', ''), '0'), '.');
         $lines[] = 'TOTAL FUEL COST: TZS ' . number_format($totalCost, 2);
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
-        output_machine_expense_pdf('fuel-usage-' . $safeMachine . '.pdf', $lines);
+        output_machine_expense_pdf('fuel-usage-' . $safeMachine . '.pdf', $lines, pdf_customer_watermark((string)$customer['id']));
     }
 
     if ($method === 'GET' && $sub3 === '') {
@@ -3651,7 +3722,7 @@ if ($sub === 'petty-cash-account') {
         }
         $lines[] = str_repeat('-', 78);
         $lines[] = 'TOTAL USED: TZS ' . number_format($total, 2);
-        output_machine_expense_pdf('petty-cash-account.pdf', $lines);
+        output_machine_expense_pdf('petty-cash-account.pdf', $lines, pdf_customer_watermark((string)$customer['id']));
     }
 
     if ($method === 'GET' && $sub2 === '') {
@@ -3870,7 +3941,7 @@ if ($sub === 'petty-cash' && $sub2) {
         $lines[] = str_repeat('-', 78);
         $lines[] = 'TOTAL PETTY CASH: TZS ' . number_format($totalCost, 2);
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$machine['model']);
-        output_machine_expense_pdf('petty-cash-' . $safeMachine . '.pdf', $lines);
+        output_machine_expense_pdf('petty-cash-' . $safeMachine . '.pdf', $lines, pdf_customer_watermark((string)$customer['id']));
     }
 
     if ($method === 'GET' && $sub3 === '') {
@@ -4245,6 +4316,8 @@ if ($sub === 'machines' && $sub2) {
                 'Date | Type | Job Card | Reported By | Status | Detail',
             ],
             $pdfRows
+        ,
+            pdf_customer_watermark((string)$customer['id'])
         );
     }
 
@@ -4419,7 +4492,7 @@ if ($sub === 'machines' && $sub2) {
         $lines[] = 'Inspector signature: _____________________________________________';
         $lines[] = 'Customer / supervisor acknowledgement: __________________________';
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', trim(($machine['brand'] ?? '') . '-' . ($machine['model'] ?? '')));
-        output_checklist_report_pdf('daily-checklist-' . $safeMachine . '-' . $todayDate->format('Y-m-d') . '.pdf', $lines, []);
+        output_checklist_report_pdf('daily-checklist-' . $safeMachine . '-' . $todayDate->format('Y-m-d') . '.pdf', $lines, [], pdf_customer_watermark((string)$customer['id']));
     }
 
     if ($sub3 === 'reports') {
@@ -4477,6 +4550,8 @@ if ($sub === 'machines' && $sub2) {
                 'Job Card No  |  Title  |  Status  |  Technician  |  Date',
             ],
             $rows
+        ,
+            pdf_customer_watermark((string)$customer['id'])
         );
     }
 
@@ -4505,6 +4580,8 @@ if ($sub === 'machines' && $sub2) {
                 'Date  |  Filled by  |  Status  |  Hour meter',
             ],
             $rows
+        ,
+            pdf_customer_watermark((string)$customer['id'])
         );
     }
 
@@ -4756,6 +4833,8 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
                 'Date  |  Operator  |  Contact  |  Status  |  Message',
             ],
             $pdfRows
+        ,
+            pdf_customer_watermark((string)$customer['id'])
         );
     }
 
@@ -5973,7 +6052,7 @@ if ($sub === 'reports' && $sub2 && $sub3 === 'download' && $method === 'GET') {
     $lines[] = str_repeat('-', 78);
 
     $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', trim(($report['brand'] ?? '') . '-' . ($report['machine_model'] ?? '')));
-    output_checklist_report_pdf('checklist-report-' . $safeMachine . '.pdf', $lines, $photos);
+    output_checklist_report_pdf('checklist-report-' . $safeMachine . '.pdf', $lines, $photos, pdf_customer_watermark((string)$customer['id']));
 }
 
 json_error('Unknown request', 404);

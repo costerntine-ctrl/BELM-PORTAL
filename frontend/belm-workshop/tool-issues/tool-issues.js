@@ -64,6 +64,14 @@
   function openReturn(id){const issue=issues.find(x=>String(x.id)===String(id));if(!issue)return;document.getElementById('returnForm').reset();document.getElementById('returnId').value=id;document.getElementById('receivedBy').value='';document.getElementById('returnContext').innerHTML=`<b>${esc(issue.documentNo)}</b> · ${esc(issue.toolName)} · Technician: ${esc(issue.technicianName)}`;document.getElementById('returnError').classList.add('hidden');document.getElementById('returnDialog').showModal()}
   document.getElementById('jobCardNo').addEventListener('change',e=>{const tech=e.target.selectedOptions[0]?.dataset.tech||'';if(tech)document.getElementById('technicianId').value=tech});
   document.getElementById('deliveryNoteButton').addEventListener('click',()=>{location.href='/delivery-notes/?source=tool-issue'});
+  document.getElementById('spareStockRecordButton').addEventListener('click',()=>{
+    const embedded=new URLSearchParams(location.search).get('embed')==='1' && window.parent!==window;
+    if(embedded){
+      window.parent.postMessage({type:'belm-workshop-open-module',module:'store'},location.origin);
+      return;
+    }
+    location.href='/spare-parts-manager/?from=tool-issues';
+  });
   document.getElementById('downloadReportButton').addEventListener('click',async e=>{const b=e.currentTarget,old=b.textContent;b.disabled=true;b.textContent='Preparing PDF…';try{await downloadReport()}catch(err){show(err.message,true)}finally{b.disabled=false;b.textContent=old}});
   document.getElementById('newIssueButton').addEventListener('click',openIssue);
   document.getElementById('refreshButton').addEventListener('click',load);

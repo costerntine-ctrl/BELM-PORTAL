@@ -534,10 +534,36 @@ if ($action === 'unified-login' && $method === 'POST') {
 
             $isTechnician = $user['role_name'] === 'Technician';
             $staffRoleLower = strtolower(trim((string)$user['role_name']));
-            // V495: PORTAL-BELM WM is the BELM Main Home for every non-Technician
-            // staff login. Role permissions still control which Main Home modules can open.
-            // Procurement no longer bypasses the home card; it opens Procurement from there.
-            $staffDestination = $isTechnician ? '/tech' : '/belm-workshop/';
+            // V510: role-specific landing pages. PORTAL-BELM WM is reserved for
+            // the operational workshop roles; Finance/Accounts lands in Billing.
+            $wmRoles = ['super admin', 'workshop manager', 'engineer', 'store keeper', 'procurement'];
+            $financeRoles = ['accounts', 'accountant', 'finance'];
+            if ($isTechnician) {
+                $staffDestination = '/tech';
+            } elseif (in_array($staffRoleLower, $wmRoles, true)) {
+                $staffDestination = '/belm-workshop/';
+            } elseif (in_array($staffRoleLower, $financeRoles, true)) {
+                $staffDestination = '/billing-manager/';
+            } else {
+                $pageDestinations = [
+                    'overview' => '/overview-manager/',
+                    'customers' => '/customers-manager/',
+                    'roles' => '/roles-manager/',
+                    'spare-parts' => '/spare-parts-manager/',
+                    'billing' => '/billing-manager/',
+                    'reports' => '/reports-manager/',
+                    'settings' => '/settings-manager/',
+                    'checklist-templates' => '/checklist-manager/',
+                    'suppliers' => '/suppliers-manager/',
+                ];
+                $staffDestination = '/overview-manager/';
+                foreach ($allowedPages as $pageKey) {
+                    if (isset($pageDestinations[$pageKey])) {
+                        $staffDestination = $pageDestinations[$pageKey];
+                        break;
+                    }
+                }
+            }
             clear_rate_limit('unified-login', $rawLoginId);
             json_out([
                 'token' => $token,

@@ -8,6 +8,7 @@
   const alertBox=document.getElementById('pageAlert');
   let technicians=[];
   let toolIssues=[];
+  let currentCustomerProfile=null;
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function show(message,error=false){alertBox.textContent=message;alertBox.className=`alert${error?' error':''}`}
@@ -17,6 +18,48 @@
     const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){data=null}if(!r.ok)throw new Error(data?.error||`Request failed (${r.status}).`);return data;
   }
   async function adminApi(path){const r=await fetch(`/api${path}`,{cache:'no-store',headers:{Authorization:`Bearer ${adminToken}`}});const data=await r.json().catch(()=>null);if(!r.ok)throw new Error(data?.error||`Request failed (${r.status}).`);return data}
+  function canManageCompanyLogo(profile){
+    const type=String(profile?.actorType||'').toLowerCase();
+    const role=String(profile?.actorRole||'').toLowerCase();
+    return type==='owner'||(type==='assistant'&&role==='admin');
+  }
+  function renderCompanyLogo(data){
+    const img=document.getElementById('cwmCompanyLogoPreview');
+    const placeholder=document.getElementById('cwmLogoPlaceholder');
+    const remove=document.getElementById('cwmRemoveLogoButton');
+    if(data?.logoDataUrl){img.src=data.logoDataUrl;img.hidden=false;placeholder.hidden=true;remove.hidden=!data.canManage}
+    else{img.removeAttribute('src');img.hidden=true;placeholder.hidden=false;remove.hidden=true}
+    const upload=document.getElementById('cwmUploadLogoButton');
+    const canManage=data?.canManage ?? canManageCompanyLogo(currentCustomerProfile);
+    upload.disabled=!canManage;upload.title=canManage?'Upload JPG or PNG. It will be optimized automatically.':'Only the Customer Owner/Admin can change company branding.';
+    if(!canManage)upload.textContent='Company Logo · Owner/Admin Only';else upload.textContent='Upload Company Logo';
+  }
+  async function loadCompanyLogo(){
+    if(isBelm)return;
+    try{renderCompanyLogo(await customerApi('/company-logo'))}catch(e){renderCompanyLogo({canManage:canManageCompanyLogo(currentCustomerProfile)});show(e.message,true)}
+  }
+  function fileToImage(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Could not read the logo file.'));reader.onload=()=>{const img=new Image();img.onerror=()=>reject(new Error('The selected logo image is not valid.'));img.onload=()=>resolve(img);img.src=reader.result};reader.readAsDataURL(file)})}
+  async function prepareCompanyLogo(file){
+    if(!file)throw new Error('Choose a company logo.');
+    if(!['image/jpeg','image/png'].includes(file.type))throw new Error('Choose a JPG or PNG company logo.');
+    if(file.size>6*1024*1024)throw new Error('Logo file is too large. Choose an image under 6MB.');
+    const img=await fileToImage(file);const max=1200;const scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+    const w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));
+    const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
+    const logoDataUrl=canvas.toDataURL('image/jpeg',.9);
+    const wm=document.createElement('canvas');wm.width=w;wm.height=h;const wx=wm.getContext('2d');wx.fillStyle='#ffffff';wx.fillRect(0,0,w,h);wx.globalAlpha=.13;wx.drawImage(img,0,0,w,h);wx.globalAlpha=1;
+    const watermarkDataUrl=wm.toDataURL('image/jpeg',.86);
+    return{logoDataUrl,watermarkDataUrl};
+  }
+  async function uploadCompanyLogo(file){
+    const button=document.getElementById('cwmUploadLogoButton');button.disabled=true;button.textContent='Saving Logo…';
+    try{const prepared=await prepareCompanyLogo(file);const result=await customerApi('/company-logo',{method:'PUT',body:JSON.stringify(prepared)});show(result.message||'Company logo saved.');await loadCompanyLogo()}
+    catch(e){show(e.message,true);renderCompanyLogo({canManage:canManageCompanyLogo(currentCustomerProfile)})}
+  }
+  async function removeCompanyLogo(){
+    if(!confirm('Remove the company logo watermark from PORTAL-CWM documents?'))return;
+    try{const result=await customerApi('/company-logo',{method:'DELETE'});show(result.message||'Company logo removed.');await loadCompanyLogo()}catch(e){show(e.message,true)}
+  }
   function setBelmMode(customer){
     document.getElementById('modePill').textContent='BELM CUSTOMER VIEW';
     document.getElementById('backLink').href='/customers-manager/';
@@ -34,6 +77,7 @@
     document.getElementById('technicianWorkLink').href='/belm-workshop/#job-cards';
     document.getElementById('technicianWorkLink').textContent='Technical Department';
     document.getElementById('toolDocumentsPanel').classList.add('hidden');
+    document.getElementById('cwmBrandingCard')?.classList.add('hidden');
   }
   async function loadBelm(){
     if(!adminToken){location.href='/login';return}
@@ -49,6 +93,7 @@
     try{
       const dashboard=await customerApi('/dashboard');
       const profile=dashboard?.customer||{};
+      currentCustomerProfile=profile;
       workshopModuleActive=profile.workshopModuleActive!==false;
       const name=profile.name||'Customer';
       document.getElementById('modePill').textContent='PORTAL-CWM HOME';
@@ -88,6 +133,7 @@
         document.getElementById('toolDocumentsPanel')?.classList.add('hidden');
       }
     }catch(e){show(e.message,true)}
+    await loadCompanyLogo();
     const techLocked=document.getElementById('technicianManageLink')?.getAttribute('aria-disabled')==='true';
     if(!techLocked){
       try{technicians=await customerApi('/technicians');document.getElementById('technicianCount').textContent=`${technicians.length} TECH${technicians.length===1?'':'S'}`;renderTechnicianOptions()}catch(_){technicians=[];renderTechnicianOptions()}
@@ -130,6 +176,9 @@
   document.getElementById('toolReturnForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('toolReturnError');try{const id=document.getElementById('toolReturnId').value;await customerApi(`/tool-issues/${encodeURIComponent(id)}/return`,{method:'POST',body:JSON.stringify({conditionIn:document.getElementById('toolConditionIn').value.trim(),receivedBy:document.getElementById('toolReceivedBy').value.trim(),note:document.getElementById('toolReturnNote').value.trim()})});document.getElementById('toolReturnDialog').close();show('Tool return recorded.');await loadToolIssues()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
   document.getElementById('receiveStockButton').addEventListener('click',openReceiveStock);
   document.getElementById('receiveStockForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('receiveStockError');try{await customerApi('/store',{method:'POST',body:JSON.stringify({partNumber:document.getElementById('receivePartNumber').value.trim(),description:document.getElementById('receiveDescription').value.trim(),unit:document.getElementById('receiveUnit').value,quantity:Number(document.getElementById('receiveQuantity').value||0),unitCost:Number(document.getElementById('receiveUnitCost').value||0),note:document.getElementById('receiveNote').value.trim()})});document.getElementById('receiveStockDialog').close();show('Customer Store stock received.');await loadStore()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
+  document.getElementById('cwmUploadLogoButton')?.addEventListener('click',()=>document.getElementById('cwmCompanyLogoInput')?.click());
+  document.getElementById('cwmCompanyLogoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];e.target.value='';if(file)await uploadCompanyLogo(file)});
+  document.getElementById('cwmRemoveLogoButton')?.addEventListener('click',removeCompanyLogo);
   document.getElementById('refreshButton').addEventListener('click',async()=>{clear();if(isBelm)await loadBelm();else{await loadCustomer();if(!document.getElementById('toolDocumentsPanel').classList.contains('hidden'))await loadToolIssues()}});
   isBelm?loadBelm():loadCustomer();
 })();

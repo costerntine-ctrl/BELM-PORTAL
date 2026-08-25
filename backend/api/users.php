@@ -52,7 +52,7 @@ function role_payload(array $body, ?string $excludeRoleId = null): array {
 
     $allowedPageKeys = [
         'customers', 'overview', 'roles', 'job-cards', 'service-requests', 'spare-parts',
-        'billing', 'bank-manager', 'reports', 'settings', 'checklist-templates', 'suppliers',
+        'billing', 'reports', 'settings', 'checklist-templates', 'suppliers',
         'activity-log',
     ];
     $requestedPages = is_array($body['allowedPages'] ?? null) ? $body['allowedPages'] : [];

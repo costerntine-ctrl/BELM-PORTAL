@@ -38,16 +38,8 @@
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[character]);
 
-  // V448: the 8 grid buttons below are placeholders only, on purpose - the
-  // customer said he will assign what each one does later. They are
-  // numbered 1-8 and carry NO click handler / endpoint / navigation. Only
-  // the two switches above them (Non-Payment / PORTAL-CWM) are wired,
-  // since those already exist and are the actual point of PORTAL-CWM
-  // (independent customers).
-  const PLACEHOLDER_BUTTON_COLORS = [
-    "cwm-btn-1", "cwm-btn-2", "cwm-btn-3", "cwm-btn-4",
-    "cwm-btn-5", "cwm-btn-6", "cwm-btn-7", "cwm-btn-8",
-  ];
+  // V512: PORTAL-CWM preview uses only live actions. No placeholder buttons.
+  const CWM_PREVIEW_LIMIT = 1;
 
   function customerCard(customer) {
     return `
@@ -97,9 +89,9 @@
         <p class="muted">Use View all for history.</p>
       </div>
 
-      <!-- V448: structure only - numbered placeholders, no function yet. -->
-      <div class="cwm-button-grid">
-        ${PLACEHOLDER_BUTTON_COLORS.map((cls, index) => `<button type="button" class="cwm-placeholder-button ${cls}" disabled>${index + 1}</button>`).join("")}
+      <div class="cwm-button-grid" aria-label="PORTAL-CWM live actions">
+        <a class="cwm-live-action cwm-machine-action" href="/customers-manager/?customer=${encodeURIComponent(customer.id)}&view=machines">View Customer Machines</a>
+        <a class="cwm-live-action cwm-open-action" href="/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id)}">Open PORTAL-CWM</a>
       </div>
     </article>`;
   }
@@ -107,7 +99,7 @@
   function renderCards(filterText = "") {
     const grid = document.getElementById("cwmCardGrid");
     const needle = filterText.trim().toLowerCase();
-    const rows = customers.filter((c) => !needle || c.name.toLowerCase().includes(needle));
+    const rows = customers.filter((c) => !needle || c.name.toLowerCase().includes(needle)).slice(0, CWM_PREVIEW_LIMIT);
     grid.innerHTML = rows.length
       ? rows.map(customerCard).join("")
       : '<p class="muted">No customers match.</p>';

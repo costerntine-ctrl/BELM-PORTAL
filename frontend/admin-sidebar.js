@@ -90,12 +90,12 @@
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
     // V471: direct commercial workshop portals for fast testing and operations.
-    { section: "Maintenance", key: "job-cards", anyKeys: ["roles","job-cards","service-requests","spare-parts","suppliers"], namedRoles: ["Procurement","Workshop Manager","Engineer"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+    { section: "Maintenance", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
     { section: "Maintenance", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
-    { section: "Finance", key: "bank-manager", label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
+    { section: "Finance", key: "bank-manager", superAdminOnly: true, label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
     { section: "Finance", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
     { section: "Administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
     { section: "Administration", key: "roles", label: "BELM Staff Access", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
@@ -112,12 +112,15 @@
   const isNestedSidebar = NESTED_SIDEBAR_PATHS.some((p) => pathname === p || pathname.startsWith(p));
   const nestedPages = [
     { section: "Nested", key: "customers", label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Nested", key: "job-cards", anyKeys: ["roles","job-cards","service-requests","spare-parts","suppliers"], namedRoles: ["Procurement","Workshop Manager","Engineer"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
+    { section: "Nested", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
     { section: "Nested", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
   ];
   const canSeePage = (page) => {
+    if (page.superAdminOnly) return isSuperAdmin;
     if (page.key === null || isSuperAdmin) return true;
-    if (Array.isArray(page.namedRoles) && page.namedRoles.some((role) => String(role).toLowerCase() === String(user.role || '').toLowerCase())) return true;
+    if (Array.isArray(page.namedRoles)) {
+      return page.namedRoles.some((role) => String(role).toLowerCase() === String(user.role || '').toLowerCase());
+    }
     if (Array.isArray(page.anyKeys)) return page.anyKeys.some((key) => allowedPages.includes(key));
     return allowedPages.includes(page.key);
   };

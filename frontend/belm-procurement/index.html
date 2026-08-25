@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
-  <link rel="stylesheet" href="/belm-procurement/manager.css?v=485-system-repair">
+  <link rel="stylesheet" href="/belm-procurement/manager.css?v=509-audit-reports">
   <script src="/theme-manager.js?v=485-display-fit"></script>
 </head>
 <body>
@@ -26,6 +26,23 @@
     </header>
 
     <div id="alertBox" class="alert hidden" role="status" aria-live="polite"></div>
+
+
+    <section class="proc-tools-card" aria-labelledby="procToolsTitle">
+      <div class="proc-tools-head">
+        <div><p>PROCUREMENT MENU</p><h2 id="procToolsTitle">Procurement Tools</h2><span>Fuel, oil, supplier receipts and procurement reports.</span></div>
+      </div>
+      <div class="proc-tools-grid">
+        <button class="proc-tool fuel" type="button" data-consumable="FUEL"><b>Fuel Consumption</b><span>Record machine fuel usage</span></button>
+        <button class="proc-tool oil" type="button" data-consumable="OIL"><b>Oil</b><span>Record engine / hydraulic / gearbox oil</span></button>
+        <button class="proc-tool receipt" id="uploadReceiptButton" type="button"><b>Spare Parts Receipt Upload</b><span>Attach supplier receipt to an order</span></button>
+        <button class="proc-tool receipt-download" id="receiptLibraryButton" type="button"><b>Receipt Download</b><span>View and download saved receipts</span></button>
+        <button class="proc-tool export" id="csvDownloadButton" type="button"><b>CSV Download</b><span>Export Procurement records</span></button>
+        <button class="proc-tool export" id="pdfDownloadButton" type="button"><b>PDF Download</b><span>Download Procurement report</span></button>
+        <button class="proc-tool print" id="printProcurementButton" type="button"><b>Print</b><span>Print current Procurement view</span></button>
+        <button class="proc-tool audit" id="procurementAuditButton" type="button"><b>Procurement Audit Report</b><span>Full request, supplier, receipt, fuel and oil trail</span></button>
+      </div>
+    </section>
 
     <section class="metric-grid">
       <article><span>Waiting Sourcing</span><b id="waitingSourcing">0</b></article>
@@ -62,6 +79,64 @@
     </section>
   </main>
 
+
+  <dialog id="consumableDialog" class="tool-dialog">
+    <form id="consumableForm">
+      <header><div><p>BELM PROCUREMENT</p><h2 id="consumableTitle">Fuel Consumption</h2></div><button type="button" data-close-dialog="consumableDialog">×</button></header>
+      <input id="consumableCategory" type="hidden">
+      <div class="dialog-grid">
+        <label>Customer<select id="consumableCustomer"><option value="">BELM / General</option></select></label>
+        <label>Machine<select id="consumableMachine"><option value="">General / no machine</option></select></label>
+        <label>Date<input id="consumableDate" type="date" required></label>
+        <label>Quantity<input id="consumableQuantity" type="number" min="0.01" step="0.01" required></label>
+        <label>Unit<select id="consumableUnit"><option value="L">Litres (L)</option><option value="PC">Pieces (PC)</option><option value="KG">Kilograms (KG)</option></select></label>
+        <label>Unit Price TZS<input id="consumableUnitPrice" type="number" min="0" step="0.01" value="0"></label>
+      </div>
+      <label>Description<input id="consumableDescription" maxlength="500" placeholder="Fuel / engine oil / hydraulic oil / gearbox oil"></label>
+      <div class="dialog-actions"><button type="button" data-close-dialog="consumableDialog">Cancel</button><button type="submit" class="primary">Save Record</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="receiptUploadDialog" class="tool-dialog">
+    <form id="receiptUploadForm">
+      <header><div><p>SPARE PARTS RECEIPT</p><h2>Upload Supplier Receipt</h2></div><button type="button" data-close-dialog="receiptUploadDialog">×</button></header>
+      <label>Procurement Order<select id="receiptRequest" required><option value="">Select order…</option></select></label>
+      <div class="dialog-grid">
+        <label>Receipt Date<input id="receiptDate" type="date" required></label>
+        <label>Receipt File<input id="receiptFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></label>
+      </div>
+      <label>Note<input id="receiptNote" maxlength="500" placeholder="Invoice / receipt reference or comment"></label>
+      <div id="receiptUploadError" class="alert error hidden"></div>
+      <div class="dialog-actions"><button type="button" data-close-dialog="receiptUploadDialog">Cancel</button><button type="submit" class="primary">Upload Receipt</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="receiptLibraryDialog" class="tool-dialog receipt-library-dialog">
+    <form method="dialog">
+      <header><div><p>PROCUREMENT RECEIPTS</p><h2>Receipt Download</h2></div><button type="button" data-close-dialog="receiptLibraryDialog">×</button></header>
+      <div id="receiptRows" class="receipt-rows"><div class="empty">Loading receipts…</div></div>
+      <div class="dialog-actions"><button type="button" data-close-dialog="receiptLibraryDialog">Close</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="procurementAuditDialog" class="tool-dialog audit-dialog">
+    <form method="dialog">
+      <header><div><p>PROCUREMENT CONTROL</p><h2>Procurement Audit Report</h2></div><button type="button" data-close-dialog="procurementAuditDialog">×</button></header>
+      <div class="audit-filters">
+        <label>From<input id="procAuditFrom" type="date"></label>
+        <label>To<input id="procAuditTo" type="date"></label>
+        <label>Type<select id="procAuditType"><option value="ALL">All</option><option>JOB CARD PROCUREMENT</option><option>INVENTORY PROCUREMENT</option><option>FUEL</option><option>OIL</option><option>RECEIPT</option></select></label>
+        <label>Status<select id="procAuditStatus"><option value="ALL">All</option><option value="PROCUREMENT_REQUIRED">Purchase Required</option><option value="PI_WAITING_ACCOUNTS">Waiting Accounts / PI</option><option value="ORDERED">Ordered</option><option value="RECORDED">Recorded</option><option value="UPLOADED">Uploaded</option></select></label>
+        <label>Handled By<input id="procAuditUser" placeholder="User / staff name"></label>
+        <label>Search<input id="procAuditSearch" placeholder="Item, machine, customer, supplier"></label>
+      </div>
+      <div class="audit-actions"><button type="button" id="procAuditApply" class="primary">View Audit</button><button type="button" id="procAuditCsv">CSV</button><button type="button" id="procAuditPdf">PDF</button><button type="button" id="procAuditPrint">Print</button></div>
+      <div id="procAuditSummary" class="audit-summary"></div>
+      <div class="audit-table-wrap"><table class="audit-table"><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Customer / Machine</th><th>Item</th><th>Qty</th><th>Status</th><th>Supplier</th><th>Handled By</th></tr></thead><tbody id="procAuditRows"><tr><td colspan="9">Open the audit report to load records.</td></tr></tbody></table></div>
+      <div class="dialog-actions"><button type="button" data-close-dialog="procurementAuditDialog">Close</button></div>
+    </form>
+  </dialog>
+
   <dialog id="orderDialog">
     <form id="orderForm">
       <header><div><p>BELM PROCUREMENT</p><h2 id="orderTitle">Mark Ordered</h2></div><button type="button" id="closeOrder">×</button></header>
@@ -75,6 +150,6 @@
     </form>
   </dialog>
 
-  <script src="/belm-procurement/manager.js?v=485-system-repair"></script>
+  <script src="/belm-procurement/manager.js?v=509-audit-reports"></script>
 </body>
 </html>

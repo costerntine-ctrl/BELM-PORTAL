@@ -763,5 +763,26 @@
     }
   });
 
+  // V509 Store Keeper audit report
+  function storeAuditQuery(action="audit") {
+    const q=new URLSearchParams({action});
+    [["from","storeAuditFrom"],["to","storeAuditTo"],["type","storeAuditType"],["user","storeAuditUser"],["search","storeAuditSearch"]].forEach(([key,id])=>{const value=document.getElementById(id)?.value?.trim()||"";if(value&&value!=="ALL")q.set(key,value)});
+    return q.toString();
+  }
+  const auditDate=(value)=>{if(!value)return "—";const d=new Date(value);return Number.isNaN(d.getTime())?String(value):d.toLocaleString()};
+  function renderStoreAudit(out){
+    const rows=out?.rows||[],summary=out?.summary||{};
+    document.getElementById("storeAuditSummary").innerHTML=`<div><span>Records</span><b>${Number(summary.rows||rows.length)}</b></div><div><span>Stock In</span><b>${Number(summary.stockIn||0)}</b></div><div><span>Stock Out</span><b>${Number(summary.stockOut||0)}</b></div><div><span>Other Changes</span><b>${Number(summary.edits||0)}</b></div>`;
+    document.getElementById("storeAuditRows").innerHTML=rows.length?rows.map(r=>`<tr><td>${escapeHtml(auditDate(r.eventDate))}</td><td><b>${escapeHtml(r.type||"—")}</b></td><td>${escapeHtml(r.partNumber||"—")}</td><td>${escapeHtml(r.partName||"—")}</td><td>${r.quantityChange===null||r.quantityChange===undefined?"—":escapeHtml(r.quantityChange>0?`+${r.quantityChange}`:r.quantityChange)}</td><td>${r.balanceAfter===null||r.balanceAfter===undefined?"—":escapeHtml(r.balanceAfter)}</td><td>${r.currentStock===null||r.currentStock===undefined?"—":escapeHtml(r.currentStock)}</td><td>${escapeHtml(r.actor||"—")}</td><td>${escapeHtml(r.note||"")}</td></tr>`).join(""):'<tr><td colspan="9">No Store audit records match the selected filters.</td></tr>';
+  }
+  async function loadStoreAudit(){const box=document.getElementById("storeAuditRows");box.innerHTML='<tr><td colspan="9">Loading Store audit…</td></tr>';try{renderStoreAudit(await api(`/spare-parts?${storeAuditQuery("audit")}`))}catch(error){box.innerHTML=`<tr><td colspan="9">${escapeHtml(error.message)}</td></tr>`}}
+  document.getElementById("storeAuditButton")?.addEventListener("click",()=>{document.getElementById("storeAuditDialog").showModal();loadStoreAudit()});
+  document.querySelectorAll("[data-close-store-audit]").forEach(button=>button.addEventListener("click",()=>document.getElementById("storeAuditDialog").close()));
+  document.getElementById("storeAuditApply")?.addEventListener("click",loadStoreAudit);
+  async function downloadStoreAudit(action,fallback){try{const response=await fetch(`/api/spare-parts?${storeAuditQuery(action)}`,{cache:"no-store",headers:{Authorization:`Bearer ${token||""}`}});if(!response.ok)throw new Error("Could not download Store audit report.");const blob=await response.blob(),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=fallback;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}catch(error){showAlert(error.message,true)}}
+  document.getElementById("storeAuditCsv")?.addEventListener("click",()=>downloadStoreAudit("audit-csv","BELM-Store-Keeper-Audit-Report.csv"));
+  document.getElementById("storeAuditPdf")?.addEventListener("click",()=>downloadStoreAudit("audit-pdf","BELM-Store-Keeper-Audit-Report.pdf"));
+  document.getElementById("storeAuditPrint")?.addEventListener("click",()=>{const table=document.querySelector("#storeAuditDialog .store-audit-table")?.outerHTML||"";const w=window.open("","_blank","width=1100,height=800");if(!w)return;w.document.write(`<html><head><title>Store Keeper Audit Report</title><style>body{font:12px Arial;padding:20px}h1{font-size:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:6px;text-align:left;vertical-align:top}th{background:#eee}</style></head><body><h1>BELM STORE KEEPER AUDIT REPORT</h1>${table}</body></html>`);w.document.close();w.focus();w.print()});
+
   loadParts();
 })();

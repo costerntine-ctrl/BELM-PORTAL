@@ -31,3 +31,43 @@
   pointer-events: none;
   text-decoration: none;
 }
+
+
+/* V512 - PORTAL-CWM visual parity with PORTAL-BELM WM. Functions remain customer-scoped. */
+.cwm-wm-parity-card{
+  border:1px solid #2a5675!important;
+  border-top:5px solid #19c66f!important;
+  border-radius:20px!important;
+  background:linear-gradient(150deg,#0d3c69 0%,#075a83 48%,#083c63 100%)!important;
+  color:#eef6ff!important;
+  box-shadow:0 22px 58px rgba(3,24,45,.28)!important;
+}
+.cwm-wm-parity-card .role-icon{background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.26)!important;color:#d7e9f8!important}
+.cwm-wm-parity-card .role-head p,.cwm-wm-parity-card .role-description{color:#d0dfec!important}
+.cwm-wm-parity-card .role-status{border-color:rgba(255,255,255,.38)!important;color:#fff!important}
+.cwm-wm-parity-card .responsibilities span{background:rgba(5,24,40,.24)!important;border-color:rgba(255,255,255,.22)!important;color:#e6f2fb!important}
+.cwm-wm-parity-card .cwm-home-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+.cwm-wm-parity-card .cwm-home-actions a,.cwm-wm-parity-card .cwm-home-actions button{min-height:66px!important;border-radius:14px!important;font-size:12px!important}
+#cwmMachinesLink{background:#090d14!important;border-color:#05070a!important;color:#fff!important}
+#managerJobCardLink{background:#19c66f!important;border-color:#19c66f!important;color:#072719!important}
+#storeLink{background:#0fa895!important;border-color:#0fa895!important;color:#fff!important}
+#cwmProcurementLink{background:#6754db!important;border-color:#6754db!important;color:#fff!important}
+#technicianManageLink{background:#2186d4!important;border-color:#2186d4!important;color:#fff!important}
+#technicianWorkLink{background:#166f9f!important;border-color:#166f9f!important;color:#fff!important}
+#managerAnalysisLink{background:#1d527b!important;border-color:#2b6c9a!important;color:#fff!important}
+#toolDocumentsButton{background:#31566f!important;border-color:#456d88!important;color:#fff!important}
+#cwmBillingLink{background:#111827!important;border-color:#374151!important;color:#fff!important}
+#cwmGeneralReportLink{background:#f0b90b!important;border-color:#f0b90b!important;color:#1a1a1a!important}
+#cwmPettyCashLink{background:#0d9a7c!important;border-color:#0d9a7c!important;color:#fff!important}
+#cwmSettingsLink{background:#607386!important;border-color:#718497!important;color:#fff!important}
+@media(max-width:700px){.cwm-wm-parity-card .cwm-home-actions{grid-template-columns:1fr 1fr!important}.cwm-wm-parity-card .cwm-home-actions a,.cwm-wm-parity-card .cwm-home-actions button{min-height:58px!important;padding:10px!important}}
+@media(max-width:420px){.cwm-wm-parity-card .cwm-home-actions{grid-template-columns:1fr!important}}
+
+
+/* V513 - Customer company branding / document watermark */
+.cwm-branding-card{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;margin:2px 0 16px;padding:12px 14px;border:1px solid rgba(255,255,255,.24);border-radius:13px;background:rgba(4,18,31,.22)}
+.cwm-branding-preview{width:74px;height:58px;border:1px solid rgba(255,255,255,.28);border-radius:10px;background:#fff;display:grid;place-items:center;overflow:hidden}
+.cwm-branding-preview img{display:block;width:100%;height:100%;object-fit:contain;background:#fff}.cwm-logo-placeholder{font-size:10px;font-weight:900;color:#607386;letter-spacing:.08em}
+.cwm-branding-copy{display:grid;gap:2px;min-width:0}.cwm-branding-copy>span{font-size:8px;font-weight:900;letter-spacing:.1em;color:#81e7b1}.cwm-branding-copy>b{font-size:12px}.cwm-branding-copy>small{color:#c1d4e3;font-size:9.5px;line-height:1.4}
+.cwm-branding-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.cwm-branding-actions button{min-height:38px;padding:8px 12px;border:1px solid #2ad07b;border-radius:9px;background:#0d9a63;color:#fff;font:inherit;font-size:10px;font-weight:850;cursor:pointer}.cwm-branding-actions button:disabled{opacity:.58;cursor:not-allowed}.cwm-branding-actions .danger-lite{border-color:#8e4a55;background:#56242d;color:#ffd6dc}
+@media(max-width:760px){.cwm-branding-card{grid-template-columns:auto 1fr}.cwm-branding-actions{grid-column:1/-1;justify-content:stretch}.cwm-branding-actions button{flex:1}.cwm-branding-preview{width:64px;height:52px}}

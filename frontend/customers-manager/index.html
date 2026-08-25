@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/portal-switcher.css?v=511-three-portal-menu">
     <!-- Regression baseline: /customers-manager/manager.css?v=377-admin-machine-management-activity-status -->
     <!-- Regression baseline: /customers-manager/manager.css?v=382-full-card-alert-range -->
     <link rel="stylesheet" href="/customers-manager/manager.css?v=505-no-white-customer-overview">
@@ -31,6 +32,12 @@
         <button id="logoutButton" class="ghost" type="button">Log out</button>
       </div>
     </header>
+    <nav class="belm-portal-switcher" aria-label="BELM portal sections">
+      <a class="active" href="/customers-manager/">Customer Overview</a>
+      <a href="/belm-workshop/">PORTAL-BELM WM</a>
+      <a href="/portal-cwm/">PORTAL-CWM</a>
+    </nav>
+
 
     <nav class="admin-menu" aria-label="Admin navigation">
       <a class="active" href="/customers-manager/">Customers</a>

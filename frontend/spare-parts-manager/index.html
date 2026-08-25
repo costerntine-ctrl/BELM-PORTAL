@@ -13,6 +13,8 @@
       @media(max-width:620px){html.embed-mode main.shell{padding:8px}}
       .workshop-inner-action{background:#e0ad16!important;border-color:#f4cb55!important;color:#1d2128!important;font-weight:850!important}
       .workshop-inner-action:hover{filter:brightness(1.06)}
+      .store-audit-card{margin:14px 0;padding:15px 17px;border:1px solid var(--line,#dce3ec);border-radius:14px;background:var(--paper,#fff);display:flex;align-items:center;justify-content:space-between;gap:14px}.store-audit-card h2{margin:2px 0 4px;font-size:18px}.store-audit-card p{margin:0;color:var(--muted,#667085);font-size:11px}.store-audit-button{border:1px solid #c23b35!important;background:#c23b35!important;color:#fff!important;border-radius:9px;padding:10px 14px;font-weight:850;cursor:pointer}
+      #storeAuditDialog{width:min(1180px,calc(100% - 24px));max-width:1180px}.store-audit-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.store-audit-actions{display:flex;gap:8px;flex-wrap:wrap}.store-audit-actions button{padding:8px 11px}.store-audit-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.store-audit-summary>div{padding:9px;border:1px solid var(--line,#dce3ec);border-radius:9px;background:var(--canvas,#f7f9fc)}.store-audit-summary span{display:block;font-size:9px;text-transform:uppercase;color:var(--muted,#667085);font-weight:850}.store-audit-summary b{display:block;margin-top:3px;font-size:17px}.store-audit-table-wrap{max-height:52vh;overflow:auto;border:1px solid var(--line,#dce3ec);border-radius:10px}.store-audit-table{width:100%;min-width:900px;border-collapse:collapse}.store-audit-table th,.store-audit-table td{padding:8px 9px;border-bottom:1px solid var(--line,#dce3ec);font-size:9.5px;text-align:left;vertical-align:top}.store-audit-table th{position:sticky;top:0;background:var(--canvas,#f7f9fc);z-index:1;font-size:8.5px;text-transform:uppercase}@media(max-width:760px){.store-audit-card{align-items:stretch;flex-direction:column}.store-audit-button{width:100%}.store-audit-filters{grid-template-columns:1fr 1fr}.store-audit-summary{grid-template-columns:1fr 1fr}}@media(max-width:480px){.store-audit-filters{grid-template-columns:1fr}}
     </style>
     <title>BELM Spare Parts Manager</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +52,11 @@
           <input id="importFileInput" type="file" accept=".csv,text/csv" class="hidden">
           <button id="addButton" class="secondary" type="button">+ Add spare part</button>
         </div>
+      </section>
+
+      <section class="store-audit-card">
+        <div><p class="eyebrow">STORE KEEPER CONTROL</p><h2>Store Keeper Audit Report</h2><p>Audit stock-in, stock-out, edits, balance changes and the staff member who handled each inventory record.</p></div>
+        <button id="storeAuditButton" class="store-audit-button" type="button">View Audit Report</button>
       </section>
 
       <section class="metrics">
@@ -99,6 +106,21 @@
         <div id="equivalentSummaryPanel" class="loading">Loading equivalent spare links…</div>
       </section>
     </main>
+
+    <dialog id="storeAuditDialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-head"><div><p class="eyebrow">STORE KEEPER CONTROL</p><h2>Store Keeper Audit Report</h2></div><button class="icon-close" type="button" data-close-store-audit>×</button></div>
+        <div class="store-audit-filters">
+          <label>From<input id="storeAuditFrom" type="date"></label><label>To<input id="storeAuditTo" type="date"></label>
+          <label>Movement<select id="storeAuditType"><option value="ALL">All</option><option>STOCK IN</option><option>STOCK OUT</option><option>EDIT</option><option>CREATED</option><option>DELETED</option></select></label>
+          <label>Handled By<input id="storeAuditUser" placeholder="Store Keeper / staff name"></label><label>Search Spare<input id="storeAuditSearch" placeholder="Part number or description"></label>
+        </div>
+        <div class="store-audit-actions"><button type="button" id="storeAuditApply" class="primary">View Audit</button><button type="button" id="storeAuditCsv" class="secondary">CSV</button><button type="button" id="storeAuditPdf" class="secondary">PDF</button><button type="button" id="storeAuditPrint" class="ghost">Print</button></div>
+        <div id="storeAuditSummary" class="store-audit-summary"></div>
+        <div class="store-audit-table-wrap"><table class="store-audit-table"><thead><tr><th>Date</th><th>Movement</th><th>Part No.</th><th>Spare Part</th><th>Qty Change</th><th>Balance After</th><th>Current Stock</th><th>Handled By</th><th>Note</th></tr></thead><tbody id="storeAuditRows"><tr><td colspan="9">Open the audit report to load records.</td></tr></tbody></table></div>
+        <div class="dialog-actions"><button class="ghost" type="button" data-close-store-audit>Close</button></div>
+      </form>
+    </dialog>
 
     <dialog id="partDialog">
       <form id="partForm" class="dialog-card">
@@ -189,6 +211,6 @@
     <script src="/admin-sidebar.js?v=488-text-fit"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
-    <script src="/spare-parts-manager/manager.js?v=341-request-proforma-sync"></script>
+    <script src="/spare-parts-manager/manager.js?v=509-audit-reports"></script>
   </body>
 </html>

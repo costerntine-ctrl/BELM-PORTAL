@@ -900,7 +900,7 @@ if ($method === 'GET' && $action === 'machine-analysis-pdf' && !empty($_GET['mac
 }
 
 if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
-    $stmt=db()->prepare('SELECT j.*,bc.customer_id,bc.current_stage,c.name customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
+    $stmt=db()->prepare('SELECT j.*,bc.customer_id,bc.current_stage,bc.source_type,c.name customer_name,c.address AS customer_address,c.is_machinery_admin,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
         u.assigned_customer_id AS technician_home_customer_id,hc.name AS technician_home_customer_name
         FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id
         LEFT JOIN users u ON u.id=j.technician_id LEFT JOIN customers hc ON hc.id=u.assigned_customer_id WHERE j.id=?');
@@ -939,11 +939,13 @@ if ($method === 'GET' && $action === 'job-card-pdf' && $id !== '') {
         ['Customer / Supervisor Signature', '_________________________  Date: ______________'],
         ['Issued By', ($job['issued_by_name'] ?: ($job['generated_by_name'] ?: $job['customer_name'])) . '  Date: ' . display_date_billing($job['issued_at'] ?: $job['created_at'])],
     ];
+    $customerOwnedInternalJob = !empty($job['is_machinery_admin']) && strtoupper((string)($job['source_type'] ?? '')) !== 'SERVICE_REQUEST';
+    $jobWatermark = $customerOwnedInternalJob ? pdf_customer_watermark((string)$job['customer_id']) : null;
     output_table_pdf('BELM-'.$job['job_card_no'].'.pdf','DIGITAL JOB CARD',[
         'Generated: '.date('d/m/Y H:i'),
-        'Breakdown process record - BELM Operations Portal',
+        $customerOwnedInternalJob ? 'PORTAL-CWM customer workshop record' : 'Breakdown process record - BELM Operations Portal',
         'Print, sign, and keep this copy for office records.',
-    ],$rows);
+    ],$rows,$jobWatermark);
 }
 
 if ($method === 'PUT' && $action === 'signed-job-card' && $id !== '') {

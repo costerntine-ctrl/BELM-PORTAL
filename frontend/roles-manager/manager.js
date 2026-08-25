@@ -14,7 +14,6 @@
     ["job-cards", "Job Cards"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
-    ["bank-manager", "Bank Manager"],
     ["reports", "Reports & comparisons"],
     ["settings", "System settings"],
     ["checklist-templates", "Checklist templates"],

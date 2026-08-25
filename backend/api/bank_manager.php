@@ -2,7 +2,8 @@
 require_once __DIR__ . '/../config/helpers.php';
 
 $user = require_auth();
-require_page_access($user, 'bank-manager');
+// V510: Bank Manager is reserved for the primary Super Admin role only.
+require_super_admin($user);
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;

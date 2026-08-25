@@ -106,24 +106,41 @@
 .cwm-comm-history p.muted { margin: 0; font-size: 11px; }
 
 .cwm-button-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
 }
-.cwm-placeholder-button {
-  padding: 14px 0;
-  border: 0;
-  border-radius: 10px;
-  color: #fff;
-  font: 800 15px "Space Grotesk", sans-serif;
-  cursor: not-allowed;
-  opacity: .92;
+.cwm-live-action {
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:11px 14px;
+  border-radius:11px;
+  border:1px solid rgba(255,255,255,.22);
+  color:#fff;
+  text-decoration:none;
+  text-align:center;
+  font:800 12px "Space Grotesk",sans-serif;
 }
-.cwm-btn-1 { background: #101b31; }
-.cwm-btn-2 { background: #1a9c5c; }
-.cwm-btn-3 { background: #2a6fdb; }
-.cwm-btn-4 { background: #d99a12; color: #101b31; }
-.cwm-btn-5 { background: #6a5acd; }
-.cwm-btn-6 { background: #17a2b8; }
-.cwm-btn-7 { background: #4b5666; }
-.cwm-btn-8 { background: #1abc9c; }
+.cwm-machine-action { background:#090d14; border-color:#05070a; }
+.cwm-open-action { background:#168cff; border-color:#168cff; }
+.cwm-live-action:hover { filter:brightness(1.08); }
+
+/* V512: same industrial card language as PORTAL-BELM WM. */
+.cwm-card {
+  max-width:980px;
+  border:1px solid #2a5675;
+  border-top:4px solid #19c66f;
+  border-radius:18px;
+  background:linear-gradient(150deg,#0d3c69 0%,#075a83 48%,#083c63 100%);
+  color:#eef6ff;
+  box-shadow:0 22px 58px rgba(3,24,45,.28);
+}
+.cwm-card .cwm-info-grid b,.cwm-card .cwm-sync-strip b,.cwm-card .cwm-switch-item b,.cwm-card .cwm-comm-head strong { color:#fff; }
+.cwm-card .cwm-info-grid span,.cwm-card .cwm-sync-strip,.cwm-card .cwm-switch-item>span:first-child,.cwm-card .cwm-comm-history p.muted { color:#b8cadb; }
+.cwm-card .cwm-sync-strip,.cwm-card .cwm-switch-item,.cwm-card .cwm-comm-history { background:rgba(4,18,31,.42); border-color:rgba(255,255,255,.18); }
+@media(max-width:620px){
+  .cwm-button-grid{grid-template-columns:1fr}
+  .cwm-search{min-width:0;width:100%}
+}

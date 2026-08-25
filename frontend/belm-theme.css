@@ -6903,3 +6903,77 @@ body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-spare-recom
 .belm-report-record-toolbar button{min-width:190px;padding:11px 18px;border:0;border-radius:10px;font-weight:800;cursor:pointer}
 .belm-report-record-row p{margin:7px 0 0;line-height:1.45;white-space:pre-wrap}
 .belm-report-record-row em{display:block;margin-top:6px;font-style:normal;font-size:11px;font-weight:800;color:#16794d}
+
+
+/* ========================================================================
+   V512 - PORTAL-CWM machine-card parity with BELM Customer Overview.
+   Same card footprint, hierarchy and four primary actions. Customer-only
+   restrictions remain enforced by the existing API/role logic.
+   ======================================================================== */
+body[data-belm-area="portal"] .belm-customer-machine-grid{
+  grid-template-columns:repeat(auto-fit,minmax(min(640px,100%),1fr))!important;
+  justify-items:center!important;
+  justify-content:stretch!important;
+  gap:clamp(16px,1.8vw,26px)!important;
+  width:100%!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422{
+  container-type:inline-size;
+  width:100%!important;
+  max-width:760px!important;
+  min-height:0!important;
+  height:auto!important;
+  max-height:none!important;
+  padding:clamp(18px,2.2vw,28px)!important;
+  border-radius:20px!important;
+  overflow:visible!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422>.belm-machine-native-head{
+  min-height:118px!important;
+  padding-top:22px!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-customer-machine-alert-v422{
+  min-height:0!important;
+  padding:14px!important;
+  gap:12px!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-customer-operator-message-v422{
+  min-height:112px!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422>.belm-service-due-panel{
+  flex:0 0 auto!important;
+  margin-top:12px!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-customer-activity-selector{
+  margin-top:14px!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity{
+  order:20!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:8px!important;
+  margin-top:12px!important;
+  padding-top:0!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity>a,
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity>button{
+  min-height:56px!important;
+  padding:9px 6px!important;
+  border-radius:10px!important;
+  font-size:9px!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-customer-locked-action{
+  opacity:.48!important;
+  cursor:not-allowed!important;
+  filter:grayscale(.45)!important;
+}
+body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-customer-machine-management{
+  margin-top:12px!important;
+}
+@media(max-width:620px){
+  body[data-belm-area="portal"] .belm-customer-machine-card-v422{padding:18px 14px!important}
+  body[data-belm-area="portal"] .belm-customer-machine-card-v422>.belm-machine-native-head{padding-top:62px!important}
+  body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
+  body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity>a,
+  body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity>button{min-height:52px!important;font-size:9px!important}
+}

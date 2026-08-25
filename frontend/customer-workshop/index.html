@@ -1,14 +1,8 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <!-- V444: force a fresh reload if this page is restored from the browser's
-       back-forward cache (bfcache) on Back/Forward navigation. Without this,
-       a bfcache restore shows the exact stale DOM/state from before the
-       person navigated away — dead buttons, half-loaded panels — which reads
-       as the page "starting over" or getting stuck when moving between
-       Workshop and other departments. See portal-tools.js for the same fix
-       already applied to the main React shell. -->
-  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
+  <!-- V515: keep PORTAL-CWM state when returning with browser Back.
+       Do not force a full reload from the back-forward cache. -->
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PORTAL-CWM Home — BELM Operations</title>
@@ -19,11 +13,20 @@
   <link rel="stylesheet" href="/customer-workshop/workshop.css?v=514-cwm-wm-parity">
   <link rel="stylesheet" href="/belm-workshop/manager.css?v=514-cwm-wm-parity">
   <script src="/theme-manager.js?v=486-report-record"></script>
+  <style>
+    .top-actions{display:flex;align-items:center;gap:8px}
+    .cwm-back-button{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 13px;border:1px solid var(--line);border-radius:10px;background:#0b2036;color:#fff;text-decoration:none;font-weight:800;font-size:12px}
+    .cwm-back-button:hover,.cwm-back-button:focus{background:#123451;border-color:#3d6f91}
+    @media(max-width:620px){.top-actions{gap:6px}.cwm-back-button{min-height:36px;padding:7px 10px;font-size:11px}.top-actions button{padding:8px 10px}}
+  </style>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" id="backLink" href="/portal/dashboard"><span class="brand-mark">B</span><span>BELM Operations <small>PORTAL-CWM</small></span></a>
-    <div class="top-actions"><button id="refreshButton" type="button">Refresh</button></div>
+    <div class="top-actions">
+      <a class="ghost cwm-back-button" id="cwmBackButton" href="/portal/dashboard" aria-label="Back to Main Home">← Back</a>
+      <button id="refreshButton" type="button">Refresh</button>
+    </div>
   </header>
 
   <main class="shell">
@@ -200,5 +203,6 @@
   </dialog>
 
   <script src="/customer-workshop/workshop.js?v=514-cwm-wm-parity"></script>
+  <script src="/customer-workshop/v515-back-state.js?v=515-cwm-back-state"></script>
 </body>
 </html>

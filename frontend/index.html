@@ -17,6 +17,35 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // V517 - PORTAL-CWM is the canonical main dashboard for Customer Owner/Admin/Workshop Manager.
+      (function(){
+        function customerPayload(){
+          const token=localStorage.getItem('belm_customer_token');
+          if(!token)return null;
+          try{
+            const encoded=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+            return JSON.parse(decodeURIComponent(Array.from(atob(encoded)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')));
+          }catch(_){return null}
+        }
+        function redirectCwmMain(event){
+          if(location.pathname!=='/portal/dashboard')return false;
+          const params=new URLSearchParams(location.search);
+          if(params.get('view')==='machines')return false;
+          const payload=customerPayload();
+          if(!payload)return false;
+          const role=String(payload.customerRole||(String(payload.actorType||'').toLowerCase()==='owner'?'owner':''))
+            .toLowerCase().replace(/\s+/g,'_');
+          if(!['owner','admin','workshop_manager'].includes(role))return false;
+          if(event&&typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();
+          location.replace('/customer-workshop/?actor=customer');
+          return true;
+        }
+        if(redirectCwmMain())return;
+        addEventListener('popstate',e=>redirectCwmMain(e),true);
+        addEventListener('pageshow',e=>{if(e.persisted)redirectCwmMain(e)},true);
+      })();
+    </script>
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
     <!-- Regression cache baselines retained: /portal-tools.js?v=352-public-url-port-guard ; /belm-theme.css?v=326-jc-proforma-sync -->
     <!-- Regression baseline: /portal-tools.js?v=378-customer-activity-status -->

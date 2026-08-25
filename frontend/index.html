@@ -17,50 +17,23 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
-    <script>
-      // V517 - PORTAL-CWM is the canonical main dashboard for Customer Owner/Admin/Workshop Manager.
-      (function(){
-        function customerPayload(){
-          const token=localStorage.getItem('belm_customer_token');
-          if(!token)return null;
-          try{
-            const encoded=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-            return JSON.parse(decodeURIComponent(Array.from(atob(encoded)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')));
-          }catch(_){return null}
-        }
-        function redirectCwmMain(event){
-          if(location.pathname!=='/portal/dashboard')return false;
-          const params=new URLSearchParams(location.search);
-          if(params.get('view')==='machines')return false;
-          const payload=customerPayload();
-          if(!payload)return false;
-          const role=String(payload.customerRole||(String(payload.actorType||'').toLowerCase()==='owner'?'owner':''))
-            .toLowerCase().replace(/\s+/g,'_');
-          if(!['owner','admin','workshop_manager'].includes(role))return false;
-          if(event&&typeof event.stopImmediatePropagation==='function')event.stopImmediatePropagation();
-          location.replace('/customer-workshop/?actor=customer');
-          return true;
-        }
-        if(redirectCwmMain())return;
-        addEventListener('popstate',e=>redirectCwmMain(e),true);
-        addEventListener('pageshow',e=>{if(e.persisted)redirectCwmMain(e)},true);
-      })();
-    </script>
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
     <!-- Regression cache baselines retained: /portal-tools.js?v=352-public-url-port-guard ; /belm-theme.css?v=326-jc-proforma-sync -->
     <!-- Regression baseline: /portal-tools.js?v=378-customer-activity-status -->
     <!-- Regression baselines retained: /portal-tools.js?v=382-full-card-alert-range ; /belm-theme.css?v=382-full-card-alert-range ; /theme-global.css?v=486-report-record -->
     <!-- V384 regression baseline: /portal-tools.js?v=384-technician-dashboard-handoff -->
     <!-- V388 report-center regression baseline: /portal-tools.js?v=388-customer-general-report-center -->
-    <script defer src="/portal-tools.js?v=512-cwm-parity"></script>
+    <script defer src="/portal-tools.js?v=518-checklist-sync"></script>
     <script defer src="/admin-sidebar.js?v=488-text-fit"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BHFQaDFg.css">
     <!-- Regression baseline: /belm-theme.css?v=378-customer-activity-status -->
     <!-- Regression baseline: /belm-theme.css?v=382-full-card-alert-range -->
     <!-- V383 regression baseline: /belm-theme.css?v=383-machine-alert-blink -->
-    <link rel="stylesheet" href="/belm-theme.css?v=512-cwm-parity">
+    <link rel="stylesheet" href="/belm-theme.css?v=518-checklist-sync">
     <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
     <link rel="stylesheet" href="/theme-global.css?v=486-report-record">
+    <link rel="stylesheet" href="/v520-upgrades.css?v=520-latest">
+    <script defer src="/v520-upgrades.js?v=520-latest"></script>
   <script src="/theme-manager.js?v=486-report-record"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>

@@ -10,15 +10,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/theme-global.css?v=512-cwm-parity">
-  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=514-cwm-wm-parity">
+  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=517-cwm-main-canonical">
   <link rel="stylesheet" href="/belm-workshop/manager.css?v=514-cwm-wm-parity">
   <script src="/theme-manager.js?v=486-report-record"></script>
-  <style>
-    .top-actions{display:flex;align-items:center;gap:8px}
-    .cwm-back-button{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 13px;border:1px solid var(--line);border-radius:10px;background:#0b2036;color:#fff;text-decoration:none;font-weight:800;font-size:12px}
-    .cwm-back-button:hover,.cwm-back-button:focus{background:#123451;border-color:#3d6f91}
-    @media(max-width:620px){.top-actions{gap:6px}.cwm-back-button{min-height:36px;padding:7px 10px;font-size:11px}.top-actions button{padding:8px 10px}}
-  </style>
 </head>
 <body>
   <header class="topbar">
@@ -41,6 +35,7 @@
 
     <div id="pageAlert" class="alert hidden" role="status"></div>
 
+    <div id="cwmMainDashboard" class="cwm-main-dashboard">
     <section class="bw-role-grid cwm-single-home" aria-label="Customer Workshop Manager home">
       <article class="bw-role-card bw-manager-card cwm-wm-main-card">
         <div class="bw-role-icon">WM</div>
@@ -61,7 +56,7 @@
         <div class="bw-responsibilities cwm-role-functions" aria-label="Customer Workshop Manager functions">
           <span>Open Job Cards</span>
           <span id="cwmAssignFunction">Assign / Reassign Technician</span>
-          <span variant="none">Workshop Instructions</span>
+          <span>Workshop Instructions</span>
           <span id="cwmWorkloadFunction">Technician Workload</span>
           <span>Testing &amp; Review</span>
           <span>Workshop Analysis</span>
@@ -71,14 +66,14 @@
 
         <div class="bw-role-actions bw-manager-actions cwm-main-action-grid" aria-label="Customer Workshop controls">
           <a id="managerJobCardLink" class="bw-primary-action bw-work-action" href="/breakdown-workflow/?actor=customer">Open Job Cards</a>
-          <a id="storeLink" class="bw-primary-action bw-store-entry" href="#workshop-store">Open Store &amp; Spares</a>
+          <a id="storeLink" class="bw-primary-action bw-store-entry" href="#cwm-store">Open Store &amp; Spares</a>
           <a id="cwmProcurementLink" class="bw-primary-action bw-proc-entry" href="/customer-procurement/">Open Procurement</a>
           <a id="technicianManageLink" class="bw-primary-action bw-tech-entry" href="/customer-users/">Manage Technicians</a>
           <a id="managerAnalysisLink" class="bw-secondary-action bw-analysis-entry" href="/breakdown-workflow/?actor=customer#workshopReportPanel">Workshop Analysis</a>
           <a id="cwmGeneralReportLink" class="bw-manager-utility bw-general-report-action" href="/portal/dashboard?view=machines">General Report</a>
           <a id="cwmPettyCashLink" class="bw-manager-utility bw-petty-action" href="/customer-petty-cash/">Petty Cash</a>
           <a id="cwmGeneralAnalysisLink" class="bw-manager-utility bw-general-analysis-action" href="/portal/dashboard">General Analysis</a>
-          <a id="cwmSettingsLink" class="bw-manager-utility bw-settings-action" href="/portal/dashboard">Settings</a>
+          <a id="cwmSettingsLink" class="bw-manager-utility bw-settings-action" href="#cwm-settings">Settings</a>
         </div>
       </article>
     </section>
@@ -92,6 +87,21 @@
       <a id="cwmBillingLink" href="/customer-billing/">View BELM Invoices</a>
     </section>
 
+    <section class="workflow-panel">
+      <div class="panel-head"><div><p class="eyebrow">WORKSHOP FLOW</p><h2>One Job Card — clear responsibility</h2></div></div>
+      <div class="workflow-line">
+        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair & Testing</span><b>→</b><span>Manager Review</span>
+      </div>
+    </section>
+
+
+    </div>
+
+    <section id="cwmSettingsView" class="cwm-subview hidden" aria-label="PORTAL-CWM Settings">
+      <div class="cwm-subview-head">
+        <div><p class="eyebrow">PORTAL-CWM ONLY</p><h2>Settings</h2><p>Company-specific PORTAL-CWM settings.</p></div>
+        <button type="button" class="cwm-subview-back" data-cwm-main>← Back to CWM Main Home</button>
+      </div>
     <section id="cwmBrandingCard" class="cwm-branding-card cwm-branding-parity" aria-label="Company branding and document watermark">
       <div class="cwm-branding-preview">
         <div id="cwmLogoPlaceholder" class="cwm-logo-placeholder">LOGO</div>
@@ -109,21 +119,20 @@
       </div>
     </section>
 
-    <section class="workflow-panel">
-      <div class="panel-head"><div><p class="eyebrow">WORKSHOP FLOW</p><h2>One Job Card — clear responsibility</h2></div></div>
-      <div class="workflow-line">
-        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair & Testing</span><b>→</b><span>Manager Review</span>
-      </div>
     </section>
 
-
+    <section id="cwmStoreView" class="cwm-subview hidden" aria-label="Customer Workshop Store and Spares">
+      <div class="cwm-subview-head">
+        <div><p class="eyebrow">PORTAL-CWM · STORE &amp; SPARES</p><h2>Open Store &amp; Spares</h2><p>Customer Workshop Store, spare/material receiving and Tool Issue documents.</p></div>
+        <button type="button" class="cwm-subview-back" data-cwm-main>← Back to CWM Main Home</button>
+      </div>
     <section id="workshop-store" class="tool-documents-panel workshop-store-panel">
       <div class="panel-head">
         <div><p class="eyebrow">STORE KEEPER</p><h2>Customer Workshop Store</h2><p>Customer-owned tools/spares stock. This is separate from BELM Inventory.</p></div>
         <div class="cwm-store-head-actions"><button id="toolDocumentsButton" type="button" class="primary-action button-like">Tool Issue Documents</button><button id="receiveStockButton" type="button" class="primary-action button-like">+ Receive Spare / Material</button></div>
       </div>
       <div class="tool-kpis">
-        <div><span>STOSK ITEMS</span><strong id="storeItemCount">0</strong></div>
+        <div><span>STOCK ITEMS</span><strong id="storeItemCount">0</strong></div>
         <div><span>TOTAL QTY ON HAND</span><strong id="storeQtyCount">0</strong></div>
         <div><span>OUT OF STOCK</span><strong id="storeOutCount">0</strong></div>
       </div>
@@ -151,6 +160,7 @@
           <tbody id="toolIssueRows"><tr><td colspan="8" class="empty">Open Tool Issue Documents to load records.</td></tr></tbody>
         </table>
       </div>
+    </section>
     </section>
   </main>
 
@@ -202,8 +212,7 @@
     </form>
   </dialog>
 
-  <script src="/customer-workshop/workshop.js?v=514-cwm-wm-parity"></script>
-  <script src="/customer-workshop/v515-back-state.js?v=515-cwm-back-state"></script>
-  <script src="/customer-workshop/v517-canonical-main.js?v=517-cwm-main-canonical"></script>
+  <script src="/customer-workshop/workshop.js?v=517-cwm-main-canonical"></script>
+  <script src="/customer-workshop/v520-settings-runtime.js?v=520-latest"></script>
 </body>
 </html>

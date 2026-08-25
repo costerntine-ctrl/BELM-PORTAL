@@ -23,6 +23,57 @@
     const role=String(profile?.actorRole||'').toLowerCase();
     return type==='owner'||(type==='assistant'&&role==='admin');
   }
+  function normalizeRole(profile){
+    if(String(profile?.actorType||'').toLowerCase()==='owner') return 'owner';
+    return String(profile?.actorRole||'assistant').toLowerCase().replace(/\s+/g,'_');
+  }
+  function hasPermission(profile,key){
+    if(String(profile?.actorType||'').toLowerCase()==='owner') return true;
+    const permissions=profile?.actorPermissions;
+    if(permissions===null||permissions===undefined||permissions==='all') return true;
+    return Array.isArray(permissions)&&permissions.includes(key);
+  }
+  function setActionVisible(id,visible){
+    const el=document.getElementById(id);if(el)el.classList.toggle('cwm-role-hidden',!visible);
+  }
+  function applyCustomerRoleAccess(profile,belmOn,workshopModuleActive){
+    const role=normalizeRole(profile);
+    const ownerAdmin=role==='owner'||role==='admin';
+    const workshopRole=ownerAdmin||role==='workshop_manager';
+    const storeRole=ownerAdmin||role==='store_keeper'||role==='workshop_manager'||role==='procurement';
+    const procurementRole=ownerAdmin||role==='procurement'||role==='workshop_manager';
+    const accountsRole=ownerAdmin||role==='accounts';
+    const reportRole=!['operator'].includes(role);
+    setActionVisible('managerJobCardLink',workshopRole||hasPermission(profile,'workflow'));
+    setActionVisible('storeLink',workshopModuleActive&&storeRole&&hasPermission(profile,'store'));
+    setActionVisible('cwmProcurementLink',procurementRole&&(hasPermission(profile,'machine-expenses')||hasPermission(profile,'store')));
+    setActionVisible('technicianManageLink',!belmOn&&(ownerAdmin||role==='workshop_manager'));
+    setActionVisible('managerAnalysisLink',workshopRole||hasPermission(profile,'workflow'));
+    setActionVisible('cwmGeneralReportLink',reportRole);
+    setActionVisible('cwmPettyCashLink',accountsRole||hasPermission(profile,'machine-expenses'));
+    setActionVisible('cwmGeneralAnalysisLink',ownerAdmin||role==='workshop_manager'||role==='accounts');
+    setActionVisible('cwmSettingsLink',ownerAdmin);
+    setActionVisible('cwmChecklistTemplateLink',ownerAdmin||role==='workshop_manager'||hasPermission(profile,'check-up'));
+    const assign=document.getElementById('cwmAssignFunction');
+    if(assign){assign.textContent=belmOn?'BELM Technician Assignment':'Assign / Reassign Technician';assign.classList.toggle('cwm-function-locked',belmOn)}
+    const workload=document.getElementById('cwmWorkloadFunction');
+    if(workload)workload.textContent=belmOn?'BELM Job Progress':'Technician Workload';
+    const roleMeta={
+      owner:['CUSTOMER OWNER / ADMIN','Managing Company Workshop','OWNER'],
+      admin:['CUSTOMER ADMIN','Managing Company Workshop','ADMIN'],
+      workshop_manager:['WORKSHOP MANAGER','Managing Workshop','CONTROL'],
+      store_keeper:['STORE KEEPER','Store & Spare Control','STORE'],
+      procurement:['PROCUREMENT','Workshop Procurement','PROCUREMENT'],
+      accounts:['ACCOUNTS / FINANCE','Workshop Finance','FINANCE'],
+      operator:['OPERATOR','Machine Operations','OPERATOR'],
+      assistant:['CUSTOMER USER','Customer Workshop','ACCESS']
+    };
+    const meta=roleMeta[role]||roleMeta.assistant;
+    const label=document.getElementById('cwmRoleLabel'),title=document.getElementById('cwmRoleTitle'),status=document.getElementById('cwmRoleStatus'),description=document.getElementById('cwmRoleDescription');
+    if(label)label.textContent=meta[0];if(title)title.textContent=meta[1];if(status)status.textContent=meta[2];
+    if(description)description.textContent=`${meta[1]} — same PORTAL-BELM WM card language, scoped to this customer company and the signed-in role.`;
+    document.body.dataset.customerRole=role;
+  }
   function renderCompanyLogo(data){
     const img=document.getElementById('cwmCompanyLogoPreview');
     const placeholder=document.getElementById('cwmLogoPlaceholder');
@@ -74,8 +125,6 @@
     document.getElementById('toolDocumentsButton').classList.add('hidden');
     document.getElementById('technicianManageLink').href='/roles-manager/?role=Technician&technical=1';
     document.getElementById('technicianManageLink').textContent='BELM Technician Directory';
-    document.getElementById('technicianWorkLink').href='/belm-workshop/#job-cards';
-    document.getElementById('technicianWorkLink').textContent='Technical Department';
     document.getElementById('toolDocumentsPanel').classList.add('hidden');
     document.getElementById('cwmBrandingCard')?.classList.add('hidden');
   }
@@ -110,22 +159,22 @@
       belmStatus.textContent=belmOn?'BELM ON · SERVICE ACTIVE':'BELM OFF · CUSTOMER WORKSHOP';
       belmStatus.classList.toggle('is-on',belmOn);belmStatus.classList.toggle('is-off',!belmOn);
       const techManage=document.getElementById('technicianManageLink');
-      const techWork=document.getElementById('technicianWorkLink');
       if(belmOn){
         technicians=[];
         document.getElementById('technicianCount').textContent='LOCKED · BELM ON';
         if(techManage){techManage.textContent='Technicians Locked · BELM ON';techManage.removeAttribute('href');techManage.setAttribute('aria-disabled','true');techManage.classList.add('locked-action')}
-        if(techWork){techWork.textContent='View BELM Job Progress';techWork.href='/breakdown-workflow/?actor=customer';techWork.classList.remove('locked-action');techWork.removeAttribute('aria-disabled')}
         const newToolIssue=document.getElementById('newToolIssueButton');
         if(newToolIssue){newToolIssue.disabled=true;newToolIssue.textContent='Issue Tool Locked · BELM ON';newToolIssue.title='Customer Technician section is locked while BELM Service is ON.'}
       }else{
         if(techManage){techManage.textContent='Manage Technicians';techManage.href='/customer-users/';techManage.removeAttribute('aria-disabled');techManage.classList.remove('locked-action')}
-        if(techWork){techWork.textContent='View Assigned Work';techWork.href='/breakdown-workflow/?actor=customer';techWork.removeAttribute('aria-disabled');techWork.classList.remove('locked-action')}
         const newToolIssue=document.getElementById('newToolIssueButton');
         if(newToolIssue){newToolIssue.disabled=false;newToolIssue.textContent='+ Issue Tool';newToolIssue.title=''}
       }
       const machineLink=document.getElementById('cwmMachinesLink');
       machineLink.textContent=`${name.toUpperCase()} MACHINES`;
+      const checklistLink=document.getElementById('cwmChecklistTemplateLink');
+      if(checklistLink) checklistLink.href='/portal/dashboard?view=machines';
+      applyCustomerRoleAccess(profile,belmOn,workshopModuleActive);
       if(!workshopModuleActive){
         document.getElementById('storeLink')?.classList.add('hidden');
         document.getElementById('toolDocumentsButton')?.classList.add('hidden');
@@ -169,12 +218,12 @@
   async function loadToolIssues(){if(isBelm)return;const rows=document.getElementById('toolIssueRows');rows.innerHTML='<tr><td colspan="8" class="empty">Loading Tool Issue Documents…</td></tr>';try{const data=await customerApi('/tool-issues');toolIssues=data.items||[];renderToolIssues()}catch(e){rows.innerHTML=`<tr><td colspan="8" class="empty">${esc(e.message)}</td></tr>`}}
   function openIssue(){document.getElementById('toolIssueForm').reset();document.getElementById('toolQuantity').value='1';document.getElementById('toolIssueError').classList.add('hidden');document.getElementById('toolIssueDialog').showModal()}
   function openReturn(id){document.getElementById('toolReturnForm').reset();document.getElementById('toolReturnId').value=id;document.getElementById('toolReturnError').classList.add('hidden');document.getElementById('toolReturnDialog').showModal()}
-  document.getElementById('toolDocumentsButton').addEventListener('click',async()=>{const p=document.getElementById('toolDocumentsPanel');p.classList.remove('hidden');p.scrollIntoView({behavior:'smooth',block:'start'});await loadToolIssues()});
-  document.getElementById('newToolIssueButton').addEventListener('click',openIssue);
+  document.getElementById('toolDocumentsButton')?.addEventListener('click',async()=>{const p=document.getElementById('toolDocumentsPanel');p.classList.remove('hidden');p.scrollIntoView({behavior:'smooth',block:'start'});await loadToolIssues()});
+  document.getElementById('newToolIssueButton')?.addEventListener('click',openIssue);
   document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.close)?.close()));
   document.getElementById('toolIssueForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('toolIssueError');try{const tech=document.getElementById('toolTechnician');const opt=tech.selectedOptions[0];await customerApi('/tool-issues',{method:'POST',body:JSON.stringify({jobCardNo:document.getElementById('toolJobCardNo').value.trim(),technicianId:tech.value,technicianName:opt?.dataset?.name||opt?.textContent||'',toolName:document.getElementById('toolName').value.trim(),toolAssetId:document.getElementById('toolAssetId').value.trim(),quantity:Number(document.getElementById('toolQuantity').value||1),expectedReturnAt:document.getElementById('toolExpectedReturn').value||null,conditionOut:document.getElementById('toolConditionOut').value.trim(),note:document.getElementById('toolIssueNote').value.trim()})});document.getElementById('toolIssueDialog').close();show('Tool Issue Document created.');await loadToolIssues()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
   document.getElementById('toolReturnForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('toolReturnError');try{const id=document.getElementById('toolReturnId').value;await customerApi(`/tool-issues/${encodeURIComponent(id)}/return`,{method:'POST',body:JSON.stringify({conditionIn:document.getElementById('toolConditionIn').value.trim(),receivedBy:document.getElementById('toolReceivedBy').value.trim(),note:document.getElementById('toolReturnNote').value.trim()})});document.getElementById('toolReturnDialog').close();show('Tool return recorded.');await loadToolIssues()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
-  document.getElementById('receiveStockButton').addEventListener('click',openReceiveStock);
+  document.getElementById('receiveStockButton')?.addEventListener('click',openReceiveStock);
   document.getElementById('receiveStockForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('receiveStockError');try{await customerApi('/store',{method:'POST',body:JSON.stringify({partNumber:document.getElementById('receivePartNumber').value.trim(),description:document.getElementById('receiveDescription').value.trim(),unit:document.getElementById('receiveUnit').value,quantity:Number(document.getElementById('receiveQuantity').value||0),unitCost:Number(document.getElementById('receiveUnitCost').value||0),note:document.getElementById('receiveNote').value.trim()})});document.getElementById('receiveStockDialog').close();show('Customer Store stock received.');await loadStore()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
   document.getElementById('cwmUploadLogoButton')?.addEventListener('click',()=>document.getElementById('cwmCompanyLogoInput')?.click());
   document.getElementById('cwmCompanyLogoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];e.target.value='';if(file)await uploadCompanyLogo(file)});

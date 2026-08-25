@@ -16,7 +16,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/theme-global.css?v=512-cwm-parity">
-  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=513-cwm-company-logo">
+  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=514-cwm-wm-parity">
+  <link rel="stylesheet" href="/belm-workshop/manager.css?v=514-cwm-wm-parity">
   <script src="/theme-manager.js?v=486-report-record"></script>
 </head>
 <body>
@@ -37,52 +38,72 @@
 
     <div id="pageAlert" class="alert hidden" role="status"></div>
 
-    <section class="role-grid cwm-single-home cwm-wm-parity" aria-label="Customer Workshop Manager home">
-      <article class="role-card manager-card cwm-manager-home-card cwm-wm-parity-card">
-        <div class="role-icon">WM</div>
-        <div class="role-head"><div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div><span class="role-status">CONTROL</span></div>
-        <p class="role-description">Customer Workshop Main Home — same operational card language as PORTAL-BELM WM, with customer-only access rules applied.</p>
-        <div id="cwmCompanyInfo" class="cwm-company-info">
+    <section class="bw-role-grid cwm-single-home" aria-label="Customer Workshop Manager home">
+      <article class="bw-role-card bw-manager-card cwm-wm-main-card">
+        <div class="bw-role-icon">WM</div>
+        <div class="bw-role-head">
+          <div><p id="cwmRoleLabel">WORKSHOP MANAGER</p><h2 id="cwmRoleTitle">Managing Workshop</h2></div>
+          <span id="cwmRoleStatus" class="bw-role-status">CONTROL</span>
+        </div>
+        <p id="cwmRoleDescription" class="bw-role-description">Customer Workshop Main Home — the same operating card used by PORTAL-BELM WM, with company-scoped records and customer role permissions applied.</p>
+
+        <div id="cwmCompanyInfo" class="cwm-company-info cwm-company-info-parity">
           <div><span>COMPANY</span><b id="cwmCompanyName">Loading…</b></div>
           <div><span>ADDRESS</span><b id="cwmCompanyAddress">—</b></div>
           <div><span>EMAIL</span><b id="cwmCompanyEmail">—</b></div>
           <div><span>CONTACT</span><b id="cwmCompanyContact">—</b></div>
           <div><span>BELM SERVICE</span><b id="cwmBelmStatus">Checking…</b></div>
         </div>
-        <section id="cwmBrandingCard" class="cwm-branding-card" aria-label="Company branding and document watermark">
-          <div class="cwm-branding-preview">
-            <div id="cwmLogoPlaceholder" class="cwm-logo-placeholder">LOGO</div>
-            <img id="cwmCompanyLogoPreview" alt="Company logo" hidden>
-          </div>
-          <div class="cwm-branding-copy">
-            <span>COMPANY BRANDING</span>
-            <b>Document Watermark Logo</b>
-            <small>Upload your company logo once. PORTAL-CWM reports and customer-owned documents use a faint copy as the background watermark. BELM Invoice/Proforma branding is not changed.</small>
-          </div>
-          <div class="cwm-branding-actions">
-            <input id="cwmCompanyLogoInput" type="file" accept="image/png,image/jpeg" hidden>
-            <button id="cwmUploadLogoButton" type="button">Upload Company Logo</button>
-            <button id="cwmRemoveLogoButton" type="button" class="danger-lite" hidden>Remove Logo</button>
-          </div>
-        </section>
-        <div class="responsibilities cwm-home-tags">
-          <span>Job Cards</span><span>Technicians <b id="technicianCount">0 TECHS</b></span><span>Store</span><span>Procurement</span><span>Testing & Review</span><span>Report Record</span>
+
+        <div class="bw-responsibilities cwm-role-functions" aria-label="Customer Workshop Manager functions">
+          <span>Open Job Cards</span>
+          <span id="cwmAssignFunction">Assign / Reassign Technician</span>
+          <span>Workshop Instructions</span>
+          <span id="cwmWorkloadFunction">Technician Workload</span>
+          <span>Testing &amp; Review</span>
+          <span>Workshop Analysis</span>
+          <a id="cwmMachinesLink" class="bw-responsibility-action bw-customer-overview-action" href="/portal/dashboard?view=machines">CUSTOMER MACHINES</a>
+          <a id="cwmChecklistTemplateLink" class="bw-responsibility-action bw-checklist-template-action" href="/portal/dashboard?view=machines">Checklist Template</a>
         </div>
-        <div class="role-actions cwm-home-actions">
-          <a id="cwmMachinesLink" class="primary-action" href="/portal/dashboard?view=machines">CUSTOMER MACHINES</a>
-          <a id="managerJobCardLink" class="primary-action" href="/breakdown-workflow/?actor=customer">Open Job Cards</a>
-          <a id="storeLink" class="primary-action" href="#workshop-store">Open Store & Spares</a>
-          <a id="cwmProcurementLink" class="primary-action" href="/customer-procurement/">Open Procurement</a>
-          <a id="technicianManageLink" class="primary-action" href="/customer-users/">Manage Technicians</a>
-          <a id="technicianWorkLink" class="primary-action" href="/breakdown-workflow/?actor=customer">View Assigned Work</a>
-          <a id="managerAnalysisLink" class="primary-action" href="/breakdown-workflow/?actor=customer#workshopReportPanel">Workshop Analysis</a>
-          <button id="toolDocumentsButton" class="primary-action button-like" type="button">Tool Issue Documents</button>
-          <a id="cwmBillingLink" class="primary-action" href="/customer-billing/">BELM Invoices</a>
-          <a id="cwmGeneralReportLink" class="primary-action" href="/portal/dashboard?view=machines">General Report</a>
-          <a id="cwmPettyCashLink" class="primary-action" href="/customer-petty-cash/">Petty Cash</a>
-          <a id="cwmSettingsLink" class="primary-action" href="/portal/dashboard">Settings</a>
+
+        <div class="bw-role-actions bw-manager-actions cwm-main-action-grid" aria-label="Customer Workshop controls">
+          <a id="managerJobCardLink" class="bw-primary-action bw-work-action" href="/breakdown-workflow/?actor=customer">Open Job Cards</a>
+          <a id="storeLink" class="bw-primary-action bw-store-entry" href="#workshop-store">Open Store &amp; Spares</a>
+          <a id="cwmProcurementLink" class="bw-primary-action bw-proc-entry" href="/customer-procurement/">Open Procurement</a>
+          <a id="technicianManageLink" class="bw-primary-action bw-tech-entry" href="/customer-users/">Manage Technicians</a>
+          <a id="managerAnalysisLink" class="bw-secondary-action bw-analysis-entry" href="/breakdown-workflow/?actor=customer#workshopReportPanel">Workshop Analysis</a>
+          <a id="cwmGeneralReportLink" class="bw-manager-utility bw-general-report-action" href="/portal/dashboard?view=machines">General Report</a>
+          <a id="cwmPettyCashLink" class="bw-manager-utility bw-petty-action" href="/customer-petty-cash/">Petty Cash</a>
+          <a id="cwmGeneralAnalysisLink" class="bw-manager-utility bw-general-analysis-action" href="/portal/dashboard">General Analysis</a>
+          <a id="cwmSettingsLink" class="bw-manager-utility bw-settings-action" href="/portal/dashboard">Settings</a>
         </div>
       </article>
+    </section>
+
+    <section id="cwmCustomerDocuments" class="cwm-customer-docs-strip" aria-label="BELM customer documents">
+      <div>
+        <span>BELM DOCUMENTS</span>
+        <b>Invoices issued by BELM</b>
+        <small>PORTAL-CWM can view/download BELM-issued documents only. Generate Invoice / Generate Proforma remains a BELM control.</small>
+      </div>
+      <a id="cwmBillingLink" href="/customer-billing/">View BELM Invoices</a>
+    </section>
+
+    <section id="cwmBrandingCard" class="cwm-branding-card cwm-branding-parity" aria-label="Company branding and document watermark">
+      <div class="cwm-branding-preview">
+        <div id="cwmLogoPlaceholder" class="cwm-logo-placeholder">LOGO</div>
+        <img id="cwmCompanyLogoPreview" alt="Company logo" hidden>
+      </div>
+      <div class="cwm-branding-copy">
+        <span>COMPANY BRANDING</span>
+        <b>Document Watermark Logo</b>
+        <small>Customer Owner/Admin can upload the company logo for PORTAL-CWM reports. BELM Invoice/Proforma branding stays under BELM.</small>
+      </div>
+      <div class="cwm-branding-actions">
+        <input id="cwmCompanyLogoInput" type="file" accept="image/png,image/jpeg" hidden>
+        <button id="cwmUploadLogoButton" type="button">Upload Company Logo</button>
+        <button id="cwmRemoveLogoButton" type="button" class="danger-lite" hidden>Remove Logo</button>
+      </div>
     </section>
 
     <section class="workflow-panel">
@@ -96,7 +117,7 @@
     <section id="workshop-store" class="tool-documents-panel workshop-store-panel">
       <div class="panel-head">
         <div><p class="eyebrow">STORE KEEPER</p><h2>Customer Workshop Store</h2><p>Customer-owned tools/spares stock. This is separate from BELM Inventory.</p></div>
-        <button id="receiveStockButton" type="button" class="primary-action button-like">+ Receive Spare / Material</button>
+        <div class="cwm-store-head-actions"><button id="toolDocumentsButton" type="button" class="primary-action button-like">Tool Issue Documents</button><button id="receiveStockButton" type="button" class="primary-action button-like">+ Receive Spare / Material</button></div>
       </div>
       <div class="tool-kpis">
         <div><span>STOCK ITEMS</span><strong id="storeItemCount">0</strong></div>
@@ -178,6 +199,6 @@
     </form>
   </dialog>
 
-  <script src="/customer-workshop/workshop.js?v=513-cwm-company-logo"></script>
+  <script src="/customer-workshop/workshop.js?v=514-cwm-wm-parity"></script>
 </body>
 </html>

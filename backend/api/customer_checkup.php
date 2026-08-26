@@ -64,7 +64,7 @@ function checkup_templates_for_machine(array $machine): array {
 }
 
 function checkup_today_report(string $machineId): ?array {
-    $stmt = db()->prepare("SELECT cr.id,cr.template_id,cr.overall_status,cr.hour_meter_reading,cr.filled_by,cr.display_photo_url,cr.created_at,cr.updated_at,ct.service_type FROM checklist_reports cr JOIN checklist_templates ct ON ct.id=cr.template_id WHERE cr.machine_id=? AND cr.created_at >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Dar_es_Salaam') AT TIME ZONE 'Africa/Dar_es_Salaam' ORDER BY cr.created_at DESC LIMIT 1");
+    $stmt = db()->prepare("SELECT cr.id,cr.template_id,cr.overall_status,cr.hour_meter_reading,cr.filled_by,cr.display_photo_url,cr.service_day_checked,cr.next_service_hours,cr.created_at,cr.updated_at,ct.service_type FROM checklist_reports cr JOIN checklist_templates ct ON ct.id=cr.template_id WHERE cr.machine_id=? AND cr.created_at >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Dar_es_Salaam') AT TIME ZONE 'Africa/Dar_es_Salaam' ORDER BY cr.created_at DESC LIMIT 1");
     $stmt->execute([$machineId]);
     $report = $stmt->fetch();
     if (!$report) return null;
@@ -123,8 +123,8 @@ $nextServiceHours = isset($body['nextServiceHours']) ? (int)$body['nextServiceHo
 $answers = $body['answers'] ?? [];
 if ($machineId === '' || $templateId === '') json_error('Machine and Checklist Template are required.');
 if (!is_numeric($hours) || (float)$hours < 0) json_error('Enter a valid hour meter reading.');
-if (!$serviceDayChecked) json_error('Confirm Service Day Check before saving.');
-if (!in_array($nextServiceHours, [250,500,1000,2000], true)) json_error('Select Next Service Type: 250, 500, 1000 or 2000 HRS.');
+if ($serviceDayChecked && !in_array($nextServiceHours, [250,500,1000,2000], true)) json_error('Select Next Service Type: 250, 500, 1000 or 2000 HRS.');
+if (!$serviceDayChecked) $nextServiceHours = 0;
 if (!is_array($answers)) json_error('Checklist answers are required.');
 $machine = checkup_machine($customerId, $machineId);
 $templates = checkup_templates_for_machine($machine);
@@ -172,13 +172,13 @@ try {
     $filledBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer Inspector')) ?: 'Customer Inspector';
     if ($existing) {
         $reportId = (string)$existing['id'];
-        $pdo->prepare('UPDATE checklist_reports SET template_id=?,filled_by=?,hour_meter_reading=?,overall_status=?,display_photo_url=?,updated_at=NOW() WHERE id=? AND machine_id=?')->execute([$templateId,$filledBy,(float)$hours,$overall,$displayPhoto,$reportId,$machineId]);
+        $pdo->prepare('UPDATE checklist_reports SET template_id=?,filled_by=?,hour_meter_reading=?,overall_status=?,display_photo_url=?,service_day_checked=?,next_service_hours=?,updated_at=NOW() WHERE id=? AND machine_id=?')->execute([$templateId,$filledBy,(float)$hours,$overall,$displayPhoto,$serviceDayChecked ? 1 : 0,$serviceDayChecked ? $nextServiceHours : null,$reportId,$machineId]);
         $pdo->prepare('DELETE FROM checklist_answers WHERE report_id=?')->execute([$reportId]);
         $statusCode = 200;
         $message = 'Today\'s Check Up updated. Editing remains available until 00:00 East Africa Time.';
     } else {
         $reportId = uuid();
-        $pdo->prepare('INSERT INTO checklist_reports (id,machine_id,template_id,filled_by,hour_meter_reading,overall_status,display_photo_url,created_at) VALUES (?,?,?,?,?,?,?,NOW())')->execute([$reportId,$machineId,$templateId,$filledBy,(float)$hours,$overall,$displayPhoto]);
+        $pdo->prepare('INSERT INTO checklist_reports (id,machine_id,template_id,filled_by,hour_meter_reading,overall_status,display_photo_url,service_day_checked,next_service_hours,created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())')->execute([$reportId,$machineId,$templateId,$filledBy,(float)$hours,$overall,$displayPhoto,$serviceDayChecked ? 1 : 0,$serviceDayChecked ? $nextServiceHours : null]);
         $statusCode = 201;
         $message = 'Today\'s Check Up completed and saved. Editing remains available until 00:00 East Africa Time.';
     }
@@ -186,7 +186,11 @@ try {
     foreach ($normalized as $row) {
         $insert->execute([uuid(),$reportId,$row['item']['id'],$row['item']['label'],$row['value'],$row['photo'],$row['safety'],$row['note'] !== '' ? $row['note'] : null]);
     }
-    $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),last_service_hours=?,service_interval_hours=?,updated_at=NOW() WHERE id=?')->execute([$overall,(float)$hours,$nextServiceHours,$machineId]);
+    if ($serviceDayChecked) {
+        $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),last_service_hours=?,service_interval_hours=?,updated_at=NOW() WHERE id=?')->execute([$overall,(float)$hours,$nextServiceHours,$machineId]);
+    } else {
+        $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),updated_at=NOW() WHERE id=?')->execute([$overall,$machineId]);
+    }
     $pdo->commit();
     $tz = new DateTimeZone('Africa/Dar_es_Salaam');
     $expires = (new DateTimeImmutable('tomorrow', $tz))->setTime(0,0,0)->format(DateTimeInterface::ATOM);
@@ -194,8 +198,9 @@ try {
         'ok'=>true,
         'reportId'=>$reportId,
         'overallStatus'=>$overall,
-        'nextServiceHours'=>$nextServiceHours,
-        'nextServiceDueAtHours'=>(float)$hours + $nextServiceHours,
+        'serviceDayChecked'=>$serviceDayChecked,
+        'nextServiceHours'=>$serviceDayChecked ? $nextServiceHours : null,
+        'nextServiceDueAtHours'=>$serviceDayChecked ? (float)$hours + $nextServiceHours : null,
         'editable'=>true,
         'editExpiresAt'=>$expires,
         'historicalReportsPreserved'=>true,

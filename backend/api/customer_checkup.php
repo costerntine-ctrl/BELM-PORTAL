@@ -21,7 +21,7 @@ function checkup_require_access(array $customer): void {
 }
 
 function checkup_machine(string $customerId, string $machineId): array {
-    $stmt = db()->prepare('SELECT id,customer_id,machine_type,brand,model,serial_number,reg_number,fleet_number,status,last_checked_at FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL LIMIT 1');
+    $stmt = db()->prepare('SELECT id,customer_id,machine_type,brand,model,serial_number,reg_number,fleet_number,status,last_checked_at,service_interval_hours,last_service_hours FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL LIMIT 1');
     $stmt->execute([$machineId, $customerId]);
     $row = $stmt->fetch();
     if (!$row) json_error('Machine not found.', 404);
@@ -95,6 +95,8 @@ if ($method === 'GET') {
             'id' => $machine['id'], 'machineType' => $machine['machine_type'], 'brand' => $machine['brand'],
             'model' => $machine['model'], 'serialNumber' => $machine['serial_number'], 'regNumber' => $machine['reg_number'],
             'fleetNumber' => $machine['fleet_number'], 'status' => $machine['status'], 'lastCheckedAt' => $machine['last_checked_at'],
+            'serviceIntervalHours' => $machine['service_interval_hours'] !== null ? (int)$machine['service_interval_hours'] : null,
+            'lastServiceHours' => (float)($machine['last_service_hours'] ?? 0),
         ],
         'templates' => $templates,
         'sync' => [
@@ -117,10 +119,12 @@ $templateId = trim((string)($body['templateId'] ?? ''));
 $hours = $body['hourMeterReading'] ?? null;
 $displayPhoto = trim((string)($body['displayPhotoUrl'] ?? ''));
 $serviceDayChecked = !empty($body['serviceDayChecked']);
+$nextServiceHours = isset($body['nextServiceHours']) ? (int)$body['nextServiceHours'] : 0;
 $answers = $body['answers'] ?? [];
 if ($machineId === '' || $templateId === '') json_error('Machine and Checklist Template are required.');
 if (!is_numeric($hours) || (float)$hours < 0) json_error('Enter a valid hour meter reading.');
 if (!$serviceDayChecked) json_error('Confirm Service Day Check before saving.');
+if (!in_array($nextServiceHours, [250,500,1000,2000], true)) json_error('Select Next Service Type: 250, 500, 1000 or 2000 HRS.');
 if (!is_array($answers)) json_error('Checklist answers are required.');
 $machine = checkup_machine($customerId, $machineId);
 $templates = checkup_templates_for_machine($machine);
@@ -182,11 +186,21 @@ try {
     foreach ($normalized as $row) {
         $insert->execute([uuid(),$reportId,$row['item']['id'],$row['item']['label'],$row['value'],$row['photo'],$row['safety'],$row['note'] !== '' ? $row['note'] : null]);
     }
-    $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),updated_at=NOW() WHERE id=?')->execute([$overall,$machineId]);
+    $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),last_service_hours=?,service_interval_hours=?,updated_at=NOW() WHERE id=?')->execute([$overall,(float)$hours,$nextServiceHours,$machineId]);
     $pdo->commit();
     $tz = new DateTimeZone('Africa/Dar_es_Salaam');
     $expires = (new DateTimeImmutable('tomorrow', $tz))->setTime(0,0,0)->format(DateTimeInterface::ATOM);
-    json_out(['ok'=>true,'reportId'=>$reportId,'overallStatus'=>$overall,'editable'=>true,'editExpiresAt'=>$expires,'historicalReportsPreserved'=>true,'message'=>$message],$statusCode);
+    json_out([
+        'ok'=>true,
+        'reportId'=>$reportId,
+        'overallStatus'=>$overall,
+        'nextServiceHours'=>$nextServiceHours,
+        'nextServiceDueAtHours'=>(float)$hours + $nextServiceHours,
+        'editable'=>true,
+        'editExpiresAt'=>$expires,
+        'historicalReportsPreserved'=>true,
+        'message'=>$message
+    ],$statusCode);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     throw $e;

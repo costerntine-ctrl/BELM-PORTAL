@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS customer_users (
 
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS permissions TEXT NULL;
+ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
 -- Caps how many portal users (assistants) a customer can add for
 -- themselves before they must contact BELM Admin for more. NULL means
@@ -202,6 +203,8 @@ ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NU
 -- standing as Hour Meter and Service Day (not a configurable per-template
 -- item), always captured, always shown at the top of the report.
 ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS display_photo_url TEXT NULL;
+ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS service_day_checked SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS next_service_hours INTEGER NULL;
 
 CREATE TABLE IF NOT EXISTS checklist_answers (
   id VARCHAR(36) PRIMARY KEY,
@@ -1594,3 +1597,23 @@ CREATE INDEX IF NOT EXISTS idx_belm_procurement_receipts_request
   ON belm_procurement_receipts(source_type, request_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_belm_procurement_receipts_date
   ON belm_procurement_receipts(receipt_date DESC, created_at DESC);
+
+
+-- V602: company-wide CWM notification routing/settings. Persisted in the canonical
+-- schema so fresh deploys and guarded migrations match the Settings Center API.
+CREATE TABLE IF NOT EXISTS customer_notification_settings (
+  customer_id VARCHAR(36) PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+  critical_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  service_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  breakdown_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  procurement_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  whatsapp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  whatsapp_number VARCHAR(80),
+  whatsapp_group_name VARCHAR(160),
+  email_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  email_from_name VARCHAR(160),
+  reply_to_email VARCHAR(255),
+  management_group_emails TEXT,
+  updated_by VARCHAR(160),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

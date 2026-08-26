@@ -1,0 +1,28 @@
+BELM PORTAL-CWM V602 AUDIT
+Date: 2026-08-27
+
+Release checks completed:
+- All backend PHP files: syntax OK.
+- All frontend JS files: syntax OK.
+- All inline HTML scripts: syntax OK.
+- Internal static href/src paths: no missing targets found.
+- CWM key API routes/static handlers checked.
+- SQL UPDATE column references checked against canonical schema.
+
+Bugs corrected during audit:
+1. General Report machine selector now uses a dedicated live customer machine endpoint instead of dashboard rendering.
+2. General Report aligned to Check Up, Operator Checkup, Operator Job Card, Spare Request, Maintenance, Breakdown and Fuel Consumption reports with CSV/PDF/Print controls.
+3. Customer Workshop role access controls now have the required button IDs, so permissions/role visibility can work.
+4. Workshop flow no longer calls nonexistent /operator-reports and /procurement aggregate endpoints; it loads machine-scoped operator/procurement records.
+5. Customer Users Password Security now calls the real protected password-security API.
+6. Settings Center includes Password Security UI: Edit Password / Delete Password with Customer Admin Password + Edit PIN + Reason.
+7. customer_users.updated_at added to canonical schema for password-security updates.
+8. customer_notification_settings added to canonical schema and migration protection/readiness.
+9. Notification email routing reads company Email/Management Group settings and respects email/category switches in the central customer alert helper.
+10. Daily Check Up Service Day is optional. Next Service Type (250/500/1000/2000 HRS) is required only when Service Day is selected.
+11. Service Day and Next Service Type are persisted on the checklist report so same-day edit is accurate until 00:00 EAT.
+12. Routine daily Check Up no longer overwrites last-service HRS/service interval.
+13. CWM machine navigation carries from=cwm and Customer Machines gets a deterministic Workshop Main back action.
+14. PORTAL-CWM quick access now routes Settings to the central Settings Center.
+
+Note: Static regression checks cannot simulate live Render/PostgreSQL production data or external email/WhatsApp providers. Production database remains migration-safe; no existing business records are intentionally deleted by this release.

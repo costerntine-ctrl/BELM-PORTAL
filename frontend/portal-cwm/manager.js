@@ -1,25 +1,36 @@
 (function () {
-  const token = localStorage.getItem("belm_admin_token");
+  const adminToken = localStorage.getItem("belm_admin_token") || "";
+  const customerToken = localStorage.getItem("belm_customer_token") || "";
+  const isCustomerHome = !!customerToken;
   let customers = [];
+  let messageTimer = null;
 
-  async function api(path, options = {}) {
+  async function adminApi(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
       cache: "no-store",
       headers: {
         ...(options.body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${token || ""}`,
+        Authorization: `Bearer ${adminToken}`,
         ...(options.headers || {}),
       },
     });
     const text = await response.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch (_) {}
-    if (!response.ok) {
-      const error = new Error(data?.error || `Request failed (${response.status}).`);
-      error.status = response.status;
-      throw error;
-    }
+    if (!response.ok) throw new Error(data?.error || `Request failed (${response.status}).`);
+    return data;
+  }
+
+  async function customerApi(path) {
+    const response = await fetch(`/api/customer-portal${path}`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${customerToken}` },
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) {}
+    if (!response.ok) throw new Error(data?.error || `Request failed (${response.status}).`);
     return data;
   }
 
@@ -30,149 +41,183 @@
     box.classList.remove("hidden");
     box.classList.toggle("error", isError);
     box.classList.toggle("success", !isError);
-    window.clearTimeout(showAlert._t);
-    showAlert._t = window.setTimeout(() => box.classList.add("hidden"), 5000);
+  }
+
+  function logout() {
+    if (isCustomerHome) {
+      localStorage.removeItem("belm_customer_token");
+      localStorage.removeItem("belm_session_refreshed_belm_customer_token");
+      if (localStorage.getItem("belm_active_account_type") === "customer") localStorage.removeItem("belm_active_account_type");
+      window.location.replace("/login");
+      return;
+    }
+    localStorage.removeItem("belm_admin_token");
+    localStorage.removeItem("belm_admin_user");
+    window.location.replace("/admin/login");
   }
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[character]);
 
-  // V512: PORTAL-CWM preview uses only live actions. No placeholder buttons.
-  const CWM_PREVIEW_LIMIT = 1;
+  const customerMessages = [
+    { text: "Safety is everyone’s responsibility. Work safe, go home safe.", by: "BELM Team" },
+    { text: "A good workshop starts with a complete daily Check Up.", by: "BELM Operations" },
+    { text: "Record every machine problem early — prevention costs less than breakdown.", by: "BELM Technical" },
+    { text: "Use the Job Card from diagnosis through testing and completion.", by: "Workshop Control" },
+    { text: "Keep tools, spares and service records updated for reliable maintenance.", by: "BELM Operations" },
+    { text: "Quality work. Safety first. On time.", by: "BELM General Tech" },
+  ];
 
   function customerCard(customer) {
+    const name = customer.name || "Customer";
+    const openHref = isCustomerHome
+      ? "/customer-workshop/?actor=customer"
+      : `/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id || "")}`;
+
+    if (!isCustomerHome) {
+      return `
+        <article class="cwm-welcome-card" data-customer-card="${escapeHtml(customer.id || "self")}">
+          <div class="cwm-welcome-copy"><p class="cwm-welcome-kicker">WELCOME TO</p><h2>${escapeHtml(name.toUpperCase())} WORKSHOP PORTAL</h2></div>
+          <div class="cwm-welcome-details" aria-label="Customer company details">
+            <div><span>ADDRESS:</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
+            <div><span>EMAIL:</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div>
+            <div><span>PHONE:</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div>
+          </div>
+          <a class="cwm-open-workshop" href="${openHref}">OPEN WORKSHOP</a>
+        </article>`;
+    }
+
+    const first = customerMessages[0];
     return `
-    <article class="cwm-card" data-customer-card="${escapeHtml(customer.id)}">
-      <div class="cwm-card-head">
-        <div>
-          <p class="cwm-eyebrow">CUSTOMER</p>
-          <h2>${escapeHtml(customer.name)}</h2>
-        </div>
-        <span class="cwm-active-pill ${customer.isActive ? "on" : "off"}">${customer.isActive ? "Active" : "Inactive"}</span>
-      </div>
-      <div class="cwm-info-grid">
-        <div><span>Phone</span><b>${escapeHtml(customer.phone || "—")}</b></div>
-        <div><span>Email</span><b>${escapeHtml(customer.email || "—")}</b></div>
-        <div><span>Address</span><b>${escapeHtml(customer.address || "—")}</b></div>
-      </div>
+      <article class="cwm-home-v556" data-customer-card="${escapeHtml(customer.id || "self")}">
+        <section class="cwm-home-hero-v556">
+          <p class="cwm-home-kicker-v556"><span></span>WELCOME TO<span></span></p>
+          <h1>${escapeHtml(name.toUpperCase())} <em>WORKSHOP</em> PORTAL</h1>
+          <div class="cwm-company-details-v556">
+            <div><i>●</i><span>ADDRESS</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
+            <div><i>✉</i><span>EMAIL</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div>
+            <div><i>☎</i><span>PHONE</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div>
+          </div>
+        </section>
 
-      <div class="cwm-sync-strip">
-        <span class="cwm-owner ${customer.selfServiceEnabled ? "customer" : "belm"}">${customer.selfServiceEnabled ? "CUSTOMER WORKSHOP" : "BELM SERVICE"}</span>
-        <span>WM <b>${Number(customer.workshopManagerCount || 0)}</b></span>
-        <span>STORE <b>${Number(customer.storeKeeperCount || 0)}</b></span>
-        <span>TECH <b>${Number(customer.technicianCount || 0)}</b></span>
-        <span>OP <b>${Number(customer.operatorCount || 0)}</b></span>
-      </div>
+        <section class="cwm-message-display-v556" aria-live="polite">
+          <button type="button" data-cwm-message-prev aria-label="Previous message">‹</button>
+          <div class="cwm-message-content-v556">
+            <div class="cwm-quote-mark-v556">“</div>
+            <strong data-cwm-message-text>${escapeHtml(first.text)}</strong>
+            <small data-cwm-message-by>— ${escapeHtml(first.by)}</small>
+            <div class="cwm-message-dots-v556" data-cwm-message-dots></div>
+          </div>
+          <button type="button" data-cwm-message-next aria-label="Next message">›</button>
+        </section>
 
-      <div class="cwm-switch-row">
-        <label class="cwm-switch-item">
-          <span>Non-Payment</span>
-          <span class="cwm-toggle">
-            <input type="checkbox" data-toggle="portal-access" data-customer="${escapeHtml(customer.id)}" ${customer.isActive ? "checked" : ""}>
-            <span class="cwm-toggle-slider"></span>
-          </span>
-          <b>${customer.isActive ? "PORTAL ON" : "STOPPED"}</b>
-        </label>
-        <label class="cwm-switch-item">
-          <span>PORTAL-CWM</span>
-          <span class="cwm-toggle cwm-toggle-workshop">
-            <input type="checkbox" data-toggle="workshop-module" data-customer="${escapeHtml(customer.id)}" ${customer.workshopModuleActive ? "checked" : ""}>
-            <span class="cwm-toggle-slider"></span>
-          </span>
-          <b>${customer.workshopModuleActive ? "ON" : "OFF"}</b>
-        </label>
-      </div>
+        <a class="cwm-open-workshop-v556" href="${openHref}"><span class="cwm-open-icon-v556">⚙</span><b>OPEN WORKSHOP</b><span class="cwm-open-arrow-v556">→</span></a>
 
-      <div class="cwm-comm-history">
-        <div class="cwm-comm-head"><strong>Communication history</strong><a href="/customers-manager/?customer=${encodeURIComponent(customer.id)}" class="cwm-comm-viewall">View all</a></div>
-        <p class="muted">Use View all for history.</p>
-      </div>
+        <section class="cwm-quick-v556">
+          <div class="cwm-quick-title-v556"><span>QUICK ACCESS</span></div>
+          <nav class="cwm-quick-grid-v556" aria-label="Workshop quick access">
+            <a href="/portal/dashboard?view=machines"><i>✓</i><b>CHECK UP</b><small>Daily checklist & reports</small><span>›</span></a>
+            <a href="/customer-job-card/"><i>🔧</i><b>JOB CARDS</b><small>Create & manage job cards</small><span>›</span></a>
+            <a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a>
+            <a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a>
+            <a href="/general-report/"><i>▥</i><b>REPORTS</b><small>Reports & analysis</small><span>›</span></a>
+            <a href="/customer-settings-center/"><i>⚙</i><b>SETTINGS</b><small>Users, roles & company settings</small><span>›</span></a>
+          </nav>
+        </section>
 
-      <div class="cwm-button-grid" aria-label="PORTAL-CWM live actions">
-        <a class="cwm-live-action cwm-machine-action" href="/customers-manager/?customer=${encodeURIComponent(customer.id)}&view=machines">View Customer Machines</a>
-        <a class="cwm-live-action cwm-open-action" href="/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id)}">Open PORTAL-CWM</a>
-      </div>
-    </article>`;
+        <footer class="cwm-home-footer-v556">
+          <div><span class="cwm-footer-mark-v556">B</span><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div>
+          <p>Powering Performance.<br>Ensuring Reliability.</p>
+          <div class="cwm-footer-values-v556"><span>◈ Safety First</span><span>✓ Quality Work</span><span>⚙ On Time</span></div>
+        </footer>
+      </article>`;
+  }
+
+  function setCustomerHomeChrome() {
+    if (!isCustomerHome) return;
+    document.body.classList.add("cwm-customer-home-v556");
+    document.querySelector(".belm-portal-switcher")?.remove();
+    document.querySelector(".hero")?.remove();
+    document.querySelector(".panel")?.remove();
+    const top = document.querySelector(".top-actions");
+    if (top) top.innerHTML = '<button class="ghost cwm-header-logout-v556" type="button" data-cwm-logout>Log out</button>';
+    const brand = document.querySelector(".brand");
+    brand?.setAttribute("href", "/portal-cwm/");
+    if (brand) {
+      const text = brand.querySelector("span:last-child");
+      if (text) text.innerHTML = 'BELM General Tech <small>PORTAL-CWM</small>';
+    }
+  }
+
+  function wireMessageDisplay() {
+    if (!isCustomerHome) return;
+    const root = document.querySelector(".cwm-message-display-v556");
+    if (!root) return;
+    let index = 0;
+    const textEl = root.querySelector("[data-cwm-message-text]");
+    const byEl = root.querySelector("[data-cwm-message-by]");
+    const dots = root.querySelector("[data-cwm-message-dots]");
+    const render = () => {
+      const item = customerMessages[index];
+      textEl.textContent = item.text;
+      byEl.textContent = `— ${item.by}`;
+      dots.innerHTML = customerMessages.map((_, i) => `<button type="button" aria-label="Message ${i + 1}" class="${i === index ? "active" : ""}" data-cwm-dot="${i}"></button>`).join("");
+      dots.querySelectorAll("[data-cwm-dot]").forEach((button) => button.addEventListener("click", () => { index = Number(button.dataset.cwmDot); render(); restart(); }));
+    };
+    const next = () => { index = (index + 1) % customerMessages.length; render(); };
+    const prev = () => { index = (index - 1 + customerMessages.length) % customerMessages.length; render(); };
+    const restart = () => { if (messageTimer) clearInterval(messageTimer); messageTimer = setInterval(next, 6000); };
+    root.querySelector("[data-cwm-message-next]")?.addEventListener("click", () => { next(); restart(); });
+    root.querySelector("[data-cwm-message-prev]")?.addEventListener("click", () => { prev(); restart(); });
+    render(); restart();
   }
 
   function renderCards(filterText = "") {
     const grid = document.getElementById("cwmCardGrid");
+    if (!grid) return;
     const needle = filterText.trim().toLowerCase();
-    const rows = customers.filter((c) => !needle || c.name.toLowerCase().includes(needle)).slice(0, CWM_PREVIEW_LIMIT);
-    grid.innerHTML = rows.length
-      ? rows.map(customerCard).join("")
-      : '<p class="muted">No customers match.</p>';
+    const rows = customers.filter((customer) => !needle || String(customer.name || "").toLowerCase().includes(needle)).slice(0, 1);
+    grid.innerHTML = rows.length ? rows.map(customerCard).join("") : '<p class="muted">No customer record found.</p>';
+    if (isCustomerHome) wireMessageDisplay();
   }
 
   async function load() {
     try {
-      customers = await api("/customers?action=cwm-overview");
-      renderCards(document.getElementById("cwmSearch").value);
-    } catch (error) {
-      document.getElementById("cwmCardGrid").innerHTML =
-        `<p class="muted">${escapeHtml(error.message || "Could not load PORTAL-CWM.")}</p>`;
-    }
-  }
-
-  document.getElementById("cwmSearch").addEventListener("input", (event) => renderCards(event.target.value));
-  document.getElementById("refreshButton").addEventListener("click", load);
-
-  document.getElementById("cwmCardGrid").addEventListener("change", async (event) => {
-    const toggle = event.target.closest("[data-toggle]");
-    if (!toggle) return;
-    const customerId = toggle.dataset.customer;
-    const customer = customers.find((c) => c.id === customerId);
-    if (!customer) return;
-    const kind = toggle.dataset.toggle;
-    const enabled = toggle.checked;
-    toggle.disabled = true;
-    try {
-      let confirmation;
-      let endpoint;
-      let body;
-      if (kind === "portal-access") {
-        confirmation = await window.belmConfirmEdit({
-          title: enabled ? "Turn Portal ON?" : "Stop Portal Service (Non-Payment)?",
-          message: enabled
-            ? `Restore full portal access for ${customer.name}.`
-            : `Stop portal service for ${customer.name} (e.g. for non-payment)? This blocks their whole account, including Operators.`,
-        });
-        endpoint = `/customers/${customerId}/portal-access`;
-        body = { enabled };
-      } else {
-        confirmation = await window.belmConfirmEdit({
-          title: enabled ? "Activate PORTAL-CWM?" : "Deactivate PORTAL-CWM?",
-          message: enabled
-            ? `Activate PORTAL-CWM for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
-            : `Deactivate PORTAL-CWM for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until switched back ON.`,
-        });
-        endpoint = `/customers/${customerId}/workshop-module`;
-        body = { enabled };
+      if (isCustomerHome) {
+        const dashboard = await customerApi("/dashboard");
+        const customer = dashboard?.customer || {};
+        customers = [{
+          id: customer.id || "self",
+          name: customer.name || "Customer",
+          address: customer.address || "",
+          email: customer.email || "",
+          phone: customer.phone || "",
+        }];
+        setCustomerHomeChrome();
+        renderCards();
+        return;
       }
-      if (!confirmation) { toggle.checked = !enabled; return; }
-      await api(endpoint, { method: "PUT", body: JSON.stringify({ ...body, ...confirmation }) });
-      if (kind === "portal-access") customer.isActive = enabled;
-      else customer.workshopModuleActive = enabled;
-      renderCards(document.getElementById("cwmSearch").value);
-      showAlert(`${customer.name}: updated.`, false);
+
+      if (!adminToken) {
+        window.location.replace("/login");
+        return;
+      }
+      customers = await adminApi("/customers?action=cwm-overview");
+      renderCards(document.getElementById("cwmSearch")?.value || "");
     } catch (error) {
-      toggle.checked = !enabled;
-      showAlert(error.message || "Could not update this customer.", true);
-    } finally {
-      toggle.disabled = false;
+      const grid = document.getElementById("cwmCardGrid");
+      if (grid) grid.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load PORTAL-CWM.")}</p>`;
+      showAlert(error.message || "Could not load PORTAL-CWM.", true);
     }
-  });
-
-  document.getElementById("logoutButton")?.addEventListener("click", () => {
-    localStorage.removeItem("belm_admin_token");
-    localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
-  });
-
-  if (!token) {
-    showAlert("Administrator login required.");
-  } else {
-    load();
   }
+
+  document.getElementById("cwmSearch")?.addEventListener("input", (event) => renderCards(event.target.value));
+  document.getElementById("refreshButton")?.addEventListener("click", load);
+  document.body.addEventListener("click", (event) => {
+    if (event.target.closest("[data-cwm-logout]")) logout();
+  });
+  document.getElementById("logoutButton")?.addEventListener("click", logout);
+
+  load();
 })();

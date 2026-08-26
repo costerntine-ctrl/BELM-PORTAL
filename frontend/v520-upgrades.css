@@ -1,0 +1,136 @@
+.belm-customer-checklist-sync-control{display:inline-flex;align-items:center;gap:9px;flex-wrap:wrap;margin:6px 10px 6px 0;vertical-align:middle}.belm-customer-checklist-sync-button{min-height:38px;padding:9px 14px;border:1px solid #168cff;border-radius:10px;background:#168cff;color:#fff;font:800 12px Inter,system-ui,sans-serif;cursor:pointer;box-shadow:0 5px 14px rgba(22,140,255,.18)}.belm-customer-checklist-sync-button:hover,.belm-customer-checklist-sync-button:focus{background:#0b78e5;border-color:#0b78e5}.belm-customer-checklist-sync-button:disabled{opacity:.62;cursor:wait}.belm-customer-checklist-sync-status{max-width:520px;font:700 11px Inter,system-ui,sans-serif;color:#64748b}.belm-customer-checklist-sync-status[data-state="synced"]{color:#008640}.belm-customer-checklist-sync-status[data-state="missing"]{color:#b7791f}.belm-customer-checklist-sync-status[data-state="error"]{color:#c53030}[data-theme="dark"] .belm-customer-checklist-sync-status{color:#a9bdd0}[data-theme="dark"] .belm-customer-checklist-sync-status[data-state="synced"]{color:#70e5a4}[data-theme="dark"] .belm-customer-checklist-sync-status[data-state="missing"]{color:#ffd76a}[data-theme="dark"] .belm-customer-checklist-sync-status[data-state="error"]{color:#ff9da7}
+.belm-customer-machine-back{display:inline-flex;align-items:center;gap:7px;min-height:36px;margin:0 10px 8px 0;padding:8px 12px;border:1px solid #334155;border-radius:10px;background:#0f172a;color:#fff!important;text-decoration:none;font:800 12px Inter,system-ui,sans-serif;box-shadow:0 5px 14px rgba(15,23,42,.14);vertical-align:middle}.belm-customer-machine-back:hover,.belm-customer-machine-back:focus{background:#1e293b;border-color:#475569;outline:3px solid rgba(22,140,255,.18)}.belm-customer-machine-back span{font-size:16px;line-height:1}
+@media(max-width:620px){.belm-customer-checklist-sync-control{display:flex;width:100%;margin:8px 0}.belm-customer-checklist-sync-button{width:100%}.belm-customer-checklist-sync-status{width:100%;max-width:none}.belm-customer-machine-back{display:flex;width:max-content;margin:0 0 10px}}
+
+/* V521 - Customer Dashboard viewport-fit.
+   The approved dashboard used an 820px minimum card and a 520px communication
+   panel, which forced vertical scrolling on common 720/768/800px laptop
+   displays. Keep the same content/actions but compact the vertical rhythm so
+   the full card is visible at once. */
+@media (min-width:721px) and (max-height:900px){
+  body.belm-customer-dashboard-face-active{min-height:100dvh!important;}
+  .belm-customer-dashboard-face{
+    min-height:100dvh!important;
+    padding:8px 14px 10px!important;
+  }
+  .belm-customer-face-toolbar{
+    margin-bottom:5px!important;
+    font-size:9px!important;
+  }
+  .belm-customer-face-toolbar button{
+    min-height:27px!important;
+    padding:5px 10px!important;
+    font-size:9px!important;
+  }
+  .belm-customer-face-card{
+    width:min(690px,calc(100vw - 28px))!important;
+    min-height:0!important;
+    height:auto!important;
+    padding:16px 18px 13px!important;
+    border-radius:17px!important;
+  }
+  .belm-customer-face-head{
+    gap:10px!important;
+  }
+  .belm-customer-face-head h1{
+    margin-top:2px!important;
+    margin-bottom:8px!important;
+    font-size:clamp(21px,2.2vw,29px)!important;
+    line-height:1.05!important;
+  }
+  .belm-customer-face-eyebrow{
+    margin-bottom:2px!important;
+    font-size:8px!important;
+  }
+  .belm-customer-face-contacts{
+    gap:3px!important;
+  }
+  .belm-customer-face-contacts>div{
+    min-height:18px!important;
+  }
+  .belm-customer-face-contacts span{
+    font-size:8.5px!important;
+  }
+  .belm-customer-face-contacts b{
+    font-size:10.5px!important;
+  }
+  .belm-customer-face-statuses{
+    gap:5px!important;
+  }
+  .belm-customer-face-active-pill,
+  .belm-customer-face-provider{
+    padding:5px 8px!important;
+    font-size:8px!important;
+  }
+  .belm-customer-face-provider-note{
+    font-size:8px!important;
+  }
+  .belm-customer-face-communication{
+    min-height:245px!important;
+    max-height:285px!important;
+    margin-top:12px!important;
+    padding:11px 12px 9px!important;
+    border-radius:14px!important;
+  }
+  .belm-customer-face-communication-title{
+    grid-template-columns:minmax(105px,.45fr) 1fr!important;
+    gap:10px!important;
+  }
+  .belm-customer-face-communication-title strong{
+    font-size:16px!important;
+    line-height:1!important;
+  }
+  .belm-customer-face-communication-title button{
+    min-height:32px!important;
+    border-radius:9px!important;
+    font-size:10px!important;
+  }
+  .belm-customer-face-communication-body{
+    padding-top:8px!important;
+    gap:6px!important;
+  }
+  .belm-customer-face-empty{
+    margin:8px 0!important;
+    font-size:10px!important;
+  }
+  .belm-customer-face-communication-row{
+    padding:7px 9px!important;
+  }
+  .belm-customer-face-communication-row p{
+    margin:4px 0 3px!important;
+    font-size:10px!important;
+    line-height:1.25!important;
+  }
+  .belm-customer-face-communication-row small{
+    font-size:8.5px!important;
+  }
+  .belm-customer-face-actions{
+    margin-top:9px!important;
+    gap:6px!important;
+  }
+  .belm-customer-face-action{
+    min-height:40px!important;
+    padding:5px 5px!important;
+    border-radius:9px!important;
+    font-size:9.5px!important;
+    line-height:1.05!important;
+  }
+  .belm-customer-face-secondary-actions{
+    margin-top:6px!important;
+  }
+  .belm-customer-face-secondary-actions .belm-customer-face-action{
+    min-height:36px!important;
+  }
+}
+
+/* Very short laptop/browser viewport: keep the complete card on screen. */
+@media (min-width:721px) and (max-height:720px){
+  .belm-customer-face-card{padding:12px 16px 10px!important;}
+  .belm-customer-face-communication{
+    min-height:190px!important;
+    max-height:220px!important;
+    margin-top:8px!important;
+  }
+  .belm-customer-face-action{min-height:35px!important;font-size:8.8px!important;}
+  .belm-customer-face-secondary-actions .belm-customer-face-action{min-height:33px!important;}
+}

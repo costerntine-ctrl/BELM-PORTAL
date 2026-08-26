@@ -7502,3 +7502,23 @@
     hideCheckedMachinesFromTechList();
   }, 1500);
 })();
+
+// V602 CWM navigation guard: when Customer Machines is opened from Workshop,
+// always provide a deterministic parent Back action instead of browser history.
+(function installCwmMachineReturnLink(){
+  const qs=new URLSearchParams(window.location.search);
+  if(qs.get('from')!=='cwm' || window.location.pathname!=='/portal/dashboard') return;
+  function mount(){
+    if(document.getElementById('belm-cwm-machine-back')) return true;
+    const link=document.createElement('a');
+    link.id='belm-cwm-machine-back';
+    link.href='/customer-workshop/?actor=customer';
+    link.textContent='← Workshop Main';
+    Object.assign(link.style,{display:'inline-flex',alignItems:'center',justifyContent:'center',gap:'6px',padding:'9px 13px',borderRadius:'10px',background:'#102a56',color:'#fff',font:'800 12px Inter,system-ui,sans-serif',textDecoration:'none',zIndex:'60'});
+    const host=document.querySelector('header .top-actions, header nav, header, .topbar .top-actions, .topbar');
+    if(host){host.appendChild(link);return true}
+    Object.assign(link.style,{position:'fixed',top:'14px',left:'14px'});document.body.appendChild(link);return true;
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',mount,{once:true});else mount();
+  setTimeout(mount,500);setTimeout(mount,1500);
+})();

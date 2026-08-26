@@ -4005,6 +4005,28 @@ if ($sub === 'petty-cash' && $sub2) {
 }
 
 
+// ---- Dedicated live machine list for CWM/report selectors ------------------
+// Keeps reports and other machine-scoped pages independent from dashboard UI
+// rendering while preserving the same customer/company_id scope.
+if ($sub === 'machines' && !$sub2 && $method === 'GET') {
+    $stmt = db()->prepare('SELECT id,customer_id,machine_type,brand,model,serial_number,reg_number,fleet_number,status,operational_status,last_checked_at,service_interval_hours,last_service_hours FROM machines WHERE customer_id=? AND deleted_at IS NULL ORDER BY created_at ASC,model ASC');
+    $stmt->execute([$customer['id']]);
+    $machines = $stmt->fetchAll();
+    foreach ($machines as &$machine) {
+        $machine['customerId'] = $machine['customer_id'];
+        $machine['machineType'] = $machine['machine_type'];
+        $machine['serialNumber'] = $machine['serial_number'];
+        $machine['regNumber'] = $machine['reg_number'];
+        $machine['fleetNumber'] = $machine['fleet_number'];
+        $machine['operationalStatus'] = $machine['operational_status'];
+        $machine['lastCheckedAt'] = $machine['last_checked_at'];
+        $machine['serviceIntervalHours'] = $machine['service_interval_hours'] !== null ? (int)$machine['service_interval_hours'] : null;
+        $machine['lastServiceHours'] = (float)($machine['last_service_hours'] ?? 0);
+    }
+    unset($machine);
+    json_out(['customer'=>['id'=>$customer['id'],'name'=>$customer['name'] ?? 'Customer'],'machines'=>$machines,'sync'=>'LIVE_CUSTOMER_MACHINE_LIST']);
+}
+
 // ---- Customer-owned machine management -------------------------------------
 // V387: These four actions are customer-side only and are enabled only while
 // Customer Self-Service is ON (equivalent to BELM Service Provider being OFF).

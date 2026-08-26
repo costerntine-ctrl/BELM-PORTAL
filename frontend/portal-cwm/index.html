@@ -1,29 +1,23 @@
 <!doctype html>
 <html lang="en">
   <head>
-  <!-- V446: bfcache back-navigation guard, see /customer-workshop/index.html -->
-  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
+    <script>window.addEventListener("pageshow",function(e){if(e.persisted)window.location.reload();});</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BELM PORTAL-CWM</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
     <link rel="stylesheet" href="/portal-switcher.css?v=511-three-portal-menu">
-    <link rel="stylesheet" href="/portal-cwm/manager.css?v=512-cwm-parity">
+    <link rel="stylesheet" href="/portal-cwm/manager.css?v=556-full-belm-home">
     <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
     <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
-  <script src="/theme-manager.js?v=485-display-fit"></script>
-  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
-  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-</head>
+    <script src="/theme-manager.js?v=485-display-fit"></script>
+  </head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/belm-workshop/">
-        <span class="brand-mark">B</span>
-        <span>BELM General Tech <small>PORTAL-CWM</small></span>
-      </a>
+      <a class="brand" href="/portal-cwm/"><span class="brand-mark">B</span><span>BELM General Tech <small>PORTAL-CWM</small></span></a>
       <div class="top-actions">
         <a class="ghost" href="/belm-workshop/">← Main Home</a>
         <a class="ghost" href="/customers-manager/">TECHNICAL DEP</a>
@@ -31,43 +25,22 @@
         <button id="logoutButton" class="ghost" type="button">Log out</button>
       </div>
     </header>
-    <nav class="belm-portal-switcher" aria-label="BELM portal sections">
-      <a href="/customers-manager/">Customer Overview</a>
-      <a href="/belm-workshop/">PORTAL-BELM WM</a>
-      <a class="active" href="/portal-cwm/">PORTAL-CWM</a>
-    </nav>
-
-
+    <nav class="belm-portal-switcher" aria-label="BELM portal sections"><a href="/customers-manager/">Customer Overview</a><a href="/belm-workshop/">PORTAL-BELM WM</a><a class="active" href="/portal-cwm/">PORTAL-CWM</a></nav>
     <main class="shell">
-      <section class="hero">
-        <div>
-          <p class="eyebrow">Portal Customer Workshop Manager</p>
-          <h1>PORTAL-CWM</h1>
-          <p>Customers running independently — their own Admins, Technicians and Operators handle day-to-day maintenance,
-             and/or their own Workshop Manager / Store Keeper / Technician team uses the PORTAL-CWM service.
-             Non-Payment and PORTAL-CWM switches below are live and update the same customer record as
-             <a href="/customers-manager/">Customers &amp; Machines</a>. This screen previews one customer at a time and
-             uses only live actions — no placeholder buttons.</p>
-        </div>
-      </section>
-
+      <section class="hero"><div><p class="eyebrow">Portal Customer Workshop Manager</p><h1>PORTAL-CWM</h1><p>Customer Workshop Management.</p></div></section>
       <div id="pageAlert" class="alert hidden" role="status"></div>
-
-      <section class="panel">
-        <div class="panel-head">
-          <div><h2>Customer CWM Preview</h2><p>One customer card at a time. Use View Customer Machines or Open PORTAL-CWM; both use the live customer/company record.</p></div>
-          <input id="cwmSearch" type="search" placeholder="Search customer…" class="cwm-search">
-        </div>
-      </section>
-
-      <div id="cwmCardGrid" class="cwm-card-grid">
-        <p class="muted">Loading…</p>
-      </div>
+      <section class="panel"><div class="panel-head"><div><h2>Customer CWM Preview</h2><p>One customer card at a time.</p></div><input id="cwmSearch" type="search" placeholder="Search customer…" class="cwm-search"></div></section>
+      <div id="cwmCardGrid" class="cwm-card-grid"><p class="muted">Loading…</p></div>
     </main>
-
-    <script src="/admin-access.js?v=411-job-card-only"></script>
-    <script src="/admin-sidebar.js?v=488-text-fit"></script>
+    <script>
+      (function(){
+        if(!localStorage.getItem('belm_customer_token')){
+          var a=document.createElement('script');a.src='/admin-access.js?v=530-admin-only';document.body.appendChild(a);
+          var s=document.createElement('script');s.src='/admin-sidebar.js?v=488-text-fit';document.body.appendChild(s);
+        }
+      })();
+    </script>
     <script src="/edit-confirm.js"></script>
-    <script src="/portal-cwm/manager.js?v=512-cwm-parity"></script>
+    <script src="/portal-cwm/manager.js?v=556-full-belm-home"></script>
   </body>
 </html>

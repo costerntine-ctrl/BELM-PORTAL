@@ -1818,6 +1818,43 @@ function belm_log_customer_communication(
     return $id;
 }
 
+function belm_customer_notification_preferences(string $customerId): array {
+    $defaults = [
+        'critical' => true, 'service' => true, 'breakdown' => true, 'procurement' => true,
+        'emailEnabled' => true, 'replyTo' => null, 'managementEmails' => [],
+    ];
+    try {
+        $stmt = db()->prepare('SELECT critical_alerts_enabled,service_alerts_enabled,breakdown_alerts_enabled,procurement_alerts_enabled,email_enabled,reply_to_email,management_group_emails FROM customer_notification_settings WHERE customer_id=? LIMIT 1');
+        $stmt->execute([$customerId]);
+        $row = $stmt->fetch();
+        if (!$row) return $defaults;
+        $emails = json_decode((string)($row['management_group_emails'] ?? ''), true);
+        if (!is_array($emails)) $emails = [];
+        $emails = array_values(array_unique(array_filter(array_map(static fn($v) => strtolower(trim((string)$v)), $emails), static fn($v) => filter_var($v, FILTER_VALIDATE_EMAIL))));
+        return [
+            'critical' => !empty($row['critical_alerts_enabled']),
+            'service' => !empty($row['service_alerts_enabled']),
+            'breakdown' => !empty($row['breakdown_alerts_enabled']),
+            'procurement' => !empty($row['procurement_alerts_enabled']),
+            'emailEnabled' => !empty($row['email_enabled']),
+            'replyTo' => filter_var((string)($row['reply_to_email'] ?? ''), FILTER_VALIDATE_EMAIL) ? (string)$row['reply_to_email'] : null,
+            'managementEmails' => $emails,
+        ];
+    } catch (Throwable $ignored) {
+        return $defaults;
+    }
+}
+
+function belm_customer_alert_category_enabled(string $customerId, ?string $relatedType, string $subject = ''): bool {
+    $prefs = belm_customer_notification_preferences($customerId);
+    $haystack = strtoupper(trim((string)$relatedType) . ' ' . $subject);
+    if (str_contains($haystack, 'SERVICE')) return (bool)$prefs['service'];
+    if (str_contains($haystack, 'PROCUREMENT') || str_contains($haystack, 'SPARE')) return (bool)$prefs['procurement'];
+    if (str_contains($haystack, 'BREAKDOWN') || str_contains($haystack, 'JOB CARD')) return (bool)$prefs['breakdown'];
+    if (str_contains($haystack, 'CRITICAL') || str_contains($haystack, "DON'T OPERATE") || str_contains($haystack, 'DO NOT OPERATE')) return (bool)$prefs['critical'];
+    return true;
+}
+
 function belm_customer_notification_recipients(string $customerId, array $roles = []): array {
     $wantedRoles = array_values(array_unique(array_filter(array_map(
         static fn($role): string => strtolower(trim((string)$role)),
@@ -1853,6 +1890,10 @@ function belm_customer_notification_recipients(string $customerId, array $roles 
             'role' => strtolower((string)($row['role'] ?? 'assistant')),
         ];
     }
+    $prefs = belm_customer_notification_preferences($customerId);
+    foreach ($prefs['managementEmails'] as $email) {
+        $recipients[$email] = ['email' => $email, 'name' => 'Management Group', 'role' => 'management'];
+    }
     return array_values($recipients);
 }
 
@@ -1868,7 +1909,9 @@ function belm_send_customer_alert(
     ?string $portalBody = null
 ): array {
     if (!function_exists('send_email')) require_once __DIR__ . '/mailer.php';
-    $recipients = belm_customer_notification_recipients($customerId, $roles);
+    $prefs = belm_customer_notification_preferences($customerId);
+    $categoryEnabled = belm_customer_alert_category_enabled($customerId, $relatedType, $subject);
+    $recipients = ($prefs['emailEnabled'] && $categoryEnabled) ? belm_customer_notification_recipients($customerId, $roles) : [];
     $sent = 0;
     $failed = 0;
     $recipientEmails = [];
@@ -1876,7 +1919,7 @@ function belm_send_customer_alert(
         $email = (string)$recipient['email'];
         $delivery = 'SENT';
         try {
-            send_email($email, $subject, $body);
+            send_email($email, $subject, $body, [], [], $prefs['replyTo']);
             $sent++;
             $recipientEmails[] = $email;
         } catch (Throwable $error) {
@@ -1905,7 +1948,7 @@ function belm_send_customer_alert(
         $createdByName,
         $auditStatus
     );
-    return ['sent' => $sent, 'failed' => $failed, 'recipients' => $recipientEmails];
+    return ['sent' => $sent, 'failed' => $failed, 'recipients' => $recipientEmails, 'emailEnabled' => (bool)$prefs['emailEnabled'], 'categoryEnabled' => $categoryEnabled];
 }
 
 // V424 - one central Job Card number generator for every workflow source.

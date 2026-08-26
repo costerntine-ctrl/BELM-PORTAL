@@ -10,9 +10,15 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/theme-global.css?v=512-cwm-parity">
-  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=522-home-settings-logout">
+  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=523-cwm-belm-wm-parity">
   <link rel="stylesheet" href="/belm-workshop/manager.css?v=514-cwm-wm-parity">
   <script src="/theme-manager.js?v=486-report-record"></script>
+  <style>
+    /* V523 — PORTAL-CWM main-home visual parity with PORTAL-BELM WM. */
+    #cwmMainDashboard .cwm-company-info-parity{display:none!important}
+    #cwmMainDashboard #cwmChecklistTemplateLink{display:none!important}
+    #cwmMainDashboard .cwm-wm-main-card{max-width:none}
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -79,19 +85,10 @@
       </article>
     </section>
 
-    <section id="cwmCustomerDocuments" class="cwm-customer-docs-strip" aria-label="BELM customer documents">
-      <div>
-        <span>BELM DOCUMENTS</span>
-        <b>Invoices issued by BELM</b>
-        <small>PORTAL-CWM can view/download BELM-issued documents only. Generate Invoice / Generate Proforma remains a BELM control.</small>
-      </div>
-      <a id="cwmBillingLink" href="/customer-billing/">View BELM Invoices</a>
-    </section>
-
     <section class="workflow-panel">
       <div class="panel-head"><div><p class="eyebrow">WORKSHOP FLOW</p><h2>One Job Card — clear responsibility</h2></div></div>
       <div class="workflow-line">
-        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Repair & Testing</span><b>→</b><span>Manager Review</span>
+        <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Procurement if shortage</span><b>→</b><span>Customer Store</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span><b>→</b><span>Completed</span>
       </div>
     </section>
 
@@ -122,20 +119,21 @@
           </div>
         </article>
 
-        <article class="cwm-settings-control-card">
+        <article class="cwm-settings-control-card cwm-settings-machines">
           <div class="cwm-settings-card-head">
-            <div><span>02 · FLEET CONTROL</span><h3>Machines</h3><p>Add, edit and delete customer machines.</p></div>
+            <div><span>02 · FLEET CONTROL</span><h3>Machines</h3><p>Customer machines only. BELM fleet records remain separate.</p></div>
           </div>
           <div class="cwm-settings-action-row">
             <a class="action-add" href="/portal/dashboard?view=machines&action=add-machine">+ Add Machine</a>
             <a href="/portal/dashboard?view=machines">Edit Machine</a>
             <a class="action-danger" href="/portal/dashboard?view=machines">Delete Machine</a>
           </div>
+          <small>Edit/Delete remain subject to BELM Service ON/OFF machine-management lock.</small>
         </article>
 
-        <article class="cwm-settings-control-card">
+        <article class="cwm-settings-control-card cwm-settings-users">
           <div class="cwm-settings-card-head">
-            <div><span>03 · COMPANY USERS</span><h3>Users</h3><p>Add, edit, delete and generate password for company users.</p></div>
+            <div><span>03 · COMPANY USERS</span><h3>Users</h3><p>Add and manage company users. Password generation/reset is handled securely in Role Manager.</p></div>
           </div>
           <div class="cwm-settings-action-row">
             <a class="action-add" href="/customer-users/?action=add-user">+ Add User</a>
@@ -147,14 +145,14 @@
 
         <article class="cwm-settings-control-card cwm-settings-checklist">
           <div class="cwm-settings-card-head">
-            <div><span>04 · CUSTOMER CHECKLIST</span><h3>Custom Checklist Template</h3><p>Customer-workshop template design. It is separate from BELM Checklist Templates.</p></div>
-            <span class="cwm-private-template-badge">CWM ONLY • DESIGN</span>
+            <div><span>04 · CUSTOMER CHECKLIST</span><h3>Custom Checklist Template</h3><p>Design for this customer company only. It does not edit, overwrite or replace BELM Checklist Templates.</p></div>
+            <span class="cwm-private-template-badge">CWM ONLY</span>
           </div>
           <div class="cwm-template-designer-preview">
             <div class="cwm-template-fields">
-              <label>Template Name<input value="Customer Daily Machine Check"></label>
-              <label>Machine Type<input placeholder="e.g. Reach Stacker"></label>
-              <label>Model / Group<input placeholder="Optional model"></label>
+              <label>Template Name<input value="Customer Daily Machine Check" aria-label="Customer template name"></label>
+              <label>Machine Type<input placeholder="e.g. Reach Stacker" aria-label="Machine type"></label>
+              <label>Model / Group<input placeholder="Optional model" aria-label="Machine model"></label>
             </div>
             <div class="cwm-template-preview-list">
               <div><span>01</span><b>Engine oil level</b><em>Normal / Attention / Critical</em></div>
@@ -168,10 +166,9 @@
             <button type="button" class="cwm-template-design-button">Edit Design</button>
             <button type="button" class="cwm-template-design-button">Preview</button>
           </div>
-          <small class="cwm-design-only-note">Design only in this version. Customer template storage/sync is separate from BELM templates.</small>
+          <small class="cwm-design-only-note">Design layer only in this version; CWM template storage/sync will be wired separately without touching BELM templates.</small>
         </article>
       </section>
-
     <section id="cwmBrandingCard" class="cwm-branding-card cwm-branding-parity" aria-label="Company branding and document watermark">
       <div class="cwm-branding-preview">
         <div id="cwmLogoPlaceholder" class="cwm-logo-placeholder">LOGO</div>

@@ -2,6 +2,21 @@
   function isCustomerMachineView(){
     return location.pathname==='/portal/dashboard' && new URLSearchParams(location.search).get('view')==='machines' && !!localStorage.getItem('belm_customer_token');
   }
+  function installMachineViewBack(){
+    if(!isCustomerMachineView()||document.getElementById('belmCustomerMachineBack'))return;
+    const headings=[...document.querySelectorAll('h1,h2')];
+    const heading=headings.find(el=>/machines/i.test((el.textContent||'').trim()));
+    const request=[...document.querySelectorAll('button,a')].find(el=>/^\+?\s*request service$/i.test((el.textContent||'').trim()));
+    const parent=request?.parentElement||heading?.parentElement;
+    if(!parent)return;
+    const link=document.createElement('a');
+    link.id='belmCustomerMachineBack';
+    link.className='belm-customer-machine-back';
+    link.href='/portal/dashboard';
+    link.setAttribute('aria-label','Back to Customer Dashboard');
+    link.innerHTML='<span aria-hidden="true">&#8592;</span> Back to Dashboard';
+    if(parent.firstChild)parent.insertBefore(link,parent.firstChild);else parent.appendChild(link);
+  }
   function installChecklistSync(){
     if(!isCustomerMachineView()||document.getElementById('belmCustomerChecklistSyncControl'))return;
     const token=localStorage.getItem('belm_customer_token');
@@ -29,6 +44,6 @@
     if(!isCustomerMachineView())return;const q=new URLSearchParams(location.search);if(q.get('action')!=='add-machine'||document.documentElement.dataset.v520AddMachine==='1')return;
     const find=()=>[...document.querySelectorAll('button,a')].find(el=>/^\+\s*add machine$/i.test((el.textContent||'').trim())||/^add machine$/i.test((el.textContent||'').trim()));let tries=0;const timer=setInterval(()=>{const btn=find();tries++;if(btn){clearInterval(timer);document.documentElement.dataset.v520AddMachine='1';btn.click();}else if(tries>20)clearInterval(timer);},150);
   }
-  function run(){installChecklistSync();installProcurementFuelRecord();openMachineFromSettings();}
+  function run(){installMachineViewBack();installChecklistSync();installProcurementFuelRecord();openMachineFromSettings();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();const mo=new MutationObserver(run);mo.observe(document.documentElement,{childList:true,subtree:true});setTimeout(()=>mo.disconnect(),12000);
 })();

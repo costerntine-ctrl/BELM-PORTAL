@@ -3,21 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Role Manager — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-users/users.css">
+  <title>CWM Settings Center — BELM Customer Portal</title>
+  <link rel="stylesheet" href="/customer-users/users.css?v=539-settings-center">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+  <style>
+    .settings-center-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.settings-center-card{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid #dbe5f1;border-radius:16px;padding:16px;text-decoration:none;color:inherit}.settings-center-card span{font-size:11px;font-weight:800;letter-spacing:.08em;color:#64758b}.settings-center-card b{font-size:16px}.settings-center-card small{color:#697a8e;line-height:1.45}.settings-center-card.primary-center{background:#0d4fa3;color:#fff;border-color:#0d4fa3}.settings-center-card.primary-center span,.settings-center-card.primary-center small{color:rgba(255,255,255,.8)}.settings-center-note{padding:13px 15px;border-radius:12px;background:#eaf3ff;color:#244f7c;margin-bottom:16px}@media(max-width:900px){.settings-center-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.settings-center-grid{grid-template-columns:1fr}}
+  </style>
 </head>
 <body>
   <header>
-    <a class="brand" href="/portal/dashboard">
+    <a class="brand" href="/customer-workshop/?actor=customer">
       <span class="mark">B</span>
-      <span><b>BELM Customer Portal</b><small>Role Manager</small></span>
+      <span><b>BELM Operations</b><small>PORTAL-CWM · Settings Center</small></span>
     </a>
     <nav>
-      <a href="/portal/dashboard">← Customer dashboard</a>
+      <a href="/customer-workshop/?actor=customer">← Workshop Main</a>
       <button id="logoutButton" type="button">Log out</button>
     </nav>
   </header>
@@ -25,17 +28,26 @@
   <main>
     <section class="heading">
       <div>
-        <p class="eyebrow">CUSTOMER TEAM & ACCESS CONTROL</p>
-        <h1>Role Manager</h1>
-        <p class="lead">Create users for your company, choose their work role, and control exactly which dashboard functions they can open. Every user remains limited to your company and machines.</p>
+        <p class="eyebrow">CWM SYSTEM SETUP & ACCESS CONTROL</p>
+        <h1>Settings Center</h1>
+        <p class="lead">Central control for company roles, users, permissions, machines and workshop setup. All customer-side user administration belongs here.</p>
       </div>
-      <button class="primary compact" id="addButton" type="button">+ USER</button>
+      <button class="primary compact" id="addButton" type="button">+ ADD USER</button>
     </section>
-    <p id="userLimitInfo" class="user-limit-info"></p>
 
+    <div class="settings-center-note"><b>Settings Center rule:</b> Add, Edit, Delete, Reset Password, Active/Inactive, Role assignment and Dashboard Access for all customer roles are controlled here. Manage Technicians remains a technician-only shortcut.</div>
+
+    <section class="settings-center-grid" aria-label="CWM setup sections">
+      <a class="settings-center-card primary-center" href="#role-management"><span>01 · USERS & ACCESS</span><b>All Roles & Users</b><small>Add, edit, delete, reset password, activate/deactivate and set permissions for Workshop Manager, Store Keeper, Accountant, Procurement, Operator and Technician.</small></a>
+      <a class="settings-center-card" href="/portal/dashboard?view=machines"><span>02 · MACHINE SETUP</span><b>Machines</b><small>Add/edit customer machines, fleet identity and machine-linked setup.</small></a>
+      <a class="settings-center-card" href="/customer-store/"><span>03 · WORKSHOP SETUP</span><b>Store & Materials</b><small>Open Workshop Store, stock balance and store records.</small></a>
+      <a class="settings-center-card" href="/customer-procurement-home/"><span>04 · PROCUREMENT SETUP</span><b>Procurement</b><small>Machine spare sourcing, shortage and purchasing workflow.</small></a>
+    </section>
+
+    <p id="userLimitInfo" class="user-limit-info"></p>
     <div id="alertBox" class="alert hidden" role="alert"></div>
 
-    <section class="summary-grid">
+    <section class="summary-grid" id="role-management">
       <article><strong id="totalCount">0</strong><span>Total portal users</span></article>
       <article><strong id="activeCount">0</strong><span>Active accounts</span></article>
       <article><strong>6</strong><span>Operational roles + custom dashboard access</span></article>
@@ -43,120 +55,70 @@
 
     <div class="share-link-row">
       <section class="share-link">
-        <div><strong>One customer portal link</strong><span>Share this same login link with your team. Each person uses their own email and initial password, then Forgot Password + OTP if needed.</span></div>
+        <div><strong>One customer portal login</strong><span>Each team member uses their own email and initial password. Forgot Password + OTP remains available.</span></div>
         <code id="customerPortalUrl">Loading link…</code>
         <button class="secondary" id="copyLinkButton" type="button">Copy link</button>
       </section>
       <aside class="access-legend">
         <strong>Dashboard Access</strong>
         <ul>
-          <li><b>Procurement</b> — machine spare/material purchasing, Store issues and cost records</li>
-          <li><b>Fuel Usage</b> — fuel top-ups and consumption records</li>
-          <li><b>Operator Reports</b> — machine operator reports and alerts</li>
-          <li><b>Request BELM Support</b> — official technical-support request to BELM</li>
-          <li><b>Report Problem</b> — report a machine problem</li>
+          <li><b>Procurement</b> — spare/material purchasing and cost records</li>
+          <li><b>Fuel Usage</b> — fuel top-ups and consumption</li>
+          <li><b>Operator Reports</b> — operator reports and alerts</li>
+          <li><b>Job Card & Service Parts</b> — work/service-part flow</li>
+          <li><b>Report Problem</b> — machine problem reporting</li>
           <li><b>Check Up</b> — daily checklist and checked reports</li>
-          <li><b>Maintenance Process</b> — approvals, delays and Digital Job Cards</li>
-          <li><b>Store Keeper</b> — customer store, materials, balances and audit</li>
+          <li><b>Maintenance Process</b> — Job Cards and maintenance workflow</li>
+          <li><b>Store Keeper</b> — customer store, materials, balance and audit</li>
         </ul>
       </aside>
     </div>
 
     <section class="panel">
-      <div class="panel-head">
-        <div><h2>Team by role</h2><p>Who's currently in each department.</p></div>
-      </div>
+      <div class="panel-head"><div><h2>All Roles</h2><p>Current team grouped by workshop role.</p></div></div>
       <div id="roleCards" class="role-cards"></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head">
-        <div><h2>Team analysis</h2><p>Headcount across all departments.</p></div>
-      </div>
-      <div class="analysis-activity-grid">
-        <div id="analysisRows" class="analysis-rows"></div>
-        <div class="activity-log-card">
-          <div class="activity-log-head"><h3>Activity Log</h3><p>Recent team changes.</p></div>
-          <div id="activityLogRows" class="activity-log-rows"></div>
-        </div>
-      </div>
+      <div class="panel-head"><div><h2>Team Analysis</h2><p>Headcount and recent account/setup changes.</p></div></div>
+      <div class="analysis-activity-grid"><div id="analysisRows" class="analysis-rows"></div><div class="activity-log-card"><div class="activity-log-head"><h3>Activity Log</h3><p>Recent team changes.</p></div><div id="activityLogRows" class="activity-log-rows"></div></div></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head">
-        <div><h2>Machine Operator roster</h2><p>These are the people who physically operate each machine. Give them a 4–6 digit PIN so they can sign in on their own shift screen — log containers, and sign out with an OK or a challenge report.</p></div>
-      </div>
-      <div class="roster-controls">
-        <label>Machine
-          <select id="rosterMachineSelect"><option value="">Select a machine…</option></select>
-        </label>
-      </div>
-      <div id="rosterOperatorLinkRow" class="roster-operator-link-row hidden">
-        <input type="text" id="rosterOperatorLink" readonly>
-        <button type="button" id="copyOperatorLinkButton">Copy operator link</button>
-      </div>
-      <div id="rosterAddRow" class="roster-add-row hidden">
-        <input type="text" id="rosterName" maxlength="255" placeholder="Operator name">
-        <input type="text" id="rosterContact" maxlength="100" placeholder="Phone number">
-        <input type="text" id="rosterPin" maxlength="6" inputmode="numeric" placeholder="PIN (4–6 digits, optional)">
-        <button type="button" id="rosterAddButton">+ Add operator</button>
-      </div>
+      <div class="panel-head"><div><h2>Machine Operator Roster</h2><p>Set machine operators and their 4–6 digit shift PIN.</p></div></div>
+      <div class="roster-controls"><label>Machine<select id="rosterMachineSelect"><option value="">Select a machine…</option></select></label></div>
+      <div id="rosterOperatorLinkRow" class="roster-operator-link-row hidden"><input type="text" id="rosterOperatorLink" readonly><button type="button" id="copyOperatorLinkButton">Copy operator link</button></div>
+      <div id="rosterAddRow" class="roster-add-row hidden"><input type="text" id="rosterName" maxlength="255" placeholder="Operator name"><input type="text" id="rosterContact" maxlength="100" placeholder="Phone number"><input type="text" id="rosterPin" maxlength="6" inputmode="numeric" placeholder="PIN (4–6 digits, optional)"><button type="button" id="rosterAddButton">+ Add operator</button></div>
       <div id="rosterList" class="roster-list"></div>
     </section>
 
     <section class="panel">
-      <div class="panel-head">
-        <div><h2>Portal user accounts</h2><p>Use Edit, Reset Password or Delete for each company user. Users can still use Forgot Password + email OTP at any time.</p></div>
-        <button class="secondary" id="refreshButton" type="button">Refresh</button>
-      </div>
+      <div class="panel-head"><div><h2>Portal User Accounts</h2><p>Edit, Reset Password, Active/Inactive or Delete each company user here.</p></div><button class="secondary" id="refreshButton" type="button">Refresh</button></div>
       <div id="userList" class="user-list"><div class="loading">Loading users…</div></div>
     </section>
 
-    <section id="belmProviderNotice" class="panel hidden">
-      <div class="panel-head">
-        <div><h2>BELM Service Provider Active</h2><p>Customer Technician is LOCKED while BELM Service is ON. Existing Technician records are preserved as history, but the customer cannot add, edit, reset, delete, log in as, or assign its own Technicians. Machines, Daily Reports, Report Record, Operators, Store, Procurement and Send Job Card to BELM remain available according to permissions.</p></div>
-      </div>
-    </section>
-
-    <section id="technicianSection" class="panel hidden">
-      <div class="panel-head">
-        <div><h2>Your Field Technicians</h2><p>BELM Service Provider is OFF. You can manage your own field Technicians for normal maintenance. Use “+ USER” and choose Technician to add a field technician.</p></div>
-      </div>
-      <div id="technicianList" class="user-list"></div>
-    </section>
+    <section id="belmProviderNotice" class="panel hidden"><div class="panel-head"><div><h2>BELM Service Provider Active</h2><p>Customer Technician management is locked while BELM Service is ON. Existing Technician records remain preserved.</p></div></div></section>
+    <section id="technicianSection" class="panel hidden"><div class="panel-head"><div><h2>Your Field Technicians</h2><p>BELM Service Provider is OFF. Customer-owned Technicians can be managed here.</p></div></div><div id="technicianList" class="user-list"></div></section>
   </main>
 
   <dialog id="userDialog">
     <form id="userForm">
-      <div class="dialog-head">
-        <div><p class="eyebrow">ROLE MANAGER</p><h2 id="dialogTitle">Add user</h2></div>
-        <button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">×</button>
-      </div>
-      <input id="userId" type="hidden">
-      <input id="accountKind" type="hidden" value="new">
+      <div class="dialog-head"><div><p class="eyebrow">SETTINGS CENTER · ROLE MANAGER</p><h2 id="dialogTitle">Add user</h2></div><button class="icon-button" id="closeDialogButton" type="button" aria-label="Close">×</button></div>
+      <input id="userId" type="hidden"><input id="accountKind" type="hidden" value="new">
       <div class="form-grid">
         <label class="wide">Full name<input id="name" maxlength="255" required autocomplete="name"></label>
         <label>Email address<input id="email" type="email" maxlength="255" required autocomplete="email"></label>
         <label>Phone number<input id="phone" maxlength="50" autocomplete="tel"></label>
-        <label>Role
-          <select id="role" required>
-            <option value="workshop_manager">Workshop Manager</option>
-            <option value="store_keeper">Store Keeper</option>
-            <option value="accounts">Muhasibu / Accountant</option>
-            <option value="procurement">Procurement</option>
-            <option value="operator">Operator</option>
-            <option value="technician">Fundi / Technician — Technician Workspace + optional Customer Dashboard</option>
-          </select>
-        </label>
+        <label>Role<select id="role" required><option value="workshop_manager">Workshop Manager</option><option value="store_keeper">Store Keeper</option><option value="accounts">Accountant</option><option value="procurement">Procurement</option><option value="operator">Operator</option><option value="technician">Technician</option></select></label>
         <label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label>
-        <label id="passwordWrap">Initial password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">Customer Admin sets the first password and gives it to the user securely.</small></label>
+        <label id="passwordWrap">Initial password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">Set the first password and give it to the user securely.</small></label>
         <label id="confirmPasswordWrap">Confirm initial password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label>
       </div>
       <div class="field-block" id="accessRoleWrap">
-        <div class="dashboard-access-title"><b>Dashboard Access</b><small>Select what this user can open. Role presets are applied automatically, then you can adjust them.</small></div>
+        <div class="dashboard-access-title"><b>Dashboard Access</b><small>Role preset is applied automatically, then access can be adjusted.</small></div>
         <label class="check-option access-all"><input type="checkbox" id="accessAll"> <b id="accessAllLabelText">Access All Dashboard Functions</b></label>
-        <div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator ataona machine cards pekee. Dashboard Access hapa inachagua buttons/functions zinazoonekana ndani ya kila machine card; account-level tools, Store, Management Email na +USER hazipatikani kwa Operator.</span></div>
-        <div id="technicianAccessNote" class="operator-card-only-note hidden"><b>Fundi / Technician Access</b><span>Fundi anaendelea kuwa na Technician Workspace kwa kazi za field. Administration anaweza pia kumpa Dashboard Access maalum au Full Customer Control. Hii haimpi BELM Admin/Inventory internal access.</span></div>
+        <div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator sees machine-card functions only, according to access granted here.</span></div>
+        <div id="technicianAccessNote" class="operator-card-only-note hidden"><b>Technician Access</b><span>Technician Workspace remains the main work area; optional Customer Dashboard access can be added here.</span></div>
         <div id="accessOptions" class="access-options">
           <label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Procurement</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label>
@@ -167,37 +129,15 @@
           <label class="check-option"><input type="checkbox" class="access-item" value="store"> Store Keeper / Materials</label>
           <label class="check-option"><input type="checkbox" class="access-item" value="workflow"> Maintenance Process / Job Cards</label>
         </div>
-        <div class="secondary-access">
-          <label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label>
-          <label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Manage Users (+USER)</label>
-        </div>
+        <div class="secondary-access"><label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label><label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Manage Users</label></div>
       </div>
       <div id="formError" class="alert error hidden" role="alert"></div>
-      <div class="dialog-actions">
-        <button class="secondary" id="cancelButton" type="button">Cancel</button>
-        <button class="primary" id="saveButton" type="submit">Save user</button>
-      </div>
+      <div class="dialog-actions"><button class="secondary" id="cancelButton" type="button">Cancel</button><button class="primary" id="saveButton" type="submit">Save user</button></div>
     </form>
   </dialog>
 
-  <dialog id="passwordResetDialog" class="password-reset-dialog">
-    <div class="dialog-head">
-      <div><p class="eyebrow">ACCOUNT SECURITY</p><h2>Password reset complete</h2></div>
-      <button class="icon-button" id="closePasswordResetDialog" type="button" aria-label="Close">×</button>
-    </div>
-    <div class="reset-credentials">
-      <p><strong id="resetAccountName">Portal user</strong> now has a new temporary password. The old password no longer works. Share these credentials securely; the user can later use Forgot Password + email OTP.</p>
-      <label>Temporary password<input id="resetTemporaryPassword" type="text" readonly></label>
-      <label>Recovery code<input id="resetRecoveryCode" type="text" readonly></label>
-      <label>Login URL<input id="resetLoginUrl" type="text" readonly></label>
-      <small>The temporary password and recovery code are shown here only after this reset. They are not stored as readable text.</small>
-    </div>
-    <div class="dialog-actions reset-dialog-actions">
-      <button class="secondary" id="donePasswordResetDialog" type="button">Done</button>
-      <button class="primary" id="copyResetCredentials" type="button">Copy Credentials</button>
-    </div>
-  </dialog>
+  <dialog id="passwordResetDialog" class="password-reset-dialog"><div class="dialog-head"><div><p class="eyebrow">ACCOUNT SECURITY</p><h2>Password reset complete</h2></div><button class="icon-button" id="closePasswordResetDialog" type="button" aria-label="Close">×</button></div><div class="reset-credentials"><p><strong id="resetAccountName">Portal user</strong> now has a new temporary password.</p><label>Temporary password<input id="resetTemporaryPassword" type="text" readonly></label><label>Recovery code<input id="resetRecoveryCode" type="text" readonly></label><label>Login URL<input id="resetLoginUrl" type="text" readonly></label><small>The temporary password and recovery code are shown here only after this reset.</small></div><div class="dialog-actions reset-dialog-actions"><button class="secondary" id="donePasswordResetDialog" type="button">Done</button><button class="primary" id="copyResetCredentials" type="button">Copy Credentials</button></div></dialog>
 
-  <script src="/customer-users/users.js?v=487-account-controls"></script>
+  <script src="/customer-users/users.js?v=539-settings-center"></script>
 </body>
 </html>

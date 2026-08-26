@@ -1,7 +1,7 @@
 (function () {
   const adminToken = localStorage.getItem("belm_admin_token") || "";
   const customerToken = localStorage.getItem("belm_customer_token") || "";
-  const isCustomerHome = !!customerToken && !adminToken;
+  const isCustomerHome = !!customerToken;
   let customers = [];
 
   async function adminApi(path, options = {}) {
@@ -88,12 +88,10 @@
     if (!isCustomerHome) return;
     document.querySelector(".belm-portal-switcher")?.remove();
     document.querySelector(".hero")?.remove();
-    const panel = document.querySelector(".panel");
-    if (panel) panel.remove();
+    document.querySelector(".panel")?.remove();
     const top = document.querySelector(".top-actions");
-    if (top) top.innerHTML = '<button id="logoutButton" class="ghost" type="button">Log out</button>';
+    if (top) top.innerHTML = "";
     document.querySelector(".brand")?.setAttribute("href", "/portal-cwm/");
-    document.getElementById("logoutButton")?.addEventListener("click", logout);
   }
 
   function renderCards(filterText = "") {

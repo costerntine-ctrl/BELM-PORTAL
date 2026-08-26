@@ -50,18 +50,19 @@
     const name = customer.name || "Customer";
     return `
       <article class="cwm-welcome-card" data-customer-card="${escapeHtml(customer.id)}">
-        <div class="cwm-welcome-head">
-          <div class="cwm-welcome-copy">
-            <p class="cwm-welcome-kicker">WELCOME TO</p>
-            <h2>${escapeHtml(name.toUpperCase())} WORKSHOP PORTAL</h2>
-          </div>
-          <button class="cwm-welcome-logout" type="button" data-cwm-logout>Log out</button>
+        <div class="cwm-welcome-copy">
+          <p class="cwm-welcome-kicker">WELCOME TO</p>
+          <h2>${escapeHtml(name.toUpperCase())} WORKSHOP PORTAL</h2>
         </div>
 
         <div class="cwm-welcome-details" aria-label="Customer company details">
           <div><span>ADDRESS:</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
           <div><span>EMAIL:</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div>
-          <div><span>PHONE:</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div>
+          <div class="cwm-phone-logout-row">
+            <span>PHONE:</span>
+            <b>${escapeHtml(customer.phone || "Not recorded")}</b>
+            <button class="cwm-welcome-logout" type="button" data-cwm-logout>Log out</button>
+          </div>
         </div>
 
         <a class="cwm-open-workshop" href="/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id)}">

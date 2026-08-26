@@ -1,0 +1,26 @@
+name: Package CWM ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/package-cwm.yml'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build ZIP
+        run: |
+          mkdir -p dist
+          zip -qr dist/BELM_PORTAL_CWM_FINAL.zip . -x '.git/*' 'dist/*'
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BELM_PORTAL_CWM_FINAL
+          path: dist/BELM_PORTAL_CWM_FINAL.zip
+          if-no-files-found: error
+          retention-days: 7

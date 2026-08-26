@@ -1,0 +1,23 @@
+name: Export BELM Portal ZIP
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare export
+        run: |
+          mkdir -p export/BELM-PORTAL
+          rsync -a --exclude='.git' --exclude='.github' ./ export/BELM-PORTAL/
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BELM_PORTAL_LATEST
+          path: export/BELM-PORTAL
+          include-hidden-files: true
+          retention-days: 7

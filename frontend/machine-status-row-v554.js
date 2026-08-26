@@ -30,9 +30,7 @@
       background:transparent!important;
       display:block!important;
     }
-    .belm-machine-status-row-v554 .belm-customer-activity-selector>div{
-      display:none!important;
-    }
+    .belm-machine-status-row-v554 .belm-customer-activity-selector>div{display:none!important}
     .belm-machine-status-row-v554 .belm-customer-activity-selector select{
       width:100%!important;
       min-height:42px!important;
@@ -53,9 +51,8 @@
       font-weight:800;
       letter-spacing:.08em;
     }
-    .belm-customer-machine-info-v422{
-      padding-top:0!important;
-    }
+    .belm-customer-machine-info-v422{padding-top:0!important}
+    .belm-duplicate-condition-pill-v555{display:none!important}
     @media(max-width:560px){
       .belm-machine-status-row-v554{
         grid-template-columns:minmax(0,44%) minmax(0,56%);
@@ -69,19 +66,35 @@
         white-space:normal;
         text-align:center;
       }
-      .belm-machine-status-row-v554 .belm-customer-activity-selector select{
-        font-size:12px!important;
-      }
+      .belm-machine-status-row-v554 .belm-customer-activity-selector select{font-size:12px!important}
     }
   `;
   document.head.appendChild(style);
 
+  function hideDuplicateConditionPill(card) {
+    if (!card) return;
+    const keep = card.querySelector(".belm-customer-condition-badge-v422");
+    const candidates = card.querySelectorAll("span,div,button,p,strong");
+    candidates.forEach((el) => {
+      if (el === keep || el.closest(".belm-customer-condition-badge-v422")) return;
+      if (el.closest(".belm-customer-machine-alert-copy")) return;
+      if (el.closest(".belm-machine-status-row-v554")) return;
+      const text = String(el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+      if (text === "don't operate" || text === "don’t operate" || text === "do not operate") {
+        el.classList.add("belm-duplicate-condition-pill-v555");
+      }
+    });
+  }
+
   function compactCard(card) {
-    if (!card || card.dataset.belmStatusRowV554 === "1") return;
+    if (!card) return;
     const info = card.querySelector(".belm-customer-machine-info-v422");
     const badge = info?.querySelector(".belm-customer-condition-badge-v422");
     const activity = card.querySelector(".belm-customer-activity-selector[data-customer-activity-control]");
-    if (!info || !badge || !activity) return;
+    if (!info || !badge || !activity) {
+      hideDuplicateConditionPill(card);
+      return;
+    }
 
     let row = info.querySelector(".belm-machine-status-row-v554");
     if (!row) {
@@ -89,9 +102,10 @@
       row.className = "belm-machine-status-row-v554";
       info.insertBefore(row, info.firstChild);
     }
-    row.appendChild(badge);
-    row.appendChild(activity);
+    if (badge.parentElement !== row) row.appendChild(badge);
+    if (activity.parentElement !== row) row.appendChild(activity);
     card.dataset.belmStatusRowV554 = "1";
+    hideDuplicateConditionPill(card);
   }
 
   function sync() {
@@ -100,9 +114,10 @@
   }
 
   const observer = new MutationObserver(sync);
-  observer.observe(document.documentElement, { childList:true, subtree:true });
+  observer.observe(document.documentElement, { childList:true, subtree:true, characterData:true });
   document.addEventListener("DOMContentLoaded", sync);
   window.addEventListener("load", sync);
-  setTimeout(sync, 300);
-  setTimeout(sync, 1200);
+  setTimeout(sync, 250);
+  setTimeout(sync, 900);
+  setTimeout(sync, 1800);
 })();

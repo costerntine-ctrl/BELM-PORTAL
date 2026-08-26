@@ -13,62 +13,34 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BELM Portal">
     <script>
-      /* V525 — Customer CWM is now the customer main dashboard.
-         Keep /portal/dashboard?view=machines and other explicit subviews alive,
-         but retire the old customer dashboard home shown at bare /portal/dashboard. */
       (function () {
         try {
           var isCustomer = !!localStorage.getItem('belm_customer_token');
           var isCustomerHome = location.pathname === '/portal/dashboard' || location.pathname === '/portal/dashboard/';
           var params = new URLSearchParams(location.search);
           var hasExplicitSubview = params.has('view') || params.has('action') || params.has('machine') || params.has('machineId');
-          if (isCustomer && isCustomerHome && !hasExplicitSubview) {
-            location.replace('/customer-workshop/?actor=customer');
-          }
+          if (isCustomer && isCustomerHome && !hasExplicitSubview) location.replace('/customer-workshop/?actor=customer');
         } catch (_) {}
       })();
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
-    <!-- Regression cache baselines retained: /portal-tools.js?v=352-public-url-port-guard ; /belm-theme.css?v=326-jc-proforma-sync -->
-    <!-- Regression baseline: /portal-tools.js?v=378-customer-activity-status -->
-    <!-- Regression baselines retained: /portal-tools.js?v=382-full-card-alert-range ; /belm-theme.css?v=382-full-card-alert-range ; /theme-global.css?v=486-report-record -->
-    <!-- V384 regression baseline: /portal-tools.js?v=384-technician-dashboard-handoff -->
-    <!-- V388 report-center regression baseline: /portal-tools.js?v=388-customer-general-report-center -->
-    <script defer src="/portal-tools.js?v=518-checklist-sync"></script>
+    <script defer src="/portal-tools.js?v=545-machine-report-centre"></script>
+    <script defer src="/machine-report-center-override.js?v=545-machine-report-centre"></script>
     <script defer src="/admin-sidebar.js?v=488-text-fit"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BHFQaDFg.css">
-    <!-- Regression baseline: /belm-theme.css?v=378-customer-activity-status -->
-    <!-- Regression baseline: /belm-theme.css?v=382-full-card-alert-range -->
-    <!-- V383 regression baseline: /belm-theme.css?v=383-machine-alert-blink -->
     <link rel="stylesheet" href="/belm-theme.css?v=518-checklist-sync">
     <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
     <link rel="stylesheet" href="/theme-global.css?v=486-report-record">
     <link rel="stylesheet" href="/v520-upgrades.css?v=520-latest">
     <script defer src="/v520-upgrades.js?v=520-latest"></script>
-  <script src="/theme-manager.js?v=486-report-record"></script>
-  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
-  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-  <script>
-    // V256 - registers the same service worker the old customer-app.html
-    // shell already used, but from THIS shared shell instead - the one
-    // that actually serves /admin/login, /portal/dashboard, and /tech.
-    // A manifest alone (V249) is not enough for a browser to offer
-    // "Install app" / "Add to Home screen" as a real standalone app; an
-    // active, controlling service worker is one of the installability
-    // requirements too, and nothing here was ever registering one.
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => navigator.serviceWorker.register('/belm-sw.js').catch(() => {}));
-    }
-  </script>
-</head>
-  <body class="bg-slate-50">
-    <div id="root"></div>
-  </body>
+    <script src="/theme-manager.js?v=486-report-record"></script>
+    <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+    <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+    <script>
+      if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/belm-sw.js').catch(() => {}));
+    </script>
+  </head>
+  <body class="bg-slate-50"><div id="root"></div></body>
 </html>
-
-<!-- Regression baseline: belm-theme.css?v=301-customer-job-billing -->

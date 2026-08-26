@@ -1,25 +1,35 @@
 (function () {
-  const token = localStorage.getItem("belm_admin_token");
+  const adminToken = localStorage.getItem("belm_admin_token") || "";
+  const customerToken = localStorage.getItem("belm_customer_token") || "";
+  const isCustomerHome = !!customerToken && !adminToken;
   let customers = [];
 
-  async function api(path, options = {}) {
+  async function adminApi(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
       cache: "no-store",
       headers: {
         ...(options.body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `Bearer ${token || ""}`,
+        Authorization: `Bearer ${adminToken}`,
         ...(options.headers || {}),
       },
     });
     const text = await response.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch (_) {}
-    if (!response.ok) {
-      const error = new Error(data?.error || `Request failed (${response.status}).`);
-      error.status = response.status;
-      throw error;
-    }
+    if (!response.ok) throw new Error(data?.error || `Request failed (${response.status}).`);
+    return data;
+  }
+
+  async function customerApi(path) {
+    const response = await fetch(`/api/customer-portal${path}`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${customerToken}` },
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (_) {}
+    if (!response.ok) throw new Error(data?.error || `Request failed (${response.status}).`);
     return data;
   }
 
@@ -30,26 +40,31 @@
     box.classList.remove("hidden");
     box.classList.toggle("error", isError);
     box.classList.toggle("success", !isError);
-    window.clearTimeout(showAlert._t);
-    showAlert._t = window.setTimeout(() => box.classList.add("hidden"), 5000);
   }
 
   function logout() {
+    if (isCustomerHome) {
+      localStorage.removeItem("belm_customer_token");
+      localStorage.removeItem("belm_session_refreshed_belm_customer_token");
+      window.location.replace("/login");
+      return;
+    }
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.replace("/admin/login");
   }
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[character]);
 
-  const CWM_PREVIEW_LIMIT = 1;
-
   function customerCard(customer) {
     const name = customer.name || "Customer";
+    const openHref = isCustomerHome
+      ? "/customer-workshop/?actor=customer"
+      : `/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id || "")}`;
     return `
-      <article class="cwm-welcome-card" data-customer-card="${escapeHtml(customer.id)}">
+      <article class="cwm-welcome-card" data-customer-card="${escapeHtml(customer.id || "self")}">
         <div class="cwm-welcome-copy">
           <p class="cwm-welcome-kicker">WELCOME TO</p>
           <h2>${escapeHtml(name.toUpperCase())} WORKSHOP PORTAL</h2>
@@ -65,30 +80,57 @@
           </div>
         </div>
 
-        <a class="cwm-open-workshop" href="/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id)}">
-          OPEN WORKSHOP
-        </a>
+        <a class="cwm-open-workshop" href="${openHref}">OPEN WORKSHOP</a>
       </article>`;
+  }
+
+  function setCustomerHomeChrome() {
+    if (!isCustomerHome) return;
+    document.querySelector(".belm-portal-switcher")?.remove();
+    document.querySelector(".hero")?.remove();
+    const panel = document.querySelector(".panel");
+    if (panel) panel.remove();
+    const top = document.querySelector(".top-actions");
+    if (top) top.innerHTML = '<button id="logoutButton" class="ghost" type="button">Log out</button>';
+    document.querySelector(".brand")?.setAttribute("href", "/portal-cwm/");
+    document.getElementById("logoutButton")?.addEventListener("click", logout);
   }
 
   function renderCards(filterText = "") {
     const grid = document.getElementById("cwmCardGrid");
+    if (!grid) return;
     const needle = filterText.trim().toLowerCase();
-    const rows = customers
-      .filter((customer) => !needle || String(customer.name || "").toLowerCase().includes(needle))
-      .slice(0, CWM_PREVIEW_LIMIT);
-    grid.innerHTML = rows.length
-      ? rows.map(customerCard).join("")
-      : '<p class="muted">No customers match.</p>';
+    const rows = customers.filter((customer) => !needle || String(customer.name || "").toLowerCase().includes(needle)).slice(0, 1);
+    grid.innerHTML = rows.length ? rows.map(customerCard).join("") : '<p class="muted">No customer record found.</p>';
   }
 
   async function load() {
     try {
-      customers = await api("/customers?action=cwm-overview");
+      if (isCustomerHome) {
+        const dashboard = await customerApi("/dashboard");
+        const customer = dashboard?.customer || {};
+        customers = [{
+          id: customer.id || "self",
+          name: customer.name || "Customer",
+          address: customer.address || "",
+          email: customer.email || "",
+          phone: customer.phone || "",
+        }];
+        setCustomerHomeChrome();
+        renderCards();
+        return;
+      }
+
+      if (!adminToken) {
+        window.location.replace("/login");
+        return;
+      }
+      customers = await adminApi("/customers?action=cwm-overview");
       renderCards(document.getElementById("cwmSearch")?.value || "");
     } catch (error) {
-      document.getElementById("cwmCardGrid").innerHTML =
-        `<p class="muted">${escapeHtml(error.message || "Could not load PORTAL-CWM.")}</p>`;
+      const grid = document.getElementById("cwmCardGrid");
+      if (grid) grid.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load PORTAL-CWM.")}</p>`;
+      showAlert(error.message || "Could not load PORTAL-CWM.", true);
     }
   }
 
@@ -99,6 +141,5 @@
   });
   document.getElementById("logoutButton")?.addEventListener("click", logout);
 
-  if (!token) showAlert("Administrator login required.");
-  else load();
+  load();
 })();

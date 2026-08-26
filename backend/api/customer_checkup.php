@@ -35,19 +35,9 @@ function checkup_normalized_machine_key(?string $value): string {
 }
 
 function checkup_templates_for_machine(array $machine): array {
-    // BELM Checklist Templates are global master templates. They are never copied
-    // into customer-owned template rows. A machine reads the current ACTIVE master
-    // template for future Check Ups only. Existing checklist_reports/checklist_answers
-    // are historical snapshots and are never changed by this sync.
     $machineTypeKey = checkup_normalized_machine_key((string)($machine['machine_type'] ?? ''));
     $modelKey = checkup_normalized_machine_key((string)($machine['model'] ?? ''));
-
-    $stmt = db()->query(
-        "SELECT ct.id,ct.name,ct.machine_type,ct.service_type
-         FROM checklist_templates ct
-         WHERE ct.deleted_at IS NULL AND ct.is_active=1
-         ORDER BY ct.created_at DESC"
-    );
+    $stmt = db()->query("SELECT ct.id,ct.name,ct.machine_type,ct.service_type FROM checklist_templates ct WHERE ct.deleted_at IS NULL AND ct.is_active=1 ORDER BY ct.created_at DESC");
     $candidates = $stmt->fetchAll();
     $templates = [];
     foreach ($candidates as $candidate) {
@@ -56,7 +46,6 @@ function checkup_templates_for_machine(array $machine): array {
         if ($templateKey !== $machineTypeKey && $templateKey !== $modelKey) continue;
         $templates[] = $candidate;
     }
-
     foreach ($templates as &$template) {
         $itemStmt = db()->prepare('SELECT id,label,input_type,safety_level,options,option_safety,"order",is_required FROM checklist_template_items WHERE template_id=? ORDER BY "order" ASC,id ASC');
         $itemStmt->execute([$template['id']]);
@@ -74,6 +63,19 @@ function checkup_templates_for_machine(array $machine): array {
     return $templates;
 }
 
+function checkup_today_report(string $machineId): ?array {
+    $stmt = db()->prepare("SELECT cr.id,cr.template_id,cr.overall_status,cr.hour_meter_reading,cr.filled_by,cr.display_photo_url,cr.created_at,cr.updated_at,ct.service_type FROM checklist_reports cr JOIN checklist_templates ct ON ct.id=cr.template_id WHERE cr.machine_id=? AND cr.created_at >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Dar_es_Salaam') AT TIME ZONE 'Africa/Dar_es_Salaam' ORDER BY cr.created_at DESC LIMIT 1");
+    $stmt->execute([$machineId]);
+    $report = $stmt->fetch();
+    if (!$report) return null;
+    $ans = db()->prepare('SELECT template_item_id,value,photo_url,safety_level,note FROM checklist_answers WHERE report_id=? ORDER BY id ASC');
+    $ans->execute([$report['id']]);
+    $report['answers'] = $ans->fetchAll();
+    $report['editableUntil'] = (new DateTimeImmutable('tomorrow', new DateTimeZone('Africa/Dar_es_Salaam')))->format(DateTimeInterface::ATOM);
+    $report['editable'] = true;
+    return $report;
+}
+
 checkup_require_access($customer);
 $customerId = (string)$customer['id'];
 
@@ -85,8 +87,9 @@ if ($method === 'GET') {
     $latestStmt = db()->prepare('SELECT hour_meter_reading,created_at FROM checklist_reports WHERE machine_id=? ORDER BY created_at DESC LIMIT 1');
     $latestStmt->execute([$machineId]);
     $latest = $latestStmt->fetch() ?: null;
-    $todayStmt = db()->prepare("SELECT id,overall_status,hour_meter_reading,filled_by,created_at FROM checklist_reports WHERE machine_id=? AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Dar_es_Salaam') AT TIME ZONE 'Africa/Dar_es_Salaam' ORDER BY created_at DESC LIMIT 1");
-    $todayStmt->execute([$machineId]);
+    $today = checkup_today_report($machineId);
+    $tz = new DateTimeZone('Africa/Dar_es_Salaam');
+    $now = new DateTimeImmutable('now', $tz);
     json_out([
         'machine' => [
             'id' => $machine['id'], 'machineType' => $machine['machine_type'], 'brand' => $machine['brand'],
@@ -97,10 +100,12 @@ if ($method === 'GET') {
         'sync' => [
             'mode' => 'BELM_MASTER_LIVE',
             'historicalReportsPreserved' => true,
-            'message' => 'Current active BELM master template is used for new Check Ups only. Existing reports are never modified or deleted by template sync.',
+            'message' => 'Current active BELM master template is used for today\'s Check Up. Saved Check Up can be edited until 00:00 East Africa Time; after midnight it becomes locked history.',
         ],
         'latestHourMeter' => $latest ? (float)$latest['hour_meter_reading'] : 0,
-        'todayReport' => $todayStmt->fetch() ?: null,
+        'serviceDay' => $now->format('Y-m-d'),
+        'editExpiresAt' => $now->modify('tomorrow')->setTime(0,0,0)->format(DateTimeInterface::ATOM),
+        'todayReport' => $today,
     ]);
 }
 
@@ -110,15 +115,22 @@ if (!is_array($body)) json_error('Invalid request body.');
 $machineId = trim((string)($body['machineId'] ?? ''));
 $templateId = trim((string)($body['templateId'] ?? ''));
 $hours = $body['hourMeterReading'] ?? null;
+$displayPhoto = trim((string)($body['displayPhotoUrl'] ?? ''));
+$serviceDayChecked = !empty($body['serviceDayChecked']);
 $answers = $body['answers'] ?? [];
 if ($machineId === '' || $templateId === '') json_error('Machine and Checklist Template are required.');
 if (!is_numeric($hours) || (float)$hours < 0) json_error('Enter a valid hour meter reading.');
+if (!$serviceDayChecked) json_error('Confirm Service Day Check before saving.');
 if (!is_array($answers)) json_error('Checklist answers are required.');
 $machine = checkup_machine($customerId, $machineId);
 $templates = checkup_templates_for_machine($machine);
 $template = null;
 foreach ($templates as $candidate) if ((string)$candidate['id'] === $templateId) { $template = $candidate; break; }
 if (!$template) json_error('Checklist Template is not active for this machine.', 400);
+
+$existing = checkup_today_report($machineId);
+if (!$existing && $displayPhoto === '') json_error('Display Photo is required for today\'s Check Up.');
+if ($existing && $displayPhoto === '') $displayPhoto = (string)($existing['display_photo_url'] ?? '');
 
 $answerMap = [];
 foreach ($answers as $answer) {
@@ -139,7 +151,7 @@ foreach ($template['items'] as $item) {
     $options = $item['options'];
     if (($inputType === 'DROPDOWN' || $inputType === 'YES_NO') && $value !== '') {
         $allowed = $options;
-        if ($inputType === 'YES_NO' && !$allowed) $allowed = ['Yes','No'];
+        if ($inputType === 'YES_NO' && !$allowed) $allowed = ['YES','NO','Yes','No'];
         if ($allowed && !in_array($value, array_map('strval',$allowed), true)) json_error('Invalid answer for ' . $item['label']);
     }
     $safety = strtoupper((string)($item['safety_level'] ?: 'GREEN'));
@@ -153,24 +165,28 @@ foreach ($template['items'] as $item) {
 $pdo = db();
 try {
     $pdo->beginTransaction();
-    // Data-safety rule: a new Check Up only INSERTS a new historical record.
-    // No previous checklist report or answer is updated/deleted by this flow.
-    $dupStmt = $pdo->prepare("SELECT id FROM checklist_reports WHERE machine_id=? AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Dar_es_Salaam') AT TIME ZONE 'Africa/Dar_es_Salaam' LIMIT 1");
-    $dupStmt->execute([$machineId]);
-    if ($dupStmt->fetchColumn()) {
-        $pdo->rollBack();
-        json_error('Today\'s Check Up is already completed for this machine.', 409);
-    }
-    $reportId = uuid();
     $filledBy = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Customer Inspector')) ?: 'Customer Inspector';
-    $pdo->prepare('INSERT INTO checklist_reports (id,machine_id,template_id,filled_by,hour_meter_reading,overall_status,created_at) VALUES (?,?,?,?,?,?,NOW())')->execute([$reportId,$machineId,$templateId,$filledBy,(float)$hours,$overall]);
+    if ($existing) {
+        $reportId = (string)$existing['id'];
+        $pdo->prepare('UPDATE checklist_reports SET template_id=?,filled_by=?,hour_meter_reading=?,overall_status=?,display_photo_url=?,updated_at=NOW() WHERE id=? AND machine_id=?')->execute([$templateId,$filledBy,(float)$hours,$overall,$displayPhoto,$reportId,$machineId]);
+        $pdo->prepare('DELETE FROM checklist_answers WHERE report_id=?')->execute([$reportId]);
+        $statusCode = 200;
+        $message = 'Today\'s Check Up updated. Editing remains available until 00:00 East Africa Time.';
+    } else {
+        $reportId = uuid();
+        $pdo->prepare('INSERT INTO checklist_reports (id,machine_id,template_id,filled_by,hour_meter_reading,overall_status,display_photo_url,created_at) VALUES (?,?,?,?,?,?,?,NOW())')->execute([$reportId,$machineId,$templateId,$filledBy,(float)$hours,$overall,$displayPhoto]);
+        $statusCode = 201;
+        $message = 'Today\'s Check Up completed and saved. Editing remains available until 00:00 East Africa Time.';
+    }
     $insert = $pdo->prepare('INSERT INTO checklist_answers (id,report_id,template_item_id,label,value,photo_url,safety_level,note) VALUES (?,?,?,?,?,?,?,?)');
     foreach ($normalized as $row) {
         $insert->execute([uuid(),$reportId,$row['item']['id'],$row['item']['label'],$row['value'],$row['photo'],$row['safety'],$row['note'] !== '' ? $row['note'] : null]);
     }
     $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),updated_at=NOW() WHERE id=?')->execute([$overall,$machineId]);
     $pdo->commit();
-    json_out(['ok'=>true,'reportId'=>$reportId,'overallStatus'=>$overall,'historicalReportsPreserved'=>true,'message'=>'Check Up completed and saved. Existing checklist records were preserved.'],201);
+    $tz = new DateTimeZone('Africa/Dar_es_Salaam');
+    $expires = (new DateTimeImmutable('tomorrow', $tz))->setTime(0,0,0)->format(DateTimeInterface::ATOM);
+    json_out(['ok'=>true,'reportId'=>$reportId,'overallStatus'=>$overall,'editable'=>true,'editExpiresAt'=>$expires,'historicalReportsPreserved'=>true,'message'=>$message],$statusCode);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     throw $e;

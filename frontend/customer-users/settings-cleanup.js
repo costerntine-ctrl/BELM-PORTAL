@@ -16,6 +16,22 @@
   const userId = document.getElementById('userId');
   const errorBox = document.getElementById('formError');
 
+  const compactStyle = document.createElement('style');
+  compactStyle.textContent = `
+    .share-link-row{align-items:flex-start!important;gap:12px!important}
+    .share-link{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;grid-template-areas:'copy button' 'link button'!important;align-items:center!important;gap:8px 14px!important;min-height:0!important;height:auto!important;padding:14px 16px!important;max-width:760px!important}
+    .share-link>div{grid-area:copy!important}
+    .share-link code{grid-area:link!important;display:block!important;min-width:0!important;margin:0!important;padding:0!important;font-size:11px!important;line-height:1.4!important}
+    .share-link #copyLinkButton{grid-area:button!important;align-self:center!important;margin:0!important;min-height:38px!important;padding:8px 13px!important}
+    @media(max-width:620px){
+      .share-link-row{display:block!important}
+      .share-link{grid-template-columns:1fr auto!important;grid-template-areas:'copy copy' 'link button'!important;width:100%!important;max-width:none!important;padding:13px 14px!important}
+      .share-link #copyLinkButton{min-width:92px!important}
+      .access-legend{max-width:none!important;margin-top:12px!important}
+    }
+  `;
+  document.head.appendChild(compactStyle);
+
   function removeLegacyOptions() {
     if (!roleSelect) return;
     [...roleSelect.options].forEach((option) => {
@@ -59,8 +75,6 @@
     }
   }, true);
 
-  // Existing legacy records remain in backend history for compatibility,
-  // but Settings Center never exposes them as assignable/editable CWM roles.
   document.addEventListener('click', (event) => {
     const edit = event.target.closest('[data-edit]');
     if (!edit) return;

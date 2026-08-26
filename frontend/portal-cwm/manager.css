@@ -1,53 +1,31 @@
 .cwm-search{padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--canvas);color:var(--ink);font-size:12.5px;min-width:220px}
 .cwm-card-grid{display:grid;grid-template-columns:1fr;gap:16px;margin-top:16px}
 
-/* Plain customer workshop welcome card. */
-.cwm-welcome-card{
-  width:100%;
-  max-width:980px;
-  box-sizing:border-box;
-  padding:30px;
-  border:0;
-  border-radius:18px;
-  background:#0868b7;
-  color:#fff;
-  box-shadow:0 18px 45px rgba(4,49,91,.22);
-  display:grid;
-  gap:24px;
-}
-.cwm-welcome-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+/* V527 — plain blue Customer Workshop welcome card. */
+.cwm-welcome-card{width:100%;max-width:980px;box-sizing:border-box;padding:30px;border:0;border-radius:16px;background:#0868b7;color:#fff;box-shadow:none;display:grid;gap:22px}
 .cwm-welcome-copy{display:grid;gap:5px;min-width:0}
-.cwm-welcome-kicker{margin:0;font-size:12px;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.78)}
+.cwm-welcome-kicker{margin:0;font-size:12px;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.8)}
 .cwm-welcome-copy h2{margin:0;font:800 clamp(22px,4vw,34px) "Space Grotesk",sans-serif;line-height:1.18;color:#fff}
-.cwm-welcome-logout{flex:0 0 auto;min-height:40px;padding:0 16px;border:1px solid rgba(255,255,255,.7);border-radius:10px;background:rgba(3,43,79,.3);color:#fff;font:800 12px "Space Grotesk",sans-serif;cursor:pointer}
-.cwm-welcome-logout:hover{background:rgba(3,43,79,.5)}
-.cwm-welcome-details{display:grid;gap:12px;padding:18px 0;border-top:1px solid rgba(255,255,255,.22);border-bottom:1px solid rgba(255,255,255,.22)}
-.cwm-welcome-details div{display:grid;grid-template-columns:105px minmax(0,1fr);gap:12px;align-items:start}
-.cwm-welcome-details span{font-size:11px;font-weight:800;letter-spacing:.05em;color:rgba(255,255,255,.76)}
+.cwm-welcome-details{display:grid;gap:13px;padding:18px 0;border-top:1px solid rgba(255,255,255,.28);border-bottom:1px solid rgba(255,255,255,.28)}
+.cwm-welcome-details>div{display:grid;grid-template-columns:105px minmax(0,1fr);gap:12px;align-items:center}
+.cwm-welcome-details span{font-size:11px;font-weight:800;letter-spacing:.05em;color:rgba(255,255,255,.78)}
 .cwm-welcome-details b{font-size:15px;line-height:1.4;color:#fff;overflow-wrap:anywhere}
-.cwm-open-workshop{
-  width:100%;
-  min-height:58px;
-  box-sizing:border-box;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  border:2px solid rgba(255,255,255,.9);
-  border-radius:12px;
-  background:#fff;
-  color:#075a9e;
-  text-decoration:none;
-  font:800 15px "Space Grotesk",sans-serif;
-  letter-spacing:.04em;
-  transition:transform .16s ease,filter .16s ease;
-}
+.cwm-welcome-details .cwm-phone-logout-row{grid-template-columns:105px minmax(0,1fr) auto}
+.cwm-welcome-logout{min-height:38px;padding:0 16px;border:1px solid rgba(255,255,255,.85);border-radius:9px;background:transparent;color:#fff;font:800 12px "Space Grotesk",sans-serif;cursor:pointer;white-space:nowrap}
+.cwm-welcome-logout:hover{background:rgba(255,255,255,.12)}
+.cwm-open-workshop{width:100%;min-height:58px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:2px solid #fff;border-radius:11px;background:#fff;color:#075a9e;text-decoration:none;font:800 15px "Space Grotesk",sans-serif;letter-spacing:.04em;transition:transform .16s ease,filter .16s ease}
 .cwm-open-workshop:hover{filter:brightness(.97);transform:translateY(-1px)}
 
 @media(max-width:620px){
   .cwm-search{min-width:0;width:100%}
-  .cwm-welcome-card{padding:22px 18px;border-radius:15px;gap:20px}
-  .cwm-welcome-head{gap:10px}
-  .cwm-welcome-logout{min-height:36px;padding:0 12px;font-size:11px}
-  .cwm-welcome-details div{grid-template-columns:1fr;gap:3px}
+  .cwm-welcome-card{padding:22px 18px;border-radius:14px;gap:19px}
+  .cwm-welcome-details>div{grid-template-columns:78px minmax(0,1fr);gap:8px}
+  .cwm-welcome-details .cwm-phone-logout-row{grid-template-columns:78px minmax(0,1fr) auto}
+  .cwm-welcome-logout{min-height:34px;padding:0 10px;font-size:10.5px}
   .cwm-open-workshop{min-height:54px}
+}
+
+@media(max-width:390px){
+  .cwm-welcome-details .cwm-phone-logout-row{grid-template-columns:70px minmax(0,1fr)}
+  .cwm-phone-logout-row .cwm-welcome-logout{grid-column:2;justify-self:end;margin-top:4px}
 }

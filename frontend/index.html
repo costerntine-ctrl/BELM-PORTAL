@@ -12,6 +12,22 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="BELM Portal">
+    <script>
+      /* V525 — Customer CWM is now the customer main dashboard.
+         Keep /portal/dashboard?view=machines and other explicit subviews alive,
+         but retire the old customer dashboard home shown at bare /portal/dashboard. */
+      (function () {
+        try {
+          var isCustomer = !!localStorage.getItem('belm_customer_token');
+          var isCustomerHome = location.pathname === '/portal/dashboard' || location.pathname === '/portal/dashboard/';
+          var params = new URLSearchParams(location.search);
+          var hasExplicitSubview = params.has('view') || params.has('action') || params.has('machine') || params.has('machineId');
+          if (isCustomer && isCustomerHome && !hasExplicitSubview) {
+            location.replace('/customer-workshop/?actor=customer');
+          }
+        } catch (_) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"

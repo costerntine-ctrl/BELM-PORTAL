@@ -28,16 +28,35 @@ function checkup_machine(string $customerId, string $machineId): array {
     return $row;
 }
 
+function checkup_normalized_machine_key(?string $value): string {
+    $value = strtolower(trim((string)$value));
+    if ($value === '') return '';
+    return preg_replace('/[^a-z0-9]+/', '', $value) ?: '';
+}
+
 function checkup_templates_for_machine(array $machine): array {
-    $stmt = db()->prepare(
+    // BELM Checklist Templates are global master templates. They are never copied
+    // into customer-owned template rows. A machine reads the current ACTIVE master
+    // template for future Check Ups only. Existing checklist_reports/checklist_answers
+    // are historical snapshots and are never changed by this sync.
+    $machineTypeKey = checkup_normalized_machine_key((string)($machine['machine_type'] ?? ''));
+    $modelKey = checkup_normalized_machine_key((string)($machine['model'] ?? ''));
+
+    $stmt = db()->query(
         "SELECT ct.id,ct.name,ct.machine_type,ct.service_type
          FROM checklist_templates ct
          WHERE ct.deleted_at IS NULL AND ct.is_active=1
-           AND (LOWER(TRIM(ct.machine_type))=LOWER(TRIM(?)) OR LOWER(TRIM(ct.machine_type))=LOWER(TRIM(?)))
          ORDER BY ct.created_at DESC"
     );
-    $stmt->execute([(string)$machine['machine_type'], (string)$machine['model']]);
-    $templates = $stmt->fetchAll();
+    $candidates = $stmt->fetchAll();
+    $templates = [];
+    foreach ($candidates as $candidate) {
+        $templateKey = checkup_normalized_machine_key((string)($candidate['machine_type'] ?? ''));
+        if ($templateKey === '') continue;
+        if ($templateKey !== $machineTypeKey && $templateKey !== $modelKey) continue;
+        $templates[] = $candidate;
+    }
+
     foreach ($templates as &$template) {
         $itemStmt = db()->prepare('SELECT id,label,input_type,safety_level,options,option_safety,"order",is_required FROM checklist_template_items WHERE template_id=? ORDER BY "order" ASC,id ASC');
         $itemStmt->execute([$template['id']]);
@@ -49,6 +68,7 @@ function checkup_templates_for_machine(array $machine): array {
         }
         unset($item);
         $template['items'] = $items;
+        $template['syncMode'] = 'BELM_MASTER_LIVE';
     }
     unset($template);
     return $templates;
@@ -74,6 +94,11 @@ if ($method === 'GET') {
             'fleetNumber' => $machine['fleet_number'], 'status' => $machine['status'], 'lastCheckedAt' => $machine['last_checked_at'],
         ],
         'templates' => $templates,
+        'sync' => [
+            'mode' => 'BELM_MASTER_LIVE',
+            'historicalReportsPreserved' => true,
+            'message' => 'Current active BELM master template is used for new Check Ups only. Existing reports are never modified or deleted by template sync.',
+        ],
         'latestHourMeter' => $latest ? (float)$latest['hour_meter_reading'] : 0,
         'todayReport' => $todayStmt->fetch() ?: null,
     ]);
@@ -128,6 +153,8 @@ foreach ($template['items'] as $item) {
 $pdo = db();
 try {
     $pdo->beginTransaction();
+    // Data-safety rule: a new Check Up only INSERTS a new historical record.
+    // No previous checklist report or answer is updated/deleted by this flow.
     $dupStmt = $pdo->prepare("SELECT id FROM checklist_reports WHERE machine_id=? AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Africa/Dar_es_Salaam') AT TIME ZONE 'Africa/Dar_es_Salaam' LIMIT 1");
     $dupStmt->execute([$machineId]);
     if ($dupStmt->fetchColumn()) {
@@ -143,7 +170,7 @@ try {
     }
     $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),updated_at=NOW() WHERE id=?')->execute([$overall,$machineId]);
     $pdo->commit();
-    json_out(['ok'=>true,'reportId'=>$reportId,'overallStatus'=>$overall,'message'=>'Check Up completed and saved.'],201);
+    json_out(['ok'=>true,'reportId'=>$reportId,'overallStatus'=>$overall,'historicalReportsPreserved'=>true,'message'=>'Check Up completed and saved. Existing checklist records were preserved.'],201);
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     throw $e;

@@ -15,9 +15,12 @@
   display:grid;
   gap:24px;
 }
-.cwm-welcome-copy{display:grid;gap:5px}
+.cwm-welcome-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
+.cwm-welcome-copy{display:grid;gap:5px;min-width:0}
 .cwm-welcome-kicker{margin:0;font-size:12px;font-weight:800;letter-spacing:.12em;color:rgba(255,255,255,.78)}
 .cwm-welcome-copy h2{margin:0;font:800 clamp(22px,4vw,34px) "Space Grotesk",sans-serif;line-height:1.18;color:#fff}
+.cwm-welcome-logout{flex:0 0 auto;min-height:40px;padding:0 16px;border:1px solid rgba(255,255,255,.7);border-radius:10px;background:rgba(3,43,79,.3);color:#fff;font:800 12px "Space Grotesk",sans-serif;cursor:pointer}
+.cwm-welcome-logout:hover{background:rgba(3,43,79,.5)}
 .cwm-welcome-details{display:grid;gap:12px;padding:18px 0;border-top:1px solid rgba(255,255,255,.22);border-bottom:1px solid rgba(255,255,255,.22)}
 .cwm-welcome-details div{display:grid;grid-template-columns:105px minmax(0,1fr);gap:12px;align-items:start}
 .cwm-welcome-details span{font-size:11px;font-weight:800;letter-spacing:.05em;color:rgba(255,255,255,.76)}
@@ -43,6 +46,8 @@
 @media(max-width:620px){
   .cwm-search{min-width:0;width:100%}
   .cwm-welcome-card{padding:22px 18px;border-radius:15px;gap:20px}
+  .cwm-welcome-head{gap:10px}
+  .cwm-welcome-logout{min-height:36px;padding:0 12px;font-size:11px}
   .cwm-welcome-details div{grid-template-columns:1fr;gap:3px}
   .cwm-open-workshop{min-height:54px}
 }

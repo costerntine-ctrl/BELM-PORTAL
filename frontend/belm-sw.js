@@ -17,7 +17,7 @@
 // Regression baseline: const CACHE='belm-app-v347-expense-persistence-sync';
 // Regression baseline: const CACHE='belm-app-v349-login-password-stability';
 // Regression baseline: const CACHE='belm-app-v350-data-preservation-guard';
-const CACHE='belm-portal-v520-procurement-fuel-record';
+const CACHE='belm-portal-v521-cwm-settings-click-fix';
 // const CACHE='belm-app-v310-service-requests-engineering'; // regression baseline
 // const CACHE='belm-app-v309-received-job-card-dispatch'; // regression baseline
 // const CACHE='belm-app-v308-job-card-assignment-state-fix'; // regression baseline
@@ -47,8 +47,6 @@ self.addEventListener('fetch',event=>{
     event.respondWith(fetch(event.request).catch(async()=>{
       const cached=await caches.match(event.request);
       if(cached)return cached;
-      // Never show the login shell merely because mobile data/Wi-Fi or Render
-      // was unavailable for a moment. That looked like an automatic logout.
       return new Response(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM - Connection interrupted</title><body style="font-family:system-ui;background:#f4f7f5;color:#151d31;padding:32px"><main style="max-width:520px;margin:12vh auto;background:#fff;padding:28px;border-radius:18px;border:1px solid #dce6e0"><h2>Connection interrupted</h2><p>Your BELM login has not been removed. Reconnect and retry.</p><button onclick="location.reload()" style="padding:11px 18px;border:0;border-radius:9px;background:#008640;color:#fff;font-weight:800">Retry</button></main></body>`,{status:503,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
     }));
     return;

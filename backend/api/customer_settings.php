@@ -20,7 +20,8 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS customer_notification_settings (
   reply_to_email VARCHAR(255),
   management_group_emails TEXT,
   updated_by VARCHAR(160),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT fk_customer_notification_settings_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
 )");
 
 function settings_decode_emails($value): array {

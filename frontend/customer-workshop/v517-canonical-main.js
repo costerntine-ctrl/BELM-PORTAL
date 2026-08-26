@@ -59,26 +59,31 @@
   const settingsLink=document.getElementById('cwmSettingsLink');
   const topBack=document.getElementById('cwmBackButton');
   const brandBack=document.getElementById('backLink');
+
   if(storeLink)storeLink.href='#cwm-store';
   if(settingsLink)settingsLink.href='#cwm-settings';
-  if(topBack)topBack.href='/customer-workshop/?actor=customer';
-  if(brandBack)brandBack.href='/customer-workshop/?actor=customer';
 
-  storeLink?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();show('store')},true);
-  settingsLink?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();show('settings')},true);
-  [topBack,brandBack].forEach(el=>el?.addEventListener('click',e=>{e.preventDefault();e.stopImmediatePropagation();show('main')},true));
+  // Top-level CWM navigation must return to the approved Customer Dashboard
+  // home card. Only internal Settings/Store Back buttons return to CWM Main.
+  if(topBack){
+    topBack.href='/portal/dashboard';
+    topBack.setAttribute('aria-label','Back to Customer Dashboard');
+  }
+  if(brandBack)brandBack.href='/portal/dashboard';
+
+  storeLink?.addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    show('store');
+  },true);
+  settingsLink?.addEventListener('click',e=>{
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    show('settings');
+  },true);
   document.querySelectorAll('.cwm-v517-back').forEach(btn=>btn.addEventListener('click',()=>show('main')));
 
-  try{
-    const canonical='/customer-workshop/?actor=customer';
-    history.replaceState({belmCwmMain:true},'',canonical);
-    history.pushState({belmCwmGuard:true},'',canonical);
-  }catch(_){}
-  addEventListener('popstate',e=>{
-    e.stopImmediatePropagation();
-    show('main');
-    try{history.pushState({belmCwmGuard:true},'', '/customer-workshop/?actor=customer')}catch(_){}
-  },true);
-
+  // Do not trap browser Back/Forward inside PORTAL-CWM. Natural navigation
+  // must be able to return to the Customer Dashboard/home card.
   show('main');
 })();

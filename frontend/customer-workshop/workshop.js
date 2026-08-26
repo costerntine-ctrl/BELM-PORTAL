@@ -9,6 +9,51 @@
   let technicians=[];
   let toolIssues=[];
   let currentCustomerProfile=null;
+  let currentWorkshopModuleActive=true;
+  let cwmActiveView='main';
+  const cwmStateKey=`belm_cwm_view_state:${actor}:${customerId||'self'}`;
+  let restoringCwmState=false;
+  let cwmHistoryGuardArmed=false;
+  function armCustomerMainHistoryGuard(){
+    if(isBelm||cwmHistoryGuardArmed||!localStorage.getItem('belm_customer_token'))return;
+    const canonical='/customer-workshop/?actor=customer';
+    try{
+      history.replaceState({...((history.state&&typeof history.state==='object')?history.state:{}),belmCwmMain:true},'',canonical);
+      history.pushState({belmCwmGuard:true},'',canonical);
+      cwmHistoryGuardArmed=true;
+    }catch(_){}
+  }
+  function readCwmState(){try{return JSON.parse(sessionStorage.getItem(cwmStateKey)||'{}')||{}}catch(_){return{}}}
+  function saveCwmState(){
+    if(restoringCwmState)return;
+    try{sessionStorage.setItem(cwmStateKey,JSON.stringify({activeView:cwmActiveView,scrollY:Math.max(0,window.scrollY||0),toolDocumentsOpen:cwmActiveView==='store'&&!document.getElementById('toolDocumentsPanel')?.classList.contains('hidden')}))}catch(_){}
+  }
+  async function showCwmView(view,{restore=false}={}){
+    let next=['main','store','settings'].includes(view)?view:'main';
+    if(isBelm&&next!=='main')next='main';
+    if(next==='store'&&(!currentWorkshopModuleActive||document.getElementById('storeLink')?.classList.contains('cwm-role-hidden')))next='main';
+    if(next==='settings'&&document.getElementById('cwmSettingsLink')?.classList.contains('cwm-role-hidden'))next='main';
+    cwmActiveView=next;
+    document.getElementById('cwmMainDashboard')?.classList.toggle('hidden',next!=='main');
+    document.getElementById('cwmStoreView')?.classList.toggle('hidden',next!=='store');
+    document.getElementById('cwmSettingsView')?.classList.toggle('hidden',next!=='settings');
+    if(next==='store'&&!isBelm)await loadStore();
+    if(next==='settings'&&!isBelm)await loadCompanyLogo();
+    if(!restore)window.scrollTo({top:0,left:0,behavior:'auto'});
+    saveCwmState();
+  }
+  async function restoreCwmState(){
+    const state=readCwmState();
+    restoringCwmState=true;
+    try{
+      await showCwmView(state.activeView||'main',{restore:true});
+      if(cwmActiveView==='store'&&state.toolDocumentsOpen&&!isBelm){
+        const panel=document.getElementById('toolDocumentsPanel');
+        if(panel&&panel.classList.contains('hidden')){panel.classList.remove('hidden');await loadToolIssues()}
+      }
+      requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:Number(state.scrollY)||0,left:0,behavior:'auto'})));
+    }finally{setTimeout(()=>{restoringCwmState=false},80)}
+  }
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   function show(message,error=false){alertBox.textContent=message;alertBox.className=`alert${error?' error':''}`}
@@ -52,7 +97,7 @@
     setActionVisible('cwmGeneralReportLink',reportRole);
     setActionVisible('cwmPettyCashLink',accountsRole||hasPermission(profile,'machine-expenses'));
     setActionVisible('cwmGeneralAnalysisLink',ownerAdmin||role==='workshop_manager'||role==='accounts');
-    setActionVisible('cwmSettingsLink',ownerAdmin);
+    setActionVisible('cwmSettingsLink',ownerAdmin||role==='workshop_manager');
     setActionVisible('cwmChecklistTemplateLink',ownerAdmin||role==='workshop_manager'||hasPermission(profile,'check-up'));
     const assign=document.getElementById('cwmAssignFunction');
     if(assign){assign.textContent=belmOn?'BELM Technician Assignment':'Assign / Reassign Technician';assign.classList.toggle('cwm-function-locked',belmOn)}
@@ -69,11 +114,17 @@
       assistant:['CUSTOMER USER','Customer Workshop','ACCESS']
     };
     const meta=roleMeta[role]||roleMeta.assistant;
-    const label=document.getElementById('cwmRoleLabel'),title=document.getElementById('cwmRoleTitle'),status=document.getElementById('cwmRoleStatus'),description=document.getElementById('cwmRoleDescription');
-    if(label)label.textContent=meta[0];if(title)title.textContent=meta[1];if(status)status.textContent=meta[2];
+    const label=document.getElementById('cwmRoleLabel');
+    const title=document.getElementById('cwmRoleTitle');
+    const status=document.getElementById('cwmRoleStatus');
+    const description=document.getElementById('cwmRoleDescription');
+    if(label)label.textContent=meta[0];
+    if(title)title.textContent=meta[1];
+    if(status)status.textContent=meta[2];
     if(description)description.textContent=`${meta[1]} â€” same PORTAL-BELM WM card language, scoped to this customer company and the signed-in role.`;
     document.body.dataset.customerRole=role;
   }
+
   function renderCompanyLogo(data){
     const img=document.getElementById('cwmCompanyLogoPreview');
     const placeholder=document.getElementById('cwmLogoPlaceholder');
@@ -82,8 +133,9 @@
     else{img.removeAttribute('src');img.hidden=true;placeholder.hidden=false;remove.hidden=true}
     const upload=document.getElementById('cwmUploadLogoButton');
     const canManage=data?.canManage ?? canManageCompanyLogo(currentCustomerProfile);
-    upload.disabled=!canManage;upload.title=canManage?'Upload JPG or PNG. It will be optimized automatically.':'Only the Customer Owner/Admin can change company branding.';
-    if(!canManage)upload.textContent='Company Logo Â· Owner/Admin Only';else upload.textContent='Upload Company Logo';
+    upload.disabled=!canManage;
+    upload.title=canManage?'Upload JPG or PNG. It will be optimized automatically.':'Only the Customer Owner/Admin can change company branding.';
+    upload.textContent=canManage?'Upload Company Logo':'Company Logo Â· Owner/Admin Only';
   }
   async function loadCompanyLogo(){
     if(isBelm)return;
@@ -94,8 +146,10 @@
     if(!file)throw new Error('Choose a company logo.');
     if(!['image/jpeg','image/png'].includes(file.type))throw new Error('Choose a JPG or PNG company logo.');
     if(file.size>6*1024*1024)throw new Error('Logo file is too large. Choose an image under 6MB.');
-    const img=await fileToImage(file);const max=1200;const scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
-    const w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));
+    const img=await fileToImage(file);
+    const max=1200;const scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));
+    const w=Math.max(1,Math.round(img.naturalWidth*scale));
+    const h=Math.max(1,Math.round(img.naturalHeight*scale));
     const canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;const ctx=canvas.getContext('2d');ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);
     const logoDataUrl=canvas.toDataURL('image/jpeg',.9);
     const wm=document.createElement('canvas');wm.width=w;wm.height=h;const wx=wm.getContext('2d');wx.fillStyle='#ffffff';wx.fillRect(0,0,w,h);wx.globalAlpha=.13;wx.drawImage(img,0,0,w,h);wx.globalAlpha=1;
@@ -115,7 +169,7 @@
     document.getElementById('modePill').textContent='BELM CUSTOMER VIEW';
     document.getElementById('backLink').href='/customers-manager/';
     document.getElementById('workshopTitle').textContent=`${customer?.name||'Customer'} â€” Workshop`;
-    document.getElementById('workshopSubtitle').textContent='Customer workshop role structure viewed from BELM. Customer-owned team controls remain separated from BELM staff.';
+    document.getElementById('workshopSubtitle').textContent='Customer workshop role structure viewed from BELMI. Customer-owned team controls remain separated from BELM staff.';
     const suffix=customerId?`?customerId=${encodeURIComponent(customerId)}`:'';
     document.getElementById('managerJobCardLink').href='/belm-workshop/#job-cards';
     document.getElementById('managerAnalysisLink').href='/belm-workshop/#workshop-analysis';
@@ -127,6 +181,7 @@
     document.getElementById('technicianManageLink').textContent='BELM Technician Directory';
     document.getElementById('toolDocumentsPanel').classList.add('hidden');
     document.getElementById('cwmBrandingCard')?.classList.add('hidden');
+    document.getElementById('cwmSettingsLink')?.classList.add('hidden');
   }
   async function loadBelm(){
     if(!adminToken){location.href='/login';return}
@@ -143,91 +198,244 @@
       const dashboard=await customerApi('/dashboard');
       const profile=dashboard?.customer||{};
       currentCustomerProfile=profile;
-      workshopModuleActive=profile.workshopModuleActive!==false;
+      currentWorkshopModuleActive=profile.workshopModuleActive!==false;
+      workshopModuleActive=currentWorkshopModuleActive;
       const name=profile.name||'Customer';
-      document.getElementById('modePill').textContent='PORTAL-CWM HOME';
       document.getElementById('workshopTitle').textContent=`${name} â€” PORTAL-CWM`;
       document.getElementById('workshopSubtitle').textContent=Boolean(profile.belmServiceProviderActive)
-        ? 'BELM Service Mode â€” customer records remain company-scoped; machine updates stay in Report Record and BELM Job Cards go directly to TECHNICAL DEP.'
-        : 'Customer Workshop Manager home â€” customer records stay company-scoped; BELM Job Cards are opened only when BELM support is requested.';
-      document.getElementById('cwmCompanyName').textContent=name;
-      document.getElementById('cwmCompanyAddress').textContent=profile.address||'Not recorded';
-      document.getElementById('cwmCompanyEmail').textContent=profile.email||'Not recorded';
-      document.getElementById('cwmCompanyContact').textContent=profile.phone||'Not recorded';
-      const belmOn=Boolean(profile.belmServiceProviderActive);
-      const belmStatus=document.getElementById('cwmBelmStatus');
-      belmStatus.textContent=belmOn?'BELM ON Â· SERVICE ACTIVE':'BELM OFF Â· CUSTOMER WORKSHOP';
-      belmStatus.classList.toggle('is-on',belmOn);belmStatus.classList.toggle('is-off',!belmOn);
-      const techManage=document.getElementById('technicianManageLink');
-      if(belmOn){
-        technicians=[];
-        document.getElementById('technicianCount').textContent='LOCKED Â· BELM ON';
-        if(techManage){techManage.textContent='Technicians Locked Â· BELM ON';techManage.removeAttribute('href');techManage.setAttribute('aria-disabled','true');techManage.classList.add('locked-action')}
-        const newToolIssue=document.getElementById('newToolIssueButton');
-        if(newToolIssue){newToolIssue.disabled=true;newToolIssue.textContent='Issue Tool Locked Â· BELM ON';newToolIssue.title='Customer Technician section is locked while BELM Service is ON.'}
-      }else{
-        if(techManage){techManage.textContent='Manage Technicians';techManage.href='/customer-users/';techManage.removeAttribute('aria-disabled');techManage.classList.remove('locked-action')}
-        const newToolIssue=document.getElementById('newToolIssueButton');
-        if(newToolIssue){newToolIssue.disabled=false;newToolIssue.textContent='+ Issue Tool';newToolIssue.title=''}
-      }
-      const machineLink=document.getElementById('cwmMachinesLink');
-      machineLink.textContent=`${name.toUpperCase()} MACHINES`;
-      const checklistLink=document.getElementById('cwmChecklistTemplateLink');
-      if(checklistLink) checklistLink.href='/portal/dashboard?view=machines';
-      applyCustomerRoleAccess(profile,belmOn,workshopModuleActive);
-      if(!workshopModuleActive){
-        document.getElementById('storeLink')?.classList.add('hidden');
-        document.getElementById('toolDocumentsButton')?.classList.add('hidden');
-        document.getElementById('workshop-store')?.classList.add('hidden');
-        document.getElementById('toolDocumentsPanel')?.classList.add('hidden');
-      }
-    }catch(e){show(e.message,true)}
-    await loadCompanyLogo();
-    const techLocked=document.getElementById('technicianManageLink')?.getAttribute('aria-disabled')==='true';
-    if(!techLocked){
-      try{technicians=await customerApi('/technicians');document.getElementById('technicianCount').textContent=`${technicians.length} TECH${technicians.length===1?'':'S'}`;renderTechnicianOptions()}catch(_){technicians=[];renderTechnicianOptions()}
-    }else{technicians=[];renderTechnicianOptions()}
-    if(workshopModuleActive) await loadStore();
-  }
-  async function loadStore(){
-    if(isBelm)return;
-    const rows=document.getElementById('storeRows');
-    rows.innerHTML='<tr><td colspan="7" class="empty">Loading Customer Storeâ€¦</td></tr>';
-    try{
-      const data=await customerApi('/store');
-      const items=data.items||[];
-      const qty=items.reduce((sum,x)=>sum+Number(x.qty_on_hand??x.qtyOnHand??0),0);
-      const out=items.filter(x=>Number(x.qty_on_hand??x.qtyOnHand??0)<=0).length;
-      document.getElementById('storeItemCount').textContent=items.length;
-      document.getElementById('storeQtyCount').textContent=qty.toLocaleString(undefined,{maximumFractionDigits:2});
-      document.getElementById('storeOutCount').textContent=out;
-      rows.innerHTML=items.length?items.map(x=>`<tr><td><b>${esc(x.part_number??x.partNumber??'â€”')}</b></td><td>${esc(x.description||'â€”')}</td><td>${esc(x.unit||'PC')}</td><td>${Number(x.total_received??x.totalReceived??0).toLocaleString()}</td><td>${Number(x.total_issued??x.totalIssued??0).toLocaleString()}</td><td><b>${Number(x.qty_on_hand??x.qtyOnHand??0).toLocaleString()}</b></td><td>TZS ${Number(x.average_unit_cost??x.averageUnitCost??0).toLocaleString()}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">No customer Store stock recorded yet.</td></tr>';
-    }catch(e){rows.innerHTML=`<tr><td colspan="7" class="empty">${esc(e.message)}</td></tr>`}
-  }
-  function openReceiveStock(){document.getElementById('receiveStockForm').reset();document.getElementById('receiveUnitCost').value='0';document.getElementById('receiveStockError').classList.add('hidden');document.getElementById('receiveStockDialog').showModal()}
+        ?'BELM Service Mode â€” customer records remain company-scoped; machine updates stay in Report Record and BELM Job Cards go directly to TECHNICAL DEP.'
+        :'Customer Workshop Manager home â€” customer records stay company-scoped; BELN›ØˆØ\™È\™HÜ[™YÛ›HÚ[ˆ‘Sˆİ\Ü\È™\]Y\İY‰ÎÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛPÛÛ\[S˜[YIÊK^ÛÛ[[˜[YNÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛPÛÛ\[PY™\ÜÉÊK^ÛÛ[\›Ùš[K˜Y™\Üß	Ó›İ™XÛÜ™Y	ÎÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛPÛÛ\[Q[XZ[	ÊK^ÛÛ[\›Ùš[K™[XZ[	Ó›İ™XÛÜ™Y	ÎÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛPÛÛ\[PÛÛXİ	ÊK^ÛÛ[\›Ùš[KœÛ™_	Ó›İ™XÛÜ™Y	ÎÂˆÛÛœİ™[SÛP›ÛÛX[Š›Ùš[K˜™[TÙ\šXÙT›İšY\Xİ]™JNÂˆÛÛœİ™[Tİ]\ÏYØİ[Y[™Ù][[Y[RY
+	ØİÛP™[Tİ]\ÉÊNÂˆ™[Tİ]\Ë^ÛÛ[X™[SÛÉĞ‘SHÓˆ0­ÈÑT•’PÑHPÕU‘IÎ‰Ğ‘SHÑ‘ˆ0­ÈÕTÕÓQTˆÓÔ’ÔÒÔ	ÎÂˆ™[Tİ]\Ë˜Û\ÜÓ\İÙÙÛJ	Ú\Ë[Û‰Ë™[SÛŠNØ™[Tİ]\Ë˜Û\ÜÓ\İÙÙÛJ	Ú\Ë[Ù™‰ËX™[SÛŠNÂˆÛÛœİXÚX[˜YÙOYØİ[Y[™Ù][[Y[RY
+	İXÚšXÚX[“X[˜YÙS[šÉÊNÂˆYŠ™[SÛŠ^ÂˆXÚšXÚX[œÏV×NÂˆØİ[Y[™Ù][[Y[RY
+	İXÚšXÚX[Ûİ[	ÊK^ÛÛ[IÓĞÒÑQ0­È‘SHÓ‰ÎÂˆYŠXÚX[˜YÙJ^İXÚX[˜YÙK^ÛÛ[IÕXÚšXÚX[œÈØÚÙY0­È‘SHÓ‰ÎİXÚX[˜YÙKœ™[[İ™P]šX]J	Ú™Y‰ÊNİXÚX[˜YÙKœÙ]]šX]J	Ø\šXKY\ØX›Y	Ë	İYIÊNİXÚX[˜YÙK˜Û\ÜÓ\İ˜Y
+	ÛØÚÙYXXİ[Û‰Ê_BˆÛÛœİ™]ÕÛÛ\ÜİYOYØİ[Y[™Ù][[Y[RY
+	Û™]ÕÛÛ\ÜİYP]Û‰ÊNÂˆYŠ™]ÕÛÛ\ÜİYJ^Û™]ÕÛÛ\ÜİYK™\ØX›Y]YNÛ™]ÕÛÛ\ÜİYK^ÛÛ[IÒ\ÜİYHÛÛØÚÙY0­È‘SHÓ‰ÎÛ™]ÕÛÛ\ÜİYK]OIĞİ\İÛY\ˆXÚšXÚX[ˆÙXİ[Ûˆ\ÈØÚÙYÚ[H‘SHÙ\šXÙH\ÈÓ‹‰ßBˆY[Ù^ÂˆYŠXÚX[˜YÙJ^İXÚX[˜YÙK^ÛÛ[IÓX[˜YÙHXÚšXÚX[œÉÎİXÚX[˜YÙKš™YIËØİ\İÛY\‹]\Ù\œËÉÎİXÚX[˜YÙKœ™[[İ™P]šX]J	Ø\šXKY\ØX›Y	ÊNİXÚX[˜YÙK˜Û\ÜÓ\İœ™[[İ™J	ÛØÚÙYXXİ[Û‰Ê_BˆÛÛœİ™]ÕÛÛ\ÜİYOYØİ[Y[™Ù][[Y[RY
+	Û™]ÕÛÛ\ÜİYP]Û‰ÊNÂˆYŠ™]ÕÛÛ\ÜİYJ^Û™]ÕÛÛ\ÜİYK™\ØX›YY˜[ÙNÛ™]ÕÛÛ\ÜİYK^ÛÛ[IÊÈ\ÜİYHÛÛ	ÎÛ™]ÕÛÛ\ÜİYK]OIÉßBˆBˆÛÛœİXXÚ[™S[šÏYØİ[Y[™Ù][[Y[RY
+	ØİÛSXXÚ[™\Ó[šÉÊNÂˆXXÚ[™S[šË^ÛÛ[X	Û˜[YKÕ\\Ø\ÙJ
+_HPPÒS‘TØÂˆÛÛœİÚXÚÛ\İ[šÏYØİ[Y[™Ù][[Y[RY
+	ØİÛPÚXÚÛ\İ[\]S[šÉÊNÂˆYŠÚXÚÛ\İ[šÊHÚXÚÛ\İ[šËš™YIËÜÜ[Ù\Ú›Ø\™İšY]Ï[XXÚ[™\ÉÎÂˆ\Pİ\İÛY\”›ÛPXØÙ\ÜÊ›Ùš[K™[SÛ‹ÛÜšÜÚÜ[Ù[PXİ]™JNÂˆYŠ]ÛÜšÜÚÜ[Ù[PXİ]™J^ÂˆØİ[Y[™Ù][[Y[RY
+	ÜİÜ™S[šÉÊOË˜Û\ÜÓ\İ˜Y
+	ÚY[‰ÊNÂˆØİ[Y[™Ù][[Y[RY
+	İÛÛØİ[Y[Ğ]Û‰ÊOË˜Û\ÜÓ\İ˜Y
+	ÚY[‰ÊNÂˆØİ[Y[™Ù][[Y[RY
+	İÛÜšÜÚÜ\İÜ™IÊOË˜Û\ÜÓ\İ˜Y
+	ÚY[‰ÊNÂˆØİ[Y[™Ù][[Y[RY
+	İÛÛØİ[Y[Ô[™[	ÊOË˜Û\ÜÓ\İ˜Y
+	ÚY[‰ÊNÂˆBˆXØ]Ú
+J^ÜÚİÊK›Y\ÜØYÙKYJ_Bˆ]ØZ]ØYÛÛ\[SÙÛÊ
+NÂˆÛÛœİXÚØÚÙYYØİ[Y[™Ù][[Y[RY
+	İXÚšXÚX[“X[˜YÙS[šÉÊOË™Ù]]šX]J	Ø\šXKY\ØX›Y	ÊOOOIİYIÎÂˆYŠ]XÚØÚÙY
+^Âˆ^İXÚšXÚX[œÏX]ØZ]İ\İÛY\\J	ËİXÚšXÚX[œÉÊNÙØİ[Y[™Ù][[Y[RY
+	İXÚšXÚX[Ûİ[	ÊK^ÛÛ[X	İXÚšXÚX[œË›[™İHPÒ	İXÚšXÚX[œË›[™İOOLOÉÉÎ‰ÔÉßXÜ™[™\•XÚšXÚX[“Ü[ÛœÊ
+_XØ]Ú
+Ê^İXÚšXÚX[œÏV×NÜ™[™\•XÚšXÚX[“Ü[ÛœÊ
+_BˆY[Ù^İXÚšXÚX[œÏV×NÜ™[™\•XÚšXÚX[“Ü[ÛœÊ
+_BˆYŠÛÜšÜÚÜ[Ù[PXİ]™JH]ØZ]ØYİÜ™J
+NÂˆBˆ\Ş[˜È[˜İ[ÛˆØYİÜ™J
+^ÂˆYŠ\Ğ™[J\™]\›ÂˆÛÛœİ›İÜÏYØİ[Y[™Ù][[Y[RY
+	ÜİÜ™T›İÜÉÊNÂˆ›İÜËš[›™\’SIßÛÛÜ[HÈˆÛ\ÜÏH™[\H“ØY[™Èİ\İÛY\ˆİÜ™x )İİ‰ÎÂˆ^ÂˆÛÛœİ]OX]ØZ]İ\İÛY\\J	ËÜİÜ™IÊNÂˆÛÛœİ][\ÏY]Kš][\ß×NÂˆÛÛœİ]OZ][\Ëœ™YXÙJ
+İ[K
+OOœİ[JÓ[X™\Šœ]WÛÛ—Ú[™ÏŞœ]SÛ’[™ÏÌ
+K
+NÂˆÛÛœİİ]Z][\Ë™š[\ŠO“[X™\Šœ]WÛÛ—Ú[™ÏŞœ]SÛ’[™ÏÌ
+OL
+K›[™İÂˆØİ[Y[™Ù][[Y[RY
+	ÜİÜ™R][PÛİ[	ÊK^ÛÛ[Z][\Ë›[™İÂˆØİ[Y[™Ù][[Y[RY
+	ÜİÜ™T]PÛİ[	ÊK^ÛÛ[\]KÓØØ[Tİš[™Ê[™Yš[™YÛX^[][Qœ˜Xİ[Û‘YÚ]ÎŒŸJNÂˆØİ[Y[™Ù][[Y[RY
+	ÜİÜ™Sİ]Ûİ[	ÊK^ÛÛ[[İ]Âˆ›İÜËš[›™\’SZ][\Ë›[™İÚ][\Ë›X\
+O˜‰Ù\ØÊœ\Û[X™\ÏŞœ\[X™\ÏÉø %	Ê_OØİ‰Ù\ØÊ™\ØÜš\[ÛŸ	ø %	Ê_Oİ‰Ù\ØÊ[š]	ÔÉÊ_Oİ‰Ó[X™\Šİ[Ü™XÙZ]™YÏŞİ[™XÙZ]™YÏÌ
+KÓØØ[Tİš[™Ê
+_Oİ‰Ó[X™\Šİ[Ú\ÜİYYÏŞİ[\ÜİYYÏÌ
+KÓØØ[Tİš[™Ê
+_Oİ‰Ó[X™\Šœ]WÛÛ—Ú[™ÏŞœ]SÛ’[™ÏÌ
+KÓØØ[Tİš[™Ê
+_OØİ•”È	Ó[X™\Š˜]™\˜YÙWİ[š]ØÛÜİÏŞ˜]™\˜YÙU[š]ÛÜİÏÌ
+KÓØØ[Tİš[™Ê
+_Oİİ˜
+Kš›Ú[Š	ÉÊN‰ÏÛÛÜ[HÈˆÛ\ÜÏH™[\H“›Èİ\İÛY\ˆİÜ™HİØÚÈ™XÛÜ™YY]İİ‰ÎÂˆXØ]Ú
+J^Ü›İÜËš[›™\’SXÛÛÜ[HÈˆÛ\ÜÏH™[\H‰Ù\ØÊK›Y\ÜØYÙJ_Oİİ˜BˆBˆ[˜İ[ÛˆÜ[”™XÙZ]™TİØÚÊ
+^ÙØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™TİØÚÑ›Ü›IÊKœ™\Ù]
 
-  function renderTechnicianOptions(){const select=document.getElementById('toolTechnician');select.innerHTML='<option value="">Select Technicianâ€¦</option>'+technicians.filter(t=>Boolean(t.isActive??t.is_active)).map(t=>`<option value="${esc(t.id)}" data-name="${esc(t.name)}">${esc(t.name)}</option>`).join('')}
-  function fmtDate(v){if(!v)return'â€”';const d=new Date(v);return Number.isNaN(d.getTime())?'â€”':d.toLocaleString([], {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}
-  function renderToolIssues(){
-    const rows=document.getElementById('toolIssueRows');
-    const out=toolIssues.filter(x=>!x.returnedAt).length,returned=toolIssues.length-out;
-    document.getElementById('toolsOutCount').textContent=out;document.getElementById('toolsReturnedCount').textContent=returned;document.getElementById('toolDocumentCount').textContent=toolIssues.length;
-    rows.innerHTML=toolIssues.length?toolIssues.map(x=>`<tr><td><b>${esc(x.documentNo||'â€”')}</b></td><td>${esc(x.jobCardNo||'â€”')}</td><td>${esc(x.technicianName||'â€”')}</td><td><b>${esc(x.toolName)}</b>${x.toolAssetId?`<br><small>${esc(x.toolAssetId)}</small>`:''}</td><td>${esc(x.quantity)}</td><td>${fmtDate(x.issuedAt)}</td><td><span class="${x.returnedAt?'status-returned':'status-out'}">${x.returnedAt?'RETURNED':'OUT WITH TECHNICIAN'}</span></td><td>${x.returnedAt?`${fmtDate(x.returnedAt)}<br><small>${esc(x.conditionIn||'')}</small>`:`<button class="return-button" type="button" data-return-tool="${esc(x.id)}">Receive Return</button>`}</td></tr>`).join(''):'<tr><td colspan="8" class="empty">No Tool Issue Documents yet.</td></tr>';
-    rows.querySelectorAll('[data-return-tool]').forEach(b=>b.addEventListener('click',()=>openReturn(b.dataset.returnTool)));
-  }
-  async function loadToolIssues(){if(isBelm)return;const rows=document.getElementById('toolIssueRows');rows.innerHTML='<tr><td colspan="8" class="empty">Loading Tool Issue Documentsâ€¦</td></tr>';try{const data=await customerApi('/tool-issues');toolIssues=data.items||[];renderToolIssues()}catch(e){rows.innerHTML=`<tr><td colspan="8" class="empty">${esc(e.message)}</td></tr>`}}
-  function openIssue(){document.getElementById('toolIssueForm').reset();document.getElementById('toolQuantity').value='1';document.getElementById('toolIssueError').classList.add('hidden');document.getElementById('toolIssueDialog').showModal()}
-  function openReturn(id){document.getElementById('toolReturnForm').reset();document.getElementById('toolReturnId').value=id;document.getElementById('toolReturnError').classList.add('hidden');document.getElementById('toolReturnDialog').showModal()}
-  document.getElementById('toolDocumentsButton')?.addEventListener('click',async()=>{const p=document.getElementById('toolDocumentsPanel');p.classList.remove('hidden');p.scrollIntoView({behavior:'smooth',block:'start'});await loadToolIssues()});
-  document.getElementById('newToolIssueButton')?.addEventListener('click',openIssue);
-  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>document.getElementById(b.dataset.close)?.close()));
-  document.getElementById('toolIssueForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('toolIssueError');try{const tech=document.getElementById('toolTechnician');const opt=tech.selectedOptions[0];await customerApi('/tool-issues',{method:'POST',body:JSON.stringify({jobCardNo:document.getElementById('toolJobCardNo').value.trim(),technicianId:tech.value,technicianName:opt?.dataset?.name||opt?.textContent||'',toolName:document.getElementById('toolName').value.trim(),toolAssetId:document.getElementById('toolAssetId').value.trim(),quantity:Number(document.getElementById('toolQuantity').value||1),expectedReturnAt:document.getElementById('toolExpectedReturn').value||null,conditionOut:document.getElementById('toolConditionOut').value.trim(),note:document.getElementById('toolIssueNote').value.trim()})});document.getElementById('toolIssueDialog').close();show('Tool Issue Document created.');await loadToolIssues()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
-  document.getElementById('toolReturnForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('toolReturnError');try{const id=document.getElementById('toolReturnId').value;await customerApi(`/tool-issues/${encodeURIComponent(id)}/return`,{method:'POST',body:JSON.stringify({conditionIn:document.getElementById('toolConditionIn').value.trim(),receivedBy:document.getElementById('toolReceivedBy').value.trim(),note:document.getElementById('toolReturnNote').value.trim()})});document.getElementById('toolReturnDialog').close();show('Tool return recorded.');await loadToolIssues()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
-  document.getElementById('receiveStockButton')?.addEventListener('click',openReceiveStock);
-  document.getElementById('receiveStockForm').addEventListener('submit',async e=>{e.preventDefault();const errorBox=document.getElementById('receiveStockError');try{await customerApi('/store',{method:'POST',body:JSON.stringify({partNumber:document.getElementById('receivePartNumber').value.trim(),description:document.getElementById('receiveDescription').value.trim(),unit:document.getElementById('receiveUnit').value,quantity:Number(document.getElementById('receiveQuantity').value||0),unitCost:Number(document.getElementById('receiveUnitCost').value||0),note:document.getElementById('receiveNote').value.trim()})});document.getElementById('receiveStockDialog').close();show('Customer Store stock received.');await loadStore()}catch(err){errorBox.textContent=err.message;errorBox.classList.remove('hidden')}});
-  document.getElementById('cwmUploadLogoButton')?.addEventListener('click',()=>document.getElementById('cwmCompanyLogoInput')?.click());
-  document.getElementById('cwmCompanyLogoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];e.target.value='';if(file)await uploadCompanyLogo(file)});
-  document.getElementById('cwmRemoveLogoButton')?.addEventListener('click',removeCompanyLogo);
-  document.getElementById('refreshButton').addEventListener('click',async()=>{clear();if(isBelm)await loadBelm();else{await loadCustomer();if(!document.getElementById('toolDocumentsPanel').classList.contains('hidden'))await loadToolIssues()}});
-  isBelm?loadBelm():loadCustomer();
-})();
+NÙØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™U[š]ÛÜİ	ÊK˜[YOIÌ	ÎÙØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™TİØÚÑ\œ›Ü‰ÊK˜Û\ÜÓ\İ˜Y
+	ÚY[‰ÊNÙØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™TİØÚÑX[ÙÉÊKœÚİÓ[Ù[
+
+_Bˆ[˜İ[Ûˆ™[™\•XÚšXÚX[“Ü[ÛœÊ
+^ØÛÛœİÙ[YØİ[Y[™Ù][[Y[RY
+	İÛÛXÚšXÚX[‰ÊNÜÙ[š[›™\’SIÏÜ[Ûˆ˜[YOHˆ”Ù[XİXÚšXÚX[¸ )ÛÜ[Û‰ÊİXÚšXÚX[œË›X\
+O˜Ü[Ûˆ˜[YOH‰Ù\ØÊ\Ù\’Y
+_Hˆ]K[˜[YOH‰Ù\ØÊ›˜[YJ_H‰Ù\ØÊ›˜[YJ_OÛÜ[Û˜
+Kš›Ú[Š	ÉÊ_Bˆ[˜İ[Ûˆ›]]JŠ^ÚYŠ]Š\™]\›Š	ø %	ÊNİ^Ü™]\›ˆ™]È]JŠKÓØØ[Tİš[™Ê
+_XØ]Ú
+Ê^Ü™]\›ˆŸ_Bˆ[˜İ[Ûˆ™[™\•ÛÛ\ÜİY\Ê
+^ÂˆÛÛœİ›İÜÏYØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYT›İÜÉÊNÂˆÛÛœİİ]]ÛÛ\ÜİY\Ë™š[\ŠOˆ^œ™]\›™Y]
+K›[™İ™]\›™Y]ÛÛ\ÜİY\Ë™š[\ŠOœ™]\›™Y]
+K›[™İÂˆØİ[Y[™Ù][[Y[RY
+	İÛÛÓİ]Ûİ[	ÊK^ÛÛ[[İ]ÙØİ[Y[™Ù][[Y[RY
+	İÛÛÔ™]\›™YÛİ[	ÊK^ÛÛ[\™]\›™YÙØİ[Y[™Ù][[Y[RY
+	İÛÛØİ[Y[Ûİ[	ÊK^ÛÛ[]ÛÛ\ÜİY\Ë›[™İÂˆ›İÜËš[›™\’S]ÛÛ\ÜİY\Ë›[™İİÛÛ\ÜİY\Ë›X\
+O˜‰Ù\ØÊ™Øİ[Y[›ß	ø %	Ê_OØİ‰Ù\ØÊš›ØØ\™›ß	ø %	Ê_Oİ‰Ù\ØÊXÚšXÚX[“˜[Y_	ø %	Ê_Oİ‰Ù\ØÊÛÛ˜[YJ_OØ‰ŞÛÛ\ÜÙ]YØœÛX[‰Ù\ØÊÛÛ\ÜÙ]Y
+_OÜÛX[˜‰ÉßOİ‰Ù\ØÊœ]X[]J_Oİ‰Ù›]]Jš\ÜİYY]
+_OİÜ[ˆÛ\ÜÏH‰Şœ™]\›™Y]ÉÜİ]\Ë\™]\›™Y	Î‰Üİ]\Ë[İ]	ßH‰Şœ™]\›™Y]ÉÔ‘UT“‘Q	Î‰ÓÕUÒUPÒ’PÒPS‰ßOÜÜ[İ‰Şœ™]\›™Y]Ø	Ù›]]Jœ™]\›™Y]
+_OœÛX[‰Ù\ØÊ˜ÛÛ™][Û’[Ÿ	ÉÊ_OÜÛX[˜˜]ÛˆÛ\ÜÏHœ™]\›‹X]Ûˆˆ\OH˜]Ûˆˆ]K\™]\›‹]ÛÛH‰Ù\ØÊšY
+_H”™XÙZ]™H™]\›Ø]Û˜Oİİ˜
+Kš›Ú[Š	ÉÊN‰ÏÛÛÜ[HˆÛ\ÜÏH™[\H“›ÈÛÛ\ÜİYHØİ[Y[ÈY]İİ‰ÎÂˆ›İÜËœ]Y\TÙ[XİÜ[
+	ÖÙ]K\™]\›‹]ÛÛIÊK™›Ü‘XXÚ
+O˜‹˜Y]™[\İ[™\Š	ØÛXÚÉË
+
+OO›Ü[”™]\›Š‹™]\Ù]œ™]\›•ÛÛ
+JJNÂˆBˆ\Ş[˜È[˜İ[ÛˆØYÛÛ\ÜİY\Ê
+^ÚYŠ\Ğ™[J\™]\›ØÛÛœİ›İÜÏYØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYT›İÜÉÊNÜ›İÜËš[›™\’SIÏÛÛÜ[HˆÛ\ÜÏH™[\H“ØY[™ÈÛÛ\ÜİYHØİ[Y[ø )İİ‰Îİ^ØÛÛœİ]OX]ØZ]İ\İÛY\\J	ËİÛÛZ\ÜİY\ÉÊNİÛÛ\ÜİY\ÏY]Kš][\ß×NÜ™[™\•ÛÛ\ÜİY\Ê
+_XØ]Ú
+J^Ü›İÜËš[›™\’SXÛÛÜ[HˆÛ\ÜÏH™[\H‰Ù\ØÊK›Y\ÜØYÙJ_Oİİ˜_Bˆ[˜İ[ÛˆÜ[’\ÜİYJ
+^ÙØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYQ›Ü›IÊKœ™\Ù]
+
+NÙØİ[Y[™Ù][[Y[RY
+	İÛÛ]X[]IÊK˜[YOIÌIÎÙØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYQ\œ›Ü‰ÊK˜Û\ÜÓ\İ˜Y
+	ÚY[‰ÊNÙØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYQX[ÙÉÊKœÚİÓ[Ù[
+
+_Bˆ[˜İ[ÛˆÜ[”™]\›ŠY
+^ÙØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›‘›Ü›IÊKœ™\Ù]
+
+NÙØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›’Y	ÊK˜[YOZYÙØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›‘\œ›Ü‰ÊK˜Û\ÜÓ\İ˜Y
+	ÚY[‰ÊNÙØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›‘X[ÙÉÊKœÚİÓ[Ù[
+
+_BˆØİ[Y[™Ù][[Y[RY
+	Ø˜XÚÓ[šÉÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË\Ş[˜ÈOOÚYŠZ\Ğ™[J^ÙKœ™]™[Y˜][
+
+NØ]ØZ]ÚİĞİÛUšY]Ê	ÛXZ[‰Ê__JNÂˆØİ[Y[™Ù][[Y[RY
+	ÜİÜ™S[šÉÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË\Ş[˜ÈOOÚYŠ\Ğ™[J\™]\›ÙKœ™]™[Y˜][
+
+NØ]ØZ]ÚİĞİÛUšY]Ê	ÜİÜ™IÊ_JNÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛTÙ][™ÜÓ[šÉÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË\Ş[˜ÈOOÚYŠ\Ğ™[J\™]\›ÙKœ™]™[Y˜][
+
+NØ]ØZ]ÚİĞİÛUšY]Ê	ÜÙ][™ÜÉÊ_JNÂˆØİ[Y[œ]Y\TÙ[XİÜ[
+	ÖÙ]KXİÛK[XZ[—IÊK™›Ü‘XXÚ
+O˜‹˜Y]™[\İ[™\Š	ØÛXÚÉË\Ş[˜Ê
+OOØ]ØZ]ÚİĞİÛUšY]Ê	ÛXZ[‰Ê_JJNÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛP˜XÚĞ]Û‰ÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË\Ş[˜ÈOOÚYŠZ\Ğ™[J^ÙKœ™]™[Y˜][
+
+NØ]ØZ]ÚİĞİÛUšY]Ê	ÛXZ[‰ÊNÜ™]\›ŸZYŠİÛPXİ]™UšY]ÈOOIÛXZ[‰Ê^ÙKœ™]™[Y˜][
+
+NØ]ØZ]ÚİĞİÛUšY]Ê	ÛXZ[‰Ê__JNÂˆØİ[Y[™Ù][[Y[RY
+	İÛÛØİ[Y[Ğ]Û‰ÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË\Ş[˜Ê
+OOØÛÛœİYØİ[Y[™Ù][[Y[RY
+	İÛÛØİ[Y[Ô[™[	ÊNÜ˜Û\ÜÓ\İœ™[[İ™J	ÚY[‰ÊNÜØ]™PİÛTİ]J
+NÜœØÜ›Û[ÕšY]ÊØ™Z]š[Ü‰ÜÛ[Ûİ	Ë›ØÚÎ‰Üİ\	ßJNØ]ØZ]ØYÛÛ\ÜİY\Ê
+_JNÂˆØİ[Y[™Ù][[Y[RY
+	Û™]ÕÛÛ\ÜİYP]Û‰ÊOË˜Y]™[\İ[™\Š	ØÛXÚÉËÜ[’\ÜİYJNÂˆØİ[Y[œ]Y\TÙ[XİÜ[
+	ÖÙ]KXÛÜÙWIÊK™›Ü‘XXÚ
+O˜‹˜Y]™[\İ[™\Š	ØÛXÚÉË
+
+OO™Øİ[Y[™Ù][[Y[RY
+‹™]\Ù]˜ÛÜÙJOË˜ÛÜÙJ
+JJNÂˆØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYQ›Ü›IÊK˜Y]™[\İ[™\Š	ÜİX›Z]	Ë\Ş[˜ÈOOÙKœ™]™[Y˜][
+
+NØÛÛœİ\œ›Ü›ŞYØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYQ\œ›Ü‰ÊNİ^ØÛÛœİXÚYØİ[Y[™Ù][[Y[RY
+	İÛÛXÚšXÚX[‰ÊNØÛÛœİÜ]XÚœÙ[XİYÜ[ÛœÖÌNØ]ØZ]İ\İÛY\\J	ËİÛÛZ\ÜİY\ÉËÛY]Ù‰ÔÔÕ	Ë›ÙN’”ÓÓ‹œİš[™ÚYJÚ›ØØ\™›Î™Øİ[Y[™Ù][[Y[RY
+	İÛÛ›ØØ\™›ÉÊK˜[YKš[J
+KXÚšXÚX[’YXÚ˜[YKXÚšXÚX[“˜[YN›ÜË™]\Ù]Ë›˜[Y_ÜË^ÛÛ[	ÉËÛÛ˜[YN™Øİ[Y[™Ù][[Y[RY
+	İÛÛ˜[YIÊK˜[YKš[J
+KÛÛ\ÜÙ]Y™Øİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜÙ]Y	ÊK˜[YKš[J
+K]X[]N“[X™\ŠØİ[Y[™Ù][[Y[RY
+	İÛÛ]X[]IÊK˜[Y_JK^XİY™]\›]™Øİ[Y[™Ù][[Y[RY
+	İÛÛ^XİY™]\›‰ÊK˜[Y_[ÛÛ™][Û“İ]™Øİ[Y[™Ù][[Y[RY
+	İÛÛÛÛ™][Û“İ]	ÊK˜[YKš[J
+K›İN™Øİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYS›İIÊK˜[YKš[J
+_J_JNÙØİ[Y[™Ù][[Y[RY
+	İÛÛ\ÜİYQX[ÙÉÊK˜ÛÜÙJ
+NÜÚİÊ	ÕÛÛ\ÜİYHØİ[Y[Ü™X]Y‰ÊNØ]ØZ]ØYÛÛ\ÜİY\Ê
+_XØ]Ú
+\œŠ^Ù\œ›Ü›Ş^ÛÛ[Y\œ‹›Y\ÜØYÙNÙ\œ›Ü›Ş˜Û\ÜÓ\İœ™[[İ™J	ÚY[‰Ê__JNÂˆØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›‘›Ü›IÊK˜Y]™[\İ[™\Š	ÜİX›Z]	Ë\Ş[˜ÈOOÙKœ™]™[Y˜][
+
+NØÛÛœİ\œ›Ü›ŞYØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›‘\œ›Ü‰ÊNİ^ØÛÛœİYYØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›’Y	ÊK˜[YNØ]ØZ]İ\İÛY\\JİÛÛZ\ÜİY\ËÉÙ[˜ÛÙUT’PÛÛ\Û™[
+Y
+_KÜ™]\›˜ÛY]Ù‰ÔÔÕ	Ë›ÙN’”ÓÓ‹œİš[™ÚYJØÛÛ™][Û’[™Øİ[Y[™Ù][[Y[RY
+	İÛÛÛÛ™][Û’[‰ÊK˜[YKš[J
+K™XÙZ]™YN™Øİ[Y[™Ù][[Y[RY
+	İÛÛ™XÙZ]™YIÊK˜[YKš[J
+K›İN™Øİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›“›İIÊK˜[YKš[J
+_J_JNÙØİ[Y[™Ù][[Y[RY
+	İÛÛ™]\›‘X[ÙÉÊK˜ÛÜÙJ
+NÜÚİÊ	ÕÛÛ™]\›ˆ™XÛÜ™Y‰ÊNØ]ØZ]ØYÛÛ\ÜİY\Ê
+_XØ]Ú
+\œŠ^Ù\œ›Ü›Ş^ÛÛ[Y\œ‹›Y\ÜØYÙNÙ\œ›Ü›Ş˜Û\ÜÓ\İœ™[[İ™J	ÚY[‰Ê__JNÂˆØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™TİØÚĞ]Û‰ÊOË˜Y]™[\İ[™\Š	ØÛXÚÉËÜ[”™XÙZ]™TİØÚÊNÂˆØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™TİØÚÑ›Ü›IÊK˜Y]™[\İ[™\Š	ÜİX›Z]	Ë\Ş[˜ÈOOÙKœ™]™[Y˜][
+
+NØÛÛœİ\œ›Ü›ŞYØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™TİØÚÑ\œ›Ü‰ÊNİ^Ø]ØZ]İ\İÛY\\J	ËÜİÜ™IËÛY]Ù‰ÔÔÕ	Ë›ÙN’”ÓÓ‹œİš[™ÚYJÜ\[X™\™Øİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™T\[X™\‰ÊK˜[YKš[J
+K\ØÜš\[Û™Øİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™Q\ØÜš\[Û‰ÊK˜[YKš[J
+K[š]™Øİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™U[š]	ÊK˜[YK]X[]N“[X™\ŠØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™T]X[]IÊK˜[Y_
+K[š]ÛÜİ“[X™\ŠØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™U[š]ÛÜİ	ÊK˜[Y_
+K›İN™Øİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™S›İIÊK˜[YKš[J
+_J_JNÙØİ[Y[™Ù][[Y[RY
+	Ü™XÙZ]™TİØÚÑX[ÙÉÊK˜ÛÜÙJ
+NÜÚİÊ	Ğİ\İÛY\ˆİÜ™HİØÚÈ™XÙZ]™Y‰ÊNØ]ØZ]ØYİÜ™J
+_XØ]Ú
+\œŠ^Ù\œ›Ü›Ş^ÛÛ[Y\œ‹›Y\ÜØYÙNÙ\œ›Ü›Ş˜Û\ÜÓ\İœ™[[İ™J	ÚY[‰Ê__JNÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛU\ØYÙÛĞ]Û‰ÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË
+
+OO™Øİ[Y[™Ù][[Y[RY
+	ØİÛPÛÛ\[SÙÛÒ[œ]	ÊOË˜ÛXÚÊ
+JNÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛPÛÛ\[SÙÛÒ[œ]	ÊOË˜Y]™[\İ[™\Š	ØÚ[™ÙIË\Ş[˜ÈOOØÛÛœİš[OYK\™Ù]™š[\ÏË–ÌNÙK\™Ù]˜[YOIÉÎÚYŠš[JX]ØZ]\ØYÛÛ\[SÙÛÊš[J_JNÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛT™[[İ™SÙÛĞ]Û‰ÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË™[[İ™PÛÛ\[SÙÛÊNÂˆØİ[Y[™Ù][[Y[RY
+	Ü™Yœ™\Ú]Û‰ÊK˜Y]™[\İ[™\Š	ØÛXÚÉË\Ş[˜Ê
+OOØÛX\Š
+NØÛÛœİšY]ÏXİÛPXİ]™UšY]ÎÚYŠ\Ğ™[JX]ØZ]ØY™[J
+NÙ[Ù^Ø]ØZ]ØYİ\İÛY\Š
+NØ]ØZ]ÚİĞİÛUšY]ÊšY]ËÜ™\İÜ™NY_JNÚYŠšY]ÏOOIÜİÜ™IÉ‰ˆYØİ[Y[™Ù][[Y[RY
+	İÛÛØİ[Y[Ô[™[	ÊK˜Û\ÜÓ\İ˜ÛÛZ[œÊ	ÚY[‰ÊJX]ØZ]ØYÛÛ\ÜİY\Ê
+__JNÂˆØİ[Y[™Ù][[Y[RY
+	ØİÛSÙÛİ]]Û‰ÊOË˜Y]™[\İ[™\Š	ØÛXÚÉË
+
+OOÂˆYŠ\Ğ™[J^ÛØØ][Û‹š™YIËÛÙÚ[‰ÎÜ™]\›ŸBˆØØ[İÜ˜YÙKœ™[[İ™R][J	Ø™[WØİ\İÛY\—İÚÙ[‰ÊNÂˆØØ[İÜ˜YÙKœ™[[İ™R][J	Ø™[WÜÙ\ÜÚ[Û—Ü™Yœ™\ÚYØ™[WØİ\İÛY\—İÚÙ[‰ÊNÂˆYŠİš[™ÊØØ[İÜ˜YÙK™Ù]][J	Ø™[WØXİ]™WØXØÛİ[İ\IÊ_	ÉÊKÓİÙ\Ø\ÙJ
+OOOIØİ\İÛY\‰Ê[ØØ[İÜ˜YÙKœ™[[İ™R][J	Ø™[WØXİ]™WØXØÛİ[İ\IÊNÂˆ^ÜÙ\ÜÚ[Û”İÜ˜YÙKœ™[[İ™R][JİÛTİ]RÙ^J_XØ]Ú
+Ê^ßBˆØØ][Û‹œ™\XÙJ	ËÛÙÚ[‰ÊNÂˆJNÂˆÚ[™İË˜Y]™[\İ[™\Š	ÜÜİ]IË\Ş[˜Ê
+OOÂˆYŠ\Ğ™[_[ØØ[İÜ˜YÙK™Ù]][J	Ø™[WØİ\İÛY\—İÚÙ[‰ÊJ\™]\›Âˆ]ØZ]ÚİĞİÛUšY]Ê	ÛXZ[‰ÊNÂˆ^Ú\İÜKœ\Úİ]JØ™[PİÛQİX\™Y_K	ÉË	ËØİ\İÛY\‹]ÛÜšÜÚÜÏØXİÜXİ\İÛY\‰Ê_XØ]Ú
+Ê^ßBˆJNÂˆÚ[™İË˜Y]™[\İ[™\Š	ÜYÙZYIËØ]™PİÛTİ]JNÂˆÚ[™İË˜Y]™[\İ[™\Š	Ø™Y›Ü™][›ØY	ËØ]™PİÛTİ]JNÂˆÚ[™İË˜Y]™[\İ[™\Š	ÜYÙ\ÚİÉËOOÚYŠKœ\œÚ\İY
+^ØÛÛœİİ]O\™XYİÛTİ]J
+NÜ™\]Y\İ[š[X][Û‘œ˜[YJ
+
+OOÚ[™İËœØÜ›ÛÊ[X™\Šİ]KœØÜ›ÛJ_
+J__JNÂˆ
+\Ş[˜Ê
+OOÚYŠ\Ğ™[JX]ØZ]ØY™[J
+NÙ[ÙH]ØZ]ØYİ\İÛY\Š
+NØ]ØZ]™\İÜ™PİÛTİ]J
+NÚYŠZ\Ğ™[JX\›Pİ\İÛY\“XZ[’\İÜQİX\™
+
+_JJ
+NÂŸJJ
+NÂ

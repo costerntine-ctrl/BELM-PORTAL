@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/theme-global.css?v=512-cwm-parity">
-  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=517-cwm-main-canonical">
+  <link rel="stylesheet" href="/customer-workshop/workshop.css?v=522-home-settings-logout">
   <link rel="stylesheet" href="/belm-workshop/manager.css?v=514-cwm-wm-parity">
   <script src="/theme-manager.js?v=486-report-record"></script>
 </head>
@@ -20,6 +20,7 @@
     <div class="top-actions">
       <a class="ghost cwm-back-button" id="cwmBackButton" href="/portal/dashboard" aria-label="Back to Main Home">← Back</a>
       <button id="refreshButton" type="button">Refresh</button>
+      <button id="cwmLogoutButton" class="cwm-logout-button" type="button">Log out</button>
     </div>
   </header>
 
@@ -102,6 +103,75 @@
         <div><p class="eyebrow">PORTAL-CWM ONLY</p><h2>Settings</h2><p>Company-specific PORTAL-CWM settings.</p></div>
         <button type="button" class="cwm-subview-back" data-cwm-main>← Back to CWM Main Home</button>
       </div>
+
+      <section class="cwm-settings-control-grid" aria-label="PORTAL-CWM management settings">
+        <article class="cwm-settings-control-card cwm-settings-roles">
+          <div class="cwm-settings-card-head">
+            <div><span>01 · ACCESS CONTROL</span><h3>Roles</h3><p>Default customer-workshop roles. Open Role Manager to edit user access for each role.</p></div>
+            <a class="cwm-settings-primary" href="/customer-users/">Open Role Manager</a>
+          </div>
+          <div class="cwm-default-role-list">
+            <div><b>Customer Owner / Admin</b><a href="/customer-users/?role=admin">Edit Role</a></div>
+            <div><b>Workshop Manager</b><a href="/customer-users/?role=workshop_manager">Edit Role</a></div>
+            <div><b>Technician</b><a href="/customer-users/?role=technician">Edit Role</a></div>
+            <div><b>Operator</b><a href="/customer-users/?role=operator">Edit Role</a></div>
+            <div><b>Store Keeper</b><a href="/customer-users/?role=store_keeper">Edit Role</a></div>
+            <div><b>Procurement</b><a href="/customer-users/?role=procurement">Edit Role</a></div>
+            <div><b>Accounts / Finance</b><a href="/customer-users/?role=accounts">Edit Role</a></div>
+            <div><b>Management / Administration</b><a href="/customer-users/?role=management">Edit Role</a></div>
+          </div>
+        </article>
+
+        <article class="cwm-settings-control-card">
+          <div class="cwm-settings-card-head">
+            <div><span>02 · FLEET CONTROL</span><h3>Machines</h3><p>Add, edit and delete customer machines.</p></div>
+          </div>
+          <div class="cwm-settings-action-row">
+            <a class="action-add" href="/portal/dashboard?view=machines&action=add-machine">+ Add Machine</a>
+            <a href="/portal/dashboard?view=machines">Edit Machine</a>
+            <a class="action-danger" href="/portal/dashboard?view=machines">Delete Machine</a>
+          </div>
+        </article>
+
+        <article class="cwm-settings-control-card">
+          <div class="cwm-settings-card-head">
+            <div><span>03 · COMPANY USERS</span><h3>Users</h3><p>Add, edit, delete and generate password for company users.</p></div>
+          </div>
+          <div class="cwm-settings-action-row">
+            <a class="action-add" href="/customer-users/?action=add-user">+ Add User</a>
+            <a href="/customer-users/">Edit User</a>
+            <a class="action-danger" href="/customer-users/">Delete User</a>
+            <a class="action-password" href="/customer-users/">Generate Password</a>
+          </div>
+        </article>
+
+        <article class="cwm-settings-control-card cwm-settings-checklist">
+          <div class="cwm-settings-card-head">
+            <div><span>04 · CUSTOMER CHECKLIST</span><h3>Custom Checklist Template</h3><p>Customer-workshop template design. It is separate from BELM Checklist Templates.</p></div>
+            <span class="cwm-private-template-badge">CWM ONLY • DESIGN</span>
+          </div>
+          <div class="cwm-template-designer-preview">
+            <div class="cwm-template-fields">
+              <label>Template Name<input value="Customer Daily Machine Check"></label>
+              <label>Machine Type<input placeholder="e.g. Reach Stacker"></label>
+              <label>Model / Group<input placeholder="Optional model"></label>
+            </div>
+            <div class="cwm-template-preview-list">
+              <div><span>01</span><b>Engine oil level</b><em>Normal / Attention / Critical</em></div>
+              <div><span>02</span><b>Coolant level</b><em>Normal / Attention / Critical</em></div>
+              <div><span>03</span><b>Hydraulic system</b><em>Text + Safety Color</em></div>
+              <button type="button" class="cwm-template-add-item">+ Add Checklist Item</button>
+            </div>
+          </div>
+          <div class="cwm-settings-action-row">
+            <button type="button" class="action-add cwm-template-design-button">Create Custom Template</button>
+            <button type="button" class="cwm-template-design-button">Edit Design</button>
+            <button type="button" class="cwm-template-design-button">Preview</button>
+          </div>
+          <small class="cwm-design-only-note">Design only in this version. Customer template storage/sync is separate from BELM templates.</small>
+        </article>
+      </section>
+
     <section id="cwmBrandingCard" class="cwm-branding-card cwm-branding-parity" aria-label="Company branding and document watermark">
       <div class="cwm-branding-preview">
         <div id="cwmLogoPlaceholder" class="cwm-logo-placeholder">LOGO</div>
@@ -212,7 +282,7 @@
     </form>
   </dialog>
 
-  <script src="/customer-workshop/workshop.js?v=517-cwm-main-canonical"></script>
-  <script src="/customer-workshop/v520-settings-runtime.js?v=520-latest"></script>
+  <script src="/customer-workshop/workshop.js?v=522-home-settings-logout"></script>
+  <script src="/customer-workshop/v519-settings-design.js?v=522-home-settings-logout"></script>
 </body>
 </html>

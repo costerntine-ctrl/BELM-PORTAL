@@ -34,6 +34,12 @@
     showAlert._t = window.setTimeout(() => box.classList.add("hidden"), 5000);
   }
 
+  function logout() {
+    localStorage.removeItem("belm_admin_token");
+    localStorage.removeItem("belm_admin_user");
+    window.location.href = "/admin/login";
+  }
+
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
   })[character]);
@@ -44,9 +50,12 @@
     const name = customer.name || "Customer";
     return `
       <article class="cwm-welcome-card" data-customer-card="${escapeHtml(customer.id)}">
-        <div class="cwm-welcome-copy">
-          <p class="cwm-welcome-kicker">WELCOME TO</p>
-          <h2>${escapeHtml(name.toUpperCase())} WORKSHOP PORTAL</h2>
+        <div class="cwm-welcome-head">
+          <div class="cwm-welcome-copy">
+            <p class="cwm-welcome-kicker">WELCOME TO</p>
+            <h2>${escapeHtml(name.toUpperCase())} WORKSHOP PORTAL</h2>
+          </div>
+          <button class="cwm-welcome-logout" type="button" data-cwm-logout>Log out</button>
         </div>
 
         <div class="cwm-welcome-details" aria-label="Customer company details">
@@ -84,12 +93,10 @@
 
   document.getElementById("cwmSearch")?.addEventListener("input", (event) => renderCards(event.target.value));
   document.getElementById("refreshButton")?.addEventListener("click", load);
-
-  document.getElementById("logoutButton")?.addEventListener("click", () => {
-    localStorage.removeItem("belm_admin_token");
-    localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+  document.getElementById("cwmCardGrid")?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-cwm-logout]")) logout();
   });
+  document.getElementById("logoutButton")?.addEventListener("click", logout);
 
   if (!token) showAlert("Administrator login required.");
   else load();

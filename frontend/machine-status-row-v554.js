@@ -53,6 +53,48 @@
     }
     .belm-customer-machine-info-v422{padding-top:0!important}
     .belm-duplicate-condition-pill-v555{display:none!important}
+
+    /* V557 — BELM standard action colours */
+    .belm-machine-quick-actions .belm-action-report-v557,
+    .belm-machine-quick-actions-parity .belm-action-report-v557{
+      background:#07101d!important;
+      border-color:#203a57!important;
+      color:#fff!important;
+      box-shadow:none!important;
+    }
+    .belm-machine-quick-actions .belm-action-checkup-v557,
+    .belm-machine-quick-actions-parity .belm-action-checkup-v557{
+      background:#0f7be8!important;
+      border-color:#2b96ff!important;
+      color:#fff!important;
+      box-shadow:0 8px 22px rgba(15,123,232,.18)!important;
+    }
+    .belm-machine-quick-actions .belm-action-service-v557,
+    .belm-machine-quick-actions-parity .belm-action-service-v557{
+      background:#ffc928!important;
+      border-color:#ffd759!important;
+      color:#111827!important;
+      box-shadow:0 8px 22px rgba(255,201,40,.16)!important;
+    }
+    .belm-machine-quick-actions .belm-action-job-v557,
+    .belm-machine-quick-actions-parity .belm-action-job-v557{
+      background:#13b866!important;
+      border-color:#38d985!important;
+      color:#fff!important;
+      box-shadow:0 8px 22px rgba(19,184,102,.18)!important;
+    }
+    .belm-machine-quick-actions .belm-action-report-v557:hover,
+    .belm-machine-quick-actions .belm-action-checkup-v557:hover,
+    .belm-machine-quick-actions .belm-action-service-v557:hover,
+    .belm-machine-quick-actions .belm-action-job-v557:hover,
+    .belm-machine-quick-actions-parity .belm-action-report-v557:hover,
+    .belm-machine-quick-actions-parity .belm-action-checkup-v557:hover,
+    .belm-machine-quick-actions-parity .belm-action-service-v557:hover,
+    .belm-machine-quick-actions-parity .belm-action-job-v557:hover{
+      filter:brightness(1.06)!important;
+      transform:translateY(-1px);
+    }
+
     @media(max-width:560px){
       .belm-machine-status-row-v554{
         grid-template-columns:minmax(0,44%) minmax(0,56%);
@@ -86,8 +128,22 @@
     });
   }
 
+  function decorateActionColors(card) {
+    const actionRoot = card?.querySelector(".belm-machine-quick-actions, .belm-machine-quick-actions-parity");
+    if (!actionRoot) return;
+    actionRoot.querySelectorAll("a,button").forEach((action) => {
+      const text = String(action.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+      action.classList.remove("belm-action-report-v557","belm-action-checkup-v557","belm-action-service-v557","belm-action-job-v557");
+      if (text === "report") action.classList.add("belm-action-report-v557");
+      else if (text === "check up" || text === "checkup") action.classList.add("belm-action-checkup-v557");
+      else if (text.includes("service parts")) action.classList.add("belm-action-service-v557");
+      else if (text === "job card" || text === "operation card") action.classList.add("belm-action-job-v557");
+    });
+  }
+
   function compactCard(card) {
     if (!card) return;
+    decorateActionColors(card);
     const info = card.querySelector(".belm-customer-machine-info-v422");
     const badge = info?.querySelector(".belm-customer-condition-badge-v422");
     const activity = card.querySelector(".belm-customer-activity-selector[data-customer-activity-control]");
@@ -106,6 +162,7 @@
     if (activity.parentElement !== row) row.appendChild(activity);
     card.dataset.belmStatusRowV554 = "1";
     hideDuplicateConditionPill(card);
+    decorateActionColors(card);
   }
 
   function sync() {

@@ -122,6 +122,7 @@
             <a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a>
             <a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a>
             <a href="/general-report/"><i>▥</i><b>REPORTS</b><small>Reports & analysis</small><span>›</span></a>
+            <a href="/customer-users/"><i>●●</i><b>USERS</b><small>Manage users & roles</small><span>›</span></a>
             <a href="/customer-settings-center/"><i>⚙</i><b>SETTINGS</b><small>Users, roles & company settings</small><span>›</span></a>
           </nav>
         </section>

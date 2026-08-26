@@ -7,7 +7,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $pdo = db();
 
 $pdo->exec("CREATE TABLE IF NOT EXISTS customer_notification_settings (
-  customer_id VARCHAR(36) PRIMARY KEY REFERENCES customers(id) ON DELETE CASCADE,
+  customer_id VARCHAR(36) PRIMARY KEY,
   critical_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   service_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   breakdown_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -20,7 +20,8 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS customer_notification_settings (
   reply_to_email VARCHAR(255),
   management_group_emails TEXT,
   updated_by VARCHAR(160),
-  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  CONSTRAINT fk_customer_notification_settings_customer FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
 )");
 
 function settings_decode_emails($value): array {

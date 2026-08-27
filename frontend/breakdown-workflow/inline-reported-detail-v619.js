@@ -7,28 +7,35 @@
 
   let expandedCard=null;
   let pendingCard=null;
-  let originalNext=detailPanel.nextSibling;
+  const originalNext=detailPanel.nextSibling;
 
   const restorePanel=()=>{
     if(detailPanel.parentElement!==grid){
       if(originalNext&&originalNext.parentNode===grid)grid.insertBefore(detailPanel,originalNext);
       else grid.appendChild(detailPanel);
     }
-    detailPanel.classList.remove('inline-case-detail');
+    detailPanel.classList.remove('inline-case-detail','reported-workspace-open');
     expandedCard?.classList.remove('inline-detail-open');
     expandedCard=null;
     pendingCard=null;
   };
 
-  const placeInline=card=>{
+  const placeInWorkspace=card=>{
     if(!card||!card.isConnected)return;
-    if(expandedCard&&expandedCard!==card)expandedCard.classList.remove('inline-detail-open');
+    expandedCard?.classList.remove('inline-detail-open');
     expandedCard=card;
     card.classList.add('inline-detail-open');
-    detailPanel.classList.add('inline-case-detail');
-    card.appendChild(detailPanel);
+    detailPanel.classList.remove('inline-case-detail');
+    detailPanel.classList.add('reported-workspace-open');
+
+    /* Keep the queue on the left and use the existing right-hand Job Card
+       workspace. This avoids the long vertical expansion below each card. */
+    if(detailPanel.parentElement!==grid){
+      if(originalNext&&originalNext.parentNode===grid)grid.insertBefore(detailPanel,originalNext);
+      else grid.appendChild(detailPanel);
+    }
     requestAnimationFrame(()=>{
-      detailPanel.scrollIntoView({behavior:'smooth',block:'nearest'});
+      detailPanel.scrollIntoView({behavior:'smooth',block:'start',inline:'nearest'});
     });
   };
 
@@ -40,26 +47,18 @@
     event.preventDefault();
     event.stopPropagation();
 
-    if(expandedCard===card&&detailPanel.parentElement===card){
-      restorePanel();
-      return;
-    }
-
     pendingCard=card;
-    // Use the existing Job Card loader without duplicating workflow logic.
     card.click();
   },true);
 
   const observer=new MutationObserver(()=>{
     if(pendingCard&&detail.children.length){
-      placeInline(pendingCard);
+      placeInWorkspace(pendingCard);
       pendingCard=null;
     }
   });
   observer.observe(detail,{childList:true,subtree:false});
 
-  // When the queue re-renders after Sync, return the detail workspace to its
-  // normal container so stale cards do not hold it.
   const listObserver=new MutationObserver(()=>{
     if(expandedCard&&!expandedCard.isConnected)restorePanel();
   });

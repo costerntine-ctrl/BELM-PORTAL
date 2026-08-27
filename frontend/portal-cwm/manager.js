@@ -4,6 +4,7 @@
   const isCustomerHome = !!customerToken;
   let customers = [];
   let messageTimer = null;
+  let isRefreshing = false;
 
   async function adminApi(path, options = {}) {
     const response = await fetch(`/api${path}`, {
@@ -141,7 +142,7 @@
     document.querySelector(".hero")?.remove();
     document.querySelector(".panel")?.remove();
     const top = document.querySelector(".top-actions");
-    if (top) top.innerHTML = '<button class="ghost cwm-header-logout-v556" type="button" data-cwm-logout>Log out</button>';
+    if (top) top.innerHTML = '<button id="refreshButton" class="ghost cwm-refresh-clean" type="button" data-cwm-refresh aria-label="Refresh PORTAL-CWM"><span class="refresh-icon">↻</span><span class="refresh-text">Refresh</span></button><button class="ghost cwm-header-logout-v556" type="button" data-cwm-logout>Log out</button>';
     const brand = document.querySelector(".brand");
     brand?.setAttribute("href", "/portal-cwm/");
     if (brand) {
@@ -182,8 +183,13 @@
     if (isCustomerHome) wireMessageDisplay();
   }
 
-  async function load() {
+  async function load({ fromRefresh = false } = {}) {
+    if (isRefreshing) return;
+    if (fromRefresh) isRefreshing = true;
+    const refreshButtons = document.querySelectorAll('#refreshButton,[data-cwm-refresh]');
+    if (fromRefresh) refreshButtons.forEach((button) => { button.disabled = true; button.classList.add('is-refreshing'); const label = button.querySelector('.refresh-text'); if (label) label.textContent = 'Refreshing…'; });
     try {
+      if (messageTimer) { clearInterval(messageTimer); messageTimer = null; }
       if (isCustomerHome) {
         const dashboard = await customerApi("/dashboard");
         const customer = dashboard?.customer || {};
@@ -196,6 +202,7 @@
         }];
         setCustomerHomeChrome();
         renderCards();
+        if (fromRefresh) showAlert('PORTAL-CWM refreshed successfully.', false);
         return;
       }
 
@@ -205,16 +212,21 @@
       }
       customers = await adminApi("/customers?action=cwm-overview");
       renderCards(document.getElementById("cwmSearch")?.value || "");
+      if (fromRefresh) showAlert('PORTAL-CWM refreshed successfully.', false);
     } catch (error) {
       const grid = document.getElementById("cwmCardGrid");
       if (grid) grid.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load PORTAL-CWM.")}</p>`;
       showAlert(error.message || "Could not load PORTAL-CWM.", true);
+    } finally {
+      isRefreshing = false;
+      document.querySelectorAll('#refreshButton,[data-cwm-refresh]').forEach((button) => { button.disabled = false; button.classList.remove('is-refreshing'); const label = button.querySelector('.refresh-text'); if (label) label.textContent = 'Refresh'; });
     }
   }
 
   document.getElementById("cwmSearch")?.addEventListener("input", (event) => renderCards(event.target.value));
-  document.getElementById("refreshButton")?.addEventListener("click", load);
   document.body.addEventListener("click", (event) => {
+    const refresh = event.target.closest('#refreshButton,[data-cwm-refresh]');
+    if (refresh) { event.preventDefault(); load({ fromRefresh: true }); return; }
     if (event.target.closest("[data-cwm-logout]")) logout();
   });
   document.getElementById("logoutButton")?.addEventListener("click", logout);

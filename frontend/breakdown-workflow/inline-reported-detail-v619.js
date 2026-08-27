@@ -20,23 +20,15 @@
     pendingCard=null;
   };
 
-  const placeInWorkspace=card=>{
+  const placeInsideCard=card=>{
     if(!card||!card.isConnected)return;
-    expandedCard?.classList.remove('inline-detail-open');
+    if(expandedCard&&expandedCard!==card)expandedCard.classList.remove('inline-detail-open');
     expandedCard=card;
     card.classList.add('inline-detail-open');
-    detailPanel.classList.remove('inline-case-detail');
-    detailPanel.classList.add('reported-workspace-open');
-
-    /* Keep the queue on the left and use the existing right-hand Job Card
-       workspace. This avoids the long vertical expansion below each card. */
-    if(detailPanel.parentElement!==grid){
-      if(originalNext&&originalNext.parentNode===grid)grid.insertBefore(detailPanel,originalNext);
-      else grid.appendChild(detailPanel);
-    }
-    requestAnimationFrame(()=>{
-      detailPanel.scrollIntoView({behavior:'smooth',block:'start',inline:'nearest'});
-    });
+    detailPanel.classList.remove('reported-workspace-open');
+    detailPanel.classList.add('inline-case-detail');
+    card.appendChild(detailPanel);
+    requestAnimationFrame(()=>detailPanel.scrollIntoView({behavior:'smooth',block:'nearest'}));
   };
 
   list.addEventListener('click',event=>{
@@ -47,13 +39,18 @@
     event.preventDefault();
     event.stopPropagation();
 
+    if(expandedCard===card&&detailPanel.parentElement===card){
+      restorePanel();
+      return;
+    }
+
     pendingCard=card;
     card.click();
   },true);
 
   const observer=new MutationObserver(()=>{
     if(pendingCard&&detail.children.length){
-      placeInWorkspace(pendingCard);
+      placeInsideCard(pendingCard);
       pendingCard=null;
     }
   });

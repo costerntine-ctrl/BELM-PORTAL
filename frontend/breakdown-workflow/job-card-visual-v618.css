@@ -1,5 +1,4 @@
-/* V620 - BELM WM Job Card visual parity.
-   Brand shell = navy / blue / green / yellow. Operational status colours are preserved. */
+/* V622 - BELM WM Job Card compact brand layout. */
 .case-card,
 .case-card.delayed{
   background:linear-gradient(180deg,#073263 0%,#041d3b 100%)!important;
@@ -25,14 +24,16 @@
 .detail-panel,.inline-case-detail{background:linear-gradient(180deg,#05264b 0%,#031b36 52%,#021326 100%)!important;border:1px solid #1684ff!important;box-shadow:0 18px 42px rgba(0,0,0,.2)!important;color:#fff!important}
 .detail-panel .detail{color:#fff!important}.detail-panel .detail h2,.detail-panel .detail h3,.detail-panel .detail h4,.detail-panel .detail b,.detail-panel .detail strong{color:#fff}
 .detail-panel .detail-sub,.detail-panel small,.detail-panel .stage-detail-grid span{color:#a9bdd4!important}
-.detail-panel .main-job-process,.detail-panel .workflow-tabs,.detail-panel .status-box>div,.detail-panel .job,.detail-panel .spare,.detail-panel .stage-detail-event,.detail-panel .stage-detail-grid>div,.detail-panel .stage-spare-row{background:linear-gradient(180deg,#073263,#041d3b)!important;border-color:#27699e!important;color:#fff!important}
+.detail-panel .main-job-process,.detail-panel .workflow-tabs,.detail-panel .job,.detail-panel .spare,.detail-panel .stage-detail-event,.detail-panel .stage-detail-grid>div,.detail-panel .stage-spare-row{background:linear-gradient(180deg,#073263,#041d3b)!important;border-color:#27699e!important;color:#fff!important}
 .detail-panel .main-job-process{border:1px solid #1684ff!important}.detail-panel .workflow-tabs{border-color:#27699e!important}.detail-panel .workflow-tabs button{color:#bcd1e7!important}.detail-panel .workflow-tabs button.active{background:#0b67c2!important;color:#fff!important}.detail-panel .workflow-tabs button.active span{background:#ffc400!important;color:#07182d!important}
 .detail-panel select,.detail-panel input,.detail-panel textarea{background:#031b36!important;color:#fff!important;border-color:#3b79aa!important}
 .detail-panel .actions .blue,.detail-panel button.blue{background:#0b67c2!important;color:#fff!important;border-color:#1684ff!important}.detail-panel .actions .approve,.detail-panel button.approve{background:#09834a!important;color:#fff!important}.detail-panel .actions .yellow,.detail-panel button.yellow{background:#f2c318!important;color:#07182d!important}
 .detail-panel .detail-title-row h2,.detail-panel .job-process-main-title,.detail-panel .main-job-card-title{color:#ffc400!important}.detail-panel .section h3,.detail-panel .section-head h3{border-bottom-color:#27699e!important}.detail-panel .workflow-primary-actions{border-color:#27699e!important}
 .detail-panel .workflow-focus:not(.delayed):not(.complete){background:linear-gradient(135deg,#0b3154,#073263)!important;border-color:#1684ff!important;border-left-color:#1684ff!important}.detail-panel .workflow-focus.delayed{background:linear-gradient(135deg,#5a1e24,#7b2a2a)!important;border-color:#c72f2f!important;border-left-color:#c72f2f!important}.detail-panel .workflow-focus.complete{background:linear-gradient(135deg,#06472d,#087443)!important;border-color:#09834a!important;border-left-color:#09834a!important}
-/* V621: remove the four bottom overview tiles (Reported Issue, Next Responsible Team, Open Job Cards, Open Spare Requests) to keep the opened Job Card compact. */
-.detail-panel .workflow-overview-grid{display:none!important}
+/* V622: these are the four boxes the user pointed to: Breakdown Time, Current Stage, Department, Waiting Here. */
+.detail-panel .status-box{display:none!important}
+/* Restore the bottom overview data; the previous change hid the wrong four boxes. */
+.detail-panel .workflow-overview-grid{display:grid!important}
 [data-theme="light"] .case-card,[data-theme="light"] .case-card.delayed{background:linear-gradient(180deg,#0b4f96 0%,#073263 100%)!important}
 [data-theme="light"] .detail-panel,[data-theme="light"] .inline-case-detail{background:linear-gradient(180deg,#eaf5ff,#d9ecff)!important;color:#07182d!important}
 [data-theme="light"] .detail-panel .detail h2,[data-theme="light"] .detail-panel .detail h3,[data-theme="light"] .detail-panel .detail h4,[data-theme="light"] .detail-panel .detail b,[data-theme="light"] .detail-panel .detail strong{color:#07182d}

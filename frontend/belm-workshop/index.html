@@ -7,6 +7,7 @@
   <title>BELM Workshop Portal — PORTAL-BELM WM</title>
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+<<<<<<< HEAD
   <link rel="stylesheet" href="/admin-tools.css"><link rel="stylesheet" href="/belm-workshop/manager.css?v=604-current-modules"><link rel="stylesheet" href="/belm-workshop/home-v603.css?v=612-sidebar-dashboard"><link rel="stylesheet" href="/theme-global.css?v=496-back-menu-manual-login"><script src="/theme-manager.js?v=496-back-menu-manual-login"></script>
 </head>
 <body class="bwd-body">
@@ -173,3 +174,32 @@
 })();
 </script>
 </body></html>
+=======
+  <link rel="stylesheet" href="/admin-tools.css"><link rel="stylesheet" href="/belm-workshop/manager.css?v=604-current-modules"><link rel="stylesheet" href="/belm-workshop/home-v603.css?v=609-blink"><link rel="stylesheet" href="/theme-global.css?v=496-back-menu-manual-login"><script src="/theme-manager.js?v=496-back-menu-manual-login"></script>
+</head>
+<body class="bw-home-dashboard-v603">
+<header class="bw-home-topbar-v603"><a class="bw-home-brand-v603" href="/belm-workshop/"><img src="/app-icon-192.png" alt="BELM logo"><span><b>BELM General Tech</b><small>PORTAL · WORKSHOP MANAGEMENT</small></span></a><div class="bw-home-top-actions-v603"><a id="mainMenuBackButton" class="bw-home-header-button-v603" href="/overview-manager/">← Main Menu</a><button id="workshopSyncButton" class="bw-home-header-button-v603" type="button">↻ Refresh</button><button id="bwLogoutButton" class="bw-home-header-button-v603" type="button">↪ Log out</button></div></header>
+<main class="bw-home-shell-v603">
+<section class="bw-home-hero-v603"><p class="bw-home-welcome-v603">BELM TECHNICAL DEP · WORKSHOP MANAGEMENT</p><h1>BELM <em>WORKSHOP</em> PORTAL</h1></section>
+<div id="bwAlert" class="bw-alert hidden" role="status" aria-live="polite"></div>
+<section class="bw-home-message-v603" aria-live="polite"><button type="button" data-bw-message-prev>‹</button><div><strong data-bw-message-text>Safety is everyone’s responsibility. Work safe, go home safe.</strong><small data-bw-message-by>— BELM Team</small><div class="bw-home-dots-v603" data-bw-message-dots></div></div><button type="button" data-bw-message-next>›</button></section>
+<a class="bw-home-open-v603" href="/belm-workshop/control-center/"><span class="bw-home-open-icon-v603">⚙</span><b>OPEN WORKSHOP</b><span class="bw-home-open-arrow-v603">→</span></a>
+<section class="bw-home-quick-v603"><div class="bw-home-quick-title-v603"><span>QUICK ACCESS</span></div><nav class="bw-home-quick-grid-v603">
+<a href="#customer-overview" data-workshop-window="customer-overview"><i>▣</i><b>CUSTOMER MACHINES</b><small>View & manage customer machines</small><span>›</span></a>
+<a href="#job-cards" data-workshop-window="job-cards"><i>✓</i><b>OPEN JOB CARDS</b><small>Create, assign & manage jobs</small><span>›</span></a>
+<a href="#store-spares" data-workshop-window="store"><i>◆</i><b>STORE & SPARES</b><small>Inventory & stock control</small><span>›</span></a>
+<a href="#procurement" data-workshop-window="procurement"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & purchasing</small><span>›</span></a>
+<a href="#manage-technicians" data-workshop-window="technicians"><i>♟</i><b>MANAGE TECHNICIANS</b><small>Technicians & assignments</small><span>›</span></a>
+<a href="#checklist-template" data-workshop-window="checklist-template"><i>✓</i><b>CHECK UP (DAILY)</b><small>Checklist templates & control</small><span>›</span></a>
+<a href="#operator-report" data-workshop-window="operator-report"><i>●</i><b>OPERATOR REPORT</b><small>Operator daily reports</small><span>›</span></a>
+<a href="#service-tracking" data-workshop-window="service-tracking"><i>◷</i><b>SERVICE TRACKING</b><small>250/500/1000/2000 hour services</small><span>›</span></a>
+<a href="#workshop-analysis" data-workshop-window="analysis"><i>▥</i><b>WORKSHOP ANALYSIS</b><small>Performance & workshop analysis</small><span>›</span></a>
+<a href="#general-report" data-workshop-window="general-report"><i>▤</i><b>GENERAL REPORT</b><small>All reports & documents</small><span>›</span></a>
+</nav></section>
+<section class="bw-home-secondary-v603"><a href="#petty-cash" data-workshop-window="petty-cash">PETTY CASH</a><a href="#general-analysis" data-workshop-window="general-analysis">GENERAL ANALYSIS</a><a href="#all-overview" data-workshop-window="all-overview">ALL OVERVIEW</a><a href="#settings" data-workshop-window="settings">SETTINGS CENTER</a></section>
+</main>
+<footer class="bw-home-footer-v603"><div class="bw-home-footer-brand-v603"><img src="/app-icon-192.png" alt=""><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div><p>Powering Performance.<br>Ensuring Reliability.</p><div class="bw-home-values-v603"><span>◈ Safety First</span><span>✓ Quality Work</span><span>◷ On Time</span><span>♧ Reliable Support</span></div></footer>
+<dialog id="workshopWindow" class="bw-workspace-dialog"><div class="bw-workspace-shell"><header class="bw-workspace-head"><div><p>TECHNICAL DEP → BELM WM HOME</p><h2 id="workshopWindowTitle">Workshop Window</h2><span id="workshopWindowSubtitle">Live synchronized workspace</span></div><div class="bw-workspace-actions"><button id="workshopWindowReload" type="button">Sync / Refresh</button><button id="workshopWindowClose" class="bw-close-button" type="button">← Main Home</button></div></header><div class="bw-workspace-body"><div id="workshopWindowLoading" class="bw-window-loading">Opening Workshop module…</div><iframe id="workshopWindowFrame" title="BELM Workshop module" loading="eager" srcdoc="<!doctype html><html><body style=&quot;margin:0;background:#0b1728;color:#b8c7d9;font:700 13px system-ui;min-height:100vh&quot;></body></html>"></iframe></div></div></dialog>
+<script src="/admin-access.js?v=411-job-card-only"></script><script src="/edit-confirm.js"></script><script src="/belm-workshop/home-v603.js?v=603-belm-wm-home-dashboard"></script><script src="/belm-workshop/manager.js?v=604-current-modules"></script>
+</body></html>
+>>>>>>> a9979306685cf2549f8a741a16f86c912399bd9f

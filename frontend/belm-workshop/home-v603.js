@@ -26,18 +26,20 @@
 
   const root=document.querySelector('.bw-home-message-v603');
   if(!root)return;
+  const titleEl=root.querySelector('[data-bw-message-title]');
   const textEl=root.querySelector('[data-bw-message-text]');
   const byEl=root.querySelector('[data-bw-message-by]');
   const dots=root.querySelector('[data-bw-message-dots]');
-  const quote=root.querySelector('.bw-home-quote-mark-v603');
+  const heading=root.querySelector('.cwm-alert-heading-v610 span');
+  const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-  const machineLabel=(machine)=>{
+  const machineLabel=machine=>{
     const name=[machine.brand,machine.model].filter(Boolean).join(' ').trim()||machine.machineType||'Machine';
     const fleet=machine.fleetNumber||machine.regNumber||machine.serialNumber||'';
     return fleet?`${name} · Fleet ${fleet}`:name;
   };
 
-  const buildMessages=(machines)=>{
+  const buildMessages=machines=>{
     const rows=[];
     (Array.isArray(machines)?machines:[]).forEach(machine=>{
       const title=machineLabel(machine);
@@ -48,22 +50,15 @@
       const openJobs=Number(machine.openJobCards||0);
       const pendingSpares=Number(machine.pendingSpares||0);
       const latestJob=String(machine.latestJobStatus||'').trim();
-
       if(operatorText){
         const danger=/critical|stop|stopped|breakdown|danger|fault|failed|urgent|not working/i.test(`${operatorStatus} ${operatorText}`);
         rows.push({type:danger?'danger':'warning',title,text:operatorText,by:`Operator Report${machine.operatorName?` · ${machine.operatorName}`:''}${customer}`});
       }
-      if(openJobs>0){
-        rows.push({type:'warning',title,text:`${openJobs} open Job Card${openJobs===1?'':'s'}${latestJob?` · Latest status: ${latestJob}`:''}.`,by:`Job Card Movement${customer}`});
-      }
-      if(pendingSpares>0){
-        rows.push({type:'warning',title,text:`${pendingSpares} spare request${pendingSpares===1?' is':'s are'} waiting for action.`,by:`Store / Procurement${customer}`});
-      }
-      if(/NEW|DUE|OVERDUE|REQUIRED/i.test(serviceKit)){
-        rows.push({type:/OVERDUE/i.test(serviceKit)?'danger':'warning',title,text:`Service status: ${serviceKit}.`,by:`Service Tracking${customer}`});
-      }
+      if(openJobs>0)rows.push({type:'warning',title,text:`${openJobs} open Job Card${openJobs===1?'':'s'}${latestJob?` · Latest status: ${latestJob}`:''}.`,by:`Job Card Movement${customer}`});
+      if(pendingSpares>0)rows.push({type:'warning',title,text:`${pendingSpares} spare request${pendingSpares===1?' is':'s are'} waiting for action.`,by:`Store / Procurement${customer}`});
+      if(/NEW|DUE|OVERDUE|REQUIRED/i.test(serviceKit))rows.push({type:/OVERDUE/i.test(serviceKit)?'danger':'warning',title,text:`Service status: ${serviceKit}.`,by:`Service Tracking${customer}`});
     });
-    if(!rows.length && Array.isArray(machines) && machines.length){
+    if(!rows.length&&Array.isArray(machines)&&machines.length){
       machines.slice(0,6).forEach(machine=>rows.push({type:'good',title:machineLabel(machine),text:'No active alert is currently recorded for this machine.',by:`Live Machine Status${machine.customerName?` · ${machine.customerName}`:''}`}));
     }
     return rows.length?rows:[...fallbackMessages];
@@ -74,8 +69,9 @@
     if(index>=homeMessages.length)index=0;
     const item=homeMessages[index];
     root.dataset.alertType=item.type||'info';
-    if(quote)quote.textContent=item.type==='good'?'✓':'⚠';
-    if(textEl)textEl.innerHTML=`<span class="bw-alert-title-v614">${String(item.title||'MACHINE ALERT').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</span><span class="bw-alert-text-v614">${String(item.text||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}</span>`;
+    if(heading)heading.textContent=item.type==='good'?'✓':'⚠';
+    if(titleEl)titleEl.textContent=item.title||'MACHINE ALERT';
+    if(textEl)textEl.textContent=item.text||'';
     if(byEl)byEl.textContent=`— ${item.by}`;
     if(dots){
       dots.innerHTML=homeMessages.map((_,i)=>`<button type="button" aria-label="Machine alert ${i+1}" class="${i===index?'active':''}" data-bw-dot="${i}"></button>`).join('');
@@ -86,7 +82,6 @@
   const next=()=>{index=(index+1)%homeMessages.length;render();};
   const prev=()=>{index=(index-1+homeMessages.length)%homeMessages.length;render();};
   const restart=()=>{if(timer)clearInterval(timer);timer=setInterval(next,6500);};
-
   const loadAlerts=async(showError=false)=>{
     const token=localStorage.getItem('belm_admin_token')||'';
     if(!token)return;
@@ -95,24 +90,16 @@
       const data=await response.json().catch(()=>null);
       if(!response.ok)throw new Error(data?.error||`Request failed (${response.status})`);
       homeMessages=buildMessages(data?.machines||[]);
-      index=0;
-      render();
-      restart();
+      index=0;render();restart();
     }catch(error){
-      if(showError){
-        const box=document.getElementById('bwAlert');
-        if(box){box.textContent=`Could not refresh machine alerts: ${error.message}`;box.classList.remove('hidden');box.classList.add('error');}
-      }
+      if(showError){const box=document.getElementById('bwAlert');if(box){box.textContent=`Could not refresh machine alerts: ${escapeHtml(error.message)}`;box.classList.remove('hidden');box.classList.add('error');}}
     }
   };
 
   root.querySelector('[data-bw-message-next]')?.addEventListener('click',()=>{next();restart();});
   root.querySelector('[data-bw-message-prev]')?.addEventListener('click',()=>{prev();restart();});
   document.getElementById('workshopSyncButton')?.addEventListener('click',()=>loadAlerts(true));
-
-  render();
-  restart();
-  loadAlerts(false);
+  render();restart();loadAlerts(false);
   refreshTimer=setInterval(()=>loadAlerts(false),30000);
   window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer);});
 })();

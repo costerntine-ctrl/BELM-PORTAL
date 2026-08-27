@@ -1,133 +1,19 @@
 /* =====================================================================
-   V613 — BELM WM HOME: single-column layout matching the approved
-   reference look (hero + contact pills + quote card + OPEN WORKSHOP CTA
-   + 6 Quick Access buttons + footer). No sidebar, no extra sections.
-   Menu targets, hrefs and dialog behaviour are untouched (manager.js).
+   V614 — BELM WM HOME. Approved layout preserved; machine alert card
+   now receives live BELM WM machine status with green/yellow/red states.
    ===================================================================== */
-:root{
-  --bw-bg:#050b18;
-  --bw-panel:#0c1a30;
-  --bw-panel2:#0f2340;
-  --bw-line:#1a3252;
-  --bw-ink:#eef4fb;
-  --bw-muted:#8fa5bd;
-  --bw-gold:#f5c518;
-  --bw-green:#1ecb7a;
-  --bw-blue:#2a9cf5;
-}
+:root{--bw-bg:#050b18;--bw-panel:#0c1a30;--bw-panel2:#0f2340;--bw-line:#1a3252;--bw-ink:#eef4fb;--bw-muted:#8fa5bd;--bw-gold:#f5c518;--bw-green:#1ecb7a;--bw-blue:#2a9cf5}
 .bw-home-dashboard-v603{margin:0;background:var(--bw-bg);color:var(--bw-ink);font-family:Inter,system-ui,sans-serif;overflow-x:hidden}
-
-/* ---------- Top bar ---------- */
 .bw-home-topbar-v603{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;background:var(--bw-panel);border-bottom:1px solid var(--bw-line)}
 .bw-home-brand-v603{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--bw-ink)}
-.bw-home-brand-v603 img{width:32px;height:32px;border-radius:8px}
-.bw-home-brand-v603 b{display:block;font-size:13px;font-weight:800}
-.bw-home-brand-v603 small{display:block;font-size:9px;color:var(--bw-muted);letter-spacing:.05em}
-.bw-home-top-actions-v603{display:flex;align-items:center;gap:8px}
-.bw-home-header-button-v603{
-  display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;
-  background:transparent;border:1px solid var(--bw-blue);color:var(--bw-ink);font-size:11.5px;font-weight:700;
-  text-decoration:none;cursor:pointer;
-}
-.bw-home-header-button-v603:hover{background:rgba(42,156,245,.12)}
-.bw-home-header-button-hidden{display:none!important}
-#mainMenuBackButton[hidden]{display:none!important}
-
+.bw-home-brand-v603 img{width:32px;height:32px;border-radius:8px}.bw-home-brand-v603 b{display:block;font-size:13px;font-weight:800}.bw-home-brand-v603 small{display:block;font-size:9px;color:var(--bw-muted);letter-spacing:.05em}
+.bw-home-top-actions-v603{display:flex;align-items:center;gap:8px}.bw-home-header-button-v603{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:999px;background:transparent;border:1px solid var(--bw-blue);color:var(--bw-ink);font-size:11.5px;font-weight:700;text-decoration:none;cursor:pointer}.bw-home-header-button-v603:hover{background:rgba(42,156,245,.12)}.bw-home-header-button-hidden{display:none!important}#mainMenuBackButton[hidden]{display:none!important}
 .bw-home-shell-v603{width:min(560px,94%);margin:0 auto;padding:8px 0 30px}
-
-/* ---------- Hero ---------- */
-.bw-home-hero-v603{
-  text-align:center;padding:38px 20px 26px;margin-top:0;
-  background:
-    radial-gradient(circle at 15% 20%,rgba(255,255,255,.06),transparent 45%),
-    linear-gradient(135deg,#1746c9 0%,#123a9e 35%,#0a2a78 65%,#071d54 100%);
-  border-radius:0 0 26px 26px;position:relative;overflow:hidden;
-}
-.bw-home-welcome-v603{margin:0;font-size:11px;font-weight:800;letter-spacing:.22em;color:#ffe27a;display:flex;align-items:center;justify-content:center;gap:10px}
-.bw-home-welcome-v603 i{font-style:normal;color:#ffe27a;opacity:.7}
-.bw-home-hero-v603 h1{margin:10px 0 6px;font:800 clamp(24px,7vw,32px) "Space Grotesk",sans-serif;color:#fff}
-.bw-home-hero-v603 h1 em{color:var(--bw-gold);font-style:normal}
-.bw-home-hero-gear-v603{display:inline-block;margin-top:8px;font-size:15px;color:rgba(255,255,255,.55)}
-
-/* ---------- Contact pills ---------- */
-.bw-home-contact-v603{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:-24px 0 22px;position:relative;z-index:2;padding:0 12px}
-.bw-home-contact-item-v603{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px}
-.bw-home-contact-icon-v603{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:17px;border:2px solid var(--bw-bg);box-shadow:0 6px 14px rgba(0,0,0,.35)}
-.bw-icon-blue{background:#0e1b30}
-.bw-icon-gold{background:var(--bw-gold)}
-.bw-icon-green{background:var(--bw-green)}
-.bw-home-contact-item-v603 small{font-size:8.5px;font-weight:800;letter-spacing:.08em;color:var(--bw-muted)}
-.bw-home-contact-item-v603 b{font-size:10.5px;font-weight:800;color:var(--bw-ink);text-align:center}
-
-#bwAlert.bw-alert{max-width:520px;margin:0 auto 16px;padding:10px 16px;border-radius:12px;background:var(--bw-panel);border:1px solid var(--bw-blue);font-size:12.5px;text-align:center}
-#bwAlert.bw-alert.error{border-color:#ef5350}
-#bwAlert.hidden{display:none}
-
-/* ---------- Quote / message card ---------- */
-.bw-home-message-v603{
-  position:relative;display:flex;align-items:center;gap:10px;
-  padding:26px 44px;margin:0 0 22px;border-radius:20px;
-  background:var(--bw-panel);border:1px solid var(--bw-line);text-align:center;
-}
-.bw-home-quote-mark-v603{position:absolute;top:12px;left:50%;transform:translateX(-50%);font:800 30px Georgia,serif;color:var(--bw-blue)}
-.bw-home-message-v603 div{flex:1;padding-top:14px}
-.bw-home-message-v603 strong{display:block;font-size:15px;font-weight:700;line-height:1.4}
-.bw-home-message-v603 small{display:block;margin-top:10px;color:var(--bw-blue);font-size:11.5px;font-weight:700}
-.bw-home-message-v603 button{
-  flex:none;width:32px;height:32px;border-radius:50%;background:var(--bw-panel2);
-  border:1px solid var(--bw-line);color:var(--bw-ink);font-size:17px;cursor:pointer;
-}
-.bw-home-dots-v603{display:flex;justify-content:center;gap:5px;margin-top:12px}
-.bw-home-dots-v603 button{width:6px;height:6px;padding:0;border-radius:50%;background:var(--bw-line);border:0}
-.bw-home-dots-v603 button.active{background:var(--bw-gold)}
-
-/* ---------- OPEN WORKSHOP CTA ---------- */
-.bw-home-open-v603{
-  display:flex;align-items:center;justify-content:center;gap:14px;
-  padding:20px;border-radius:16px;margin-bottom:26px;text-decoration:none;
-  background:linear-gradient(135deg,#ffd85e,#f2b705);color:#241b00;
-  box-shadow:0 12px 26px rgba(242,183,5,.28);
-}
-.bw-home-open-icon-v603{width:38px;height:38px;border-radius:50%;background:#0c1a30;color:var(--bw-gold);display:grid;place-items:center;font-size:17px}
-.bw-home-open-v603 b{font-size:16px;font-weight:900;letter-spacing:.03em}
-.bw-home-open-arrow-v603{width:32px;height:32px;border-radius:50%;background:#0c1a30;color:var(--bw-gold);display:grid;place-items:center;font-size:15px}
-
-/* ---------- Quick access ---------- */
-.bw-home-quick-title-v603{text-align:center;margin-bottom:16px}
-.bw-home-quick-title-v603 span{font-size:11px;font-weight:800;letter-spacing:.2em;color:var(--bw-muted);position:relative}
-.bw-home-quick-title-v603 span::after{content:"";display:block;width:26px;height:2px;background:var(--bw-gold);margin:8px auto 0;border-radius:2px}
-.bw-home-quick-grid-v603{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}
-.bw-home-quick-grid-v603 a{
-  display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 12px;border-radius:14px;
-  background:var(--bw-panel);border:1px solid var(--bw-line);text-decoration:none;color:var(--bw-ink);position:relative;
-}
-.bw-home-quick-grid-v603 i{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-style:normal;font-size:15px}
-.bw-ic-blue{background:#1670d6}
-.bw-ic-green{background:#1ecb7a}
-.bw-ic-gold{background:#f2b705}
-.bw-ic-blue2{background:#2a9cf5}
-.bw-ic-green2{background:#2fbf6a}
-.bw-ic-gold2{background:#e8a417}
-.bw-home-quick-grid-v603 b{font-size:10px;font-weight:800;letter-spacing:.02em}
-.bw-home-quick-grid-v603 small{font-size:9px;color:var(--bw-muted);line-height:1.25}
-.bw-home-quick-grid-v603 span{position:absolute;right:10px;top:12px;color:var(--bw-muted);font-size:13px}
-
-/* ---------- Footer ---------- */
-.bw-home-footer-v603{
-  margin-top:26px;padding:26px 20px 14px;background:var(--bw-panel);border-top:1px solid var(--bw-line);
-  display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;color:var(--bw-muted);font-size:11.5px;
-}
-.bw-home-footer-brand-v603{display:flex;align-items:center;gap:10px}
-.bw-home-footer-brand-v603 img{width:32px;height:32px;border-radius:8px}
-.bw-home-footer-brand-v603 b{display:block;color:var(--bw-ink);font-size:13px}
-.bw-home-footer-brand-v603 small{display:block;font-size:9px}
-.bw-home-values-v603{display:flex;flex-wrap:wrap;gap:16px;font-size:11px;font-weight:700}
-.bw-home-copyright-v603{text-align:center;font-size:10.5px;color:var(--bw-muted);background:var(--bw-panel);margin:0;padding:0 0 20px}
-
-/* ---------- Responsive ---------- */
-@media(max-width:480px){
-  .bw-home-quick-grid-v603{grid-template-columns:repeat(2,1fr)}
-  .bw-home-contact-v603{gap:10px}
-  .bw-home-contact-item-v603{min-width:80px}
-  .bw-home-message-v603{padding:24px 16px}
-}
+.bw-home-hero-v603{text-align:center;padding:38px 20px 26px;margin-top:0;background:radial-gradient(circle at 15% 20%,rgba(255,255,255,.06),transparent 45%),linear-gradient(135deg,#1746c9 0%,#123a9e 35%,#0a2a78 65%,#071d54 100%);border-radius:0 0 26px 26px;position:relative;overflow:hidden}.bw-home-welcome-v603{margin:0;font-size:11px;font-weight:800;letter-spacing:.22em;color:#ffe27a;display:flex;align-items:center;justify-content:center;gap:10px}.bw-home-welcome-v603 i{font-style:normal;color:#ffe27a;opacity:.7}.bw-home-hero-v603 h1{margin:10px 0 6px;font:800 clamp(24px,7vw,32px) "Space Grotesk",sans-serif;color:#fff}.bw-home-hero-v603 h1 em{color:var(--bw-gold);font-style:normal}.bw-home-hero-gear-v603{display:inline-block;margin-top:8px;font-size:15px;color:rgba(255,255,255,.55)}
+.bw-home-contact-v603{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin:-24px 0 22px;position:relative;z-index:2;padding:0 12px}.bw-home-contact-item-v603{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:96px}.bw-home-contact-icon-v603{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-size:17px;border:2px solid var(--bw-bg);box-shadow:0 6px 14px rgba(0,0,0,.35)}.bw-icon-blue{background:#0e1b30}.bw-icon-gold{background:var(--bw-gold)}.bw-icon-green{background:var(--bw-green)}.bw-home-contact-item-v603 small{font-size:8.5px;font-weight:800;letter-spacing:.08em;color:var(--bw-muted)}.bw-home-contact-item-v603 b{font-size:10.5px;font-weight:800;color:var(--bw-ink);text-align:center}
+#bwAlert.bw-alert{max-width:520px;margin:0 auto 16px;padding:10px 16px;border-radius:12px;background:var(--bw-panel);border:1px solid var(--bw-blue);font-size:12.5px;text-align:center}#bwAlert.bw-alert.error{border-color:#ef5350}#bwAlert.hidden{display:none}
+.bw-home-message-v603{position:relative;display:flex;align-items:center;gap:10px;padding:26px 44px;margin:0 0 22px;border-radius:20px;background:var(--bw-panel);border:1px solid var(--bw-line);text-align:center;transition:border-color .2s,box-shadow .2s}.bw-home-quote-mark-v603{position:absolute;top:12px;left:50%;transform:translateX(-50%);font:800 22px Inter,sans-serif;color:var(--bw-blue)}.bw-home-message-v603 div{flex:1;padding-top:14px}.bw-home-message-v603 strong{display:block;font-size:15px;font-weight:700;line-height:1.4}.bw-home-message-v603 small{display:block;margin-top:10px;color:var(--bw-blue);font-size:11.5px;font-weight:700}.bw-home-message-v603 button{flex:none;width:32px;height:32px;border-radius:50%;background:var(--bw-panel2);border:1px solid var(--bw-line);color:var(--bw-ink);font-size:17px;cursor:pointer}.bw-alert-title-v614{display:block;font:800 16px "Space Grotesk",sans-serif;margin-bottom:7px}.bw-alert-text-v614{display:block;font-size:13px;font-weight:500;color:#d9e3ee;line-height:1.45}.bw-home-message-v603[data-alert-type="good"]{border-color:#1ecb7a;box-shadow:0 0 0 1px rgba(30,203,122,.08)}.bw-home-message-v603[data-alert-type="good"] .bw-home-quote-mark-v603,.bw-home-message-v603[data-alert-type="good"] .bw-alert-title-v614,.bw-home-message-v603[data-alert-type="good"] small{color:#1ecb7a}.bw-home-message-v603[data-alert-type="warning"]{border-color:#f5c518;box-shadow:0 0 0 1px rgba(245,197,24,.08)}.bw-home-message-v603[data-alert-type="warning"] .bw-home-quote-mark-v603,.bw-home-message-v603[data-alert-type="warning"] .bw-alert-title-v614,.bw-home-message-v603[data-alert-type="warning"] small{color:#f5c518}.bw-home-message-v603[data-alert-type="danger"]{border-color:#ff5252;box-shadow:0 0 0 1px rgba(255,82,82,.1)}.bw-home-message-v603[data-alert-type="danger"] .bw-home-quote-mark-v603,.bw-home-message-v603[data-alert-type="danger"] .bw-alert-title-v614,.bw-home-message-v603[data-alert-type="danger"] small{color:#ff6b6b}.bw-home-dots-v603{display:flex;justify-content:center;gap:5px;margin-top:12px}.bw-home-dots-v603 button{width:6px;height:6px;padding:0;border-radius:50%;background:var(--bw-line);border:0}.bw-home-dots-v603 button.active{background:var(--bw-gold)}
+.bw-home-open-v603{display:flex;align-items:center;justify-content:center;gap:14px;padding:20px;border-radius:16px;margin-bottom:26px;text-decoration:none;background:linear-gradient(135deg,#ffd85e,#f2b705);color:#241b00;box-shadow:0 12px 26px rgba(242,183,5,.28)}.bw-home-open-icon-v603{width:38px;height:38px;border-radius:50%;background:#0c1a30;color:var(--bw-gold);display:grid;place-items:center;font-size:17px}.bw-home-open-v603 b{font-size:16px;font-weight:900;letter-spacing:.03em}.bw-home-open-arrow-v603{width:32px;height:32px;border-radius:50%;background:#0c1a30;color:var(--bw-gold);display:grid;place-items:center;font-size:15px}
+.bw-home-quick-title-v603{text-align:center;margin-bottom:16px}.bw-home-quick-title-v603 span{font-size:11px;font-weight:800;letter-spacing:.2em;color:var(--bw-muted);position:relative}.bw-home-quick-title-v603 span::after{content:"";display:block;width:26px;height:2px;background:var(--bw-gold);margin:8px auto 0;border-radius:2px}.bw-home-quick-grid-v603{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:8px}.bw-home-quick-grid-v603 a{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:14px 12px;border-radius:14px;background:var(--bw-panel);border:1px solid var(--bw-line);text-decoration:none;color:var(--bw-ink);position:relative}.bw-home-quick-grid-v603 i{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-style:normal;font-size:15px}.bw-ic-blue{background:#1670d6}.bw-ic-green{background:#1ecb7a}.bw-ic-gold{background:#f2b705}.bw-ic-blue2{background:#2a9cf5}.bw-ic-green2{background:#2fbf6a}.bw-ic-gold2{background:#e8a417}.bw-home-quick-grid-v603 b{font-size:10px;font-weight:800;letter-spacing:.02em}.bw-home-quick-grid-v603 small{font-size:9px;color:var(--bw-muted);line-height:1.25}.bw-home-quick-grid-v603 span{position:absolute;right:10px;top:12px;color:var(--bw-muted);font-size:13px}
+.bw-home-footer-v603{margin-top:26px;padding:26px 20px 14px;background:var(--bw-panel);border-top:1px solid var(--bw-line);display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;color:var(--bw-muted);font-size:11.5px}.bw-home-footer-brand-v603{display:flex;align-items:center;gap:10px}.bw-home-footer-brand-v603 img{width:32px;height:32px;border-radius:8px}.bw-home-footer-brand-v603 b{display:block;color:var(--bw-ink);font-size:13px}.bw-home-footer-brand-v603 small{display:block;font-size:9px}.bw-home-values-v603{display:flex;flex-wrap:wrap;gap:16px;font-size:11px;font-weight:700}.bw-home-copyright-v603{text-align:center;font-size:10.5px;color:var(--bw-muted);background:var(--bw-panel);margin:0;padding:0 0 20px}
+@media(max-width:480px){.bw-home-quick-grid-v603{grid-template-columns:repeat(2,1fr)}.bw-home-contact-v603{gap:10px}.bw-home-contact-item-v603{min-width:80px}.bw-home-message-v603{padding:24px 16px}.bw-alert-title-v614{font-size:15px}}

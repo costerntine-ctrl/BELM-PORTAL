@@ -20,43 +20,38 @@ $rows = $pdo->query(
         m.last_checked_at,
         c.name AS customer_name,
         (
-            SELECT orp.message
-            FROM operator_reports orp
+            SELECT orp.message FROM operator_reports orp
             WHERE orp.machine_id = m.id
-            ORDER BY orp.created_at DESC, orp.id DESC
-            LIMIT 1
+            ORDER BY orp.created_at DESC, orp.id DESC LIMIT 1
         ) AS operator_message,
         (
-            SELECT orp.status
-            FROM operator_reports orp
+            SELECT orp.status FROM operator_reports orp
             WHERE orp.machine_id = m.id
-            ORDER BY orp.created_at DESC, orp.id DESC
-            LIMIT 1
+            ORDER BY orp.created_at DESC, orp.id DESC LIMIT 1
         ) AS operator_status,
         (
-            SELECT orp.operator_name
-            FROM operator_reports orp
+            SELECT orp.operator_name FROM operator_reports orp
             WHERE orp.machine_id = m.id
-            ORDER BY orp.created_at DESC, orp.id DESC
-            LIMIT 1
+            ORDER BY orp.created_at DESC, orp.id DESC LIMIT 1
         ) AS operator_name,
         (
-            SELECT COUNT(*)
-            FROM service_requests sr
-            WHERE sr.machine_id = m.id
-              AND COALESCE(UPPER(sr.status),'') NOT IN ('COMPLETED','CANCELLED')
+            SELECT COUNT(*) FROM digital_job_cards dj
+            WHERE dj.machine_id = m.id
+              AND COALESCE(UPPER(dj.status),'') NOT IN ('COMPLETED','CANCELLED')
         ) AS open_job_cards,
         (
-            SELECT sr.status
-            FROM service_requests sr
-            WHERE sr.machine_id = m.id
-              AND COALESCE(UPPER(sr.status),'') NOT IN ('COMPLETED','CANCELLED')
-            ORDER BY sr.created_at DESC, sr.id DESC
-            LIMIT 1
+            SELECT dj.status FROM digital_job_cards dj
+            WHERE dj.machine_id = m.id
+              AND COALESCE(UPPER(dj.status),'') NOT IN ('COMPLETED','CANCELLED')
+            ORDER BY dj.updated_at DESC, dj.created_at DESC, dj.id DESC LIMIT 1
         ) AS latest_job_status,
         (
-            SELECT COUNT(*)
-            FROM spare_part_requests spr
+            SELECT COUNT(*) FROM breakdown_spare_requests bsr
+            JOIN breakdown_cases bc ON bc.id = bsr.case_id
+            WHERE bc.machine_id = m.id
+              AND COALESCE(UPPER(bsr.status),'') NOT IN ('PARTS_READY','REJECTED','CANCELLED')
+        ) + (
+            SELECT COUNT(*) FROM spare_part_requests spr
             WHERE spr.machine_id = m.id
               AND COALESCE(UPPER(spr.status),'') NOT IN ('COMPLETED','CANCELLED','REJECTED')
         ) AS pending_spares
@@ -89,8 +84,4 @@ $machines = array_map(static function (array $row): array {
     ];
 }, $rows);
 
-json_out([
-    'ok' => true,
-    'generatedAt' => date(DATE_ATOM),
-    'machines' => $machines,
-]);
+json_out(['ok' => true, 'generatedAt' => date(DATE_ATOM), 'machines' => $machines]);

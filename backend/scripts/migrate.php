@@ -53,7 +53,7 @@ $schemaHash = hash('sha256', $schema);
 
 $protectedTables = [
     'roles', 'users', 'customers', 'customer_users', 'customer_branding', 'machines',
-    'checklist_templates', 'checklist_reports', 'customer_notification_settings', 'service_requests', 'service_request_history', 'service_notes',
+    'checklist_templates', 'checklist_reports', 'service_requests', 'service_request_history', 'service_notes',
     'spare_parts', 'spare_part_requests', 'suppliers',
     'bank_accounts', 'bank_withdrawals', 'company_expenses',
     'proforma_invoices', 'proforma_invoice_items', 'invoices', 'invoice_items', 'payments', 'receipts',

@@ -2,158 +2,174 @@
 <html lang="en">
 <head>
   <script>window.addEventListener("pageshow",function(e){if(e.persisted)window.location.reload();});</script>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/png" href="/app-icon-192.png">
-  <link rel="apple-touch-icon" href="/app-icon-192.png">
-  <title>BELM Main Home — PORTAL-BELM WM</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/admin-tools.css">
-  <link rel="stylesheet" href="/portal-switcher.css?v=511-three-portal-menu">
-  <link rel="stylesheet" href="/belm-workshop/manager.css?v=560-belm-wm-cwm-layout">
-  <link rel="stylesheet" href="/theme-global.css?v=496-back-menu-manual-login">
-  <script src="/theme-manager.js?v=496-back-menu-manual-login"></script>
-  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
-  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-  <style>
-    /* V560 — BELM WM only. CWM is not changed. */
-    .bw-belm-wm-layout-v560{display:grid;gap:14px}
-    .bw-store-outside-v560{display:flex;justify-content:flex-end;margin:0}
-    .bw-store-outside-v560 .bw-store-entry{width:min(100%,340px);min-height:64px;display:flex;align-items:center;justify-content:center;border-radius:16px!important;font-size:14px!important;font-weight:900!important;background:linear-gradient(135deg,#05b79c,#0ac3a8)!important;border:1px solid rgba(88,255,218,.45)!important;color:#fff!important;box-shadow:0 12px 28px rgba(0,190,160,.15)!important;text-decoration:none}
-    .bw-cwm-mirror-zone-v560{background:linear-gradient(180deg,#08789d 0%,#075f83 48%,#063e60 100%);border:1px solid rgba(39,213,244,.28);border-radius:24px;padding:16px;box-shadow:0 18px 46px rgba(0,24,45,.24);overflow:hidden}
-    .bw-cwm-mirror-zone-v560 .bw-role-grid{margin:0!important;display:block!important}
-    .bw-cwm-mirror-zone-v560 .bw-role-card.bw-manager-card{max-width:none!important;width:100%!important;margin:0!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
-    .bw-cwm-mirror-zone-v560 .bw-role-icon{display:none!important}
-    .bw-cwm-mirror-zone-v560 .bw-role-head{margin-bottom:6px}
-    .bw-cwm-mirror-zone-v560 .bw-role-description{max-width:none}
-    .bw-cwm-mirror-zone-v560 .bw-responsibilities{margin-bottom:14px}
-    .bw-cwm-mirror-zone-v560 .bw-manager-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin:0!important}
-    .bw-cwm-mirror-zone-v560 .bw-manager-actions>a{min-height:64px!important;width:100%!important;margin:0!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;border-radius:15px!important;font-weight:850!important;text-decoration:none!important}
-    .bw-cwm-mirror-zone-v560 .bw-work-action{background:#03cf78!important;color:#071b20!important;border-color:#25ec97!important}
-    .bw-cwm-mirror-zone-v560 .bw-proc-entry{background:#7157e8!important;color:#fff!important;border-color:#8f7af0!important}
-    .bw-cwm-mirror-zone-v560 .bw-tech-entry{background:#0e92e5!important;color:#fff!important;border-color:#35aaf1!important}
-    .bw-cwm-mirror-zone-v560 .bw-analysis-entry,.bw-cwm-mirror-zone-v560 .bw-manager-utility{background:rgba(5,57,88,.72)!important;color:#fff!important;border:1px solid rgba(73,199,230,.38)!important;box-shadow:none!important}
-    .bw-cwm-mirror-zone-v560 .bw-settings-action{background:#657f94!important;border-color:#7993a8!important}
-    .bw-cwm-mirror-zone-v560 .bw-workflow-panel{margin:18px -1px 0!important;background:#071d34!important;border:1px solid rgba(69,132,170,.38)!important;border-radius:20px!important;padding:18px!important;box-shadow:none!important}
-    .bw-cwm-mirror-zone-v560 .bw-workflow-panel h2{margin-top:4px}
-    .bw-cwm-mirror-zone-v560 .bw-workflow-line{display:flex!important;align-items:center!important;gap:9px!important;flex-wrap:wrap!important}
-    .bw-cwm-mirror-zone-v560 .bw-workflow-line span{border:1px solid #315875!important;background:#0a2842!important;border-radius:11px!important;padding:9px 12px!important;font-weight:800!important}
-    .bw-cwm-mirror-zone-v560 .bw-workflow-line b{color:#19d98a!important;font-size:17px!important}
-    .bw-cwm-mirror-zone-v560 .bw-sync-note{margin-bottom:0!important;color:#a9bdcf!important}
-    @media(max-width:620px){
-      .bw-store-outside-v560{justify-content:stretch}.bw-store-outside-v560 .bw-store-entry{width:100%;max-width:none}
-      .bw-cwm-mirror-zone-v560{padding:12px;border-radius:20px}
-      .bw-cwm-mirror-zone-v560 .bw-manager-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
-      .bw-cwm-mirror-zone-v560 .bw-manager-actions>a{min-height:58px!important;font-size:12px!important;padding:10px 8px!important}
-      .bw-cwm-mirror-zone-v560 .bw-workflow-panel{padding:14px!important;margin-top:14px!important}
-      .bw-cwm-mirror-zone-v560 .bw-workflow-line{gap:7px!important}
-      .bw-cwm-mirror-zone-v560 .bw-workflow-line span{font-size:11px!important;padding:8px 10px!important}
-    }
-  </style>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="/app-icon-192.png"><link rel="apple-touch-icon" href="/app-icon-192.png">
+  <title>BELM Workshop Portal — PORTAL-BELM WM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin-tools.css"><link rel="stylesheet" href="/belm-workshop/manager.css?v=604-current-modules"><link rel="stylesheet" href="/belm-workshop/home-v603.css?v=612-sidebar-dashboard"><link rel="stylesheet" href="/theme-global.css?v=496-back-menu-manual-login"><script src="/theme-manager.js?v=496-back-menu-manual-login"></script>
 </head>
-<body>
-  <header class="topbar">
-    <a class="brand" href="/belm-workshop/">
-      <span class="brand-mark">B</span>
-      <span>BELM General Tech <small>PORTAL-BELM WM · MAIN HOME</small></span>
+<body class="bwd-body">
+<button id="bwdSidebarToggle" class="bwd-sidebar-toggle" type="button" aria-label="Open menu" aria-expanded="false">☰</button>
+<div id="bwdSidebarOverlay" class="bwd-sidebar-overlay"></div>
+
+<aside id="bwdSidebar" class="bwd-sidebar">
+  <a class="bwd-brand" href="/belm-workshop/"><img src="/app-icon-192.png" alt="BELM logo"><span><b>BELM General Tech</b><small>PORTAL · WORKSHOP MANAGEMENT</small></span></a>
+  <nav class="bwd-nav">
+    <a class="bwd-nav-item bwd-nav-home active" href="/belm-workshop/">
+      <i>⌂</i><span>Home</span>
     </a>
-    <div class="top-actions">
-      <a class="ghost" id="mainMenuBackButton" href="/overview-manager/" aria-label="Back to Main Menu">← Back</a>
-      <button class="ghost" id="workshopSyncButton" type="button">Sync Workshop</button>
-    </div>
-  </header>
-  <nav class="belm-portal-switcher" aria-label="BELM portal sections">
-    <a href="/customers-manager/">Customer Overview</a>
-    <a class="active" href="/belm-workshop/">PORTAL-BELM WM</a>
-    <a href="/portal-cwm/">PORTAL-CWM</a>
+
+    <p class="bwd-nav-label">Workshop</p>
+    <a class="bwd-nav-item" href="#customer-overview" data-workshop-window="customer-overview"><i>▣</i><span>Customer Machines</span></a>
+    <a class="bwd-nav-item" href="#job-cards" data-workshop-window="job-cards"><i>✓</i><span>Open Job Cards</span></a>
+    <a class="bwd-nav-item" href="#checklist-template" data-workshop-window="checklist-template"><i>✓</i><span>Check Up (Daily)</span></a>
+    <a class="bwd-nav-item" href="#operator-report" data-workshop-window="operator-report"><i>●</i><span>Operator Report</span></a>
+    <a class="bwd-nav-item" href="#service-tracking" data-workshop-window="service-tracking"><i>◷</i><span>Service Tracking</span></a>
+
+    <p class="bwd-nav-label">Operations</p>
+    <a class="bwd-nav-item" href="#store-spares" data-workshop-window="store"><i>◆</i><span>Store &amp; Spares</span></a>
+    <a class="bwd-nav-item" href="#procurement" data-workshop-window="procurement"><i>▣</i><span>Procurement</span></a>
+    <a class="bwd-nav-item" href="#petty-cash" data-workshop-window="petty-cash"><i>◈</i><span>Petty Cash</span></a>
+    <a class="bwd-nav-item" href="#manage-technicians" data-workshop-window="technicians"><i>♟</i><span>Manage Technicians</span></a>
+    <a class="bwd-nav-item" href="#workshop-analysis" data-workshop-window="analysis"><i>▥</i><span>Workshop Analysis</span></a>
+
+    <p class="bwd-nav-label">Reports &amp; Analysis</p>
+    <a class="bwd-nav-item" href="#general-report" data-workshop-window="general-report"><i>▤</i><span>General Report</span></a>
+    <a class="bwd-nav-item" href="#general-analysis" data-workshop-window="general-analysis"><i>▥</i><span>General Analysis</span></a>
+    <a class="bwd-nav-item" href="#all-overview" data-workshop-window="all-overview"><i>▦</i><span>All Overview</span></a>
+
+    <p class="bwd-nav-label">Settings</p>
+    <a class="bwd-nav-item" href="#settings" data-workshop-window="settings"><i>⚙</i><span>Settings Center</span></a>
   </nav>
+  <div class="bwd-sidebar-foot"><span class="bwd-live-dot"></span> PORTAL STATUS: LIVE</div>
+</aside>
 
-  <main class="shell">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">TECHNICAL DEP → MAIN HOME</p>
-        <h1>PORTAL-BELM WM</h1>
-        <p>BELM Technical Department Main Home. Workshop Manager, Store Keeper, Procurement and Technicians work from one synchronized Job Card flow, with customer, report, delivery and workshop controls in one home.</p>
-      </div>
-      <span class="bw-live-pill"><i></i> LIVE SYNC</span>
-    </section>
+<div class="bwd-main">
+<header class="bwd-topbar">
+  <button id="bwdSidebarToggleTop" class="bwd-sidebar-toggle bwd-sidebar-toggle--inline" type="button" aria-label="Open menu">☰</button>
+  <div class="bwd-topbar-spacer"></div>
+  <div class="bwd-top-actions">
+    <label class="bwd-theme-switch"><span>Dark Mode</span><button id="bwdThemeToggle" class="bwd-switch" type="button" role="switch" aria-checked="true"><i></i></button></label>
+    <button id="workshopSyncButton" class="bwd-icon-button" type="button" title="Refresh">↻</button>
+    <a id="mainMenuBackButton" class="bwd-icon-button" href="/overview-manager/" title="Main Menu">🏠</a>
+    <div class="bwd-admin-chip"><span id="bwdAdminInitial">A</span><div><b id="bwdAdminName">Admin</b><small id="bwdAdminRole">BELM WORKSHOP</small></div></div>
+    <button id="bwLogoutButton" class="bwd-icon-button" type="button" title="Log out">↪</button>
+  </div>
+</header>
 
-    <div id="bwAlert" class="bw-alert hidden" role="status" aria-live="polite"></div>
+<main class="bwd-shell">
+  <div id="bwAlert" class="bw-alert hidden" role="status" aria-live="polite"></div>
 
-    <div class="bw-belm-wm-layout-v560">
-      <!-- BELM Store stays outside the mirrored manager block, as instructed. -->
-      <div class="bw-store-outside-v560">
-        <a class="bw-primary-action bw-store-entry" href="#store-spares" data-workshop-window="store">Open Store &amp; Spares</a>
-      </div>
-
-      <section class="bw-cwm-mirror-zone-v560" aria-label="BELM Workshop Manager control center">
-        <section class="bw-role-grid" aria-label="Workshop roles">
-          <article class="bw-role-card bw-manager-card">
-            <div class="bw-role-icon">WM</div>
-            <div class="bw-role-head">
-              <div><p>WORKSHOP MANAGER</p><h2>Managing Workshop</h2></div>
-              <span class="bw-role-status">CONTROL</span>
-            </div>
-            <p class="bw-role-description">Owns the complete Job Card process from receiving work through assignment, instruction, workload control, testing and final review.</p>
-            <div class="bw-responsibilities" aria-label="Workshop Manager functions">
-              <span>Open Job Cards</span>
-              <span>Assign / Reassign Technician</span>
-              <span>Workshop Instructions</span>
-              <span>Technician Workload</span>
-              <span>Testing &amp; Review</span>
-              <span>Workshop Analysis</span>
-              <a class="bw-responsibility-action bw-customer-overview-action" href="#customer-overview" data-workshop-window="customer-overview">Customer Overview</a>
-              <a class="bw-responsibility-action bw-checklist-template-action" href="#checklist-template" data-workshop-window="checklist-template">Checklist Template</a>
-            </div>
-            <div class="bw-role-actions bw-manager-actions" aria-label="Workshop Manager controls">
-              <a class="bw-primary-action bw-work-action" href="#job-cards" data-workshop-window="job-cards">Open Job Cards</a>
-              <a class="bw-primary-action bw-proc-entry" href="#procurement" data-workshop-window="procurement">Open Procurement</a>
-              <a class="bw-primary-action bw-tech-entry" href="#manage-technicians" data-workshop-window="technicians">Manage Technicians</a>
-              <a class="bw-secondary-action bw-analysis-entry" href="#workshop-analysis" data-workshop-window="analysis">Workshop Analysis</a>
-              <a class="bw-manager-utility bw-general-report-action" href="#general-report" data-workshop-window="general-report">General Report</a>
-              <a class="bw-manager-utility bw-petty-action" href="#petty-cash" data-workshop-window="petty-cash">Petty Cash</a>
-              <a class="bw-manager-utility bw-general-analysis-action" href="#general-analysis" data-workshop-window="general-analysis">General Analysis</a>
-              <a class="bw-manager-utility bw-settings-action" href="#settings" data-workshop-window="settings">Settings</a>
-            </div>
-          </article>
-        </section>
-
-        <section class="bw-workflow-panel">
-          <p class="bw-eyebrow">WORKSHOP FLOW</p>
-          <h2>One Job Card — clear responsibility</h2>
-          <div class="bw-workflow-line">
-            <span>Machine Problem</span><b>→</b><span>Job Card</span><b>→</b><span>Workshop Manager</span><b>→</b><span>Technician</span><b>→</b><span>Store Keeper</span><b>→</b><span>Procurement if shortage</span><b>→</b><span>BELM Store</span><b>→</b><span>Repair &amp; Testing</span><b>→</b><span>Manager Review</span><b>→</b><span>Completed</span>
-          </div>
-          <p class="bw-sync-note"><b>Synchronization rule:</b> this Workshop does not keep a duplicate Job Card database. Job Card number, customer, machine, assignment, status, spare requirement, Technician progress, testing and completion use the same backend records used by TECHNICAL DEP, customer views, procurement and Technician accounts.</p>
-        </section>
-      </section>
+  <section class="bwd-hero">
+    <p class="bwd-hero-eyebrow">WELCOME TO</p>
+    <h1><span>BELM</span> WORKSHOP <em>PORTAL</em></h1>
+    <p class="bwd-hero-sub">Manage your machines, workshop, and operations efficiently.</p>
+    <div class="bwd-hero-pills">
+      <span class="bwd-pill"><i>📍</i> Bunju B / Temeke, Dar es Salaam</span>
+      <span class="bwd-pill" id="bwdRolePill"><i>👤</i> BELM Technical Dept</span>
+      <span class="bwd-pill"><i>●</i> System Online</span>
     </div>
-  </main>
+  </section>
 
-  <dialog id="workshopWindow" class="bw-workspace-dialog">
-    <div class="bw-workspace-shell">
-      <header class="bw-workspace-head">
-        <div>
-          <p>TECHNICAL DEP → BELM MAIN HOME</p>
-          <h2 id="workshopWindowTitle">Workshop Window</h2>
-          <span id="workshopWindowSubtitle">Live synchronized workspace</span>
-        </div>
-        <div class="bw-workspace-actions">
-          <button id="workshopWindowReload" type="button">Sync / Refresh</button>
-          <button id="workshopWindowClose" class="bw-close-button" type="button" aria-label="Back to BELM Main Home">← Main Home</button>
-        </div>
-      </header>
-      <div class="bw-workspace-body">
-        <div id="workshopWindowLoading" class="bw-window-loading">Opening Workshop module…</div>
-        <iframe id="workshopWindowFrame" title="BELM Workshop module" loading="eager" srcdoc="<!doctype html><html><body style=&quot;margin:0;background:#0b1728;color:#b8c7d9;font:700 13px system-ui;min-height:100vh&quot;></body></html>"></iframe>
-      </div>
+  <section class="bwd-home-message-v603 bw-home-message-v603" aria-live="polite"><button type="button" data-bw-message-prev>‹</button><div><strong data-bw-message-text>Safety is everyone’s responsibility. Work safe, go home safe.</strong><small data-bw-message-by>— BELM Team</small><div class="bw-home-dots-v603" data-bw-message-dots></div></div><button type="button" data-bw-message-next>›</button></section>
+
+  <section class="bwd-stats">
+    <div class="bwd-stat"><div class="bwd-stat-icon bwd-stat-blue">🚜</div><div><b>5</b><small>TOTAL MACHINES</small><em>Active machines</em></div></div>
+    <div class="bwd-stat"><div class="bwd-stat-icon bwd-stat-yellow">📋</div><div><b>3</b><small>OPEN JOB CARDS</small><em>In progress</em></div></div>
+    <div class="bwd-stat"><div class="bwd-stat-icon bwd-stat-red">⚠</div><div><b>2</b><small>OVERDUE SERVICES</small><em>Requires attention</em></div></div>
+    <div class="bwd-stat"><div class="bwd-stat-icon bwd-stat-purple">🕐</div><div><b>4</b><small>PENDING REQUESTS</small><em>Awaiting action</em></div></div>
+  </section>
+
+  <section class="bwd-quick">
+    <div class="bwd-section-title"><span>QUICK ACCESS</span></div>
+    <nav class="bwd-quick-grid">
+      <a class="bwd-card" data-workshop-window="customer-overview" href="#customer-overview"><i class="bwd-ic bwd-ic-blue">▣</i><b>CUSTOMER MACHINES</b><small>View &amp; manage customer machines</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="job-cards" href="#job-cards"><i class="bwd-ic bwd-ic-green">✓</i><b>OPEN JOB CARDS</b><small>Create, assign &amp; manage jobs</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="store" href="#store-spares"><i class="bwd-ic bwd-ic-teal">◆</i><b>STORE &amp; SPARES</b><small>Inventory &amp; stock control</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="procurement" href="#procurement"><i class="bwd-ic bwd-ic-orange">▣</i><b>PROCUREMENT</b><small>Requests &amp; purchases</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="technicians" href="#manage-technicians"><i class="bwd-ic bwd-ic-purple">♟</i><b>MANAGE TECHNICIANS</b><small>Manage users &amp; assignments</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="checklist-template" href="#checklist-template"><i class="bwd-ic bwd-ic-green2">✓</i><b>CHECK UP (DAILY)</b><small>Daily checklist &amp; machine reports</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="operator-report" href="#operator-report"><i class="bwd-ic bwd-ic-orange2">●</i><b>OPERATOR REPORT</b><small>Operator daily reports</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="service-tracking" href="#service-tracking"><i class="bwd-ic bwd-ic-red">◷</i><b>SERVICE TRACKING</b><small>250/500/1000/2000 hour services</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="analysis" href="#workshop-analysis"><i class="bwd-ic bwd-ic-blue2">▥</i><b>WORKSHOP ANALYSIS</b><small>Performance &amp; workshop analysis</small><span>↔</span></a>
+      <a class="bwd-card" data-workshop-window="general-report" href="#general-report"><i class="bwd-ic bwd-ic-green">▤</i><b>GENERAL REPORT</b><small>All reports &amp; documents</small><span>↔</span></a>
+    </nav>
+  </section>
+
+  <section class="bwd-secondary">
+    <a class="bwd-wide-card bwd-wide-pink" data-workshop-window="petty-cash" href="#petty-cash"><i>◈</i><div><b>PETTY CASH</b><small>Manage petty cash &amp; expenses</small></div><span>↔</span></a>
+    <a class="bwd-wide-card bwd-wide-gold" data-workshop-window="general-analysis" href="#general-analysis"><i>▥</i><div><b>GENERAL ANALYSIS</b><small>Finance, expenses &amp; overall analysis</small></div><span>↔</span></a>
+    <a class="bwd-wide-card bwd-wide-blue" data-workshop-window="all-overview" href="#all-overview"><i>▦</i><div><b>ALL OVERVIEW</b><small>Complete BELM operations overview</small></div><span>↔</span></a>
+    <a class="bwd-wide-card bwd-wide-grey" data-workshop-window="settings" href="#settings"><i>⚙</i><div><b>SETTINGS CENTER</b><small>Portal &amp; workshop settings</small></div><span>↔</span></a>
+  </section>
+
+  <section class="bwd-panels">
+    <div class="bwd-panel">
+      <div class="bwd-panel-head"><b>ALERTS &amp; NOTIFICATIONS</b><a href="#" class="bwd-viewall">View all</a></div>
+      <ul class="bwd-alert-list">
+        <li class="bwd-alert-red"><i>⚠</i><div><b>2 machines have overdue services</b><small>Please schedule service as soon as possible</small></div><em>2h ago</em></li>
+        <li class="bwd-alert-yellow"><i>●</i><div><b>3 job cards are in progress</b><small>Awaiting completion</small></div><em>3h ago</em></li>
+        <li class="bwd-alert-blue"><i>ℹ</i><div><b>Spare part request pending approval</b><small>1 request awaiting your approval</small></div><em>5h ago</em></li>
+        <li class="bwd-alert-green"><i>✓</i><div><b>Daily checklists completed</b><small>2 machines checked today</small></div><em>1d ago</em></li>
+      </ul>
     </div>
-  </dialog>
+    <div class="bwd-panel">
+      <div class="bwd-panel-head"><b>RECENT JOB CARDS</b><a href="#job-cards" data-workshop-window="job-cards" class="bwd-viewall">View all</a></div>
+      <ul class="bwd-job-list">
+        <li><div><b>JC-24-05-0003</b><small>RS45-02 · Reach Stacker</small></div><span class="bwd-status bwd-status-progress">IN PROGRESS</span></li>
+        <li><div><b>JC-24-05-0002</b><small>FL-03 · Forklift</small></div><span class="bwd-status bwd-status-progress">IN PROGRESS</span></li>
+        <li><div><b>JC-24-05-0001</b><small>CR-01 · Mobile Crane</small></div><span class="bwd-status bwd-status-done">COMPLETED</span></li>
+      </ul>
+    </div>
+  </section>
 
-  <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/edit-confirm.js"></script>
-  <script src="/belm-workshop/manager.js?v=496-back-menu-manual-login"></script>
-</body>
-</html>
+  <section class="bwd-panel bwd-comm-panel">
+    <div class="bwd-panel-head"><b>COMMUNICATION HISTORY</b><a href="#" class="bwd-viewall">View all</a></div>
+    <ul class="bwd-comm-list">
+      <li><i class="bwd-comm-in">B</i><div><b>From BELM Technical Dept</b><small>Service reminder for RS45-02. Next service due in 25 hours.</small></div><em>2h ago</em></li>
+      <li><i class="bwd-comm-out">C</i><div><b>To BELM Technical Dept</b><small>Requesting spare part for forklift FL-03. Please check and advise.</small></div><em>5h ago</em></li>
+    </ul>
+  </section>
+</main>
+
+<footer class="bwd-footer">
+  <div class="bwd-footer-brand"><img src="/app-icon-192.png" alt=""><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div>
+  <p>Powering Performance.<br>Ensuring Reliability.</p>
+  <div class="bwd-footer-values"><span>◈ Safety First</span><span>✓ Quality Work</span><span>◷ On Time</span><span>♧ Reliable Support</span></div>
+</footer>
+</div>
+
+<dialog id="workshopWindow" class="bw-workspace-dialog"><div class="bw-workspace-shell"><header class="bw-workspace-head"><div><p>TECHNICAL DEP → BELM WM HOME</p><h2 id="workshopWindowTitle">Workshop Window</h2><span id="workshopWindowSubtitle">Live synchronized workspace</span></div><div class="bw-workspace-actions"><button id="workshopWindowReload" type="button">Sync / Refresh</button><button id="workshopWindowClose" class="bw-close-button" type="button">← Main Home</button></div></header><div class="bw-workspace-body"><div id="workshopWindowLoading" class="bw-window-loading">Opening Workshop module…</div><iframe id="workshopWindowFrame" title="BELM Workshop module" loading="eager" srcdoc="<!doctype html><html><body style=&quot;margin:0;background:#0b1728;color:#b8c7d9;font:700 13px system-ui;min-height:100vh&quot;></body></html>"></iframe></div></div></dialog>
+<script src="/admin-access.js?v=411-job-card-only"></script><script src="/edit-confirm.js"></script><script src="/belm-workshop/home-v603.js?v=612-sidebar-dashboard"></script><script src="/belm-workshop/manager.js?v=604-current-modules"></script>
+<script>
+(function(){
+  // V612: sidebar dashboard chrome — mobile toggle, admin chip, visual-only dark switch.
+  var sidebar=document.getElementById('bwdSidebar'),overlay=document.getElementById('bwdSidebarOverlay');
+  function openSidebar(){sidebar.classList.add('open');overlay.classList.add('show');document.getElementById('bwdSidebarToggle').setAttribute('aria-expanded','true')}
+  function closeSidebar(){sidebar.classList.remove('open');overlay.classList.remove('show');document.getElementById('bwdSidebarToggle').setAttribute('aria-expanded','false')}
+  document.getElementById('bwdSidebarToggle')?.addEventListener('click',()=>sidebar.classList.contains('open')?closeSidebar():openSidebar());
+  document.getElementById('bwdSidebarToggleTop')?.addEventListener('click',()=>sidebar.classList.contains('open')?closeSidebar():openSidebar());
+  overlay?.addEventListener('click',closeSidebar);
+  document.querySelectorAll('#bwdSidebar [data-workshop-window]').forEach(a=>a.addEventListener('click',closeSidebar));
+
+  var user=null;try{user=JSON.parse(localStorage.getItem('belm_admin_user')||'null')}catch(_){}
+  if(user){
+    var nameEl=document.getElementById('bwdAdminName'),roleEl=document.getElementById('bwdAdminRole'),initEl=document.getElementById('bwdAdminInitial'),rolePill=document.getElementById('bwdRolePill');
+    var name=user.name||'Admin',role=user.role||'BELM Workshop';
+    if(nameEl)nameEl.textContent=name;
+    if(roleEl)roleEl.textContent=role;
+    if(initEl)initEl.textContent=(name.trim()[0]||'A').toUpperCase();
+    if(rolePill)rolePill.innerHTML='<i>👤</i> '+role;
+  }
+
+  // Visual-only theme switch for this dashboard shell (data placeholder stage).
+  var themeBtn=document.getElementById('bwdThemeToggle');
+  themeBtn?.addEventListener('click',function(){
+    var on=themeBtn.getAttribute('aria-checked')==='true';
+    themeBtn.setAttribute('aria-checked',on?'false':'true');
+    themeBtn.classList.toggle('off',on);
+  });
+})();
+</script>
+</body></html>

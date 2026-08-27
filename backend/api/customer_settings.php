@@ -7,7 +7,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $pdo = db();
 
 $pdo->exec("CREATE TABLE IF NOT EXISTS customer_notification_settings (
-  customer_id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(64) PRIMARY KEY,
   critical_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   service_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,
   breakdown_alerts_enabled BOOLEAN NOT NULL DEFAULT TRUE,

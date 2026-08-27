@@ -1,0 +1,46 @@
+/* V618 - BELM WM Job Card visual parity.
+   Keep the card in BELM navy/blue and move attention blinking to REPORTED PROBLEM only. */
+.case-card,
+.case-card.delayed{
+  background:linear-gradient(180deg,#073263 0%,#041d3b 100%)!important;
+  color:#fff!important;
+  border:1px solid #1684ff!important;
+  border-left:5px solid #1684ff!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.16)!important;
+  animation:none!important;
+  filter:none!important;
+}
+.case-card h3,.case-card b,.case-card strong{color:#fff!important}
+.case-card .case-meta,.case-card .case-report-context,.case-card small{color:#c6d5e6!important}
+.case-card .pill{border:1px solid rgba(255,255,255,.14)}
+.case-card .pill.red{background:#c72f2f!important;color:#fff!important}
+.case-card .pill.yellow{background:#f2c318!important;color:#07182d!important}
+.case-card .pill.green{background:#09834a!important;color:#fff!important}
+.case-card .pill.blue{background:#0b67c2!important;color:#fff!important}
+
+.queue-message-block.report-message{
+  position:relative;
+  border:2px solid #18d57c!important;
+  background:rgba(24,213,124,.08)!important;
+  box-shadow:0 0 0 rgba(24,213,124,0);
+  animation:belmReportedProblemBlink 1.05s ease-in-out infinite!important;
+}
+.queue-message-block.report-message>span{
+  color:#65efaa!important;
+  font-weight:900!important;
+}
+.queue-message-block.report-message p{color:#fff!important}
+
+@keyframes belmReportedProblemBlink{
+  0%,100%{border-color:#18d57c;box-shadow:0 0 0 rgba(24,213,124,0);filter:brightness(1)}
+  50%{border-color:#ffc400;box-shadow:0 0 22px rgba(255,196,0,.72);filter:brightness(1.14)}
+}
+
+/* Keep a serious delayed marker without making the whole card red/blinking. */
+.case-card.delayed{border-left-color:#ffc400!important}
+.case-card.delayed .pill.red{box-shadow:0 0 12px rgba(199,47,47,.38)}
+
+[data-theme="light"] .case-card,
+[data-theme="light"] .case-card.delayed{
+  background:linear-gradient(180deg,#0b4f96 0%,#073263 100%)!important;
+}

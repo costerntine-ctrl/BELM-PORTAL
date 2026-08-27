@@ -15,48 +15,25 @@
         .map((character) => `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`)
         .join("")));
       return !payload.exp || payload.exp * 1000 > Date.now() + 30000;
-    } catch (_) {
-      return false;
-    }
+    } catch (_) { return false; }
   }
 
   function navigateOnce(destination) {
-    if (typeof window.BELM_NAVIGATE === "function") {
-      window.BELM_NAVIGATE(destination);
-    } else {
-      window.location.replace(destination);
-    }
+    if (typeof window.BELM_NAVIGATE === "function") window.BELM_NAVIGATE(destination);
+    else window.location.replace(destination);
   }
 
   function resumeExistingSession() {
     const adminToken = localStorage.getItem("belm_admin_token");
     const adminUser = localStorage.getItem("belm_admin_user");
-    if (adminUser && tokenIsCurrent(adminToken)) {
-      navigateOnce("/admin-menu/");
-      return true;
-    }
-
+    if (adminUser && tokenIsCurrent(adminToken)) { navigateOnce("/admin-menu/"); return true; }
     const technicianToken = localStorage.getItem("belm_tech_token");
     const technicianUser = localStorage.getItem("belm_tech_user");
-    if (technicianUser && tokenIsCurrent(technicianToken)) {
-      navigateOnce("/tech");
-      return true;
-    }
-
+    if (technicianUser && tokenIsCurrent(technicianToken)) { navigateOnce("/tech"); return true; }
     const customerToken = localStorage.getItem("belm_customer_token");
-    if (tokenIsCurrent(customerToken)) {
-      navigateOnce("/portal/dashboard");
-      return true;
-    }
-
-    if (adminToken || adminUser) {
-      localStorage.removeItem("belm_admin_token");
-      localStorage.removeItem("belm_admin_user");
-    }
-    if (technicianToken || technicianUser) {
-      localStorage.removeItem("belm_tech_token");
-      localStorage.removeItem("belm_tech_user");
-    }
+    if (tokenIsCurrent(customerToken)) { navigateOnce("/portal/dashboard"); return true; }
+    if (adminToken || adminUser) { localStorage.removeItem("belm_admin_token"); localStorage.removeItem("belm_admin_user"); }
+    if (technicianToken || technicianUser) { localStorage.removeItem("belm_tech_token"); localStorage.removeItem("belm_tech_user"); }
     if (customerToken) localStorage.removeItem("belm_customer_token");
     return false;
   }
@@ -71,20 +48,12 @@
     loginId.value = customerSlug;
     customerNote.textContent = `Customer portal: ${customerSlug.replace(/-/g, " ")}`;
     customerNote.classList.remove("hidden");
-  } else if (accountId) {
-    loginId.value = accountId;
-  }
-
-  if (accountId) {
-    document.getElementById("forgotPasswordLink").href =
-      `/forgot-password/?account=${encodeURIComponent(accountId)}`;
-  }
-
+  } else if (accountId) loginId.value = accountId;
+  if (accountId) document.getElementById("forgotPasswordLink").href = `/forgot-password/?account=${encodeURIComponent(accountId)}`;
   if (roleHint === "admin") {
     document.getElementById("welcomeTitle").textContent = "Administrator login";
     document.getElementById("loginTitle").textContent = "Enter your Administrator credentials";
-    document.getElementById("loginHint").textContent =
-      "Only an approved Administrator account can open the administration dashboard.";
+    document.getElementById("loginHint").textContent = "Only an approved Administrator account can open the administration dashboard.";
   }
 
   document.getElementById("togglePassword").addEventListener("click", (event) => {
@@ -95,13 +64,8 @@
   });
 
   function clearAccountSessions() {
-    [
-      "belm_admin_token",
-      "belm_admin_user",
-      "belm_tech_token",
-      "belm_tech_user",
-      "belm_customer_token",
-    ].forEach((key) => localStorage.removeItem(key));
+    ["belm_admin_token","belm_admin_user","belm_tech_token","belm_tech_user","belm_customer_token"]
+      .forEach((key) => localStorage.removeItem(key));
   }
 
   function saveAccount(result) {
@@ -109,41 +73,51 @@
     if (result.accountType === "technician") {
       localStorage.setItem("belm_tech_token", result.token);
       localStorage.setItem("belm_tech_user", JSON.stringify(result.user));
-      return "/tech";
+      return result.destination || "/tech";
     }
     if (result.accountType === "admin") {
       localStorage.setItem("belm_admin_token", result.token);
       localStorage.setItem("belm_admin_user", JSON.stringify(result.user));
-      return "/admin-menu/";
+      return result.destination || "/admin-menu/";
     }
     if (result.accountType === "customer") {
       localStorage.setItem("belm_customer_token", result.token);
-      return "/portal/dashboard";
+      return result.destination || "/portal/dashboard";
     }
     throw new Error("This account has no assigned BELM workspace.");
+  }
+
+  async function recordLoginAttendance(token) {
+    if (!token) return;
+    try {
+      await fetch("/api/activity-log", {
+        method: "POST",
+        cache: "no-store",
+        keepalive: true,
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: "{}",
+      });
+    } catch (_) {
+      // Attendance logging is best-effort and must never block a valid login.
+    }
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     errorBox.classList.add("hidden");
     if (!form.reportValidity()) return;
-
     button.disabled = true;
     button.textContent = "Checking account…";
     try {
       const response = await fetch("/api/auth/unified-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          loginId: loginId.value.trim(),
-          password: password.value,
-        }),
+        body: JSON.stringify({ loginId: loginId.value.trim(), password: password.value }),
       });
       const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.error || "Login failed. Check your details and try again.");
-      }
+      if (!response.ok) throw new Error(result.error || "Login failed. Check your details and try again.");
       const destination = saveAccount(result);
+      await recordLoginAttendance(result.token);
       sessionStorage.setItem("belm_login_destination", destination);
       button.textContent = "Opening your dashboard…";
       navigateOnce(destination);

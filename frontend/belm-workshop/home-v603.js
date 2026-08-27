@@ -6,6 +6,20 @@
     {text:'Keep workshop, store and procurement working from one live record.',by:'BELM Operations'},
     {text:'Quality work. Safety first. On time.',by:'BELM General Tech'}
   ];
+
+  // V606: Main BELM account can return to the full Main Menu. A Workshop Manager
+  // stays inside PORTAL-BELM WM and uses this page as their home dashboard.
+  const mainMenuBack=document.getElementById('mainMenuBackButton');
+  let currentUser=null;
+  try{currentUser=JSON.parse(localStorage.getItem('belm_admin_user')||'null');}catch(_){ }
+  const role=String(currentUser?.role||'').trim().toLowerCase();
+  const isMainBelmAccount=role==='super admin'||currentUser?.allowedPages===null;
+  if(mainMenuBack){
+    mainMenuBack.hidden=!isMainBelmAccount;
+    mainMenuBack.style.display=isMainBelmAccount?'inline-flex':'none';
+    if(isMainBelmAccount)mainMenuBack.setAttribute('href','/overview-manager/');
+  }
+
   document.getElementById('bwLogoutButton')?.addEventListener('click',()=>{
     localStorage.removeItem('belm_admin_token');
     localStorage.removeItem('belm_admin_user');

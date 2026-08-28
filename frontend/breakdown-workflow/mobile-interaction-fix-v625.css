@@ -1,0 +1,18 @@
+/* V625 - prevent embedded/mobile Job Cards from feeling frozen. */
+html,body{min-height:100%;height:auto!important;overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+main{overflow:visible!important;min-height:100vh}
+.panel,.workflow-dispatch,.job-process-panel,.grid,.detail-panel{pointer-events:auto!important}
+button,select,input,textarea,label,[role="button"]{pointer-events:auto!important;touch-action:manipulation!important}
+.workflow-dispatch{position:relative!important;z-index:1!important;overflow:visible!important}
+.workflow-dispatch-form{overflow:visible!important;max-height:none!important}
+.workflow-dispatch-form select,.workflow-dispatch-form input,.workflow-dispatch-form textarea,.workflow-dispatch-form button{position:relative!important;z-index:2!important}
+@media(max-width:720px){
+  body{overscroll-behavior-y:auto!important}
+  main{padding-bottom:120px!important}
+  .workflow-dispatch-form{display:grid!important;grid-template-columns:1fr!important}
+  .workflow-dispatch-form .wide{grid-column:1!important}
+  .workflow-job-source{display:grid!important;grid-template-columns:1fr!important;gap:10px!important}
+  .workflow-dispatch-inline-control{display:grid!important;grid-template-columns:1fr auto!important;gap:8px!important}
+  .grid{grid-template-columns:1fr!important;overflow:visible!important}
+  .detail-panel{min-height:260px!important;overflow:visible!important}
+}

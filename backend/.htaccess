@@ -5,6 +5,12 @@
   RewriteBase /api/
   RewriteRule ^(?:config|scripts)(?:/|$) - [F,L,NC]
   RewriteRule ^(?:schema|repair_admin)\.sql$ - [F,L,NC]
+
+  # BELM WM internal workshop endpoint. This endpoint was added after the
+  # front-controller route table and must resolve before the generic router.
+  # Keeps /api/belm-workshop-home?section=petty-cash stable for the frontend.
+  RewriteRule ^belm-workshop-home/?$ api/belm_workshop_home.php [L,QSA,NC]
+
   RewriteRule ^index\.php$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d

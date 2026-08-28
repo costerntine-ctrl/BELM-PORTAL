@@ -14,6 +14,8 @@
   <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+  <style>html.cwm-job-cards #workshopReportPanel,html.cwm-job-cards .performance-panel{display:none!important}</style>
+  <script>(function(){const p=new URLSearchParams(location.search);const actor=String(p.get('actor')||'customer').toLowerCase();const embedded=p.get('embed')==='1';if(actor!=='admin'&&!embedded)document.documentElement.classList.add('cwm-job-cards');})();</script>
 </head>
 <body>
   <header class="topbar"><div><p>BELM OPERATIONS</p><h1>Maintenance Process & Digital Job Cards</h1><span>See where a machine is waiting, why it is waiting, and which department owns the next action.</span></div><div class="top-actions"><button id="themeButton" type="button" data-belm-theme-toggle>Light / Dark</button><button id="backButton" type="button">Back</button></div></header>

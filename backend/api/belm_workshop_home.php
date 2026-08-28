@@ -19,11 +19,14 @@ if ($section === 'petty-cash') {
         category VARCHAR(80) NULL,
         description VARCHAR(255) NULL,
         reference VARCHAR(120) NULL,
+        transaction_date DATE NULL,
         created_by VARCHAR(64) NULL,
         created_by_name VARCHAR(160) NULL,
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
     )");
+    $pdo->exec("ALTER TABLE belm_workshop_petty_cash_entries ADD COLUMN IF NOT EXISTS transaction_date DATE NULL");
     $pdo->exec("CREATE INDEX IF NOT EXISTS idx_belm_workshop_petty_cash_created_at ON belm_workshop_petty_cash_entries(created_at DESC)");
+    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_belm_workshop_petty_cash_transaction_date ON belm_workshop_petty_cash_entries(transaction_date DESC)");
 
     $totals = static function () use ($pdo): array {
         $funded = (float)$pdo->query("SELECT COALESCE(SUM(amount),0) FROM belm_workshop_petty_cash_entries WHERE entry_type='FUND'")->fetchColumn();
@@ -41,20 +44,45 @@ if ($section === 'petty-cash') {
         $category = trim((string)($b['category'] ?? ''));
         $description = trim((string)($b['description'] ?? ''));
         $reference = trim((string)($b['reference'] ?? ''));
+        $transactionDate = trim((string)($b['transactionDate'] ?? ''));
         if ($description === '') json_error('Description is required.');
         if (mb_strlen($description) > 255 || mb_strlen($category) > 80 || mb_strlen($reference) > 120) json_error('Petty Cash entry is too long.');
+
+        if ($type === 'EXPENSE') {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $transactionDate)) json_error('Select the voucher date.');
+            $dt = DateTime::createFromFormat('!Y-m-d', $transactionDate);
+            if (!$dt || $dt->format('Y-m-d') !== $transactionDate) json_error('Select a valid voucher date.');
+
+            // Voucher reference: selected date + daily running number + VR suffix.
+            // Example: 28-08-26-01-VR, 28-08-26-02-VR.
+            $prefix = $dt->format('d-m-y');
+            $refStmt = $pdo->prepare("SELECT reference FROM belm_workshop_petty_cash_entries
+                                      WHERE entry_type='EXPENSE' AND transaction_date=? AND reference LIKE ?
+                                      ORDER BY created_at DESC");
+            $refStmt->execute([$transactionDate, $prefix.'-%-VR']);
+            $maxSeq = 0;
+            foreach ($refStmt->fetchAll(PDO::FETCH_COLUMN) as $existingRef) {
+                if (preg_match('/^'.preg_quote($prefix,'/').'-(\d+)-VR$/', (string)$existingRef, $m)) {
+                    $maxSeq = max($maxSeq, (int)$m[1]);
+                }
+            }
+            $reference = sprintf('%s-%02d-VR', $prefix, $maxSeq + 1);
+        } else {
+            $transactionDate = null;
+        }
+
         $before = $totals();
         if ($type === 'EXPENSE' && $amount > $before['balance'] + 0.005) json_error('Insufficient BELM Workshop Petty Cash balance.', 422);
         $id = uuid();
-        $stmt = $pdo->prepare("INSERT INTO belm_workshop_petty_cash_entries (id,entry_type,amount,category,description,reference,created_by,created_by_name,created_at) VALUES (?,?,?,?,?,?,?,?,NOW())");
-        $stmt->execute([$id,$type,$amount,$category !== '' ? $category : null,$description,$reference !== '' ? $reference : null,$user['id'] ?? null,$user['name'] ?? 'BELM Workshop']);
-        log_activity($user,'belm-workshop-petty-cash-'.strtolower($type),'belmWorkshopPettyCash',$id,['amount'=>$amount,'category'=>$category,'description'=>$description,'reference'=>$reference]);
+        $stmt = $pdo->prepare("INSERT INTO belm_workshop_petty_cash_entries (id,entry_type,amount,category,description,reference,transaction_date,created_by,created_by_name,created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())");
+        $stmt->execute([$id,$type,$amount,$category !== '' ? $category : null,$description,$reference !== '' ? $reference : null,$transactionDate,$user['id'] ?? null,$user['name'] ?? 'BELM Workshop']);
+        log_activity($user,'belm-workshop-petty-cash-'.strtolower($type),'belmWorkshopPettyCash',$id,['amount'=>$amount,'category'=>$category,'description'=>$description,'reference'=>$reference,'transactionDate'=>$transactionDate]);
         $after = $totals();
-        json_out(['ok'=>true,'id'=>$id,'balance'=>$after['balance'],'message'=>$type === 'FUND' ? 'BELM Workshop funds added.' : 'BELM Workshop expense recorded.'],201);
+        json_out(['ok'=>true,'id'=>$id,'reference'=>$reference,'balance'=>$after['balance'],'message'=>$type === 'FUND' ? 'BELM Workshop funds added.' : 'BELM Workshop expense recorded: '.$reference],201);
     }
 
     $sum = $totals();
-    $entries = $pdo->query("SELECT id,entry_type,amount,category,description,reference,created_by_name,created_at FROM belm_workshop_petty_cash_entries ORDER BY created_at DESC LIMIT 300")->fetchAll();
+    $entries = $pdo->query("SELECT id,entry_type,amount,category,description,reference,transaction_date,created_by_name,created_at FROM belm_workshop_petty_cash_entries ORDER BY COALESCE(transaction_date,created_at::date) DESC,created_at DESC LIMIT 300")->fetchAll();
     json_out(['ok'=>true,'scope'=>'BELM_INTERNAL_WORKSHOP','owner'=>'BELM GENERAL TECH LTD','balance'=>$sum['balance'],'totalFunded'=>$sum['funded'],'totalUsed'=>$sum['used'],'entries'=>$entries]);
 }
 

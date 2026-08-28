@@ -3,44 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Workshop Analysis — PORTAL-CWM</title>
+  <title>Workshop Analysis</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#f4f7fb;font-family:Inter,sans-serif;color:#14243a}.analysis-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;background:#102a56;color:#fff;position:sticky;top:0;z-index:20}.analysis-title p{margin:0 0 3px;font-size:11px;font-weight:800;letter-spacing:.12em;opacity:.8}.analysis-title h1{margin:0;font-family:'Space Grotesk',sans-serif;font-size:20px}.analysis-actions{display:flex;gap:8px}.analysis-actions a,.analysis-actions button{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:10px;padding:9px 13px;text-decoration:none;font-weight:700;cursor:pointer}.analysis-note{max-width:1320px;margin:14px auto 0;padding:0 16px}.analysis-note-inner{background:#e8f1ff;border:1px solid #c8dcf8;border-radius:12px;padding:12px 14px;color:#204a7b;font-size:13px}.frame-wrap{max-width:1320px;margin:14px auto 28px;padding:0 16px}.frame-card{background:#fff;border-radius:18px;box-shadow:0 12px 32px rgba(17,42,86,.09);overflow:hidden}.frame-card iframe{display:block;width:100%;height:calc(100vh - 145px);min-height:720px;border:0;background:#fff}@media(max-width:700px){.analysis-topbar{align-items:flex-start}.analysis-title h1{font-size:17px}.analysis-actions{flex-direction:column}.analysis-actions a,.analysis-actions button{padding:7px 10px;font-size:12px}.frame-wrap,.analysis-note{padding:0 8px}.frame-card iframe{height:calc(100vh - 165px);min-height:680px}}
+    *{box-sizing:border-box}body{margin:0;background:#061525;font-family:Inter,sans-serif;color:#eef6ff}.analysis-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;background:#102a56;color:#fff;position:sticky;top:0;z-index:20}.analysis-title p{margin:0 0 3px;font-size:11px;font-weight:800;letter-spacing:.12em;color:#55e48e}.analysis-title h1{margin:0;font-family:'Space Grotesk',sans-serif;font-size:20px}.analysis-actions{display:flex;gap:8px}.analysis-actions a,.analysis-actions button{border:1px solid rgba(255,255,255,.35);background:#0b3a63;color:#fff;border-radius:10px;padding:9px 13px;text-decoration:none;font-weight:700;cursor:pointer}.analysis-note{max-width:1320px;margin:14px auto 0;padding:0 16px}.analysis-note-inner{background:#0a2942;border:1px solid #23506e;border-radius:12px;padding:12px 14px;color:#bbd0e1;font-size:13px}.frame-wrap{max-width:1320px;margin:14px auto 28px;padding:0 16px}.frame-card{background:#fff;border:1px solid #23506e;border-radius:18px;box-shadow:0 12px 32px rgba(0,0,0,.2);overflow:hidden}.frame-card iframe{display:block;width:100%;height:calc(100vh - 145px);min-height:720px;border:0;background:#fff}@media(max-width:700px){.analysis-topbar{align-items:flex-start}.analysis-title h1{font-size:17px}.analysis-actions{flex-direction:column}.analysis-actions a,.analysis-actions button{padding:7px 10px;font-size:12px}.frame-wrap,.analysis-note{padding:0 8px}.frame-card iframe{height:calc(100vh - 165px);min-height:680px}}
   </style>
 </head>
 <body>
 <header class="analysis-topbar">
-  <div class="analysis-title"><p>PORTAL-CWM</p><h1>Workshop Analysis</h1></div>
-  <div class="analysis-actions"><a href="/customer-workshop/?actor=customer">← Workshop Main</a><button id="refreshAnalysis" type="button">Refresh</button></div>
+  <div class="analysis-title"><p id="portalLabel">WORKSHOP</p><h1>Workshop Analysis</h1></div>
+  <div class="analysis-actions"><a id="workshopBack" href="/customer-workshop/?actor=customer">← Workshop Main</a><button id="refreshAnalysis" type="button">Refresh</button></div>
 </header>
 <div class="analysis-note"><div class="analysis-note-inner">Workshop operational analysis only: Job Card performance, technician workload/performance, completion, repeat work, resolution time and workshop trends. Procurement, Finance and Job Card dispatch controls are not part of this page.</div></div>
-<div class="frame-wrap"><div class="frame-card"><iframe id="analysisFrame" title="Workshop Analysis" src="/breakdown-workflow/?actor=customer&embed=1#workshopReportPanel"></iframe></div></div>
+<div class="frame-wrap"><div class="frame-card"><iframe id="analysisFrame" title="Workshop Analysis"></iframe></div></div>
 <script>
 (function(){
+  const actor=String(new URLSearchParams(location.search).get('actor')||'customer').toLowerCase()==='admin'?'admin':'customer';
   const frame=document.getElementById('analysisFrame');
   const refresh=document.getElementById('refreshAnalysis');
+  const label=document.getElementById('portalLabel');
+  const back=document.getElementById('workshopBack');
+  label.textContent=actor==='admin'?'TECHNICAL DEP → BELM WM':'PORTAL-CWM';
+  back.href=actor==='admin'?'/belm-workshop/control-center/':'/customer-workshop/?actor=customer';
+  back.textContent=actor==='admin'?'← BELM WM Workshop':'← Workshop Main';
+  frame.src=`/breakdown-workflow/?actor=${actor}&embed=1&view=analysis#workshopReportPanel`;
   refresh.addEventListener('click',()=>{try{frame.contentWindow.location.reload();}catch(_){frame.src=frame.src;}});
   frame.addEventListener('load',()=>{
     try{
-      const doc=frame.contentDocument;
-      if(!doc)return;
+      const doc=frame.contentDocument;if(!doc)return;
       const style=doc.createElement('style');
-      style.textContent=`
-        body>header.topbar,#summaryCards,.filters,#dispatchPanel,#jobProcessPanel,main>.grid,dialog{display:none!important}
-        body{background:#fff!important}
-        main{max-width:none!important;margin:0!important;padding:14px!important}
-        #workshopReportPanel{margin-top:0!important}
-        .workshop-report-panel,.performance-panel,.technician-workload-panel{display:block!important}
-        .admin-sidebar,.admin-sidebar-toggle{display:none!important}
-      `;
+      style.textContent=`body>header.topbar,#summaryCards,.filters,#dispatchPanel,#jobProcessPanel,main>.grid,dialog{display:none!important}body{background:#fff!important}main{max-width:none!important;margin:0!important;padding:14px!important}#workshopReportPanel{display:block!important;margin-top:0!important}.workshop-report-panel,.performance-panel,.technician-workload-panel{display:block!important}.admin-sidebar,.admin-sidebar-toggle{display:none!important}`;
       doc.head.appendChild(style);
-      const report=doc.getElementById('workshopReportPanel');
-      if(report) report.scrollIntoView({block:'start'});
+      doc.getElementById('workshopReportPanel')?.scrollIntoView({block:'start'});
     }catch(e){console.warn('Workshop Analysis frame setup failed',e);}
   });
 })();

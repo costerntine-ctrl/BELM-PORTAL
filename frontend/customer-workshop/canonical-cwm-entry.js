@@ -11,4 +11,23 @@
   }
 
   document.documentElement.dataset.cwmWorkspace = 'true';
+
+  /*
+   * CWM Store routing fix.
+   * workshop-v524.js still contains the legacy inline-store handler which
+   * calls showView('store'). The current CWM home no longer contains the
+   * cwmStoreView section, so that handler prevents the real /customer-store/
+   * link from opening and makes the button look frozen.
+   *
+   * Capture the Store link before the legacy bubbling handler and navigate
+   * to the dedicated, customer-scoped Store & Tools page.
+   */
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('#storeLink');
+    if (!link) return;
+    if (actor !== 'customer') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.location.href = '/customer-store/';
+  }, true);
 })();

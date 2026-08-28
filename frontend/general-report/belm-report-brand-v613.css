@@ -1,0 +1,37 @@
+/* BELM CWM Machine Reports — strong brand palette and readable contrast */
+#reports.grid{gap:12px}
+#reports .report{
+  position:relative!important;
+  overflow:hidden!important;
+  border:1px solid rgba(255,255,255,.20)!important;
+  color:#fff!important;
+  min-height:104px!important;
+  padding:18px!important;
+  box-shadow:0 8px 20px rgba(4,25,48,.18)!important;
+}
+#reports .report::after{
+  content:"›";
+  position:absolute;
+  right:16px;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:27px;
+  font-weight:800;
+  color:rgba(255,255,255,.82);
+}
+#reports .report b{color:#fff!important;font-size:15px!important;line-height:1.25!important;padding-right:28px}
+#reports .report span{color:rgba(255,255,255,.88)!important;font-size:12px!important;line-height:1.35!important;padding-right:28px;display:block}
+/* BELM blue / green / yellow / navy only */
+#reports .report:nth-child(4n+1){background:linear-gradient(135deg,#0d4fa3,#1677e8)!important}
+#reports .report:nth-child(4n+2){background:linear-gradient(135deg,#087447,#16b866)!important}
+#reports .report:nth-child(4n+3){background:linear-gradient(135deg,#d49d00,#f4c51d)!important;color:#10213a!important;border-color:#f4c51d!important}
+#reports .report:nth-child(4n+3) b,#reports .report:nth-child(4n+3) span,#reports .report:nth-child(4n+3)::after{color:#10213a!important}
+#reports .report:nth-child(4n+4){background:linear-gradient(135deg,#071827,#123c65)!important}
+#reports .report.active{outline:3px solid #fff!important;outline-offset:-5px!important;box-shadow:0 0 0 3px #1677e8,0 10px 24px rgba(4,25,48,.28)!important}
+/* Inputs must also remain readable in both themes. */
+.selector select,.selector input{background:#0b2138!important;color:#fff!important;border-color:#315a7d!important;color-scheme:dark}
+.selector select option{background:#0b2138;color:#fff}
+.summary{background:#0d2740!important;color:#f4f8fc!important;border-left-color:#16b866!important}
+html:not([data-theme="dark"]) .selector select,html:not([data-theme="dark"]) .selector input{background:#fff!important;color:#14243a!important;border-color:#b9c9da!important;color-scheme:light}
+html:not([data-theme="dark"]) .summary{background:#edf5ff!important;color:#14243a!important}
+@media(max-width:520px){#reports .report{min-height:100px!important}}

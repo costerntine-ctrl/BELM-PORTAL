@@ -1,0 +1,16 @@
+/* BELM customer-card visual layer only. No layout, workflow or JS behavior changes. */
+.customer-card{background:linear-gradient(145deg,#071827 0%,#0b1d31 58%,#0c2137 100%)!important;border-color:#164a73!important;box-shadow:0 18px 42px rgba(0,0,0,.24)!important;color:#f8fbff!important}
+.customer-card::before{height:5px!important;background:linear-gradient(90deg,#0878e8 0 38%,#08b968 38% 72%,#ffd126 72% 100%)!important}
+.customer-card-head h2,.customer-card strong{color:#f8fbff!important}.customer-card-head p,.customer-info-grid span{color:#8fa8c1!important}
+.customer-card .eyebrow{color:#08bd69!important}
+.customer-provider-control,.customer-nonpayment-control,.customer-workshop-control{background:#0a192a!important;border-color:#244963!important;color:#f8fbff!important}
+.customer-provider-switch input:checked+.customer-provider-slider,.customer-nonpayment-switch input:checked+.customer-nonpayment-slider{background:#08b968!important}
+.customer-workshop-switch input:checked+.customer-workshop-slider{background:#ffd126!important}
+.customer-provider-control.belm-on .customer-provider-state,.customer-nonpayment-control.portal-on .customer-nonpayment-state{color:#08c96e!important}.customer-workshop-control.workshop-on .customer-workshop-state{color:#ffd126!important}
+.customer-card .communication-history,.customer-card .customer-communication-history,.customer-card [class*="communication"]{border-color:#244963!important}
+.customer-card button,.customer-card a{transition:transform .16s ease,filter .16s ease,box-shadow .16s ease}.customer-card button:hover,.customer-card a:hover{filter:brightness(1.08)}
+.customer-card .view-machines,.customer-card [data-action="view-machines"],.customer-card button[data-action*="machine"]{background:linear-gradient(90deg,#075fc8,#0d82ef)!important;border-color:#168cff!important;color:#fff!important;box-shadow:0 8px 20px rgba(10,111,218,.2)!important}
+.customer-card .manage-customer,.customer-card [data-action="manage-customer"],.customer-card button[data-action*="manage"]{background:linear-gradient(90deg,#079c52,#10c76c)!important;border-color:#16ce75!important;color:#fff!important;box-shadow:0 8px 20px rgba(9,174,92,.18)!important}
+.customer-card .secondary,.customer-card .ghost{background:#0b2138!important;border-color:#146fc7!important;color:#78b8ff!important}
+.customer-card .customer-info-grid strong{color:#f8fbff!important}
+html[data-theme="dark"] .customer-card{background:linear-gradient(145deg,#061522,#091b2d 58%,#0a2035 100%)!important}

@@ -1,199 +1,56 @@
-/* V614 — Approved CWM customer machine card visual.
-   BELM brand palette: navy / blue / green / yellow. Safety red remains reserved for critical states.
-   Only Operator Message + Critical/Service alert zones blink; the full machine card stays stable. */
+/* V615 — Approved CWM customer machine card visual.
+   Full card is always stable BELM navy/blue. Only the two alert zones blink RED/YELLOW. */
+:root{--belm-navy:#061525;--belm-blue:#1684ff;--belm-green:#12d879;--belm-yellow:#ffd126;--belm-red:#ff3f52;--belm-white:#f7fbff}
+@keyframes belmAlertZoneRedBlink{0%,100%{border-color:#ff3f52;box-shadow:0 0 0 1px rgba(255,63,82,.30),0 0 10px rgba(255,63,82,.24)}50%{border-color:#ff7884;box-shadow:0 0 0 2px rgba(255,63,82,.85),0 0 28px rgba(255,63,82,.65)}}
+@keyframes belmAlertZoneYellowBlink{0%,100%{border-color:#ffd126;box-shadow:0 0 0 1px rgba(255,209,38,.28),0 0 10px rgba(255,209,38,.22)}50%{border-color:#ffe66f;box-shadow:0 0 0 2px rgba(255,209,38,.82),0 0 27px rgba(255,209,38,.58)}}
 
-:root{
-  --belm-navy:#061525;
-  --belm-navy-2:#08233d;
-  --belm-blue:#1684ff;
-  --belm-blue-2:#0d4fa3;
-  --belm-green:#12d879;
-  --belm-yellow:#ffd126;
-  --belm-red:#ff3f52;
-  --belm-white:#f7fbff;
-  --belm-muted:#9db3c7;
-}
-
-@keyframes belmAlertZoneRedBlink{
-  0%,100%{border-color:#ff3f52;box-shadow:0 0 0 1px rgba(255,63,82,.32),0 0 12px rgba(255,63,82,.28),inset 0 0 24px rgba(255,63,82,.04)}
-  50%{border-color:#ff7280;box-shadow:0 0 0 2px rgba(255,63,82,.82),0 0 30px rgba(255,63,82,.64),inset 0 0 30px rgba(255,63,82,.08)}
-}
-@keyframes belmAlertZoneYellowBlink{
-  0%,100%{border-color:#ffd126;box-shadow:0 0 0 1px rgba(255,209,38,.30),0 0 11px rgba(255,209,38,.24),inset 0 0 22px rgba(255,209,38,.04)}
-  50%{border-color:#ffe56e;box-shadow:0 0 0 2px rgba(255,209,38,.80),0 0 29px rgba(255,209,38,.58),inset 0 0 28px rgba(255,209,38,.08)}
-}
-
-/* ---------- Full machine card: stable BELM branded shell ---------- */
+/* IMPORTANT: these status-specific selectors beat the old belm-theme.css status rules. */
 .belm-customer-machine-card,
-.belm-technician-machine-card{
-  position:relative!important;
-  overflow:visible!important;
-  background:linear-gradient(160deg,#061525 0%,#08243f 55%,#071b31 100%)!important;
-  border:1px solid #157fdb!important;
-  border-radius:22px!important;
-  color:var(--belm-white)!important;
-  box-shadow:0 16px 34px rgba(0,0,0,.28)!important;
-  animation:none!important;
+.belm-customer-machine-card.status-green,.belm-customer-machine-card.status-yellow,.belm-customer-machine-card.status-red,.belm-customer-machine-card.status-unknown,
+.belm-technician-machine-card,
+.belm-technician-machine-card.status-green,.belm-technician-machine-card.status-yellow,.belm-technician-machine-card.status-red,.belm-technician-machine-card.status-unknown{
+ position:relative!important;overflow:visible!important;background:linear-gradient(155deg,#061525 0%,#082a48 52%,#071b31 100%)!important;border:2px solid #1684ff!important;border-radius:22px!important;color:#f7fbff!important;box-shadow:0 16px 34px rgba(0,0,0,.30)!important;animation:none!important
 }
-.belm-customer-machine-card::after,
-.belm-technician-machine-card::after,
-.belm-customer-machine-card.belm-range-red::after,
-.belm-customer-machine-card.belm-range-yellow::after,
-.belm-technician-machine-card.belm-range-red::after,
-.belm-technician-machine-card.belm-range-yellow::after{
-  content:none!important;
-  animation:none!important;
-  box-shadow:none!important;
+.belm-customer-machine-card::after,.belm-customer-machine-card.status-green::after,.belm-customer-machine-card.status-yellow::after,.belm-customer-machine-card.status-red::after,.belm-customer-machine-card.status-unknown::after,
+.belm-technician-machine-card::after,.belm-technician-machine-card.status-green::after,.belm-technician-machine-card.status-yellow::after,.belm-technician-machine-card.status-red::after,.belm-technician-machine-card.status-unknown::after{content:none!important;display:none!important;animation:none!important;box-shadow:none!important}
+
+/* Override old status-wide text recoloring: normal card copy stays readable on navy. */
+.belm-customer-machine-card.status-green,.belm-customer-machine-card.status-yellow,.belm-customer-machine-card.status-red,.belm-customer-machine-card.status-unknown,
+.belm-technician-machine-card.status-green,.belm-technician-machine-card.status-yellow,.belm-technician-machine-card.status-red,.belm-technician-machine-card.status-unknown{--tw-text-opacity:1!important}
+.belm-customer-machine-card h1,.belm-customer-machine-card h2,.belm-customer-machine-card h3,.belm-customer-machine-card .belm-machine-native-head,.belm-customer-machine-card .belm-machine-native-head *,
+.belm-technician-machine-card h1,.belm-technician-machine-card h2,.belm-technician-machine-card h3{color:#fff!important}
+
+.belm-customer-condition-badge-v422{background:#071b31!important;border:1px solid #315a76!important;border-radius:14px!important;font-weight:850!important;box-shadow:none!important}
+.belm-customer-condition-badge-v422.status-red{color:#ff6570!important;border-color:#ff3f52!important}.belm-customer-condition-badge-v422.status-yellow{color:#ffd126!important;border-color:#ffd126!important}.belm-customer-condition-badge-v422.status-green{color:#21df83!important;border-color:#12d879!important}
+
+/* Outer information shell is branded and never blinks. */
+.belm-customer-machine-alert-copy,.belm-technician-machine-alert-copy{display:grid!important;gap:12px!important;background:linear-gradient(160deg,#08263f,#061a2c)!important;border:1px solid #176796!important;border-radius:18px!important;padding:14px!important;color:#fff!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;animation:none!important}
+
+/* Zone 1: Operator Message. */
+.belm-customer-operator-message-v422,.belm-technician-operator-message{display:grid!important;gap:5px!important;padding:14px 16px!important;border:1px solid #12d879!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(6,72,66,.46),rgba(5,32,45,.82))!important;color:#fff!important}
+.belm-customer-operator-message-v422>span,.belm-technician-message-kicker{color:#12d879!important;text-transform:uppercase!important;font-weight:900!important;letter-spacing:.08em!important;font-size:11px!important}.belm-customer-operator-message-v422>strong,.belm-technician-operator-message strong{color:#fff!important;font-weight:800!important}.belm-customer-operator-message-v422>small,.belm-technician-operator-message small{color:#a8bfd1!important}
+
+/* Zone 2: machine alert + service range. */
+.belm-customer-condition-copy-v422{display:grid!important;gap:6px!important;padding:14px 16px!important;border:1px solid #ffd126!important;border-radius:15px!important;background:linear-gradient(145deg,rgba(92,72,0,.30),rgba(25,29,29,.86))!important}.belm-customer-condition-copy-v422>strong{color:#ffd126!important;font-weight:900!important;line-height:1.35!important}.belm-customer-condition-copy-v422>span{color:#edf5fb!important;font-weight:700!important}
+
+/* Critical RED: blink ONLY the two requested zones. */
+.belm-customer-machine-card.status-red .belm-customer-operator-message-v422,.belm-customer-machine-card.belm-range-red .belm-customer-operator-message-v422,
+.belm-customer-machine-card.status-red .belm-customer-condition-copy-v422,.belm-customer-machine-card.belm-range-red .belm-customer-condition-copy-v422,
+.belm-technician-machine-card.status-red .belm-technician-operator-message,.belm-technician-machine-card.belm-range-red .belm-technician-operator-message{
+ border:2px solid #ff3f52!important;animation:belmAlertZoneRedBlink 1.05s ease-in-out infinite!important
+}
+.belm-customer-machine-card.status-red .belm-customer-condition-copy-v422>strong,.belm-customer-machine-card.belm-range-red .belm-customer-condition-copy-v422>strong{color:#ff6672!important}
+
+/* Warning YELLOW: blink ONLY the two requested zones. */
+.belm-customer-machine-card.status-yellow .belm-customer-operator-message-v422,.belm-customer-machine-card.belm-range-yellow .belm-customer-operator-message-v422,
+.belm-customer-machine-card.status-yellow .belm-customer-condition-copy-v422,.belm-customer-machine-card.belm-range-yellow .belm-customer-condition-copy-v422,
+.belm-technician-machine-card.status-yellow .belm-technician-operator-message,.belm-technician-machine-card.belm-range-yellow .belm-technician-operator-message{
+ border:2px solid #ffd126!important;animation:belmAlertZoneYellowBlink 1.2s ease-in-out infinite!important
 }
 
-/* Machine identity and fleet blocks. */
-.belm-customer-machine-card h1,.belm-customer-machine-card h2,.belm-customer-machine-card h3,
-.belm-technician-machine-card h1,.belm-technician-machine-card h2,.belm-technician-machine-card h3{
-  color:#fff!important;
-}
-.belm-customer-machine-card [class*="fleet"],
-.belm-technician-machine-card [class*="fleet"]{
-  border-color:#177bc5!important;
-}
+/* Service strip: clean BELM light card, severity only on border. */
+.belm-service-due-panel{background:linear-gradient(180deg,#fff,#eaf3fb)!important;color:#10233b!important;border:2px solid #1684ff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(0,0,0,.16)!important;animation:none!important}.belm-service-due-panel *{color:#10233b!important}.belm-service-due-panel.status-red{border-color:#ff3f52!important}.belm-service-due-panel.status-yellow{border-color:#ffd126!important}.belm-service-due-panel.status-green{border-color:#12d879!important}
 
-/* Condition badge = safety status only. */
-.belm-customer-condition-badge-v422{
-  background:#071b31!important;
-  border:1px solid #2b5571!important;
-  border-radius:14px!important;
-  font-weight:850!important;
-  box-shadow:none!important;
-}
-.belm-customer-condition-badge-v422.status-red{color:#ff5d68!important;border-color:#ff3f52!important;box-shadow:0 0 16px rgba(255,63,82,.24)!important}
-.belm-customer-condition-badge-v422.status-yellow{color:#ffd126!important;border-color:#ffd126!important;box-shadow:0 0 14px rgba(255,209,38,.18)!important}
-.belm-customer-condition-badge-v422.status-green{color:#21df83!important;border-color:#12d879!important}
-
-/* ---------- Operator + machine alert block ---------- */
-.belm-customer-machine-alert-copy,
-.belm-technician-machine-alert-copy{
-  display:grid!important;
-  gap:12px!important;
-  background:linear-gradient(160deg,#08263f,#061a2c)!important;
-  border:1px solid #176796!important;
-  border-radius:18px!important;
-  padding:14px!important;
-  color:#fff!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
-}
-
-/* Operator message is visually its own BELM-green panel. */
-.belm-customer-operator-message-v422,
-.belm-technician-operator-message{
-  position:relative!important;
-  display:grid!important;
-  gap:5px!important;
-  padding:14px 14px 14px 18px!important;
-  border:1px solid #12d879!important;
-  border-radius:15px!important;
-  background:linear-gradient(145deg,rgba(6,72,66,.46),rgba(5,32,45,.82))!important;
-  color:#fff!important;
-}
-.belm-customer-operator-message-v422>span,
-.belm-technician-message-kicker{
-  color:#12d879!important;
-  text-transform:uppercase!important;
-  font-weight:900!important;
-  letter-spacing:.08em!important;
-  font-size:11px!important;
-}
-.belm-customer-operator-message-v422>strong,
-.belm-technician-operator-message strong{
-  color:#fff!important;
-  font-weight:800!important;
-}
-.belm-customer-operator-message-v422>small,
-.belm-technician-operator-message small{
-  color:#a8bfd1!important;
-}
-
-/* Critical/service copy is a separate yellow/red alert panel. */
-.belm-customer-condition-copy-v422{
-  display:grid!important;
-  gap:6px!important;
-  padding:14px 16px!important;
-  border:1px solid #ffd126!important;
-  border-radius:15px!important;
-  background:linear-gradient(145deg,rgba(92,72,0,.32),rgba(25,29,29,.86))!important;
-}
-.belm-customer-condition-copy-v422>strong{color:#ffd126!important;font-weight:900!important;line-height:1.35!important}
-.belm-customer-condition-copy-v422>span{color:#e8f0f7!important;font-weight:700!important}
-
-/* RED critical = both marked areas may blink red. */
-.belm-customer-machine-card.belm-range-red .belm-customer-operator-message-v422,
-.belm-customer-machine-card.status-red .belm-customer-operator-message-v422,
-.belm-technician-machine-card.belm-range-red .belm-technician-operator-message,
-.belm-technician-machine-card.status-red .belm-technician-operator-message,
-.belm-customer-machine-card.belm-range-red .belm-customer-condition-copy-v422,
-.belm-customer-machine-card.status-red .belm-customer-condition-copy-v422,
-.belm-technician-machine-card.belm-range-red .belm-customer-condition-copy-v422,
-.belm-technician-machine-card.status-red .belm-customer-condition-copy-v422{
-  border:2px solid #ff3f52!important;
-  animation:belmAlertZoneRedBlink 1.05s ease-in-out infinite!important;
-}
-.belm-customer-machine-card.belm-range-red .belm-customer-condition-copy-v422>strong,
-.belm-customer-machine-card.status-red .belm-customer-condition-copy-v422>strong{
-  color:#ff6672!important;
-}
-
-/* YELLOW warning/service due = both marked areas may blink yellow. */
-.belm-customer-machine-card.belm-range-yellow .belm-customer-operator-message-v422,
-.belm-customer-machine-card.status-yellow .belm-customer-operator-message-v422,
-.belm-technician-machine-card.belm-range-yellow .belm-technician-operator-message,
-.belm-technician-machine-card.status-yellow .belm-technician-operator-message,
-.belm-customer-machine-card.belm-range-yellow .belm-customer-condition-copy-v422,
-.belm-customer-machine-card.status-yellow .belm-customer-condition-copy-v422,
-.belm-technician-machine-card.belm-range-yellow .belm-customer-condition-copy-v422,
-.belm-technician-machine-card.status-yellow .belm-customer-condition-copy-v422{
-  border:2px solid #ffd126!important;
-  animation:belmAlertZoneYellowBlink 1.2s ease-in-out infinite!important;
-}
-
-/* Service due panel from portal-tools: white/blue branded service strip like approved sample. */
-.belm-service-due-panel{
-  background:linear-gradient(180deg,#ffffff,#eaf3fb)!important;
-  color:#10233b!important;
-  border:1px solid #1684ff!important;
-  border-radius:16px!important;
-  box-shadow:0 8px 18px rgba(0,0,0,.16)!important;
-}
-.belm-service-due-panel *{color:#10233b!important}
-.belm-service-due-panel.status-red{border-color:#ff3f52!important}
-.belm-service-due-panel.status-yellow{border-color:#ffd126!important}
-.belm-service-due-panel.status-green{border-color:#12d879!important}
-
-/* Action area keeps BELM palette: navy/blue/green, Job Card stays purple as existing operation color. */
-.belm-customer-machine-card button,
-.belm-customer-machine-card a,
-.belm-technician-machine-card button,
-.belm-technician-machine-card a{
-  border-radius:13px!important;
-}
-.belm-customer-machine-card button:not([disabled]),
-.belm-technician-machine-card button:not([disabled]){
-  border-color:#176fae!important;
-}
-
-/* Disabled management stays subdued instead of glowing. */
-.belm-customer-machine-card button:disabled,
-.belm-technician-machine-card button:disabled{
-  opacity:.48!important;
-  filter:saturate(.7)!important;
-  box-shadow:none!important;
-}
-
-@media(max-width:560px){
-  .belm-customer-machine-card,.belm-technician-machine-card{border-radius:18px!important}
-  .belm-customer-machine-alert-copy,.belm-technician-machine-alert-copy{padding:10px!important;gap:10px!important}
-  .belm-customer-operator-message-v422,.belm-technician-operator-message,.belm-customer-condition-copy-v422{padding:12px!important}
-}
-
-@media(prefers-reduced-motion:reduce){
-  .belm-customer-operator-message-v422,
-  .belm-technician-operator-message,
-  .belm-customer-condition-copy-v422{animation-duration:2.4s!important}
-}
+.belm-customer-machine-card button,.belm-customer-machine-card a,.belm-technician-machine-card button,.belm-technician-machine-card a{border-radius:13px!important}.belm-customer-machine-card button:disabled,.belm-technician-machine-card button:disabled{opacity:.48!important;filter:saturate(.7)!important;box-shadow:none!important}
+@media(max-width:560px){.belm-customer-machine-card,.belm-technician-machine-card{border-radius:18px!important}.belm-customer-machine-alert-copy,.belm-technician-machine-alert-copy{padding:10px!important;gap:10px!important}.belm-customer-operator-message-v422,.belm-technician-operator-message,.belm-customer-condition-copy-v422{padding:12px!important}}
+@media(prefers-reduced-motion:reduce){.belm-customer-operator-message-v422,.belm-technician-operator-message,.belm-customer-condition-copy-v422{animation-duration:2.4s!important}}

@@ -11,6 +11,11 @@
   # Keeps /api/belm-workshop-home?section=petty-cash stable for the frontend.
   RewriteRule ^belm-workshop-home/?$ api/belm_workshop_home.php [L,QSA,NC]
 
+  # Customer Check Up is a customer-authenticated checklist workflow with its
+  # own GET/POST handler. Keep it explicit so it cannot fall through to the
+  # generic front controller and become a read-only checklist preview.
+  RewriteRule ^customer-checkup/?$ api/customer_checkup.php [L,QSA,NC]
+
   RewriteRule ^index\.php$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d

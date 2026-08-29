@@ -19,7 +19,10 @@
           var isCustomerHome = location.pathname === '/portal/dashboard' || location.pathname === '/portal/dashboard/';
           var params = new URLSearchParams(location.search);
           var hasExplicitSubview = params.has('view') || params.has('action') || params.has('machine') || params.has('machineId');
-          if (isCustomer && isCustomerHome && !hasExplicitSubview) location.replace('/customer-workshop/?actor=customer');
+          // Customer login always lands on the PORTAL-CWM home, which mirrors
+          // the BELM Workshop Home structure. OPEN WORKSHOP is the separate
+          // operational entry into /customer-workshop/.
+          if (isCustomer && isCustomerHome && !hasExplicitSubview) location.replace('/portal-cwm/');
         } catch (_) {}
       })();
     </script>

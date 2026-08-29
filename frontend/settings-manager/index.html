@@ -8,7 +8,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -17,7 +16,7 @@
 <body class="management-page">
   <header class="management-topbar">
     <div><strong>BELM General Tech</strong><small>Protected system configuration</small></div>
-    <div class="topbar-actions"><a class="button" href="/belm-workshop/">← Main Home</a></div>
+    <div class="topbar-actions"><a class="button" href="/coordinator/">← Coordinator</a></div>
   </header>
 
   <main class="management-shell">
@@ -25,182 +24,53 @@
       <div>
         <p class="eyebrow">Company and portal configuration</p>
         <h1>System Settings</h1>
-        <p>Save company details, document defaults, display theme and the protected delete PIN.</p>
+        <p>Save company details, document defaults, display theme and protected security controls. Operational department menus are managed from Coordinator → BELM Departments.</p>
       </div>
     </section>
 
     <div id="pageAlert" class="alert hidden"></div>
     <section class="settings-grid">
       <article class="panel">
-        <div class="section-head"><div><h2>Backup</h2><p>Free Render databases have no automatic backups. Download a full copy of your data periodically and keep it somewhere safe (your computer, Google Drive, email to yourself).</p></div></div>
-        <div class="settings-form">
-          <button id="downloadBackupButton" class="primary" type="button">Download full backup (JSON)</button>
-        </div>
+        <div class="section-head"><div><h2>Backup</h2><p>Free Render databases have no automatic backups. Download a full copy of your data periodically and keep it somewhere safe.</p></div></div>
+        <div class="settings-form"><button id="downloadBackupButton" class="primary" type="button">Download full backup (JSON)</button></div>
       </article>
 
       <article class="panel">
-        <div class="section-head"><div><h2>Security PINs</h2><p>Change the PIN required before confirming edits, or before deleting/clearing records. If you've forgotten the current PIN, just set a new one below — your own login already confirms you're a Super Admin.</p></div></div>
-        <form id="editPinForm" class="settings-form">
-          <label>New Edit PIN (4 digits)<input id="newEditPin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 2026"></label>
-          <button type="submit" class="primary">Update Edit PIN</button>
-        </form>
-        <form id="deletePinForm" class="settings-form" style="margin-top:14px;">
-          <label>New Delete/Clear PIN (4 digits)<input id="newDeletePin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 1234"></label>
-          <button type="submit" class="primary">Update Delete/Clear PIN</button>
-        </form>
+        <div class="section-head"><div><h2>Security PINs</h2><p>Change the PIN required before confirming edits, or before deleting/clearing records.</p></div></div>
+        <form id="editPinForm" class="settings-form"><label>New Edit PIN (4 digits)<input id="newEditPin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 2026"></label><button type="submit" class="primary">Update Edit PIN</button></form>
+        <form id="deletePinForm" class="settings-form" style="margin-top:14px;"><label>New Delete/Clear PIN (4 digits)<input id="newDeletePin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 1234"></label><button type="submit" class="primary">Update Delete/Clear PIN</button></form>
       </article>
 
       <article class="panel wide">
-        <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Only for use while still testing/building the portal. Pick one category to clear just that area — the rest stays untouched. This cannot be undone — download a backup first.</p></div></div>
+        <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Testing/building tool only. Pick one category; the rest stays untouched. Download a backup first.</p></div></div>
         <form id="resetDbForm" class="settings-form">
-          <label>Category to reset <small>(each one is independent — clearing it never touches the others)</small>
-            <select id="resetDbCategory">
-              <option value="customers">Customers (pick one)</option>
-              <option value="machines">Machines (pick one, or all)</option>
-              <option value="machine-log">Machine Log (1 machine) — hours, logs & expenses</option>
-              <option value="users">Users & Technicians (pick one, or all)</option>
-              <option value="roles">Custom Roles (pick one)</option>
-              <option value="checklists">Checklist Templates & Reports</option>
-              <option value="spare-parts">Spare Parts & Requests</option>
-              <option value="suppliers">Suppliers</option>
-              <option value="billing">Billing & Finance</option>
-              <option value="service-requests">Job Cards</option>
-              <option value="bank">Bank Manager</option>
-              <option value="tasks">Tasks</option>
-              <option value="activity">Activity Log, Trash & Announcements</option>
-              <option value="machine-expenses">Procurement logs</option>
-              <option value="petty-cash">Petty Cash deposits (top-ups only — keeps spending history)</option>
-            </select>
-          </label>
-          <label id="resetCustomerPickerWrap" class="hidden">Customer to delete <small>(required)</small>
-            <select id="resetCustomerPicker"><option value="">Select a customer…</option></select>
-          </label>
-          <label id="resetMachineScopeWrap" class="hidden">Scope
-            <select id="resetMachineScope">
-              <option value="single">One machine</option>
-              <option value="all">All machines</option>
-            </select>
-          </label>
-          <label id="resetUserScopeWrap" class="hidden">Scope
-            <select id="resetUserScope">
-              <option value="single">One user</option>
-              <option value="all">All users (Super Admins &amp; you stay protected)</option>
-            </select>
-          </label>
-          <label id="resetUserPickerWrap" class="hidden">User to delete <small>(required)</small>
-            <select id="resetUserPicker"><option value="">Select a user…</option></select>
-          </label>
-          <label id="resetRolePickerWrap" class="hidden">Role to delete <small>(required — Super Admin &amp; Technician are protected, and roles still assigned to a user can't be deleted)</small>
-            <select id="resetRolePicker"><option value="">Select a role…</option></select>
-          </label>
-          <label id="resetMachinePickerWrap" class="hidden">Machine <small>(required — pick the one machine to clear)</small>
-            <select id="resetMachinePicker"><option value="">Select a machine…</option></select>
-          </label>
-          <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label>
-          <label>Admin password<input id="resetDbPassword" type="password" required></label>
-          <label>Reason for this reset<input id="resetDbReason" type="text" maxlength="500" required placeholder="e.g. Clearing test data before go-live"></label>
-          <button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Reset selected category</button>
+          <label>Category to reset <small>(each one is independent)</small><select id="resetDbCategory"><option value="customers">Customers (pick one)</option><option value="machines">Machines (pick one, or all)</option><option value="machine-log">Machine Log (1 machine) — hours, logs & expenses</option><option value="users">Users & Technicians (pick one, or all)</option><option value="roles">Custom Roles (pick one)</option><option value="checklists">Checklist Templates & Reports</option><option value="spare-parts">Spare Parts & Requests</option><option value="suppliers">Suppliers</option><option value="billing">Billing & Finance</option><option value="service-requests">Job Cards</option><option value="bank">Bank Manager</option><option value="tasks">Tasks</option><option value="activity">Activity Log, Trash & Announcements</option><option value="machine-expenses">Procurement logs</option><option value="petty-cash">Petty Cash deposits</option></select></label>
+          <label id="resetCustomerPickerWrap" class="hidden">Customer to delete <small>(required)</small><select id="resetCustomerPicker"><option value="">Select a customer…</option></select></label>
+          <label id="resetMachineScopeWrap" class="hidden">Scope<select id="resetMachineScope"><option value="single">One machine</option><option value="all">All machines</option></select></label>
+          <label id="resetUserScopeWrap" class="hidden">Scope<select id="resetUserScope"><option value="single">One user</option><option value="all">All users (Super Admins &amp; you stay protected)</option></select></label>
+          <label id="resetUserPickerWrap" class="hidden">User to delete <small>(required)</small><select id="resetUserPicker"><option value="">Select a user…</option></select></label>
+          <label id="resetRolePickerWrap" class="hidden">Role to delete <small>(required)</small><select id="resetRolePicker"><option value="">Select a role…</option></select></label>
+          <label id="resetMachinePickerWrap" class="hidden">Machine <small>(required)</small><select id="resetMachinePicker"><option value="">Select a machine…</option></select></label>
+          <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><label>Admin password<input id="resetDbPassword" type="password" required></label><label>Reason for this reset<input id="resetDbReason" type="text" maxlength="500" required></label><button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Reset selected category</button>
         </form>
       </article>
 
-      <article class="panel" id="company-profile">
-        <div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div>
-        <form id="companyForm" class="settings-form">
-          <label>Company name<input id="companyName" required maxlength="255"></label>
-          <label>Business email<input id="companyEmail" type="email" maxlength="255"></label>
-          <label>Business phone<input id="companyPhone" maxlength="50"></label>
-          <label>Address<textarea id="companyAddress" rows="3" maxlength="500"></textarea></label>
-          <div class="two-column">
-            <label>TIN<input id="companyTin" maxlength="50"></label>
-            <label>VRN<input id="companyVrn" maxlength="50"></label>
-          </div>
-          <button id="saveCompanyButton" class="primary" type="submit">Save company settings</button>
-        </form>
-      </article>
+      <article class="panel" id="company-profile"><div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div><form id="companyForm" class="settings-form"><label>Company name<input id="companyName" required maxlength="255"></label><label>Business email<input id="companyEmail" type="email" maxlength="255"></label><label>Business phone<input id="companyPhone" maxlength="50"></label><label>Address<textarea id="companyAddress" rows="3" maxlength="500"></textarea></label><div class="two-column"><label>TIN<input id="companyTin" maxlength="50"></label><label>VRN<input id="companyVrn" maxlength="50"></label></div><button id="saveCompanyButton" class="primary" type="submit">Save company settings</button></form></article>
 
-      <article class="panel wide">
-        <div class="section-head"><div><h2>Invoice &amp; document branding</h2><p>Bank details, trading terms and marketing text printed on every Proforma, Invoice and Receipt PDF.</p></div></div>
-        <form id="documentBrandingForm" class="settings-form">
-          <label>Website<input id="companyWebsite" maxlength="255" placeholder="www.belmgeneral.co.tz"></label>
-          <div class="section-head" style="margin-top:6px"><h3 style="margin:0;font-size:13px">Bank details</h3></div>
-          <label>Account name<input id="bankAccountName" maxlength="255"></label>
-          <div class="two-column">
-            <label>NMB account number<input id="bankNmbNumber" maxlength="50"></label>
-            <label>CRDB account number<input id="bankCrdbNumber" maxlength="50"></label>
-          </div>
-          <div class="section-head" style="margin-top:6px"><h3 style="margin:0;font-size:13px">Defaults for new documents</h3></div>
-          <div class="two-column">
-            <label>Default VAT rate (%)<input id="defaultVatRate" type="number" min="0" max="100" step="0.1"></label>
-            <label>Default delivery time<input id="defaultDeliveryTime" maxlength="255" placeholder="e.g. 7-14 working days"></label>
-          </div>
-          <div class="two-column">
-            <label>Default payment terms<input id="defaultPaymentTerms" maxlength="255" placeholder="e.g. 100% Paid before delivery"></label>
-            <label>Default quote validity<input id="defaultQuoteValidity" maxlength="255" placeholder="e.g. within 7 days from the date of quotation"></label>
-          </div>
-          <label>Why Choose Us <small>(one point per line)</small>
-            <textarea id="whyChooseUsText" rows="4" maxlength="1000" placeholder="Premium Quality and Genuine Spare Parts&#10;Extensive Industry Experience"></textarea>
-          </label>
-          <label>Footer message<input id="footerMessage" maxlength="255" placeholder="Thank you for your business"></label>
-          <button id="saveDocumentBrandingButton" class="primary" type="submit">Save document branding</button>
-        </form>
-      </article>
+      <article class="panel wide"><div class="section-head"><div><h2>Invoice &amp; document branding</h2><p>Shared branding/defaults only. Operational BELM Finance is opened from Coordinator → BELM Departments → Finance / Accounts.</p></div></div><form id="documentBrandingForm" class="settings-form"><label>Website<input id="companyWebsite" maxlength="255"></label><label>Account name<input id="bankAccountName" maxlength="255"></label><div class="two-column"><label>NMB account number<input id="bankNmbNumber" maxlength="50"></label><label>CRDB account number<input id="bankCrdbNumber" maxlength="50"></label></div><div class="two-column"><label>Default VAT rate (%)<input id="defaultVatRate" type="number" min="0" max="100" step="0.1"></label><label>Default delivery time<input id="defaultDeliveryTime" maxlength="255"></label></div><div class="two-column"><label>Default payment terms<input id="defaultPaymentTerms" maxlength="255"></label><label>Default quote validity<input id="defaultQuoteValidity" maxlength="255"></label></div><label>Why Choose Us<textarea id="whyChooseUsText" rows="4" maxlength="1000"></textarea></label><label>Footer message<input id="footerMessage" maxlength="255"></label><button id="saveDocumentBrandingButton" class="primary" type="submit">Save document branding</button></form></article>
 
-      <article class="panel">
-        <div class="section-head"><div><h2>Business defaults</h2><p>Finance display and document numbering preferences.</p></div></div>
-        <form id="businessForm" class="settings-form">
-          <div class="two-column">
-            <label>Currency<select id="currency"><option value="TZS">TZS — Tanzanian shilling</option><option value="USD">USD — US dollar</option></select></label>
-            <label>Time zone<input id="timezone" value="Africa/Dar_es_Salaam"></label>
-          </div>
-          <div class="two-column">
-            <label>Invoice prefix<input id="invoicePrefix" maxlength="20" value="INV"></label>
-            <label>Proforma prefix<input id="proformaPrefix" maxlength="20" value="PF"></label>
-          </div>
-          <label>Default VAT (%)<input id="defaultVat" type="number" min="0" max="100" step="0.01" value="18"></label>
-          <button id="saveBusinessButton" class="primary" type="submit">Save business defaults</button>
-        </form>
-      </article>
+      <article class="panel"><div class="section-head"><div><h2>Business defaults</h2><p>Finance display and document numbering preferences.</p></div></div><form id="businessForm" class="settings-form"><div class="two-column"><label>Currency<select id="currency"><option value="TZS">TZS — Tanzanian shilling</option><option value="USD">USD — US dollar</option></select></label><label>Time zone<input id="timezone" value="Africa/Dar_es_Salaam"></label></div><div class="two-column"><label>Invoice prefix<input id="invoicePrefix" maxlength="20" value="INV"></label><label>Proforma prefix<input id="proformaPrefix" maxlength="20" value="PF"></label></div><label>Default VAT (%)<input id="defaultVat" type="number" min="0" max="100" step="0.01" value="18"></label><button id="saveBusinessButton" class="primary" type="submit">Save business defaults</button></form></article>
 
-      <article class="panel">
-        <div class="section-head"><div><h2>Display theme</h2><p>Your personal light/dark preference follows your login across the whole BELM portal and does not affect other users.</p></div></div>
-        <div class="theme-picker">
-          <button id="lightTheme" class="theme-choice" data-theme-choice="light" type="button">☀<br>Light mode</button>
-          <button id="darkTheme" class="theme-choice" data-theme-choice="dark" type="button">☾<br>Dark mode</button>
-        </div>
-      </article>
+      <article class="panel"><div class="section-head"><div><h2>Display theme</h2><p>Your personal light/dark preference follows your login and does not affect other users.</p></div></div><div class="theme-picker"><button id="lightTheme" class="theme-choice" data-theme-choice="light" type="button">☀<br>Light mode</button><button id="darkTheme" class="theme-choice" data-theme-choice="dark" type="button">☾<br>Dark mode</button></div></article>
 
-      <article class="panel">
-        <div class="section-head"><div><h2>Change delete PIN</h2><p>Super Admin protection for permanent deletion actions.</p></div></div>
-        <form id="pinForm" class="settings-form">
-          <label>Current 4-digit PIN<input id="currentPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label>
-          <label>New 4-digit PIN<input id="newPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label>
-          <label>Confirm new PIN<input id="confirmPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label>
-          <button id="changePinButton" class="secondary" type="submit">Change protected PIN</button>
-        </form>
-      </article>
+      <article class="panel"><div class="section-head"><div><h2>Change delete PIN</h2><p>Super Admin protection for permanent deletion actions.</p></div></div><form id="pinForm" class="settings-form"><label>Current 4-digit PIN<input id="currentPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>New 4-digit PIN<input id="newPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>Confirm new PIN<input id="confirmPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><button id="changePinButton" class="secondary" type="submit">Change protected PIN</button></form></article>
 
-      <article class="panel">
-        <div class="section-head"><div><h2>Alerts</h2><p>Turn alert delivery on or off. Service alerts can send WhatsApp automatically when a WhatsApp Business/API webhook is connected; without a provider, WhatsApp delivery is recorded as Pending Provider instead of falsely marked sent.</p></div></div>
-        <div class="settings-form">
-          <label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label>
-          <label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label>
-          <label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp service alerts enabled</label>
-        </div>
-      </article>
+      <article class="panel"><div class="section-head"><div><h2>Alerts</h2><p>Basic alert toggles. Full channel routing is managed from Coordinator → Notification Configuration.</p></div></div><div class="settings-form"><label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label><label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label><label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp service alerts enabled</label></div></article>
 
-      <article class="panel">
-        <div class="section-head"><div><h2>Messages to customers</h2><p>Posted messages appear on every customer's dashboard.</p></div></div>
-        <form id="announcementForm" class="settings-form">
-          <label class="wide">New message<textarea id="announcementMessage" rows="3" maxlength="1000" required placeholder="e.g. BELM offices will be closed on public holidays."></textarea></label>
-          <button id="postAnnouncementButton" class="primary" type="submit">Post message</button>
-        </form>
-        <div id="announcementList" class="announcement-list"></div>
-      </article>
+      <article class="panel"><div class="section-head"><div><h2>Messages to customers</h2><p>Posted messages appear on every customer's dashboard. Full Management Mail controls remain in Coordinator.</p></div></div><form id="announcementForm" class="settings-form"><label class="wide">New message<textarea id="announcementMessage" rows="3" maxlength="1000" required></textarea></label><button id="postAnnouncementButton" class="primary" type="submit">Post message</button></form><div id="announcementList" class="announcement-list"></div></article>
     </section>
   </main>
-
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=488-text-fit"></script>
-  <script src="/settings-manager/app.js?v=411-job-card-only"></script>
+  <script src="/settings-manager/app.js?v=491-no-duplicates"></script>
 </body>
 </html>

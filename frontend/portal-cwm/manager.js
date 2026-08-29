@@ -84,33 +84,15 @@
       const activity = String(machine.activityStatus || machine.activity_status || "").trim();
       const service = String(machine.serviceStatus || machine.service_status || machine.serviceKit || machine.service_kit || "").trim();
 
-      if (operatorText) {
-        rows.push({
-          type: /critical|stop|breakdown|danger|fault|failed|urgent/i.test(`${operatorStatus} ${operatorText}`) ? "danger" : "warning",
-          title: prefix,
-          text: operatorText,
-          by: operator?.operatorName ? `Operator: ${operator.operatorName}` : "Operator Report",
-        });
-      }
-      if (condition && !/good|normal|ok|working/i.test(condition)) {
-        rows.push({ type: "danger", title: prefix, text: `Machine condition: ${condition}`, by: "Machine Condition" });
-      }
-      if (activity && /breakdown|stopped|repair|maintenance|inactive/i.test(activity)) {
-        rows.push({ type: "warning", title: prefix, text: `Activity status: ${activity}`, by: "Machine Activity" });
-      }
-      if (service && /overdue|due|new|required/i.test(service)) {
-        rows.push({ type: /overdue/i.test(service) ? "danger" : "warning", title: prefix, text: `Service status: ${service}`, by: "Service Tracking" });
-      }
+      if (operatorText) rows.push({ type: /critical|stop|breakdown|danger|fault|failed|urgent/i.test(`${operatorStatus} ${operatorText}`) ? "danger" : "warning", title: prefix, text: operatorText, by: operator?.operatorName ? `Operator: ${operator.operatorName}` : "Operator Report" });
+      if (condition && !/good|normal|ok|working/i.test(condition)) rows.push({ type: "danger", title: prefix, text: `Machine condition: ${condition}`, by: "Machine Condition" });
+      if (activity && /breakdown|stopped|repair|maintenance|inactive/i.test(activity)) rows.push({ type: "warning", title: prefix, text: `Activity status: ${activity}`, by: "Machine Activity" });
+      if (service && /overdue|due|new|required/i.test(service)) rows.push({ type: /overdue/i.test(service) ? "danger" : "warning", title: prefix, text: `Service status: ${service}`, by: "Service Tracking" });
     });
     if (!rows.length && Array.isArray(machines) && machines.length) {
       machines.slice(0, 5).forEach((machine) => {
         const fleet = machine.fleetNumber || machine.fleet_number || machine.regNumber || machine.reg_number || "";
-        rows.push({
-          type: "good",
-          title: fleet ? `${machineLabel(machine)} · Fleet ${fleet}` : machineLabel(machine),
-          text: "No active alert is currently recorded for this machine.",
-          by: "Live Machine Status",
-        });
+        rows.push({ type: "good", title: fleet ? `${machineLabel(machine)} · Fleet ${fleet}` : machineLabel(machine), text: "No active alert is currently recorded for this machine.", by: "Live Machine Status" });
       });
     }
     return rows.length ? rows : fallbackMessages;
@@ -118,52 +100,14 @@
 
   function customerCard(customer) {
     const name = customer.name || "Customer";
-    const openHref = isCustomerHome
-      ? "/customer-workshop/?actor=customer"
-      : `/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id || "")}`;
+    const openHref = isCustomerHome ? "/customer-workshop/?actor=customer" : `/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id || "")}`;
 
     if (!isCustomerHome) {
-      return `<article class="cwm-welcome-card" data-customer-card="${escapeHtml(customer.id || "self")}"><div class="cwm-welcome-copy"><p class="cwm-welcome-kicker">WELCOME TO</p><h2>${escapeHtml(name.toUpperCase())} WORKSHOP PORTAL</h2></div><div class="cwm-welcome-details"><div><span>ADDRESS:</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><span>EMAIL:</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><span>PHONE:</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div><a class="cwm-open-workshop" href="${openHref}">OPEN WORKSHOP</a></article>`;
+      return `<article class="cwm-welcome-card cwm-list-card-v621" data-customer-card="${escapeHtml(customer.id || "self")}"><div class="cwm-welcome-copy"><p class="cwm-welcome-kicker">CUSTOMER WORKSHOP</p><h2>${escapeHtml(name.toUpperCase())}</h2></div><div class="cwm-welcome-details"><div><span>ADDRESS:</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><span>EMAIL:</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><span>PHONE:</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div><a class="cwm-open-workshop" href="${openHref}">OPEN WORKSHOP</a></article>`;
     }
 
     const first = homeMessages[0] || fallbackMessages[0];
-    return `
-      <article class="cwm-home-v556" data-customer-card="${escapeHtml(customer.id || "self")}">
-        <section class="cwm-home-hero-v556">
-          <p class="cwm-home-kicker-v556"><span></span>WELCOME TO<span></span></p>
-          <h1>${escapeHtml(name.toUpperCase())} <em>WORKSHOP</em> PORTAL</h1>
-          <div class="cwm-company-details-v556">
-            <div><i>●</i><span>ADDRESS</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div>
-            <div><i>✉</i><span>EMAIL</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div>
-            <div><i>☎</i><span>PHONE</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div>
-          </div>
-        </section>
-
-        <section class="cwm-message-display-v556 cwm-machine-alert-v610" aria-live="polite" data-alert-type="${escapeHtml(first.type || "info")}">
-          <button type="button" data-cwm-message-prev aria-label="Previous machine alert">‹</button>
-          <div class="cwm-message-content-v556">
-            <div class="cwm-alert-heading-v610"><span>⚠</span> MACHINE ALERTS</div>
-            <strong data-cwm-message-title>${escapeHtml(first.title || "MACHINE ALERT")}</strong>
-            <p data-cwm-message-text>${escapeHtml(first.text)}</p>
-            <small data-cwm-message-by>— ${escapeHtml(first.by)}</small>
-            <div class="cwm-message-dots-v556" data-cwm-message-dots></div>
-          </div>
-          <button type="button" data-cwm-message-next aria-label="Next machine alert">›</button>
-        </section>
-
-        <a class="cwm-open-workshop-v556" href="${openHref}"><span class="cwm-open-icon-v556">⚙</span><b>OPEN WORKSHOP</b><span class="cwm-open-arrow-v556">→</span></a>
-
-        <section class="cwm-quick-v556"><div class="cwm-quick-title-v556"><span>QUICK ACCESS</span></div><nav class="cwm-quick-grid-v556" aria-label="Workshop quick access">
-          <a href="/portal/dashboard?view=machines"><i>✓</i><b>CHECK UP</b><small>Daily checklist & reports</small><span>›</span></a>
-          <a href="/customer-job-card/"><i>🔧</i><b>JOB CARDS</b><small>Create & manage job cards</small><span>›</span></a>
-          <a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a>
-          <a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a>
-          <a href="/general-report/"><i>▥</i><b>REPORTS</b><small>All reports & analysis</small><span>›</span></a>
-          <a href="/customer-users/"><i>●●</i><b>USERS</b><small>Manage users & roles</small><span>›</span></a>
-        </nav></section>
-
-        <footer class="cwm-home-footer-v556"><div><span class="cwm-footer-mark-v556">B</span><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div><p>Powering Performance.<br>Ensuring Reliability.</p><div class="cwm-footer-values-v556"><span>◈ Safety First</span><span>✓ Quality Work</span><span>⚙ On Time</span></div></footer>
-      </article>`;
+    return `<article class="cwm-home-v556" data-customer-card="${escapeHtml(customer.id || "self")}"><section class="cwm-home-hero-v556"><p class="cwm-home-kicker-v556"><span></span>WELCOME TO<span></span></p><h1>${escapeHtml(name.toUpperCase())} <em>WORKSHOP</em> PORTAL</h1><div class="cwm-company-details-v556"><div><i>●</i><span>ADDRESS</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><i>✉</i><span>EMAIL</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><i>☎</i><span>PHONE</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div></section><section class="cwm-message-display-v556 cwm-machine-alert-v610" aria-live="polite" data-alert-type="${escapeHtml(first.type || "info")}"><button type="button" data-cwm-message-prev aria-label="Previous machine alert">‹</button><div class="cwm-message-content-v556"><div class="cwm-alert-heading-v610"><span>⚠</span> MACHINE ALERTS</div><strong data-cwm-message-title>${escapeHtml(first.title || "MACHINE ALERT")}</strong><p data-cwm-message-text>${escapeHtml(first.text)}</p><small data-cwm-message-by>— ${escapeHtml(first.by)}</small><div class="cwm-message-dots-v556" data-cwm-message-dots></div></div><button type="button" data-cwm-message-next aria-label="Next machine alert">›</button></section><a class="cwm-open-workshop-v556" href="${openHref}"><span class="cwm-open-icon-v556">⚙</span><b>OPEN WORKSHOP</b><span class="cwm-open-arrow-v556">→</span></a><section class="cwm-quick-v556"><div class="cwm-quick-title-v556"><span>QUICK ACCESS</span></div><nav class="cwm-quick-grid-v556" aria-label="Workshop quick access"><a href="/portal/dashboard?view=machines"><i>✓</i><b>CHECK UP</b><small>Daily checklist & reports</small><span>›</span></a><a href="/customer-job-card/"><i>🔧</i><b>JOB CARDS</b><small>Create & manage job cards</small><span>›</span></a><a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a><a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a><a href="/general-report/"><i>▥</i><b>REPORTS</b><small>All reports & analysis</small><span>›</span></a><a href="/customer-users/"><i>●●</i><b>USERS</b><small>Manage users & roles</small><span>›</span></a></nav></section><footer class="cwm-home-footer-v556"><div><span class="cwm-footer-mark-v556">B</span><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div><p>Powering Performance.<br>Ensuring Reliability.</p><div class="cwm-footer-values-v556"><span>◈ Safety First</span><span>✓ Quality Work</span><span>⚙ On Time</span></div></footer></article>`;
   }
 
   function setCustomerHomeChrome() {
@@ -209,7 +153,8 @@
     const grid = document.getElementById("cwmCardGrid");
     if (!grid) return;
     const needle = filterText.trim().toLowerCase();
-    const rows = customers.filter((customer) => !needle || String(customer.name || "").toLowerCase().includes(needle)).slice(0, 1);
+    let rows = customers.filter((customer) => !needle || [customer.name, customer.address, customer.email, customer.phone].some((field) => String(field || "").toLowerCase().includes(needle)));
+    if (isCustomerHome) rows = rows.slice(0, 1);
     grid.innerHTML = rows.length ? rows.map(customerCard).join("") : '<p class="muted">No customer record found.</p>';
     if (isCustomerHome) wireMessageDisplay();
   }

@@ -9,7 +9,14 @@ function belm_master_seed_uuid(int $n): string {
 $pdo = db();
 $pdo->beginTransaction();
 try {
+    // Keep Customer Check Up schema backward-compatible with databases created
+    // before the V17 daily service fields and MASTER flag existed.
     $pdo->exec("ALTER TABLE checklist_templates ADD COLUMN IF NOT EXISTS is_master SMALLINT NOT NULL DEFAULT 1");
+    $pdo->exec("ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS service_day_checked SMALLINT NOT NULL DEFAULT 0");
+    $pdo->exec("ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS next_service_hours INTEGER NULL");
+    $pdo->exec("ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS display_photo_url TEXT NULL");
+    $pdo->exec("ALTER TABLE checklist_reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NULL");
+    $pdo->exec("ALTER TABLE checklist_answers ADD COLUMN IF NOT EXISTS note TEXT NULL");
 
     $machineType = 'Reach Stacker';
     $masterName = 'Reach Stacker Master Checklist';
@@ -59,7 +66,7 @@ try {
     }
 
     $pdo->commit();
-    fwrite(STDOUT, "BELM Reach Stacker master checklist migration completed.\n");
+    fwrite(STDOUT, "BELM Reach Stacker master/checkup schema migration completed.\n");
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     fwrite(STDERR, "Checklist master migration failed: {$e->getMessage()}\n");

@@ -217,6 +217,40 @@ function belm_customer_department_enabled(string $customerId, string $department
     return ($states[$departmentKey] ?? 'ENABLED') !== 'REMOVED';
 }
 
+// V14: Coordinator is the source of truth for customer workshop capability.
+// Customer Technician workflow is available only when BOTH the Technical
+// department and Technician Dashboard/role entitlement are granted. Missing
+// legacy feature keys remain enabled for backward compatibility; newly created
+// customers receive technicianDashboard=false from the database default.
+function belm_customer_technician_entitled(string $customerId): bool {
+    if (!belm_customer_department_enabled($customerId, 'technical')) return false;
+    try {
+        $stmt = db()->prepare('SELECT coordinator_features FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1 LIMIT 1');
+        $stmt->execute([$customerId]);
+        $raw = $stmt->fetchColumn();
+        if ($raw === false) return false;
+        $features = json_decode((string)$raw, true);
+        if (!is_array($features) || !array_key_exists('technicianDashboard', $features)) return true;
+        return !empty($features['technicianDashboard']);
+    } catch (Throwable $ignored) {
+        return true; // rolling-deploy fail-safe for existing customers
+    }
+}
+
+function belm_customer_service_mode(string $customerId): array {
+    $entitled = belm_customer_technician_entitled($customerId);
+    $stmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1 LIMIT 1');
+    $stmt->execute([$customerId]);
+    $selfService = !empty($stmt->fetchColumn());
+    $provider = !$selfService || !$entitled;
+    return [
+        'technicianEntitled' => $entitled,
+        'belmServiceProviderActive' => $provider,
+        'customerSelfWorkshopActive' => $selfService && $entitled,
+        'forcedByCoordinator' => !$entitled,
+    ];
+}
+
 function require_customer_department(string $customerId, string $departmentKey, string $label = 'This department'): void {
     if (!belm_customer_department_enabled($customerId, $departmentKey)) {
         json_error($label . ' has been removed from this customer workspace by Coordinator.', 403);
@@ -233,7 +267,10 @@ function belm_customer_registration_profile(?string $mode): array {
         'mode' => $normalized,
         // Historical DB flag: 1 means customer self-manages maintenance;
         // 0 means BELM is the active Service Provider.
-        'isMachineryAdmin' => $isPortalCwm ? 1 : 0,
+        // V14: every new customer starts with BELM as Service Provider until
+        // Coordinator grants Technician capability. PORTAL-CWM may still start
+        // with its Workshop module enabled; service ownership is separate.
+        'isMachineryAdmin' => 0,
         // Independent PORTAL-CWM customers receive the Workshop module from
         // registration. TECHNICAL_DEP remains controlled by BELM's module
         // switch, preserving the existing commercial gate.
@@ -1693,6 +1730,9 @@ function require_customer_auth(): array {
         if (!$live || empty($live['is_active']) || empty($live['customer_active'])) {
             json_error('This Technician or customer account is no longer active.', 401);
         }
+        if (!belm_customer_technician_entitled((string)$live['customer_id'])) {
+            json_error('Coordinator has not granted the Technical Department and Technician role for this customer. BELM is the Service Provider.', 403);
+        }
         if (empty($live['is_machinery_admin'])) {
             json_error('BELM Service Provider is active for this customer. Customer Technician access is paused while BELM handles maintenance. Other customer portal roles remain active.', 403);
         }
@@ -1751,8 +1791,13 @@ function require_customer_auth(): array {
             ? (json_decode((string)$assistant['permissions'], true) ?: [])
             : null;
 
-        if (strtolower((string)($assistant['role'] ?? '')) === 'technician' && empty($ownerRow['is_machinery_admin'])) {
-            json_error('BELM Service is ON. Customer Technician access is locked while BELM handles maintenance.', 403);
+        if (strtolower((string)($assistant['role'] ?? '')) === 'technician') {
+            if (!belm_customer_technician_entitled((string)$payload['id'])) {
+                json_error('Coordinator has not granted the Technical Department and Technician role. BELM is the Service Provider.', 403);
+            }
+            if (empty($ownerRow['is_machinery_admin'])) {
+                json_error('BELM Service is ON. Customer Technician access is locked while BELM handles maintenance.', 403);
+            }
         }
 
         // Operator portal users are intentionally machine-card-only. Even a

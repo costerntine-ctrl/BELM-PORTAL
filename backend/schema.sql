@@ -103,7 +103,8 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NUL
 -- what permissions the customer has assigned internally.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS workshop_module_active SMALLINT NOT NULL DEFAULT 0;
 -- V_COORDINATOR: BELM-controlled optional customer modules. Customer-owned data remains isolated by customer_id.
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS coordinator_features JSONB NOT NULL DEFAULT '{"invoiceSystem":false,"proformaSystem":false,"operatorDashboard":true,"technicianDashboard":true}'::jsonb;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS coordinator_features JSONB NOT NULL DEFAULT '{"invoiceSystem":false,"proformaSystem":false,"operatorDashboard":true,"technicianDashboard":false}'::jsonb;
+ALTER TABLE customers ALTER COLUMN coordinator_features SET DEFAULT '{"invoiceSystem":false,"proformaSystem":false,"operatorDashboard":true,"technicianDashboard":false}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS customer_sales_documents (
   id VARCHAR(36) PRIMARY KEY,

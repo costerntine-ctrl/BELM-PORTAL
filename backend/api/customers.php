@@ -960,6 +960,10 @@ if ($method === 'PUT' && $action === 'machinery-admin') {
         $providerEnabled = !$selfServiceEnabled;
     }
 
+    if (!$providerEnabled && !belm_customer_technician_entitled((string)$id)) {
+        json_error('BELM Service cannot be turned OFF until Coordinator grants both the Technical Department and Technician role/dashboard to this customer.', 422);
+    }
+
     $stmt = db()->prepare('UPDATE customers SET is_machinery_admin = ? WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$selfServiceEnabled, $id]);
     if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
@@ -1028,8 +1032,13 @@ if ($method === 'PUT' && $action === 'coordinator-features') {
 
     $stmt = db()->prepare('UPDATE customers SET coordinator_features = ?::jsonb, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([json_encode($features), $id]);
-    log_activity($user, 'coordinator-customer-features-changed', 'customer', $id, ['features' => $features]);
-    json_out(['ok' => true, 'coordinatorFeatures' => $features]);
+    $forcedProvider = false;
+    if (array_key_exists('technicianDashboard', $b) && empty($features['technicianDashboard'])) {
+        db()->prepare('UPDATE customers SET is_machinery_admin=0, updated_at=NOW() WHERE id=? AND deleted_at IS NULL')->execute([$id]);
+        $forcedProvider = true;
+    }
+    log_activity($user, 'coordinator-customer-features-changed', 'customer', $id, ['features' => $features, 'belmServiceForced' => $forcedProvider]);
+    json_out(['ok' => true, 'coordinatorFeatures' => $features, 'belmServiceForced' => $forcedProvider]);
 }
 
 // Coordinator Department Controller. ENABLED/REMOVED changes access only; it never
@@ -1056,8 +1065,12 @@ if ($method === 'PUT' && $action === 'coordinator-departments') {
         $save->execute([uuid(), $id, $key, $state, $actorId !== '' ? $actorId : null]);
     }
     $states = belm_customer_department_states((string)$id);
-    log_activity($user, 'coordinator-customer-departments-changed', 'customer', $id, ['departments' => $states]);
-    json_out(['ok'=>true,'departmentStates'=>$states]);
+    $forcedProvider = (($states['technical'] ?? 'ENABLED') === 'REMOVED');
+    if ($forcedProvider) {
+        db()->prepare('UPDATE customers SET is_machinery_admin=0, updated_at=NOW() WHERE id=? AND deleted_at IS NULL')->execute([$id]);
+    }
+    log_activity($user, 'coordinator-customer-departments-changed', 'customer', $id, ['departments' => $states, 'belmServiceForced' => $forcedProvider]);
+    json_out(['ok'=>true,'departmentStates'=>$states,'belmServiceForced'=>$forcedProvider]);
 }
 
 // V472 - BELM Workshop Petty Cash bridge. The Workshop Manager uses an

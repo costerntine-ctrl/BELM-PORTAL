@@ -18,14 +18,16 @@
   const departmentLabels={administration:'Administration',technical:'Technical / Workshop',operator:'Machine Operator',procurement:'Procurement',store:'Store / Inventory',finance:'Finance / Accounts',generalReport:'General Report'};
   function departmentState(c,key){return c?.departmentStates?.[key]==='REMOVED'?'REMOVED':'ENABLED'}
   function departmentOptions(value){return `<option value="ENABLED" ${value==='ENABLED'?'selected':''}>Added / Enabled</option><option value="REMOVED" ${value==='REMOVED'?'selected':''}>Removed</option>`}
+  function technicianEntitled(c){return departmentState(c,'technical')==='ENABLED' && c?.coordinatorFeatures?.technicianDashboard===true}
   function render(){
     const q=document.getElementById('search').value.toLowerCase().trim();
     const rows=all.filter(x=>!q||`${x.name} ${x.email}`.toLowerCase().includes(q));
     box.innerHTML=rows.length?rows.map(c=>{
-      const f=c.coordinatorFeatures||{},connected=!c.selfServiceEnabled;
+      const f=c.coordinatorFeatures||{},entitled=technicianEntitled(c),connected=!c.selfServiceEnabled||!entitled;
+      const modeText=!entitled?'BELM SERVICE PROVIDER · TECHNICIAN ROLE NOT GRANTED':connected?'CONNECTED TO BELM / HYBRID':'CUSTOMER WORKSHOP';
       return `<article class="customer" data-id="${esc(c.id)}">
-        <div class="customer-main"><h3>${esc(c.name)}</h3><small>${esc(c.email||'')} · ${esc(c.phone||'')}</small><div><span class="mode ${connected?'connected':'independent'}">${connected?'CONNECTED TO BELM':'INDEPENDENT CUSTOMER'}</span></div></div>
-        <div class="switches"><label class="toggle"><input type="checkbox" data-feature="belm" ${connected?'checked':''}> BELM Service</label><label class="toggle"><input type="checkbox" data-feature="invoiceSystem" ${f.invoiceSystem?'checked':''}> Invoice System</label><label class="toggle"><input type="checkbox" data-feature="proformaSystem" ${f.proformaSystem?'checked':''}> Proforma System</label><label class="toggle"><input type="checkbox" data-feature="operatorDashboard" ${f.operatorDashboard!==false?'checked':''}> Machine Operator Dashboard</label><label class="toggle"><input type="checkbox" data-feature="technicianDashboard" ${f.technicianDashboard!==false?'checked':''}> Technician Dashboard</label></div>
+        <div class="customer-main"><h3>${esc(c.name)}</h3><small>${esc(c.email||'')} · ${esc(c.phone||'')}</small><div><span class="mode ${connected?'connected':'independent'}">${modeText}</span></div></div>
+        <div class="switches"><label class="toggle" title="${!entitled?'BELM Service is required until Technical Department + Technician role are granted.':''}"><input type="checkbox" data-feature="belm" ${connected?'checked':''} ${!entitled?'disabled':''}> BELM Service${!entitled?' (Required)':''}</label><label class="toggle"><input type="checkbox" data-feature="invoiceSystem" ${f.invoiceSystem?'checked':''}> Invoice System</label><label class="toggle"><input type="checkbox" data-feature="proformaSystem" ${f.proformaSystem?'checked':''}> Proforma System</label><label class="toggle"><input type="checkbox" data-feature="operatorDashboard" ${f.operatorDashboard!==false?'checked':''}> Machine Operator Dashboard</label><label class="toggle"><input type="checkbox" data-feature="technicianDashboard" ${f.technicianDashboard!==false?'checked':''}> Technician Dashboard</label></div>
         <div class="department-controller"><div class="button-controller-head"><b>Customer Department Controller</b><span>Add / Remove access only · workflow data is preserved</span></div>
           ${Object.entries(departmentLabels).map(([key,label])=>`<label>${label}<select data-department-key="${key}">${departmentOptions(departmentState(c,key))}</select></label>`).join('')}
         </div>
@@ -56,7 +58,7 @@
       try{
         const conf=await confirmEdit(`Confirm ${desired?'enable':'disable'} ${feature==='belm'?'BELM Service':feature} for ${c.name}. No customer data will be deleted.`);if(!conf){inp.checked=!desired;return}
         if(feature==='belm'){await api(`/customers/${id}/machinery-admin`,{method:'PUT',body:JSON.stringify({serviceProviderEnabled:desired,editPin:conf.editPin})});c.selfServiceEnabled=!desired}
-        else{const payload=currentPayload(c);payload[feature]=desired;await api(`/customers/${id}/coordinator-features`,{method:'PUT',body:JSON.stringify({...payload,editPin:conf.editPin})});c.coordinatorFeatures=payload}
+        else{const payload=currentPayload(c);payload[feature]=desired;const d=await api(`/customers/${id}/coordinator-features`,{method:'PUT',body:JSON.stringify({...payload,editPin:conf.editPin})});c.coordinatorFeatures=payload;if(d.belmServiceForced)c.selfServiceEnabled=false}
         render();
       }catch(e){inp.checked=!desired;alertBox.textContent=e.message;alertBox.hidden=false}finally{inp.disabled=false}
     }));
@@ -64,7 +66,7 @@
       const card=sel.closest('.customer'),id=card.dataset.id,c=all.find(x=>x.id===id),key=sel.dataset.departmentKey,newState=sel.value,oldState=departmentState(c,key);sel.disabled=true;
       try{
         const conf=await confirmEdit(`${newState==='ENABLED'?'Add / enable':'Remove'} ${departmentLabels[key]} for ${c.name}. This changes access only; existing workflow records and history remain stored.`);if(!conf){sel.value=oldState;return}
-        const d=await api(`/customers/${id}/coordinator-departments`,{method:'PUT',body:JSON.stringify({departments:{[key]:newState},editPin:conf.editPin})});c.departmentStates=d.departmentStates;render();
+        const d=await api(`/customers/${id}/coordinator-departments`,{method:'PUT',body:JSON.stringify({departments:{[key]:newState},editPin:conf.editPin})});c.departmentStates=d.departmentStates;if(d.belmServiceForced)c.selfServiceEnabled=false;render();
       }catch(e){sel.value=oldState;alertBox.textContent=e.message;alertBox.hidden=false}finally{sel.disabled=false}
     }));
     box.querySelectorAll('select[data-button-key]').forEach(sel=>sel.addEventListener('change',async()=>{

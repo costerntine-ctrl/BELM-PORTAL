@@ -126,14 +126,20 @@ function log_customer_activity(array $customer, string $action): void {
 // paused. Existing records stay intact for history, but customer-side create,
 // edit, reset, delete, login and assignment actions are blocked until BELM OFF.
 function customer_technician_management_enabled(array $customer): bool {
+    $customerId = (string)($customer['id'] ?? '');
+    if ($customerId === '' || !belm_customer_technician_entitled($customerId)) return false;
     $stmt = db()->prepare('SELECT is_machinery_admin FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
-    $stmt->execute([$customer['id']]);
+    $stmt->execute([$customerId]);
     return !empty($stmt->fetchColumn());
 }
 
 function require_customer_technician_management_access(array $customer): void {
+    $customerId = (string)($customer['id'] ?? '');
+    if ($customerId === '' || !belm_customer_technician_entitled($customerId)) {
+        json_error('Coordinator has not granted the Technical Department and Technician role. BELM is the Service Provider for this customer.', 403);
+    }
     if (!customer_technician_management_enabled($customer)) {
-        json_error('BELM Service is ON. Customer Technician management is locked while BELM handles maintenance. Turn BELM Service OFF to manage your own Technicians.', 403);
+        json_error('BELM Service is ON. Customer Technician management is locked while BELM handles maintenance. Coordinator can keep this ON for Hybrid service or turn it OFF for Customer Workshop mode.', 403);
     }
 }
 

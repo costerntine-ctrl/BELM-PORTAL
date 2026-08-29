@@ -43,6 +43,7 @@ if ($action === 'login' && $method === 'POST') {
         record_failed_attempt('operator-login', "$machineId:$name");
         json_error('This machine is not currently active on the portal. Contact your Machine Admin.', 403);
     }
+    require_customer_department((string)$operator['customer_id'], 'operator', 'Machine Operator Department');
     clear_rate_limit('operator-login', "$machineId:$name");
 
     $token = jwt_encode([
@@ -70,6 +71,9 @@ if (!$payload || ($payload['type'] ?? '') !== 'operator') json_error('Not authen
 $operatorId = $payload['id'];
 $machineId = $payload['machineId'];
 
+// V_SYNC_AUDIT: Coordinator department removal must block Operator access at the backend.
+require_customer_department((string)$payload['customerId'], 'operator', 'Machine Operator Department');
+
 function operator_open_shift(string $operatorId): ?array {
     $stmt = db()->prepare(
         "SELECT * FROM machine_operator_shifts
@@ -81,12 +85,26 @@ function operator_open_shift(string $operatorId): ?array {
     return $shift ?: null;
 }
 
+function operator_machine_card_button_state(string $customerId, string $key): string {
+    $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled'];
+    $stmt = db()->prepare('SELECT coordinator_features FROM customers WHERE id=? AND deleted_at IS NULL LIMIT 1');
+    $stmt->execute([$customerId]);
+    $features = json_decode((string)($stmt->fetchColumn() ?: '{}'), true) ?: [];
+    $candidate = strtolower((string)($features['machineCardButtons']['operator'][$key] ?? ($defaults[$key] ?? 'enabled')));
+    return in_array($candidate, ['enabled','disabled','hidden'], true) ? $candidate : ($defaults[$key] ?? 'enabled');
+}
+
+function require_operator_machine_card_button(string $customerId, string $key): void {
+    $state = operator_machine_card_button_state($customerId, $key);
+    if ($state !== 'enabled') json_error('This Operator action is not enabled by Coordinator.', 403);
+}
+
 // V398: the Operator lands on the same machine-card information surface used
 // by the Technician. This endpoint is intentionally read-only: button/action
 // permissions will be connected separately without granting Technician rights.
 if ($action === 'dashboard' && $method === 'GET') {
     $stmt = db()->prepare(
-        'SELECT m.*, c.name AS customer_name
+        'SELECT m.*, c.name AS customer_name, c.coordinator_features
          FROM machines m
          JOIN customers c ON c.id = m.customer_id
          WHERE m.id = ? AND m.customer_id = ? AND m.deleted_at IS NULL AND c.deleted_at IS NULL'
@@ -142,6 +160,16 @@ if ($action === 'dashboard' && $method === 'GET') {
             'name' => (string)($payload['name'] ?? 'Operator'),
         ],
         'customerName' => (string)($machine['customer_name'] ?? ''),
+        'machineCardButtons' => (function() use ($machine) {
+            $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled'];
+            $features = json_decode((string)($machine['coordinator_features'] ?? '{}'), true) ?: [];
+            $configured = $features['machineCardButtons']['operator'] ?? [];
+            foreach ($defaults as $key => $state) {
+                $candidate = strtolower((string)($configured[$key] ?? $state));
+                if (in_array($candidate, ['enabled','disabled','hidden'], true)) $defaults[$key] = $candidate;
+            }
+            return $defaults;
+        })(),
         'machine' => [
             'id' => (string)$machine['id'],
             'brand' => (string)($machine['brand'] ?? ''),
@@ -213,6 +241,7 @@ if ($action === 'log-container' && $method === 'POST') {
 }
 
 if ($action === 'check-up' && $method === 'POST') {
+    require_operator_machine_card_button((string)$payload['customerId'], 'checkup');
     $shift = operator_open_shift($operatorId);
     if (!$shift) json_error('Sign in first before completing Operator Check Up.', 422);
 
@@ -307,9 +336,11 @@ if ($action === 'check-up' && $method === 'POST') {
 }
 
 if ($action === 'report' && $method === 'POST') {
+    $b = body();
+    $mode = strtoupper(trim((string)($b['mode'] ?? 'DAILY')));
+    require_operator_machine_card_button((string)$payload['customerId'], $mode === 'BELM_JOB' ? 'operationCard' : 'report');
     $shift = operator_open_shift($operatorId);
     if (!$shift) json_error('Sign in first before sending a machine report.', 422);
-    $b = body();
     $message = trim((string)($b['message'] ?? ''));
     if ($message === '') json_error('Write the machine report message first.');
     if (mb_strlen($message) > 1000) json_error('Machine report message is too long.');

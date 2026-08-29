@@ -313,6 +313,9 @@ function bw_case_view(array $row): array {
 }
 
 $ctx = bw_context($payload);
+if (in_array($ctx['kind'], ['customer','customer-tech'], true) && ($ctx['customerId'] ?? '') !== '') {
+    require_customer_department((string)$ctx['customerId'], 'technical', 'Technical / Workshop Department');
+}
 
 
 function bw_report_access(array $ctx): void {
@@ -1398,6 +1401,25 @@ if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
 }
 
 
+// V_COORDINATOR_ROLE_FLOW: Technician receives an assigned Job Card; Technician never assigns it.
+if ($method === 'PUT' && $action === 'job-receive' && $id !== '') {
+    $stmt=db()->prepare('SELECT jc.*,bc.current_stage,bc.status AS case_status FROM digital_job_cards jc JOIN breakdown_cases bc ON bc.id=jc.case_id WHERE jc.id=?');
+    $stmt->execute([$id]);
+    $job=$stmt->fetch();
+    if(!$job) json_error('Job Card not found.',404);
+    bw_case_access($ctx,(string)$job['case_id']);
+    if(!bw_is_technician_actor($ctx)) json_error('Only the assigned Technician can receive this Job Card.',403);
+    bw_require_assigned_job($ctx,$job);
+    $status=strtoupper(trim((string)($job['status']??'')));
+    if(in_array($status,['COMPLETED','CANCELLED','PENDING_APPROVAL'],true)) json_error('This Job Card cannot be received in its current status.',409);
+    $firstReceive=!in_array($status,['RECEIVED','IN_PROGRESS','WAITING_FOR_PARTS'],true);
+    if($firstReceive){
+        db()->prepare("UPDATE digital_job_cards SET status='RECEIVED',updated_at=NOW() WHERE id=?")->execute([$id]);
+        bw_log((string)$job['case_id'],'JOB_CARD_ASSIGNED','Technician','JOB_CARD_RECEIVED','Technician received assigned Job Card', $ctx);
+    }
+    json_out(['ok'=>true,'firstReceive'=>$firstReceive,'status'=>'RECEIVED','process'=>'RECEIVED']);
+}
+
 // V403 - opening the assigned Job Card is a real process event.
 // This is idempotent: repeat opens never create duplicate history events.
 if ($method === 'PUT' && $action === 'job-open' && $id !== '') {
@@ -1410,7 +1432,7 @@ if ($method === 'PUT' && $action === 'job-open' && $id !== '') {
     bw_require_assigned_job($ctx,$job);
     $firstOpen=empty($job['started_at']);
     if($firstOpen){
-        db()->prepare("UPDATE digital_job_cards SET started_at=COALESCE(started_at,NOW()),status=CASE WHEN UPPER(COALESCE(status,'')) IN ('ASSIGNED','OPEN','RECEIVED','CREATED') THEN 'IN_PROGRESS' ELSE status END,updated_at=NOW() WHERE id=?")
+        db()->prepare("UPDATE digital_job_cards SET started_at=COALESCE(started_at,NOW()),status=CASE WHEN UPPER(COALESCE(status,'')) IN ('RECEIVED','IN_PROGRESS') THEN 'IN_PROGRESS' ELSE status END,updated_at=NOW() WHERE id=?")
             ->execute([$id]);
         $stage=strtoupper(trim((string)($job['current_stage']??'')));
         if(in_array($stage,['JOB_CARD_ASSIGNED','TECHNICIAN_ASSIGNMENT','WORKSHOP_REVIEW'],true)){
@@ -1419,7 +1441,7 @@ if ($method === 'PUT' && $action === 'job-open' && $id !== '') {
             bw_log((string)$job['case_id'],$stage?:'DIAGNOSIS','Technician','Technician opened Job Card',null,$ctx);
         }
     }
-    json_out(['ok'=>true,'firstOpen'=>$firstOpen,'process'=>'OPENED']);
+    json_out(['ok'=>true,'firstOpen'=>$firstOpen,'process'=>'DIAGNOSIS']);
 }
 
 if ($method === 'PUT' && $action === 'job-report' && $id !== '') {

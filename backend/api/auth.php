@@ -536,10 +536,15 @@ if ($action === 'unified-login' && $method === 'POST') {
             $staffRoleLower = strtolower(trim((string)$user['role_name']));
             // V510: role-specific landing pages. PORTAL-BELM WM is reserved for
             // the operational workshop roles; Finance/Accounts lands in Billing.
-            $wmRoles = ['super admin', 'workshop manager', 'engineer', 'store keeper', 'procurement'];
+            // V8: BELM Admin / Super Admin always lands on Workshop Management Control.
+            // Operational roles continue to their own role workspaces.
+            $managementControlRoles = ['super admin', 'belm admin', 'admin', 'administrator'];
+            $wmRoles = ['workshop manager', 'engineer', 'store keeper', 'procurement'];
             $financeRoles = ['accounts', 'accountant', 'finance'];
             if ($isTechnician) {
                 $staffDestination = '/tech';
+            } elseif (in_array($staffRoleLower, $managementControlRoles, true)) {
+                $staffDestination = '/workshop-management-home/';
             } elseif (in_array($staffRoleLower, $wmRoles, true)) {
                 $staffDestination = '/belm-workshop/';
             } elseif (in_array($staffRoleLower, $financeRoles, true)) {

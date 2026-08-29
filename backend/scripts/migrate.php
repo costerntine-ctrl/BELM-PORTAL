@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-const BELM_RELEASE = '356-bank-test-reset';
+const BELM_RELEASE = 'coordinator-communication-db-safety-v12';
 const BELM_DATA_SAFETY_EXIT = 78;
 
 function belm_env_true(string $name): bool {
@@ -57,9 +57,10 @@ $protectedTables = [
     'spare_parts', 'spare_part_requests', 'suppliers',
     'bank_accounts', 'bank_withdrawals', 'company_expenses',
     'proforma_invoices', 'proforma_invoice_items', 'invoices', 'invoice_items', 'payments', 'receipts',
-    'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests',
+    'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests', 'customer_department_settings', 'customer_sales_documents',
     'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
-    'customer_communications', 'customer_tool_issues', 'belm_workshop_tool_issues', 'delivery_notes', 'delivery_note_items', 'tasks', 'activity_logs', 'trash_entries',
+    'customer_communications', 'notification_logs', 'system_settings', 'machine_service_owner_notifications',
+    'customer_tool_issues', 'belm_workshop_tool_issues', 'delivery_notes', 'delivery_note_items', 'tasks', 'activity_logs', 'trash_entries',
 ];
 
 try {
@@ -117,17 +118,11 @@ try {
         ")"
     );
 
-    // V356 explicit user-authorized banking reset. This release may remove only
-    // bank_accounts/bank_withdrawals on its FIRST successful migration. The
-    // deployment audit row is the durable one-time marker, so restarts do not
-    // reset the test bank again.
-    $bankResetDoneStmt = $pdo->prepare('SELECT 1 FROM belm_deployment_audits WHERE release=? LIMIT 1');
-    $bankResetDoneStmt->execute([BELM_RELEASE]);
-    $bankResetPending = !$bankResetDoneStmt->fetchColumn();
-
+    // V6 data-safe coordinator release: deployment migrations are additive-only.
+    // No bank reset, no business-row cleanup and no feature-state backfill is performed here.
     // Strong no-touch guard for BELM Spare Stock. Record counts/IDs are already
     // protected below; this hash additionally protects stock quantities and
-    // inventory prices from accidental mutation during the banking-only reset.
+    // inventory prices from accidental mutation during schema evolution.
     $spareStockHashBefore = '';
     if (belm_table_exists($pdo, 'spare_parts')) {
         $spareRows = $pdo->query('SELECT id, stock_qty, reorder_threshold, purchase_price, selling_price, deleted_at FROM spare_parts ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
@@ -154,15 +149,18 @@ try {
     $pdo->exec('CREATE TEMP TABLE belm_predeploy_ids(table_name TEXT NOT NULL,row_id TEXT NOT NULL) ON COMMIT DROP');
     $preCounts = [];
     foreach ($protectedTables as $table) {
-        // Only the first V356 run is authorized to replace banking rows. Every
-        // other protected table remains fail-closed, including Spare Stock.
-        if ($bankResetPending && in_array($table, ['bank_accounts', 'bank_withdrawals'], true)) continue;
         if (!belm_table_exists($pdo, $table)) continue;
         $preCounts[$table] = belm_table_count($pdo, $table);
         if (belm_column_exists($pdo, $table, 'id')) {
             $quoted = belm_safe_identifier($table);
             $pdo->exec("INSERT INTO belm_predeploy_ids(table_name,row_id) SELECT " . $pdo->quote($table) . ", id::text FROM {$quoted}");
         }
+    }
+
+    // Fail closed if a future schema.sql accidentally contains destructive business-data SQL.
+    // DDL below is limited to CREATE / ALTER ADD / CREATE INDEX / INSERT-if-missing.
+    if (preg_match('/\b(DROP\s+TABLE|TRUNCATE|DELETE\s+FROM)\b/i', $schema)) {
+        throw new RuntimeException('DATA_SAFETY_BLOCK: destructive SQL detected in schema.sql.');
     }
 
     // Apply the cumulative schema only when its content changes. schema.sql is
@@ -178,35 +176,14 @@ try {
         $schemaApplied = true;
     }
 
-    if ($bankResetPending) {
-        // Banking-only reset requested by the owner. Preserve Billing records
-        // themselves; remove only their bank allocation so invoices, receipts,
-        // payments and expenses/history remain intact.
-        if (belm_table_exists($pdo, 'payments') && belm_column_exists($pdo, 'payments', 'bank_account_id')) {
-            $pdo->exec('UPDATE payments SET bank_account_id=NULL WHERE bank_account_id IS NOT NULL');
-        }
-        if (belm_table_exists($pdo, 'receipts') && belm_column_exists($pdo, 'receipts', 'bank_account_id')) {
-            $pdo->exec('UPDATE receipts SET bank_account_id=NULL WHERE bank_account_id IS NOT NULL');
-        }
-        if (belm_table_exists($pdo, 'company_expenses') && belm_column_exists($pdo, 'company_expenses', 'bank_account_id')) {
-            $pdo->exec('UPDATE company_expenses SET bank_account_id=NULL WHERE bank_account_id IS NOT NULL');
-        }
-        if (belm_table_exists($pdo, 'bank_withdrawals')) $pdo->exec('DELETE FROM bank_withdrawals');
-        if (belm_table_exists($pdo, 'bank_accounts')) $pdo->exec('DELETE FROM bank_accounts');
+    // Business rows are never reset by deployment in V6.
 
-        $testBankId = '35600000-0000-4000-8000-000000000001';
-        $pdo->prepare(
-            'INSERT INTO bank_accounts(id,bank_name,account_name,account_number,opening_balance,is_active,is_test,created_at,deleted_at) VALUES(?,?,?,?,?,1,1,NOW(),NULL)'
-        )->execute([$testBankId, 'BELM TEST BANK', 'BELM TEST ACCOUNT', 'TEST-000001', 0]);
-        fwrite(STDOUT, "V356 banking reset: old bank accounts/withdrawals cleared; TEST BANK created at TZS 0. Spare Stock untouched.\n");
-    }
-
-    // Verify Spare Stock values did not change during the explicit banking reset.
+    // Verify Spare Stock values did not change during schema evolution.
     if ($spareStockHashBefore !== '' && belm_table_exists($pdo, 'spare_parts')) {
         $spareRowsAfter = $pdo->query('SELECT id, stock_qty, reorder_threshold, purchase_price, selling_price, deleted_at FROM spare_parts ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
         $spareStockHashAfter = hash('sha256', json_encode($spareRowsAfter, JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION));
         if (!hash_equals($spareStockHashBefore, $spareStockHashAfter)) {
-            throw new RuntimeException('DATA_SAFETY_BLOCK: Spare Stock changed during V356 banking-only reset. Entire transaction rolled back.');
+            throw new RuntimeException('DATA_SAFETY_BLOCK: Spare Stock changed during deployment schema evolution. Entire transaction rolled back.');
         }
     }
 
@@ -282,7 +259,7 @@ try {
     ]);
 
     $pdo->commit();
-    fwrite(STDOUT, 'BELM V356 safe background database check completed. Installation ' . $installationId . '; protected records preserved; schema ' . ($schemaApplied ? 'applied' : 'already current') . ".\n");
+    fwrite(STDOUT, 'BELM Coordinator Communication DB V12 safe background database check completed. Installation ' . $installationId . '; protected records preserved; schema ' . ($schemaApplied ? 'applied' : 'already current') . ".\n");
 } catch (Throwable $error) {
     try {
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();

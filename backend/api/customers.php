@@ -33,6 +33,8 @@ function belm_in_clause(array $ids): string {
     return implode(',', array_fill(0, count($ids), '?'));
 }
 
+
+
 // V377 - Permanent deletion for ONE machine from BELM Admin > View Customer Machine.
 // Mirrors the proven Danger Zone machine hard-delete behavior: machine-owned
 // operational history is removed, while independent customer billing/service
@@ -314,6 +316,7 @@ if ($method === 'GET' && $action === 'cwm-overview') {
             'selfServiceEnabled' => !empty($c['is_machinery_admin']),
             'workshopModuleActive' => !empty($c['workshop_module_active']),
             'coordinatorFeatures' => json_decode((string)($c['coordinator_features'] ?? '{}'), true) ?: [],
+            'departmentStates' => belm_customer_department_states((string)$c['id']),
             'workshopManagerCount' => $staff['workshop_manager'] ?? 0,
             'storeKeeperCount' => $staff['store_keeper'] ?? 0,
             'technicianCount' => $techniciansByCustomer[$c['id']] ?? 0,
@@ -999,14 +1002,62 @@ if ($method === 'PUT' && $action === 'coordinator-features') {
     require_page_access($user, 'customers');
     $b = body();
     require_edit_confirmation($user, $b);
-    $allowed = ['invoiceSystem', 'proformaSystem'];
-    $features = [];
-    foreach ($allowed as $key) $features[$key] = !empty($b[$key]);
+
+    $existingStmt = db()->prepare('SELECT coordinator_features FROM customers WHERE id=? AND deleted_at IS NULL LIMIT 1');
+    $existingStmt->execute([$id]);
+    $existingRaw = $existingStmt->fetchColumn();
+    if ($existingRaw === false) json_error('Customer not found.', 404);
+    $features = json_decode((string)$existingRaw, true);
+    if (!is_array($features)) $features = [];
+
+    // Merge only keys supplied by Coordinator. Unknown/future settings are preserved.
+    foreach (['invoiceSystem', 'proformaSystem', 'operatorDashboard', 'technicianDashboard'] as $key) {
+        if (array_key_exists($key, $b)) $features[$key] = !empty($b[$key]);
+    }
+
+    $validButtonStates = ['enabled','disabled','hidden'];
+    $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled'];
+    $existingButtons = is_array($features['machineCardButtons']['operator'] ?? null) ? $features['machineCardButtons']['operator'] : [];
+    $incomingButtons = is_array($b['machineCardButtons']['operator'] ?? null) ? $b['machineCardButtons']['operator'] : [];
+    foreach ($defaults as $buttonKey => $defaultState) {
+        $state = strtolower(trim((string)($incomingButtons[$buttonKey] ?? $existingButtons[$buttonKey] ?? $defaultState)));
+        if (!in_array($state, $validButtonStates, true)) $state = $defaultState;
+        $existingButtons[$buttonKey] = $state;
+    }
+    $features['machineCardButtons']['operator'] = $existingButtons;
+
     $stmt = db()->prepare('UPDATE customers SET coordinator_features = ?::jsonb, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([json_encode($features), $id]);
-    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
     log_activity($user, 'coordinator-customer-features-changed', 'customer', $id, ['features' => $features]);
     json_out(['ok' => true, 'coordinatorFeatures' => $features]);
+}
+
+// Coordinator Department Controller. ENABLED/REMOVED changes access only; it never
+// deletes operational rows. Missing settings remain ENABLED for backward compatibility.
+if ($method === 'PUT' && $action === 'coordinator-departments') {
+    require_page_access($user, 'customers');
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $customerStmt = db()->prepare('SELECT id FROM customers WHERE id=? AND deleted_at IS NULL LIMIT 1');
+    $customerStmt->execute([$id]);
+    if (!$customerStmt->fetchColumn()) json_error('Customer not found.', 404);
+
+    $defaults = belm_customer_department_defaults();
+    $incoming = is_array($b['departments'] ?? null) ? $b['departments'] : [];
+    if (!$incoming) json_error('No department settings supplied.');
+    $actorId = (string)($user['id'] ?? '');
+    $sql = "INSERT INTO customer_department_settings(id,customer_id,department_key,access_state,updated_by,created_at,updated_at)
+            VALUES(?,?,?,?,?,NOW(),NOW())
+            ON CONFLICT (customer_id,department_key) DO UPDATE SET access_state=EXCLUDED.access_state,updated_by=EXCLUDED.updated_by,updated_at=NOW()";
+    $save = db()->prepare($sql);
+    foreach ($incoming as $key => $stateRaw) {
+        if (!array_key_exists($key, $defaults)) continue;
+        $state = strtoupper(trim((string)$stateRaw)) === 'REMOVED' ? 'REMOVED' : 'ENABLED';
+        $save->execute([uuid(), $id, $key, $state, $actorId !== '' ? $actorId : null]);
+    }
+    $states = belm_customer_department_states((string)$id);
+    log_activity($user, 'coordinator-customer-departments-changed', 'customer', $id, ['departments' => $states]);
+    json_out(['ok'=>true,'departmentStates'=>$states]);
 }
 
 // V472 - BELM Workshop Petty Cash bridge. The Workshop Manager uses an

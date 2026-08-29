@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Operator — BELM Portal</title>
-  <link rel="stylesheet" href="/operator/operator.css?v=486-report-record">
+  <link rel="stylesheet" href="/operator/operator.css?v=490-button-controller">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -13,7 +13,8 @@
 <body data-belm-area="operator">
   <header class="op-header">
     <span class="op-brand">B</span>
-    <div><b>BELM Portal</b><small>Machine Operator</small></div>
+    <div class="op-header-title"><b>BELM Machine Operator Dashboard</b><small>Daily check, operation report and machine activity</small></div>
+    <button class="op-theme-button" type="button" data-belm-theme-toggle onclick="window.BELMTheme&&BELMTheme.toggle()" aria-label="Switch light or dark mode">Light / Dark</button>
     <button class="op-exit-button hidden" id="exitButton" type="button">Exit</button>
   </header>
 
@@ -135,6 +136,6 @@
     </dialog>
   </main>
 
-  <script src="/operator/operator.js?v=486-report-record"></script>
+  <script src="/operator/operator.js?v=490-button-controller"></script>
 </body>
 </html>

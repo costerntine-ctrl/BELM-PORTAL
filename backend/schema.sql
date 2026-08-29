@@ -103,7 +103,7 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NUL
 -- what permissions the customer has assigned internally.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS workshop_module_active SMALLINT NOT NULL DEFAULT 0;
 -- V_COORDINATOR: BELM-controlled optional customer modules. Customer-owned data remains isolated by customer_id.
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS coordinator_features JSONB NOT NULL DEFAULT '{"invoiceSystem":false,"proformaSystem":false}'::jsonb;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS coordinator_features JSONB NOT NULL DEFAULT '{"invoiceSystem":false,"proformaSystem":false,"operatorDashboard":true,"technicianDashboard":true}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS customer_sales_documents (
   id VARCHAR(36) PRIMARY KEY,
@@ -125,6 +125,21 @@ CREATE TABLE IF NOT EXISTS customer_sales_documents (
   UNIQUE(customer_id, document_no)
 );
 CREATE INDEX IF NOT EXISTS idx_customer_sales_documents_customer ON customer_sales_documents(customer_id, created_at DESC);
+
+-- V_COORDINATOR_DB: Customer department access is configuration, never data deletion.
+-- Missing rows mean ENABLED so all existing customers keep the full workflow after deploy.
+CREATE TABLE IF NOT EXISTS customer_department_settings (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  department_key VARCHAR(40) NOT NULL CHECK (department_key IN ('administration','technical','operator','procurement','store','finance','generalReport')),
+  access_state VARCHAR(16) NOT NULL DEFAULT 'ENABLED' CHECK (access_state IN ('ENABLED','REMOVED')),
+  settings JSONB NOT NULL DEFAULT '{}'::jsonb,
+  updated_by VARCHAR(36),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(customer_id, department_key)
+);
+CREATE INDEX IF NOT EXISTS idx_customer_department_settings_customer ON customer_department_settings(customer_id, department_key);
 -- V513: customer-owned CWM branding. Kept in a separate table so normal customer/login
 -- queries never carry multi-megabyte logo blobs. The watermark is a browser-generated faded JPEG.
 CREATE TABLE IF NOT EXISTS customer_branding (

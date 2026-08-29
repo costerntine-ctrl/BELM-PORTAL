@@ -74,6 +74,8 @@ if (($segments[0] ?? '') === 'readiness' || !isset($segments[0])) {
             'delivery_notes',
             'delivery_note_items',
             'customer_procurement_requests',
+            'customer_department_settings',
+            'customer_sales_documents',
             'checklist_template_parts',
             'service_request_parts',
             'spare_parts',
@@ -121,6 +123,11 @@ if (($segments[0] ?? '') === 'readiness' || !isset($segments[0])) {
             ['bank_accounts', 'is_test'],
             ['spare_part_requests', 'procurement_order_status'],
             ['breakdown_spare_requests', 'procurement_supplier_id'],
+            ['customers', 'coordinator_features'],
+            ['customer_department_settings', 'department_key'],
+            ['customer_department_settings', 'access_state'],
+            ['customer_sales_documents', 'document_type'],
+            ['customer_sales_documents', 'document_no'],
         ];
         $columnChecks = [];
         $columnStatement = db()->prepare(
@@ -205,7 +212,7 @@ if (($segments[0] ?? '') === 'readiness' || !isset($segments[0])) {
             // Regression baseline: 'schemaVersion' => '339-dispatch-machine-sync'
             // Regression baseline: 'schemaVersion' => '341-proforma-invoice-direct-sync'
             // Regression baseline: 'schemaVersion' => '347-expense-persistence-sync'
-            'schemaVersion' => '489-delivery-note-workflow',
+            'schemaVersion' => '510-coordinator-db-readiness',
             'schemaReady' => $schemaReady,
             'tables' => $tableChecks,
             'columns' => $columnChecks,
@@ -514,6 +521,10 @@ switch ($resource) {
         // GET/PUT /preferences -> personal light/dark preference for the current login.
         // Available to staff, customer owners/assistants, technicians and operators.
         dispatch('preferences.php');
+
+    case 'notification-config':
+        if (($segments[1] ?? '') === 'status') dispatch('notification_config.php');
+        json_error('Unknown notification configuration request', 404);
 
     case 'settings':
         // GET/PUT /settings, PUT /settings/:key

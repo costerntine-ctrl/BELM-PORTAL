@@ -182,6 +182,47 @@ function customer_portal_slug(string $customerName, ?string $excludeCustomerId =
 // path (public application approval and manual admin registration).  All
 // customer-facing modules read the same customers.id/company row, so this
 // helper also reports where the newly registered account is live immediately.
+function belm_customer_department_defaults(): array {
+    return [
+        'administration' => 'ENABLED',
+        'technical' => 'ENABLED',
+        'operator' => 'ENABLED',
+        'procurement' => 'ENABLED',
+        'store' => 'ENABLED',
+        'finance' => 'ENABLED',
+        'generalReport' => 'ENABLED',
+    ];
+}
+
+function belm_customer_department_states(string $customerId): array {
+    $states = belm_customer_department_defaults();
+    try {
+        $ready = db()->query("SELECT to_regclass('public.customer_department_settings') IS NOT NULL")->fetchColumn();
+        if (!$ready) return $states;
+        $stmt = db()->prepare('SELECT department_key, access_state FROM customer_department_settings WHERE customer_id=?');
+        $stmt->execute([$customerId]);
+        foreach ($stmt->fetchAll() as $row) {
+            $key = (string)$row['department_key'];
+            if (array_key_exists($key, $states)) $states[$key] = strtoupper((string)$row['access_state']) === 'REMOVED' ? 'REMOVED' : 'ENABLED';
+        }
+    } catch (Throwable $ignored) {
+        // During a rolling deploy, missing new configuration tables must never
+        // block an existing customer's full workflow. Default remains ENABLED.
+    }
+    return $states;
+}
+
+function belm_customer_department_enabled(string $customerId, string $departmentKey): bool {
+    $states = belm_customer_department_states($customerId);
+    return ($states[$departmentKey] ?? 'ENABLED') !== 'REMOVED';
+}
+
+function require_customer_department(string $customerId, string $departmentKey, string $label = 'This department'): void {
+    if (!belm_customer_department_enabled($customerId, $departmentKey)) {
+        json_error($label . ' has been removed from this customer workspace by Coordinator.', 403);
+    }
+}
+
 function belm_customer_registration_profile(?string $mode): array {
     $normalized = strtoupper(trim((string)$mode));
     if (!in_array($normalized, ['TECHNICAL_DEP', 'PORTAL_CWM'], true)) {
@@ -348,7 +389,7 @@ const BELM_CUSTOMER_PRIVACY_DEFAULTS = [
 // tested. The customer's saved privacy preference is NOT overwritten, so this
 // bypass can be closed later without losing the preference they selected. Set
 // BELM_OPEN_CUSTOMER_EXPENSES_FOR_DEVELOPMENT=false to close the bypass early.
-const BELM_DEVELOPMENT_OPEN_CUSTOMER_EXPENSE_ACCESS = true;
+const BELM_DEVELOPMENT_OPEN_CUSTOMER_EXPENSE_ACCESS = false;
 
 function belm_development_customer_expense_access_enabled(): bool {
     $raw = getenv('BELM_OPEN_CUSTOMER_EXPENSES_FOR_DEVELOPMENT');

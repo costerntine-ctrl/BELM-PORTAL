@@ -61,6 +61,13 @@ services:
         value: ""
       - key: BELM_WHATSAPP_API_TOKEN
         value: ""
+      # Optional SMS provider. Leave blank until a provider endpoint/token is configured.
+      - key: BELM_SMS_API_URL
+        value: ""
+      - key: BELM_SMS_API_TOKEN
+        value: ""
+      - key: BELM_SMS_SENDER
+        value: BELM
 
 databases:
   - name: belm-portal-db

@@ -39,7 +39,7 @@ function jwt_decode(string $token): ?array {
 }
 
 // Reads "Authorization: Bearer <token>" and returns the decoded payload,
-// or null if missing/invalid. JWTs are never accepted from query strings.
+// or null if missing/invalid.
 function current_token_payload(): ?array {
     $headers = function_exists('getallheaders') ? getallheaders() : [];
     if (!$headers && isset($_SERVER['HTTP_AUTHORIZATION'])) {
@@ -48,6 +48,12 @@ function current_token_payload(): ?array {
     $auth = $headers['Authorization'] ?? $headers['authorization'] ?? '';
     if (str_starts_with($auth, 'Bearer ')) {
         return jwt_decode(substr($auth, 7));
+    }
+    // Fallback for plain download links (e.g. <a href>), which browsers
+    // navigate to directly without attaching an Authorization header.
+    $queryToken = trim((string)($_GET['token'] ?? ''));
+    if ($queryToken !== '') {
+        return jwt_decode($queryToken);
     }
     return null;
 }

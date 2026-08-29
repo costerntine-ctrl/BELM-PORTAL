@@ -16,12 +16,33 @@ $sub3 = $_GET['sub3'] ?? '';
 // service_requests storage path behind the API so existing records are preserved.
 if ($sub === 'job-cards') $sub = 'service-requests';
 
+// V_SYNC_AUDIT: Coordinator department settings are backend permissions, not UI decoration.
+// Removing a department hides its tools while preserving all existing data/history for later re-enable.
+$departmentRouteMap = [
+    'administration' => ['users','technicians','privacy','company-logo','saved-emails','activity-logs'],
+    'technical' => ['service-options','tool-issues','service-requests','belm-support'],
+    'operator' => ['machine-operators','operator-reports','fuel-usage'],
+    'procurement' => ['procurement-belm-supply','procurement-requests','machine-expenses'],
+    'store' => ['store','spare-search','spare-store-check','spare-workspace','store-issue-requests','spare-parts'],
+    'finance' => ['sales-documents','workshop-account','petty-cash-account','petty-cash','invoices','proformas'],
+    'generalReport' => ['analysis','machine-analysis','reports','email-report'],
+];
+foreach ($departmentRouteMap as $departmentKey => $routes) {
+    if (in_array($sub, $routes, true)) {
+        require_customer_department((string)$customer['id'], $departmentKey, ucfirst($departmentKey) . ' Department');
+        break;
+    }
+}
+
 // V_COORDINATOR: feature flags are read fresh from the customer account.
 if ($method === 'GET' && $sub === 'coordinator-features') {
     $stmt = db()->prepare('SELECT coordinator_features FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1');
     $stmt->execute([$customer['id']]);
     $features = json_decode((string)($stmt->fetchColumn() ?: '{}'), true) ?: [];
-    json_out(['features' => $features]);
+    // Operator and Technician dashboards are core workshop roles unless Coordinator explicitly disables them.
+    if (!array_key_exists('operatorDashboard', $features)) $features['operatorDashboard'] = true;
+    if (!array_key_exists('technicianDashboard', $features)) $features['technicianDashboard'] = true;
+    json_out(['features' => $features, 'departments' => belm_customer_department_states((string)$customer['id'])]);
 }
 
 if ($sub === 'sales-documents') {
@@ -1411,6 +1432,7 @@ if ($sub === 'dashboard') {
         $profile['actorType'] = $customer['actorType'] ?? 'owner';
         $profile['actorRole'] = $customer['customerRole'] ?? 'owner';
         $profile['actorPermissions'] = $customer['permissions'] ?? null;
+        $profile['departmentStates'] = belm_customer_department_states((string)$customer['id']);
     }
     json_out(['customer' => $profile, 'machines' => $machines]);
 }

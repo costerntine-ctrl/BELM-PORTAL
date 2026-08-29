@@ -14,7 +14,7 @@
 <script>
 (async function(){
  const token=localStorage.getItem('belm_customer_token')||''; if(!token)return;
- try{const r=await fetch('/api/customer-portal/coordinator-features',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'}),d=await r.json();if(!r.ok)return;const f=d.features||{};if(!f.invoiceSystem&&!f.proformaSystem)return;const grid=document.querySelector('.cwm-main-action-grid');if(!grid)return;const a=document.createElement('a');a.className='bw-manager-utility';a.href='/customer-sales-documents/';a.innerHTML='<i class="cwm-action-icon">🧾</i>Invoice / Proforma';grid.appendChild(a)}catch(_){}
+ try{const r=await fetch('/api/customer-portal/coordinator-features',{headers:{Authorization:`Bearer ${token}`},cache:'no-store'}),d=await r.json();if(!r.ok)return;const f=d.features||{};if((d.departments||{}).finance==='REMOVED')return;if(!f.invoiceSystem&&!f.proformaSystem)return;const grid=document.querySelector('.cwm-main-action-grid');if(!grid)return;const a=document.createElement('a');a.className='bw-manager-utility';a.href='/customer-sales-documents/';a.innerHTML='<i class="cwm-action-icon">🧾</i>Invoice / Proforma';grid.appendChild(a)}catch(_){}
 })();
 </script>
 <script>(function(){const refresh=document.getElementById('refreshButton');if(refresh)refresh.onclick=()=>location.reload();const back=document.getElementById('cwmBackButton');if(back)back.onclick=e=>{e.preventDefault();location.href='/portal-cwm/'};document.getElementById('cwmMainDashboard')?.classList.remove('hidden')})();</script>

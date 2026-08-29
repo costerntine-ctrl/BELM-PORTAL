@@ -119,6 +119,20 @@
   function renderOperatorMachineDashboard(payload) {
     if (!dashboardRoot || !payload?.machine) return;
     const machine = payload.machine;
+    const buttonStates = { report: "enabled", checkup: "enabled", parts: "disabled", operationCard: "enabled", ...(payload.machineCardButtons || {}) };
+    const stateFor = (key) => ["enabled","disabled","hidden"].includes(String(buttonStates[key])) ? String(buttonStates[key]) : "enabled";
+    const actionButton = (key, action, className, title, subtitle = "") => {
+      const state = stateFor(key);
+      if (state === "hidden") return "";
+      const disabled = state === "disabled";
+      return `<button type="button"${className ? ` class="${className}${disabled ? " is-closed" : ""}"` : ""} data-operator-action="${action}" ${disabled ? 'disabled aria-disabled="true" title="Disabled by Coordinator"' : ""}><b>${title}</b>${subtitle ? `<span>${disabled ? "Disabled" : subtitle}</span>` : (disabled ? '<span>Disabled</span>' : '')}</button>`;
+    };
+    const cardButton = (key, action, className, title) => {
+      const state = stateFor(key);
+      if (state === "hidden") return "";
+      const disabled = state === "disabled";
+      return `<button type="button" class="${className}${disabled ? " is-closed" : ""}" data-operator-action="${action}" ${disabled ? 'disabled aria-disabled="true" title="Disabled by Coordinator"' : ""}>${title}${disabled ? '<span>Disabled</span>' : ''}</button>`;
+    };
     const condition = conditionMeta(machine.status);
     const reasons = Array.isArray(machine.alertReasons) ? machine.alertReasons.filter(Boolean) : [];
     const conditionMessage = reasons.length
@@ -144,6 +158,25 @@
       : String(serviceStatus.level || "GREEN").toUpperCase() === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
 
     dashboardRoot.innerHTML = `
+      <section class="op-dashboard-overview">
+        <div class="op-overview-head">
+          <div><span>ACTIVE MACHINE</span><h2>${esc(machine.model || machine.brand || "Machine")}</h2><p>${esc(machine.machineType || "Machine")} · Fleet ${esc(machine.fleetNumber || "—")}</p></div>
+          <div class="op-overview-status status-${esc(condition.status.toLowerCase())}"><span>Condition</span><strong>${esc(condition.label)}</strong></div>
+        </div>
+        <div class="op-summary-grid">
+          <div class="op-summary-card green"><span>Daily Check</span><strong>${checkedToday ? "Completed" : "Pending"}</strong><small>${checkedToday ? esc(tzParts(latestCheck.createdAt, true)) : "Complete before operation"}</small></div>
+          <div class="op-summary-card yellow"><span>Operation Report</span><strong>${operatorMessage ? "Recorded" : "Ready"}</strong><small>${esc(operatorMessageMeta)}</small></div>
+          <div class="op-summary-card red"><span>Machine Alert</span><strong>${esc(condition.status)}</strong><small>${esc(conditionMessage)}</small></div>
+          <div class="op-summary-card blue"><span>Activity</span><strong>${esc(activityLabel(machine.operationalStatus))}</strong><small>Current operation status</small></div>
+          <div class="op-summary-card purple"><span>Service</span><strong>${esc(serviceState)}</strong><small>${esc(serviceType)}</small></div>
+        </div>
+        <div class="op-quick-actions" aria-label="Operator quick actions">
+          ${actionButton("checkup", "checkup", "", "Daily Check / Checklist", "Check machine condition")}
+          ${actionButton("report", "report", "", "Operation Report", "Record daily information")}
+          ${actionButton("report", "problem", "danger", "Report Problem", "Send machine issue")}
+          ${actionButton("operationCard", "operation-card", "job", "Operation Card", "Request action / Job Card")}
+        </div>
+      </section>
       <article class="op-machine-card status-${esc(condition.status.toLowerCase())}" data-operator-machine-id="${esc(machine.id)}">
         <header class="op-machine-head">
           <div><span class="op-dashboard-kicker">MACHINE OPERATOR DASHBOARD</span><h2>${esc(machine.model || machine.brand || "Machine")}</h2></div>
@@ -198,10 +231,10 @@
         </section>` : ""}
 
         <div class="op-machine-actions" aria-label="Operator machine actions">
-          <button type="button" class="report" data-operator-action="report">Report</button>
-          <button type="button" class="checkup" data-operator-action="checkup">Check Up</button>
-          <button type="button" class="parts is-closed" data-operator-action="parts" disabled aria-disabled="true" title="Closed by default for Machine Operator">Service Parts<span>Closed</span></button>
-          <button type="button" class="jobcard" data-operator-action="operation-card">Operation Card</button>
+          ${cardButton("report", "report", "report", "Report")}
+          ${cardButton("checkup", "checkup", "checkup", "Check Up")}
+          ${cardButton("parts", "parts", "parts", "Service Parts")}
+          ${cardButton("operationCard", "operation-card", "jobcard", "Operation Card")}
         </div>
       </article>`;
   }
@@ -316,6 +349,22 @@
     if (!button) return;
     if (button.dataset.operatorAction === "checkup") openOperatorCheckup();
     if (button.dataset.operatorAction === "report") openOperatorReport();
+    if (button.dataset.operatorAction === "problem") {
+      openOperatorReport();
+      setTimeout(() => {
+        const daily = document.querySelector('input[name="operatorReportMode"][value="DAILY"]');
+        if (daily) daily.checked = true;
+        const comment = document.getElementById("operatorReportComment");
+        if (comment) comment.placeholder = "Describe the machine problem or unsafe condition...";
+      }, 0);
+    }
+    if (button.dataset.operatorAction === "operation-card") {
+      openOperatorReport();
+      setTimeout(() => {
+        const job = document.querySelector('input[name="operatorReportMode"][value="BELM_JOB"]');
+        if (job) { job.checked = true; job.dispatchEvent(new Event("change", { bubbles: true })); }
+      }, 0);
+    }
   });
 
   document.getElementById("closeOperatorCheckupButton").addEventListener("click", closeOperatorCheckup);

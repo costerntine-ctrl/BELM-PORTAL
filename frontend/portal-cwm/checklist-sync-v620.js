@@ -1,4 +1,4 @@
-// V620 — PORTAL-CWM Checklist Template live sync status.
+// V624 — PORTAL-CWM Customer Machine Checklist Template live sync status.
 // Read-only verification against BELM master checklist_templates. No customer copy is created.
 (function(){
   const token=localStorage.getItem('belm_customer_token')||'';
@@ -21,7 +21,7 @@
     card.type='button';
     card.id='cwmChecklistMasterSync';
     card.className='cwm-checklist-master-sync';
-    card.innerHTML='<span class="sync-icon">⇄</span><span class="sync-copy"><b>Machine Type ↔ Checklist Template Sync</b><small data-sync-status>Checking BELM master templates…</small></span><span class="sync-arrow">›</span>';
+    card.innerHTML='<span class="sync-icon">⇄</span><span class="sync-copy"><b>Customer Machine ↔ Checklist Template Sync</b><small data-sync-status>Checking BELM master templates…</small></span><span class="sync-arrow">›</span>';
     host.insertBefore(card,grid);
     return card;
   }
@@ -42,7 +42,7 @@
       const machines=Array.isArray(dash?.machines)?dash.machines:[];
       result=await Promise.all(machines.map(async m=>{
         try{
-          const d=await json('/api/customer_checkup.php?machine='+encodeURIComponent(m.id));
+          const d=await json('/api/customer-checkup?machine='+encodeURIComponent(m.id));
           const templates=Array.isArray(d?.templates)?d.templates:[];
           return {machine:m,machineType:d?.machine?.machineType||m.machineType||m.machine_type||'',templates,ok:templates.length>0};
         }catch(error){return {machine:m,machineType:m.machineType||m.machine_type||'',templates:[],ok:false,error:error.message};}

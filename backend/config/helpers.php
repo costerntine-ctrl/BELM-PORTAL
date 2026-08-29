@@ -1639,7 +1639,7 @@ function require_customer_auth(): array {
                     u.customer_permissions, u.is_active,
                     c.id AS customer_id, c.email AS customer_email,
                     c.is_active AS customer_active, c.is_machinery_admin,
-                    c.workshop_module_active
+                    c.workshop_module_active, c.coordinator_features
              FROM users u
              JOIN customers c ON c.id = u.assigned_customer_id
              JOIN roles r ON r.id = u.role_id
@@ -1674,6 +1674,7 @@ function require_customer_auth(): array {
         $payload['customerRole'] = 'technician';
         $payload['permissions'] = $permissions;
         $payload['workshopModuleActive'] = !empty($live['workshop_module_active']);
+        $payload['coordinatorFeatures'] = json_decode((string)($live['coordinator_features'] ?? '{}'), true) ?: [];
         return $payload;
     }
 
@@ -1684,7 +1685,7 @@ function require_customer_auth(): array {
         json_error('Your session has expired after a security update. Please log in again.', 401);
     }
 
-    $stmt = db()->prepare('SELECT id, email, workshop_module_active, is_machinery_admin FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt = db()->prepare('SELECT id, email, workshop_module_active, is_machinery_admin, coordinator_features FROM customers WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
     $stmt->execute([$payload['id'] ?? '']);
     $ownerRow = $stmt->fetch();
     if (!$ownerRow) json_error('Customer account is not available.', 401);
@@ -1692,6 +1693,7 @@ function require_customer_auth(): array {
     // V444: Workshop Module billing gate — resolved fresh on every request so
     // BELM can switch it off instantly, the same way is_active already works.
     $payload['workshopModuleActive'] = !empty($ownerRow['workshop_module_active']);
+    $payload['coordinatorFeatures'] = json_decode((string)($ownerRow['coordinator_features'] ?? '{}'), true) ?: [];
 
     if ($actorType === 'assistant') {
         $stmt = db()->prepare(

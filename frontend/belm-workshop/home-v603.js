@@ -11,7 +11,7 @@
   try{currentUser=JSON.parse(localStorage.getItem('belm_admin_user')||'null');}catch(_){ }
   const role=String(currentUser?.role||'').trim().toLowerCase();
   const isMainBelmAccount=role==='super admin'||currentUser?.allowedPages===null;
-  if(mainMenuBack){mainMenuBack.hidden=!isMainBelmAccount;mainMenuBack.style.display=isMainBelmAccount?'inline-flex':'none';if(isMainBelmAccount)mainMenuBack.setAttribute('href','/overview-manager/');}
+  if(mainMenuBack){mainMenuBack.hidden=!isMainBelmAccount;mainMenuBack.style.display=isMainBelmAccount?'inline-flex':'none';if(isMainBelmAccount)mainMenuBack.setAttribute('href','/workshop-management-home/');}
   document.getElementById('bwLogoutButton')?.addEventListener('click',()=>{localStorage.removeItem('belm_admin_token');localStorage.removeItem('belm_admin_user');localStorage.removeItem('belm_active_account_type');location.replace('/login');});
 
   const root=document.querySelector('.bw-home-message-v603');

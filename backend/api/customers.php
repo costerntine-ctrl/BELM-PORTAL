@@ -272,7 +272,7 @@ if ($method === 'POST' && $action === 'machine-type-sync') {
 if ($method === 'GET' && $action === 'cwm-overview') {
     require_belm_workshop_customer_access($user);
     $rows = db()->query(
-        "SELECT id, name, email, phone, address, is_active, is_machinery_admin, workshop_module_active
+        "SELECT id, name, email, phone, address, is_active, is_machinery_admin, workshop_module_active, coordinator_features
          FROM customers WHERE deleted_at IS NULL ORDER BY name ASC"
     )->fetchAll();
 
@@ -313,6 +313,7 @@ if ($method === 'GET' && $action === 'cwm-overview') {
             // "Independent" = self-service (BELM is NOT the Service Provider).
             'selfServiceEnabled' => !empty($c['is_machinery_admin']),
             'workshopModuleActive' => !empty($c['workshop_module_active']),
+            'coordinatorFeatures' => json_decode((string)($c['coordinator_features'] ?? '{}'), true) ?: [],
             'workshopManagerCount' => $staff['workshop_manager'] ?? 0,
             'storeKeeperCount' => $staff['store_keeper'] ?? 0,
             'technicianCount' => $techniciansByCustomer[$c['id']] ?? 0,
@@ -989,6 +990,23 @@ if ($method === 'PUT' && $action === 'workshop-module') {
     if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
     log_activity($user, 'customer-workshop-module-changed', 'customer', $id, ['enabled' => (bool)$enabled]);
     json_out(['ok' => true, 'workshopModuleActive' => (bool)$enabled]);
+}
+
+// V_COORDINATOR: Optional customer modules controlled centrally by Coordinator.
+// Only the feature flags are shared. Customer-owned commercial documents stay
+// in customer_sales_documents and are never returned through BELM billing APIs.
+if ($method === 'PUT' && $action === 'coordinator-features') {
+    require_page_access($user, 'customers');
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $allowed = ['invoiceSystem', 'proformaSystem'];
+    $features = [];
+    foreach ($allowed as $key) $features[$key] = !empty($b[$key]);
+    $stmt = db()->prepare('UPDATE customers SET coordinator_features = ?::jsonb, updated_at = NOW() WHERE id = ? AND deleted_at IS NULL');
+    $stmt->execute([json_encode($features), $id]);
+    if ($stmt->rowCount() === 0) json_error('Customer not found.', 404);
+    log_activity($user, 'coordinator-customer-features-changed', 'customer', $id, ['features' => $features]);
+    json_out(['ok' => true, 'coordinatorFeatures' => $features]);
 }
 
 // V472 - BELM Workshop Petty Cash bridge. The Workshop Manager uses an

@@ -16,6 +16,46 @@ $sub3 = $_GET['sub3'] ?? '';
 // service_requests storage path behind the API so existing records are preserved.
 if ($sub === 'job-cards') $sub = 'service-requests';
 
+// V_COORDINATOR: feature flags are read fresh from the customer account.
+if ($method === 'GET' && $sub === 'coordinator-features') {
+    $stmt = db()->prepare('SELECT coordinator_features FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1');
+    $stmt->execute([$customer['id']]);
+    $features = json_decode((string)($stmt->fetchColumn() ?: '{}'), true) ?: [];
+    json_out(['features' => $features]);
+}
+
+if ($sub === 'sales-documents') {
+    $features = $customer['coordinatorFeatures'] ?? [];
+    $invoiceEnabled = !empty($features['invoiceSystem']);
+    $proformaEnabled = !empty($features['proformaSystem']);
+    if (!$invoiceEnabled && !$proformaEnabled) json_error('Customer Invoice / Proforma System is not enabled for this account.', 403);
+
+    if ($method === 'GET') {
+        $stmt = db()->prepare('SELECT id,document_type,document_no,client_name,client_email,client_phone,client_address,description,amount,vat_rate,status,due_date,created_by_name,created_at,updated_at FROM customer_sales_documents WHERE customer_id=? ORDER BY created_at DESC');
+        $stmt->execute([$customer['id']]);
+        json_out(['items' => $stmt->fetchAll(), 'features' => $features]);
+    }
+    if ($method === 'POST') {
+        require_customer_write_access($customer);
+        $b = body();
+        $type = strtoupper(trim((string)($b['documentType'] ?? 'INVOICE')));
+        if (!in_array($type, ['INVOICE','PROFORMA'], true)) json_error('Invalid document type.');
+        if ($type === 'INVOICE' && !$invoiceEnabled) json_error('Invoice System is not enabled.', 403);
+        if ($type === 'PROFORMA' && !$proformaEnabled) json_error('Proforma System is not enabled.', 403);
+        $clientName = trim((string)($b['clientName'] ?? ''));
+        $description = trim((string)($b['description'] ?? ''));
+        if ($clientName === '' || $description === '') json_error('Client name and description are required.');
+        $prefix = $type === 'INVOICE' ? 'INV' : 'PI';
+        $documentNo = trim((string)($b['documentNo'] ?? ''));
+        if ($documentNo === '') $documentNo = $prefix . '-' . date('ymd-His');
+        $id = uuid();
+        $stmt = db()->prepare('INSERT INTO customer_sales_documents (id,customer_id,document_type,document_no,client_name,client_email,client_phone,client_address,description,amount,vat_rate,status,due_date,created_by_name,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())');
+        $stmt->execute([$id,$customer['id'],$type,$documentNo,$clientName,trim((string)($b['clientEmail']??'')) ?: null,trim((string)($b['clientPhone']??'')) ?: null,trim((string)($b['clientAddress']??'')) ?: null,$description,max(0,(float)($b['amount']??0)),max(0,(float)($b['vatRate']??0)),trim((string)($b['status']??'DRAFT')) ?: 'DRAFT',trim((string)($b['dueDate']??'')) ?: null,trim((string)($customer['actorName']??'Customer'))]);
+        log_customer_activity($customer, 'Created private customer ' . $type . ' ' . $documentNo);
+        json_out(['ok'=>true,'id'=>$id,'documentNo'=>$documentNo],201);
+    }
+}
+
 // V273 - turns a day/month/year (or explicit date) filter from the
 // "Job Card Reports" / "Daily Report" tabs into an inclusive from/to
 // timestamp range for a SQL query. Accepts either a full date

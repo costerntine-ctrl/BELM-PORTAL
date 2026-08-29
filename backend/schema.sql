@@ -102,6 +102,29 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NUL
 -- and turning it off blocks Store Ledger + Tool Issue/Return regardless of
 -- what permissions the customer has assigned internally.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS workshop_module_active SMALLINT NOT NULL DEFAULT 0;
+-- V_COORDINATOR: BELM-controlled optional customer modules. Customer-owned data remains isolated by customer_id.
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS coordinator_features JSONB NOT NULL DEFAULT '{"invoiceSystem":false,"proformaSystem":false}'::jsonb;
+
+CREATE TABLE IF NOT EXISTS customer_sales_documents (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  document_type VARCHAR(20) NOT NULL CHECK (document_type IN ('PROFORMA','INVOICE')),
+  document_no VARCHAR(80) NOT NULL,
+  client_name VARCHAR(255) NOT NULL,
+  client_email VARCHAR(255),
+  client_phone VARCHAR(80),
+  client_address VARCHAR(500),
+  description TEXT NOT NULL,
+  amount NUMERIC(14,2) NOT NULL DEFAULT 0,
+  vat_rate NUMERIC(6,2) NOT NULL DEFAULT 0,
+  status VARCHAR(30) NOT NULL DEFAULT 'DRAFT',
+  due_date DATE,
+  created_by_name VARCHAR(255),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(customer_id, document_no)
+);
+CREATE INDEX IF NOT EXISTS idx_customer_sales_documents_customer ON customer_sales_documents(customer_id, created_at DESC);
 -- V513: customer-owned CWM branding. Kept in a separate table so normal customer/login
 -- queries never carry multi-megabyte logo blobs. The watermark is a browser-generated faded JPEG.
 CREATE TABLE IF NOT EXISTS customer_branding (

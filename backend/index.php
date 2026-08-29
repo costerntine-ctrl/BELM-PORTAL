@@ -261,6 +261,9 @@ switch ($resource) {
         if (($segments[1] ?? '') === 'communication-feed') {
             dispatch('customers.php', ['action' => 'communication-feed']);
         }
+        if (($segments[1] ?? '') === 'cwm-overview') {
+            dispatch('customers.php', ['action' => 'cwm-overview']);
+        }
         if (($segments[1] ?? '') === 'machines' && isset($segments[2]) && ($segments[3] ?? '') === 'service-parts') {
             dispatch('customers.php', ['action' => 'service-parts', 'machineId' => $segments[2]]);
         }
@@ -302,6 +305,9 @@ switch ($resource) {
         }
         if (isset($segments[2]) && $segments[2] === 'workshop-module') {
             dispatch('customers.php', ['action' => 'workshop-module', 'id' => $segments[1]]);
+        }
+        if (isset($segments[2]) && $segments[2] === 'coordinator-features') {
+            dispatch('customers.php', ['action' => 'coordinator-features', 'id' => $segments[1]]);
         }
         if (isset($segments[2]) && $segments[2] === 'workshop-petty-cash') {
             $pettyAction = ($segments[3] ?? '') === 'topup'

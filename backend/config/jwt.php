@@ -49,11 +49,19 @@ function current_token_payload(): ?array {
     if (str_starts_with($auth, 'Bearer ')) {
         return jwt_decode(substr($auth, 7));
     }
-    // Fallback for plain download links (e.g. <a href>), which browsers
-    // navigate to directly without attaching an Authorization header.
+
+    // Legacy fallback for direct browser download links. Query-string JWTs are
+    // intentionally accepted ONLY for read-only export/PDF routes; they are not
+    // valid authentication for normal API CRUD requests.
     $queryToken = trim((string)($_GET['token'] ?? ''));
     if ($queryToken !== '') {
-        return jwt_decode($queryToken);
+        $action = strtolower(trim((string)($_GET['action'] ?? '')));
+        $requestPath = strtolower((string)(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: ''));
+        $isExportAction = str_starts_with($action, 'export');
+        $isPdfRoute = str_contains($requestPath, '/pdf') || str_ends_with($requestPath, '-pdf');
+        if ($isExportAction || $isPdfRoute) {
+            return jwt_decode($queryToken);
+        }
     }
     return null;
 }

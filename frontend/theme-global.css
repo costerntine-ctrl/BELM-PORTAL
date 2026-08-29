@@ -228,3 +228,119 @@ html[data-theme="dark"].belm-embedded,
 html[data-theme="dark"].belm-embedded body{
   background:#0b1728 !important;
 }
+
+/* V627 - Customer Machine Check Up: centered one-column, touch-friendly layout.
+   Scoped to the standalone Check Up page so other portal forms are unchanged. */
+body:has(#machineName):has(#template):has(#items) .shell{
+  width:min(100%,760px)!important;
+  max-width:760px!important;
+  margin:0 auto!important;
+  padding:24px 18px 36px!important;
+}
+body:has(#machineName):has(#template):has(#items) .default-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:18px!important;
+}
+body:has(#machineName):has(#template):has(#items) .display-photo{
+  grid-column:auto!important;
+}
+body:has(#machineName):has(#template):has(#items) .default-box{
+  width:100%!important;
+  padding:21px!important;
+}
+body:has(#machineName):has(#template):has(#items) .default-box input,
+body:has(#machineName):has(#template):has(#items) .default-box select,
+body:has(#machineName):has(#template):has(#items) .answer-wrap input,
+body:has(#machineName):has(#template):has(#items) .answer-wrap select,
+body:has(#machineName):has(#template):has(#items) .answer-wrap textarea{
+  width:100%!important;
+  min-height:58px!important;
+  padding:16px 17px!important;
+  font-size:16px!important;
+  line-height:1.35!important;
+  border-radius:14px!important;
+}
+body:has(#machineName):has(#template):has(#items) .answer-wrap textarea{
+  min-height:96px!important;
+  resize:vertical!important;
+}
+body:has(#machineName):has(#template):has(#items) .service-type{
+  min-height:58px!important;
+  font-size:16px!important;
+}
+body:has(#machineName):has(#template):has(#items) .items{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:18px!important;
+}
+body:has(#machineName):has(#template):has(#items) .item{
+  width:100%!important;
+  padding:22px!important;
+  border-radius:18px!important;
+}
+body:has(#machineName):has(#template):has(#items) .item-head{
+  align-items:flex-start!important;
+  margin-bottom:15px!important;
+}
+body:has(#machineName):has(#template):has(#items) .item h3{
+  font-size:17px!important;
+  line-height:1.4!important;
+}
+body:has(#machineName):has(#template):has(#items) .safety-pill{
+  flex:0 0 auto!important;
+  min-height:28px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+}
+body:has(#machineName):has(#template):has(#items) .day-check{
+  min-height:58px!important;
+  padding:6px 0!important;
+}
+body:has(#machineName):has(#template):has(#items) .day-check input{
+  width:30px!important;
+  height:30px!important;
+  min-height:30px!important;
+}
+body:has(#machineName):has(#template):has(#items) .submit{
+  min-height:62px!important;
+  font-size:17px!important;
+}
+@media(max-width:600px){
+  body:has(#machineName):has(#template):has(#items) .shell{
+    width:100%!important;
+    padding:14px 12px 30px!important;
+  }
+  body:has(#machineName):has(#template):has(#items) .hero,
+  body:has(#machineName):has(#template):has(#items) .card{
+    padding:18px!important;
+    border-radius:17px!important;
+  }
+  body:has(#machineName):has(#template):has(#items) .default-grid,
+  body:has(#machineName):has(#template):has(#items) .items{
+    gap:16px!important;
+  }
+  body:has(#machineName):has(#template):has(#items) .default-box,
+  body:has(#machineName):has(#template):has(#items) .item{
+    padding:18px!important;
+  }
+  body:has(#machineName):has(#template):has(#items) .item-head{
+    gap:12px!important;
+  }
+  body:has(#machineName):has(#template):has(#items) .item h3{
+    font-size:16px!important;
+    line-height:1.45!important;
+  }
+  body:has(#machineName):has(#template):has(#items) .default-box input,
+  body:has(#machineName):has(#template):has(#items) .default-box select,
+  body:has(#machineName):has(#template):has(#items) .answer-wrap input,
+  body:has(#machineName):has(#template):has(#items) .answer-wrap select,
+  body:has(#machineName):has(#template):has(#items) .answer-wrap textarea{
+    min-height:60px!important;
+    padding:17px 16px!important;
+    font-size:16px!important;
+  }
+  body:has(#machineName):has(#template):has(#items) .answer-wrap textarea{
+    min-height:100px!important;
+  }
+}

@@ -64,10 +64,11 @@
     if(!select)return;
     [...select.options].forEach((option,index)=>{
       if(index===0)return;
-      option.textContent=String(option.textContent||'')
+      const clean=String(option.textContent||'')
         .replace(/\s*·\s*Home:.*$/i,'')
         .replace(/\s*·\s*No home customer.*$/i,'')
         .trim();
+      if(option.textContent!==clean)option.textContent=clean;
     });
   }
 

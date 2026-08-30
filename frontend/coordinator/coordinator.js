@@ -5,11 +5,8 @@
   const role=String(user?.role||'').toLowerCase();
   if(role!=='super admin'&&user?.allowedPages!==null){location.replace('/belm-workshop/');return}
   let all=[];
-  const deptButton=document.getElementById('belmDepartmentsButton'),deptPanel=document.getElementById('belmDepartmentsPanel'),deptClose=document.getElementById('closeBelmDepartments');
-  function setDepartmentPanel(open){if(!deptPanel)return;deptPanel.hidden=!open;if(open){deptPanel.scrollIntoView({behavior:'smooth',block:'start'});deptClose?.focus();}else deptButton?.focus();}
-  deptButton?.addEventListener('click',()=>setDepartmentPanel(true));
-  deptClose?.addEventListener('click',()=>setDepartmentPanel(false));
-  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&deptPanel&&!deptPanel.hidden)setDepartmentPanel(false)});
+  const deptButton=document.getElementById('belmDepartmentsButton');
+  deptButton?.addEventListener('click',()=>location.assign('/coordinator/departments/'));
   const box=document.getElementById('customers'),alertBox=document.getElementById('alert');
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   async function api(path,opt={}){const r=await fetch('/api'+path,{...opt,headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`,...(opt.headers||{})},cache:'no-store'}),d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.error||`Request failed (${r.status})`);return d}
@@ -42,41 +39,11 @@
     wire();
   }
   async function confirmEdit(message){if(!window.belmConfirmEdit)return null;return await window.belmConfirmEdit({title:'Coordinator change',message})}
-  function currentPayload(c){
-    const f=c.coordinatorFeatures||{};
-    return {
-      invoiceSystem:!!f.invoiceSystem,proformaSystem:!!f.proformaSystem,
-      operatorDashboard:f.operatorDashboard!==false,technicianDashboard:f.technicianDashboard!==false,
-      machineCardButtons:{operator:{
-        report:buttonState(f,'report','enabled'),checkup:buttonState(f,'checkup','enabled'),parts:buttonState(f,'parts','disabled'),operationCard:buttonState(f,'operationCard','enabled')
-      }}
-    }
-  }
+  function currentPayload(c){const f=c.coordinatorFeatures||{};return{invoiceSystem:!!f.invoiceSystem,proformaSystem:!!f.proformaSystem,operatorDashboard:f.operatorDashboard!==false,technicianDashboard:f.technicianDashboard!==false,machineCardButtons:{operator:{report:buttonState(f,'report','enabled'),checkup:buttonState(f,'checkup','enabled'),parts:buttonState(f,'parts','disabled'),operationCard:buttonState(f,'operationCard','enabled')}}}}
   function wire(){
-    box.querySelectorAll('input[data-feature]').forEach(inp=>inp.addEventListener('change',async()=>{
-      const card=inp.closest('.customer'),id=card.dataset.id,c=all.find(x=>x.id===id),feature=inp.dataset.feature,desired=inp.checked;inp.disabled=true;
-      try{
-        const conf=await confirmEdit(`Confirm ${desired?'enable':'disable'} ${feature==='belm'?'BELM Service':feature} for ${c.name}. No customer data will be deleted.`);if(!conf){inp.checked=!desired;return}
-        if(feature==='belm'){await api(`/customers/${id}/machinery-admin`,{method:'PUT',body:JSON.stringify({serviceProviderEnabled:desired,editPin:conf.editPin})});c.selfServiceEnabled=!desired}
-        else{const payload=currentPayload(c);payload[feature]=desired;const d=await api(`/customers/${id}/coordinator-features`,{method:'PUT',body:JSON.stringify({...payload,editPin:conf.editPin})});c.coordinatorFeatures=payload;if(d.belmServiceForced)c.selfServiceEnabled=false}
-        render();
-      }catch(e){inp.checked=!desired;alertBox.textContent=e.message;alertBox.hidden=false}finally{inp.disabled=false}
-    }));
-    box.querySelectorAll('select[data-department-key]').forEach(sel=>sel.addEventListener('change',async()=>{
-      const card=sel.closest('.customer'),id=card.dataset.id,c=all.find(x=>x.id===id),key=sel.dataset.departmentKey,newState=sel.value,oldState=departmentState(c,key);sel.disabled=true;
-      try{
-        const conf=await confirmEdit(`${newState==='ENABLED'?'Add / enable':'Remove'} ${departmentLabels[key]} for ${c.name}. This changes access only; existing workflow records and history remain stored.`);if(!conf){sel.value=oldState;return}
-        const d=await api(`/customers/${id}/coordinator-departments`,{method:'PUT',body:JSON.stringify({departments:{[key]:newState},editPin:conf.editPin})});c.departmentStates=d.departmentStates;if(d.belmServiceForced)c.selfServiceEnabled=false;render();
-      }catch(e){sel.value=oldState;alertBox.textContent=e.message;alertBox.hidden=false}finally{sel.disabled=false}
-    }));
-    box.querySelectorAll('select[data-button-key]').forEach(sel=>sel.addEventListener('change',async()=>{
-      const card=sel.closest('.customer'),id=card.dataset.id,c=all.find(x=>x.id===id),key=sel.dataset.buttonKey,newState=sel.value,oldState=buttonState(c.coordinatorFeatures||{},key,key==='parts'?'disabled':'enabled');sel.disabled=true;
-      try{
-        const conf=await confirmEdit(`Set Operator Machine Card button “${key}” to ${newState.toUpperCase()} for ${c.name}. Hidden only removes it from display; no function or data is deleted.`);if(!conf){sel.value=oldState;return}
-        const payload=currentPayload(c);payload.machineCardButtons.operator[key]=newState;
-        await api(`/customers/${id}/coordinator-features`,{method:'PUT',body:JSON.stringify({...payload,editPin:conf.editPin})});c.coordinatorFeatures=payload;render();
-      }catch(e){sel.value=oldState;alertBox.textContent=e.message;alertBox.hidden=false}finally{sel.disabled=false}
-    }));
+    box.querySelectorAll('input[data-feature]').forEach(inp=>inp.addEventListener('change',async()=>{const card=inp.closest('.customer'),id=card.dataset.id,c=all.find(x=>x.id===id),feature=inp.dataset.feature,desired=inp.checked;inp.disabled=true;try{const conf=await confirmEdit(`Confirm ${desired?'enable':'disable'} ${feature==='belm'?'BELM Service':feature} for ${c.name}. No customer data will be deleted.`);if(!conf){inp.checked=!desired;return}if(feature==='belm'){await api(`/customers/${id}/machinery-admin`,{method:'PUT',body:JSON.stringify({serviceProviderEnabled:desired,editPin:conf.editPin})});c.selfServiceEnabled=!desired}else{const payload=currentPayload(c);payload[feature]=desired;const d=await api(`/customers/${id}/coordinator-features`,{method:'PUT',body:JSON.stringify({...payload,editPin:conf.editPin})});c.coordinatorFeatures=payload;if(d.belmServiceForced)c.selfServiceEnabled=false}render()}catch(e){inp.checked=!desired;alertBox.textContent=e.message;alertBox.hidden=false}finally{inp.disabled=false}}));
+    box.querySelectorAll('select[data-department-key]').forEach(sel=>sel.addEventListener('change',async()=>{const card=sel.closest('.customer'),id=card.dataset.id,c=all.find(x=>x.id===id),key=sel.dataset.departmentKey,newState=sel.value,oldState=departmentState(c,key);sel.disabled=true;try{const conf=await confirmEdit(`${newState==='ENABLED'?'Add / enable':'Remove'} ${departmentLabels[key]} for ${c.name}. This changes access only; existing workflow records and history remain stored.`);if(!conf){sel.value=oldState;return}const d=await api(`/customers/${id}/coordinator-departments`,{method:'PUT',body:JSON.stringify({departments:{[key]:newState},editPin:conf.editPin})});c.departmentStates=d.departmentStates;if(d.belmServiceForced)c.selfServiceEnabled=false;render()}catch(e){sel.value=oldState;alertBox.textContent=e.message;alertBox.hidden=false}finally{sel.disabled=false}}));
+    box.querySelectorAll('select[data-button-key]').forEach(sel=>sel.addEventListener('change',async()=>{const card=sel.closest('.customer'),id=card.dataset.id,c=all.find(x=>x.id===id),key=sel.dataset.buttonKey,newState=sel.value,oldState=buttonState(c.coordinatorFeatures||{},key,key==='parts'?'disabled':'enabled');sel.disabled=true;try{const conf=await confirmEdit(`Set Operator Machine Card button “${key}” to ${newState.toUpperCase()} for ${c.name}. Hidden only removes it from display; no function or data is deleted.`);if(!conf){sel.value=oldState;return}const payload=currentPayload(c);payload.machineCardButtons.operator[key]=newState;await api(`/customers/${id}/coordinator-features`,{method:'PUT',body:JSON.stringify({...payload,editPin:conf.editPin})});c.coordinatorFeatures=payload;render()}catch(e){sel.value=oldState;alertBox.textContent=e.message;alertBox.hidden=false}finally{sel.disabled=false}}));
   }
   async function load(){alertBox.hidden=true;try{all=await api('/customers/cwm-overview');render()}catch(e){box.innerHTML=`<div class="empty">${esc(e.message)}</div>`}}
   document.getElementById('search').oninput=render;document.getElementById('refresh').onclick=load;load();

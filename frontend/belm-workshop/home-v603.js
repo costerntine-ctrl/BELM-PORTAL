@@ -14,8 +14,30 @@
   if(mainMenuBack){mainMenuBack.hidden=!isMainBelmAccount;mainMenuBack.style.display=isMainBelmAccount?'inline-flex':'none';if(isMainBelmAccount)mainMenuBack.setAttribute('href','/workshop-management-home/');}
   document.getElementById('bwLogoutButton')?.addEventListener('click',()=>{localStorage.removeItem('belm_admin_token');localStorage.removeItem('belm_admin_user');localStorage.removeItem('belm_active_account_type');location.replace('/login');});
 
+  const registrationCard=document.getElementById('registrationQuickCard');
+  const registrationBadge=document.getElementById('registrationQuickBadge');
+  const registrationText=document.getElementById('registrationQuickText');
+  const loadRegistrationAlert=async()=>{
+    const token=localStorage.getItem('belm_admin_token')||'';
+    if(!token||!registrationCard)return;
+    try{
+      const response=await fetch('/api/applications?status=PENDING',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data?.error||'Registration check failed');
+      const pending=(Array.isArray(data?.applications)?data.applications:[]).filter(item=>item?.applicationType!=='SYSTEM_USER');
+      const count=pending.length;
+      registrationCard.classList.toggle('has-pending',count>0);
+      if(registrationBadge){registrationBadge.hidden=count===0;registrationBadge.textContent=count>99?'99+':String(count);}
+      if(registrationText)registrationText.textContent=count>0?`${count} customer connection request${count===1?'':'s'} waiting`:'Customer connection requests';
+    }catch(_){
+      registrationCard.classList.remove('has-pending');
+      if(registrationBadge)registrationBadge.hidden=true;
+      if(registrationText)registrationText.textContent='Customer connection requests';
+    }
+  };
+
   const root=document.querySelector('.bw-home-message-v603');
-  if(!root)return;
+  if(!root){loadRegistrationAlert();return;}
   const titleEl=root.querySelector('[data-bw-message-title]'),textEl=root.querySelector('[data-bw-message-text]'),byEl=root.querySelector('[data-bw-message-by]'),dots=root.querySelector('[data-bw-message-dots]'),heading=root.querySelector('.cwm-alert-heading-v610 span');
   const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const machineLabel=machine=>{const name=[machine.brand,machine.model].filter(Boolean).join(' ').trim()||machine.machineType||'Machine';const fleet=machine.fleetNumber||machine.regNumber||machine.serialNumber||'';return fleet?`${name} · Fleet ${fleet}`:name;};
@@ -44,5 +66,5 @@
   const render=()=>{if(!homeMessages.length)homeMessages=[...fallbackMessages];if(index>=homeMessages.length)index=0;const item=homeMessages[index];root.dataset.alertType=item.type||'info';root.classList.toggle('is-critical-blink',!!item.blink);if(heading)heading.textContent=item.type==='good'?'✓':'⚠';if(titleEl)titleEl.textContent=item.title||'MACHINE ALERT';if(textEl)textEl.textContent=item.text||'';if(byEl)byEl.textContent=`— ${item.by}`;if(dots){dots.innerHTML=homeMessages.map((_,i)=>`<button type="button" aria-label="Machine alert ${i+1}" class="${i===index?'active':''}" data-bw-dot="${i}"></button>`).join('');dots.querySelectorAll('[data-bw-dot]').forEach(button=>button.addEventListener('click',()=>{index=Number(button.dataset.bwDot);render();restart();}));}};
   const next=()=>{index=(index+1)%homeMessages.length;render();},prev=()=>{index=(index-1+homeMessages.length)%homeMessages.length;render();},restart=()=>{if(timer)clearInterval(timer);timer=setInterval(next,6500);};
   const loadAlerts=async(showError=false)=>{const token=localStorage.getItem('belm_admin_token')||'';if(!token)return;try{const response=await fetch('/api/belm-workshop-home',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const data=await response.json().catch(()=>null);if(!response.ok)throw new Error(data?.error||`Request failed (${response.status})`);homeMessages=buildMessages(data?.machines||[]);index=0;render();restart();}catch(error){if(showError){const box=document.getElementById('bwAlert');if(box){box.textContent=`Could not refresh machine alerts: ${escapeHtml(error.message)}`;box.classList.remove('hidden');box.classList.add('error');}}}};
-  root.querySelector('[data-bw-message-next]')?.addEventListener('click',()=>{next();restart();});root.querySelector('[data-bw-message-prev]')?.addEventListener('click',()=>{prev();restart();});document.getElementById('workshopSyncButton')?.addEventListener('click',()=>loadAlerts(true));render();restart();loadAlerts(false);refreshTimer=setInterval(()=>loadAlerts(false),30000);window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer);});
+  root.querySelector('[data-bw-message-next]')?.addEventListener('click',()=>{next();restart();});root.querySelector('[data-bw-message-prev]')?.addEventListener('click',()=>{prev();restart();});document.getElementById('workshopSyncButton')?.addEventListener('click',()=>{loadAlerts(true);loadRegistrationAlert();});render();restart();loadAlerts(false);loadRegistrationAlert();refreshTimer=setInterval(()=>{loadAlerts(false);loadRegistrationAlert();},30000);window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer);});
 })();

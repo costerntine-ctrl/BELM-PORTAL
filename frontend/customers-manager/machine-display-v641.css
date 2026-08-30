@@ -1,0 +1,22 @@
+/* V641: one compact machine display. The display itself carries status colour/blink; never the full machine card. */
+.machine-card.machine-range-red,.machine-card.machine-range-yellow,.machine-card.machine-range-green,.machine-card.machine-range-unknown{animation:none!important;box-shadow:0 12px 28px rgba(0,0,0,.18)!important;border-color:#28465f!important}
+.machine-card.machine-range-red::before,.machine-card.machine-range-yellow::before,.machine-card.machine-range-green::before,.machine-card.machine-range-unknown::before{animation:none!important}
+.machine-card .machine-alert-copy{display:block!important;margin:14px 0 12px!important;padding:0!important;border:0!important;background:transparent!important;min-height:0!important}
+.machine-card .machine-alert-copy .machine-operator-message,.machine-card .machine-alert-copy .machine-condition-message{display:none!important}
+.machine-card .service-due-badge{display:none!important}
+.machine-card .belm-machine-display{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:78px;box-sizing:border-box;padding:12px 14px;border:1px solid #2d5877;border-radius:13px;background:#071b2b;overflow:hidden;color:#f7fbff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.025)}
+.machine-card .belm-machine-display::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:#5d7183}
+.machine-card .belm-machine-display-kicker{flex:0 0 82px;color:#78a0bc;font-size:9px;font-weight:900;letter-spacing:.09em;text-transform:uppercase}
+.machine-card .belm-machine-display-message{min-width:0;flex:1;font-size:13px;font-weight:850;line-height:1.35;color:#fff}
+.machine-card .belm-machine-display-meta{display:block;margin-top:3px;color:#8fa9bd;font-size:9px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.machine-card .belm-machine-display.display-red{border-color:#ff4048;box-shadow:0 0 0 1px rgba(255,64,72,.28),0 0 16px rgba(255,64,72,.22)}
+.machine-card .belm-machine-display.display-red::before{background:#ff4048}
+.machine-card .belm-machine-display.display-yellow{border-color:#ffd126;box-shadow:0 0 0 1px rgba(255,209,38,.24),0 0 14px rgba(255,209,38,.18)}
+.machine-card .belm-machine-display.display-yellow::before{background:#ffd126}
+.machine-card .belm-machine-display.display-green{border-color:#09c96f}.machine-card .belm-machine-display.display-green::before{background:#09c96f}
+@keyframes belmDisplayRedBlink{0%,100%{border-color:#ff4048;box-shadow:0 0 0 1px rgba(255,64,72,.25),0 0 10px rgba(255,64,72,.16)}50%{border-color:#ff7c82;box-shadow:0 0 0 2px rgba(255,64,72,.38),0 0 24px rgba(255,64,72,.36)}}
+@keyframes belmDisplayYellowBlink{0%,100%{border-color:#ffd126;box-shadow:0 0 8px rgba(255,209,38,.14)}50%{border-color:#ffe47a;box-shadow:0 0 20px rgba(255,209,38,.34)}}
+.machine-card .belm-machine-display.display-red{animation:belmDisplayRedBlink 1.25s ease-in-out infinite}
+.machine-card .belm-machine-display.display-yellow{animation:belmDisplayYellowBlink 1.65s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.machine-card .belm-machine-display{animation:none!important}}
+@media(max-width:560px){.machine-card .belm-machine-display{min-height:72px;padding:10px 12px;gap:9px}.machine-card .belm-machine-display-kicker{flex-basis:70px;font-size:8px}.machine-card .belm-machine-display-message{font-size:12px}}

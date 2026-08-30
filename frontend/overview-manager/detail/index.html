@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Analysis Detail — BELM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/management-analytics.css?v=639-analysis-pages">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#061525;color:#eef6ff;font-family:Inter,sans-serif}.detail-topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:#102a56}.detail-topbar a,.detail-topbar button{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.28);background:#0b3a63;border-radius:10px;padding:10px 13px;font-weight:800}.detail-shell{max-width:1180px;margin:0 auto;padding:20px}.hero{padding:22px;border-radius:18px;background:linear-gradient(135deg,#08345d,#075b45);margin-bottom:16px}.hero .eyebrow{margin:0 0 6px;color:#55e48e;font-size:11px;font-weight:900;letter-spacing:.13em}.hero h1{margin:0 0 6px;font-family:'Space Grotesk',sans-serif}.hero p{margin:0;color:#c7d7e6}.toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px}.toolbar label{display:grid;gap:6px;font-weight:700;color:#c4d2df}.toolbar select{min-width:180px;background:#0a2138;color:#fff;border:1px solid #31536f;border-radius:10px;padding:11px}.panel{background:#0d2035;border:1px solid #284b67;border-radius:18px;padding:18px}.detail-grid{display:grid;gap:12px}.role-card,.activity-item,.status-row{background:#0a2942;border:1px solid #23506e;border-radius:14px;padding:15px}.role-card h3{margin:0 0 12px}.role-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.role-stats div{background:#081c30;border-radius:10px;padding:10px}.role-stats span{display:block;color:#91a6b9;font-size:11px}.role-stats strong{font-size:20px}.bar-list{display:grid;gap:12px}.bar-label{display:flex;justify-content:space-between;gap:12px}.bar-track{height:10px;border-radius:999px;background:#071827;overflow:hidden;margin-top:7px}.bar-fill{display:block;height:100%;background:#19c36a}.activity-item strong,.activity-item span,.activity-item time{display:block}.activity-item span,.activity-item time{color:#91a6b9;margin-top:4px}.empty,.error{padding:18px;border-radius:12px;background:#0a2942;color:#b9c9d8}.error{background:#462026;color:#ffd0d0}.hidden{display:none!important}@media(max-width:700px){.detail-shell{padding:12px}.detail-topbar{align-items:flex-start}.role-stats{grid-template-columns:repeat(2,1fr)}.hero h1{font-size:26px}}
+  </style>
+</head>
+<body>
+<header class="detail-topbar"><a href="/overview-manager/">← General Analysis</a><button id="refreshButton" type="button">Refresh</button></header>
+<main class="detail-shell">
+  <section class="hero"><p class="eyebrow">BELM GENERAL ANALYSIS</p><h1 id="pageTitle">Analysis</h1><p id="pageSubtitle">Live operational detail.</p></section>
+  <div class="toolbar"><label>Analysis period<select id="periodSelect"><option value="today">Today</option><option value="week">This week</option><option value="month" selected>This month</option><option value="year">This year</option></select></label><span id="periodLabel"></span></div>
+  <div id="errorBox" class="error hidden"></div>
+  <section class="panel"><div id="content" class="detail-grid"><div class="empty">Loading analysis…</div></div></section>
+</main>
+<script>
+(function(){
+ const token=localStorage.getItem('belm_admin_token')||'';
+ const section=String(new URLSearchParams(location.search).get('section')||'roles').toLowerCase();
+ const titles={roles:['Analysis by role','Active users, pending work and completed work for each system role.'],jobs:['Job Cards','Status comparison across all Job Cards.'],machines:['Machine condition','Health status comparison across the registered fleet.'],attendance:['Attendance today','Presence by status for BELM staff.'],activity:['Recent activity','Latest actions recorded by BELM staff across every department.']};
+ const meta=titles[section]||titles.roles;document.getElementById('pageTitle').textContent=meta[0];document.getElementById('pageSubtitle').textContent=meta[1];document.title=meta[0]+' — BELM';
+ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));const num=new Intl.NumberFormat('en-TZ');
+ async function api(){const period=document.getElementById('periodSelect').value;const r=await fetch('/api/reports/all-overview?period='+encodeURIComponent(period),{cache:'no-store',headers:{Authorization:'Bearer '+token}});const d=await r.json().catch(()=>({}));if(r.status===401){location.replace('/admin/login');throw new Error('Session expired.');}if(!r.ok)throw new Error(d.error||'Could not load analysis.');return d;}
+ function bars(values){const entries=Object.entries(values||{});if(!entries.length)return '<div class="empty">No records yet.</div>';const max=Math.max(...entries.map(([,v])=>Number(v)||0),1);return '<div class="bar-list">'+entries.map(([k,v])=>`<div class="status-row"><div class="bar-label"><span>${esc(k.replaceAll('_',' '))}</span><strong>${num.format(v)}</strong></div><div class="bar-track"><span class="bar-fill" style="width:${Math.max(3,(Number(v)||0)/max*100)}%"></span></div></div>`).join('')+'</div>';}
+ function render(d){document.getElementById('periodLabel').textContent=(d.period?.label||'Selected period')+' · '+(d.period?.from||'')+' → '+(d.period?.to||'');let html='';if(section==='roles'){const roles=Array.isArray(d.roles)?d.roles:[];html=roles.length?roles.map(r=>`<article class="role-card"><h3>${esc(r.name==='Engineer'?'Workshop Manager':r.name||'')}</h3><div class="role-stats"><div><span>Staff</span><strong>${num.format(r.staffTotal||0)}</strong></div><div><span>Active</span><strong>${num.format(r.activeTotal||0)}</strong></div><div><span>Pending</span><strong>${num.format(r.pendingTasks||0)}</strong></div><div><span>Completed</span><strong>${num.format(r.completedTasks||0)}</strong></div></div></article>`).join(''):'<div class="empty">No roles configured.</div>';}else if(section==='jobs'){html=bars(d.serviceStatus);}else if(section==='machines'){html=bars(d.machineStatus);}else if(section==='attendance'){html=bars(d.attendanceToday);}else{const a=Array.isArray(d.recentActivities)?d.recentActivities:[];html=a.length?a.map(x=>`<article class="activity-item"><strong>${esc(x.userName||'System user')} · ${esc(x.action||'Activity')}</strong><span>${esc(x.roleName||'')} · ${esc(x.entity||'System')}</span><time>${x.createdAt?esc(new Date(x.createdAt).toLocaleString()):''}</time></article>`).join(''):'<div class="empty">No recent employee activity recorded.</div>';}
+ document.getElementById('content').innerHTML=html;}
+ async function load(){const e=document.getElementById('errorBox');e.classList.add('hidden');document.getElementById('content').innerHTML='<div class="empty">Loading analysis…</div>';try{render(await api());}catch(err){e.textContent=err.message;e.classList.remove('hidden');document.getElementById('content').innerHTML='<div class="empty">Analysis could not be loaded.</div>';}}
+ document.getElementById('periodSelect').addEventListener('change',load);document.getElementById('refreshButton').addEventListener('click',load);load();
+})();
+</script>
+</body>
+</html>

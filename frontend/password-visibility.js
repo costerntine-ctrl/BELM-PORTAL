@@ -11,15 +11,10 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 
   if(location.pathname.startsWith('/customers-manager/')){
-    if(!document.querySelector('script[data-customer-overview-stability]')){
-      const guard=document.createElement('script');guard.src='/customers-manager/stability-v640.js?v=640-customer-overview-stability';guard.dataset.customerOverviewStability='1';document.head.appendChild(guard);
-    }
-    if(!document.querySelector('link[data-machine-display-style]')){
-      const style=document.createElement('link');style.rel='stylesheet';style.href='/customers-manager/machine-display-v641.css?v=641-compact-random-display';style.dataset.machineDisplayStyle='1';document.head.appendChild(style);
-    }
-    if(!document.querySelector('script[data-machine-display]')){
-      const display=document.createElement('script');display.src='/customers-manager/machine-display-v641.js?v=641-compact-random-display';display.defer=true;display.dataset.machineDisplay='1';document.head.appendChild(display);
-    }
+    if(!document.querySelector('script[data-customer-overview-stability]')){const guard=document.createElement('script');guard.src='/customers-manager/stability-v640.js?v=640-customer-overview-stability';guard.dataset.customerOverviewStability='1';document.head.appendChild(guard);}
+    if(!document.querySelector('link[data-machine-display-style]')){const style=document.createElement('link');style.rel='stylesheet';style.href='/customers-manager/machine-display-v641.css?v=641-compact-random-display';style.dataset.machineDisplayStyle='1';document.head.appendChild(style);}
+    if(!document.querySelector('script[data-machine-display]')){const display=document.createElement('script');display.src='/customers-manager/machine-display-v641.js?v=641-compact-random-display';display.defer=true;display.dataset.machineDisplay='1';document.head.appendChild(display);}
+    if(!document.querySelector('script[data-machine-report-route-fix]')){const reportFix=document.createElement('script');reportFix.src='/customers-manager/machine-report-route-fix-v642.js?v=642-checklist-route';reportFix.dataset.machineReportRouteFix='1';document.head.appendChild(reportFix);}
   }
 
   if(!document.querySelector('script[data-v520-upgrades]')){const s=document.createElement('script');s.src='/v520-upgrades.js?v=520-latest';s.defer=true;s.dataset.v520Upgrades='1';document.head.appendChild(s);}

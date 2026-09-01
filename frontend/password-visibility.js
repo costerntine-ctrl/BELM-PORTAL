@@ -17,5 +17,17 @@
     if(!document.querySelector('script[data-machine-report-route-fix]')){const reportFix=document.createElement('script');reportFix.src='/customers-manager/machine-report-route-fix-v642.js?v=642-checklist-route';reportFix.dataset.machineReportRouteFix='1';document.head.appendChild(reportFix);}
   }
 
+  // Store & Spare Parts is already protected by authenticated BELM role/page access.
+  // Do not ask Store Keeper/Admin for a second edit PIN when opening or editing an
+  // inventory record. The existing manager.js only needs a truthy confirmation token;
+  // the backend spare-parts endpoint does not validate or require editPin.
+  if(location.pathname.startsWith('/spare-parts-manager/')){
+    const disableStoreEditPin=()=>{
+      window.belmConfirmEdit=async()=>({editPin:'ROLE_AUTHORIZED'});
+    };
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',disableStoreEditPin,{once:true});
+    else disableStoreEditPin();
+  }
+
   if(!document.querySelector('script[data-v520-upgrades]')){const s=document.createElement('script');s.src='/v520-upgrades.js?v=520-latest';s.defer=true;s.dataset.v520Upgrades='1';document.head.appendChild(s);}
 })();

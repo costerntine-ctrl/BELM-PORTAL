@@ -19,34 +19,25 @@
           var isCustomerHome = location.pathname === '/portal/dashboard' || location.pathname === '/portal/dashboard/';
           var params = new URLSearchParams(location.search);
           var hasExplicitSubview = params.has('view') || params.has('action') || params.has('machine') || params.has('machineId');
-          // Customer login always lands on the PORTAL-CWM home, which mirrors
-          // the BELM Workshop Home structure. OPEN WORKSHOP is the separate
-          // operational entry into /customer-workshop/.
           if (isCustomer && isCustomerHome && !hasExplicitSubview) location.replace('/portal-cwm/');
         } catch (_) {}
       })();
     </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="/theme-manager.js?v=647-fast-start"></script>
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
-    <script defer src="/portal-tools.js?v=545-machine-report-centre"></script>
-    <script defer src="/customer-checkup-runtime-v623.js?v=624-master-auto-sync"></script>
-    <script defer src="/machine-report-center-override.js?v=545-machine-report-centre"></script>
-    <script defer src="/machine-status-row-v554.js?v=557-belm-action-colours"></script>
-    <script defer src="/admin-sidebar.js?v=488-text-fit"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BHFQaDFg.css">
-    <link rel="stylesheet" href="/belm-theme.css?v=518-checklist-sync">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
-    <link rel="stylesheet" href="/theme-global.css?v=486-report-record">
-    <link rel="stylesheet" href="/v520-upgrades.css?v=520-latest">
-    <link rel="stylesheet" href="/machine-alert-zone-v612.css?v=619-runtime-brand-guard">
-    <script defer src="/v520-upgrades.js?v=520-latest"></script>
-    <script defer src="/cwm-machine-brand-v619.js?v=619-runtime-brand-guard"></script>
-    <script src="/theme-manager.js?v=486-report-record"></script>
-    <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
-    <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+    <link rel="stylesheet" href="/belm-theme.css?v=647-fast-start">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=647-fast-start">
+    <link rel="stylesheet" href="/theme-global.css?v=647-fast-start">
+    <link rel="stylesheet" href="/v520-upgrades.css?v=647-fast-start">
+    <link rel="stylesheet" href="/machine-alert-zone-v612.css?v=647-fast-start">
+    <link rel="stylesheet" href="/password-visibility.css?v=647-fast-start">
+    <script defer src="/password-visibility.js?v=647-fast-start"></script>
+    <script defer src="/runtime-loader-v647.js?v=647-fast-start"></script>
     <script>
-      if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('/belm-sw.js').catch(() => {}));
+      if ('serviceWorker' in navigator) window.addEventListener('load', () => {
+        setTimeout(() => navigator.serviceWorker.register('/belm-sw.js').catch(() => {}), 800);
+      }, {once:true});
     </script>
   </head>
   <body class="bg-slate-50"><div id="root"></div></body>

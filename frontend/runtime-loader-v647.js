@@ -4,6 +4,7 @@
 
   const admin=!!localStorage.getItem('belm_admin_token');
   const customer=!!localStorage.getItem('belm_customer_token');
+  const technician=!!localStorage.getItem('belm_tech_token')||location.pathname.startsWith('/tech');
 
   function loadScript(src){
     return new Promise((resolve)=>{
@@ -18,18 +19,17 @@
   }
 
   async function bootNonCritical(){
-    // Load only after the main app has had a chance to paint. These are
-    // enhancement/legacy compatibility layers and must not compete with the
-    // primary Vite bundle during startup.
-    await loadScript('/portal-tools.js?v=647-lazy');
+    await loadScript('/portal-tools.js?v=651-tech-machines-page');
     await loadScript('/v520-upgrades.js?v=647-lazy');
+
+    if(technician){
+      await loadScript('/technician-machine-page-v651.js?v=651-dedicated-page');
+    }
 
     if(admin){
       await loadScript('/admin-sidebar.js?v=647-lazy');
     }
 
-    // Machine/checklist helpers are useful for both BELM staff and customer
-    // sessions, but can safely attach after the first paint.
     if(admin||customer){
       await Promise.all([
         loadScript('/customer-checkup-runtime-v623.js?v=647-lazy'),

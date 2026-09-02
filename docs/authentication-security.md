@@ -8,7 +8,7 @@ BELM now uses an 8-hour rolling `HttpOnly`, `SameSite=Lax` cookie for browser se
 2. API authentication accepts a valid bearer token first, then the HttpOnly cookie. Cookie-authenticated state-changing requests are limited to configured origins.
 3. Refresh re-checks the live account and rotates both credentials.
 4. Logout clears the cookie and increments the account session generation. Password reset and recovery also increment that generation, invalidating newly issued sessions on every device.
-5. Direct downloads request `POST /api/auth/download-token` with `{"path":"/api/.../download"}`. The returned URL contains a purpose-bound `download_token` valid for at most two minutes and only for the exact GET path. General session JWTs in `?token=` are no longer accepted.
+5. Direct downloads request `POST /api/auth/download-token` with `{"path":"/api/.../download"}`. The returned URL contains a purpose-bound `download_token` valid for at most two minutes and only for the exact GET path and normalized query parameters. General session JWTs in `?token=` are no longer accepted.
 
 ## Frontend migration
 

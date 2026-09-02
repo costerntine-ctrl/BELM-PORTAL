@@ -75,11 +75,9 @@ if ($action === 'download-token' && $method === 'POST') {
         json_error('Only API download/PDF paths can receive a download token.');
     }
 
-    $query = [];
-    parse_str((string)(parse_url($requested, PHP_URL_QUERY) ?: ''), $query);
-    unset($query['token'], $query['download_token']);
-    $token = issue_download_token($current, $path);
-    $url = $path . ($query ? '?' . http_build_query($query) . '&' : '?')
+    $query = normalized_download_query((string)(parse_url($requested, PHP_URL_QUERY) ?: ''));
+    $token = issue_download_token($current, $requested);
+    $url = $path . ($query !== '' ? '?' . $query . '&' : '?')
         . 'download_token=' . rawurlencode($token);
     json_out(['ok' => true, 'url' => $url, 'expiresIn' => BELM_DOWNLOAD_TOKEN_TTL]);
 }

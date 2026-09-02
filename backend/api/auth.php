@@ -71,9 +71,7 @@ if ($action === 'download-token' && $method === 'POST') {
 
     $requested = trim((string)(body()['path'] ?? ''));
     $path = (string)(parse_url($requested, PHP_URL_PATH) ?: '');
-    if (!preg_match('#^/api/[A-Za-z0-9._~!$method = $_SERVER['REQUEST_METHOD'];
-
-\'()*+,;=:@%/-]+/(?:download|pdf)$#', $path)) {
+    if (!preg_match('#^/api/[A-Za-z0-9._~!()*+,;=:@%/-]+/(?:download|pdf)$#', $path)) {
         json_error('Only API download/PDF paths can receive a download token.');
     }
 

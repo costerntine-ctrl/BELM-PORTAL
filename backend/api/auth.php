@@ -34,6 +34,58 @@ function verify_portal_password(string $plainPassword, ?string $storedHash, stri
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
+// POST /api/auth/logout
+// Revokes every active session for this identity and expires the browser cookie.
+if ($action === 'logout' && $method === 'POST') {
+    $current = current_token_payload();
+    if ($current) {
+        [$subjectType, $subjectId] = auth_session_subject($current);
+        if ($subjectType !== '' && $subjectId !== '') revoke_auth_sessions_for_account($subjectType, $subjectId);
+    }
+    clear_auth_session_cookie();
+    json_out(['ok' => true]);
+}
+
+// GET /api/auth/session
+// Lets new cookie-only clients restore non-sensitive routing context.
+if ($action === 'session' && $method === 'GET') {
+    $current = current_token_payload();
+    if (!$current) json_error('Not authenticated', 401);
+    json_out([
+        'ok' => true,
+        'accountType' => $current['type'] ?? null,
+        'id' => $current['id'] ?? null,
+        'roleName' => $current['roleName'] ?? null,
+        'actorType' => $current['actorType'] ?? null,
+        'customerRole' => $current['customerRole'] ?? null,
+        'allowedPages' => $current['allowedPages'] ?? null,
+    ]);
+}
+
+// POST /api/auth/download-token { path }
+// Produces a purpose-bound URL credential for browser navigations that cannot
+// attach Authorization headers. Ordinary session JWTs are never accepted in URLs.
+if ($action === 'download-token' && $method === 'POST') {
+    $current = current_token_payload();
+    if (!$current) json_error('Not authenticated', 401);
+
+    $requested = trim((string)(body()['path'] ?? ''));
+    $path = (string)(parse_url($requested, PHP_URL_PATH) ?: '');
+    if (!preg_match('#^/api/[A-Za-z0-9._~!$method = $_SERVER['REQUEST_METHOD'];
+
+\'()*+,;=:@%/-]+/(?:download|pdf)$#', $path)) {
+        json_error('Only API download/PDF paths can receive a download token.');
+    }
+
+    $query = [];
+    parse_str((string)(parse_url($requested, PHP_URL_QUERY) ?: ''), $query);
+    unset($query['token'], $query['download_token']);
+    $token = issue_download_token($current, $path);
+    $url = $path . ($query ? '?' . http_build_query($query) . '&' : '?')
+        . 'download_token=' . rawurlencode($token);
+    json_out(['ok' => true, 'url' => $url, 'expiresIn' => BELM_DOWNLOAD_TOKEN_TTL]);
+}
+
 // V299: rolling authenticated sessions. A valid session can be renewed without
 // asking the user to log in again. Every refresh re-checks the live account in
 // the database, so disabled/deleted accounts still stop immediately.
@@ -150,8 +202,8 @@ if ($action === 'refresh' && $method === 'POST') {
 
     json_out([
         'ok' => true,
-        'token' => jwt_encode($freshPayload, 30 * 24 * 3600),
-        'expiresIn' => 30 * 24 * 3600,
+        'token' => issue_auth_session($freshPayload, 30 * 24 * 3600),
+        'expiresIn' => BELM_ACCESS_TOKEN_TTL,
     ]);
 }
 
@@ -296,6 +348,8 @@ if ($action === 'reset-with-code' && $method === 'POST') {
     }
 
     db()->prepare('DELETE FROM password_reset_codes WHERE id = ?')->execute([$entry['id']]);
+    revoke_auth_sessions_for_account($accountType, $accountId);
+    clear_auth_session_cookie();
     clear_unified_login_lockout($email);
 
     // V444: password reset is anonymous (verified only by the emailed OTP,
@@ -394,6 +448,8 @@ if ($action === 'recover' && $method === 'POST') {
         )->execute([$passwordHash, $recoveryHash, $account['id']]);
     }
 
+    revoke_auth_sessions_for_account($accountType, (string)$account['id']);
+    clear_auth_session_cookie();
     clear_unified_login_lockout($email);
 
     // V444: same reasoning as reset-with-code above — no logged-in $user
@@ -514,7 +570,7 @@ if ($action === 'unified-login' && $method === 'POST') {
             }
 
             $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
-            $token = jwt_encode([
+            $token = issue_auth_session([
                 'type' => 'staff',
                 'id' => $user['id'],
                 'email' => $user['email'],
@@ -681,7 +737,7 @@ if ($action === 'unified-login' && $method === 'POST') {
     }
 
     clear_rate_limit('unified-login', $rawLoginId);
-    $token = jwt_encode([
+    $token = issue_auth_session([
         'type' => 'customer',
         'id' => $customer['id'],
         'name' => $customer['name'],
@@ -772,7 +828,7 @@ if ($action === 'login' && $method === 'POST') {
 
     $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
 
-    $token = jwt_encode([
+    $token = issue_auth_session([
         'type' => 'staff',
         'id' => $user['id'],
         'email' => $user['email'],
@@ -902,7 +958,7 @@ if ($action === 'customer-login' && $method === 'POST') {
     }
     clear_rate_limit('customer-login', $rawLoginId);
 
-    $token = jwt_encode([
+    $token = issue_auth_session([
         'type' => 'customer',
         'id' => $customer['id'],
         'name' => $customer['name'],

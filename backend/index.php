@@ -69,10 +69,13 @@ switch($resource){
         if(($segments[1]??'')==='communication-feed')dispatch('customers.php',['action'=>'communication-feed']);
         if(($segments[1]??'')==='cwm-overview')dispatch('customers.php',['action'=>'cwm-overview']);
 <<<<<<< HEAD
+<<<<<<< HEAD
         // Customer communication history is used by both Customers Manager and
         // the Technician dashboard. Specific routes must precede /customers/{id}.
         if(isset($segments[1])&&($segments[2]??'')==='communications'&&isset($segments[3])&&($segments[4]??'')==='read')dispatch('customers.php',['action'=>'communication-read','id'=>$segments[1],'communicationId'=>$segments[3]]);
         if(isset($segments[1])&&($segments[2]??'')==='communications')dispatch('customers.php',['action'=>'communications','id'=>$segments[1]]);
+=======
+>>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
 =======
 >>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
         if(($segments[1]??'')==='machines'&&isset($segments[2])&&($segments[3]??'')==='service-parts')dispatch('customers.php',['action'=>'service-parts','machineId'=>$segments[2]]);
@@ -101,10 +104,14 @@ switch($resource){
     case 'controller-pinouts': dispatch('controller_pinouts.php',['id'=>$segments[1]??null]);
     case 'checklist-reports':
 <<<<<<< HEAD
+<<<<<<< HEAD
         // Explicit REST mapping for Technician / Machine Report Center.
         // Query-style actions are still accepted for older frontend modules.
         if(($segments[1]??'')==='technician-general'&&($segments[2]??'')==='pdf')dispatch('checklist_reports.php',['action'=>'technician-general-report-pdf']);
         if(($segments[1]??'')==='technician-general')dispatch('checklist_reports.php',['action'=>'technician-general-report']);
+=======
+        // V643: explicit REST mapping for Machine Report Center.
+>>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
 =======
         // V643: explicit REST mapping for Machine Report Center.
 >>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
@@ -114,11 +121,15 @@ switch($resource){
         if(($segments[1]??'')==='operator-reports'&&isset($segments[2]))dispatch('checklist_reports.php',['action'=>'operator-reports','machineId'=>$segments[2]]);
         if(isset($segments[1])&&($segments[2]??'')==='pdf')dispatch('checklist_reports.php',['action'=>'pdf','id'=>$segments[1]]);
 <<<<<<< HEAD
+<<<<<<< HEAD
         if($method==='PUT'&&isset($segments[1])&&!isset($segments[2]))dispatch('checklist_reports.php',['action'=>'update','id'=>$segments[1]]);
         $queryAction=trim((string)($_GET['action']??''));
         if($queryAction!=='')dispatch('checklist_reports.php',['action'=>$queryAction]);
         if($method==='POST')dispatch('checklist_reports.php',['action'=>'submit']);
         dispatch('checklist_reports.php');
+=======
+        dispatch('checklist_reports.php',['action'=>'submit']);
+>>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
 =======
         dispatch('checklist_reports.php',['action'=>'submit']);
 >>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
@@ -129,10 +140,14 @@ switch($resource){
     case 'job-cards': dispatch('service_requests.php');
     case 'service-requests': dispatch('service_requests.php');
 <<<<<<< HEAD
+<<<<<<< HEAD
     case 'spare-parts':
         // /spare-parts/requests is the Technician/Inventory Request workflow.
         if(($segments[1]??'')==='requests')dispatch('spare_part_requests.php',['id'=>$segments[2]??null]);
         dispatch('spare_parts.php',['id'=>$segments[1]??null]);
+=======
+    case 'spare-parts': dispatch('spare_parts.php',['id'=>$segments[1]??null]);
+>>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
 =======
     case 'spare-parts': dispatch('spare_parts.php',['id'=>$segments[1]??null]);
 >>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
@@ -144,10 +159,14 @@ switch($resource){
     case 'trash': if(isset($segments[1]))dispatch('trash.php',['id'=>$segments[1]]);dispatch('trash.php');
     case 'delivery-notes': if(($segments[1]??'')==='meta')dispatch('delivery_notes.php',['action'=>'meta']);if(isset($segments[1]))dispatch('delivery_notes.php',['id'=>$segments[1]]);dispatch('delivery_notes.php');
 <<<<<<< HEAD
+<<<<<<< HEAD
     case 'tasks':
         if(($segments[1]??'')==='user'&&isset($segments[2]))dispatch('tasks.php',['userId'=>$segments[2]]);
         if(isset($segments[1]))dispatch('tasks.php',['id'=>$segments[1]]);
         dispatch('tasks.php');
+=======
+    case 'tasks': dispatch('tasks.php',['id'=>$segments[1]??null]);
+>>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
 =======
     case 'tasks': dispatch('tasks.php',['id'=>$segments[1]??null]);
 >>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd

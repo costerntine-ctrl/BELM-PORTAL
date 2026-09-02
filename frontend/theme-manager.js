@@ -13,8 +13,8 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
   const sessionRefreshes = new Map();
   const sessionRefreshStatus = new Map();
   const SESSION_KEYS = ["belm_admin_token", "belm_customer_token", "belm_tech_token", "belm_operator_token"];
-  const SESSION_REFRESH_INTERVAL_MS = 2 * 60 * 60 * 1000;
-  const SESSION_REFRESH_WINDOW_MS = 21 * 24 * 60 * 60 * 1000;
+  const SESSION_REFRESH_INTERVAL_MS = 10 * 60 * 1000;
+  const SESSION_REFRESH_WINDOW_MS = 5 * 60 * 1000;
 
   function tokenStorageKey(token) {
     if (!token) return null;
@@ -52,6 +52,7 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
         const response = await nativeFetch("/api/auth/refresh", {
           method: "POST",
           cache: "no-store",
+          credentials: "include",
           headers: { Authorization: `Bearer ${token}` },
         });
         sessionRefreshStatus.set(tokenKey, response.status);
@@ -153,6 +154,30 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
   }
 
   window.fetch = fetchWithStableSession;
+
+  // Most BELM pages already load this shared runtime. Capture explicit logout
+  // before page-specific handlers redirect so the HttpOnly session is revoked.
+  function notifyServerLogout() {
+    try {
+      const body = new Blob(["{}"], { type: "application/json" });
+      if (navigator.sendBeacon("/api/auth/logout", body)) return;
+    } catch (_) {}
+    nativeFetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    }).catch(() => {});
+  }
+  window.belmSecureLogout = notifyServerLogout;
+  document.addEventListener("click", (event) => {
+    const control = event.target?.closest?.("button,a");
+    if (!control) return;
+    const label = String(control.textContent || "").trim().toLowerCase();
+    const identity = String(control.id || "") + " " + String(control.className || "");
+    if (/log\s*out/.test(label) || /logout/i.test(identity)) notifyServerLogout();
+  }, true);
 
   async function maintainSessions() {
     for (const key of SESSION_KEYS) {

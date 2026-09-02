@@ -11,41 +11,50 @@
       if(document.querySelector('script[src^="'+src.split('?')[0]+'"]')) return resolve();
       const s=document.createElement('script');
       s.src=src;
-      s.defer=true;
+      s.async=false;
       s.onload=()=>resolve();
       s.onerror=()=>resolve();
       document.body.appendChild(s);
     });
   }
 
-  async function bootNonCritical(){
-    await loadScript('/portal-tools.js?v=651-tech-machines-page');
-    await loadScript('/v520-upgrades.js?v=647-lazy');
+  async function bootTechnicianCritical(){
+    if(!technician)return;
+    // Technician cards are part of the primary UI, not a cosmetic enhancement.
+    // Load them immediately so the raw React machine buttons never remain visible.
+    await loadScript('/portal-tools.js?v=652-tech-critical');
+    await loadScript('/technician-machine-page-v651.js?v=652-tech-critical');
+  }
 
-    if(technician){
-      await loadScript('/technician-machine-page-v651.js?v=651-dedicated-page');
+  async function bootNonCritical(){
+    if(!technician){
+      await loadScript('/portal-tools.js?v=652-lazy');
     }
+    await loadScript('/v520-upgrades.js?v=652-lazy');
 
     if(admin){
-      await loadScript('/admin-sidebar.js?v=647-lazy');
+      await loadScript('/admin-sidebar.js?v=652-lazy');
     }
 
     if(admin||customer){
       await Promise.all([
-        loadScript('/customer-checkup-runtime-v623.js?v=647-lazy'),
-        loadScript('/machine-report-center-override.js?v=647-lazy'),
-        loadScript('/machine-status-row-v554.js?v=647-lazy'),
-        loadScript('/cwm-machine-brand-v619.js?v=647-lazy')
+        loadScript('/customer-checkup-runtime-v623.js?v=652-lazy'),
+        loadScript('/machine-report-center-override.js?v=652-lazy'),
+        loadScript('/machine-status-row-v554.js?v=652-lazy'),
+        loadScript('/cwm-machine-brand-v619.js?v=652-lazy')
       ]);
     }
   }
 
+  // Start Technician UI immediately after this deferred loader executes.
+  if(technician) bootTechnicianCritical().catch(()=>{});
+
   function schedule(){
     const run=()=>bootNonCritical().catch(()=>{});
     if('requestIdleCallback' in window){
-      requestIdleCallback(run,{timeout:1200});
+      requestIdleCallback(run,{timeout:1000});
     }else{
-      setTimeout(run,250);
+      setTimeout(run,200);
     }
   }
 

@@ -37,15 +37,15 @@
       (function(){
         try{
           if(location.pathname.startsWith('/tech') || localStorage.getItem('belm_tech_token')){
-            document.write('<script defer src="/technician-full-card-bootstrap-v654.js?v=654-tech-dom-ready"><\/script>');
+            document.write('<script defer src="/technician-full-card-bootstrap-v654.js?v=655-clean-dashboard"><\/script>');
           }
         }catch(_){}
       })();
     </script>
-    <script defer src="/runtime-loader-v647.js?v=654-tech-dom-ready"></script>
+    <script defer src="/runtime-loader-v647.js?v=655-clean-dashboard"></script>
     <script>
       if ('serviceWorker' in navigator) window.addEventListener('load', () => {
-        setTimeout(() => navigator.serviceWorker.register('/belm-sw.js?v=654').catch(() => {}), 800);
+        setTimeout(() => navigator.serviceWorker.register('/belm-sw.js?v=655').catch(() => {}), 800);
       }, {once:true});
     </script>
   </head>

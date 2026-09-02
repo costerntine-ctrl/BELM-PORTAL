@@ -38,8 +38,8 @@
     loading=true;
     observer?.disconnect();
     clearInterval(timer);
-    await loadScript('/portal-tools.js?v=654-tech-dom-ready');
-    await loadScript('/technician-machine-page-v651.js?v=654-tech-dom-ready');
+    await loadScript('/portal-tools.js?v=655-tech-approved');
+    await loadScript('/technician-machine-page-v655.js?v=655-tech-approved');
     document.documentElement.dataset.belmTechFullCardBoot='ready';
   }
 

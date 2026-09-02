@@ -20,33 +20,31 @@
 
   async function bootTechnicianCritical(){
     if(!technician)return;
-    // Technician cards are part of the primary UI, not a cosmetic enhancement.
-    // Load them immediately so the raw React machine buttons never remain visible.
-    await loadScript('/portal-tools.js?v=655-tech-approved');
-    await loadScript('/technician-machine-page-v655.js?v=655-tech-approved');
+    // V658 bypasses the legacy portal-tools bundle for Technician pages so
+    // a stale/invalid legacy bundle cannot leave raw machine buttons visible.
+    await loadScript('/technician-dashboard-v658.js?v=658-direct-tech-dashboard');
   }
 
   async function bootNonCritical(){
     if(!technician){
-      await loadScript('/portal-tools.js?v=655-lazy');
+      await loadScript('/portal-tools.js?v=658-lazy');
     }
-    await loadScript('/v520-upgrades.js?v=655-lazy');
+    await loadScript('/v520-upgrades.js?v=658-lazy');
 
     if(admin){
-      await loadScript('/admin-sidebar.js?v=655-lazy');
+      await loadScript('/admin-sidebar.js?v=658-lazy');
     }
 
     if(admin||customer){
       await Promise.all([
-        loadScript('/customer-checkup-runtime-v623.js?v=655-lazy'),
-        loadScript('/machine-report-center-override.js?v=655-lazy'),
-        loadScript('/machine-status-row-v554.js?v=655-lazy'),
-        loadScript('/cwm-machine-brand-v619.js?v=655-lazy')
+        loadScript('/customer-checkup-runtime-v623.js?v=658-lazy'),
+        loadScript('/machine-report-center-override.js?v=658-lazy'),
+        loadScript('/machine-status-row-v554.js?v=658-lazy'),
+        loadScript('/cwm-machine-brand-v619.js?v=658-lazy')
       ]);
     }
   }
 
-  // Start Technician UI immediately after this deferred loader executes.
   if(technician) bootTechnicianCritical().catch(()=>{});
 
   function schedule(){

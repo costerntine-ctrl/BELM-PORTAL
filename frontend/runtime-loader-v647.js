@@ -22,26 +22,26 @@
     if(!technician)return;
     // Technician cards are part of the primary UI, not a cosmetic enhancement.
     // Load them immediately so the raw React machine buttons never remain visible.
-    await loadScript('/portal-tools.js?v=652-tech-critical');
-    await loadScript('/technician-machine-page-v651.js?v=652-tech-critical');
+    await loadScript('/portal-tools.js?v=655-tech-approved');
+    await loadScript('/technician-machine-page-v655.js?v=655-tech-approved');
   }
 
   async function bootNonCritical(){
     if(!technician){
-      await loadScript('/portal-tools.js?v=652-lazy');
+      await loadScript('/portal-tools.js?v=655-lazy');
     }
-    await loadScript('/v520-upgrades.js?v=652-lazy');
+    await loadScript('/v520-upgrades.js?v=655-lazy');
 
     if(admin){
-      await loadScript('/admin-sidebar.js?v=652-lazy');
+      await loadScript('/admin-sidebar.js?v=655-lazy');
     }
 
     if(admin||customer){
       await Promise.all([
-        loadScript('/customer-checkup-runtime-v623.js?v=652-lazy'),
-        loadScript('/machine-report-center-override.js?v=652-lazy'),
-        loadScript('/machine-status-row-v554.js?v=652-lazy'),
-        loadScript('/cwm-machine-brand-v619.js?v=652-lazy')
+        loadScript('/customer-checkup-runtime-v623.js?v=655-lazy'),
+        loadScript('/machine-report-center-override.js?v=655-lazy'),
+        loadScript('/machine-status-row-v554.js?v=655-lazy'),
+        loadScript('/cwm-machine-brand-v619.js?v=655-lazy')
       ]);
     }
   }

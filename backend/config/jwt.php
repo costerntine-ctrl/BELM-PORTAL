@@ -125,12 +125,21 @@ function download_auth_claims(array $payload): array {
     return array_intersect_key($payload, array_flip($keys));
 }
 
-function issue_download_token(array $payload, string $path, int $ttl = BELM_DOWNLOAD_TOKEN_TTL): string {
-    $path = (string)(parse_url($path, PHP_URL_PATH) ?: '');
+function normalized_download_query(string $query): string {
+    $params = [];
+    parse_str($query, $params);
+    unset($params['token'], $params['download_token']);
+    ksort($params);
+    return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+}
+
+function issue_download_token(array $payload, string $target, int $ttl = BELM_DOWNLOAD_TOKEN_TTL): string {
+    $path = (string)(parse_url($target, PHP_URL_PATH) ?: '');
     if (!str_starts_with($path, '/api/')) throw new InvalidArgumentException('Download path must be an API path.');
     return jwt_encode([
         'purpose' => 'download',
         'path' => $path,
+        'query' => normalized_download_query((string)(parse_url($target, PHP_URL_QUERY) ?: '')),
         'method' => 'GET',
         'auth' => download_auth_claims($payload),
         'nonce' => base64url_encode(random_bytes(12)),
@@ -141,6 +150,8 @@ function validated_download_payload(array $payload): ?array {
     if (($payload['purpose'] ?? '') !== 'download') return null;
     if (($payload['method'] ?? '') !== 'GET' || strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'GET') return null;
     if (!hash_equals((string)($payload['path'] ?? ''), current_request_path())) return null;
+    $requestQuery = normalized_download_query((string)($_SERVER['QUERY_STRING'] ?? ''));
+    if (!hash_equals((string)($payload['query'] ?? ''), $requestQuery)) return null;
     $auth = $payload['auth'] ?? null;
     return is_array($auth) && auth_payload_session_is_current($auth) ? $auth : null;
 }

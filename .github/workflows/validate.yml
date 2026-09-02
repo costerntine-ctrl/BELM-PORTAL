@@ -31,6 +31,9 @@ jobs:
             php -l "$file" >/dev/null
           done < <(find backend -type f -name '*.php' -print0)
 
+      - name: Authentication security regression checks
+        run: php tests/auth_security_test.php
+
       - name: JavaScript syntax check
         shell: bash
         run: |

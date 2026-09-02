@@ -114,11 +114,14 @@ if ($method === 'POST') {
             $supplier['location'], $supplier['notes'], $supplier['verified'],
         ]);
     $assessment = supplier_trust_assessment($supplier);
+    log_activity($user, 'supplier-created', 'supplier', $newId, ['name' => $supplier['name']]);
     json_out(['id' => $newId, 'trustScore' => $assessment['score'], 'trustStatus' => $assessment['status']], 201);
 }
 
 if ($method === 'PUT') {
-    $supplier = normalize_supplier(body());
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $supplier = normalize_supplier($b);
     $stmt = db()->prepare('UPDATE suppliers SET name=?, specialty=?, phone=?, whatsapp=?, email=?, website=?, location=?, notes=?, verified=? WHERE id=? AND deleted_at IS NULL');
     $stmt->execute([
         $supplier['name'], $supplier['specialty'], $supplier['phone'],
@@ -127,6 +130,7 @@ if ($method === 'PUT') {
     ]);
     if ($stmt->rowCount() === 0) json_error('Supplier not found.', 404);
     $assessment = supplier_trust_assessment($supplier);
+    log_activity($user, 'supplier-edited', 'supplier', $id, ['name' => $supplier['name']]);
     json_out(['ok' => true, 'trustScore' => $assessment['score'], 'trustStatus' => $assessment['status']]);
 }
 
@@ -135,7 +139,8 @@ if ($method === 'DELETE') {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('supplier', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('supplier', $id, $row['name'], $user['id'], $reason);
     soft_delete('suppliers', $id);
     json_out(null, 204);
 }

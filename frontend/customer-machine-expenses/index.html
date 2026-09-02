@@ -3,14 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Machine Expenses — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=16-service-sync">
+  <title>Procurement — BELM Customer Portal</title>
+  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=483-cwm-no-commercial-billing">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body>
   <header>
     <a class="brand" href="/portal/dashboard">
       <span class="mark">B</span>
-      <span><b>BELM Customer Portal</b><small>Machine Spare-Part Expenses</small></span>
+      <span><b>BELM Customer Portal</b><small>Machine Procurement & Store</small></span>
     </a>
     <nav>
       <a href="/portal/dashboard">← Customer dashboard</a>
@@ -21,76 +25,193 @@
   <main>
     <section class="heading">
       <div>
-        <p class="eyebrow">MACHINE COST TRACKING</p>
-        <h1 id="pageTitle">Machine expenses</h1>
+        <p class="eyebrow">MACHINE PROCUREMENT</p>
+        <h1 id="pageTitle">Procurement</h1>
         <p id="machineDetails" class="lead">Loading machine information…</p>
       </div>
       <div class="download-actions">
-        <button class="secondary" id="csvButton" type="button">Download CSV</button>
-        <button class="secondary" id="pdfButton" type="button">Download PDF</button>
+        <button class="secondary" id="csvButton" type="button">Procurement CSV</button>
+        <button class="secondary" id="pdfButton" type="button">Procurement PDF</button>
+        <button class="secondary audit-button" id="auditPdfButton" type="button">Audit PDF</button>
+        <button class="secondary" id="receiptsButton" type="button">Download Receipts</button>
+        <a class="secondary" id="serviceRequestLink" href="/customer-job-card/">Job Card &amp; Service Parts</a>
       </div>
     </section>
 
     <div id="alertBox" class="alert hidden" role="alert"></div>
 
-    <section class="summary-grid" aria-label="Machine expense analysis">
-      <article><span>Total machine expense</span><strong id="totalCost">TZS 0</strong></article>
-      <article><span>Total spare quantity</span><strong id="totalQuantity">0</strong></article>
-      <article><span>Expense records</span><strong id="recordCount">0</strong></article>
-      <article><span>Average per record</span><strong id="averageCost">TZS 0</strong></article>
-      <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
+    <section class="panel store-approval-panel" id="procurementQueuePanel">
+      <div class="panel-head">
+        <div><h2>Procurement Requests</h2><p>Machine spare requirements arrive here and remain linked to the machine. Procurement checks Customer Store, can auto-select shortages, then either download a sourcing CSV or send selected shortage quantities to BELM. Maintenance Process stays synchronized.</p></div>
+        <div class="procurement-head-actions">
+          <span class="approval-count" id="procurementRequestCount">0 open</span>
+          <button class="secondary compact" id="selectShortageButton" type="button">Select Shortage</button>
+          <button class="secondary compact" id="downloadPurchaseCsvButton" type="button">Download Selected CSV</button>
+          <button class="primary compact" id="sendBelmSupplyButton" type="button">Send Selected to BELM</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="approval-table procurement-request-table">
+          <thead><tr><th>Select</th><th>Date</th><th>Part / description</th><th>Required</th><th>In stock / shortage</th><th>Maintenance</th><th>Status</th><th>Requested by</th><th>Procurement action</th></tr></thead>
+          <tbody id="procurementRequestRows"><tr><td colspan="9" class="empty">Loading Procurement requests…</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
-    <section id="entryPanel" class="panel entry-panel">
+    <section class="panel store-approval-panel hidden" id="storeApprovalPanel">
       <div class="panel-head">
-        <div><h2>Add machine expense</h2><p>Record a spare part used or purchased for this machine.</p></div>
-        <strong id="calculatedTotal">Total: TZS 0</strong>
+        <div><h2>Previous Store Approvals</h2><p>Compatibility queue for Store approvals created before the Procurement-first workflow.</p></div>
+        <span class="approval-count" id="storeApprovalCount">0 pending</span>
       </div>
-      <form id="expenseForm">
-        <label>Date<input id="expenseDate" type="date" required></label>
-        <label class="wide">Spare description<input id="description" maxlength="500" required placeholder="e.g. Hydraulic return filter"></label>
-        <label>Part number<input id="partNumber" maxlength="100" required placeholder="e.g. 923855.0996"></label>
-        <label>Quantity<input id="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
-        <label>Unit
-          <select id="unit">
-            <option value="PC">PC</option>
-            <option value="SET">SET</option>
-            <option value="L">Litre</option>
-            <option value="KG">KG</option>
-          </select>
-        </label>
-        <label>Unit cost (TZS)<input id="unitPrice" type="number" min="0" step="0.01" value="0" required></label>
-        <label class="receipt-field">Receipt photo
-          <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
-          <small>Camera or gallery · JPG/PNG/WebP</small>
-        </label>
-        <div id="receiptPreviewWrap" class="receipt-preview hidden">
-          <img id="receiptPreview" alt="Receipt preview">
-          <button id="removeReceiptButton" type="button">Remove receipt</button>
+      <div class="table-wrap">
+        <table class="approval-table">
+          <thead><tr><th>Date</th><th>Part</th><th>Description</th><th>Qty</th><th>Current balance</th><th>Requested by</th><th>Status</th><th>Decision</th></tr></thead>
+          <tbody id="storeApprovalRows"><tr><td colspan="8" class="empty">Loading previous Store approvals…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="print-options-row">
+      <label class="print-options">Print options
+        <select id="printScope">
+          <option value="all">All (single page)</option>
+          <option value="date">Select date…</option>
+          <option value="month">Select month…</option>
+        </select>
+      </label>
+      <input type="date" id="printDateInput" class="hidden">
+      <input type="month" id="printMonthInput" class="hidden">
+    </div>
+
+    <div class="expenses-top-layout">
+      <section id="entryPanel" class="panel entry-panel">
+        <div class="panel-head">
+          <div><h2>Add procurement record</h2><p>Record a spare/material purchased directly or issued from Customer Store for this machine.</p></div>
+          <strong id="calculatedTotal">Total: TZS 0</strong>
         </div>
-        <div class="form-actions"><button class="primary" id="saveButton" type="submit">Save expense</button></div>
-      </form>
+        <form id="expenseForm">
+          <label>Date<input id="expenseDate" type="date" required></label>
+          <label>Procurement source
+            <select id="stockSource">
+              <option value="DIRECT_PURCHASE">Direct purchase</option>
+              <option value="CUSTOMER_STORE">Issued from Customer Store</option>
+            </select>
+          </label>
+          <label class="wide">Spare / material description<input id="description" maxlength="500" required placeholder="e.g. Hydraulic return filter"></label>
+          <label>Part number<input id="partNumber" list="storePartOptions" maxlength="100" required placeholder="e.g. 923855.0996"><datalist id="storePartOptions"></datalist></label>
+          <label>Quantity<input id="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
+          <label>Unit
+            <select id="unit">
+              <option value="PC">PC</option>
+              <option value="SET">SET</option>
+              <option value="L">Litre</option>
+              <option value="KG">KG</option>
+            </select>
+          </label>
+          <label>Unit cost (TZS)<input id="unitPrice" type="number" min="0" step="0.01" value="0" required></label>
+          <label>Received / used by<input id="receivedBy" maxlength="255" placeholder="Technician, operator or department"></label>
+          <div id="storeIssueHint" class="store-issue-hint wide hidden"></div>
+          <label class="receipt-field">Receipt photo
+            <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment">
+            <small>Camera, gallery, or PDF scan · JPG/PNG/WebP/PDF</small>
+          </label>
+          <div id="receiptPreviewWrap" class="receipt-preview hidden">
+            <img id="receiptPreview" alt="Receipt preview">
+            <button id="removeReceiptButton" type="button">Remove receipt</button>
+          </div>
+          <div class="form-actions"><button class="primary" id="saveButton" type="submit">Save procurement</button></div>
+        </form>
+      </section>
+
+      <aside class="expenses-sidebar">
+        <section class="summary-grid" aria-label="Machine procurement analysis">
+          <article><span>Total procurement cost</span><strong id="totalCost">TZS 0</strong></article>
+          <article><span>Total item quantity</span><strong id="totalQuantity">0</strong></article>
+          <article><span>Procurement records</span><strong id="recordCount">0</strong></article>
+          <article><span>Average procurement record</span><strong id="averageCost">TZS 0</strong></article>
+          <article><span>Receipt photos</span><strong id="receiptCount">0</strong></article>
+          <article><span>Store material used on machine</span><strong id="machineStoreIssued">TZS 0</strong></article>
+          <article><span>Customer Store stock value</span><strong id="customerStoreValue">TZS 0</strong></article>
+        </section>
+
+        <article class="sidebar-card analysis-card">
+          <div class="sidebar-card-head"><span class="sidebar-card-label">Machine Analysis</span></div>
+          <div class="analysis-row"><span>Total Procurement</span><b id="sidebarTotalExpenses">TZS 0</b></div>
+          <div class="analysis-row"><span>Job Cards</span><b id="sidebarServiceRequests">0</b></div>
+          <div class="analysis-row"><span>Checklist Reports</span><b id="sidebarChecklistReports">0</b></div>
+        </article>
+      </aside>
+    </div>
+
+    <section class="panel store-panel">
+      <div class="panel-head">
+        <div><h2>Customer Store balance</h2><p>Your company's own spare/material stock. This is separate from BELM Inventory.</p></div>
+        <button class="primary compact" id="receiveStockButton" type="button">+ Receive stock</button>
+      </div>
+      <div class="store-summary-strip">
+        <span><b id="storeItemCount">0</b> stock items</span>
+        <span><b id="storeIssueCount">0</b> Store issues to this machine</span>
+        <span><b id="storeStockValueStrip">TZS 0</b> current stock value</span>
+      </div>
+      <div class="table-wrap">
+        <table class="store-table">
+          <thead><tr><th>Part</th><th>Description</th><th>Unit</th><th>Received</th><th>Issued</th><th>Balance</th><th>Avg cost</th><th>Stock value</th></tr></thead>
+          <tbody id="storeRows"><tr><td colspan="8" class="empty">Loading Store balance…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel movement-panel">
+      <div class="panel-head">
+        <div><h2>Store movement audit</h2><p>Stock-in and stock-out history for Store items connected to this machine.</p></div>
+      </div>
+      <div class="table-wrap">
+        <table class="movement-table">
+          <thead><tr><th>Time</th><th>Movement</th><th>Part</th><th>Description</th><th>Qty</th><th>Balance after</th><th>Machine</th><th>Actor</th><th>Received by</th><th>Note</th></tr></thead>
+          <tbody id="storeMovementRows"><tr><td colspan="10" class="empty">Loading Store audit…</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
     <section class="panel">
       <div class="panel-head">
-        <div><h2>Expense history</h2><p>Saved spare parts and calculated machine costs.</p></div>
+        <div><h2>Machine procurement &amp; material audit</h2><p>Every spare/material procured or issued to this machine, source, balance and responsible people.</p></div>
         <button class="secondary compact" id="refreshButton" type="button">Refresh</button>
       </div>
       <div class="table-wrap">
-        <table>
-          <thead><tr><th>Date</th><th>Part number</th><th>Description</th><th>Qty</th><th>Unit cost</th><th>Total</th><th>Receipt</th><th>Recorded by</th></tr></thead>
-          <tbody id="expenseRows"><tr><td colspan="8" class="empty">Loading expenses…</td></tr></tbody>
+        <table class="audit-table">
+          <thead><tr><th>Date</th><th>Source</th><th>Part number</th><th>Description</th><th>Qty used</th><th>Unit cost</th><th>Total</th><th>Store balance after</th><th>Issued / recorded by</th><th>Received / used by</th><th>Receipt</th></tr></thead>
+          <tbody id="expenseRows"><tr><td colspan="11" class="empty">Loading procurement records…</td></tr></tbody>
         </table>
       </div>
     </section>
   </main>
+
+  <dialog id="receiveStockDialog">
+    <form id="receiveStockForm" class="dialog-form">
+      <div class="receipt-dialog-head"><b>Receive Customer Store stock</b><button type="button" data-close-dialog="receiveStockDialog" aria-label="Close">×</button></div>
+      <p class="dialog-note">This stock belongs to the customer company, not BELM Inventory. Every receipt is added to the Store audit ledger.</p>
+      <div id="receiveStockError" class="alert error hidden"></div>
+      <label>Part number<input id="receivePartNumber" maxlength="100" required></label>
+      <label>Spare / material description<input id="receiveDescription" maxlength="255" required></label>
+      <div class="dialog-grid">
+        <label>Quantity received<input id="receiveQuantity" type="number" min="0.01" step="0.01" required></label>
+        <label>Unit<select id="receiveUnit"><option value="PC">PC</option><option value="SET">SET</option><option value="L">Litre</option><option value="KG">KG</option></select></label>
+        <label>Unit cost (TZS)<input id="receiveUnitCost" type="number" min="0" step="0.01" value="0" required></label>
+      </div>
+      <label>Receiving note<input id="receiveNote" maxlength="500" placeholder="PO/GRN/reference or supplier note"></label>
+      <div class="form-actions dialog-actions-inline">
+        <button type="button" class="secondary" data-close-dialog="receiveStockDialog">Cancel</button>
+        <button type="submit" class="primary" id="saveReceiveStockButton">Receive into Store</button>
+      </div>
+    </form>
+  </dialog>
 
   <dialog id="receiptDialog">
     <div class="receipt-dialog-head"><b>Receipt photo</b><button id="closeReceiptButton" type="button" aria-label="Close receipt">×</button></div>
     <div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div>
   </dialog>
 
-  <script src="/customer-machine-expenses/expenses.js?v=16-service-sync"></script>
+  <script src="/customer-machine-expenses/expenses.js?v=315-job-card-received-confirmation"></script>
 </body>
 </html>

@@ -4,20 +4,37 @@
   let invoices = [];
   let expenses = [];
   let proformas = [];
+  let pendingProformaJobs = [];
+  let pendingSpareProformaRequests = [];
+  let receipts = [];
   let bankData = { accounts: [], withdrawals: [], summary: {} };
+  let expenseSyncError = "";
+  let expenseLastSync = null;
 
-  function applyTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem("belm_theme", safeTheme);
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    return `${day}/${month}/${date.getFullYear()}`;
   }
-  applyTheme(localStorage.getItem("belm_theme") || "light");
+
+  // Dark/light mode is handled centrally by admin-sidebar.js (per-admin
+  // localStorage preference) — this page no longer sets its own theme or
+  // reads/writes a shared company-wide setting.
 
   const money = (value) => `TZS ${Number(value || 0).toLocaleString("en-TZ", { maximumFractionDigits: 2 })}`;
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
   })[char]);
-  const today = () => new Date().toISOString().slice(0, 10);
+  // Billing dates follow the user's local portal day, not UTC. Using
+  // toISOString() directly can shift a Tanzania midnight entry to the prior day.
+  const today = () => {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+  };
 
   function showAlert(message, error = false) {
     const box = document.getElementById("alertBox");
@@ -34,6 +51,7 @@
   async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token || ""}`,
@@ -48,6 +66,21 @@
       throw error;
     }
     return data;
+  }
+
+
+  function activateBillingTab(tabName) {
+    const wanted = String(tabName || '').trim();
+    if (!wanted) return;
+    const button = document.querySelector(`[data-tab="${CSS.escape(wanted)}"]`);
+    if (!button) return;
+    document.querySelectorAll("[data-tab]").forEach((tab) => tab.classList.toggle("active", tab === button));
+    document.querySelectorAll("[data-billing-panel]").forEach((panel) =>
+      panel.classList.toggle("hidden", panel.dataset.billingPanel !== wanted));
+  }
+
+  function requestedBillingTab() {
+    try { return new URLSearchParams(window.location.search).get('tab') || ''; } catch (_) { return ''; }
   }
 
   function customerOptions(selected = "") {
@@ -94,30 +127,45 @@
     document.getElementById("outstandingValue").textContent = money(invoices
       .filter((item) => !["PAID", "CANCELLED"].includes(item.status))
       .reduce((sum, item) => sum + Number(item.balance || 0), 0));
-    document.getElementById("expenseValue").textContent = money(expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+    const expenseValue = document.getElementById("expenseValue");
+    expenseValue.textContent = expenseSyncError ? "SYNC ERROR" : money(expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0));
+    expenseValue.classList.toggle("sync-error-value", Boolean(expenseSyncError));
+    const countBadge = document.getElementById("expenseCountBadge");
+    if (countBadge) countBadge.textContent = String(expenses.length);
   }
 
-  function reviewHeading(title, description) {
-    return `<div class="review-heading"><div><p class="eyebrow">Review</p><h2>${escapeHtml(title)}</h2><span>${escapeHtml(description)}</span></div></div>`;
+  function reviewHeading(title, description, exportUrl) {
+    return `<div class="review-heading"><div><p class="eyebrow">Review</p><h2>${escapeHtml(title)}</h2><span>${escapeHtml(description)}</span></div>${exportUrl ? `<a class="export-pdf-button" href="${exportUrl}" target="_blank" rel="noopener">Export PDF</a>` : ""}</div>`;
+  }
+
+  function invoiceNumberFromPiPreview(value) {
+    const match = String(value || "").trim().toUpperCase().match(/^PI-(\d+)$/);
+    if (!match) return "INV-000000";
+    const serial = String(Number(match[1]));
+    return `INV-${serial.padStart(6, "0")}`;
+  }
+
+  function invoiceFromPiGenerator() {
+    return `<div class="pi-invoice-generator"><div><span>PI → INVOICE</span><strong>Generate Invoice by PI Number</strong><small>New numbering: PI-0000000 → INV-000000. Enter the PI number; customer, items and totals are copied automatically.</small></div><label>PI Number<input id="invoiceProformaNumber" inputmode="text" autocomplete="off" placeholder="PI-0000000" maxlength="30"></label><div class="pi-invoice-result"><span>Invoice Number</span><strong id="invoiceNumberPreview">INV-000000</strong></div><button class="pay" type="button" data-generate-invoice-by-pi>Generate Invoice</button></div>`;
   }
 
   function renderInvoices() {
     const panel = document.getElementById("invoicesPanel");
+    const piGenerator = invoiceFromPiGenerator();
     if (!invoices.length) {
-      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.")}<div class="empty">No invoices yet. Select “New invoice” to create one.</div>`;
+      panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}${piGenerator}<div class="empty">No invoices yet. Generate an Invoice directly from a Proforma.</div>`;
       return;
     }
-    const statuses = ["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED"];
-    panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.")}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
+    panel.innerHTML = `${reviewHeading("Invoices", "Review invoice totals, balances, due dates and status.", `/api/billing?action=export-invoices&token=${encodeURIComponent(token)}`)}${piGenerator}<div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Total</th><th>Paid</th><th>Balance</th><th>Due</th><th>Status</th><th></th></tr></thead><tbody>${invoices.map((invoice) => `
       <tr>
-        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong><div class="muted">${(invoice.items || []).length} item(s)</div></td>
+        <td><strong>${escapeHtml(invoice.invoiceNo)}</strong> <span class="invoice-sync-badge ${invoice.status === "PAID" ? "paid" : invoice.status === "CANCELLED" ? "cancelled" : "outstanding"}">${invoice.status === "PAID" ? "PAID" : invoice.status === "CANCELLED" ? "CANCELLED" : "OUTSTANDING"}</span><div class="muted">${(invoice.items || []).length} item(s)${invoice.sourceProformaId ? ` · copied from ${escapeHtml(invoice.sourceProformaNo || 'Proforma')}` : ''}</div></td>
         <td>${escapeHtml(invoice.customer?.name || "—")}</td>
         <td class="money">${money(invoice.total)}</td>
         <td class="money">${money(invoice.paidAmount)}</td>
         <td class="money">${money(invoice.balance)}</td>
-        <td>${invoice.dueDate ? new Date(`${invoice.dueDate}T00:00:00`).toLocaleDateString() : "—"}</td>
-        <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}">${statuses.map((status) => `<option value="${status}" ${status === invoice.status ? "selected" : ""} ${["PAID", "PARTIALLY_PAID"].includes(status) ? "disabled" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}</select></td>
-        <td><div class="row-actions"><button class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button>` : ""}<button class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></td>
+        <td>${invoice.dueDate ? formatDate(invoice.dueDate) : "—"}</td>
+        <td><select class="status-select" data-invoice-status="${escapeHtml(invoice.id)}" ${invoice.status === "CANCELLED" ? "disabled" : ""}><option value="${escapeHtml(invoice.status)}" selected>${escapeHtml(invoice.status.replaceAll("_", " "))}</option>${invoice.status !== "CANCELLED" ? '<option value="CANCELLED">CANCEL INVOICE</option>' : ""}</select></td>
+        <td><div class="row-actions"><div class="row-actions-line"><button type="button" class="edit" data-edit-invoice="${escapeHtml(invoice.id)}">Re-edit</button>${invoice.sourceProformaId ? `<span class="muted">Linked to ${escapeHtml(invoice.sourceProformaNo || 'Proforma')} · editable independently</span>` : ``}${Number(invoice.balance) > 0 && invoice.status !== "CANCELLED" ? `<button type="button" class="pay" data-payment="${escapeHtml(invoice.id)}">Add payment</button><button type="button" class="pay" data-receipt="${escapeHtml(invoice.id)}" data-receipt-customer="${escapeHtml(invoice.customer?.id || "")}">Create receipt</button>` : ""}</div><div class="row-actions-line"><a class="export-row-button" href="/api/billing?action=export-invoice&id=${encodeURIComponent(invoice.id)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener" data-review-invoice="${escapeHtml(invoice.id)}">Review &amp; Export</a><button type="button" class="delete" data-delete-invoice="${escapeHtml(invoice.id)}">Delete</button></div></div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
@@ -130,10 +178,10 @@
       customerName: invoice.customer?.name || "—",
     })));
     if (!payments.length) {
-      panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.")}<div class="empty">No customer payments recorded.</div>`;
+      panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.", `/api/billing?action=export-payments&token=${encodeURIComponent(token)}`)}<div class="empty">No customer payments recorded.</div>`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Method</th><th>Bank</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody>${payments.map((payment) => `
+    panel.innerHTML = `${reviewHeading("Payments", "Review every customer payment and its invoice reference.", `/api/billing?action=export-payments&token=${encodeURIComponent(token)}`)}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Invoice</th><th>Customer</th><th>Method</th><th>Bank</th><th>Reference</th><th>Amount</th><th></th></tr></thead><tbody>${payments.map((payment) => `
       <tr>
         <td>${payment.paidAt ? new Date(payment.paidAt).toLocaleString() : "—"}</td>
         <td><strong>${escapeHtml(payment.invoiceNo)}</strong></td>
@@ -142,121 +190,304 @@
         <td>${escapeHtml(payment.bankName || "Unallocated")}</td>
         <td>${escapeHtml(payment.reference || "No reference")}</td>
         <td class="money">${money(payment.amount)}</td>
-        <td><div class="row-actions"><button class="edit" data-edit-payment="${escapeHtml(payment.id)}" data-payment-invoice="${escapeHtml(payment.invoiceId)}">Re-edit</button></div></td>
+        <td><div class="row-actions"><button class="edit" data-edit-payment="${escapeHtml(payment.id)}" data-payment-invoice="${escapeHtml(payment.invoiceId)}">Re-edit</button>${payment.receipt_id ? '<span class="muted">Receipt linked</span>' : `<button class="delete" data-delete-payment="${escapeHtml(payment.id)}" data-payment-invoice="${escapeHtml(payment.invoiceId)}">Reverse</button>`}</div></td>
       </tr>`).join("")}</tbody></table></div>`;
   }
 
   function renderExpenses() {
     const panel = document.getElementById("expensesPanel");
-    if (!expenses.length) {
-      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="empty">No company expenses recorded.</div>`;
+    const total = expenses.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const syncText = expenseSyncError
+      ? `<div class="expense-storage-status error"><strong>EXPENSE SYNC ERROR</strong><span>${escapeHtml(expenseSyncError)}</span><small>The page will not show TZS 0 as if records were deleted. Press Refresh after the API/database issue is corrected.</small></div>`
+      : `<div class="expense-storage-status"><strong>✓ SAVED IN POSTGRESQL</strong><span>${expenses.length} company expense record${expenses.length === 1 ? "" : "s"} · ${money(total)}</span><small>${expenseLastSync ? `Last database sync: ${escapeHtml(expenseLastSync.toLocaleTimeString())}. ` : ""}Records entered with + Record expense are stored in company_expenses and survive normal deploys/restarts.</small></div>`;
+    const storageNote = `<div class="expense-storage-note"><strong>Storage rule</strong><span>BELM operating expenses entered here are permanent accounting records. Customer/Machine Procurement, Fuel and Petty Cash are stored separately in customer usage records and are not mixed into BELM company P&amp;L.</span></div>`;
+    if (expenseSyncError) {
+      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}${syncText}${storageNote}`;
       return;
     }
-    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.")}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
-      <tr><td>${new Date(`${expense.date}T00:00:00`).toLocaleDateString()}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "—")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions"><button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
+    if (!expenses.length) {
+      panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}${syncText}${storageNote}<div class="empty">No BELM company expense records were found in PostgreSQL. Use + Record expense to create one.</div>`;
+      return;
+    }
+    panel.innerHTML = `${reviewHeading("Expenses", "Review operating costs, dates and responsible staff.", `/api/company-expenses?action=export&token=${encodeURIComponent(token)}`)}${syncText}${storageNote}<div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Bank</th><th>Recorded by</th><th>Amount</th><th></th></tr></thead><tbody>${expenses.map((expense) => `
+      <tr><td>${formatDate(expense.date)}</td><td><span class="badge">${escapeHtml(expense.category)}</span></td><td>${escapeHtml(expense.description)}</td><td>${escapeHtml(expense.bankName || "Unallocated")}</td><td>${escapeHtml(expense.recordedBy || "BELM")}</td><td class="money">${money(expense.amount)}</td><td><div class="row-actions">${expense.hasReceipt ? `<button type="button" data-view-expense-receipt="${escapeHtml(expense.id)}">Receipt</button>` : ""}<button class="edit" data-edit-expense="${escapeHtml(expense.id)}">Re-edit</button><button class="delete" data-delete-expense="${escapeHtml(expense.id)}">Delete</button></div></td></tr>
     `).join("")}</tbody></table></div>`;
   }
 
   function renderProformas() {
     const panel = document.getElementById("proformasPanel");
-    if (!proformas.length) {
-      panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.")}<div class="empty">No proforma invoices yet.</div>`;
-      return;
-    }
-    panel.innerHTML = `${reviewHeading("Proforma", "Review quotations, VAT, discount and grand total.")}<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
-      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong></td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${new Date(`${proforma.date}T00:00:00`).toLocaleDateString()}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><div class="row-actions"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></td></tr>
-    `).join("")}</tbody></table></div>`;
+    const spareGroups = Object.values(pendingSpareProformaRequests.reduce((groups, request) => {
+      const key = `${request.customerId || ""}::${request.machineId || ""}`;
+      if (!groups[key]) groups[key] = { key, customerId: request.customerId, customerName: request.customerName, machineId: request.machineId, machineLabel: request.machineLabel, requests: [] };
+      groups[key].requests.push(request);
+      return groups;
+    }, {}));
+    const pendingSpareHtml = spareGroups.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM SPARE REQUESTS</span><strong>Pending Spare Request Proformas</strong></div><b>${pendingSpareProformaRequests.length}</b></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Machine</th><th>Items</th><th></th></tr></thead><tbody>${spareGroups.map(group=>`<tr><td><strong>${escapeHtml(group.customerName||"—")}</strong></td><td>${escapeHtml(group.machineLabel||"—")}</td><td>${group.requests.map(r=>`${escapeHtml(r.partNumber||"")} ${escapeHtml(r.partName||r.description||"Spare")} × ${escapeHtml(r.quantity||1)}`).join("<br>")}</td><td><button type="button" class="pay" data-generate-spare-proforma="${escapeHtml(group.key)}">Generate Proforma (${group.requests.length})</button></td></tr>`).join("")}</tbody></table></div><small>Requests for the same customer and machine are grouped into one multi-line Proforma.</small></div>` : "";
+    const pendingHtml = pendingProformaJobs.length ? `<div class="pending-proforma-box"><div class="pending-proforma-head"><div><span>SYNCED FROM TECHNICAL DEP</span><strong>Pending Job Card Proformas</strong></div><b>${pendingProformaJobs.length}</b></div><div class="table-wrap"><table><thead><tr><th>Job Card</th><th>Customer</th><th>Machine</th><th>Technician</th><th>Job status</th><th>Proforma</th><th></th></tr></thead><tbody>${pendingProformaJobs.map(job=>`<tr><td><strong>${escapeHtml(job.proformaCode||job.jobCardNo)}</strong></td><td>${escapeHtml(job.customerName||"—")}</td><td>${escapeHtml(job.machineLabel||"—")}</td><td>${escapeHtml(job.technicianName||"—")}</td><td>${escapeHtml(String(job.status||"ASSIGNED").replaceAll("_"," "))}</td><td><span class="pending-proforma-status">PENDING</span></td><td>${job.canPrepare?`<button type="button" class="pay" data-generate-pending-proforma="${escapeHtml(job.id)}">Generate Proforma</button>`:`<button type="button" disabled>${escapeHtml(job.pendingReason||'Waiting Job Completion')}</button>`}</td></tr>`).join("")}</tbody></table></div><small>The Job Card stays PENDING until billing readiness. When generated, the system assigns the next permanent PI-0000000 format number.</small></div>` : '';
+    const actualHtml = proformas.length ? `<div class="table-wrap"><table><thead><tr><th>Proforma</th><th>Customer</th><th>Date</th><th>VAT</th><th>Subtotal</th><th>Discount</th><th>Total</th><th>Status</th><th></th></tr></thead><tbody>${proformas.map((proforma) => `
+      <tr><td><strong>${escapeHtml(proforma.invoiceNo)}</strong>${proforma.autoPrepared ? ' <span class="badge on">AUTO SERVICE</span>' : ''}</td><td>${escapeHtml(proforma.customer?.name || "—")}</td><td>${formatDate(proforma.date)}</td><td>${escapeHtml(proforma.vatMode)}</td><td class="money">${money(proforma.totals?.subtotal)}</td><td class="money">${money(proforma.totals?.discount)}</td><td class="money">${money(proforma.totals?.grandTotal)}</td><td><strong>${escapeHtml(proforma.customerResponse || proforma.deliveryStatus || 'DRAFT')}</strong></td><td><div class="row-actions"><div class="row-actions-line"><button class="edit" data-edit-proforma="${escapeHtml(proforma.id)}">Re-edit</button>${proforma.generatedInvoiceId ? `<span class="muted">Linked Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')} · Proforma remains editable</span><button type="button" disabled>✓ Invoice ${escapeHtml(proforma.generatedInvoiceNo || '')}</button>` : (String(proforma.customerResponse || '').toUpperCase() === 'CHANGE_REQUESTED' ? `<button type="button" disabled>Update Proforma first</button>` : `<button class="pay" data-generate-invoice-from-proforma="${escapeHtml(proforma.id)}">Generate Invoice</button>`)}</div><div class="row-actions-line"><button class="export-row-button" data-review-proforma="${escapeHtml(proforma.id)}">Review &amp; Export</button><button class="edit" data-send-proforma="${escapeHtml(proforma.id)}">${proforma.deliveryStatus === "SENT" || proforma.deliveryStatus === "RESPONDED" ? "Resend" : "Send to Customer"}</button><button class="delete" data-delete-proforma="${escapeHtml(proforma.id)}">Delete</button></div></div></td></tr>
+    `).join("")}</tbody></table></div>` : '<div class="empty">No prepared proforma invoices yet.</div>';
+    panel.innerHTML = `${reviewHeading("Proforma", "Job Cards stay linked as references; every generated Proforma receives its own PI-0000000 format number.", `/api/proforma-invoices?action=export&token=${encodeURIComponent(token)}`)}${pendingSpareHtml}${pendingHtml}${actualHtml}`;
   }
 
-  function renderBankManager() {
-    const panel = document.getElementById("bankPanel");
-    const accounts = bankData.accounts || [];
-    const withdrawals = bankData.withdrawals || [];
-    const summary = bankData.summary || {};
-    const bankEquation = accounts.map((account) =>
-      `${account.bankName} · ${String(account.accountNumber || "").slice(-4)}`
-    ).join(" + ");
-    const bankRows = accounts.length ? `<div class="table-wrap"><table><thead><tr><th>Bank</th><th>Account name</th><th>Account number</th><th>Payments in</th><th>Expenses</th><th>Withdrawals</th><th>Balance</th><th></th></tr></thead><tbody>${accounts.map((account) => `
-      <tr>
-        <td><strong>${escapeHtml(account.bankName)}</strong></td>
-        <td>${escapeHtml(account.accountName)}</td>
-        <td>${escapeHtml(account.accountNumber)}</td>
-        <td class="money positive">${money(account.payments)}</td>
-        <td class="money">${money(account.expenses)}</td>
-        <td class="money">${money(account.withdrawals)}</td>
-        <td class="money ${Number(account.balance) < 0 ? "negative" : "positive"}">${money(account.balance)}</td>
-        <td><div class="row-actions"><button class="edit" data-edit-bank="${escapeHtml(account.id)}">Re-edit</button></div></td>
-      </tr>`).join("")}</tbody><tfoot><tr class="bank-total-row"><td colspan="6"><strong>${escapeHtml(bankEquation)} = All Bank Total</strong></td><td class="money positive">${money(summary.allBankBalance)}</td><td></td></tr></tfoot></table></div>` : '<div class="empty">No bank account yet. Select “Add bank account”.</div>';
-    const withdrawalRows = withdrawals.length ? `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Bank</th><th>Cheque / Txn no.</th><th>Reason / Description</th><th>Withdrawn by</th><th>Amount</th><th></th></tr></thead><tbody>${withdrawals.map((withdrawal) => `
-      <tr>
-        <td>${new Date(`${withdrawal.date}T00:00:00`).toLocaleDateString()}</td>
-        <td>${escapeHtml(withdrawal.bankName)}<div class="muted">${escapeHtml(withdrawal.accountNumber)}</div></td>
-        <td><strong>${escapeHtml(withdrawal.chequeNumber || "—")}</strong></td>
-        <td>${escapeHtml(withdrawal.description)}</td>
-        <td>${escapeHtml(withdrawal.withdrawnBy || "—")}</td>
-        <td class="money negative">${money(withdrawal.amount)}</td>
-        <td><div class="row-actions"><button class="edit" data-edit-withdrawal="${escapeHtml(withdrawal.id)}">Re-edit</button></div></td>
-      </tr>`).join("")}</tbody></table></div>` : '<div class="empty compact-empty">No bank withdrawals recorded.</div>';
-    panel.innerHTML = `
-      <div class="review-heading bank-review-heading">
-        <div><p class="eyebrow">Finance sync</p><h2>Bank Manager</h2><span>Payments and expenses automatically update the selected bank balance.</span></div>
-        <div class="review-actions"><button class="secondary" data-add-bank type="button">+ Add bank account</button><button class="primary" data-add-withdrawal type="button" ${accounts.length ? "" : "disabled"}>+ Record withdrawal</button></div>
+  function jobProformaItems(job) {
+    const title = String(job.title || "").trim();
+    const fault = String(job.faultDescription || "").trim();
+    const serviceDescription = [job.jobCardNo || "Job Card", title || fault || "BELM service work"]
+      .filter(Boolean).join(" · ");
+    return [
+      { partNumber: "", description: serviceDescription, qty: 1, unit: "JOB", unitPrice: 0 },
+      ...(job.requestedSpares || []).map((item) => ({
+        partNumber: item.partNumber || "",
+        description: item.description || "Spare part",
+        qty: Number(item.quantity || 1),
+        unit: item.unit || "PC",
+        unitPrice: Number(item.unitPrice ?? 0),
+      })),
+    ];
+  }
+
+  function baseGeneratedProformaPayload() {
+    return {
+      date: today(),
+      vatMode: "VAT",
+      vatRate: 18,
+      discountType: "FIXED",
+      discount: 0,
+      paymentTerms: "",
+      deliveryTime: "",
+      quoteValidity: "",
+      notice: "",
+    };
+  }
+
+  async function generatePendingJobProforma(jobId, button) {
+    const job = pendingProformaJobs.find((item) => item.id === jobId);
+    if (!job) {
+      showAlert("This pending Job Card is no longer in the queue. Refreshing Proforma list.", true);
+      await load();
+      activateBillingTab("proformas");
+      return;
+    }
+    if (!job.canPrepare) {
+      showAlert(job.pendingReason || "This Job Card is still pending completion/sign-off.", true);
+      return;
+    }
+    const oldText = button?.textContent || "Generate Proforma";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Generating…";
+    }
+    try {
+      const saved = await api("/proforma-invoices", {
+        method: "POST",
+        body: JSON.stringify({
+          ...baseGeneratedProformaPayload(),
+          customerId: job.customerId || "",
+          machineId: job.machineId || "",
+          sourceJobCardId: job.id || "",
+          sourceSpareRequestId: "",
+          sourceSpareRequestIds: [],
+          items: jobProformaItems(job),
+        }),
+      });
+      if (button) button.textContent = "✓ Generated";
+      await load();
+      activateBillingTab("proformas");
+      showAlert(`✓ Proforma ${saved?.invoiceNo || job.proformaCode || job.jobCardNo} generated and synchronized. Use Re-edit to enter/change pricing before sending.`);
+    } catch (error) {
+      // A double click, another admin, or a slow refresh may create it first.
+      // Treat the duplicate response as a synchronization event and refresh the list.
+      if (error.status === 409 && /already exists|already in use/i.test(error.message || "")) {
+        await load();
+        activateBillingTab("proformas");
+        showAlert(`✓ ${error.message} Proforma list refreshed.`);
+      } else {
+        showAlert(`Proforma was not generated: ${error.message}`, true);
+      }
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldText;
+      }
+    }
+  }
+
+  async function generatePendingSpareProforma(groupKey, button) {
+    const groupRequests = pendingSpareProformaRequests.filter(
+      (request) => `${request.customerId || ""}::${request.machineId || ""}` === groupKey,
+    );
+    if (!groupRequests.length) {
+      showAlert("These spare requests are no longer pending. Refreshing Proforma list.", true);
+      await load();
+      activateBillingTab("proformas");
+      return;
+    }
+    const oldText = button?.textContent || "Generate Proforma";
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Generating…";
+    }
+    try {
+      const first = groupRequests[0];
+      const saved = await api("/proforma-invoices", {
+        method: "POST",
+        body: JSON.stringify({
+          ...baseGeneratedProformaPayload(),
+          customerId: first.customerId || "",
+          machineId: first.machineId || "",
+          sourceSpareRequestId: first.id || "",
+          sourceSpareRequestIds: groupRequests.map((request) => request.id),
+          sourceJobCardId: "",
+          items: groupRequests.map((request) => ({
+            partNumber: request.partNumber || "",
+            description: request.partName || request.description || "Spare part",
+            qty: Number(request.quantity || 1),
+            unit: "PC",
+            unitPrice: Number(request.sellingPrice ?? 0),
+          })),
+        }),
+      });
+      if (button) button.textContent = "✓ Generated";
+      await load();
+      activateBillingTab("proformas");
+      showAlert(`✓ Proforma ${saved?.invoiceNo || ""} generated from ${groupRequests.length} spare request item${groupRequests.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      if (error.status === 409 && /already exists|already in use/i.test(error.message || "")) {
+        await load();
+        activateBillingTab("proformas");
+        showAlert(`✓ ${error.message} Proforma list refreshed.`);
+      } else {
+        showAlert(`Proforma was not generated: ${error.message}`, true);
+      }
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = oldText;
+      }
+    }
+  }
+
+  function openReviewExport(type, record) {
+    const isInvoice = type === "invoice";
+    const totals = isInvoice
+      ? { subtotal: record.subtotal, discount: record.discount, tax: record.tax, grandTotal: record.total }
+      : { subtotal: record.totals?.subtotal, discount: record.totals?.discount, vat: record.totals?.vat, grandTotal: record.totals?.grandTotal };
+    const items = record.items || [];
+    document.getElementById("reviewExportTitle").textContent =
+      `Review ${isInvoice ? "Invoice" : "Proforma"} ${record.invoiceNo || ""}`;
+    document.getElementById("reviewExportBody").innerHTML = `
+      <div class="customer-info">
+        <div><span>Customer</span><strong>${escapeHtml(record.customer?.name || "—")}</strong></div>
+        <div><span>Date</span><strong>${formatDate(record.date || record.createdAt)}</strong></div>
+        ${isInvoice ? `<div><span>Due date</span><strong>${formatDate(record.dueDate)}</strong></div><div><span>Status</span><strong>${escapeHtml(record.status)}</strong></div>` : `<div><span>VAT mode</span><strong>${escapeHtml(record.vatMode)}</strong></div><div><span>Discount type</span><strong>${escapeHtml(record.discountType || "FIXED")}</strong></div>`}
       </div>
-      <div class="bank-metrics">
-        <article><span>All Bank Total (A + B + …)</span><strong>${money(summary.allBankBalance)}</strong></article>
-        <article><span>Total Payments</span><strong>${money(summary.paymentsReceived)}</strong></article>
-        <article><span>Total Expenses</span><strong>${money(summary.companyExpenses)}</strong></article>
-        <article><span>Total Withdrawals</span><strong>${money(summary.totalWithdrawals)}</strong></article>
-        <article><span>Customer Debt</span><strong>${money(summary.customerDebt)}</strong></article>
-        <article><span>VAT Debt</span><strong>${money(summary.vatDebt)}</strong></article>
-        <article class="loss-card"><span>Loss</span><strong>${money(summary.loss)}</strong></article>
-        <article class="profit-card"><span>BELM Profit</span><strong>${money(summary.belmProfit)}</strong></article>
+      <div class="table-wrap">
+        <table><thead><tr><th>Part No.</th><th>Description</th><th>Qty</th><th>Unit</th><th>Unit price</th><th>Total</th></tr></thead>
+        <tbody>${items.length ? items.map((item) => `
+          <tr><td>${escapeHtml(item.partNumber || item.part_number || "—")}</td><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.qty || item.quantity || 1)}</td><td>${escapeHtml(item.unit || "PC")}</td><td class="money">${money(item.unitPrice ?? item.unit_price)}</td><td class="money">${money((item.unitPrice ?? item.unit_price ?? 0) * (item.qty ?? item.quantity ?? 1))}</td></tr>
+        `).join("") : '<tr><td colspan="6" class="muted">No items</td></tr>'}</tbody></table>
       </div>
-      ${(Number(summary.unallocatedPayments) > 0 || Number(summary.unallocatedExpenses) > 0) ? `<div class="bank-warning"><strong>Unallocated finance:</strong> Payments ${money(summary.unallocatedPayments)} · Expenses ${money(summary.unallocatedExpenses)}. Re-edit these records and select the correct bank.</div>` : ""}
-      <div class="bank-section-title"><div><p class="eyebrow">All banks</p><h3>Bank balances</h3></div></div>
-      ${bankRows}
-      <div class="bank-section-title"><div><p class="eyebrow">Money out</p><h3>Withdrawal history</h3></div></div>
-      ${withdrawalRows}
-      <div class="calculation-note">Bank balance = Opening balance + assigned payments − assigned expenses − withdrawals. BELM Profit = Payments received − Expenses − Withdrawals − VAT debt. VAT debt is calculated from VAT recorded on non-cancelled invoices. Do not record the same money as both an Expense and a Withdrawal.</div>`;
+      <div class="review-export-totals">
+        <div><span>Subtotal</span><strong>${money(totals.subtotal)}</strong></div>
+        ${totals.discount ? `<div><span>Discount</span><strong>${money(totals.discount)}</strong></div>` : ""}
+        <div><span>${isInvoice ? "Tax" : "VAT"}</span><strong>${money(totals.tax ?? totals.vat)}</strong></div>
+        <div class="grand"><span>Grand Total</span><strong>${money(totals.grandTotal)}</strong></div>
+      </div>
+      <p class="muted">Check the customer, items and totals above are correct before exporting.</p>
+    `;
+    const url = isInvoice
+      ? `/api/billing?action=export-invoice&id=${encodeURIComponent(record.id)}&token=${encodeURIComponent(token)}`
+      : `/api/proforma-invoices?action=export-one&proformaId=${encodeURIComponent(record.id)}&token=${encodeURIComponent(token)}`;
+    document.getElementById("reviewExportDownload").href = url;
+    document.getElementById("reviewExportDialog").showModal();
+  }
+
+  function renderReceipts() {
+    const panel = document.getElementById("receiptsPanel");
+    if (!receipts.length) {
+      panel.innerHTML = `${reviewHeading("Receipts", "Every official receipt issued, linked to its invoice where applicable.", "")}<div class="empty">No receipts issued yet. Create one from an invoice's balance.</div>`;
+      return;
+    }
+    panel.innerHTML = `${reviewHeading("Receipts", "Every official receipt issued, linked to its invoice where applicable.", "")}<div class="table-wrap"><table><thead><tr><th>Receipt</th><th>Customer</th><th>Invoice</th><th>Date</th><th>Method</th><th>Amount</th><th></th></tr></thead><tbody>${receipts.map((receipt) => `
+      <tr><td><strong>${escapeHtml(receipt.receiptNo)}</strong></td><td>${escapeHtml(receipt.customer?.name || "—")}</td><td>${escapeHtml(receipt.invoiceNo || "—")}</td><td>${formatDate(receipt.paidAt)}</td><td>${escapeHtml(receipt.paymentMethod)}</td><td class="money">${money(receipt.amount)}</td><td><div class="row-actions"><div class="row-actions-line"><a class="export-row-button" href="/api/receipts?action=export-one&receiptId=${escapeHtml(receipt.id)}&token=${encodeURIComponent(token)}" target="_blank" rel="noopener">Export</a><button class="delete" data-delete-receipt="${escapeHtml(receipt.id)}">Delete</button></div></div></td></tr>
+    `).join("")}</tbody></table></div>`;
   }
 
   async function load() {
     if (!token) {
-      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/admin/login">Go to admin login</a></div>';
+      document.getElementById("invoicesPanel").innerHTML = '<div class="locked">Administrator login required.<br><a href="/login">Go to admin login</a></div>';
       return;
     }
+
+    // V347: one broken Billing endpoint must never make every other section
+    // look empty.  Load each source independently so a Proforma/Invoice issue
+    // cannot hide already-saved company expenses.
+    const primary = await Promise.allSettled([
+      api("/billing/invoices"),
+      api("/company-expenses"),
+      api("/proforma-invoices"),
+      api("/proforma-invoices?action=pending-job-cards"),
+      api("/proforma-invoices?action=pending-spare-requests"),
+    ]);
+    const [invoiceResult, expenseResult, proformaResult, pendingJobResult, pendingSpareResult] = primary;
+
+    if (invoiceResult.status === "fulfilled") invoices = invoiceResult.value;
+    else {
+      invoices = [];
+      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">Invoice sync error: ${escapeHtml(invoiceResult.reason?.message || "Request failed")}</div>`;
+    }
+
+    if (expenseResult.status === "fulfilled") {
+      expenses = Array.isArray(expenseResult.value) ? expenseResult.value : [];
+      expenseSyncError = "";
+      expenseLastSync = new Date();
+    } else {
+      expenseSyncError = expenseResult.reason?.message || "Company expense records could not load.";
+      // Do not overwrite an already-visible saved list with [] just because a
+      // refresh failed.  This prevents the UI from falsely suggesting deletion.
+      if (!Array.isArray(expenses)) expenses = [];
+    }
+
+    proformas = proformaResult.status === "fulfilled" ? proformaResult.value : [];
+    pendingProformaJobs = pendingJobResult.status === "fulfilled" ? pendingJobResult.value : [];
+    pendingSpareProformaRequests = pendingSpareResult.status === "fulfilled" ? pendingSpareResult.value : [];
+
     try {
-      [invoices, expenses, proformas, customers, bankData] = await Promise.all([
-        api("/billing/invoices"),
-        api("/company-expenses"),
-        api("/proforma-invoices"),
-        api("/customers"),
-        api("/bank-manager"),
-      ]);
-      try {
-        const settings = await api("/settings");
-        if (settings.displayTheme === "dark" || settings.displayTheme === "light") {
-          applyTheme(settings.displayTheme);
-        }
-      } catch (_) {}
+      customers = await api("/billing?action=customer-lookup");
+    } catch (lookupError) {
+      customers = [];
+      showAlert(`Customer list could not load: ${lookupError.message}`, true);
+    }
+    try { receipts = await api("/receipts"); } catch (_) { receipts = []; }
+    try { bankData = await api("/bank-manager"); } catch (_) { bankData = { accounts: [], withdrawals: [], summary: {} }; }
+
+    if (invoiceResult.status === "fulfilled") {
       renderInvoices();
       renderPayments();
-      renderExpenses();
-      renderProformas();
-      renderBankManager();
-      updateMetrics();
-    } catch (error) {
-      document.getElementById("invoicesPanel").innerHTML = `<div class="locked">${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a></div>`;
-      showAlert(error.message, true);
     }
+    renderExpenses();
+    renderProformas();
+    renderReceipts();
+    updateMetrics();
+
+    const failedNames = [];
+    if (invoiceResult.status === "rejected") failedNames.push("Invoices");
+    if (expenseResult.status === "rejected") failedNames.push("Expenses");
+    if (proformaResult.status === "rejected") failedNames.push("Proforma");
+    if (pendingJobResult.status === "rejected" || pendingSpareResult.status === "rejected") failedNames.push("Pending Proforma queue");
+    if (failedNames.length) showAlert(`Partial sync warning: ${failedNames.join(", ")}. Other Billing records remain visible.`, true);
   }
 
   function invoiceItemRow(item = {}) {
     const row = document.createElement("div");
     row.className = "item-row";
     row.innerHTML = `
-      <label>Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
+      <input type="hidden" data-field="sparePartId" value="${escapeHtml(item.sparePartId || item.spare_part_id || "")}">
+      <label>Part no.<input data-field="partNumber" value="${escapeHtml(item.partNumber || item.part_number || "")}"></label>
+      <label class="full">Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
       <label>Qty<input data-field="quantity" required type="number" min="1" step="1" value="${escapeHtml(item.quantity || 1)}"></label>
+      <label>Unit<input data-field="unit" value="${escapeHtml(item.unit || "PC")}"></label>
       <label>Unit price<input data-field="unitPrice" required type="number" min="0" step="0.01" value="${escapeHtml(item.unitPrice || item.unit_price || 0)}"></label>
       <button class="remove-item" type="button" aria-label="Remove item">×</button>`;
     return row;
@@ -266,19 +497,44 @@
     document.getElementById("invoiceItems").appendChild(invoiceItemRow(item));
   }
 
-  function openInvoice(id = "") {
+  async function ensureCustomersLoaded() {
+    // V257 - mirrors ensureSparePartsLoaded(), but also RETRIES if the
+    // list came back empty (not just "never fetched"). Customers were
+    // previously only fetched once, at page load() time - if that single
+    // attempt failed (or simply ran before a brand-new customer existed
+    // yet), the New Invoice dropdown stayed empty for the rest of the
+    // session with no way to recover short of a full page reload. Now
+    // every time the invoice dialog opens, it tries again if the cached
+    // list is still empty.
+    if (!Array.isArray(customers) || customers.length === 0) {
+      try {
+        customers = await api("/billing?action=customer-lookup");
+      } catch (error) {
+        customers = [];
+        showAlert(`Customer list could not load: ${error.message}`, true);
+      }
+    }
+    return customers;
+  }
+
+  async function openInvoice(id = "") {
     const invoice = invoices.find((item) => item.id === id);
     document.getElementById("invoiceForm").reset();
     document.getElementById("invoiceId").value = invoice?.id || "";
+    document.getElementById("invoiceSourceJobCardId").value = invoice?.sourceJobCardId || invoice?.source_job_card_id || "";
     document.getElementById("invoiceTitle").textContent = invoice ? `Re-edit · ${invoice.invoiceNo}` : "New invoice";
+    await ensureCustomersLoaded();
     document.getElementById("invoiceCustomer").innerHTML = customerOptions(invoice?.customer?.id || invoice?.customerId || "");
     document.getElementById("invoiceMachine").innerHTML = '<option value="">No machine / general</option>';
     document.getElementById("invoiceItems").replaceChildren();
     document.getElementById("invoiceDueDate").value = invoice?.dueDate || "";
+    document.getElementById("invoiceDiscount").value = invoice?.discount || "0";
+    document.getElementById("invoiceVatRate").value = invoice?.vatRate ?? 18;
     document.getElementById("invoiceTax").value = invoice?.tax || "0";
     document.getElementById("invoiceError").className = "alert error hidden";
     fillCustomerInformation("invoiceCustomer", "invoiceCustomerInfo");
     updateMachineOptions(invoice?.machineId || "");
+    await ensureSparePartsLoaded();
     (invoice?.items?.length ? invoice.items : [{}]).forEach(addInvoiceItem);
     document.getElementById("saveInvoiceButton").textContent = invoice ? "Save changes" : "Save invoice";
     document.getElementById("invoiceDialog").showModal();
@@ -291,16 +547,33 @@
     ).join("");
   }
 
+  function showButtonSuccess(button, text = "✓ Saved") {
+    button.classList.add("success");
+    const original = button.dataset.originalText || button.textContent;
+    button.textContent = text;
+    return new Promise((resolve) => setTimeout(() => {
+      button.classList.remove("success");
+      button.textContent = original;
+      resolve();
+    }, 900));
+  }
+
   async function saveInvoice(event) {
     event.preventDefault();
+    const button = document.getElementById("saveInvoiceButton");
+    if (button.disabled) return;
     const id = document.getElementById("invoiceId").value;
     const items = [...document.querySelectorAll("#invoiceItems .item-row")].map((row) => ({
+      sparePartId: row.querySelector('[data-field="sparePartId"]')?.value || "",
+      partNumber: row.querySelector('[data-field="partNumber"]').value.trim(),
       description: row.querySelector('[data-field="description"]').value.trim(),
       quantity: Number(row.querySelector('[data-field="quantity"]').value),
+      unit: row.querySelector('[data-field="unit"]').value.trim() || "PC",
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
     }));
-    const button = document.getElementById("saveInvoiceButton");
+    // V351: Invoice Re-edit is intentionally direct for Billing-authorized staff.
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       await api(id ? `/billing/invoices/${id}` : "/billing/invoices", {
         method: id ? "PUT" : "POST",
@@ -308,14 +581,19 @@
           action: id ? "edit" : undefined,
           customerId: document.getElementById("invoiceCustomer").value,
           machineId: document.getElementById("invoiceMachine").value || null,
+          sourceJobCardId: document.getElementById("invoiceSourceJobCardId").value || null,
           dueDate: document.getElementById("invoiceDueDate").value || null,
+          discount: Number(document.getElementById("invoiceDiscount").value || 0),
+          vatRate: Number(document.getElementById("invoiceVatRate").value || 18),
           tax: Number(document.getElementById("invoiceTax").value || 0),
           items,
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("invoiceDialog").close();
       await load();
-      showAlert(id ? "Invoice changes saved and totals recalculated." : "Invoice saved successfully.");
+      const linked = id ? invoices.find((item) => item.id === id)?.sourceProformaId : null;
+      showAlert(id ? (linked ? "Invoice changes saved. Source Proforma was not overwritten." : "Invoice changes saved and totals recalculated.") : "Invoice saved successfully.");
     } catch (error) {
       formError("invoiceError", error.message);
     } finally {
@@ -325,7 +603,7 @@
 
   function openPayment(invoiceId, paymentId = "") {
     const invoice = invoices.find((item) => item.id === invoiceId);
-    if (!invoice) return;
+    if (!invoice) { showAlert("Invoice could not be loaded. Press Refresh and try again.", true); return; }
     const payment = (invoice.payments || []).find((item) => item.id === paymentId);
     document.getElementById("paymentForm").reset();
     document.getElementById("paymentInvoiceId").value = invoiceId;
@@ -343,10 +621,12 @@
 
   async function savePayment(event) {
     event.preventDefault();
+    const button = document.getElementById("savePaymentButton");
+    if (button.disabled) return;
     const invoiceId = document.getElementById("paymentInvoiceId").value;
     const paymentId = document.getElementById("paymentId").value;
-    const button = document.getElementById("savePaymentButton");
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
       await api(`/billing/invoices/${invoiceId}/payments${paymentId ? `/${paymentId}` : ""}`, {
         method: paymentId ? "PUT" : "POST",
@@ -357,6 +637,7 @@
           reference: document.getElementById("paymentReference").value.trim(),
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("paymentDialog").close();
       await load();
       showAlert(paymentId ? "Payment changes saved and invoice balance recalculated." : "Payment recorded and invoice balance updated.");
@@ -367,11 +648,114 @@
     }
   }
 
+  function openReceipt(invoiceId, customerId) {
+    const invoice = invoices.find((item) => item.id === invoiceId);
+    if (!invoice) { showAlert("Invoice could not be loaded. Press Refresh and try again.", true); return; }
+    document.getElementById("receiptForm").reset();
+    document.getElementById("receiptInvoiceId").value = invoiceId || "";
+    document.getElementById("receiptCustomerId").value = customerId || invoice?.customer?.id || "";
+    document.getElementById("receiptPaidAt").value = today();
+    document.getElementById("receiptBankAccount").innerHTML = bankAccountOptions("");
+    document.getElementById("receiptError").className = "alert error hidden";
+    if (invoice) {
+      document.getElementById("receiptAmount").value = invoice.balance || "";
+      document.getElementById("receiptAmount").max = invoice.balance || "";
+      document.getElementById("receiptInvoiceSummary").className = "customer-info";
+      document.getElementById("receiptInvoiceSummary").innerHTML =
+        `<strong>${escapeHtml(invoice.invoiceNo)}</strong> — Total: ${money(invoice.total)} · Paid: ${money(invoice.paidAmount)} · Balance: ${money(invoice.balance)}`;
+    } else {
+      document.getElementById("receiptInvoiceSummary").className = "customer-info empty-info";
+      document.getElementById("receiptInvoiceSummary").textContent = "Standalone receipt (not linked to a specific invoice).";
+    }
+    document.getElementById("receiptDialog").showModal();
+  }
+
+  async function saveReceipt(event) {
+    event.preventDefault();
+    const invoiceId = document.getElementById("receiptInvoiceId").value;
+    const customerId = document.getElementById("receiptCustomerId").value;
+    const button = document.getElementById("saveReceiptButton");
+    if (button.disabled) return;
+    const errorBox = document.getElementById("receiptError");
+    errorBox.className = "alert error hidden";
+    if (!customerId) {
+      errorBox.textContent = "This receipt needs a customer — open it from an invoice row.";
+      errorBox.className = "alert error";
+      return;
+    }
+    button.disabled = true;
+    button.dataset.originalText = button.textContent;
+    try {
+      const result = await api("/receipts", {
+        method: "POST",
+        body: JSON.stringify({
+          customerId,
+          invoiceId: invoiceId || undefined,
+          amount: Number(document.getElementById("receiptAmount").value || 0),
+          paidAt: document.getElementById("receiptPaidAt").value,
+          paymentMethod: document.getElementById("receiptMethod").value,
+          bankAccountId: document.getElementById("receiptBankAccount").value || undefined,
+          paymentReference: document.getElementById("receiptReference").value.trim(),
+          notes: document.getElementById("receiptNotes").value.trim(),
+        }),
+      });
+      await showButtonSuccess(button);
+      document.getElementById("receiptDialog").close();
+      await load();
+      showAlert(`Receipt ${result.receiptNo} created.`);
+      window.open(`/api/receipts?action=export-one&receiptId=${encodeURIComponent(result.id)}&token=${encodeURIComponent(token)}`, "_blank");
+    } catch (error) {
+      errorBox.textContent = error.message;
+      errorBox.className = "alert error";
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function readReceiptFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) { resolve(null); return; }
+      const isPdf = file.type === "application/pdf";
+      if (!isPdf && !file.type.startsWith("image/")) {
+        reject(new Error("Receipt must be a JPG, PNG, WebP image, or a PDF."));
+        return;
+      }
+      if (isPdf) {
+        if (file.size > 4 * 1024 * 1024) { reject(new Error("Receipt PDF must be 4 MB or smaller.")); return; }
+        const reader = new FileReader();
+        reader.onload = () => resolve({ dataUrl: reader.result, name: file.name });
+        reader.onerror = () => reject(new Error("Could not read that file."));
+        reader.readAsDataURL(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const image = new Image();
+        image.onload = () => {
+          const canvas = document.createElement("canvas");
+          const scale = Math.min(1, 1280 / Math.max(image.naturalWidth, image.naturalHeight));
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext("2d");
+          context.fillStyle = "#fff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          resolve({ dataUrl: canvas.toDataURL("image/jpeg", 0.7), name: file.name });
+        };
+        image.onerror = () => reject(new Error("Could not read that image."));
+        image.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error("Could not read that file."));
+      reader.readAsDataURL(file);
+    });
+  }
+
   function openExpense(id = "") {
     const expense = expenses.find((item) => item.id === id);
     document.getElementById("expenseForm").reset();
     document.getElementById("expenseId").value = expense?.id || "";
     document.getElementById("expenseReceiptUrl").value = expense?.receiptUrl || "";
+    document.getElementById("expenseReceiptStatus").textContent = expense?.hasReceipt ? "A receipt is already attached — choosing a new file will replace it." : "";
     document.getElementById("expenseTitle").textContent = expense ? "Re-edit expense" : "Record expense";
     document.getElementById("expenseDate").value = expense?.date || today();
     document.getElementById("expenseCategory").value = expense?.category || "OTHER";
@@ -386,11 +770,29 @@
 
   async function saveExpense(event) {
     event.preventDefault();
-    const id = document.getElementById("expenseId").value;
     const button = document.getElementById("saveExpenseButton");
+    if (button.disabled) return;
+    const id = document.getElementById("expenseId").value;
+    let editConfirmation = {};
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save expense changes?",
+        message: "Confirm changes to this expense record.",
+      });
+      if (!confirmation) return;
+      editConfirmation = confirmation;
+    }
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
-      await api(id ? `/company-expenses/${id}` : "/company-expenses", {
+      const receiptFile = document.getElementById("expenseReceiptFile").files[0];
+      let receiptPhoto = null, receiptName = null;
+      if (receiptFile) {
+        const read = await readReceiptFile(receiptFile);
+        receiptPhoto = read.dataUrl;
+        receiptName = read.name;
+      }
+      const saved = await api(id ? `/company-expenses/${id}` : "/company-expenses", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify({
           date: document.getElementById("expenseDate").value,
@@ -400,11 +802,32 @@
           bankAccountId: document.getElementById("expenseBankAccount").value || null,
           recordedBy: document.getElementById("expenseRecordedBy").value.trim(),
           receiptUrl: document.getElementById("expenseReceiptUrl").value || null,
+          receiptPhoto,
+          receiptName,
+          ...editConfirmation,
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("expenseDialog").close();
+      if (saved?.expense?.id) {
+        expenses = [saved.expense, ...expenses.filter((item) => item.id !== saved.expense.id)];
+        expenseSyncError = "";
+        expenseLastSync = new Date();
+        renderExpenses();
+        updateMetrics();
+      }
+      activateBillingTab("expenses");
+      const persistedId = saved?.expense?.id || saved?.id || id;
       await load();
-      showAlert(id ? "Expense changes saved successfully." : "Expense recorded successfully.");
+      if (persistedId && expenses.some((item) => item.id === persistedId)) {
+        showAlert(id
+          ? "✓ Expense changes saved and verified in PostgreSQL."
+          : "✓ Expense saved permanently in PostgreSQL and verified in Billing.");
+      } else if (saved?.persisted) {
+        showAlert("Expense was saved in PostgreSQL, but the page could not verify the refreshed list. Press Refresh; the record was not deleted.", true);
+      } else {
+        showAlert(id ? "Expense changes saved successfully." : "Expense recorded successfully.");
+      }
     } catch (error) {
       formError("expenseError", error.message);
     } finally {
@@ -412,112 +835,47 @@
     }
   }
 
-  function openBankAccount(id = "") {
-    const account = (bankData.accounts || []).find((item) => item.id === id);
-    document.getElementById("bankAccountForm").reset();
-    document.getElementById("bankAccountId").value = account?.id || "";
-    document.getElementById("bankAccountTitle").textContent = account ? "Re-edit bank account" : "Add bank account";
-    document.getElementById("bankName").value = account?.bankName || "";
-    document.getElementById("bankAccountName").value = account?.accountName || "";
-    document.getElementById("bankAccountNumber").value = account?.accountNumber || "";
-    document.getElementById("bankOpeningBalance").value = account?.openingBalance || 0;
-    document.getElementById("saveBankAccountButton").textContent = account ? "Save changes" : "Save bank";
-    document.getElementById("bankAccountError").className = "alert error hidden";
-    document.getElementById("bankAccountDialog").showModal();
-  }
-
-  async function saveBankAccount(event) {
-    event.preventDefault();
-    const id = document.getElementById("bankAccountId").value;
-    const button = document.getElementById("saveBankAccountButton");
-    button.disabled = true;
-    try {
-      await api(`/bank-manager/accounts${id ? `/${id}` : ""}`, {
-        method: id ? "PUT" : "POST",
-        body: JSON.stringify({
-          bankName: document.getElementById("bankName").value.trim(),
-          accountName: document.getElementById("bankAccountName").value.trim(),
-          accountNumber: document.getElementById("bankAccountNumber").value.trim(),
-          openingBalance: Number(document.getElementById("bankOpeningBalance").value || 0),
-        }),
-      });
-      document.getElementById("bankAccountDialog").close();
-      await load();
-      showAlert(id ? "Bank account changes saved." : "Bank account added to Bank Manager.");
-    } catch (error) {
-      formError("bankAccountError", error.message);
-    } finally {
-      button.disabled = false;
+  let sparePartsCache = null;
+  async function ensureSparePartsLoaded() {
+    if (!sparePartsCache) {
+      try {
+        sparePartsCache = await api("/billing?action=spare-lookup");
+      } catch (_) {
+        sparePartsCache = [];
+      }
     }
+    return sparePartsCache;
   }
 
-  function updateWithdrawalMax(withdrawal = null) {
-    const accountId = document.getElementById("withdrawalBankAccount").value;
-    const account = (bankData.accounts || []).find((item) => item.id === accountId);
-    const existingAmount = withdrawal?.bankAccountId === accountId ? Number(withdrawal.amount || 0) : 0;
-    const max = Math.max(0, Number(account?.balance || 0) + existingAmount);
-    document.getElementById("withdrawalAmount").max = max;
-  }
-
-  function openWithdrawal(id = "") {
-    if (!(bankData.accounts || []).length) {
-      showAlert("Add at least one bank account before recording a withdrawal.", true);
-      openBankAccount();
-      return;
-    }
-    const withdrawal = (bankData.withdrawals || []).find((item) => item.id === id);
-    document.getElementById("withdrawalForm").reset();
-    document.getElementById("withdrawalId").value = withdrawal?.id || "";
-    document.getElementById("withdrawalTitle").textContent = withdrawal ? "Re-edit withdrawal" : "Record withdrawal";
-    document.getElementById("withdrawalBankAccount").innerHTML = bankAccountOptions(withdrawal?.bankAccountId || "", false);
-    document.getElementById("withdrawalDate").value = withdrawal?.date || today();
-    document.getElementById("withdrawalChequeNumber").value = withdrawal?.chequeNumber || "";
-    document.getElementById("withdrawalDescription").value = withdrawal?.description || "";
-    document.getElementById("withdrawalAmount").value = withdrawal?.amount || "";
-    document.getElementById("withdrawalBy").value = withdrawal?.withdrawnBy || "";
-    document.getElementById("saveWithdrawalButton").textContent = withdrawal ? "Save changes" : "Save withdrawal";
-    document.getElementById("withdrawalError").className = "alert error hidden";
-    updateWithdrawalMax(withdrawal);
-    document.getElementById("withdrawalDialog").showModal();
-  }
-
-  async function saveWithdrawal(event) {
-    event.preventDefault();
-    const id = document.getElementById("withdrawalId").value;
-    const button = document.getElementById("saveWithdrawalButton");
-    button.disabled = true;
-    try {
-      await api(`/bank-manager/withdrawals${id ? `/${id}` : ""}`, {
-        method: id ? "PUT" : "POST",
-        body: JSON.stringify({
-          bankAccountId: document.getElementById("withdrawalBankAccount").value,
-          date: document.getElementById("withdrawalDate").value,
-          chequeNumber: document.getElementById("withdrawalChequeNumber").value.trim(),
-          description: document.getElementById("withdrawalDescription").value.trim(),
-          amount: Number(document.getElementById("withdrawalAmount").value),
-          withdrawnBy: document.getElementById("withdrawalBy").value.trim(),
-        }),
-      });
-      document.getElementById("withdrawalDialog").close();
-      await load();
-      showAlert(id ? "Withdrawal changes saved." : "Withdrawal recorded and bank balance updated.");
-    } catch (error) {
-      formError("withdrawalError", error.message);
-    } finally {
-      button.disabled = false;
-    }
+  function sparePartOptionsHtml() {
+    return '<option value="">— Custom item (not in inventory) —</option>' +
+      (sparePartsCache || []).map((part) =>
+        `<option value="${escapeHtml(part.id)}">${escapeHtml(part.partNumber || part.referenceNumber || "")} — ${escapeHtml(part.name)} (${money(part.sellingPrice)})</option>`
+      ).join("");
   }
 
   function proformaItemRow(item = {}) {
     const row = document.createElement("div");
     row.className = "item-row proforma-row";
     row.innerHTML = `
+      <label class="full">Pick from Spare Parts Inventory <small>(auto-fills part no., description &amp; selling price — optional)</small>
+        <select data-field="sparePartId">${sparePartOptionsHtml()}</select>
+      </label>
       <label>Part no.<input data-field="partNumber" value="${escapeHtml(item.partNumber || item.part_number || "")}"></label>
       <label>Description<input data-field="description" required value="${escapeHtml(item.description || "")}"></label>
-      <label>Qty<input data-field="qty" required type="number" min="1" step="1" value="${escapeHtml(item.qty || 1)}"></label>
+      <label>Qty<input data-field="qty" required type="number" min="0.01" step="0.01" value="${escapeHtml(item.qty || 1)}"></label>
       <label>Unit<input data-field="unit" value="${escapeHtml(item.unit || "PC")}"></label>
       <label>Unit price<input data-field="unitPrice" required type="number" min="0" step="0.01" value="${escapeHtml(item.unitPrice || item.unit_price || 0)}"></label>
       <button class="remove-item" type="button" aria-label="Remove item">×</button>`;
+    row.querySelector('[data-field="sparePartId"]').addEventListener("change", (event) => {
+      const partId = event.target.value;
+      if (!partId) return;
+      const part = (sparePartsCache || []).find((p) => p.id === partId);
+      if (!part) return;
+      row.querySelector('[data-field="partNumber"]').value = part.partNumber || part.referenceNumber || "";
+      row.querySelector('[data-field="description"]').value = part.name || "";
+      row.querySelector('[data-field="unitPrice"]').value = part.sellingPrice || 0;
+    });
     return row;
   }
 
@@ -525,17 +883,29 @@
     document.getElementById("proformaItems").appendChild(proformaItemRow(item));
   }
 
-  function openProforma(proforma = null) {
+  async function openProforma(proforma = null) {
     document.getElementById("proformaForm").reset();
     document.getElementById("proformaId").value = proforma?.id || "";
+    document.getElementById("proformaMachineId").value = proforma?.machineId || "";
+    document.getElementById("proformaSourceSpareRequestId").value = proforma?.sourceSpareRequestId || proforma?.source_spare_request_id || "";
+    document.getElementById("proformaSourceSpareRequestIds").value = (proforma?.sourceSpareRequestIds || []).join(",");
+    document.getElementById("proformaSourceJobCardId").value = proforma?.sourceJobCardId || proforma?.source_job_card_id || "";
     document.getElementById("proformaTitle").textContent = proforma ? `Re-edit ${proforma.invoiceNo}` : "New proforma";
+    await ensureCustomersLoaded();
     document.getElementById("proformaCustomer").innerHTML = customerOptions(proforma?.customer?.id || "");
     document.getElementById("proformaCustomer").disabled = Boolean(proforma);
     document.getElementById("proformaDate").value = proforma?.date || today();
     document.getElementById("proformaDate").disabled = Boolean(proforma);
     document.getElementById("proformaVatMode").value = proforma?.vatMode || "VAT";
+    document.getElementById("proformaVatRate").value = proforma?.vatRate ?? 18;
+    document.getElementById("proformaDiscountType").value = proforma?.discountType || "FIXED";
     document.getElementById("proformaDiscount").value = proforma?.discount || 0;
+    document.getElementById("proformaPaymentTerms").value = proforma?.paymentTerms || "";
+    document.getElementById("proformaDeliveryTime").value = proforma?.deliveryTime || "";
+    document.getElementById("proformaQuoteValidity").value = proforma?.quoteValidity || "";
+    document.getElementById("proformaNotice").value = proforma?.notice || "";
     fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
+    await ensureSparePartsLoaded();
     document.getElementById("proformaItems").replaceChildren();
     (proforma?.items?.length ? proforma.items : [{}]).forEach(addProformaItem);
     document.getElementById("proformaError").className = "alert error hidden";
@@ -544,6 +914,8 @@
 
   async function saveProforma(event) {
     event.preventDefault();
+    const button = document.getElementById("saveProformaButton");
+    if (button.disabled) return;
     const id = document.getElementById("proformaId").value;
     const items = [...document.querySelectorAll("#proformaItems .item-row")].map((row) => ({
       partNumber: row.querySelector('[data-field="partNumber"]').value.trim(),
@@ -552,22 +924,37 @@
       unit: row.querySelector('[data-field="unit"]').value.trim() || "PC",
       unitPrice: Number(row.querySelector('[data-field="unitPrice"]').value),
     }));
-    const button = document.getElementById("saveProformaButton");
+    // V351: Proforma Re-edit is intentionally direct for Billing-authorized staff.
     button.disabled = true;
+    button.dataset.originalText = button.textContent;
     try {
-      await api(id ? `/proforma-invoices/${id}` : "/proforma-invoices", {
+      const savedProforma = await api(id ? `/proforma-invoices/${id}` : "/proforma-invoices", {
         method: id ? "PUT" : "POST",
         body: JSON.stringify({
           customerId: document.getElementById("proformaCustomer").value,
           date: document.getElementById("proformaDate").value,
           vatMode: document.getElementById("proformaVatMode").value,
+          vatRate: Number(document.getElementById("proformaVatRate").value || 18),
+          discountType: document.getElementById("proformaDiscountType").value,
           discount: Number(document.getElementById("proformaDiscount").value || 0),
+          paymentTerms: document.getElementById("proformaPaymentTerms").value.trim(),
+          deliveryTime: document.getElementById("proformaDeliveryTime").value.trim(),
+          quoteValidity: document.getElementById("proformaQuoteValidity").value.trim(),
+          notice: document.getElementById("proformaNotice").value.trim(),
+          machineId: document.getElementById("proformaMachineId").value,
+          sourceSpareRequestId: document.getElementById("proformaSourceSpareRequestId").value,
+          sourceSpareRequestIds: document.getElementById("proformaSourceSpareRequestIds").value.split(",").map((value) => value.trim()).filter(Boolean),
+          sourceJobCardId: document.getElementById("proformaSourceJobCardId").value,
           items,
         }),
       });
+      await showButtonSuccess(button);
       document.getElementById("proformaDialog").close();
       await load();
-      showAlert(id ? "Proforma updated successfully." : "Proforma saved successfully.");
+      activateBillingTab('proformas');
+      const generatedNo = savedProforma?.invoiceNo || '';
+      const linkedInvoiceNo = id ? proformas.find((item) => item.id === id)?.generatedInvoiceNo : "";
+      showAlert(id ? (linkedInvoiceNo ? `Proforma updated. Linked Invoice ${linkedInvoiceNo} was not overwritten; re-edit it separately if required.` : "Proforma updated successfully.") : (generatedNo ? `✓ Proforma ${generatedNo} generated and synchronized.` : "Proforma generated successfully."));
     } catch (error) {
       formError("proformaError", error.message);
     } finally {
@@ -576,9 +963,13 @@
   }
 
   async function remove(path, message) {
-    if (!confirm(message)) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete this record?",
+      message: message,
+    });
+    if (!confirmation) return;
     try {
-      await api(path, { method: "DELETE" });
+      await api(path, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Record moved to the Recycle Bin.");
     } catch (error) {
@@ -589,12 +980,15 @@
   document.querySelector(".tabs").addEventListener("click", (event) => {
     const button = event.target.closest("[data-tab]");
     if (!button) return;
-    document.querySelectorAll("[data-tab]").forEach((tab) => tab.classList.toggle("active", tab === button));
-    document.querySelectorAll("[data-billing-panel]").forEach((panel) =>
-      panel.classList.toggle("hidden", panel.dataset.billingPanel !== button.dataset.tab));
+    activateBillingTab(button.dataset.tab);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', button.dataset.tab);
+      history.replaceState(null, '', url);
+    } catch (_) {}
   });
   document.querySelectorAll("[data-close]").forEach((button) => button.addEventListener("click", () => document.getElementById(button.dataset.close).close()));
-  document.getElementById("newInvoiceButton").addEventListener("click", openInvoice);
+  document.getElementById("newInvoiceButton").addEventListener("click", () => { activateBillingTab("invoices"); document.getElementById("invoicesPanel")?.scrollIntoView({ behavior: "smooth", block: "start" }); setTimeout(() => document.getElementById("invoiceProformaNumber")?.focus(), 100); showAlert("Invoices are generated directly from a Proforma. Enter the PI Number; the INV number is derived automatically and all commercial lines stay synchronized."); });
   document.getElementById("newExpenseButton").addEventListener("click", openExpense);
   document.getElementById("newProformaButton").addEventListener("click", () => openProforma());
   document.getElementById("refreshButton").addEventListener("click", load);
@@ -605,30 +999,190 @@
     fillCustomerInformation("proformaCustomer", "proformaCustomerInfo"));
   document.getElementById("invoiceForm").addEventListener("submit", saveInvoice);
   document.getElementById("paymentForm").addEventListener("submit", savePayment);
+  document.getElementById("receiptForm").addEventListener("submit", saveReceipt);
+
+  // ------------------------------------------------------------------
+  // QR SCAN for payment reference — uses the camera directly via the
+  // browser's native BarcodeDetector (Chrome/Edge; no external library,
+  // no big file upload). Falls back to a single lightweight photo
+  // capture + decode attempt on browsers without BarcodeDetector.
+  // ------------------------------------------------------------------
+  let qrScanStream = null;
+  let qrScanRAF = null;
+
+  function stopQrScan() {
+    if (qrScanRAF) cancelAnimationFrame(qrScanRAF);
+    qrScanRAF = null;
+    if (qrScanStream) qrScanStream.getTracks().forEach((track) => track.stop());
+    qrScanStream = null;
+    document.getElementById("qrScanOverlay").classList.add("hidden");
+    document.getElementById("paymentScanHint").classList.add("hidden");
+  }
+
+  async function scanQrFromFilePhoto() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment";
+    input.addEventListener("change", async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      if (!("BarcodeDetector" in window)) {
+        showAlert("This browser can't scan QR codes automatically. Please type the reference manually.", true);
+        return;
+      }
+      try {
+        const bitmap = await createImageBitmap(file);
+        const detector = new BarcodeDetector({ formats: ["qr_code"] });
+        const results = await detector.detect(bitmap);
+        if (results.length) {
+          document.getElementById("paymentReference").value = results[0].rawValue;
+          showAlert("QR code captured.");
+        } else {
+          showAlert("No QR code found in that photo. Try again or type the reference manually.", true);
+        }
+      } catch (_) {
+        showAlert("Could not read a QR code from that photo. Type the reference manually.", true);
+      }
+    });
+    input.click();
+  }
+
+  async function startQrScan() {
+    if (!("BarcodeDetector" in window) || !navigator.mediaDevices?.getUserMedia) {
+      await scanQrFromFilePhoto();
+      return;
+    }
+    const overlay = document.getElementById("qrScanOverlay");
+    const video = document.getElementById("qrScanVideo");
+    try {
+      qrScanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    } catch (_) {
+      showAlert("Camera access was denied or unavailable. Type the reference manually.", true);
+      return;
+    }
+    video.srcObject = qrScanStream;
+    overlay.classList.remove("hidden");
+    document.getElementById("paymentScanHint").classList.remove("hidden");
+    const detector = new BarcodeDetector({ formats: ["qr_code"] });
+    const scanFrame = async () => {
+      if (!qrScanStream) return;
+      try {
+        const results = await detector.detect(video);
+        if (results.length) {
+          document.getElementById("paymentReference").value = results[0].rawValue;
+          stopQrScan();
+          showAlert("QR code captured.");
+          return;
+        }
+      } catch (_) { /* keep trying */ }
+      qrScanRAF = requestAnimationFrame(scanFrame);
+    };
+    qrScanRAF = requestAnimationFrame(scanFrame);
+  }
+
+  document.getElementById("paymentScanQrButton").addEventListener("click", startQrScan);
+  document.getElementById("qrScanCancelButton").addEventListener("click", stopQrScan);
+  document.getElementById("paymentDialog").addEventListener("close", stopQrScan);
+
   document.getElementById("expenseForm").addEventListener("submit", saveExpense);
-  document.getElementById("bankAccountForm").addEventListener("submit", saveBankAccount);
-  document.getElementById("withdrawalForm").addEventListener("submit", saveWithdrawal);
   document.getElementById("proformaForm").addEventListener("submit", saveProforma);
-  document.getElementById("withdrawalBankAccount").addEventListener("change", () => {
-    const withdrawal = (bankData.withdrawals || []).find((item) =>
-      item.id === document.getElementById("withdrawalId").value);
-    updateWithdrawalMax(withdrawal);
-  });
   document.querySelectorAll(".item-list").forEach((list) => list.addEventListener("click", (event) => {
     const removeButton = event.target.closest(".remove-item");
     if (removeButton && list.children.length > 1) removeButton.closest(".item-row").remove();
   }));
-  document.getElementById("invoicesPanel").addEventListener("click", (event) => {
-    const pay = event.target.closest("[data-payment]");
-    const edit = event.target.closest("[data-edit-invoice]");
-    const removeButton = event.target.closest("[data-delete-invoice]");
-    if (edit) openInvoice(edit.dataset.editInvoice);
-    if (pay) openPayment(pay.dataset.payment);
-    if (removeButton) remove(`/billing/invoices/${removeButton.dataset.deleteInvoice}`, "Delete this invoice? It will move to the Recycle Bin.");
+  document.getElementById("invoicesPanel").addEventListener("input", (event) => {
+    if (event.target.id !== "invoiceProformaNumber") return;
+    event.target.value = event.target.value.toUpperCase().replace(/\s+/g, "");
+    const preview = document.getElementById("invoiceNumberPreview");
+    if (preview) preview.textContent = invoiceNumberFromPiPreview(event.target.value);
   });
-  document.getElementById("paymentsPanel").addEventListener("click", (event) => {
+  document.getElementById("invoicesPanel").addEventListener("click", async (event) => {
+    const generateByPi = event.target.closest("[data-generate-invoice-by-pi]");
+    if (generateByPi) {
+      const input = document.getElementById("invoiceProformaNumber");
+      const proformaNo = String(input?.value || "").trim().toUpperCase();
+      if (!/^PI-\d+$/.test(proformaNo)) {
+        showAlert("Enter a valid PI Number, for example PI-0000000.", true);
+        input?.focus();
+        return;
+      }
+      generateByPi.disabled = true;
+      const oldText = generateByPi.textContent;
+      generateByPi.textContent = "Generating…";
+      try {
+        const result = await api("/billing?action=generate-from-proforma", { method: "POST", body: JSON.stringify({ proformaNo }) });
+        await load();
+        activateBillingTab("invoices");
+        showAlert(`✓ ${result.proformaNo} generated ${result.invoiceNo}. Invoice copied directly from Proforma.`);
+      } catch (error) {
+        showAlert(error.message, true);
+      } finally {
+        generateByPi.disabled = false;
+        generateByPi.textContent = oldText;
+      }
+      return;
+    }
+    const pay = event.target.closest("[data-payment]");
+    const receiptButton = event.target.closest("[data-receipt]");
+    const edit = event.target.closest("[data-edit-invoice]");
+    const reviewButton = event.target.closest("[data-review-invoice]");
+    const removeButton = event.target.closest("[data-delete-invoice]");
+    try {
+      if (reviewButton) {
+        const invoice = invoices.find((item) => item.id === reviewButton.dataset.reviewInvoice);
+        if (invoice) {
+          event.preventDefault();
+          openReviewExport("invoice", invoice);
+          return;
+        }
+      }
+      if (edit) {
+        event.preventDefault();
+        await openInvoice(edit.dataset.editInvoice);
+        return;
+      }
+      if (pay) {
+        event.preventDefault();
+        openPayment(pay.dataset.payment);
+        return;
+      }
+      if (receiptButton) {
+        event.preventDefault();
+        openReceipt(receiptButton.dataset.receipt, receiptButton.dataset.receiptCustomer);
+        return;
+      }
+      if (removeButton) {
+        event.preventDefault();
+        await remove(`/billing/invoices/${removeButton.dataset.deleteInvoice}`, "Delete this invoice? It will move to the Recycle Bin.");
+      }
+    } catch (error) {
+      showAlert(`Invoice action failed: ${error?.message || "Please refresh and try again."}`, true);
+    }
+  });
+  document.getElementById("paymentsPanel").addEventListener("click", async (event) => {
     const editPayment = event.target.closest("[data-edit-payment]");
+    const deletePayment = event.target.closest("[data-delete-payment]");
     if (editPayment) openPayment(editPayment.dataset.paymentInvoice, editPayment.dataset.editPayment);
+    if (deletePayment) {
+      const confirmation = await window.belmConfirmDelete({
+        title: "Reverse this payment?",
+        message: "This removes the mistaken manual payment and recalculates the invoice balance. Receipt-linked payments must be reversed from Receipts instead.",
+      });
+      if (!confirmation) return;
+      try {
+        await api(`/billing/invoices/${deletePayment.dataset.paymentInvoice}/payments/${deletePayment.dataset.deletePayment}`, {
+          method: "DELETE",
+          body: JSON.stringify(confirmation),
+        });
+        await load();
+        showAlert("Payment reversed and invoice balance recalculated.");
+      } catch (error) { showAlert(error.message, true); }
+    }
+  });
+  document.getElementById("receiptsPanel").addEventListener("click", (event) => {
+    const removeButton = event.target.closest("[data-delete-receipt]");
+    if (removeButton) remove(`/receipts/${removeButton.dataset.deleteReceipt}`, "Delete this receipt? It will move to the Recycle Bin.");
   });
   document.getElementById("invoicesPanel").addEventListener("change", async (event) => {
     if (!event.target.dataset.invoiceStatus) return;
@@ -645,33 +1199,117 @@
       await load();
     }
   });
-  document.getElementById("expensesPanel").addEventListener("click", (event) => {
+  document.getElementById("expensesPanel").addEventListener("click", async (event) => {
     const edit = event.target.closest("[data-edit-expense]");
     const removeButton = event.target.closest("[data-delete-expense]");
+    const receiptButton = event.target.closest("[data-view-expense-receipt]");
     if (edit) openExpense(edit.dataset.editExpense);
     if (removeButton) remove(`/company-expenses/${removeButton.dataset.deleteExpense}`, "Delete this expense? It will move to the Recycle Bin.");
+    if (receiptButton) {
+      try {
+        const response = await fetch(`/api/company-expenses/${receiptButton.dataset.viewExpenseReceipt}?action=receipt`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) throw new Error("Could not load receipt.");
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+      } catch (error) {
+        showAlert(error.message, true);
+      }
+    }
   });
   document.getElementById("proformasPanel").addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit-proforma]");
+    const reviewButton = event.target.closest("[data-review-proforma]");
     const removeButton = event.target.closest("[data-delete-proforma]");
+    const sendButton = event.target.closest("[data-send-proforma]");
+    const pendingButton = event.target.closest("[data-generate-pending-proforma]");
+    const pendingSpareButton = event.target.closest("[data-generate-spare-proforma]");
+    const generateInvoiceButton = event.target.closest("[data-generate-invoice-from-proforma]");
+    if (pendingButton) generatePendingJobProforma(pendingButton.dataset.generatePendingProforma, pendingButton);
+    if (pendingSpareButton) generatePendingSpareProforma(pendingSpareButton.dataset.generateSpareProforma, pendingSpareButton);
+    if (generateInvoiceButton) {
+      const proformaId = generateInvoiceButton.dataset.generateInvoiceFromProforma;
+      generateInvoiceButton.disabled = true;
+      const oldText = generateInvoiceButton.textContent;
+      generateInvoiceButton.textContent = "Generating…";
+      api("/billing?action=generate-from-proforma", { method: "POST", body: JSON.stringify({ proformaId }) })
+        .then(async (result) => {
+          await load();
+          activateBillingTab("invoices");
+          showAlert(`✓ Invoice ${result.invoiceNo} copied directly from Proforma ${result.proformaNo}.`);
+        })
+        .catch((error) => showAlert(error.message, true))
+        .finally(() => { generateInvoiceButton.disabled = false; generateInvoiceButton.textContent = oldText; });
+    }
     if (edit) openProforma(proformas.find((item) => item.id === edit.dataset.editProforma));
+    if (reviewButton) {
+      const proforma = proformas.find((item) => item.id === reviewButton.dataset.reviewProforma);
+      if (proforma) openReviewExport("proforma", proforma);
+    }
+    if (sendButton) {
+      const id = sendButton.dataset.sendProforma;
+      sendButton.disabled = true;
+      api(`/proforma-invoices/${id}?action=send`, { method: "PUT" }).then(async (result) => { await load(); showAlert(result.message || "Proforma sent to customer."); }).catch((error) => showAlert(error.message, true)).finally(() => { sendButton.disabled = false; });
+    }
     if (removeButton) remove(`/proforma-invoices/${removeButton.dataset.deleteProforma}`, "Delete this proforma? It will move to the Recycle Bin.");
-  });
-  document.getElementById("bankPanel").addEventListener("click", (event) => {
-    const addBank = event.target.closest("[data-add-bank]");
-    const addWithdrawal = event.target.closest("[data-add-withdrawal]");
-    const editBank = event.target.closest("[data-edit-bank]");
-    const editWithdrawal = event.target.closest("[data-edit-withdrawal]");
-    if (addBank) openBankAccount();
-    if (addWithdrawal) openWithdrawal();
-    if (editBank) openBankAccount(editBank.dataset.editBank);
-    if (editWithdrawal) openWithdrawal(editWithdrawal.dataset.editWithdrawal);
   });
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
+    window.location.href = "/login";
   });
 
-  load();
+  async function applyProformaPrefillFromSparePartRequest() {
+    const raw = sessionStorage.getItem("belm_prefill_proforma");
+    if (!raw) return;
+    sessionStorage.removeItem("belm_prefill_proforma");
+    let prefill;
+    try {
+      prefill = JSON.parse(raw);
+    } catch (_) {
+      return;
+    }
+    await ensureSparePartsLoaded();
+    await openProforma();
+    if (prefill.customerId) document.getElementById("proformaCustomer").value = prefill.customerId;
+    document.getElementById("proformaMachineId").value = prefill.machineId || "";
+    document.getElementById("proformaSourceSpareRequestId").value = prefill.sourceSpareRequestId || (prefill.sourceSpareRequestIds || [])[0] || "";
+    document.getElementById("proformaSourceSpareRequestIds").value = (prefill.sourceSpareRequestIds || (prefill.sourceSpareRequestId ? [prefill.sourceSpareRequestId] : [])).join(",");
+    document.getElementById("proformaSourceJobCardId").value = prefill.sourceJobCardId || "";
+    fillCustomerInformation("proformaCustomer", "proformaCustomerInfo");
+    const requestedItems = Array.isArray(prefill.items) && prefill.items.length ? prefill.items : [{
+      partNumber: prefill.partNumber || "",
+      description: prefill.description || "",
+      qty: prefill.qty || 1,
+      unitPrice: prefill.unitPrice || 0,
+      unit: prefill.unit || "PC",
+    }];
+    document.getElementById("proformaItems").replaceChildren();
+    requestedItems.forEach(addProformaItem);
+    showAlert(`Proforma pre-filled from ${requestedItems.length} spare request item${requestedItems.length === 1 ? "" : "s"} — check pricing, then Save.`);
+  }
+
+  async function applyInvoicePrefillFromJobCard() {
+    const raw=sessionStorage.getItem("belm_prefill_invoice");if(!raw)return;
+    sessionStorage.removeItem("belm_prefill_invoice");let prefill;try{prefill=JSON.parse(raw)}catch(_){return}
+    await openInvoice();
+    if(prefill.customerId) document.getElementById("invoiceCustomer").value=prefill.customerId;
+    updateMachineOptions(prefill.machineId||"");
+    document.getElementById("invoiceSourceJobCardId").value=prefill.sourceJobCardId||"";
+    fillCustomerInformation("invoiceCustomer","invoiceCustomerInfo");
+    const firstRow=document.querySelector("#invoiceItems .item-row");
+    if(firstRow){firstRow.querySelector('[data-field="description"]').value=prefill.description||"BELM service work";firstRow.querySelector('[data-field="quantity"]').value=prefill.qty||1;firstRow.querySelector('[data-field="unitPrice"]').value=prefill.unitPrice||0;}
+    showAlert("Invoice pre-filled from the customer-signed Job Card — enter the agreed price/tax, then Save.");
+  }
+
+  activateBillingTab(requestedBillingTab());
+  load().then(async()=>{
+    activateBillingTab(requestedBillingTab());
+    await applyProformaPrefillFromSparePartRequest();
+    await applyInvoicePrefillFromJobCard();
+    activateBillingTab(requestedBillingTab());
+  });
 })();

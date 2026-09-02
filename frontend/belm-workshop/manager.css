@@ -1,0 +1,675 @@
+/* V454 - "Workshop Manager" card on BELM WORKSHOP: visual/structural match
+   to the customer-side Workshop Manager role card, local to this page. */
+.wm-card {
+  margin: 18px 0;
+  padding: 22px 26px;
+  border-radius: 20px;
+  background: linear-gradient(160deg, #1c5fd6, #2a72e8);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+/* V460 - simplified square variant: just the 4 buttons, nothing else. */
+.wm-card-square {
+  width: 100%;
+  max-width: 360px;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.wm-card-square .wm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  height: 100%;
+}
+.wm-card-square .wm-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 100%;
+}
+.wm-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.wm-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 52px; height: 52px;
+  border-radius: 14px;
+  background: rgba(255,255,255,.16);
+  border: 1px solid rgba(255,255,255,.3);
+  font: 800 15px "Space Grotesk", sans-serif;
+}
+.wm-control-pill {
+  padding: 6px 16px;
+  border: 1px solid rgba(255,255,255,.45);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.wm-eyebrow { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: rgba(255,255,255,.8); }
+.wm-card h2 { margin: 0 0 10px; font: 800 30px "Space Grotesk", sans-serif; }
+.wm-description { margin: 0 0 18px; max-width: 720px; color: rgba(255,255,255,.9); font-size: 14.5px; line-height: 1.5; }
+.wm-tags { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+.wm-tags span {
+  padding: 8px 16px;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.wm-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.wm-action {
+  padding: 13px 24px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.5);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13.5px;
+  text-decoration: none;
+  background: rgba(255,255,255,.08);
+}
+.wm-action:hover { background: rgba(255,255,255,.18); }
+.wm-action-primary { background: #1ecb7a; border-color: #1ecb7a; color: #072a17; }
+.wm-action-primary:hover { background: #17b56d; }
+
+/* V461 - Workshop Role Structure (3 cards), built independently for
+   /belm-workshop/: own class prefix (bw-), own colors, no shared files
+   with /customer-workshop/. The six primary role actions are wired to synchronized Workshop windows
+   while the role responsibilities remain visible on each card. */
+.bw-role-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 18px 0;
+}
+.bw-role-card {
+  position: relative;
+  padding: 22px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, #14355f, #0e2647);
+  color: #fff;
+  overflow: hidden;
+}
+.bw-role-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+}
+.bw-manager-card::before { background: #2a9cf5; }
+.bw-store-card::before { background: #1ecb7a; }
+.bw-technician-card::before { background: #f5b82a; }
+.bw-procurement-card::before { background: #9b6cff; }
+.bw-role-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.25);
+  font: 800 13px "Space Grotesk", sans-serif;
+  margin-bottom: 14px;
+}
+.bw-role-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.bw-role-head p { margin: 0 0 4px; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+.bw-role-head h2 { margin: 0; font: 800 22px "Space Grotesk", sans-serif; }
+.bw-role-status {
+  padding: 5px 12px;
+  border: 1px solid rgba(255,255,255,.4);
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+.bw-role-description { margin: 0 0 14px; color: rgba(255,255,255,.85); font-size: 12.5px; line-height: 1.5; min-height: 58px; }
+.bw-responsibilities { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 18px; }
+.bw-responsibilities span {
+  padding: 6px 12px;
+  border: 1px solid rgba(255,255,255,.3);
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.bw-specialization-grid { display: grid; gap: 8px; margin-bottom: 18px; }
+.bw-specialization-grid div { padding: 8px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 8px; }
+.bw-specialization-grid b { display: block; font-size: 11.5px; margin-bottom: 2px; }
+.bw-specialization-grid small { display: block; color: rgba(255,255,255,.65); font-size: 10px; line-height: 1.4; }
+.bw-role-actions { display: flex; gap: 10px; margin-top: auto; }
+.bw-primary-action, .bw-secondary-action {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  color: #fff;
+}
+.bw-primary-action { background: #1ecb7a; color: #072a17; }
+.bw-primary-action:hover { background: #17b56d; }
+.bw-secondary-action { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.3); }
+.bw-secondary-action:hover { background: rgba(255,255,255,.18); }
+
+.bw-workflow-panel {
+  margin: 18px 0;
+  padding: 20px 24px;
+  border-radius: 16px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+.bw-eyebrow { margin: 0 0 6px; color: #1ecb7a; font-size: 10.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.bw-workflow-panel h2 { margin: 0 0 16px; font: 800 22px "Space Grotesk", sans-serif; }
+.bw-workflow-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.bw-workflow-line span {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent, #2a6fdb) 10%, var(--canvas));
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.bw-workflow-line b { color: var(--muted); font-weight: 900; }
+@media (max-width: 900px) {
+  .bw-role-grid { grid-template-columns: 1fr; }
+}
+
+.eng-roles-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: stretch;
+  margin: 18px 0;
+}
+.eng-role-card { position: relative; padding: 14px 16px 54px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.eng-role-card h3 { margin: 0 0 4px; font: 700 14px "Space Grotesk", sans-serif; }
+.eng-role-card p { margin: 0; color: var(--muted); font-size: 12px; }
+.eng-role-edit {
+  position: absolute;
+  left: 16px;
+  bottom: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--green, #00a958);
+  border-radius: 8px;
+  color: var(--green, #00a958);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.eng-role-edit:hover { background: color-mix(in srgb, var(--green, #00a958) 8%, transparent); }
+
+dialog#roleDialog {
+  width: min(560px, calc(100% - 28px));
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 25px 80px rgba(8, 15, 27, .35);
+}
+dialog#roleDialog::backdrop { background: rgba(9, 16, 29, .6); }
+.eng-role-form { display: grid; }
+.eng-role-form .panel-head button { border: 0; color: var(--muted); background: none; cursor: pointer; font-size: 24px; }
+.eng-role-form label { padding: 14px 18px 0; font-size: 11px; font-weight: 800; color: var(--ink); text-transform: uppercase; letter-spacing: .04em; }
+.eng-allowed-pages { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px 18px 0; }
+.eng-role-form-actions { display: flex; justify-content: flex-end; gap: 9px; padding: 18px; }
+#roleFormAlert { margin: 12px 18px 0; }
+@media (max-width: 480px) { .eng-allowed-pages { grid-template-columns: 1fr; } }
+
+.eng-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.eng-card-wide { grid-column: 1 / -1; }
+
+.eng-count {
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: var(--ink);
+  background: var(--canvas);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.eng-card-body {
+  display: grid;
+  gap: 8px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding: 14px 18px 18px;
+}
+
+.eng-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+}
+.eng-row b { display: block; font-size: 13px; color: var(--ink); }
+.eng-row-sub { display: block; margin-top: 2px; color: var(--muted); font-size: 10.5px; font-weight: 600; }
+.eng-row-message { margin: 6px 0 0; color: var(--ink); font-size: 12px; }
+.eng-row small { flex-shrink: 0; color: var(--muted); font-size: 10.5px; white-space: nowrap; }
+
+.eng-badge {
+  flex-shrink: 0;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.eng-badge.status-green { color: #0a6b3d; background: #e3f8ec; }
+.eng-badge.status-yellow { color: #8a5a00; background: #fff3d6; animation: eng-badge-blink-yellow 1.6s ease-in-out infinite; }
+.eng-badge.status-red { color: #a4231b; background: #fde4e2; animation: eng-badge-blink-red 1.2s ease-in-out infinite; }
+.eng-badge.status-not_checked { color: var(--muted); background: var(--canvas); }
+
+@media (prefers-reduced-motion: reduce) {
+  .eng-badge.status-yellow, .eng-badge.status-red { animation: none; }
+}
+@keyframes eng-badge-blink-yellow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(242, 206, 0, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(242, 206, 0, .35); }
+}
+@keyframes eng-badge-blink-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 62, 77, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(220, 62, 77, .35); }
+}
+
+.eng-status-summary { padding: 14px 18px 18px; display: grid; gap: 12px; }
+.eng-status-bar-row { display: grid; grid-template-columns: 90px 1fr 28px; align-items: center; gap: 10px; font-size: 12px; color: var(--ink); }
+.eng-status-bar-track { height: 8px; border-radius: 999px; background: var(--canvas); overflow: hidden; }
+.eng-status-bar-fill { height: 100%; border-radius: 999px; }
+.eng-status-bar-fill.status-green { background: #00a958; }
+.eng-status-bar-fill.status-yellow { background: #f2ce00; }
+.eng-status-bar-fill.status-red { background: #dc3e4d; }
+.eng-status-bar-fill.status-not_checked { background: var(--muted); }
+
+@media (max-width: 760px) {
+  .eng-roles-strip { grid-template-columns: 1fr; }
+  .eng-grid { grid-template-columns: 1fr; }
+}
+
+.eng-dispatch{margin:18px 0}.eng-dispatch.hidden{display:none}.eng-dispatch .panel-head p{margin:4px 0 0;color:var(--muted);font-size:12px}.eng-dispatch-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:16px 18px 18px}.eng-dispatch-form label{display:grid;gap:6px;color:var(--ink);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}.eng-dispatch-form input,.eng-dispatch-form select,.eng-dispatch-form textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;background:var(--paper);color:var(--ink);padding:9px 10px;font:inherit;text-transform:none;letter-spacing:0}.eng-dispatch-form .wide{grid-column:1/-1}.eng-dispatch-note{padding:10px 12px;border-radius:10px;background:var(--canvas);color:var(--muted);font-size:12px}.eng-dispatch-note.override{border:1px solid #f4cf00;background:#fff8d6;color:#5c4700}.eng-dispatch-actions{display:flex;justify-content:flex-end}@media(max-width:760px){.eng-dispatch-form{grid-template-columns:1fr}.eng-dispatch-form .wide{grid-column:auto}}
+
+
+/* V305 - Technician Dispatch is Job-Card-first */
+.eng-job-source{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 18px;margin:0;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--canvas)}
+.eng-job-source legend{padding:0 6px;color:var(--ink);font-size:11px;font-weight:900;text-transform:uppercase}
+.eng-job-source label{display:flex;grid-template-columns:auto 1fr;align-items:center;gap:8px;text-transform:none;font-size:12px;letter-spacing:0}
+.eng-job-source input{width:auto;margin:0;accent-color:#0f62fe}
+.eng-dispatch-form label small{color:var(--muted);font-size:10px;font-weight:600;text-transform:none;letter-spacing:0}
+.eng-dispatch-form .hidden{display:none!important}
+
+
+/* V310 - Job Cards live inside Engineering. */
+.eng-service-requests-host {
+  margin: 18px 0;
+  scroll-margin-top: 86px;
+}
+.eng-service-requests-host iframe {
+  display: block;
+  width: 100%;
+  min-height: 620px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--canvas);
+}
+.eng-service-requests-locked {
+  padding: 22px;
+  color: var(--muted);
+  text-align: center;
+}
+@media (max-width: 760px) {
+  .eng-service-requests-host iframe { min-height: 760px; }
+}
+
+
+/* V311 - Job Cards use one Engineering shell; no nested sidebar/page. */
+.eng-workspace-tabs{display:flex;gap:8px;margin:0 0 10px;padding:7px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.eng-workspace-tabs button{min-height:36px;padding:8px 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:850;cursor:pointer}
+.eng-workspace-tabs button.active{color:#fff;border-color:#2563eb;background:#2563eb;box-shadow:0 4px 12px rgba(37,99,235,.18)}
+.eng-workspace-panel.hidden{display:none!important}
+.eng-workspace-panel iframe{display:block;width:100%;min-height:620px;border:0;border-radius:16px;background:var(--canvas)}
+#engineeringJobCardsFrame{min-height:820px}
+html[data-theme="dark"] .eng-workspace-tabs{background:#0f1c2c}
+@media(max-width:760px){.eng-workspace-tabs{position:sticky;top:4px;z-index:5}.eng-workspace-tabs button{flex:1}.eng-workspace-panel iframe{min-height:760px}#engineeringJobCardsFrame{min-height:920px}}
+
+/* V316 - received Job Card refresh/diagnostic control. */
+.eng-dispatch-inline-control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.eng-dispatch-inline-control button{white-space:nowrap;padding:9px 12px;border-radius:9px}
+@media(max-width:760px){.eng-dispatch-inline-control{grid-template-columns:1fr}.eng-dispatch-inline-control button{width:100%}}
+
+/* V317 - Technician Dispatch removed from Engineering landing page. */
+
+
+/* V414 - TECHNICAL DEP navigation */
+.technical-dep-nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:16px 0 18px;padding:8px;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+.technical-dep-nav a{display:flex;align-items:center;gap:9px;min-height:46px;padding:9px 12px;border:1px solid transparent;border-radius:10px;color:var(--ink);text-decoration:none;font-size:12px;font-weight:850}
+.technical-dep-nav a span{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--canvas);color:var(--muted);font-size:10px;font-weight:900}
+.technical-dep-nav a:hover,.technical-dep-nav a.active{border-color:#2563eb;background:color-mix(in srgb,#2563eb 10%,var(--paper));color:#2563eb}
+.technical-dep-nav a.active span{background:#2563eb;color:#fff}
+.technical-tools-panel{margin:18px 0;scroll-margin-top:86px}
+.technical-tools-panel .panel-head p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.technical-tools-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px 18px 18px}
+.technical-tools-grid a{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--canvas);color:var(--ink);text-decoration:none}
+.technical-tools-grid a>span{display:grid;place-items:center;width:38px;height:38px;flex:0 0 38px;border-radius:10px;background:#2563eb;color:#fff;font-size:11px;font-weight:900}
+.technical-tools-grid b,.technical-tools-grid small{display:block}.technical-tools-grid b{font-size:13px}.technical-tools-grid small{margin-top:3px;color:var(--muted);font-size:10.5px;font-weight:600}
+.technical-tools-grid a:hover{border-color:#2563eb;transform:translateY(-1px)}
+@media(max-width:760px){.technical-dep-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.technical-tools-grid{grid-template-columns:1fr}}
+
+
+/* V415 - Workshop Analysis embedded inside TECHNICAL DEP. */
+.eng-workshop-analysis-host{margin:18px 0;scroll-margin-top:86px}
+.eng-analysis-panel{border:1px solid var(--line);border-radius:16px;background:var(--paper);overflow:hidden}
+#engineeringWorkshopAnalysisFrame{display:block;width:100%;min-height:940px;border:0;background:var(--canvas)}
+@media(max-width:1100px){.technical-dep-nav{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.technical-dep-nav{grid-template-columns:repeat(2,minmax(0,1fr))}#engineeringWorkshopAnalysisFrame{min-height:1180px}}
+
+/* V463 - BELM WORKSHOP standalone module shell. */
+.bw-live-pill{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid rgba(30,203,122,.45);border-radius:999px;background:rgba(30,203,122,.1);color:#147648;font-size:11px;font-weight:900;letter-spacing:.05em;white-space:nowrap}
+.bw-live-pill i{width:8px;height:8px;border-radius:50%;background:#1ecb7a;box-shadow:0 0 0 4px rgba(30,203,122,.12);animation:bwPulse 1.8s infinite}
+@keyframes bwPulse{50%{box-shadow:0 0 0 8px rgba(30,203,122,0)}}
+.bw-alert{margin:14px 0;padding:11px 14px;border:1px solid #83c8a5;border-radius:10px;background:#e9f9f0;color:#0b6940;font-size:12px;font-weight:800}
+.bw-alert.error{border-color:#e6a5a5;background:#fff0f0;color:#9b1d1d}.bw-alert.hidden{display:none}
+.bw-sync-note{margin:16px 0 0;color:var(--muted,#657184);font-size:12px;line-height:1.55}
+
+.bw-workspace-dialog{width:min(1480px,98vw);height:min(920px,96vh);max-width:none;max-height:none;padding:0;border:0;border-radius:18px;background:transparent;overflow:hidden;box-shadow:0 28px 80px rgba(4,20,39,.34)}
+.bw-workspace-dialog::backdrop{background:rgba(5,18,35,.72);backdrop-filter:blur(4px)}
+.bw-workspace-shell{height:100%;display:flex;flex-direction:column;background:var(--surface,#fff);border:1px solid var(--line,#dfe5ec);border-radius:18px;overflow:hidden}
+.bw-workspace-head{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 18px;background:linear-gradient(135deg,#0e2647,#14355f);color:#fff;border-bottom:1px solid rgba(255,255,255,.12)}
+.bw-workspace-head p{margin:0 0 3px;font-size:9px;font-weight:900;letter-spacing:.12em;color:rgba(255,255,255,.66)}
+.bw-workspace-head h2{margin:0;font:800 21px "Space Grotesk",sans-serif}
+.bw-workspace-head span{display:block;margin-top:3px;color:rgba(255,255,255,.72);font-size:10.5px}
+.bw-workspace-actions{display:flex;align-items:center;gap:8px}
+.bw-workspace-actions button{border:1px solid rgba(255,255,255,.28);border-radius:9px;background:rgba(255,255,255,.08);color:#fff;min-height:38px;padding:0 14px;font-weight:850;cursor:pointer}
+.bw-workspace-actions button:hover{background:rgba(255,255,255,.16)}
+.bw-workspace-actions .bw-close-button{width:40px;padding:0;font-size:25px;line-height:1}
+.bw-workspace-body{position:relative;flex:1;min-height:0;background:#f4f7fb}
+#workshopWindowFrame{display:block;width:100%;height:100%;border:0;background:#fff}
+.bw-window-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;background:#f4f7fb;color:#526276;font-size:13px;font-weight:850}
+.bw-window-loading.hidden{display:none}
+body.bw-workspace-open{overflow:hidden}
+
+@media(max-width:900px){
+  .bw-role-grid{grid-template-columns:1fr}
+  .bw-workspace-dialog{width:100vw;height:100dvh;border-radius:0}
+  .bw-workspace-shell{border-radius:0;border:0}
+  .bw-workspace-head{padding:10px 12px}
+  .bw-workspace-head h2{font-size:17px}
+  .bw-workspace-head span{display:none}
+  .bw-workspace-actions button{min-height:36px;padding:0 10px;font-size:11px}
+}
+@media(max-width:560px){
+  .bw-workspace-actions #workshopWindowReload{font-size:0;width:42px;padding:0}
+  .bw-workspace-actions #workshopWindowReload::after{content:"↻";font-size:21px}
+  .bw-role-actions{display:grid;grid-template-columns:1fr}
+  .bw-role-actions a{width:100%;text-align:center}
+}
+
+/* V464 - preserve the V443 Workshop Role Structure inside TECHNICAL DEP > WORKSHOP. */
+.bw-role-card{display:flex;flex-direction:column;min-height:100%}
+.bw-role-actions{margin-top:auto;padding-top:4px}
+.bw-technician-functions{margin-top:2px}
+.bw-technician-functions span{border-color:rgba(245,184,42,.46);background:rgba(245,184,42,.08)}
+.bw-manager-card .bw-responsibilities span{border-color:rgba(42,156,245,.42);background:rgba(42,156,245,.07)}
+.bw-store-card .bw-responsibilities span{border-color:rgba(30,203,122,.42);background:rgba(30,203,122,.07)}
+@media(max-width:560px){.bw-responsibilities span{font-size:10px;padding:6px 10px}}
+
+
+/* V467 - General Report moved into Workshop Manager without card growth.
+   All six WM controls use two compact rows (3 buttons per row), keeping
+   the existing card footprint and leaving the standalone Workshop shell intact. */
+.bw-manager-card .bw-role-description { margin-bottom: 10px; }
+.bw-manager-card .bw-responsibilities { gap: 5px; margin-bottom: 10px; }
+.bw-manager-card .bw-responsibilities span { padding: 5px 9px; }
+.bw-manager-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 2px;
+}
+.bw-manager-actions > a {
+  grid-column: span 2;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 4px;
+  border-radius: 8px;
+  font-size: 9.3px;
+  line-height: 1.1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 800;
+}
+.bw-manager-utility { color: #fff; border: 1px solid rgba(255,255,255,.26); }
+.bw-general-report-action { background: #d8a900; border-color: #f0c62f; color: #171b22; }
+.bw-petty-action { background: #0f8d75; border-color: #20b493; }
+.bw-general-analysis-action { background: #174f86; border-color: #2d76b8; }
+.bw-settings-action { background: #334155; border-color: #52647a; }
+.bw-manager-utility:hover { filter: brightness(1.08); }
+@media (max-width: 900px) {
+  .bw-manager-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .bw-manager-actions > a { grid-column: span 2; font-size: 8.8px; padding: 8px 3px; }
+}
+
+
+
+/* V480 - simple PORTAL-BELM WM home: Customer Overview lives inside the
+   Workshop Manager responsibility row, filling the existing free slot so the
+   card does not gain a new action row. Workspace Back follows browser history. */
+.bw-manager-card .bw-responsibilities .bw-responsibility-action{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  max-width:100%;
+  padding:5px clamp(8px,2vw,12px);
+  border:1px solid rgba(255,255,255,.62);
+  border-radius:999px;
+  background:rgba(42,156,245,.24);
+  color:#fff;
+  font-size:clamp(8.8px,2.35vw,10.5px);
+  font-weight:850;
+  line-height:1.2;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.bw-manager-card .bw-responsibilities .bw-responsibility-action:hover,
+.bw-manager-card .bw-responsibilities .bw-responsibility-action:focus-visible{
+  background:rgba(42,156,245,.42);
+  border-color:#7cc8ff;
+  outline:none;
+}
+.bw-manager-card .bw-responsibilities .bw-responsibility-action[hidden]{display:none!important}
+.bw-workspace-actions .bw-close-button{
+  width:auto;
+  min-width:76px;
+  padding:0 13px;
+  font-size:12px;
+  line-height:1;
+  white-space:nowrap;
+}
+/* Keep the home header compact after Customer Overview moves into WM. */
+.topbar .top-actions{flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:560px){
+  .topbar{align-items:flex-start}
+  .topbar .top-actions{width:auto;max-width:46%}
+  .topbar .top-actions .ghost{width:100%;min-width:0;text-align:center;padding-left:10px;padding-right:10px}
+  .bw-manager-card .bw-responsibilities{gap:5px}
+  .bw-manager-card .bw-responsibilities span,
+  .bw-manager-card .bw-responsibilities .bw-responsibility-action{font-size:clamp(8.4px,2.45vw,9.6px);padding:5px 8px}
+  .bw-workspace-actions .bw-close-button{min-width:42px;width:42px;padding:0;font-size:0}
+  .bw-workspace-actions .bw-close-button::after{content:"←";font-size:21px;font-weight:900}
+}
+@media(max-width:380px){
+  .bw-role-card{padding-left:16px;padding-right:16px}
+  .bw-manager-card .bw-responsibilities span,
+  .bw-manager-card .bw-responsibilities .bw-responsibility-action{font-size:8.25px;padding:5px 7px}
+  .bw-manager-actions{gap:5px}
+  .bw-manager-actions>a{font-size:8.2px;padding:7px 2px}
+}
+
+/* V484 - PORTAL-BELM WM becomes a single, display-fit Workshop Manager home hub.
+   The sidebar is intentionally not loaded on this page. Store, Procurement and
+   Technician entry points now live in the WM card; their secondary actions live
+   inside the opened modules. */
+body{overflow-x:hidden}
+main.shell{width:min(1480px,96vw);margin:22px auto 48px}
+.bw-role-grid{grid-template-columns:1fr;gap:0;margin:18px 0}
+.bw-manager-card{
+  width:100%;
+  min-height:clamp(430px,58vh,680px);
+  padding:clamp(22px,2.6vw,36px);
+  border-radius:22px;
+  background:linear-gradient(150deg,#0d3c69 0%,#075a83 48%,#083c63 100%);
+  box-shadow:0 22px 58px rgba(3,24,45,.28);
+}
+.bw-manager-card::before{height:5px;background:linear-gradient(90deg,#22c55e 0 25%,#1ea7fd 25% 52%,#f4c430 52% 73%,#7c6df2 73%)}
+.bw-manager-card .bw-role-description{max-width:1020px;font-size:clamp(12px,1.3vw,15px);min-height:0;margin-bottom:14px}
+.bw-manager-card .bw-responsibilities{max-width:1180px;margin-bottom:18px;gap:7px}
+.bw-manager-actions{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  width:100%;
+  margin-top:auto;
+  padding-top:10px;
+}
+.bw-manager-actions>a{
+  grid-column:auto;
+  min-height:48px;
+  padding:11px 12px;
+  border-radius:11px;
+  font-size:clamp(10px,1vw,12.5px);
+  line-height:1.18;
+  border:1px solid rgba(255,255,255,.24);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  transition:transform .16s ease,filter .16s ease,box-shadow .16s ease;
+}
+.bw-manager-actions>a:hover,.bw-manager-actions>a:focus-visible{transform:translateY(-1px);filter:brightness(1.07);box-shadow:0 8px 18px rgba(2,18,34,.18);outline:none}
+/* Work / operational entry points */
+.bw-work-action{background:#19c779!important;color:#062819!important;border-color:#35e39a!important}
+.bw-store-entry{background:#079a8f!important;color:#fff!important;border-color:#19c8b9!important}
+.bw-proc-entry{background:#6657d9!important;color:#fff!important;border-color:#8b7cf3!important}
+.bw-tech-entry{background:#1676c8!important;color:#fff!important;border-color:#3b98e8!important}
+/* Control / analysis */
+.bw-analysis-entry{background:#214f78!important;color:#fff!important;border-color:#3a719f!important}
+.bw-general-analysis-action{background:#185f94!important;border-color:#3383b9!important}
+/* Support / document / settings */
+.bw-general-report-action{background:#e0ad16!important;border-color:#f4cb55!important;color:#1d2128!important}
+.bw-petty-action{background:#078f78!important;border-color:#24b69c!important}
+.bw-settings-action{background:#405267!important;border-color:#60748b!important}
+.bw-customer-overview-action{background:rgba(30,156,245,.32)!important;border-color:#66bdf6!important}
+
+/* The single-card home can use the full display width cleanly. */
+@media(max-width:980px){
+  main.shell{width:min(100% - 24px,1480px)}
+  .bw-manager-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bw-manager-actions>a{font-size:11px;min-height:46px}
+}
+@media(max-width:560px){
+  main.shell{width:calc(100% - 16px);margin-top:12px}
+  .topbar{padding-left:14px!important;padding-right:14px!important;flex-direction:row;align-items:center}
+  .topbar .brand{min-width:0}
+  .topbar .brand>span:last-child{font-size:15px}
+  .topbar .top-actions{width:auto;max-width:none}
+  .topbar .top-actions .ghost{width:auto;white-space:nowrap;font-size:10px;padding:8px 10px}
+  .bw-manager-card{min-height:auto;padding:18px 16px;border-radius:18px}
+  .bw-manager-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .bw-manager-actions>a{min-height:43px;font-size:9.4px;padding:8px 6px}
+}
+@media(max-width:360px){
+  .bw-manager-actions{grid-template-columns:1fr}
+  .bw-manager-actions>a{font-size:10.5px}
+}
+
+
+/* V486 - requested WM control: slightly longer, black Customer Overview button. */
+.bw-customer-overview-action{
+  min-width:260px !important;
+  padding:11px 28px !important;
+  background:#090d14 !important;
+  border:1px solid #05070a !important;
+  color:#fff !important;
+  text-align:center;
+  justify-content:center;
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+.bw-customer-overview-action:hover{background:#151b24 !important;}
+
+
+/* V490 - Checklist Template control requested beside Customer Overview on WM home. */
+.bw-checklist-template-action{
+  min-width:220px !important;
+  padding:11px 26px !important;
+  background:#090d14 !important;
+  border:1px solid #05070a !important;
+  color:#fff !important;
+  text-align:center;
+  justify-content:center;
+  box-shadow:0 8px 18px rgba(0,0,0,.18);
+}
+.bw-checklist-template-action:hover,.bw-checklist-template-action:focus-visible{background:#151b24 !important;}
+@media(max-width:560px){
+  .bw-customer-overview-action,.bw-checklist-template-action{min-width:0 !important;flex:1 1 46%;padding:9px 12px !important;}
+}
+
+
+/* ========================================================================
+   V494 - WORKSPACE BACK + NO-WHITE-FLASH HARDENING
+   The WM workspace never exposes a white about:blank frame while opening,
+   refreshing or closing embedded modules. Back always returns to WM home.
+   ======================================================================== */
+.bw-workspace-shell{
+  background:#0d1b2e;
+  border-color:#263951;
+}
+.bw-workspace-body,
+#workshopWindowFrame,
+.bw-window-loading{
+  background:#0b1728 !important;
+}
+.bw-window-loading{
+  color:#b8c7d9;
+}
+html[data-theme="light"] .bw-workspace-shell{
+  background:#eef3f8;
+  border-color:#d7e0e9;
+}
+html[data-theme="light"] .bw-workspace-body,
+html[data-theme="light"] #workshopWindowFrame,
+html[data-theme="light"] .bw-window-loading{
+  background:#eef3f8 !important;
+}
+html[data-theme="light"] .bw-window-loading{color:#526276}
+.bw-workspace-actions .bw-close-button{
+  min-width:112px;
+  width:auto;
+  padding:0 14px;
+  font-size:11px;
+}
+@media(max-width:560px){
+  .bw-workspace-actions .bw-close-button{min-width:44px;width:44px;padding:0;font-size:0}
+  .bw-workspace-actions .bw-close-button::after{content:"←";font-size:21px;font-weight:900}
+}
+
+
+/* V505 - Customer Overview / embedded WM workspace must never paint white. */
+.bw-workspace-shell{background:#0d1b2e!important;border-color:#263951!important}
+.bw-workspace-body,#workshopWindowFrame,.bw-window-loading{background:#0b1728!important}
+html[data-theme="light"] .bw-workspace-shell{background:#0d1b2e!important;border-color:#263951!important}
+html[data-theme="light"] .bw-workspace-body,
+html[data-theme="light"] #workshopWindowFrame,
+html[data-theme="light"] .bw-window-loading{background:#0b1728!important}
+html[data-theme="light"] .bw-window-loading{color:#b8c7d9!important}

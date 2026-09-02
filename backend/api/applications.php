@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/service_due_helper.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
@@ -199,19 +200,16 @@ if ($method === 'POST' && !$id) {
         $phone = clean_required($body, 'phone', 'Phone number', 50);
         $tinNumber = clean_required($body, 'tinNumber', 'TIN number', 50);
         $vrn = clean_required($body, 'vrn', 'VRN number', 50);
-        $machineType = clean_required($body, 'machineType', 'Machine type', 100);
-        $brand = clean_required($body, 'brand', 'Machine brand', 100);
-        $model = clean_required($body, 'model', 'Machine model');
-        $regNumber = clean_required($body, 'regNumber', 'Machine registration number', 100);
-
+        $registrationMode = in_array($body['registrationMode'] ?? '', ['TECHNICAL_DEP', 'PORTAL_CWM'], true)
+            ? $body['registrationMode'] : 'TECHNICAL_DEP';
         // The real password is generated only after administrator approval.
         // This placeholder preserves compatibility with existing databases.
         $pendingSecret = password_hash(secure_account_secret(24), PASSWORD_BCRYPT);
         db()->prepare(
             'INSERT INTO customer_applications
              (id, reference_no, company_name, email, address, phone, tin_number, vrn,
-              machine_type, brand, model, reg_number, password_hash, status, submitted_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,? ,?,NOW())'
+              machine_type, brand, model, reg_number, password_hash, status, registration_mode, submitted_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,? ,?,?,NOW())'
         )->execute([
             $applicationId,
             $reference,
@@ -221,12 +219,13 @@ if ($method === 'POST' && !$id) {
             $phone,
             $tinNumber,
             $vrn,
-            $machineType,
-            $brand,
-            $model,
-            $regNumber,
+            '',
+            '',
+            '',
+            '',
             $pendingSecret,
             'PENDING',
+            $registrationMode,
         ]);
     }
 
@@ -324,18 +323,23 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 json_error('This email already belongs to another portal account.', 409);
             }
 
-            $checklist = sync_checklist_for_machine_type($application['machine_type']);
             $customerId = uuid();
-            $machineId = uuid();
             $portalLink = customer_portal_slug($application['company_name']);
             $temporaryPassword = secure_account_secret();
             $recoveryCode = account_recovery_code();
+            // V447: PORTAL-CWM applicants start already Self-Service +
+            // Workshop Module ON (independent from day one); TECHNICAL_DEP
+            // applicants start with BELM as Service Provider, both OFF, as
+            // before. BELM Admin can still flip either from PORTAL-CWM or
+            // Customers & Machines afterwards - this only sets the start.
+            $registration = belm_customer_registration_profile($application['registration_mode'] ?? 'TECHNICAL_DEP');
 
             $pdo->prepare(
                 'INSERT INTO customers
                  (id, name, tin_number, vrn, email, phone, address, portal_link,
-                  password, recovery_code_hash, is_active, created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,1,NOW())'
+                  password, recovery_code_hash, is_active, is_machinery_admin,
+                  workshop_module_active, created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())'
             )->execute([
                 $customerId,
                 $application['company_name'],
@@ -347,29 +351,18 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 $portalLink,
                 password_hash($temporaryPassword, PASSWORD_BCRYPT),
                 password_hash($recoveryCode, PASSWORD_BCRYPT),
+                $registration['isMachineryAdmin'],
+                $registration['workshopModuleActive'],
             ]);
 
-            $pdo->prepare(
-                'INSERT INTO machines
-                 (id, customer_id, machine_type, model, serial_number, reg_number,
-                  brand, status, created_at)
-                 VALUES (?,?,?,?,NULL,?,?,?,NOW())'
-            )->execute([
-                $machineId,
-                $customerId,
-                $checklist['machineType'],
-                $application['model'],
-                $application['reg_number'],
-                $application['brand'],
-                'UNKNOWN',
-            ]);
-
+            // Registration approval creates the customer account only. Machines are
+            // registered later from the customer machine workspace or BELM Admin.
             $pdo->prepare(
                 "UPDATE customer_applications
                  SET status = 'APPROVED', reviewed_at = NOW(), reviewed_by = ?,
-                     customer_id = ?, machine_id = ?
+                     customer_id = ?, machine_id = NULL
                  WHERE id = ?"
-            )->execute([$user['id'], $customerId, $machineId, $id]);
+            )->execute([$user['id'], $customerId, $id]);
 
             $pdo->prepare(
                 'INSERT INTO activity_logs (id, user_id, action, entity, entity_id, metadata, created_at)
@@ -380,7 +373,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'APPROVE_CUSTOMER_APPLICATION',
                 'customerApplication',
                 $id,
-                json_encode(['customerId' => $customerId, 'machineId' => $machineId]),
+                json_encode(['customerId' => $customerId, 'machineCreated' => false, 'registrationMode' => $registration['mode']]),
             ]);
 
             $pdo->commit();
@@ -389,7 +382,6 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'status' => 'APPROVED',
                 'applicationType' => 'CUSTOMER',
                 'customerId' => $customerId,
-                'machineId' => $machineId,
                 'customerName' => $application['company_name'],
                 'displayName' => $application['company_name'],
                 'assignedRole' => 'Customer',
@@ -398,9 +390,10 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'recoveryCode' => $recoveryCode,
                 'portalLink' => $portalLink,
                 'loginUrl' => customer_portal_url($portalLink, $application['email']),
-                'checklistTemplateId' => $checklist['templateId'],
-                'checklistCreated' => $checklist['created'],
-                'message' => 'Customer, machine and checklist access are ready.',
+                'registrationMode' => $registration['mode'],
+                'registrationModeLabel' => $registration['label'],
+                'registrationSync' => belm_customer_registration_sync_status($customerId),
+                'message' => 'Customer account is ready and synchronized to the customer workspaces. Machines can be registered after login.',
             ]);
         }
 
@@ -483,7 +476,10 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             ]),
         ]);
 
-        $loginPath = $assignment['roleName'] === 'Technician' ? '/tech' : '/admin/login';
+        // V289: friendly staff aliases. Technician -> TECH@BELM;
+        // every other BELM user -> <name>@BELM. The account's own credentials
+        // and assigned role still determine actual access after sign-in.
+        $staffLoginUrl = belm_staff_login_url($staffApplication['full_name'], $assignment['roleName']);
         $pdo->commit();
         json_out([
             'ok' => true,
@@ -497,7 +493,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             'loginEmail' => $staffApplication['email'],
             'temporaryPassword' => $temporaryPassword,
             'recoveryCode' => $recoveryCode,
-            'loginUrl' => portal_base_url() . $loginPath,
+            'loginUrl' => $staffLoginUrl,
             'message' => 'System user was activated with only the assigned role access.',
         ]);
     } catch (Throwable $error) {

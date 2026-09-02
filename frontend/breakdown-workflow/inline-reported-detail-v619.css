@@ -1,0 +1,17 @@
+/* V619 - Reported Problem expands the existing Job Card detail inside its queue card. */
+.queue-message-block.report-message{cursor:pointer}
+.queue-message-block.report-message::after{content:'Tap to open Job Card';display:block;margin-top:4px;font-size:9px;font-weight:900;letter-spacing:.03em;color:#b9ffe0;opacity:.9}
+.case-card.inline-detail-open>.queue-message-block.report-message::after{content:'Tap to close Job Card'}
+.case-card.inline-detail-open{cursor:default}
+.case-card>.detail-panel.inline-case-detail{display:block;width:100%;min-height:0;margin-top:10px;border:1px solid rgba(77,180,255,.55);border-radius:12px;background:#071d36;color:#fff;box-shadow:none;overflow:hidden}
+.case-card>.detail-panel.inline-case-detail .detail{padding:12px}
+.case-card>.detail-panel.inline-case-detail .detail-title-row{gap:8px}
+.case-card>.detail-panel.inline-case-detail .workflow-focus{margin:8px 0;padding:9px 10px}
+.case-card>.detail-panel.inline-case-detail .status-box{gap:5px}
+.case-card>.detail-panel.inline-case-detail .status-box>div{padding:7px}
+.case-card>.detail-panel.inline-case-detail .workflow-tabs{margin-top:9px}
+.case-card>.detail-panel.inline-case-detail .workflow-overview-grid{gap:6px;margin-top:7px}
+.case-card>.detail-panel.inline-case-detail .workflow-overview-grid>div{padding:8px}
+.case-card>.detail-panel.inline-case-detail .section{margin-top:10px}
+.case-card>.detail-panel.inline-case-detail .job,.case-card>.detail-panel.inline-case-detail .spare{margin:5px 0;padding:8px}
+@media(max-width:720px){.case-card>.detail-panel.inline-case-detail .detail{padding:9px}.case-card>.detail-panel.inline-case-detail .status-box{grid-template-columns:1fr 1fr}}

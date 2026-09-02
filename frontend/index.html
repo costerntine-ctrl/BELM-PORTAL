@@ -4,27 +4,50 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>BELM Portal — Management Console</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="manifest" href="/manifest.json?v=248-app-shortcut">
+    <meta name="theme-color" content="#151d31">
+    <link rel="icon" type="image/png" href="/app-icon-192.png">
+    <link rel="apple-touch-icon" href="/app-icon-192.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BELM Portal">
     <script>
       (function () {
-        var theme = localStorage.getItem("belm_theme");
-        if (theme !== "dark" && theme !== "light") theme = "light";
-        document.documentElement.classList.toggle("dark", theme === "dark");
-        document.documentElement.dataset.theme = theme;
+        try {
+          var isCustomer = !!localStorage.getItem('belm_customer_token');
+          var isCustomerHome = location.pathname === '/portal/dashboard' || location.pathname === '/portal/dashboard/';
+          var params = new URLSearchParams(location.search);
+          var hasExplicitSubview = params.has('view') || params.has('action') || params.has('machine') || params.has('machineId');
+          if (isCustomer && isCustomerHome && !hasExplicitSubview) location.replace('/portal-cwm/');
+        } catch (_) {}
       })();
     </script>
+    <script src="/theme-manager.js?v=647-fast-start"></script>
     <script type="module" crossorigin src="/assets/index-CAwFm9Z4.js"></script>
-    <script defer src="/portal-tools.js?v=27-request-reedit-photo-compression"></script>
-    <script defer src="/admin-sidebar.js?v=25-left-workflow"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BHFQaDFg.css">
-    <link rel="stylesheet" href="/belm-theme.css?v=27-request-reedit-photo-compression">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
+    <link rel="stylesheet" href="/belm-theme.css?v=647-fast-start">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=647-fast-start">
+    <link rel="stylesheet" href="/theme-global.css?v=647-fast-start">
+    <link rel="stylesheet" href="/v520-upgrades.css?v=647-fast-start">
+    <link rel="stylesheet" href="/machine-alert-zone-v612.css?v=647-fast-start">
+    <link rel="stylesheet" href="/password-visibility.css?v=647-fast-start">
+    <script defer src="/password-visibility.js?v=647-fast-start"></script>
+    <script>
+      (function(){
+        try{
+          if(location.pathname.startsWith('/tech') || localStorage.getItem('belm_tech_token')){
+            document.write('<script defer src="/technician-full-card-bootstrap-v654.js?v=657-tech-machine-card"><\/script>');
+          }
+        }catch(_){}
+      })();
+    </script>
+    <script defer src="/runtime-loader-v647.js?v=657-tech-machine-card"></script>
+    <script>
+      if ('serviceWorker' in navigator) window.addEventListener('load', () => {
+        setTimeout(() => navigator.serviceWorker.register('/belm-sw.js?v=657').catch(() => {}), 800);
+      }, {once:true});
+    </script>
   </head>
-  <body class="bg-slate-50">
-    <div id="root"></div>
-  </body>
+  <body class="bg-slate-50"><div id="root"></div></body>
 </html>

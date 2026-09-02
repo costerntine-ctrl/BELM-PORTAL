@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bank Controller — BELM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
+  <link rel="stylesheet" href="/bank-controller/app.css?v=395-bank-edit-audit">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+</head>
+<body class="management-page">
+  <header class="management-topbar">
+    <div><strong>BELM General Tech</strong><small>Bank accounts and withdrawals</small></div>
+    <div class="topbar-actions"><a class="button" href="/belm-workshop/">← Main Home</a></div>
+  </header>
+
+  <main class="management-shell">
+    <section class="management-hero">
+      <div>
+        <p class="eyebrow">Bank Controller</p>
+        <h1>Bank Accounts</h1>
+        <p>Select a bank account to view its balance, or add a new account and record withdrawals.</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="clearTestBankButton" class="secondary hidden" type="button">Clear TEST BANK Data</button>
+        <button id="addAccountButton" class="primary" type="button">+ Add bank account</button>
+      </div>
+    </section>
+
+    <div id="pageAlert" class="alert hidden"></div>
+
+    <section class="metrics-grid" id="companyMetrics" aria-label="Company-wide finance summary"></section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Select bank account</h2><p>Choose which account's balance and withdrawals to view.</p></div>
+        <select id="accountSelect"><option value="">Loading accounts…</option></select>
+      </div>
+      <p id="bankStorageStatus" class="muted" style="margin:8px 0 0;font-size:12px;font-weight:700">Loading bank accounts from PostgreSQL…</p>
+      <div id="accountDetail" class="account-detail hidden">
+        <div class="metrics-grid" id="accountMetrics"></div>
+        <div class="account-detail-actions">
+          <button id="editAccountButton" class="secondary" type="button">Edit this account</button>
+          <button id="addWithdrawalButton" class="primary" type="button">+ Record withdrawal</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="bankEditAuditPanel">
+      <div class="section-head">
+        <div><h2>Bank account edit log</h2><p>Who edited a bank account, when, and why.</p></div>
+        <button id="refreshBankEditAuditButton" class="secondary compact" type="button">Refresh log</button>
+      </div>
+      <p class="system-sender-note">System sender: <strong id="systemSenderEmail">info@belmgeneral.co.tz</strong> — reserved for portal/customer messages. Bank edits are attributed to the signed-in human Admin account.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date / time</th><th>Admin</th><th>Bank / account</th><th>Reason</th></tr></thead>
+          <tbody id="bankEditAuditRows"><tr><td colspan="4" class="empty">Loading bank edit history…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Recent withdrawals</h2><p>Latest 100 withdrawals across all accounts, newest first.</p></div>
+        <button id="refreshButton" class="secondary compact" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Bank / Account</th><th>Cheque / Ref.</th><th>Description</th><th>Amount</th><th>By</th></tr></thead>
+          <tbody id="withdrawalRows"><tr><td colspan="6" class="empty">Loading withdrawals…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="accountDialog">
+    <form id="accountForm" class="dialog-card">
+      <div class="dialog-head">
+        <div><p class="eyebrow">Bank Account</p><h2 id="accountDialogTitle">Add bank account</h2></div>
+        <button class="icon-close" data-close="accountDialog" type="button" aria-label="Close">×</button>
+      </div>
+      <input id="accountId" type="hidden">
+      <div id="accountFormAlert" class="alert error hidden"></div>
+      <label>Bank name<input id="bankName" required maxlength="120" placeholder="e.g. CRDB Bank"></label>
+      <label>Account name<input id="accountName" required maxlength="180" placeholder="e.g. BELM General Tech Service Ltd"></label>
+      <label>Account number<input id="accountNumber" required maxlength="100"></label>
+      <label>Opening balance (TZS)<input id="openingBalance" type="number" min="0" max="999999999999" step="0.01" value="0" required></label>
+      <section id="bankEditAuthorization" class="bank-edit-authorization hidden" aria-label="Bank account edit authorization">
+        <div class="bank-edit-auth-head">
+          <strong>EDIT AUTHORIZATION</strong>
+          <small id="bankEditActor">Signed-in BELM Admin</small>
+        </div>
+        <label>BELM Admin password<input id="bankEditAdminPassword" type="password" autocomplete="current-password" disabled></label>
+        <label>Edit PIN<input id="bankEditPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" disabled></label>
+        <label>Reason for edit<textarea id="bankEditReason" maxlength="500" rows="3" placeholder="Why is this bank account being changed?" disabled></textarea></label>
+        <p class="bank-edit-auth-note">Every edit is saved to the audit log with the signed-in admin, date/time, reason and before/after values.</p>
+      </section>
+      <div class="dialog-actions">
+        <button class="ghost" data-close="accountDialog" type="button">Cancel</button>
+        <button id="saveAccountButton" class="primary" type="submit">Save account</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="withdrawalDialog">
+    <form id="withdrawalForm" class="dialog-card">
+      <div class="dialog-head">
+        <div><p class="eyebrow">Bank Withdrawal</p><h2>Record withdrawal</h2></div>
+        <button class="icon-close" data-close="withdrawalDialog" type="button" aria-label="Close">×</button>
+      </div>
+      <div id="withdrawalFormAlert" class="alert error hidden"></div>
+      <label>Date<input id="withdrawalDate" type="date" required></label>
+      <label>Cheque / transaction number<input id="chequeNumber" required maxlength="120"></label>
+      <label>Description<input id="withdrawalDescription" required maxlength="500" placeholder="e.g. Fuel purchase for site visit"></label>
+      <label>Amount (TZS)<input id="withdrawalAmount" type="number" min="0.01" max="999999999999" step="0.01" required></label>
+      <label>Withdrawn by<input id="withdrawnBy" maxlength="255" placeholder="Name of person who withdrew the funds"></label>
+      <div class="dialog-actions">
+        <button class="ghost" data-close="withdrawalDialog" type="button">Cancel</button>
+        <button id="saveWithdrawalButton" class="primary" type="submit">Save withdrawal</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="customerDebtDialog" class="wide-dialog">
+    <div class="dialog-card compact">
+      <div class="dialog-head"><div><p class="eyebrow">Customer Debt</p><h2>Invoices owing &amp; settled</h2></div><button class="icon-close" id="closeCustomerDebtDialog" type="button">×</button></div>
+      <div id="customerDebtBody"></div>
+    </div>
+  </dialog>
+
+  <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=488-text-fit"></script>
+  <script src="/bank-controller/app.js?v=395-bank-edit-audit"></script>
+</body>
+</html>

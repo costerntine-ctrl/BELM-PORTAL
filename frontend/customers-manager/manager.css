@@ -1,16 +1,114 @@
 .admin-menu { display: flex; gap: 7px; padding: 10px 4vw; overflow-x: auto; border-bottom: 1px solid var(--line); background: var(--paper); }
 .admin-menu a { flex: 0 0 auto; padding: 8px 11px; color: var(--muted); border-radius: 8px; font-size: 11px; font-weight: 800; text-decoration: none; }
 .admin-menu a:hover,.admin-menu a.active { color: #fff; background: var(--green); }
-.customer-toolbar { display: grid; grid-template-columns: minmax(220px, 1fr) 230px; gap: 10px; margin: 18px 0 14px; }
+.customer-toolbar { display: grid; grid-template-columns: minmax(220px, 480px) 200px; gap: 10px; margin: 18px 0 14px; }
 .customer-toolbar input,.customer-toolbar select { margin: 0; }
-.customer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+.settings-panels-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0 14px; }
+.user-limit-panel { padding: 14px 16px; margin: 0 0 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.user-limit-panel.compact { margin: 0; padding: 8px 12px; }
+.user-limit-panel.compact .user-limit-panel-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.user-limit-panel.compact .user-limit-panel-head h2 { margin: 0; font-size: 12px; white-space: nowrap; }
+.user-limit-panel.compact .user-limit-panel-head h2 small { font-weight: 600; color: var(--muted); font-size: 10px; }
+.user-limit-panel.compact .user-limit-panel-head p { margin: 0 0 6px; width: 100%; color: var(--muted); font-size: 9.5px; line-height: 1.25; }
+.user-limit-panel.compact .user-limit-panel-row { grid-template-columns: 1fr 70px auto; gap: 5px; }
+.user-limit-panel.compact select, .user-limit-panel.compact input, .user-limit-panel.compact button { padding: 5px 7px; font-size: 10.5px; }
+.user-limit-panel.compact #machineryAdminCurrentInfo, .user-limit-panel.compact #userLimitCurrentInfo { margin: 4px 0 0; font-size: 9.5px; line-height: 1.3; min-height: 0; }
+.user-limit-panel-head h2 { margin: 0 0 3px; font-size: 14px; }
+.user-limit-panel-head p { margin: 0 0 10px; color: var(--muted); font-size: 11.5px; }
+.user-limit-panel-row { display: grid; grid-template-columns: 1fr 100px auto; gap: 8px; }
+.user-limit-panel-row select, .user-limit-panel-row input { margin: 0; }
+.machinery-admin-switch { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 7px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.machinery-admin-switch input { width: auto; margin: 0; }
+
+@media (max-width: 1100px) { .settings-panels-row { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 720px) { .settings-panels-row { grid-template-columns: 1fr; } }
+.machinery-admin-badge { display: inline-block; margin: 8px 0 0; padding: 4px 10px; border-radius: 999px; color: #6d28d9; background: #f1e9ff; font-size: 10.5px; font-weight: 800; }
+#userLimitCurrentInfo { margin: 8px 0 0; font-size: 11px; }
+@media (max-width: 560px) { .user-limit-panel-row { grid-template-columns: 1fr; } }
+.customer-grid { display: flex; flex-wrap: wrap; align-items: stretch; gap: 15px; }
+.customer-card { display: flex; flex-direction: column; width: 370px; box-sizing: border-box; }
 .customer-grid > .empty,.customer-grid > .loading { grid-column: 1 / -1; }
 .customer-card { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 17px; background: var(--paper); box-shadow: var(--shadow); }
 .customer-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 5px; background: var(--green); }
 .customer-card.inactive::before { background: #9aa6b5; }
-.customer-card-head { display: flex; align-items: start; justify-content: space-between; gap: 15px; padding: 20px 20px 14px; }
-.customer-card-head h2 { margin: 4px 0 5px; font: 750 21px "Space Grotesk", sans-serif; }
+
+/* V282 - customer card blinks to flag the worst machine status it
+   has, without needing to open View Machines to notice. */
+@keyframes belmCustomerCardBlinkRed {
+  0%, 100% { border-color: #d83b40; box-shadow: 0 0 0 0 rgba(216,59,64,.4); }
+  50% { border-color: #ff8a8e; box-shadow: 0 0 0 5px rgba(216,59,64,0); }
+}
+@keyframes belmCustomerCardBlinkYellow {
+  0%, 100% { border-color: #e5bd00; box-shadow: 0 0 0 0 rgba(229,189,0,.35); }
+  50% { border-color: #ffe27a; box-shadow: 0 0 0 5px rgba(229,189,0,0); }
+}
+.customer-card-blink-red {
+  border-width: 2px;
+  animation: belmCustomerCardBlinkRed 1.4s ease-in-out infinite;
+}
+.customer-card-blink-yellow {
+  border-width: 2px;
+  animation: belmCustomerCardBlinkYellow 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .customer-card-blink-red, .customer-card-blink-yellow { animation: none; }
+  .customer-card-blink-red { border-color: #d83b40; }
+  .customer-card-blink-yellow { border-color: #e5bd00; }
+}
+.customer-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 20px 20px 14px; }
+.customer-card-title { min-width: 0; flex: 1; }
+.customer-card-head h2 { margin: 4px 0 5px; font: 750 21px "Space Grotesk", sans-serif; overflow-wrap: anywhere; }
 .customer-card-head p { margin: 0; color: var(--muted); font-size: 11px; }
+.customer-card-head-controls { display: flex; flex: 0 0 auto; flex-direction: column; align-items: flex-end; gap: 8px; }
+.customer-provider-control { display: grid; grid-template-columns: auto 30px auto auto; align-items: center; gap: 5px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--canvas) 72%, var(--paper)); white-space: nowrap; }
+.customer-provider-side { color: var(--muted); font-size: 8px; font-weight: 850; letter-spacing: .02em; text-transform: uppercase; }
+.customer-provider-control .customer-provider-side:first-child { max-width: 92px; overflow: hidden; text-overflow: ellipsis; }
+.customer-provider-control.customer-on .customer-provider-side:first-child,
+.customer-provider-control.belm-on .customer-provider-side:nth-of-type(2) { color: var(--ink); }
+.customer-provider-switch { position: relative; display: inline-flex; width: 30px; height: 17px; cursor: pointer; }
+.customer-provider-switch input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.customer-provider-slider { position: absolute; inset: 0; border-radius: 999px; background: #a8b0ba; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: background .18s ease; }
+.customer-provider-slider::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.24); transition: transform .18s ease; }
+.customer-provider-switch input:checked + .customer-provider-slider { background: var(--green); }
+.customer-provider-switch input:checked + .customer-provider-slider::after { transform: translateX(13px); }
+.customer-provider-switch input:focus-visible + .customer-provider-slider { outline: 2px solid color-mix(in srgb, var(--green) 65%, #fff); outline-offset: 2px; }
+.customer-provider-switch input:disabled + .customer-provider-slider { opacity: .55; cursor: wait; }
+.customer-provider-state { min-width: 20px; color: #667085; font-size: 8px; font-weight: 900; text-align: center; }
+.customer-provider-control.belm-on .customer-provider-state { color: var(--green-dark, #087039); }
+html[data-theme="dark"] .customer-provider-control { background: color-mix(in srgb, var(--canvas) 45%, var(--paper)); }
+
+/* V405 - compact non-payment portal switch lives on each customer card. */
+.customer-nonpayment-control { display: grid; grid-template-columns: auto 30px auto; align-items: center; gap: 6px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--canvas) 72%, var(--paper)); white-space: nowrap; }
+.customer-nonpayment-label { color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: .025em; text-transform: uppercase; }
+.customer-nonpayment-switch { position: relative; display: inline-flex; width: 30px; height: 17px; cursor: pointer; }
+.customer-nonpayment-switch input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.customer-nonpayment-slider { position: absolute; inset: 0; border-radius: 999px; background: #d74a4f; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: background .18s ease; }
+.customer-nonpayment-slider::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.24); transition: transform .18s ease; }
+.customer-nonpayment-switch input:checked + .customer-nonpayment-slider { background: var(--green); }
+.customer-nonpayment-switch input:checked + .customer-nonpayment-slider::after { transform: translateX(13px); }
+.customer-nonpayment-switch input:focus-visible + .customer-nonpayment-slider { outline: 2px solid color-mix(in srgb, var(--green) 65%, #fff); outline-offset: 2px; }
+.customer-nonpayment-switch input:disabled + .customer-nonpayment-slider { opacity: .55; cursor: wait; }
+.customer-nonpayment-state { color: #b4232a; font-size: 7.5px; font-weight: 900; text-align: right; }
+.customer-nonpayment-control.portal-on .customer-nonpayment-state { color: var(--green-dark, #087039); }
+html[data-theme="dark"] .customer-nonpayment-control { background: color-mix(in srgb, var(--canvas) 45%, var(--paper)); }
+
+/* V444 - Workshop Module paid add-on switch, styled to match the
+   non-payment portal switch but with its own accent so the two toggles
+   are never confused with each other on the customer card. */
+.customer-workshop-control { display: grid; grid-template-columns: auto 30px auto; align-items: center; gap: 6px; padding: 4px 7px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--canvas) 72%, var(--paper)); white-space: nowrap; }
+.customer-workshop-label { color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: .025em; text-transform: uppercase; }
+.customer-workshop-switch { position: relative; display: inline-flex; width: 30px; height: 17px; cursor: pointer; }
+.customer-workshop-switch input { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+.customer-workshop-slider { position: absolute; inset: 0; border-radius: 999px; background: #9aa1ab; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); transition: background .18s ease; }
+.customer-workshop-slider::after { content: ""; position: absolute; top: 2px; left: 2px; width: 13px; height: 13px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.24); transition: transform .18s ease; }
+.customer-workshop-switch input:checked + .customer-workshop-slider { background: var(--accent, #2a6fdb); }
+.customer-workshop-switch input:checked + .customer-workshop-slider::after { transform: translateX(13px); }
+.customer-workshop-switch input:focus-visible + .customer-workshop-slider { outline: 2px solid color-mix(in srgb, var(--accent, #2a6fdb) 65%, #fff); outline-offset: 2px; }
+.customer-workshop-switch input:disabled + .customer-workshop-slider { opacity: .55; cursor: wait; }
+.customer-workshop-state { color: #6b7280; font-size: 7.5px; font-weight: 900; text-align: right; }
+.customer-workshop-control.workshop-on .customer-workshop-state { color: var(--accent, #2a6fdb); }
+html[data-theme="dark"] .customer-workshop-control { background: color-mix(in srgb, var(--canvas) 45%, var(--paper)); }
+
 .customer-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 18px; padding: 0 20px 16px; }
 .customer-info-grid span { display: block; color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .customer-info-grid strong { display: block; margin-top: 3px; overflow-wrap: anywhere; font-size: 12px; }
@@ -20,33 +118,1761 @@ html[data-theme="dark"] .portal-link-box { border-color: #285f45; background: #1
 .portal-link-box code { display: block; margin-top: 4px; overflow: hidden; color: var(--ink); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .portal-actions { display: flex; gap: 7px; margin-top: 9px; }
 .portal-actions button,.portal-actions a { flex: 1; padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; text-align: center; text-decoration: none; }
-.portal-actions a { color: #fff; border-color: var(--green); background: var(--green); }
+.portal-actions a { color: #fff; border-color: #2f7cf5; background: #2f7cf5; box-shadow: 0 5px 14px rgba(47,124,245,.24); }
+.portal-actions a:hover { border-color: #2563eb; background: #2563eb; }
+.portal-actions a:active { border-color: #1d4ed8; background: #1d4ed8; transform: translateY(1px); }
+.portal-actions a:focus-visible { outline: 3px solid rgba(47,124,245,.28); outline-offset: 2px; }
 .machine-section { padding: 15px 20px 18px; border-top: 1px solid var(--line); background: color-mix(in srgb, var(--paper) 84%, var(--canvas)); }
 .machine-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .machine-section-head h3 { margin: 0; font: 750 13px "Space Grotesk", sans-serif; }
 .machine-section-head button { padding: 6px 9px; color: var(--green-dark); border: 1px solid #b9dfca; border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
-.machine-list { display: grid; gap: 8px; }
-.machine-card { display: grid; grid-template-columns: 9px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
-.status-bar { align-self: stretch; border-radius: 999px; background: #9ba8b7; }
-.machine-card.GREEN .status-bar,.machine-card.OK .status-bar { background: var(--green); }
-.machine-card.YELLOW .status-bar,.machine-card.ATTENTION .status-bar { background: var(--yellow); }
-.machine-card.RED .status-bar,.machine-card.CRITICAL .status-bar { background: #d92d20; }
+.view-machines-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: 1px solid var(--green); border-radius: 10px; background: color-mix(in srgb, var(--green) 8%, var(--paper)); color: var(--green-dark); font-size: 13px; font-weight: 800; }
+
+.view-messages-button { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: 1px solid #2f7cf5; border-radius: 10px; background: color-mix(in srgb, #2f7cf5 8%, var(--paper)); color: #1a4fb0; font-size: 13px; font-weight: 800; cursor: pointer; }
+.view-messages-button span { padding: 2px 7px; border-radius: 999px; background: #2f7cf5; color: #fff; font-size: 10px; }
+.customer-messages-list { display: grid; gap: 10px; }
+.customer-message-row { padding: 12px 14px; border: 1px solid #cfe0fb; border-radius: 10px; background: #f2f7ff; }
+.customer-message-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.customer-message-head strong { color: #1a4fb0; font-size: 13px; }
+.customer-message-head .badge { background: #2f7cf5; color: #fff; }
+.customer-message-row p { margin: 6px 0 4px; color: #33475a; font-size: 12.5px; line-height: 1.5; }
+.customer-message-row small { color: var(--muted); font-size: 10.5px; }
+.view-machines-button:hover { background: color-mix(in srgb, var(--green) 16%, var(--paper)); }
+.machine-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.machine-card { display: flex; flex-direction: column; justify-content: space-between; gap: 18px; min-height: 280px; padding: 26px; border: 2px solid var(--line); border-radius: 12px; background: var(--paper); }
+.machine-card.GREEN,.machine-card.OK { border-color: #22c55e; background: linear-gradient(160deg, #eafaf1, var(--paper) 70%); }
+.machine-card.YELLOW,.machine-card.ATTENTION { border-color: #eab308; background: linear-gradient(160deg, #fffbea, var(--paper) 70%); }
+.machine-card.RED,.machine-card.CRITICAL { border-color: #ef4444; background: linear-gradient(160deg, #fdecec, var(--paper) 70%); }
 .machine-card h4 { margin: 0 0 3px; font-size: 12px; }
 .machine-card p { margin: 0; color: var(--muted); font-size: 10px; }
-.machine-card .machine-status { display: inline-block; margin-top: 5px; padding: 3px 6px; border-radius: 999px; color: var(--muted); background: var(--canvas); font-size: 9px; font-weight: 850; }
-.machine-card.GREEN .machine-status,.machine-card.OK .machine-status { color: #087039; background: #e5f8ee; }
-.machine-card.YELLOW .machine-status,.machine-card.ATTENTION .machine-status { color: #896500; background: #fff4c3; }
-.machine-card.RED .machine-status,.machine-card.CRITICAL .machine-status { color: #9b2424; background: #fdeaea; }
-html[data-theme="dark"] .machine-card.GREEN .machine-status,html[data-theme="dark"] .machine-card.OK .machine-status { color: #8fe5b7; background: #153b2b; }
-html[data-theme="dark"] .machine-card.YELLOW .machine-status,html[data-theme="dark"] .machine-card.ATTENTION .machine-status { color: #f6dc72; background: #403511; }
-html[data-theme="dark"] .machine-card.RED .machine-status,html[data-theme="dark"] .machine-card.CRITICAL .machine-status { color: #ffaaaa; background: #401d23; }
-.machine-actions { display: flex; gap: 5px; }
-.machine-actions button { padding: 5px 7px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 9px; font-weight: 800; }
+.machine-card .machine-status { display: inline-block; margin-top: 6px; padding: 5px 10px; border-radius: 4px; color: var(--muted); background: var(--canvas); font-size: 11px; font-weight: 850; }
+.machine-card.GREEN .machine-status,.machine-card.OK .machine-status { color: #fff; background: #16a34a; }
+.machine-card.YELLOW .machine-status,.machine-card.ATTENTION .machine-status { color: #1e293b; background: #eab308; }
+.machine-card.RED .machine-status,.machine-card.CRITICAL .machine-status { color: #fff; background: #dc2626; }
+.machine-alert-reason { display: block; margin-top: 6px; font-size: 10px; font-weight: 700; color: #1e293b; min-height: 14px; }
+.machine-card.GREEN .machine-alert-reason,.machine-card.OK .machine-alert-reason { color: #166534; }
+.machine-card.YELLOW .machine-alert-reason,.machine-card.ATTENTION .machine-alert-reason { color: #854d0e; }
+.machine-card.RED .machine-alert-reason,.machine-card.CRITICAL .machine-alert-reason { color: #991b1b; }
+.service-due-badge { display: inline-block; margin-top: 8px; padding: 5px 10px; border-radius: 4px; font-size: 10px; font-weight: 800; letter-spacing: .2px; background: var(--canvas); color: var(--muted); }
+.service-due-badge.GREEN { background: #e7f8ee; color: #166534; }
+.service-due-badge.YELLOW { background: #fffbea; color: #854d0e; }
+.service-due-badge.RED { background: #fdecec; color: #991b1b; }
+.operational-status-picker { display: block; margin-top: 10px; font-size: 9px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.operational-status-picker select { display: block; width: 100%; margin-top: 4px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 700; text-transform: none; letter-spacing: normal; }
+.operational-status-picker.op-NORMAL select { border-color: #b9dfca; background: #f0faf4; color: #166534; }
+.operational-status-picker.op-SERVICE_IN_PROGRESS select,
+.operational-status-picker.op-CHECKUP_IN_PROGRESS select,
+.operational-status-picker.op-MAINTENANCE_IN_PROGRESS select { border-color: #ead36a; background: #fffbea; color: #854d0e; }
+.operational-status-picker.op-GROUNDED select { border-color: #e7a09a; background: #fdecec; color: #991b1b; }
+.machine-actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 10px; border-top: 1px solid var(--line); }
+.machine-actions button { padding: 6px 10px; color: var(--ink); border: 1px solid var(--line); border-radius: 6px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .machine-actions button.delete { color: var(--red); }
-.customer-card-actions { display: flex; justify-content: flex-end; gap: 7px; padding: 11px 20px; border-top: 1px solid var(--line); }
+.machine-actions button.privacy-locked { color:#8b95a5; border-style:dashed; background:color-mix(in srgb, var(--canvas) 78%, var(--paper)); opacity:.82; cursor:not-allowed; }
+
+.machine-actions .belm-maintenance-process-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #6a3fa5;
+  border-radius: 6px;
+  background: #7a4fb5;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.machine-actions .belm-maintenance-process-link:hover { background: #6a3fa5; }
+.customer-card-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 7px; margin-top: auto; padding: 11px 20px; border-top: 1px solid var(--line); }
 .customer-card-actions button { padding: 7px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 10px; font-weight: 800; }
 .customer-card-actions button.delete { color: var(--red); }
+.customer-card-actions .view-machines-inline { margin-right: auto; color: var(--green-dark, #087039); border-color: var(--green); background: color-mix(in srgb, var(--green) 8%, var(--paper)); }
+
+.customer-card-actions button.action-blue {
+  color: #fff;
+  border-color: #2f7cf5;
+  background: #2f7cf5;
+}
+.customer-card-actions button.action-blue:hover { background: #1f69dd; border-color: #1f69dd; }
+.customer-card-actions button.action-yellow {
+  color: #3d2b00;
+  border-color: #e5bd00;
+  background: #f6cf2f;
+}
+.customer-card-actions button.action-yellow:hover { background: #ebc10d; border-color: #d9af00; }
 .credentials { display: grid; gap: 12px; }
 .credentials input { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-@media (max-width: 880px) { .customer-grid { grid-template-columns: 1fr; } }
-@media (max-width: 620px) { .customer-toolbar,.customer-info-grid { grid-template-columns: 1fr; } .machine-card { grid-template-columns: 8px 1fr; } .machine-actions { grid-column: 2; } }
+@media (max-width: 880px) { .customer-card { width: 100%; } }
+@media (max-width: 430px) {
+  .customer-card-head { flex-direction: column; }
+  .customer-card-head-controls { width: 100%; flex-direction: row; align-items: center; justify-content: space-between; }
+  .customer-provider-control { margin-left: auto; }
+}
+@media (max-width: 620px) { .customer-toolbar,.customer-info-grid { grid-template-columns: 1fr; } .machine-list { grid-template-columns: 1fr; } }
+
+.reports-list { display: grid; gap: 8px; max-height: 60vh; overflow-y: auto; }
+.report-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; }
+.report-item span { display: block; color: var(--muted); font-size: 10px; margin-top: 2px; }
+.report-download-link { padding: 8px 13px; border: 1px solid #1f9d55; border-radius: 8px; color: #0d6b38; background: #f4fbf7; font-size: 11px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+.report-download-link:hover { background: #e8f7ee; }
+.report-view-body { max-height: 60vh; overflow-y: auto; }
+.report-view-body table th, .report-view-body table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12px; }
+.checkup-items { display: grid; gap: 10px; margin-top: 10px; max-height: 40vh; overflow-y: auto; }
+.checkup-items label { display: grid; gap: 5px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.checkup-items input, .checkup-items select { padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; }
+.checkup-photo-uploader { display: grid; gap: 8px; }
+.checkup-photo-picker { display: grid; gap: 3px; padding: 12px; border: 1.5px dashed var(--line); border-radius: 10px; text-align: center; cursor: pointer; background: var(--canvas); }
+.checkup-photo-picker span { font-size: 12px; font-weight: 800; color: var(--ink); text-transform: none; }
+.checkup-photo-picker small { font-size: 10px; color: var(--muted); font-weight: 600; }
+.checkup-photo-picker input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.checkup-photo-preview { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.checkup-photo-preview img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); background: var(--canvas); }
+.checkup-photo-preview span { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: none; }
+img#checkupDisplayPhotoPreview.checkup-photo-preview {
+  display: block;
+  width: 130px;
+  height: 130px;
+  padding: 0;
+  object-fit: cover;
+  border-radius: 10px;
+}
+img#checkupDisplayPhotoPreview.checkup-photo-preview.hidden { display: none; }
+.report-top-summary { display: flex; flex-wrap: wrap; gap: 14px; margin: 0 0 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas); }
+.report-top-fact { display: grid; gap: 3px; min-width: 90px; }
+.report-top-fact span { font-size: 9.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.report-top-fact strong { font-size: 14px; color: var(--ink); }
+.report-top-photo { margin-left: auto; }
+.report-display-photo { width: 110px; height: 110px; object-fit: cover; border-radius: 9px; border: 1px solid var(--line); cursor: pointer; display: block; }
+.checkup-issue-note-display { margin-top: 4px; font-size: 11px; font-style: italic; color: #a4231b; }
+.checkup-issue-note { margin-top: 8px; padding: 10px; border: 1px dashed #f2cbc7; border-radius: 8px; background: #fff8f7; }
+.checkup-issue-note.hidden { display: none; }
+.checkup-issue-note textarea { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 7px; font: inherit; resize: vertical; }
+.required-mark { color: #b42318; font-weight: 900; }
+.checkup-photo-error { color: #dc2626; font-size: 11px; font-weight: 700; margin: 0; text-transform: none; }
+.evidence-photo-lightbox { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(4,10,20,.85); align-items: center; justify-content: center; padding: 24px; }
+.evidence-photo-lightbox.open { display: flex; }
+.evidence-photo-lightbox img { max-width: min(92vw, 900px); max-height: 88vh; border-radius: 10px; box-shadow: 0 20px 60px rgba(0,0,0,.5); object-fit: contain; }
+.evidence-photo-lightbox-close { position: fixed; top: 18px; right: 22px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgba(255,255,255,.15); color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+.evidence-photo-lightbox-close:hover { background: rgba(255,255,255,.28); }
+.two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.two-column.hidden { display: none; }
+.toggle-row { display: flex !important; flex-direction: row; align-items: center; gap: 8px; font-size: 12px !important; font-weight: 700; text-transform: none !important; }
+.toggle-row input { width: 17px; height: 17px; }
+.machine-status.GREEN { color: #fff; background: #16a34a; }
+.machine-status.YELLOW { color: #1e293b; background: #eab308; }
+.machine-status.RED { color: #fff; background: #dc2626; }
+
+.customer-feed { margin-top: 14px; padding: 14px; border: 1px solid #2f7cf5; border-radius: 12px; background: color-mix(in srgb, #2f7cf5 6%, var(--paper)); }
+.customer-feed-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.customer-feed-head strong { color: #1a4fb0; font-size: 14px; }
+.customer-feed-head .view-messages-button { padding: 6px 12px; border: 1px solid #2f7cf5; border-radius: 8px; background: #fff; color: #1a4fb0; font-size: 10px; font-weight: 800; cursor: pointer; }
+.customer-feed-body { display: grid; gap: 9px; }
+.customer-feed-row { padding: 11px 13px; border: 1px solid #cfe0fb; border-radius: 9px; background: #fff; }
+.customer-feed-row-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.customer-feed-row-head strong { color: #1a4fb0; font-size: 13px; }
+.customer-feed-row-head .badge { background: #2f7cf5; color: #fff; }
+.customer-feed-row p { margin: 6px 0 4px; color: #33475a; font-size: 13px; line-height: 1.5; }
+.customer-feed-row small { color: var(--muted); font-size: 10.5px; }
+.customer-feed-empty { margin: 0; padding: 10px; color: var(--muted); font-size: 12px; text-align: center; }
+
+/* V282 - Communication history had no Dark Mode styling at all, so it
+   stayed on its light blue/white background+border even when
+   everything around it was dark - that stuck-out brightness is what
+   read as a "glow". Given a proper black/dark tint instead. */
+html[data-theme="dark"] .customer-feed {
+  border-color: #1c2a3f !important;
+  background: #0e1826 !important;
+}
+html[data-theme="dark"] .customer-feed-head strong,
+html[data-theme="dark"] .customer-feed-row-head strong {
+  color: #dce6f2 !important;
+}
+html[data-theme="dark"] .customer-feed-head .view-messages-button {
+  border-color: #2a3950 !important;
+  background: #16233d !important;
+  color: #dce6f2 !important;
+}
+html[data-theme="dark"] .customer-feed-row {
+  border-color: #1c2a3f !important;
+  background: #111b2a !important;
+}
+html[data-theme="dark"] .customer-feed-row p {
+  color: #c7d2df !important;
+}
+html[data-theme="dark"] .customer-feed-empty {
+  color: #8fa2b9 !important;
+}
+.badge-resolve { border: 0; cursor: pointer; }
+.badge-resolve:hover { filter: brightness(1.1); }
+.badge-resolve:disabled { opacity: .5; cursor: wait; }
+.message-checkup-jump { grid-column: 1 / -1; margin-top: -6px; display: flex; gap: 8px; }
+.message-checkup-jump button { flex: 1; }
+.message-checkup-jump button:disabled { opacity: .5; cursor: not-allowed; }
+.message-email-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 2px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(2,132,199,.04);
+  cursor: pointer;
+}
+.message-email-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  flex: 0 0 auto;
+}
+.message-email-option span { display: grid; gap: 3px; }
+.message-email-option strong { font-size: 12px; }
+.message-email-option small { color: var(--muted); font-size: 11px; }
+
+/* Printed Checked Report must always come out as a clean white document,
+   matching what Customer and Technician get from the same report data —
+   never the app's own dark chrome (sidebar, other dialogs, dark theme). */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body > *:not(#reportViewDialog) { display: none !important; }
+  #reportViewDialog {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #101b31 !important;
+  }
+  #reportViewDialog .dialog-card {
+    max-height: none;
+    overflow: visible;
+    box-shadow: none;
+    background: #fff !important;
+    color: #101b31 !important;
+  }
+  #reportViewDialog .dialog-head-actions,
+  #reportViewDialog .icon-close {
+    display: none !important;
+  }
+  .report-view-body table th, .report-view-body table td {
+    border-bottom-color: #d7deea !important;
+    color: #101b31 !important;
+  }
+}
+
+/* V269 - Machine Type <-> Checklist Template sync panel */
+.machine-type-sync-panel { margin-bottom: 18px; padding: 0; overflow: hidden; }
+.machine-type-sync-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px 18px; border-bottom:1px solid var(--line); }
+.machine-type-sync-row:last-child { border-bottom:0; }
+.machine-type-sync-row strong { display:block; font-size:13px; }
+.machine-type-sync-row span { color:var(--muted); font-size:11.5px; }
+.machine-type-sync-none { color:var(--muted); font-size:11.5px; text-align:right; max-width:320px; }
+
+/* V275 - collapsed by default: a single compact toggle row instead of a
+   large always-open card, since this is an occasional check rather
+   than something needed on every visit. */
+.machine-type-sync-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px 18px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+.machine-type-sync-toggle span:first-child { font-weight: 800; font-size: 13px; color: var(--ink); }
+.machine-type-sync-toggle-status { margin-left: auto; color: var(--muted); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.machine-type-sync-toggle-arrow { color: var(--muted); font-size: 11px; transition: transform .15s ease; }
+.machine-type-sync-panel.collapsed .machine-type-sync-toggle-arrow { transform: rotate(-90deg); }
+.machine-type-sync-panel.collapsed .machine-type-sync-content { display: none; }
+.machine-type-sync-content { padding: 0 18px 16px; }
+.machine-type-sync-content > p.muted { margin: 0 0 12px; color: var(--muted); font-size: 11.5px; }
+.machine-type-sync-content #machineTypeSyncBody { border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+.machine-type-sync-content #machineTypeSyncBody p.empty { padding: 12px 18px; margin: 0; color: var(--muted); font-size: 12px; }
+
+/* V274 - divider between Checklist Reports and Job Card/Daily Report
+   sections inside the Reports dialog */
+.dialog-section-divider { display: flex; align-items: center; gap: 10px; margin: 16px 0 10px; color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.dialog-section-divider::before, .dialog-section-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* V285 - Uniform customer cards.
+   Long customer names must not push the portal/feed/actions lower than
+   neighbouring cards. Keep the same visual rhythm while preserving the
+   complete name in the DOM/title tooltip. */
+.customer-card-head {
+  min-height: 126px;
+  box-sizing: border-box;
+}
+.customer-card-title h2,
+.customer-card-head h2 {
+  display: -webkit-box;
+  min-height: 49px;
+  max-height: 49px;
+  overflow: hidden;
+  line-height: 1.16;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.customer-info-grid {
+  min-height: 112px;
+  box-sizing: border-box;
+  align-content: start;
+}
+.portal-link-box {
+  min-height: 112px;
+  box-sizing: border-box;
+}
+.customer-feed {
+  display: flex;
+  flex-direction: column;
+  height: 154px;
+  min-height: 154px;
+  margin: 0 20px 16px;
+  box-sizing: border-box;
+}
+.customer-feed-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.customer-card-actions {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 7px;
+  min-height: 115px;
+  box-sizing: border-box;
+}
+.customer-card-actions button {
+  width: 100%;
+  min-height: 36px;
+  white-space: normal;
+  line-height: 1.15;
+}
+.customer-card-actions .view-machines-inline {
+  grid-column: span 3;
+  margin-right: 0;
+}
+.customer-card-actions [data-quick-delete-machine] { grid-column: span 3; }
+.customer-card-actions [data-edit-customer],
+.customer-card-actions [data-reset-customer],
+.customer-card-actions [data-delete-customer] { grid-column: span 2; }
+.customer-card-actions [data-forget-customer] { grid-column: 1 / -1; }
+
+@media (max-width: 620px) {
+  .customer-card-head { min-height: auto; }
+  .customer-card-title h2,
+  .customer-card-head h2 { min-height: 46px; max-height: 46px; }
+  .customer-info-grid { min-height: 0; }
+  .portal-link-box { min-height: 0; }
+  .customer-feed { height: 160px; min-height: 160px; }
+  .customer-card-actions { grid-template-columns: 1fr 1fr; min-height: 0; }
+  .customer-card-actions .view-machines-inline,
+  .customer-card-actions [data-quick-delete-machine],
+  .customer-card-actions [data-edit-customer],
+  .customer-card-actions [data-reset-customer],
+  .customer-card-actions [data-delete-customer] { grid-column: span 1; }
+  .customer-card-actions [data-forget-customer] { grid-column: 1 / -1; }
+}
+
+/* V290 - machine Report Center: Checklist, Job Card and Daily reports
+   share one date/month/year filter and consistent View/Download actions. */
+.report-center-dialog-card { width: min(980px, 94vw); }
+.machine-report-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--paper) 82%, var(--canvas)); }
+.machine-report-tabs button { flex: 1 1 180px; padding: 9px 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 850; cursor: pointer; }
+.machine-report-tabs button.active { color: #fff; border-color: #2f7cf5; background: #2f7cf5; }
+.machine-report-filter { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) auto auto; gap: 8px; align-items: end; margin-bottom: 8px; padding: 12px; border: 1px solid var(--line); border-radius: 11px; background: color-mix(in srgb, var(--paper) 88%, var(--canvas)); }
+.machine-report-filter label { display: grid; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+.machine-report-filter select,.machine-report-filter input { min-width: 0; margin: 0; padding: 8px 9px; color: var(--ink); border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font: inherit; font-size: 11px; text-transform: none; }
+.machine-report-filter button { min-height: 35px; padding: 8px 12px; font-size: 10.5px; font-weight: 850; }
+.machine-report-period-label { margin: 0 0 10px; color: var(--muted); font-size: 10.5px; }
+.report-center-list .report-item { grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; }
+.report-center-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.report-center-actions button,.report-center-actions a { padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 10px; font-weight: 850; text-decoration: none; white-space: nowrap; cursor: pointer; }
+.report-center-actions button:first-child { color: #1a4fb0; border-color: #8bb7ff; background: color-mix(in srgb, #2f7cf5 8%, var(--paper)); }
+.report-center-actions .report-download-link { color: #fff; border-color: var(--green); background: var(--green); }
+.daily-report-summary { display: grid; gap: 3px; }
+.daily-report-summary small { color: var(--muted); font-size: 10px; }
+html[data-theme="dark"] .machine-report-tabs,
+html[data-theme="dark"] .machine-report-filter { background: #111b2a; }
+@media (max-width: 720px) {
+  .machine-report-filter { grid-template-columns: 1fr 1fr; }
+  .machine-report-filter button { width: 100%; }
+  .report-center-list .report-item { grid-template-columns: 1fr; }
+  .report-center-actions { justify-content: flex-start; }
+}
+@media (max-width: 460px) {
+  .machine-report-filter { grid-template-columns: 1fr; }
+}
+
+/* Customer card communication history uses the space freed by the removed
+   portal-link/details block. Keep the card narrow while letting the history
+   panel carry the useful vertical space. */
+.customer-feed {
+  height: 394px;
+  min-height: 394px;
+}
+@media (max-width: 620px) {
+  .customer-feed {
+    height: 320px;
+    min-height: 320px;
+  }
+}
+
+
+/* V368 - Keep the customer name at its established size, then place the
+   three most useful contact fields directly below it. The communication
+   history gives back only the vertical space used by these compact lines so
+   the overall customer-card footprint stays close to V367. */
+.customer-card-contact-lines {
+  display: grid;
+  gap: 3px;
+  margin-top: 7px;
+  min-width: 0;
+}
+.customer-card-contact-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+  font-size: 10px;
+  line-height: 1.25;
+}
+.customer-card-contact-row span {
+  color: var(--muted);
+  font-size: 8.5px;
+  font-weight: 850;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+.customer-card-contact-row b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.customer-card-head {
+  min-height: 174px;
+}
+.customer-feed {
+  height: 346px;
+  min-height: 346px;
+}
+@media (max-width: 620px) {
+  .customer-card-head { min-height: auto; }
+  .customer-card-contact-lines { width: 100%; }
+  .customer-feed {
+    height: 285px;
+    min-height: 285px;
+  }
+}
+
+/* V436 - BELM Admin Customer Overview mirrors the approved Customer Dashboard
+   action content. The only intentional label difference is Manage Customer.
+   The two customer ON/OFF controls above remain unchanged. */
+.customer-card-actions.customer-card-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 8px;
+  min-height: 0;
+  margin-top: auto;
+  padding: 12px 20px 14px;
+  border-top: 1px solid var(--line);
+  box-sizing: border-box;
+}
+.customer-card-actions.customer-card-quick-actions .customer-quick-action,
+.customer-card-actions.customer-card-secondary-actions .customer-quick-action {
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  padding: 10px 9px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+  text-decoration: none;
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 850;
+  line-height: 1.12;
+  white-space: normal;
+  cursor: pointer;
+}
+.customer-card-actions.customer-card-quick-actions .customer-quick-action-wide { grid-column: 1 / -1; }
+.customer-card-actions.customer-card-secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  min-height: 0;
+  padding: 5px 20px 14px;
+  box-sizing: border-box;
+}
+.customer-card-actions.customer-card-quick-actions .action-black { background: #05080e; border-color: #253247; color: #fff; }
+.customer-card-actions.customer-card-quick-actions .action-blue { background: #2f7cf5; border-color: #2f7cf5; color: #fff; }
+.customer-card-actions.customer-card-quick-actions .action-green { background: #21a957; border-color: #21a957; color: #fff; }
+.customer-card-actions.customer-card-quick-actions .action-yellow { background: #ffc928; border-color: #ffc928; color: #1b2230; }
+.customer-card-actions.customer-card-quick-actions .action-manage { background: #2f7cf5; border-color: #2f7cf5; color: #fff; }
+.customer-card-actions.customer-card-secondary-actions .action-petty { background: #0f8d75; border-color: #20b493; color: #fff; }
+.customer-card-actions.customer-card-secondary-actions .action-analysis { background: #174f86; border-color: #2d76b8; color: #fff; }
+.customer-card-actions.customer-card-secondary-actions .action-settings { background: #334155; border-color: #52647a; color: #fff; }
+.customer-card-actions .customer-quick-action:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.customer-card-legacy-actions { display: none !important; }
+
+@media (max-width: 620px) {
+  .customer-card-actions.customer-card-quick-actions,
+  .customer-card-actions.customer-card-secondary-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .customer-card-actions.customer-card-quick-actions .customer-quick-action,
+  .customer-card-actions.customer-card-secondary-actions .customer-quick-action {
+    min-height: 50px;
+    padding: 8px 5px;
+    font-size: 9px;
+  }
+  .customer-card-actions.customer-card-quick-actions .customer-quick-action-wide { grid-column: 1 / -1; }
+  .customer-card-actions.customer-card-secondary-actions .customer-quick-action:last-child { grid-column: 1 / -1; }
+}
+
+
+/* V373 - BELM Admin Manage Customer consolidates sensitive customer actions. */
+.manage-customer-dialog-card { max-width: 520px; }
+.manage-customer-summary { margin: 0 0 14px; color: var(--muted); font-size: 11px; }
+.manage-customer-summary strong { color: var(--ink); }
+.manage-customer-actions { display: grid; gap: 9px; }
+.manage-customer-action {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.manage-customer-action strong { font-size: 12px; }
+.manage-customer-action span { color: var(--muted); font-size: 9.5px; text-align: right; }
+.manage-customer-action:hover { background: color-mix(in srgb, var(--paper) 88%, var(--canvas)); }
+.manage-customer-action.edit { border-color: #e5bd00; }
+.manage-customer-action.reset { border-color: #2f7cf5; }
+.manage-customer-action.delete { border-color: #e07171; }
+.manage-customer-action.forget { color: #b42318; border-color: #d92d20; }
+.manage-customer-action.forget span { color: #b42318; }
+.manage-customer-action[hidden] { display: none !important; }
+@media (max-width: 620px) {
+  .customer-card-actions.customer-card-quick-actions .customer-quick-action { font-size: 7.7px; padding-left: 2px; padding-right: 2px; }
+  .manage-customer-action { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .manage-customer-action span { text-align: left; }
+}
+
+
+/* V374 - Users Control lives inside Manage Customer; default portal-user limit remains 3. */
+.manage-customer-action.users { border-color: #21a957; }
+.customer-users-control-dialog-card { max-width: 480px; }
+.customer-users-control-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin: 8px 0 12px;
+}
+.customer-users-control-stats > div {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  padding: 11px 12px;
+}
+.customer-users-control-stats span { display: block; color: var(--muted); font-size: 9px; margin-bottom: 4px; }
+.customer-users-control-stats strong { font-size: 18px; color: var(--ink); }
+.customer-users-control-limit-field { display: grid; gap: 6px; margin-top: 6px; }
+.customer-users-control-limit-field span { font-size: 10px; font-weight: 700; color: var(--ink); }
+.customer-users-control-limit-field input { width: 100%; }
+.customer-users-control-note { margin: 8px 0 0; font-size: 9.5px; line-height: 1.45; }
+
+/* V375 - BELM Admin > Customers & Machines > View Customer Machine.
+   Match each machine card to the approved customer-card footprint while
+   keeping + Add machine outside the card and preserving all machine actions. */
+#machineListDialog .machine-list {
+  grid-template-columns: repeat(auto-fill, 390px);
+  align-items: stretch;
+  justify-content: start;
+  gap: 15px;
+}
+#machineListDialog .machine-card {
+  width: 390px;
+  height: 590px;
+  min-height: 590px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #machineListDialog .machine-card {
+    width: 100%;
+    height: 590px;
+    min-height: 590px;
+  }
+}
+
+
+/* V376 - Admin View Customer Machine: four readable actions on one bottom row. */
+#machineListDialog .machine-card .machine-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  align-items: stretch;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+#machineListDialog .machine-card .machine-actions > button,
+#machineListDialog .machine-card .machine-actions > a {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 7px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: normal;
+  line-height: 1.08;
+  font-size: 9px;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .machine-actions {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+  }
+  #machineListDialog .machine-card .machine-actions > button,
+  #machineListDialog .machine-card .machine-actions > a {
+    min-height: 38px;
+    padding: 6px 3px;
+    font-size: 8px;
+  }
+}
+
+
+/* V377 - BELM Admin only: machine management row below the four operational actions.
+   Customer View Customer Machine is intentionally untouched. */
+#machineListDialog .machine-card .machine-admin-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 7px;
+}
+#machineListDialog .machine-card .machine-admin-actions > button {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 4px;
+  border-radius: 9px;
+  font-size: 8.5px;
+  line-height: 1.08;
+  text-align: center;
+  white-space: normal;
+}
+#machineListDialog .machine-card .machine-admin-edit {
+  border-color: #2f80ed;
+}
+#machineListDialog .machine-card .machine-admin-delete {
+  border-color: #ef5350;
+  color: #ff6b6b;
+}
+#machineListDialog .machine-card .machine-admin-forget {
+  border-color: #d32f2f;
+  color: #ff4d4f;
+  background: rgba(211, 47, 47, .08);
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .machine-admin-actions { gap: 4px; }
+  #machineListDialog .machine-card .machine-admin-actions > button {
+    min-height: 32px;
+    padding: 5px 3px;
+    font-size: 8px;
+  }
+}
+
+/* V377 - Balance Activity Status inside the fixed-size BELM Admin machine card.
+   This is admin View Customer Machine only; the customer-facing machine view is untouched. */
+#machineListDialog .machine-card .operational-status-picker {
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 54px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--canvas);
+  line-height: 1.15;
+}
+#machineListDialog .machine-card .operational-status-picker select {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  margin-top: 0;
+  padding: 7px 8px;
+  box-sizing: border-box;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .operational-status-picker {
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: 6px;
+    min-height: 50px;
+    padding: 7px 8px;
+  }
+}
+
+
+
+/* V379 - Slightly wider machine identity area + Fleet Number reference badge.
+   Fleet badge width intentionally tracks the visual width of a model such as "SANY RSC45V". */
+#machineListDialog .machine-card .machine-title-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 12ch;
+  align-items: start;
+  gap: 10px;
+  width: 100%;
+}
+#machineListDialog .machine-card .machine-title-row h4 {
+  min-width: 0;
+  margin: 0 0 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#machineListDialog .machine-card .machine-fleet-number {
+  width: 12ch;
+  min-width: 12ch;
+  max-width: 12ch;
+  box-sizing: border-box;
+  display: grid;
+  gap: 1px;
+  padding: 5px 7px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--canvas);
+  text-align: left;
+  overflow: hidden;
+}
+#machineListDialog .machine-card .machine-fleet-number small {
+  color: var(--muted);
+  font-size: 7px;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+#machineListDialog .machine-card .machine-fleet-number b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+  font-size: 9px;
+  line-height: 1.1;
+}
+/* V444 - customer name tag shown only in the combined BELM FLEET / All
+   Machines view (openAllMachinesList), so each card is still identifiable
+   even though it's no longer grouped under one customer's dialog. */
+#machineListDialog .machine-card .machine-customer-tag {
+  display: inline-block;
+  margin: 2px 0 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft, #eef3ff);
+  color: var(--accent, #2a6fdb);
+  font-size: 8.5px;
+  font-weight: 900;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .machine-title-row { grid-template-columns: minmax(0, 1fr) 11ch; gap: 7px; }
+  #machineListDialog .machine-card .machine-fleet-number { width: 11ch; min-width: 11ch; max-width: 11ch; padding: 5px 6px; }
+}
+
+/* V382 - Machine alert/service range colors the entire BELM Admin machine card.
+   RED outranks YELLOW, which outranks GREEN. Alert copy remains high-contrast. */
+#machineListDialog .machine-card.machine-range-green {
+  border-color: #22c55e !important;
+  background: linear-gradient(165deg, #eafaf1 0%, #dcfce7 45%, #f8fffb 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(34,197,94,.035), 0 12px 28px rgba(34,197,94,.16) !important;
+}
+#machineListDialog .machine-card.machine-range-yellow {
+  border-color: #eab308 !important;
+  background: linear-gradient(165deg, #fffbea 0%, #fef3c7 48%, #fffdf5 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(234,179,8,.045), 0 12px 28px rgba(234,179,8,.18) !important;
+}
+#machineListDialog .machine-card.machine-range-red {
+  border-color: #ef4444 !important;
+  background: linear-gradient(165deg, #fdecec 0%, #fee2e2 48%, #fff7f7 100%) !important;
+  box-shadow: inset 0 0 0 9999px rgba(239,68,68,.055), 0 12px 30px rgba(239,68,68,.22) !important;
+}
+#machineListDialog .machine-card.machine-range-unknown {
+  border-color: #94a3b8 !important;
+}
+#machineListDialog .machine-alert-copy {
+  display: grid;
+  gap: 4px;
+  margin-top: 7px;
+  padding: 8px 10px;
+  border: 1px solid rgba(71,85,105,.22);
+  border-radius: 8px;
+  background: rgba(255,255,255,.72);
+  line-height: 1.32;
+}
+#machineListDialog .machine-alert-copy .machine-alert-reason {
+  display: block;
+  margin: 0;
+  min-height: 0;
+  color: #172033 !important;
+  font-size: 10.5px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+#machineListDialog .machine-alert-copy .machine-service-alert-copy {
+  color: #475569 !important;
+  font-size: 9.5px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+#machineListDialog .machine-card.machine-range-green .machine-alert-copy { border-color: rgba(22,163,74,.38); background: rgba(240,253,244,.88); }
+#machineListDialog .machine-card.machine-range-green .machine-alert-copy .machine-alert-reason { color: #14532d !important; }
+#machineListDialog .machine-card.machine-range-yellow .machine-alert-copy { border-color: rgba(202,138,4,.44); background: rgba(254,249,195,.90); }
+#machineListDialog .machine-card.machine-range-yellow .machine-alert-copy .machine-alert-reason { color: #713f12 !important; }
+#machineListDialog .machine-card.machine-range-red .machine-alert-copy { border-color: rgba(220,38,38,.44); background: rgba(254,226,226,.92); }
+#machineListDialog .machine-card.machine-range-red .machine-alert-copy .machine-alert-reason { color: #7f1d1d !important; }
+
+/* V383 - BELM Admin machine alert blinking.
+   RED blinks clearly, YELLOW pulses slowly, GREEN stays steady.
+   The effect is drawn around the whole card so alert text remains readable. */
+#machineListDialog .machine-card.machine-range-red,
+#machineListDialog .machine-card.machine-range-yellow {
+  position: relative;
+  isolation: isolate;
+}
+#machineListDialog .machine-card.machine-range-red::after,
+#machineListDialog .machine-card.machine-range-yellow::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 4;
+}
+#machineListDialog .machine-card.machine-range-red::after {
+  border: 3px solid rgba(239,68,68,.96);
+  box-shadow: 0 0 0 2px rgba(239,68,68,.20), 0 0 26px rgba(239,68,68,.72);
+  animation: belm-machine-red-blink 0.9s steps(2, end) infinite;
+}
+#machineListDialog .machine-card.machine-range-yellow::after {
+  border: 3px solid rgba(234,179,8,.88);
+  box-shadow: 0 0 0 2px rgba(234,179,8,.16), 0 0 22px rgba(234,179,8,.48);
+  animation: belm-machine-yellow-pulse 1.65s ease-in-out infinite;
+}
+#machineListDialog .machine-card.machine-range-green::after {
+  content: none;
+  animation: none;
+}
+@keyframes belm-machine-red-blink {
+  0%, 44% { opacity: 1; }
+  45%, 100% { opacity: .12; }
+}
+@keyframes belm-machine-yellow-pulse {
+  0%, 100% { opacity: .30; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.006); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #machineListDialog .machine-card.machine-range-red::after,
+  #machineListDialog .machine-card.machine-range-yellow::after {
+    animation: none !important;
+    opacity: .86;
+  }
+}
+
+/* V407 - BELM Admin machine message display.
+   The machine card already receives the latest Operator Report in the customer
+   payload. Give that message enough room to be read without disturbing the
+   fixed bottom action rows, while keeping machine condition/service range in
+   the same communication panel. */
+#machineListDialog .machine-card .machine-alert-copy {
+  min-height: 124px;
+  max-height: 154px;
+  padding: 9px 10px;
+  gap: 8px;
+  overflow: hidden;
+  align-content: start;
+}
+#machineListDialog .machine-card .machine-operator-message {
+  min-width: 0;
+  min-height: 68px;
+  max-height: 96px;
+  display: grid;
+  gap: 3px;
+  padding: 7px 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(37, 99, 235, .24);
+  border-radius: 8px;
+  background: rgba(37, 99, 235, .06);
+}
+#machineListDialog .machine-card .machine-operator-message.is-open {
+  border-color: rgba(245, 158, 11, .55);
+  background: rgba(245, 158, 11, .10);
+}
+#machineListDialog .machine-card .machine-message-kicker {
+  color: #2563eb !important;
+  font-size: 7.5px;
+  font-weight: 900;
+  line-height: 1.1;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+#machineListDialog .machine-card .machine-operator-message > strong {
+  display: block;
+  color: #172033 !important;
+  font-size: 10.5px;
+  font-weight: 850;
+  line-height: 1.42;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+#machineListDialog .machine-card .machine-operator-message > small {
+  color: #64748b !important;
+  font-size: 7.5px;
+  font-weight: 750;
+  line-height: 1.3;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+#machineListDialog .machine-card .machine-condition-message {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+#machineListDialog .machine-card .machine-condition-message .machine-alert-reason,
+#machineListDialog .machine-card .machine-condition-message .machine-service-alert-copy {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+@media (max-width: 620px) {
+  #machineListDialog .machine-card .machine-alert-copy {
+    min-height: 116px;
+    max-height: 146px;
+    padding: 8px;
+  }
+  #machineListDialog .machine-card .machine-operator-message {
+    min-height: 64px;
+    max-height: 90px;
+  }
+}
+
+
+/* ========================================================================
+   V409 - Compact Machine Card parity
+   BELM Admin > Customers & Machines > View Machine.
+   Uses the approved 390 x 590 footprint while adopting the dark industrial
+   dashboard treatment requested for both BELM and Customer machine views.
+   ======================================================================== */
+#machineListDialog .machine-list {
+  grid-template-columns: repeat(auto-fill, 390px) !important;
+  gap: 15px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 {
+  width: 390px !important;
+  height: 590px !important;
+  min-height: 590px !important;
+  max-height: 590px !important;
+  max-width: 100% !important;
+  padding: 15px !important;
+  gap: 0 !important;
+  justify-content: flex-start !important;
+  overflow: hidden !important;
+  color: #eef6ff !important;
+  border: 2px solid #66d957 !important;
+  border-radius: 14px !important;
+  background:
+    radial-gradient(circle at 88% 7%, rgba(43, 126, 83, .18), transparent 13rem),
+    linear-gradient(160deg, #0b1725 0%, #08121f 58%, #07101b 100%) !important;
+  box-shadow: 0 16px 34px rgba(2, 10, 20, .30), inset 0 0 32px rgba(49, 190, 98, .025) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 > div:first-child {
+  min-width: 0;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-title-row {
+  grid-template-columns: minmax(0, 1fr) 90px !important;
+  gap: 10px !important;
+  align-items: start !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-title-row h4 {
+  margin: 1px 0 4px !important;
+  color: #f8fbff !important;
+  font: 900 17px/1.08 "Space Grotesk", Inter, system-ui, sans-serif !important;
+  letter-spacing: -.02em;
+}
+#machineListDialog .machine-card.machine-card-v409 > div:first-child > p {
+  margin: 0 0 7px !important;
+  color: #b6c4d5 !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-fleet-number {
+  width: 90px !important;
+  min-width: 90px !important;
+  max-width: 90px !important;
+  min-height: 48px !important;
+  padding: 7px 9px !important;
+  border: 1px solid #31475e !important;
+  border-radius: 9px !important;
+  background: rgba(4, 12, 22, .74) !important;
+  box-shadow: inset 0 0 14px rgba(58, 138, 91, .05) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-fleet-number small {
+  color: #9eafc1 !important;
+  font-size: 7px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-fleet-number b {
+  margin-top: 2px;
+  color: #f3f7fb !important;
+  font-size: 10px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-status {
+  margin-top: 1px !important;
+  padding: 5px 10px !important;
+  border: 1px solid #2d435a !important;
+  border-radius: 7px !important;
+  color: #f1f5f9 !important;
+  background: #0b1726 !important;
+  font-size: 9px !important;
+  font-weight: 900 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-alert-copy {
+  min-height: 112px !important;
+  max-height: 112px !important;
+  margin-top: 8px !important;
+  padding: 8px 9px !important;
+  gap: 6px !important;
+  overflow: hidden !important;
+  border: 1px solid #345d3e !important;
+  border-radius: 10px !important;
+  background: rgba(5, 15, 24, .72) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message {
+  min-height: 55px !important;
+  max-height: 55px !important;
+  padding: 6px 7px !important;
+  gap: 2px !important;
+  border-color: #28415c !important;
+  border-radius: 8px !important;
+  background: rgba(14, 32, 50, .82) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message.is-open {
+  border-color: rgba(245, 180, 48, .62) !important;
+  background: rgba(84, 54, 11, .27) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-message-kicker {
+  color: #67d65e !important;
+  font-size: 6.8px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message > strong {
+  color: #edf6ff !important;
+  font-size: 8.4px !important;
+  line-height: 1.25 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-operator-message > small {
+  color: #8ea1b5 !important;
+  font-size: 6.5px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-condition-message {
+  gap: 1px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-condition-message .machine-alert-reason {
+  color: #69d65d !important;
+  font-size: 8.7px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-condition-message .machine-service-alert-copy {
+  color: #c8d3df !important;
+  font-size: 7.6px !important;
+  font-weight: 750 !important;
+  line-height: 1.2 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .service-due-badge {
+  display: flex !important;
+  min-height: 42px !important;
+  margin-top: 8px !important;
+  padding: 8px 10px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 1px solid #5fce57 !important;
+  border-radius: 9px !important;
+  color: #182334 !important;
+  background: linear-gradient(180deg, #f5f7f4, #dfe6e3) !important;
+  box-shadow: 0 5px 15px rgba(55, 206, 88, .12) !important;
+  font-size: 9.2px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  text-align: center !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .service-due-badge.YELLOW {
+  border-color: #e0ad22 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .service-due-badge.RED {
+  border-color: #ef5350 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .operational-status-picker {
+  grid-template-columns: 86px minmax(0, 1fr) !important;
+  min-height: 51px !important;
+  margin-top: 8px !important;
+  padding: 7px 8px !important;
+  border: 1px solid #263b52 !important;
+  border-radius: 9px !important;
+  color: #a9b9ca !important;
+  background: rgba(11, 24, 39, .88) !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  letter-spacing: .03em !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .operational-status-picker select {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 6px 26px 6px 9px !important;
+  border: 1px solid #38536e !important;
+  border-radius: 8px !important;
+  color: #f1f5f9 !important;
+  background: #0c1929 !important;
+  font-size: 9px !important;
+  font-weight: 850 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  margin-top: auto !important;
+  padding-top: 9px !important;
+  border-top: 1px solid #1d3145 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button,
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a {
+  min-height: 46px !important;
+  padding: 6px 3px !important;
+  border: 1px solid #2c465f !important;
+  border-radius: 9px !important;
+  color: #eef5fc !important;
+  background: linear-gradient(180deg, #12243a, #0c1a2b) !important;
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  text-decoration: none !important;
+  box-shadow: none !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button::before,
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a::before {
+  display: block;
+  margin-right: 4px;
+  color: #68db5f;
+  font-size: 12px;
+  line-height: 1;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button:nth-child(1)::before { content: "▤"; }
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button:nth-child(2)::before { content: "✓"; }
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > button:nth-child(3)::before { content: "⚙"; }
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a.belm-maintenance-process-link {
+  border-color: #8e66ef !important;
+  color: #fff !important;
+  background: linear-gradient(145deg, #8653ea, #6b2fc7) !important;
+  box-shadow: 0 7px 17px rgba(120, 66, 219, .26) !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-actions > a.belm-maintenance-process-link::before {
+  content: "▣";
+  color: #fff;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-actions {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 5px !important;
+  margin-top: 7px !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-actions > button {
+  min-height: 39px !important;
+  padding: 6px 3px !important;
+  border-radius: 9px !important;
+  color: #dbe8f5 !important;
+  background: #13253a !important;
+  font-size: 7.8px !important;
+  font-weight: 900 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-edit {
+  border-color: #517aa4 !important;
+}
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-delete,
+#machineListDialog .machine-card.machine-card-v409 .machine-admin-forget {
+  border-color: #d74646 !important;
+  color: #ff6b6b !important;
+  background: rgba(92, 24, 30, .32) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-green {
+  border-color: #66d957 !important;
+  background: radial-gradient(circle at 88% 7%, rgba(43,126,83,.18), transparent 13rem), linear-gradient(160deg,#0b1725,#08121f 58%,#07101b) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-yellow {
+  border-color: #e9b52e !important;
+  background: radial-gradient(circle at 88% 7%, rgba(197,146,33,.13), transparent 13rem), linear-gradient(160deg,#0b1725,#08121f 58%,#07101b) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-red {
+  border: 2px solid #ef5350 !important;
+  background: radial-gradient(circle at 88% 7%, rgba(183,49,49,.15), transparent 13rem), linear-gradient(160deg,#0b1725,#08121f 58%,#07101b) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-unknown {
+  border-color: #667c92 !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-green .machine-alert-copy,
+#machineListDialog .machine-card.machine-card-v409.machine-range-yellow .machine-alert-copy,
+#machineListDialog .machine-card.machine-card-v409.machine-range-red .machine-alert-copy {
+  background: rgba(5,15,24,.72) !important;
+}
+#machineListDialog .machine-card.machine-card-v409.machine-range-yellow .machine-condition-message .machine-alert-reason { color:#f4c542 !important; }
+#machineListDialog .machine-card.machine-card-v409.machine-range-red .machine-condition-message .machine-alert-reason { color:#ff6868 !important; }
+@media (max-width: 620px) {
+  #machineListDialog .machine-list { grid-template-columns: minmax(0, 1fr) !important; }
+  #machineListDialog .machine-card.machine-card-v409 {
+    width: 100% !important;
+    height: 590px !important;
+    min-height: 590px !important;
+  }
+}
+
+
+/* V416 - Operator Report + per-machine Machine Analysis inside Machine Report Center. */
+.machine-report-tabs button[data-report-tab="operator"] { border-color: color-mix(in srgb, #f5b800 34%, transparent); }
+.machine-report-tabs button[data-report-tab="analysis"] { border-color: color-mix(in srgb, #22c55e 34%, transparent); }
+.machine-report-tabs button[data-report-tab="operator"].active { color:#171717; border-color:#f5b800; background:#f5b800; }
+.machine-report-tabs button[data-report-tab="analysis"].active { color:#fff; border-color:#20a85a; background:#20a85a; }
+.machine-analysis-shell { display:grid; gap:12px; }
+.machine-analysis-kpis { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; }
+.machine-analysis-kpi { min-width:0; padding:12px; border:1px solid var(--line); border-radius:10px; background:color-mix(in srgb,var(--paper) 91%,var(--canvas)); }
+.machine-analysis-kpi span { display:block; color:var(--muted); font-size:9px; font-weight:850; letter-spacing:.035em; text-transform:uppercase; }
+.machine-analysis-kpi strong { display:block; margin-top:4px; color:var(--ink); font-size:18px; line-height:1.1; }
+.machine-analysis-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.machine-analysis-panel { min-width:0; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); }
+.machine-analysis-panel h3 { margin:0 0 9px; font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:.03em; }
+.machine-analysis-list { display:grid; gap:7px; }
+.machine-analysis-row { display:flex; justify-content:space-between; gap:14px; padding-bottom:7px; border-bottom:1px solid var(--line); font-size:10.5px; }
+.machine-analysis-row:last-child { padding-bottom:0; border-bottom:0; }
+.machine-analysis-row span { color:var(--muted); }
+.machine-analysis-row b { color:var(--ink); text-align:right; }
+.machine-analysis-faults { display:grid; gap:7px; }
+.machine-analysis-fault { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; padding:8px 9px; border:1px solid var(--line); border-radius:8px; background:color-mix(in srgb,var(--paper) 95%,var(--canvas)); }
+.machine-analysis-fault span { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; font-weight:750; }
+.machine-analysis-fault b { font-size:10px; }
+.operator-report-item { align-items:start; }
+.operator-report-message { display:grid; gap:4px; min-width:0; }
+.operator-report-message strong { font-size:11px; }
+.operator-report-message span { color:var(--muted); font-size:10px; }
+.operator-report-message p { margin:3px 0 0; color:var(--ink); font-size:10.5px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+@media (max-width:800px){ .machine-analysis-kpis{grid-template-columns:repeat(2,minmax(0,1fr));} }
+@media (max-width:620px){ .machine-analysis-grid{grid-template-columns:1fr;} }
+@media (max-width:430px){ .machine-analysis-kpis{grid-template-columns:1fr 1fr;} .machine-analysis-kpi strong{font-size:15px;} }
+
+/* ========================================================================
+   V417 - BELM Admin > Customers & Machines > View Machine.
+   Wide overview layout matching the visual scale of BELM Customer Overview.
+   Keeps all established machine actions and permissions, but replaces the old
+   390 x 590 fixed tile with a centered, readable 720px machine overview card.
+   ======================================================================== */
+#machineListDialog .dialog-card {
+  width: min(920px, 95vw) !important;
+  max-width: 920px !important;
+}
+#machineListDialog .machine-list {
+  grid-template-columns: minmax(0, 720px) !important;
+  justify-content: center !important;
+  gap: 22px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 {
+  position: relative !important;
+  width: min(720px, 100%) !important;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  max-width: 720px !important;
+  padding: 30px !important;
+  overflow: visible !important;
+  border-width: 1px !important;
+  border-radius: 22px !important;
+  background: linear-gradient(180deg,#10233a 0%,#0b1a2d 48%,#091725 100%) !important;
+  box-shadow: 0 24px 60px rgba(0,0,0,.34), inset 0 0 0 1px rgba(99,168,233,.04) !important;
+}
+#machineListDialog .machine-card.machine-card-v417::before {
+  content:"" !important;
+  position:absolute !important;
+  inset:0 0 auto !important;
+  z-index:4 !important;
+  height:7px !important;
+  border-radius:22px 22px 0 0 !important;
+  background:#708195 !important;
+  box-shadow:0 0 18px rgba(112,129,149,.42) !important;
+}
+#machineListDialog .machine-card.machine-card-v417.machine-range-green::before { background:#5cd85e !important; box-shadow:0 0 18px rgba(66,220,101,.58) !important; }
+#machineListDialog .machine-card.machine-card-v417.machine-range-yellow::before { background:#ffc928 !important; box-shadow:0 0 18px rgba(255,201,40,.52) !important; }
+#machineListDialog .machine-card.machine-card-v417.machine-range-red::before { background:#ef5350 !important; box-shadow:0 0 18px rgba(239,83,80,.54) !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-title-row {
+  grid-template-columns:minmax(0,1fr) 126px !important;
+  gap:18px !important;
+  padding-top:8px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-title-row h4 {
+  margin:0 0 8px !important;
+  font-size:clamp(25px,3.2vw,32px) !important;
+  line-height:1.05 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 > div:first-child > p {
+  margin:0 0 12px !important;
+  font-size:12px !important;
+  line-height:1.4 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-fleet-number {
+  width:126px !important; min-width:126px !important; max-width:126px !important; min-height:66px !important;
+  padding:10px 13px !important; border-radius:13px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-fleet-number small { font-size:9px !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-fleet-number b { margin-top:4px !important; font-size:14px !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-status {
+  margin-top:0 !important; padding:7px 12px !important; border-radius:9px !important; font-size:10.5px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+  min-height:0 !important; max-height:none !important; margin-top:14px !important; padding:14px !important;
+  display:grid !important; grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important; gap:12px !important;
+  border-radius:14px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+  min-height:96px !important; max-height:none !important; padding:12px 13px !important; gap:5px !important; border-radius:11px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-message-kicker { font-size:8px !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message > strong { font-size:11px !important; line-height:1.38 !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message > small { font-size:8px !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-condition-message {
+  min-height:96px !important; padding:12px 13px !important; gap:7px !important;
+  border:1px solid #28415c !important; border-radius:11px !important; background:rgba(14,32,50,.82) !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-condition-message .machine-alert-reason { font-size:12px !important; line-height:1.35 !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-condition-message .machine-service-alert-copy { font-size:9.5px !important; line-height:1.35 !important; }
+#machineListDialog .machine-card.machine-card-v417 .service-due-badge {
+  min-height:58px !important; margin-top:14px !important; padding:11px 15px !important; border-radius:12px !important; font-size:12px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .operational-status-picker {
+  grid-template-columns:145px minmax(0,1fr) !important; min-height:66px !important; margin-top:12px !important;
+  padding:10px 12px !important; border-radius:12px !important; font-size:10px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .operational-status-picker select {
+  min-height:44px !important; height:44px !important; padding:8px 34px 8px 13px !important; border-radius:10px !important; font-size:11px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions {
+  gap:10px !important; margin-top:18px !important; padding-top:16px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > button,
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > a {
+  min-height:64px !important; padding:10px 8px !important; border-radius:12px !important; font-size:10.5px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > button::before,
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > a::before { margin-right:7px !important; font-size:16px !important; }
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+  gap:9px !important; margin-top:12px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions > button {
+  min-height:46px !important; padding:9px 7px !important; border-radius:10px !important; font-size:9.5px !important;
+}
+@media (max-width:760px) {
+  #machineListDialog .dialog-card { width:96vw !important; }
+  #machineListDialog .machine-list { grid-template-columns:minmax(0,1fr) !important; justify-content:stretch !important; }
+  #machineListDialog .machine-card.machine-card-v417 { width:100% !important; max-width:none !important; padding:22px 16px 18px !important; border-radius:17px !important; }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row { grid-template-columns:minmax(0,1fr) 104px !important; gap:10px !important; }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row h4 { font-size:22px !important; }
+  #machineListDialog .machine-card.machine-card-v417 .machine-fleet-number { width:104px !important; min-width:104px !important; max-width:104px !important; min-height:58px !important; }
+  #machineListDialog .machine-card.machine-card-v417 .machine-alert-copy { grid-template-columns:1fr !important; }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  #machineListDialog .machine-card.machine-card-v417 .operational-status-picker { grid-template-columns:1fr !important; }
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions { grid-template-columns:1fr !important; }
+}
+
+/* ========================================================================
+   V420 - Customer Fleet machine card: move Activity Status to the lower
+   control area and give Operator Message more vertical room.
+   ======================================================================== */
+#machineListDialog .machine-card .machine-activity-status-bottom {
+  order: 20 !important;
+  margin-top: auto !important;
+  margin-bottom: 0 !important;
+}
+#machineListDialog .machine-card .machine-actions {
+  order: 21 !important;
+}
+#machineListDialog .machine-card .machine-admin-actions {
+  order: 22 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 > div:first-child {
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 0 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+  min-height: 190px !important;
+  align-items: stretch !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message,
+#machineListDialog .machine-card.machine-card-v417 .machine-condition-message {
+  min-height: 158px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message > strong {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+  grid-template-columns: 145px minmax(0,1fr) !important;
+  min-height: 66px !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions {
+  margin-top: 12px !important;
+}
+@media (max-width:760px) {
+  #machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+    min-height: 260px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+    min-height: 150px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-condition-message {
+    min-height: 88px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ========================================================================
+   V421 - BELM Admin Customer Fleet: preserve the same preferred ordering.
+   Operator Message/Condition get the vertical room; Activity Status is the
+   final control above a single-row set of primary actions.
+   ======================================================================== */
+#machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+  grid-template-columns: 1fr !important;
+  min-height: 0 !important;
+  gap: 10px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+  min-height: 150px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-condition-message {
+  min-height: 88px !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+  order: 20 !important;
+  margin-top: 18px !important;
+  margin-bottom: 0 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions {
+  order: 21 !important;
+  grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+  padding-top: 0 !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+  order: 22 !important;
+}
+@media (max-width:760px) {
+  #machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+    grid-template-columns: 1fr !important;
+    min-height: 0 !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+    min-height: 170px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-condition-message {
+    min-height: 94px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+    grid-template-columns: 105px minmax(0,1fr) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions {
+    grid-template-columns: repeat(4, minmax(0,1fr)) !important;
+    gap: 6px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions > button,
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions > a {
+    min-width: 0 !important;
+    min-height: 58px !important;
+    padding: 7px 2px !important;
+    font-size: 8.3px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: repeat(3, minmax(0,1fr)) !important;
+    gap: 6px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions > button {
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 7px 2px !important;
+    font-size: 7.7px !important;
+  }
+}
+
+/* ========================================================================
+   V468 - BELM Admin > Customer Fleet: responsive AUTO DISPLAY FIT.
+   - The fleet dialog grows with the viewport without becoming edge-to-edge.
+   - Machine cards auto-fit: two columns only when there is genuinely enough
+     horizontal room; otherwise one centered card is used.
+   - Cards keep their approved visual design, use natural content height and
+     their action buttons reflow from 4 -> 2 -> 1 columns as space narrows.
+   ======================================================================== */
+#machineListDialog .dialog-card {
+  width: min(1560px, 96vw) !important;
+  max-width: 1560px !important;
+  box-sizing: border-box !important;
+}
+
+#machineListDialog .machine-list {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(640px, 100%), 1fr)) !important;
+  align-items: start !important;
+  justify-content: stretch !important;
+  justify-items: center !important;
+  gap: clamp(16px, 1.8vw, 26px) !important;
+  width: 100% !important;
+}
+
+#machineListDialog .machine-card.machine-card-v417 {
+  container-type: inline-size;
+  width: 100% !important;
+  max-width: 760px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* Auto-fit the operational buttons to the actual card width. */
+#machineListDialog .machine-card.machine-card-v417 .machine-actions {
+  grid-template-columns: repeat(auto-fit, minmax(125px, 1fr)) !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)) !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > button,
+#machineListDialog .machine-card.machine-card-v417 .machine-actions > a,
+#machineListDialog .machine-card.machine-card-v417 .machine-admin-actions > button {
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Card-container breakpoints make the layout react to the card itself, even
+   when two cards share a large desktop window. */
+@container (max-width: 560px) {
+  #machineListDialog .machine-card.machine-card-v417 {
+    padding: 22px 16px 18px !important;
+    border-radius: 17px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row {
+    grid-template-columns: minmax(0, 1fr) 104px !important;
+    gap: 10px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row h4 {
+    font-size: clamp(20px, 6cqw, 25px) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-fleet-number {
+    width: 104px !important;
+    min-width: 104px !important;
+    max-width: 104px !important;
+    min-height: 58px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+    grid-template-columns: 105px minmax(0, 1fr) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important;
+  }
+}
+
+@container (max-width: 360px) {
+  #machineListDialog .machine-card.machine-card-v417 {
+    padding: 19px 12px 15px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-title-row {
+    grid-template-columns: 1fr !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-fleet-number {
+    width: min(150px, 100%) !important;
+    min-width: 0 !important;
+    max-width: 150px !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-activity-status-bottom {
+    grid-template-columns: 1fr !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions,
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Fallback/mobile rules for browsers or layouts where the card is narrower
+   than the normal desktop minimum. */
+@media (max-width: 700px) {
+  #machineListDialog .dialog-card {
+    width: 96vw !important;
+    max-width: 96vw !important;
+  }
+  #machineListDialog .machine-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 {
+    width: 100% !important;
+    max-width: none !important;
+  }
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 390px) {
+  #machineListDialog .machine-card.machine-card-v417 .machine-actions,
+  #machineListDialog .machine-card.machine-card-v417 .machine-admin-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ========================================================================
+   V475 - Customer Fleet single-scroll behavior.
+   The full-screen Machine Fleet view previously had three possible scroll
+   owners: the <dialog>, its .dialog-card, and the Operator Message panel.
+   On laptops this could trap the mouse wheel or make the right scrollbar
+   feel disconnected from the machine cards. Keep exactly one vertical scroll
+   surface and never allow horizontal drift.
+   ======================================================================== */
+#machineListDialog {
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+}
+#machineListDialog .dialog-card {
+  width: min(1560px, 100vw) !important;
+  max-width: 1560px !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  max-height: 100dvh !important;
+  margin: 0 auto !important;
+  padding: clamp(16px, 2vw, 28px) !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  scrollbar-gutter: stable !important;
+  -webkit-overflow-scrolling: touch;
+}
+#machineListDialog .dialog-head {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 30 !important;
+  margin: calc(-1 * clamp(16px, 2vw, 28px)) calc(-1 * clamp(16px, 2vw, 28px)) 18px !important;
+  padding: clamp(16px, 2vw, 28px) !important;
+  padding-bottom: 12px !important;
+  background: color-mix(in srgb, var(--paper) 94%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
+#machineListDialog #machineListBody,
+#machineListDialog .machine-list,
+#machineListDialog .machine-card {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+/* The message grows with its text; it must not capture wheel/touch scrolling. */
+#machineListDialog .machine-card.machine-card-v417 .machine-operator-message {
+  max-height: none !important;
+  overflow: visible !important;
+  overscroll-behavior: auto !important;
+}
+#machineListDialog .machine-card.machine-card-v417 .machine-alert-copy {
+  overflow: visible !important;
+}
+@media (max-width: 700px) {
+  #machineListDialog .dialog-card {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    padding: 14px 10px 20px !important;
+  }
+  #machineListDialog .dialog-head {
+    margin: -14px -10px 14px !important;
+    padding: 14px 10px 10px !important;
+  }
+}
+
+
+/* V480 - Customer Overview embedded inside PORTAL-BELM WM.
+   Remove duplicate admin chrome; the parent Workshop window owns Back/Sync. */
+html.belm-embedded body{overflow-x:hidden}
+html.belm-embedded .topbar,
+html.belm-embedded .admin-menu{display:none!important}
+html.belm-embedded .shell{width:min(100%,1440px);max-width:100%;padding-top:14px;padding-left:clamp(10px,2vw,24px);padding-right:clamp(10px,2vw,24px);box-sizing:border-box}
+html.belm-embedded .hero{margin-top:0}
+html.belm-embedded .customer-grid{min-width:0}
+@media(max-width:760px){
+  html.belm-embedded .shell{padding:10px 10px 24px}
+  html.belm-embedded .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  html.belm-embedded .customer-toolbar{grid-template-columns:1fr}
+}
+
+
+/* V505 - Customer Overview embedded in PORTAL-BELM WM inherits the dark workspace.
+   This only affects ?embed=1; standalone Customers Manager keeps its chosen theme. */
+html.belm-embedded{
+  --ink:#e7eef8!important;
+  --muted:#a7b2c4!important;
+  --line:#35445a!important;
+  --paper:#182235!important;
+  --canvas:#0c1322!important;
+  --shadow:0 18px 50px rgba(0,0,0,.35)!important;
+  background:#0b1728!important;
+  color-scheme:dark!important;
+}
+html.belm-embedded body,html.belm-embedded .shell{
+  background:#0b1728!important;
+  color:#e7eef8!important;
+}

@@ -1,0 +1,187 @@
+dialog.wide-dialog {
+  width: min(900px, 94vw);
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table-wrap th {
+  padding: 9px 10px;
+  text-align: left;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+  background: var(--canvas);
+}
+
+.table-wrap td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.table-wrap td.money {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted { color: var(--muted); }
+
+.receipt-chip {
+  display: inline-block;
+  margin: 1px 3px 1px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eefaf3;
+  border: 1px solid #a6d9bd;
+  color: #0a6b3d;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+dialog {
+  width: min(620px, 94vw);
+  max-height: 92vh;
+  padding: 0;
+  color: var(--ink);
+  border: 0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(7, 14, 28, .32);
+}
+
+dialog::backdrop {
+  background: rgba(12, 18, 31, .70);
+  backdrop-filter: blur(3px);
+}
+
+.dialog-card {
+  display: grid;
+  gap: 13px;
+  max-height: 92vh;
+  padding: 23px;
+  overflow-y: auto;
+}
+
+.dialog-card label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.dialog-card input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.dialog-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 5px;
+}
+
+.dialog-head h2 {
+  margin: 4px 0 0;
+  font: 750 23px "Space Grotesk", sans-serif;
+}
+
+.icon-close {
+  padding: 0;
+  color: var(--muted);
+  border: 0;
+  background: transparent;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 9px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.account-detail {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.account-detail.hidden {
+  display: none;
+}
+
+.account-detail-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+#accountSelect {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font-size: 13px;
+  min-width: 260px;
+}
+
+
+/* V395: protected bank-account edit authorization and human-admin audit. */
+.bank-edit-authorization {
+  display: grid;
+  gap: 11px;
+  margin-top: 4px;
+  padding: 14px;
+  border: 1px solid #e0b84c;
+  border-radius: 12px;
+  background: #fffaf0;
+}
+.bank-edit-authorization.hidden { display: none; }
+.bank-edit-auth-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.bank-edit-auth-head strong { color: #7a5500; font-size: 11px; letter-spacing: .06em; }
+.bank-edit-auth-head small { color: var(--muted); font-size: 10px; font-weight: 700; text-align: right; }
+.dialog-card textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  resize: vertical;
+}
+.bank-edit-auth-note, .system-sender-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.system-sender-note { margin: 0 0 12px; }

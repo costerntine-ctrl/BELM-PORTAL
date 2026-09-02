@@ -11,7 +11,7 @@
     ["customers", "Customers"],
     ["overview", "All Overview"],
     ["roles", "Roles & system users"],
-    ["service-requests", "Service requests"],
+    ["job-cards", "Job Cards"],
     ["spare-parts", "Spare parts"],
     ["billing", "Billing"],
     ["reports", "Reports & comparisons"],
@@ -21,12 +21,9 @@
     ["activity-log", "Activity log"],
   ];
 
-  function applyTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem("belm_theme", safeTheme);
-  }
-  applyTheme(localStorage.getItem("belm_theme") || "light");
+  // Dark/light mode is handled centrally by admin-sidebar.js (per-admin
+  // localStorage preference) — this page no longer sets its own theme or
+  // reads/writes a shared company-wide setting.
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -35,6 +32,7 @@
   async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token || ""}`,
@@ -83,14 +81,28 @@
     return roles.find((role) => role.id === roleId)?.name || "";
   }
 
+  function displayRoleName(name) {
+    return name === "Engineer" ? "Workshop Manager" : (name || "");
+  }
+
   function isTechnicianRole(roleId) {
     return roleName(roleId) === "Technician";
   }
 
   function renderRoleOptions(selected = "") {
     return `<option value="">Select role…</option>${roles.map((role) =>
-      `<option value="${escapeHtml(role.id)}" ${role.id === selected ? "selected" : ""}>${escapeHtml(role.name)}</option>`
+      `<option value="${escapeHtml(role.id)}" ${role.id === selected ? "selected" : ""}>${escapeHtml(displayRoleName(role.name))}</option>`
     ).join("")}`;
+  }
+
+  function renderUserRoleCheckboxes(selectedIds = []) {
+    document.getElementById("userRoles").innerHTML = roles.map((role) =>
+      `<label class="check-option"><input type="checkbox" value="${escapeHtml(role.id)}" ${selectedIds.includes(role.id) ? "checked" : ""}> ${escapeHtml(displayRoleName(role.name))}</label>`
+    ).join("");
+  }
+
+  function selectedUserRoleIds() {
+    return [...document.querySelectorAll("#userRoles input:checked")].map((input) => input.value);
   }
 
   function renderCustomerOptions(selected = "") {
@@ -117,10 +129,13 @@
       const pages = role.name === "Super Admin"
         ? "Full dashboard access"
         : (role.allowedPages || []).length
-          ? (role.allowedPages || []).map((page) => pageOptions.find(([key]) => key === page)?.[1] || page).join(", ")
+          ? (role.allowedPages || []).map((page) => {
+            const normalized = page === "service-requests" ? "job-cards" : page;
+            return pageOptions.find(([key]) => key === normalized)?.[1] || normalized;
+          }).filter((value, index, list) => list.indexOf(value) === index).join(", ")
           : "Technician app only / no admin dashboard pages";
       return `<article class="role-card">
-        <h3>${escapeHtml(role.name)}</h3>
+        <h3>${escapeHtml(displayRoleName(role.name))}</h3>
         <p>${escapeHtml(pages)}</p>
         ${builtIn
           ? '<span class="badge">Built-in role</span>'
@@ -131,9 +146,14 @@
 
   function renderUsers() {
     const query = document.getElementById("searchInput").value.trim().toLowerCase();
-    const filtered = users.filter((user) => [
-      user.name, user.email, user.role?.name, user.assignedCustomer?.name,
-    ].some((value) => String(value || "").toLowerCase().includes(query)));
+    const filtered = users.filter((user) => {
+      const rawRoles = user.roleNames || [user.role?.name];
+      const roleAliases = rawRoles.flatMap((name) => name === "Engineer"
+        ? ["Engineer", "Workshop Manager"]
+        : (name === "Workshop Manager" ? ["Workshop Manager", "Engineer"] : [name]));
+      return [user.name, user.email, ...rawRoles, ...roleAliases, user.assignedCustomer?.name]
+        .some((value) => String(value || "").toLowerCase().includes(query));
+    });
     const panel = document.getElementById("usersPanel");
     if (!filtered.length) {
       panel.className = "empty";
@@ -142,13 +162,14 @@
     }
     panel.className = "table-wrap";
     panel.innerHTML = `<table>
-      <thead><tr><th>Name</th><th>Email / phone</th><th>Role</th><th>Assigned customer</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Name</th><th>Email / phone</th><th>Role(s)</th><th>Assigned customer</th><th>Status</th><th></th></tr></thead>
       <tbody>${filtered.map((user) => {
         const isSelf = user.id === currentUser.id;
+        const roleLabel = (user.roleNames && user.roleNames.length ? user.roleNames : [user.role?.name || "—"]).map(displayRoleName).join(", ");
         return `<tr>
           <td><strong>${escapeHtml(user.name)}</strong>${isSelf ? ' <span class="badge">You</span>' : ""}</td>
           <td><div>${escapeHtml(user.email)}</div><div class="muted">${escapeHtml(user.phone || "—")}</div></td>
-          <td><strong>${escapeHtml(user.role?.name || "—")}</strong></td>
+          <td><strong>${escapeHtml(roleLabel)}</strong></td>
           <td>${escapeHtml(user.assignedCustomer?.name || (user.role?.name === "Technician" ? "Not assigned" : "All customers"))}</td>
           <td><span class="badge ${Number(user.isActive) === 1 ? "" : "off"}">${Number(user.isActive) === 1 ? "Active" : "Inactive"}</span></td>
           <td><div class="row-actions">
@@ -173,12 +194,20 @@
         api("/customers"),
       ]);
       updateMetrics();
-      renderRoles();
+      const pageParams = new URLSearchParams(window.location.search);
+      const roleParam = pageParams.get("role");
+      const technicianFocus = pageParams.get("technical") === "1" && roleParam === "Technician";
+      if (!technicianFocus) renderRoles();
+      if (roleParam) {
+        document.getElementById("searchInput").value = roleParam;
+        const heading = document.querySelector("h1, .page-title h1, header h1");
+        if (heading && roleParam === "Technician") heading.textContent = "TECHNICAL DEP — Technicians";
+        if (heading && roleParam === "Engineer") heading.textContent = "TECHNICAL DEP — Workshop Managers";
+      }
       renderUsers();
-      try {
-        const settings = await api("/settings");
-        if (["light", "dark"].includes(settings.displayTheme)) applyTheme(settings.displayTheme);
-      } catch (_) {}
+      const openParam = new URLSearchParams(window.location.search).get("open");
+      if (openParam === "addRole") openRole();
+      if (openParam === "addUser") openUser();
     } catch (error) {
       document.getElementById("usersPanel").className = "empty";
       document.getElementById("usersPanel").innerHTML = `${escapeHtml(error.message)}<br><a href="/admin/login">Go to admin login</a>`;
@@ -187,7 +216,7 @@
   }
 
   function updateCustomerField() {
-    const technician = isTechnicianRole(document.getElementById("userRole").value);
+    const technician = selectedUserRoleIds().some(isTechnicianRole);
     document.getElementById("customerField").classList.toggle("hidden", !technician);
     document.getElementById("assignedCustomer").required = technician;
     if (!technician) document.getElementById("assignedCustomer").value = "";
@@ -200,7 +229,8 @@
     document.getElementById("userName").value = user?.name || "";
     document.getElementById("userPhone").value = user?.phone || "";
     document.getElementById("userEmail").value = user?.email || "";
-    document.getElementById("userRole").innerHTML = renderRoleOptions(user?.role?.id || "");
+    document.getElementById("userRoles").innerHTML = "";
+    renderUserRoleCheckboxes(user?.roleIds || (user?.role?.id ? [user.role.id] : []));
     document.getElementById("assignedCustomer").innerHTML = renderCustomerOptions(user?.assignedCustomer?.id || "");
     document.getElementById("userActive").checked = user ? Number(user.isActive) === 1 : true;
     document.getElementById("emailField").classList.toggle("hidden", Boolean(user));
@@ -220,7 +250,7 @@
   }
 
   function showUserCredentials(user, credentials) {
-    const loginUrl = credentials.loginUrl || `${window.location.origin}/admin/login`;
+    const loginUrl = credentials.loginUrl || `${window.location.origin}/login`;
     document.getElementById("credentialsTitle").textContent = `Copy login — ${user.name}`;
     document.getElementById("systemCredentialEmail").value = user.email;
     document.getElementById("systemCredentialPassword").value = credentials.temporaryPassword || credentials.newPassword || "";
@@ -236,13 +266,24 @@
     const payload = {
       name: document.getElementById("userName").value.trim(),
       phone: document.getElementById("userPhone").value.trim(),
-      roleId: document.getElementById("userRole").value,
+      roleIds: selectedUserRoleIds(),
       assignedCustomerId: document.getElementById("assignedCustomer").value || null,
       isActive: document.getElementById("userActive").checked,
     };
+    if (payload.roleIds.length === 0) {
+      formError("userFormAlert", "Select at least one role.");
+      return;
+    }
     if (!id) {
       payload.email = document.getElementById("userEmail").value.trim();
       payload.password = document.getElementById("userPassword").value;
+    } else {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save user changes?",
+        message: `Confirm changes to ${payload.name}.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
     }
     const button = document.getElementById("saveUserButton");
     button.disabled = true;
@@ -276,7 +317,7 @@
 
   function renderAllowedPages(selected = []) {
     document.getElementById("allowedPages").innerHTML = pageOptions.map(([key, label]) =>
-      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${selected.includes(key) ? "checked" : ""}> ${escapeHtml(label)}</label>`
+      `<label class="check-option"><input type="checkbox" value="${escapeHtml(key)}" ${(selected.includes(key) || (key === "job-cards" && selected.includes("service-requests"))) ? "checked" : ""}> ${escapeHtml(label)}</label>`
     ).join("");
   }
 
@@ -298,6 +339,14 @@
       allowedPages: [...document.querySelectorAll("#allowedPages input:checked")].map((input) => input.value),
       permissions: {},
     };
+    if (id) {
+      const confirmation = await window.belmConfirmEdit({
+        title: "Save role changes?",
+        message: `Confirm changes to the "${payload.name}" role's access.`,
+      });
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
+    }
     const button = document.getElementById("saveRoleButton");
     button.disabled = true;
     button.textContent = "Saving…";
@@ -319,9 +368,14 @@
 
   async function resetPassword(id) {
     const user = users.find((item) => item.id === id);
-    if (!user || !confirm(`Reset password for ${user.name}?`)) return;
+    if (!user) return;
+    const confirmation = await window.belmConfirmEdit({
+      title: "Reset password?",
+      message: `Generate a new password for ${user.name}? The old password will stop working.`,
+    });
+    if (!confirmation) return;
     try {
-      const result = await api(`/users/${id}/reset-password`, { method: "PUT" });
+      const result = await api(`/users/${id}/reset-password`, { method: "PUT", body: JSON.stringify(confirmation) });
       showUserCredentials(user, result);
       showAlert("New login credentials generated. Copy them before closing the window.");
     } catch (error) {
@@ -331,9 +385,14 @@
 
   async function deleteUser(id) {
     const user = users.find((item) => item.id === id);
-    if (!user || !confirm(`Delete system user ${user.name}? The record will move to the Recycle Bin.`)) return;
+    if (!user) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete system user?",
+      message: `Delete system user ${user.name}? The record will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/users/${id}`, { method: "DELETE" });
+      await api(`/users/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("System user moved to the Recycle Bin.");
     } catch (error) {
@@ -345,7 +404,7 @@
   document.getElementById("addRoleButton").addEventListener("click", () => openRole());
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("searchInput").addEventListener("input", renderUsers);
-  document.getElementById("userRole").addEventListener("change", updateCustomerField);
+  document.getElementById("userRoles").addEventListener("change", updateCustomerField);
   document.getElementById("generatePassword").addEventListener("click", generatePassword);
   document.getElementById("copySystemCredentials").addEventListener("click", () => {
     copyText(

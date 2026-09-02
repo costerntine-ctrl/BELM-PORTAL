@@ -1,0 +1,170 @@
+:root { color-scheme:light; --navy:#151d31; --green:#00a651; --green2:#008640; --yellow:#ffd400; --canvas:#f4f7f5; --line:#dce6e0; --red:#b42318; }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; color:#182235; font-family:Inter,system-ui,sans-serif; background:var(--canvas); }
+.op-header { display:flex; align-items:center; gap:12px; padding:16px 20px; background:var(--navy); color:#fff; }
+.op-brand { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; background:var(--green); font-weight:900; }
+.op-header b { display:block; font-size:14px; }
+.op-header small { color:#9fb0c8; font-size:11px; }
+.op-exit-button { margin-left:auto; padding:8px 14px; border:1px solid rgba(255,255,255,.25); border-radius:9px; color:#fff; background:rgba(255,255,255,.08); font-size:12px; font-weight:800; cursor:pointer; }
+.op-exit-button:hover { background:rgba(255,255,255,.16); }
+
+main { max-width:520px; margin:0 auto; padding:20px 16px 60px; }
+
+.op-alert { margin-bottom:16px; padding:11px 14px; border-radius:10px; color:#087039; background:#eefaf3; border:1px solid #b9d8c8; font-size:13px; font-weight:700; }
+.op-alert.error { color:var(--red); background:#fff1f0; border-color:#f1c8c4; }
+.hidden { display:none !important; }
+
+.op-card { padding:22px 20px; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 10px 30px rgba(21,29,49,.06); }
+.op-eyebrow { margin:0 0 4px; color:var(--green2); font-size:11px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+.op-card h1 { margin:0 0 14px; font-size:22px; }
+.op-hint { margin:8px 0 0; color:#68778d; font-size:12px; }
+
+#loginForm { display:grid; gap:12px; }
+#loginForm label { display:grid; gap:6px; font-size:12px; font-weight:800; color:#394d60; }
+#loginForm input { padding:12px 13px; border:1px solid var(--line); border-radius:10px; font-size:15px; font:inherit; }
+
+.op-primary { width:100%; padding:14px; margin-top:6px; border:0; border-radius:11px; color:#fff; background:var(--green); font-size:15px; font-weight:800; cursor:pointer; }
+.op-primary:hover { background:var(--green2); }
+.op-primary:disabled { opacity:.6; cursor:not-allowed; }
+.op-secondary { width:100%; padding:13px; margin-top:10px; border:1px solid var(--line); border-radius:11px; color:#182235; background:#fff; font-size:14px; font-weight:800; cursor:pointer; }
+.op-logout { width:100%; padding:11px; margin-top:14px; border:0; background:none; color:#94a3b8; font-size:12px; font-weight:700; cursor:pointer; }
+
+.op-counter-card { display:grid; gap:10px; justify-items:center; padding:24px 16px; margin:14px 0; border:2px dashed var(--green); border-radius:14px; background:#f4fbf7; text-align:center; }
+.op-counter-card span { font-size:11px; font-weight:900; letter-spacing:.05em; color:#394d60; text-transform:uppercase; }
+.op-counter-card strong { font-size:52px; line-height:1; color:var(--green2); }
+.op-counter-button { width:100%; padding:16px; border:0; border-radius:12px; color:#fff; background:var(--green); font-size:16px; font-weight:900; cursor:pointer; }
+.op-counter-button:active { transform:scale(.98); }
+
+.op-toggle-row { display:grid; gap:10px; margin-bottom:14px; }
+.op-toggle { padding:16px; border:2px solid var(--line); border-radius:12px; background:#fff; font-size:14px; font-weight:800; text-align:left; cursor:pointer; }
+.op-toggle.active { border-color:var(--green); background:#f4fbf7; }
+#reportProblemButton.active { border-color:#f2b90a; background:#fff9e5; }
+#problemLabel { display:grid; gap:6px; margin-bottom:14px; font-size:12px; font-weight:800; color:#394d60; }
+#problemLabel textarea { padding:12px; border:1px solid var(--line); border-radius:10px; font:inherit; font-size:14px; resize:vertical; }
+
+
+/* V398 — Operator dashboard uses the approved Technician machine-card layout. */
+.op-dashboard-shell { display:grid; gap:18px; }
+.op-machine-dashboard { width:100%; }
+.op-dashboard-loading { padding:24px; border:1px solid var(--line); border-radius:16px; background:#fff; color:#68778d; text-align:center; font-size:13px; font-weight:800; }
+.op-dashboard-loading.error { color:var(--red); background:#fff1f0; border-color:#f1c8c4; }
+.op-machine-card { position:relative; display:flex; flex-direction:column; width:390px; max-width:100%; min-height:670px; margin:0 auto; padding:20px; overflow:hidden; border:1px solid #dbe4ed; border-radius:18px; background:#fff; box-shadow:0 12px 30px rgba(15,27,46,.085); }
+.op-machine-card::before { content:""; position:absolute; inset:0 0 auto; height:4px; z-index:3; background:#7f8da1; }
+.op-machine-card.status-green::before { background:#00a651; }
+.op-machine-card.status-yellow::before { background:#ffd400; }
+.op-machine-card.status-red::before { background:#e5484d; }
+.op-machine-card.status-red { border-color:#e5484d; box-shadow:0 0 0 2px rgba(229,72,77,.18),0 12px 30px rgba(15,27,46,.085); }
+.op-machine-card.status-yellow { border-color:#e9bd00; }
+.op-machine-card.status-green { border-color:#36b66c; }
+.op-machine-head { display:flex; align-items:center; justify-content:space-between; gap:14px; margin:-20px -20px 0; padding:28px 20px 18px; color:#fff; background:radial-gradient(circle at 94% 0,rgba(23,105,194,.26),transparent 11rem),linear-gradient(135deg,#111f35,#0a111d); }
+.op-dashboard-kicker { display:block; margin-bottom:7px; color:#8fa5c1; font-size:8px; font-weight:900; letter-spacing:.08em; }
+.op-machine-head h2 { margin:0; color:#fff; font-size:22px; line-height:1.1; }
+.op-fleet-badge { display:grid; min-width:118px; padding:9px 12px; border:1px solid rgba(255,255,255,.27); border-radius:10px; background:rgba(255,255,255,.06); }
+.op-fleet-badge small { color:#aebed2; font-size:8px; font-weight:900; text-transform:uppercase; }
+.op-fleet-badge b { margin-top:2px; color:#fff; font-size:11px; }
+.op-machine-subhead { margin:0 -20px 11px; padding:9px 20px; border-bottom:1px solid #e8eef4; background:#f8fafc; color:#66768a; font-size:9px; font-weight:800; letter-spacing:.035em; text-transform:uppercase; }
+.op-machine-health { display:grid; grid-template-columns:.78fr 1.22fr; gap:12px; padding:15px 16px; border-left:4px solid #7f8da1; border-radius:14px; background:#f8fafc; box-shadow:0 5px 18px rgba(15,27,46,.05); }
+.op-machine-health.status-green { border-left-color:#00a651; }
+.op-machine-health.status-yellow { border-left-color:#ffd400; }
+.op-machine-health.status-red { border-left-color:#e5484d; background:#fff7f7; }
+.op-machine-health span,.op-machine-data span,.op-service-grid span { display:block; color:#7a899d; font-size:8px; font-weight:900; letter-spacing:.06em; text-transform:uppercase; }
+.op-machine-health strong { display:block; margin-top:5px; color:#25364b; font-size:14px; }
+.op-machine-health small { display:block; margin-top:5px; color:#68778d; font-size:9px; line-height:1.35; }
+.op-check-stamp { display:grid; gap:3px; margin-top:9px; padding:9px 11px; border:1px solid rgba(0,166,81,.35); border-radius:10px; background:rgba(0,166,81,.07); }
+.op-check-stamp strong { color:#1b6b42; font-size:9px; }
+.op-check-stamp span { color:#607486; font-size:7.5px; font-weight:750; }
+.op-message-panel { min-height:148px; margin-top:9px; padding:10px 11px; display:grid; gap:9px; align-content:start; border:1px solid rgba(148,163,184,.35); border-radius:10px; background:#0f1a2a; color:#e8f0f8; }
+.op-operator-message,.op-condition-message { min-width:0; display:grid; gap:4px; }
+.op-operator-message { min-height:72px; max-height:132px; padding:8px 9px; overflow-y:auto; border:1px solid rgba(56,189,248,.28); border-radius:9px; background:rgba(14,165,233,.07); }
+.op-operator-message.is-open { border-color:rgba(245,158,11,.55); background:rgba(245,158,11,.10); }
+.op-message-kicker { color:#7e91aa; font-size:7.5px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+.op-operator-message strong { color:#eef5fc; font-size:10px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+.op-operator-message small { color:#8da0b8; font-size:7.5px; font-weight:750; line-height:1.35; }
+.op-condition-message strong { color:#eef5fc; font-size:9px; line-height:1.35; overflow-wrap:anywhere; }
+.op-condition-message > span:last-child { color:#b8c6d6; font-size:8px; font-weight:800; line-height:1.3; }
+.op-machine-details { margin-top:9px; border:1px solid #dbe4ed; border-radius:10px; background:#fff; overflow:hidden; }
+.op-machine-details summary { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:11px 12px; cursor:pointer; color:#34485e; font-size:10px; font-weight:900; text-transform:uppercase; }
+.op-machine-details summary span { color:#77879a; font-size:8px; font-weight:750; text-transform:none; }
+.op-machine-data { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 10px 10px; }
+.op-machine-data > div { padding:9px 10px; border:1px solid #e5ebf1; border-radius:9px; background:#fbfcfe; }
+.op-machine-data b { display:block; margin-top:3px; color:#26384d; font-size:10px; overflow-wrap:anywhere; }
+.op-activity-status { display:grid; grid-template-columns:minmax(0,.82fr) minmax(150px,1.18fr); gap:8px; align-items:center; margin-top:9px; padding:9px 10px; border:1px solid rgba(148,163,184,.35); border-radius:10px; background:rgba(248,250,252,.86); }
+.op-activity-status span { display:block; color:#52657b; font-size:9px; font-weight:900; letter-spacing:.05em; text-transform:uppercase; }
+.op-activity-status small { display:block; margin-top:2px; color:#7b8ca0; font-size:7.5px; font-weight:750; }
+.op-activity-value { min-height:36px; display:flex; align-items:center; padding:0 10px; border:1px solid #b8c6d6; border-radius:9px; background:#fff; color:#172033; font-size:9px; font-weight:850; }
+.op-service-panel { margin-top:9px; padding:10px; border:1px solid #dbe4ed; border-radius:10px; background:#f8fafc; }
+.op-service-panel.status-red { border-color:#f0a2a5; background:#fff6f6; }
+.op-service-panel.status-yellow { border-color:#ebcf62; background:#fffbea; }
+.op-service-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.op-service-head span { display:block; color:#7a899d; font-size:7.5px; font-weight:900; letter-spacing:.06em; }
+.op-service-head b { display:block; margin-top:2px; color:#293c51; font-size:9px; }
+.op-service-head > strong { color:#384b60; font-size:8px; }
+.op-service-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin-top:8px; }
+.op-service-grid > div { padding:7px; border:1px solid #e2e8ef; border-radius:8px; background:#fff; }
+.op-service-grid b { display:block; margin-top:3px; color:#26384d; font-size:9px; }
+.op-machine-actions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; width:100%; margin-top:auto; padding-top:16px; }
+.op-machine-actions button { min-width:0; min-height:42px; margin:0; padding:7px 4px; border-radius:9px; border:1px solid transparent; font-size:8.5px; font-weight:900; line-height:1.05; white-space:normal; text-align:center; cursor:pointer; }
+.op-machine-actions .report { color:#fff; background:#111827; border-color:#111827; }
+.op-machine-actions .checkup { color:#fff; background:#2196f3; border-color:#2196f3; }
+.op-machine-actions .parts { color:#fff; background:#56c94f; border-color:#56c94f; }
+.op-machine-actions .parts.is-closed,
+.op-machine-actions .parts:disabled { color:#98a6b8; background:#202b38; border-color:#45566a; cursor:not-allowed; opacity:.78; box-shadow:none; filter:none; }
+.op-machine-actions .parts.is-closed span { display:block; margin-top:3px; font-size:6.5px; letter-spacing:.07em; text-transform:uppercase; color:#f0b94d; }
+.op-machine-actions .jobcard { color:#2b2200; background:#f4b400; border-color:#f4b400; }
+.op-shift-tools { margin-top:0; }
+
+@media (max-width:520px) {
+  .op-machine-card { width:100%; min-height:640px; }
+  .op-machine-actions { gap:4px; padding-top:12px; }
+  .op-machine-actions button { font-size:7.5px; padding:6px 2px; }
+  .op-message-panel { min-height:138px; }
+}
+
+
+/* V399 — Operator Check Up modal and Operator Report comment field. */
+.op-checkup-dialog { width:min(560px,calc(100vw - 24px)); max-height:92vh; padding:0; border:0; border-radius:18px; background:transparent; box-shadow:0 24px 70px rgba(2,8,23,.34); }
+.op-checkup-dialog::backdrop { background:rgba(2,8,23,.66); backdrop-filter:blur(3px); }
+.op-checkup-card { display:grid; gap:15px; max-height:92vh; overflow:auto; padding:20px; border:1px solid #dbe4ed; border-radius:18px; background:#fff; }
+.op-checkup-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+.op-checkup-head span { color:#64748b; font-size:9px; font-weight:900; letter-spacing:.08em; }
+.op-checkup-head h2 { margin:4px 0 0; color:#172033; font-size:20px; }
+.op-checkup-close { width:36px; height:36px; border:1px solid #dbe4ed; border-radius:10px; background:#fff; color:#42546a; font-size:23px; line-height:1; cursor:pointer; }
+.op-checkup-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
+.op-checkup-grid label,.op-checkup-comment { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:900; }
+.op-checkup-grid select,.op-checkup-comment textarea { width:100%; padding:11px 12px; border:1px solid #cfd9e4; border-radius:10px; background:#fff; color:#172033; font:inherit; font-size:13px; }
+.op-checkup-comment textarea { min-height:116px; resize:vertical; line-height:1.45; }
+.op-checkup-comment small { color:#7b8ca0; font-size:9px; font-weight:700; }
+.op-checkup-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.op-checkup-actions .op-primary,.op-checkup-actions .op-secondary { margin:0; }
+@media (max-width:520px) { .op-checkup-grid { grid-template-columns:1fr; } .op-checkup-card { padding:16px; } }
+
+
+/* V486 - explicit Daily Report vs BELM Job Card choice */
+.op-report-mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+.op-report-mode-grid label{display:flex;gap:10px;align-items:flex-start;padding:13px;border:1px solid var(--op-line,#d7e1e8);border-radius:12px;cursor:pointer;background:rgba(255,255,255,.04)}
+.op-report-mode-grid input{margin-top:3px}
+.op-report-mode-grid span{display:grid;gap:3px}.op-report-mode-grid b{font-size:13px}.op-report-mode-grid small{font-size:11px;line-height:1.4;opacity:.75}
+@media(max-width:620px){.op-report-mode-grid{grid-template-columns:1fr}}
+
+
+/* V487 - responsive Machine Operator dashboard. Mobile-first, full workspace on PC. */
+.op-header{position:sticky;top:0;z-index:40;border-bottom:3px solid var(--yellow);box-shadow:0 4px 20px rgba(15,27,46,.12)}
+.op-header-title{min-width:0}.op-header-title b{font-size:15px}.op-header-title small{display:block;margin-top:2px}
+.op-theme-button{margin-left:auto;padding:9px 12px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:rgba(255,255,255,.08);color:#fff;font-size:11px;font-weight:850;cursor:pointer}
+.op-exit-button{margin-left:0}
+#loginSection,#signOutSection,#doneSection{max-width:520px;margin:0 auto}
+#shiftSection{width:100%}
+body:has(#shiftSection:not(.hidden)) main{max-width:1480px;padding:20px 20px 56px}
+.op-dashboard-shell{grid-template-columns:minmax(0,1fr) 300px;align-items:start}
+.op-machine-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,420px);gap:18px;align-items:start}
+.op-dashboard-overview{min-width:0;padding:18px;border:1px solid #dbe4ed;border-radius:18px;background:#fff;box-shadow:0 12px 30px rgba(15,27,46,.07)}
+.op-overview-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:4px 2px 16px;border-bottom:1px solid #e7edf3}
+.op-overview-head span{color:#64748b;font-size:9px;font-weight:900;letter-spacing:.08em}.op-overview-head h2{margin:4px 0 2px;color:#13233a;font-size:24px}.op-overview-head p{margin:0;color:#6b7b8f;font-size:11px;font-weight:700}
+.op-overview-status{min-width:128px;padding:10px 12px;border-radius:12px;border:1px solid #dbe4ed;background:#f8fafc}.op-overview-status span{display:block;color:#7b8ca0;font-size:8px;font-weight:900;text-transform:uppercase}.op-overview-status strong{display:block;margin-top:4px;font-size:12px}.op-overview-status.status-green{border-color:#9bd9b8;background:#effaf4;color:#087039}.op-overview-status.status-yellow{border-color:#ecd46d;background:#fffbea;color:#7a5a00}.op-overview-status.status-red{border-color:#efb0b3;background:#fff4f4;color:#9d1c22}
+.op-summary-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:16px}.op-summary-card{min-width:0;padding:13px;border:1px solid #dbe4ed;border-radius:13px;background:#fbfcfe}.op-summary-card span{display:block;color:#65758a;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.op-summary-card strong{display:block;margin-top:6px;color:#172033;font-size:14px}.op-summary-card small{display:block;margin-top:5px;color:#75869a;font-size:8px;line-height:1.3;overflow-wrap:anywhere}.op-summary-card.green{border-top:3px solid #00a651}.op-summary-card.yellow{border-top:3px solid #f4b400}.op-summary-card.red{border-top:3px solid #e5484d}.op-summary-card.blue{border-top:3px solid #2176d2}.op-summary-card.purple{border-top:3px solid #7a48c4}
+.op-quick-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:16px}.op-quick-actions button{min-height:82px;padding:13px;border:1px solid #b9e0c9;border-radius:13px;background:#effaf4;color:#0f5f36;text-align:left;cursor:pointer}.op-quick-actions button:nth-child(2){border-color:#ecd46d;background:#fff9df;color:#6f5300}.op-quick-actions button.danger{border-color:#efb0b3;background:#fff1f1;color:#981b1f}.op-quick-actions button.job{border-color:#b8ccef;background:#f1f6ff;color:#164d9b}.op-quick-actions b{display:block;font-size:11px}.op-quick-actions span{display:block;margin-top:5px;font-size:8px;font-weight:700;opacity:.78}
+.op-machine-card{width:100%;max-width:none;margin:0;min-height:0;height:auto}.op-shift-tools{position:sticky;top:88px}
+@media(max-width:1150px){.op-dashboard-shell{grid-template-columns:1fr}.op-shift-tools{position:static}.op-machine-dashboard{grid-template-columns:1fr 380px}.op-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:820px){body:has(#shiftSection:not(.hidden)) main{padding:14px 12px 44px}.op-machine-dashboard{grid-template-columns:1fr}.op-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.op-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.op-header{padding:12px 14px}.op-header-title small{display:none}}
+@media(max-width:520px){.op-theme-button{padding:8px 9px;font-size:9px}.op-header-title b{font-size:12px}.op-overview-head{display:grid}.op-overview-status{width:100%}.op-summary-grid{grid-template-columns:1fr 1fr;gap:8px}.op-summary-card{padding:11px}.op-summary-card strong{font-size:12px}.op-quick-actions{gap:8px}.op-quick-actions button{min-height:76px;padding:11px}.op-machine-card{border-radius:14px}.op-machine-health{grid-template-columns:1fr}.op-activity-status{grid-template-columns:1fr}.op-service-grid{grid-template-columns:1fr 1fr 1fr}.op-machine-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.op-machine-actions button{min-height:46px;font-size:9px}}
+@media(max-width:390px){.op-summary-grid,.op-quick-actions{grid-template-columns:1fr}.op-service-grid{grid-template-columns:1fr}.op-machine-actions{grid-template-columns:1fr 1fr}}

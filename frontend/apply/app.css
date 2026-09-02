@@ -21,6 +21,22 @@ h1 { color:var(--navy); font-size:clamp(31px,4vw,48px); line-height:1.08; letter
 .section-title { display:flex; align-items:center; gap:12px; margin:4px 0 18px; padding-top:4px; }
 .section-title:not(:first-child) { border-top:1px solid #edf1f5; margin-top:30px; padding-top:28px; }
 .section-title>span { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; background:var(--navy); color:var(--yellow); font-weight:900; }
+
+/* V447 - TECHNICAL DEP vs PORTAL-CWM registration choice */
+.registration-mode-choice { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }
+.registration-mode-option { display:block; cursor:pointer; }
+.registration-mode-option input { position:absolute; width:1px; height:1px; opacity:0; }
+.registration-mode-card {
+  display:block; padding:14px 16px; border:2px solid #e3e8ef; border-radius:12px;
+  background:#fff; transition:border-color .15s ease, background .15s ease;
+}
+.registration-mode-card b { display:block; font-size:14px; margin-bottom:4px; color:var(--navy); }
+.registration-mode-card small { display:block; color:#5b6472; font-size:12px; line-height:1.4; }
+.registration-mode-option input:checked + .registration-mode-card {
+  border-color:var(--navy); background:#f5f8ff;
+}
+.registration-mode-option input:focus-visible + .registration-mode-card { outline:2px solid var(--yellow); outline-offset:2px; }
+@media (max-width: 620px) { .registration-mode-choice { grid-template-columns:1fr; } }
 .section-title b,.section-title small { display:block; }.section-title small { color:#7b8997; margin-top:2px; font-size:11px; }
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; }
 .application-fields { display:block; }
@@ -30,6 +46,7 @@ input,select,textarea { width:100%; border:1px solid #c9d5e1; background:#fff; c
 input:focus,select:focus,textarea:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(0,166,81,.14); }
 select:disabled { background:#eef2f5; color:#8995a2; }
 .hint,.privacy { color:#7b8997; font-size:11px; font-weight:400; margin:0; }
+.privacy a { color:#5c6b7d; }
 .consent { display:flex; grid-template-columns:auto 1fr; align-items:flex-start; gap:9px; margin:20px 0; line-height:1.45; font-weight:500; }
 .consent input { width:16px; height:16px; margin-top:2px; }
 button,.secondary-button { display:inline-flex; justify-content:center; align-items:center; width:100%; min-height:48px; border:0; border-radius:10px; background:var(--green); color:#fff; font-weight:800; text-decoration:none; cursor:pointer; box-shadow:0 8px 20px rgba(0,166,81,.2); transition:.16s ease; }

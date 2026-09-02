@@ -15,6 +15,10 @@ services:
         value: production
       - key: PORTAL_URL
         value: https://portal.belmgeneraltech.co.tz
+      # Friendly links shared with customers. The main website routes /app/*
+      # to the portal wrapper included in public_website_patch/.
+      - key: PUBLIC_APP_URL
+        value: https://belmgeneraltech.co.tz
       - key: ALLOWED_ORIGINS
         value: https://belmgeneraltech.co.tz,https://www.belmgeneraltech.co.tz,https://portal.belmgeneraltech.co.tz
       - key: DATABASE_URL
@@ -23,6 +27,47 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      # Required only while the seeded Super Admin still has the locked/legacy
+      # bootstrap hash. Render prompts for this secret; use 12+ characters.
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
+      - key: INITIAL_ADMIN_ACTION_PIN
+        sync: false
+      # V350 safety: ordinary production deploys must never bootstrap an
+      # empty/recreated database silently. Set true only for a deliberate first install.
+      - key: ALLOW_FRESH_DATABASE_BOOTSTRAP
+        value: "false"
+      # Full database wipe endpoint is blocked in production unless this exact
+      # value is deliberately set by the server owner. Keep it false normally.
+      - key: ALLOW_FULL_DATABASE_RESET
+        value: "false"
+      - key: SMTP_HOST
+        value: ""
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        value: ""
+      - key: SMTP_PASS
+        value: ""
+      - key: SMTP_FROM_EMAIL
+        value: ""
+      - key: SMTP_FROM_NAME
+        value: BELM General Tech
+      - key: SMTP_SECURE
+        value: tls
+      # Optional automatic WhatsApp service-alert provider. The endpoint must
+      # accept JSON {to,message}. Leave blank to keep WhatsApp as PENDING_PROVIDER.
+      - key: BELM_WHATSAPP_API_URL
+        value: ""
+      - key: BELM_WHATSAPP_API_TOKEN
+        value: ""
+      # Optional SMS provider. Leave blank until a provider endpoint/token is configured.
+      - key: BELM_SMS_API_URL
+        value: ""
+      - key: BELM_SMS_API_TOKEN
+        value: ""
+      - key: BELM_SMS_SENDER
+        value: BELM
 
 databases:
   - name: belm-portal-db

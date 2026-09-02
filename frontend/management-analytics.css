@@ -186,6 +186,18 @@ textarea:focus {
   box-shadow: var(--shadow);
 }
 
+.settings-grid .panel {
+  padding: 15px;
+}
+
+.settings-grid .panel h2 {
+  font-size: 15px;
+}
+
+.settings-grid .panel p {
+  font-size: 12px;
+}
+
 .filters {
   flex-wrap: wrap;
 }
@@ -208,6 +220,17 @@ textarea:focus {
   font-weight: 700;
 }
 
+.sync-status {
+  width: 100%;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sync-status.ok { color: #087443; }
+.sync-status.syncing { color: var(--blue); }
+.sync-status.error { color: #b32636; }
+
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -216,11 +239,11 @@ textarea:focus {
 }
 
 .metric-card {
-  min-height: 124px;
-  padding: 17px;
+  min-height: 100px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-top: 4px solid var(--blue);
-  border-radius: 15px;
+  border-radius: 14px;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -228,26 +251,29 @@ textarea:focus {
 .metric-card.green { border-top-color: var(--green); }
 .metric-card.yellow { border-top-color: var(--yellow); }
 .metric-card.red { border-top-color: var(--red); }
+.metric-card.clickable { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.metric-card.clickable:hover { box-shadow: 0 8px 20px rgba(21,29,49,.12); transform: translateY(-1px); }
+.metric-card.clickable:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 .metric-card span {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 900;
-  letter-spacing: .06em;
+  letter-spacing: .05em;
   text-transform: uppercase;
 }
 
 .metric-card strong {
   display: block;
-  margin-top: 13px;
+  margin-top: 10px;
   color: var(--ink);
   font-family: "Space Grotesk", Inter, sans-serif;
-  font-size: clamp(24px, 3vw, 35px);
+  font-size: clamp(20px, 2.6vw, 30px);
 }
 
 .metric-card small {
   display: block;
-  margin-top: 7px;
+  margin-top: 6px;
   color: var(--muted);
   font-size: 9px;
 }
@@ -561,8 +587,22 @@ td select {
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.settings-grid .panel {
+  margin-bottom: 0;
+}
+
+.settings-grid .panel.wide {
+  grid-column: span 2;
+}
+
+@media (max-width: 1180px) {
+  .settings-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .settings-grid .panel.wide { grid-column: span 2; }
 }
 
 .settings-form {
@@ -594,6 +634,74 @@ td select {
 .theme-choice.active {
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(0, 169, 88, .12);
+}
+
+.toggle-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink, #1f2c42);
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+
+.toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
+}
+
+.announcement-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.announcement-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.announcement-item.inactive {
+  opacity: .55;
+}
+
+.announcement-item p {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.announcement-item small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.announcement-item button {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid #f3c8c4;
+  border-radius: 8px;
+  background: #fdeceb;
+  color: #a4231b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.announcement-list .empty {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 14px;
 }
 
 @media (max-width: 1100px) {
@@ -631,3 +739,6 @@ td select {
   .panel,
   .metric-card { break-inside: avoid; box-shadow: none; }
 }
+
+/* V210 UX CLEANUP - action first on the Admin overview */
+.admin-action-center{margin-bottom:14px;overflow:hidden;border-left:4px solid #f2c318}.admin-action-center .metrics-grid{padding:14px;margin:0}.admin-action-center .metric-card{min-height:112px}.overview-disclosure{margin-bottom:14px;overflow:hidden}.overview-disclosure>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;list-style:none;padding:15px 17px;cursor:pointer}.overview-disclosure>summary::-webkit-details-marker{display:none}.overview-disclosure>summary div strong,.overview-disclosure>summary div span{display:block}.overview-disclosure>summary div strong{font-size:15px}.overview-disclosure>summary div span{margin-top:3px;color:var(--muted);font-size:11px}.overview-disclosure>summary>b{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#101b31;color:#ffd400}.overview-disclosure[open]>summary>b{transform:rotate(45deg)}.overview-disclosure-body{padding:0 14px 14px}.overview-disclosure-body .metrics-grid{margin-top:10px}

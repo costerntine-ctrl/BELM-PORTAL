@@ -7,6 +7,7 @@
   });
   const numberFormatter = new Intl.NumberFormat("en-TZ");
   let reportData = null;
+  let reportLoading = false;
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -14,9 +15,12 @@
   const money = (value) => moneyFormatter.format(Number(value) || 0);
   const number = (value) => numberFormatter.format(Number(value) || 0);
 
-  async function api(path, options = {}) {
+  function displayRoleName(name) { return name === "Engineer" ? "Workshop Manager" : (name || ""); }
+
+async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token || ""}`,
@@ -27,7 +31,7 @@
     if (response.status === 401) {
       localStorage.removeItem("belm_admin_token");
       localStorage.removeItem("belm_admin_user");
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       throw new Error("Your login session has expired.");
     }
     if (!response.ok) throw new Error(data.error || "Report request failed.");
@@ -72,12 +76,19 @@
       `${data.period?.label || "Selected period"} · ${data.period?.from || ""} → ${data.period?.to || ""}`;
 
     document.getElementById("financeMetrics").innerHTML = [
-      metric("Sales invoiced", money(current.sales), `${change(current.sales, previous.sales)} vs previous period`),
-      metric("Revenue received", money(current.revenue), `${change(current.revenue, previous.revenue)} vs previous period`, "green"),
-      metric("Expenses", money(current.expenses), `${change(current.expenses, previous.expenses)} vs previous period`, current.expenses ? "red" : ""),
-      metric("Profit / loss", money(current.profitLoss), `${change(current.profitLoss, previous.profitLoss)} vs previous period`, Number(current.profitLoss) >= 0 ? "green" : "red"),
-      metric("Outstanding", money(current.outstanding), "Total unpaid balance", current.outstanding ? "yellow" : "green"),
+      metric("Sales invoiced", money(current.sales), `${number(current.invoiceCount)} invoice(s) · ${change(current.sales, previous.sales)} vs previous`),
+      metric("Revenue received", money(current.revenue), `${number(current.paymentCount)} payment(s) · ${change(current.revenue, previous.revenue)} vs previous`, "green"),
+      metric("Expenses", money(current.expenses), `${number(current.expenseCount)} expense(s) · ${change(current.expenses, previous.expenses)} vs previous`, current.expenses ? "red" : ""),
+      metric("Profit / loss", money(current.profitLoss), `Received minus expenses · ${change(current.profitLoss, previous.profitLoss)} vs previous`, Number(current.profitLoss) >= 0 ? "green" : "red"),
+      metric("Outstanding", money(current.outstanding), `Balance as of ${data.period?.to || "period end"}`, current.outstanding ? "yellow" : "green"),
     ].join("");
+
+    const syncStatus = document.getElementById("syncStatus");
+    if (syncStatus) {
+      const syncedAt = data.syncedAt ? new Date(data.syncedAt) : new Date();
+      syncStatus.textContent = `SYNCED · Billing invoices + payments + company expenses · ${syncedAt.toLocaleString()}`;
+      syncStatus.className = "sync-status ok";
+    }
 
     const rows = [
       ["Sales invoiced", current.sales, previous.sales],
@@ -120,7 +131,7 @@
         <tbody>${roles.map((role) => {
           const total = Number(role.pendingTasks || 0) + Number(role.completedTasks || 0);
           const completion = total ? `${(Number(role.completedTasks || 0) / total * 100).toFixed(0)}%` : "—";
-          return `<tr><td><strong>${escapeHtml(role.name)}</strong></td><td>${number(role.activeUsers)}</td><td>${number(role.activities)}</td>
+          return `<tr><td><strong>${escapeHtml(displayRoleName(role.name))}</strong></td><td>${number(role.activeUsers)}</td><td>${number(role.activities)}</td>
           <td>${number(role.pendingTasks)}</td><td>${number(role.completedTasks)}</td><td>${completion}</td></tr>`;
         }).join("")}</tbody></table>`
       : '<div class="empty-state">No role activity recorded for this period.</div>';
@@ -133,13 +144,35 @@
   }
 
   async function loadReport() {
+    if (reportLoading) return;
+    reportLoading = true;
     const alert = document.getElementById("pageAlert");
+    const syncStatus = document.getElementById("syncStatus");
+    const syncButton = document.getElementById("applyButton");
     alert.classList.add("hidden");
+    if (syncStatus) {
+      syncStatus.textContent = "SYNCING · Billing invoices + payments + company expenses…";
+      syncStatus.className = "sync-status syncing";
+    }
+    if (syncButton) {
+      syncButton.disabled = true;
+      syncButton.textContent = "Syncing…";
+    }
     try {
-      renderReport(await api(`/reports/analytics?${queryString()}`));
+      renderReport(await api(`/reports/analytics?${queryString()}&_sync=${Date.now()}`));
     } catch (error) {
       alert.textContent = error.message;
       alert.classList.remove("hidden");
+      if (syncStatus) {
+        syncStatus.textContent = `SYNC ERROR · ${error.message}`;
+        syncStatus.className = "sync-status error";
+      }
+    } finally {
+      reportLoading = false;
+      if (syncButton) {
+        syncButton.disabled = false;
+        syncButton.textContent = "Sync report";
+      }
     }
   }
 
@@ -161,7 +194,7 @@
         ? `<table><thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>Check in</th><th>Check out</th><th>Notes</th><th class="no-print">Action</th></tr></thead>
           <tbody>${employees.map((employee) => `<tr data-user="${escapeHtml(employee.userId)}">
             <td><strong>${escapeHtml(employee.name)}</strong><br><small>${escapeHtml(employee.email)}</small></td>
-            <td>${escapeHtml(employee.roleName)}</td>
+            <td>${escapeHtml(displayRoleName(employee.roleName))}</td>
             <td><select data-field="status">
               ${["NOT_RECORDED", "PRESENT", "LATE", "ABSENT", "LEAVE", "REMOTE"].map((status) =>
                 `<option value="${status}" ${status === employee.status ? "selected" : ""}>${status.replaceAll("_", " ")}</option>`).join("")}
@@ -255,6 +288,13 @@
     const custom = document.getElementById("periodSelect").value === "custom";
     document.getElementById("dateFromLabel").classList.toggle("hidden", !custom);
     document.getElementById("dateToLabel").classList.toggle("hidden", !custom);
+    if (!custom) loadReport();
+  });
+  document.getElementById("dateFrom").addEventListener("change", () => {
+    if (document.getElementById("periodSelect").value === "custom" && document.getElementById("dateTo").value) loadReport();
+  });
+  document.getElementById("dateTo").addEventListener("change", () => {
+    if (document.getElementById("periodSelect").value === "custom" && document.getElementById("dateFrom").value) loadReport();
   });
   document.getElementById("applyButton").addEventListener("click", loadReport);
   document.getElementById("attendanceRefreshButton").addEventListener("click", loadAttendance);
@@ -268,4 +308,14 @@
   setDefaultDates();
   loadReport();
   loadAttendance();
+
+  // V221 live reconciliation: refresh when the manager returns to this page
+  // and periodically while it stays open. The API remains no-store.
+  window.addEventListener("focus", loadReport);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) loadReport();
+  });
+  window.setInterval(() => {
+    if (!document.hidden) loadReport();
+  }, 60000);
 })();

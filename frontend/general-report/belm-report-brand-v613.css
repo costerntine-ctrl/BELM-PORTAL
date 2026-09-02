@@ -1,0 +1,107 @@
+/* V617 — CWM Machine Reports. Match Manage Technicians dark-card contrast.
+   Functions are untouched; this file changes appearance/readability only. */
+#reports.grid{gap:12px!important}
+
+/* Never use pale/white report cards in the CWM dark workspace. */
+#reports .report,
+html[data-theme="dark"] #reports .report,
+html:not([data-theme="dark"]) #reports .report{
+  position:relative!important;
+  overflow:hidden!important;
+  min-height:104px!important;
+  padding:18px 54px 18px 18px!important;
+  background:linear-gradient(145deg,#0b1d31,#0d2740)!important;
+  color:#f7fbff!important;
+  border:1px solid #244b69!important;
+  border-radius:15px!important;
+  box-shadow:0 8px 20px rgba(4,25,48,.22)!important;
+  opacity:1!important;
+  filter:none!important;
+}
+#reports .report::after{
+  content:"›"!important;
+  position:absolute!important;
+  right:17px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:34px!important;
+  height:34px!important;
+  border-radius:50%!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:27px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  color:#fff!important;
+  background:#12395e!important;
+  border:1px solid #315a7d!important;
+}
+#reports .report b{
+  display:block!important;
+  color:#fff!important;
+  font-size:15px!important;
+  line-height:1.25!important;
+  font-weight:850!important;
+  margin-bottom:7px!important;
+  opacity:1!important;
+}
+#reports .report span{
+  display:block!important;
+  color:#b8c8d8!important;
+  font-size:12px!important;
+  line-height:1.4!important;
+  font-weight:600!important;
+  opacity:1!important;
+}
+
+/* BELM accents — same logic as Manage Technicians summary cards. */
+#reports .report:nth-child(4n+1){border-top:4px solid #1684ff!important}
+#reports .report:nth-child(4n+1)::after{background:#0d4fa3!important;border-color:#1684ff!important}
+#reports .report:nth-child(4n+2){border-top:4px solid #16c778!important}
+#reports .report:nth-child(4n+2)::after{background:#087447!important;border-color:#16c778!important}
+#reports .report:nth-child(4n+3){border-top:4px solid #f5c522!important}
+#reports .report:nth-child(4n+3)::after{background:#8a6900!important;border-color:#f5c522!important;color:#fff!important}
+#reports .report:nth-child(4n+4){border-top:4px solid #1684ff!important}
+
+#reports .report.active{
+  background:linear-gradient(145deg,#0d2740,#12395e)!important;
+  border-color:#1684ff!important;
+  outline:none!important;
+  box-shadow:0 0 0 2px rgba(22,132,255,.30),0 10px 24px rgba(4,25,48,.30)!important;
+}
+#reports .report:active{transform:scale(.99)!important}
+
+/* Filter panel: same readable navy input treatment as technician management. */
+.selector-panel,.panel{
+  background:#0b1d31!important;
+  color:#f4f8fc!important;
+  border-color:#244b69!important;
+}
+.selector label{color:#b8c8d8!important}
+.selector select,.selector input,
+html[data-theme="dark"] .selector select,html[data-theme="dark"] .selector input,
+html:not([data-theme="dark"]) .selector select,html:not([data-theme="dark"]) .selector input{
+  background:#071827!important;
+  color:#fff!important;
+  border:1px solid #315a7d!important;
+  color-scheme:dark!important;
+  opacity:1!important;
+}
+.selector select option{background:#071827!important;color:#fff!important}
+.summary,
+html[data-theme="dark"] .summary,
+html:not([data-theme="dark"]) .summary{
+  background:#0d2740!important;
+  color:#f4f8fc!important;
+  border-left:4px solid #16c778!important;
+  opacity:1!important;
+}
+.output h2{color:#fff!important}
+.empty{color:#a8bacb!important}
+table{color:#f4f8fc!important}
+th{background:#0d2740!important;color:#fff!important}
+td{color:#d8e4ef!important}
+
+@media(max-width:520px){
+  #reports .report{min-height:100px!important;padding:17px 52px 17px 16px!important}
+}

@@ -7,7 +7,7 @@ VALUES (
   '00000000-0000-4000-8000-000000000001',
   'Super Admin',
   '{"customers":["view","edit","delete"],"checklists":["view","edit","delete"],"serviceRequests":["view","edit","delete"],"spareParts":["view","edit","delete"],"billing":["view","edit","delete"],"users":["view","edit","delete"],"reports":["view","edit","delete"],"settings":["view","edit","delete"]}'::jsonb,
-  '["customers","overview","roles","service-requests","spare-parts","billing","reports","settings","checklist-templates","suppliers","activity-log"]'::jsonb,
+  '["customers","overview","roles","job-cards","spare-parts","billing","reports","settings","checklist-templates","suppliers","activity-log"]'::jsonb,
   NULL
 )
 ON CONFLICT (name) DO UPDATE SET
@@ -19,25 +19,19 @@ INSERT INTO users (id, name, email, password_hash, is_active, role_id, deleted_a
 SELECT
   '00000000-0000-4000-8000-000000000003',
   'BELM Admin',
-  'admin@belmgeneraltech.co.tz',
-  '$2y$10$uXo8bDdT3YV7BlM7V4oOR.ybSIUrBtG0x/bwydGsmf98C0IBBWtme',
+  'info@belmgeneral.co.tz',
+  '$2y$12$mLP95q9gTllhw8LFyLjavuv/f8/qY8kfEGmAy.l9dKCNs084SvFNS',
   1,
   id,
   NULL
 FROM roles
 WHERE name = 'Super Admin'
-ON CONFLICT (email) DO UPDATE SET
+ON CONFLICT (id) DO UPDATE SET
   name = EXCLUDED.name,
-  password_hash = EXCLUDED.password_hash,
+  email = EXCLUDED.email,
   is_active = 1,
   role_id = EXCLUDED.role_id,
   deleted_at = NULL;
 
-INSERT INTO system_settings (id, "key", "value", updated_at)
-VALUES (
-  '00000000-0000-4000-8000-000000000004',
-  'adminDeletePin',
-  '"1234"'::jsonb,
-  NOW()
-)
-ON CONFLICT ("key") DO NOTHING;
+-- V302: repair_admin.sql deliberately does not set a known password or PIN.
+-- After running this repair, use the normal secure bootstrap/reset flow to set credentials.

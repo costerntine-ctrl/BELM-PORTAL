@@ -1,0 +1,449 @@
+:root{--navy:#07182d;--blue:#0b67c2;--green:#09834a;--yellow:#f2c318;--red:#c72f2f;--ink:#142033;--muted:#6b7788;--line:#dce3ec;--surface:#fff;--bg:#f4f7fa}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 Inter,Arial,sans-serif}.topbar{background:linear-gradient(120deg,#07182d,#0b3154);color:white;padding:22px max(22px,calc((100vw - 1500px)/2));display:flex;justify-content:space-between;gap:20px;align-items:center;border-bottom:4px solid var(--yellow)}.topbar p{margin:0;color:#79d59e;font-size:11px;font-weight:900;letter-spacing:.14em}.topbar h1{margin:3px 0;font-size:25px}.topbar span{color:#c9d5e3}.top-actions{display:flex;gap:8px}.top-actions button,.filters button,.dialog-actions button{border:1px solid #cbd5e1;background:white;border-radius:9px;padding:9px 13px;font-weight:800;cursor:pointer}.dialog-actions button:disabled{opacity:.65;cursor:wait}.top-actions button{background:rgba(255,255,255,.08);color:white;border-color:rgba(255,255,255,.2)}main{max-width:1500px;margin:0 auto;padding:22px}.panel{background:var(--surface);border:1px solid var(--line);border-radius:15px;box-shadow:0 7px 24px rgba(10,30,55,.06)}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}.summary-card{background:var(--surface);border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:13px;padding:14px}.summary-card b{font-size:26px;display:block}.summary-card span{color:var(--muted);font-size:12px}.summary-card.red{border-left-color:var(--red)}.summary-card.yellow{border-left-color:var(--yellow)}.summary-card.green{border-left-color:var(--green)}.filters{padding:12px;display:flex;align-items:end;gap:10px;margin-bottom:14px}.filters label{flex:1;font-size:12px;font-weight:800}.filters input,dialog input,dialog select,dialog textarea{width:100%;margin-top:5px;border:1px solid #cbd5e1;border-radius:9px;padding:10px;background:var(--surface);color:inherit}.primary{background:var(--green)!important;color:white!important;border-color:var(--green)!important}.grid{display:grid;grid-template-columns:minmax(420px,.85fr) minmax(560px,1.3fr);gap:14px}.panel-head{padding:15px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between}.panel-head h2{margin:0 0 3px}.panel-head p{margin:0;color:var(--muted);font-size:12px}.case-list{max-height:760px;overflow:auto;padding:8px}.case-card{border:1px solid var(--line);border-left:5px solid var(--green);border-radius:11px;padding:12px;margin:7px 0;cursor:pointer;background:var(--surface)}.case-card.delayed{border-left-color:var(--red);background:rgba(199,47,47,.035)}.case-card.closed{border-left-color:#7f8b99;opacity:.75}.case-card h3{margin:0 0 4px}.case-meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pill{display:inline-flex;border-radius:999px;background:#eef3f8;padding:4px 8px;font-size:11px;font-weight:850}.pill.red{background:#fee8e8;color:#9f1f1f}.pill.yellow{background:#fff7d1;color:#735d00}.pill.green{background:#e5f8ed;color:#076d3c}.pill.blue{background:#e7f1ff;color:#0b5ca8}.detail-panel{min-height:560px}.detail{padding:17px}.detail h2{margin:0}.detail-sub{color:var(--muted);margin:4px 0 14px}.status-box{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.status-box>div{background:#f6f8fb;border:1px solid var(--line);border-radius:9px;padding:9px}.status-box span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:850}.status-box b{display:block;margin-top:2px}.delay-banner{margin:12px 0;padding:11px;border-radius:10px;background:#fee8e8;color:#911e1e;font-weight:800}.section{margin-top:18px}.section h3{font-size:14px;margin:0 0 8px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;border-bottom:1px solid var(--line);padding-bottom:6px}.section-head h3{margin:0;border:0;padding:0}.section-toggle{border:1px solid var(--line);background:#eef3f8;color:var(--ink);border-radius:999px;padding:6px 12px;font-size:11px;font-weight:850;cursor:pointer}.section-toggle:hover{filter:brightness(.98)}.section-content.hidden{display:none}.collapsible-section.collapsed{margin-bottom:0}[data-theme="dark"] .section-toggle{background:#16283d;color:#d9e8f7;border-color:#35506d}
+.timeline{border-left:3px solid #d8e1eb;margin-left:8px}.event{position:relative;padding:0 0 13px 17px}.event:before{content:"";position:absolute;left:-7px;top:3px;width:10px;height:10px;border-radius:50%;background:var(--blue)}.event b{display:block}.event small{color:var(--muted)}.spare,.job{border:1px solid var(--line);border-radius:10px;padding:10px;margin:7px 0}.spare-head,.job-head{display:flex;justify-content:space-between;gap:8px}.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}.actions button{border:0;border-radius:8px;padding:8px 10px;font-weight:800;cursor:pointer}.actions .approve{background:#e4f7ec;color:#08683b}.actions .reject{background:#fee8e8;color:#9a2222}.actions .red{background:#fee2e2;color:#b42318}.actions .blue{background:#e8f2fc;color:#075ca7}.actions .yellow{background:#fff4c1;color:#6b5600}.performance-panel{margin-top:14px}.performance-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px}.tech-card{border:1px solid var(--line);border-radius:11px;padding:12px}.tech-card strong{font-size:15px}.metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}.metrics div{background:#f6f8fb;padding:7px;border-radius:7px}.metrics span{display:block;font-size:10px;color:var(--muted)}.empty{padding:28px;text-align:center;color:var(--muted)}.alert{margin-bottom:12px;padding:10px 12px;border-radius:9px;background:#e7f4ff;color:#075a9a}.alert.error{background:#fee8e8;color:#9c2020}.hidden{display:none!important}dialog{border:0;border-radius:14px;padding:0;max-width:520px;width:calc(100% - 30px);box-shadow:0 24px 80px #0005;background:var(--surface);color:var(--ink)}dialog::backdrop{background:#07182d99}dialog form{padding:20px}dialog h2{margin-top:0}dialog label{display:block;font-weight:800;font-size:12px;margin:10px 0}.split{display:grid;grid-template-columns:1fr 1fr;gap:9px}.check{display:flex!important;align-items:center;gap:8px}.check input{width:auto;margin:0}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}[data-theme="dark"] body{--bg:#08111e;--surface:#0f1c2c;--ink:#e9f1fb;--muted:#94a6ba;--line:#24364a}[data-theme="dark"] .status-box>div,[data-theme="dark"] .metrics div{background:#132338}[data-theme="dark"] .case-card{background:#0f1c2c}@media(max-width:1000px){.grid{grid-template-columns:1fr}.summary,.performance-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:620px){.topbar{align-items:flex-start;flex-direction:column}.summary,.performance-grid,.status-box{grid-template-columns:1fr 1fr}main{padding:12px}.filters{flex-wrap:wrap}.filters label{min-width:100%}}
+
+
+.workshop-report-panel{margin-top:14px}.report-head{align-items:flex-end;gap:16px}.report-controls{display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}.report-controls label{font-size:10px;text-transform:uppercase;font-weight:900;color:var(--muted);letter-spacing:.04em}.report-controls select,.report-controls input{display:block;margin-top:4px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:8px}.report-controls button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:9px 11px;font-weight:850;cursor:pointer}.department-report{padding:14px}.report-scope{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;color:var(--muted);font-size:12px}.report-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}.report-kpi{border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--surface)}.report-kpi b{font-size:22px;display:block}.report-kpi span{font-size:10px;text-transform:uppercase;font-weight:850;color:var(--muted)}.report-kpi.red{border-left:4px solid var(--red)}.report-kpi.yellow{border-left:4px solid var(--yellow)}.report-kpi.green{border-left:4px solid var(--green)}.report-kpi.blue{border-left:4px solid var(--blue)}.analysis-grid{display:grid;grid-template-columns:1fr 1.2fr;gap:12px;margin-top:12px}.analysis-box{border:1px solid var(--line);border-radius:11px;overflow:hidden}.analysis-box h3{margin:0;padding:10px 12px;background:#f6f8fb;border-bottom:1px solid var(--line);font-size:13px}.analysis-table{width:100%;border-collapse:collapse}.analysis-table th,.analysis-table td{text-align:left;padding:8px 9px;border-bottom:1px solid var(--line);font-size:11px;vertical-align:top}.analysis-table th{font-size:9px;text-transform:uppercase;color:var(--muted);letter-spacing:.04em}.analysis-table tr:last-child td{border-bottom:0}.delay-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px}.delay-dot.red{background:var(--red)}[data-theme="dark"] .analysis-box h3{background:#132338}@media(max-width:1100px){.report-kpis{grid-template-columns:repeat(3,1fr)}.analysis-grid{grid-template-columns:1fr}}@media(max-width:620px){.report-kpis{grid-template-columns:repeat(2,1fr)}.report-controls{width:100%}.report-controls label{flex:1;min-width:130px}.report-controls select,.report-controls input{width:100%}.report-controls button{flex:1}.report-scope{align-items:flex-start;flex-direction:column}}
+
+/* ========================================================================
+   V210 UX CLEANUP - process owner first, detail on demand
+   ======================================================================== */
+.detail-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.detail-title-row>.pill{flex:0 0 auto}.workflow-focus{display:grid;grid-template-columns:1.2fr .8fr;gap:10px;margin:12px 0;padding:13px 14px;border:1px solid #c9d9ea;border-left:5px solid var(--blue);border-radius:12px;background:#f5f9fe}.workflow-focus.delayed{border-color:#edc4c4;border-left-color:var(--red);background:#fff5f5}.workflow-focus.complete{border-color:#bfe6cf;border-left-color:var(--green);background:#f2fbf6}.workflow-focus span{display:block;margin-bottom:3px;color:var(--muted);font-size:9px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.workflow-focus strong{display:block;color:var(--ink);font-size:14px;line-height:1.3}.workflow-focus small{display:block;margin-top:4px;color:var(--muted);font-size:10px}.workflow-focus-reason{padding-left:12px;border-left:1px solid var(--line)}.workflow-focus-reason b{display:block;font-size:11px;line-height:1.45}.workflow-primary-actions{margin:12px 0 8px}.workflow-tabs{display:flex;gap:5px;margin:14px 0 0;padding:5px;border:1px solid var(--line);border-radius:11px;background:#f5f7fa;overflow-x:auto}.workflow-tabs button{display:flex;align-items:center;gap:6px;min-height:36px;padding:8px 11px;border:0;border-radius:8px;background:transparent;color:var(--muted);font-weight:850;cursor:pointer;white-space:nowrap}.workflow-tabs button span{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#e2e8f0;color:#45566c;font-size:9px}.workflow-tabs button.active{background:var(--navy);color:#fff}.workflow-tabs button.active span{background:var(--yellow);color:#172033}.workflow-tab-panel{display:none}.workflow-tab-panel.active{display:block}.tab-section{margin-top:12px}.workflow-overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.workflow-overview-grid>div{padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#f8fafc}.workflow-overview-grid span{display:block;margin-bottom:4px;color:var(--muted);font-size:9px;font-weight:850;text-transform:uppercase;letter-spacing:.05em}.workflow-overview-grid b{display:block;font-size:11px;line-height:1.45}.detail-panel{min-height:430px}.case-card{transition:.15s ease}.case-card:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(10,30,55,.07)}
+[data-theme="dark"] .workflow-focus{border-color:#2a4563;background:#10243a}[data-theme="dark"] .workflow-focus.delayed{border-color:#63353a;background:#2b171b}[data-theme="dark"] .workflow-focus.complete{border-color:#285b43;background:#10281d}[data-theme="dark"] .workflow-tabs,[data-theme="dark"] .workflow-overview-grid>div{background:#111f31}[data-theme="dark"] .workflow-tabs button.active{background:#1d3551}
+@media(max-width:720px){.workflow-focus{grid-template-columns:1fr}.workflow-focus-reason{padding-left:0;padding-top:10px;border-left:0;border-top:1px solid var(--line)}.workflow-overview-grid{grid-template-columns:1fr}.detail-title-row{flex-direction:column}.workflow-tabs{margin-right:-4px;margin-left:-4px}}
+
+.override-note{margin:8px 0;padding:10px 12px;border-radius:10px;border:1px solid #f4cf00;background:#fff8d6;color:#5c4700;font-size:12px;line-height:1.45}.override-note.hidden{display:none}
+
+.job-override-badge{display:inline-block;margin:7px 0 2px;padding:4px 8px;border:1px solid #f4cf00;border-radius:999px;background:#fff8d6;color:#5c4700;font-size:10.5px;font-weight:800}
+
+/* V220 source sync */
+.sync-status{align-self:center;max-width:440px;color:var(--muted);font-size:10.5px;line-height:1.35}.case-title-line{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}.case-title-line h3{margin-right:auto}.source-pill{background:#e7f4ff;color:#075a9a;border:1px solid #c6e2f8}[data-theme="dark"] .source-pill{background:#102b43;color:#9ed1ff;border-color:#244d6e}[data-theme="dark"] .pill{background:#16283d;color:#c9d5e3}[data-theme="dark"] .pill.red{background:#3a1414;color:#ff9d9d}[data-theme="dark"] .pill.yellow{background:#3a2f00;color:#ffe27a}[data-theme="dark"] .pill.green{background:#0e3322;color:#7fe3ac}[data-theme="dark"] .pill.blue{background:#102b43;color:#9ed1ff}@media(max-width:760px){.sync-status{width:100%;max-width:none}.case-title-line{align-items:center}}
+
+/* V222 - Breakdown action button contrast
+   Keep Sync / Refresh readable in both light and dark themes. */
+#refreshButton{
+  min-width:132px;
+  border:1px solid #8fbfe8!important;
+  background:#eaf4ff!important;
+  color:#0b4f87!important;
+  box-shadow:0 4px 12px rgba(11,103,194,.12);
+}
+#refreshButton:hover{
+  border-color:#5ea4dd!important;
+  background:#d9ecff!important;
+  color:#073b66!important;
+}
+#refreshButton:focus-visible{
+  outline:3px solid rgba(11,103,194,.28);
+  outline-offset:2px;
+}
+html.dark #refreshButton,
+html[data-theme="dark"] #refreshButton{
+  border-color:#3b77aa!important;
+  background:#17324e!important;
+  color:#f2f7ff!important;
+  box-shadow:0 4px 14px rgba(0,0,0,.22);
+}
+html.dark #refreshButton:hover,
+html[data-theme="dark"] #refreshButton:hover{
+  border-color:#68a7d8!important;
+  background:#21476b!important;
+  color:#ffffff!important;
+}
+html.dark .actions .blue,
+html[data-theme="dark"] .actions .blue{
+  background:#173b5f!important;
+  color:#dff0ff!important;
+}
+html.dark .actions .yellow,
+html[data-theme="dark"] .actions .yellow{
+  background:#4a3d0c!important;
+  color:#fff1a8!important;
+}
+html.dark .actions .red,
+html[data-theme="dark"] .actions .red{
+  background:#431818!important;
+  color:#ffc3c3!important;
+}
+html.dark .actions .approve,
+html[data-theme="dark"] .actions .approve{
+  background:#123a29!important;
+  color:#b7f3d2!important;
+}
+html.dark .actions .reject,
+html[data-theme="dark"] .actions .reject{
+  background:#431f24!important;
+  color:#ffc5c5!important;
+}
+
+
+.technician-sync-row{display:flex;align-items:center;gap:10px;margin-top:7px}.technician-sync-row button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 10px;font-weight:850;cursor:pointer}.technician-sync-row button:disabled{opacity:.6;cursor:wait}.technician-sync-row span{font-size:11px;color:var(--muted);font-weight:800}[data-theme="dark"] .technician-sync-row button{background:#16283d;color:#e9f1fb;border-color:#46617e}
+.belm-send-row{margin-top:10px;padding:10px 12px;border-radius:10px;border:1px dashed #1769c2;background:#f2f8ff}.belm-send-row small{display:block;margin-top:6px;color:var(--muted);font-size:11px;line-height:1.4}.belm-send-button{width:100%;border:0;border-radius:8px;padding:9px 10px;background:#1769c2;color:#fff;font-weight:850;cursor:pointer}.belm-send-button:hover{background:#125497}[data-theme="dark"] .belm-send-row{background:#0e1c2c;border-color:#2f5a8a}
+
+/* V301 - customer-issued Job Card sign-off + Procurement/Billing handoff */
+.job-billing-status{margin-top:8px;padding:8px 10px;border:1px solid #f1c40f;border-radius:8px;background:#fff9d9;color:#654f00;font-size:11px}.job-signoff-note{display:inline-flex;align-items:center;max-width:100%;padding:7px 9px;border:1px dashed #d6a600;border-radius:8px;background:#fff9d9;color:#654f00;font-size:10.5px;font-weight:750}.actions input[type=file]{display:none}[data-theme="dark"] .job-billing-status,[data-theme="dark"] .job-signoff-note{background:#3b3108;color:#ffe795;border-color:#7e6a15}
+
+
+/* V308 - unassigned Job Card state must be visually explicit. */
+.job-awaiting-tech { margin-top:8px; border-color:#f2c94c; background:#2b2508; color:#ffe58f; }
+html[data-theme="light"] .job-awaiting-tech { background:#fff8d8; color:#805b00; }
+
+
+/* V311 - Embedded Job Cards inside Engineering: never render a second admin shell/sidebar. */
+html.embed-mode body{min-height:0;background:transparent}
+html.embed-mode body>.topbar,html.embed-mode #belmAdminSidebar,html.embed-mode .belm-admin-sidebar,html.embed-mode .belm-global-theme-toggle{display:none!important}
+html.embed-mode main{max-width:none;width:100%;margin:0;padding:4px 4px 18px}
+html.embed-mode .summary{margin-top:0}
+html.embed-mode .workshop-report-panel,html.embed-mode .performance-panel{margin-bottom:4px}
+
+html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
+html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display:none!important}
+
+
+/* V313 - Main Job Card drives the visible maintenance process. */
+.job-process-card,.main-job-card{border:1px solid #29415f;background:#0d1d31;border-radius:18px;padding:16px;margin:14px 0}.job-process-title,.main-job-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.job-process-title>div,.main-job-card-head>div{display:grid;gap:4px}.job-process-title span,.main-job-card-head span,.main-job-meta span{font-size:12px;color:#9fb2ca;text-transform:uppercase;letter-spacing:.04em}.job-process-title b{font-size:16px;color:#f8fafc}.job-process-steps{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-top:14px}.job-process-step{font:inherit;display:flex;align-items:center;justify-content:center;gap:7px;min-height:46px;padding:8px;border:1px solid #29415f;border-radius:12px;color:#8fa4be;background:#0a1728;cursor:pointer;text-align:center;transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}.job-process-step:hover,.job-process-step:focus-visible{transform:translateY(-1px);border-color:#4c7cae;outline:0}.job-process-step.inspecting{box-shadow:0 0 0 2px rgba(68,177,255,.34),0 8px 20px rgba(0,0,0,.18)}.job-process-step span{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#1c304a;font-size:11px;flex:0 0 22px}.job-process-step.done{border-color:#1f8f62;color:#bff3d9}.job-process-step.done span{background:#14734e;color:#fff}.job-process-step.active{border-color:#f0c419;background:#27301c;color:#fff}.job-process-step.active span{background:#f0c419;color:#172033}.job-stage-detail{margin-top:12px;border:1px solid #29415f;border-radius:14px;background:#081626;padding:13px}.stage-detail-placeholder,.stage-detail-empty{color:#9fb2ca;padding:5px 2px}.stage-detail-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}.stage-detail-head>div{display:grid;gap:2px}.stage-detail-head span{font-size:10px;color:#7f96b1;font-weight:900;letter-spacing:.08em}.stage-detail-head h4{margin:0;color:#f8fafc;font-size:16px}.stage-detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.stage-detail-grid>div{min-width:0;border:1px solid #243b56;border-radius:10px;background:#0d1d31;padding:9px}.stage-detail-grid span{display:block;color:#8fa4be;font-size:10px;text-transform:uppercase;font-weight:900}.stage-detail-grid b{display:block;color:#f8fafc;margin-top:2px;overflow-wrap:anywhere}.stage-detail-event{margin-top:9px;border-left:3px solid #2e7cc1;background:#0d1d31;border-radius:8px;padding:9px 10px}.stage-detail-event b{display:block;color:#eaf2fb}.stage-detail-event p{margin:3px 0;color:#b5c4d5}.stage-detail-event small{color:#8297ae}.stage-tech-control{display:grid!important;gap:5px;margin-top:10px!important;border-top:1px solid #243b56;padding-top:10px}.stage-tech-control select{width:100%;min-height:42px}.stage-spare-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;border:1px solid #243b56;background:#0d1d31;border-radius:10px;padding:9px;margin-top:7px}.stage-spare-row small{grid-column:1/-1;color:#8fa4be}.job-process-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.main-job-card h3{margin:2px 0 0}.main-job-meta{display:flex;flex-wrap:wrap;gap:10px 22px;margin:12px 0}.main-job-meta span{text-transform:none}.main-job-meta b{color:#f8fafc}.main-job-summary{border-top:1px solid #29415f;padding-top:10px}.main-job-card.empty{color:#9fb2ca}@media(max-width:900px){.stage-detail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.job-process-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.job-process-title,.main-job-card-head{align-items:flex-start;flex-direction:column}.main-job-meta{display:grid;gap:8px}.stage-detail-grid{grid-template-columns:1fr}.job-process-step{min-height:52px}.stage-detail-head{align-items:center}}
+
+
+/* V315 - explicit BELM Job Card receipt confirmation. */
+.job-receipt-confirmation{display:flex;flex-wrap:wrap;justify-content:space-between;gap:6px 12px;margin:8px 0 10px;padding:9px 11px;border:1px solid #1f8f62;border-radius:10px;background:#0d2b20;color:#bff3d9;font-size:11px}.job-receipt-confirmation b{letter-spacing:.04em}.job-receipt-confirmation span{color:#d8f7e7}
+
+
+/* V318 - Technician Dispatch moved into Job Cards, directly below Sync / Refresh. */
+.workflow-dispatch{margin:0 0 14px}.workflow-dispatch.hidden{display:none!important}.workflow-dispatch-head{align-items:flex-start;gap:12px}.workflow-dispatch-badge{display:inline-flex;align-items:center;white-space:nowrap;padding:5px 9px;border:1px solid #d5b100;border-radius:999px;background:#fff4b8;color:#6a5200;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.workflow-dispatch-form{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 16px 16px}.workflow-dispatch-form>label{display:grid;gap:6px;color:var(--ink);font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.03em}.workflow-dispatch-form input,.workflow-dispatch-form select,.workflow-dispatch-form textarea{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);padding:9px 10px;font:inherit;text-transform:none;letter-spacing:0}.workflow-dispatch-form .wide{grid-column:1/-1}.workflow-job-source{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 18px;margin:0;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}.workflow-job-source legend{padding:0 6px;color:var(--ink);font-size:11px;font-weight:900;text-transform:uppercase}.workflow-job-source label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;text-transform:none;letter-spacing:0}.workflow-job-source input{width:auto;margin:0}
+.workflow-job-source .job-source-option{position:relative;display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:9px 14px;border:1px solid var(--line);border-radius:11px;background:var(--surface);cursor:pointer;transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease}
+.workflow-job-source .job-source-option:hover{transform:translateY(-1px)}
+.workflow-job-source .job-source-option input{flex:0 0 auto;width:16px;height:16px;margin:0}
+.workflow-job-source .job-source-option span{font-size:12px;font-weight:900;line-height:1.2}
+.workflow-job-source .job-source-existing{border-color:#b89200;color:#d4a900;background:rgba(245,197,24,.06)}
+.workflow-job-source .job-source-existing input{accent-color:#f5c518}
+.workflow-job-source .job-source-existing.is-selected,.workflow-job-source .job-source-existing:has(input:checked){border-color:#f5c518;background:#f5c518;color:#1c1c13;box-shadow:0 0 0 2px rgba(245,197,24,.16),0 5px 16px rgba(245,197,24,.18)}
+.workflow-job-source .job-source-create{border-color:#258bd8;color:#54adf3;background:rgba(37,139,216,.06)}
+.workflow-job-source .job-source-create input{accent-color:#2196f3}
+.workflow-job-source .job-source-create.is-selected,.workflow-job-source .job-source-create:has(input:checked){border-color:#2196f3;background:#2196f3;color:#fff;box-shadow:0 0 0 2px rgba(33,150,243,.15),0 5px 16px rgba(33,150,243,.18)}.workflow-dispatch-form label small{color:var(--muted);font-size:10px;font-weight:650;text-transform:none;letter-spacing:0}.workflow-dispatch-inline-control{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}.workflow-dispatch-inline-control button{border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);padding:9px 12px;font-weight:850;cursor:pointer;white-space:nowrap}.workflow-dispatch-note{padding:10px 12px;border-radius:10px;background:var(--bg);color:var(--muted);font-size:12px}.workflow-dispatch-note.override{border:1px solid #d5b100;background:#fff8d6;color:#5c4700}.workflow-dispatch-actions{display:flex;justify-content:flex-end}.workflow-dispatch-actions button{border:1px solid var(--green);border-radius:9px;padding:9px 14px;font-weight:850;cursor:pointer}
+[data-theme="dark"] .workflow-dispatch-badge{border-color:#7d6817;background:#3a3108;color:#ffe27a}[data-theme="dark"] .workflow-dispatch-note.override{border-color:#7d6817;background:#302908;color:#ffe58f}[data-theme="dark"] .workflow-dispatch-inline-control button{background:#16283d;color:#e9f1fb;border-color:#46617e}
+@media(max-width:760px){.workflow-dispatch-form{grid-template-columns:1fr}.workflow-dispatch-form .wide,.workflow-job-source{grid-column:auto}.workflow-dispatch-inline-control{grid-template-columns:1fr}.workflow-dispatch-inline-control button{width:100%}.workflow-dispatch-head{flex-direction:column}}
+
+/* V319 - Sync status must never look successful when reconciliation failed. */
+.sync-status.sync-error{color:var(--red);font-weight:850}
+
+
+/* V326 - compact received Job Card intake + JC/Proforma code pairing. */
+.workflow-dispatch-form{grid-template-columns:minmax(280px,1.2fr) minmax(240px,.8fr);align-items:start}
+.workflow-received-card-field,.workflow-jc-number-field{align-self:start;min-width:0}
+.workflow-received-card-field{grid-column:1;justify-self:stretch}
+.workflow-jc-number-field{grid-column:2;justify-self:stretch}
+.workflow-received-card-field .workflow-dispatch-inline-control{grid-template-columns:minmax(0,1fr) auto;gap:6px}
+.workflow-received-card-field select,.workflow-jc-number-field input{min-height:38px;padding:7px 9px}
+.workflow-received-card-field .workflow-dispatch-inline-control button{min-height:38px;padding:7px 10px}
+.workflow-received-card-field small,.workflow-jc-number-field small{line-height:1.3}
+.workflow-jc-number-field input.jc-auto-detected{border-color:#1f8f62;box-shadow:0 0 0 2px color-mix(in srgb,#1f8f62 18%,transparent)}
+.workflow-jc-number-field input.jc-manual{border-color:#d5b100;box-shadow:0 0 0 2px color-mix(in srgb,#d5b100 16%,transparent)}
+@media(max-width:760px){.workflow-dispatch-form{grid-template-columns:1fr}.workflow-received-card-field,.workflow-jc-number-field{grid-column:auto}.workflow-received-card-field .workflow-dispatch-inline-control{grid-template-columns:minmax(0,1fr) auto}.workflow-received-card-field .workflow-dispatch-inline-control button{width:auto}}
+
+/* V328 - assigned Job Cards selectable in Technician Dispatch; existing compact layout retained. */
+
+
+/* V329 - action feedback + post-assignment dispatch reset. */
+button{transition:transform .12s ease,filter .16s ease,box-shadow .16s ease,opacity .16s ease}
+button.button-pressed{transform:translateY(1px) scale(.975);filter:brightness(.93)}
+button.action-busy{cursor:wait!important;opacity:.78;box-shadow:0 0 0 3px rgba(11,103,194,.16)}
+button.action-success{background:#09834a!important;color:#fff!important;border-color:#09834a!important;box-shadow:0 0 0 3px rgba(9,131,74,.18)}
+button.action-error{background:#c72f2f!important;color:#fff!important;border-color:#c72f2f!important;box-shadow:0 0 0 3px rgba(199,47,47,.16)}
+.workflow-dispatch-note.dispatch-success{border:1px solid #1f8f62;background:#e9f9f0;color:#076d3c;font-weight:800}
+.workflow-dispatch-note.dispatch-error{border:1px solid #c72f2f;background:#fee8e8;color:#9c2020;font-weight:800}
+[data-theme="dark"] .workflow-dispatch-note.dispatch-success{background:#0d2b20;color:#bff3d9;border-color:#1f8f62}
+[data-theme="dark"] .workflow-dispatch-note.dispatch-error{background:#431f24;color:#ffc5c5;border-color:#8e313c}
+@media (prefers-reduced-motion:reduce){button{transition:none}button.button-pressed{transform:none}}
+
+
+/* V330 - Live Breakdown Queue customer/company origin + action blink. */
+.case-title-line{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.case-title-badges{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;align-items:center}
+.company-pill{background:#e6f2ff;color:#0a4f91;border:1px solid #b7d9f7;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.case-card.attention .company-pill.company-alert{animation:belmQueueCompanyBlink 1.35s ease-in-out infinite;box-shadow:0 0 0 0 rgba(11,103,194,.28)}
+.case-card.delayed .company-pill.company-alert{background:#fee8e8;color:#9f1f1f;border-color:#f3b6b6;animation:belmQueueCompanyBlinkDelayed 1.05s ease-in-out infinite}
+@keyframes belmQueueCompanyBlink{0%,100%{opacity:1;filter:brightness(1);box-shadow:0 0 0 0 rgba(11,103,194,.05)}50%{opacity:.62;filter:brightness(1.16);box-shadow:0 0 0 4px rgba(11,103,194,.16)}}
+@keyframes belmQueueCompanyBlinkDelayed{0%,100%{opacity:1;filter:brightness(1);box-shadow:0 0 0 0 rgba(199,47,47,.05)}50%{opacity:.58;filter:brightness(1.18);box-shadow:0 0 0 5px rgba(199,47,47,.18)}}
+[data-theme="dark"] .company-pill{background:#123451;color:#b8dcff;border-color:#2b6294}
+[data-theme="dark"] .case-card.delayed .company-pill.company-alert{background:#431f24;color:#ffc5c5;border-color:#8e313c}
+@media(max-width:760px){.case-title-line{flex-direction:column}.case-title-badges{justify-content:flex-start}.company-pill{max-width:100%}}
+@media(prefers-reduced-motion:reduce){.case-card.attention .company-pill.company-alert,.case-card.delayed .company-pill.company-alert{animation:none}}
+
+
+/* V333 - direct Technician assignment dropdown on the Main Job Card. */
+.main-job-tech-control{display:grid;gap:4px;min-width:230px;text-transform:none!important;letter-spacing:0!important}
+.main-job-tech-control>span{font-size:12px;color:#9fb2ca;text-transform:uppercase;letter-spacing:.04em}
+.main-job-tech-control select{width:100%;min-height:36px;padding:7px 30px 7px 9px;border:1px solid #355373;border-radius:9px;background:#0a1728;color:#f8fafc;font:inherit;font-weight:800}
+.main-job-tech-control small{color:#9fb2ca;font-size:10px;line-height:1.25;text-transform:none;letter-spacing:0}
+.main-job-tech-control select:focus{outline:2px solid rgba(58,166,255,.35);outline-offset:1px;border-color:#3aa6ff}
+[data-theme="light"] .main-job-tech-control select{background:#fff;color:#10243a;border-color:#bdcad8}
+@media(max-width:760px){.main-job-tech-control{min-width:0;width:100%}.main-job-tech-control select{min-height:42px}}
+
+
+/* V402 - Engineering > Job Cards is Technician Dispatch only.
+   Customer/Workshop standalone workflow remains unchanged. */
+html.admin-job-cards-dispatch-only .summary,
+html.admin-job-cards-dispatch-only .filters,
+html.admin-job-cards-dispatch-only .grid,
+html.admin-job-cards-dispatch-only .workshop-report-panel,
+html.admin-job-cards-dispatch-only .performance-panel{display:none!important}
+html.admin-job-cards-dispatch-only main{max-width:900px;margin:0 auto;padding:4px 4px 18px}
+html.admin-job-cards-dispatch-only .workflow-dispatch{margin:0}
+html.admin-job-cards-dispatch-only .workflow-dispatch-actions{justify-content:stretch}
+html.admin-job-cards-dispatch-only .workflow-dispatch-actions #dispatchSubmit{width:100%;min-height:48px;font-size:13px;font-weight:900}
+html.admin-job-cards-dispatch-only .workflow-dispatch-note{margin-top:2px}
+@media(max-width:760px){html.admin-job-cards-dispatch-only main{padding:2px 2px 14px}html.admin-job-cards-dispatch-only .workflow-dispatch-actions #dispatchSubmit{min-height:52px}}
+
+
+/* V403 - live Job Card process row below Technician Dispatch. */
+.job-process-panel{margin:14px 0 0}.job-process-panel.hidden{display:none!important}.job-process-panel>.panel-head{align-items:center;gap:12px}.job-process-panel>.panel-head button{border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);padding:8px 12px;font-weight:850;cursor:pointer;white-space:nowrap}.job-process-table-wrap{overflow:auto;padding:0 12px 14px}.job-process-table{width:100%;min-width:860px;border-collapse:separate;border-spacing:0 8px}.job-process-table th{padding:0 10px 5px;color:var(--muted);font-size:10px;font-weight:900;text-align:left;text-transform:uppercase;letter-spacing:.04em}.job-process-table td{padding:11px 10px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12px;vertical-align:middle}.job-process-table td:first-child{border-left:1px solid var(--line);border-radius:10px 0 0 10px;font-weight:900}.job-process-table td:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0}.job-process-address{max-width:230px;white-space:normal;line-height:1.35}.job-process-state{display:inline-flex;align-items:center;padding:6px 9px;border-radius:999px;border:1px solid #7090b3;background:#e9f2ff;color:#174a78;font-size:10px;font-weight:900;text-transform:uppercase;white-space:nowrap}.job-process-state.opened{border-color:#3aa6ff;background:#e5f4ff;color:#07588c}.job-process-state.diagnosis-report{border-color:#8a6ae3;background:#f0eaff;color:#5836a7}.job-process-state.waiting-for-spare{border-color:#d3a500;background:#fff5c7;color:#705600}.job-process-state.pending-approval{border-color:#d3a500;background:#fff5c7;color:#705600}.job-process-state.testing{border-color:#ec8f22;background:#fff0dc;color:#854800}.job-process-state.completed{border-color:#20a36d;background:#e4f8ee;color:#087247}.job-process-detail{display:block;margin-top:5px;color:var(--muted);font-size:10px;line-height:1.3}.job-process-empty{text-align:center!important;color:var(--muted);font-weight:700!important;border:1px dashed var(--line)!important;border-radius:10px!important}.job-process-updated{display:block;margin-top:3px;color:var(--muted);font-size:9px}.admin-job-cards-dispatch-only .job-process-panel{display:block!important}
+[data-theme="dark"] .job-process-state{background:#16283d;color:#dcecff;border-color:#46617e}[data-theme="dark"] .job-process-state.opened{background:#0b2c43;color:#b9e5ff;border-color:#2b86b8}[data-theme="dark"] .job-process-state.diagnosis-report{background:#2d2347;color:#dfd1ff;border-color:#735eb0}[data-theme="dark"] .job-process-state.waiting-for-spare{background:#3a3108;color:#ffe58f;border-color:#7d6817}[data-theme="dark"] .job-process-state.pending-approval{border-color:#d3a500;background:#fff5c7;color:#705600}.job-process-state.testing{background:#3b260d;color:#ffd39b;border-color:#965f20}[data-theme="dark"] .job-process-state.completed{background:#0d2b20;color:#bff3d9;border-color:#1f8f62}
+@media(max-width:760px){.job-process-panel>.panel-head{align-items:flex-start;flex-direction:column}.job-process-panel>.panel-head button{width:100%}.job-process-table-wrap{padding:0 8px 12px}.job-process-table{min-width:780px}}
+
+
+/* V413 - Customer Job Card source mirrors BELM Dispatch: Existing=yellow, Create=blue. */
+#jobDialog .customer-job-source{margin:8px 0 12px;width:100%;box-sizing:border-box}
+#jobDialog .customer-job-source .job-source-option:has(input:disabled){opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+#jobDialog #customerExistingJobField small,#jobDialog #jobAssignmentHelp{display:block;margin-top:4px;color:var(--muted);font-size:10px;line-height:1.35}
+#jobDialog #customerHandoverReasonField textarea{min-height:58px;resize:vertical}
+#jobDialog .hidden{display:none!important}
+
+
+/* V415 - TECHNICAL DEP Workshop Analysis embed: show only operational analysis and technician performance. */
+html.admin-workshop-analysis-only .summary,
+html.admin-workshop-analysis-only .filters,
+html.admin-workshop-analysis-only .workflow-dispatch,
+html.admin-workshop-analysis-only .job-process-panel,
+html.admin-workshop-analysis-only .grid{display:none!important}
+html.admin-workshop-analysis-only main{max-width:none;width:100%;margin:0;padding:4px 4px 18px}
+html.admin-workshop-analysis-only .workshop-report-panel{margin:0 0 14px}
+html.admin-workshop-analysis-only .performance-panel{margin:0 0 4px}
+html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:1100px){html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:620px){html.admin-workshop-analysis-only .report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* V424 auto-generated Job Card reference shown directly in the Live Breakdown Queue. */
+.job-card-pill{background:#eafaf0;color:#08763a;border:1px solid #8bd7aa;font-weight:900}
+[data-theme="dark"] .job-card-pill{background:#0e3524;color:#85efad;border-color:#26764a}
+
+/* V425 - reported timestamp and hour-meter snapshot on live queue cards */
+.case-report-context{display:flex;flex-wrap:wrap;gap:7px 14px;margin-top:7px;color:var(--muted);font-size:11px}
+.case-report-context span{display:inline-flex;gap:4px;align-items:center}
+.case-report-context b{color:var(--ink);font-weight:850}
+[data-theme="dark"] .case-report-context b{color:#e9f1fb}
+@media(max-width:620px){.case-report-context{flex-direction:column;gap:3px}}
+
+
+/* V426 - Live Breakdown Queue: ordered lower rows + direct Technician assignment on the card. */
+.case-queue-head{display:flex;align-items:flex-start;gap:8px}.case-queue-head h3{margin:0;font-size:18px;line-height:1.2}
+.case-description{margin-top:5px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
+.case-origin-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.case-origin-row .company-pill{max-width:100%}
+.queue-assign-row{margin-top:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:rgba(11,103,194,.045)}
+.queue-assign-row label{display:grid;grid-template-columns:auto minmax(180px,1fr);align-items:center;gap:10px;margin:0;font-weight:900}
+.queue-assign-row label>span{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap}
+.queue-technician-select{width:100%;min-height:38px;border:1px solid #355373;border-radius:9px;padding:7px 30px 7px 10px;background:#0a1728;color:#f8fafc;font:inherit;font-weight:850;cursor:pointer}
+.queue-technician-select:focus{outline:2px solid rgba(58,166,255,.35);outline-offset:1px;border-color:#3aa6ff}
+.queue-technician-select:disabled{opacity:.55;cursor:not-allowed}
+.queue-assign-row small{display:block;margin-top:5px;color:var(--muted);font-size:9.5px;line-height:1.3}
+.queue-assigned-readonly{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:8px;border-top:1px solid var(--line);font-size:10px}.queue-assigned-readonly span{color:var(--muted);font-weight:850;text-transform:uppercase}.queue-assigned-readonly b{font-size:11px}
+[data-theme="light"] .queue-technician-select{background:#fff;color:#10243a;border-color:#bdcad8}
+[data-theme="dark"] .queue-assign-row{background:rgba(58,166,255,.06)}
+@media(max-width:620px){.case-queue-head h3{font-size:16px}.case-origin-row,.case-meta{gap:5px}.queue-assign-row label{grid-template-columns:1fr}.queue-assign-row label>span{white-space:normal}.queue-technician-select{min-height:42px}.case-report-context{display:grid;grid-template-columns:1fr 1fr;gap:5px 10px}.case-report-context span{display:block}}
+
+
+/* V428 - Breakdown card message display + confirmable inline Technician assignment. */
+.queue-message-display{display:grid;gap:7px;margin-top:7px}
+.queue-message-block{border:1px solid var(--line);border-radius:9px;padding:8px 10px;background:rgba(11,103,194,.025)}
+.queue-message-block>span{display:block;margin-bottom:3px;font-size:9px;letter-spacing:.07em;font-weight:900;color:var(--muted)}
+.queue-message-block p{margin:0;font-size:12px;line-height:1.42;font-weight:760;overflow-wrap:anywhere;white-space:pre-wrap}
+.queue-message-block small{display:block;margin-top:4px;color:var(--muted);font-size:9px}
+.manager-instruction{border-color:rgba(242,195,24,.55);background:rgba(242,195,24,.08)}
+.manager-instruction>span{color:#9b7900}
+[data-theme="dark"] .queue-message-block{background:rgba(58,166,255,.035)}
+[data-theme="dark"] .manager-instruction{background:rgba(242,195,24,.075);border-color:rgba(242,195,24,.4)}
+[data-theme="dark"] .manager-instruction>span{color:#ffd84e}
+.queue-assign-toggle{width:100%;min-height:40px;border:1px solid #2f89d8;border-radius:9px;background:#0b67c2;color:#fff;font:inherit;font-weight:900;cursor:pointer}
+.queue-assign-toggle:hover{filter:brightness(1.06)}
+.queue-assign-controls{margin-top:8px;display:grid;gap:8px}
+.queue-assign-controls[hidden]{display:none!important}
+.queue-assign-controls label{display:grid;grid-template-columns:150px minmax(180px,1fr);align-items:center;gap:10px;margin:0;font-weight:900}
+.queue-instruction-label{align-items:start!important}
+.queue-manager-instruction{width:100%;min-height:58px;resize:vertical;border:1px solid #355373;border-radius:9px;padding:8px 10px;background:#0a1728;color:#f8fafc;font:inherit;line-height:1.35}
+.queue-manager-instruction:focus{outline:2px solid rgba(58,166,255,.35);outline-offset:1px;border-color:#3aa6ff}
+.queue-assign-actions{display:flex;gap:8px;justify-content:flex-end}
+.queue-assign-ok,.queue-assign-cancel{min-width:90px;border-radius:8px;padding:8px 14px;font:inherit;font-weight:900;cursor:pointer}
+.queue-assign-ok{background:#09834a;color:#fff;border:1px solid #09834a}
+.queue-assign-cancel{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.queue-assign-ok:disabled{opacity:.6;cursor:wait}
+[data-theme="light"] .queue-manager-instruction{background:#fff;color:#10243a;border-color:#bdcad8}
+@media(max-width:620px){.queue-assign-controls label{grid-template-columns:1fr}.queue-assign-actions{justify-content:stretch}.queue-assign-ok,.queue-assign-cancel{flex:1}.queue-message-block p{font-size:11.5px}}
+
+/* V430 - full Breakdown card attention blink for delayed / Service Level Agreement exceeded cases */
+.case-card.delayed{
+  border:1px solid rgba(199,47,47,.78);
+  border-left:6px solid var(--red);
+  animation:belmBreakdownDelayedCardBlink 1.35s ease-in-out infinite;
+  will-change:background-color,border-color,box-shadow;
+}
+@keyframes belmBreakdownDelayedCardBlink{
+  0%,100%{
+    background:rgba(199,47,47,.045);
+    border-color:rgba(199,47,47,.56);
+    box-shadow:0 0 0 0 rgba(199,47,47,0);
+  }
+  50%{
+    background:rgba(199,47,47,.22);
+    border-color:rgba(239,68,68,.98);
+    box-shadow:0 0 0 3px rgba(199,47,47,.13),0 0 22px rgba(199,47,47,.24);
+  }
+}
+[data-theme="dark"] .case-card.delayed{
+  animation-name:belmBreakdownDelayedCardBlinkDark;
+}
+@keyframes belmBreakdownDelayedCardBlinkDark{
+  0%,100%{
+    background:#0f1c2c;
+    border-color:rgba(199,47,47,.62);
+    box-shadow:0 0 0 0 rgba(239,68,68,0);
+  }
+  50%{
+    background:rgba(112,24,31,.68);
+    border-color:#ef4444;
+    box-shadow:0 0 0 3px rgba(239,68,68,.16),0 0 24px rgba(239,68,68,.28);
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .case-card.delayed{
+    animation:none;
+    background:rgba(199,47,47,.15);
+    border-color:var(--red);
+  }
+}
+
+
+/* V431 - Fleet number shown on Live Breakdown Queue cards. */
+.case-queue-head{justify-content:space-between}
+.case-fleet-number{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;color:var(--muted);font-size:11px;line-height:1.25}
+.case-fleet-number b{color:var(--ink);font-size:11px;font-weight:850;letter-spacing:0}
+[data-theme="dark"] .case-fleet-number b{color:#e9f1fb}
+@media(max-width:620px){.case-queue-head{flex-wrap:wrap}.case-fleet-number{font-size:10.5px}.case-fleet-number b{font-size:10.5px}}
+
+/* V432 - semantic color system for Live Breakdown Queue labels only. */
+/* Origin / information */
+.case-origin-row .company-pill{
+  background:#e7f2ff;
+  color:#075a9a;
+  border-color:#a9d0f3;
+}
+/* Source type: color identifies where the case came from. */
+.source-pill.source-breakdown{background:#efe9ff;color:#5b36a5;border-color:#c9b8f3}
+.source-pill.source-checklist{background:#e7f8ee;color:#087244;border-color:#9edbb8}
+.source-pill.source-operator{background:#fff1dc;color:#9a5500;border-color:#efc37f}
+.source-pill.source-technician{background:#e9efff;color:#354f9f;border-color:#b8c7f2}
+.source-pill.source-job-card{background:#e7f4ff;color:#075a9a;border-color:#9fcdf2}
+.source-pill.source-procurement{background:#fff7d1;color:#735d00;border-color:#ead779}
+/* Job Card is a confirmed workflow reference. */
+.job-card-pill{background:#e5f8ed;color:#076d3c;border-color:#8bd7aa}
+/* Current state. OPEN stays amber; DELAYED remains red. */
+.status-pill.yellow{background:#fff3bf;color:#765b00;border:1px solid #e7c94e}
+.status-pill.red{background:#fee3e3;color:#a11f1f;border:1px solid #efaaaa}
+/* Department ownership. */
+.department-pill.department-workshop{background:#e7f4ff;color:#075a9a;border:1px solid #a9d0f3}
+.department-pill.department-technician{background:#efe9ff;color:#5b36a5;border:1px solid #c9b8f3}
+.department-pill.department-procurement{background:#fff7d1;color:#735d00;border:1px solid #ead779}
+.department-pill.department-administration{background:#fff0dc;color:#8b4c00;border:1px solid #efc37f}
+/* Time: elapsed breakdown is amber/orange; overdue delay is red. */
+.breakdown-time-pill{background:#fff0dc;color:#8b4c00;border:1px solid #efc37f}
+.delay-time-pill{background:#fee3e3!important;color:#a11f1f!important;border:1px solid #efaaaa!important}
+/* Keep Reported and Machine Hours readable, neutral operational data. */
+.case-report-context{color:#687789}
+.case-report-context b{color:#22354a}
+.case-fleet-number{color:#687789}
+.case-fleet-number b{color:#22354a}
+[data-theme="dark"] .case-origin-row .company-pill{background:#123451;color:#b8dcff;border-color:#2b6294}
+[data-theme="dark"] .source-pill.source-breakdown{background:#2d2347;color:#dfd1ff;border-color:#735eb0}
+[data-theme="dark"] .source-pill.source-checklist{background:#0d2b20;color:#bff3d9;border-color:#1f8f62}
+[data-theme="dark"] .source-pill.source-operator{background:#3b260d;color:#ffd39b;border-color:#965f20}
+[data-theme="dark"] .source-pill.source-technician{background:#1d2948;color:#cbd7ff;border-color:#526aa9}
+[data-theme="dark"] .source-pill.source-job-card{background:#0b2c43;color:#b9e5ff;border-color:#2b86b8}
+[data-theme="dark"] .source-pill.source-procurement{background:#3a3108;color:#ffe58f;border-color:#7d6817}
+[data-theme="dark"] .job-card-pill{background:#0e3524;color:#85efad;border-color:#26764a}
+[data-theme="dark"] .status-pill.yellow{background:#3a3108;color:#ffe58f;border-color:#7d6817}
+[data-theme="dark"] .status-pill.red{background:#431f24;color:#ffc5c5;border-color:#8e313c}
+[data-theme="dark"] .department-pill.department-workshop{background:#102b43;color:#9ed1ff;border-color:#244d6e}
+[data-theme="dark"] .department-pill.department-technician{background:#2d2347;color:#dfd1ff;border-color:#735eb0}
+[data-theme="dark"] .department-pill.department-procurement{background:#3a3108;color:#ffe58f;border-color:#7d6817}
+[data-theme="dark"] .department-pill.department-administration{background:#3b260d;color:#ffd39b;border-color:#965f20}
+[data-theme="dark"] .breakdown-time-pill{background:#3b260d;color:#ffd39b;border-color:#965f20}
+[data-theme="dark"] .delay-time-pill{background:#431f24!important;color:#ffc5c5!important;border-color:#8e313c!important}
+[data-theme="dark"] .case-report-context{color:#94a6ba}
+[data-theme="dark"] .case-report-context b,[data-theme="dark"] .case-fleet-number b{color:#e9f1fb}
+
+/* V435 - Reported Problem message field: full green border + content-driven auto expansion. */
+.queue-message-display{
+  align-items:stretch;
+}
+.queue-message-block{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  height:auto;
+  min-height:0;
+  max-height:none;
+  overflow:visible;
+}
+.queue-message-block.report-message{
+  border:2px solid #08b86d;
+  border-radius:11px;
+  background:rgba(8,184,109,.045);
+}
+.queue-message-block.report-message>span{
+  color:#07864f;
+}
+.queue-message-block p{
+  display:block;
+  width:100%;
+  height:auto;
+  min-height:0;
+  max-height:none;
+  overflow:visible;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  white-space:pre-wrap;
+}
+[data-theme="dark"] .queue-message-block.report-message{
+  border-color:#16d884;
+  background:rgba(22,216,132,.055);
+}
+[data-theme="dark"] .queue-message-block.report-message>span{
+  color:#65efaa;
+}
+
+
+/* V440 - Technician workload visibility and assignment capacity protection. */
+.technician-workload-panel{margin-top:14px}
+.technician-workload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.technician-workload-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:rgba(11,103,194,.025)}
+.technician-workload-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.technician-workload-head strong{font-size:12px;overflow-wrap:anywhere}
+.workload-status{padding:5px 8px;border-radius:999px;font-size:9px;font-weight:950;letter-spacing:.04em;border:1px solid currentColor}.workload-status.available{color:#0b944f;background:rgba(11,148,79,.09)}.workload-status.busy{color:#a87800;background:rgba(242,195,24,.12)}.workload-status.full{color:#d83a3a;background:rgba(216,58,58,.10)}
+.technician-workload-metrics{display:grid;gap:5px;font-size:10px}.technician-workload-metrics span{display:flex;justify-content:space-between;gap:8px;color:var(--muted)}.technician-workload-metrics b{color:var(--text)}
+.workload-label{display:flex;justify-content:space-between;margin-top:10px;font-size:9.5px;font-weight:900}.workload-track{height:7px;border-radius:999px;background:rgba(120,140,160,.18);overflow:hidden;margin-top:5px}.workload-track i{display:block;height:100%;border-radius:inherit;background:#18a957}.technician-workload-card.busy .workload-track i{background:#e1ad00}.technician-workload-card.full .workload-track i{background:#d83a3a}
+.queue-technician-select option:disabled{color:#d83a3a}
+[data-theme="dark"] .technician-workload-card{background:rgba(58,166,255,.035)}
+@media(max-width:620px){.technician-workload-grid{grid-template-columns:1fr}.technician-workload-card{padding:11px}}
+
+/* V463 BELM WORKSHOP internal windows. Full Job Cards stays inside the
+   workshop iframe; Assigned Work shows only live assigned Job Card process
+   and Technician workload. */
+html.admin-assigned-work-only .summary,
+html.admin-assigned-work-only .filters,
+html.admin-assigned-work-only .workflow-dispatch,
+html.admin-assigned-work-only .grid,
+html.admin-assigned-work-only .workshop-report-panel,
+html.admin-assigned-work-only .performance-panel{display:none!important}
+html.admin-assigned-work-only main{max-width:none;width:100%;margin:0;padding:4px 4px 18px}
+html.admin-assigned-work-only .job-process-panel{display:block!important;margin-top:0}
+html.admin-assigned-work-only .technician-workload-panel{display:block!important}
+html.admin-job-cards-full-view main{max-width:none;width:100%;margin:0;padding:4px 4px 18px}
+html.admin-job-cards-full-view .workshop-report-panel,
+html.admin-job-cards-full-view .performance-panel{display:none!important}

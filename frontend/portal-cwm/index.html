@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>window.addEventListener("pageshow",function(e){if(e.persisted)window.location.reload();});</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BELM PORTAL-CWM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/admin-tools.css">
+    <link rel="stylesheet" href="/portal-switcher.css?v=511-three-portal-menu">
+    <link rel="stylesheet" href="/portal-cwm/manager.css?v=627-customer-home-stable">
+    <link rel="stylesheet" href="/machine-alert-zone-v612.css?v=612-machine-alert-zone">
+    <link rel="stylesheet" href="/workshop-home-v603.css?v=603-responsive-home">
+    <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+    <script src="/theme-manager.js?v=485-display-fit"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/portal-cwm/"><span class="brand-mark">B</span><span>BELM General Tech <small>PORTAL-CWM</small></span></a>
+      <div class="top-actions"><a class="ghost" href="/workshop-management-home/">← Main Home</a><button id="refreshButton" class="ghost" type="button">Refresh</button><button id="logoutButton" class="ghost" type="button">Log out</button></div>
+    </header>
+    <nav class="belm-portal-switcher" aria-label="BELM portal sections"><a href="/customers-manager/">Customer Overview</a><a href="/belm-workshop/">PORTAL-BELM WM</a><a class="active" href="/portal-cwm/">PORTAL-CWM</a></nav>
+    <main class="shell">
+      <section class="hero"><div><p class="eyebrow">Portal Customer Workshop Manager</p><h1>PORTAL-CWM</h1><p>Select a customer workshop from the cards below.</p></div></section>
+      <div id="pageAlert" class="alert hidden" role="status"></div>
+      <section class="panel cwm-list-toolbar-v621"><div class="panel-head"><div><h2>Customer Workshops</h2><p>All registered customer workshop portals.</p></div><input id="cwmSearch" type="search" placeholder="Search customer…" class="cwm-search"></div></section>
+      <div id="cwmCardGrid" class="cwm-card-grid"><p class="muted">Loading…</p></div>
+    </main>
+    <script>(function(){if(!localStorage.getItem('belm_customer_token')){var a=document.createElement('script');a.src='/admin-access.js?v=530-admin-only';document.body.appendChild(a);}})();</script>
+    <script src="/edit-confirm.js"></script>
+    <script src="/portal-cwm/manager.js?v=627-customer-home-stable"></script>
+    <script src="/portal-cwm/customer-home-brand-v626.js?v=627-customer-home-stable"></script>
+  </body>
+</html>

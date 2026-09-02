@@ -1,13 +1,18 @@
 (function () {
   const token = localStorage.getItem("belm_admin_token");
   let suppliers = [];
+  let pendingEditPin = null;
 
-  function applyTheme(theme) {
-    const safeTheme = theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = safeTheme;
-    localStorage.setItem("belm_theme", safeTheme);
+  async function confirmThenOpen(title, message, openFn) {
+    const confirmation = await window.belmConfirmEdit({ title, message });
+    if (!confirmation) return;
+    pendingEditPin = confirmation.editPin;
+    openFn();
   }
-  applyTheme(localStorage.getItem("belm_theme") || "light");
+
+  // Dark/light mode is handled centrally by admin-sidebar.js (per-admin
+  // localStorage preference) — this page no longer sets its own theme or
+  // reads/writes a shared company-wide setting.
 
   const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
@@ -44,11 +49,23 @@
     hint.classList.remove("error");
     const googleTab = window.open(googleUrl, "_blank", "noopener,noreferrer");
     if (googleTab) googleTab.opener = null;
+
+    // After a supplier-focused search, surface a one-tap way to save what
+    // was just found — pre-fills the name so the admin only has to paste
+    // in the WhatsApp/email/website they found in the Google tab.
+    const quickAddButton = document.getElementById("quickAddSupplierButton");
+    if (type === "suppliers") {
+      quickAddButton.classList.remove("hidden");
+      quickAddButton.dataset.searchedName = searchDetails;
+    } else {
+      quickAddButton.classList.add("hidden");
+    }
   }
 
   async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
+      cache: "no-store",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token || ""}`,
@@ -130,17 +147,13 @@
 
   async function load() {
     if (!token) {
-      window.location.href = "/admin/login";
+      window.location.href = "/login";
       return;
     }
     try {
       suppliers = await api("/suppliers");
       updateMetrics();
       renderSuppliers();
-      try {
-        const settings = await api("/settings");
-        if (["light", "dark"].includes(settings.displayTheme)) applyTheme(settings.displayTheme);
-      } catch (_) {}
     } catch (error) {
       document.getElementById("supplierGrid").innerHTML = `<div class="empty">${escapeHtml(error.message)}</div>`;
       showAlert(error.message, true);
@@ -179,6 +192,10 @@
       verified: document.getElementById("verified").checked,
     };
     const button = document.getElementById("saveButton");
+    if (id) {
+      if (!pendingEditPin) return;
+      payload.editPin = pendingEditPin;
+    }
     button.disabled = true;
     button.textContent = "Checking & saving…";
     try {
@@ -187,6 +204,7 @@
         body: JSON.stringify(payload),
       });
       document.getElementById("supplierDialog").close();
+      pendingEditPin = null;
       await load();
       showAlert(`Supplier saved. Smart trust status: ${result.trustStatus} (${result.trustScore}%).`);
     } catch (error) {
@@ -199,9 +217,14 @@
 
   async function deleteSupplier(id) {
     const supplier = suppliers.find((item) => item.id === id);
-    if (!supplier || !confirm(`Delete supplier ${supplier.name}? It will move to the Recycle Bin.`)) return;
+    if (!supplier) return;
+    const confirmation = await window.belmConfirmDelete({
+      title: "Delete supplier?",
+      message: `Delete supplier ${supplier.name}? It will move to the Recycle Bin.`,
+    });
+    if (!confirmation) return;
     try {
-      await api(`/suppliers/${id}`, { method: "DELETE" });
+      await api(`/suppliers/${id}`, { method: "DELETE", body: JSON.stringify(confirmation) });
       await load();
       showAlert("Supplier moved to the Recycle Bin.");
     } catch (error) {
@@ -212,15 +235,23 @@
   document.getElementById("addButton").addEventListener("click", () => openSupplier());
   document.getElementById("refreshButton").addEventListener("click", load);
   document.getElementById("googleSearchForm").addEventListener("submit", runGoogleSearch);
+  document.getElementById("quickAddSupplierButton").addEventListener("click", (event) => {
+    openSupplier();
+    document.getElementById("supplierName").value = event.target.dataset.searchedName || "";
+    document.getElementById("whatsapp").focus();
+  });
   document.getElementById("searchInput").addEventListener("input", renderSuppliers);
   document.getElementById("trustFilter").addEventListener("change", renderSuppliers);
   document.getElementById("supplierForm").addEventListener("submit", saveSupplier);
   document.querySelectorAll("[data-close]").forEach((button) =>
-    button.addEventListener("click", () => document.getElementById("supplierDialog").close()));
+    button.addEventListener("click", () => { pendingEditPin = null; document.getElementById("supplierDialog").close(); }));
   document.getElementById("supplierGrid").addEventListener("click", (event) => {
     const edit = event.target.closest("[data-edit]");
     const remove = event.target.closest("[data-delete]");
-    if (edit) openSupplier(suppliers.find((supplier) => supplier.id === edit.dataset.edit));
+    if (edit) {
+      const supplier = suppliers.find((item) => item.id === edit.dataset.edit);
+      confirmThenOpen("Edit supplier?", `Confirm you want to edit ${supplier?.name || "this supplier"}.`, () => openSupplier(supplier));
+    }
     if (remove) deleteSupplier(remove.dataset.delete);
   });
 

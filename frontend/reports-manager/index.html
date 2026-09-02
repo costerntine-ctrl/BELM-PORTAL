@@ -7,14 +7,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/management-analytics.css">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
+  <link rel="stylesheet" href="/management-analytics.css?v=221-finance-sync">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body class="management-page">
   <header class="management-topbar">
     <div><strong>BELM General Tech</strong><small>Reports, analysis and comparisons</small></div>
     <div class="topbar-actions no-print">
-      <a class="button" href="/overview-manager/">← All Overview</a>
+      <a class="button" href="/belm-workshop/">← Main Home</a>
       <button id="csvButton" type="button">Export CSV</button>
       <button id="printButton" class="secondary" type="button">Print / Save PDF</button>
     </div>
@@ -27,7 +31,7 @@
         <h1>Reports & Comparisons</h1>
         <p>Finance, expenses, sales, employee attendance, role activity, tasks and service performance in one report centre.</p>
       </div>
-      <a class="button secondary" href="/overview-manager/">All Overview</a>
+      <a class="button secondary" href="/belm-workshop/">Main Home</a>
     </section>
 
     <section class="filter-panel no-print">
@@ -43,8 +47,9 @@
         </label>
         <label id="dateFromLabel" class="hidden">From<input id="dateFrom" type="date"></label>
         <label id="dateToLabel" class="hidden">To<input id="dateTo" type="date"></label>
-        <button id="applyButton" class="primary" type="button">Apply report</button>
+        <button id="applyButton" class="primary" type="button">Sync report</button>
         <span id="periodLabel" class="period-note">Loading report…</span>
+        <span id="syncStatus" class="sync-status">Billing sync pending…</span>
       </div>
     </section>
 
@@ -105,8 +110,8 @@
     </section>
   </main>
 
-  <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-  <script src="/reports-manager/app.js"></script>
+  <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=488-text-fit"></script>
+  <script src="/reports-manager/app.js?v=414-technical-dep"></script>
 </body>
 </html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Petty Cash — PORTAL-CWM</title>
+  <link rel="stylesheet" href="/customer-machine-expenses/expenses.css?v=533-petty-cash-cleanup">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <style>
+    .petty-spares{display:none!important}
+    .balance-grid{grid-template-columns:2fr 1fr 1fr}
+    .petty-purpose-note{margin:0 0 16px;padding:12px 14px;border-radius:12px;background:#e9f3ff;border:1px solid #c9def7;color:#244f7c;font-size:13px}
+    @media(max-width:720px){.balance-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/customer-workshop/?actor=customer">
+      <span class="mark">B</span>
+      <span><b>BELM Operations</b><small>PORTAL-CWM · Petty Cash</small></span>
+    </a>
+    <nav>
+      <a href="/customer-workshop/?actor=customer">← Workshop Main</a>
+      <button id="logoutButton" type="button">Log out</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div>
+        <p class="eyebrow">COMPANY CASH CONTROL</p>
+        <h1 id="pageTitle">Petty Cash</h1>
+        <p id="machineDetails" class="lead">One shared company petty cash float for small workshop operating expenses.</p>
+      </div>
+      <div class="download-actions">
+        <label class="print-options">Print options
+          <select id="printScope">
+            <option value="all">All</option>
+            <option value="date">Select date…</option>
+            <option value="month">Select month…</option>
+          </select>
+        </label>
+        <input type="date" id="printDateInput" class="hidden">
+        <input type="month" id="printMonthInput" class="hidden">
+        <button class="secondary" id="csvButton" type="button">Download CSV</button>
+        <button class="secondary" id="pdfButton" type="button">Download PDF</button>
+        <button class="secondary" id="receiptsButton" type="button">Download Receipts</button>
+      </div>
+    </section>
+
+    <div class="petty-purpose-note">Petty Cash is for small cash operating costs only. Spare/material sourcing, Store stock and supplier purchasing belong to Procurement.</div>
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+
+    <section class="summary-grid balance-grid" aria-label="Petty cash account">
+      <article class="balance-card"><span>Petty Cash Balance</span><strong id="balanceAmount">TZS 0</strong><small>Available cash balance</small></article>
+      <article><span>Total funded</span><strong id="totalToppedUp">TZS 0</strong></article>
+      <article><span>Total spent</span><strong id="totalUsed">TZS 0</strong></article>
+    </section>
+
+    <section class="summary-grid" aria-label="Petty cash analysis">
+      <article><span>Selected period spending</span><strong id="totalCost">TZS 0</strong></article>
+      <article><span>Transactions</span><strong id="recordCount">0</strong></article>
+      <article><span>Average transaction</span><strong id="averageCost">TZS 0</strong></article>
+      <article><span>Receipts attached</span><strong id="receiptCount">0</strong></article>
+    </section>
+
+    <section id="topupPanel" class="panel entry-panel hidden">
+      <div class="panel-head"><div><h2>Add Petty Cash Funds</h2><p>Administration/Accounts can replenish the company petty cash float.</p></div><strong id="topupCalculated">Top-up: TZS 0</strong></div>
+      <form id="topupForm">
+        <label>Amount (TZS)<input id="topupAmount" type="number" min="1" step="0.01" required></label>
+        <label class="wide">Funding note<input id="topupNote" maxlength="255" placeholder="e.g. Weekly workshop petty cash float"></label>
+        <div class="form-actions"><button class="primary" id="topupButton" type="submit">Add Funds</button></div>
+      </form>
+    </section>
+
+    <section id="entryPanel" class="panel entry-panel">
+      <div class="panel-head">
+        <div><h2 id="entryPanelTitle">Record Petty Cash Expense</h2><p id="entryPanelHelp">Record a small operating expense and select the machine or workshop activity that used the cash.</p></div>
+        <strong id="calculatedTotal">Amount: TZS 0</strong>
+      </div>
+      <form id="expenseForm">
+        <label>Date<input id="expenseDate" type="date" required></label>
+        <label>Machine<select id="machineSelect" required><option value="">Select machine…</option></select></label>
+        <label class="wide">Expense description<input id="description" maxlength="500" required placeholder="e.g. Technician transport, local consumable, small workshop expense"></label>
+
+        <div class="petty-spares wide" aria-hidden="true">
+          <div class="petty-spares-head"><div><b>Spare entry</b></div><button class="secondary compact" id="addSpareButton" type="button">+ Add another spare</button></div>
+          <div id="spareItems" class="petty-spare-list"></div>
+        </div>
+
+        <label>Amount (TZS)<input id="amount" type="number" min="0.01" step="0.01" required></label>
+        <label class="receipt-field">Receipt photo <small>(recommended)</small>
+          <input id="receiptPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment">
+          <small>Camera or gallery · JPG/PNG/WebP</small>
+        </label>
+        <div id="receiptPreviewWrap" class="receipt-preview hidden"><img id="receiptPreview" alt="Receipt preview"><button id="removeReceiptButton" type="button">Remove receipt</button></div>
+        <div class="form-actions petty-entry-actions"><button class="primary" id="saveButton" type="submit">Save Expense</button><button class="secondary hidden" id="cancelEditButton" type="button">Cancel Edit</button></div>
+      </form>
+    </section>
+
+    <section class="panel" id="topupHistoryPanel">
+      <div class="panel-head"><div><h2>Funding History</h2><p>Funds added to the company petty cash account.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Date</th><th>Amount</th><th>Note</th><th>Added by</th></tr></thead><tbody id="topupRows"><tr><td colspan="4" class="empty">No funding records yet.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div><h2>Petty Cash Transactions</h2><p>Company-wide petty cash spending history with machine, receipt and responsible user.</p></div><button class="secondary compact" id="refreshButton" type="button">Refresh</button></div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Date</th><th>Machine</th><th>Description</th><th>Details</th><th>Amount</th><th>Receipt</th><th>Recorded by</th><th>Action</th></tr></thead><tbody id="expenseRows"><tr><td colspan="8" class="empty">Loading entries…</td></tr></tbody></table>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="receiptDialog"><div class="receipt-dialog-head"><b>Receipt</b><button id="closeReceiptButton" type="button" aria-label="Close receipt">×</button></div><div class="receipt-image-wrap"><img id="receiptImage" alt="Saved receipt"></div></dialog>
+
+  <script src="/customer-petty-cash/petty-cash.js?v=533-petty-cash-cleanup"></script>
+</body>
+</html>

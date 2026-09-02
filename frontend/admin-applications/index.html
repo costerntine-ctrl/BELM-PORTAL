@@ -4,19 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Access Applications — BELM Admin</title>
-  <link rel="stylesheet" href="/admin-applications/admin.css">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
+  <link rel="stylesheet" href="/admin-applications/admin.css?v=469-customer-control">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body>
   <header>
     <div class="brand"><span>B</span><div><b>BELM Admin</b><small>Access Applications</small></div></div>
-    <nav><a href="/overview-manager/">← All Overview</a><button id="logoutButton">Log out</button></nav>
+    <nav><a href="/belm-workshop/">← Main Home</a><button id="logoutButton">Log out</button></nav>
   </header>
 
   <main>
     <div class="heading">
       <div><p>PORTAL ONBOARDING</p><h1>Registration & role approval</h1><span>Customers and users remain blocked until you approve and assign their access.</span></div>
-      <button class="refresh" id="refreshButton">Refresh</button>
+      <div class="heading-actions">
+        <button class="secondary" id="registerCustomerButton" type="button">+ Register customer</button>
+        <button class="secondary" id="registerTechnicianButton" type="button">+ Register technician</button>
+        <button class="secondary" id="addMachineButton" type="button">+ Add machine</button>
+        <a class="secondary" href="/roles-manager/?open=addRole">+ Add role</a>
+        <a class="secondary" href="/roles-manager/?open=addUser">+ Add system user</a>
+        <button class="refresh" id="refreshButton">Refresh</button>
+      </div>
     </div>
 
     <div class="tabs" role="tablist">
@@ -29,6 +40,41 @@
     <div id="alertBox" class="alert hidden"></div>
     <section id="applicationList" class="application-list">
       <div class="loading">Loading applications…</div>
+    </section>
+
+
+    <section class="registered-users-section registered-customers-section" aria-labelledby="registeredCustomersTitle">
+      <div class="registered-users-head">
+        <div>
+          <p>REGISTERED CUSTOMERS</p>
+          <h2 id="registeredCustomersTitle">Customers <span id="registeredCustomersCount">0</span></h2>
+          <span>Click a customer name to open account, machine, service and user controls.</span>
+        </div>
+        <div class="registered-users-tools">
+          <input id="registeredCustomersSearch" type="search" placeholder="Search customer, email, phone or machine" aria-label="Search registered customers">
+          <button class="refresh" id="refreshCustomersButton" type="button">Refresh customers</button>
+        </div>
+      </div>
+      <div id="registeredCustomersList" class="registered-users-list">
+        <div class="loading">Loading registered customers…</div>
+      </div>
+    </section>
+
+    <section class="registered-users-section" aria-labelledby="registeredUsersTitle">
+      <div class="registered-users-head">
+        <div>
+          <p>ACTIVE PORTAL ACCOUNTS</p>
+          <h2 id="registeredUsersTitle">Registered users <span id="registeredUsersCount">0</span></h2>
+          <span>Users already created in BELM. Edit access or remove an account from this list.</span>
+        </div>
+        <div class="registered-users-tools">
+          <input id="registeredUsersSearch" type="search" placeholder="Search name, email, role or customer" aria-label="Search registered users">
+          <button class="refresh" id="refreshUsersButton" type="button">Refresh users</button>
+        </div>
+      </div>
+      <div id="registeredUsersList" class="registered-users-list">
+        <div class="loading">Loading registered users…</div>
+      </div>
     </section>
   </main>
 
@@ -44,6 +90,8 @@
       <label>Temporary password</label><strong id="approvedPassword"></strong>
       <label>Recovery code</label><strong id="approvedRecovery"></strong>
       <label>Login link</label><a id="approvedLink" target="_blank" rel="noopener"></a>
+      <label id="approvedModeLabel">Registration mode</label><strong id="approvedMode">—</strong>
+      <label id="approvedSyncLabel">Synced to</label><strong id="approvedSync">—</strong>
     </div>
     <button id="copyMessageButton" class="primary">Copy link + password + recovery</button>
     <button id="copyApprovedLinkButton" class="primary" type="button">Copy login link</button>
@@ -69,8 +117,271 @@
     </form>
   </dialog>
 
-  <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-  <script src="/admin-applications/admin.js"></script>
+  <dialog id="registerCustomerDialog">
+    <button class="dialog-close" id="closeRegisterCustomer" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">MANUAL REGISTRATION</p>
+      <h2>Register customer &amp; machine</h2>
+      <p>Creates the customer account directly (no application to approve). Adding a first machine is optional — more can be added later from Customers &amp; Machines.</p>
+    </div>
+    <form id="registerCustomerForm" class="assignment-form">
+      <label>Company name<input id="regCustomerName" required maxlength="255"></label>
+      <label>Email<input id="regCustomerEmail" required type="email" maxlength="255"></label>
+      <label>Phone number<input id="regCustomerPhone" required maxlength="50"></label>
+      <label>Company address<input id="regCustomerAddress" maxlength="500"></label>
+      <label>TIN number<input id="regCustomerTin" maxlength="50"></label>
+      <label>VRN number<input id="regCustomerVrn" maxlength="50"></label>
+      <label>Customer operation mode
+        <select id="regCustomerMode" required>
+          <option value="TECHNICAL_DEP">TECHNICAL DEP — BELM Service Provider ON</option>
+          <option value="PORTAL_CWM">PORTAL-CWM — Customer Workshop / BELM OFF</option>
+        </select>
+      </label>
+      <div class="field-block registration-sync-note"><strong>Registration sync</strong><small>After Save, this same customer/company ID is available in Registration, Customer Overview, PORTAL-CWM/Customer Dashboard, WM Customer Overview, Manage Users, Machines, Procurement and Reports.</small></div>
+      <div class="field-block"><span class="check-option"><input id="regAddMachineToggle" type="checkbox"> Also register a first machine now</span></div>
+      <div id="regMachineFields" class="hidden">
+        <label>Machine type
+          <select id="regMachineType">
+            <option value="">Select machine type…</option>
+            <option value="__other__">+ New machine type…</option>
+          </select>
+        </label>
+        <label id="regMachineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet)</small>
+          <input id="regMachineTypeOther" maxlength="100" placeholder="Type the new machine type">
+        </label>
+        <label>Brand<input id="regMachineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
+        <label>Model<input id="regMachineModel" maxlength="255"></label>
+        <label>Registration number<input id="regMachineRegNumber" maxlength="100"></label>
+        <label>Fleet number<input id="regMachineFleetNumber" maxlength="100" placeholder="e.g. BELM-045"></label>
+        <label>Serial number<input id="regMachineSerialNumber" maxlength="100"></label>
+      </div>
+      <div id="registerCustomerError" class="alert hidden"></div>
+      <button id="saveRegisterCustomerButton" class="primary" type="submit">Register customer</button>
+    </form>
+  </dialog>
+
+  <dialog id="registerTechnicianDialog">
+    <button class="dialog-close" id="closeRegisterTechnician" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">MANUAL REGISTRATION</p>
+      <h2>Register technician / system user</h2>
+      <p>Creates a live login directly (no application to approve). Choose the exact role — the user will not see pages outside it.</p>
+    </div>
+    <form id="registerTechnicianForm" class="assignment-form">
+      <label>Name<input id="regUserName" required maxlength="255"></label>
+      <label>Email<input id="regUserEmail" required type="email" maxlength="255"></label>
+      <label>Phone<input id="regUserPhone" maxlength="50"></label>
+      <label>Assign role
+        <select id="regUserRole" required></select>
+      </label>
+      <label id="regUserCustomerWrap" class="hidden">Customer served by Technician
+        <select id="regUserCustomer"></select>
+      </label>
+      <div id="registerTechnicianError" class="alert hidden"></div>
+      <button id="saveRegisterTechnicianButton" class="primary" type="submit">Register technician</button>
+    </form>
+  </dialog>
+
+  <dialog id="addMachineDialog">
+    <button class="dialog-close" id="closeAddMachine" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">MANUAL REGISTRATION</p>
+      <h2>Add machine to existing customer</h2>
+      <p>Choose the customer this machine belongs to, then fill in the machine details.</p>
+    </div>
+    <form id="addMachineForm" class="assignment-form">
+      <label>Customer
+        <select id="addMachineCustomer" required><option value="">Select customer…</option></select>
+      </label>
+      <label>Machine type
+        <select id="addMachineType" required>
+          <option value="">Select machine type…</option>
+          <option value="__other__">+ New machine type…</option>
+        </select>
+      </label>
+      <label id="addMachineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet)</small>
+        <input id="addMachineTypeOther" maxlength="100" placeholder="Type the new machine type">
+      </label>
+      <label>Brand<input id="addMachineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
+      <label>Model<input id="addMachineModel" required maxlength="255"></label>
+      <label>Registration number<input id="addMachineRegNumber" maxlength="100"></label>
+      <label>Fleet number<input id="addMachineFleetNumber" maxlength="100" placeholder="e.g. BELM-045"></label>
+      <label>Serial number<input id="addMachineSerialNumber" maxlength="100"></label>
+      <div id="addMachineError" class="alert hidden"></div>
+      <button id="saveAddMachineButton" class="primary" type="submit">Save machine</button>
+    </form>
+  </dialog>
+
+
+  <dialog id="customerManageDialog" class="customer-manage-dialog">
+    <button class="dialog-close" id="closeCustomerManage" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER CONTROL</p>
+      <h2 id="customerManageTitle">Manage customer</h2>
+      <p id="customerManageSummary">Customer account, service control, machines and portal users.</p>
+    </div>
+    <div class="customer-control-status-grid">
+      <label class="customer-control-switch">
+        <span><strong>BELM Service Provider</strong><small>ON = BELM controls maintenance workflow</small></span>
+        <input id="customerBelmServiceToggle" type="checkbox">
+      </label>
+      <label class="customer-control-switch">
+        <span><strong>Portal Service / Lock</strong><small>OFF = customer and customer users cannot log in</small></span>
+        <input id="customerPortalServiceToggle" type="checkbox">
+      </label>
+    </div>
+    <div class="customer-control-meta" id="customerControlMeta"></div>
+    <div class="customer-manage-actions">
+      <button type="button" data-customer-control="edit"><strong>Edit</strong><span>Customer details</span></button>
+      <button type="button" data-customer-control="reset"><strong>Reset</strong><span>New login password</span></button>
+      <button type="button" data-customer-control="add-machine"><strong>Add Machine</strong><span>Register machine</span></button>
+      <button type="button" data-customer-control="remove-machine"><strong>Remove Machine</strong><span>Select machine</span></button>
+      <button type="button" data-customer-control="users"><strong>Customer Users Control</strong><span>User limit & access</span></button>
+      <button type="button" class="danger" data-customer-control="delete"><strong>Delete</strong><span>Move to Recycle Bin</span></button>
+    </div>
+  </dialog>
+
+  <dialog id="editCustomerDialog">
+    <button class="dialog-close" id="closeEditCustomer" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER ACCOUNT</p>
+      <h2 id="editCustomerTitle">Edit customer</h2>
+      <p>Update the registered company details. Login identity follows the customer email.</p>
+    </div>
+    <form id="editCustomerForm" class="assignment-form">
+      <input id="editCustomerId" type="hidden">
+      <label>Company name<input id="editCustomerName" required maxlength="255"></label>
+      <label>Email<input id="editCustomerEmail" required type="email" maxlength="255"></label>
+      <label>Phone<input id="editCustomerPhone" required maxlength="50"></label>
+      <label>Address<input id="editCustomerAddress" maxlength="500"></label>
+      <label>TIN<input id="editCustomerTin" maxlength="50"></label>
+      <label>VRN<input id="editCustomerVrn" maxlength="50"></label>
+      <div id="editCustomerError" class="alert hidden"></div>
+      <button id="saveEditCustomer" class="primary" type="submit">Save customer</button>
+    </form>
+  </dialog>
+
+  <dialog id="customerUsersControlDialog">
+    <button class="dialog-close" id="closeCustomerUsersControl" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER MANAGE</p>
+      <h2 id="customerUsersControlTitle">Customer Users Control</h2>
+      <p>Control how many portal users this customer is allowed to create.</p>
+    </div>
+    <div class="customer-users-stats">
+      <div><span>Users in use</span><strong id="customerUsersUsed">0</strong></div>
+      <div><span>Current limit</span><strong id="customerUsersLimit">3</strong></div>
+    </div>
+    <form id="customerUsersControlForm" class="assignment-form">
+      <input id="customerUsersCustomerId" type="hidden">
+      <label>Allowed portal users<input id="customerUsersLimitInput" type="number" min="0" step="1" value="3" required></label>
+      <div id="customerUsersControlError" class="alert hidden"></div>
+      <button id="saveCustomerUsersControl" class="primary" type="submit">Save User Limit</button>
+    </form>
+  </dialog>
+
+  <dialog id="customerMachineControlDialog" class="customer-machine-control-dialog">
+    <button class="dialog-close" id="closeCustomerMachineControl" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">CUSTOMER MACHINES</p>
+      <h2 id="customerMachineControlTitle">Remove machine</h2>
+      <p>Select only the machine you want to remove. The customer and other machines remain unchanged.</p>
+    </div>
+    <div id="customerMachineControlList" class="customer-machine-control-list"></div>
+  </dialog>
+
+  <dialog id="editRegisteredUserDialog">
+    <button class="dialog-close" id="closeEditRegisteredUser" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow">REGISTERED USER</p>
+      <h2 id="editRegisteredUserTitle">Edit user</h2>
+      <p>Change the user role, assigned customer or account status. Email/login identity is not changed here.</p>
+    </div>
+    <form id="editRegisteredUserForm" class="assignment-form">
+      <input id="editRegisteredUserId" type="hidden">
+      <label>Name<input id="editRegisteredUserName" required maxlength="255"></label>
+      <label>Email<input id="editRegisteredUserEmail" type="email" readonly></label>
+      <label>Phone<input id="editRegisteredUserPhone" maxlength="50"></label>
+      <div class="field-block">
+        <span class="field-title">Roles <small>(select one or more)</small></span>
+        <div id="editRegisteredUserRoles" class="user-role-options"></div>
+      </div>
+      <label id="editRegisteredUserCustomerWrap" class="hidden">Customer served by Technician
+        <select id="editRegisteredUserCustomer"></select>
+      </label>
+      <div class="field-block">
+        <span class="check-option"><input id="editRegisteredUserActive" type="checkbox"> User account is active</span>
+      </div>
+      <div id="editRegisteredUserError" class="alert hidden"></div>
+      <button id="saveEditRegisteredUser" class="primary" type="submit">Save user</button>
+    </form>
+  </dialog>
+
+
+  <dialog id="registeredUserActionDialog" class="registered-user-action-dialog">
+    <button class="dialog-close" id="closeRegisteredUserAction" type="button" aria-label="Close">×</button>
+    <div class="assignment-head">
+      <p class="eyebrow" id="registeredUserActionEyebrow">ACCOUNT SECURITY</p>
+      <h2 id="registeredUserActionTitle">Confirm account action</h2>
+      <p id="registeredUserActionMessage">Enter your current BELM Admin password to continue.</p>
+    </div>
+    <form id="registeredUserActionForm" class="assignment-form">
+      <label>Your current admin password
+        <input id="registeredUserAdminPassword" type="password" required autocomplete="current-password" placeholder="Enter your login password">
+      </label>
+      <label id="registeredUserDeleteReasonWrap" class="hidden">Reason for deletion
+        <textarea id="registeredUserDeleteReason" rows="3" maxlength="500" placeholder="e.g. Duplicate account, employee left, created by mistake"></textarea>
+      </label>
+      <div id="registeredUserActionError" class="alert hidden"></div>
+      <div class="registered-user-action-buttons">
+        <button id="cancelRegisteredUserAction" class="secondary" type="button">Cancel</button>
+        <button id="confirmRegisteredUserAction" class="primary" type="submit">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="resetRegisteredUserCredentialsDialog">
+    <button class="dialog-close" id="closeResetRegisteredUserCredentials" aria-label="Close">×</button>
+    <div class="check">✓</div>
+    <h2>Password reset complete</h2>
+    <p>The old password no longer works. Copy the new details now; the temporary password and recovery code are shown only once.</p>
+    <div class="same-login-link-note">One portal link is used by all BELM users. The account role and customer are resolved after login.</div>
+    <div class="login-summary">
+      <label>Name</label><strong id="resetCredName"></strong>
+      <label>Login email</label><strong id="resetCredEmail"></strong>
+      <label>New temporary password</label><strong id="resetCredPassword"></strong>
+      <label>Recovery code</label><strong id="resetCredRecovery"></strong>
+      <label>Login link — same for all users</label><a id="resetCredLink" target="_blank" rel="noopener"></a>
+    </div>
+    <button id="copyResetRegisteredUserDetails" class="primary" type="button">Copy login details</button>
+    <div class="credential-copy-row">
+      <button id="copyResetRegisteredUserPassword" class="secondary" type="button">Copy password</button>
+      <button id="copyResetRegisteredUserLink" class="secondary" type="button">Copy login link</button>
+    </div>
+  </dialog>
+
+  <dialog id="registerCredentialsDialog">
+    <button class="dialog-close" id="closeRegisterCredentials" aria-label="Close">×</button>
+    <div class="check">✓</div>
+    <h2 id="regCredTitle">Account created</h2>
+    <p id="regCredSubtitle">Copy these credentials now. The password and recovery code are shown only once.</p>
+    <div class="login-summary">
+      <label>Name</label><strong id="regCredName"></strong>
+      <label>Role / type</label><strong id="regCredRole"></strong>
+      <label>Login email</label><strong id="regCredEmail"></strong>
+      <label>Temporary password</label><strong id="regCredPassword"></strong>
+      <label>Recovery code</label><strong id="regCredRecovery"></strong>
+      <label>Login link</label><a id="regCredLink" target="_blank" rel="noopener"></a>
+      <label id="regCredModeLabel">Registration mode</label><strong id="regCredMode">—</strong>
+      <label id="regCredSyncLabel">Synced to</label><strong id="regCredSync">—</strong>
+    </div>
+    <button id="copyRegCredButton" class="primary" type="button">Copy link + password + recovery</button>
+  </dialog>
+
+  <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=488-text-fit"></script>
+  <script src="/edit-confirm.js?v=469-customer-control"></script>
+  <script src="/delete-confirm.js?v=469-customer-control"></script>
+  <script src="/admin-applications/admin.js?v=491-customer-registration-sync"></script>
 </body>
 </html>

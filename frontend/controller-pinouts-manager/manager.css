@@ -1,0 +1,39 @@
+.toolbar { margin: 18px 0 16px; }
+.toolbar input { width: 100%; max-width: 480px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+
+.pinout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.pinout-card { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 8px 25px rgba(21,29,49,.04); }
+.pinout-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.pinout-card-head b { display: block; font-size: 15px; }
+.pinout-card-head span { display: block; margin-top: 2px; color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.pinout-system { margin: 8px 0 0; color: var(--ink); font-size: 12px; font-weight: 700; }
+.pinout-thumbs { display: flex; gap: 6px; margin-top: 10px; }
+.pinout-thumb { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas); font-size: 16px; cursor: pointer; }
+.pinout-thumb-more { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.pinout-pin-count { margin: 10px 0 12px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.pinout-card-actions { display: flex; gap: 8px; }
+.pinout-card-actions button { flex: 1; padding: 7px; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas); color: var(--ink); font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.pinout-card-actions button.delete { border-color: #f1c8c4; color: var(--red, #b42318); background: #fff1f0; }
+
+.pinout-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.pinout-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.pinout-section-head h3 { margin: 0; font-size: 13px; }
+.add-photo-button { padding: 7px 12px; border: 1px solid var(--green); border-radius: 8px; color: var(--green2); background: #f4fbf7; font-size: 11.5px; font-weight: 800; cursor: pointer; }
+
+.photos-list { display: grid; gap: 8px; }
+.photo-row { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 8px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); }
+.photo-row-icon { display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.photo-row input { margin: 0; padding: 7px 9px; font-size: 12px; }
+.photo-row button { padding: 6px 10px; border: 1px solid #f1c8c4; border-radius: 7px; color: var(--red, #b42318); background: #fff1f0; font-size: 10.5px; font-weight: 800; cursor: pointer; white-space: nowrap; }
+
+.pins-list { display: grid; gap: 8px; }
+.pin-row { display: grid; grid-template-columns: 140px 1fr auto; gap: 8px; align-items: center; }
+.pin-row input { margin: 0; padding: 8px 10px; font-size: 12px; }
+.pin-row button { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid #f1c8c4; border-radius: 7px; color: var(--red, #b42318); background: #fff1f0; font-size: 15px; cursor: pointer; }
+
+@media (max-width: 560px) {
+  .pin-row { grid-template-columns: 1fr; }
+  .photo-row { grid-template-columns: 1fr; }
+}
+.pinout-card-actions { flex-wrap: wrap; }
+.pinout-card-actions button.pdf { border-color: rgba(20, 91, 170, .28); background: rgba(20, 91, 170, .08); color: #145baa; }

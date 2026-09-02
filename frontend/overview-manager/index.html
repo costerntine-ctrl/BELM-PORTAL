@@ -3,100 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>All Overview — BELM Admin</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <title>Operations Action Center — BELM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/management-analytics.css?v=18-sidebar-activity">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
+  <link rel="stylesheet" href="/management-analytics.css?v=639-analysis-pages"><link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit"><link rel="stylesheet" href="/theme-global.css?v=485-display-fit"><script src="/theme-manager.js?v=485-display-fit"></script><link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle"><script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+  <style>
+    .analysis-page-link{display:flex!important;align-items:center;justify-content:space-between;gap:16px;text-decoration:none!important;color:inherit!important;min-height:145px;cursor:pointer}.analysis-page-link .analysis-copy{min-width:0}.analysis-page-link h2{margin:0 0 6px}.analysis-page-link p{margin:0;color:var(--muted,#8fa3b8)}.analysis-arrow{width:48px;height:48px;flex:0 0 48px;border-radius:50%;display:grid;place-items:center;background:#0b3a63;color:#fff;font-size:28px;font-weight:900}.analysis-page-link:hover,.analysis-page-link:focus{border-color:#3c789e;transform:translateY(-1px)}.analysis-page-link:focus{outline:2px solid #f2d400;outline-offset:2px}@media(max-width:700px){.analysis-page-link{min-height:145px;padding:24px 28px!important}.analysis-page-link h2{font-size:26px}.analysis-page-link p{font-size:14px}}
+  </style>
 </head>
 <body class="management-page">
-  <header class="management-topbar">
-    <div><strong>BELM General Tech</strong><small>All-role management analysis</small></div>
-    <div class="topbar-actions">
-      <button id="refreshButton" type="button">Refresh</button>
-    </div>
-  </header>
-
-  <main class="management-shell">
-    <section class="management-hero">
-      <div>
-        <p class="eyebrow">Business, people and operations</p>
-        <h1>All Overview</h1>
-        <p>One card-based view of customers, staff roles, finance, service work, machines and attendance.</p>
-      </div>
-      <a class="button secondary" href="/reports-manager/">Open Detailed Reports</a>
-    </section>
-
-    <section class="filter-panel">
-      <div class="filters">
-        <label>Analysis period
-          <select id="periodSelect">
-            <option value="today">Today</option>
-            <option value="week">This week</option>
-            <option value="month" selected>This month</option>
-            <option value="year">This year</option>
-          </select>
-        </label>
-        <span id="periodLabel" class="period-note">Loading current period…</span>
-      </div>
-    </section>
-
-    <div id="pageAlert" class="alert hidden"></div>
-    <section id="primaryMetrics" class="metrics-grid" aria-label="Main overview totals"></section>
-    <section id="financeMetrics" class="metrics-grid" aria-label="Finance overview"></section>
-
-    <section class="panel inventory-panel">
-      <div class="section-head">
-        <div><h2>Spare Parts Inventory</h2><p>Live stock quantities, values and reorder warnings read directly from inventory.</p></div>
-        <a class="button" href="/spare-parts-manager/">Open Spare Parts Inventory</a>
-      </div>
-      <section id="inventoryMetrics" class="metrics-grid inventory-metrics" aria-label="Spare parts inventory totals"></section>
-      <div class="data-table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Spare part</th>
-              <th>Part number</th>
-              <th>Category</th>
-              <th>Stock qty</th>
-              <th>Reorder point</th>
-              <th>Purchase value</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="inventoryRows">
-            <tr><td colspan="7" class="empty-state">Loading inventory…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <div><h2>Analysis by role</h2><p>Active users, pending work and completed work for each system role.</p></div>
-      </div>
-      <div id="roleGrid" class="role-grid"></div>
-    </section>
-
-    <section class="three-column">
-      <article class="panel">
-        <div class="section-head"><div><h2>Service requests</h2><p>Status comparison</p></div></div>
-        <div id="serviceBars" class="bar-list"></div>
-      </article>
-      <article class="panel">
-        <div class="section-head"><div><h2>Machine condition</h2><p>Health status comparison</p></div></div>
-        <div id="machineBars" class="bar-list"></div>
-      </article>
-      <article class="panel">
-        <div class="section-head"><div><h2>Attendance today</h2><p>Presence by status</p></div></div>
-        <div id="attendanceBars" class="bar-list"></div>
-      </article>
-    </section>
-  </main>
-
-  <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-  <script src="/overview-manager/app.js?v=18-sidebar-activity"></script>
-</body>
-</html>
+<header class="management-topbar"><div><strong>BELM General Tech</strong><small>All-role management analysis</small></div><div class="topbar-actions"><button id="refreshButton" type="button">Refresh</button></div></header>
+<main class="management-shell">
+<section class="management-hero"><div><p class="eyebrow">Business, people and operations</p><h1>Operations Action Center</h1><p>Tap an analysis card to open its own page inside General Analysis.</p></div><a class="button secondary" href="/reports-manager/">Open Detailed Reports</a></section>
+<section class="filter-panel"><div class="filters"><label>Analysis period<select id="periodSelect"><option value="today">Today</option><option value="week">This week</option><option value="month" selected>This month</option><option value="year">This year</option></select></label><span id="periodLabel" class="period-note">Loading current period…</span></div></section>
+<div id="pageAlert" class="alert hidden"></div>
+<section class="panel admin-action-center"><div class="section-head"><div><h2>Action Required</h2><p>Items that can stop work, delay customers or require a management decision.</p></div></div><section id="actionMetrics" class="metrics-grid" aria-label="Items requiring action"></section></section>
+<details class="panel overview-disclosure"><summary><div><strong>Business & Fleet Snapshot</strong><span>Customers, staff, machines and finance</span></div><b>+</b></summary><div class="overview-disclosure-body"><section id="primaryMetrics" class="metrics-grid"></section><section id="financeMetrics" class="metrics-grid"></section></div></details>
+<section class="panel inventory-panel"><div class="section-head"><div><h2>Spare Parts Inventory</h2><p>Live stock quantities, values and reorder warnings read directly from inventory.</p></div><a class="button" href="/spare-parts-manager/">Open Spare Parts Inventory</a></div><section id="inventoryMetrics" class="metrics-grid inventory-metrics"></section><div class="data-table-wrap"><table><thead><tr><th>Spare part</th><th>Part number</th><th>Category</th><th>Stock qty</th><th>Reorder point</th><th>Purchase value</th><th>Status</th></tr></thead><tbody id="inventoryRows"><tr><td colspan="7" class="empty-state">Loading inventory…</td></tr></tbody></table></div></section>
+<a class="panel analysis-page-link" href="/overview-manager/detail/?section=roles"><div class="analysis-copy"><h2>Analysis by role</h2><p>Active users, pending work and completed work for each system role.</p></div><span class="analysis-arrow">›</span></a>
+<section class="three-column">
+<a class="panel analysis-page-link" href="/overview-manager/detail/?section=jobs"><div class="analysis-copy"><h2>Job Cards</h2><p>Status comparison</p></div><span class="analysis-arrow">›</span></a>
+<a class="panel analysis-page-link" href="/overview-manager/detail/?section=machines"><div class="analysis-copy"><h2>Machine condition</h2><p>Health status comparison</p></div><span class="analysis-arrow">›</span></a>
+<a class="panel analysis-page-link" href="/overview-manager/detail/?section=attendance"><div class="analysis-copy"><h2>Attendance today</h2><p>Presence by status</p></div><span class="analysis-arrow">›</span></a>
+</section>
+<a class="panel analysis-page-link" href="/overview-manager/detail/?section=activity"><div class="analysis-copy"><h2>Recent activity</h2><p>Latest actions recorded by BELM staff, across every department</p></div><span class="analysis-arrow">›</span></a>
+<div id="roleGrid" hidden></div><div id="serviceBars" hidden></div><div id="machineBars" hidden></div><div id="attendanceBars" hidden></div><div id="activityList" hidden></div>
+</main>
+<script src="/admin-access.js?v=411-job-card-only"></script><script src="/admin-sidebar.js?v=488-text-fit"></script><script src="/overview-manager/app.js?v=639-analysis-pages"></script>
+</body></html>

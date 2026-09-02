@@ -11,8 +11,11 @@
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;",
   })[character]);
 
-  async function api(path) {
+  function displayRoleName(name) { return name === "Engineer" ? "Workshop Manager" : (name || ""); }
+
+async function api(path) {
     const response = await fetch(`/api${path}`, {
+      cache: "no-store",
       headers: { Authorization: `Bearer ${token || ""}` },
     });
     const data = await response.json().catch(() => ({}));
@@ -52,13 +55,15 @@
     const totals = data.totals || {};
     document.getElementById("periodLabel").textContent =
       `${data.period?.label || "Selected period"} · ${data.period?.from || ""} → ${data.period?.to || ""}`;
+    document.getElementById("actionMetrics").innerHTML = [
+      metric("Registration approvals", number.format(totals.pendingApplications || 0), "Waiting for Administration decision", totals.pendingApplications ? "yellow" : "green"),
+      metric("Open Job Cards", number.format(totals.openRequests || 0), "Customer work still open", totals.openRequests ? "yellow" : "green"),
+      metric("Pending tasks", number.format(totals.pendingTasks || 0), "Work waiting for completion", totals.pendingTasks ? "yellow" : "green"),
+      metric("Low stock parts", number.format(totals.lowStockParts || 0), "At or below reorder point", totals.lowStockParts ? "red" : "green"),
+    ].join("");
     document.getElementById("primaryMetrics").innerHTML = [
       metric("Customers", number.format(totals.customers || 0), `${number.format(totals.machines || 0)} registered machines`, "green"),
       metric("Employees", number.format(totals.employees || 0), `${number.format(totals.activeEmployees || 0)} active accounts`),
-      metric("Registration requests", number.format(totals.pendingApplications || 0), "Waiting for admin approval", totals.pendingApplications ? "yellow" : "green"),
-      metric("Open service requests", number.format(totals.openRequests || 0), "Open, assigned, in progress or on hold", totals.openRequests ? "yellow" : "green"),
-      metric("Pending tasks", number.format(totals.pendingTasks || 0), `${number.format(totals.completedTasks || 0)} completed`, totals.pendingTasks ? "yellow" : "green"),
-      metric("Low stock parts", number.format(totals.lowStockParts || 0), "At or below reorder point", totals.lowStockParts ? "red" : "green"),
       metric("Machines", number.format(totals.machines || 0), "Entire customer fleet"),
       metric("Completed work", number.format(totals.completedTasks || 0), "Tasks marked done", "green"),
     ].join("");
@@ -103,7 +108,7 @@
     const roles = data.roles || [];
     document.getElementById("roleGrid").innerHTML = roles.length
       ? roles.map((role) => `<article class="role-card">
-          <h3>${escapeHtml(role.name)}</h3>
+          <h3>${escapeHtml(displayRoleName(role.name))}</h3>
           <div class="role-stats">
             <div><span>Staff</span><strong>${number.format(role.staffTotal || 0)}</strong></div>
             <div><span>Active</span><strong>${number.format(role.activeTotal || 0)}</strong></div>
@@ -125,7 +130,7 @@
             <span class="belm-sidebar-activity-icon">${escapeHtml((activity.roleName || "U").slice(0, 2).toUpperCase())}</span>
             <div class="belm-sidebar-activity-copy">
               <strong>${escapeHtml(activity.userName || "System user")} · ${escapeHtml(activity.action || "Activity")}</strong>
-              <span>${escapeHtml(activity.roleName || "")} · ${escapeHtml(activity.entity || "System")}</span>
+              <span>${escapeHtml(displayRoleName(activity.roleName))} · ${escapeHtml(activity.entity || "System")}</span>
               <time>${activity.createdAt ? escapeHtml(new Date(activity.createdAt).toLocaleString()) : ""}</time>
             </div>
           </article>`).join("")

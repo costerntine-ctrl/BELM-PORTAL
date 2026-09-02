@@ -4,13 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Checklist Templates — BELM Admin</title>
-  <link rel="stylesheet" href="/checklist-manager/manager.css?v=16-service-sync">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
+  <link rel="stylesheet" href="/checklist-manager/manager.css?v=506-display-fit">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body>
   <header>
-    <a class="brand" href="/overview-manager/"><span class="mark">B</span><span><b>BELM Admin</b><small>Reliable Checklist Manager</small></span></a>
-    <nav><a href="/overview-manager/">← All Overview</a><button id="logoutButton" type="button">Log out</button></nav>
+    <a class="brand" href="/belm-workshop/"><span class="mark">B</span><span><b>BELM Admin</b><small>Reliable Checklist Manager</small></span></a>
+    <nav><a href="/belm-workshop/">← Main Home</a><button id="logoutButton" type="button">Log out</button></nav>
   </header>
 
   <main>
@@ -31,11 +35,37 @@
       <input id="templateId" type="hidden">
       <div class="template-fields">
         <label>Template name<input id="templateName" maxlength="255" required placeholder="e.g. Daily Reach Stacker Inspection"></label>
-        <label>Machine type<input id="machineType" maxlength="100" required placeholder="e.g. Reach Stacker"></label>
-        <label>Service type<input id="serviceType" maxlength="150" required placeholder="e.g. 500-hour Preventive Service"></label>
+        <label>Machine type
+          <select id="machineType" required>
+            <option value="">Select…</option>
+            <option value="Reach Stacker">Reach Stacker</option>
+            <option value="Forklift">Forklift</option>
+            <option value="Crane">Crane</option>
+            <option value="Excavator">Excavator</option>
+            <option value="Wheel Loader">Wheel Loader</option>
+            <option value="Bulldozer">Bulldozer</option>
+            <option value="Motor Grader">Motor Grader</option>
+            <option value="Roller">Roller</option>
+            <option value="Dump Truck">Dump Truck</option>
+            <option value="Generator">Generator</option>
+            <option value="Compressor">Compressor</option>
+            <option value="Hydraulic System">Hydraulic System</option>
+            <option value="__other__">Other (type below)…</option>
+          </select>
+        </label>
+        <label id="machineTypeOtherWrap" class="hidden">New machine type<input id="machineTypeOther" maxlength="100" placeholder="Type the new machine type"></label>
+        <label>Service type
+          <select id="serviceType" required>
+            <option value="250hrs">250hrs Service</option>
+            <option value="500hrs">500hrs Service</option>
+            <option value="1000hrs">1000hrs Service</option>
+            <option value="2000hrs">2000hrs Service</option>
+          </select>
+        </label>
         <label class="active-row"><span>Template active</span><input id="isActive" type="checkbox" checked></label>
       </div>
-      <div class="items-head"><div><h3>Checklist items</h3><p>All required items must be completed before a technician can submit a report.</p></div><button class="secondary" id="addItemButton" type="button">+ Add item</button></div>
+      <div class="items-head"><div><h3>Checklist items</h3><p>All required items must be completed before a technician can submit a report.</p></div><div class="items-head-actions"><button class="secondary" id="uploadItemsCsvButton" type="button">⇪ Upload CSV</button><input type="file" id="itemsCsvInput" accept=".csv,text/csv" class="hidden"><button class="secondary" id="addItemButton" type="button">+ Add item</button></div></div>
+      <p class="csv-help" id="csvHelpText">CSV columns: <b>Item Label, Input Type, Default Safety, Required, Dropdown Values</b>. Input Type is one of TEXT, NUMBER, YES_NO, DROPDOWN, DATE, PHOTO. Required is YES or NO. For DROPDOWN, list Dropdown Values as <code>Value:COLOR</code> pairs separated by <code>|</code> (e.g. <code>Normal:GREEN|Low:YELLOW|Contaminated:RED</code>). For YES_NO, use <code>YES:GREEN|NO:RED</code> to set which answer is safe. Uploaded items are added to the list below for you to review, edit, and save — nothing is saved until you click Save template.</p>
       <section id="itemList" class="item-list"></section>
       <div class="items-head service-parts-head"><div><h3>Service type spare parts</h3><p>These parts are synchronized automatically when the customer requests this service.</p></div><button class="secondary" id="addServicePartButton" type="button">+ Add spare part</button></div>
       <section id="servicePartList" class="service-part-list"></section>
@@ -47,8 +77,10 @@
     </form>
   </dialog>
 
-  <script src="/admin-access.js"></script>
-  <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-  <script src="/checklist-manager/manager.js?v=27-photo-compression"></script>
+  <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=488-text-fit"></script>
+  <script src="/delete-confirm.js"></script>
+  <script src="/edit-confirm.js"></script>
+  <script src="/checklist-manager/manager.js?v=506-display-fit"></script>
 </body>
 </html>

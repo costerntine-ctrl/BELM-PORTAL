@@ -6,6 +6,21 @@ $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 $id = $_GET['id'] ?? null;
 
+$selfServiceTechnician = false;
+if (($user['roleName'] ?? '') === 'Technician' && !empty($user['assignedCustomerId'])) {
+    $modeStmt = db()->prepare(
+        'SELECT c.is_machinery_admin, u.is_customer_managed
+         FROM users u JOIN customers c ON c.id = u.assigned_customer_id
+         WHERE u.id = ? AND c.id = ? AND u.deleted_at IS NULL AND c.deleted_at IS NULL'
+    );
+    $modeStmt->execute([(string)$user['id'], (string)$user['assignedCustomerId']]);
+    $modeRow = $modeStmt->fetch();
+    $selfServiceTechnician = $modeRow && !empty($modeRow['is_machinery_admin']) && !empty($modeRow['is_customer_managed']);
+    if ($selfServiceTechnician && $method !== 'GET') {
+        json_error('Checklist Templates are read-only for Customer Self-Service technicians. Contact your Customer Admin or BELM if the template needs to change.', 403);
+    }
+}
+
 if ($method === 'GET' && ($user['roleName'] ?? '') === 'Technician') {
     $machineType = trim((string)($_GET['machineType'] ?? ''));
     $assignedCustomerId = $user['assignedCustomerId'] ?? null;
@@ -97,7 +112,7 @@ function normalize_template_item(array $item, int $order): array {
     $inputType = strtoupper(trim((string)($item['inputType'] ?? 'TEXT')));
     $safetyLevel = strtoupper(trim((string)($item['safetyLevel'] ?? 'GREEN')));
     $allowedInputTypes = ['TEXT', 'NUMBER', 'YES_NO', 'DROPDOWN', 'PHOTO', 'DATE'];
-    $allowedSafetyLevels = ['GREEN', 'YELLOW', 'RED'];
+    $allowedSafetyLevels = ['NONE', 'GREEN', 'YELLOW', 'RED'];
 
     if ($label === '') json_error('Every checklist item must have a label.');
     if (!in_array($inputType, $allowedInputTypes, true)) {
@@ -277,13 +292,16 @@ if ($method === 'POST' && !$action) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'checklist-template-created', 'checklistTemplate', $newId, ['name' => $payload['name']]);
     json_out(fetch_template($newId), 201);
 }
 
 if ($method === 'PUT' && !$action) {
     $existing = fetch_template($id);
     if (!$existing) json_error('Checklist template not found.', 404);
-    $payload = normalize_template_payload(body(), false);
+    $b = body();
+    require_edit_confirmation($user, $b);
+    $payload = normalize_template_payload($b, false);
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -311,6 +329,7 @@ if ($method === 'PUT' && !$action) {
         if ($pdo->inTransaction()) $pdo->rollBack();
         throw $error;
     }
+    log_activity($user, 'checklist-template-edited', 'checklistTemplate', $id, ['name' => $payload['name']]);
     json_out(fetch_template($id));
 }
 
@@ -324,6 +343,7 @@ if ($method === 'POST' && $action === 'add-item') {
 
 if ($method === 'PUT' && $action === 'edit-item') {
     $body = body();
+    require_edit_confirmation($user, $body);
     $item = normalize_template_item($body, (int)($body['order'] ?? 0));
     $stmt = db()->prepare(
         'UPDATE checklist_template_items
@@ -346,6 +366,7 @@ if ($method === 'PUT' && $action === 'edit-item') {
 }
 
 if ($method === 'DELETE' && $action === 'delete-item') {
+    require_edit_confirmation($user, body());
     db()->prepare('DELETE FROM checklist_template_items WHERE id = ?')->execute([$_GET['itemId']]);
     json_out(null, 204);
 }
@@ -355,8 +376,10 @@ if ($method === 'DELETE' && !$action) {
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) json_error('Not found', 404);
-    send_to_trash('template', $id, $row['name'], $user['id']);
+    $reason = require_delete_confirmation($user, body());
+    send_to_trash('template', $id, $row['name'], $user['id'], $reason);
     soft_delete('checklist_templates', $id);
+    log_activity($user, 'checklist-template-deleted', 'checklistTemplate', $id, ['name' => $row['name'], 'reason' => $reason]);
     json_out(null, 204);
 }
 

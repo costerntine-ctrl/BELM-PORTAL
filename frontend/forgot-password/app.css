@@ -20,6 +20,12 @@ button { min-height:47px; padding:10px 17px; border:0; border-radius:9px; backgr
 button:hover { background:var(--green2); }button:disabled { opacity:.6; cursor:wait; }
 .alert { padding:11px 13px; border-radius:9px; font-size:13px; }.error { background:#fff0ef; border:1px solid #f1c7c3; color:var(--red); }
 .hidden { display:none !important; }.success { text-align:center; }.check { margin:auto; width:58px; height:58px; display:grid; place-items:center; border-radius:50%; background:var(--yellow); color:var(--navy); font-size:26px; font-weight:900; }
+.link-button { width:100%; margin-top:10px; padding:9px; background:transparent; color:var(--green2); box-shadow:none; font-weight:700; font-size:13px; }
+.link-button:hover { background:rgba(0,166,81,.08); }
+.muted { color:var(--muted); font-size:13px; margin:6px 0 16px; }
+.legacy-recovery { margin-top:22px; }
+.legacy-recovery summary { cursor:pointer; color:var(--muted); font-size:13px; font-weight:700; padding:10px 0; }
+.legacy-recovery[open] summary { margin-bottom:14px; }
 .success h2 { font-size:28px; color:var(--navy); margin-bottom:7px; }.success p { color:var(--muted); line-height:1.55; }
 .success code { display:block; margin:22px 0 14px; padding:14px; border:1px solid #efd55c; border-radius:10px; background:#fff9cf; color:var(--navy); font-weight:900; font-size:16px; overflow-wrap:anywhere; }
 .login-links { display:flex; flex-wrap:wrap; justify-content:center; gap:9px; margin-top:22px; }.login-links a { color:var(--green2); font-size:12px; font-weight:800; text-decoration:none; }

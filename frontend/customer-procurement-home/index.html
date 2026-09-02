@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Customer Procurement — BELM Operations</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <style>
+    body{font-family:Inter,sans-serif;margin:0;background:#f4f7fb;color:#13233a}.topbar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;background:#102a56;color:#fff}.topbar a,.topbar button{color:#fff;text-decoration:none}.topbar button{background:transparent;border:1px solid rgba(255,255,255,.45);border-radius:10px;padding:9px 14px}.shell{max-width:1180px;margin:0 auto;padding:24px}.hero{background:#0d4fa3;color:#fff;border-radius:18px;padding:24px;margin-bottom:18px}.hero h1{margin:4px 0 8px}.flow{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.flow span{background:rgba(255,255,255,.14);padding:8px 10px;border-radius:999px;font-size:12px}.panel{background:#fff;border-radius:18px;padding:20px;box-shadow:0 10px 30px rgba(17,42,86,.08)}.machine-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-top:16px}.machine-card{border:1px solid #dce5f2;border-radius:16px;padding:18px;background:#fff}.machine-card h3{margin:0 0 8px}.machine-card p{margin:4px 0;color:#5b6b80;font-size:14px}.machine-card a{display:block;margin-top:14px;background:#0d4fa3;color:#fff;text-align:center;text-decoration:none;padding:12px;border-radius:10px;font-weight:800}.muted{color:#66778e}.alert{padding:14px;border-radius:12px;background:#fff0f0;color:#9d1c1c;margin-bottom:16px}.hidden{display:none!important}
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <a href="/customer-workshop/?actor=customer">← Workshop Main Dashboard</a>
+  <strong>PORTAL-CWM · PROCUREMENT</strong>
+  <button id="logoutButton" type="button">Log out</button>
+</header>
+<main class="shell">
+  <section class="hero">
+    <p style="margin:0;font-weight:800;letter-spacing:.08em">CUSTOMER PROCUREMENT</p>
+    <h1 id="companyTitle">Procurement Home</h1>
+    <p>Choose a machine to open its live procurement queue, Customer Store balance, shortages, sourcing, receipts and audit.</p>
+    <div class="flow"><span>Spare Request</span><span>→ Workshop Manager Review</span><span>→ Procurement</span><span>→ Check Store</span><span>→ Purchase / BELM if shortage</span><span>→ Receive</span><span>→ Parts Ready</span><span>→ Job Card continues</span></div>
+  </section>
+  <div id="alertBox" class="alert hidden"></div>
+  <section class="panel">
+    <h2 style="margin-top:0">Select Machine</h2>
+    <p class="muted">Every procurement record remains company-scoped and machine-linked.</p>
+    <div id="machineGrid" class="machine-grid"><p class="muted">Loading machines…</p></div>
+  </section>
+</main>
+<script>
+(function(){
+  const token=localStorage.getItem('belm_customer_token')||'';
+  const grid=document.getElementById('machineGrid');
+  const alertBox=document.getElementById('alertBox');
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function fail(m){alertBox.textContent=m;alertBox.classList.remove('hidden');grid.innerHTML='';}
+  if(!token){location.replace('/login');return;}
+  document.getElementById('logoutButton').onclick=()=>{localStorage.removeItem('belm_customer_token');localStorage.removeItem('belm_session_refreshed_belm_customer_token');location.replace('/login');};
+  fetch('/api/customer-portal/dashboard',{cache:'no-store',headers:{Authorization:'Bearer '+token}}).then(async r=>{const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.error||'Could not load customer machines.');return d;}).then(d=>{
+    const c=d?.customer||{}; const machines=Array.isArray(d?.machines)?d.machines:[];
+    document.getElementById('companyTitle').textContent=(c.name||'Customer')+' Procurement Home';
+    if(!machines.length){grid.innerHTML='<p class="muted">No machines are registered for this company.</p>';return;}
+    grid.innerHTML=machines.map(m=>{
+      const title=[m.brand,m.model].filter(Boolean).join(' ')||m.machineType||m.machine_type||'Machine';
+      const fleet=m.fleetNumber||m.fleet_number||''; const serial=m.serialNumber||m.serial_number||'';
+      return `<article class="machine-card"><h3>${esc(title)}</h3><p>${fleet?'Fleet: '+esc(fleet):'Fleet number not recorded'}</p><p>${serial?'Serial: '+esc(serial):'Serial number not recorded'}</p><a href="/customer-procurement/?machine=${encodeURIComponent(m.id)}">OPEN PROCUREMENT</a></article>`;
+    }).join('');
+  }).catch(e=>fail(e.message||'Could not load Procurement Home.'));
+})();
+</script>
+</body>
+</html>

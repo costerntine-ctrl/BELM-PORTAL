@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- V444: bfcache back-navigation guard, see /customer-workshop/index.html -->
+  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job Card &amp; Service Parts — BELM Customer Portal</title>
+  <link rel="stylesheet" href="/customer-job-card/request.css?v=315-job-card-received-confirmation">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/portal/dashboard">
+      <span class="mark">B</span>
+      <span><b>BELM Customer Portal</b><small id="portalModeSubtitle">Machine Job Card &amp; Service Parts</small></span>
+    </a>
+    <nav>
+      <a href="/portal/dashboard">← Customer dashboard</a>
+      <button id="logoutButton" type="button">Log out</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="heading">
+      <div>
+        <p class="eyebrow">MACHINE JOB CARD</p>
+        <h1 id="pageTitle">Job Card</h1>
+        <p id="machineDetails" class="lead">Detecting machine model and service types…</p>
+      </div>
+    </section>
+
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+    <div id="supportModeNotice" class="alert hidden" role="status"></div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2 id="servicePanelTitle">Job Card details</h2><p id="servicePanelIntro">Create the machine Job Card here. Customer Admin can send it to BELM; customer-managed workshop work stays with the customer team. Spare requirements remain below and are routed through Procurement.</p></div>
+        <span id="matchStatus">Checking machine…</span>
+      </div>
+      <form id="serviceForm">
+        <label>Service type
+          <select id="serviceTemplate"></select>
+        </label>
+        <label>Priority
+          <select id="priority">
+            <option value="NORMAL">Normal</option>
+            <option value="LOW">Low</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
+          </select>
+        </label>
+        <label class="wide">Job description
+          <textarea id="description" rows="4" maxlength="2000" required placeholder="Describe any symptoms, fault codes or work required."></textarea>
+        </label>
+        <div class="form-actions">
+          <a href="/portal/dashboard">Cancel</a>
+          <button class="primary" id="submitButton" type="submit">Send to BELM</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="procurement-spares" class="panel spare-workspace-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Machine Spare List → Procurement</h2>
+          <p>Search by spare name or reference / part number. Saved items remain as the machine's reusable spare list. Procurement checks Customer Store first, then can issue available stock, download shortage CSV, or send selected shortage to BELM when BELM supply is preferred. Maintenance Process shows the live status.</p>
+        </div>
+        <button class="secondary" id="addPartRowButton" type="button">+ Add manually</button>
+      </div>
+      <div class="spare-search-box">
+        <label>Search spare / part number
+          <div class="spare-search-line"><input id="spareSearchInput" type="search" placeholder="e.g. Hydraulic filter or 923855.0996" maxlength="120"><button class="secondary action-store" id="searchSpareButton" type="button">Search Store</button></div>
+        </label>
+        <div id="spareSearchResults" class="spare-search-results hidden"></div>
+      </div>
+      <form id="sparePartsForm">
+        <div class="spare-workspace-toolbar">
+          <button class="secondary action-save" id="saveSpareListButton" type="button">Save Spare List</button>
+          <button class="secondary action-store" id="checkStoreButton" type="button">Check Store Balance</button>
+          <label class="select-all-spares"><input id="selectAllSpares" type="checkbox" checked> Select all</label>
+        </div>
+        <div id="partRequestRows"></div>
+        <div id="spareWorkflowNote" class="workflow-note"><b>PROCUREMENT-FIRST:</b> Submit selected items to Procurement. Procurement will issue from Store when available or handle purchasing when unavailable. Maintenance Process will show PENDING PROCUREMENT → PURCHASE REQUIRED / ORDERED → PARTS READY.</div>
+        <div class="form-actions spare-section-actions">
+          <a href="/portal/dashboard">Cancel</a>
+          <a class="secondary hidden" id="openExpensesApprovalLink" href="#">Open Procurement</a>
+          <a class="secondary" id="openMaintenanceStatusLink" href="#">Maintenance Status</a>
+          <button class="primary" id="submitSparePartsButton" type="submit">Send Requirements to Procurement</button>
+        </div>
+      </form>
+    </section>
+
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h2 id="historyTitle">Your BELM Job Cards</h2><p>History of machine Job Cards sent to BELM. Completed or cancelled cards show who handled them.</p></div>
+        <button class="secondary" id="refreshHistoryButton" type="button">Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Machine</th><th>Description</th><th>Status</th><th>Handled by</th></tr></thead>
+          <tbody id="historyRows"><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/customer-job-card/request.js?v=472-sync-audit"></script>
+</body>
+</html>

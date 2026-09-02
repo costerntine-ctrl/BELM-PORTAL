@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recycle Bin — BELM Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin-tools.css">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+</head>
+<body class="bg-slate-50">
+  <header class="topbar">
+    <div><strong>BELM General Tech</strong><small>Recycle Bin</small></div>
+    <div class="top-actions"><a class="ghost" href="/belm-workshop/">← Main Home</a></div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">Deleted Records</p>
+        <h1>Recycle Bin</h1>
+        <p>Everything deleted across the portal lands here first. Restore a record to bring it back exactly as it was, or Forget it to remove it from the database permanently — this cannot be undone.</p>
+      </div>
+      <button id="refreshButton" class="secondary" type="button">Refresh</button>
+    </section>
+
+    <div id="pageAlert" class="alert hidden"></div>
+
+    <section class="metrics">
+      <article class="metric"><span>Items in Recycle Bin</span><strong id="trashCount">0</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Deleted items</h2><p>Newest first. Shows what was deleted, by whom, and why.</p></div>
+        <input id="searchInput" type="search" placeholder="Search by name or type…">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Type</th><th>Name</th><th>Deleted by</th><th>Reason</th><th>Deleted at</th><th></th></tr></thead>
+          <tbody id="trashRows"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=488-text-fit"></script>
+  <script src="/delete-confirm.js"></script>
+  <script src="/recycle-bin/app.js"></script>
+</body>
+</html>

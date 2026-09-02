@@ -1,0 +1,38 @@
+/* V623 - BELM WM Job Card compact brand layout. */
+.case-card,
+.case-card.delayed{
+  background:linear-gradient(180deg,#073263 0%,#041d3b 100%)!important;
+  color:#fff!important;
+  border:1px solid #1684ff!important;
+  border-left:5px solid #1684ff!important;
+  box-shadow:0 10px 24px rgba(0,0,0,.16)!important;
+  animation:none!important;
+  filter:none!important;
+}
+.case-card h3,.case-card b,.case-card strong{color:#fff!important}
+.case-card .case-meta,.case-card .case-report-context,.case-card small{color:#c6d5e6!important}
+.case-card .pill{border:1px solid rgba(255,255,255,.14)}
+.case-card .pill.red{background:#c72f2f!important;color:#fff!important}
+.case-card .pill.yellow{background:#f2c318!important;color:#07182d!important}
+.case-card .pill.green{background:#09834a!important;color:#fff!important}
+.case-card .pill.blue{background:#0b67c2!important;color:#fff!important}
+.queue-message-block.report-message{position:relative;border:2px solid #18d57c!important;background:rgba(24,213,124,.08)!important;box-shadow:0 0 0 rgba(24,213,124,0);animation:belmReportedProblemBlink 1.05s ease-in-out infinite!important}
+.queue-message-block.report-message>span{color:#65efaa!important;font-weight:900!important}
+.queue-message-block.report-message p{color:#fff!important}
+@keyframes belmReportedProblemBlink{0%,100%{border-color:#18d57c;box-shadow:0 0 0 rgba(24,213,124,0);filter:brightness(1)}50%{border-color:#ffc400;box-shadow:0 0 22px rgba(255,196,0,.72);filter:brightness(1.14)}}
+.case-card.delayed{border-left-color:#ffc400!important}.case-card.delayed .pill.red{box-shadow:0 0 12px rgba(199,47,47,.38)}
+.detail-panel,.inline-case-detail{background:linear-gradient(180deg,#05264b 0%,#031b36 52%,#021326 100%)!important;border:1px solid #1684ff!important;box-shadow:0 18px 42px rgba(0,0,0,.2)!important;color:#fff!important}
+.detail-panel .detail{color:#fff!important}.detail-panel .detail h2,.detail-panel .detail h3,.detail-panel .detail h4,.detail-panel .detail b,.detail-panel .detail strong{color:#fff}
+.detail-panel .detail-sub,.detail-panel small,.detail-panel .stage-detail-grid span{color:#a9bdd4!important}
+.detail-panel .main-job-process,.detail-panel .workflow-tabs,.detail-panel .status-box>div,.detail-panel .job,.detail-panel .spare,.detail-panel .stage-detail-event,.detail-panel .stage-detail-grid>div,.detail-panel .stage-spare-row{background:linear-gradient(180deg,#073263,#041d3b)!important;border-color:#27699e!important;color:#fff!important}
+.detail-panel .main-job-process{border:1px solid #1684ff!important}.detail-panel .workflow-tabs{border-color:#27699e!important}.detail-panel .workflow-tabs button{color:#bcd1e7!important}.detail-panel .workflow-tabs button.active{background:#0b67c2!important;color:#fff!important}.detail-panel .workflow-tabs button.active span{background:#ffc400!important;color:#07182d!important}
+.detail-panel select,.detail-panel input,.detail-panel textarea{background:#031b36!important;color:#fff!important;border-color:#3b79aa!important}
+.detail-panel .actions .blue,.detail-panel button.blue{background:#0b67c2!important;color:#fff!important;border-color:#1684ff!important}.detail-panel .actions .approve,.detail-panel button.approve{background:#09834a!important;color:#fff!important}.detail-panel .actions .yellow,.detail-panel button.yellow{background:#f2c318!important;color:#07182d!important}
+.detail-panel .detail-title-row h2,.detail-panel .job-process-main-title,.detail-panel .main-job-card-title{color:#ffc400!important}.detail-panel .section h3,.detail-panel .section-head h3{border-bottom-color:#27699e!important}.detail-panel .workflow-primary-actions{border-color:#27699e!important}
+.detail-panel .workflow-focus:not(.delayed):not(.complete){background:linear-gradient(135deg,#0b3154,#073263)!important;border-color:#1684ff!important;border-left-color:#1684ff!important}.detail-panel .workflow-focus.delayed{background:linear-gradient(135deg,#5a1e24,#7b2a2a)!important;border-color:#c72f2f!important;border-left-color:#c72f2f!important}.detail-panel .workflow-focus.complete{background:linear-gradient(135deg,#06472d,#087443)!important;border-color:#09834a!important;border-left-color:#09834a!important}
+/* Requested state: KEEP Breakdown Time / Current Stage / Department / Waiting Here. REMOVE the four bottom overview tiles. */
+.detail-panel .status-box{display:grid!important}
+.detail-panel .workflow-overview-grid{display:none!important}
+[data-theme="light"] .case-card,[data-theme="light"] .case-card.delayed{background:linear-gradient(180deg,#0b4f96 0%,#073263 100%)!important}
+[data-theme="light"] .detail-panel,[data-theme="light"] .inline-case-detail{background:linear-gradient(180deg,#eaf5ff,#d9ecff)!important;color:#07182d!important}
+[data-theme="light"] .detail-panel .detail h2,[data-theme="light"] .detail-panel .detail h3,[data-theme="light"] .detail-panel .detail h4,[data-theme="light"] .detail-panel .detail b,[data-theme="light"] .detail-panel .detail strong{color:#07182d}

@@ -1,0 +1,28 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # V353: never publish Render's internal listener port in an HTTPS redirect.
+  RewriteCond %{HTTP:X-Forwarded-Proto} ^https$ [NC]
+  RewriteCond %{HTTP_HOST} ^(.+):10000$ [NC]
+  RewriteRule ^ https://%1%{REQUEST_URI} [R=302,L,NE]
+  RewriteBase /
+  DirectoryIndex portal-home.html index.html
+  RewriteRule ^api(?:/|$) - [L]
+  RewriteRule ^portal-home\.html$ - [L]
+  RewriteRule ^index\.html$ - [L]
+  RewriteRule ^admin-menu/?$ /workshop-management-home/ [R=302,L]
+  # V303 one canonical login for all email/password portal accounts.
+  RewriteRule ^login/?$ /customer-app.html [END]
+  # Old friendly and role-specific login bookmarks converge on /login.
+  RewriteRule ^app(?:/[a-zA-Z0-9@-]+)?/?$ /login [R=302,L]
+  RewriteRule ^(?:admin/login|portal/login)/?$ /login [R=302,L]
+  # /tech remains the authenticated Technician workspace.
+  RewriteRule ^tech(?:/.*)?$ /index.html [END]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [END]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header always set Content-Security-Policy "frame-ancestors 'self' https://belmgeneraltech.co.tz https://www.belmgeneraltech.co.tz"
+</IfModule>

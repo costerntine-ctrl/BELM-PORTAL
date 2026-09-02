@@ -1,23 +1,40 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <!-- V444: bfcache back-navigation guard, see /customer-workshop/index.html -->
+    <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>(function(){if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('embed-mode');})();</script>
+    <style>
+      html.embed-mode body>.topbar,html.embed-mode #belmAdminSidebar,html.embed-mode .belm-admin-sidebar,html.embed-mode .belm-global-theme-toggle,html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display:none!important}
+      html.embed-mode body,html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
+      html.embed-mode main.shell{width:100%;max-width:none;margin:0;padding:12px}
+      @media(max-width:620px){html.embed-mode main.shell{padding:8px}}
+      .workshop-inner-action{background:#e0ad16!important;border-color:#f4cb55!important;color:#1d2128!important;font-weight:850!important}
+      .workshop-inner-action:hover{filter:brightness(1.06)}
+      .store-audit-card{margin:14px 0;padding:15px 17px;border:1px solid var(--line,#dce3ec);border-radius:14px;background:var(--paper,#fff);display:flex;align-items:center;justify-content:space-between;gap:14px}.store-audit-card h2{margin:2px 0 4px;font-size:18px}.store-audit-card p{margin:0;color:var(--muted,#667085);font-size:11px}.store-audit-button{border:1px solid #c23b35!important;background:#c23b35!important;color:#fff!important;border-radius:9px;padding:10px 14px;font-weight:850;cursor:pointer}
+      #storeAuditDialog{width:min(1180px,calc(100% - 24px));max-width:1180px}.store-audit-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.store-audit-actions{display:flex;gap:8px;flex-wrap:wrap}.store-audit-actions button{padding:8px 11px}.store-audit-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.store-audit-summary>div{padding:9px;border:1px solid var(--line,#dce3ec);border-radius:9px;background:var(--canvas,#f7f9fc)}.store-audit-summary span{display:block;font-size:9px;text-transform:uppercase;color:var(--muted,#667085);font-weight:850}.store-audit-summary b{display:block;margin-top:3px;font-size:17px}.store-audit-table-wrap{max-height:52vh;overflow:auto;border:1px solid var(--line,#dce3ec);border-radius:10px}.store-audit-table{width:100%;min-width:900px;border-collapse:collapse}.store-audit-table th,.store-audit-table td{padding:8px 9px;border-bottom:1px solid var(--line,#dce3ec);font-size:9.5px;text-align:left;vertical-align:top}.store-audit-table th{position:sticky;top:0;background:var(--canvas,#f7f9fc);z-index:1;font-size:8.5px;text-transform:uppercase}@media(max-width:760px){.store-audit-card{align-items:stretch;flex-direction:column}.store-audit-button{width:100%}.store-audit-filters{grid-template-columns:1fr 1fr}.store-audit-summary{grid-template-columns:1fr 1fr}}@media(max-width:480px){.store-audit-filters{grid-template-columns:1fr}}
+    </style>
     <title>BELM Spare Parts Manager</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/admin-tools.css?v=2-tech-spare-alert">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
-  </head>
+    <link rel="stylesheet" href="/admin-tools.css?v=341-multi-proforma-request">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
+    <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+</head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/overview-manager/">
+      <a class="brand" href="/belm-workshop/">
         <span class="brand-mark">B</span>
         <span>BELM General Tech <small>Spare Parts Manager</small></span>
       </a>
       <div class="top-actions">
-        <a class="ghost" href="/overview-manager/">← All Overview</a>
+        <a class="ghost" href="/belm-workshop/">← Main Home</a>
         <button id="refreshButton" class="ghost" type="button">Refresh</button>
       </div>
     </header>
@@ -29,7 +46,17 @@
           <h1>Spare Parts Inventory</h1>
           <p>Save stock, prices and reorder levels with clear confirmation.</p>
         </div>
-        <button id="addButton" class="secondary" type="button">+ Add spare part</button>
+        <div class="top-actions">
+          <button id="workshopToolIssueButton" class="secondary workshop-inner-action hidden" type="button">Tool Issue Documents</button>
+          <button id="importButton" class="ghost" type="button">Import CSV</button>
+          <input id="importFileInput" type="file" accept=".csv,text/csv" class="hidden">
+          <button id="addButton" class="secondary" type="button">+ Add spare part</button>
+        </div>
+      </section>
+
+      <section class="store-audit-card">
+        <div><p class="eyebrow">STORE KEEPER CONTROL</p><h2>Store Keeper Audit Report</h2><p>Audit stock-in, stock-out, edits, balance changes and the staff member who handled each inventory record.</p></div>
+        <button id="storeAuditButton" class="store-audit-button" type="button">View Audit Report</button>
       </section>
 
       <section class="metrics">
@@ -44,12 +71,12 @@
       <section class="panel request-panel">
         <div class="panel-head">
           <div>
-            <h2>Technician spare alerts</h2>
-            <p class="muted">Stock is 0. Add the part to Inventory or mark it for purchase.</p>
+            <h2>Spare requests</h2>
+            <p class="muted">Customer requests stay separate from Inventory until BELM chooses the correct spare. Technician zero-stock alerts also appear here.</p>
           </div>
           <span id="requestCount" class="badge warn">0 open</span>
         </div>
-        <div id="requestsPanel" class="loading">Loading Technician requests…</div>
+        <div id="requestsPanel" class="loading">Loading spare requests…</div>
       </section>
 
       <section class="panel">
@@ -57,9 +84,43 @@
           <h2>Saved spare parts</h2>
           <input id="searchInput" aria-label="Search spare parts" placeholder="Search part number, name or category" style="width:min(330px,100%);margin:0">
         </div>
+        <div class="panel-subhead">
+          <span id="selectedPartsCount" class="muted">0 selected</span>
+          <div class="panel-subhead-actions">
+            <button id="selectLowStockButton" class="ghost" type="button">Select all low stock (yellow &amp; red)</button>
+            <button id="exportSelectedButton" class="secondary" type="button" disabled>Export selected to CSV</button>
+          </div>
+        </div>
         <div id="partsPanel" class="loading">Loading spare parts…</div>
       </section>
+
+      <section id="equivalent-spares-panel" class="panel equivalent-summary-section">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Cross Reference Library</p>
+            <h2>Equivalent Spares</h2>
+            <p class="muted">Approved alternative part numbers linked inside BELM Inventory. Open either spare to review or change the relationship.</p>
+          </div>
+          <span id="equivalentPairCount" class="badge">0 links</span>
+        </div>
+        <div id="equivalentSummaryPanel" class="loading">Loading equivalent spare links…</div>
+      </section>
     </main>
+
+    <dialog id="storeAuditDialog">
+      <form method="dialog" class="dialog-card">
+        <div class="dialog-head"><div><p class="eyebrow">STORE KEEPER CONTROL</p><h2>Store Keeper Audit Report</h2></div><button class="icon-close" type="button" data-close-store-audit>×</button></div>
+        <div class="store-audit-filters">
+          <label>From<input id="storeAuditFrom" type="date"></label><label>To<input id="storeAuditTo" type="date"></label>
+          <label>Movement<select id="storeAuditType"><option value="ALL">All</option><option>STOCK IN</option><option>STOCK OUT</option><option>EDIT</option><option>CREATED</option><option>DELETED</option></select></label>
+          <label>Handled By<input id="storeAuditUser" placeholder="Store Keeper / staff name"></label><label>Search Spare<input id="storeAuditSearch" placeholder="Part number or description"></label>
+        </div>
+        <div class="store-audit-actions"><button type="button" id="storeAuditApply" class="primary">View Audit</button><button type="button" id="storeAuditCsv" class="secondary">CSV</button><button type="button" id="storeAuditPdf" class="secondary">PDF</button><button type="button" id="storeAuditPrint" class="ghost">Print</button></div>
+        <div id="storeAuditSummary" class="store-audit-summary"></div>
+        <div class="store-audit-table-wrap"><table class="store-audit-table"><thead><tr><th>Date</th><th>Movement</th><th>Part No.</th><th>Spare Part</th><th>Qty Change</th><th>Balance After</th><th>Current Stock</th><th>Handled By</th><th>Note</th></tr></thead><tbody id="storeAuditRows"><tr><td colspan="9">Open the audit report to load records.</td></tr></tbody></table></div>
+        <div class="dialog-actions"><button class="ghost" type="button" data-close-store-audit>Close</button></div>
+      </form>
+    </dialog>
 
     <dialog id="partDialog">
       <form id="partForm" class="dialog-card">
@@ -72,13 +133,44 @@
         <div id="requestContext" class="alert hidden"></div>
         <div class="form-grid">
           <label>Part number<input id="partNumber" required maxlength="100" placeholder="e.g. CAT-1R-0750"></label>
+          <label>Reference number <small>(optional)</small><input id="referenceNumber" maxlength="100" placeholder="e.g. supplier's catalog number"></label>
           <label>Name<input id="partName" required maxlength="255" placeholder="Spare part name"></label>
-          <label class="full">Category<input id="category" maxlength="100" placeholder="Filter, hydraulic, engine…"></label>
+          <label>Category
+            <select id="category">
+              <option value="">Select…</option>
+              <option value="BEARING">Bearing</option>
+              <option value="FILTER">Filter</option>
+              <option value="AIR_CLEANER">Air Cleaner</option>
+              <option value="VALVE">Valve</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </label>
+          <label>Machine brand <small>(optional)</small><input id="machineBrand" maxlength="100" placeholder="e.g. SANY, Volvo"></label>
+          <label>Machine type <small>(optional)</small><input id="machineType" maxlength="100" placeholder="e.g. Reach Stacker"></label>
           <label>Stock quantity<input id="stockQty" required type="number" min="0" step="1" value="0"></label>
           <label>Reorder at<input id="reorderThreshold" required type="number" min="0" step="1" value="5"></label>
           <label>Purchase price (TZS)<input id="purchasePrice" required type="number" min="0" step="0.01" value="0"></label>
           <label>Selling price (TZS)<input id="sellingPrice" required type="number" min="0" step="0.01" value="0"></label>
         </div>
+
+        <div id="measurementsBlock" class="form-grid measurements-grid">
+          <p class="full measurements-head">Measurements (mm) <small>— shown fields depend on category, all optional</small></p>
+          <label data-measure="BEARING,FILTER,AIR_CLEANER">Height / Width<input id="heightMm" type="number" min="0" step="0.01" placeholder="e.g. 45"></label>
+          <label data-measure="FILTER,AIR_CLEANER">Length<input id="lengthMm" type="number" min="0" step="0.01" placeholder="e.g. 180"></label>
+          <label data-measure="BEARING,FILTER,AIR_CLEANER,VALVE">Outer diameter<input id="outerDiameterMm" type="number" min="0" step="0.01" placeholder="e.g. 90"></label>
+          <label data-measure="BEARING,FILTER,VALVE">Inner diameter<input id="innerDiameterMm" type="number" min="0" step="0.01" placeholder="e.g. 45"></label>
+          <label data-measure="FILTER,VALVE">Thread size<input id="threadSize" maxlength="50" placeholder="e.g. M20x1.5"></label>
+        </div>
+
+        <div id="equivalentsBlock" class="equivalents-block hidden">
+          <p class="equivalents-head">Equivalent spare parts <small>— other brands/part numbers that do the same job</small></p>
+          <div id="equivalentsList" class="equivalents-list"></div>
+          <div class="equivalents-add-row">
+            <input id="equivalentSearchInput" placeholder="Search part number, reference or name…" autocomplete="off">
+            <div id="equivalentSearchResults" class="equivalents-search-results hidden"></div>
+          </div>
+        </div>
+
         <div class="dialog-actions">
           <button class="ghost" data-close type="button">Cancel</button>
           <button id="saveButton" class="primary" type="submit">Save spare part</button>
@@ -86,8 +178,39 @@
       </form>
     </dialog>
 
-    <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-    <script src="/spare-parts-manager/manager.js?v=2-tech-spare-alert"></script>
+
+    <dialog id="chooseSpareDialog">
+      <form id="chooseSpareForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Internal BELM Selection</p><h2>Choose BELM spare</h2></div>
+          <button class="icon-close" data-close-choose type="button" aria-label="Close">×</button>
+        </div>
+        <div id="chooseSpareContext" class="alert"></div>
+        <label>Search BELM Inventory<input id="chooseSpareSearch" placeholder="Part number, reference or spare name" autocomplete="off"></label>
+        <div id="chooseSpareResults" class="spare-choice-list"></div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close-choose type="button">Cancel</button>
+          <button id="chooseSpareSave" class="primary" type="submit">Use selected spare</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      (function(){
+        const q=new URLSearchParams(location.search);
+        const b=document.getElementById('workshopToolIssueButton');
+        if(b && q.get('embed')==='1' && q.get('from')==='belm-workshop'){
+          b.classList.remove('hidden');
+          b.addEventListener('click',function(){
+            parent.postMessage({type:'belm-workshop-open-module',module:'tools'},location.origin);
+          });
+        }
+      })();
+    </script>
+    <script src="/admin-access.js?v=411-job-card-only"></script>
+    <script src="/admin-sidebar.js?v=488-text-fit"></script>
+    <script src="/delete-confirm.js"></script>
+    <script src="/edit-confirm.js"></script>
+    <script src="/spare-parts-manager/manager.js?v=509-audit-reports"></script>
   </body>
 </html>

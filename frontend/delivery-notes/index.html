@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script>window.addEventListener('pageshow',function(e){if(e.persisted)window.location.reload();});</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BELM Delivery Notes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme-global.css?v=501-proforma-colors">
+  <link rel="stylesheet" href="/delivery-notes/app.css?v=501-proforma-colors">
+  <script src="/theme-manager.js?v=501-proforma-colors"></script>
+</head>
+<body>
+  <header class="dn-topbar">
+    <a class="dn-brand" id="backLink" href="/belm-workshop/"><span>B</span><b>BELM GENERAL TECH <small>DELIVERY NOTE</small></b></a>
+    <div class="dn-top-actions">
+      <button type="button" id="refreshButton">Refresh</button>
+      <button type="button" id="newNoteButton" class="primary">+ New Delivery Note</button>
+    </div>
+  </header>
+
+  <main class="dn-shell">
+    <section class="dn-hero">
+      <div><p>FIELD DELIVERY / CUSTOMER RECEIPT</p><h1>Delivery Notes</h1><span>Record filters, spares, tools or other goods taken to a customer. The customer can sign directly on the Technician's phone or tablet.</span></div>
+      <div class="dn-stat-grid"><article><small>SIGNED</small><b id="signedCount">0</b></article><article><small>DRAFTS</small><b id="draftCount">0</b></article></div>
+    </section>
+
+    <div id="pageAlert" class="dn-alert hidden" role="status"></div>
+
+    <section id="noteFormPanel" class="dn-panel hidden">
+      <div class="dn-panel-head"><div><p id="formEyebrow">NEW DOCUMENT</p><h2 id="formTitle">Prepare Delivery Note</h2></div><button id="closeFormButton" type="button">Close</button></div>
+      <form id="deliveryNoteForm">
+        <div class="dn-grid three">
+          <label>Customer / Company<select id="customerId" required></select></label>
+          <label>Machine <select id="machineId"><option value="">General delivery / no machine</option></select></label>
+          <label>Job Card <select id="jobCardId"><option value="">No Job Card</option></select></label>
+        </div>
+        <div class="dn-grid three">
+          <label>Date<input id="deliveryDate" type="date" required></label>
+          <label>Prepared / Delivered by<input id="technicianName" readonly></label>
+          <label>Delivery Note No.<input id="deliveryNoteNo" value="Generated when saved" readonly></label>
+        </div>
+
+        <div class="dn-section-title"><span>RECEIVER DETAILS</span><small>Based on the BELM Delivery Receipt Form</small></div>
+        <div class="dn-grid two">
+          <label>Received by<input id="receivedBy" placeholder="Name of person receiving"></label>
+          <label>On behalf of<input id="onBehalfOf" placeholder="Customer / company name"></label>
+        </div>
+        <div class="dn-grid two">
+          <label>Address<input id="address"></label>
+          <label>Phone<input id="phone" inputmode="tel"></label>
+        </div>
+        <div class="dn-grid two">
+          <label>Fax <span class="optional">optional</span><input id="fax"></label>
+          <label>Email<input id="email" type="email"></label>
+        </div>
+
+        <div class="dn-section-title"><span>GOODS / ITEMS DELIVERED</span><button type="button" id="addItemButton">+ Add Item</button></div>
+        <div class="dn-table-wrap">
+          <table class="dn-items-table"><thead><tr><th>#</th><th>Part / Ref No.</th><th>Description</th><th>Qty</th><th>Unit</th><th>Condition</th><th></th></tr></thead><tbody id="itemsBody"></tbody></table>
+        </div>
+
+        <div class="dn-section-title"><span>CONDITION OF GOODS</span></div>
+        <div class="dn-grid two">
+          <label>Condition<select id="conditionStatus"><option value="GOOD">Received in good order and condition</option><option value="DAMAGED">Received with damage</option><option value="PARTIAL">Partial delivery / items missing</option><option value="OTHER">Other condition</option></select></label>
+          <label>Condition note<input id="conditionSummary" placeholder="Optional short condition note"></label>
+        </div>
+        <label id="damageField" class="hidden">Damage / missing items description<textarea id="damageDescription" rows="3"></textarea></label>
+        <label>Other comments<textarea id="otherComments" rows="3"></textarea></label>
+
+        <div class="dn-signature-card">
+          <div class="dn-signature-head"><div><span>CUSTOMER ACKNOWLEDGEMENT</span><small>Customer signs after inspecting the delivered items.</small></div><button type="button" id="clearSignature">Clear signature</button></div>
+          <label>Customer signatory name<input id="recipientName" placeholder="Full name"></label>
+          <canvas id="signaturePad" aria-label="Customer signature pad"></canvas>
+          <p>By signing, the receiver confirms the goods received and any damage or missing items recorded above.</p>
+        </div>
+
+        <div class="dn-form-actions">
+          <button type="button" id="saveDraftButton">Save Draft</button>
+          <button type="button" id="saveSignedButton" class="primary">Customer Sign &amp; Save</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="dn-panel">
+      <div class="dn-panel-head records-head"><div><p>SAVED RECORDS</p><h2>Delivery Note Register</h2></div><div class="dn-filters"><select id="statusFilter"><option value="">All</option><option value="SIGNED">Signed</option><option value="DRAFT">Draft</option></select><input id="recordSearch" type="search" placeholder="Search note, customer, machine…"></div></div>
+      <div id="recordList" class="dn-record-list"><div class="dn-empty">Loading Delivery Notes…</div></div>
+    </section>
+  </main>
+
+  <dialog id="recordDialog" class="dn-record-dialog"><div id="recordDialogBody"></div></dialog>
+
+  <script src="/delete-confirm.js?v=501-proforma-colors"></script>
+  <script src="/delivery-notes/app.js?v=501-proforma-colors"></script>
+</body>
+</html>

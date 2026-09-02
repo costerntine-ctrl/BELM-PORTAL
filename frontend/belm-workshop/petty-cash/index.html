@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BELM Workshop Petty Cash</title>
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <link rel="stylesheet" href="/belm-workshop/petty-cash/petty-cash.css?v=616-belm-internal">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <script defer src="/edit-confirm.js"></script>
+  <script defer src="/belm-workshop/petty-cash/petty-cash.js?v=617-voucher-reference"></script>
+</head>
+<body>
+  <main class="pc-shell">
+    <section class="pc-head">
+      <div>
+        <p class="eyebrow">PORTAL-BELM WM · BELM INTERNAL</p>
+        <h1>💵 BELM WM Petty Cash</h1>
+        <p class="lead">Internal workshop funds issued by BELM GENERAL TECH LTD for BELM Workshop operations. This account is separate from every Customer/CWM Petty Cash account.</p>
+      </div>
+      <div class="pc-select-wrap"><button id="refreshButton" type="button">↻ Sync / Refresh</button></div>
+    </section>
+    <div id="alertBox" class="alert hidden" role="alert"></div>
+    <section class="summary-grid">
+      <article><span>Available Balance</span><strong id="balanceAmount">TZS 0</strong></article>
+      <article><span>Total From BELM</span><strong id="totalToppedUp">TZS 0</strong></article>
+      <article><span>Total Used by WM</span><strong id="totalUsed">TZS 0</strong></article>
+      <article><span>Transactions</span><strong id="recordCount">0</strong></article>
+    </section>
+    <section class="panel">
+      <div class="panel-title"><div><h2>➕ Fund BELM Workshop</h2><p>Record money issued by BELM to BELM WM.</p></div></div>
+      <form id="fundForm" class="topup-form">
+        <label>Amount (TZS)<input id="fundAmount" type="number" min="1" step="0.01" required></label>
+        <label class="note">Description<input id="fundDescription" maxlength="255" placeholder="e.g. Weekly workshop petty cash" required></label>
+        <label>Reference<input id="fundReference" maxlength="120" placeholder="BELM funding reference (optional)"></label>
+        <button id="fundButton" type="submit">Add BELM Funds</button>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="panel-title"><div><h2>🧾 Record Workshop Expense</h2><p>Select voucher date. Voucher Reference Number is generated automatically with VR at the end.</p></div></div>
+      <form id="expenseForm" class="topup-form">
+        <label>Voucher Date<input id="expenseDate" type="date" required></label>
+        <label>Voucher Reference Number<input id="expenseReference" maxlength="120" placeholder="Generated automatically" readonly></label>
+        <label>Amount (TZS)<input id="expenseAmount" type="number" min="1" step="0.01" required></label>
+        <label>Category<input id="expenseCategory" maxlength="80" placeholder="Fuel, transport, material..." required></label>
+        <label class="note">Description<input id="expenseDescription" maxlength="255" required></label>
+        <button id="expenseButton" type="submit">Record Expense</button>
+      </form>
+    </section>
+    <section class="panel">
+      <div class="panel-title"><div><h2>📋 BELM WM Petty Cash History</h2><p>Only BELM internal Workshop transactions are shown here.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Voucher Date</th><th>Type</th><th>Category</th><th>Description</th><th>Voucher Reference</th><th>Amount</th><th>Recorded by</th></tr></thead><tbody id="entryRows"><tr><td colspan="7" class="empty">Loading…</td></tr></tbody></table></div>
+    </section>
+  </main>
+</body>
+</html>

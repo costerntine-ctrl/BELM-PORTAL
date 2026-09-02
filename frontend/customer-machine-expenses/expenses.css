@@ -6,22 +6,173 @@ header { min-height:72px; padding:11px clamp(18px,4vw,56px); display:flex; justi
 .brand { display:flex; align-items:center; gap:11px; color:#fff; text-decoration:none; }.brand b,.brand small { display:block; }.brand small { color:#bdc8d8; margin-top:2px; font-size:11px; }
 .mark { width:42px; height:42px; display:grid; place-items:center; border:2px solid var(--yellow); border-radius:11px; background:var(--green); font-weight:900; box-shadow:0 7px 18px rgba(0,166,81,.23); }
 nav { display:flex; align-items:center; gap:16px; }nav a,nav button { color:#e4eaf2; background:none; border:0; font:700 12px inherit; text-decoration:none; cursor:pointer; }
-main { width:min(1180px,calc(100% - 28px)); margin:38px auto 70px; }
+main { width:min(760px,calc(100% - 28px)); margin:38px auto 70px; }
+a.secondary { display:inline-flex; align-items:center; justify-content:center; text-decoration:none; }
+.print-options-row { display:flex; justify-content:flex-end; margin-bottom:10px; }
+.expenses-top-layout { display:grid; grid-template-columns:minmax(0,1fr) 260px; gap:16px; align-items:start; margin-bottom:20px; }
+.expenses-sidebar { display:grid; gap:12px; }
+.sidebar-card { padding:14px; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.05); }
+.sidebar-card-label { display:block; color:var(--muted); font-size:9.5px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.petty-cash-card { background:linear-gradient(155deg,var(--navy),#1d3049); border:0; }
+.petty-cash-card .sidebar-card-label { color:#9fb0c8; }
+.petty-cash-card strong { display:block; margin-top:8px; color:#fff; font-size:26px; font-family:"Space Grotesk",sans-serif; }
+.petty-cash-card strong.is-debt { color:#ff8a80; }
+.petty-cash-card.has-debt { background:linear-gradient(155deg,#3a1414,#5a1f1f 60%,#3a1414); }
+.petty-cash-card small { display:block; margin-top:5px; color:#7f92ac; font-size:10px; }
+.analysis-card { display:grid; gap:2px; }
+.analysis-card .sidebar-card-head { margin-bottom:8px; }
+.analysis-row { display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-top:1px solid var(--line); font-size:12px; }
+.analysis-row:first-of-type { border-top:0; }
+.analysis-row span { color:var(--muted); }
+.analysis-row b { color:var(--navy); font-size:13px; }
+@media(max-width:900px){ .expenses-top-layout{grid-template-columns:1fr} .expenses-sidebar{position:static} }
 .heading { display:flex; justify-content:space-between; align-items:end; gap:22px; }.eyebrow { margin:0 0 8px; color:var(--green2); font-size:10px; font-weight:900; letter-spacing:1.5px; }
 h1 { margin:0; color:var(--navy); font-size:clamp(30px,4vw,44px); letter-spacing:-1px; }.lead { max-width:720px; margin:9px 0 0; color:var(--muted); font-size:14px; }
 button,input,select { font:inherit; }.primary,.secondary { min-height:42px; padding:10px 15px; border-radius:9px; cursor:pointer; font-size:12px; font-weight:850; }
 .primary { color:#fff; border:0; background:var(--green); box-shadow:0 7px 18px rgba(0,166,81,.2); }.primary:hover { background:var(--green2); }.secondary { color:#33475a; border:1px solid var(--line); background:#fff; }.secondary:hover { border-color:var(--green); color:var(--green2); }.compact { min-height:36px; padding:7px 12px; }
-.download-actions { display:flex; flex-wrap:wrap; gap:9px; }
-.summary-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin:28px 0 18px; }.summary-grid article { padding:19px; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.05); }.summary-grid span,.summary-grid strong { display:block; }.summary-grid span { color:var(--muted); font-size:11px; }.summary-grid strong { margin-top:5px; color:var(--navy); font-size:23px; }
+.download-actions { display:flex; flex-wrap:wrap; align-items:center; gap:9px; }
+.print-options { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:var(--muted); }
+.print-options select { padding:6px 8px; border:1px solid var(--line); border-radius:7px; font-size:12px; }
+#printDateInput, #printMonthInput { padding:6px 8px; border:1px solid var(--line); border-radius:7px; font-size:12px; }
+.summary-grid { display:grid; grid-template-columns:1fr; gap:8px; margin:0 0 12px; }.summary-grid article { padding:11px 13px; border:1px solid var(--line); border-radius:11px; background:#fff; box-shadow:0 6px 20px rgba(21,29,49,.05); }.summary-grid span,.summary-grid strong { display:block; }.summary-grid span { color:var(--muted); font-size:9.5px; }.summary-grid strong { margin-top:3px; color:var(--navy); font-size:16px; }
+.balance-grid { grid-template-columns:1.4fr 1fr 1fr; margin-bottom:14px; }
+.balance-card { background:linear-gradient(155deg,var(--navy),#1d3049) !important; border:0 !important; }
+.balance-card span { color:#9fb0c8 !important; }
+.balance-card strong { color:#fff !important; font-size:30px !important; }
+.balance-card small { display:block; margin-top:4px; color:#7f92ac; font-size:10px; }
 .panel { margin-bottom:18px; border:1px solid var(--line); border-radius:17px; background:#fff; overflow:hidden; box-shadow:0 10px 32px rgba(21,29,49,.065); }.panel::before { content:""; display:block; height:4px; background:linear-gradient(90deg,var(--yellow) 0 34%,var(--green) 34% 100%); }
 .panel-head { display:flex; justify-content:space-between; align-items:center; gap:18px; padding:19px 20px; border-bottom:1px solid #edf2ef; }.panel-head h2 { margin:0 0 4px; font-size:18px; }.panel-head p { margin:0; color:var(--muted); font-size:12px; }.panel-head > strong { color:var(--green2); font-size:14px; }
-#expenseForm { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:20px; }#expenseForm label { display:grid; gap:7px; color:#394d60; font-size:11px; font-weight:800; }.wide { grid-column:span 2; }
+#expenseForm { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding:16px; }#expenseForm label { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:800; }.wide { grid-column:1 / -1; }
 input,select { width:100%; min-height:42px; padding:10px 11px; border:1px solid #cad6d0; border-radius:8px; color:#182235; background:#fff; outline:none; font-size:13px; }input:focus,select:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(0,166,81,.14); }
 .form-actions { display:flex; align-items:end; }.form-actions button { width:100%; }
+.dialog-form { display:grid; gap:12px; padding:18px 20px 20px; }
+.dialog-form label { display:grid; gap:5px; color:var(--muted); font-size:11px; font-weight:800; }
+.dialog-form label small { font-weight:500; color:#9aa7b5; }
+.dialog-form input { padding:9px 11px; border:1px solid #cad6d0; border-radius:8px; font-size:13px; font:inherit; }
+.dialog-form .lead { margin:0; color:var(--muted); font-size:12px; line-height:1.5; }
+.dialog-form .form-actions { gap:10px; }
+.dialog-form .secondary { min-height:40px; padding:9px 15px; border:1px solid var(--line); border-radius:9px; background:#fff; color:#33475a; font-size:12px; font-weight:800; cursor:pointer; }
+.petty-cash-admin-actions { display:grid; gap:8px; margin-top:12px; }
+.petty-cash-admin-actions button { padding:9px 10px; border:1px solid rgba(255,255,255,.2); border-radius:8px; background:rgba(255,255,255,.08); color:#fff; font-size:11px; font-weight:800; cursor:pointer; }
+.petty-cash-admin-actions button:hover { background:rgba(255,255,255,.16); }
 .receipt-field small { color:var(--muted); font-size:9px; font-weight:500; }.receipt-field input { padding:8px; }.receipt-preview { position:relative; display:flex; align-items:center; gap:10px; min-height:76px; padding:8px; border:1px solid var(--line); border-radius:9px; background:#f8faf9; }.receipt-preview img { width:64px; height:64px; border-radius:7px; object-fit:cover; }.receipt-preview button,.receipt-button { padding:7px 9px; border:1px solid #b9d8c8; border-radius:7px; color:var(--green2); background:#f4fbf7; cursor:pointer; font-size:10px; font-weight:800; }
+.receipt-upload-inline { display:inline-block; cursor:pointer; }
+.receipt-upload-inline .receipt-button { display:inline-block; border-color:#ffd97a; color:#8a5a00; background:#fff8e8; }
+.receipt-pdf-badge { display:none; padding:8px 12px; border:1px solid #d94b3a; border-radius:7px; background:#fff3f1; color:#b3271b; font-size:11px; font-weight:800; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .table-wrap { overflow:auto; }table { width:100%; border-collapse:collapse; min-width:880px; }th,td { padding:13px 15px; border-bottom:1px solid #edf2ef; text-align:left; font-size:12px; }th { color:#5d6d7e; background:#f8faf9; font-size:10px; text-transform:uppercase; letter-spacing:.5px; }td strong { color:var(--navy); }.empty { padding:46px 20px; color:var(--muted); text-align:center; }
 .alert { margin:18px 0; padding:12px 14px; border:1px solid #b9d8c8; border-radius:9px; color:#087039; background:#eefaf3; font-size:13px; }.alert.error { color:var(--red); border-color:#f1c8c4; background:#fff1f0; }.hidden { display:none !important; }
 dialog { width:min(760px,calc(100% - 24px)); padding:0; border:0; border-radius:16px; box-shadow:0 25px 80px rgba(8,15,27,.4); }dialog::backdrop { background:rgba(9,16,29,.72); }.receipt-dialog-head { display:flex; justify-content:space-between; align-items:center; padding:15px 18px; color:#fff; background:var(--navy); }.receipt-dialog-head button { border:0; color:#fff; background:none; cursor:pointer; font-size:26px; }.receipt-image-wrap { display:grid; place-items:center; max-height:76vh; padding:14px; overflow:auto; background:#eef2ef; }.receipt-image-wrap img { max-width:100%; max-height:72vh; object-fit:contain; }
-@media(max-width:1050px){.summary-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:900px){#expenseForm{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:620px){header nav a{display:none}.heading{align-items:start;flex-direction:column}.summary-grid{grid-template-columns:1fr 1fr}#expenseForm{grid-template-columns:1fr}.wide{grid-column:auto}.download-actions{width:100%}.download-actions button{flex:1}}
+@media(max-width:620px){.heading{align-items:start;flex-direction:column}#expenseForm{grid-template-columns:1fr}.wide{grid-column:auto}.download-actions{width:100%}.download-actions button{flex:1}}
+
+/* V197 - Customer Store + machine material audit */
+main { width:min(1180px,calc(100% - 28px)); }
+.audit-button { border-color:#b7c7f6; color:#173e8d; background:#f5f8ff; }
+.audit-button:hover { border-color:#173e8d; color:#102d69; }
+.store-issue-hint { padding:10px 12px; border:1px solid #b8d9c7; border-radius:9px; background:#f0fbf5; color:#315746; font-size:11px; line-height:1.45; }
+.store-issue-hint .negative { color:var(--red); }
+#unitPrice[readonly] { color:#536779; background:#f2f5f3; cursor:not-allowed; }
+.store-panel::before { background:linear-gradient(90deg,var(--green) 0 68%,var(--yellow) 68% 100%); }
+.store-summary-strip { display:flex; flex-wrap:wrap; gap:10px 22px; padding:12px 20px; border-bottom:1px solid #edf2ef; background:#f8fbf9; color:var(--muted); font-size:11px; }
+.store-summary-strip b { color:var(--navy); font-size:13px; }
+.store-table { min-width:900px; }
+.audit-table { min-width:1500px; }
+.stock-ok { color:var(--green2); }
+.stock-zero { color:var(--red); }
+.source-badge { display:inline-flex; align-items:center; min-height:24px; padding:4px 8px; border-radius:999px; font-size:9px; font-weight:900; text-transform:uppercase; white-space:nowrap; }
+.source-badge.store { color:#087039; border:1px solid #b7dfc9; background:#effaf4; }
+.source-badge.direct { color:#7c5600; border:1px solid #f1d78f; background:#fff9e8; }
+.dialog-note { margin:0; padding:14px 20px 0; color:var(--muted); font-size:11px; line-height:1.5; }
+.dialog-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.dialog-actions-inline { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media(max-width:760px){ .dialog-grid{grid-template-columns:1fr}.store-summary-strip{display:grid;grid-template-columns:1fr 1fr}.audit-table{min-width:1360px} }
+.movement-panel::before { background:linear-gradient(90deg,#173e8d 0 72%,var(--green) 72% 100%); }
+.movement-table { min-width:1250px; }
+.movement-badge { display:inline-flex; min-width:58px; justify-content:center; padding:4px 8px; border-radius:999px; font-size:9px; font-weight:900; }
+.movement-badge.receive { color:#087039; background:#effaf4; border:1px solid #b7dfc9; }
+.movement-badge.issue { color:#173e8d; background:#f0f4ff; border:1px solid #bfd0fa; }
+
+/* V215 - shared customer Petty Cash account */
+#topupForm { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:16px; }
+#topupForm label { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:800; }
+@media(max-width:620px){#topupForm{grid-template-columns:1fr}}
+
+/* V295 - Customer Store issue approval queue */
+.store-approval-panel { border-color:#d9c65e; }
+.store-approval-panel::before { background:linear-gradient(90deg,#ffd400,#00a651); }
+.approval-count { display:inline-flex; align-items:center; min-height:30px; padding:5px 10px; border-radius:999px; background:#fff8d7; color:#6e5700; font-size:11px; font-weight:850; white-space:nowrap; }
+.approval-status { display:inline-flex; padding:4px 8px; border-radius:999px; font-size:10px; font-weight:850; }
+.approval-status.pending_approval { background:#fff8d7; color:#6e5700; }
+.approval-status.approved { background:#e8f7ee; color:#087039; }
+.approval-status.rejected { background:#fdeceb; color:#9d2720; }
+.approval-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.approval-actions button { min-height:32px; padding:6px 10px; border-radius:8px; font-size:10px; font-weight:850; cursor:pointer; }
+.approve-store-issue { border:1px solid #00a651; background:#00a651; color:#fff; }
+.reject-store-issue { border:1px solid #e5aaa5; background:#fff3f2; color:#a42a23; }
+.approval-actions button:disabled { opacity:.5; cursor:not-allowed; }
+.stock-warning { display:block; margin-top:5px; color:#b42318; font-size:9px; font-weight:800; }
+html[data-theme="dark"] .approval-count { background:#30280d; color:#ffe581; }
+html[data-theme="dark"] .approval-status.pending_approval { background:#30280d; color:#ffe581; }
+html[data-theme="dark"] .approval-status.approved { background:#102a21; color:#8fe5b4; }
+html[data-theme="dark"] .approval-status.rejected { background:#32191b; color:#ffb0aa; }
+html[data-theme="dark"] .reject-store-issue { background:#32191b; color:#ffb0aa; border-color:#66363a; }
+
+/* V297 Procurement request queue */
+.procurement-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.procurement-request-table .procurement-action-cell{min-width:220px}.procurement-actions{display:flex;flex-wrap:wrap;gap:5px}.procurement-actions button{border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--paper);color:var(--ink);font-size:10px;font-weight:800;cursor:pointer}.procurement-actions .store-action{border-color:#46a36f;color:#087039;background:#effaf4}.procurement-actions .purchase-action{border-color:#d7b11d;color:#725b00;background:#fff9dc}.procurement-actions .ready-action{border-color:#2f7cf5;color:#1a4fb0;background:#eef5ff}.procurement-actions .reject-action{border-color:#e5a0a0;color:#b42318;background:#fff4f3}.procurement-store-state{font-size:10.5px;line-height:1.35}.procurement-store-state b{display:block}.procurement-status{display:inline-flex;padding:4px 7px;border-radius:999px;background:#eef3f8;font-size:9.5px;font-weight:850;white-space:nowrap}.procurement-status.parts_ready{background:#e7f8ee;color:#087039}.procurement-status.purchase_required,.procurement-status.ordered{background:#fff5c9;color:#725b00}.procurement-status.rejected{background:#fdecec;color:#b42318}.procurement-status.pending_procurement{background:#eaf3ff;color:#175b9c}[data-theme="dark"] .procurement-actions button{background:#16233d}[data-theme="dark"] .procurement-actions .store-action{background:#123428;color:#b7f3d2}[data-theme="dark"] .procurement-actions .purchase-action{background:#493d0e;color:#ffe58a}[data-theme="dark"] .procurement-actions .ready-action{background:#153758;color:#b9dcff}
+
+/* V298 - shortage selection / BELM supply handoff */
+.procurement-select-cell{width:58px;text-align:center}.procurement-select-cell input{width:18px;height:18px;accent-color:var(--green);cursor:pointer}.shortage-value{display:block;margin-top:3px;font-size:10px;font-weight:850;color:#b42318}.shortage-value.zero{color:var(--green-dark,#087039)}.procurement-head-actions .primary.compact{min-height:32px}.procurement-status.belm_requested{background:#e8f2fc;color:#075ca7}[data-theme="dark"] .procurement-status.belm_requested{background:#173b5f;color:#dff0ff}
+
+
+
+/* V438 - Customer Workshop Account card inside Procurement */
+.workshop-account-card{background:linear-gradient(155deg,#0f2139,#163552);border:1px solid #28506e;color:#fff;box-shadow:0 10px 28px rgba(10,28,48,.16)}
+.workshop-account-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.workshop-account-card .sidebar-card-label{color:#8de1b3;font-size:10px}
+.workshop-account-head small{display:block;margin-top:4px;color:#91a8c1;font-size:9px;line-height:1.35}
+.workshop-account-auto{display:inline-flex;align-items:center;justify-content:center;min-height:23px;padding:4px 8px;border-radius:999px;background:rgba(0,166,81,.18);border:1px solid rgba(90,225,148,.35);color:#7de8a9;font-size:8px;font-weight:900;letter-spacing:.08em}
+.workshop-account-card>strong{display:block;margin-top:10px;color:#fff;font-family:"Space Grotesk",Inter,sans-serif;font-size:26px;letter-spacing:-.5px}
+.workshop-account-card.is-negative>strong{color:#ff9b95}
+.workshop-account-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.workshop-account-metrics span{padding:8px 9px;border:1px solid rgba(255,255,255,.11);border-radius:9px;background:rgba(255,255,255,.045);color:#94a9bf;font-size:9px}
+.workshop-account-metrics b{display:block;margin-top:3px;color:#fff;font-size:11px}
+.workshop-account-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.workshop-account-actions button{min-height:34px;padding:7px 8px;border:1px solid rgba(255,255,255,.16);border-radius:8px;background:rgba(255,255,255,.08);color:#fff;font-size:9.5px;font-weight:850;cursor:pointer}
+.workshop-account-actions button:hover{background:rgba(255,255,255,.14)}
+#workshopAccountAddButton{border-color:rgba(76,220,139,.45);background:rgba(0,166,81,.18)}
+#workshopAccountUploadButton{border-color:rgba(255,212,0,.42);color:#ffe987}
+.workshop-account-updated{display:block;margin-top:8px;color:#7890a9;font-size:8.5px;line-height:1.35}
+#workshopAccountDialog .dialog-form{padding:0 20px 20px}
+#workshopAccountDialog .receipt-dialog-head{margin:0 -20px 0}
+#workshopAccountDialog .dialog-note{padding-left:0;padding-right:0}
+html[data-theme="dark"] .workshop-account-card{background:linear-gradient(155deg,#081726,#0c2940);border-color:#24445f}
+@media(max-width:620px){.workshop-account-actions{grid-template-columns:1fr 1fr}.workshop-account-card>strong{font-size:24px}}
+
+
+/* V441 - Petty Cash edit controls */
+.petty-entry-actions{display:flex;gap:8px;align-items:stretch}.petty-entry-actions button{width:auto;flex:1}.petty-edit-button{border-color:#3b82f6!important;color:#1d4ed8!important;background:#eff6ff!important}.petty-edit-button:hover{filter:brightness(.98)}[data-theme="dark"] .petty-edit-button{background:#13243a!important;color:#9ecbff!important;border-color:#31557d!important}@media(max-width:760px){.petty-entry-actions{flex-direction:column}}
+
+/* V442 - Petty Cash spare details: description / part no / qty + unit */
+.petty-spares{padding:13px;border:1px solid #d9e5df;border-radius:12px;background:#f8fbf9}
+.petty-spares-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.petty-spares-head b{display:block;color:var(--navy);font-size:13px}
+.petty-spares-head small{display:block;margin-top:3px;color:var(--muted);font-size:10px;line-height:1.4;font-weight:600}
+.petty-spare-list{display:grid;gap:9px}
+.petty-spare-row{display:grid;grid-template-columns:minmax(220px,2fr) minmax(145px,1fr) 100px 110px 34px;gap:8px;align-items:end;padding:10px;border:1px solid #e2ebe6;border-radius:10px;background:#fff}
+.petty-spare-row label{margin:0}
+.petty-spare-row .spare-remove{width:34px;min-height:42px;border:1px solid #efc2bd;border-radius:8px;background:#fff4f3;color:#b42318;font-size:20px;font-weight:900;cursor:pointer}
+.petty-spare-row .spare-remove:hover{background:#ffe9e7}
+.petty-spare-row .spare-remove.first{opacity:.55}
+.petty-spare-summary{display:grid;gap:5px;min-width:190px}
+.petty-spare-summary span{display:block;padding:5px 7px;border:1px solid #dce8e1;border-radius:7px;background:#f8fbf9;color:#3e5163;font-size:10px;line-height:1.3}
+.petty-spare-summary b{color:var(--navy);font-size:10px}
+.petty-spare-summary small{display:block;margin-top:2px;color:var(--green2);font-size:9px;font-weight:850}
+[data-theme="dark"] .petty-spares{background:#0f1d31;border-color:#2a3c56}
+[data-theme="dark"] .petty-spares-head b{color:#f4f7fb}
+[data-theme="dark"] .petty-spare-row{background:#101e32;border-color:#2b3f59}
+[data-theme="dark"] .petty-spare-row .spare-remove{background:#351d20;color:#ffaaa4;border-color:#63373b}
+[data-theme="dark"] .petty-spare-summary span{background:#102033;border-color:#29445a;color:#cbd6e3}
+[data-theme="dark"] .petty-spare-summary b{color:#f4f7fb}
+[data-theme="dark"] .petty-spare-summary small{color:#86e6af}
+@media(max-width:900px){.petty-spare-row{grid-template-columns:1.7fr 1fr 90px 100px 34px}}
+@media(max-width:720px){.petty-spares-head{flex-direction:column}.petty-spares-head button{width:100%}.petty-spare-row{grid-template-columns:1fr 1fr}.petty-spare-row .spare-description{grid-column:1/-1}.petty-spare-row .spare-remove{grid-column:2;justify-self:end}.petty-spare-row .spare-remove.first{display:none}}

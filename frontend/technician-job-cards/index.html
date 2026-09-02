@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- V444: bfcache back-navigation guard, see /customer-workshop/index.html -->
+  <script>window.addEventListener("pageshow", function (e) { if (e.persisted) window.location.reload(); });</script>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>My Job Cards — BELM Technician</title>
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <link rel="stylesheet" href="/technician-job-cards/job-cards.css?v=343-mobile-field-dispatch">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/tech" class="brand"><span class="mark">B</span><span><b>BELM Technician</b><small>Job Card Workspace</small></span></a>
+    <nav><a href="/tech">← Check-up</a><a href="/delivery-notes/?actor=tech">Delivery Notes</a><button type="button" id="themeButton" data-belm-theme-toggle>Light / Dark</button><button type="button" id="refreshButton">Refresh</button></nav>
+  </header>
+  <main>
+    <section class="hero"><div class="hero-copy"><p>TECHNICIAN WORK</p><h1>My Job Cards</h1><span>Receive Job Cards assigned by Admin / Workshop Manager, then diagnose, request spares, test and complete the work. Technician does not assign Job Cards.</span></div><div class="tech-identity"><small>LOGGED IN TECHNICIAN</small><b id="techIdentity">Technician</b></div></section>
+    <div id="alertBox" class="alert hidden"></div>
+    <section class="summary" id="summary"></section>
+    <section class="toolbar">
+      <div class="tabs"><button class="active" data-tab="active">Active Job Cards</button><button data-tab="reports">My Reports</button></div>
+      <input id="searchBox" placeholder="Search Job Card, machine, customer...">
+    </section>
+    <section id="jobList" class="job-list"><div class="empty">Loading your Job Cards…</div></section>
+  </main>
+
+  <dialog id="reportDialog"><form id="reportForm">
+    <div class="dialog-head"><div><small>TECHNICIAN JOB REPORT</small><h2 id="reportTitle">Job Card</h2></div><button type="button" data-close="reportDialog">×</button></div>
+    <input type="hidden" id="reportJobId">
+    <label>Diagnosis<textarea id="reportDiagnosis" rows="3" required></textarea></label>
+    <label>Work done<textarea id="reportWork" rows="4" placeholder="Optional during diagnosis; required before submitting for approval"></textarea></label>
+    <label>Test result<textarea id="reportTest" rows="2"></textarea></label>
+    <label>Completion note<textarea id="reportNote" rows="2"></textarea></label>
+    <label>Repeated issue?<select id="reportRepeat"><option value="0">No - new issue</option><option value="1">Yes - repeated issue / rework</option></select></label>
+    <div class="split"><label>Required Spare (optional)<input id="reportRequiredSpare" placeholder="Enter spare only if the job must wait for a spare"></label><label>Qty<input id="reportRequiredSpareQty" type="number" min="0.01" step="0.01" value="1"></label></div>
+    <label class="check"><input id="reportComplete" type="checkbox"> My repair work is completed — submit Job Card for approval</label>
+    <div class="dialog-actions"><button type="button" data-close="reportDialog">Cancel</button><button class="primary" type="submit">Save Job Report</button></div>
+  </form></dialog>
+
+  <dialog id="spareDialog"><form id="spareForm">
+    <div class="dialog-head"><div><small>JOB CARD SPARE</small><h2>Request Spare</h2></div><button type="button" data-close="spareDialog">×</button></div>
+    <input type="hidden" id="spareJobId"><input type="hidden" id="spareCaseId">
+    <label>Spare name<input id="spareName" required></label>
+    <label>Part / reference number<input id="sparePart"></label>
+    <div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div>
+    <label>Why required<textarea id="spareReason" rows="3"></textarea></label>
+    <div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send Spare Request</button></div>
+  </form></dialog>
+
+  <script src="/technician-job-cards/job-cards.js?v=485-role-cleanup"></script>
+</body>
+</html>

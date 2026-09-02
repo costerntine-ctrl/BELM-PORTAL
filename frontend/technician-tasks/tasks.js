@@ -26,6 +26,7 @@
   async function api(path, options = {}) {
     const response = await fetch(`/api${path}`, {
       ...options,
+      cache: "no-store",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` },
     });
     const text = await response.text();
@@ -44,26 +45,36 @@
       taskList.innerHTML = '<div class="empty">No tasks in this section.</div>';
       return;
     }
-    taskList.innerHTML = visible.map((task) => `
-      <article class="task ${escapeHtml(task.priority)} ${escapeHtml(task.status)}">
-        <div class="task-head"><div><h2>${escapeHtml(task.title)}</h2><div class="meta">${escapeHtml(task.customerName || "General BELM task")} · Assigned by ${escapeHtml(task.createdBy || "BELM Admin")}</div></div><span class="priority">${escapeHtml(task.priority)}</span></div>
+    taskList.innerHTML = visible.map((task) => {
+      const isJobCard = String(task.sourceType || "").toUpperCase() === "JOB_CARD";
+      const meta = isJobCard
+        ? `${escapeHtml(task.customerName || "Customer")} · ${escapeHtml(task.machineLabel || "Machine")} · ${escapeHtml(task.jobCardNo || "Job Card")}`
+        : `${escapeHtml(task.customerName || "General BELM task")} · Assigned by ${escapeHtml(task.createdBy || "BELM Admin")}`;
+      const action = isJobCard
+        ? `<a class="open-job-card" href="/technician-job-cards/${task.machineId ? `?machine=${encodeURIComponent(task.machineId)}` : ""}">Open Job Card</a>`
+        : task.status !== "DONE"
+          ? `<button class="complete" type="button" data-done="${escapeHtml(task.id)}">Mark completed</button>`
+          : '<span class="due">Completed</span>';
+      return `
+      <article class="task ${escapeHtml(task.priority)} ${escapeHtml(task.status)}${isJobCard ? " JOB_CARD" : ""}">
+        <div class="task-head"><div><h2>${escapeHtml(task.title)}</h2><div class="meta">${meta}</div>${isJobCard ? `<div class="job-card-sync">SYNCED JOB CARD · ${escapeHtml(String(task.caseStage || "ASSIGNED").replaceAll("_", " "))}</div>` : ""}${task.temporaryOverride ? `<div class="temporary-override">TEMPORARY OVERRIDE · Home: ${escapeHtml(task.homeCustomerName || "Assigned customer")}</div>` : ""}</div><span class="priority">${escapeHtml(task.priority)}</span></div>
         <p>${escapeHtml(task.description || "No additional details.")}</p>
-        <div class="task-actions"><span class="due">${task.dueDate ? `Due ${new Date(task.dueDate).toLocaleDateString()}` : "No due date"}</span>${task.status !== "DONE" ? `<button class="complete" type="button" data-done="${escapeHtml(task.id)}">Mark completed</button>` : "<span class=\"due\">Completed</span>"}</div>
-      </article>
-    `).join("");
+        <div class="task-actions"><span class="due">${task.dueDate ? `Due ${new Date(task.dueDate).toLocaleDateString()}` : "No due date"}</span>${action}</div>
+      </article>`;
+    }).join("");
   }
 
   async function load() {
     const payload = tokenPayload();
     if (!token || payload?.roleName !== "Technician" || !payload?.id) {
-      taskList.innerHTML = '<div class="locked">Technician login required.<br><a href="/tech">Go to Technician login</a></div>';
+      taskList.innerHTML = '<div class="locked">Technician login required.<br><a href="/login">Go to login</a></div>';
       return;
     }
     try {
       tasks = await api(`/tasks/user/${payload.id}`);
       render();
     } catch (error) {
-      taskList.innerHTML = '<div class="locked">Could not load your tasks.<br><a href="/tech">Log in again</a></div>';
+      taskList.innerHTML = '<div class="locked">Could not load your tasks.<br><a href="/login">Log in again</a></div>';
       alertBox.textContent = error.message;
       alertBox.className = "alert error";
     }
@@ -90,10 +101,14 @@
     render();
   });
   document.getElementById("refreshButton").addEventListener("click", load);
+  window.addEventListener("focus", load);
+  window.addEventListener("pageshow", load);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  window.setInterval(() => { if (!document.hidden) load(); }, 30000);
   document.getElementById("logoutButton").addEventListener("click", () => {
     localStorage.removeItem("belm_tech_token");
     localStorage.removeItem("belm_tech_user");
-    window.location.href = "/tech";
+    window.location.href = "/login";
   });
   load();
 })();

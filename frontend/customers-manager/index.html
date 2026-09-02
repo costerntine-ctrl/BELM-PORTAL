@@ -3,31 +3,46 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>if(new URLSearchParams(location.search).get("embed")==="1"){document.documentElement.classList.add("belm-embedded");document.documentElement.style.background="#0b1728";}</script>
+    <style>html.belm-embedded,html.belm-embedded body{background:#0b1728!important;color:#e7eef8!important}</style>
     <title>BELM Customers Overview</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/customers-manager/manager.css">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=25-left-workflow">
-  </head>
+    <link rel="stylesheet" href="/portal-switcher.css?v=511-three-portal-menu">
+    <!-- Regression baseline: /customers-manager/manager.css?v=377-admin-machine-management-activity-status -->
+    <!-- Regression baseline: /customers-manager/manager.css?v=382-full-card-alert-range -->
+    <link rel="stylesheet" href="/customers-manager/manager.css?v=505-no-white-customer-overview">
+    <link rel="stylesheet" href="/customers-manager/belm-brand-card.css?v=619-restored-full-overview">
+    <link rel="stylesheet" href="/admin-sidebar.css?v=488-text-fit">
+    <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+</head>
   <body>
     <header class="topbar">
-      <a class="brand" href="/overview-manager/">
+      <a class="brand" href="/belm-workshop/">
         <span class="brand-mark">B</span>
         <span>BELM General Tech <small>Admin Overview</small></span>
       </a>
       <div class="top-actions">
-        <a class="ghost" href="/overview-manager/">← All Overview</a>
+        <a class="ghost" href="/belm-workshop/">← Main Home</a>
         <a class="ghost" href="/admin-applications/">Access Applications</a>
         <button id="logoutButton" class="ghost" type="button">Log out</button>
       </div>
     </header>
+    <nav class="belm-portal-switcher" aria-label="BELM portal sections">
+      <a class="active" href="/customers-manager/">Customer Overview</a>
+      <a href="/belm-workshop/">PORTAL-BELM WM</a>
+      <a href="/portal-cwm/">PORTAL-CWM</a>
+    </nav>
+
 
     <nav class="admin-menu" aria-label="Admin navigation">
       <a class="active" href="/customers-manager/">Customers</a>
       <a href="/checklist-manager/">Checklists</a>
-      <a href="/service-request-manager/">Service Requests</a>
       <a href="/spare-parts-manager/">Spare Parts</a>
       <a href="/billing-manager/">Billing</a>
       <a href="/roles-manager/">Roles & Users</a>
@@ -39,11 +54,10 @@
     <main class="shell">
       <section class="hero">
         <div>
-          <p class="eyebrow">Customer Registration & Fleet Status</p>
+          <p class="eyebrow">Fleet Status</p>
           <h1>Customers Overview</h1>
-          <p>Customer information and machine health arranged in clear cards.</p>
+          <p>Customer information and machine health arranged in clear cards. New customers are registered from the <a href="/admin-applications/">Registrations</a> page.</p>
         </div>
-        <button id="addCustomerButton" class="secondary" type="button">+ Register customer</button>
       </section>
 
       <section class="metrics">
@@ -54,6 +68,20 @@
       </section>
 
       <div id="pageAlert" class="alert hidden" role="status"></div>
+
+      <section class="panel machine-type-sync-panel collapsed" id="machineTypeSyncPanel">
+        <button type="button" class="machine-type-sync-toggle" id="machineTypeSyncToggle">
+          <span>⇄ Machine Type ↔ Checklist Template Sync</span>
+          <span class="machine-type-sync-toggle-status" id="machineTypeSyncToggleStatus">Not checked yet</span>
+          <span class="machine-type-sync-toggle-arrow">▾</span>
+        </button>
+        <div class="machine-type-sync-content" id="machineTypeSyncContent">
+          <p class="muted">Finds machines whose type doesn't exactly match any active Checklist Template (e.g. a spelling difference), so Check Up quietly fails to find that machine's template.</p>
+          <div id="machineTypeSyncBody"><p class="empty">Click Refresh to check.</p></div>
+          <button class="secondary" id="machineTypeSyncRefresh" type="button">↻ Refresh</button>
+        </div>
+      </section>
+
       <section class="customer-toolbar">
         <input id="searchInput" placeholder="Search company, email, phone, TIN, VRN or machine" aria-label="Search customers">
         <select id="statusFilter" aria-label="Filter customers">
@@ -62,6 +90,8 @@
           <option value="INACTIVE">Inactive customers</option>
           <option value="ATTENTION">Machine needs attention</option>
         </select>
+        <button id="clearCustomerFiltersButton" class="secondary" type="button">Clear filters</button>
+        <button id="refreshCustomersButton" class="secondary" type="button">Refresh customers</button>
       </section>
       <section id="customerGrid" class="customer-grid"><div class="loading">Loading customers…</div></section>
     </main>
@@ -100,18 +130,108 @@
         <input id="machineId" type="hidden">
         <div id="machineFormAlert" class="alert error hidden"></div>
         <div class="form-grid">
-          <label>Machine type<input id="machineType" required maxlength="100" placeholder="Reach Stacker, Forklift…"></label>
+          <label id="machineMoveCustomerWrap" class="hidden full">Belongs to customer <small>(change this to move the machine to a different customer)</small>
+            <select id="machineMoveCustomer"></select>
+          </label>
+          <label>Machine type
+            <select id="machineType" required>
+              <option value="">Select machine type…</option>
+            </select>
+          </label>
+          <label id="machineTypeOtherWrap" class="hidden">New machine type <small>(not in Checklist Templates yet — add a matching template later so check-ups work)</small>
+            <select id="machineTypeOther">
+              <option value="">Select machine type…</option>
+            </select>
+          </label>
+          <label id="machineTypeCustomWrap" class="hidden">Custom machine type <small>(type it exactly — this becomes the name a matching Checklist Template must use)</small>
+            <input id="machineTypeCustom" maxlength="100" placeholder="Type the new machine type">
+          </label>
           <label>Brand<input id="machineBrand" maxlength="100" placeholder="Konecranes, CAT…"></label>
           <label>Model<input id="machineModel" required maxlength="255"></label>
           <label>Registration number<input id="machineRegNumber" maxlength="100"></label>
+          <label>Fleet number<input id="machineFleetNumber" maxlength="100" placeholder="e.g. BELM-045"></label>
           <label>Serial number<input id="machineSerialNumber" maxlength="100"></label>
           <label>Service kit<select id="machineServiceKit"><option value="OK">OK</option><option value="ATTENTION">Attention</option><option value="CRITICAL">Critical</option></select></label>
         </div>
         <div class="dialog-actions">
+          <button type="button" id="machineSendMessageButton" class="ghost">✉ Send Message to Customer</button>
           <button class="ghost" data-close="machineDialog" type="button">Cancel</button>
           <button id="saveMachineButton" class="primary" type="submit">Save machine</button>
         </div>
       </form>
+    </dialog>
+
+    <dialog id="servicePartsDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Preventive Maintenance</p><h2 id="servicePartsTitle">Machine Service Parts</h2></div>
+          <button class="icon-close" data-close="servicePartsDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="servicePartsMachineId" type="hidden">
+        <div id="servicePartsAlert" class="alert hidden"></div>
+        <div class="form-grid">
+          <label>Service interval
+            <select id="servicePartsInterval">
+              <option value="250">250 hrs Service</option>
+              <option value="500">500 hrs Service</option>
+              <option value="1000">1000 hrs Service</option>
+              <option value="2000">2000 hrs Service</option>
+            </select>
+          </label>
+          <div class="full">
+            <p class="muted">These are the exact spares BELM should prepare for this registered machine. Part numbers are matched silently to BELM Spare Inventory when a service alert is created.</p>
+          </div>
+        </div>
+        <div class="dialog-actions" style="justify-content:flex-start;border-top:0;padding-top:0;">
+          <button id="servicePartsUseTemplateButton" class="secondary" type="button">Use Checklist Template Parts</button>
+          <button id="servicePartsAddButton" class="ghost" type="button">+ Add Spare</button>
+        </div>
+        <div id="servicePartsRows" class="reports-list"></div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="servicePartsDialog" type="button">Cancel</button>
+          <button id="servicePartsSaveButton" class="primary" type="button">Save Service Parts</button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="manageCustomerDialog">
+      <div class="dialog-card manage-customer-dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">BELM Admin</p><h2 id="manageCustomerDialogTitle">Manage customer</h2></div>
+          <button class="icon-close" data-close="manageCustomerDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <p class="manage-customer-summary">Customer: <strong id="manageCustomerDialogName">—</strong></p>
+        <div class="manage-customer-actions" aria-label="Customer management actions">
+          <button id="manageEditCustomerButton" class="manage-customer-action edit" type="button"><strong>Edit Customer</strong><span>Update customer details</span></button>
+          <button id="manageResetCustomerButton" class="manage-customer-action reset" type="button"><strong>Reset Login</strong><span>Generate new credentials and open copy screen</span></button>
+          <button id="manageUsersCustomerButton" class="manage-customer-action users" type="button"><strong>Users Control</strong><span>Default 3 users · increase after customer request</span></button>
+          <button id="manageDeleteCustomerButton" class="manage-customer-action delete" type="button"><strong>Delete</strong><span>Move customer to Recycle Bin</span></button>
+          <button id="manageForgetCustomerButton" class="manage-customer-action forget" type="button"><strong>Forget Permanently</strong><span>Permanently erase customer data</span></button>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="customerUsersControlDialog">
+      <div class="dialog-card customer-users-control-dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Manage Customer</p><h2 id="customerUsersControlTitle">Users Control</h2></div>
+          <button class="icon-close" data-close="customerUsersControlDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <p class="manage-customer-summary">Customer: <strong id="customerUsersControlName">—</strong></p>
+        <div class="customer-users-control-stats">
+          <div><span>Users in use</span><strong id="customerUsersControlUsed">0</strong></div>
+          <div><span>Current limit</span><strong id="customerUsersControlLimit">3</strong></div>
+        </div>
+        <label class="customer-users-control-limit-field">
+          <span>Allowed portal users</span>
+          <input id="customerUsersControlInput" type="number" min="0" step="1" value="3" inputmode="numeric">
+        </label>
+        <p class="muted customer-users-control-note">System default is 3 users. Increase this number only when the customer requests additional user access.</p>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="customerUsersControlDialog" type="button">Cancel</button>
+          <button id="customerUsersControlSaveButton" class="primary" type="button">Save User Limit</button>
+        </div>
+      </div>
     </dialog>
 
     <dialog id="credentialsDialog">
@@ -122,7 +242,7 @@
         </div>
         <div class="credentials">
           <label>Email<input id="credentialEmail" readonly></label>
-          <label>Temporary password<input id="credentialPassword" readonly></label>
+          <label>Temporary password<input id="credentialPassword" type="password" readonly></label>
           <label>Recovery code<input id="credentialRecovery" readonly></label>
           <label>Customer portal link<input id="credentialLink" readonly></label>
         </div>
@@ -135,8 +255,167 @@
       </div>
     </dialog>
 
-    <script src="/admin-access.js"></script>
-    <script src="/admin-sidebar.js?v=25-left-workflow"></script>
-    <script src="/customers-manager/manager.js"></script>
+    <dialog id="customerMessagesDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Customer Fleet</p><h2 id="customerMessagesTitle">Customer Messages</h2></div>
+          <button class="icon-close" data-close="customerMessagesDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div id="customerMessagesBody"></div>
+      </div>
+    </dialog>
+
+    <dialog id="sendCustomerMessageDialog">
+      <form id="sendCustomerMessageForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">BELM → Customer</p><h2 id="sendCustomerMessageTitle">Message Customer</h2></div>
+          <button class="icon-close" data-close="sendCustomerMessageDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="sendCustomerMessageCustomerId" type="hidden">
+        <div class="form-grid">
+          <label>Related machine <small>(optional)</small>
+            <select id="sendCustomerMessageMachine"><option value="">General / customer account</option></select>
+          </label>
+          <label>Subject
+            <input id="sendCustomerMessageSubject" maxlength="160" value="Message from BELM" required>
+          </label>
+          <div class="message-checkup-jump">
+            <button type="button" id="sendCustomerMessageCheckup" class="ghost" disabled>Check Up → Fill checklist</button>
+          </div>
+          <label class="span-2">Message
+            <textarea id="sendCustomerMessageBody" rows="6" maxlength="2000" placeholder="Write the message the customer should see in the portal…" required></textarea>
+          </label>
+          <label class="span-2 message-email-option">
+            <input id="sendCustomerMessageEmailGroup" type="checkbox">
+            <span><strong>Send Email to Customer Group for Action</strong><small>Customer account owner + all active customer users.</small></span>
+          </label>
+        </div>
+        <p class="muted">Every message is saved in Communication History. Email is optional here; only Service Overdue alerts are emailed automatically to the customer group.</p>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="sendCustomerMessageDialog" type="button">Cancel</button>
+          <button id="sendCustomerMessageButton" class="primary" type="submit">Save / Send Message</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="machineListDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Customer Fleet</p><h2 id="machineListTitle">Machines</h2></div>
+          <button class="icon-close" data-close="machineListDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <div class="dialog-actions" style="justify-content: flex-start; border-top: 0; padding-top: 0; margin-bottom: 12px;">
+          <button id="machineListAddButton" class="primary" type="button">+ Add machine</button>
+        </div>
+        <div id="machineListBody"></div>
+      </div>
+    </dialog>
+
+    <dialog id="reportsDialog">
+      <div class="dialog-card report-center-dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Machine Report Center</p><h2 id="reportsDialogTitle">Reports</h2></div>
+          <button class="icon-close" data-close="reportsDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <nav class="machine-report-tabs" aria-label="Report type">
+          <button type="button" class="active" data-report-tab="checklist">Checklist Report</button>
+          <button type="button" data-report-tab="jobcard">Job Card Report</button>
+          <button type="button" data-report-tab="daily">Daily Report</button>
+          <button type="button" data-report-tab="operator">Operator Reported</button>
+          <button type="button" data-report-tab="analysis">Machine Analysis</button>
+        </nav>
+        <div class="machine-report-filter">
+          <label>Filter
+            <select id="machineReportFilterMode">
+              <option value="all">All time</option>
+              <option value="day">Date</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+            </select>
+          </label>
+          <label id="machineReportDayField" class="hidden">Date<input id="machineReportDay" type="date"></label>
+          <label id="machineReportMonthField" class="hidden">Month<input id="machineReportMonth" type="month"></label>
+          <label id="machineReportYearField" class="hidden">Year<input id="machineReportYear" type="number" min="2000" max="2100" step="1" placeholder="2026"></label>
+          <button id="machineReportApplyFilter" type="button">View Reports</button>
+          <button id="machineReportDownloadButton" class="primary" type="button">Download Report</button>
+        </div>
+        <p id="machineReportPeriodLabel" class="machine-report-period-label">Showing all saved reports.</p>
+        <div id="reportsList" class="reports-list report-center-list"></div>
+      </div>
+    </dialog>
+
+    <dialog id="expenseReceiptsDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Bookkeeping</p><h2 id="expenseReceiptsTitle">Procurement receipts</h2></div>
+          <div class="dialog-head-actions">
+            <button class="ghost" id="downloadAllExpenseReceiptsButton" type="button">Download All</button>
+            <button class="icon-close" data-close="expenseReceiptsDialog" type="button" aria-label="Close">×</button>
+          </div>
+        </div>
+        <div id="expenseReceiptsBody" class="dialog-body"></div>
+      </div>
+    </dialog>
+
+    <dialog id="reportViewDialog">
+      <div class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow" id="reportViewEyebrow">Checked Report</p><h2 id="reportViewTitle">Report detail</h2></div>
+          <div class="dialog-head-actions">
+            <button id="reportViewPrintButton" type="button" class="ghost">Print</button>
+            <a id="reportViewDownloadLink" href="#" target="_blank" rel="noopener">Download PDF</a>
+            <button class="icon-close" data-close="reportViewDialog" type="button" aria-label="Close">×</button>
+          </div>
+        </div>
+        <div id="reportViewBody" class="report-view-body"></div>
+      </div>
+    </dialog>
+
+    <dialog id="checkupDialog">
+      <form id="checkupForm" class="dialog-card">
+        <div class="dialog-head">
+          <div><p class="eyebrow">Machine Check-up</p><h2 id="checkupDialogTitle">Check-up</h2></div>
+          <button class="icon-close" data-close="checkupDialog" type="button" aria-label="Close">×</button>
+        </div>
+        <input id="checkupMachineId" type="hidden">
+        <div id="checkupFormAlert" class="alert error hidden"></div>
+        <label>Checklist template
+          <select id="checkupTemplate"></select>
+        </label>
+        <label>Running HRS <small id="checkupLastHourMeter">(loading last recorded hours…)</small><input id="checkupHourMeter" type="number" min="0" step="0.1" required placeholder="Enter today's hour meter reading"></label>
+        <label>Technician / Inspector <small>(automatic from login)</small><input id="checkupFilledBy" type="text" placeholder="Automatic from login" readonly></label>
+        <label class="toggle-row"><input id="checkupIsServiceDay" type="checkbox"> Is this a service day?</label>
+        <div id="checkupServiceFields" class="two-column hidden">
+          <label>Service date<input id="checkupServiceDate" type="date"></label>
+          <label>Service type
+            <select id="checkupServiceType">
+              <option value="">Select service type</option>
+              <option value="250_HOUR">250-Hour Service</option>
+              <option value="500_HOUR">500-Hour Service</option>
+              <option value="1000_HOUR">1000-Hour Service</option>
+              <option value="2000_HOUR">2000-Hour Service</option>
+            </select>
+          </label>
+        </div>
+        <label>Display photo <span class="required-mark">*</span> <small>(REQUIRED every check-up — photo of the machine's display screen showing fuel level, fault codes, etc.)</small>
+          <div class="checkup-photo-uploader">
+            <input id="checkupDisplayPhotoFile" type="file" accept="image/*" capture="environment" class="checkup-photo-picker">
+            <img id="checkupDisplayPhotoPreview" class="checkup-photo-preview hidden" alt="Display photo preview">
+            <input id="checkupDisplayPhotoValue" type="hidden">
+          </div>
+        </label>
+        <div id="checkupItems" class="checkup-items"></div>
+        <div class="dialog-actions">
+          <button class="ghost" data-close="checkupDialog" type="button">Cancel</button>
+          <button id="saveCheckupButton" class="primary" type="submit">Save check-up</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="/admin-access.js?v=411-job-card-only"></script>
+    <script src="/admin-sidebar.js?v=488-text-fit"></script>
+    <script src="/delete-confirm.js"></script>
+    <script src="/edit-confirm.js"></script>
+    <script src="/customers-manager/manager.js?v=480-workshop-embed-back-fit"></script>
   </body>
 </html>

@@ -1,0 +1,253 @@
+.myc-shell {
+  max-width: 1180px;
+}
+
+.myc-filter-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, .8fr) minmax(420px, 1.2fr);
+  gap: 18px;
+  align-items: end;
+}
+
+.myc-filter-copy strong,
+.myc-filter-copy span {
+  display: block;
+}
+
+.myc-filter-copy strong {
+  font-size: 14px;
+}
+
+.myc-filter-copy span {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.myc-filter-controls {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(190px, 1fr) auto;
+  gap: 9px;
+}
+
+.myc-details-wrap {
+  width: min(100%, 820px);
+  min-height: 180px;
+  margin-inline: auto;
+}
+
+.myc-customer-card {
+  overflow: hidden;
+  padding: 0;
+}
+
+.myc-card-accent {
+  height: 5px;
+  background: var(--green);
+}
+
+.myc-card-body {
+  padding: 19px;
+}
+
+.myc-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.myc-card-head h2 {
+  margin: 4px 0 0;
+  font-family: "Space Grotesk", Inter, sans-serif;
+  font-size: clamp(24px, 4vw, 36px);
+  line-height: 1.05;
+}
+
+.myc-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 11px;
+  border: 1px solid rgba(0, 169, 88, .35);
+  border-radius: 999px;
+  color: #087443;
+  background: rgba(0, 169, 88, .10);
+  font-size: 10px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.myc-status.off {
+  color: #b32636;
+  border-color: rgba(220, 62, 77, .32);
+  background: rgba(220, 62, 77, .10);
+}
+
+.myc-registered {
+  margin: -4px 0 15px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.myc-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.myc-info-item {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-soft);
+}
+
+.myc-info-item span,
+.myc-info-item strong {
+  display: block;
+}
+
+.myc-info-item span {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+.myc-info-item strong {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.myc-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.myc-quick-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 11px 10px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 8px 18px rgba(9, 25, 40, .10);
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+
+.myc-quick-action:hover,
+.myc-quick-action:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 11px 22px rgba(9, 25, 40, .16);
+  filter: brightness(1.04);
+}
+
+.myc-quick-action.action-black {
+  color: #fff;
+  background: #090d12;
+  border-color: #090d12;
+}
+
+.myc-quick-action.action-blue {
+  color: #fff;
+  background: #2374d8;
+  border-color: #1769c2;
+}
+
+.myc-quick-action.action-green {
+  color: #fff;
+  background: #00a958;
+  border-color: #008e4a;
+}
+
+.myc-quick-action.action-yellow {
+  color: #171717;
+  background: #ffd43b;
+  border-color: #e4b900;
+}
+
+.myc-empty-state {
+  color: var(--muted);
+  text-align: center;
+}
+
+.myc-empty-state strong {
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .myc-status {
+  color: #8ee1b4;
+}
+
+html[data-theme="dark"] .myc-status.off {
+  color: #ff9eaa;
+}
+
+
+@media (max-width: 920px) {
+  .myc-details-wrap {
+    width: min(100%, 800px);
+  }
+
+  .myc-quick-actions {
+    gap: 7px;
+  }
+
+  .myc-quick-action {
+    min-width: 0;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .myc-filter-panel,
+  .myc-filter-controls,
+  .myc-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .myc-card-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .myc-card-body {
+    padding: 17px;
+  }
+}
+
+@media (max-width: 460px) {
+  .myc-card-body {
+    padding-inline: 12px;
+  }
+
+  .myc-quick-actions {
+    gap: 6px;
+  }
+
+  .myc-quick-action {
+    min-height: 58px;
+    padding: 9px 5px;
+    font-size: 9px;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+}

@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Request Registration — BELM Portal</title>
   <link rel="stylesheet" href="/apply/app.css">
+  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body>
   <header class="topbar">
@@ -69,34 +71,25 @@
 
           <div class="section-title">
             <span>3</span>
-            <div><b>First machine</b><small>The machine is created only after Admin approval</small></div>
+            <div><b>How will you use the Portal?</b><small>BELM Admin can change this later if needed</small></div>
           </div>
-          <div class="form-grid">
-            <label>Machine type
-              <select id="machineType" name="machineType" data-required required>
-                <option value="">Select machine type</option>
-              </select>
+          <div class="registration-mode-choice" role="radiogroup" aria-label="How will you use the Portal?">
+            <label class="registration-mode-option">
+              <input type="radio" name="registrationMode" value="TECHNICAL_DEP" checked>
+              <span class="registration-mode-card">
+                <b>TECHNICAL DEP</b>
+                <small>BELM is your Service Provider — our Technicians handle your machine maintenance, Job Cards and Store.</small>
+              </span>
             </label>
-            <label>Brand
-              <select id="brand" name="brand" data-required required disabled>
-                <option value="">Select brand</option>
-              </select>
-            </label>
-            <label id="customBrandWrap" class="hidden">Enter brand
-              <input id="customBrand">
-            </label>
-            <label>Model
-              <select id="model" name="model" data-required required disabled>
-                <option value="">Select model</option>
-              </select>
-            </label>
-            <label id="customModelWrap" class="hidden">Enter model
-              <input id="customModel">
-            </label>
-            <label>Machine registration number
-              <input name="regNumber" data-required required>
+            <label class="registration-mode-option">
+              <input type="radio" name="registrationMode" value="PORTAL_CWM">
+              <span class="registration-mode-card">
+                <b>PORTAL-CWM</b>
+                <small>Independent — your own Admins, Technicians and Operators run day-to-day maintenance and your own Workshop (Store Ledger, Tool Issue/Return). BELM only steps in when you request support.</small>
+              </span>
             </label>
           </div>
+
         </section>
 
         <section id="userFields" class="application-fields hidden">
@@ -135,11 +128,11 @@
         </label>
         <label class="consent">
           <input name="consent" type="checkbox" required>
-          <span>I confirm these details are correct and understand that registration does not provide access until BELM Admin approves it.</span>
+          <span>I confirm these details are correct and understand that registration does not provide access until BELM Admin approves it. I have read and agree to the <a href="/legal/terms.html" target="_blank" rel="noopener">Terms &amp; Definitions</a> and <a href="/legal/privacy-policy.html" target="_blank" rel="noopener">Privacy Policy</a>.</span>
         </label>
         <div id="formError" class="alert error hidden" role="alert"></div>
         <button id="submitButton" type="submit">Submit registration request</button>
-        <p class="privacy">No password is requested here. BELM generates it securely only after approval.</p>
+        <p class="privacy">No password is requested here. BELM generates it securely only after approval. <a href="/legal/privacy-policy.html">Privacy Policy</a> · <a href="/legal/terms.html">Terms &amp; Definitions</a></p>
       </form>
     </section>
 

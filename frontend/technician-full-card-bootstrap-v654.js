@@ -2,21 +2,16 @@
   if(!location.pathname.startsWith('/tech'))return;
   if(window.__belmTechnicianFullCardBootstrap654)return;
   window.__belmTechnicianFullCardBootstrap654=true;
-  window.__belmTechBootstrapHandlesPortalTools=true;
 
-  const started=Date.now();
   let loading=false;
   let observer=null;
   let timer=null;
 
   function hasTechnicianMachineButtons(){
-    const buttons=[...document.querySelectorAll('button')];
-    return buttons.some(button=>{
+    return [...document.querySelectorAll('button')].some(button=>{
       const text=(button.textContent||'').trim();
-      if(!text)return false;
-      if(button.closest('header,nav,dialog'))return false;
-      return /Reach Stacker|Forklift|Crane|Loader|Excavator|Stacker|Machine/i.test(text)
-        || /\b\d{5,}\b/.test(text);
+      if(!text||button.closest('header,nav,dialog'))return false;
+      return /Reach Stacker|Forklift|Crane|Loader|Excavator|Stacker|Machine/i.test(text)||/\b\d{5,}\b/.test(text);
     });
   }
 
@@ -38,27 +33,18 @@
     loading=true;
     observer?.disconnect();
     clearInterval(timer);
-    await loadScript('/portal-tools.js?v=655-tech-approved');
-    await loadScript('/technician-machine-page-v655.js?v=655-tech-approved');
+    // V658 is standalone: it does not depend on legacy portal-tools.js.
+    await loadScript('/technician-dashboard-v658.js?v=658-direct-tech-dashboard');
     document.documentElement.dataset.belmTechFullCardBoot='ready';
   }
 
   function check(){
-    if(hasTechnicianMachineButtons()){
-      boot();
-      return;
-    }
-    if(Date.now()-started>12000){
-      // Fallback: start enhancer even if machine list is empty/error state.
-      boot();
-    }
+    if(hasTechnicianMachineButtons())boot();
   }
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',check,{once:true});
-  }else check();
-
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',check,{once:true});else check();
   observer=new MutationObserver(check);
   observer.observe(document.documentElement,{childList:true,subtree:true});
   timer=setInterval(check,250);
+  setTimeout(boot,2500);
 })();

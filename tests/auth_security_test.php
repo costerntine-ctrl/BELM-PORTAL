@@ -16,6 +16,7 @@ $sessionToken = jwt_encode($auth, 60);
 
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['REQUEST_URI'] = '/api/reports/123/download';
+$_SERVER['QUERY_STRING'] = '';
 $_SERVER['HTTP_AUTHORIZATION'] = '';
 $_COOKIE = [];
 $_GET = ['token' => $sessionToken];
@@ -29,7 +30,18 @@ expect_true(($downloadPayload['id'] ?? null) === 'user-1', 'scoped download toke
 $_SERVER['REQUEST_URI'] = '/api/reports/456/download';
 expect_true(current_token_payload() === null, 'download token must not work for another resource path');
 
+$queryToken = issue_download_token($auth, '/api/reports/123/download?format=pdf&scope=mine');
+$_SERVER['REQUEST_URI'] = '/api/reports/123/download?scope=mine&format=pdf';
+$_SERVER['QUERY_STRING'] = 'scope=mine&format=pdf&download_token=' . rawurlencode($queryToken);
+$_GET = ['download_token' => $queryToken, 'scope' => 'mine', 'format' => 'pdf'];
+expect_true(current_token_payload() !== null, 'download token should accept the same normalized query');
+
+$_SERVER['QUERY_STRING'] = 'scope=all&format=pdf&download_token=' . rawurlencode($queryToken);
+$_GET['scope'] = 'all';
+expect_true(current_token_payload() === null, 'download token must reject changed query scope');
+
 $_GET = [];
+$_SERVER['QUERY_STRING'] = '';
 $_SERVER['REQUEST_URI'] = '/api/reports/123/download';
 $_COOKIE = [BELM_SESSION_COOKIE => $sessionToken];
 expect_true((current_token_payload()['id'] ?? null) === 'user-1', 'HttpOnly cookie token should authenticate API requests');

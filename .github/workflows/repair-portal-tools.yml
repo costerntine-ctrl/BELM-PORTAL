@@ -29,8 +29,6 @@ jobs:
           text = path.read_text(encoding='utf-8')
           original = text
 
-          # Resolve innermost Git conflict blocks first, always keeping the
-          # current/HEAD side. Repeating handles nested conflict markers.
           pattern = re.compile(
               r'^<<<<<<<[^\n]*\n'
               r'((?:(?!^(?:<<<<<<<|=======|>>>>>>>)).*(?:\n|$))*)'
@@ -80,3 +78,5 @@ jobs:
           git add frontend/portal-tools.js
           git commit -m 'Fix portal-tools merge conflict and restore technician cards'
           git push origin HEAD:main
+
+# Trigger refresh 2026-09-03

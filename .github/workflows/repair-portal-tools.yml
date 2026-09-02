@@ -1,0 +1,82 @@
+name: Repair portal-tools merge markers
+
+on:
+  push:
+    paths:
+      - '.github/workflows/repair-portal-tools.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve accidental merge markers
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('frontend/portal-tools.js')
+          text = path.read_text(encoding='utf-8')
+          original = text
+
+          # Resolve innermost Git conflict blocks first, always keeping the
+          # current/HEAD side. Repeating handles nested conflict markers.
+          pattern = re.compile(
+              r'^<<<<<<<[^\n]*\n'
+              r'((?:(?!^(?:<<<<<<<|=======|>>>>>>>)).*(?:\n|$))*)'
+              r'^=======\n'
+              r'((?:(?!^(?:<<<<<<<|=======|>>>>>>>)).*(?:\n|$))*)'
+              r'^>>>>>>>[^\n]*(?:\n|$)',
+              re.MULTILINE,
+          )
+
+          while any(marker in text for marker in ('<<<<<<<', '=======', '>>>>>>>')):
+              updated, count = pattern.subn(lambda m: m.group(1), text, count=1)
+              if count == 0:
+                  raise SystemExit('Unresolved or malformed conflict markers remain in portal-tools.js')
+              text = updated
+
+          if 'workflowButton.dataset.techJobcardsMachine' in text:
+              text = text.replace(
+                  'workflowButton.textContent = "Job Card";',
+                  'workflowButton.textContent = "Machine Job Cards";'
+              )
+
+          if text != original:
+              path.write_text(text, encoding='utf-8')
+              print('portal-tools.js repaired')
+          else:
+              print('portal-tools.js already clean')
+          PY
+
+      - name: Validate JavaScript and API router
+        shell: bash
+        run: |
+          node --check frontend/portal-tools.js
+          if grep -nE '^(<<<<<<<|=======|>>>>>>>)' frontend/portal-tools.js backend/index.php; then
+            echo 'Merge markers still present' >&2
+            exit 1
+          fi
+
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet -- frontend/portal-tools.js; then
+            echo 'No repair commit needed.'
+            exit 0
+          fi
+          git config user.name 'BELM Portal Repair Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add frontend/portal-tools.js
+          git commit -m 'Fix portal-tools merge conflict and restore technician cards'
+          git push origin HEAD:main

@@ -222,7 +222,12 @@ function technician_general_report_payload(array $user): array {
             }
             $requirements = $entry['requirementsDone'] ?? [];
             if (is_array($requirements)) $requirements = implode(', ', array_map('strval', $requirements));
+            $maintenanceRecordId = trim((string)($entry['reportId'] ?? ''));
+            if ($maintenanceRecordId === '') {
+                $maintenanceRecordId = 'MNT-' . substr(sha1($machineId . '|' . $date . '|' . (string)($entry['serviceType'] ?? '') . '|' . (string)($entry['hourMeterReading'] ?? $entry['hoursAtService'] ?? '')), 0, 16);
+            }
             $maintenance[] = [
+                'id' => $maintenanceRecordId,
                 'machineId' => $machineId,
                 'machine' => $meta['label'],
                 'fleetNumber' => $meta['fleetNumber'],
@@ -272,6 +277,17 @@ function technician_general_report_payload(array $user): array {
         $maintenanceSummary = array_values(array_filter($maintenanceSummary, $onlyMachine));
         $jobCards = array_values(array_filter($jobCards, $onlyMachine));
         $fuelReports = array_values(array_filter($fuelReports, $onlyMachine));
+    }
+
+    $requestedReportId = trim((string)($_GET['reportId'] ?? ''));
+    $requestedCategory = strtolower(trim((string)($_GET['category'] ?? '')));
+    if ($requestedReportId !== '') {
+        $byId = static fn(array $row): bool => (string)($row['id'] ?? $row['reportId'] ?? '') === $requestedReportId;
+        if ($requestedCategory === 'checklists') $checklists = array_values(array_filter($checklists, $byId));
+        elseif ($requestedCategory === 'operator') $operators = array_values(array_filter($operators, $byId));
+        elseif ($requestedCategory === 'fuel') $fuelReports = array_values(array_filter($fuelReports, $byId));
+        elseif ($requestedCategory === 'job-cards') $jobCards = array_values(array_filter($jobCards, $byId));
+        elseif ($requestedCategory === 'maintenance') $maintenance = array_values(array_filter($maintenance, $byId));
     }
 
     return [

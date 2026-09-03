@@ -100,6 +100,7 @@ switch($resource){
         // Explicit REST mapping for Technician / Machine Report Center.
         // Query-style actions are still accepted for older frontend modules.
         if(($segments[1]??'')==='technician-general'&&($segments[2]??'')==='pdf')dispatch('checklist_reports.php',['action'=>'technician-general-report-pdf']);
+        if(($segments[1]??'')==='technician-general'&&($segments[2]??'')==='csv')dispatch('checklist_reports.php',['action'=>'technician-general-report-csv']);
         if(($segments[1]??'')==='technician-general')dispatch('checklist_reports.php',['action'=>'technician-general-report']);
         if(($segments[1]??'')==='machine'&&isset($segments[2])&&($segments[3]??'')==='history-pdf')dispatch('checklist_reports.php',['action'=>'machine-history-pdf','machineId'=>$segments[2]]);
         if(($segments[1]??'')==='machine'&&isset($segments[2]))dispatch('checklist_reports.php',['action'=>'for-machine','machineId'=>$segments[2]]);

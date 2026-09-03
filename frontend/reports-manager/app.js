@@ -306,6 +306,16 @@ async function api(path, options = {}) {
   document.getElementById("printButton").addEventListener("click", () => window.print());
 
   setDefaultDates();
+  const initialParams = new URLSearchParams(window.location.search);
+  const initialFrom = initialParams.get("dateFrom") || "";
+  const initialTo = initialParams.get("dateTo") || "";
+  if (initialFrom || initialTo) {
+    document.getElementById("periodSelect").value = "custom";
+    document.getElementById("dateFromLabel").classList.remove("hidden");
+    document.getElementById("dateToLabel").classList.remove("hidden");
+    if (initialFrom) document.getElementById("dateFrom").value = initialFrom;
+    if (initialTo) document.getElementById("dateTo").value = initialTo;
+  }
   loadReport();
   loadAttendance();
 

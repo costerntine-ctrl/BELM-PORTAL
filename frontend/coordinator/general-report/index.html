@@ -1,16 +1,18 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>General Report — BELM Coordinator</title><link rel="icon" href="/app-icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/theme-global.css?v=489"><script src="/theme-manager.js?v=489"></script><link rel="stylesheet" href="/coordinator/general-report/report.css"></head><body>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>General Report — BELM Coordinator</title><link rel="icon" href="/app-icon-192.png"><link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="/theme-global.css?v=489"><script src="/theme-manager.js?v=489"></script><link rel="stylesheet" href="/coordinator/general-report/report.css"><style>
+.coordinator-internal-reports{grid-template-columns:repeat(2,minmax(0,1fr))!important}.coordinator-report-card{display:grid;gap:16px;padding:22px;border:1px solid #274966;border-radius:18px;background:#071b2e;color:#fff}.coordinator-report-card>div:first-child{display:grid;gap:7px}.coordinator-report-card i{font-style:normal;font-size:28px}.coordinator-report-card b{font-size:18px}.coordinator-report-card span{color:#9fb0c8;font-size:12px;line-height:1.5}.report-period{display:grid;grid-template-columns:1fr 1fr;gap:9px}.report-period label{display:grid;gap:5px;color:#8fa6bd;font-size:10px;font-weight:850;text-transform:uppercase}.report-period input{width:100%;padding:10px;border:1px solid #315675;border-radius:9px;background:#031426;color:#fff}.coordinator-report-card button{padding:12px;border:1px solid #1684ff;border-radius:10px;background:#0d4fa3;color:#fff;font-weight:900;cursor:pointer}@media(max-width:650px){.coordinator-internal-reports{grid-template-columns:1fr!important}}</style></head><body>
 <header><a href="/coordinator/">← Coordinator</a><div><b>GENERAL REPORT</b><small>Coordinator report control center</small></div><span class="brand">BELM</span></header>
 <main><section class="hero"><div><p>COORDINATOR / REPORT CONTROL</p><h1>General Report & Analysis</h1><span>Controls report entry points and analysis tools. BELM and Customer operational data remain isolated.</span></div><div class="mark">▥</div></section>
-<section class="report-grid">
-<a href="/coordinator/general-report/checklist-report/"><i>✓</i><b>Checklist Report</b><span>Checked reports only</span></a>
-<a href="/reports-manager/?report=machine-operator"><i>👷</i><b>Machine Operator Report</b><span>Operator condition, comments and operation records</span></a>
-<a href="/reports-manager/?report=maintenance"><i>🔧</i><b>Maintenance Report</b><span>Maintenance activity, due service and history</span></a>
-<a href="/reports-manager/?report=job-card"><i>📋</i><b>Job Card Report</b><span>Assigned, received, diagnosis, testing and completed work</span></a>
-<a href="/reports-manager/?report=fuel"><i>⛽</i><b>Fuel Consumption Report</b><span>Machine fuel usage and consumption trends</span></a>
-<a href="/reports-manager/?report=spare-usage"><i>📦</i><b>Spare Usage Report</b><span>Parts issued, used and machine allocation</span></a>
-<a href="/reports-manager/?report=procurement"><i>🛒</i><b>Procurement Report</b><span>Requests, approvals, orders, receipts and delays</span></a>
-<a class="analysis" href="/general-analysis/"><i>📊</i><b>General Analysis</b><span>Overall workshop, machines, cost and performance summary</span></a>
-<a class="subanalysis" href="/workshop-analysis/"><i>⌁</i><b>Sub Analysis</b><span>Machine, Technician, Operator, Maintenance, Fuel, Spare, Procurement and Job Card breakdown</span></a>
+<section class="report-grid coordinator-internal-reports">
+<article class="coordinator-report-card" data-report-target="/belm-procurement/">
+  <div><i>🛒</i><b>Procurement Report</b><span>BELM purchasing, supplier, order, receipt and procurement performance records.</span></div>
+  <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
+  <button type="button" data-view>View Report</button>
+</article>
+<article class="coordinator-report-card" data-report-target="/reports-manager/?report=finance">
+  <div><i>💳</i><b>Finance Report</b><span>BELM invoices, payments, expenses, outstanding balances and profit/loss.</span></div>
+  <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
+  <button type="button" data-view>View Report</button>
+</article>
 </section>
 <section class="rule"><b>🔒 DATA SEPARATION</b><p>Coordinator controls report structure, access and tools. BELM reports remain BELM-owned. Customer reports remain customer-owned unless a specific permission or service workflow shares them.</p></section></main>
-<script>try{const t=localStorage.getItem('belm_admin_token');if(!t)location.replace('/login')}catch(_){}</script></body></html>
+<script>try{const t=localStorage.getItem('belm_admin_token');if(!t)location.replace('/login')}catch(_){}document.querySelectorAll('.coordinator-report-card').forEach(card=>card.querySelector('[data-view]').onclick=()=>{const from=card.querySelector('[data-from]').value,to=card.querySelector('[data-to]').value;if(from&&to&&from>to){alert('From date cannot be after To date.');return}const target=card.dataset.reportTarget,u=new URL(target,location.origin);if(from)u.searchParams.set('dateFrom',from);if(to)u.searchParams.set('dateTo',to);location.href=u.pathname+u.search});</script></body></html>

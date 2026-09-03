@@ -1147,6 +1147,11 @@ if ($method === 'GET' && $action === 'pdf') {
         if ($photo) $photos[] = ['label' => $answer['label'], 'photo' => $photo];
         $levelSuffix = strtoupper((string)$answer['safetyLevel']) === 'NONE' ? '' : ' [' . $answer['safetyLevel'] . ']';
         $noteSuffix = trim((string)($answer['note'] ?? '')) !== '' ? ' -- Issue: ' . trim((string)$answer['note']) : '';
+        $plainValue = strtolower(trim((string)$displayValue));
+        $abnormalValues = ['low','high','leaking','leak','damaged','worn','broken','loose','not working','failed','dirty','blocked','overheating','critical','no'];
+        $finding = (!$isImageValue && in_array($plainValue, $abnormalValues, true))
+            ? rtrim(trim((string)$answer['label']), ':?.') . ' ' . $plainValue
+            : '';
         $lines[] = sprintf(
             '%d. %s: %s%s%s%s',
             $itemNumber,
@@ -1156,6 +1161,7 @@ if ($method === 'GET' && $action === 'pdf') {
             $noteSuffix,
             $photo ? ' (see photo page below)' : ''
         );
+        if ($finding !== '') $lines[] = '   FINDING: ' . $finding;
     }
     $lines[] = str_repeat('-', 78);
 

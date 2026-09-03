@@ -22,7 +22,7 @@
     if(!technician)return;
     // V658 bypasses the legacy portal-tools bundle for Technician pages so
     // a stale/invalid legacy bundle cannot leave raw machine buttons visible.
-    await loadScript('/technician-dashboard-v658.js?v=664-checked-report');
+    await loadScript('/technician-dashboard-v658.js?v=665-all-report-details');
   }
 
   async function bootNonCritical(){

@@ -239,6 +239,41 @@ function technician_general_report_payload(array $user): array {
         return strcmp((string)($b['date'] ?? ''), (string)($a['date'] ?? ''));
     });
 
+    $fuelSql = "SELECT u.id,u.machine_id,u.date,u.description,u.quantity,u.unit_price,u.cost,u.logged_by,u.created_at,
+                       m.brand,m.model,m.machine_type,m.fleet_number
+                FROM usage_logs u
+                JOIN machines m ON m.id=u.machine_id
+                WHERE u.customer_id=? AND u.category='FUEL' AND m.deleted_at IS NULL" . $applyRange('u.created_at') .
+               ' ORDER BY u.date DESC,u.created_at DESC LIMIT 1000';
+    $stmt = db()->prepare($fuelSql);
+    $stmt->execute($rangeParams([$ctx['customerId']]));
+    $fuelReports = [];
+    foreach ($stmt->fetchAll() as $row) {
+        $label = trim((string)($row['brand'] ?? '') . ' ' . (string)($row['model'] ?? '')) ?: (string)($row['machine_type'] ?? 'Machine');
+        $fuelReports[] = [
+            'id' => (string)$row['id'], 'machineId' => (string)$row['machine_id'],
+            'machine' => $label, 'fleetNumber' => (string)($row['fleet_number'] ?? ''),
+            'date' => (string)($row['date'] ?? ''), 'description' => (string)($row['description'] ?: 'Fuel'),
+            'litres' => (float)($row['quantity'] ?? 0), 'unitPrice' => (float)($row['unit_price'] ?? 0),
+            'cost' => (float)($row['cost'] ?? 0), 'loggedBy' => (string)($row['logged_by'] ?: 'Not recorded'),
+            'createdAt' => (string)$row['created_at'],
+        ];
+    }
+
+    $requestedMachineId = trim((string)($_GET['machineId'] ?? ''));
+    if ($requestedMachineId !== '') {
+        if (!isset($machineMap[$requestedMachineId])) json_error('Machine is not assigned to this Technician.', 404);
+        $onlyMachine = static fn(array $row): bool => (string)($row['machineId'] ?? '') === $requestedMachineId;
+        $machines = array_values(array_filter($machines, static fn(array $row): bool => (string)$row['id'] === $requestedMachineId));
+        $machineMap = [$requestedMachineId => $machineMap[$requestedMachineId]];
+        $checklists = array_values(array_filter($checklists, $onlyMachine));
+        $operators = array_values(array_filter($operators, $onlyMachine));
+        $maintenance = array_values(array_filter($maintenance, $onlyMachine));
+        $maintenanceSummary = array_values(array_filter($maintenanceSummary, $onlyMachine));
+        $jobCards = array_values(array_filter($jobCards, $onlyMachine));
+        $fuelReports = array_values(array_filter($fuelReports, $onlyMachine));
+    }
+
     return [
         'technician' => ['id' => $ctx['technicianId'], 'name' => $ctx['technicianName']],
         'customer' => ['id' => $ctx['customerId'], 'name' => $ctx['customerName']],
@@ -247,12 +282,14 @@ function technician_general_report_payload(array $user): array {
         'machines' => array_values($machineMap),
         'checklists' => $checklists,
         'operatorReports' => $operators,
+        'fuelReports' => $fuelReports,
         'maintenanceReports' => $maintenance,
         'maintenanceSummary' => $maintenanceSummary,
         'jobCards' => $jobCards,
         'counts' => [
             'checklists' => count($checklists),
             'operatorReports' => count($operators),
+            'fuelReports' => count($fuelReports),
             'maintenanceReports' => count($maintenance),
             'jobCards' => count($jobCards),
         ],
@@ -860,6 +897,18 @@ if ($method === 'GET' && $action === 'technician-general-report-pdf') {
             ];
         }
         $filename = 'BELM-' . $safeTech . '-Operator-Reports.pdf';
+    } elseif ($category === 'fuel') {
+        $title = 'TECHNICIAN MACHINE REPORT - FUEL REPORT';
+        $header[] = 'Date | Machine | Litres | Price/Litre TZS | Total TZS | Recorded By';
+        foreach ($data['fuelReports'] as $row) {
+            $rows[] = [
+                $row['date'] !== '' ? display_date_billing((string)$row['date']) : '-',
+                trim((string)$row['machine'] . ((string)$row['fleetNumber'] !== '' ? ' / ' . (string)$row['fleetNumber'] : '')),
+                (string)$row['litres'], number_format((float)$row['unitPrice'], 2),
+                number_format((float)$row['cost'], 2), (string)$row['loggedBy'],
+            ];
+        }
+        $filename = 'BELM-' . $safeTech . '-Fuel-Report.pdf';
     } elseif ($category === 'maintenance') {
         $title = 'TECHNICIAN GENERAL REPORT - MAINTENANCE REPORTS';
         $header[] = 'CURRENT SERVICE STATUS';
@@ -901,7 +950,7 @@ if ($method === 'GET' && $action === 'technician-general-report-pdf') {
         }
         $filename = 'BELM-' . $safeTech . '-Job-Card-Reports.pdf';
     } else {
-        json_error('Choose checklists, operator, maintenance, or job-cards.', 422);
+        json_error('Choose checklists, operator, fuel, job-cards, or maintenance.', 422);
     }
     if (!$rows) $rows[] = ['No records found for the selected period.'];
     output_table_pdf($filename, $title, $header, $rows);

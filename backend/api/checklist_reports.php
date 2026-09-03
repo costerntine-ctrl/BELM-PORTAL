@@ -863,6 +863,40 @@ if ($method === 'GET' && $action === 'technician-general-report') {
     json_out(technician_general_report_payload($user));
 }
 
+if ($method === 'GET' && $action === 'technician-general-report-csv') {
+    $data = technician_general_report_payload($user);
+    $category = strtolower(trim((string)($_GET['category'] ?? '')));
+    $allowed = ['checklists','operator','fuel','job-cards','maintenance'];
+    if (!in_array($category, $allowed, true)) json_error('Choose a valid report category.', 422);
+    $safeTech = preg_replace('/[^A-Za-z0-9_-]+/', '-', (string)$data['technician']['name']) ?: 'Technician';
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="BELM-' . $safeTech . '-' . $category . '.csv"');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['BELM TECHNICIAN MACHINE REPORT', strtoupper($category)]);
+    fputcsv($out, ['Technician', $data['technician']['name']]);
+    fputcsv($out, ['Customer', $data['customer']['name']]);
+    fputcsv($out, ['Period', $data['period']['label']]);
+    fputcsv($out, []);
+    if ($category === 'checklists') {
+        fputcsv($out, ['Date','Machine','Fleet No.','Checklist','Technician','Status','Hour Meter']);
+        foreach ($data['checklists'] as $r) fputcsv($out, [$r['createdAt'],$r['machine'],$r['fleetNumber'],$r['templateName'],$r['filledBy'],$r['status'],$r['hourMeterReading']]);
+    } elseif ($category === 'operator') {
+        fputcsv($out, ['Date','Machine','Fleet No.','Operator','Status','Report']);
+        foreach ($data['operatorReports'] as $r) fputcsv($out, [$r['createdAt'],$r['machine'],$r['fleetNumber'],$r['operatorName'],$r['status'],$r['message']]);
+    } elseif ($category === 'fuel') {
+        fputcsv($out, ['Date','Machine','Fleet No.','Litres','Price/Litre TZS','Total TZS','Recorded By']);
+        foreach ($data['fuelReports'] as $r) fputcsv($out, [$r['date'],$r['machine'],$r['fleetNumber'],$r['litres'],$r['unitPrice'],$r['cost'],$r['loggedBy']]);
+    } elseif ($category === 'job-cards') {
+        fputcsv($out, ['Date','Job Card','Machine','Fleet No.','Title','Status','Completed']);
+        foreach ($data['jobCards'] as $r) fputcsv($out, [$r['createdAt'],$r['jobCardNo'],$r['machine'],$r['fleetNumber'],$r['title'],$r['status'],$r['completedAt']]);
+    } else {
+        fputcsv($out, ['Date','Machine','Fleet No.','Service','Hour Meter','Recorded By','Work / Requirements']);
+        foreach ($data['maintenanceReports'] as $r) fputcsv($out, [$r['date'],$r['machine'],$r['fleetNumber'],$r['serviceType'],$r['hourMeterReading'],$r['recordedBy'],$r['requirementsDone']]);
+    }
+    fclose($out);
+    exit;
+}
+
 if ($method === 'GET' && $action === 'technician-general-report-pdf') {
     $data = technician_general_report_payload($user);
     $category = strtolower(trim((string)($_GET['category'] ?? '')));

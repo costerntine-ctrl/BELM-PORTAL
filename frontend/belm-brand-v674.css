@@ -1,0 +1,112 @@
+:root {
+  --belm-brand-blue: #0b63ce;
+  --belm-brand-blue-mid: #0755ba;
+  --belm-brand-blue-deep: #063a86;
+  --belm-brand-navy: #031a31;
+  --belm-brand-navy-soft: #082747;
+  --belm-brand-gold: #ffc21c;
+  --belm-brand-green: #20c978;
+  --belm-brand-white: #f7fbff;
+  --belm-brand-muted: #b8c9dc;
+}
+
+html,
+html body,
+html body[class] {
+  min-height: 100%;
+  background-color: var(--belm-brand-blue-mid) !important;
+}
+
+body {
+  background-image: linear-gradient(
+    180deg,
+    var(--belm-brand-blue) 0%,
+    var(--belm-brand-blue-mid) 52%,
+    var(--belm-brand-blue-deep) 100%
+  ) !important;
+  background-attachment: fixed !important;
+  color: var(--belm-brand-white);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  z-index: 2147483647;
+  inset: 0 0 auto;
+  height: 5px;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--belm-brand-gold) 0 34%,
+    #1598df 34% 67%,
+    var(--belm-brand-green) 67% 100%
+  );
+}
+
+html body header,
+.topbar,
+.top-bar,
+.app-header,
+.page-header,
+.navbar,
+.head {
+  background-color: var(--belm-brand-navy) !important;
+  border-bottom-color: var(--belm-brand-gold) !important;
+}
+
+.card,
+.panel,
+.modal-content,
+.dialog-card,
+.report,
+.machine-card,
+.customer-card,
+.summary-card,
+.stat-card,
+.table-wrap {
+  background-color: var(--belm-brand-navy) !important;
+  border-color: rgba(255, 194, 28, 0.72) !important;
+}
+
+input,
+select,
+textarea {
+  background-color: var(--belm-brand-navy-soft) !important;
+  border-color: #39739f !important;
+  color: var(--belm-brand-white) !important;
+}
+
+button:not(.danger):not(.delete):not(.red):not(.green),
+.btn:not(.danger):not(.delete):not(.red):not(.green),
+.primary-button,
+.view-report,
+[data-view] {
+  border-color: var(--belm-brand-gold) !important;
+}
+
+.primary-button,
+.view-report,
+[data-view] {
+  background-color: var(--belm-brand-gold) !important;
+  color: var(--belm-brand-navy) !important;
+}
+
+.success,
+.normal,
+.status-green,
+.badge.green,
+.GREEN {
+  border-color: var(--belm-brand-green) !important;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  body::before {
+    display: none !important;
+  }
+}

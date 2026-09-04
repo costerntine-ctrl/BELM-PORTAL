@@ -5672,15 +5672,7 @@
       workflowButton.type = "button";
       workflowButton.className = "belm-technician-checkup-button belm-technician-jobcards-button";
       workflowButton.dataset.techJobcardsMachine = String(machine.id || "");
-<<<<<<< HEAD
-<<<<<<< HEAD
       workflowButton.textContent = "Machine Job Cards";
-=======
-      workflowButton.textContent = "Job Card";
->>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
-=======
-      workflowButton.textContent = "Job Card";
->>>>>>> c3ed62997e0e381ce8491d78b5e18dae047acfdd
       workflowButton.title = `Open your assigned Job Cards for ${model}`;
       workflowButton.addEventListener("click", (event) => {
         event.preventDefault();

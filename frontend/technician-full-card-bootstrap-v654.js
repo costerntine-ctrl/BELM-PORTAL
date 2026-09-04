@@ -34,7 +34,7 @@
     observer?.disconnect();
     clearInterval(timer);
     // V658 is standalone: it does not depend on legacy portal-tools.js.
-    await loadScript('/technician-dashboard-v658.js?v=658-direct-tech-dashboard');
+    await loadScript('/technician-dashboard-v658.js?v=675-random-display');
     document.documentElement.dataset.belmTechFullCardBoot='ready';
   }
 

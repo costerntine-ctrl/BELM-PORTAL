@@ -40,6 +40,28 @@ if ($method === 'GET' && ($user['roleName'] ?? '') === 'Technician') {
     require_page_access($user, 'checklist-templates');
 }
 
+function apply_fluid_level_choices(array $item): array {
+    $label = trim((string)($item['label'] ?? ''));
+    if (!preg_match('/\b(?:engine|transmission|gearbox|brake|brakes|hydraulic)?\s*(?:oil|coolant)\s*level\b/i', $label)) {
+        return $item;
+    }
+
+    $options = ['Normal', 'Low', 'Contaminated', 'Low & Contaminated', 'Overfilled', 'Not Checked'];
+    $item['inputType'] = 'DROPDOWN';
+    $item['safetyLevel'] = 'NONE';
+    $item['options'] = $options;
+    $item['optionSafety'] = [
+        'Normal' => 'GREEN',
+        'Low' => 'RED',
+        'Contaminated' => 'RED',
+        'Low & Contaminated' => 'RED',
+        'Overfilled' => 'YELLOW',
+        'Not Checked' => 'YELLOW',
+    ];
+    $item['isRequired'] = true;
+    return $item;
+}
+
 function fetch_items(string $templateId): array {
     $stmt = db()->prepare('SELECT * FROM checklist_template_items WHERE template_id = ? ORDER BY "order" ASC');
     $stmt->execute([$templateId]);
@@ -50,6 +72,7 @@ function fetch_items(string $templateId): array {
         $it['options'] = $it['options'] ? json_decode($it['options'], true) : null;
         $it['optionSafety'] = $it['option_safety'] ? json_decode($it['option_safety'], true) : null;
         $it['isRequired'] = (bool)$it['is_required'];
+        $it = apply_fluid_level_choices($it);
         unset(
             $it['input_type'],
             $it['safety_level'],

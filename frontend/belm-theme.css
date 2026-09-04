@@ -12,6 +12,7 @@
   --belm-ink: #182235;
 }
 
+
 html {
   accent-color: var(--belm-green);
 }
@@ -6979,3 +6980,9 @@ body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-customer-ma
   body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity>a,
   body[data-belm-area="portal"] .belm-customer-machine-card-v422 .belm-machine-quick-actions-parity>button{min-height:52px!important;font-size:9px!important}
 }
+/* BELM V674 final cascade override */
+:root{--belm-brand-blue:#0b63ce;--belm-brand-blue-mid:#0755ba;--belm-brand-blue-deep:#063a86;--belm-brand-navy:#031a31;--belm-brand-gold:#ffc21c;--belm-brand-green:#20c978}
+html body,html body[class]{min-height:100%;background:linear-gradient(180deg,var(--belm-brand-blue) 0%,var(--belm-brand-blue-mid) 52%,var(--belm-brand-blue-deep) 100%) fixed!important;color:#f7fbff}
+html body::before{content:"";position:fixed;z-index:2147483647;inset:0 0 auto;height:5px;pointer-events:none;background:linear-gradient(90deg,var(--belm-brand-gold) 0 34%,#1598df 34% 67%,var(--belm-brand-green) 67%)}
+html body header,html body .topbar,html body .top-bar,html body .app-header,html body .page-header,html body .navbar{background-color:var(--belm-brand-navy)!important;border-bottom-color:var(--belm-brand-gold)!important}
+@media print{html body,html body[class]{background:#fff!important;color:#111!important}html body::before{display:none!important}}

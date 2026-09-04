@@ -1,3 +1,5 @@
+@import url('/belm-brand-v674.css?v=674');
+
 /* V198 - Global Personal Theme
    One user preference follows the authenticated account across every BELM
    area. Existing page-specific dark styles keep priority where they exist;
@@ -344,4 +346,3 @@ body:has(#machineName):has(#template):has(#items) .submit{
     min-height:100px!important;
   }
 }
-@import url('/belm-brand-v674.css?v=674');

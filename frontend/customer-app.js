@@ -53,7 +53,7 @@
     const token=key?localStorage.getItem(key):'';
     if(!token)return false;
     try{
-      const res=await fetchWithTimeout('/api/auth/refresh',{method:'POST',cache:'no-store',headers:{Authorization:`Bearer ${token}`}},12000);
+      const res=await fetchWithTimeout('/api/auth/refresh',{method:'POST',cache:'no-store',credentials:'include',headers:{Authorization:`Bearer ${token}`}},12000);
       if(!res.ok){
         // Only a definite 401 means the stored login is no longer valid. A
         // network/Render problem leaves the session untouched.
@@ -104,7 +104,7 @@
       const payload={email:email.value.trim(),password:password.value};
       if(slug && !isBelm)payload.customerSlug=slug;
       if(isBelm)payload.customerSlug='belm';
-      const res=await fetchWithTimeout('/api/auth/unified-login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)},70000,()=>{button.textContent='Server waking up…'});
+      const res=await fetchWithTimeout('/api/auth/unified-login',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)},70000,()=>{button.textContent='Server waking up…'});
       const data=await readJsonResponse(res); if(!res.ok)throw new Error(data.error||'Login failed.');
       clearRoleSessions();
       if(data.accountType==='customer'){

@@ -46,7 +46,7 @@ if ($action === 'login' && $method === 'POST') {
     require_customer_department((string)$operator['customer_id'], 'operator', 'Machine Operator Department');
     clear_rate_limit('operator-login', "$machineId:$name");
 
-    $token = jwt_encode([
+    $token = issue_auth_session([
         'type' => 'operator',
         'id' => $operator['id'],
         'name' => $operator['name'],

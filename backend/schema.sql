@@ -694,6 +694,16 @@ CREATE TABLE IF NOT EXISTS trash_entries (
 
 ALTER TABLE trash_entries ADD COLUMN IF NOT EXISTS reason VARCHAR(500) NULL;
 
+-- Monotonic generation per login identity. Incrementing a row invalidates
+-- every cookie/bearer token issued for that identity without storing tokens.
+CREATE TABLE IF NOT EXISTS auth_session_versions (
+  subject_type VARCHAR(20) NOT NULL,
+  subject_id VARCHAR(36) NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (subject_type, subject_id)
+);
+
 CREATE TABLE IF NOT EXISTS password_reset_codes (
   id VARCHAR(36) PRIMARY KEY,
   email VARCHAR(255) NOT NULL,

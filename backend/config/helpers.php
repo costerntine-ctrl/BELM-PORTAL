@@ -20,6 +20,7 @@ if (isset($_SERVER['HTTP_HOST'])) {
 }
 if ($requestOrigin !== '' && in_array($requestOrigin, array_unique($allowedOrigins), true)) {
     header('Access-Control-Allow-Origin: ' . $requestOrigin);
+    header('Access-Control-Allow-Credentials: true');
     header('Vary: Origin');
 }
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
@@ -512,6 +513,64 @@ function require_belm_customer_privacy(string $customerId, string $key, string $
 }
 
 // ---- Staff auth ------------------------------------------------------------
+// Server-side session generations provide immediate revocation for new
+// cookie/bearer sessions. Tokens issued before this migration remain accepted
+// during the compatibility window and acquire a generation on refresh.
+function auth_session_subject(array $payload): array {
+    $type = (string)($payload['type'] ?? '');
+    if ($type === 'customer' && ($payload['actorType'] ?? 'owner') === 'assistant' && !empty($payload['actorId'])) {
+        return ['assistant', (string)$payload['actorId']];
+    }
+    if ($type === 'customer') return ['customer', (string)($payload['id'] ?? '')];
+    if ($type === 'staff') return ['staff', (string)($payload['id'] ?? '')];
+    if ($type === 'operator') return ['operator', (string)($payload['id'] ?? '')];
+    return ['', ''];
+}
+
+function auth_session_version_for_payload(array $payload): int {
+    [$subjectType, $subjectId] = auth_session_subject($payload);
+    if ($subjectType === '' || $subjectId === '') return 1;
+    try {
+        db()->prepare(
+            'INSERT INTO auth_session_versions(subject_type,subject_id,version,updated_at)
+             VALUES(?,?,1,NOW()) ON CONFLICT(subject_type,subject_id) DO NOTHING'
+        )->execute([$subjectType, $subjectId]);
+        $stmt = db()->prepare('SELECT version FROM auth_session_versions WHERE subject_type=? AND subject_id=?');
+        $stmt->execute([$subjectType, $subjectId]);
+        return max(1, (int)$stmt->fetchColumn());
+    } catch (Throwable $error) {
+        error_log('BELM session-version lookup failed: ' . $error->getMessage());
+        return 1;
+    }
+}
+
+function auth_session_is_current(array $payload): bool {
+    // Compatibility for tokens created before session generations were added.
+    // Normal frontend refresh replaces these with a versioned 15-minute token.
+    if (!array_key_exists('sv', $payload)) return true;
+    return (int)$payload['sv'] === auth_session_version_for_payload($payload);
+}
+
+function revoke_auth_sessions_for_account(string $accountType, string $accountId): void {
+    $subjectType = match ($accountType) {
+        'customer-assistant', 'assistant' => 'assistant',
+        'customer' => 'customer',
+        'operator' => 'operator',
+        default => 'staff',
+    };
+    if ($accountId === '') return;
+    try {
+        db()->prepare(
+            'INSERT INTO auth_session_versions(subject_type,subject_id,version,updated_at)
+             VALUES(?,?,2,NOW())
+             ON CONFLICT(subject_type,subject_id)
+             DO UPDATE SET version=auth_session_versions.version+1,updated_at=NOW()'
+        )->execute([$subjectType, $accountId]);
+    } catch (Throwable $error) {
+        error_log('BELM session revocation failed: ' . $error->getMessage());
+    }
+}
+
 // Call at the top of any admin-only endpoint. Exits with 401 if not logged
 // in. Returns the token payload: id, email, name, roleName, allowedPages,
 // assignedCustomerId.

@@ -97,6 +97,7 @@ switch($resource){
         dispatch('users.php');
     case 'controller-pinouts': dispatch('controller_pinouts.php',['id'=>$segments[1]??null]);
     case 'checklist-reports':
+    case 'checklist_reports.php':
         // Explicit REST mapping for Technician / Machine Report Center.
         // Query-style actions are still accepted for older frontend modules.
         if(($segments[1]??'')==='technician-general'&&($segments[2]??'')==='pdf')dispatch('checklist_reports.php',['action'=>'technician-general-report-pdf']);

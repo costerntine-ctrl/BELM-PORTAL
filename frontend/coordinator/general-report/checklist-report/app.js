@@ -2,6 +2,9 @@
  const token=localStorage.getItem('belm_admin_token')||'';
  if(!token){location.replace('/login');return;}
  const $=id=>document.getElementById(id);
+ const initial=new URLSearchParams(location.search);
+ $('from').value=initial.get('dateFrom')||'';
+ $('to').value=initial.get('dateTo')||'';
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let rows=[];
  async function api(path){const r=await fetch('/api'+path,{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch(_){}if(!r.ok)throw Error(d?.error||`Request failed (${r.status}).`);return d;}

@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/helpers.php';
 // POST /api/operator?action=sign-out        { hasProblem, problemDescription }
 // POST /api/operator?action=check-up         { engineOilLevel, gearboxOilLevel, coolantLevel, tires, brakes }
 // POST /api/operator?action=report           { message }
+// GET  /api/operator?action=reports          operator's machine report history
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
@@ -97,6 +98,25 @@ function operator_machine_card_button_state(string $customerId, string $key): st
 function require_operator_machine_card_button(string $customerId, string $key): void {
     $state = operator_machine_card_button_state($customerId, $key);
     if ($state !== 'enabled') json_error('This Operator action is not enabled by Coordinator.', 403);
+}
+
+if ($action === 'reports' && $method === 'GET') {
+    $stmt = db()->prepare(
+        "SELECT id, operator_name, message, status, report_type, created_at
+         FROM operator_reports
+         WHERE operator_id = ? AND machine_id = ? AND customer_id = ?
+         ORDER BY created_at DESC, id DESC LIMIT 100"
+    );
+    $stmt->execute([$operatorId, $machineId, $payload['customerId']]);
+    $rows = $stmt->fetchAll();
+    foreach ($rows as &$row) {
+        $row['operatorName'] = $row['operator_name'];
+        $row['reportType'] = $row['report_type'] ?: 'PROBLEM';
+        $row['createdAt'] = $row['created_at'];
+        unset($row['operator_name'], $row['report_type'], $row['created_at']);
+    }
+    unset($row);
+    json_out($rows);
 }
 
 // V398: the Operator lands on the same machine-card information surface used
@@ -217,7 +237,12 @@ if ($action === 'me' && $method === 'GET') {
 if ($action === 'sign-in' && $method === 'POST') {
     $existing = operator_open_shift($operatorId);
     if ($existing) {
-        json_out(['id' => $existing['id'], 'containerCount' => (int)$existing['container_count'], 'resumed' => true]);
+        json_out([
+            'id' => $existing['id'],
+            'containerCount' => (int)$existing['container_count'],
+            'signedInAt' => $existing['signed_in_at'],
+            'resumed' => true,
+        ]);
     }
     $shiftId = uuid();
     db()->prepare(
@@ -227,7 +252,14 @@ if ($action === 'sign-in' && $method === 'POST') {
     )->execute([$shiftId, $operatorId, $machineId, $payload['customerId']]);
     db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
         ->execute([uuid(), $payload['customerId'], (string)($payload['name'] ?? 'Operator'), 'Operator signed in for a shift.']);
-    json_out(['id' => $shiftId, 'containerCount' => 0, 'resumed' => false], 201);
+    $started = db()->prepare('SELECT signed_in_at FROM machine_operator_shifts WHERE id = ?');
+    $started->execute([$shiftId]);
+    json_out([
+        'id' => $shiftId,
+        'containerCount' => 0,
+        'signedInAt' => $started->fetchColumn(),
+        'resumed' => false,
+    ], 201);
 }
 
 if ($action === 'log-container' && $method === 'POST') {
@@ -287,7 +319,7 @@ if ($action === 'check-up' && $method === 'POST') {
     db()->prepare(
         "INSERT INTO operator_reports
          (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at)
-         VALUES (?,?,?,?,?,?,?, ?,?,'PROBLEM',NOW())"
+         VALUES (?,?,?,?,?,?,?, ?,?,'CHECKUP',NOW())"
     )->execute([
         $reportId, $machineId, $payload['customerId'], $operatorId, $operatorName, null, $reportMessage, $status, $notifyBelm ? 1 : 0,
     ]);
@@ -420,6 +452,7 @@ if ($action === 'sign-out' && $method === 'POST') {
     $b = body();
     $hasProblem = !empty($b['hasProblem']);
     $problemDescription = trim((string)($b['problemDescription'] ?? ''));
+    $handoverComment = trim((string)($b['comment'] ?? $b['handoverComment'] ?? ''));
     if ($hasProblem && $problemDescription === '') {
         json_error('Describe the challenge before signing out.');
     }
@@ -430,6 +463,27 @@ if ($action === 'sign-out' && $method === 'POST') {
     )->execute([$hasProblem ? 1 : 0, $hasProblem ? $problemDescription : null, $shift['id']]);
     db()->prepare('INSERT INTO customer_activity_logs (id, customer_id, actor_name, action, created_at) VALUES (?,?,?,?,NOW())')
         ->execute([uuid(), $payload['customerId'], (string)($payload['name'] ?? 'Operator'), 'Operator signed out' . ($hasProblem ? ' (reported a challenge).' : '.')]);
+
+    // Every completed shift is a hand-over record. Previously only shifts with
+    // a problem created an Operator Report, which made normal machine usage
+    // disappear from report history.
+    $handoverId = uuid();
+    $operatorName = (string)($payload['name'] ?? 'Operator');
+    $signedOutStmt = db()->prepare('SELECT signed_out_at FROM machine_operator_shifts WHERE id = ?');
+    $signedOutStmt->execute([$shift['id']]);
+    $signedOutAt = (string)$signedOutStmt->fetchColumn();
+    $handoverMessage = "MACHINE HAND OVER\n"
+        . "Time In: {$shift['signed_in_at']}\n"
+        . "Time Out: {$signedOutAt}\n"
+        . "Containers handled: {$shift['container_count']}\n"
+        . 'Comment: ' . ($handoverComment !== '' ? $handoverComment : 'Machine handed over after use.');
+    db()->prepare(
+        "INSERT INTO operator_reports
+         (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at)
+         VALUES (?,?,?,?,?,?,?,'RECORDED',0,'HANDOVER',NOW())"
+    )->execute([
+        $handoverId, $machineId, $payload['customerId'], $operatorId, $operatorName, null, $handoverMessage,
+    ]);
 
     // A reported challenge also becomes a normal Operator Report, so it
     // shows up everywhere the customer/BELM team already reviews problems.
@@ -448,12 +502,11 @@ if ($action === 'sign-out' && $method === 'POST') {
         $selfServiceMode = !empty($context['is_machinery_admin']);
         $notifyBelm = !$selfServiceMode;
         $reportId = uuid();
-        $operatorName = (string)($payload['name'] ?? 'Operator');
         $reportMessage = "End-of-shift report: $problemDescription (Containers handled: {$shift['container_count']})";
         db()->prepare(
             "INSERT INTO operator_reports
-             (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, created_at)
-             VALUES (?,?,?,?,?,?,?,'OPEN',?,NOW())"
+             (id, machine_id, customer_id, operator_id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at)
+             VALUES (?,?,?,?,?,?,?,'OPEN',?,'PROBLEM',NOW())"
         )->execute([
             $reportId, $machineId, $payload['customerId'], $operatorId, $operatorName,
             null, $reportMessage, $notifyBelm ? 1 : 0,
@@ -517,7 +570,14 @@ BELM Service Provider is active for this customer.",
             } catch (Throwable $ignored) {}
         }
     }
-    json_out(['ok' => true, 'containerCount' => (int)$shift['container_count'], 'whatsappDelivery' => $whatsappDelivery]);
+    json_out([
+        'ok' => true,
+        'containerCount' => (int)$shift['container_count'],
+        'signedInAt' => $shift['signed_in_at'],
+        'signedOutAt' => $signedOutAt,
+        'handoverReportId' => $handoverId,
+        'whatsappDelivery' => $whatsappDelivery,
+    ]);
 }
 
 json_error('Unknown request', 404);

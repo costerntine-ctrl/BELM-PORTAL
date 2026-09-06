@@ -133,5 +133,35 @@ switch($resource){
         if(($segments[1]??'')==='user'&&isset($segments[2]))dispatch('tasks.php',['userId'=>$segments[2]]);
         if(isset($segments[1]))dispatch('tasks.php',['id'=>$segments[1]]);
         dispatch('tasks.php');
+    // Core administration, finance and reporting routes. These must remain in
+    // the front controller because Render serves every /api/* request here.
+    case 'activity-log': dispatch('activity_log.php');
+    case 'backup': dispatch('backup.php');
+    case 'belm-workshop-home': dispatch('belm_workshop_home.php');
+    case 'reports': dispatch('reports.php',['action'=>$segments[1]??($_GET['action']??'')]);
+    case 'bank-manager':
+        $bankRoute=$segments[1]??'';
+        $bankAction=$bankRoute==='accounts'?'account':($bankRoute==='withdrawals'?'withdrawal':$bankRoute);
+        dispatch('bank_manager.php',['action'=>$bankAction?:($_GET['action']??''),'id'=>$segments[2]??($_GET['id']??null)]);
+    case 'billing':
+        // /billing/invoices/{invoice}/payments/{payment} is the REST shape used
+        // by Billing Manager; query actions (exports/lookups) stay untouched.
+        if(($segments[1]??'')==='invoices'){
+            $billingAction=($segments[3]??'')==='payments'?'payment':($_GET['action']??'');
+            dispatch('billing.php',['action'=>$billingAction,'id'=>$segments[2]??($_GET['id']??null),'paymentId'=>$segments[4]??($_GET['paymentId']??null)]);
+        }
+        dispatch('billing.php',['action'=>$segments[1]??($_GET['action']??''),'id'=>$segments[2]??($_GET['id']??null)]);
+    case 'proforma-invoices':
+        dispatch('proforma_invoices.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
+    case 'receipts': dispatch('receipts.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
+    case 'company-expenses': dispatch('company_expenses.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
+    case 'contracts':
+        dispatch('contracts.php',['id'=>($segments[1]??'')==='summary'?null:($segments[1]??($_GET['id']??null)),'action'=>($segments[1]??'')==='summary'?'summary':($_GET['action']??'')]);
+    case 'workshops': dispatch('workshops.php',['resource'=>$segments[1]??'orders','id'=>$segments[2]??'','action'=>$segments[3]??'']);
+    case 'suppliers': dispatch('suppliers.php',['id'=>$segments[1]??null]);
+    case 'customer-password-security': dispatch('customer_password_security.php');
+    case 'customer-settings':
+    case 'customer_settings.php': dispatch('customer_settings.php');
+    case 'website-content.php': dispatch('website-content.php');
     default: json_error('Not found',404);
 }

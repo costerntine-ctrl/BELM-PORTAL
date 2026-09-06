@@ -1425,9 +1425,14 @@ if ($sub === 'dashboard') {
     $stmt->execute([$customer['id']]);
     $profile = $stmt->fetch();
     if ($profile) {
+        $serviceMode = belm_customer_service_mode((string)$customer['id']);
         $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
         $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
-        $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
+        $profile['belmServiceProviderActive'] = $serviceMode['belmServiceProviderActive'];
+        $profile['operatingMode'] = $serviceMode['operatingMode'];
+        $profile['operatingModeLabel'] = $serviceMode['operatingModeLabel'];
+        $profile['serviceOwner'] = $serviceMode['serviceOwner'];
+        $profile['operatingModeForcedByCoordinator'] = $serviceMode['forcedByCoordinator'];
         $profile['workshopModuleActive'] = !empty($profile['workshop_module_active']);
         unset($profile['workshop_module_active']);
         $profile['hasCompanyLogo'] = !empty($profile['has_company_logo']);

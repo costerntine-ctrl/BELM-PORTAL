@@ -17,7 +17,6 @@
   const shade=document.createElement('div');shade.className='cwm-machine-shade';
   const menu=document.createElement('button');menu.type='button';menu.className='cwm-machine-menu';menu.setAttribute('aria-expanded','false');menu.innerHTML='<b>&#9776;</b> Menu';
   const side=document.createElement('aside');side.className='cwm-machine-side';side.setAttribute('aria-label','Coordinator navigation');side.innerHTML='<button class="cwm-machine-side-close" type="button" aria-label="Close menu">&times;</button><div class="cwm-machine-side-head"><small>WORKSHOP CONTROL</small><strong id="cwmMachineSideTitle">Coordinator Menu</strong></div><nav>'+items.map(x=>`<a data-side-key="${x[0]}" class="${x[0]==='machines'?'is-active':''}" href="${x[3]}"><i>${x[1]}</i>${x[2]}</a>`).join('')+'</nav>';
-
   document.body.append(shade,menu,side);document.body.classList.add('cwm-machine-sidebar-ready');
   const setOpen=open=>{side.classList.toggle('is-open',open);shade.classList.toggle('is-open',open);menu.setAttribute('aria-expanded',String(open));document.body.style.overflow=open?'hidden':''};
   menu.onclick=()=>setOpen(true);shade.onclick=()=>setOpen(false);side.querySelector('.cwm-machine-side-close').onclick=()=>setOpen(false);side.querySelectorAll('a').forEach(a=>a.onclick=()=>setOpen(false));addEventListener('keydown',e=>{if(e.key==='Escape')setOpen(false)});addEventListener('resize',()=>{if(innerWidth>900)setOpen(false)});

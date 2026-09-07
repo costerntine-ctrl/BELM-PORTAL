@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Operator — BELM Portal</title>
-  <link rel="stylesheet" href="/operator/operator.css?v=681-system-sync">
+  <link rel="stylesheet" href="/operator/operator.css?v=490-button-controller">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -54,16 +54,16 @@
     </section>
 
     <section id="signOutSection" class="op-card hidden">
-      <p class="op-eyebrow">HAND OVER REPORT</p>
-      <h1>Complete machine hand over</h1>
+      <p class="op-eyebrow">END OF SHIFT REPORT</p>
+      <h1>Any challenge today?</h1>
       <div class="op-toggle-row">
-        <div class="op-toggle active"><small>TIME IN</small><b id="handoverTimeIn">—</b></div>
-        <div class="op-toggle active"><small>TIME OUT</small><b id="handoverTimeOut">—</b></div>
+        <button class="op-toggle" id="reportOkButton" type="button" data-choice="ok">✓ OK — no problems</button>
+        <button class="op-toggle" id="reportProblemButton" type="button" data-choice="problem">⚠ There's a challenge</button>
       </div>
-      <label>Comment after using machine
-        <textarea id="handoverComment" rows="4" maxlength="1000" placeholder="Machine condition and hand-over comment..."></textarea>
+      <label id="problemLabel" class="hidden">Describe the challenge
+        <textarea id="problemDescription" rows="4" maxlength="1000" placeholder="What happened?"></textarea>
       </label>
-      <button class="op-primary" id="confirmSignOutButton" type="button">Save Hand Over &amp; Sign Out</button>
+      <button class="op-primary" id="confirmSignOutButton" type="button" disabled>Confirm sign out</button>
       <button class="op-secondary" id="cancelSignOutButton" type="button">Back</button>
     </section>
 
@@ -117,28 +117,25 @@
     <dialog id="operatorReportDialog" class="op-checkup-dialog">
       <form id="operatorReportForm" class="op-checkup-card">
         <div class="op-checkup-head">
-          <div><span>ALERT REPORT</span><h2>Report machine issue</h2></div>
+          <div><span>MACHINE REPORT</span><h2>Daily Report or BELM Job Card</h2></div>
           <button type="button" id="closeOperatorReportButton" class="op-checkup-close" aria-label="Close">×</button>
         </div>
-        <label class="op-checkup-comment">Machine issue
-          <textarea id="operatorReportComment" rows="7" maxlength="1000" required placeholder="Describe the machine issue or unsafe condition..."></textarea>
-          <small id="operatorReportHint">This creates a Job Card and sends it to the Workshop Manager / Technical Department.</small>
+        <div class="op-report-mode-grid">
+          <label><input type="radio" name="operatorReportMode" value="DAILY" checked><span><b>Daily Report</b><small>Routine machine information. Saved to this machine record; no Job Card.</small></span></label>
+          <label><input type="radio" name="operatorReportMode" value="BELM_JOB"><span><b>Send Job Card to BELM</b><small>Problem requiring BELM action. Creates an official Job Card.</small></span></label>
+        </div>
+        <label class="op-checkup-comment">Comment
+          <textarea id="operatorReportComment" rows="7" maxlength="1000" required placeholder="Write machine condition, observation or problem here..."></textarea>
+          <small id="operatorReportHint">Daily Report is recorded on this machine and does not open a Job Card.</small>
         </label>
         <div class="op-checkup-actions">
           <button type="button" id="cancelOperatorReportButton" class="op-secondary">Cancel</button>
-          <button type="submit" id="saveOperatorReportButton" class="op-primary">Send Alert Report</button>
+          <button type="submit" id="saveOperatorReportButton" class="op-primary">Save Daily Report</button>
         </div>
       </form>
     </dialog>
-
-    <dialog id="operatorHistoryDialog" class="op-checkup-dialog">
-      <section class="op-checkup-card">
-        <div class="op-checkup-head"><div><span>OPERATOR REPORT</span><h2>Machine report history</h2></div><button type="button" id="closeOperatorHistoryButton" class="op-checkup-close" aria-label="Close">×</button></div>
-        <div id="operatorHistoryList" class="op-report-history"><p>Loading reports…</p></div>
-      </section>
-    </dialog>
   </main>
 
-  <script src="/operator/operator.js?v=682-professional-workflow"></script>
+  <script src="/operator/operator.js?v=490-button-controller"></script>
 </body>
 </html>

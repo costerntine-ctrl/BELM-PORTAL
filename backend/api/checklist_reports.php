@@ -1023,21 +1023,19 @@ if ($method === 'GET' && $action === 'for-machine') {
     $stmt->execute($params);
     $reports = $stmt->fetchAll();
     foreach ($reports as &$r) {
-        // A checked report is an immutable historical snapshot. Read its saved
-        // answers first; joining from the current template used to replace old
-        // values with blank/NONE whenever Coordinator edited the template.
         $stmt2 = db()->prepare(
-            'SELECT ca.id, ca.report_id, ca.template_item_id,
-                    ca.label, COALESCE(ca.value, \'\') AS value,
-                    ca.photo_url, COALESCE(ca.safety_level, \'GREEN\') AS safety_level,
-                    COALESCE(cti.input_type, \'TEXT\') AS input_type,
-                    cti.options, COALESCE(cti.is_required, 0) AS is_required
-             FROM checklist_answers ca
-             LEFT JOIN checklist_template_items cti ON cti.id = ca.template_item_id
-             WHERE ca.report_id = ?
-             ORDER BY COALESCE(cti."order", 2147483647), ca.id'
+            'SELECT ca.id, ? AS report_id, cti.id AS template_item_id,
+                    cti.label, COALESCE(ca.value, \'\') AS value,
+                    ca.photo_url,
+                    COALESCE(ca.safety_level, cti.safety_level, \'GREEN\') AS safety_level,
+                    cti.input_type, cti.options, cti.is_required
+             FROM checklist_template_items cti
+             LEFT JOIN checklist_answers ca
+               ON ca.template_item_id = cti.id AND ca.report_id = ?
+             WHERE cti.template_id = ?
+             ORDER BY cti."order" ASC'
         );
-        $stmt2->execute([$r['id']]);
+        $stmt2->execute([$r['id'], $r['id'], $r['template_id']]);
         $r = checklist_report_api_view($r, $machine, $user);
         $r['answers'] = array_map('checklist_report_answer_view', $stmt2->fetchAll());
     }

@@ -1374,7 +1374,7 @@
   }
 
   function customerFaceProviderText(profile) {
-    return profile?.operatingModeLabel || (profile?.belmServiceProviderActive ? "BELM Managed Service" : "Customer Self-Managed Workshop");
+    return profile?.belmServiceProviderActive ? "BELM ON" : "BELM OFF";
   }
 
   async function installCustomerDashboardFace() {
@@ -1418,15 +1418,9 @@
           <div class="belm-customer-face-statuses">
             <span class="belm-customer-face-active-pill">Active</span>
             <span class="belm-customer-face-provider">${escapeHtml(customerFaceProviderText(profile))}</span>
-            <small class="belm-customer-face-provider-note">Service owner: ${profile?.belmServiceProviderActive ? "BELM" : escapeHtml(name)}</small>
+            <small class="belm-customer-face-provider-note">${profile?.belmServiceProviderActive ? "BELM Service Mode" : "Customer Workshop Mode"}</small>
           </div>
         </header>
-        <section class="belm-customer-operating-model ${profile?.belmServiceProviderActive ? "belm-managed" : "customer-managed"}">
-          <div><small>OPERATING MODEL</small><strong>${escapeHtml(customerFaceProviderText(profile))}</strong></div>
-          <p>${profile?.belmServiceProviderActive
-            ? "BELM Technical Department controls maintenance, Job Card assignment and BELM Technician work. Your company retains machine visibility, Operator records, approvals and permitted business modules."
-            : "Your company controls its workshop, Technicians, Operators, Store, Procurement and internal Job Cards. BELM receives work only when your authorized team sends an official support request."}</p>
-        </section>
         <section class="belm-customer-face-communication">
           <div class="belm-customer-face-communication-title">
             <strong>Communication<br>history</strong>
@@ -1438,10 +1432,10 @@
         </section>
         <nav class="belm-customer-face-actions belm-customer-face-primary-actions" aria-label="Customer dashboard primary actions">
           <a class="belm-customer-face-action action-black" href="/portal/dashboard?view=machines">${escapeHtml(name.toUpperCase())} MACHINES</a>
+          <a class="belm-customer-face-action action-blue" href="/customer-workshop/?actor=customer">Workshop</a>
           <a class="belm-customer-face-action action-green" href="/customer-procurement/">Procurement</a>
           <button type="button" class="belm-customer-face-action action-yellow" data-customer-face-general-report>General Report</button>
           <a class="belm-customer-face-action action-purple" href="/customer-users/">Manage Users</a>
-          <a class="belm-customer-face-action action-blue" href="/customer-workshop/?actor=customer">Workshop</a>
         </nav>
         <nav class="belm-customer-face-actions belm-customer-face-secondary-actions" aria-label="Customer dashboard finance, analysis and settings actions">
           <a class="belm-customer-face-action action-petty" href="/customer-petty-cash/">Petty Cash</a>
@@ -5678,7 +5672,7 @@
       workflowButton.type = "button";
       workflowButton.className = "belm-technician-checkup-button belm-technician-jobcards-button";
       workflowButton.dataset.techJobcardsMachine = String(machine.id || "");
-      workflowButton.textContent = "Machine Job Cards";
+      workflowButton.textContent = "Job Card";
       workflowButton.title = `Open your assigned Job Cards for ${model}`;
       workflowButton.addEventListener("click", (event) => {
         event.preventDefault();

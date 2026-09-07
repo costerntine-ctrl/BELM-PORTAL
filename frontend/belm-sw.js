@@ -1,10 +1,10 @@
-// BELM portal service worker — V680 professional two-mode release.
+// BELM portal service worker — V672 role-aware Company Home.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v680-professional-two-mode';
+const CACHE='belm-portal-v672-role-home';
 const SHELL=[
-  '/customer-app.html?v=617-force-refresh',
-  '/customer-app.css?v=617-force-refresh',
-  '/customer-app.js?v=617-force-refresh',
+  '/customer-app.html?v=672-role-home',
+  '/customer-app.css?v=672-role-home',
+  '/customer-app.js?v=672-role-home',
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg'

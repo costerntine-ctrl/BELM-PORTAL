@@ -168,11 +168,3 @@ body:has(#shiftSection:not(.hidden)) main{max-width:1480px;padding:20px 20px 56p
 @media(max-width:820px){body:has(#shiftSection:not(.hidden)) main{padding:14px 12px 44px}.op-machine-dashboard{grid-template-columns:1fr}.op-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.op-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.op-header{padding:12px 14px}.op-header-title small{display:none}}
 @media(max-width:520px){.op-theme-button{padding:8px 9px;font-size:9px}.op-header-title b{font-size:12px}.op-overview-head{display:grid}.op-overview-status{width:100%}.op-summary-grid{grid-template-columns:1fr 1fr;gap:8px}.op-summary-card{padding:11px}.op-summary-card strong{font-size:12px}.op-quick-actions{gap:8px}.op-quick-actions button{min-height:76px;padding:11px}.op-machine-card{border-radius:14px}.op-machine-health{grid-template-columns:1fr}.op-activity-status{grid-template-columns:1fr}.op-service-grid{grid-template-columns:1fr 1fr 1fr}.op-machine-actions{grid-template-columns:repeat(2,minmax(0,1fr))}.op-machine-actions button{min-height:46px;font-size:9px}}
 @media(max-width:390px){.op-summary-grid,.op-quick-actions{grid-template-columns:1fr}.op-service-grid{grid-template-columns:1fr}.op-machine-actions{grid-template-columns:1fr 1fr}}
-
-/* V681 — one Operator Report flow: view, alert and hand over. */
-.op-quick-actions.op-three-actions,.op-machine-actions.op-three-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
-.op-report-history{display:grid;gap:10px}
-.op-history-item{display:grid;gap:8px;padding:13px;border:1px solid #d7e1ec;border-radius:12px;background:#f8fbff;color:#172033}
-.op-history-item>div{display:flex;justify-content:space-between;gap:10px}.op-history-item small{color:#6f8194}.op-history-item p{margin:0;white-space:pre-line;font-size:12px;line-height:1.5}.op-history-item>span{justify-self:start;padding:5px 8px;border-radius:999px;background:#e9f5ff;color:#0755ba;font-size:9px;font-weight:900}
-html[data-theme="dark"] .op-history-item{background:#071b2e;border-color:#274966;color:#fff}
-@media(max-width:520px){.op-quick-actions.op-three-actions,.op-machine-actions.op-three-actions{grid-template-columns:repeat(3,minmax(0,1fr))}.op-quick-actions.op-three-actions button{min-height:88px;padding:9px}.op-machine-actions.op-three-actions button{font-size:8px}}

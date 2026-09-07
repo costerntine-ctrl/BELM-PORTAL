@@ -3,7 +3,6 @@
   let token = localStorage.getItem("belm_operator_token");
   let operatorName = localStorage.getItem("belm_operator_name") || "";
   let machineName = localStorage.getItem("belm_operator_machine_name") || "";
-  let shiftStartedAt = null;
 
   const alertBox = document.getElementById("alertBox");
   function showAlert(message, isError = true) {
@@ -120,7 +119,7 @@
   function renderOperatorMachineDashboard(payload) {
     if (!dashboardRoot || !payload?.machine) return;
     const machine = payload.machine;
-    const buttonStates = { report: "enabled", operationCard: "enabled", handOverReport: "enabled", ...(payload.machineCardButtons || {}) };
+    const buttonStates = { report: "enabled", checkup: "enabled", parts: "disabled", operationCard: "enabled", ...(payload.machineCardButtons || {}) };
     const stateFor = (key) => ["enabled","disabled","hidden"].includes(String(buttonStates[key])) ? String(buttonStates[key]) : "enabled";
     const actionButton = (key, action, className, title, subtitle = "") => {
       const state = stateFor(key);
@@ -171,10 +170,11 @@
           <div class="op-summary-card blue"><span>Activity</span><strong>${esc(activityLabel(machine.operationalStatus))}</strong><small>Current operation status</small></div>
           <div class="op-summary-card purple"><span>Service</span><strong>${esc(serviceState)}</strong><small>${esc(serviceType)}</small></div>
         </div>
-        <div class="op-quick-actions op-three-actions" aria-label="Operator quick actions">
-          ${actionButton("report", "view-reports", "", "Report", "View Operator Reports")}
-          ${actionButton("operationCard", "alert-report", "danger", "Alert Report", "Send issue to Workshop Manager")}
-          ${actionButton("handOverReport", "hand-over", "job", "Hand Over Report", "Time In, Time Out and comment")}
+        <div class="op-quick-actions" aria-label="Operator quick actions">
+          ${actionButton("checkup", "checkup", "", "Daily Check / Checklist", "Check machine condition")}
+          ${actionButton("report", "report", "", "Operation Report", "Record daily information")}
+          ${actionButton("report", "problem", "danger", "Report Problem", "Send machine issue")}
+          ${actionButton("operationCard", "operation-card", "job", "Operation Card", "Request action / Job Card")}
         </div>
       </section>
       <article class="op-machine-card status-${esc(condition.status.toLowerCase())}" data-operator-machine-id="${esc(machine.id)}">
@@ -230,10 +230,11 @@
           </div>
         </section>` : ""}
 
-        <div class="op-machine-actions op-three-actions" aria-label="Operator machine actions">
-          ${cardButton("report", "view-reports", "report", "Report")}
-          ${cardButton("operationCard", "alert-report", "checkup", "Alert Report")}
-          ${cardButton("handOverReport", "hand-over", "jobcard", "Hand Over Report")}
+        <div class="op-machine-actions" aria-label="Operator machine actions">
+          ${cardButton("report", "report", "report", "Report")}
+          ${cardButton("checkup", "checkup", "checkup", "Check Up")}
+          ${cardButton("parts", "parts", "parts", "Service Parts")}
+          ${cardButton("operationCard", "operation-card", "jobcard", "Operation Card")}
         </div>
       </article>`;
   }
@@ -263,7 +264,6 @@
     scheduleOperatorDashboardRefresh();
     try {
       const result = await api("/sign-in", { method: "POST" });
-      shiftStartedAt = result.signedInAt || shiftStartedAt || new Date().toISOString();
       document.getElementById("containerCount").textContent = result.containerCount;
       document.getElementById("shiftSignedInAt").textContent = result.resumed
         ? "Continuing your open shift."
@@ -322,7 +322,6 @@
   const operatorCheckupForm = document.getElementById("operatorCheckupForm");
   const operatorReportDialog = document.getElementById("operatorReportDialog");
   const operatorReportForm = document.getElementById("operatorReportForm");
-  const operatorHistoryDialog = document.getElementById("operatorHistoryDialog");
 
   function openOperatorCheckup() {
     clearAlert();
@@ -345,36 +344,27 @@
     if (operatorReportDialog.open) operatorReportDialog.close();
   }
 
-  async function openOperatorHistory() {
-    const list = document.getElementById("operatorHistoryList");
-    list.innerHTML = "<p>Loading reports…</p>";
-    operatorHistoryDialog.showModal();
-    try {
-      const reports = await api("/reports");
-      list.innerHTML = reports.length ? reports.map((report) => `
-        <article class="op-history-item">
-          <div><b>${esc(String(report.reportType || "REPORT").replaceAll("_", " "))}</b><small>${esc(tzParts(report.createdAt, true))}</small></div>
-          <p>${esc(report.message || "No comment recorded.")}</p>
-          <span>${esc(String(report.status || "RECORDED").toUpperCase())}</span>
-        </article>`).join("") : "<p>No Operator Reports recorded yet.</p>";
-    } catch (error) {
-      list.innerHTML = `<p>${esc(error.message || "Could not load reports.")}</p>`;
-    }
-  }
-
-  function openHandOver() {
-    document.getElementById("handoverTimeIn").textContent = tzParts(shiftStartedAt, true);
-    document.getElementById("handoverTimeOut").textContent = tzParts(Date.now(), true);
-    document.getElementById("handoverComment").value = "";
-    showSection("signOutSection");
-  }
-
   dashboardRoot?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-operator-action]");
     if (!button) return;
-    if (button.dataset.operatorAction === "view-reports") openOperatorHistory();
-    if (button.dataset.operatorAction === "alert-report") openOperatorReport();
-    if (button.dataset.operatorAction === "hand-over") openHandOver();
+    if (button.dataset.operatorAction === "checkup") openOperatorCheckup();
+    if (button.dataset.operatorAction === "report") openOperatorReport();
+    if (button.dataset.operatorAction === "problem") {
+      openOperatorReport();
+      setTimeout(() => {
+        const daily = document.querySelector('input[name="operatorReportMode"][value="DAILY"]');
+        if (daily) daily.checked = true;
+        const comment = document.getElementById("operatorReportComment");
+        if (comment) comment.placeholder = "Describe the machine problem or unsafe condition...";
+      }, 0);
+    }
+    if (button.dataset.operatorAction === "operation-card") {
+      openOperatorReport();
+      setTimeout(() => {
+        const job = document.querySelector('input[name="operatorReportMode"][value="BELM_JOB"]');
+        if (job) { job.checked = true; job.dispatchEvent(new Event("change", { bubbles: true })); }
+      }, 0);
+    }
   });
 
   document.getElementById("closeOperatorCheckupButton").addEventListener("click", closeOperatorCheckup);
@@ -387,8 +377,18 @@
   operatorReportDialog.addEventListener("click", (event) => {
     if (event.target === operatorReportDialog) closeOperatorReport();
   });
-  document.getElementById("closeOperatorHistoryButton").addEventListener("click", () => operatorHistoryDialog.close());
-  operatorHistoryDialog.addEventListener("click", (event) => { if (event.target === operatorHistoryDialog) operatorHistoryDialog.close(); });
+  document.querySelectorAll('input[name="operatorReportMode"]').forEach((radio) => radio.addEventListener("change", () => {
+    const mode = document.querySelector('input[name="operatorReportMode"]:checked')?.value || "DAILY";
+    const button = document.getElementById("saveOperatorReportButton");
+    const hint = document.getElementById("operatorReportHint");
+    if (mode === "BELM_JOB") {
+      button.textContent = "Send Job Card to BELM";
+      hint.textContent = "This creates an official BELM Job Card and sends it to TECHNICAL DEP.";
+    } else {
+      button.textContent = "Save Daily Report";
+      hint.textContent = "Daily Report is recorded on this machine and does not open a Job Card.";
+    }
+  }));
 
   operatorCheckupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -434,7 +434,7 @@
     try {
       const result = await api("/report", {
         method: "POST",
-        body: JSON.stringify({ message, mode: "BELM_JOB" }),
+        body: JSON.stringify({ message, mode: document.querySelector('input[name="operatorReportMode"]:checked')?.value || "DAILY" }),
       });
       closeOperatorReport();
       if (result.jobCardCreated) {
@@ -447,31 +447,70 @@
       showAlert(error.message || "Could not save Operator Report.");
     } finally {
       button.disabled = false;
-      button.textContent = "Send Alert Report";
+      button.textContent = document.querySelector('input[name="operatorReportMode"]:checked')?.value === "BELM_JOB" ? "Send Job Card to BELM" : "Save Daily Report";
     }
   });
 
-  document.getElementById("signOutButton").addEventListener("click", openHandOver);
+  document.getElementById("signOutButton").addEventListener("click", () => {
+    clearAlert();
+    document.getElementById("problemDescription").value = "";
+    document.getElementById("problemLabel").classList.add("hidden");
+    document.getElementById("confirmSignOutButton").disabled = true;
+    document.getElementById("confirmSignOutButton").dataset.choice = "";
+    document.querySelectorAll(".op-toggle").forEach((btn) => btn.classList.remove("active"));
+    showSection("signOutSection");
+  });
   document.getElementById("cancelSignOutButton").addEventListener("click", () => showSection("shiftSection"));
 
+  document.getElementById("reportOkButton").addEventListener("click", () => {
+    document.querySelectorAll(".op-toggle").forEach((btn) => btn.classList.remove("active"));
+    document.getElementById("reportOkButton").classList.add("active");
+    document.getElementById("problemLabel").classList.add("hidden");
+    document.getElementById("confirmSignOutButton").disabled = false;
+    document.getElementById("confirmSignOutButton").dataset.choice = "ok";
+  });
+  document.getElementById("reportProblemButton").addEventListener("click", () => {
+    document.querySelectorAll(".op-toggle").forEach((btn) => btn.classList.remove("active"));
+    document.getElementById("reportProblemButton").classList.add("active");
+    document.getElementById("problemLabel").classList.remove("hidden");
+    document.getElementById("confirmSignOutButton").disabled = false;
+    document.getElementById("confirmSignOutButton").dataset.choice = "problem";
+  });
+
   document.getElementById("confirmSignOutButton").addEventListener("click", async () => {
-    const comment = document.getElementById("handoverComment").value.trim();
+    const choice = document.getElementById("confirmSignOutButton").dataset.choice;
+    const description = document.getElementById("problemDescription").value.trim();
+    if (choice === "problem" && !description) {
+      showAlert("Describe the challenge before confirming.");
+      return;
+    }
     const button = document.getElementById("confirmSignOutButton");
     button.disabled = true;
     button.textContent = "Signing out…";
     try {
       const result = await api("/sign-out", {
         method: "POST",
-        body: JSON.stringify({ hasProblem: false, comment }),
+        body: JSON.stringify({ hasProblem: choice === "problem", problemDescription: description }),
       });
+      let problemStatus = "";
+      if (choice === "problem") {
+        const delivery = result.whatsappDelivery || {};
+        const sent = Number(delivery.sent || 0);
+        const pending = Number(delivery.pending || 0);
+        problemStatus = sent > 0
+          ? `Your challenge report was saved and WhatsApp sent to ${sent} team recipient${sent === 1 ? "" : "s"}.`
+          : pending > 0
+            ? "Your challenge report was saved. WhatsApp is waiting for the configured provider."
+            : "Your challenge report was saved for the BELM and Customer teams.";
+      }
       document.getElementById("doneSummary").textContent =
-        `Time In: ${tzParts(result.signedInAt, true)} · Time Out: ${tzParts(result.signedOutAt, true)} · Containers handled: ${result.containerCount}. Hand Over Report saved.`;
+        `Containers handled: ${result.containerCount}. ${choice === "problem" ? problemStatus : "No problems reported — great work!"}`;
       showSection("doneSection");
     } catch (error) {
       showAlert(error.message);
     } finally {
       button.disabled = false;
-      button.textContent = "Save Hand Over & Sign Out";
+      button.textContent = "Confirm sign out";
     }
   });
 

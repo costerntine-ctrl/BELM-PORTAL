@@ -305,7 +305,6 @@ if ($method === 'GET' && $action === 'cwm-overview') {
 
     $result = array_map(static function (array $c) use ($staffByCustomer, $techniciansByCustomer): array {
         $staff = $staffByCustomer[$c['id']] ?? [];
-        $serviceMode = belm_customer_service_mode((string)$c['id']);
         return [
             'id' => $c['id'],
             'name' => $c['name'],
@@ -315,10 +314,6 @@ if ($method === 'GET' && $action === 'cwm-overview') {
             'isActive' => !empty($c['is_active']),
             // "Independent" = self-service (BELM is NOT the Service Provider).
             'selfServiceEnabled' => !empty($c['is_machinery_admin']),
-            'operatingMode' => $serviceMode['operatingMode'],
-            'operatingModeLabel' => $serviceMode['operatingModeLabel'],
-            'serviceOwner' => $serviceMode['serviceOwner'],
-            'operatingModeForcedByCoordinator' => $serviceMode['forcedByCoordinator'],
             'workshopModuleActive' => !empty($c['workshop_module_active']),
             'coordinatorFeatures' => json_decode((string)($c['coordinator_features'] ?? '{}'), true) ?: [],
             'departmentStates' => belm_customer_department_states((string)$c['id']),
@@ -433,8 +428,7 @@ if ($method === 'GET' && !$action) {
     foreach ($customers as &$c) {
         $customerId = (string)$c['id'];
         $prefs = belm_customer_privacy_normalize($c['privacy_preferences'] ?? null);
-        $serviceMode = belm_customer_service_mode($customerId);
-        $providerActive = $serviceMode['belmServiceProviderActive'];
+        $providerActive = empty($c['is_machinery_admin']);
         $maintenanceVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['maintenanceRecords']);
         $partsVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['storeAndParts']);
         $expenseVisible = $developmentExpenseAccess || $isCustomerManagedTechnician || !empty($prefs['expenseReceipts']);
@@ -460,10 +454,6 @@ if ($method === 'GET' && !$action) {
         unset($privacyMachine);
         $c['isMachineryAdmin'] = !empty($c['is_machinery_admin']);
         $c['belmServiceProviderActive'] = $providerActive;
-        $c['operatingMode'] = $serviceMode['operatingMode'];
-        $c['operatingModeLabel'] = $serviceMode['operatingModeLabel'];
-        $c['serviceOwner'] = $serviceMode['serviceOwner'];
-        $c['operatingModeForcedByCoordinator'] = $serviceMode['forcedByCoordinator'];
         $c['isWorkshopModuleActive'] = !empty($c['workshop_module_active']);
         $c['privacyPreferences'] = $prefs;
         $c['privacyAccess'] = [
@@ -497,8 +487,7 @@ if ($method === 'GET' && $action === 'one') {
     if (!$customer) json_error('Not found', 404);
     $customer['machines'] = fetch_machines($customer['id']);
     $prefs = belm_customer_privacy_normalize($customer['privacy_preferences'] ?? null);
-    $serviceMode = belm_customer_service_mode((string)$customer['id']);
-    $providerActive = $serviceMode['belmServiceProviderActive'];
+    $providerActive = empty($customer['is_machinery_admin']);
     $isCustomerManagedTechnician = (($user['roleName'] ?? '') === 'Technician' && !empty($user['isCustomerManaged']));
     $maintenanceVisible = $isCustomerManagedTechnician || $providerActive || !empty($prefs['maintenanceRecords']);
     $developmentExpenseAccess = belm_development_customer_expense_access_enabled();
@@ -522,10 +511,6 @@ if ($method === 'GET' && $action === 'one') {
     unset($privacyMachine);
     $customer['isMachineryAdmin'] = !empty($customer['is_machinery_admin']);
     $customer['belmServiceProviderActive'] = $providerActive;
-    $customer['operatingMode'] = $serviceMode['operatingMode'];
-    $customer['operatingModeLabel'] = $serviceMode['operatingModeLabel'];
-    $customer['serviceOwner'] = $serviceMode['serviceOwner'];
-    $customer['operatingModeForcedByCoordinator'] = $serviceMode['forcedByCoordinator'];
     $customer['isWorkshopModuleActive'] = !empty($customer['workshop_module_active']);
     $customer['privacyPreferences'] = $prefs;
     $customer['privacyAccess'] = [
@@ -846,7 +831,7 @@ if ($method === 'POST' && !$action) {
     $newId = uuid();
     $portalLink = customer_portal_slug($details['name']);
     $registration = belm_customer_registration_profile($b['registrationMode'] ?? null);
-    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, is_machinery_admin, workshop_module_active, coordinator_features, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?::jsonb,NOW())')
+    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, is_machinery_admin, workshop_module_active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())')
         ->execute([
             $newId,
             $details['name'],
@@ -860,7 +845,6 @@ if ($method === 'POST' && !$action) {
             password_hash($recoveryCode, PASSWORD_BCRYPT),
             $registration['isMachineryAdmin'],
             $registration['workshopModuleActive'],
-            json_encode($registration['coordinatorFeatures']),
         ]);
 
     log_activity($user, 'customer-created', 'customer', $newId, [
@@ -992,9 +976,6 @@ if ($method === 'PUT' && $action === 'machinery-admin') {
         'ok' => true,
         'isMachineryAdmin' => (bool)$selfServiceEnabled,
         'belmServiceProviderActive' => (bool)$providerEnabled,
-        'operatingMode' => $providerEnabled ? 'BELM_MANAGED' : 'CUSTOMER_MANAGED',
-        'operatingModeLabel' => $providerEnabled ? 'BELM Managed Service' : 'Customer Self-Managed Workshop',
-        'serviceOwner' => $providerEnabled ? 'BELM' : 'CUSTOMER',
         'customerTechnicianAccessPaused' => (bool)$providerEnabled,
     ]);
 }
@@ -1039,7 +1020,7 @@ if ($method === 'PUT' && $action === 'coordinator-features') {
     }
 
     $validButtonStates = ['enabled','disabled','hidden'];
-    $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled','handOverReport'=>'enabled'];
+    $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled'];
     $existingButtons = is_array($features['machineCardButtons']['operator'] ?? null) ? $features['machineCardButtons']['operator'] : [];
     $incomingButtons = is_array($b['machineCardButtons']['operator'] ?? null) ? $b['machineCardButtons']['operator'] : [];
     foreach ($defaults as $buttonKey => $defaultState) {

@@ -38,26 +38,31 @@ if (($segments[0] ?? '') === 'health') {
 if (($segments[0] ?? '') === 'readiness' || !isset($segments[0])) {
     try {
         $databaseVersion = db()->query('SELECT VERSION()')->fetchColumn();
-        $requiredTables = ['roles','users','customers','customer_users','machines','customer_applications','user_applications','usage_logs','checklist_templates','checklist_template_items','checklist_reports','checklist_answers','machine_operators','machine_operator_shifts','operator_reports','customer_store_items','customer_store_movements','customer_machine_spare_list_items','customer_store_issue_requests','belm_workshop_tool_issues','delivery_notes','delivery_note_items','customer_procurement_requests','customer_department_settings','customer_sales_documents','checklist_template_parts','service_request_parts','spare_parts','spare_part_requests','bank_accounts','bank_withdrawals','company_expenses','customer_communications','notification_logs','system_settings','machine_service_owner_notifications','user_preferences','machine_service_parts','service_due_alerts','service_due_alert_items','breakdown_cases','breakdown_case_events','breakdown_spare_requests','digital_job_cards','invoices','invoice_items','payments','receipts','proforma_invoices','proforma_invoice_items','belm_installation_meta','belm_schema_migrations','belm_deployment_audits'];
+        $requiredTables = ['roles','users','customers','customer_users','machines','customer_applications','user_applications','usage_logs','customer_store_items','customer_store_movements','customer_machine_spare_list_items','customer_store_issue_requests','belm_workshop_tool_issues','delivery_notes','delivery_note_items','customer_procurement_requests','customer_department_settings','customer_sales_documents','checklist_template_parts','service_request_parts','spare_parts','spare_part_requests','bank_accounts','bank_withdrawals','company_expenses','customer_communications','notification_logs','system_settings','machine_service_owner_notifications','user_preferences','machine_service_parts','service_due_alerts','service_due_alert_items','breakdown_cases','breakdown_case_events','breakdown_spare_requests','digital_job_cards','invoices','invoice_items','payments','receipts','proforma_invoices','proforma_invoice_items','belm_installation_meta','belm_schema_migrations','belm_deployment_audits'];
         $tableChecks=[];$schemaReady=true;$tableStatement=db()->prepare('SELECT to_regclass(?) IS NOT NULL');
         foreach($requiredTables as $table){$tableStatement->execute(['public.'.$table]);$tableChecks[$table]=(bool)$tableStatement->fetchColumn();if(!$tableChecks[$table])$schemaReady=false;}
-        $requiredColumns=[['digital_job_cards','issued_by_name'],['digital_job_cards','signed_copy_data'],['digital_job_cards','billing_status'],['digital_job_cards','priority'],['digital_job_cards','due_date'],['invoices','source_job_card_id'],['proforma_invoices','source_job_card_id'],['password_reset_codes','account_id'],['payments','receipt_id'],['bank_accounts','is_test'],['spare_part_requests','procurement_order_status'],['breakdown_spare_requests','procurement_supplier_id'],['customers','coordinator_features'],['customers','is_machinery_admin'],['customers','workshop_module_active'],['checklist_reports','display_photo_url'],['checklist_answers','note'],['operator_reports','report_type'],['operator_reports','notify_belm'],['operator_reports','service_request_id'],['machine_operator_shifts','signed_out_at'],['customer_department_settings','department_key'],['customer_department_settings','access_state'],['customer_sales_documents','document_type'],['customer_sales_documents','document_no']];
+        $requiredColumns=[['digital_job_cards','issued_by_name'],['digital_job_cards','signed_copy_data'],['digital_job_cards','billing_status'],['digital_job_cards','priority'],['digital_job_cards','due_date'],['invoices','source_job_card_id'],['proforma_invoices','source_job_card_id'],['password_reset_codes','account_id'],['payments','receipt_id'],['bank_accounts','is_test'],['spare_part_requests','procurement_order_status'],['breakdown_spare_requests','procurement_supplier_id'],['customers','coordinator_features'],['customers','is_machinery_admin'],['customer_department_settings','department_key'],['customer_department_settings','access_state'],['customer_sales_documents','document_type'],['customer_sales_documents','document_no']];
         $columnChecks=[];$columnStatement=db()->prepare("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name=? AND column_name=?)");
         foreach($requiredColumns as [$table,$column]){$columnStatement->execute([$table,$column]);$key=$table.'.'.$column;$columnChecks[$key]=(bool)$columnStatement->fetchColumn();if(!$columnChecks[$key])$schemaReady=false;}
         $adminChecks=['exactlyOneAccount'=>false,'active'=>false,'superAdminRole'=>false,'passwordHashStored'=>false];
         try{$stmt=db()->prepare("SELECT u.id,u.is_active,u.deleted_at,u.password_hash,r.name AS role_name,COUNT(*) OVER () AS matching_accounts FROM users u LEFT JOIN roles r ON r.id=u.role_id WHERE u.id=? ORDER BY CASE WHEN u.deleted_at IS NULL AND u.is_active=1 THEN 0 ELSE 1 END,u.created_at ASC LIMIT 1");$stmt->execute(['00000000-0000-4000-8000-000000000003']);$admin=$stmt->fetch();if($admin){$hash=(string)($admin['password_hash']??'');$adminChecks['exactlyOneAccount']=(int)$admin['matching_accounts']===1;$adminChecks['active']=(int)$admin['is_active']===1&&$admin['deleted_at']===null;$adminChecks['superAdminRole']=$admin['role_name']==='Super Admin';$adminChecks['passwordHashStored']=str_starts_with($hash,'$2')||str_starts_with($hash,'$argon2');}}catch(Throwable $ignored){}
         $adminReady=!in_array(false,$adminChecks,true);$dataSafety=['storage'=>'PostgreSQL','installationId'=>null,'lastDeploymentRelease'=>null,'lastDeploymentAt'=>null,'fullResetProtected'=>strtolower((string)(getenv('APP_ENV')?:''))==='production'&&trim((string)(getenv('ALLOW_FULL_DATABASE_RESET')?:''))==='YES-I-UNDERSTAND','webStartupIndependentOfMigration'=>true];
         try{$dataSafety['installationId']=db()->query('SELECT installation_id FROM belm_installation_meta WHERE singleton=1')->fetchColumn()?:null;$lastDeploy=db()->query('SELECT release,applied_at FROM belm_deployment_audits ORDER BY applied_at DESC LIMIT 1')->fetch();if($lastDeploy){$dataSafety['lastDeploymentRelease']=$lastDeploy['release'];$dataSafety['lastDeploymentAt']=$lastDeploy['applied_at'];}}catch(Throwable $ignored){}
-        $healthReady=$schemaReady&&$adminReady;json_out(['ok'=>$healthReady,'api'=>'BELM PHP/PostgreSQL','database'=>'connected','databaseVersion'=>$databaseVersion,'schemaVersion'=>'680-professional-two-mode-sync','schemaReady'=>$schemaReady,'tables'=>$tableChecks,'columns'=>$columnChecks,'adminReady'=>$adminReady,'adminChecks'=>$adminChecks,'dataSafety'=>$dataSafety,'loginEndpoints'=>['unified'=>'/api/auth/unified-login','legacyStaff'=>'/api/auth/login','legacyCustomer'=>'/api/auth/customer-login']],$healthReady?200:503);
+        $healthReady=$schemaReady&&$adminReady;json_out(['ok'=>$healthReady,'api'=>'BELM PHP/PostgreSQL','database'=>'connected','databaseVersion'=>$databaseVersion,'schemaVersion'=>'510-coordinator-db-readiness','schemaReady'=>$schemaReady,'tables'=>$tableChecks,'columns'=>$columnChecks,'adminReady'=>$adminReady,'adminChecks'=>$adminChecks,'dataSafety'=>$dataSafety,'loginEndpoints'=>['unified'=>'/api/auth/unified-login','legacyStaff'=>'/api/auth/login','legacyCustomer'=>'/api/auth/customer-login']],$healthReady?200:503);
     }catch(Throwable $e){json_out(['ok'=>false,'api'=>'BELM PHP/PostgreSQL','database'=>'not-connected','message'=>'Check DATABASE_URL and the Render Postgres service.'],503);}
 }
 
 $resource=$segments[0]??'';
 switch($resource){
     case 'auth': dispatch('auth.php',['action'=>$segments[1]??'']);
+    case 'activity-log': dispatch('activity_log.php');
+    case 'backup': dispatch('backup.php');
     case 'applications': dispatch('applications.php',['id'=>$segments[1]??null,'action'=>$segments[2]??'']);
     case 'customer-checkup':
+    case 'customer_checkup':
     case 'customer_checkup.php': dispatch('customer_checkup.php');
+    case 'customer_settings':
+    case 'customer_settings.php': dispatch('customer_settings.php');
     case 'customer-portal': dispatch('customer_portal.php',['sub'=>$segments[1]??'','sub2'=>$segments[2]??'','sub3'=>$segments[3]??'']);
     case 'checklist-templates':
         if(isset($segments[2])&&$segments[2]==='items')dispatch('checklist_templates.php',['action'=>'add-item','id'=>$segments[1]]);
@@ -97,7 +102,7 @@ switch($resource){
         dispatch('users.php');
     case 'controller-pinouts': dispatch('controller_pinouts.php',['id'=>$segments[1]??null]);
     case 'checklist-reports':
-    case 'checklist_reports.php':
+    case 'checklist_reports':
         // Explicit REST mapping for Technician / Machine Report Center.
         // Query-style actions are still accepted for older frontend modules.
         if(($segments[1]??'')==='technician-general'&&($segments[2]??'')==='pdf')dispatch('checklist_reports.php',['action'=>'technician-general-report-pdf']);
@@ -115,6 +120,23 @@ switch($resource){
         dispatch('checklist_reports.php');
     case 'breakdown-workflow': dispatch('breakdown_workflow.php',['action'=>$segments[1]??'','id'=>$segments[2]??'']);
     case 'belm-procurement': dispatch('belm_procurement.php',['id'=>$segments[1]??'']);
+    case 'bank-manager':
+        $bankResource=$segments[1]??'';
+        if($bankResource==='accounts')dispatch('bank_manager.php',['action'=>'account','id'=>$segments[2]??($_GET['id']??null)]);
+        if($bankResource==='withdrawals')dispatch('bank_manager.php',['action'=>'withdrawal','id'=>$segments[2]??($_GET['id']??null)]);
+        if($bankResource==='test-reset')dispatch('bank_manager.php',['action'=>'test-reset']);
+        dispatch('bank_manager.php',['action'=>$_GET['action']??'','id'=>$_GET['id']??null]);
+    case 'billing':
+        if(($segments[1]??'')==='invoices'){
+            if(($segments[3]??'')==='payments')dispatch('billing.php',['action'=>'payment','id'=>$segments[2]??null,'paymentId'=>$segments[4]??null]);
+            dispatch('billing.php',['action'=>'','id'=>$segments[2]??($_GET['id']??null)]);
+        }
+        dispatch('billing.php',['action'=>$_GET['action']??'','id'=>$_GET['id']??null]);
+    case 'company-expenses': dispatch('company_expenses.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
+    case 'proforma-invoices': dispatch('proforma_invoices.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
+    case 'receipts': dispatch('receipts.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
+    case 'reports': dispatch('reports.php',['action'=>$segments[1]??($_GET['action']??'')]);
+    case 'suppliers': dispatch('suppliers.php',['id'=>$segments[1]??null]);
     case 'engineering': dispatch('engineering.php');
     case 'operator': dispatch('operator.php',['action'=>$segments[1]??($_GET['action']??'')]);
     case 'job-cards': dispatch('service_requests.php');
@@ -134,35 +156,5 @@ switch($resource){
         if(($segments[1]??'')==='user'&&isset($segments[2]))dispatch('tasks.php',['userId'=>$segments[2]]);
         if(isset($segments[1]))dispatch('tasks.php',['id'=>$segments[1]]);
         dispatch('tasks.php');
-    // Core administration, finance and reporting routes. These must remain in
-    // the front controller because Render serves every /api/* request here.
-    case 'activity-log': dispatch('activity_log.php');
-    case 'backup': dispatch('backup.php');
-    case 'belm-workshop-home': dispatch('belm_workshop_home.php');
-    case 'reports': dispatch('reports.php',['action'=>$segments[1]??($_GET['action']??'')]);
-    case 'bank-manager':
-        $bankRoute=$segments[1]??'';
-        $bankAction=$bankRoute==='accounts'?'account':($bankRoute==='withdrawals'?'withdrawal':$bankRoute);
-        dispatch('bank_manager.php',['action'=>$bankAction?:($_GET['action']??''),'id'=>$segments[2]??($_GET['id']??null)]);
-    case 'billing':
-        // /billing/invoices/{invoice}/payments/{payment} is the REST shape used
-        // by Billing Manager; query actions (exports/lookups) stay untouched.
-        if(($segments[1]??'')==='invoices'){
-            $billingAction=($segments[3]??'')==='payments'?'payment':($_GET['action']??'');
-            dispatch('billing.php',['action'=>$billingAction,'id'=>$segments[2]??($_GET['id']??null),'paymentId'=>$segments[4]??($_GET['paymentId']??null)]);
-        }
-        dispatch('billing.php',['action'=>$segments[1]??($_GET['action']??''),'id'=>$segments[2]??($_GET['id']??null)]);
-    case 'proforma-invoices':
-        dispatch('proforma_invoices.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
-    case 'receipts': dispatch('receipts.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
-    case 'company-expenses': dispatch('company_expenses.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
-    case 'contracts':
-        dispatch('contracts.php',['id'=>($segments[1]??'')==='summary'?null:($segments[1]??($_GET['id']??null)),'action'=>($segments[1]??'')==='summary'?'summary':($_GET['action']??'')]);
-    case 'workshops': dispatch('workshops.php',['resource'=>$segments[1]??'orders','id'=>$segments[2]??'','action'=>$segments[3]??'']);
-    case 'suppliers': dispatch('suppliers.php',['id'=>$segments[1]??null]);
-    case 'customer-password-security': dispatch('customer_password_security.php');
-    case 'customer-settings':
-    case 'customer_settings.php': dispatch('customer_settings.php');
-    case 'website-content.php': dispatch('website-content.php');
     default: json_error('Not found',404);
 }

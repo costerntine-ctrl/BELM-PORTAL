@@ -338,8 +338,8 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'INSERT INTO customers
                  (id, name, tin_number, vrn, email, phone, address, portal_link,
                   password, recovery_code_hash, is_active, is_machinery_admin,
-                  workshop_module_active, coordinator_features, created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?::jsonb,NOW())'
+                  workshop_module_active, created_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())'
             )->execute([
                 $customerId,
                 $application['company_name'],
@@ -353,7 +353,6 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 password_hash($recoveryCode, PASSWORD_BCRYPT),
                 $registration['isMachineryAdmin'],
                 $registration['workshopModuleActive'],
-                json_encode($registration['coordinatorFeatures']),
             ]);
 
             // Registration approval creates the customer account only. Machines are
@@ -393,8 +392,6 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'loginUrl' => customer_portal_url($portalLink, $application['email']),
                 'registrationMode' => $registration['mode'],
                 'registrationModeLabel' => $registration['label'],
-                'operatingMode' => $registration['operatingMode'],
-                'serviceOwner' => $registration['serviceOwner'],
                 'registrationSync' => belm_customer_registration_sync_status($customerId),
                 'message' => 'Customer account is ready and synchronized to the customer workspaces. Machines can be registered after login.',
             ]);

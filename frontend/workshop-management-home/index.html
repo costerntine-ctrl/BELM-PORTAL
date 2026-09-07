@@ -1,11 +1,143 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Management Home</title><link rel="icon" href="/app-icon-192.png"><link rel="stylesheet" href="/theme-global.css?v=647-fast-start"><script src="/theme-manager.js?v=647-fast-start"></script><link rel="stylesheet" href="/workshop-management-home/home.css?v=647-fast-start"></head><body>
-<header class="top"><a class="brand" href="/workshop-management-home/"><img src="/app-icon-192.png" alt="BELM"><span><b>BELM</b><small>WORKSHOP MANAGEMENT</small></span></a><div class="head"><div><h1>BELM WORKSHOP MANAGEMENT HOME</h1><p>Choose the workspace you want to access</p></div><div class="actions"><button id="refreshBtn">↻ Refresh</button><button id="logoutBtn">Log out</button></div></div></header>
-<main><section class="intro"><p class="eyebrow">BELM GENERAL TECH SERVICE LTD</p><h2>Workshop Management Control</h2><p>BELM operations and each Customer workshop are independent. Coordinator controls shared system tools, templates and optional modules without merging operational data.</p></section>
-<section class="portal-grid">
-<article class="portal belm"><span class="tag">BELM PORTAL</span><div class="portal-title"><div class="ico">⚙</div><div><small>BELM GENERAL TECH</small><h3>BELM OPERATIONS</h3></div></div><p>Manage BELM-owned workshop operations, machines, Job Cards, technicians, procurement, store, finance and reports.</p><div class="mini"><span>Machines</span><span>Job Cards</span><span>Technicians</span><span>Reports</span></div><a href="/belm-workshop/">Go to BELM Dashboard <b>→</b></a></article>
-<article class="portal coordinator"><span class="tag">COORDINATOR</span><div class="portal-title"><div class="ico">◆</div><div><small>SYSTEM CONTROL LAYER</small><h3>COORDINATOR</h3></div></div><p>Controls system templates, roles, reports, settings, optional customer modules and BELM ↔ Customer connection rules.</p><div class="mini"><span>Checklist Template</span><span>Role Controller</span><span>General Report</span><span>Report Controller</span><span>Invoice / Proforma</span><span>System Settings</span><span>Connection Control</span></div><a href="/coordinator/">Go to Coordinator Panel <b>→</b></a></article>
-<article class="portal customer"><span class="tag">CUSTOMER PORTAL</span><div class="portal-title"><div class="ico">👥</div><div><small>PRIVATE CUSTOMER WORKSPACE</small><h3>CUSTOMER WORKSHOP</h3></div></div><p>Customer-owned machines, technicians, operations, procurement and reports. BELM data is never shown here.</p><div class="mini"><span>Machines</span><span>Job Cards</span><span>Technicians</span><span>Reports</span></div><a href="/portal-cwm/">Go to Customer Dashboard <b>→</b></a></article>
-</section>
-<section class="belm-departments-access"><a href="/coordinator/departments/"><i>▦</i><div><b>BELM Departments &amp; Categories</b><span>BELM Staff Access · Portal BELM WM · Controller Pin Out · Equivalent Spares · Suppliers Directory · Bank Manager</span></div><strong>→</strong></a></section>
-<section class="rule"><div><strong>DATA SEPARATION RULE</strong><p>BELM cannot see a customer's private commercial records unless a specific workflow explicitly shares them. Customer cannot see BELM internal records.</p></div><span>🔒 PRIVATE BY DEFAULT</span></section>
-</main><footer>© BELM General Tech Service Ltd · BELM Workshop Management System</footer><script src="/workshop-management-home/home.js?v=647-fast-start"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071a31">
+  <title>BELM Multi-Role Analysis</title>
+  <link rel="icon" href="/app-icon-192.png">
+  <link rel="apple-touch-icon" href="/app-icon-192.png">
+  <link rel="manifest" href="/belm-app.webmanifest">
+  <link rel="stylesheet" href="/theme-global.css?v=671-multi-role-dashboard">
+  <script src="/theme-manager.js?v=671-multi-role-dashboard"></script>
+  <link rel="stylesheet" href="/workshop-management-home/home.css?v=671-multi-role-dashboard">
+</head>
+<body>
+  <button id="menuButton" class="mobile-menu-button" type="button" aria-label="Open dashboard menu" aria-controls="dashboardSidebar" aria-expanded="false">☰</button>
+  <div id="menuScrim" class="menu-scrim" hidden></div>
+
+  <aside id="dashboardSidebar" class="dashboard-sidebar" aria-label="BELM role and department navigation">
+    <a class="sidebar-brand" href="/workshop-management-home/" aria-label="BELM dashboard home">
+      <span class="sidebar-logo"><img src="/app-icon-192.png" alt=""></span>
+      <span><strong>BELM</strong><small>OPERATIONS PLATFORM</small></span>
+    </a>
+
+    <div class="signed-user">
+      <span id="userInitials" class="signed-avatar">BU</span>
+      <span class="signed-copy"><strong id="signedUserName">BELM User</strong><small id="signedUserPrimaryRole">Assigned role</small></span>
+    </div>
+
+    <div class="sidebar-heading"><span>ROLE WORKSPACES</span><b id="visibleModuleCount">0</b></div>
+    <nav id="roleNavigation" class="role-navigation">
+      <button class="role-nav active" type="button" data-module="overview" data-page-key="overview">
+        <span class="role-nav-icon blue">OV</span><span><b>Overview</b><small>All-role position</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="procurement" data-page-key="spare-parts">
+        <span class="role-nav-icon yellow">PR</span><span><b>Procurement</b><small>Purchasing & shortage</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="store" data-page-key="spare-parts">
+        <span class="role-nav-icon green">SK</span><span><b>Store Keeper</b><small>Stock & issue control</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="bank" data-super-admin="true">
+        <span class="role-nav-icon cyan">BC</span><span><b>Bank Control</b><small>Protected balances</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="registration" data-page-key="customers">
+        <span class="role-nav-icon purple">RS</span><span><b>Registration & Sales</b><small>Customers & invoicing</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="finance" data-page-key="billing">
+        <span class="role-nav-icon blue">FN</span><span><b>Finance</b><small>Revenue & expenses</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="technician" data-page-key="roles">
+        <span class="role-nav-icon green">TC</span><span><b>Technician</b><small>People & workload</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="workshop" data-any-page-key="job-cards,customers">
+        <span class="role-nav-icon yellow">WM</span><span><b>Workshop Manager</b><small>Job Card control</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="reports" data-page-key="reports">
+        <span class="role-nav-icon cyan">GR</span><span><b>General Report</b><small>Reports & comparison</small></span><i>›</i>
+      </button>
+      <button class="role-nav" type="button" data-module="roles" data-page-key="roles">
+        <span class="role-nav-icon purple">RL</span><span><b>Roles</b><small>Access & responsibility</small></span><i>›</i>
+      </button>
+    </nav>
+
+    <details class="portal-switcher">
+      <summary>Portal switcher <span>+</span></summary>
+      <div>
+        <a href="/belm-workshop/"><b>PORTAL-BELM WM</b><small>BELM workshop operations</small></a>
+        <a href="/portal-cwm/"><b>PORTAL-CWM</b><small>Customer workshop portal</small></a>
+        <a id="coordinatorLink" href="/coordinator/"><b>Coordinator</b><small>System & customer controls</small></a>
+      </div>
+    </details>
+
+    <div class="sidebar-actions">
+      <button id="themeButton" type="button">☾ Dark mode</button>
+      <button id="logoutButton" type="button">Log out securely</button>
+    </div>
+  </aside>
+
+  <main class="dashboard-main">
+    <header class="company-header">
+      <div class="company-title">
+        <span class="company-mark" aria-hidden="true">B</span>
+        <div><p>BELM COMPANY WORKSPACE</p><h1>BELM GENERAL TECH SERVICE LTD</h1></div>
+      </div>
+      <dl class="company-details">
+        <div><dt>Location</dt><dd>Temeke, Dar es Salaam</dd></div>
+        <div><dt>Contact mail</dt><dd><a href="mailto:info@belmgeneral.co.tz">info@belmgeneral.co.tz</a></dd></div>
+        <div><dt>Phone</dt><dd><a href="tel:+255713309529">+255 713 309 529</a></dd></div>
+        <div><dt>Your role</dt><dd id="headerRole">Assigned role</dd></div>
+        <div><dt>Date</dt><dd id="headerDate">—</dd></div>
+      </dl>
+    </header>
+
+    <section class="analysis-toolbar" aria-labelledby="moduleTitle">
+      <div>
+        <p id="moduleEyebrow" class="eyebrow">ALL DEPARTMENTS</p>
+        <h2 id="moduleTitle">Multi-Role Analysis</h2>
+        <p id="moduleDescription">A live management view across BELM roles, people, machines and finance.</p>
+      </div>
+      <div class="toolbar-actions">
+        <label>Analysis period
+          <select id="periodSelect">
+            <option value="today">Today</option>
+            <option value="week">This week</option>
+            <option value="month" selected>This month</option>
+            <option value="year">This year</option>
+          </select>
+        </label>
+        <button id="refreshButton" type="button">↻ Refresh</button>
+        <a id="openWorkspaceButton" class="primary-action" href="/overview-manager/">Open detailed analysis →</a>
+      </div>
+    </section>
+
+    <div id="dashboardAlert" class="dashboard-alert" hidden role="status" aria-live="polite"></div>
+    <p id="syncLine" class="sync-line">Preparing live analysis…</p>
+
+    <section id="metricGrid" class="metric-grid" aria-label="Selected module summary">
+      <article class="metric skeleton"></article><article class="metric skeleton"></article><article class="metric skeleton"></article><article class="metric skeleton"></article>
+    </section>
+
+    <section class="analysis-layout">
+      <article class="analysis-panel primary-panel">
+        <div class="panel-heading"><div><p id="primaryPanelEyebrow">ROLE PERFORMANCE</p><h3 id="primaryPanelTitle">Responsibilities by role</h3></div><span id="primaryPanelBadge" class="panel-badge">LIVE</span></div>
+        <div id="primaryPanelBody" class="panel-body"><div class="loading-state">Loading operational data…</div></div>
+      </article>
+
+      <aside class="analysis-panel attention-panel">
+        <div class="panel-heading"><div><p>ACTION CENTRE</p><h3>Needs attention</h3></div><span class="live-dot" title="Live data"></span></div>
+        <div id="attentionList" class="attention-list"><div class="loading-state">Checking priorities…</div></div>
+      </aside>
+    </section>
+
+    <section class="analysis-panel activity-panel">
+      <div class="panel-heading"><div><p>LATEST MOVEMENT</p><h3 id="activityTitle">Recent BELM activity</h3></div><a id="secondaryWorkspaceLink" href="/reports-manager/">View reports →</a></div>
+      <div id="activityBody" class="activity-body"><div class="loading-state">Loading latest records…</div></div>
+    </section>
+
+    <footer class="dashboard-footer"><span>© BELM General Tech Service Ltd</span><span>Multi-Role Operations Dashboard</span></footer>
+  </main>
+
+  <script src="/workshop-management-home/home.js?v=671-multi-role-dashboard"></script>
+</body>
+</html>

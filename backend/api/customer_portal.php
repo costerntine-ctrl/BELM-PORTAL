@@ -1425,14 +1425,9 @@ if ($sub === 'dashboard') {
     $stmt->execute([$customer['id']]);
     $profile = $stmt->fetch();
     if ($profile) {
-        $serviceMode = belm_customer_service_mode((string)$customer['id']);
         $profile['portalUrl'] = customer_portal_url($profile['portal_link']);
         $profile['isMachineryAdmin'] = !empty($profile['is_machinery_admin']);
-        $profile['belmServiceProviderActive'] = $serviceMode['belmServiceProviderActive'];
-        $profile['operatingMode'] = $serviceMode['operatingMode'];
-        $profile['operatingModeLabel'] = $serviceMode['operatingModeLabel'];
-        $profile['serviceOwner'] = $serviceMode['serviceOwner'];
-        $profile['operatingModeForcedByCoordinator'] = $serviceMode['forcedByCoordinator'];
+        $profile['belmServiceProviderActive'] = empty($profile['is_machinery_admin']);
         $profile['workshopModuleActive'] = !empty($profile['workshop_module_active']);
         unset($profile['workshop_module_active']);
         $profile['hasCompanyLogo'] = !empty($profile['has_company_logo']);
@@ -4871,7 +4866,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
     // in Report/breakdown entries and vice versa. Omit the param for the
     // combined list (used by the existing Operator Reported view).
     $typeFilter = strtoupper(trim((string)($_GET['type'] ?? '')));
-    if (!in_array($typeFilter, ['PROBLEM', 'HANDOVER', 'DAILY', 'CHECKUP'], true)) $typeFilter = '';
+    if (!in_array($typeFilter, ['PROBLEM', 'HANDOVER', 'DAILY'], true)) $typeFilter = '';
     $sql = 'SELECT id, operator_name, operator_contact, message, status, notify_belm, report_type, created_at, resolved_at
             FROM operator_reports WHERE machine_id = ?';
     $params = [$machineId];
@@ -4887,7 +4882,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'GET') {
         $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''));
         if ($machineLabel === '') $machineLabel = (string)($machine['machine_type'] ?? 'Machine');
         $safeMachine = preg_replace('/[^A-Za-z0-9_-]+/', '-', $machineLabel);
-        $pdfTitle = $typeFilter === 'HANDOVER' ? 'MACHINE HANDOVER' : ($typeFilter === 'DAILY' ? 'DAILY REPORT' : ($typeFilter === 'CHECKUP' ? 'OPERATOR CHECKUP' : ($typeFilter === 'PROBLEM' ? 'REPORT' : 'OPERATOR REPORTED')));
+        $pdfTitle = $typeFilter === 'HANDOVER' ? 'MACHINE HANDOVER' : ($typeFilter === 'DAILY' ? 'DAILY REPORT' : ($typeFilter === 'PROBLEM' ? 'REPORT' : 'OPERATOR REPORTED'));
         $pdfRows = array_map(static fn(array $r): array => [
             display_date_billing($r['created_at']),
             (string)($r['operator_name'] ?: 'Operator'),

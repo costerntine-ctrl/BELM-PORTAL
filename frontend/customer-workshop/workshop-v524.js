@@ -57,7 +57,7 @@
     visible('cwmSettingsLink',ownerAdmin||r==='workshop_manager');
     const meta={owner:['CUSTOMER OWNER / ADMIN','Managing Company Workshop','OWNER'],admin:['CUSTOMER ADMIN','Managing Company Workshop','ADMIN'],workshop_manager:['WORKSHOP MANAGER','Managing Workshop','CONTROL'],store_keeper:['STORE KEEPER','Store & Spare Control','STORE'],procurement:['PROCUREMENT','Workshop Procurement','PROCUREMENT'],accounts:['ACCOUNTS / FINANCE','Workshop Finance','FINANCE'],operator:['OPERATOR','Machine Operations','OPERATOR'],assistant:['CUSTOMER USER','Customer Workshop','ACCESS']}[r]||['CUSTOMER USER','Customer Workshop','ACCESS'];
     if($('cwmRoleLabel'))$('cwmRoleLabel').textContent=meta[0];if($('cwmRoleTitle'))$('cwmRoleTitle').textContent=meta[1];if($('cwmRoleStatus'))$('cwmRoleStatus').textContent=meta[2];
-    if($('cwmRoleDescription'))$('cwmRoleDescription').textContent=`${meta[1]} — access is company-scoped and limited to the signed-in role.`;
+    if($('cwmRoleDescription'))$('cwmRoleDescription').textContent=`${meta[1]} — same PORTAL-BELM WM operating card, scoped to this customer company and signed-in role.`;
     if($('cwmAssignFunction'))$('cwmAssignFunction').textContent=belmOn?'BELM Technician Assignment':'Assign / Reassign Technician';
     if($('cwmWorkloadFunction'))$('cwmWorkloadFunction').textContent=belmOn?'BELM Job Progress':'Technician Workload';
   }
@@ -66,15 +66,13 @@
     try{
       const dashboard=await customerApi('/dashboard'), p=dashboard?.customer||{};currentProfile=p;
       const name=p.name||'Customer', belmOn=Boolean(p.belmServiceProviderActive), workshopActive=p.workshopModuleActive!==false;
-      const operatingMode=p.operatingMode||(belmOn?'BELM_MANAGED':'CUSTOMER_MANAGED');
-      const operatingLabel=p.operatingModeLabel||(belmOn?'BELM Managed Service':'Customer Self-Managed Workshop');
-      if($('modePill'))$('modePill').textContent=operatingMode==='BELM_MANAGED'?'BELM MANAGED':'SELF-MANAGED';
-      if($('workshopTitle'))$('workshopTitle').textContent=`${name} — Workshop Portal`;
-      if($('workshopSubtitle'))$('workshopSubtitle').textContent=belmOn?'BELM manages machine maintenance, Job Cards and technician assignment. Customer records remain securely company-scoped.':'Your company manages its own workshop, technicians, store and internal Job Cards. BELM joins only through an approved support request.';
+      if($('modePill'))$('modePill').textContent='PORTAL-CWM HOME';
+      if($('workshopTitle'))$('workshopTitle').textContent=`${name} — PORTAL-CWM`;
+      if($('workshopSubtitle'))$('workshopSubtitle').textContent=belmOn?'BELM Service Mode — customer records remain company-scoped; BELM Job Cards go directly to TECHNICAL DEP.':'Customer Workshop Manager home — customer records remain company-scoped; BELM support is used only when requested.';
       if($('cwmCompanyName'))$('cwmCompanyName').textContent=name;if($('cwmCompanyAddress'))$('cwmCompanyAddress').textContent=p.address||'Not recorded';if($('cwmCompanyEmail'))$('cwmCompanyEmail').textContent=p.email||'Not recorded';if($('cwmCompanyContact'))$('cwmCompanyContact').textContent=p.phone||'Not recorded';
-      if($('cwmBelmStatus')){$('cwmBelmStatus').textContent=operatingLabel.toUpperCase();$('cwmBelmStatus').classList.toggle('is-on',belmOn);$('cwmBelmStatus').classList.toggle('is-off',!belmOn)}
+      if($('cwmBelmStatus')){$('cwmBelmStatus').textContent=belmOn?'BELM ON · SERVICE ACTIVE':'BELM OFF · CUSTOMER WORKSHOP';$('cwmBelmStatus').classList.toggle('is-on',belmOn);$('cwmBelmStatus').classList.toggle('is-off',!belmOn)}
       if($('cwmMachinesLink')){$('cwmMachinesLink').textContent=`${name.toUpperCase()} MACHINES`; $('cwmMachinesLink').href='/portal/dashboard?view=machines'}
-      const tech=$('technicianManageLink');if(tech){if(belmOn){tech.textContent='Technicians Managed by BELM';tech.removeAttribute('href');tech.setAttribute('aria-disabled','true');tech.classList.add('locked-action')}else{tech.textContent='Manage Technicians';tech.href='/customer-users/';tech.removeAttribute('aria-disabled');tech.classList.remove('locked-action')}}
+      const tech=$('technicianManageLink');if(tech){if(belmOn){tech.textContent='Technicians Locked · BELM ON';tech.removeAttribute('href');tech.setAttribute('aria-disabled','true');tech.classList.add('locked-action')}else{tech.textContent='Manage Technicians';tech.href='/customer-users/';tech.removeAttribute('aria-disabled');tech.classList.remove('locked-action')}}
       applyRoleAccess(p,belmOn,workshopActive);
       if(!workshopActive){$('storeLink')?.classList.add('cwm-role-hidden');$('cwmStoreView')?.classList.add('hidden')}
       if(!belmOn){try{technicians=await customerApi('/technicians')}catch(_){technicians=[]}}else technicians=[];

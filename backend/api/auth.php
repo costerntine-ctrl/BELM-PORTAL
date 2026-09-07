@@ -66,6 +66,7 @@ if ($action === 'refresh' && $method === 'POST') {
         }
 
         $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
+        $roleNames = role_names_for_user($user['id'], $user['role_name']);
         $freshPayload = [
             'type' => 'staff',
             'id' => $user['id'],
@@ -73,6 +74,7 @@ if ($action === 'refresh' && $method === 'POST') {
             'name' => $user['name'],
             'roleId' => $user['role_id'],
             'roleName' => $user['role_name'],
+            'roleNames' => $roleNames,
             'allowedPages' => $allowedPages,
             'assignedCustomerId' => $user['assigned_customer_id'],
             'assignedCustomerPortalLink' => $user['assigned_customer_portal_link'] ?? null,
@@ -514,6 +516,7 @@ if ($action === 'unified-login' && $method === 'POST') {
             }
 
             $allowedPages = merged_allowed_pages_for_user($user['id'], $user['role_name'], $user['allowed_pages']);
+            $roleNames = role_names_for_user($user['id'], $user['role_name']);
             $token = jwt_encode([
                 'type' => 'staff',
                 'id' => $user['id'],
@@ -521,6 +524,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                 'name' => $user['name'],
                 'roleId' => $user['role_id'],
                 'roleName' => $user['role_name'],
+                'roleNames' => $roleNames,
                 'allowedPages' => $allowedPages,
                 'assignedCustomerId' => $user['assigned_customer_id'],
                 'assignedCustomerPortalLink' => $user['assigned_customer_portal_link'] ?? null,
@@ -579,6 +583,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                     'name' => $user['name'],
                     'email' => $user['email'],
                     'role' => $user['role_name'],
+                    'roleNames' => $roleNames,
                     'allowedPages' => $allowedPages,
                     'assignedCustomerId' => $user['assigned_customer_id'],
                     'assignedCustomerName' => $user['assigned_customer_name'],
@@ -694,16 +699,11 @@ if ($action === 'unified-login' && $method === 'POST') {
         'permissions' => $permissions,
     ], 30 * 24 * 3600);
 
-    // V491: Customer Owner/Admin/Workshop Manager always land on the same
-    // PORTAL-CWM home. BELM Service ON/OFF changes responsibility, not the
-    // customer's home. workshop_module_active remains a feature gate for the
-    // customer-owned Store / Tool module inside CWM; it no longer changes the
-    // entire dashboard destination.
+    // V672: every customer-company role first lands on the shared PORTAL-CWM
+    // Company Home. The role-aware Enter My Role action on that page then
+    // opens the correct workspace without bypassing the common alerts/home.
     $workshopModuleActive = !empty($customer['workshop_module_active']);
-    $cwmHomeRoles = ['owner', 'admin', 'workshop_manager'];
-    $customerDestination = in_array((string)$customerRole, $cwmHomeRoles, true)
-        ? '/customer-workshop/?actor=customer'
-        : '/portal/dashboard';
+    $customerDestination = '/portal-cwm/';
 
     json_out([
         'token' => $token,

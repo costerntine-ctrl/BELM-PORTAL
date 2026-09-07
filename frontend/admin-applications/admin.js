@@ -149,8 +149,8 @@ function renderCard(application) {
   const title = element("div");
   const displayName = application.displayName || application.companyName || application.fullName;
   const applicationType = application.applicationType === "SYSTEM_USER" ? "Staff / Technician" : "Customer";
-  const cwmTag = application.applicationType !== "SYSTEM_USER"
-    ? ` · ${application.registrationMode === "PORTAL_CWM" ? "Customer Self-Managed" : "BELM Managed"}` : "";
+  const cwmTag = application.applicationType !== "SYSTEM_USER" && application.registrationMode === "PORTAL_CWM"
+    ? " · PORTAL-CWM" : "";
   title.append(
     element("h2", "", displayName),
     element("div", "reference", `${application.referenceNo} · ${applicationType}${cwmTag} · Submitted ${formatDate(application.submittedAt)}`)
@@ -175,7 +175,7 @@ function renderCard(application) {
         ["Company address", application.address],
         ["TIN", application.tinNumber],
         ["VRN", application.vrn],
-        ["Operating model", application.registrationMode === "PORTAL_CWM" ? "Customer Self-Managed Workshop" : "BELM Managed Service"],
+        ["Registration type", application.registrationMode === "PORTAL_CWM" ? "PORTAL-CWM (Independent)" : "TECHNICAL DEP (BELM Service Provider)"],
         ["Reviewed by", application.reviewedByName],
         ["Reviewed at", formatDate(application.reviewedAt)]
       ];
@@ -275,7 +275,7 @@ function renderRegisteredCustomers() {
         <td><button type="button" class="customer-name-button" data-manage-registered-customer="${escapeHtml(customer.id)}"><strong>${escapeHtml(customer.name)}</strong><small>${escapeHtml(customer.email || "—")}</small><small>${escapeHtml(customer.phone || "—")}</small></button></td>
         <td><strong>${machineCount}</strong></td>
         <td><strong>${userCount}</strong>${customer.userLimit != null ? `<small class="table-subtext"> / limit ${escapeHtml(customer.userLimit)}</small>` : ""}</td>
-        <td><span class="user-status ${belmOn ? "active" : "inactive"}">${escapeHtml(customer.operatingModeLabel || (belmOn ? "BELM Managed Service" : "Customer Self-Managed Workshop"))}</span></td>
+        <td><span class="user-status ${belmOn ? "active" : "inactive"}">${belmOn ? "BELM ON" : "BELM OFF"}</span></td>
         <td><span class="user-status ${active ? "active" : "inactive"}">${active ? "PORTAL ON" : "LOCKED"}</span></td>
       </tr>`;
     }).join("")}</tbody>
@@ -759,7 +759,7 @@ async function completeApproval(application, payload) {
     document.getElementById("approvedSyncLabel").classList.toggle("hidden", !isCustomerApproval);
     document.getElementById("approvedSync").classList.toggle("hidden", !isCustomerApproval);
     if (isCustomerApproval) {
-      document.getElementById("approvedMode").textContent = result.registrationModeLabel || (result.registrationMode === "PORTAL_CWM" ? "Customer Self-Managed Workshop" : "BELM Managed Service");
+      document.getElementById("approvedMode").textContent = result.registrationModeLabel || result.registrationMode || "TECHNICAL DEP";
       document.getElementById("approvedSync").textContent = customerSyncSummary(result.registrationSync);
       announceCustomerRegistryChange(result.customerId);
     }
@@ -1121,7 +1121,7 @@ function openRegisterCredentials({ name, role, email, password, recoveryCode, lo
   document.getElementById("regCredSyncLabel").classList.toggle("hidden", !customerRegistration);
   document.getElementById("regCredSync").classList.toggle("hidden", !customerRegistration);
   if (customerRegistration) {
-    document.getElementById("regCredMode").textContent = registrationMode === "PORTAL_CWM" ? "Customer Self-Managed Workshop" : "BELM Managed Service";
+    document.getElementById("regCredMode").textContent = registrationMode === "PORTAL_CWM" ? "PORTAL-CWM" : "TECHNICAL DEP";
     document.getElementById("regCredSync").textContent = customerSyncSummary(registrationSync);
   }
   registerCredentialsDialog.showModal();

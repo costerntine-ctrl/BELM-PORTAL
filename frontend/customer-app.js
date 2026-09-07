@@ -65,19 +65,25 @@
       localStorage.setItem(key,data.token);
       localStorage.setItem(`belm_session_refreshed_${key}`,String(Date.now()));
       if(active==='technician'){location.replace('/tech');return true}
-      if(active==='admin'){location.replace('/belm-workshop/');return true}
-      if(active==='customer'){
-        let destination='/portal/dashboard';
+      if(active==='admin'){
         const payload=decodeToken(data.token)||{};
-        try{
-          const dash=await fetchWithTimeout('/api/customer-portal/dashboard',{cache:'no-store',headers:{Authorization:`Bearer ${data.token}`}},12000);
-          if(dash.ok){
-            const info=await dash.json();
-            const role=String(payload.customerRole||'owner').toLowerCase();
-            if(['owner','admin','workshop_manager'].includes(role)) destination='/customer-workshop/?actor=customer';
-          }
-        }catch(_){}
-        location.replace(destination);return true;
+        const role=String(payload.roleName||'').trim().toLowerCase();
+        const managementRoles=['super admin','belm admin','admin','administrator'];
+        const financeRoles=['accounts','accountant','finance'];
+        let destination='/belm-workshop/';
+        if(managementRoles.includes(role)) destination='/workshop-management-home/';
+        else if(financeRoles.includes(role)) destination='/billing-manager/';
+        else if(!['workshop manager','engineer','store keeper','procurement'].includes(role)){
+          const destinations={overview:'/overview-manager/',customers:'/customers-manager/',roles:'/roles-manager/','spare-parts':'/spare-parts-manager/',billing:'/billing-manager/',reports:'/reports-manager/',settings:'/settings-manager/','checklist-templates':'/checklist-manager/',suppliers:'/suppliers-manager/'};
+          const first=(Array.isArray(payload.allowedPages)?payload.allowedPages:[]).find(page=>destinations[page]);
+          destination=first?destinations[first]:'/overview-manager/';
+        }
+        location.replace(destination);return true
+      }
+      if(active==='customer'){
+        // Every customer-company user starts at the shared Company Home.
+        // The Home's Enter My Role button performs the role-specific routing.
+        location.replace('/portal-cwm/');return true;
       }
     }catch(_){/* transient connectivity is not logout */}
     return false;
@@ -116,7 +122,7 @@
         localStorage.setItem('belm_admin_token',data.token);
         localStorage.setItem('belm_admin_user',JSON.stringify(data.user||{})); setActiveAccount('admin');
       }
-      location.replace(data.destination||'/');
+      location.replace(data.accountType==='customer'?'/portal-cwm/':(data.destination||'/'));
     }catch(err){const timedOut=err&&err.name==='AbortError';showError(timedOut?'Server did not respond in time. Tap Open My Workspace again.':(err.message||'Login failed.'));button.disabled=false;button.textContent='Open My Workspace'}
   }
   // V496: saved credentials may be filled by the browser/password manager,
@@ -126,7 +132,7 @@
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=672').catch(()=>{}))}
 
   (async()=>{
     await loadContext();

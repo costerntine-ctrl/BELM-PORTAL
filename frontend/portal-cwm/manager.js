@@ -2,6 +2,15 @@
   const adminToken = localStorage.getItem("belm_admin_token") || "";
   const customerToken = localStorage.getItem("belm_customer_token") || "";
   const isCustomerHome = !!customerToken;
+  const customerSession = (() => {
+    if (!customerToken) return {};
+    try {
+      const raw = customerToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = raw + "=".repeat((4 - raw.length % 4) % 4);
+      return JSON.parse(decodeURIComponent(Array.from(atob(padded)).map((character) =>
+        `%${character.charCodeAt(0).toString(16).padStart(2, "0")}`).join("")));
+    } catch (_) { return {}; }
+  })();
   let customers = [];
   let messageTimer = null;
   let isRefreshing = false;
@@ -71,6 +80,22 @@
     return [machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType || machine.machine_type || "Machine";
   }
 
+  function customerRoleEntry() {
+    const role = String(customerSession.customerRole || (customerSession.actorType === "owner" ? "owner" : "assistant"))
+      .trim().toLowerCase();
+    const entries = {
+      owner: { label: "Customer Owner", href: "/customer-workshop/?actor=customer", note: "Open Main Dashboard" },
+      admin: { label: "Customer Admin", href: "/customer-workshop/?actor=customer", note: "Open Main Dashboard" },
+      workshop_manager: { label: "Workshop Manager", href: "/customer-workshop/?actor=customer", note: "Open Workshop Control" },
+      store_keeper: { label: "Store Keeper", href: "/customer-store/", note: "Open Store & Tools" },
+      procurement: { label: "Procurement", href: "/customer-procurement-home/", note: "Open Procurement Workspace" },
+      accounts: { label: "Accounts / Finance", href: "/general-report/", note: "Open Finance & Reports" },
+      operator: { label: "Machine Operator", href: "/portal/dashboard?view=machines", note: "Open Assigned Machines" },
+      assistant: { label: "Portal User", href: "/portal/dashboard?view=machines", note: "Open Assigned Workspace" },
+    };
+    return entries[role] || { label: role.replaceAll("_", " ") || "Portal User", href: "/portal/dashboard?view=machines", note: "Open Assigned Workspace" };
+  }
+
   function buildMachineMessages(machines) {
     const rows = [];
     (Array.isArray(machines) ? machines : []).forEach((machine) => {
@@ -100,14 +125,15 @@
 
   function customerCard(customer) {
     const name = customer.name || "Customer";
-    const openHref = isCustomerHome ? "/customer-workshop/?actor=customer" : `/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id || "")}`;
+    const roleEntry = customerRoleEntry();
+    const openHref = isCustomerHome ? roleEntry.href : `/customer-workshop/?actor=belm&customerId=${encodeURIComponent(customer.id || "")}`;
 
     if (!isCustomerHome) {
       return `<article class="cwm-welcome-card cwm-list-card-v621" data-customer-card="${escapeHtml(customer.id || "self")}"><div class="cwm-welcome-copy"><p class="cwm-welcome-kicker">CUSTOMER WORKSHOP</p><h2>${escapeHtml(name.toUpperCase())}</h2></div><div class="cwm-welcome-details"><div><span>ADDRESS:</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><span>EMAIL:</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><span>PHONE:</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div><a class="cwm-open-workshop" href="${openHref}">OPEN WORKSHOP</a></article>`;
     }
 
     const first = homeMessages[0] || fallbackMessages[0];
-    return `<article class="cwm-home-v556" data-customer-card="${escapeHtml(customer.id || "self")}"><section class="cwm-home-hero-v556"><p class="cwm-home-kicker-v556"><span></span>WELCOME TO<span></span></p><h1>${escapeHtml(name.toUpperCase())} <em>WORKSHOP</em> PORTAL</h1><div class="cwm-company-details-v556"><div><i>●</i><span>ADDRESS</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><i>✉</i><span>EMAIL</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><i>☎</i><span>PHONE</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div></section><section class="cwm-message-display-v556 cwm-machine-alert-v610" aria-live="polite" data-alert-type="${escapeHtml(first.type || "info")}"><button type="button" data-cwm-message-prev aria-label="Previous machine alert">‹</button><div class="cwm-message-content-v556"><div class="cwm-alert-heading-v610"><span>⚠</span> MACHINE ALERTS</div><strong data-cwm-message-title>${escapeHtml(first.title || "MACHINE ALERT")}</strong><p data-cwm-message-text>${escapeHtml(first.text)}</p><small data-cwm-message-by>— ${escapeHtml(first.by)}</small><div class="cwm-message-dots-v556" data-cwm-message-dots></div></div><button type="button" data-cwm-message-next aria-label="Next machine alert">›</button></section><section class="cwm-quick-v556"><div class="cwm-quick-title-v556"><span>QUICK ACCESS</span></div><nav class="cwm-quick-grid-v556" aria-label="Workshop quick access"><a href="/portal/dashboard?view=machines"><i>✓</i><b>CHECK UP</b><small>Daily checklist & reports</small><span>›</span></a><a href="/customer-job-card/"><i>🔧</i><b>JOB CARDS</b><small>Create & manage job cards</small><span>›</span></a><a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a><a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a><a href="/general-report/"><i>▥</i><b>REPORTS</b><small>All reports & analysis</small><span>›</span></a><a href="/customer-users/"><i>●●</i><b>USERS</b><small>Manage users & roles</small><span>›</span></a><a href="${openHref}"><i>⚙</i><b>OPEN WORKSHOP</b><small>Enter the full workshop portal</small><span>›</span></a></nav></section><footer class="cwm-home-footer-v556"><div><span class="cwm-footer-mark-v556">B</span><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div><p>Powering Performance.<br>Ensuring Reliability.</p><div class="cwm-footer-values-v556"><span>◈ Safety First</span><span>✓ Quality Work</span><span>⚙ On Time</span></div></footer></article>`;
+    return `<article class="cwm-home-v556" data-customer-card="${escapeHtml(customer.id || "self")}"><section class="cwm-home-hero-v556"><p class="cwm-home-kicker-v556"><span></span>WELCOME TO<span></span></p><h1>${escapeHtml(name.toUpperCase())} <em>WORKSHOP</em> PORTAL</h1><div class="cwm-company-details-v556"><div><i>●</i><span>ADDRESS</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><i>✉</i><span>EMAIL</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><i>☎</i><span>PHONE</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div></section><section class="cwm-message-display-v556 cwm-machine-alert-v610" aria-live="polite" data-alert-type="${escapeHtml(first.type || "info")}"><button type="button" data-cwm-message-prev aria-label="Previous machine alert">‹</button><div class="cwm-message-content-v556"><div class="cwm-alert-heading-v610"><span>⚠</span> MACHINE ALERTS</div><strong data-cwm-message-title>${escapeHtml(first.title || "MACHINE ALERT")}</strong><p data-cwm-message-text>${escapeHtml(first.text)}</p><small data-cwm-message-by>— ${escapeHtml(first.by)}</small><div class="cwm-message-dots-v556" data-cwm-message-dots></div></div><button type="button" data-cwm-message-next aria-label="Next machine alert">›</button></section><a class="cwm-open-workshop-v556 cwm-enter-role-v672" href="${escapeHtml(openHref)}" aria-label="Enter ${escapeHtml(roleEntry.label)} role"><span class="cwm-open-icon-v556">◎</span><span class="cwm-role-action-copy-v672"><small>MY ASSIGNED ROLE</small><b>ENTER ${escapeHtml(roleEntry.label.toUpperCase())}</b><em>${escapeHtml(roleEntry.note)}</em></span><span class="cwm-open-arrow-v556">→</span></a><section class="cwm-quick-v556"><div class="cwm-quick-title-v556"><span>QUICK ACCESS</span></div><nav class="cwm-quick-grid-v556" aria-label="Workshop quick access"><a href="/portal/dashboard?view=machines"><i>✓</i><b>CHECK UP</b><small>Daily checklist & reports</small><span>›</span></a><a href="/customer-job-card/"><i>🔧</i><b>JOB CARDS</b><small>Create & manage job cards</small><span>›</span></a><a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a><a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a><a href="/general-report/"><i>▥</i><b>REPORTS</b><small>All reports & analysis</small><span>›</span></a><a href="/customer-users/"><i>●●</i><b>USERS</b><small>Manage users & roles</small><span>›</span></a></nav></section><footer class="cwm-home-footer-v556"><div><span class="cwm-footer-mark-v556">B</span><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div><p>Powering Performance.<br>Ensuring Reliability.</p><div class="cwm-footer-values-v556"><span>◈ Safety First</span><span>✓ Quality Work</span><span>⚙ On Time</span></div></footer></article>`;
   }
 
   function setCustomerHomeChrome() {

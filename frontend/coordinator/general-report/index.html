@@ -15,31 +15,6 @@ button,.view-report,[data-view]{border-color:var(--belm-gold)!important}
 <header><a href="/coordinator/">← Coordinator</a><div><b>GENERAL REPORT</b><small>Coordinator report control center</small></div><span class="brand">BELM</span></header>
 <main><section class="hero"><div><p>COORDINATOR / REPORT CONTROL</p><h1>General Report & Analysis</h1><span>Controls report entry points and analysis tools. BELM and Customer operational data remain isolated.</span></div><div class="mark">▥</div></section>
 <section class="report-grid coordinator-internal-reports">
-<article class="coordinator-report-card" data-report-target="/coordinator/general-report/checklist-report/">
-  <div><i>☑</i><b>Checklist Report</b><span>Checked machine reports, findings, hour meter, status and inspector.</span></div>
-  <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
-  <button type="button" data-view>View Report</button>
-</article>
-<article class="coordinator-report-card" data-report-target="/reports-manager/?focus=operator">
-  <div><i>⚠</i><b>Operator Report</b><span>Operator alerts, daily reports and machine hand-over activity.</span></div>
-  <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
-  <button type="button" data-view>View Report</button>
-</article>
-<article class="coordinator-report-card" data-report-target="/reports-manager/?focus=fuel">
-  <div><i>⛽</i><b>Fuel Report</b><span>Machine fuel consumption, cost and period comparison.</span></div>
-  <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
-  <button type="button" data-view>View Report</button>
-</article>
-<article class="coordinator-report-card" data-report-target="/reports-manager/?focus=job-card">
-  <div><i>▤</i><b>Job Card Report</b><span>Job Card movement from issue and diagnosis through testing and completion.</span></div>
-  <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
-  <button type="button" data-view>View Report</button>
-</article>
-<article class="coordinator-report-card" data-report-target="/reports-manager/?focus=maintenance">
-  <div><i>⚙</i><b>Maintenance Report</b><span>Service status, maintenance work and technician performance.</span></div>
-  <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
-  <button type="button" data-view>View Report</button>
-</article>
 <article class="coordinator-report-card" data-report-target="/belm-procurement/">
   <div><i>🛒</i><b>Procurement Report</b><span>BELM purchasing, supplier, order, receipt and procurement performance records.</span></div>
   <div class="report-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div>
@@ -52,4 +27,4 @@ button,.view-report,[data-view]{border-color:var(--belm-gold)!important}
 </article>
 </section>
 <section class="rule"><b>🔒 DATA SEPARATION</b><p>Coordinator controls report structure, access and tools. BELM reports remain BELM-owned. Customer reports remain customer-owned unless a specific permission or service workflow shares them.</p></section></main>
-<script>try{const t=localStorage.getItem('belm_admin_token');if(!t)location.replace('/login')}catch(_){}document.querySelectorAll('.coordinator-report-card').forEach(card=>card.querySelector('[data-view]').onclick=()=>{const from=card.querySelector('[data-from]').value,to=card.querySelector('[data-to]').value;if(from&&to&&from>to){alert('From date cannot be after To date.');return}const target=card.dataset.reportTarget,u=new URL(target,location.origin);if(from)u.searchParams.set('dateFrom',from);if(to)u.searchParams.set('dateTo',to);window.open(u.pathname+u.search,'_blank','noopener')});</script></body></html>
+<script>try{const t=localStorage.getItem('belm_admin_token');if(!t)location.replace('/login')}catch(_){}document.querySelectorAll('.coordinator-report-card').forEach(card=>card.querySelector('[data-view]').onclick=()=>{const from=card.querySelector('[data-from]').value,to=card.querySelector('[data-to]').value;if(from&&to&&from>to){alert('From date cannot be after To date.');return}const target=card.dataset.reportTarget,u=new URL(target,location.origin);if(from)u.searchParams.set('dateFrom',from);if(to)u.searchParams.set('dateTo',to);location.href=u.pathname+u.search});</script></body></html>

@@ -2,9 +2,6 @@
  const token=localStorage.getItem('belm_admin_token')||'';
  if(!token){location.replace('/login');return;}
  const $=id=>document.getElementById(id);
- const initial=new URLSearchParams(location.search);
- $('from').value=initial.get('dateFrom')||'';
- $('to').value=initial.get('dateTo')||'';
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  let rows=[];
  async function api(path){const r=await fetch('/api'+path,{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch(_){}if(!r.ok)throw Error(d?.error||`Request failed (${r.status}).`);return d;}
@@ -23,24 +20,6 @@
      const url=`/tech-checked-report/?machineId=${encodeURIComponent(button.dataset.machineId)}&reportId=${encodeURIComponent(button.dataset.viewReport)}&source=coordinator&v=670`;
      window.open(url,'_blank','noopener');
    }));
- }
- function filteredRows(){
-   const from=$('from').value,to=$('to').value,machine=$('machine').value,status=$('status').value;
-   return rows.filter(r=>{const day=dateOnly(r.createdAt||r.created_at);if(from&&day<from)return false;if(to&&day>to)return false;if(machine&&r.machineId!==machine)return false;if(status&&String(r.overallStatus||'').toUpperCase()!==status)return false;return true;});
- }
- function dateSuffix(){return `${$('from').value||'all'}-to-${$('to').value||'latest'}`;}
- function downloadBlob(blob,filename){const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
- function exportCsv(){
-   const data=filteredRows();if(!data.length){alert('No checked reports to download for the selected period.');return;}
-   const lines=[['BELM CHECKLIST REPORT'],['From',$('from').value||'All time','To',$('to').value||'Latest'],[],['Date','Customer','Machine','Checklist','Filled By','Hour Meter','Status'],...data.map(r=>[dateTime(r.createdAt),r.customerName||'Customer',r.machineName||'Machine',r.checklistNo||r.templateName||'Checked Report',r.filledBy||'Not recorded',r.hourMeterReading??'',String(r.overallStatus||'GREEN').toUpperCase()])];
-   const csv=lines.map(line=>line.map(value=>`"${String(value??'').replace(/"/g,'""')}"`).join(',')).join('\n');
-   downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),`BELM-checklist-${dateSuffix()}.csv`);
- }
- async function downloadPdf(){
-   const machine=$('machine').value;if(!machine){alert('Select one machine before downloading PDF.');$('machine').focus();return;}
-   const params=new URLSearchParams();if($('from').value)params.set('from',$('from').value);if($('to').value)params.set('to',$('to').value);
-   const button=$('pdf');button.disabled=true;button.textContent='Preparing PDF…';
-   try{const response=await fetch(`/api/checklist-reports/machine/${encodeURIComponent(machine)}/history-pdf?${params}`,{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});if(!response.ok){const body=await response.json().catch(()=>({}));throw Error(body.error||'Could not prepare PDF.');}downloadBlob(await response.blob(),`BELM-checklist-${dateSuffix()}.pdf`);}catch(error){alert(error.message);}finally{button.disabled=false;button.textContent='Download PDF';}
  }
  async function load(){
    $('summary').textContent='Loading checked reports…';$('list').innerHTML='';
@@ -65,8 +44,5 @@
  }
  ['from','to','machine','status'].forEach(id=>$(id).addEventListener('change',render));
  $('refresh').addEventListener('click',load);
- $('print').addEventListener('click',()=>window.print());
- $('pdf').addEventListener('click',downloadPdf);
- $('csv').addEventListener('click',exportCsv);
  load();
 })();

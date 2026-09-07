@@ -41,6 +41,13 @@
     const text = await response.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch (_) {}
+    if (response.status === 401) {
+      localStorage.removeItem("belm_customer_token");
+      localStorage.removeItem("belm_session_refreshed_belm_customer_token");
+      if (localStorage.getItem("belm_active_account_type") === "customer") localStorage.removeItem("belm_active_account_type");
+      window.location.replace("/login");
+      throw new Error("Your customer session has expired.");
+    }
     if (!response.ok) throw new Error(data?.error || `Request failed (${response.status}).`);
     return data;
   }
@@ -147,6 +154,10 @@
     const brand = document.querySelector(".brand");
     brand?.setAttribute("href", "/portal-cwm/");
     if (brand) { const text = brand.querySelector("span:last-child"); if (text) text.innerHTML = 'BELM General Tech <small>PORTAL-CWM</small>'; }
+    const grid = document.getElementById("cwmCardGrid");
+    if (grid && !grid.querySelector("[data-customer-card]")) {
+      grid.innerHTML = '<section class="cwm-home-loading-v673" aria-live="polite"><span class="cwm-home-loader-v673"></span><strong>Opening Company Home…</strong><small>Loading your company, machine alerts and assigned role.</small></section>';
+    }
   }
 
   function wireMessageDisplay() {
@@ -223,5 +234,8 @@
     if (event.target.closest("[data-cwm-logout]")) logout();
   });
   document.getElementById("logoutButton")?.addEventListener("click", logout);
+  // Switch to the customer Home shell immediately so a slow API response can
+  // never expose the BELM Admin customer-list screen to a customer user.
+  if (isCustomerHome) setCustomerHomeChrome();
   load();
 })();

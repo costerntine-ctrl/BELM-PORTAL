@@ -44,11 +44,23 @@
   async function sync(){
     try{
       const customer=await loadCustomer();
-      const run=()=>apply(customer);
-      run();
-      const observer=new MutationObserver(run);
-      observer.observe(document.getElementById('cwmCardGrid')||document.body,{childList:true,subtree:true});
-      setTimeout(()=>observer.disconnect(),8000);
+      // Apply once now, then once more after the asynchronous Home card has
+      // been inserted. A MutationObserver previously changed the same subtree
+      // it was observing, creating a render feedback loop that could freeze
+      // the browser and trigger "This page isn't responding".
+      apply(customer);
+      if(!document.querySelector('.cwm-home-v556')){
+        let attempts=0;
+        const timer=setInterval(()=>{
+          attempts+=1;
+          if(document.querySelector('.cwm-home-v556')){
+            clearInterval(timer);
+            apply(customer);
+          }else if(attempts>=50){
+            clearInterval(timer);
+          }
+        },100);
+      }
     }catch(_){}
   }
 

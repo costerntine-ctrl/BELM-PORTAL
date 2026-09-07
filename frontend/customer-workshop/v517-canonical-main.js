@@ -66,10 +66,10 @@
   // Top-level CWM navigation must return to the approved Customer Dashboard
   // home card. Only internal Settings/Store Back buttons return to CWM Main.
   if(topBack){
-    topBack.href='/portal/dashboard';
-    topBack.setAttribute('aria-label','Back to Customer Dashboard');
+    topBack.href='/general-analysis/?module=workshop#workshop-analysis';
+    topBack.setAttribute('aria-label','Back to Role Activity');
   }
-  if(brandBack)brandBack.href='/portal/dashboard';
+  if(brandBack)brandBack.href='/general-analysis/?module=workshop#workshop-analysis';
 
   storeLink?.addEventListener('click',e=>{
     e.preventDefault();

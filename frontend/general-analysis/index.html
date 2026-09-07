@@ -1,42 +1,155 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>General Analysis — PORTAL-CWM</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit"><script src="/theme-manager.js?v=485-display-fit"></script>
-  <style>
-    *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#14243a;font-family:Inter,sans-serif}.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;background:#102a56;color:#fff}.topbar a,.topbar button{color:#fff;text-decoration:none}.topbar button{background:transparent;border:1px solid rgba(255,255,255,.4);padding:9px 12px;border-radius:10px}.shell{max-width:1220px;margin:0 auto;padding:22px}.hero{background:#0d4fa3;color:#fff;padding:22px;border-radius:18px;margin-bottom:16px}.hero h1{margin:4px 0}.hero p{margin:4px 0}.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}.kpi{background:#fff;border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(17,42,86,.07)}.kpi span{display:block;color:#64758b;font-size:12px;font-weight:700}.kpi strong{display:block;margin-top:7px;font-size:27px}.section-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.panel{background:#fff;border-radius:17px;padding:18px;box-shadow:0 8px 24px rgba(17,42,86,.07)}.panel h2{margin:0 0 5px}.panel p{margin:0 0 14px;color:#65768c}.rows{display:grid;gap:8px}.row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #edf1f6}.row:last-child{border-bottom:0}.row span{color:#617389}.quick-links{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;margin-top:12px}.quick-links a{display:block;text-decoration:none;text-align:center;background:#eef4fb;color:#174c88;padding:11px;border-radius:10px;font-weight:800}.alert{padding:12px 14px;border-radius:10px;background:#ffe8e8;color:#9d2020;margin-bottom:14px}.hidden{display:none!important}.attendance-panel{margin-top:16px}.attendance-summary{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.attendance-chip{padding:8px 11px;border-radius:999px;background:#eef4fb;font-weight:800}.attendance-chip.present{background:#e4f8ec;color:#08783d}.attendance-chip.absent{background:#fff1dc;color:#9a5b00}.attendance-table-wrap{overflow:auto}.attendance-table{width:100%;border-collapse:collapse;min-width:720px}.attendance-table th,.attendance-table td{text-align:left;padding:11px 10px;border-bottom:1px solid #edf1f6}.attendance-table th{font-size:11px;letter-spacing:.06em;color:#64758b}.status-present{color:#08783d;font-weight:800}.status-no-login{color:#9a5b00;font-weight:800}@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.section-grid{grid-template-columns:1fr}}@media(max-width:560px){.kpi-grid{grid-template-columns:1fr}.topbar{align-items:flex-start}.quick-links{grid-template-columns:1fr}}
-  </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#071a31">
+  <title>Role Activity — PORTAL-CWM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/theme-global.css?v=674-role-activity">
+  <link rel="stylesheet" href="/general-analysis/app.css?v=674-role-activity">
+  <script src="/theme-manager.js?v=674-role-activity"></script>
 </head>
 <body>
-<header class="topbar"><a href="/customer-workshop/?actor=customer">← Workshop Main</a><strong>PORTAL-CWM · GENERAL ANALYSIS</strong><div><button id="refreshButton" type="button">Refresh</button> <button id="logoutButton" type="button">Log out</button></div></header>
-<main class="shell">
-  <section class="hero"><p style="font-size:11px;font-weight:800;letter-spacing:.12em">COMPANY-WIDE OVERVIEW</p><h1 id="companyTitle">General Analysis</h1><p>High-level view of this customer company's workshop operation. Detailed work stays inside each department page.</p></section>
-  <div id="alertBox" class="alert hidden"></div>
-  <section class="kpi-grid"><article class="kpi"><span>REGISTERED MACHINES</span><strong id="machineCount">0</strong></article><article class="kpi"><span>ACTIVE TECHNICIANS</span><strong id="techCount">0</strong></article><article class="kpi"><span>PETTY CASH BALANCE</span><strong id="pettyBalance">TZS 0</strong></article><article class="kpi"><span>STORE STOCK ITEMS</span><strong id="storeCount">0</strong></article></section>
-  <section class="section-grid">
-    <article class="panel"><h2>Workshop & Maintenance</h2><p>Operational performance belongs to Workshop Analysis; General Analysis shows only the company-level position.</p><div class="rows"><div class="row"><span>Machines registered</span><b id="machinesRegistered">0</b></div><div class="row"><span>Technicians</span><b id="techniciansTotal">0</b></div><div class="row"><span>Active technicians</span><b id="techniciansActive">0</b></div></div><div class="quick-links"><a href="/workshop-analysis/">Workshop Analysis</a><a href="/customer-technicians/">Manage Technicians</a></div></article>
-    <article class="panel"><h2>Store & Procurement</h2><p>Stock health and procurement access without duplicating procurement actions here.</p><div class="rows"><div class="row"><span>Store items</span><b id="storeItems">0</b></div><div class="row"><span>Total quantity on hand</span><b id="storeQty">0</b></div><div class="row"><span>Out of stock</span><b id="storeOut">0</b></div></div><div class="quick-links"><a href="/customer-workshop/?actor=customer#cwm-store">Open Store</a><a href="/customer-procurement-home/">Procurement</a></div></article>
-    <article class="panel"><h2>Petty Cash</h2><p>Company cash float only; supplier purchasing stays in Procurement.</p><div class="rows"><div class="row"><span>Total funded</span><b id="pettyFunded">TZS 0</b></div><div class="row"><span>Total spent</span><b id="pettySpent">TZS 0</b></div><div class="row"><span>Transactions</span><b id="pettyTransactions">0</b></div></div><div class="quick-links"><a href="/customer-petty-cash/">Open Petty Cash</a></div></article>
-    <article class="panel"><h2>Team & Access</h2><p>Company users and role structure. Technician management remains separate from Role Manager.</p><div class="rows"><div class="row"><span>Total portal users</span><b id="userTotal">0</b></div><div class="row"><span>Active portal users</span><b id="userActive">0</b></div><div class="row"><span>Departments / roles</span><b id="departmentCount">0</b></div></div><div class="quick-links"><a href="/customer-users/">Roles & Users</a></div></article>
-  </section>
-  <section class="panel attendance-panel"><h2>Daily employee attendance</h2><p>Automatic from portal login activity. First login is check-in; no manual attendance entry.</p><div class="attendance-summary"><span class="attendance-chip present">Present <b id="attendancePresent">0</b></span><span class="attendance-chip absent">No login <b id="attendanceNoLogin">0</b></span><span class="attendance-chip">Total <b id="attendanceTotal">0</b></span><span class="attendance-chip" id="attendanceDate">Today</span></div><div class="attendance-table-wrap"><table class="attendance-table"><thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>First login / Check-in</th><th>Last login</th></tr></thead><tbody id="attendanceRows"><tr><td colspan="5">Loading login activity…</td></tr></tbody></table></div></section>
-</main>
-<script>
-(function(){
- const token=localStorage.getItem('belm_customer_token')||'';if(!token){location.replace('/login');return;}const money=new Intl.NumberFormat('en-TZ',{style:'currency',currency:'TZS',maximumFractionDigits:0});const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- async function api(path){const r=await fetch('/api/customer-portal'+path,{cache:'no-store',headers:{Authorization:'Bearer '+token}});const t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch(_){}if(!r.ok)throw new Error(d?.error||'Request failed.');return d;}async function attendanceApi(){const r=await fetch('/api/activity-log?scope=attendance&_='+Date.now(),{cache:'no-store',headers:{Authorization:'Bearer '+token}});const t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch(_){}if(!r.ok)throw new Error(d?.error||'Attendance failed.');return d;}
- function set(id,v){if($(id))$(id).textContent=v;}function fail(m){$('alertBox').textContent=m;$('alertBox').classList.remove('hidden');}function fmt(v){if(!v)return'—';try{return new Date(v).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}catch(_){return'—';}}
- async function load(){ $('alertBox').classList.add('hidden');const errors=[];
-  try{const d=await api('/dashboard'),c=d?.customer||{},machines=Array.isArray(d?.machines)?d.machines:[];set('companyTitle',(c.name||'Customer')+' General Analysis');set('machineCount',machines.length);set('machinesRegistered',machines.length);}catch(e){errors.push('Machines');}
-  try{const t=await api('/technicians'),arr=Array.isArray(t)?t:[];const active=arr.filter(x=>Boolean(x.isActive??x.is_active)).length;set('techCount',active);set('techniciansTotal',arr.length);set('techniciansActive',active);}catch(e){errors.push('Technicians');}
-  try{const s=await api('/store'),items=Array.isArray(s?.items)?s.items:[];const qty=items.reduce((a,x)=>a+Number(x.qty_on_hand??x.qtyOnHand??0),0),out=items.filter(x=>Number(x.qty_on_hand??x.qtyOnHand??0)<=0).length;set('storeCount',items.length);set('storeItems',items.length);set('storeQty',qty.toLocaleString('en-TZ'));set('storeOut',out);}catch(e){errors.push('Store');}
-  try{const p=await api('/petty-cash-account'),a=p?.account||{},sum=p?.summary||{};set('pettyBalance',money.format(Number(a.balance||0)));set('pettyFunded',money.format(Number(a.totalToppedUp||0)));set('pettySpent',money.format(Number(a.totalUsed||0)));set('pettyTransactions',Number(sum.recordCount||0).toLocaleString('en-TZ'));}catch(e){errors.push('Petty Cash');}
-  try{const u=await api('/users/analysis'),deps=Array.isArray(u?.departments)?u.departments:[];const total=deps.reduce((a,x)=>a+Number(x.total||0),0),active=deps.reduce((a,x)=>a+Number(x.active||0),0);set('userTotal',total);set('userActive',active);set('departmentCount',deps.filter(x=>Number(x.total||0)>0).length);}catch(e){errors.push('Users');}
-  try{const a=await attendanceApi(),rows=Array.isArray(a?.rows)?a.rows:[];set('attendancePresent',a.present||0);set('attendanceNoLogin',a.noLogin||0);set('attendanceTotal',a.total||0);set('attendanceDate',a.date||'Today');$('attendanceRows').innerHTML=rows.length?rows.map(x=>`<tr><td><strong>${esc(x.name)}</strong><br><small>${esc(x.email||'')}</small></td><td>${esc(String(x.role||'').replaceAll('_',' '))}</td><td class="${x.status==='PRESENT'?'status-present':'status-no-login'}">${x.status==='PRESENT'?'PRESENT':'NO LOGIN'}</td><td>${fmt(x.firstLogin)}</td><td>${fmt(x.lastLogin)}</td></tr>`).join(''):'<tr><td colspan="5">No portal users found.</td></tr>';}catch(e){errors.push('Attendance');$('attendanceRows').innerHTML='<tr><td colspan="5">Could not load login activity.</td></tr>';}
-  if(errors.length)fail('Some analysis sections could not load: '+errors.join(', ')+'.');}
- $('refreshButton').onclick=load;$('logoutButton').onclick=()=>{localStorage.removeItem('belm_customer_token');localStorage.removeItem('belm_session_refreshed_belm_customer_token');location.replace('/login');};load();
-})();
-</script></body></html>
+  <button id="roleMenuButton" class="role-menu-button" type="button" aria-label="Open Role Activity menu" aria-controls="roleSidebar" aria-expanded="false">☰</button>
+  <div id="roleMenuScrim" class="role-menu-scrim" hidden></div>
+
+  <aside id="roleSidebar" class="role-sidebar" aria-label="Role Activity navigation">
+    <a class="role-brand" href="/portal-cwm/">
+      <span class="role-brand-mark">B</span>
+      <span><b id="sidebarCompany">CUSTOMER</b><small>ROLE ACTIVITY</small></span>
+    </a>
+
+    <div class="role-user">
+      <span id="roleInitials">CU</span>
+      <div><b id="roleActor">Customer User</b><small id="roleName">Assigned role</small></div>
+    </div>
+
+    <div class="role-nav-title"><span>ROLE ACTIVITIES</span><b id="roleNavCount">0</b></div>
+    <nav id="roleNavigation">
+      <a href="#overview" data-role-item="overview" data-roles="all"><i class="blue">OV</i><span><b>Overview</b><small>Company position</small></span><strong>›</strong></a>
+      <a href="#workshop-analysis" data-role-item="workshop" data-roles="owner,admin,workshop_manager"><i class="yellow">WM</i><span><b>Workshop Activity</b><small>Jobs & technicians</small></span><strong>›</strong></a>
+      <a href="#procurement-analysis" data-role-item="procurement" data-roles="owner,admin,workshop_manager,store_keeper,procurement"><i class="yellow">PR</i><span><b>Procurement Analysis</b><small>Requests & shortage</small></span><strong>›</strong></a>
+      <a href="#store-analysis" data-role-item="store" data-roles="owner,admin,workshop_manager,store_keeper,procurement"><i class="green">SK</i><span><b>Store Keeper</b><small>Stock & issue control</small></span><strong>›</strong></a>
+      <a href="#finance-analysis" data-role-item="finance" data-roles="owner,admin,accounts"><i class="cyan">FN</i><span><b>Accounts / Finance</b><small>Funds & spending</small></span><strong>›</strong></a>
+      <a href="#operator-analysis" data-role-item="operator" data-roles="owner,admin,workshop_manager,operator"><i class="purple">OP</i><span><b>Operator & Machines</b><small>Fleet activity</small></span><strong>›</strong></a>
+      <a href="#team-analysis" data-role-item="roles" data-roles="owner,admin"><i class="blue">RL</i><span><b>Users & Roles</b><small>Access & attendance</small></span><strong>›</strong></a>
+      <a href="#general-reports" data-role-item="reports" data-roles="all"><i class="green">GR</i><span><b>General Reports</b><small>All report records</small></span><strong>›</strong></a>
+    </nav>
+
+    <div class="role-sidebar-actions">
+      <a href="/portal-cwm/">← Company Home</a>
+      <button id="themeButton" type="button">☾ Light / Dark</button>
+      <button id="logoutButton" type="button">Log out securely</button>
+    </div>
+  </aside>
+
+  <main class="role-main">
+    <header class="role-header">
+      <div>
+        <p>CUSTOMER WORKSHOP PORTAL</p>
+        <h1 id="companyTitle">Role Activity</h1>
+        <span id="roleSummary">Live activity for your assigned role.</span>
+      </div>
+      <div class="role-header-actions">
+        <a href="/portal-cwm/">Company Home</a>
+        <button id="refreshButton" type="button">↻ Refresh</button>
+      </div>
+    </header>
+
+    <div id="alertBox" class="role-alert" hidden role="status"></div>
+    <p id="syncLine" class="sync-line">Preparing Role Activity…</p>
+
+    <section id="overview" class="role-section">
+      <div class="section-heading"><div><p>LIVE COMPANY POSITION</p><h2>Role Activity Overview</h2></div><span>LIVE</span></div>
+      <div class="kpi-grid">
+        <article><span>REGISTERED MACHINES</span><strong id="machineCount">0</strong><small>Customer fleet records</small></article>
+        <article><span>ACTIVE TECHNICIANS</span><strong id="techCount">0</strong><small>Available technical team</small></article>
+        <article><span>OPEN PROCUREMENT</span><strong id="procurementOpenTop">0</strong><small>Requests needing action</small></article>
+        <article><span>STORE STOCK ITEMS</span><strong id="storeCount">0</strong><small>Tracked inventory lines</small></article>
+      </div>
+    </section>
+
+    <section class="analysis-grid">
+      <article id="workshop-analysis" class="analysis-card" data-section-roles="owner,admin,workshop_manager">
+        <div class="card-heading"><div><p>WORKSHOP MANAGER</p><h2>Workshop Activity</h2></div><i class="yellow">WM</i></div>
+        <div class="metric-rows">
+          <div><span>Machines registered</span><b id="machinesRegistered">0</b></div>
+          <div><span>Technicians</span><b id="techniciansTotal">0</b></div>
+          <div><span>Active technicians</span><b id="techniciansActive">0</b></div>
+        </div>
+        <div class="card-actions"><a href="/customer-workshop/?actor=customer">Open Workshop Control</a><a href="/workshop-analysis/">Detailed Analysis</a></div>
+      </article>
+
+      <article id="procurement-analysis" class="analysis-card featured-procurement" data-section-roles="owner,admin,workshop_manager,store_keeper,procurement">
+        <div class="card-heading"><div><p>PROCUREMENT ANALYSIS</p><h2>Purchasing & Shortage</h2></div><i class="yellow">PR</i></div>
+        <div class="metric-rows procurement-metrics">
+          <div><span>Open requests</span><b id="procurementOpen">0</b></div>
+          <div><span>Store shortage</span><b id="procurementShortage">0</b></div>
+          <div><span>Ordered</span><b id="procurementOrdered">0</b></div>
+          <div><span>Parts ready</span><b id="procurementReady">0</b></div>
+        </div>
+        <p id="procurementNote" class="card-note">Reading machine-linked Procurement requests…</p>
+        <div class="card-actions"><a href="/customer-procurement-home/">Open Procurement</a><a href="/general-report/report/?type=procurement">Procurement Report</a></div>
+      </article>
+
+      <article id="store-analysis" class="analysis-card" data-section-roles="owner,admin,workshop_manager,store_keeper,procurement">
+        <div class="card-heading"><div><p>STORE KEEPER</p><h2>Store & Spare Parts</h2></div><i class="green">SK</i></div>
+        <div class="metric-rows">
+          <div><span>Store items</span><b id="storeItems">0</b></div>
+          <div><span>Quantity on hand</span><b id="storeQty">0</b></div>
+          <div><span>Out of stock</span><b id="storeOut">0</b></div>
+        </div>
+        <div class="card-actions"><a href="/customer-store/">Open Customer Store</a><a href="/customer-procurement-home/">Send Shortage to Procurement</a></div>
+      </article>
+
+      <article id="finance-analysis" class="analysis-card" data-section-roles="owner,admin,accounts">
+        <div class="card-heading"><div><p>ACCOUNTS / FINANCE</p><h2>Workshop Funds</h2></div><i class="cyan">FN</i></div>
+        <div class="metric-rows">
+          <div><span>Current balance</span><b id="pettyBalance">TZS 0</b></div>
+          <div><span>Total funded</span><b id="pettyFunded">TZS 0</b></div>
+          <div><span>Total spent</span><b id="pettySpent">TZS 0</b></div>
+        </div>
+        <div class="card-actions"><a href="/customer-petty-cash/">Open Petty Cash</a><a href="/general-report/">Finance Reports</a></div>
+      </article>
+
+      <article id="operator-analysis" class="analysis-card" data-section-roles="owner,admin,workshop_manager,operator">
+        <div class="card-heading"><div><p>OPERATOR ACTIVITY</p><h2>Machines & Check Up</h2></div><i class="purple">OP</i></div>
+        <div class="metric-rows">
+          <div><span>Fleet machines</span><b id="operatorMachines">0</b></div>
+          <div><span>Active / working</span><b id="operatorActive">0</b></div>
+          <div><span>Needs attention</span><b id="operatorAttention">0</b></div>
+        </div>
+        <div class="card-actions"><a href="/portal/dashboard?view=machines">Open Assigned Machines</a><a href="/general-report/report/?type=operator">Operator Reports</a></div>
+      </article>
+
+      <article id="team-analysis" class="analysis-card" data-section-roles="owner,admin">
+        <div class="card-heading"><div><p>USERS & ACCESS</p><h2>Team Role Activity</h2></div><i class="blue">RL</i></div>
+        <div class="metric-rows">
+          <div><span>Total portal users</span><b id="userTotal">0</b></div>
+          <div><span>Active users</span><b id="userActive">0</b></div>
+          <div><span>Departments / roles</span><b id="departmentCount">0</b></div>
+        </div>
+        <div class="card-actions"><a href="/customer-users/">Manage Users & Roles</a></div>
+      </article>
+    </section>
+
+    <section id="general-reports" class="role-section reports-section">
+      <div class="section-heading"><div><p>GENERAL REPORTS</p><h2>Reports & Attendance</h2></div><a href="/general-report/">Open Report Centre →</a></div>
+      <div class="attendance-summary">
+        <span class="present">Present <b id="attendancePresent">0</b></span>
+        <span class="absent">No login <b id="attendanceNoLogin">0</b></span>
+        <span>Total <b id="attendanceTotal">0</b></span>
+        <span id="attendanceDate">Today</span>
+      </div>
+      <div class="table-wrap">
+        <table><thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>First login</th><th>Last login</th></tr></thead>
+        <tbody id="attendanceRows"><tr><td colspan="5">Loading role activity…</td></tr></tbody></table>
+      </div>
+    </section>
+  </main>
+  <script src="/general-analysis/app.js?v=674-role-activity"></script>
+</body>
+</html>

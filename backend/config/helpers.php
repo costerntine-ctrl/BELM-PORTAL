@@ -244,6 +244,9 @@ function belm_customer_service_mode(string $customerId): array {
     $selfService = !empty($stmt->fetchColumn());
     $provider = !$selfService || !$entitled;
     return [
+        'operatingMode' => $provider ? 'BELM_MANAGED' : 'CUSTOMER_MANAGED',
+        'operatingModeLabel' => $provider ? 'BELM Managed Service' : 'Customer Self-Managed Workshop',
+        'serviceOwner' => $provider ? 'BELM' : 'CUSTOMER',
         'technicianEntitled' => $entitled,
         'belmServiceProviderActive' => $provider,
         'customerSelfWorkshopActive' => $selfService && $entitled,
@@ -267,16 +270,24 @@ function belm_customer_registration_profile(?string $mode): array {
         'mode' => $normalized,
         // Historical DB flag: 1 means customer self-manages maintenance;
         // 0 means BELM is the active Service Provider.
-        // V14: every new customer starts with BELM as Service Provider until
-        // Coordinator grants Technician capability. PORTAL-CWM may still start
-        // with its Workshop module enabled; service ownership is separate.
-        'isMachineryAdmin' => 0,
+        // Registration mode is the source of truth from first login. A rented
+        // PORTAL-CWM workspace starts with the customer's own workshop team;
+        // a TECHNICAL_DEP account starts under BELM Managed Service.
+        'isMachineryAdmin' => $isPortalCwm ? 1 : 0,
         // Independent PORTAL-CWM customers receive the Workshop module from
         // registration. TECHNICAL_DEP remains controlled by BELM's module
         // switch, preserving the existing commercial gate.
         'workshopModuleActive' => $isPortalCwm ? 1 : 0,
         'belmServiceProviderActive' => !$isPortalCwm,
-        'label' => $isPortalCwm ? 'PORTAL-CWM' : 'TECHNICAL DEP',
+        'operatingMode' => $isPortalCwm ? 'CUSTOMER_MANAGED' : 'BELM_MANAGED',
+        'serviceOwner' => $isPortalCwm ? 'CUSTOMER' : 'BELM',
+        'coordinatorFeatures' => [
+            'invoiceSystem' => false,
+            'proformaSystem' => false,
+            'operatorDashboard' => true,
+            'technicianDashboard' => $isPortalCwm,
+        ],
+        'label' => $isPortalCwm ? 'Customer Self-Managed Workshop' : 'BELM Managed Service',
     ];
 }
 
@@ -299,6 +310,7 @@ function belm_customer_registration_sync_status(string $customerId): array {
     $belmOn = empty($row['is_machinery_admin']);
     $workshopOn = !empty($row['workshop_module_active']);
     $mode = (!$belmOn && $workshopOn) ? 'PORTAL_CWM' : 'TECHNICAL_DEP';
+    $operatingMode = $mode === 'PORTAL_CWM' ? 'CUSTOMER_MANAGED' : 'BELM_MANAGED';
     $portalReady = !empty($row['is_active']) && trim((string)$row['portal_link']) !== '';
 
     return [
@@ -306,7 +318,10 @@ function belm_customer_registration_sync_status(string $customerId): array {
         'customerId' => (string)$row['id'],
         'companyName' => (string)$row['name'],
         'registrationMode' => $mode,
-        'registrationModeLabel' => $mode === 'PORTAL_CWM' ? 'PORTAL-CWM' : 'TECHNICAL DEP',
+        'registrationModeLabel' => $mode === 'PORTAL_CWM' ? 'Customer Self-Managed Workshop' : 'BELM Managed Service',
+        'operatingMode' => $operatingMode,
+        'operatingModeLabel' => $operatingMode === 'CUSTOMER_MANAGED' ? 'Customer Self-Managed Workshop' : 'BELM Managed Service',
+        'serviceOwner' => $operatingMode === 'CUSTOMER_MANAGED' ? 'CUSTOMER' : 'BELM',
         'portalReady' => $portalReady,
         'belmServiceProviderActive' => $belmOn,
         'workshopModuleActive' => $workshopOn,

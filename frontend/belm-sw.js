@@ -1,6 +1,6 @@
-// BELM portal service worker — V617 force cache refresh.
+// BELM portal service worker — V680 professional two-mode release.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v617-force-refresh';
+const CACHE='belm-portal-v680-professional-two-mode';
 const SHELL=[
   '/customer-app.html?v=617-force-refresh',
   '/customer-app.css?v=617-force-refresh',

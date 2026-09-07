@@ -1,0 +1,189 @@
+/* ==========================================================================
+   CUSTOMER MACHINE SIDEBAR — V700 professional refresh
+   Restyled to share the same visual language as the BELM admin sidebar
+   (admin-sidebar.css): deep navy surface, single gold accent, letter-badge
+   icons instead of emoji, consistent radius/spacing/typography. Only the
+   look changes — structure, classes and behaviour are unchanged.
+   ========================================================================== */
+
+:root {
+  --cwm-side-navy: #0a111e;
+  --cwm-side-navy-soft: #101a2c;
+  --cwm-side-border: rgba(255, 255, 255, .08);
+  --cwm-side-text: #c3cddc;
+  --cwm-side-text-strong: #f3f6fb;
+  --cwm-side-text-muted: #7c879b;
+  --cwm-side-accent: #f0b429;
+  --cwm-side-green: #1ea866;
+}
+
+.cwm-machine-side {
+  position: fixed;
+  z-index: 850;
+  top: 76px;
+  bottom: 14px;
+  left: 14px;
+  width: 248px;
+  overflow-y: auto;
+  border: 1px solid var(--cwm-side-border);
+  border-radius: 16px;
+  background: linear-gradient(180deg, var(--cwm-side-navy-soft) 0%, var(--cwm-side-navy) 62%);
+  box-shadow: 12px 0 32px rgba(4, 8, 16, .22);
+  color: var(--cwm-side-text);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.cwm-machine-side-head {
+  padding: 17px 18px;
+  border-bottom: 1px solid var(--cwm-side-border);
+}
+.cwm-machine-side-head small {
+  display: block;
+  color: var(--cwm-side-text-muted);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.cwm-machine-side-head strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--cwm-side-text-strong);
+  font: 700 15.5px "Space Grotesk", Inter, system-ui, sans-serif;
+}
+
+.cwm-machine-side nav {
+  display: grid;
+  gap: 2px;
+  padding: 8px;
+}
+
+.cwm-machine-side a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 44px;
+  padding: 8px 14px 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: var(--cwm-side-text);
+  text-decoration: none;
+  font: 600 12.5px/1.3 Inter, system-ui, sans-serif;
+  transition: background-color .15s ease, color .15s ease;
+}
+.cwm-machine-side a:hover,
+.cwm-machine-side a:focus-visible {
+  color: var(--cwm-side-text-strong);
+  background: rgba(255, 255, 255, .06);
+  outline: none;
+}
+.cwm-machine-side a.is-active {
+  position: relative;
+  color: var(--cwm-side-text-strong);
+  font-weight: 700;
+  background: rgba(255, 255, 255, .055);
+}
+.cwm-machine-side a.is-active::before {
+  position: absolute;
+  inset: 8px auto 8px -1px;
+  width: 3px;
+  content: "";
+  border-radius: 0 4px 4px 0;
+  background: var(--cwm-side-accent);
+}
+.cwm-machine-side a[hidden] { display: none; }
+
+.cwm-machine-side i {
+  display: grid;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--cwm-side-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .03);
+  color: var(--cwm-side-text-muted);
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+.cwm-machine-side a:hover i {
+  color: var(--cwm-side-text-strong);
+  border-color: rgba(255, 255, 255, .18);
+}
+.cwm-machine-side a.is-active i {
+  color: #201705;
+  border-color: transparent;
+  background: var(--cwm-side-accent);
+}
+
+.cwm-machine-side-close,
+.cwm-machine-menu,
+.cwm-machine-shade { display: none; }
+
+body.cwm-machine-sidebar-ready #root {
+  margin-left: 276px;
+  transition: margin-left .2s ease;
+}
+
+@media (max-width: 900px) {
+  body.cwm-machine-sidebar-ready #root { margin-left: 0; }
+
+  .cwm-machine-menu {
+    display: inline-flex;
+    position: fixed;
+    z-index: 849;
+    left: 14px;
+    top: 88px;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 8px 14px;
+    border: 1px solid rgba(240, 180, 41, .55);
+    border-radius: 11px;
+    background: linear-gradient(145deg, var(--cwm-side-navy-soft), #05080f);
+    color: var(--cwm-side-text-strong);
+    font-weight: 700;
+    font-size: 12.5px;
+    box-shadow: 0 8px 22px rgba(4, 8, 16, .3);
+  }
+  .cwm-machine-menu b { color: var(--cwm-side-accent); font-size: 17px; }
+
+  .cwm-machine-side {
+    z-index: 1002;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(84vw, 288px);
+    border-radius: 0 16px 16px 0;
+    transform: translateX(-105%);
+    transition: transform .22s ease;
+  }
+  .cwm-machine-side.is-open { transform: translateX(0); }
+
+  .cwm-machine-side-close {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    right: 11px;
+    top: 11px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--cwm-side-border);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, .05);
+    color: var(--cwm-side-text-strong);
+    font-size: 18px;
+  }
+
+  .cwm-machine-shade {
+    position: fixed;
+    z-index: 1001;
+    inset: 0;
+    background: rgba(4, 7, 13, .65);
+    backdrop-filter: blur(2px);
+  }
+  .cwm-machine-shade.is-open { display: block; }
+}

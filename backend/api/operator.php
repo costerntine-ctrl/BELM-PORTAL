@@ -87,7 +87,7 @@ function operator_open_shift(string $operatorId): ?array {
 }
 
 function operator_machine_card_button_state(string $customerId, string $key): string {
-    $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled'];
+    $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled','handOverReport'=>'enabled'];
     $stmt = db()->prepare('SELECT coordinator_features FROM customers WHERE id=? AND deleted_at IS NULL LIMIT 1');
     $stmt->execute([$customerId]);
     $features = json_decode((string)($stmt->fetchColumn() ?: '{}'), true) ?: [];
@@ -181,7 +181,7 @@ if ($action === 'dashboard' && $method === 'GET') {
         ],
         'customerName' => (string)($machine['customer_name'] ?? ''),
         'machineCardButtons' => (function() use ($machine) {
-            $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled'];
+            $defaults = ['report'=>'enabled','checkup'=>'enabled','parts'=>'disabled','operationCard'=>'enabled','handOverReport'=>'enabled'];
             $features = json_decode((string)($machine['coordinator_features'] ?? '{}'), true) ?: [];
             $configured = $features['machineCardButtons']['operator'] ?? [];
             foreach ($defaults as $key => $state) {
@@ -447,6 +447,7 @@ if ($action === 'report' && $method === 'POST') {
 }
 
 if ($action === 'sign-out' && $method === 'POST') {
+    require_operator_machine_card_button((string)$payload['customerId'], 'handOverReport');
     $shift = operator_open_shift($operatorId);
     if (!$shift) json_error('No open shift to sign out of.', 422);
     $b = body();

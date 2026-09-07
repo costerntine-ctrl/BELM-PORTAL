@@ -1374,7 +1374,7 @@
   }
 
   function customerFaceProviderText(profile) {
-    return profile?.belmServiceProviderActive ? "BELM ON" : "BELM OFF";
+    return profile?.operatingModeLabel || (profile?.belmServiceProviderActive ? "BELM Managed Service" : "Customer Self-Managed Workshop");
   }
 
   async function installCustomerDashboardFace() {
@@ -1418,9 +1418,15 @@
           <div class="belm-customer-face-statuses">
             <span class="belm-customer-face-active-pill">Active</span>
             <span class="belm-customer-face-provider">${escapeHtml(customerFaceProviderText(profile))}</span>
-            <small class="belm-customer-face-provider-note">${profile?.belmServiceProviderActive ? "BELM Service Mode" : "Customer Workshop Mode"}</small>
+            <small class="belm-customer-face-provider-note">Service owner: ${profile?.belmServiceProviderActive ? "BELM" : escapeHtml(name)}</small>
           </div>
         </header>
+        <section class="belm-customer-operating-model ${profile?.belmServiceProviderActive ? "belm-managed" : "customer-managed"}">
+          <div><small>OPERATING MODEL</small><strong>${escapeHtml(customerFaceProviderText(profile))}</strong></div>
+          <p>${profile?.belmServiceProviderActive
+            ? "BELM Technical Department controls maintenance, Job Card assignment and BELM Technician work. Your company retains machine visibility, Operator records, approvals and permitted business modules."
+            : "Your company controls its workshop, Technicians, Operators, Store, Procurement and internal Job Cards. BELM receives work only when your authorized team sends an official support request."}</p>
+        </section>
         <section class="belm-customer-face-communication">
           <div class="belm-customer-face-communication-title">
             <strong>Communication<br>history</strong>

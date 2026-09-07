@@ -120,7 +120,7 @@
   function renderOperatorMachineDashboard(payload) {
     if (!dashboardRoot || !payload?.machine) return;
     const machine = payload.machine;
-    const buttonStates = { report: "enabled", checkup: "enabled", parts: "disabled", operationCard: "enabled", ...(payload.machineCardButtons || {}) };
+    const buttonStates = { report: "enabled", operationCard: "enabled", handOverReport: "enabled", ...(payload.machineCardButtons || {}) };
     const stateFor = (key) => ["enabled","disabled","hidden"].includes(String(buttonStates[key])) ? String(buttonStates[key]) : "enabled";
     const actionButton = (key, action, className, title, subtitle = "") => {
       const state = stateFor(key);
@@ -174,7 +174,7 @@
         <div class="op-quick-actions op-three-actions" aria-label="Operator quick actions">
           ${actionButton("report", "view-reports", "", "Report", "View Operator Reports")}
           ${actionButton("operationCard", "alert-report", "danger", "Alert Report", "Send issue to Workshop Manager")}
-          ${actionButton("report", "hand-over", "job", "Hand Over Report", "Time In, Time Out and comment")}
+          ${actionButton("handOverReport", "hand-over", "job", "Hand Over Report", "Time In, Time Out and comment")}
         </div>
       </section>
       <article class="op-machine-card status-${esc(condition.status.toLowerCase())}" data-operator-machine-id="${esc(machine.id)}">
@@ -233,7 +233,7 @@
         <div class="op-machine-actions op-three-actions" aria-label="Operator machine actions">
           ${cardButton("report", "view-reports", "report", "Report")}
           ${cardButton("operationCard", "alert-report", "checkup", "Alert Report")}
-          ${cardButton("report", "hand-over", "jobcard", "Hand Over Report")}
+          ${cardButton("handOverReport", "hand-over", "jobcard", "Hand Over Report")}
         </div>
       </article>`;
   }

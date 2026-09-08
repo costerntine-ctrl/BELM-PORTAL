@@ -1,16 +1,18 @@
-name: Repair portal-tools merge markers
+name: Apply BELM release bundle
 
 on:
   push:
+    branches: [main]
     paths:
-      - '.github/workflows/repair-portal-tools.yml'
+      - 'belm-release-v9.patch'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  repair:
+  apply-release:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
@@ -18,65 +20,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve accidental merge markers
+      - name: Apply reviewed BELM release
         shell: bash
         run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
+          set -euo pipefail
+          test -f belm-release-v9.patch
+          git apply --check --binary belm-release-v9.patch
+          git apply --binary belm-release-v9.patch
+          rm -f belm-release-v9.patch
 
-          path = Path('frontend/portal-tools.js')
-          text = path.read_text(encoding='utf-8')
-          original = text
-
-          pattern = re.compile(
-              r'^<<<<<<<[^\n]*\n'
-              r'((?:(?!^(?:<<<<<<<|=======|>>>>>>>)).*(?:\n|$))*)'
-              r'^=======\n'
-              r'((?:(?!^(?:<<<<<<<|=======|>>>>>>>)).*(?:\n|$))*)'
-              r'^>>>>>>>[^\n]*(?:\n|$)',
-              re.MULTILINE,
-          )
-
-          while any(marker in text for marker in ('<<<<<<<', '=======', '>>>>>>>')):
-              updated, count = pattern.subn(lambda m: m.group(1), text, count=1)
-              if count == 0:
-                  raise SystemExit('Unresolved or malformed conflict markers remain in portal-tools.js')
-              text = updated
-
-          if 'workflowButton.dataset.techJobcardsMachine' in text:
-              text = text.replace(
-                  'workflowButton.textContent = "Job Card";',
-                  'workflowButton.textContent = "Machine Job Cards";'
-              )
-
-          if text != original:
-              path.write_text(text, encoding='utf-8')
-              print('portal-tools.js repaired')
-          else:
-              print('portal-tools.js already clean')
-          PY
-
-      - name: Validate JavaScript and API router
+      - name: Validate JavaScript
         shell: bash
         run: |
-          node --check frontend/portal-tools.js
-          if grep -nE '^(<<<<<<<|=======|>>>>>>>)' frontend/portal-tools.js backend/index.php; then
-            echo 'Merge markers still present' >&2
-            exit 1
-          fi
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find frontend -type f -name '*.js' -print0)
 
-      - name: Commit repair
+      - name: Commit reviewed release
         shell: bash
         run: |
-          if git diff --quiet -- frontend/portal-tools.js; then
-            echo 'No repair commit needed.'
-            exit 0
-          fi
-          git config user.name 'BELM Portal Repair Bot'
+          set -euo pipefail
+          git config user.name 'BELM Portal Release Bot'
           git config user.email 'actions@users.noreply.github.com'
-          git add frontend/portal-tools.js
-          git commit -m 'Fix portal-tools merge conflict and restore technician cards'
+          git add -A
+          git commit -m 'Unify role sidebars and prevent duplicate records'
           git push origin HEAD:main
-
-# Trigger refresh 2026-09-03

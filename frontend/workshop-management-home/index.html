@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071a31">
-  <title>BELM Multi-Role Analysis</title>
+  <title>BELM Role Activity & Analysis</title>
   <link rel="icon" href="/app-icon-192.png">
   <link rel="apple-touch-icon" href="/app-icon-192.png">
   <link rel="manifest" href="/belm-app.webmanifest">
   <link rel="stylesheet" href="/theme-global.css?v=671-multi-role-dashboard">
   <script src="/theme-manager.js?v=671-multi-role-dashboard"></script>
-  <link rel="stylesheet" href="/workshop-management-home/home.css?v=671-multi-role-dashboard">
+  <link rel="stylesheet" href="/workshop-management-home/home.css?v=679-role-activity-menu">
 </head>
 <body>
   <button id="menuButton" class="mobile-menu-button" type="button" aria-label="Open dashboard menu" aria-controls="dashboardSidebar" aria-expanded="false">☰</button>
   <div id="menuScrim" class="menu-scrim" hidden></div>
 
-  <aside id="dashboardSidebar" class="dashboard-sidebar" aria-label="BELM role and department navigation">
+  <aside id="dashboardSidebar" class="dashboard-sidebar" aria-label="Selected BELM role activity menu">
     <a class="sidebar-brand" href="/workshop-management-home/" aria-label="BELM dashboard home">
       <span class="sidebar-logo"><img src="/app-icon-192.png" alt=""></span>
       <span><strong>BELM</strong><small>OPERATIONS PLATFORM</small></span>
@@ -27,38 +27,9 @@
       <span class="signed-copy"><strong id="signedUserName">BELM User</strong><small id="signedUserPrimaryRole">Assigned role</small></span>
     </div>
 
-    <div class="sidebar-heading"><span>ROLE WORKSPACES</span><b id="visibleModuleCount">0</b></div>
-    <nav id="roleNavigation" class="role-navigation">
-      <button class="role-nav active" type="button" data-module="overview" data-page-key="overview">
-        <span class="role-nav-icon blue">OV</span><span><b>Overview</b><small>All-role position</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="procurement" data-page-key="spare-parts">
-        <span class="role-nav-icon yellow">PR</span><span><b>Procurement</b><small>Purchasing & shortage</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="store" data-page-key="spare-parts">
-        <span class="role-nav-icon green">SK</span><span><b>Store Keeper</b><small>Stock & issue control</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="bank" data-super-admin="true">
-        <span class="role-nav-icon cyan">BC</span><span><b>Bank Control</b><small>Protected balances</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="registration" data-page-key="customers">
-        <span class="role-nav-icon purple">RS</span><span><b>Registration & Sales</b><small>Customers & invoicing</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="finance" data-page-key="billing">
-        <span class="role-nav-icon blue">FN</span><span><b>Finance</b><small>Revenue & expenses</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="technician" data-page-key="roles">
-        <span class="role-nav-icon green">TC</span><span><b>Technician</b><small>People & workload</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="workshop" data-any-page-key="job-cards,customers">
-        <span class="role-nav-icon yellow">WM</span><span><b>Workshop Manager</b><small>Job Card control</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="reports" data-page-key="reports">
-        <span class="role-nav-icon cyan">GR</span><span><b>General Report</b><small>Reports & comparison</small></span><i>›</i>
-      </button>
-      <button class="role-nav" type="button" data-module="roles" data-page-key="roles">
-        <span class="role-nav-icon purple">RL</span><span><b>Roles</b><small>Access & responsibility</small></span><i>›</i>
-      </button>
+    <div class="sidebar-heading"><span id="sidebarRoleTitle">ROLE ACTIVITY</span><b id="visibleModuleCount">0</b></div>
+    <nav id="roleNavigation" class="role-navigation" aria-label="Role activity menu">
+      <div class="sidebar-nav-loading">Preparing role menu…</div>
     </nav>
 
     <details class="portal-switcher">
@@ -93,11 +64,14 @@
 
     <section class="analysis-toolbar" aria-labelledby="moduleTitle">
       <div>
-        <p id="moduleEyebrow" class="eyebrow">ALL DEPARTMENTS</p>
-        <h2 id="moduleTitle">Multi-Role Analysis</h2>
-        <p id="moduleDescription">A live management view across BELM roles, people, machines and finance.</p>
+        <p id="moduleEyebrow" class="eyebrow">BELM SUPER ADMIN</p>
+        <h2 id="moduleTitle">Super Admin Operations Analysis</h2>
+        <p id="moduleDescription">Company-wide approvals, users, operations and performance under Super Admin control.</p>
       </div>
       <div class="toolbar-actions">
+        <label id="roleSelectWrap" hidden>Role activity
+          <select id="roleSelect" aria-label="Choose BELM role activity"></select>
+        </label>
         <label>Analysis period
           <select id="periodSelect">
             <option value="today">Today</option>
@@ -135,9 +109,9 @@
       <div id="activityBody" class="activity-body"><div class="loading-state">Loading latest records…</div></div>
     </section>
 
-    <footer class="dashboard-footer"><span>© BELM General Tech Service Ltd</span><span>Multi-Role Operations Dashboard</span></footer>
+    <footer class="dashboard-footer"><span>© BELM General Tech Service Ltd</span><span>Role Operations & Analysis</span></footer>
   </main>
 
-  <script src="/workshop-management-home/home.js?v=671-multi-role-dashboard"></script>
+  <script src="/workshop-management-home/home.js?v=679-role-activity-menu"></script>
 </body>
 </html>

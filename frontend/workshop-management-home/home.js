@@ -38,9 +38,9 @@
 
   const modules = {
     overview: {
-      eyebrow: "ALL DEPARTMENTS",
-      title: "Multi-Role Analysis",
-      description: "A live management view across BELM roles, people, machines and finance.",
+      eyebrow: "BELM SUPER ADMIN",
+      title: "Super Admin Operations Analysis",
+      description: "Company-wide approvals, users, operations and performance under Super Admin control.",
       href: "/overview-manager/",
       action: "Open detailed analysis →",
       secondary: "/reports-manager/",
@@ -109,6 +109,15 @@
       secondary: "/workshop-analysis/?actor=admin",
       secondaryLabel: "Workshop analysis →",
     },
+    coordinator: {
+      eyebrow: "SYSTEM COORDINATOR",
+      title: "System Coordination Analysis",
+      description: "Portal access, customer controls, service-provider settings and system communications.",
+      href: "/coordinator/",
+      action: "Open System Coordinator →",
+      secondary: "/settings-manager/",
+      secondaryLabel: "System settings →",
+    },
     reports: {
       eyebrow: "GENERAL REPORT",
       title: "General Report Centre",
@@ -129,7 +138,127 @@
     },
   };
 
+  const roleWorkspaces = {
+    superadmin: {
+      label: "BELM Super Admin",
+      menuTitle: "SUPER ADMIN MENU",
+      module: "overview",
+      menu: [
+        { code: "CO", label: "Company Overview", note: "Live business position", href: "/overview-manager/", tone: "blue" },
+        { code: "AP", label: "Approvals", note: "Customer and access requests", href: "/admin-applications/", tone: "yellow" },
+        { code: "UR", label: "Users & Roles", note: "People, permissions and access", href: "/roles-manager/", tone: "green" },
+        { code: "GR", label: "General Reports", note: "Company reports and comparisons", href: "/reports-manager/", tone: "cyan" },
+        { code: "AN", label: "General Analysis", note: "Super Admin performance analysis", analysis: true, tone: "purple" },
+        { code: "ST", label: "System Settings", note: "Company and portal settings", href: "/settings-manager/", tone: "yellow" },
+      ],
+    },
+    workshop: {
+      label: "Workshop Manager / Technical Dep",
+      menuTitle: "WORKSHOP MANAGER MENU",
+      module: "workshop",
+      menu: [
+        { code: "CM", label: "Customer Machines", note: "Customer fleet and machine records", href: "/customers-manager/?from=role-activity", tone: "blue" },
+        { code: "JC", label: "Open Job Cards", note: "Receive, assign and follow work", href: "/breakdown-workflow/?actor=admin&view=job-cards", tone: "yellow" },
+        { code: "TC", label: "Manage Technicians", note: "Assignment and workload", href: "/roles-manager/?role=Technician&technical=1", tone: "green" },
+        { code: "SP", label: "Store & Spares", note: "Parts needed for repair", href: "/spare-parts-manager/?from=role-activity", tone: "cyan" },
+        { code: "RP", label: "Workshop Reports", note: "Repair, testing and completion records", href: "/reports-manager/?section=workshop", tone: "purple" },
+        { code: "AN", label: "Workshop Analysis", note: "Technical Department performance", analysis: true, tone: "yellow" },
+      ],
+    },
+    technician: {
+      label: "Technician",
+      menuTitle: "TECHNICIAN MENU",
+      module: "technician",
+      menu: [
+        { code: "JC", label: "Assigned Job Cards", note: "Work allocated to Technician", href: "/tech", tone: "blue" },
+        { code: "DG", label: "Diagnosis & Repair", note: "Findings and repair progress", href: "/tech", tone: "yellow" },
+        { code: "SP", label: "Spare Requests", note: "Parts required for active jobs", href: "/tech", tone: "cyan" },
+        { code: "TS", label: "Testing & Completion", note: "Test results and Job Card closing", href: "/tech", tone: "green" },
+        { code: "RP", label: "Technician Reports", note: "Completed work and service records", href: "/reports-manager/?section=technician", tone: "purple" },
+        { code: "AN", label: "Performance Analysis", note: "Technician workload and completion", analysis: true, tone: "green" },
+      ],
+    },
+    procurement: {
+      label: "Procurement",
+      menuTitle: "PROCUREMENT MENU",
+      module: "procurement",
+      menu: [
+        { code: "PS", label: "Purchase Spare Parts", note: "Buy Job Card and Store shortages", href: "/belm-workshop/#procurement", tone: "yellow" },
+        { code: "PR", label: "Purchase Records", note: "Purchased parts, costs and suppliers", href: "/belm-workshop/#procurement", tone: "blue" },
+        { code: "PI", label: "Pending Proformas", note: "Purchases waiting for Accounts / PI", href: "/billing-manager/?tab=proformas&status=pending&source=procurement", tone: "purple" },
+        { code: "RP", label: "Purchase Reports", note: "Procurement records and audit trail", href: "/reports-manager/?section=procurement", tone: "cyan" },
+        { code: "AN", label: "Department Analysis", note: "Shortage, purchasing and suppliers", analysis: true, tone: "green" },
+      ],
+    },
+    store: {
+      label: "Store Keeper",
+      menuTitle: "STORE KEEPER MENU",
+      module: "store",
+      menu: [
+        { code: "ST", label: "Spare Parts Stock", note: "Current balance and item records", href: "/spare-parts-manager/", tone: "blue" },
+        { code: "RC", label: "Receive Purchased Stock", note: "Receive Procurement deliveries", href: "/spare-parts-manager/?view=receive", tone: "green" },
+        { code: "IS", label: "Issue Parts & Tools", note: "Issue and return controls", href: "/spare-parts-manager/?view=issue", tone: "yellow" },
+        { code: "LS", label: "Low Stock & Shortage", note: "Reorder and Procurement handover", href: "/spare-parts-manager/?view=shortage", tone: "cyan" },
+        { code: "RP", label: "Store Reports", note: "Stock movement and audit records", href: "/reports-manager/?section=store", tone: "purple" },
+        { code: "AN", label: "Store Analysis", note: "Inventory value and stock risks", analysis: true, tone: "green" },
+      ],
+    },
+    registration: {
+      label: "Registration & Sales",
+      menuTitle: "REGISTRATION & SALES",
+      module: "registration",
+      menu: [
+        { code: "AP", label: "Customer Applications", note: "New registrations and approvals", href: "/admin-applications/", tone: "yellow" },
+        { code: "CM", label: "Customer Records", note: "Companies, contacts and machines", href: "/customers-manager/", tone: "blue" },
+        { code: "SR", label: "Service Requests", note: "Customer work enquiries", href: "/service-request-manager/", tone: "green" },
+        { code: "QT", label: "Quotations & Proformas", note: "Commercial offers to customers", href: "/billing-manager/?tab=proformas", tone: "purple" },
+        { code: "RP", label: "Sales Reports", note: "Registrations and invoiced sales", href: "/reports-manager/?section=sales", tone: "cyan" },
+        { code: "AN", label: "Department Analysis", note: "Growth, approvals and sales", analysis: true, tone: "green" },
+      ],
+    },
+    finance: {
+      label: "Finance / Accounts",
+      menuTitle: "FINANCE / ACCOUNTS",
+      module: "finance",
+      menu: [
+        { code: "IN", label: "Invoices & Proformas", note: "Prepare commercial documents", href: "/billing-manager/", tone: "blue" },
+        { code: "PY", label: "Payments & Receipts", note: "Money received and balances", href: "/billing-manager/?tab=payments", tone: "green" },
+        { code: "EX", label: "Expenses & VAT", note: "Business costs and tax position", href: "/billing-manager/?tab=expenses", tone: "yellow" },
+        { code: "PC", label: "Petty Cash", note: "Workshop internal cash records", href: "/belm-workshop/petty-cash/", tone: "purple" },
+        { code: "RP", label: "Finance Reports", note: "Revenue, expenses and comparison", href: "/reports-manager/?section=finance", tone: "cyan" },
+        { code: "AN", label: "Finance Analysis", note: "Profit, loss and outstanding balance", analysis: true, tone: "green" },
+      ],
+    },
+    bank: {
+      label: "Bank Controller",
+      menuTitle: "BANK CONTROLLER MENU",
+      module: "bank",
+      menu: [
+        { code: "BL", label: "Bank Balances", note: "Protected account position", href: "/bank-controller/", tone: "blue" },
+        { code: "DP", label: "Deposits", note: "Record and review deposits", href: "/bank-controller/?view=deposits", tone: "green" },
+        { code: "WD", label: "Withdrawals", note: "Protected withdrawal control", href: "/bank-controller/?view=withdrawals", tone: "yellow" },
+        { code: "TR", label: "Transaction Records", note: "Bank movement and approvals", href: "/bank-controller/?view=transactions", tone: "cyan" },
+        { code: "RP", label: "Bank Reports", note: "Account and transaction reports", href: "/reports-manager/?section=bank", tone: "purple" },
+        { code: "AN", label: "Bank Analysis", note: "Cash position and bank movement", analysis: true, tone: "green" },
+      ],
+    },
+    coordinator: {
+      label: "System Coordinator",
+      menuTitle: "SYSTEM COORDINATOR",
+      module: "coordinator",
+      menu: [
+        { code: "PA", label: "Portal Access", note: "BELM and customer portal control", href: "/coordinator/", tone: "blue" },
+        { code: "CA", label: "Customer Access", note: "Customer modules and permissions", href: "/coordinator/#machine-card-button-controller", tone: "green" },
+        { code: "UR", label: "Roles & Users", note: "Staff access and responsibility", href: "/roles-manager/", tone: "yellow" },
+        { code: "SP", label: "Service Provider Settings", note: "BELM-to-customer operating rules", href: "/settings-manager/", tone: "cyan" },
+        { code: "NT", label: "Notifications & Activity", note: "Channels, alerts and system history", href: "/admin/activity-log", tone: "purple" },
+        { code: "AN", label: "System Analysis", note: "Access, users and portal performance", analysis: true, tone: "green" },
+      ],
+    },
+  };
+
   const state = {
+    activeRole: "superadmin",
     activeModule: "overview",
     overview: null,
     bank: null,
@@ -169,26 +298,65 @@
     }).format(new Date());
   }
 
-  function configureNavigation() {
-    const buttons = [...document.querySelectorAll(".role-nav")];
-    buttons.forEach((button) => {
-      const exact = button.dataset.pageKey;
-      const any = String(button.dataset.anyPageKey || "").split(",").filter(Boolean);
-      const visible = button.dataset.superAdmin === "true"
-        ? isSuperAdmin
-        : exact ? hasPage(exact) : any.length ? any.some(hasPage) : true;
-      button.hidden = !visible;
-      button.addEventListener("click", () => selectModule(button.dataset.module));
-    });
-    const visibleButtons = buttons.filter((button) => !button.hidden);
-    $("visibleModuleCount").textContent = visibleButtons.length;
+  function roleKeyFromName(name) {
+    const value = String(name || "").toLowerCase();
+    if (/super admin|belm admin|administrator/.test(value)) return "superadmin";
+    if (/workshop manager|engineer|technical dep/.test(value)) return "workshop";
+    if (/technician/.test(value)) return "technician";
+    if (/procurement/.test(value)) return "procurement";
+    if (/store keeper|storekeeper/.test(value)) return "store";
+    if (/registration|sales/.test(value)) return "registration";
+    if (/finance|accounts|accountant/.test(value)) return "finance";
+    if (/bank control/.test(value)) return "bank";
+    if (/coordinator/.test(value)) return "coordinator";
+    return "";
+  }
 
-    const requested = new URLSearchParams(location.search).get("module")
-      || localStorage.getItem("belm_management_active_module")
-      || "overview";
-    const requestedButton = visibleButtons.find((button) => button.dataset.module === requested);
-    state.activeModule = (requestedButton || visibleButtons[0])?.dataset.module || "overview";
-    buttons.forEach((button) => button.classList.toggle("active", button.dataset.module === state.activeModule));
+  function availableRoleKeys() {
+    if (isSuperAdmin) return Object.keys(roleWorkspaces);
+    const assigned = roleNames.map(roleKeyFromName).filter(Boolean);
+    if (assigned.length) return [...new Set(assigned)];
+    if (hasPage("billing")) return ["finance"];
+    if (hasPage("spare-parts")) return ["store"];
+    if (hasPage("customers")) return ["registration"];
+    return ["workshop"];
+  }
+
+  function renderRoleMenu() {
+    const workspace = roleWorkspaces[state.activeRole] || roleWorkspaces.superadmin;
+    const analysisHref = `/workshop-management-home/?role=${encodeURIComponent(state.activeRole)}`;
+    $("sidebarRoleTitle").textContent = workspace.menuTitle;
+    $("visibleModuleCount").textContent = workspace.menu.length;
+    $("roleNavigation").setAttribute("aria-label", `${workspace.label} activity menu`);
+    $("roleNavigation").innerHTML = workspace.menu.map((item) => `
+      <a class="role-nav${item.analysis ? " active" : ""}" href="${escapeHtml(item.analysis ? analysisHref : item.href)}"${item.analysis ? ' aria-current="page" data-analysis-link="true"' : ""}>
+        <span class="role-nav-icon ${escapeHtml(item.tone || "blue")}">${escapeHtml(item.code)}</span>
+        <span><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.note)}</small></span><i>›</i>
+      </a>`).join("");
+    $("roleNavigation").querySelector('[data-analysis-link="true"]')?.addEventListener("click", (event) => {
+      event.preventDefault();
+      closeMenu();
+    });
+  }
+
+  function configureNavigation() {
+    const keys = availableRoleKeys();
+    const params = new URLSearchParams(location.search);
+    const legacyModule = params.get("module");
+    const legacyRole = Object.keys(roleWorkspaces).find((key) => roleWorkspaces[key].module === legacyModule);
+    const requested = params.get("role")
+      || legacyRole
+      || localStorage.getItem("belm_management_active_role")
+      || roleKeyFromName(primaryRole)
+      || keys[0];
+    state.activeRole = keys.includes(requested) ? requested : keys[0];
+    state.activeModule = roleWorkspaces[state.activeRole].module;
+
+    const selector = $("roleSelect");
+    selector.innerHTML = keys.map((key) => `<option value="${escapeHtml(key)}">${escapeHtml(roleWorkspaces[key].label)}</option>`).join("");
+    selector.value = state.activeRole;
+    $("roleSelectWrap").hidden = keys.length < 2;
+    renderRoleMenu();
   }
 
   function closeMenu() {
@@ -502,6 +670,28 @@
     ]));
   }
 
+  function renderCoordinator(data) {
+    const totals = data.totals || {};
+    setMetrics([
+      { label: "System users", value: n(totals.employees), note: "BELM staff accounts", tone: "blue" },
+      { label: "Active users", value: n(totals.activeEmployees), note: "Enabled portal access", tone: "green" },
+      { label: "Customer accounts", value: n(totals.customers), note: "Connected companies", tone: "cyan" },
+      { label: "Pending approvals", value: n(totals.pendingApplications), note: "Applications awaiting review", tone: totals.pendingApplications ? "yellow" : "green" },
+    ]);
+    setPrimary("SYSTEM COORDINATION", "Portal access and service controls", workspaceCards([
+      { title: "Coordinator Home", note: "Manage BELM and customer portal controls.", href: "/coordinator/" },
+      { title: "Roles & Users", note: "Review staff access and role responsibility.", href: "/roles-manager/" },
+      { title: "System Settings", note: "Manage service-provider and portal settings.", href: "/settings-manager/" },
+      { title: "Activity Log", note: "Review recent system and user actions.", href: "/admin/activity-log" },
+    ]), "SYSTEM CONTROL");
+    setAttention([
+      { code: "AP", label: "Pending applications", note: "Customer access awaiting approval", value: n(totals.pendingApplications), tone: totals.pendingApplications ? "warning" : "", href: "/admin-applications/" },
+      { code: "US", label: "Active BELM users", note: "Enabled system accounts", value: n(totals.activeEmployees), href: "/roles-manager/" },
+      { code: "ST", label: "Portal settings", note: "Service-provider and system configuration", value: "›", href: "/settings-manager/" },
+    ]);
+    setActivity("Recent system activity", activityHtml(data.recentActivities || []));
+  }
+
   function renderReports(data) {
     setMetrics([
       { label: "Sales invoiced", value: m(data.finance?.sales), note: data.period?.label || "Selected period", tone: "blue" },
@@ -544,7 +734,7 @@
   function renderUnavailable() {
     setMetrics([
       { label: "Your role", value: roleNames.join(" / "), note: "Signed-in BELM responsibility", tone: "green" },
-      { label: "Visible modules", value: $("visibleModuleCount").textContent, note: "Based on role permissions", tone: "blue" },
+      { label: "Role menu items", value: $("visibleModuleCount").textContent, note: "Operations assigned to this role", tone: "blue" },
       { label: "Live analysis", value: "Restricted", note: "Overview permission is required", tone: "yellow" },
       { label: "Data safety", value: "Preserved", note: "No operational record was changed", tone: "cyan" },
     ]);
@@ -558,6 +748,7 @@
 
   function updateModuleHeader() {
     const config = modules[state.activeModule] || modules.overview;
+    const workspace = roleWorkspaces[state.activeRole] || roleWorkspaces.superadmin;
     $("moduleEyebrow").textContent = config.eyebrow;
     $("moduleTitle").textContent = config.title;
     $("moduleDescription").textContent = config.description;
@@ -565,7 +756,7 @@
     $("openWorkspaceButton").textContent = config.action;
     $("secondaryWorkspaceLink").href = config.secondary;
     $("secondaryWorkspaceLink").textContent = config.secondaryLabel;
-    document.title = `${config.title} — BELM`;
+    document.title = `${workspace.label} Activity — BELM`;
   }
 
   function render() {
@@ -582,6 +773,7 @@
     else if (state.activeModule === "finance") renderFinance(data);
     else if (state.activeModule === "technician") renderTechnician(data);
     else if (state.activeModule === "workshop") renderWorkshop(data, state.jobs);
+    else if (state.activeModule === "coordinator") renderCoordinator(data);
     else if (state.activeModule === "reports") renderReports(data);
     else if (state.activeModule === "roles") renderRoles(data);
     else renderOverview(data);
@@ -589,7 +781,8 @@
     const label = data.period?.label || "Selected period";
     const dateRange = data.period?.from && data.period?.to ? ` · ${data.period.from} → ${data.period.to}` : "";
     const synced = state.lastSynced ? state.lastSynced.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "now";
-    $("syncLine").textContent = `LIVE DATA · ${label}${dateRange} · synchronized ${synced}`;
+    const workspace = roleWorkspaces[state.activeRole] || roleWorkspaces.superadmin;
+    $("syncLine").textContent = `${workspace.label.toUpperCase()} · LIVE DATA · ${label}${dateRange} · synchronized ${synced}`;
   }
 
   async function ensureSupplement(module, force = false) {
@@ -639,26 +832,19 @@
     }
   }
 
-  async function selectModule(module) {
-    if (!modules[module] || module === state.activeModule) { closeMenu(); return; }
-    state.activeModule = module;
-    document.querySelectorAll(".role-nav").forEach((button) => button.classList.toggle("active", button.dataset.module === module));
-    localStorage.setItem("belm_management_active_module", module);
+  async function selectRole(role) {
+    if (!roleWorkspaces[role] || role === state.activeRole) { closeMenu(); return; }
+    state.activeRole = role;
+    state.activeModule = roleWorkspaces[role].module;
+    localStorage.setItem("belm_management_active_role", role);
+    localStorage.removeItem("belm_management_active_module");
     const url = new URL(location.href);
-    url.searchParams.set("module", module);
+    url.searchParams.set("role", role);
+    url.searchParams.delete("module");
     history.replaceState({}, "", url);
     closeMenu();
-    updateModuleHeader();
-    if ((module === "bank" && !state.bank) || (module === "workshop" && !state.jobs)) {
-      setLoading();
-      try {
-        await ensureSupplement(module);
-      } catch (error) {
-        $("dashboardAlert").textContent = error.message;
-        $("dashboardAlert").hidden = false;
-      }
-    }
-    render();
+    renderRoleMenu();
+    await load(true);
   }
 
   function updateThemeButton() {
@@ -673,6 +859,7 @@
     $("menuButton").setAttribute("aria-expanded", String(open));
   });
   $("menuScrim").addEventListener("click", closeMenu);
+  $("roleSelect").addEventListener("change", (event) => selectRole(event.target.value));
   $("periodSelect").addEventListener("change", () => load(true));
   $("refreshButton").addEventListener("click", () => load(true));
   $("themeButton").addEventListener("click", async () => {
@@ -683,7 +870,7 @@
   });
   window.addEventListener("belm-theme-change", updateThemeButton);
   $("logoutButton").addEventListener("click", () => {
-    ["belm_admin_token", "belm_admin_user", "belm_active_account_type", "belm_management_active_module"].forEach((key) => localStorage.removeItem(key));
+    ["belm_admin_token", "belm_admin_user", "belm_active_account_type", "belm_management_active_module", "belm_management_active_role"].forEach((key) => localStorage.removeItem(key));
     location.replace("/login");
   });
   window.addEventListener("resize", () => { if (innerWidth > 900) closeMenu(); });

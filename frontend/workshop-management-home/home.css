@@ -165,6 +165,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
   border-radius: 11px;
   background: transparent;
   text-align: left;
+  text-decoration: none;
   cursor: pointer;
   transition: background .16s ease, border-color .16s ease, transform .16s ease;
 }
@@ -181,6 +182,17 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .role-nav b { font-size: 14px; }
 .role-nav small { margin-top: 3px; color: #89a0b6; font-size: 11px; }
 .role-nav i { color: #708ba3; font-style: normal; font-size: 20px; }
+.role-nav.active i { color: var(--yellow); }
+
+.sidebar-nav-loading {
+  margin: 7px;
+  padding: 18px 12px;
+  color: #8fa5ba;
+  border: 1px dashed rgba(255, 255, 255, .15);
+  border-radius: 11px;
+  font-size: 13px;
+  text-align: center;
+}
 
 .role-nav-icon {
   display: grid;
@@ -249,6 +261,8 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .toolbar-actions label { display: grid; gap: 5px; color: var(--muted); font-size: 12px; font-weight: 800; }
 .toolbar-actions select, .toolbar-actions button, .primary-action { min-height: 44px; padding: 10px 13px; border: 1px solid var(--line); border-radius: 10px; }
 .toolbar-actions select { min-width: 132px; color: var(--ink); background: var(--surface); font-size: 14px; }
+#roleSelect { min-width: 225px; border-color: rgba(11, 191, 106, .55); font-weight: 800; }
+#roleSelectWrap[hidden] { display: none !important; }
 .toolbar-actions button { color: var(--ink); background: var(--surface); font-weight: 800; cursor: pointer; }
 .primary-action { display: inline-flex; align-items: center; justify-content: center; color: #fff; border-color: #086d40; background: var(--green); font-size: 13px; font-weight: 900; text-decoration: none; }
 

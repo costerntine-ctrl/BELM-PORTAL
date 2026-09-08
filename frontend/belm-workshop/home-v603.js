@@ -8,17 +8,46 @@
 
   const mainMenuBack=document.getElementById('mainMenuBackButton');
   let currentUser=null;
-  try{currentUser=JSON.parse(localStorage.getItem('belm_admin_user')||'null');}catch(_){ }
+  try{currentUser=JSON.parse(localStorage.getItem('belm_admin_user')||localStorage.getItem('belm_tech_user')||'null');}catch(_){ }
   const role=String(currentUser?.role||'').trim().toLowerCase();
-  const isMainBelmAccount=role==='super admin'||currentUser?.allowedPages===null;
-  if(mainMenuBack){mainMenuBack.hidden=!isMainBelmAccount;mainMenuBack.style.display=isMainBelmAccount?'inline-flex':'none';if(isMainBelmAccount)mainMenuBack.setAttribute('href','/workshop-management-home/');}
-  document.getElementById('bwLogoutButton')?.addEventListener('click',()=>{localStorage.removeItem('belm_admin_token');localStorage.removeItem('belm_admin_user');localStorage.removeItem('belm_active_account_type');location.replace('/login');});
+  const defaultRoleDestination=()=>{
+    if(/super admin|belm admin|administrator|^admin$/.test(role))return'/admin/overview';
+    if(/technician/.test(role))return'/tech';
+    if(/procurement/.test(role))return'/workshop-management-home/?role=procurement';
+    if(/store keeper|storekeeper/.test(role))return'/workshop-management-home/?role=store';
+    if(/registration|sales/.test(role))return'/workshop-management-home/?role=registration';
+    if(/finance|accounts|accountant/.test(role))return'/workshop-management-home/?role=finance';
+    if(/bank control/.test(role))return'/workshop-management-home/?role=bank';
+    if(/coordinator/.test(role))return'/workshop-management-home/?role=coordinator';
+    if(/workshop manager|engineer|technical dep/.test(role))return'/workshop-management-home/?role=workshop';
+    return'/workshop-management-home/';
+  };
+  const roleLabels={
+    'super admin':'BELM SUPER ADMIN','belm admin':'BELM SUPER ADMIN','administrator':'BELM SUPER ADMIN','admin':'BELM SUPER ADMIN',
+    'technician':'TECHNICIAN','procurement':'PROCUREMENT','store keeper':'STORE KEEPER','storekeeper':'STORE KEEPER',
+    'registration & sales':'REGISTRATION & SALES','registration and sales':'REGISTRATION & SALES','finance / accounts':'FINANCE / ACCOUNTS',
+    'finance':'FINANCE / ACCOUNTS','accounts':'FINANCE / ACCOUNTS','accountant':'FINANCE / ACCOUNTS','bank controller':'BANK CONTROLLER',
+    'system coordinator':'SYSTEM COORDINATOR','workshop manager':'WORKSHOP MANAGER / TECHNICAL DEP','engineer':'WORKSHOP MANAGER / TECHNICAL DEP'
+  };
+  const viewMyRole=document.getElementById('viewMyRoleButton');
+  const viewMyRoleLabel=document.getElementById('viewMyRoleLabel');
+  const viewMyRoleNote=document.getElementById('viewMyRoleNote');
+  const storedRoleDestination=String(currentUser?.roleDestination||'');
+  const roleDestination=/^\/(?!\/)[a-z0-9/_?=&.-]*$/i.test(storedRoleDestination)?storedRoleDestination:defaultRoleDestination();
+  const visibleRoleLabel=roleLabels[role]||String(currentUser?.role||'ASSIGNED ROLE').toUpperCase();
+  if(viewMyRole){viewMyRole.href=roleDestination;viewMyRole.setAttribute('aria-label',`View My Role: ${visibleRoleLabel}`);}
+  if(viewMyRoleLabel)viewMyRoleLabel.textContent=visibleRoleLabel;
+  if(viewMyRoleNote)viewMyRoleNote.textContent=/super admin|belm admin|administrator|^admin$/.test(role)?'Open the BELM Super Admin dashboard':'Open your role activity and analysis dashboard';
+  // Home is now the first signed-in screen, so it does not show a shortcut
+  // back into any role workspace.
+  if(mainMenuBack){mainMenuBack.hidden=true;mainMenuBack.style.display='none';}
+  document.getElementById('bwLogoutButton')?.addEventListener('click',()=>{['belm_admin_token','belm_admin_user','belm_tech_token','belm_tech_user','belm_active_account_type'].forEach(key=>localStorage.removeItem(key));location.replace('/login');});
 
   const registrationCard=document.getElementById('registrationQuickCard');
   const registrationBadge=document.getElementById('registrationQuickBadge');
   const registrationText=document.getElementById('registrationQuickText');
   const loadRegistrationAlert=async()=>{
-    const token=localStorage.getItem('belm_admin_token')||'';
+    const token=localStorage.getItem('belm_admin_token')||localStorage.getItem('belm_tech_token')||'';
     if(!token||!registrationCard)return;
     try{
       const response=await fetch('/api/applications?status=PENDING',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});
@@ -65,6 +94,6 @@
 
   const render=()=>{if(!homeMessages.length)homeMessages=[...fallbackMessages];if(index>=homeMessages.length)index=0;const item=homeMessages[index];root.dataset.alertType=item.type||'info';root.classList.toggle('is-critical-blink',!!item.blink);if(heading)heading.textContent=item.type==='good'?'✓':'⚠';if(titleEl)titleEl.textContent=item.title||'MACHINE ALERT';if(textEl)textEl.textContent=item.text||'';if(byEl)byEl.textContent=`— ${item.by}`;if(dots){dots.innerHTML=homeMessages.map((_,i)=>`<button type="button" aria-label="Machine alert ${i+1}" class="${i===index?'active':''}" data-bw-dot="${i}"></button>`).join('');dots.querySelectorAll('[data-bw-dot]').forEach(button=>button.addEventListener('click',()=>{index=Number(button.dataset.bwDot);render();restart();}));}};
   const next=()=>{index=(index+1)%homeMessages.length;render();},prev=()=>{index=(index-1+homeMessages.length)%homeMessages.length;render();},restart=()=>{if(timer)clearInterval(timer);timer=setInterval(next,6500);};
-  const loadAlerts=async(showError=false)=>{const token=localStorage.getItem('belm_admin_token')||'';if(!token)return;try{const response=await fetch('/api/belm-workshop-home',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const data=await response.json().catch(()=>null);if(!response.ok)throw new Error(data?.error||`Request failed (${response.status})`);homeMessages=buildMessages(data?.machines||[]);index=0;render();restart();}catch(error){if(showError){const box=document.getElementById('bwAlert');if(box){box.textContent=`Could not refresh machine alerts: ${escapeHtml(error.message)}`;box.classList.remove('hidden');box.classList.add('error');}}}};
+  const loadAlerts=async(showError=false)=>{const token=localStorage.getItem('belm_admin_token')||localStorage.getItem('belm_tech_token')||'';if(!token)return;try{const response=await fetch('/api/belm-workshop-home',{cache:'no-store',headers:{Authorization:`Bearer ${token}`}});const data=await response.json().catch(()=>null);if(!response.ok)throw new Error(data?.error||`Request failed (${response.status})`);homeMessages=buildMessages(data?.machines||[]);index=0;render();restart();}catch(error){if(showError){const box=document.getElementById('bwAlert');if(box){box.textContent=`Could not refresh machine alerts: ${escapeHtml(error.message)}`;box.classList.remove('hidden');box.classList.add('error');}}}};
   root.querySelector('[data-bw-message-next]')?.addEventListener('click',()=>{next();restart();});root.querySelector('[data-bw-message-prev]')?.addEventListener('click',()=>{prev();restart();});document.getElementById('workshopSyncButton')?.addEventListener('click',()=>{loadAlerts(true);loadRegistrationAlert();});render();restart();loadAlerts(false);loadRegistrationAlert();refreshTimer=setInterval(()=>{loadAlerts(false);loadRegistrationAlert();},30000);window.addEventListener('beforeunload',()=>{if(timer)clearInterval(timer);if(refreshTimer)clearInterval(refreshTimer);});
 })();

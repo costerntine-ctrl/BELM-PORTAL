@@ -1,10 +1,10 @@
-// BELM portal service worker — V672 role-aware Company Home.
+// BELM portal service worker — V680 confirmed login and Home-first routing.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v672-role-home';
+const CACHE='belm-portal-v680-home-confirm-login';
 const SHELL=[
-  '/customer-app.html?v=672-role-home',
-  '/customer-app.css?v=672-role-home',
-  '/customer-app.js?v=672-role-home',
+  '/customer-app.html?v=680-home-confirm-login',
+  '/customer-app.css?v=680-home-confirm-login',
+  '/customer-app.js?v=680-home-confirm-login',
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg'

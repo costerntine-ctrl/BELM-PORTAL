@@ -31,6 +31,22 @@ function verify_portal_password(string $plainPassword, ?string $storedHash, stri
     return true;
 }
 
+// V680: every BELM staff account enters the shared Home Dashboard first. This
+// separate destination is used only when the user chooses "View My Role".
+function staff_role_destination(string $roleName): string {
+    $role = strtolower(trim($roleName));
+    if (preg_match('/super admin|belm admin|administrator|^admin$/', $role)) return '/admin/overview';
+    if (str_contains($role, 'technician')) return '/tech';
+    if (str_contains($role, 'procurement')) return '/workshop-management-home/?role=procurement';
+    if (str_contains($role, 'store keeper') || str_contains($role, 'storekeeper')) return '/workshop-management-home/?role=store';
+    if (str_contains($role, 'registration') || str_contains($role, 'sales')) return '/workshop-management-home/?role=registration';
+    if (str_contains($role, 'finance') || str_contains($role, 'accounts') || str_contains($role, 'accountant')) return '/workshop-management-home/?role=finance';
+    if (str_contains($role, 'bank control')) return '/workshop-management-home/?role=bank';
+    if (str_contains($role, 'coordinator')) return '/workshop-management-home/?role=coordinator';
+    if (str_contains($role, 'workshop manager') || str_contains($role, 'engineer') || str_contains($role, 'technical dep')) return '/workshop-management-home/?role=workshop';
+    return '/workshop-management-home/';
+}
+
 $action = $_GET['action'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -538,46 +554,16 @@ if ($action === 'unified-login' && $method === 'POST') {
 
             $isTechnician = $user['role_name'] === 'Technician';
             $staffRoleLower = strtolower(trim((string)$user['role_name']));
-            // V510: role-specific landing pages. PORTAL-BELM WM is reserved for
-            // the operational workshop roles; Finance/Accounts lands in Billing.
-            // V8: BELM Admin / Super Admin always lands on Workshop Management Control.
-            // Operational roles continue to their own role workspaces.
-            $managementControlRoles = ['super admin', 'belm admin', 'admin', 'administrator'];
-            $wmRoles = ['workshop manager', 'engineer', 'store keeper', 'procurement'];
-            $financeRoles = ['accounts', 'accountant', 'finance'];
-            if ($isTechnician) {
-                $staffDestination = '/tech';
-            } elseif (in_array($staffRoleLower, $managementControlRoles, true)) {
-                $staffDestination = '/workshop-management-home/';
-            } elseif (in_array($staffRoleLower, $wmRoles, true)) {
-                $staffDestination = '/belm-workshop/';
-            } elseif (in_array($staffRoleLower, $financeRoles, true)) {
-                $staffDestination = '/billing-manager/';
-            } else {
-                $pageDestinations = [
-                    'overview' => '/overview-manager/',
-                    'customers' => '/customers-manager/',
-                    'roles' => '/roles-manager/',
-                    'spare-parts' => '/spare-parts-manager/',
-                    'billing' => '/billing-manager/',
-                    'reports' => '/reports-manager/',
-                    'settings' => '/settings-manager/',
-                    'checklist-templates' => '/checklist-manager/',
-                    'suppliers' => '/suppliers-manager/',
-                ];
-                $staffDestination = '/overview-manager/';
-                foreach ($allowedPages as $pageKey) {
-                    if (isset($pageDestinations[$pageKey])) {
-                        $staffDestination = $pageDestinations[$pageKey];
-                        break;
-                    }
-                }
-            }
+            // V680: authentication always lands on the shared BELM Home. The
+            // role workspace is opened only after View My Role is selected.
+            $staffDestination = '/belm-workshop/';
+            $roleDestination = staff_role_destination($staffRoleLower);
             clear_rate_limit('unified-login', $rawLoginId);
             json_out([
                 'token' => $token,
                 'accountType' => $isTechnician ? 'technician' : 'admin',
                 'destination' => $staffDestination,
+                'roleDestination' => $roleDestination,
                 'user' => [
                     'id' => $user['id'],
                     'name' => $user['name'],
@@ -589,6 +575,7 @@ if ($action === 'unified-login' && $method === 'POST') {
                     'assignedCustomerName' => $user['assigned_customer_name'],
                     'assignedCustomerPortalLink' => $user['assigned_customer_portal_link'] ?? null,
                     'isCustomerManaged' => !empty($user['is_customer_managed']),
+                    'roleDestination' => $roleDestination,
                 ],
             ]);
         }
@@ -790,14 +777,18 @@ if ($action === 'login' && $method === 'POST') {
             ->execute([uuid(), $user['id'], 'LOGIN']);
     } catch (Throwable $e) {}
 
+    $roleDestination = staff_role_destination((string)$user['role_name']);
     json_out([
         'token' => $token,
+        'destination' => '/belm-workshop/',
+        'roleDestination' => $roleDestination,
         'user' => [
             'id' => $user['id'], 'name' => $user['name'], 'email' => $user['email'],
             'role' => $user['role_name'], 'allowedPages' => $allowedPages,
             'assignedCustomerId' => $user['assigned_customer_id'],
             'assignedCustomerName' => $user['assigned_customer_name'],
             'isCustomerManaged' => !empty($user['is_customer_managed']),
+            'roleDestination' => $roleDestination,
         ],
     ]);
 }

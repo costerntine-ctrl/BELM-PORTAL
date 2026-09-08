@@ -1,14 +1,18 @@
 (function () {
-  const token = localStorage.getItem("belm_admin_token");
+  const token = localStorage.getItem("belm_admin_token") || localStorage.getItem("belm_tech_token");
   let user = null;
   try {
-    user = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
+    user = JSON.parse(localStorage.getItem("belm_admin_user") || localStorage.getItem("belm_tech_user") || "null");
   } catch (_) {}
 
   if (!token || !user) {
     window.location.replace("/login");
     return;
   }
+
+  // V680: the exact BELM Workshop root is the common authenticated Home
+  // Dashboard for every staff role. Nested Workshop modules remain guarded.
+  if (/^\/belm-workshop\/?$/.test(window.location.pathname)) return;
 
   if (user.role === "Super Admin" || user.allowedPages === null) return;
 

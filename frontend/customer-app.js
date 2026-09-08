@@ -13,7 +13,12 @@
   const button=document.getElementById('loginButton');
   const errorBox=document.getElementById('errorBox');
   const installButton=document.getElementById('installButton');
+  const confirmDialog=document.getElementById('loginConfirmDialog');
+  const confirmAccount=document.getElementById('loginConfirmAccount');
+  const confirmLoginButton=document.getElementById('confirmLoginButton');
+  const cancelLoginButton=document.getElementById('cancelLoginButton');
   let installPrompt=null;
+  let loginPending=false;
 
   async function fetchWithTimeout(url,options={},timeoutMs=70000,onSlow=null){
     const controller=new AbortController();
@@ -64,22 +69,7 @@
       if(!data.token)return false;
       localStorage.setItem(key,data.token);
       localStorage.setItem(`belm_session_refreshed_${key}`,String(Date.now()));
-      if(active==='technician'){location.replace('/tech');return true}
-      if(active==='admin'){
-        const payload=decodeToken(data.token)||{};
-        const role=String(payload.roleName||'').trim().toLowerCase();
-        const managementRoles=['super admin','belm admin','admin','administrator'];
-        const financeRoles=['accounts','accountant','finance'];
-        let destination='/belm-workshop/';
-        if(managementRoles.includes(role)) destination='/workshop-management-home/';
-        else if(financeRoles.includes(role)) destination='/billing-manager/';
-        else if(!['workshop manager','engineer','store keeper','procurement'].includes(role)){
-          const destinations={overview:'/overview-manager/',customers:'/customers-manager/',roles:'/roles-manager/','spare-parts':'/spare-parts-manager/',billing:'/billing-manager/',reports:'/reports-manager/',settings:'/settings-manager/','checklist-templates':'/checklist-manager/',suppliers:'/suppliers-manager/'};
-          const first=(Array.isArray(payload.allowedPages)?payload.allowedPages:[]).find(page=>destinations[page]);
-          destination=first?destinations[first]:'/overview-manager/';
-        }
-        location.replace(destination);return true
-      }
+      if(active==='technician'||active==='admin'){location.replace('/belm-workshop/');return true}
       if(active==='customer'){
         // Every customer-company user starts at the shared Company Home.
         // The Home's Enter My Role button performs the role-specific routing.
@@ -91,7 +81,7 @@
 
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
-    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account email or Customer Portal ID and password, then click Open My Workspace.';return}
+    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account details, tap Continue, then confirm before the password is submitted.';return}
     try{
       const res=await fetchWithTimeout('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'},70000);
       if(!res.ok)throw new Error('Customer app link was not found.');
@@ -104,8 +94,23 @@
   }
   function showError(msg){errorBox.textContent=msg;errorBox.hidden=false}
   function clearError(){errorBox.hidden=true;errorBox.textContent=''}
+  function requestLoginConfirmation(){
+    if(loginPending||!form.reportValidity())return;
+    clearError();
+    confirmAccount.textContent=email.value.trim();
+    if(confirmDialog&&typeof confirmDialog.showModal==='function'){
+      if(!confirmDialog.open)confirmDialog.showModal();
+      setTimeout(()=>confirmLoginButton?.focus(),0);
+      return;
+    }
+    if(window.confirm('Confirm Login? You will first open your Home Dashboard.'))login();
+  }
   async function login(){
-    clearError(); button.disabled=true; button.textContent='Opening...';
+    if(loginPending)return;
+    loginPending=true;
+    if(confirmDialog?.open)confirmDialog.close();
+    clearError(); button.disabled=true; button.textContent='Opening Home Dashboard...';
+    if(confirmLoginButton){confirmLoginButton.disabled=true;confirmLoginButton.textContent='Signing in…';}
     try{
       const payload={email:email.value.trim(),password:password.value};
       if(slug && !isBelm)payload.customerSlug=slug;
@@ -122,17 +127,25 @@
         localStorage.setItem('belm_admin_token',data.token);
         localStorage.setItem('belm_admin_user',JSON.stringify(data.user||{})); setActiveAccount('admin');
       }
-      location.replace(data.accountType==='customer'?'/portal-cwm/':(data.destination||'/'));
-    }catch(err){const timedOut=err&&err.name==='AbortError';showError(timedOut?'Server did not respond in time. Tap Open My Workspace again.':(err.message||'Login failed.'));button.disabled=false;button.textContent='Open My Workspace'}
+      const homeDestination=data.accountType==='customer'?'/portal-cwm/':'/belm-workshop/';
+      location.replace(homeDestination);
+    }catch(err){
+      const timedOut=err&&err.name==='AbortError';
+      showError(timedOut?'Server did not respond in time. Tap Continue and confirm again.':(err.message||'Login failed.'));
+      loginPending=false;button.disabled=false;button.textContent='Continue';
+      if(confirmLoginButton){confirmLoginButton.disabled=false;confirmLoginButton.textContent='Confirm Login';}
+    }
   }
-  // V496: saved credentials may be filled by the browser/password manager,
-  // but login is NEVER submitted automatically. The user must explicitly
-  // confirm by submitting the form (button or Enter).
-  form.addEventListener('submit',event=>{event.preventDefault();login()});
+  // V680: Continue only opens the review step. Credentials are sent to the
+  // backend after the user explicitly chooses Confirm Login.
+  form.addEventListener('submit',event=>{event.preventDefault();requestLoginConfirmation()});
+  confirmLoginButton?.addEventListener('click',login);
+  cancelLoginButton?.addEventListener('click',()=>{confirmDialog?.close();password.focus()});
+  confirmDialog?.addEventListener('cancel',()=>setTimeout(()=>password.focus(),0));
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=672').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=680').catch(()=>{}))}
 
   (async()=>{
     await loadContext();

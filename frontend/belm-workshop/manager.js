@@ -1,8 +1,8 @@
 (function(){
-  const token=localStorage.getItem('belm_admin_token')||'';
+  const token=localStorage.getItem('belm_admin_token')||localStorage.getItem('belm_tech_token')||'';
   if(!token){location.href='/login';return}
 
-  let adminUser=null;try{adminUser=JSON.parse(localStorage.getItem('belm_admin_user')||'null')}catch{}
+  let adminUser=null;try{adminUser=JSON.parse(localStorage.getItem('belm_admin_user')||localStorage.getItem('belm_tech_user')||'null')}catch{}
   const isSuperAdmin=adminUser?.role==='Super Admin'||adminUser?.allowedPages===null;
   const adminRole=String(adminUser?.role||'').toLowerCase();
   const isWorkshopController=['super admin','engineer','workshop manager'].includes(adminRole);

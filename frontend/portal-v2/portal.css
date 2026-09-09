@@ -1,4 +1,5 @@
-:root{color-scheme:dark;--navy:#061a2d;--navy-deep:#03111e;--navy-soft:#0b2942;--panel:#0a2238;--panel-2:#0d2b45;--line:#1d4967;--text:#f4f8fc;--muted:#9bb1c4;--blue:#138cff;--cyan:#49c9f2;--green:#08c978;--green-deep:#05975b;--yellow:#ffd025;--red:#ff5c67;--purple:#9a7cff;--shadow:0 22px 55px rgba(0,0,0,.22);--sidebar:294px}
+:root{color-scheme:dark;--navy:#04101f;--navy-deep:#020a14;--navy-soft:#0a2540;--panel:#071c33;--panel-2:#0a2540;--line:#154070;--text:#f5f7fa;--muted:#a9b7c6;--blue:#2f86d6;--cyan:#49c9f2;--green:#21b06b;--green-deep:#178a54;--yellow:#f5c518;--red:#e0503a;--purple:#9a7cff;--shadow:0 22px 55px rgba(0,0,0,.22);--sidebar:294px}
+/* Rangi hizi zinaendana na navy/gold design language ya belm-home-hero.css / belm-admin-dashboard.css */
 :root[data-theme="light"]{color-scheme:light;--navy:#f4f8fb;--navy-deep:#e8f0f5;--navy-soft:#fff;--panel:#fff;--panel-2:#f5f9fb;--line:#d7e3ea;--text:#0b1d2d;--muted:#62788a;--shadow:0 18px 50px rgba(14,42,63,.11)}
 *{box-sizing:border-box}
 html{min-height:100%;background:var(--navy-deep)}

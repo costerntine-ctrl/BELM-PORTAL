@@ -1,0 +1,25 @@
+BELM PORTAL V709 — CONTEXTUAL MODULE SIDEBARS
+
+RULE:
+- WM ROLE MENU is the parent menu only.
+- Opening a row replaces the sidebar with that module's own menu.
+- The full WM main menu is not repeated inside modules.
+- Supplied DASHBOARDS(3) visual dashboard index/CSS/JS files are left untouched.
+
+Supplied dashboard landings:
+- Customer Registration -> 04 Customer Registration dashboard
+- Workshop & Job Cards -> 05 Inspection & Repair dashboard
+- Spare Parts Inventory -> 06 Store Keeper dashboard
+- Procurement -> 03 Procurement dashboard
+
+Context-only modules:
+- Customer Overview, Roles & Users, Finance & Accounts, Bank Control, Reports & Analysis, System Settings
+
+Registration sidebar:
+Register Customer / Register Technician / Add Machine / Add Role / Add System User / Refresh
+
+V709 adjustment — WM Customer Registration
+- WM ROLE MENU > Customer Registration opens /admin-applications/?module=registration.
+- The large Registration action buttons remain hidden in page content.
+- Registration sidebar contains Register Customer, Register Technician, Add Machine, Add Role, Add System User and Refresh.
+- The supplied Customer Registration dashboard remains unchanged and is still used for the Registration & Sales role.

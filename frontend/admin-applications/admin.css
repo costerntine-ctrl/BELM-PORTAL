@@ -186,3 +186,10 @@ html[data-theme="dark"] .customer-manage-actions button.danger { background:#2a1
 .customer-control-switch input:checked { background:var(--green); }
 .customer-control-switch input:checked::after { transform:translateX(22px); }
 .customer-control-switch input:disabled { opacity:.55; cursor:not-allowed; }
+
+
+/* V708 - visible registration controls moved to the BELM sidebar. */
+.registration-page-actions-bridge,
+.registration-page-actions-bridge[hidden] { display:none !important; }
+.heading { align-items:flex-end; }
+.heading > div:first-child { max-width:760px; }

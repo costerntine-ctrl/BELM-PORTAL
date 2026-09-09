@@ -1,0 +1,8 @@
+BELM PORTAL V708 — REGISTRATION SIDEBAR
+
+Changes requested:
+- Registration page header action buttons are no longer visible in the page content.
+- Register Customer, Register Technician, Add Machine, Add Role, Add System User and Refresh now appear as Registration sidebar actions.
+- Existing registration dialogs and business logic are reused through hidden event bridges; no duplicate registration flow was created.
+- Service worker cache bumped to V708.
+- Supplied role dashboard templates remain otherwise unchanged.

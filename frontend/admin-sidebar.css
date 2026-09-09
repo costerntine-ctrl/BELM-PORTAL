@@ -818,3 +818,72 @@
     max-width: calc(100vw - 54px);
   }
 }
+
+
+/* V708 - Registration actions live in the sidebar, not across the page header. */
+.belm-sidebar-registration-submenu {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  margin: 2px 0 8px 18px;
+  padding: 7px 0 7px 10px;
+  border-left: 2px solid rgba(245, 197, 24, .48);
+}
+.belm-sidebar-registration-title {
+  margin: 1px 10px 4px;
+  color: #71849a;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+.belm-sidebar-registration-action {
+  width: 100%;
+  min-height: 36px;
+  margin: 1px 0;
+  padding: 7px 9px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 11.5px;
+  text-align: left;
+  cursor: pointer;
+}
+.belm-sidebar-registration-action:hover {
+  background: rgba(255, 255, 255, .065);
+}
+.belm-sidebar-registration-action .belm-sidebar-registration-icon {
+  flex-basis: 25px;
+  width: 25px;
+  height: 25px;
+  color: #f5c518;
+  background: rgba(245, 197, 24, .08);
+  font-size: 7.5px;
+}
+.belm-sidebar-registration-refresh {
+  margin-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 0 0 9px 9px;
+}
+@media (max-width: 980px) {
+  .belm-sidebar-registration-submenu { margin-left: 14px; }
+}
+
+
+/* V709 — Contextual module sidebar. WM ROLE MENU is the only parent menu. */
+.belm-sidebar-module-head{
+  display:grid;gap:3px;margin:5px 12px 7px;padding:10px 11px 11px;
+  border:1px solid rgba(245,197,24,.20);border-radius:12px;
+  background:linear-gradient(135deg,rgba(245,197,24,.08),rgba(17,119,222,.06));
+}
+.belm-sidebar-module-head .belm-sidebar-back-main{
+  display:inline-flex;align-items:center;width:max-content;max-width:100%;margin-bottom:5px;
+  color:#f5c518;text-decoration:none;font-size:9px;font-weight:900;letter-spacing:.06em;
+}
+.belm-sidebar-module-head small{color:#6f859c;font-size:8px;font-weight:900;letter-spacing:.12em;}
+.belm-sidebar-module-head strong{color:#fff;font-size:14px;line-height:1.25;}
+.belm-sidebar-action{width:100%;font:inherit;text-align:left;cursor:pointer;background:transparent;}
+.belm-sidebar-action:disabled{opacity:.45;cursor:not-allowed;}
+body.belm-module-finance .billing-section-sidebar{display:none!important;}
+body.belm-module-finance .billing-workspace{grid-template-columns:minmax(0,1fr)!important;}
+/* V708 nested registration submenu is retired; V709 uses the whole sidebar as Registration Menu. */
+.belm-sidebar-registration-submenu{display:none!important;}

@@ -51,9 +51,18 @@
     "/bank-controller/",
     "/recycle-bin/",
     "/belm-workshop/",
+    "/belm-procurement/",
+    "/contracts-workshops/",
+    "/workshop-analysis/",
+    "/coordinator/",
   ];
+  const conditionalWorkshopAnalysis = pathname.startsWith("/workshop-analysis/")
+    && (requestedActor === "admin" || activeAccountType === "admin");
   const isAdminArea = pathname.startsWith("/admin/")
-    || standaloneAdminPaths.some((path) => pathname === path || pathname.startsWith(path))
+    || standaloneAdminPaths.some((path) => {
+      if (path === "/workshop-analysis/") return conditionalWorkshopAnalysis;
+      return pathname === path || pathname.startsWith(path);
+    })
     || sharedBreakdownAdmin;
   if (!isAdminArea || pathname === "/login") return;
 
@@ -107,48 +116,166 @@
   }
 
 
-  const pages = [
-    { section: "Operations", key: "overview", label: "Overview", short: "OV", href: "/overview-manager/", paths: ["/overview-manager/", "/admin/overview"] },
-    { section: "Operations", key: "customers", label: "Registrations", short: "RG", href: "/admin-applications/", paths: ["/admin-applications/"], applications: true, priority: true },
-    { section: "Operations", key: "reports", label: "Reports & Analysis", short: "RA", href: "/reports-manager/", paths: ["/reports-manager/", "/admin/reports"], priority: true },
-    // V414: Job Cards are owned by TECHNICAL DEP > Job Card only.
-    // Do not expose a second standalone admin navigation entry.
-    { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
-    { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    // V471: direct commercial workshop portals for fast testing and operations.
-    { section: "Maintenance", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "BELM Workshop Manager Portal", short: "WM", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
-    { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
-    { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
-    { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
-    { section: "Finance", key: "bank-manager", superAdminOnly: true, label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
-    { section: "Finance", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
-    { section: "Administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
-    { section: "Administration", key: "roles", label: "BELM Staff Access", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
-    { section: "Administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
-  ];
+  // V709: WM ROLE MENU is only the parent menu. Every row owns a contextual
+  // module sidebar; the full main menu must never repeat inside a module.
+  // Where the user supplied a dashboard, that dashboard remains the canonical
+  // landing page and its visual files are not modified.
+  const requestedModule = String(query.get("module") || "").toLowerCase().trim();
+  const validModules = new Set(["registration","customer-overview","roles-users","workshop","inventory","procurement","finance","bank","reports","settings"]);
+  const moduleOverride = validModules.has(requestedModule) ? requestedModule : "";
+  const pathIs = (...prefixes) => prefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix));
 
-  const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
-  const allowedPages = Array.isArray(user.allowedPages) ? user.allowedPages : [];
-  // V706: BELM Workshop Manager Portal owns one compact nested sidebar.
-  // Customer Overview is a sidebar destination; the old Customer Workshop Portal shortcut
-  // is intentionally removed from BELM staff navigation.
-  const NESTED_SIDEBAR_PATHS = ["/customers-manager/", "/belm-workshop/"];
-  const isNestedSidebar = NESTED_SIDEBAR_PATHS.some((p) => pathname === p || pathname.startsWith(p));
-  const nestedPages = [
-    { section: "Nested", key: "customers", namedRoles: ["Workshop Manager","Engineer"], label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Nested", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "BELM Workshop Manager Portal", short: "WM", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
-  ];
-  const canSeePage = (page) => {
-    if (page.superAdminOnly) return isSuperAdmin;
-    if (page.key === null || isSuperAdmin) return true;
-    if (Array.isArray(page.namedRoles)) {
-      return page.namedRoles.some((role) => String(role).toLowerCase() === String(user.role || '').toLowerCase());
+  function resolveModule() {
+    if (moduleOverride) return moduleOverride;
+    if (pathIs("/admin-applications/", "/contracts-workshops/")) return "registration";
+    if (pathIs("/customers-manager/")) return "customer-overview";
+    if (pathIs("/roles-manager/")) return "roles-users";
+    if (pathIs("/belm-workshop/", "/checklist-manager/", "/workshop-analysis/") || sharedBreakdownAdmin) return "workshop";
+    if (pathIs("/spare-parts-manager/", "/controller-pinouts-manager/")) return "inventory";
+    if (pathIs("/belm-procurement/")) return "procurement";
+    if (pathIs("/suppliers-manager/")) return "procurement";
+    if (pathIs("/billing-manager/")) return "finance";
+    if (pathIs("/bank-controller/")) return "bank";
+    if (pathIs("/reports-manager/")) return "reports";
+    if (pathIs("/settings-manager/", "/coordinator/", "/recycle-bin/")) return "settings";
+    return "";
+  }
+  const moduleKey = resolveModule();
+
+  const M = {
+    registration: {
+      title: "Registration", caption: "REGISTRATION MENU", icon: "customer",
+      items: [
+        { label:"Register Customer", short:"RC", targetId:"registerCustomerButton", href:"/admin-applications/?module=registration" },
+        { label:"Register Technician", short:"RT", targetId:"registerTechnicianButton", href:"/admin-applications/?module=registration" },
+        { label:"Add Machine", short:"AM", targetId:"addMachineButton", href:"/admin-applications/?module=registration" },
+        { label:"Add Role", short:"AR", href:"/roles-manager/?open=addRole&module=registration", paths:["/roles-manager/"], open:"addRole" },
+        { label:"Add System User", short:"AU", href:"/roles-manager/?open=addUser&module=registration", paths:["/roles-manager/"], open:"addUser" },
+        { label:"Refresh", short:"RF", targetId:"refreshButton", href:"/admin-applications/?module=registration", refresh:true },
+      ]
+    },
+    "customer-overview": {
+      title:"Customer Overview", caption:"CUSTOMER OVERVIEW MENU", icon:"overview",
+      items:[
+        {label:"Customers & Machines",short:"CM",href:"/customers-manager/?module=customer-overview",paths:["/customers-manager/"]},
+        {label:"Service / Job Cards",short:"JC",href:"/breakdown-workflow/?actor=admin&module=customer-overview",paths:["/breakdown-workflow/"]},
+        {label:"Customer Reports",short:"RP",href:"/reports-manager/?module=customer-overview",paths:["/reports-manager/"]},
+        {label:"Registration",short:"RG",href:"/admin-applications/?module=customer-overview",paths:["/admin-applications/"]},
+        {label:"Refresh Customers",short:"RF",targetId:"refreshCustomersButton",href:"/customers-manager/?module=customer-overview",refresh:true},
+      ]
+    },
+    "roles-users": {
+      title:"Roles & Users", caption:"ROLES & USERS MENU", icon:"roles",
+      items:[
+        {label:"Users & Roles",short:"UR",href:"/roles-manager/?module=roles-users",paths:["/roles-manager/"], noOpen:true},
+        {label:"Add System User",short:"AU",href:"/roles-manager/?open=addUser&module=roles-users",paths:["/roles-manager/"],open:"addUser"},
+        {label:"Add Role",short:"AR",href:"/roles-manager/?open=addRole&module=roles-users",paths:["/roles-manager/"],open:"addRole"},
+        {label:"Technicians",short:"TC",href:"/roles-manager/?role=Technician&module=roles-users",paths:["/roles-manager/"],role:"Technician"},
+        {label:"Workshop Managers",short:"WM",href:"/roles-manager/?role=Engineer&module=roles-users",paths:["/roles-manager/"],role:"Engineer"},
+        {label:"Refresh",short:"RF",targetId:"refreshButton",href:"/roles-manager/?module=roles-users",refresh:true},
+      ]
+    },
+    workshop: {
+      title:"Workshop & Job Cards", caption:"WORKSHOP MENU", icon:"job-cards",
+      items:[
+        {label:"Inspection & Repair Dashboard",short:"DB",href:"/concept-dashboards/05-inspection-repair/"},
+        {label:"Job Cards",short:"JC",href:"/breakdown-workflow/?actor=admin&view=job-cards&module=workshop",paths:["/breakdown-workflow/"],view:"job-cards"},
+        {label:"Inspection Checklists",short:"CK",href:"/checklist-manager/?module=workshop",paths:["/checklist-manager/"]},
+        {label:"Diagnosis",short:"DG",href:"/breakdown-workflow/?actor=admin&module=workshop",paths:["/breakdown-workflow/"],noView:true},
+        {label:"Waiting for Spares",short:"WS",href:"/spare-parts-manager/?view=requests&module=workshop",paths:["/spare-parts-manager/"],view:"requests"},
+        {label:"Testing & Completion",short:"TC",href:"/breakdown-workflow/?actor=admin&view=testing&module=workshop",paths:["/breakdown-workflow/"],view:"testing"},
+        {label:"Workshop Reports",short:"RP",href:"/workshop-analysis/?actor=admin&module=workshop",paths:["/workshop-analysis/"]},
+        {label:"Machine History",short:"MH",href:"/reports-manager/?module=workshop",paths:["/reports-manager/"]},
+        {label:"Communication",short:"CM",href:"/customers-manager/?module=workshop",paths:["/customers-manager/"]},
+      ]
+    },
+    inventory: {
+      title:"Spare Parts Inventory", caption:"STORE / INVENTORY MENU", icon:"spare-parts",
+      items:[
+        {label:"Store Keeper Dashboard",short:"DB",href:"/concept-dashboards/06-storekeeper/"},
+        {label:"Spare Parts Inventory",short:"SP",href:"/spare-parts-manager/?module=inventory",paths:["/spare-parts-manager/"],noView:true},
+        {label:"Stock In",short:"IN",href:"/spare-parts-manager/?view=stock-in&module=inventory",paths:["/spare-parts-manager/"],view:"stock-in"},
+        {label:"Stock Out / Issues",short:"OUT",href:"/spare-parts-manager/?view=stock-out&module=inventory",paths:["/spare-parts-manager/"],view:"stock-out"},
+        {label:"Spare Requests",short:"SR",href:"/spare-parts-manager/?view=requests&module=inventory",paths:["/spare-parts-manager/"],view:"requests"},
+        {label:"Low Stock / Shortages",short:"LS",href:"/spare-parts-manager/?view=low-stock&module=inventory",paths:["/spare-parts-manager/"],view:"low-stock"},
+        {label:"Tools Register",short:"TL",href:"/spare-parts-manager/?view=tools&module=inventory",paths:["/spare-parts-manager/"],view:"tools"},
+        {label:"Stock Audit",short:"AU",href:"/spare-parts-manager/?view=audit&module=inventory",paths:["/spare-parts-manager/"],view:"audit"},
+        {label:"Suppliers",short:"SU",href:"/suppliers-manager/?module=inventory",paths:["/suppliers-manager/"]},
+        {label:"Inventory Reports",short:"RP",href:"/reports-manager/?view=inventory&module=inventory",paths:["/reports-manager/"]},
+      ]
+    },
+    procurement: {
+      title:"Procurement", caption:"PROCUREMENT MENU", icon:"spare-parts",
+      items:[
+        {label:"Procurement Dashboard",short:"DB",href:"/concept-dashboards/03-procurement/"},
+        {label:"Spare Purchase Requests",short:"PR",href:"/belm-procurement/?module=procurement",paths:["/belm-procurement/"],noView:true},
+        {label:"Purchase Records",short:"RC",href:"/belm-procurement/?view=records&module=procurement",paths:["/belm-procurement/"],view:"records"},
+        {label:"Pending Proforma",short:"PI",href:"/belm-procurement/?view=proforma&module=procurement",paths:["/belm-procurement/"],view:"proforma"},
+        {label:"Purchase Orders",short:"PO",href:"/belm-procurement/?view=orders&module=procurement",paths:["/belm-procurement/"],view:"orders"},
+        {label:"Suppliers",short:"SU",href:"/suppliers-manager/?module=procurement",paths:["/suppliers-manager/"]},
+        {label:"Delivery Tracking",short:"DT",href:"/belm-procurement/?view=delivery&module=procurement",paths:["/belm-procurement/"],view:"delivery"},
+        {label:"Purchase Reports",short:"RP",href:"/belm-procurement/?view=reports&module=procurement",paths:["/belm-procurement/"],view:"reports"},
+        {label:"Department Analysis",short:"AN",href:"/belm-procurement/?view=analysis&module=procurement",paths:["/belm-procurement/"],view:"analysis"},
+        {label:"Refresh",short:"RF",targetId:"refreshButton",href:"/belm-procurement/?module=procurement",refresh:true},
+      ]
+    },
+    finance: {
+      title:"Finance & Accounts", caption:"FINANCE & ACCOUNTS MENU", icon:"billing",
+      items:[
+        {label:"Finance Overview",short:"OV",href:"/billing-manager/?module=finance",paths:["/billing-manager/"],noTab:true},
+        {label:"Invoices",short:"IN",href:"/billing-manager/?tab=invoices&module=finance",paths:["/billing-manager/"],tab:"invoices"},
+        {label:"Payments",short:"PY",href:"/billing-manager/?tab=payments&module=finance",paths:["/billing-manager/"],tab:"payments"},
+        {label:"Expenses",short:"EX",href:"/billing-manager/?tab=expenses&module=finance",paths:["/billing-manager/"],tab:"expenses"},
+        {label:"Proforma",short:"PI",href:"/billing-manager/?tab=proformas&module=finance",paths:["/billing-manager/"],tab:"proformas"},
+        {label:"Receipts",short:"RC",href:"/billing-manager/?tab=receipts&module=finance",paths:["/billing-manager/"],tab:"receipts"},
+        {label:"New Proforma",short:"NP",targetId:"newProformaButton",href:"/billing-manager/?module=finance"},
+        {label:"Record Expense",short:"RE",targetId:"newExpenseButton",href:"/billing-manager/?module=finance"},
+        {label:"Refresh",short:"RF",targetId:"refreshButton",href:"/billing-manager/?module=finance",refresh:true},
+      ]
+    },
+    bank: {
+      title:"Bank Control", caption:"BANK CONTROL MENU", icon:"bank-manager",
+      items:[
+        {label:"Bank Accounts",short:"BK",href:"/bank-controller/?module=bank",paths:["/bank-controller/"]},
+        {label:"Add Bank Account",short:"AA",targetId:"addAccountButton",href:"/bank-controller/?module=bank"},
+        {label:"Edit Selected Account",short:"EA",targetId:"editAccountButton",href:"/bank-controller/?module=bank"},
+        {label:"Record Withdrawal",short:"WD",targetId:"addWithdrawalButton",href:"/bank-controller/?module=bank"},
+        {label:"Bank Edit Audit",short:"AU",scrollId:"bankEditAuditPanel",href:"/bank-controller/?module=bank"},
+        {label:"Recent Withdrawals",short:"RW",scrollId:"withdrawalRows",href:"/bank-controller/?module=bank"},
+        {label:"Refresh",short:"RF",targetId:"refreshButton",href:"/bank-controller/?module=bank",refresh:true},
+      ]
+    },
+    reports: {
+      title:"Reports & Analysis", caption:"REPORTS & ANALYSIS MENU", icon:"reports",
+      items:[
+        {label:"Reports Overview",short:"RP",href:"/reports-manager/?module=reports",paths:["/reports-manager/"]},
+        {label:"Employee / Role Activity",short:"RA",href:"/reports-manager/?module=reports#employee-activity",paths:["/reports-manager/"],hash:"#employee-activity"},
+        {label:"Workshop Analysis",short:"WA",href:"/workshop-analysis/?actor=admin&module=reports",paths:["/workshop-analysis/"]},
+        {label:"Export CSV",short:"CSV",targetId:"csvButton",href:"/reports-manager/?module=reports"},
+        {label:"Print / Save PDF",short:"PDF",targetId:"printButton",href:"/reports-manager/?module=reports"},
+      ]
+    },
+    settings: {
+      title:"System Settings", caption:"SYSTEM SETTINGS MENU", icon:"settings",
+      items:[
+        {label:"System Settings",short:"SE",href:"/settings-manager/?module=settings",paths:["/settings-manager/"]},
+        {label:"Departments & Categories",short:"DP",href:"/coordinator/departments/?module=settings",paths:["/coordinator/departments/"]},
+        {label:"Notification Configuration",short:"NT",href:"/coordinator/notifications/?module=settings",paths:["/coordinator/notifications/"]},
+        {label:"Email Settings",short:"EM",href:"/coordinator/email/?module=settings",paths:["/coordinator/email/"]},
+        {label:"WhatsApp Settings",short:"WA",href:"/coordinator/whatsapp/?module=settings",paths:["/coordinator/whatsapp/"]},
+        {label:"SMS Settings",short:"SM",href:"/coordinator/sms/?module=settings",paths:["/coordinator/sms/"]},
+        {label:"Management Mail",short:"MM",href:"/coordinator/management-mail/?module=settings",paths:["/coordinator/management-mail/"]},
+        {label:"Recycle Bin",short:"RB",href:"/recycle-bin/?module=settings",paths:["/recycle-bin/"]},
+      ]
     }
-    if (Array.isArray(page.anyKeys)) return page.anyKeys.some((key) => allowedPages.includes(key));
-    return allowedPages.includes(page.key);
   };
-  const visiblePages = (isNestedSidebar ? nestedPages : pages).filter(canSeePage);
 
+  const fallback = {
+    title:"BELM Workshop Manager", caption:"MODULE MENU", icon:"overview",
+    items:[{label:"Return to WM Role Menu",short:"WM",href:"/portal-v2/#role"}]
+  };
+  const moduleConfig = M[moduleKey] || fallback;
+  const visiblePages = moduleConfig.items;
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";
   sidebar.className = "belm-admin-sidebar";
@@ -156,8 +283,8 @@
 
   const brand = document.createElement("a");
   brand.className = "belm-sidebar-brand";
-  brand.href = "/belm-workshop/";
-  brand.setAttribute("aria-label", "BELM General Tech home");
+  brand.href = "/portal-v2/#role";
+  brand.setAttribute("aria-label", "Back to WM Role Menu");
   brand.innerHTML = `
     <span class="belm-sidebar-brand-mark" aria-hidden="true"><span>B</span></span>
     <span class="belm-sidebar-brand-copy">
@@ -187,6 +314,11 @@
   userCopy.append(userName, userRole);
   userCard.append(userAvatar, userCopy);
 
+  const moduleHeader = document.createElement("div");
+  moduleHeader.className = "belm-sidebar-module-head";
+  moduleHeader.innerHTML = `<a href="/portal-v2/#role" class="belm-sidebar-back-main">← WM ROLE MENU</a><small>${moduleConfig.caption}</small><strong>${moduleConfig.title}</strong>`;
+  document.body.classList.add(`belm-module-${moduleKey || "fallback"}`);
+
   const nav = document.createElement("nav");
   nav.className = "belm-sidebar-nav belm-sidebar-nav-flat";
   const currentPath = pathname;
@@ -196,35 +328,94 @@
   // entry itself is the single home destination, avoiding duplicate navigation.
 
 
-  // V357: one simple A-Z navigation list. Category headings intentionally
-  // stay out of the UI so every destination is visible and predictable.
-  const sortedPages = [...visiblePages].sort((a, b) =>
-    String(a.label || "").localeCompare(String(b.label || ""), "en", { sensitivity: "base" })
-  );
+  // V709: keep the order defined by the supplied dashboard/module; no A-Z
+  // re-sorting because workflow order is part of the operational design.
+  const currentView = String(query.get("view") || "");
+  const currentOpen = String(query.get("open") || "");
+  const currentRole = String(query.get("role") || "");
+  const currentTab = String(query.get("tab") || "");
 
-  sortedPages.forEach((page) => {
-    const link = document.createElement("a");
-    link.className = "belm-sidebar-link";
-    link.dataset.section = page.section || "";
-    if (page.priority) link.classList.add("workflow");
-    link.href = page.href;
-    const pathMatches = page.paths.some((path) => currentPath === path || currentPath.startsWith(path));
-    const hashMatches = page.hash ? currentHash === page.hash : (page.hashNot ? currentHash !== page.hashNot : true);
-    if (pathMatches && hashMatches) {
-      link.classList.add("active");
-      link.setAttribute("aria-current", "page");
+  function isPageActive(page) {
+    const paths = Array.isArray(page.paths) ? page.paths : [];
+    if (!paths.length) return false;
+    const pathMatches = paths.some((path) => currentPath === path || currentPath.startsWith(path));
+    if (!pathMatches) return false;
+    if (page.view) return currentView === page.view;
+    if (page.noView) return currentView === "";
+    if (page.open) return currentOpen === page.open;
+    if (page.noOpen) return currentOpen === "" && currentRole === "";
+    if (page.role) return currentRole === page.role;
+    if (page.tab) return currentTab === page.tab;
+    if (page.noTab) return currentTab === "";
+    if (page.hash) return currentHash === page.hash;
+    return true;
+  }
+
+  function clickPageTarget(page) {
+    const target = page.targetId ? document.getElementById(page.targetId) : null;
+    if (target) { target.click(); return true; }
+    if (page.scrollId) {
+      const el = document.getElementById(page.scrollId);
+      if (el) { el.scrollIntoView({behavior:"smooth", block:"start"}); return true; }
+    }
+    return false;
+  }
+
+  visiblePages.forEach((page) => {
+    const samePath = page.href && (() => { try { return new URL(page.href, location.origin).pathname === pathname; } catch (_) { return false; } })();
+    const shouldButton = Boolean(page.targetId || page.scrollId);
+    const control = document.createElement(shouldButton ? "button" : "a");
+    control.className = "belm-sidebar-link" + (shouldButton ? " belm-sidebar-action" : "");
+    control.dataset.section = moduleConfig.caption || "";
+    if (page.refresh) control.classList.add("workflow");
+    if (shouldButton) {
+      control.type = "button";
+      control.addEventListener("click", () => {
+        if (!clickPageTarget(page) && page.href) window.location.href = page.href;
+        document.body.classList.remove("belm-sidebar-open");
+      });
+    } else {
+      control.href = page.href;
+    }
+    if (isPageActive(page)) {
+      control.classList.add("active");
+      control.setAttribute("aria-current", "page");
     }
     const icon = document.createElement("span");
     icon.className = "belm-sidebar-icon";
-    const svgMarkup = sidebarIconSvg(page.key, page.label);
-    if (svgMarkup) icon.innerHTML = svgMarkup; else icon.textContent = page.short;
+    const svgMarkup = sidebarIconSvg(page.key || moduleConfig.icon, page.label);
+    if (svgMarkup) icon.innerHTML = svgMarkup; else icon.textContent = page.short || "•";
     const label = document.createElement("span");
     label.textContent = page.label;
     label.title = page.label;
-    link.append(icon, label);
-    if (page.applications) link.id = "belmSidebarApplications";
-    nav.appendChild(link);
+    control.append(icon, label);
+    nav.appendChild(control);
   });
+
+  // Deep-link helpers: the supplied dashboard bridge pages use ?view= to land
+  // on a real section/action without creating duplicate pages.
+  function applyContextView() {
+    if (pathname.startsWith("/billing-manager/") && currentTab) {
+      document.querySelector(`[data-tab="${CSS.escape(currentTab)}"]`)?.click();
+    }
+    if (pathname.startsWith("/spare-parts-manager/")) {
+      if (currentView === "requests") document.getElementById("requestsPanel")?.scrollIntoView({block:"start"});
+      if (currentView === "low-stock") { document.getElementById("selectLowStockButton")?.click(); document.getElementById("partsPanel")?.scrollIntoView({block:"start"}); }
+      if (currentView === "audit") document.getElementById("storeAuditButton")?.click();
+      if (currentView === "tools") document.getElementById("workshopToolIssueButton")?.click();
+      if (currentView === "stock-in" || currentView === "stock-out") document.getElementById("partsPanel")?.scrollIntoView({block:"start"});
+    }
+    if (pathname.startsWith("/belm-procurement/")) {
+      if (["records","proforma","orders","delivery"].includes(currentView)) document.getElementById("purchaseListPanel")?.scrollIntoView({block:"start"});
+      if (currentView === "reports") document.querySelector(".proc-tools-card")?.scrollIntoView({block:"start"});
+      if (currentView === "analysis") document.querySelector(".metric-grid")?.scrollIntoView({block:"start"});
+    }
+    if (pathname.startsWith("/reports-manager/") && currentHash === "#employee-activity") {
+      document.getElementById("employee-activity")?.scrollIntoView({block:"start"});
+    }
+  }
+  window.setTimeout(applyContextView, 0);
+  window.setTimeout(applyContextView, 450);
 
   const footer = document.createElement("div");
   footer.className = "belm-sidebar-footer";
@@ -266,11 +457,7 @@
     <input type="search" id="belmSidebarSearch" placeholder="Search menu…" aria-label="Search sidebar menu">
     <button type="button" class="belm-sidebar-search-clear hidden" aria-label="Clear search">×</button>`;
 
-  if (isNestedSidebar) {
-    sidebar.append(brand, userCard, nav);
-  } else {
-    sidebar.append(brand, userCard, searchWrap, nav);
-  }
+  sidebar.append(brand, userCard, moduleHeader, nav);
   sidebar.appendChild(footer);
 
   const toggle = document.createElement("button");
@@ -365,21 +552,6 @@
     }, true);
   })();
 
-  const applications = document.getElementById("belmSidebarApplications");
-  if (applications) {
-    fetch("/api/applications?status=PENDING", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data) => {
-        const count = Array.isArray(data?.applications) ? data.applications.length : 0;
-        if (count < 1) return;
-        const badge = document.createElement("span");
-        badge.className = "belm-sidebar-badge";
-        badge.textContent = String(count);
-        applications.appendChild(badge);
-        fitSidebarToText();
-      })
-      .catch(() => {});
-  }
+  // V709: pending counts remain inside Registration content; no duplicate main-menu badge here.
+
 })();

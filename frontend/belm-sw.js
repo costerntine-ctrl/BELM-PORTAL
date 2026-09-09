@@ -1,6 +1,6 @@
-// BELM portal service worker — V707 supplied dashboard lock.
+// BELM portal service worker — V709 contextual module sidebars.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v707-dashboard-lock';
+const CACHE='belm-portal-v709-context-sidebars';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
@@ -8,9 +8,9 @@ const SHELL=[
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg',
-  '/portal-v2/index.html?v=707-dashboard-lock',
-  '/portal-v2/portal.css?v=707-dashboard-lock',
-  '/portal-v2/portal.js?v=707-dashboard-lock'
+  '/portal-v2/index.html?v=709-context-sidebars',
+  '/portal-v2/portal.css?v=709-context-sidebars',
+  '/portal-v2/portal.js?v=709-context-sidebars'
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

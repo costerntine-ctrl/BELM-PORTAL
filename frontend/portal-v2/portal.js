@@ -381,6 +381,15 @@
     location.replace("/login");
   }
 
+  function updateLiveClock(){
+    const el=$("liveClock"); if(!el) return;
+    const now=new Date();
+    const datePart=now.toLocaleDateString("en-GB",{weekday:"short",day:"2-digit",month:"short"});
+    const timePart=now.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    el.textContent=`${datePart} · ${timePart}`;
+  }
+  updateLiveClock(); setInterval(updateLiveClock, 30000);
+
   setIdentity(); renderNav(true); $("year").textContent=String(new Date().getFullYear());
   $("enterRoleButton").addEventListener("click",()=>showView("role"));
   $("homeButton").addEventListener("click",()=>showView("home"));

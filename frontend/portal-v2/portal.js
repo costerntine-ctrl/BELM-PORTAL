@@ -75,6 +75,36 @@
   const I = {
     home: "⌂", customer: "CU", machine: "MC", user: "US", job: "JC", stock: "ST", buy: "PO", money: "TZ", bank: "BK", report: "AN", settings: "SE", inspect: "DI", test: "TS", message: "CM", fuel: "FL", tool: "TL", checklist: "CK", supplier: "SP", record: "RC", quote: "PF", log: "LG", profile: "ME", alert: "AL"
   };
+  // SVG paths zilizotolewa moja kwa moja kwenye dashibodi (mockups) za BELM — navy/gold design language.
+  const ICON_PATHS = {
+    home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
+    customer: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M17 8h4M19 6v4"/>',
+    machine: '<path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/>',
+    user: '<circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/><path d="M20 4l1.2 1.2M20 8l1.6-.2"/>',
+    job: '<path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/>',
+    stock: '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+    buy: '<circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5a2 2 0 002 1.5h8.4a2 2 0 002-1.6L21 7H6"/>',
+    money: '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>',
+    bank: '<path d="M3 10l9-6 9 6"/><path d="M5 10v9M10 10v9M14 10v9M19 10v9"/><path d="M3 21h18"/>',
+    report: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>',
+    inspect: '<path d="M2 12h4l2-7 4 14 2-7h8"/>',
+    test: '<path d="M20 6L9 17l-5-5"/>',
+    message: '<path d="M4 4h16v12H8l-4 4V4z"/>',
+    fuel: '<path d="M4 21V6a2 2 0 012-2h6v17"/><path d="M12 10h5v9M17 10l2.5 2.5a1.5 1.5 0 01.5 1.1V19a1.5 1.5 0 01-3 0v-2"/>',
+    tool: '<path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/>',
+    checklist: '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 3v2h6V3M9 10l1.7 1.7L14 8.3M9 16h6"/>',
+    supplier: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6M14.5 20c0-2.4-1-4.3-2.6-5.3.7-.5 1.6-.7 2.6-.7 2.7 0 5 2.1 5 4.9"/>',
+    record: '<path d="M9 3h6a2 2 0 012 2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M9 7h6M9 11h6M9 15h3"/>',
+    quote: '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+    log: '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h6M9 11h6M9 15h3"/>',
+    profile: '<circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/>',
+    alert: '<path d="M12 3L2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/>'
+  };
+  function iconSvg(key) {
+    const inner = ICON_PATHS[key] || ICON_PATHS.report;
+    return `<svg class="nav-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  }
   const item = (label, icon, href, note = "") => ({ label, icon, href, note });
 
   const ROLE_CONFIG = {
@@ -209,7 +239,7 @@
     $("roleNav").innerHTML = rows.map((row, index) => {
       const internal = row.href.startsWith("#");
       const active = home ? index === 0 : index === 0;
-      return `<a href="${esc(row.href)}" data-internal="${internal ? esc(row.href) : ""}" class="${active ? "is-active" : ""}"><span class="nav-icon">${esc(I[row.icon] || row.icon || "•")}</span><span>${esc(row.label)}</span><span class="nav-arrow">›</span></a>`;
+      return `<a href="${esc(row.href)}" data-internal="${internal ? esc(row.href) : ""}" class="${active ? "is-active" : ""}"><span class="nav-icon">${iconSvg(row.icon)}</span><span>${esc(row.label)}</span><span class="nav-arrow">›</span></a>`;
     }).join("");
   }
 
@@ -289,7 +319,7 @@
     const max = Math.max(...model.bars.map((r) => Number(r[1]) || 0), 1);
     $("workflowBars").innerHTML = model.bars.map(([label,value]) => `<div class="bar-row"><span>${esc(label)}</span><div class="bar-track"><i class="bar-fill" style="width:${Math.max(3,(Number(value)||0)/max*100)}%"></i></div><b>${number.format(Number(value)||0)}</b></div>`).join("");
     $("attentionList").innerHTML = model.attention.length ? model.attention.map((row) => `<div class="attention-item"><i></i><div><strong>${esc(row.label)}</strong><small>${esc(row.note)}</small></div><b>${esc(row.value)}</b></div>`).join("") : '<div class="attention-item"><i style="background:var(--green)"></i><div><strong>All clear</strong><small>No urgent item is currently recorded.</small></div></div>';
-    $("recentTable").innerHTML = model.recent.length ? model.recent.map((row) => `<div class="data-row"><span class="nav-icon">${esc(I.record)}</span><div><strong>${esc(row.label)}</strong><small>${esc(row.note)}</small></div><time>${esc(fmtDate(row.time))}</time></div>`).join("") : '<div class="data-row"><div><strong>No recent records</strong><small>New system activity will appear here.</small></div></div>';
+    $("recentTable").innerHTML = model.recent.length ? model.recent.map((row) => `<div class="data-row"><span class="nav-icon">${iconSvg("record")}</span><div><strong>${esc(row.label)}</strong><small>${esc(row.note)}</small></div><time>${esc(fmtDate(row.time))}</time></div>`).join("") : '<div class="data-row"><div><strong>No recent records</strong><small>New system activity will appear here.</small></div></div>';
     const priority = model.attention.filter((r)=>Number(r.value)>0 || (typeof r.value === "string" && !["CLOSED","RESOLVED","RECORDED"].includes(r.value.toUpperCase()))).length;
     $("notificationCount").hidden = priority < 1; $("notificationCount").textContent = String(priority);
     $("lastUpdated").textContent = `Updated ${new Date().toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"})}`;
@@ -327,8 +357,8 @@
     const model = roleModel();
     renderStats("roleStats", model.stats);
     const actions = uniqueMenu(config.menu.filter((row) => row.href !== "#dashboard")).slice(0, 8);
-    $("roleActions").innerHTML = actions.map((row) => `<a class="action-card" href="${esc(row.href)}" ${row.href==="#new-customer"?'data-register-customer="1"':''}><span class="nav-icon">${esc(I[row.icon]||row.icon)}</span><span><strong>${esc(row.label)}</strong><small>${esc(row.note||"Open live records and tools")}</small></span><b>›</b></a>`).join("");
-    $("roleQueue").innerHTML = model.recent.length ? model.recent.slice(0,5).map((row)=>`<div class="queue-item"><span class="nav-icon">${esc(I.record)}</span><div><strong>${esc(row.label||"Record")}</strong><small>${esc(row.note||"")}</small></div></div>`).join("") : '<div class="queue-item"><div><strong>No pending records</strong><small>Your live work queue is currently clear.</small></div></div>';
+    $("roleActions").innerHTML = actions.map((row) => `<a class="action-card" href="${esc(row.href)}" ${row.href==="#new-customer"?'data-register-customer="1"':''}><span class="nav-icon">${iconSvg(row.icon)}</span><span><strong>${esc(row.label)}</strong><small>${esc(row.note||"Open live records and tools")}</small></span><b>›</b></a>`).join("");
+    $("roleQueue").innerHTML = model.recent.length ? model.recent.slice(0,5).map((row)=>`<div class="queue-item"><span class="nav-icon">${iconSvg("record")}</span><div><strong>${esc(row.label||"Record")}</strong><small>${esc(row.note||"")}</small></div></div>`).join("") : '<div class="queue-item"><div><strong>No pending records</strong><small>Your live work queue is currently clear.</small></div></div>';
     $("processTitle").textContent = `${roleLabel()} workflow`;
     $("processFlow").innerHTML = config.process.map((step,index)=>`<div class="process-step"><b>STEP ${index+1}</b><span>${esc(step)}</span></div>`).join("");
   }

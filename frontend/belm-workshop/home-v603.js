@@ -11,23 +11,23 @@
   try{currentUser=JSON.parse(localStorage.getItem('belm_admin_user')||localStorage.getItem('belm_tech_user')||'null');}catch(_){ }
   const role=String(currentUser?.role||'').trim().toLowerCase();
   const defaultRoleDestination=()=>{
-    if(/super admin|belm admin|administrator|^admin$/.test(role))return'/admin/overview';
+    if(/super admin|belm admin|administrator|^admin$/.test(role))return'/workshop-management-home/?role=workshop';
     if(/technician/.test(role))return'/tech';
     if(/procurement/.test(role))return'/workshop-management-home/?role=procurement';
     if(/store keeper|storekeeper/.test(role))return'/workshop-management-home/?role=store';
     if(/registration|sales/.test(role))return'/workshop-management-home/?role=registration';
     if(/finance|accounts|accountant/.test(role))return'/workshop-management-home/?role=finance';
     if(/bank control/.test(role))return'/workshop-management-home/?role=bank';
-    if(/coordinator/.test(role))return'/workshop-management-home/?role=coordinator';
+    if(/coordinator/.test(role))return'/settings-manager/';
     if(/workshop manager|engineer|technical dep/.test(role))return'/workshop-management-home/?role=workshop';
     return'/workshop-management-home/';
   };
   const roleLabels={
-    'super admin':'BELM SUPER ADMIN','belm admin':'BELM SUPER ADMIN','administrator':'BELM SUPER ADMIN','admin':'BELM SUPER ADMIN',
+    'super admin':'BELM WORKSHOP MANAGER PORTAL','belm admin':'BELM WORKSHOP MANAGER PORTAL','administrator':'BELM WORKSHOP MANAGER PORTAL','admin':'BELM WORKSHOP MANAGER PORTAL',
     'technician':'TECHNICIAN','procurement':'PROCUREMENT','store keeper':'STORE KEEPER','storekeeper':'STORE KEEPER',
     'registration & sales':'REGISTRATION & SALES','registration and sales':'REGISTRATION & SALES','finance / accounts':'FINANCE / ACCOUNTS',
     'finance':'FINANCE / ACCOUNTS','accounts':'FINANCE / ACCOUNTS','accountant':'FINANCE / ACCOUNTS','bank controller':'BANK CONTROLLER',
-    'system coordinator':'SYSTEM COORDINATOR','workshop manager':'WORKSHOP MANAGER / TECHNICAL DEP','engineer':'WORKSHOP MANAGER / TECHNICAL DEP'
+    'system coordinator':'SYSTEM SETTINGS','workshop manager':'WORKSHOP MANAGER / TECHNICAL DEP','engineer':'WORKSHOP MANAGER / TECHNICAL DEP'
   };
   const viewMyRole=document.getElementById('viewMyRoleButton');
   const viewMyRoleLabel=document.getElementById('viewMyRoleLabel');
@@ -37,7 +37,7 @@
   const visibleRoleLabel=roleLabels[role]||String(currentUser?.role||'ASSIGNED ROLE').toUpperCase();
   if(viewMyRole){viewMyRole.href=roleDestination;viewMyRole.setAttribute('aria-label',`View My Role: ${visibleRoleLabel}`);}
   if(viewMyRoleLabel)viewMyRoleLabel.textContent=visibleRoleLabel;
-  if(viewMyRoleNote)viewMyRoleNote.textContent=/super admin|belm admin|administrator|^admin$/.test(role)?'Open the BELM Super Admin dashboard':'Open your role activity and analysis dashboard';
+  if(viewMyRoleNote)viewMyRoleNote.textContent=/super admin|belm admin|administrator|^admin$/.test(role)?'Open the BELM Workshop Manager Portal':'Open your role activity and analysis dashboard';
   // Home is now the first signed-in screen, so it does not show a shortcut
   // back into any role workspace.
   if(mainMenuBack){mainMenuBack.hidden=true;mainMenuBack.style.display='none';}

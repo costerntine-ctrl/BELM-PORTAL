@@ -1,17 +1,16 @@
-// BELM portal service worker — V705 canonical Home Dashboard cleanup.
+// BELM portal service worker — V706 BELM Workshop Manager Portal cleanup.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v705-clean-dashboard';
+const CACHE='belm-portal-v706-wm-clean';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
-  '/customer-app.js?v=705-clean-dashboard',
+  '/customer-app.js?v=706-wm-clean',
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg',
-  '/portal-v2/index.html?v=705-clean-dashboard',
-  '/portal-v2/portal.css?v=705-clean-dashboard',
-  '/portal-v2/portal.js?v=705-clean-dashboard'
-
+  '/portal-v2/index.html?v=706-wm-clean',
+  '/portal-v2/portal.css?v=706-wm-clean',
+  '/portal-v2/portal.js?v=706-wm-clean'
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

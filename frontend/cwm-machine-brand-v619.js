@@ -1,4 +1,4 @@
-// V619 — Runtime CWM machine-card branding guard.
+// V619 — Runtime Customer Workshop Portal machine-card branding guard.
 // Purpose: legacy React/Tailwind/status classes can repaint the full customer card red.
 // This observer reapplies the approved BELM shell/action colors after the card is decorated.
 (function(){

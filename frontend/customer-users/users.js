@@ -235,7 +235,7 @@
       const addButton = document.getElementById("addButton");
       if (addButton) addButton.disabled = used >= limit;
       if (used >= limit) {
-        info.textContent += " Contact BELM Admin to request additional users.";
+        info.textContent += " Contact BELM Workshop Manager Portal to request additional users.";
       }
     } catch (_) {
       info.textContent = "";

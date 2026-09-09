@@ -153,7 +153,7 @@
     if (top) top.innerHTML = '<button id="refreshButton" class="ghost cwm-refresh-clean" type="button" data-cwm-refresh><span class="refresh-icon">↻</span><span class="refresh-text">Refresh</span></button><button class="ghost cwm-header-logout-v556" type="button" data-cwm-logout>Log out</button>';
     const brand = document.querySelector(".brand");
     brand?.setAttribute("href", "/portal-cwm/");
-    if (brand) { const text = brand.querySelector("span:last-child"); if (text) text.innerHTML = 'BELM General Tech <small>PORTAL-CWM</small>'; }
+    if (brand) { const text = brand.querySelector("span:last-child"); if (text) text.innerHTML = 'BELM General Tech <small>Customer Workshop Portal</small>'; }
     const grid = document.getElementById("cwmCardGrid");
     if (grid && !grid.querySelector("[data-customer-card]")) {
       grid.innerHTML = '<section class="cwm-home-loading-v673" aria-live="polite"><span class="cwm-home-loader-v673"></span><strong>Opening Company Home…</strong><small>Loading your company, machine alerts and assigned role.</small></section>';
@@ -210,17 +210,17 @@
         customers = [{ id: customer.id || "self", name: customer.name || "Customer", address: customer.address || "", email: customer.email || "", phone: customer.phone || "" }];
         setCustomerHomeChrome();
         renderCards();
-        if (fromRefresh) showAlert('PORTAL-CWM refreshed successfully.', false);
+        if (fromRefresh) showAlert('Customer Workshop Portal refreshed successfully.', false);
         return;
       }
       if (!adminToken) { window.location.replace("/login"); return; }
       customers = await adminApi("/customers?action=cwm-overview");
       renderCards(document.getElementById("cwmSearch")?.value || "");
-      if (fromRefresh) showAlert('PORTAL-CWM refreshed successfully.', false);
+      if (fromRefresh) showAlert('Customer Workshop Portal refreshed successfully.', false);
     } catch (error) {
       const grid = document.getElementById("cwmCardGrid");
-      if (grid) grid.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load PORTAL-CWM.")}</p>`;
-      showAlert(error.message || "Could not load PORTAL-CWM.", true);
+      if (grid) grid.innerHTML = `<p class="muted">${escapeHtml(error.message || "Could not load Customer Workshop Portal.")}</p>`;
+      showAlert(error.message || "Could not load Customer Workshop Portal.", true);
     } finally {
       isRefreshing = false;
       document.querySelectorAll('#refreshButton,[data-cwm-refresh]').forEach((button) => { button.disabled = false; button.classList.remove('is-refreshing'); const label = button.querySelector('.refresh-text'); if (label) label.textContent = 'Refresh'; });

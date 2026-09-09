@@ -5,7 +5,7 @@
 
   // V494: if this page is opened inside the WM iframe, any Workshop back link
   // closes the outer workspace instead of navigating the iframe into another
-  // copy of PORTAL-BELM WM.
+  // copy of BELM Workshop Manager Portal.
   if(new URLSearchParams(location.search).get('embed')==='1' && window.parent!==window){
     document.querySelectorAll('a[href="/belm-workshop/"],a[href="/belm-workshop"]').forEach(link=>{
       link.addEventListener('click',event=>{

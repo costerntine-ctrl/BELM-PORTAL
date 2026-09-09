@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bank Controller — BELM Admin</title>
+  <title>Bank Controller — BELM Workshop Manager Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
@@ -96,9 +96,9 @@
       <section id="bankEditAuthorization" class="bank-edit-authorization hidden" aria-label="Bank account edit authorization">
         <div class="bank-edit-auth-head">
           <strong>EDIT AUTHORIZATION</strong>
-          <small id="bankEditActor">Signed-in BELM Admin</small>
+          <small id="bankEditActor">Signed-in BELM Workshop Manager Portal</small>
         </div>
-        <label>BELM Admin password<input id="bankEditAdminPassword" type="password" autocomplete="current-password" disabled></label>
+        <label>BELM Workshop Manager Portal password<input id="bankEditAdminPassword" type="password" autocomplete="current-password" disabled></label>
         <label>Edit PIN<input id="bankEditPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" disabled></label>
         <label>Reason for edit<textarea id="bankEditReason" maxlength="500" rows="3" placeholder="Why is this bank account being changed?" disabled></textarea></label>
         <p class="bank-edit-auth-note">Every edit is saved to the audit log with the signed-in admin, date/time, reason and before/after values.</p>

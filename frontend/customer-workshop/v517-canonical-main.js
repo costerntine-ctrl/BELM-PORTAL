@@ -35,14 +35,14 @@
   const settings=document.createElement('section');
   settings.id='cwmV517Settings';
   settings.className='cwm-v517-subview hidden';
-  settings.innerHTML='<div class="cwm-v517-head"><div><p class="eyebrow">PORTAL-CWM ONLY</p><h2>Settings</h2><p>Company-specific PORTAL-CWM settings.</p></div><button type="button" class="cwm-v517-back">← Back to CWM Main Home</button></div>';
+  settings.innerHTML='<div class="cwm-v517-head"><div><p class="eyebrow">Customer Workshop Portal ONLY</p><h2>Settings</h2><p>Company-specific Customer Workshop Portal settings.</p></div><button type="button" class="cwm-v517-back">← Back to Customer Workshop Portal Main Home</button></div>';
   settings.appendChild(branding);
   main.after(settings);
 
   const storeView=document.createElement('section');
   storeView.id='cwmV517Store';
   storeView.className='cwm-v517-subview hidden';
-  storeView.innerHTML='<div class="cwm-v517-head"><div><p class="eyebrow">PORTAL-CWM · STORE & SPARES</p><h2>Open Store & Spares</h2><p>Customer Workshop Store, spare/material receiving and Tool Issue documents.</p></div><button type="button" class="cwm-v517-back">← Back to CWM Main Home</button></div>';
+  storeView.innerHTML='<div class="cwm-v517-head"><div><p class="eyebrow">Customer Workshop Portal · STORE & SPARES</p><h2>Open Store & Spares</h2><p>Customer Workshop Store, spare/material receiving and Tool Issue documents.</p></div><button type="button" class="cwm-v517-back">← Back to Customer Workshop Portal Main Home</button></div>';
   storeView.append(store,toolDocs);
   settings.after(storeView);
 
@@ -63,8 +63,8 @@
   if(storeLink)storeLink.href='#cwm-store';
   if(settingsLink)settingsLink.href='#cwm-settings';
 
-  // Top-level CWM navigation must return to the approved Customer Dashboard
-  // home card. Only internal Settings/Store Back buttons return to CWM Main.
+  // Top-level Customer Workshop Portal navigation must return to the approved Customer Dashboard
+  // home card. Only internal Settings/Store Back buttons return to Customer Workshop Portal Main.
   if(topBack){
     topBack.href='/general-analysis/?module=workshop#workshop-analysis';
     topBack.setAttribute('aria-label','Back to Role Activity');
@@ -83,7 +83,7 @@
   },true);
   document.querySelectorAll('.cwm-v517-back').forEach(btn=>btn.addEventListener('click',()=>show('main')));
 
-  // Do not trap browser Back/Forward inside PORTAL-CWM. Natural navigation
+  // Do not trap browser Back/Forward inside Customer Workshop Portal. Natural navigation
   // must be able to return to the Customer Dashboard/home card.
   show('main');
 })();

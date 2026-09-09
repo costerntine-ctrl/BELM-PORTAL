@@ -50,7 +50,6 @@
     "/settings-manager/",
     "/bank-controller/",
     "/recycle-bin/",
-    "/portal-cwm/",
     "/belm-workshop/",
   ];
   const isAdminArea = pathname.startsWith("/admin/")
@@ -117,8 +116,7 @@
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
     // V471: direct commercial workshop portals for fast testing and operations.
-    { section: "Maintenance", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
-    { section: "Maintenance", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
+    { section: "Maintenance", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "BELM Workshop Manager Portal", short: "WM", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
@@ -131,16 +129,14 @@
 
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
   const allowedPages = Array.isArray(user.allowedPages) ? user.allowedPages : [];
-  // V458: nested/sub-navigation. On TECHNICAL DEP and BELM WORKSHOP, the
-  // full admin menu is replaced by a compact workshop sidebar (Customer
-  // Overview / PORTAL-BELM WM / PORTAL-CWM) plus a "Back to Main Menu" link at the top -
-  // every other admin page keeps the full menu unchanged.
-  const NESTED_SIDEBAR_PATHS = ["/customers-manager/", "/belm-workshop/", "/portal-cwm/"];
+  // V706: BELM Workshop Manager Portal owns one compact nested sidebar.
+  // Customer Overview is a sidebar destination; the old Customer Workshop Portal shortcut
+  // is intentionally removed from BELM staff navigation.
+  const NESTED_SIDEBAR_PATHS = ["/customers-manager/", "/belm-workshop/"];
   const isNestedSidebar = NESTED_SIDEBAR_PATHS.some((p) => pathname === p || pathname.startsWith(p));
   const nestedPages = [
-    { section: "Nested", key: "customers", label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
-    { section: "Nested", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
-    { section: "Nested", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
+    { section: "Nested", key: "customers", namedRoles: ["Workshop Manager","Engineer"], label: "Customer Overview", short: "CO", href: "/customers-manager/", paths: ["/customers-manager/", "/admin/customers"] },
+    { section: "Nested", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "BELM Workshop Manager Portal", short: "WM", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
   ];
   const canSeePage = (page) => {
     if (page.superAdminOnly) return isSuperAdmin;
@@ -156,7 +152,7 @@
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";
   sidebar.className = "belm-admin-sidebar";
-  sidebar.setAttribute("aria-label", "BELM administration sidebar");
+  sidebar.setAttribute("aria-label", "BELM Workshop Manager Portal sidebar");
 
   const brand = document.createElement("a");
   brand.className = "belm-sidebar-brand";
@@ -166,7 +162,7 @@
     <span class="belm-sidebar-brand-mark" aria-hidden="true"><span>B</span></span>
     <span class="belm-sidebar-brand-copy">
       <strong>BELM GENERAL TECH</strong>
-      <small>Operations & Service Portal</small>
+      <small>BELM Workshop Manager Portal</small>
       <span class="belm-sidebar-brand-palette" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     </span>`;
 
@@ -185,7 +181,9 @@
   const userName = document.createElement("strong");
   userName.textContent = user.name || "System user";
   const userRole = document.createElement("span");
-  userRole.textContent = user.role === "Engineer" ? "Workshop Manager" : (user.role || "Assigned role");
+  userRole.textContent = user.role === "Engineer" ? "Workshop Manager"
+    : /system coordinator/i.test(String(user.role || "")) ? "System Settings"
+    : (user.role || "Assigned role");
   userCopy.append(userName, userRole);
   userCard.append(userAvatar, userCopy);
 
@@ -194,17 +192,9 @@
   const currentPath = pathname;
   const currentHash = window.location.hash || "";
 
-  if (isNestedSidebar) {
-    const backLink = document.createElement("a");
-    backLink.className = "belm-sidebar-link belm-sidebar-back-link";
-    backLink.href = "/belm-workshop/";
-    backLink.innerHTML = `<span class="belm-sidebar-icon">←</span><span>Back to Main Home</span>`;
-    backLink.addEventListener("click", (event) => {
-      event.preventDefault();
-      window.location.assign("/belm-workshop/");
-    });
-    nav.appendChild(backLink);
-  }
+  // V706: no extra Back/Home row here; the BELM Workshop Manager Portal
+  // entry itself is the single home destination, avoiding duplicate navigation.
+
 
   // V357: one simple A-Z navigation list. Category headings intentionally
   // stay out of the UI so every destination is visible and predictable.
@@ -286,7 +276,7 @@
   const toggle = document.createElement("button");
   toggle.className = "belm-sidebar-toggle";
   toggle.type = "button";
-  toggle.setAttribute("aria-label", "Open administration menu");
+  toggle.setAttribute("aria-label", "Open BELM Workshop Manager menu");
   toggle.textContent = "☰";
   const scrim = document.createElement("button");
   scrim.className = "belm-sidebar-scrim";

@@ -84,7 +84,7 @@ function confirmRegisteredUserAction(options = {}) {
   registeredUserActionNeedsReason = Boolean(options.requireReason);
   document.getElementById("registeredUserActionEyebrow").textContent = options.destructive ? "CONFIRM DELETION" : "ACCOUNT SECURITY";
   document.getElementById("registeredUserActionTitle").textContent = options.title || "Confirm account action";
-  document.getElementById("registeredUserActionMessage").textContent = options.message || "Enter your current BELM Admin password to continue.";
+  document.getElementById("registeredUserActionMessage").textContent = options.message || "Enter your current BELM Workshop Manager Portal password to continue.";
   password.value = "";
   reason.value = "";
   reasonWrap.classList.toggle("hidden", !registeredUserActionNeedsReason);
@@ -110,7 +110,7 @@ function customerSyncSummary(sync) {
   if (targets.customersOverview) labels.push('Customer Overview');
   if (targets.belmWorkshopCustomerOverview) labels.push('WM Customer Overview');
   if (targets.customerDashboard) labels.push('Customer Dashboard');
-  if (targets.portalCwm) labels.push('PORTAL-CWM');
+  if (targets.portalCwm) labels.push('Customer Workshop Portal');
   if (targets.machineScope) labels.push('Machines');
   if (targets.manageUsers) labels.push('Manage Users');
   if (targets.workshopProcurementReports) labels.push('Workshop/Procurement/Reports');
@@ -150,7 +150,7 @@ function renderCard(application) {
   const displayName = application.displayName || application.companyName || application.fullName;
   const applicationType = application.applicationType === "SYSTEM_USER" ? "Staff / Technician" : "Customer";
   const cwmTag = application.applicationType !== "SYSTEM_USER" && application.registrationMode === "PORTAL_CWM"
-    ? " · PORTAL-CWM" : "";
+    ? " · Customer Workshop Portal" : "";
   title.append(
     element("h2", "", displayName),
     element("div", "reference", `${application.referenceNo} · ${applicationType}${cwmTag} · Submitted ${formatDate(application.submittedAt)}`)
@@ -175,7 +175,7 @@ function renderCard(application) {
         ["Company address", application.address],
         ["TIN", application.tinNumber],
         ["VRN", application.vrn],
-        ["Registration type", application.registrationMode === "PORTAL_CWM" ? "PORTAL-CWM (Independent)" : "TECHNICAL DEP (BELM Service Provider)"],
+        ["Registration type", application.registrationMode === "PORTAL_CWM" ? "Customer Workshop Portal (Independent)" : "TECHNICAL DEP (BELM Service Provider)"],
         ["Reviewed by", application.reviewedByName],
         ["Reviewed at", formatDate(application.reviewedAt)]
       ];
@@ -1121,7 +1121,7 @@ function openRegisterCredentials({ name, role, email, password, recoveryCode, lo
   document.getElementById("regCredSyncLabel").classList.toggle("hidden", !customerRegistration);
   document.getElementById("regCredSync").classList.toggle("hidden", !customerRegistration);
   if (customerRegistration) {
-    document.getElementById("regCredMode").textContent = registrationMode === "PORTAL_CWM" ? "PORTAL-CWM" : "TECHNICAL DEP";
+    document.getElementById("regCredMode").textContent = registrationMode === "PORTAL_CWM" ? "Customer Workshop Portal" : "TECHNICAL DEP";
     document.getElementById("regCredSync").textContent = customerSyncSummary(registrationSync);
   }
   registerCredentialsDialog.showModal();

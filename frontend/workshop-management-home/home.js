@@ -27,7 +27,9 @@
     (Array.isArray(tokenUser.roleNames) ? tokenUser.roleNames :
       Array.isArray(currentUser.roleNames) ? currentUser.roleNames : [primaryRole])
       .filter(Boolean)
-      .map((role) => role === "Engineer" ? "Workshop Manager" : String(role))
+      .map((role) => role === "Engineer" ? "Workshop Manager"
+        : /system coordinator/i.test(String(role)) ? "System Settings"
+        : String(role))
   )];
   const allowedPages = Array.isArray(tokenUser.allowedPages)
     ? tokenUser.allowedPages
@@ -110,13 +112,13 @@
       secondaryLabel: "Workshop analysis →",
     },
     coordinator: {
-      eyebrow: "SYSTEM COORDINATOR",
-      title: "System Coordination Analysis",
-      description: "Portal access, customer controls, service-provider settings and system communications.",
-      href: "/coordinator/",
-      action: "Open System Coordinator →",
-      secondary: "/settings-manager/",
-      secondaryLabel: "System settings →",
+      eyebrow: "SYSTEM SETTINGS",
+      title: "System Settings",
+      description: "Portal, company and access configuration. No separate Coordinator workflow is used.",
+      href: "/settings-manager/",
+      action: "Open System Settings →",
+      secondary: "/roles-manager/",
+      secondaryLabel: "Roles & users →",
     },
     reports: {
       eyebrow: "GENERAL REPORT",
@@ -140,10 +142,11 @@
 
   const roleWorkspaces = {
     superadmin: {
-      label: "BELM Super Admin",
-      menuTitle: "SUPER ADMIN MENU",
+      label: "BELM Workshop Manager Portal",
+      menuTitle: "BELM WM PORTAL",
       module: "overview",
       menu: [
+        { code: "CU", label: "Customer Overview", note: "Customers, machines and service controls", href: "/customers-manager/", tone: "blue" },
         { code: "CO", label: "Company Overview", note: "Live business position", href: "/overview-manager/", tone: "blue" },
         { code: "AP", label: "Approvals", note: "Customer and access requests", href: "/admin-applications/", tone: "yellow" },
         { code: "UR", label: "Users & Roles", note: "People, permissions and access", href: "/roles-manager/", tone: "green" },
@@ -157,7 +160,7 @@
       menuTitle: "WORKSHOP MANAGER MENU",
       module: "workshop",
       menu: [
-        { code: "CM", label: "Customer Machines", note: "Customer fleet and machine records", href: "/customers-manager/?from=role-activity", tone: "blue" },
+        { code: "CO", label: "Customer Overview", note: "Customers, fleet and service controls", href: "/customers-manager/?from=role-activity", tone: "blue" },
         { code: "JC", label: "Open Job Cards", note: "Receive, assign and follow work", href: "/breakdown-workflow/?actor=admin&view=job-cards", tone: "yellow" },
         { code: "TC", label: "Manage Technicians", note: "Assignment and workload", href: "/roles-manager/?role=Technician&technical=1", tone: "green" },
         { code: "SP", label: "Store & Spares", note: "Parts needed for repair", href: "/spare-parts-manager/?from=role-activity", tone: "cyan" },
@@ -243,16 +246,11 @@
       ],
     },
     coordinator: {
-      label: "System Coordinator",
-      menuTitle: "SYSTEM COORDINATOR",
+      label: "System Settings",
+      menuTitle: "SYSTEM SETTINGS",
       module: "coordinator",
       menu: [
-        { code: "PA", label: "Portal Access", note: "BELM and customer portal control", href: "/coordinator/", tone: "blue" },
-        { code: "CA", label: "Customer Access", note: "Customer modules and permissions", href: "/coordinator/#machine-card-button-controller", tone: "green" },
-        { code: "UR", label: "Roles & Users", note: "Staff access and responsibility", href: "/roles-manager/", tone: "yellow" },
-        { code: "SP", label: "Service Provider Settings", note: "BELM-to-customer operating rules", href: "/settings-manager/", tone: "cyan" },
-        { code: "NT", label: "Notifications & Activity", note: "Channels, alerts and system history", href: "/admin/activity-log", tone: "purple" },
-        { code: "AN", label: "System Analysis", note: "Access, users and portal performance", analysis: true, tone: "green" },
+        { code: "SE", label: "System Settings", note: "Portal and company configuration", href: "/settings-manager/", tone: "yellow" },
       ],
     },
   };
@@ -289,7 +287,7 @@
     $("signedUserPrimaryRole").textContent = roleNames.join(" · ");
     $("userInitials").textContent = initials;
     $("headerRole").textContent = roleNames.join(" / ");
-    $("coordinatorLink").hidden = !isSuperAdmin;
+    $("settingsLink").hidden = !(isSuperAdmin || roleNames.some((role) => /coordinator/i.test(role)) || hasPage("settings"));
   }
 
   function updateDate() {
@@ -350,6 +348,10 @@
       || roleKeyFromName(primaryRole)
       || keys[0];
     state.activeRole = keys.includes(requested) ? requested : keys[0];
+    if (state.activeRole === "coordinator") {
+      location.replace("/settings-manager/");
+      return false;
+    }
     state.activeModule = roleWorkspaces[state.activeRole].module;
 
     const selector = $("roleSelect");
@@ -567,7 +569,6 @@
       { title: "Registration approvals", note: "Approve customer and BELM staff requests.", href: "/admin-applications/" },
       { title: "Customer overview", note: "Open companies, machines and connection status.", href: "/customers-manager/" },
       { title: "Billing & sales", note: "Prepare Proforma, invoice and receipt records.", href: "/billing-manager/" },
-      { title: "Customer Workshop Portal", note: "Inspect the PORTAL-CWM operating surface.", href: "/portal-cwm/" },
     ]), "LIVE TOTALS");
     setAttention([
       { code: "RG", label: "Applications waiting", note: "Approval is required before first login", value: n(totals.pendingApplications), tone: totals.pendingApplications ? "warning" : "", href: "/admin-applications/" },
@@ -678,8 +679,8 @@
       { label: "Customer accounts", value: n(totals.customers), note: "Connected companies", tone: "cyan" },
       { label: "Pending approvals", value: n(totals.pendingApplications), note: "Applications awaiting review", tone: totals.pendingApplications ? "yellow" : "green" },
     ]);
-    setPrimary("SYSTEM COORDINATION", "Portal access and service controls", workspaceCards([
-      { title: "Coordinator Home", note: "Manage BELM and customer portal controls.", href: "/coordinator/" },
+    setPrimary("SYSTEM SETTINGS", "Portal and company configuration", workspaceCards([
+      { title: "System Settings", note: "Manage portal and company configuration.", href: "/settings-manager/" },
       { title: "Roles & Users", note: "Review staff access and role responsibility.", href: "/roles-manager/" },
       { title: "System Settings", note: "Manage service-provider and portal settings.", href: "/settings-manager/" },
       { title: "Activity Log", note: "Review recent system and user actions.", href: "/admin/activity-log" },
@@ -742,7 +743,7 @@
     setPrimary("ROLE WORKSPACE", "Open your permitted department", workspaceCards([
       { title: config.title, note: config.description, href: config.href },
     ]), "ROLE ACCESS");
-    setAttention([{ code: "AC", label: "Analysis access", note: "Ask BELM Admin to add Overview permission if required", value: "—", href: config.href }]);
+    setAttention([{ code: "AC", label: "Analysis access", note: "Ask BELM Super Admin to add Overview permission if required", value: "—", href: config.href }]);
     setActivity("Your access", workspaceCards([{ title: "Open assigned workspace", note: "Continue to the operational page allowed for this role.", href: config.href }]));
   }
 
@@ -834,6 +835,7 @@
 
   async function selectRole(role) {
     if (!roleWorkspaces[role] || role === state.activeRole) { closeMenu(); return; }
+    if (role === "coordinator") { location.assign("/settings-manager/"); return; }
     state.activeRole = role;
     state.activeModule = roleWorkspaces[role].module;
     localStorage.setItem("belm_management_active_role", role);
@@ -876,7 +878,7 @@
   window.addEventListener("resize", () => { if (innerWidth > 900) closeMenu(); });
 
   configureIdentity();
-  configureNavigation();
+  if (configureNavigation() === false) return;
   updateDate();
   updateThemeButton();
   setInterval(updateDate, 60000);

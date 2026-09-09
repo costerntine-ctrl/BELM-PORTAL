@@ -15,7 +15,7 @@
 
   function currentSession() {
     const localPreview = ["127.0.0.1", "localhost"].includes(location.hostname) && new URLSearchParams(location.search).get("preview") === "1";
-    if (localPreview) return { type:"admin", key:"belm_preview_token", token:"preview", payload:{ id:"preview", name:"BELM Admin", roleName:"Super Admin" } };
+    if (localPreview) return { type:"admin", key:"belm_preview_token", token:"preview", payload:{ id:"preview", name:"BELM Workshop Manager Portal", roleName:"Super Admin" } };
     const active = String(localStorage.getItem("belm_active_account_type") || "").toLowerCase();
     const candidates = active === "customer"
       ? [["customer", "belm_customer_token"]]
@@ -35,11 +35,11 @@
   const isLocalPreview = ["localhost", "127.0.0.1"].includes(location.hostname) && new URLSearchParams(location.search).get("preview") === "1";
   const session = currentSession() || (isLocalPreview ? {
     type: "admin", key: "belm_preview_token", token: "preview",
-    payload: { id: "preview-user", name: "BELM Admin", roleName: "Super Admin" }
+    payload: { id: "preview-user", name: "BELM Workshop Manager Portal", roleName: "Super Admin" }
   } : null);
   if (!session) { location.replace("/login"); return; }
 
-  let storedUser = session.key === "belm_preview_token" ? { id:"preview", name:"BELM Admin", role:"Super Admin" } : null;
+  let storedUser = session.key === "belm_preview_token" ? { id:"preview", name:"BELM Workshop Manager Portal", role:"Super Admin" } : null;
   if (session.type !== "customer") {
     try { storedUser = JSON.parse(localStorage.getItem(session.type === "technician" ? "belm_tech_user" : "belm_admin_user") || "null"); } catch (_) {}
   }
@@ -109,13 +109,13 @@
 
   const ROLE_CONFIG = {
     "super-admin": {
-      title: "BELM Super Admin Dashboard", initials: "BA", eyebrow: "BELM ADMINISTRATION", description: "Full company control, approvals, users, finance visibility and secure system settings.", primary: "/workshop-management-home/",
-      menu: [item("Dashboard","home","#dashboard"),item("Customer Registration","customer","/admin-applications/"),item("Customers & Machines","machine","/customers-manager/"),item("Roles & Users","user","/roles-manager/"),item("Workshop & Job Cards","job","/breakdown-workflow/?actor=admin&view=job-cards"),item("Spare Parts Inventory","stock","/spare-parts-manager/"),item("Procurement","buy","/belm-procurement/"),item("Finance & Accounts","money","/billing-manager/"),item("Bank Control","bank","/bank-controller/"),item("Reports & Analysis","report","/reports-manager/"),item("System Settings","settings","/settings-manager/")],
+      title: "BELM Workshop Manager Portal", initials: "WM", eyebrow: "BELM WORKSHOP MANAGEMENT", description: "Workshop management with full BELM administrative control, approvals, finance visibility and secure settings.", primary: "/workshop-management-home/?role=workshop",
+      menu: [item("Dashboard","home","#dashboard"),item("Customer Registration","customer","/admin-applications/"),item("Customer Overview","machine","/customers-manager/"),item("Roles & Users","user","/roles-manager/"),item("Workshop & Job Cards","job","/breakdown-workflow/?actor=admin&view=job-cards"),item("Spare Parts Inventory","stock","/spare-parts-manager/"),item("Procurement","buy","/belm-procurement/"),item("Finance & Accounts","money","/billing-manager/"),item("Bank Control","bank","/bank-controller/"),item("Reports & Analysis","report","/reports-manager/"),item("System Settings","settings","/settings-manager/")],
       process: ["Register & approve","Assign role","Run operations","Review reports","Audit & control"]
     },
     "workshop-manager": {
       title: "Workshop Manager Dashboard", initials: "WM", eyebrow: "TECHNICAL DEPARTMENT", description: "Receive Job Cards, assign technicians and manage inspection, diagnosis, repair and completion.", primary: "/belm-workshop/",
-      menu: [item("Dashboard","home","#dashboard"),item("Customer Machines","machine","/belm-workshop/#machines"),item("Open Job Cards","job","/belm-workshop/#job-cards"),item("Inspection & Diagnosis","inspect","/breakdown-workflow/?actor=admin"),item("Manage Technicians","user","/roles-manager/"),item("Waiting for Spares","stock","/belm-workshop/#job-cards"),item("Testing & Completion","test","/breakdown-workflow/?actor=admin"),item("Workshop Reports","report","/workshop-analysis/"),item("Communication","message","/customers-manager/")],
+      menu: [item("Dashboard","home","#dashboard"),item("Customer Overview","machine","/customers-manager/"),item("Open Job Cards","job","/belm-workshop/#job-cards"),item("Inspection & Diagnosis","inspect","/breakdown-workflow/?actor=admin"),item("Manage Technicians","user","/roles-manager/"),item("Waiting for Spares","stock","/belm-workshop/#job-cards"),item("Testing & Completion","test","/breakdown-workflow/?actor=admin"),item("Workshop Reports","report","/workshop-analysis/"),item("Communication","message","/customers-manager/")],
       process: ["Job opened","Inspection","Diagnosis","Repair","Testing & close"]
     },
     technician: {
@@ -149,9 +149,9 @@
       process: ["Request","Verify authority","Approve","Post movement","Reconcile"]
     },
     "system-coordinator": {
-      title: "System Coordinator Dashboard", initials: "SC", eyebrow: "PORTAL & SERVICE SETTINGS", description: "Manage the portal, customer access, communication services and provider settings.", primary: "/coordinator/",
-      menu: [item("Dashboard","home","#dashboard"),item("Portal Management","settings","/coordinator/"),item("Customer Access","customer","/customers-manager/"),item("Departments & Roles","user","/coordinator/departments/"),item("Notifications","alert","/coordinator/notifications/"),item("Email & WhatsApp","message","/coordinator/communications/"),item("Service Provider Settings","tool","/settings-manager/"),item("Activity Log","log","/admin/activity-log")],
-      process: ["Configure","Grant access","Connect service","Monitor","Audit"]
+      title: "System Settings", initials: "SE", eyebrow: "SYSTEM CONFIGURATION", description: "Portal and company configuration managed from one System Settings workspace.", primary: "/settings-manager/",
+      menu: [item("Dashboard","home","#dashboard"),item("System Settings","settings","/settings-manager/")],
+      process: ["Open settings","Update configuration","Save changes"]
     },
     operator: {
       title: "Machine Operator Dashboard", initials: "OP", eyebrow: "DAILY MACHINE OPERATIONS", description: "Daily machine checks, operating hours, fuel, alerts, service status and reports.", primary: "/operator/",
@@ -208,7 +208,7 @@
     return String(name || "BU").trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "BU";
   }
   function roleLabel() {
-    if (roleKey === "super-admin") return "BELM Super Admin";
+    if (roleKey === "super-admin") return "BELM Workshop Manager Portal";
     if (roleKey === "customer-admin") return rawRole.toLowerCase() === "owner" ? "Company Administrator" : titleCase(rawRole);
     return config.title.replace(/ Dashboard$/i, "");
   }
@@ -251,7 +251,6 @@
     // the HOME MENU; inside a role workspace, the footer button becomes the
     // single clear route back to Home.
     $("homeButton").hidden = activeView === "home";
-
     $("crumbParent").textContent = activeView === "home" ? "BELM PORTAL" : roleLabel().toUpperCase();
     $("crumbCurrent").textContent = activeView === "home" ? "Home Dashboard" : config.title;
     renderNav();
@@ -371,7 +370,7 @@
   async function loadData() {
     $("refreshButton").disabled = true;
     try {
-      if (session.key === "belm_preview_token") dashboardData={totals:{customers:24,machines:68,openRequests:11,pendingApplications:3,completedTasks:42,pendingTasks:9,lowStockParts:6},recentActivities:[{action:"job card updated",entity:"Workshop",userName:"Asha M.",roleName:"Workshop Manager",createdAt:new Date().toISOString()},{action:"stock received",entity:"Inventory",userName:"Store Team",roleName:"Store Keeper",createdAt:new Date(Date.now()-3600000).toISOString()},{action:"customer approved",entity:"Registration",userName:"BELM Admin",roleName:"Super Admin",createdAt:new Date(Date.now()-7200000).toISOString()}]};
+      if (session.key === "belm_preview_token") dashboardData={totals:{customers:24,machines:68,openRequests:11,pendingApplications:3,completedTasks:42,pendingTasks:9,lowStockParts:6},recentActivities:[{action:"job card updated",entity:"Workshop",userName:"Asha M.",roleName:"Workshop Manager",createdAt:new Date().toISOString()},{action:"stock received",entity:"Inventory",userName:"Store Team",roleName:"Store Keeper",createdAt:new Date(Date.now()-3600000).toISOString()},{action:"customer approved",entity:"Registration",userName:"BELM Workshop Manager Portal",roleName:"Super Admin",createdAt:new Date(Date.now()-7200000).toISOString()}]};
       else if (session.type === "customer") dashboardData = await api("/customer-portal/dashboard");
       else if (roleKey === "technician") {
         const tasks = await api(`/tasks/user/${encodeURIComponent(session.payload.id || storedUser?.id || "")}`);

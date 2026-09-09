@@ -89,14 +89,14 @@
     },
     'customer-overview':{
       title:'Customer Overview',
-      subtitle:'Customers, machine fleet and service controls inside PORTAL-BELM WM.',
+      subtitle:'Customers, machine fleet and service controls inside the BELM Workshop Manager Portal.',
       hash:'#customer-overview',
       permissions:['customers'],
       url:()=>'/customers-manager/?embed=1&from=belm-workshop'
     },
     'checklist-template':{
       title:'Checklist Template',
-      subtitle:'Create, edit and maintain machine inspection Checklist Templates inside PORTAL-BELM WM.',
+      subtitle:'Create, edit and maintain machine inspection Checklist Templates inside the BELM Workshop Manager Portal.',
       hash:'#checklist-template',
       permissions:['checklist-templates'],
       url:()=>'/checklist-manager/?embed=1&from=belm-workshop'
@@ -169,7 +169,7 @@
   }
   function resetWorkspace(){
     // V494: Back must be deterministic. Close the workspace immediately and
-    // leave the user on the BELM Main Home (PORTAL-BELM WM), instead of relying on browser
+    // leave the user on the BELM Workshop Manager Portal home, instead of relying on browser
     // history state that can be stale after refresh/back-forward cache restores.
     if(dialog.open)dialog.close();
     document.body.classList.remove('bw-workspace-open');

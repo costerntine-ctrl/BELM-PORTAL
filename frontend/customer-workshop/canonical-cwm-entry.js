@@ -1,4 +1,4 @@
-/* V609 - Canonical PORTAL-CWM workshop entry and approved dashboard appearance. */
+/* V609 - Canonical Customer Workshop Portal workshop entry and approved dashboard appearance. */
 (function () {
   const params = new URLSearchParams(window.location.search);
   const actor = String(params.get('actor') || '').toLowerCase();
@@ -11,7 +11,7 @@
 
   document.documentElement.dataset.cwmWorkspace = 'true';
 
-  /* Approved CWM workshop appearance from the visual sample. Functions and routes stay unchanged. */
+  /* Approved Customer Workshop Portal workshop appearance from the visual sample. Functions and routes stay unchanged. */
   const style = document.createElement('style');
   style.id = 'cwm-approved-layout-v609';
   style.textContent = `

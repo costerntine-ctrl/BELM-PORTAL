@@ -59,7 +59,7 @@
     });
   })();
 
-  // V480 - when Customer Overview is opened inside PORTAL-BELM WM, keep
+  // V480 - when Customer Overview is opened inside BELM Workshop Manager Portal, keep
   // Job Card navigation in the parent Workshop shell instead of nesting a
   // second Workshop page inside this iframe.
   if (embeddedInBelmWorkshop) {
@@ -303,7 +303,7 @@
              new standalone BELM WORKSHOP page. -->
         ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/belm-workshop/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
       </div>
-      <div class="machine-admin-actions" aria-label="BELM Admin machine management">
+      <div class="machine-admin-actions" aria-label="BELM Workshop Manager machine management">
         ${!isTechnicianRole ? `<button type="button" class="machine-admin-edit" data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit Machine</button>` : ""}
         ${!isTechnicianRole ? `<button type="button" class="machine-admin-delete" data-delete-machine="${escapeHtml(machine.id)}">Delete Machine</button>` : ""}
         ${isSuperAdmin && !isTechnicianRole ? `<button type="button" class="machine-admin-forget" data-forget-machine="${escapeHtml(machine.id)}">Forget Permanently</button>` : ""}
@@ -443,14 +443,6 @@
                 <span class="customer-nonpayment-slider" aria-hidden="true"></span>
               </label>
               <strong class="customer-nonpayment-state">${Number(customer.isActive) === 1 ? "PORTAL ON" : "STOPPED"}</strong>
-            </div>
-            <div class="customer-workshop-control ${customer.isWorkshopModuleActive ? "workshop-on" : "workshop-off"}" title="PORTAL-CWM (Customer Workshop Manager) paid add-on for ${escapeHtml(customer.name)}">
-              <span class="customer-workshop-label">PORTAL-CWM</span>
-              <label class="customer-workshop-switch">
-                <input type="checkbox" data-card-workshop-toggle="${escapeHtml(customer.id)}" ${customer.isWorkshopModuleActive ? "checked" : ""} aria-label="PORTAL-CWM for ${escapeHtml(customer.name)}">
-                <span class="customer-workshop-slider" aria-hidden="true"></span>
-              </label>
-              <strong class="customer-workshop-state">${customer.isWorkshopModuleActive ? "ON" : "OFF"}</strong>
             </div>
           </div>
         </div>
@@ -2246,58 +2238,8 @@
     document.getElementById("manageCustomerDialog").close();
     await forgetCustomer(customer.id);
   });
-  // V444 - PORTAL-CWM (Customer Workshop Manager) paid add-on switch, lives on each customer card.
-  // Checked means the customer's own Workshop Manager/Store Keeper/Technician
-  // roles can use Store Ledger + Tool Issue/Return Documents. This is
-  // deliberately independent from the "Non-payment" portal switch above and
-  // from the customer's own internal Role Manager 'store' permission — this
-  // one is the only switch that reflects whether BELM has been paid for the
-  // Workshop module itself.
-  document.getElementById("customerGrid").addEventListener("change", async (event) => {
-    const toggle = event.target.closest("[data-card-workshop-toggle]");
-    if (!toggle) return;
-
-    const customerId = toggle.dataset.cardWorkshopToggle;
-    const customer = customers.find((item) => item.id === customerId);
-    if (!customer) {
-      toggle.checked = !toggle.checked;
-      showAlert("Customer record was not found. Refresh customers and try again.", true);
-      return;
-    }
-
-    const enabled = toggle.checked;
-    toggle.disabled = true;
-    try {
-      const confirmation = await window.belmConfirmEdit({
-        title: enabled ? "Activate PORTAL-CWM?" : "Deactivate PORTAL-CWM?",
-        message: enabled
-          ? `Activate PORTAL-CWM for ${customer.name}? Their Workshop Manager, Store Keeper and Technician roles will be able to use Store Ledger and Tool Issue/Return Documents.`
-          : `Deactivate PORTAL-CWM for ${customer.name}? Store Ledger and Tool Issue/Return Documents will be blocked for their whole team until this is switched back ON, even if their own Role Manager still grants Store access.`,
-      });
-      if (!confirmation) {
-        toggle.checked = !enabled;
-        return;
-      }
-
-      const result = await api(`/customers/${customerId}/workshop-module`, {
-        method: "PUT",
-        body: JSON.stringify({ enabled, ...confirmation }),
-      });
-      customer.isWorkshopModuleActive = Boolean(result?.workshopModuleActive ?? enabled);
-      showAlert(
-        enabled
-          ? `${customer.name}: PORTAL-CWM activated.`
-          : `${customer.name}: PORTAL-CWM deactivated.`,
-        false,
-      );
-      await load();
-    } catch (error) {
-      toggle.checked = !enabled;
-      showAlert(error.message || "Could not change PORTAL-CWM.", true);
-    } finally {
-      toggle.disabled = false;
-    }
-  });
+  // V706: the separate Customer Workshop Portal commercial switch was removed from BELM Customer Overview.
+  // Customer workshop capability remains a customer-side concern and is not exposed as a BELM portal selector.
 
   // V283 - compact per-customer BELM <-> Customer maintenance switch.
   // Checked means BELM Service Provider is ON; unchecked hands maintenance

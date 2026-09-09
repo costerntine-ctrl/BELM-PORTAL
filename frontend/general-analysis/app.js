@@ -201,7 +201,7 @@
       const company = String(customer.name || session.name || "Customer");
       set("companyTitle", `${company} Role Activity`);
       set("sidebarCompany", company.toUpperCase());
-      document.title = `${company} Role Activity — PORTAL-CWM`;
+      document.title = `${company} Role Activity — Customer Workshop Portal`;
       renderMachines(machines);
 
       const tasks = [

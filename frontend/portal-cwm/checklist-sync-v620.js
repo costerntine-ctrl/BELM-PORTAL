@@ -1,4 +1,4 @@
-// V624 — PORTAL-CWM Customer Machine Checklist Template live sync status.
+// V624 — Customer Workshop Portal Customer Machine Checklist Template live sync status.
 // Read-only verification against BELM master checklist_templates. No customer copy is created.
 (function(){
   const token=localStorage.getItem('belm_customer_token')||'';
@@ -56,7 +56,7 @@
   function openDetails(){
     document.getElementById('cwmChecklistSyncDialog')?.remove();
     const d=document.createElement('dialog');d.id='cwmChecklistSyncDialog';d.className='cwm-sync-dialog';
-    d.innerHTML=`<div class="cwm-sync-head"><h2>Checklist Template Sync</h2><button type="button">Close</button></div><div class="cwm-sync-body">${result.length?result.map(x=>{const name=[x.machine?.brand,x.machine?.model].filter(Boolean).join(' ')||x.machine?.model||'Machine';const names=x.templates.map(t=>t.name).filter(Boolean);return `<div class="cwm-sync-row ${x.ok?'ok':'warn'}"><strong>${esc(name)} · ${esc(x.machineType||'Machine type not set')}</strong><small>${x.ok?`BELM Master: ${esc(names.join(', ')||'Active template matched')}`:`No active BELM Checklist Template matches this Machine Type${x.error?` · ${esc(x.error)}`:''}.`}</small></div>`}).join(''):'<div class="cwm-sync-row warn"><strong>No sync result yet.</strong><small>Press Refresh to check the BELM master Checklist Templates.</small></div>'}<p class="cwm-sync-note">This is a live link to BELM Checklist Templates. CWM does not create a duplicate template. When BELM edits or activates the matching Machine Type template, Customer Check Up uses the updated master automatically.</p></div>`;
+    d.innerHTML=`<div class="cwm-sync-head"><h2>Checklist Template Sync</h2><button type="button">Close</button></div><div class="cwm-sync-body">${result.length?result.map(x=>{const name=[x.machine?.brand,x.machine?.model].filter(Boolean).join(' ')||x.machine?.model||'Machine';const names=x.templates.map(t=>t.name).filter(Boolean);return `<div class="cwm-sync-row ${x.ok?'ok':'warn'}"><strong>${esc(name)} · ${esc(x.machineType||'Machine type not set')}</strong><small>${x.ok?`BELM Master: ${esc(names.join(', ')||'Active template matched')}`:`No active BELM Checklist Template matches this Machine Type${x.error?` · ${esc(x.error)}`:''}.`}</small></div>`}).join(''):'<div class="cwm-sync-row warn"><strong>No sync result yet.</strong><small>Press Refresh to check the BELM master Checklist Templates.</small></div>'}<p class="cwm-sync-note">This is a live link to BELM Checklist Templates. Customer Workshop Portal does not create a duplicate template. When BELM edits or activates the matching Machine Type template, Customer Check Up uses the updated master automatically.</p></div>`;
     document.body.appendChild(d);d.querySelector('button').onclick=()=>d.close();d.addEventListener('close',()=>d.remove());d.showModal();
   }
   document.addEventListener('click',e=>{if(e.target.closest('#cwmChecklistMasterSync'))openDetails();});

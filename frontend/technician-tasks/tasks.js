@@ -49,7 +49,7 @@
       const isJobCard = String(task.sourceType || "").toUpperCase() === "JOB_CARD";
       const meta = isJobCard
         ? `${escapeHtml(task.customerName || "Customer")} · ${escapeHtml(task.machineLabel || "Machine")} · ${escapeHtml(task.jobCardNo || "Job Card")}`
-        : `${escapeHtml(task.customerName || "General BELM task")} · Assigned by ${escapeHtml(task.createdBy || "BELM Admin")}`;
+        : `${escapeHtml(task.customerName || "General BELM task")} · Assigned by ${escapeHtml(task.createdBy || "BELM Workshop Manager Portal")}`;
       const action = isJobCard
         ? `<a class="open-job-card" href="/technician-job-cards/${task.machineId ? `?machine=${encodeURIComponent(task.machineId)}` : ""}">Open Job Card</a>`
         : task.status !== "DONE"

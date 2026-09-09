@@ -1,4 +1,4 @@
-/* V524 compatibility loader: use the clean CWM runtime. */
+/* V524 compatibility loader: use the clean Customer Workshop Portal runtime. */
 (function(){
   var s=document.createElement('script');
   s.src='/customer-workshop/workshop-v524.js?v=524-hotfix';

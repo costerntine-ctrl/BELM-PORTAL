@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Access Applications — BELM Admin</title>
+  <title>Access Applications — BELM Workshop Manager Portal</title>
   <link rel="stylesheet" href="/admin-applications/admin.css?v=469-customer-control">
   <link rel="stylesheet" href="/admin-sidebar.css?v=490-navy-gold">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
@@ -13,7 +13,7 @@
 </head>
 <body>
   <header>
-    <div class="brand"><span>B</span><div><b>BELM Admin</b><small>Access Applications</small></div></div>
+    <div class="brand"><span>B</span><div><b>BELM Workshop Manager Portal</b><small>Access Applications</small></div></div>
     <nav><a href="/belm-workshop/">← Main Home</a><button id="logoutButton">Log out</button></nav>
   </header>
 
@@ -134,10 +134,10 @@
       <label>Customer operation mode
         <select id="regCustomerMode" required>
           <option value="TECHNICAL_DEP">TECHNICAL DEP — BELM Service Provider ON</option>
-          <option value="PORTAL_CWM">PORTAL-CWM — Customer Workshop / BELM OFF</option>
+          <option value="PORTAL_CWM">Customer Workshop Portal — Customer Workshop / BELM OFF</option>
         </select>
       </label>
-      <div class="field-block registration-sync-note"><strong>Registration sync</strong><small>After Save, this same customer/company ID is available in Registration, Customer Overview, PORTAL-CWM/Customer Dashboard, WM Customer Overview, Manage Users, Machines, Procurement and Reports.</small></div>
+      <div class="field-block registration-sync-note"><strong>Registration sync</strong><small>After Save, this same customer/company ID is available in Registration, Customer Overview, Customer Workshop Portal/Customer Dashboard, WM Customer Overview, Manage Users, Machines, Procurement and Reports.</small></div>
       <div class="field-block"><span class="check-option"><input id="regAddMachineToggle" type="checkbox"> Also register a first machine now</span></div>
       <div id="regMachineFields" class="hidden">
         <label>Machine type
@@ -323,7 +323,7 @@
     <div class="assignment-head">
       <p class="eyebrow" id="registeredUserActionEyebrow">ACCOUNT SECURITY</p>
       <h2 id="registeredUserActionTitle">Confirm account action</h2>
-      <p id="registeredUserActionMessage">Enter your current BELM Admin password to continue.</p>
+      <p id="registeredUserActionMessage">Enter your current BELM Workshop Manager Portal password to continue.</p>
     </div>
     <form id="registeredUserActionForm" class="assignment-form">
       <label>Your current admin password

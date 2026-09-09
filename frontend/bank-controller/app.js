@@ -66,7 +66,7 @@
     const actor = document.getElementById("bankEditActor");
     if (actor) {
       const identity = [signedInAdmin.name, signedInAdmin.email].filter(Boolean).join(" · ");
-      actor.textContent = identity || "Signed-in BELM Admin";
+      actor.textContent = identity || "Signed-in BELM Workshop Manager Portal";
     }
   }
 
@@ -188,7 +188,7 @@
       if (sender && result.systemSenderEmail) sender.textContent = result.systemSenderEmail;
       const edits = Array.isArray(result.edits) ? result.edits : [];
       rows.innerHTML = edits.length ? edits.map((item) => {
-        const admin = [item.adminName, item.adminEmail].filter(Boolean).join(" · ") || "BELM Admin";
+        const admin = [item.adminName, item.adminEmail].filter(Boolean).join(" · ") || "BELM Workshop Manager Portal";
         const account = [item.bankName, item.accountName, item.accountNumber].filter(Boolean).join(" · ") || "Bank account";
         const when = item.createdAt ? new Date(item.createdAt).toLocaleString("en-TZ") : "—";
         return `<tr>

@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>System Settings — BELM Admin</title>
+  <title>System Settings — BELM Workshop Manager Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=706-wm-clean">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -16,7 +17,7 @@
 <body class="management-page">
   <header class="management-topbar">
     <div><strong>BELM General Tech</strong><small>Protected system configuration</small></div>
-    <div class="topbar-actions"><a class="button" href="/coordinator/">← Coordinator</a></div>
+    <div class="topbar-actions"><a class="button" href="/belm-workshop/">BELM WM Portal</a></div>
   </header>
 
   <main class="management-shell">
@@ -24,7 +25,7 @@
       <div>
         <p class="eyebrow">Company and portal configuration</p>
         <h1>System Settings</h1>
-        <p>Save company details, document defaults, display theme and protected security controls. Operational department menus are managed from Coordinator → BELM Departments.</p>
+        <p>Save company details, document defaults, display theme, communication controls and protected security settings from one System Settings area.</p>
       </div>
     </section>
 
@@ -57,7 +58,7 @@
 
       <article class="panel" id="company-profile"><div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div><form id="companyForm" class="settings-form"><label>Company name<input id="companyName" required maxlength="255"></label><label>Business email<input id="companyEmail" type="email" maxlength="255"></label><label>Business phone<input id="companyPhone" maxlength="50"></label><label>Address<textarea id="companyAddress" rows="3" maxlength="500"></textarea></label><div class="two-column"><label>TIN<input id="companyTin" maxlength="50"></label><label>VRN<input id="companyVrn" maxlength="50"></label></div><button id="saveCompanyButton" class="primary" type="submit">Save company settings</button></form></article>
 
-      <article class="panel wide"><div class="section-head"><div><h2>Invoice &amp; document branding</h2><p>Shared branding/defaults only. Operational BELM Finance is opened from Coordinator → BELM Departments → Finance / Accounts.</p></div></div><form id="documentBrandingForm" class="settings-form"><label>Website<input id="companyWebsite" maxlength="255"></label><label>Account name<input id="bankAccountName" maxlength="255"></label><div class="two-column"><label>NMB account number<input id="bankNmbNumber" maxlength="50"></label><label>CRDB account number<input id="bankCrdbNumber" maxlength="50"></label></div><div class="two-column"><label>Default VAT rate (%)<input id="defaultVatRate" type="number" min="0" max="100" step="0.1"></label><label>Default delivery time<input id="defaultDeliveryTime" maxlength="255"></label></div><div class="two-column"><label>Default payment terms<input id="defaultPaymentTerms" maxlength="255"></label><label>Default quote validity<input id="defaultQuoteValidity" maxlength="255"></label></div><label>Why Choose Us<textarea id="whyChooseUsText" rows="4" maxlength="1000"></textarea></label><label>Footer message<input id="footerMessage" maxlength="255"></label><button id="saveDocumentBrandingButton" class="primary" type="submit">Save document branding</button></form></article>
+      <article class="panel wide"><div class="section-head"><div><h2>Invoice &amp; document branding</h2><p>Shared branding and document defaults. Operational Finance remains in the Finance / Accounts workspace.</p></div></div><form id="documentBrandingForm" class="settings-form"><label>Website<input id="companyWebsite" maxlength="255"></label><label>Account name<input id="bankAccountName" maxlength="255"></label><div class="two-column"><label>NMB account number<input id="bankNmbNumber" maxlength="50"></label><label>CRDB account number<input id="bankCrdbNumber" maxlength="50"></label></div><div class="two-column"><label>Default VAT rate (%)<input id="defaultVatRate" type="number" min="0" max="100" step="0.1"></label><label>Default delivery time<input id="defaultDeliveryTime" maxlength="255"></label></div><div class="two-column"><label>Default payment terms<input id="defaultPaymentTerms" maxlength="255"></label><label>Default quote validity<input id="defaultQuoteValidity" maxlength="255"></label></div><label>Why Choose Us<textarea id="whyChooseUsText" rows="4" maxlength="1000"></textarea></label><label>Footer message<input id="footerMessage" maxlength="255"></label><button id="saveDocumentBrandingButton" class="primary" type="submit">Save document branding</button></form></article>
 
       <article class="panel"><div class="section-head"><div><h2>Business defaults</h2><p>Finance display and document numbering preferences.</p></div></div><form id="businessForm" class="settings-form"><div class="two-column"><label>Currency<select id="currency"><option value="TZS">TZS — Tanzanian shilling</option><option value="USD">USD — US dollar</option></select></label><label>Time zone<input id="timezone" value="Africa/Dar_es_Salaam"></label></div><div class="two-column"><label>Invoice prefix<input id="invoicePrefix" maxlength="20" value="INV"></label><label>Proforma prefix<input id="proformaPrefix" maxlength="20" value="PF"></label></div><label>Default VAT (%)<input id="defaultVat" type="number" min="0" max="100" step="0.01" value="18"></label><button id="saveBusinessButton" class="primary" type="submit">Save business defaults</button></form></article>
 
@@ -65,12 +66,15 @@
 
       <article class="panel"><div class="section-head"><div><h2>Change delete PIN</h2><p>Super Admin protection for permanent deletion actions.</p></div></div><form id="pinForm" class="settings-form"><label>Current 4-digit PIN<input id="currentPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>New 4-digit PIN<input id="newPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>Confirm new PIN<input id="confirmPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><button id="changePinButton" class="secondary" type="submit">Change protected PIN</button></form></article>
 
-      <article class="panel"><div class="section-head"><div><h2>Alerts</h2><p>Basic alert toggles. Full channel routing is managed from Coordinator → Notification Configuration.</p></div></div><div class="settings-form"><label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label><label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label><label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp service alerts enabled</label></div></article>
 
-      <article class="panel"><div class="section-head"><div><h2>Messages to customers</h2><p>Posted messages appear on every customer's dashboard. Full Management Mail controls remain in Coordinator.</p></div></div><form id="announcementForm" class="settings-form"><label class="wide">New message<textarea id="announcementMessage" rows="3" maxlength="1000" required></textarea></label><button id="postAnnouncementButton" class="primary" type="submit">Post message</button></form><div id="announcementList" class="announcement-list"></div></article>
+      <article class="panel wide"><div class="section-head"><div><h2>System communication settings</h2><p>Advanced notification and message-delivery controls managed from one System Settings area.</p></div></div><div class="topbar-actions" style="flex-wrap:wrap"><a class="button" href="/coordinator/notifications/">Notification Configuration</a><a class="button" href="/coordinator/email/">Email Settings</a><a class="button" href="/coordinator/whatsapp/">WhatsApp Settings</a><a class="button" href="/coordinator/sms/">SMS Settings</a><a class="button" href="/coordinator/management-mail/">Management Mail</a></div></article>
+      <article class="panel"><div class="section-head"><div><h2>Alerts</h2><p>Basic alert toggles. Advanced channel routing is available under System communication settings below.</p></div></div><div class="settings-form"><label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label><label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label><label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp service alerts enabled</label></div></article>
+
+      <article class="panel"><div class="section-head"><div><h2>Messages to customers</h2><p>Posted messages appear on every customer's dashboard. Management Mail and delivery channels are managed under System communication settings.</p></div></div><form id="announcementForm" class="settings-form"><label class="wide">New message<textarea id="announcementMessage" rows="3" maxlength="1000" required></textarea></label><button id="postAnnouncementButton" class="primary" type="submit">Post message</button></form><div id="announcementList" class="announcement-list"></div></article>
     </section>
   </main>
-  <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/settings-manager/app.js?v=491-no-duplicates"></script>
+  <script src="/admin-access.js?v=706-wm-clean"></script>
+  <script src="/admin-sidebar.js?v=706-wm-clean"></script>
+  <script src="/settings-manager/app.js?v=706-wm-clean"></script>
 </body>
 </html>

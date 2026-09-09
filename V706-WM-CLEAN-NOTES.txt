@@ -1,0 +1,16 @@
+BELM PORTAL V706 - WM CLEAN
+
+Main UI changes:
+- BELM Admin user-facing workspace renamed to BELM Workshop Manager Portal.
+- Customer Overview is available from the BELM Workshop Manager Portal sidebar.
+- Old CWM branding/shortcut removed from visible UI; customer compatibility routes and backend data are retained.
+- System Coordinator opens System Settings directly; legacy /coordinator/ entry redirects to /settings-manager/.
+- Old PORTAL-BELM WM branding replaced with BELM Workshop Manager Portal.
+- Duplicate horizontal portal switcher removed from BELM WM / Customer Overview surfaces.
+- Cache/version bumped to V706 WM Clean.
+
+Validation:
+- Frontend JavaScript syntax checked.
+- Backend PHP syntax checked.
+- Key HTML duplicate IDs checked.
+- Main local routes returned HTTP 200.

@@ -69,7 +69,7 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       if (errorBox) {
-        errorBox.textContent = 'Select one of the current CWM operational roles.';
+        errorBox.textContent = 'Select one of the current Customer Workshop Portal operational roles.';
         errorBox.className = 'alert error';
       }
     }
@@ -85,7 +85,7 @@
         document.getElementById('userDialog')?.close();
         const alertBox = document.getElementById('alertBox');
         if (alertBox) {
-          alertBox.textContent = 'This is an old legacy account. Create a current CWM role account instead; legacy roles are no longer editable from Settings Center.';
+          alertBox.textContent = 'This is an old legacy account. Create a current Customer Workshop Portal role account instead; legacy roles are no longer editable from Settings Center.';
           alertBox.className = 'alert';
         }
       }

@@ -27,7 +27,7 @@
   const refresh=document.getElementById('refreshAnalysis');
   const label=document.getElementById('portalLabel');
   const back=document.getElementById('workshopBack');
-  label.textContent=actor==='admin'?'TECHNICAL DEP → BELM WM':'PORTAL-CWM';
+  label.textContent=actor==='admin'?'TECHNICAL DEP → BELM WM':'Customer Workshop Portal';
   back.href=actor==='admin'?'/belm-workshop/control-center/':'/customer-workshop/?actor=customer';
   back.textContent=actor==='admin'?'← BELM WM Workshop':'← Workshop Main';
   frame.src=`/breakdown-workflow/?actor=${actor}&embed=1&view=analysis#workshopReportPanel`;

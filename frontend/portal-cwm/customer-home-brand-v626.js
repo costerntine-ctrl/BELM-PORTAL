@@ -13,7 +13,7 @@
 
   function apply(customer){
     const name=String(customer.name||'Customer').trim()||'Customer';
-    document.title=`${name} Workshop Portal — PORTAL-CWM`;
+    document.title=`${name} Workshop Portal — Customer Workshop Portal`;
 
     const brand=document.querySelector('.topbar .brand');
     if(brand){

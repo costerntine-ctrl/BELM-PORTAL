@@ -130,7 +130,7 @@
   transition: .15s ease;
 }
 
-.belm-sidebar-link > span:nth-child(2) {
+.belm-sidebar-link > span:nth-child(3) {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -781,7 +781,7 @@
   height: auto;
 }
 
-.belm-sidebar-link > span:nth-child(2) {
+.belm-sidebar-link > span:nth-child(3) {
   overflow: visible;
   white-space: normal;
   text-overflow: clip;
@@ -811,4 +811,57 @@
     min-width: min(235px, calc(100vw - 54px));
     max-width: calc(100vw - 54px);
   }
+}
+
+/* ========================================================================
+   V700 - VISUAL REFRESH: two-tone top bar, numbered rows, outline icons.
+   Structure, links and behaviour are unchanged - decoration only.
+   ======================================================================== */
+.belm-admin-sidebar::before {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: 1;
+  height: 5px;
+  content: "";
+  background: linear-gradient(90deg, var(--belm-sidebar-yellow) 0 56%, var(--belm-sidebar-green) 56% 100%);
+}
+
+.belm-sidebar-num {
+  flex: 0 0 16px;
+  width: 16px;
+  color: #55617a;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.belm-sidebar-link:hover .belm-sidebar-num,
+.belm-sidebar-link.active .belm-sidebar-num {
+  color: #b7c2d6;
+}
+
+.belm-sidebar-icon,
+.belm-workshop-icon,
+.cwm-machine-side i {
+  border: 0 !important;
+  background: none !important;
+  color: #7d8ba3 !important;
+  box-shadow: none !important;
+}
+.belm-sidebar-icon svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  fill: none;
+}
+.belm-sidebar-link:hover .belm-sidebar-icon {
+  color: #dbe5f2 !important;
+}
+.belm-sidebar-link.active .belm-sidebar-icon {
+  color: var(--belm-sidebar-yellow) !important;
+}
+.belm-sidebar-link.belm-sidebar-back-link .belm-sidebar-icon {
+  font-size: 15px;
+  color: var(--belm-sidebar-yellow) !important;
 }

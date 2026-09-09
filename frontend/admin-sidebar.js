@@ -102,6 +102,50 @@
     { section: "Administration", key: "settings", label: "System Settings", short: "SE", href: "/settings-manager/", paths: ["/settings-manager/", "/admin/settings"] },
   ];
 
+  // V700: thin outline icons (Feather/Lucide-style, 20x20, currentColor)
+  // matched by keyword against each menu item's label. Visual only - it
+  // does not touch routing, permissions or the `short` codes used for the
+  // badge counter.
+  const SIDEBAR_ICON_SET = {
+    grid: '<svg viewBox="0 0 20 20"><rect x="2.5" y="2.5" width="6" height="6" rx="1.3"/><rect x="11.5" y="2.5" width="6" height="6" rx="1.3"/><rect x="2.5" y="11.5" width="6" height="6" rx="1.3"/><rect x="11.5" y="11.5" width="6" height="6" rx="1.3"/></svg>',
+    personPlus: '<svg viewBox="0 0 20 20"><circle cx="8" cy="6.5" r="3"/><path d="M2.5 17c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M15.5 6.5h3M17 5v3"/></svg>',
+    shield: '<svg viewBox="0 0 20 20"><path d="M10 2.5 16 5v5c0 4-3 6.5-6 7.5-3-1-6-3.5-6-7.5V5z"/><path d="M7.3 9.8l1.8 1.8 3.6-3.9"/></svg>',
+    chart: '<svg viewBox="0 0 20 20"><path d="M3 17V9M9 17V3M15 17v-6"/></svg>',
+    clipboard: '<svg viewBox="0 0 20 20"><rect x="4" y="3" width="12" height="14" rx="1.5"/><path d="M7.5 2.5h5v2h-5z"/><path d="M6.5 9h7M6.5 12h7M6.5 15h4"/></svg>',
+    cpu: '<svg viewBox="0 0 20 20"><rect x="5" y="5" width="10" height="10" rx="1.3"/><path d="M8 5V2M12 5V2M8 18v-3M12 18v-3M5 8H2M5 12H2M18 8h-3M18 12h-3"/></svg>',
+    wrench: '<svg viewBox="0 0 20 20"><path d="M13.5 3.5a4 4 0 0 0-5.4 4.6L3 13.2V17h3.8l5.1-5.1a4 4 0 0 0 4.6-5.4l-2.8 2.8-2-2z"/></svg>',
+    store: '<svg viewBox="0 0 20 20"><path d="M3 8l1-4h12l1 4"/><path d="M3 8v8h14V8"/><path d="M8 16v-4h4v4"/></svg>',
+    box: '<svg viewBox="0 0 20 20"><path d="M10 2.5 17 6v8l-7 3.5L3 14V6z"/><path d="M3 6l7 3.5M17 6l-7 3.5M10 9.5V17"/></svg>',
+    truck: '<svg viewBox="0 0 20 20"><path d="M2 6h9v7H2z"/><path d="M11 9h4l3 3v1h-7z"/><circle cx="5.5" cy="15" r="1.5"/><circle cx="14.5" cy="15" r="1.5"/></svg>',
+    bank: '<svg viewBox="0 0 20 20"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg>',
+    receipt: '<svg viewBox="0 0 20 20"><path d="M5 2.5h10v15l-2-1.3-1.7 1.3-1.3-1.3-1.3 1.3-1.7-1.3-2 1.3z"/><path d="M7.5 7h5M7.5 10h5M10 6v2m0 3v1"/></svg>',
+    trash: '<svg viewBox="0 0 20 20"><path d="M4 5.5h12M8 5.5V3.5h4v2M5.5 5.5l.7 10.5a1.5 1.5 0 0 0 1.5 1.4h4.6a1.5 1.5 0 0 0 1.5-1.4l.7-10.5"/><path d="M8.3 8.5v5M11.7 8.5v5"/></svg>',
+    gear: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.6v2.2M10 15.2v2.2M17.4 10h-2.2M4.8 10H2.6M15.1 4.9l-1.6 1.6M6.5 13.5l-1.6 1.6M15.1 15.1l-1.6-1.6M6.5 6.5 4.9 4.9"/></svg>',
+    users: '<svg viewBox="0 0 20 20"><circle cx="6.5" cy="6.5" r="2.7"/><circle cx="14" cy="7" r="2.3"/><path d="M2 17c0-2.8 2-4.7 4.5-4.7s4.5 1.9 4.5 4.7M11.5 17c0-2.3 1.7-4 4-4s4 1.7 4 4"/></svg>',
+    clock: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.3"/><path d="M10 5.5V10l3.2 2"/></svg>',
+    dot: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="2"/></svg>',
+  };
+  function sidebarIconFor(label) {
+    const l = String(label || "").toLowerCase();
+    if (l.includes("overview") || l.includes("dashboard")) return SIDEBAR_ICON_SET.grid;
+    if (l.includes("registration")) return SIDEBAR_ICON_SET.personPlus;
+    if (l.includes("staff") || l.includes("roles") || l.includes("users")) return SIDEBAR_ICON_SET.shield;
+    if (l.includes("report") || l.includes("analysis") || l.includes("analytics")) return SIDEBAR_ICON_SET.chart;
+    if (l.includes("checklist")) return SIDEBAR_ICON_SET.clipboard;
+    if (l.includes("pin out") || l.includes("controller")) return SIDEBAR_ICON_SET.cpu;
+    if (l.includes(" wm") || l.includes("job card") || l.includes("workshop")) return SIDEBAR_ICON_SET.wrench;
+    if (l.includes("cwm") || l.includes("portal")) return SIDEBAR_ICON_SET.store;
+    if (l.includes("spare") || l.includes("equivalent")) return SIDEBAR_ICON_SET.box;
+    if (l.includes("supplier") || l.includes("procurement")) return SIDEBAR_ICON_SET.truck;
+    if (l.includes("bank")) return SIDEBAR_ICON_SET.bank;
+    if (l.includes("billing") || l.includes("finance") || l.includes("petty cash")) return SIDEBAR_ICON_SET.receipt;
+    if (l.includes("recycle") || l.includes("bin")) return SIDEBAR_ICON_SET.trash;
+    if (l.includes("setting")) return SIDEBAR_ICON_SET.gear;
+    if (l.includes("technician")) return SIDEBAR_ICON_SET.users;
+    if (l.includes("activity")) return SIDEBAR_ICON_SET.clock;
+    return SIDEBAR_ICON_SET.dot;
+  }
+
   const isSuperAdmin = user.role === "Super Admin" || user.allowedPages === null;
   const allowedPages = Array.isArray(user.allowedPages) ? user.allowedPages : [];
   // V458: nested/sub-navigation. On TECHNICAL DEP and BELM WORKSHOP, the
@@ -171,7 +215,7 @@
     const backLink = document.createElement("a");
     backLink.className = "belm-sidebar-link belm-sidebar-back-link";
     backLink.href = "/belm-workshop/";
-    backLink.innerHTML = `<span class="belm-sidebar-icon">←</span><span>Back to Main Home</span>`;
+    backLink.innerHTML = `<span class="belm-sidebar-num"></span><span class="belm-sidebar-icon">←</span><span>Back to Main Home</span>`;
     backLink.addEventListener("click", (event) => {
       event.preventDefault();
       window.location.assign("/belm-workshop/");
@@ -185,7 +229,7 @@
     String(a.label || "").localeCompare(String(b.label || ""), "en", { sensitivity: "base" })
   );
 
-  sortedPages.forEach((page) => {
+  sortedPages.forEach((page, index) => {
     const link = document.createElement("a");
     link.className = "belm-sidebar-link";
     link.dataset.section = page.section || "";
@@ -197,13 +241,19 @@
       link.classList.add("active");
       link.setAttribute("aria-current", "page");
     }
+    const num = document.createElement("span");
+    num.className = "belm-sidebar-num";
+    num.setAttribute("aria-hidden", "true");
+    num.textContent = String(index + 1);
     const icon = document.createElement("span");
     icon.className = "belm-sidebar-icon";
-    icon.textContent = page.short;
+    icon.innerHTML = sidebarIconFor(page.label);
     const label = document.createElement("span");
     label.textContent = page.label;
-    label.title = page.label;
-    link.append(icon, label);
+    // V700: label.title removed - full text is always visible (V488 wraps
+    // instead of truncating), so the native tooltip only duplicated the
+    // same text in a floating box on hover/long-press (touch devices).
+    link.append(num, icon, label);
     if (page.applications) link.id = "belmSidebarApplications";
     nav.appendChild(link);
   });
@@ -281,14 +331,14 @@
   // remain fully readable. Width is deliberately capped for display fit.
   function fitSidebarToText() {
     const desktop = window.matchMedia("(min-width: 981px)").matches;
-    const labels = Array.from(sidebar.querySelectorAll(".belm-sidebar-link > span:nth-child(2)"));
+    const labels = Array.from(sidebar.querySelectorAll(".belm-sidebar-link > span:nth-child(3)"));
     const labelWidth = labels.reduce((max, label) => Math.max(max, label.scrollWidth || 0), 0);
     const brandCopy = sidebar.querySelector(".belm-sidebar-brand-copy");
     const userCopy = sidebar.querySelector(".belm-sidebar-user-copy");
     const brandWidth = brandCopy ? (brandCopy.scrollWidth + 96) : 0;
     const userWidth = userCopy ? (userCopy.scrollWidth + 84) : 0;
-    // icon 30 + gap 10 + horizontal link padding 20 + safe room for badge/border
-    const menuWidth = labelWidth + 92;
+    // num 16 + gap 10 + icon 30 + gap 10 + horizontal link padding 20 + safe room for badge/border
+    const menuWidth = labelWidth + 118;
     const desired = Math.ceil(Math.max(235, menuWidth, brandWidth, userWidth));
     const fitted = Math.min(360, Math.max(235, desired));
     document.documentElement.style.setProperty("--belm-sidebar-width", `${fitted}px`);

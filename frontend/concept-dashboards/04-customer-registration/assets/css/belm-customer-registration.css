@@ -1,0 +1,263 @@
+/* ==========================================================================
+   BELM OPERATIONS PLATFORM — Customer Registration & Management
+   ========================================================================== */
+
+:root {
+  --belm-navy-900: #04101f;
+  --belm-navy-800: #071c33;
+  --belm-navy-700: #0a2540;
+  --belm-navy-600: #0f3157;
+  --belm-navy-500: #154070;
+  --belm-navy-border: rgba(255, 255, 255, 0.08);
+  --belm-navy-border-strong: rgba(255, 255, 255, 0.16);
+
+  --belm-gold-500: #f5c518;
+  --belm-gold-600: #e0af0c;
+
+  --belm-blue-500: #2f86d6;
+  --belm-blue-600: #226bb3;
+
+  --belm-green-500: #21b06b;
+  --belm-green-600: #189760;
+
+  --belm-amber-500: #f0b90b;
+
+  --belm-text-primary: #f5f7fa;
+  --belm-text-secondary: #a9b7c6;
+  --belm-text-muted: #7488a0;
+
+  --belm-radius-lg: 14px;
+  --belm-radius-md: 10px;
+  --belm-radius-sm: 7px;
+
+  --belm-shadow-card: 0 8px 24px rgba(2, 10, 22, 0.35);
+  --belm-sidebar-w: 264px;
+}
+
+* { box-sizing: border-box; }
+
+body.belm-admin {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--belm-navy-900);
+  color: var(--belm-text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; }
+ul { margin: 0; padding: 0; list-style: none; }
+button, input, select { font-family: inherit; }
+button { cursor: pointer; }
+
+.belm-shell { display: grid; grid-template-columns: var(--belm-sidebar-w) 1fr; min-height: 100vh; }
+
+/* ---------------------------------- Sidebar ---------------------------------- */
+
+.belm-sidebar {
+  background: var(--belm-navy-800);
+  border-right: 1px solid var(--belm-navy-border);
+  display: flex; flex-direction: column; padding: 22px 16px 20px;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+
+.belm-brand { display: flex; align-items: center; gap: 10px; padding: 4px 8px 22px; }
+.belm-brand__mark { width: 32px; height: 32px; flex-shrink: 0; }
+.belm-brand__text { line-height: 1.15; }
+.belm-brand__name { font-size: 19px; font-weight: 800; letter-spacing: 0.5px; }
+.belm-brand__tag { font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: var(--belm-text-muted); }
+
+.belm-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+.belm-nav__item {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+  border-radius: var(--belm-radius-sm); color: var(--belm-text-secondary);
+  font-size: 14px; font-weight: 500; transition: background 0.15s ease, color 0.15s ease;
+}
+.belm-nav__item svg { flex-shrink: 0; width: 18px; height: 18px; }
+.belm-nav__item:hover { background: rgba(255, 255, 255, 0.05); color: var(--belm-text-primary); }
+.belm-nav__item.is-active { background: var(--belm-gold-500); color: var(--belm-navy-900); font-weight: 700; }
+
+.belm-nav__divider { height: 1px; background: var(--belm-navy-border); margin: 14px 6px; }
+.belm-sidebar__foot { display: flex; flex-direction: column; gap: 3px; }
+.belm-sidebar__foot .belm-nav__item { color: var(--belm-text-muted); }
+
+/* ---------------------------------- Main / Topbar ---------------------------------- */
+
+.belm-main { display: flex; flex-direction: column; min-width: 0; }
+
+.belm-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 28px; background: var(--belm-navy-700);
+  border-bottom: 1px solid var(--belm-navy-border);
+  position: sticky; top: 0; z-index: 10;
+}
+.belm-topbar__menu {
+  background: transparent; border: none; color: var(--belm-text-primary);
+  width: 38px; height: 38px; border-radius: var(--belm-radius-sm);
+  display: flex; align-items: center; justify-content: center;
+}
+.belm-topbar__menu:hover { background: rgba(255, 255, 255, 0.06); }
+
+.belm-user {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px 6px 6px;
+  border-radius: 999px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--belm-navy-border);
+}
+.belm-user__avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--belm-blue-500);
+  display: flex; align-items: center; justify-content: center;
+}
+.belm-user__avatar svg { width: 17px; height: 17px; color: #fff; }
+.belm-user__name { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.belm-user__role { font-size: 10.5px; color: var(--belm-text-muted); letter-spacing: 0.4px; }
+.belm-user__chev { color: var(--belm-text-muted); margin-left: 2px; }
+
+/* ---------------------------------- Content ---------------------------------- */
+
+.belm-content { padding: 26px 28px 40px; display: flex; flex-direction: column; gap: 22px; }
+
+/* Hero */
+.belm-hero {
+  position: relative; border-radius: var(--belm-radius-lg); overflow: hidden;
+  background:
+    linear-gradient(100deg, rgba(4, 16, 31, 0.95) 30%, rgba(4, 16, 31, 0.35) 62%, rgba(4, 16, 31, 0.12) 100%),
+    radial-gradient(120% 160% at 85% 25%, #234a6e 0%, #0f2a48 55%, #071c33 100%);
+  padding: 30px 32px; min-height: 150px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+}
+.belm-hero__silhouette { position: absolute; right: 0; top: 0; height: 100%; width: 48%; opacity: 0.9; pointer-events: none; }
+.belm-hero__body { position: relative; z-index: 2; max-width: 560px; }
+.belm-hero__title { font-size: 29px; font-weight: 800; margin: 0 0 6px; }
+.belm-hero__subtitle { margin: 0; color: var(--belm-text-secondary); font-size: 14.5px; font-weight: 500; }
+.belm-hero__kicker {
+  position: relative; z-index: 2; text-align: right; font-size: 11px; font-weight: 700;
+  letter-spacing: 1.4px; color: var(--belm-blue-500); line-height: 1.5;
+  border-bottom: 2px solid var(--belm-gold-500); padding-bottom: 6px; flex-shrink: 0;
+}
+
+/* Stat cards */
+.belm-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.belm-stat-card {
+  background: var(--belm-navy-700); border: 1px solid var(--belm-navy-border);
+  border-radius: var(--belm-radius-lg); padding: 18px; display: flex; align-items: center;
+  gap: 14px; box-shadow: var(--belm-shadow-card);
+}
+.belm-stat-card__icon {
+  width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; flex-shrink: 0;
+}
+.belm-stat-card__icon svg { width: 24px; height: 24px; }
+.belm-stat-card__icon--green { background: var(--belm-green-500); }
+.belm-stat-card__icon--gold { background: var(--belm-amber-500); }
+.belm-stat-card__icon--blue { background: var(--belm-blue-500); }
+.belm-stat-card__label { font-size: 13.5px; color: var(--belm-text-primary); font-weight: 700; margin-bottom: 3px; }
+.belm-stat-card__value { font-size: 25px; font-weight: 800; }
+
+/* Panel */
+.belm-panel {
+  background: var(--belm-navy-700); border: 1px solid var(--belm-navy-border);
+  border-radius: var(--belm-radius-lg); padding: 22px 24px 26px; box-shadow: var(--belm-shadow-card);
+}
+.belm-panel__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+.belm-panel__title { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
+.belm-panel__title svg { width: 19px; height: 19px; color: var(--belm-gold-500); }
+
+/* Form */
+.belm-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px 20px; margin-bottom: 22px; }
+.belm-field { display: flex; flex-direction: column; gap: 7px; }
+.belm-field label { font-size: 13px; font-weight: 700; color: var(--belm-text-primary); }
+.belm-field input, .belm-field select {
+  background: var(--belm-navy-600); border: 1px solid var(--belm-navy-border-strong);
+  color: var(--belm-text-primary); padding: 11px 12px; border-radius: var(--belm-radius-sm);
+  font-size: 13.5px; width: 100%; outline: none;
+}
+.belm-field input::placeholder { color: var(--belm-text-muted); }
+.belm-field input:focus, .belm-field select:focus { border-color: var(--belm-blue-500); }
+.belm-field select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a9b7c6' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 34px; }
+.belm-field input[type="date"] { color-scheme: dark; }
+
+.belm-form-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.belm-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px;
+  border-radius: var(--belm-radius-sm); font-weight: 700; font-size: 13.5px; border: none; color: #fff;
+}
+.belm-btn svg { width: 16px; height: 16px; }
+.belm-btn--green { background: var(--belm-green-600); }
+.belm-btn--green:hover { background: var(--belm-green-500); }
+.belm-btn--blue { background: var(--belm-blue-500); }
+.belm-btn--blue:hover { background: var(--belm-blue-600); }
+
+/* Search */
+.belm-search {
+  display: flex; align-items: center; gap: 8px; background: var(--belm-navy-600);
+  border: 1px solid var(--belm-navy-border-strong); border-radius: var(--belm-radius-sm);
+  padding: 9px 14px; min-width: 300px;
+}
+.belm-search svg { width: 16px; height: 16px; color: var(--belm-text-muted); flex-shrink: 0; }
+.belm-search input { background: transparent; border: none; outline: none; color: var(--belm-text-primary); font-size: 13px; width: 100%; }
+.belm-search input::placeholder { color: var(--belm-text-muted); }
+
+/* Table */
+.belm-table-wrap { overflow-x: auto; }
+.belm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 920px; }
+.belm-table thead th {
+  text-align: left; font-size: 12px; font-weight: 700; color: var(--belm-text-muted);
+  padding: 10px 12px; border-bottom: 1px solid var(--belm-navy-border-strong);
+}
+.belm-table td { padding: 14px 12px; border-bottom: 1px solid var(--belm-navy-border); color: var(--belm-text-secondary); vertical-align: middle; }
+.belm-table td:first-child { color: var(--belm-text-primary); font-weight: 700; }
+.belm-table tr:last-child td { border-bottom: none; }
+
+.belm-status-dot { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.belm-status-dot::before { content: ""; width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.belm-status-dot--active { color: var(--belm-green-500); }
+.belm-status-dot--active::before { background: var(--belm-green-500); }
+.belm-status-dot--pending { color: var(--belm-amber-500); }
+.belm-status-dot--pending::before { background: var(--belm-amber-500); }
+
+.belm-action-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.belm-btn-xs {
+  display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px;
+  border-radius: 6px; font-size: 11.5px; font-weight: 700; color: #fff; white-space: nowrap;
+}
+.belm-btn-xs svg { width: 12px; height: 12px; }
+.belm-btn-xs--view { background: var(--belm-blue-500); }
+.belm-btn-xs--edit { background: var(--belm-amber-500); color: #2a2000; }
+.belm-btn-xs--reset { background: var(--belm-blue-500); }
+.belm-btn-xs--manage { background: var(--belm-green-600); }
+
+/* Responsive */
+@media (max-width: 1180px) {
+  .belm-stats { grid-template-columns: repeat(2, 1fr); }
+  .belm-form-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .belm-shell { grid-template-columns: 1fr; }
+  .belm-sidebar {
+    position: fixed; left: 0; top: 0; z-index: 40; transform: translateX(-100%);
+    transition: transform 0.2s ease; box-shadow: 20px 0 40px rgba(0,0,0,0.4);
+  }
+  .belm-shell.is-sidebar-open .belm-sidebar { transform: translateX(0); }
+  .belm-hero { flex-direction: column; align-items: flex-start; }
+  .belm-hero__kicker { text-align: left; }
+  .belm-stats { grid-template-columns: 1fr 1fr; }
+  .belm-form-actions { justify-content: stretch; }
+  .belm-form-actions .belm-btn { flex: 1; justify-content: center; }
+}
+@media (max-width: 560px) {
+  .belm-stats { grid-template-columns: 1fr; }
+  .belm-form-grid { grid-template-columns: 1fr; }
+  .belm-content { padding: 18px 16px 30px; }
+  .belm-topbar { padding: 14px 16px; }
+  .belm-search { min-width: 0; width: 100%; }
+}
+
+/* Light mode */
+body.belm-admin.belm-light {
+  background: #eef2f6; --belm-text-primary: #142033; --belm-text-secondary: #4a5b70; --belm-text-muted: #7488a0;
+}
+body.belm-admin.belm-light .belm-sidebar, body.belm-admin.belm-light .belm-topbar,
+body.belm-admin.belm-light .belm-stat-card, body.belm-admin.belm-light .belm-panel, body.belm-admin.belm-light .belm-user {
+  background: #ffffff; border-color: rgba(10, 30, 55, 0.08);
+}
+body.belm-admin.belm-light .belm-nav__item:hover { background: rgba(10, 30, 55, 0.05); }
+body.belm-admin.belm-light .belm-field input, body.belm-admin.belm-light .belm-field select,
+body.belm-admin.belm-light .belm-search { background: #f2f5f9; color: #142033; border-color: rgba(10,30,55,0.1); }

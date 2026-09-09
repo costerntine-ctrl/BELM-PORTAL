@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BELM Operations Platform — Procurement Dashboard</title>
+<link rel="stylesheet" href="assets/css/belm-procurement-dashboard.css" />
+</head>
+<body class="belm-admin">
+
+<div class="belm-shell" id="belmShell">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="belm-sidebar">
+    <div class="belm-brand">
+      <div class="belm-brand__name">BELM<span class="belm-brand__slash">/</span></div>
+      <div class="belm-brand__tag">OPERATIONS PLATFORM</div>
+    </div>
+
+    <nav class="belm-nav">
+      <a href="index.html" class="belm-nav__item is-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+        Home
+      </a>
+      <a href="spare-purchase-requests.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Spare Purchase Requests
+      </a>
+      <a href="purchase-records.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6a2 2 0 012 2v14a2 2 0 01-2 2H9a2 2 0 01-2-2V5a2 2 0 012-2z"/><path d="M9 7h6M9 11h6M9 15h3"/></svg>
+        Purchase Records
+      </a>
+      <a href="pending-proforma.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Pending Proforma
+      </a>
+      <a href="purchase-orders.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5a2 2 0 002 1.5h8.4a2 2 0 002-1.6L21 7H6"/></svg>
+        Purchase Orders
+      </a>
+      <a href="suppliers.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6M14.5 20c0-2.4-1-4.3-2.6-5.3.7-.5 1.6-.7 2.6-.7 2.7 0 5 2.1 5 4.9"/></svg>
+        Suppliers
+      </a>
+      <a href="delivery-tracking.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="7" width="14" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+        Delivery Tracking
+      </a>
+      <a href="purchase-reports.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
+        Purchase Reports
+      </a>
+      <a href="department-analysis.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l7 4"/></svg>
+        Department Analysis
+      </a>
+      <a href="my-profile.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
+        My Profile
+      </a>
+    </nav>
+
+    <div class="belm-nav__divider"></div>
+
+    <div class="belm-sidebar__foot">
+      <button class="belm-nav__item" id="themeToggle" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+        Light mode
+      </button>
+      <a href="logout.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Log out
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============================== MAIN ============================== -->
+  <div class="belm-main">
+
+    <!-- Topbar -->
+    <header class="belm-topbar">
+      <div class="belm-topbar__left">
+        <button class="belm-topbar__menu" id="sidebarToggle" type="button" aria-label="Toggle menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <span class="belm-topbar__kicker">BUILT FOR A STRONGER TOMORROW</span>
+      </div>
+      <div class="belm-topbar__right">
+        <div class="belm-topbar__note">
+          HEAVY EQUIPMENT<br/>STRONGER OPERATIONS
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 11-14h-8l1-6z"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="belm-content">
+
+      <!-- Hero -->
+      <section class="belm-hero">
+        <svg class="belm-hero__wireframe" viewBox="0 0 420 220" preserveAspectRatio="xMaxYMid slice" xmlns="http://www.w3.org/2000/svg" stroke="#2f6fd6" stroke-width="1.4" fill="none">
+          <rect x="230" y="150" width="150" height="45" rx="3"/>
+          <circle cx="255" cy="200" r="15"/>
+          <circle cx="345" cy="200" r="15"/>
+          <rect x="260" y="60" width="14" height="95"/>
+          <line x1="267" y1="70" x2="380" y2="40"/>
+          <line x1="267" y1="90" x2="370" y2="60"/>
+          <rect x="360" y="25" width="34" height="26" transform="rotate(-14 360 25)"/>
+          <rect x="205" y="90" width="40" height="60"/>
+          <line x1="205" y1="110" x2="245" y2="110"/>
+          <line x1="205" y1="130" x2="245" y2="130"/>
+        </svg>
+        <div class="belm-hero__body">
+          <h1 class="belm-hero__title">Procurement Dashboard</h1>
+          <p class="belm-hero__subtitle">Spare parts purchasing, suppliers and delivery tracking</p>
+        </div>
+        <div class="belm-hero__aside">
+          <div class="belm-role-chip">
+            <div class="belm-role-chip__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5a2 2 0 002 1.5h8.4a2 2 0 002-1.6L21 7H6"/></svg>
+            </div>
+            <div>
+              <div class="belm-role-chip__name">PROCUREMENT</div>
+              <div class="belm-role-chip__role">PURCHASING DEPARTMENT</div>
+            </div>
+          </div>
+          <a href="my-profile.php" class="belm-btn-gold">
+            VIEW MY ROLE
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </section>
+
+      <!-- Stat cards -->
+      <section class="belm-stats">
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Purchase Requests</div>
+            <div class="belm-stat-card__value">12</div>
+            <div class="belm-stat-card__hint">Total requests</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--gold">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Pending Proforma</div>
+            <div class="belm-stat-card__value">5</div>
+            <div class="belm-stat-card__hint">Awaiting comparison</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Approved Orders</div>
+            <div class="belm-stat-card__value">8</div>
+            <div class="belm-stat-card__hint">Ready for delivery</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><rect x="1" y="7" width="14" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Awaiting Delivery</div>
+            <div class="belm-stat-card__value">6</div>
+            <div class="belm-stat-card__hint">In transit to site</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Spare Purchase Priority -->
+      <section class="belm-panel">
+        <div class="belm-panel__head">
+          <div class="belm-panel__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
+            Spare Purchase Priority
+          </div>
+          <a href="spare-purchase-requests.php" class="belm-panel__link">
+            View All Requests
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+
+        <div class="belm-table-wrap">
+          <table class="belm-table">
+            <thead>
+              <tr><th>Spare Part</th><th>Machine</th><th>Customer</th><th>Qty</th><th>Required Date</th><th>Status</th><th>Action</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Hydraulic Pump</td>
+                <td>Kalmar Reach Stacker</td>
+                <td>ECLS ICD</td>
+                <td>2</td>
+                <td>20 Apr 2025</td>
+                <td>
+                  <span class="belm-badge belm-badge--urgent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+                    Urgent
+                  </span>
+                </td>
+                <td><a href="#" class="belm-btn-row belm-btn-row--gold">Request Quotation</a></td>
+              </tr>
+              <tr>
+                <td>Fuel Pressure Regulator</td>
+                <td>Volvo Penta 850</td>
+                <td>APM Terminals</td>
+                <td>1</td>
+                <td>25 Apr 2025</td>
+                <td>
+                  <span class="belm-badge belm-badge--pending">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+                    Proforma Pending
+                  </span>
+                </td>
+                <td><a href="#" class="belm-btn-row belm-btn-row--blue">Compare Proforma</a></td>
+              </tr>
+              <tr>
+                <td>Main Controller</td>
+                <td>DCT80</td>
+                <td>Kilimanjaro ICD</td>
+                <td>1</td>
+                <td>30 Apr 2025</td>
+                <td>
+                  <span class="belm-badge belm-badge--approved">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>
+                    Approved
+                  </span>
+                </td>
+                <td><a href="#" class="belm-btn-row belm-btn-row--green">Create PO</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Pending Proforma + Delivery Tracking -->
+      <section class="belm-grid-bottom">
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+              Pending Proforma
+            </div>
+            <a href="pending-proforma.php" class="belm-panel__link">
+              View All Proformas
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+
+          <div class="belm-proforma-grid">
+            <div class="belm-proforma-card">
+              <div class="belm-proforma-card__head">
+                <div class="belm-proforma-card__logo">BB</div>
+                <div>
+                  <div class="belm-proforma-card__name">Balfour Beatty Parts</div>
+                  <div class="belm-proforma-card__loc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 21s7-6.6 7-11.5A7 7 0 105 9.5C5 14.4 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.2"/></svg>
+                    South Africa
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="belm-proforma-card__field">Price (USD)</div>
+                <div class="belm-proforma-card__field-value">$8,450</div>
+              </div>
+              <div>
+                <div class="belm-proforma-card__field">Lead Time</div>
+                <div class="belm-proforma-card__field-value">10 days</div>
+              </div>
+              <div class="belm-proforma-card__actions">
+                <a href="#" class="belm-btn-outline-blue">Review</a>
+                <a href="#" class="belm-btn-solid-gold">Submit for Approval</a>
+              </div>
+            </div>
+
+            <div class="belm-proforma-card">
+              <div class="belm-proforma-card__head">
+                <div class="belm-proforma-card__logo" style="color:#003057;">VP</div>
+                <div>
+                  <div class="belm-proforma-card__name">Volvo Penta</div>
+                  <div class="belm-proforma-card__loc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 21s7-6.6 7-11.5A7 7 0 105 9.5C5 14.4 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.2"/></svg>
+                    Sweden
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="belm-proforma-card__field">Price (USD)</div>
+                <div class="belm-proforma-card__field-value">$8,900</div>
+              </div>
+              <div>
+                <div class="belm-proforma-card__field">Lead Time</div>
+                <div class="belm-proforma-card__field-value">14 days</div>
+              </div>
+              <div class="belm-proforma-card__actions">
+                <a href="#" class="belm-btn-outline-blue">Review</a>
+                <a href="#" class="belm-btn-solid-gold">Submit for Approval</a>
+              </div>
+            </div>
+
+            <div class="belm-proforma-card">
+              <div class="belm-proforma-card__head">
+                <div class="belm-proforma-card__logo" style="background:#c8102e;color:#fff;">TVH</div>
+                <div>
+                  <div class="belm-proforma-card__name">TVH Parts</div>
+                  <div class="belm-proforma-card__loc">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 21s7-6.6 7-11.5A7 7 0 105 9.5C5 14.4 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.2"/></svg>
+                    Belgium
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="belm-proforma-card__field">Price (USD)</div>
+                <div class="belm-proforma-card__field-value">$8,320</div>
+              </div>
+              <div>
+                <div class="belm-proforma-card__field">Lead Time</div>
+                <div class="belm-proforma-card__field-value">12 days</div>
+              </div>
+              <div class="belm-proforma-card__actions">
+                <a href="#" class="belm-btn-outline-blue">Review</a>
+                <a href="#" class="belm-btn-solid-gold">Submit for Approval</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="7" width="14" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+              Delivery Tracking
+            </div>
+            <a href="delivery-tracking.php" class="belm-panel__link">
+              View All Deliveries
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+
+          <div class="belm-tracker">
+            <div class="belm-tracker__line"></div>
+            <div class="belm-tracker__line-fill" style="width:66%;"></div>
+
+            <div class="belm-tracker__step">
+              <div class="belm-tracker__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+              </div>
+              <div class="belm-tracker__label">PO Approved</div>
+              <div class="belm-tracker__date">12 Apr 2025</div>
+            </div>
+            <div class="belm-tracker__step">
+              <div class="belm-tracker__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+              </div>
+              <div class="belm-tracker__label">Supplier<br/>Confirmed</div>
+              <div class="belm-tracker__date">15 Apr 2025</div>
+            </div>
+            <div class="belm-tracker__step belm-tracker__step--active">
+              <div class="belm-tracker__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="1" y="7" width="14" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+              </div>
+              <div class="belm-tracker__label">In Transit</div>
+              <div class="belm-tracker__date">ETA<br/>28 Apr 2025</div>
+            </div>
+            <div class="belm-tracker__step belm-tracker__step--pending">
+              <div class="belm-tracker__circle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+              </div>
+              <div class="belm-tracker__label">Received by Store</div>
+              <div class="belm-tracker__date">Pending</div>
+            </div>
+          </div>
+
+          <div class="belm-tracking-box">
+            <div class="belm-tracking-box__icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="7" width="14" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+            </div>
+            <div class="belm-tracking-box__text">
+              <strong>Tracking: PO-2025-0047</strong><br/>
+              Hydraulic Pump – Kalmar Reach Stacker<br/>
+              Supplier: Balfour Beatty Parts
+            </div>
+            <a href="#" class="belm-btn-view-details">View Details</a>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer class="belm-footer-band">
+      <span><strong>BELM</strong> OPERATIONS PLATFORM</span>
+      <span class="belm-footer-band__right">
+        RELIABLE PEOPLE. RELIABLE MACHINES. A STRONGER TOMORROW.
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 11-14h-8l1-6z"/></svg>
+      </span>
+    </footer>
+  </div>
+</div>
+
+<script src="assets/js/belm-procurement-dashboard.js"></script>
+</body>
+</html>

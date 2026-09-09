@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BELM Portal — Concept Dashboards (Mapitio)</title>
+<style>
+  :root {
+    --navy-900:#04101f; --navy-800:#071c33; --navy-700:#0a2540; --navy-600:#0f3157;
+    --border:rgba(255,255,255,0.1); --gold:#f5c518; --blue:#2f86d6; --green:#22c07f;
+    --text:#f5f7fa; --text2:#a9b7c6; --muted:#7488a0;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Inter","Segoe UI",-apple-system,sans-serif; background:var(--navy-900); color:var(--text); }
+  header { padding:36px 32px 20px; }
+  header h1 { font-size:30px; font-weight:800; margin:0 0 8px; }
+  header p { margin:0; color:var(--text2); font-size:15px; max-width:720px; line-height:1.5; }
+  .status-pill { display:inline-flex; align-items:center; gap:8px; background:rgba(245,197,24,0.14); border:1px solid var(--gold); color:var(--gold); font-weight:700; font-size:12.5px; padding:7px 14px; border-radius:999px; margin-top:14px; }
+  .status-pill::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--gold); }
+  main { padding:8px 32px 50px; display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px; }
+  a.card { background:var(--navy-700); border:1px solid var(--border); border-radius:14px; padding:22px; display:flex; flex-direction:column; gap:10px; text-decoration:none; color:inherit; box-shadow:0 8px 24px rgba(2,10,22,0.35); transition:transform .15s ease, border-color .15s ease; }
+  a.card:hover { transform:translateY(-3px); border-color:var(--blue); }
+  .card__no { font-size:11px; font-weight:800; letter-spacing:1.4px; color:var(--muted); }
+  .card__title { font-size:18px; font-weight:800; }
+  .card__desc { font-size:13px; color:var(--text2); line-height:1.5; flex:1; }
+  .card__role { display:inline-flex; align-self:flex-start; font-size:11px; font-weight:700; color:var(--blue); background:rgba(47,134,214,0.14); padding:5px 11px; border-radius:999px; }
+  .card__open { font-size:12.5px; font-weight:700; color:var(--gold); margin-top:4px; }
+  footer { padding:20px 32px 40px; color:var(--muted); font-size:12px; border-top:1px solid var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>BELM Portal — Concept Dashboards</h1>
+  <p>Muhtasari wa dashibodi 8 za concept zilizotengenezwa kwa mujibu wa mtiririko wa kazi za BELM (usajili wa wateja, mashine, Job Cards, inspection/repair, procurement, store, finance na operator). Hizi ni maonyesho ya muonekano (frontend tu, data tuli) kwa ajili ya idhini kabla ya kuunganishwa na backend halisi ya PHP/PostgreSQL.</p>
+  <span class="status-pill">CONCEPT — bado hazijaunganishwa na backend</span>
+</header>
+
+<main>
+  <a class="card" href="01-admin-home/index.html">
+    <span class="card__no">01</span>
+    <span class="card__role">Super Admin</span>
+    <span class="card__title">Admin Home Dashboard</span>
+    <span class="card__desc">Muhtasari mkuu: active customers, machines, job cards, pending approvals, workshop activity na recent activity.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+
+  <a class="card" href="02-technician/index.html">
+    <span class="card__no">02</span>
+    <span class="card__role">Technician</span>
+    <span class="card__title">Technician Dashboard</span>
+    <span class="card__desc">Kazi alizopangiwa fundi, communication history, na Active Job Cards zenye next-action per status.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+
+  <a class="card" href="03-procurement/index.html">
+    <span class="card__no">03</span>
+    <span class="card__role">Procurement</span>
+    <span class="card__title">Procurement Dashboard</span>
+    <span class="card__desc">Spare Purchase Priority, Pending Proforma kwa wasambazaji, na Delivery Tracking stepper.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+
+  <a class="card" href="04-customer-registration/index.html">
+    <span class="card__no">04</span>
+    <span class="card__role">Super Admin</span>
+    <span class="card__title">Customer Registration &amp; Management</span>
+    <span class="card__desc">Usajili wa kampuni mpya (TIN/VRN/mkataba), portal access na jedwali la wateja walioandikishwa.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+
+  <a class="card" href="05-inspection-repair/index.html">
+    <span class="card__no">05</span>
+    <span class="card__role">Workshop Manager</span>
+    <span class="card__title">Inspection, Diagnosis &amp; Repair</span>
+    <span class="card__desc">Service Workflow (Opened→Completed), Active Job Cards na Latest Inspection Findings.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+
+  <a class="card" href="06-storekeeper/index.html">
+    <span class="card__no">06</span>
+    <span class="card__role">Store Keeper</span>
+    <span class="card__title">Store Keeper Dashboard</span>
+    <span class="card__desc">Inventory Alerts, Pending Spare Requests na Recent Stock Movements + Quick Actions.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+
+  <a class="card" href="07-operator/index.html">
+    <span class="card__no">07</span>
+    <span class="card__role">Machine Operator</span>
+    <span class="card__title">Machine Operator Dashboard</span>
+    <span class="card__desc">Mashine aliyopangiwa, Daily Safety Checklist, Machine Alerts na Operation &amp; Fuel Log.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+
+  <a class="card" href="08-daily-checklist/index.html">
+    <span class="card__no">08</span>
+    <span class="card__role">Machine Operator</span>
+    <span class="card__title">Daily Machine Checklist</span>
+    <span class="card__desc">Ukaguzi wa kina wa mfumo 7 (Engine, Transmission, Brakes, Hydraulic, Electrical, Tyres, Working Params) wenye Normal/Attention/Unsafe/N-A.</span>
+    <span class="card__open">Fungua dashibodi →</span>
+  </a>
+</main>
+
+<footer>
+  Kila folda ina index.html + assets/css + assets/js zake — huru kutoka kwa nyingine, hivyo unaweza kuzitazama moja moja bila kuathiri BELM Portal ya sasa. Ukishaidhinisha muonekano, tunaweza kuanza kuunganisha kila dashibodi na routes/PHP endpoints halisi za portal.
+</footer>
+
+</body>
+</html>

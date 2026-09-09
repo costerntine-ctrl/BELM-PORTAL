@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BELM Operations Platform — Home Dashboard</title>
+<link rel="stylesheet" href="assets/css/belm-admin-dashboard.css" />
+</head>
+<body class="belm-admin">
+
+<div class="belm-shell" id="belmShell">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="belm-sidebar">
+    <div class="belm-brand">
+      <svg class="belm-brand__mark" viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/>
+      </svg>
+      <div class="belm-brand__text">
+        <div class="belm-brand__name">BELM</div>
+        <div class="belm-brand__tag">OPERATIONS PLATFORM</div>
+      </div>
+    </div>
+
+    <nav class="belm-nav">
+      <a href="index.html" class="belm-nav__item is-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+        Home
+      </a>
+      <a href="customer-registration.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M17 8h4M19 6v4"/></svg>
+        Customer Registration
+      </a>
+      <a href="customers.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6M14.5 20c0-2.4-1-4.3-2.6-5.3.7-.5 1.6-.7 2.6-.7 2.7 0 5 2.1 5 4.9"/></svg>
+        Customers
+      </a>
+      <a href="machines.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>
+        Machines
+      </a>
+      <a href="roles-users.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/><path d="M20 4l1.2 1.2M20 8l1.6-.2"/></svg>
+        Roles &amp; Users
+      </a>
+      <a href="workshop-jobcards.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+        Workshop &amp; Job Cards
+      </a>
+      <a href="spare-parts.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        Spare Parts Inventory
+      </a>
+      <a href="procurement.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5a2 2 0 002 1.5h8.4a2 2 0 002-1.6L21 7H6"/></svg>
+        Procurement
+      </a>
+      <a href="finance-accounts.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+        Finance &amp; Accounts
+      </a>
+      <a href="bank-control.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10l9-6 9 6"/><path d="M5 10v9M10 10v9M14 10v9M19 10v9"/><path d="M3 21h18"/></svg>
+        Bank Control
+      </a>
+      <a href="reports-analysis.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
+        Reports &amp; Analysis
+      </a>
+      <a href="system-settings.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+        System Settings
+      </a>
+    </nav>
+
+    <div class="belm-nav__divider"></div>
+
+    <div class="belm-sidebar__foot">
+      <button class="belm-nav__item" id="themeToggle" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+        Light mode
+      </button>
+      <a href="logout.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Log out
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============================== MAIN ============================== -->
+  <div class="belm-main">
+
+    <!-- Topbar -->
+    <header class="belm-topbar">
+      <button class="belm-topbar__menu" id="sidebarToggle" type="button" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+
+      <div class="belm-topbar__right">
+        <button class="belm-bell" type="button" aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+          <span class="belm-bell__badge">3</span>
+        </button>
+
+        <div class="belm-user">
+          <div class="belm-user__avatar">
+            <svg viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/></svg>
+          </div>
+          <div>
+            <div class="belm-user__name">BELM ADMIN</div>
+            <div class="belm-user__role">SUPER ADMIN</div>
+          </div>
+          <svg class="belm-user__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="belm-content">
+
+      <!-- Hero -->
+      <section class="belm-hero">
+        <svg class="belm-hero__silhouette" viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="0,220 40,150 90,220" fill="#0f2a48"/>
+          <polygon points="70,220 140,110 220,220" fill="#123055"/>
+          <polygon points="180,220 260,90 340,220" fill="#0f2a48"/>
+          <rect x="230" y="150" width="16" height="70" fill="#0a2540"/>
+          <rect x="240" y="110" width="90" height="10" fill="#f5c518" transform="rotate(-18 240 110)"/>
+          <rect x="150" y="180" width="150" height="40" rx="4" fill="#0a2540"/>
+          <circle cx="180" cy="222" r="16" fill="#04101f"/>
+          <circle cx="260" cy="222" r="16" fill="#04101f"/>
+        </svg>
+        <div class="belm-hero__body">
+          <h1 class="belm-hero__title">Home Dashboard</h1>
+          <p class="belm-hero__subtitle">BELM General Technical Service LTD</p>
+        </div>
+        <div class="belm-hero__aside">
+          <div class="belm-hero__kicker">RELIABLE · STRONGER<br/>KEEP TANZANIA MOVING</div>
+          <a href="roles-users.php" class="belm-btn-gold">
+            VIEW MY ROLE
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </section>
+
+      <!-- Stat cards -->
+      <section class="belm-stats">
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Active Customers</div>
+            <div class="belm-stat-card__value">248</div>
+            <div class="belm-stat-card__delta">▲ +12% <span>vs last month</span></div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--navy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Registered Machines</div>
+            <div class="belm-stat-card__value">612</div>
+            <div class="belm-stat-card__delta">▲ +8% <span>vs last month</span></div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Open Job Cards</div>
+            <div class="belm-stat-card__value">86</div>
+            <div class="belm-stat-card__delta">▲ +24% <span>vs last month</span></div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--gold">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Pending Approvals</div>
+            <div class="belm-stat-card__value">17</div>
+            <div class="belm-stat-card__delta">▲ +31% <span>vs last month</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Workshop Activity + Alerts -->
+      <section class="belm-grid-2">
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title belm-panel__title--tool">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+              Workshop Activity
+            </div>
+            <select class="belm-select">
+              <option>This Month</option>
+              <option>This Week</option>
+              <option>This Quarter</option>
+            </select>
+          </div>
+
+          <div class="belm-chart">
+            <div class="belm-chart__plot">
+              <div class="belm-chart__yaxis">
+                <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span>
+              </div>
+
+              <div class="belm-chart__bar-group">
+                <div class="belm-chart__stack" style="height:120px;">
+                  <div class="belm-chart__seg--green" style="height:38%;"></div>
+                  <div class="belm-chart__seg--blue" style="height:62%;"></div>
+                </div>
+                <span class="belm-chart__xlabel">W1</span>
+              </div>
+              <div class="belm-chart__bar-group">
+                <div class="belm-chart__stack" style="height:132px;">
+                  <div class="belm-chart__seg--green" style="height:32%;"></div>
+                  <div class="belm-chart__seg--blue" style="height:68%;"></div>
+                </div>
+                <span class="belm-chart__xlabel">W2</span>
+              </div>
+              <div class="belm-chart__bar-group">
+                <div class="belm-chart__stack" style="height:152px;">
+                  <div class="belm-chart__seg--green" style="height:44%;"></div>
+                  <div class="belm-chart__seg--blue" style="height:56%;"></div>
+                </div>
+                <span class="belm-chart__xlabel">W3</span>
+              </div>
+              <div class="belm-chart__bar-group">
+                <div class="belm-chart__stack" style="height:182px;">
+                  <div class="belm-chart__seg--green" style="height:55%;"></div>
+                  <div class="belm-chart__seg--blue" style="height:45%;"></div>
+                </div>
+                <span class="belm-chart__xlabel">W4</span>
+              </div>
+            </div>
+
+            <div class="belm-chart__legend">
+              <div class="belm-legend-item"><span class="belm-legend-dot belm-legend-dot--blue"></span>Completed<strong>138</strong></div>
+              <div class="belm-legend-item"><span class="belm-legend-dot belm-legend-dot--green"></span>In Progress<strong>62</strong></div>
+              <div class="belm-legend-item"><span class="belm-legend-dot belm-legend-dot--amber"></span>Pending<strong>24</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title belm-panel__title--alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              Machine &amp; Stock Alerts
+            </div>
+            <a href="#" class="belm-panel__link">View All
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+
+          <div class="belm-alert-list">
+            <a href="#" class="belm-alert-row">
+              <span class="belm-alert-row__icon belm-alert-row__icon--red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              </span>
+              <span class="belm-alert-row__label">Machines Due for Service</span>
+              <span class="belm-alert-row__count">18</span>
+              <svg class="belm-alert-row__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <a href="#" class="belm-alert-row">
+              <span class="belm-alert-row__icon belm-alert-row__icon--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+              </span>
+              <span class="belm-alert-row__label">Low Stock Items</span>
+              <span class="belm-alert-row__count">27</span>
+              <svg class="belm-alert-row__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <a href="#" class="belm-alert-row">
+              <span class="belm-alert-row__icon belm-alert-row__icon--amber">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3v6l4 2M12 21a9 9 0 100-18 9 9 0 000 18z"/></svg>
+              </span>
+              <span class="belm-alert-row__label">Fuel Refill Due</span>
+              <span class="belm-alert-row__count">9</span>
+              <svg class="belm-alert-row__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <a href="#" class="belm-alert-row">
+              <span class="belm-alert-row__icon belm-alert-row__icon--red">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+              </span>
+              <span class="belm-alert-row__label">Expired Documents</span>
+              <span class="belm-alert-row__count">6</span>
+              <svg class="belm-alert-row__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent Activity + Promo -->
+      <section class="belm-grid-bottom">
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title belm-panel__title--doc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+              Recent Activity
+            </div>
+            <a href="#" class="belm-panel__link">View All
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+
+          <div class="belm-table-wrap">
+            <table class="belm-table">
+              <thead>
+                <tr><th>Date &amp; Time</th><th>Activity</th><th>Reference</th><th>User</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>14 Apr 2025 10:24</td><td>Job card updated</td><td>JC-2025-0148</td><td>BELM ADMIN</td><td><span class="belm-pill belm-pill--completed">Completed</span></td></tr>
+                <tr><td>14 Apr 2025 09:41</td><td>Spare part issued</td><td>SP-2025-0731</td><td>BELM ADMIN</td><td><span class="belm-pill belm-pill--approved">Approved</span></td></tr>
+                <tr><td>14 Apr 2025 08:17</td><td>New machine registered</td><td>MCH-2025-0612</td><td>BELM ADMIN</td><td><span class="belm-pill belm-pill--completed">Completed</span></td></tr>
+                <tr><td>13 Apr 2025 16:03</td><td>Purchase order approved</td><td>PO-2025-0388</td><td>BELM ADMIN</td><td><span class="belm-pill belm-pill--approved">Approved</span></td></tr>
+                <tr><td>13 Apr 2025 11:20</td><td>New user created</td><td>USR-2025-0027</td><td>BELM ADMIN</td><td><span class="belm-pill belm-pill--completed">Completed</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="belm-promo">
+          <div>
+            <div class="belm-promo__title">SERVICE SUPPORT PARTNERSHIP — A STRONGER TANZANIA</div>
+            <div class="belm-promo__rule"></div>
+          </div>
+          <div class="belm-promo__stats">
+            <div class="belm-promo__stat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="18" cy="9" r="2.2"/></svg>
+              PEOPLE
+            </div>
+            <div class="belm-promo__stat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 16.7 6.5 19.5l1-6.3L3 9.9 9 9l3-7z"/></svg>
+              PERFORMANCE
+            </div>
+            <div class="belm-promo__stat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+              PROGRESS
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="assets/js/belm-admin-dashboard.js"></script>
+</body>
+</html>

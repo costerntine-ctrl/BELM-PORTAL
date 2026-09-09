@@ -143,24 +143,12 @@
       label: "BELM Super Admin",
       menuTitle: "SUPER ADMIN MENU",
       module: "overview",
-      // V700: this now mirrors the full main Admin menu (admin-sidebar.js)
-      // one-for-one instead of a shorter 6-item subset, so Super Admin sees
-      // a single consistent menu everywhere instead of two overlapping ones.
       menu: [
+        { code: "CO", label: "Company Overview", note: "Live business position", href: "/overview-manager/", tone: "blue" },
+        { code: "AP", label: "Approvals", note: "Customer and access requests", href: "/admin-applications/", tone: "yellow" },
+        { code: "UR", label: "Users & Roles", note: "People, permissions and access", href: "/roles-manager/", tone: "green" },
+        { code: "GR", label: "General Reports", note: "Company reports and comparisons", href: "/reports-manager/", tone: "cyan" },
         { code: "AN", label: "General Analysis", note: "Super Admin performance analysis", analysis: true, tone: "purple" },
-        { code: "OV", label: "Overview", note: "Live business position", href: "/overview-manager/", tone: "blue" },
-        { code: "RG", label: "Registrations", note: "Customer and access requests", href: "/admin-applications/", tone: "yellow" },
-        { code: "RA", label: "Reports & Analysis", note: "Company reports and comparisons", href: "/reports-manager/", tone: "cyan" },
-        { code: "CL", label: "Checklist Templates", note: "Maintenance checklist library", href: "/checklist-manager/", tone: "green" },
-        { code: "CP", label: "Controller Pin Out", note: "Controller wiring reference", href: "/controller-pinouts-manager/", tone: "blue" },
-        { code: "SP", label: "Spare Parts Inventory", note: "Stock, pricing and shortages", href: "/spare-parts-manager/", tone: "green" },
-        { code: "EQ", label: "Equivalent Spares", note: "Cross-reference part matches", href: "/spare-parts-manager/#equivalent-spares-panel", tone: "purple" },
-        { code: "SU", label: "Suppliers Directory", note: "Vendor contacts and sourcing", href: "/suppliers-manager/", tone: "blue" },
-        { code: "BM", label: "Bank Manager", note: "Protected banking position", href: "/bank-controller/", tone: "yellow" },
-        { code: "CO", label: "Coordinator", note: "System & customer controls", href: "/coordinator/", tone: "purple" },
-        { code: "BF", label: "Billing & Finance", note: "Invoices, payments and revenue", href: "/billing-manager/", tone: "green" },
-        { code: "RB", label: "Recycle Bin", note: "Restore recently deleted records", href: "/recycle-bin/", tone: "cyan" },
-        { code: "RU", label: "BELM Staff Access", note: "People, permissions and access", href: "/roles-manager/", tone: "purple" },
         { code: "ST", label: "System Settings", note: "Company and portal settings", href: "/settings-manager/", tone: "yellow" },
       ],
     },
@@ -301,6 +289,7 @@
     $("signedUserPrimaryRole").textContent = roleNames.join(" · ");
     $("userInitials").textContent = initials;
     $("headerRole").textContent = roleNames.join(" / ");
+    $("coordinatorLink").hidden = !isSuperAdmin;
   }
 
   function updateDate() {

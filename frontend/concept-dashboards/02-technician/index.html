@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BELM Operations Platform — Technician Dashboard</title>
+<link rel="stylesheet" href="assets/css/belm-technician-dashboard.css" />
+</head>
+<body class="belm-admin">
+
+<div class="belm-shell" id="belmShell">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="belm-sidebar">
+    <div class="belm-brand">
+      <div class="belm-brand__name">BELM<span class="belm-brand__slash">/</span></div>
+      <div class="belm-brand__tag">OPERATIONS PLATFORM</div>
+    </div>
+
+    <nav class="belm-nav">
+      <a href="index.html" class="belm-nav__item is-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+        Home
+      </a>
+      <a href="my-job-cards.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        My Job Cards
+      </a>
+      <a href="customer-machines.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>
+        Customer Machines
+      </a>
+      <a href="diagnosis-repair.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+        Diagnosis &amp; Repair
+      </a>
+      <a href="spare-requests.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        Spare Requests
+      </a>
+      <a href="testing-completion.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        Testing &amp; Completion
+      </a>
+      <a href="daily-checklists.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 3v2h6V3M9 10l1.7 1.7L14 8.3M9 16h6"/></svg>
+        Daily Checklists
+      </a>
+      <a href="communication.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H8l-4 4V4z"/></svg>
+        Communication
+      </a>
+      <a href="my-reports.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
+        My Reports
+      </a>
+      <a href="my-profile.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
+        My Profile
+      </a>
+    </nav>
+
+    <div class="belm-nav__divider"></div>
+
+    <div class="belm-sidebar__foot">
+      <button class="belm-nav__item" id="themeToggle" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2 12h2M20 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>
+        Light mode
+      </button>
+      <a href="logout.php" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Log out
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============================== MAIN ============================== -->
+  <div class="belm-main">
+
+    <!-- Topbar -->
+    <header class="belm-topbar">
+      <div class="belm-topbar__left">
+        <button class="belm-topbar__menu" id="sidebarToggle" type="button" aria-label="Toggle menu">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+        </button>
+        <span class="belm-topbar__kicker">BUILT FOR A STRONGER TOMORROW</span>
+      </div>
+
+      <div class="belm-topbar__right">
+        <button class="belm-bell" type="button" aria-label="Notifications">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+          <span class="belm-bell__dot"></span>
+        </button>
+
+        <div class="belm-user">
+          <div class="belm-user__avatar">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 00-7 7v2H3v4h2.2A7 7 0 0012 21a7 7 0 006.8-6H21v-4h-2V9a7 7 0 00-7-7zm-3 9a1.4 1.4 0 112.8 0 1.4 1.4 0 01-2.8 0zm4.2 0a1.4 1.4 0 112.8 0 1.4 1.4 0 01-2.8 0z"/></svg>
+          </div>
+          <div>
+            <div class="belm-user__name">TECHNICIAN</div>
+            <div class="belm-user__role">TECHNICAL DEPARTMENT</div>
+          </div>
+          <svg class="belm-user__chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="belm-content">
+
+      <!-- Hero -->
+      <section class="belm-hero">
+        <svg class="belm-hero__wireframe" viewBox="0 0 420 220" preserveAspectRatio="xMaxYMid slice" xmlns="http://www.w3.org/2000/svg" stroke="#2f6fd6" stroke-width="1.4" fill="none">
+          <rect x="230" y="150" width="150" height="45" rx="3"/>
+          <circle cx="255" cy="200" r="15"/>
+          <circle cx="345" cy="200" r="15"/>
+          <rect x="260" y="60" width="14" height="95"/>
+          <line x1="267" y1="70" x2="380" y2="40"/>
+          <line x1="267" y1="90" x2="370" y2="60"/>
+          <rect x="360" y="25" width="34" height="26" transform="rotate(-14 360 25)"/>
+          <rect x="205" y="90" width="40" height="60"/>
+          <line x1="205" y1="110" x2="245" y2="110"/>
+          <line x1="205" y1="130" x2="245" y2="130"/>
+        </svg>
+        <div class="belm-hero__body">
+          <h1 class="belm-hero__title">Technician Dashboard</h1>
+          <p class="belm-hero__subtitle">My assigned work and service progress</p>
+        </div>
+        <div class="belm-hero__aside">
+          <div class="belm-hero__kicker">HEAVY MACHINES<br/>KEEP INDUSTRY<br/>MOVING</div>
+          <a href="my-profile.php" class="belm-btn-blue">
+            VIEW MY ROLE
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+      </section>
+
+      <!-- Stat cards -->
+      <section class="belm-stats">
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Assigned Jobs</div>
+            <div class="belm-stat-card__value">8</div>
+            <div class="belm-stat-card__hint">Jobs allocated to me</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card belm-stat-card--green">
+          <div class="belm-stat-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">In Progress</div>
+            <div class="belm-stat-card__value">3</div>
+            <div class="belm-stat-card__hint">Currently working</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card belm-stat-card--gold">
+          <div class="belm-stat-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Waiting for Spares</div>
+            <div class="belm-stat-card__value">2</div>
+            <div class="belm-stat-card__hint">Awaiting parts delivery</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6M10 3v6l-5.5 8.5A2 2 0 006.2 21h11.6a2 2 0 001.7-3.5L14 9V3"/><path d="M8 16h8"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Ready for Testing</div>
+            <div class="belm-stat-card__value">1</div>
+            <div class="belm-stat-card__hint">Ready to be tested</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Communication History + Active Job Cards -->
+      <section class="belm-grid-2">
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v12H8l-4 4V4z"/></svg>
+              Communication History
+            </div>
+            <a href="communication.php" class="belm-panel__link">View all</a>
+          </div>
+
+          <div class="belm-comm-list">
+            <div class="belm-comm-row">
+              <span class="belm-comm-row__icon belm-comm-row__icon--green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16v12H8l-4 4V4z"/></svg>
+              </span>
+              <div class="belm-comm-row__body">
+                <div class="belm-comm-row__top">
+                  <span class="belm-comm-row__name">ECLS ICD</span>
+                  <span class="belm-comm-row__time">Today 10:24</span>
+                </div>
+                <div class="belm-comm-row__msg">Spare parts ETA confirmed for JC-2026-0148.</div>
+              </div>
+            </div>
+
+            <div class="belm-comm-row">
+              <span class="belm-comm-row__icon belm-comm-row__icon--blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
+              </span>
+              <div class="belm-comm-row__body">
+                <div class="belm-comm-row__top">
+                  <span class="belm-comm-row__name">APM Terminals</span>
+                  <span class="belm-comm-row__time">Today 08:17</span>
+                </div>
+                <div class="belm-comm-row__msg">Additional information sent for JC-2026-0151.</div>
+              </div>
+            </div>
+
+            <div class="belm-comm-row">
+              <span class="belm-comm-row__icon belm-comm-row__icon--gold">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="18" cy="9" r="2.2"/></svg>
+              </span>
+              <div class="belm-comm-row__body">
+                <div class="belm-comm-row__top">
+                  <span class="belm-comm-row__name">FMJ Ware</span>
+                  <span class="belm-comm-row__time">Yesterday 16:42</span>
+                </div>
+                <div class="belm-comm-row__msg">Testing procedure approved.</div>
+              </div>
+            </div>
+
+            <div class="belm-comm-row">
+              <span class="belm-comm-row__icon belm-comm-row__icon--blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16v12H8l-4 4V4z"/></svg>
+              </span>
+              <div class="belm-comm-row__body">
+                <div class="belm-comm-row__top">
+                  <span class="belm-comm-row__name">Internal Support</span>
+                  <span class="belm-comm-row__time">Yesterday 14:11</span>
+                </div>
+                <div class="belm-comm-row__msg">Diagnostic file shared for SANY RS45.</div>
+              </div>
+            </div>
+
+            <div class="belm-comm-row">
+              <span class="belm-comm-row__icon belm-comm-row__icon--green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="18" cy="9" r="2.2"/></svg>
+              </span>
+              <div class="belm-comm-row__body">
+                <div class="belm-comm-row__top">
+                  <span class="belm-comm-row__name">APM Terminals</span>
+                  <span class="belm-comm-row__time">12 Jan 2026 11:03</span>
+                </div>
+                <div class="belm-comm-row__msg">Customer updated on parts status.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="belm-panel__footnote">Keep communication clear. Keep machines moving.</div>
+        </div>
+
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+              My Active Job Cards
+            </div>
+            <a href="my-job-cards.php" class="belm-panel__link">View all</a>
+          </div>
+
+          <div class="belm-table-wrap">
+            <table class="belm-table">
+              <thead>
+                <tr><th>Machine</th><th>Customer</th><th>Job Card</th><th>Status</th><th>Next Action</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="belm-machine-cell">
+                      <span class="belm-machine-cell__icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>
+                      </span>
+                      <span class="belm-machine-cell__name">Kalmar<br/>Reach Stacker</span>
+                    </div>
+                  </td>
+                  <td>ECLS ICD</td>
+                  <td>JC-2026-0148</td>
+                  <td><span class="belm-pill belm-pill--diagnosis">Diagnosis</span></td>
+                  <td>
+                    <div class="belm-action-cell">
+                      <a href="#" class="belm-btn-sm belm-btn-sm--solid-green">Open Job</a>
+                      <a href="#" class="belm-btn-sm belm-btn-sm--outline-blue">Update Diagnosis</a>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="belm-machine-cell">
+                      <span class="belm-machine-cell__icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>
+                      </span>
+                      <span class="belm-machine-cell__name">SANY RS45</span>
+                    </div>
+                  </td>
+                  <td>APM Terminals</td>
+                  <td>JC-2026-0151</td>
+                  <td><span class="belm-pill belm-pill--waiting">Waiting for Spares</span></td>
+                  <td>
+                    <div class="belm-action-cell">
+                      <a href="#" class="belm-btn-sm belm-btn-sm--solid-green">Open Job</a>
+                      <a href="#" class="belm-btn-sm belm-btn-sm--outline-gold">Request Spare</a>
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="belm-machine-cell">
+                      <span class="belm-machine-cell__icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
+                      </span>
+                      <span class="belm-machine-cell__name">Caterpillar<br/>Forklift</span>
+                    </div>
+                  </td>
+                  <td>FMJ Ware</td>
+                  <td>JC-2026-0153</td>
+                  <td><span class="belm-pill belm-pill--testing">Testing</span></td>
+                  <td>
+                    <div class="belm-action-cell">
+                      <a href="#" class="belm-btn-sm belm-btn-sm--solid-green">Open Job</a>
+                      <a href="#" class="belm-btn-sm belm-btn-sm--outline-green">Start Testing</a>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="belm-panel__foot-banner">
+            <span>Safe Machines. Productive People. A Stronger Tomorrow.</span>
+            <strong>BELM<span class="belm-brand__slash">/</span></strong>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="assets/js/belm-technician-dashboard.js"></script>
+</body>
+</html>

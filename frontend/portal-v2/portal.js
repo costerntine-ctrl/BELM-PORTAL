@@ -109,32 +109,32 @@
 
   const ROLE_CONFIG = {
     "super-admin": {
-      title: "BELM Workshop Manager Portal", initials: "WM", eyebrow: "BELM WORKSHOP MANAGEMENT", description: "Workshop management with full BELM administrative control, approvals, finance visibility and secure settings.", primary: "/workshop-management-home/?role=workshop",
+      title: "BELM Workshop Manager Portal", initials: "WM", eyebrow: "BELM WORKSHOP MANAGEMENT", description: "Workshop management with full BELM administrative control, approvals, finance visibility and secure settings.", primary: "/concept-dashboards/01-admin-home/",
       menu: [item("Dashboard","home","#dashboard"),item("Customer Registration","customer","/admin-applications/"),item("Customer Overview","machine","/customers-manager/"),item("Roles & Users","user","/roles-manager/"),item("Workshop & Job Cards","job","/breakdown-workflow/?actor=admin&view=job-cards"),item("Spare Parts Inventory","stock","/spare-parts-manager/"),item("Procurement","buy","/belm-procurement/"),item("Finance & Accounts","money","/billing-manager/"),item("Bank Control","bank","/bank-controller/"),item("Reports & Analysis","report","/reports-manager/"),item("System Settings","settings","/settings-manager/")],
       process: ["Register & approve","Assign role","Run operations","Review reports","Audit & control"]
     },
     "workshop-manager": {
-      title: "Workshop Manager Dashboard", initials: "WM", eyebrow: "TECHNICAL DEPARTMENT", description: "Receive Job Cards, assign technicians and manage inspection, diagnosis, repair and completion.", primary: "/belm-workshop/",
+      title: "Workshop Manager Dashboard", initials: "WM", eyebrow: "TECHNICAL DEPARTMENT", description: "Receive Job Cards, assign technicians and manage inspection, diagnosis, repair and completion.", primary: "/concept-dashboards/05-inspection-repair/",
       menu: [item("Dashboard","home","#dashboard"),item("Customer Overview","machine","/customers-manager/"),item("Open Job Cards","job","/belm-workshop/#job-cards"),item("Inspection & Diagnosis","inspect","/breakdown-workflow/?actor=admin"),item("Manage Technicians","user","/roles-manager/"),item("Waiting for Spares","stock","/belm-workshop/#job-cards"),item("Testing & Completion","test","/breakdown-workflow/?actor=admin"),item("Workshop Reports","report","/workshop-analysis/"),item("Communication","message","/customers-manager/")],
       process: ["Job opened","Inspection","Diagnosis","Repair","Testing & close"]
     },
     technician: {
-      title: "Technician Dashboard", initials: "TC", eyebrow: "INSPECTION · DIAGNOSIS · REPAIR", description: "Assigned Job Cards, machine inspection, diagnosis, repairs, testing and technical records.", primary: "/technician-tasks/",
+      title: "Technician Dashboard", initials: "TC", eyebrow: "INSPECTION · DIAGNOSIS · REPAIR", description: "Assigned Job Cards, machine inspection, diagnosis, repairs, testing and technical records.", primary: "/concept-dashboards/02-technician/",
       menu: [item("Dashboard","home","#dashboard"),item("My Job Cards","job","/technician-job-cards/"),item("Customer Machines","machine","/technician-tasks/"),item("Diagnosis & Repair","inspect","/breakdown-workflow/?actor=technician"),item("Spare Requests","stock","/spare-parts-manager/"),item("Testing & Completion","test","/technician-job-cards/"),item("Daily Checklists","checklist","/tech-report/"),item("Communication","message","/technician-tasks/"),item("My Reports","report","/tech-checked-report/")],
       process: ["Assigned","Inspect","Diagnose","Repair","Test & complete"]
     },
     procurement: {
-      title: "Procurement Dashboard", initials: "PR", eyebrow: "PURCHASING & SUPPLY", description: "Purchase spare parts, manage pending proforma records, suppliers and department analysis.", primary: "/belm-procurement/",
+      title: "Procurement Dashboard", initials: "PR", eyebrow: "PURCHASING & SUPPLY", description: "Purchase spare parts, manage pending proforma records, suppliers and department analysis.", primary: "/concept-dashboards/03-procurement/",
       menu: [item("Dashboard","home","#dashboard"),item("Spare Part Purchases","buy","/belm-procurement/"),item("Purchase Records","record","/belm-procurement/?view=records"),item("Pending Proforma","quote","/belm-procurement/?view=proforma"),item("Purchase Reports","report","/belm-procurement/?view=reports"),item("Department Analysis","report","/belm-procurement/?view=analysis"),item("Suppliers","supplier","/suppliers-manager/")],
       process: ["Request received","Source supplier","Review proforma","Place order","Store receives"]
     },
     "store-keeper": {
-      title: "Store Keeper Dashboard", initials: "SK", eyebrow: "STOCK · TOOLS · ISSUES", description: "Control inventory, stock movements, spare requests, tools and stock audits.", primary: "/spare-parts-manager/",
+      title: "Store Keeper Dashboard", initials: "SK", eyebrow: "STOCK · TOOLS · ISSUES", description: "Control inventory, stock movements, spare requests, tools and stock audits.", primary: "/concept-dashboards/06-storekeeper/",
       menu: [item("Dashboard","home","#dashboard"),item("Spare Parts Inventory","stock","/spare-parts-manager/"),item("Stock In","record","/spare-parts-manager/?view=stock-in"),item("Stock Out & Issues","tool","/spare-parts-manager/?view=stock-out"),item("Spare Requests","buy","/spare-parts-manager/?view=requests"),item("Low Stock & Shortages","alert","/spare-parts-manager/?view=low-stock"),item("Tools Register","tool","/spare-parts-manager/?view=tools"),item("Stock Audit","checklist","/spare-parts-manager/?view=audit"),item("Inventory Reports","report","/reports-manager/")],
       process: ["Request","Verify stock","Issue or purchase","Receive stock","Audit record"]
     },
     "registration-sales": {
-      title: "Customer Registration & Sales", initials: "RS", eyebrow: "CUSTOMERS · REQUESTS · SALES", description: "Register and manage customers, service requests, quotations, sales documents and portal access.", primary: "/customers-manager/",
+      title: "Customer Registration & Sales", initials: "RS", eyebrow: "CUSTOMERS · REQUESTS · SALES", description: "Register and manage customers, service requests, quotations, sales documents and portal access.", primary: "/concept-dashboards/04-customer-registration/",
       menu: [item("Dashboard","home","#dashboard"),item("Register Customer","customer","#new-customer"),item("All Customers","user","/customers-manager/"),item("Customer Machines","machine","/customers-manager/"),item("Service Requests","job","/service-request-manager/"),item("Quotations & Proforma","quote","/billing-manager/"),item("Sales Documents","money","/billing-manager/"),item("Customer Communication","message","/customers-manager/"),item("Sales Reports","report","/reports-manager/")],
       process: ["Capture details","Check duplicates","Approve access","Register machines","Support customer"]
     },
@@ -154,7 +154,7 @@
       process: ["Open settings","Update configuration","Save changes"]
     },
     operator: {
-      title: "Machine Operator Dashboard", initials: "OP", eyebrow: "DAILY MACHINE OPERATIONS", description: "Daily machine checks, operating hours, fuel, alerts, service status and reports.", primary: "/operator/",
+      title: "Machine Operator Dashboard", initials: "OP", eyebrow: "DAILY MACHINE OPERATIONS", description: "Daily machine checks, operating hours, fuel, alerts, service status and reports.", primary: "/concept-dashboards/07-operator/",
       menu: [item("Dashboard","home","#dashboard"),item("My Machine","machine","/operator/"),item("Daily Checklist","checklist","/operator/#check-up"),item("Operation Log","log","/operator/#operation-log"),item("Fuel Consumption","fuel","/customer-fuel-usage/"),item("Machine Alerts","alert","/operator/#alerts"),item("Service Status","tool","/operator/#service"),item("Report Issue","message","/operator/#report"),item("Operator Reports","report","/operator/#reports")],
       process: ["Sign in","Daily check","Operate","Report issue","Sign out"]
     },
@@ -207,6 +207,18 @@
   function initials(name) {
     return String(name || "BU").trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") || "BU";
   }
+  function roleDashboardUrl() {
+    // V707: the supplied DASHBOARDS(3) templates are the canonical role dashboards.
+    // Roles without a supplied dashboard continue to their existing operational workspace.
+    return config.primary || "/portal-v2/#role";
+  }
+
+  function openRoleDashboard() {
+    const target = roleDashboardUrl();
+    if (target && target !== "/portal-v2/#role") { window.location.href = target; return; }
+    showView("role");
+  }
+
   function roleLabel() {
     if (roleKey === "super-admin") return "BELM Workshop Manager Portal";
     if (roleKey === "customer-admin") return rawRole.toLowerCase() === "owner" ? "Company Administrator" : titleCase(rawRole);
@@ -425,7 +437,7 @@
   updateLiveClock(); setInterval(updateLiveClock, 30000);
 
   setIdentity(); renderNav(true); $("year").textContent=String(new Date().getFullYear());
-  $("enterRoleButton").addEventListener("click",()=>showView("role"));
+  $("enterRoleButton").addEventListener("click",openRoleDashboard);
   $("homeButton").addEventListener("click",()=>showView("home"));
   $("menuButton").addEventListener("click",()=>document.body.classList.contains("menu-open")?closeMenu():openMenu());
   $("menuScrim").addEventListener("click",closeMenu);
@@ -435,7 +447,7 @@
     const link=event.target.closest("a"); if(!link)return;
     const action=link.dataset.internal;
     if(action==="#home"){event.preventDefault();showView("home");}
-    if(action==="#role"||action==="#dashboard"){event.preventDefault();showView("role");}
+    if(action==="#role"||action==="#dashboard"){event.preventDefault();openRoleDashboard();}
     if(action==="#new-customer"){event.preventDefault();openCustomerDialog();}
     closeMenu();
   });

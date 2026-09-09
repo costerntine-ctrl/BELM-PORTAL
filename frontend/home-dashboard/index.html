@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1422">
+  <title>Home Dashboard — BELM Operations Platform</title>
+  <link rel="icon" type="image/png" href="/app-icon-192.png">
+  <link rel="apple-touch-icon" href="/app-icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/home-dashboard/home-dashboard.css?v=1">
+</head>
+<body>
+  <div id="menuScrim" class="hd-scrim" hidden></div>
+
+  <aside id="hdSidebar" class="hd-sidebar" aria-label="BELM main navigation">
+    <a class="hd-brand" href="/home-dashboard/">
+      <span class="hd-brand-mark" aria-hidden="true">▲</span>
+      <span class="hd-brand-copy"><strong>BELM</strong><small>OPERATIONS PLATFORM</small></span>
+    </a>
+    <nav id="hdNav" class="hd-nav" aria-label="Main menu"></nav>
+    <div class="hd-sidebar-footer">
+      <button id="hdThemeToggle" type="button" data-belm-theme-toggle="1">☾ Light mode</button>
+      <button id="hdLogout" type="button">↦ Log out</button>
+    </div>
+  </aside>
+
+  <main class="hd-main">
+    <header class="hd-topbar">
+      <button id="menuButton" class="hd-menu-button hd-menu-button-inline" type="button" aria-label="Open menu" aria-controls="hdSidebar" aria-expanded="false">☰</button>
+      <div class="hd-topbar-spacer"></div>
+      <button id="hdBell" class="hd-bell" type="button" aria-label="Pending approvals">
+        🔔<span id="hdBellBadge" class="hd-bell-badge" hidden>0</span>
+      </button>
+      <div class="hd-user">
+        <span id="hdUserAvatar" class="hd-user-avatar">BU</span>
+        <span class="hd-user-copy"><strong id="hdUserName">BELM User</strong><small id="hdUserRole">Assigned role</small></span>
+      </div>
+    </header>
+
+    <section class="hd-hero">
+      <div class="hd-hero-copy">
+        <h1>Home Dashboard</h1>
+        <p id="hdCompanyName">BELM General Technical Service LTD</p>
+      </div>
+      <div class="hd-hero-banner">
+        <svg class="hd-hero-art" viewBox="0 0 220 120" aria-hidden="true">
+          <rect x="6" y="70" width="86" height="34" rx="4" fill="#f2ce00"/>
+          <rect x="14" y="46" width="30" height="28" rx="3" fill="#0b1422" opacity=".35"/>
+          <circle cx="26" cy="106" r="10" fill="#0b1422"/>
+          <circle cx="74" cy="106" r="10" fill="#0b1422"/>
+          <path d="M92 88 L150 88 L168 62 L140 62 L140 46 L112 46 Z" fill="#00a958" opacity=".9"/>
+          <circle cx="150" cy="106" r="9" fill="#0b1422"/>
+          <circle cx="110" cy="106" r="9" fill="#0b1422"/>
+        </svg>
+        <a id="viewMyRoleButton" class="hd-hero-button" href="/workshop-management-home/">
+          View my role <span aria-hidden="true">→</span>
+        </a>
+      </div>
+    </section>
+
+    <section id="hdStatGrid" class="hd-stat-grid" aria-label="Key totals">
+      <article class="hd-stat-card">
+        <span class="hd-stat-icon" style="background:#1684ff22;color:#1684ff">
+          <svg viewBox="0 0 20 20"><circle cx="6.5" cy="6.5" r="2.7"/><circle cx="14" cy="7" r="2.3"/><path d="M2 17c0-2.8 2-4.7 4.5-4.7s4.5 1.9 4.5 4.7M11.5 17c0-2.3 1.7-4 4-4s4 1.7 4 4"/></svg>
+        </span>
+        <span class="hd-stat-copy"><small>Active Customers</small><strong id="hdStatCustomers">—</strong><em id="hdStatCustomersNote"></em></span>
+      </article>
+      <article class="hd-stat-card">
+        <span class="hd-stat-icon" style="background:#f2ce0022;color:#c99e00">
+          <svg viewBox="0 0 20 20"><path d="M2 6h9v7H2z"/><path d="M11 9h4l3 3v1h-7z"/><circle cx="5.5" cy="15" r="1.5"/><circle cx="14.5" cy="15" r="1.5"/></svg>
+        </span>
+        <span class="hd-stat-copy"><small>Registered Machines</small><strong id="hdStatMachines">—</strong><em id="hdStatMachinesNote"></em></span>
+      </article>
+      <article class="hd-stat-card">
+        <span class="hd-stat-icon" style="background:#00a95822;color:#00a958">
+          <svg viewBox="0 0 20 20"><rect x="4" y="3" width="12" height="14" rx="1.5"/><path d="M7.5 2.5h5v2h-5z"/><path d="M6.5 9h7M6.5 12h7M6.5 15h4"/></svg>
+        </span>
+        <span class="hd-stat-copy"><small>Open Job Cards</small><strong id="hdStatJobs">—</strong><em id="hdStatJobsNote"></em></span>
+      </article>
+      <article class="hd-stat-card">
+        <span class="hd-stat-icon" style="background:#f2ce0022;color:#c99e00">
+          <svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.3"/><path d="M10 5.5V10l3.2 2"/></svg>
+        </span>
+        <span class="hd-stat-copy"><small>Pending Approvals</small><strong id="hdStatApprovals">—</strong><em id="hdStatApprovalsNote"></em></span>
+      </article>
+    </section>
+
+    <section class="hd-panels">
+      <article class="hd-panel">
+        <div class="hd-panel-head">
+          <h2>🔧 Workshop Activity</h2>
+        </div>
+        <div id="hdWorkshopBars" class="hd-bars">
+          <div class="hd-bars-loading">Loading live task data…</div>
+        </div>
+      </article>
+
+      <article class="hd-panel">
+        <div class="hd-panel-head">
+          <h2>⚠ Needs Attention</h2>
+          <a href="/overview-manager/">View all →</a>
+        </div>
+        <ul id="hdAttentionList" class="hd-attention-list">
+          <li class="hd-attention-loading">Checking priorities…</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="hd-panels hd-panels-wide">
+      <article class="hd-panel hd-panel-wide">
+        <div class="hd-panel-head">
+          <h2>📄 Recent Activity</h2>
+          <a href="/admin/activity-log">View all →</a>
+        </div>
+        <div class="hd-table-wrap">
+          <table class="hd-table">
+            <thead>
+              <tr><th>Date &amp; time</th><th>Activity</th><th>User</th><th>Role</th></tr>
+            </thead>
+            <tbody id="hdActivityRows">
+              <tr><td colspan="4" class="hd-empty">Loading recent activity…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      <aside class="hd-promo">
+        <h3>SERVICE SUPPORT<br>PARTNERSHIP<br><span>A STRONGER TANZANIA</span></h3>
+        <div class="hd-promo-tags">
+          <span>⚙ People</span>
+          <span>🛡 Performance</span>
+          <span>📈 Progress</span>
+        </div>
+      </aside>
+    </section>
+
+    <footer class="hd-footer">© BELM General Tech Service Ltd</footer>
+  </main>
+
+  <script src="/theme-manager.js?v=1"></script>
+  <script src="/home-dashboard/home-dashboard.js?v=1"></script>
+</body>
+</html>

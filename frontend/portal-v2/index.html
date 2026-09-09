@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#061a2d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>BELM Operations Platform</title>
+  <link rel="icon" type="image/png" href="/app-icon-192.png">
+  <link rel="apple-touch-icon" href="/app-icon-192.png">
+  <link rel="manifest" href="/belm-app.webmanifest">
+  <link rel="stylesheet" href="/portal-v2/portal.css?v=701">
+</head>
+<body>
+  <div id="menuScrim" class="menu-scrim" hidden></div>
+
+  <aside id="sidebar" class="sidebar" aria-label="Role navigation">
+    <div class="brand">
+      <span class="brand-mark">B</span>
+      <span><strong>BELM</strong><small>OPERATIONS PLATFORM</small></span>
+    </div>
+
+    <div class="identity-card">
+      <span id="sideAvatar" class="avatar">BU</span>
+      <span><strong id="sideName">BELM User</strong><small id="sideRole">Assigned role</small></span>
+    </div>
+
+    <div class="nav-caption"><span id="navCaption">HOME MENU</span><b id="navCount">0</b></div>
+    <nav id="roleNav" class="role-nav" aria-label="Workspace menu"></nav>
+
+    <div class="sidebar-footer">
+      <button id="homeButton" type="button">⌂ <span>Home Dashboard</span></button>
+      <button id="themeButton" type="button">☀ <span>Light mode</span></button>
+      <button id="logoutButton" type="button">↦ <span>Log out securely</span></button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button id="menuButton" class="menu-button" type="button" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">☰</button>
+      <div class="crumb"><span id="crumbParent">BELM PORTAL</span><strong id="crumbCurrent">Home Dashboard</strong></div>
+      <div class="top-actions">
+        <button id="refreshButton" class="icon-button" type="button" aria-label="Refresh live data" title="Refresh live data">↻</button>
+        <button id="notificationButton" class="icon-button notification" type="button" aria-label="Notifications">♢<b id="notificationCount" hidden>0</b></button>
+        <div class="top-user"><span id="topAvatar" class="avatar small">BU</span><span><strong id="topName">BELM User</strong><small id="topRole">Assigned role</small></span></div>
+      </div>
+    </header>
+
+    <div id="statusBar" class="status-bar" role="status" hidden></div>
+
+    <section id="homeView" class="view">
+      <div class="hero home-hero">
+        <div class="hero-copy">
+          <span class="eyebrow">WELCOME TO BELM OPERATIONS</span>
+          <h1 id="homeTitle">Home Dashboard</h1>
+          <p id="homeSubtitle">Your secure starting point for company operations.</p>
+          <div class="hero-actions">
+            <button id="enterRoleButton" class="primary-action" type="button">View My Role <span>→</span></button>
+            <span class="live-pill"><i></i> LIVE SYSTEM</span>
+          </div>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="sun"></div><div class="crane-boom"></div><div class="machine-body"></div><div class="machine-wheel w1"></div><div class="machine-wheel w2"></div>
+          <div class="hero-grid"></div>
+        </div>
+      </div>
+
+      <section class="section-head">
+        <div><span class="eyebrow">LIVE OVERVIEW</span><h2>Today at a glance</h2></div>
+        <span id="lastUpdated" class="updated">Connecting…</span>
+      </section>
+      <div id="homeStats" class="stats-grid"></div>
+
+      <div class="dashboard-grid">
+        <article class="panel span-2">
+          <div class="panel-head"><div><span class="eyebrow">WORKFLOW</span><h2 id="activityTitle">Operations activity</h2></div><a id="activityLink" href="#">Open workspace →</a></div>
+          <div id="workflowBars" class="workflow-bars"><div class="skeleton tall"></div></div>
+        </article>
+        <article class="panel attention-panel">
+          <div class="panel-head"><div><span class="eyebrow">PRIORITY</span><h2>Needs attention</h2></div></div>
+          <div id="attentionList" class="attention-list"><div class="skeleton"></div><div class="skeleton"></div></div>
+        </article>
+        <article class="panel span-2">
+          <div class="panel-head"><div><span class="eyebrow">RECENT</span><h2>Latest records</h2></div></div>
+          <div id="recentTable" class="data-list"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+        </article>
+        <article class="brand-panel">
+          <span class="brand-panel-mark">B</span>
+          <p>PEOPLE · PERFORMANCE · PROGRESS</p>
+          <h2>Built for a stronger tomorrow.</h2>
+          <small>BELM General Tech Service LTD</small>
+        </article>
+      </div>
+    </section>
+
+    <section id="roleView" class="view" hidden>
+      <div class="hero role-hero">
+        <div class="hero-copy">
+          <span id="roleEyebrow" class="eyebrow">ROLE WORKSPACE</span>
+          <h1 id="roleTitle">Role Dashboard</h1>
+          <p id="roleDescription">Live tools and records for your assigned work.</p>
+          <div class="hero-actions"><span id="roleScope" class="scope-pill">AUTHORIZED ACCESS</span></div>
+        </div>
+        <div class="role-monogram"><span id="roleInitials">BA</span><small>BELM ROLE</small></div>
+      </div>
+
+      <section class="section-head">
+        <div><span class="eyebrow">ROLE OVERVIEW</span><h2 id="roleGreeting">Your operational summary</h2></div>
+        <a id="primaryWorkspaceLink" class="outline-action" href="#">Open full workspace →</a>
+      </section>
+      <div id="roleStats" class="stats-grid"></div>
+
+      <div class="dashboard-grid role-grid">
+        <article class="panel span-2">
+          <div class="panel-head"><div><span class="eyebrow">QUICK ACCESS</span><h2>Role activities</h2></div></div>
+          <div id="roleActions" class="action-grid"></div>
+        </article>
+        <article class="panel">
+          <div class="panel-head"><div><span class="eyebrow">STATUS</span><h2>Work queue</h2></div></div>
+          <div id="roleQueue" class="queue-list"><div class="skeleton"></div><div class="skeleton"></div></div>
+        </article>
+        <article class="panel span-3">
+          <div class="panel-head"><div><span class="eyebrow">PROCESS</span><h2 id="processTitle">Department workflow</h2></div></div>
+          <div id="processFlow" class="process-flow"></div>
+        </article>
+      </div>
+    </section>
+
+    <footer>© <span id="year"></span> BELM General Tech Service LTD · Secure role-based operations</footer>
+  </main>
+
+  <dialog id="customerDialog" class="modal">
+    <form id="customerForm" method="dialog">
+      <div class="modal-head"><div><span class="eyebrow">NEW CUSTOMER</span><h2>Register customer company</h2></div><button type="button" data-close-modal>×</button></div>
+      <p class="form-note">The system checks duplicate company emails and generates a secure Portal ID, temporary password and recovery code.</p>
+      <div class="form-grid">
+        <label class="wide">Company name<input name="name" required maxlength="160" autocomplete="organization"></label>
+        <label>Location<input name="address" required maxlength="240" autocomplete="street-address"></label>
+        <label>Company email<input name="email" type="email" required autocomplete="email"></label>
+        <label>Phone<input name="phone" required autocomplete="tel"></label>
+        <label>TIN number<input name="tinNumber" maxlength="50"></label>
+        <label>VRN<input name="vrn" maxlength="50"></label>
+        <label class="wide">Service mode<select name="registrationMode"><option value="BELM_SERVICE_PROVIDER">BELM Service Provider</option><option value="CUSTOMER_SELF_WORKSHOP">Customer Self Workshop</option></select></label>
+      </div>
+      <div id="customerFormError" class="form-error" hidden></div>
+      <div class="modal-actions"><button type="button" class="secondary" data-close-modal>Cancel</button><button id="saveCustomerButton" class="primary-action" type="submit">Register Customer</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="credentialDialog" class="modal credential-modal">
+    <div class="modal-head"><div><span class="eyebrow">REGISTRATION COMPLETE</span><h2>Customer portal credentials</h2></div><button type="button" data-close-credential>×</button></div>
+    <p class="success-note">Copy these credentials now and send them securely to the authorized customer contact.</p>
+    <div id="credentialFields" class="credential-fields"></div>
+    <div class="modal-actions"><button id="copyCredentials" type="button" class="secondary">Copy credentials</button><button type="button" class="primary-action" data-close-credential>Done</button></div>
+  </dialog>
+
+  <script src="/portal-v2/portal.js?v=701"></script>
+</body>
+</html>

@@ -172,6 +172,12 @@
   font-weight: 900;
 }
 
+.belm-sidebar-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
 .belm-sidebar-badge {
   min-width: 20px;
   margin-left: auto;

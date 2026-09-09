@@ -251,6 +251,7 @@
     // the HOME MENU; inside a role workspace, the footer button becomes the
     // single clear route back to Home.
     $("homeButton").hidden = activeView === "home";
+
     $("crumbParent").textContent = activeView === "home" ? "BELM PORTAL" : roleLabel().toUpperCase();
     $("crumbCurrent").textContent = activeView === "home" ? "Home Dashboard" : config.title;
     renderNav();

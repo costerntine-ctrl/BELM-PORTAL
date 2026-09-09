@@ -11,6 +11,7 @@ const SHELL=[
   '/portal-v2/index.html?v=705-clean-dashboard',
   '/portal-v2/portal.css?v=705-clean-dashboard',
   '/portal-v2/portal.js?v=705-clean-dashboard'
+
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

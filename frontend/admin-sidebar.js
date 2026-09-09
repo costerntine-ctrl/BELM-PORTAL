@@ -89,9 +89,11 @@
     // Do not expose a second standalone admin navigation entry.
     { section: "Maintenance", key: "checklist-templates", label: "Checklist Templates", short: "CL", href: "/checklist-manager/", paths: ["/checklist-manager/", "/admin/checklist-templates"] },
     { section: "Maintenance", key: "checklist-templates", label: "Controller Pin Out", short: "CP", href: "/controller-pinouts-manager/", paths: ["/controller-pinouts-manager/"] },
-    // V471: direct commercial workshop portals for fast testing and operations.
-    { section: "Maintenance", key: "job-cards", namedRoles: ["Procurement","Workshop Manager","Engineer","Store Keeper"], label: "PORTAL-BELM WM", short: "BW", href: "/belm-workshop/", paths: ["/belm-workshop/"] },
-    { section: "Maintenance", key: "customers", label: "PORTAL-CWM", short: "CW", href: "/portal-cwm/", paths: ["/portal-cwm/"] },
+    // V701: PORTAL-BELM WM / PORTAL-CWM removed as standalone menu rows -
+    // the sidebar felt cluttered with them alongside everything else, and
+    // the BELM brand mark at the top of the sidebar already opens
+    // /belm-workshop/. Both routes remain fully reachable, just not as a
+    // dedicated numbered menu item.
     { section: "Parts & Procurement", key: "spare-parts", label: "Spare Parts Inventory", short: "SP", href: "/spare-parts-manager/", paths: ["/spare-parts-manager/", "/admin/spare-parts"], hashNot: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },

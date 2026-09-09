@@ -153,8 +153,6 @@
         { code: "RA", label: "Reports & Analysis", note: "Company reports and comparisons", href: "/reports-manager/", tone: "cyan" },
         { code: "CL", label: "Checklist Templates", note: "Maintenance checklist library", href: "/checklist-manager/", tone: "green" },
         { code: "CP", label: "Controller Pin Out", note: "Controller wiring reference", href: "/controller-pinouts-manager/", tone: "blue" },
-        { code: "BW", label: "PORTAL-BELM WM", note: "BELM workshop operations", href: "/belm-workshop/", tone: "yellow" },
-        { code: "CW", label: "PORTAL-CWM", note: "Customer workshop portal", href: "/portal-cwm/", tone: "cyan" },
         { code: "SP", label: "Spare Parts Inventory", note: "Stock, pricing and shortages", href: "/spare-parts-manager/", tone: "green" },
         { code: "EQ", label: "Equivalent Spares", note: "Cross-reference part matches", href: "/spare-parts-manager/#equivalent-spares-panel", tone: "purple" },
         { code: "SU", label: "Suppliers Directory", note: "Vendor contacts and sourcing", href: "/suppliers-manager/", tone: "blue" },

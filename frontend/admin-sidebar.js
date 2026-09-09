@@ -98,6 +98,9 @@
     { section: "Parts & Procurement", key: "spare-parts", label: "Equivalent Spares", short: "EQ", href: "/spare-parts-manager/#equivalent-spares-panel", paths: ["/spare-parts-manager/"], hash: "#equivalent-spares-panel" },
     { section: "Parts & Procurement", key: "suppliers", label: "Suppliers Directory", short: "SU", href: "/suppliers-manager/", paths: ["/suppliers-manager/", "/admin/suppliers"] },
     { section: "Finance", key: "bank-manager", superAdminOnly: true, label: "Bank Manager", short: "BM", href: "/bank-controller/", paths: ["/bank-controller/"] },
+    // V702: Coordinator is now one menu item, reachable from every Admin
+    // page - not buried inside the Portal switcher on a single page.
+    { section: "Administration", key: null, superAdminOnly: true, label: "Coordinator", short: "CO", href: "/coordinator/", paths: ["/coordinator/"] },
     { section: "Finance", key: "billing", label: "Billing & Finance", short: "BF", href: "/billing-manager/", paths: ["/billing-manager/", "/admin/billing"] },
     { section: "Administration", key: "roles", label: "Recycle Bin", short: "RB", href: "/recycle-bin/", paths: ["/recycle-bin/"] },
     { section: "Administration", key: "roles", label: "BELM Staff Access", short: "RU", href: "/roles-manager/", paths: ["/roles-manager/", "/admin/roles"] },
@@ -126,9 +129,11 @@
     users: '<svg viewBox="0 0 20 20"><circle cx="6.5" cy="6.5" r="2.7"/><circle cx="14" cy="7" r="2.3"/><path d="M2 17c0-2.8 2-4.7 4.5-4.7s4.5 1.9 4.5 4.7M11.5 17c0-2.3 1.7-4 4-4s4 1.7 4 4"/></svg>',
     clock: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.3"/><path d="M10 5.5V10l3.2 2"/></svg>',
     dot: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="2"/></svg>',
+    hub: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="2.4"/><circle cx="10" cy="3" r="1.4"/><circle cx="10" cy="17" r="1.4"/><circle cx="3" cy="10" r="1.4"/><circle cx="17" cy="10" r="1.4"/><path d="M10 5.4V7.6M10 12.4v2.2M5.4 10H7.6M12.4 10h2.2"/></svg>',
   };
   function sidebarIconFor(label) {
     const l = String(label || "").toLowerCase();
+    if (l.includes("coordinator")) return SIDEBAR_ICON_SET.hub;
     if (l.includes("overview") || l.includes("dashboard")) return SIDEBAR_ICON_SET.grid;
     if (l.includes("registration")) return SIDEBAR_ICON_SET.personPlus;
     if (l.includes("staff") || l.includes("roles") || l.includes("users")) return SIDEBAR_ICON_SET.shield;

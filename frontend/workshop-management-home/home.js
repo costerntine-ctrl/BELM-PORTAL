@@ -157,6 +157,7 @@
         { code: "EQ", label: "Equivalent Spares", note: "Cross-reference part matches", href: "/spare-parts-manager/#equivalent-spares-panel", tone: "purple" },
         { code: "SU", label: "Suppliers Directory", note: "Vendor contacts and sourcing", href: "/suppliers-manager/", tone: "blue" },
         { code: "BM", label: "Bank Manager", note: "Protected banking position", href: "/bank-controller/", tone: "yellow" },
+        { code: "CO", label: "Coordinator", note: "System & customer controls", href: "/coordinator/", tone: "purple" },
         { code: "BF", label: "Billing & Finance", note: "Invoices, payments and revenue", href: "/billing-manager/", tone: "green" },
         { code: "RB", label: "Recycle Bin", note: "Restore recently deleted records", href: "/recycle-bin/", tone: "cyan" },
         { code: "RU", label: "BELM Staff Access", note: "People, permissions and access", href: "/roles-manager/", tone: "purple" },
@@ -300,7 +301,6 @@
     $("signedUserPrimaryRole").textContent = roleNames.join(" · ");
     $("userInitials").textContent = initials;
     $("headerRole").textContent = roleNames.join(" / ");
-    $("coordinatorLink").hidden = !isSuperAdmin;
   }
 
   function updateDate() {

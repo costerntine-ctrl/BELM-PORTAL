@@ -554,9 +554,9 @@ if ($action === 'unified-login' && $method === 'POST') {
 
             $isTechnician = $user['role_name'] === 'Technician';
             $staffRoleLower = strtolower(trim((string)$user['role_name']));
-            // V680: authentication always lands on the shared BELM Home. The
+            // V701: authentication always lands on the unified BELM Home. The
             // role workspace is opened only after View My Role is selected.
-            $staffDestination = '/belm-workshop/';
+            $staffDestination = '/portal-v2/';
             $roleDestination = staff_role_destination($staffRoleLower);
             clear_rate_limit('unified-login', $rawLoginId);
             json_out([
@@ -686,11 +686,11 @@ if ($action === 'unified-login' && $method === 'POST') {
         'permissions' => $permissions,
     ], 30 * 24 * 3600);
 
-    // V672: every customer-company role first lands on the shared PORTAL-CWM
-    // Company Home. The role-aware Enter My Role action on that page then
+    // V701: every customer-company role first lands on the unified Company
+    // Home. The role-aware View My Role action on that page then
     // opens the correct workspace without bypassing the common alerts/home.
     $workshopModuleActive = !empty($customer['workshop_module_active']);
-    $customerDestination = '/portal-cwm/';
+    $customerDestination = '/portal-v2/';
 
     json_out([
         'token' => $token,

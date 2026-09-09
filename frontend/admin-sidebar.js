@@ -2,6 +2,33 @@
   if (new URLSearchParams(window.location.search).get("embed") === "1") return;
   if (document.getElementById("belmAdminSidebar")) return;
 
+  // SVG icons halisi zilizotolewa kwenye dashibodi (mockups) za BELM — navy/gold
+  // design language. Zinatumika badala ya herufi-mbili (short codes) pekee kama
+  // ramani ipo; vinginevyo herufi-mbili za zamani zinabaki (hazi-vunji chochote).
+  const SIDEBAR_ICON_PATHS = {
+    overview: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/>',
+    customer: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><path d="M17 8h4M19 6v4"/>',
+    reports: '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/>',
+    "checklist-templates": '<rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 3v2h6V3M9 10l1.7 1.7L14 8.3M9 16h6"/>',
+    "job-cards": '<path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/>',
+    "spare-parts": '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+    suppliers: '<circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6M14.5 20c0-2.4-1-4.3-2.6-5.3.7-.5 1.6-.7 2.6-.7 2.7 0 5 2.1 5 4.9"/>',
+    "bank-manager": '<path d="M3 10l9-6 9 6"/><path d="M5 10v9M10 10v9M14 10v9M19 10v9"/><path d="M3 21h18"/>',
+    billing: '<path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/>',
+    roles: '<circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/><path d="M20 4l1.2 1.2M20 8l1.6-.2"/>',
+    settings: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>'
+  };
+  const SIDEBAR_ICON_LABEL_OVERRIDES = {
+    "Controller Pin Out": '<path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/>',
+    "Recycle Bin": '<path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 002 2h6a2 2 0 002-2l1-13"/><path d="M10 11v6M14 11v6"/>',
+    "Equivalent Spares": '<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>'
+  };
+  function sidebarIconSvg(key, label) {
+    const inner = SIDEBAR_ICON_LABEL_OVERRIDES[label] || SIDEBAR_ICON_PATHS[key];
+    if (!inner) return null;
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+  }
+
   const pathname = window.location.pathname;
   const query = new URLSearchParams(window.location.search);
   const requestedActor = String(query.get("actor") || query.get("source") || "").toLowerCase();
@@ -199,7 +226,8 @@
     }
     const icon = document.createElement("span");
     icon.className = "belm-sidebar-icon";
-    icon.textContent = page.short;
+    const svgMarkup = sidebarIconSvg(page.key, page.label);
+    if (svgMarkup) icon.innerHTML = svgMarkup; else icon.textContent = page.short;
     const label = document.createElement("span");
     label.textContent = page.label;
     label.title = page.label;

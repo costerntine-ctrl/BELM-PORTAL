@@ -50,7 +50,8 @@ a { color: inherit; }
   border-bottom: 5px solid var(--yellow);
 }
 .brand { display: flex; align-items: center; gap: 11px; text-decoration: none; font-family: "Space Grotesk", sans-serif; font-weight: 800; }
-.brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: var(--yellow); background: var(--green); }
+.brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; color: var(--yellow); background: transparent; }
+.brand-mark svg { width: 100%; height: 100%; box-sizing: border-box; }
 .brand small { display: block; margin-top: 2px; color: #aab3c5; font: 500 11px Inter, sans-serif; }
 .top-actions, .actions, .dialog-actions, .row-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .shell { width: min(1240px, 93vw); margin: 30px auto 60px; }

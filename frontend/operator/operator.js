@@ -538,4 +538,27 @@
   } else {
     showSection("loginSection");
   }
+
+  // V491: rangi za moja kwa moja (live) kwenye dropdown za Daily Checklist —
+  // kama zilivyo kwenye dashibodi (mockup): OK=kijani, tahadhari=gold,
+  // hatari/mbaya=nyekundu. Hii ni ya kuonekana tu; thamani (value) inayotumwa
+  // kwa API haijabadilika.
+  (function checklistFieldColors() {
+    const CRITICAL_VALUES = new Set(["CONTAMINATED", "DAMAGED", "CRITICAL"]);
+    const WARN_VALUES = new Set(["LOW", "WORN", "NEEDS_ATTENTION"]);
+    const fieldIds = ["operatorEngineOil", "operatorGearboxOil", "operatorCoolant", "operatorTires", "operatorBrakes"];
+    function applyColor(select) {
+      const value = String(select.value || "").toUpperCase();
+      select.classList.remove("field-status-ok", "field-status-warn", "field-status-critical");
+      if (CRITICAL_VALUES.has(value)) select.classList.add("field-status-critical");
+      else if (WARN_VALUES.has(value)) select.classList.add("field-status-warn");
+      else if (value === "OK") select.classList.add("field-status-ok");
+    }
+    fieldIds.forEach((id) => {
+      const select = document.getElementById(id);
+      if (!select) return;
+      applyColor(select);
+      select.addEventListener("change", () => applyColor(select));
+    });
+  })();
 })();

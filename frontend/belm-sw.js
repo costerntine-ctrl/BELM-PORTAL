@@ -1,13 +1,16 @@
-// BELM portal service worker — V680 confirmed login and Home-first routing.
+// BELM portal service worker — V705 canonical Home Dashboard cleanup.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v680-home-confirm-login';
+const CACHE='belm-portal-v705-clean-dashboard';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
-  '/customer-app.js?v=680-home-confirm-login',
+  '/customer-app.js?v=705-clean-dashboard',
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
-  '/belm-watermark.jpg'
+  '/belm-watermark.jpg',
+  '/portal-v2/index.html?v=705-clean-dashboard',
+  '/portal-v2/portal.css?v=705-clean-dashboard',
+  '/portal-v2/portal.js?v=705-clean-dashboard'
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

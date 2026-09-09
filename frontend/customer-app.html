@@ -10,7 +10,7 @@
   <title>BELM Portal — Sign in</title>
   <link rel="manifest" href="/belm-app.webmanifest" />
   <link rel="apple-touch-icon" href="/app-icon-192.png" />
-  <link rel="stylesheet" href="/customer-app.css?v=327-login-legal" />
+  <link rel="stylesheet" href="/customer-app.css?v=680-home-confirm-login" />
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
@@ -36,7 +36,7 @@
         <input id="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="name@company.com or company-id" />
         <label>Password</label>
         <input id="password" type="password" autocomplete="current-password" required placeholder="Password" />
-        <button id="loginButton" class="primary" type="submit">Open My Workspace</button>
+        <button id="loginButton" class="primary" type="submit">Continue</button>
       </form>
       <div id="errorBox" class="error" hidden></div>
       <div class="actions">
@@ -58,9 +58,22 @@
           <p class="login-legal-note">You can expand or collapse this notice without leaving the sign-in page.</p>
         </div>
       </details>
-      <p class="privacy">After sign-in, the system opens the workspace allowed for your role automatically.</p>
+      <p class="privacy">After confirmation, you will first open the Home Dashboard. Use View My Role there to enter your assigned workspace.</p>
     </section>
   </main>
-  <script src="/customer-app.js?v=672-role-home"></script>
+  <dialog id="loginConfirmDialog" class="login-confirm-dialog" aria-labelledby="loginConfirmTitle">
+    <div class="login-confirm-card">
+      <div class="login-confirm-icon" aria-hidden="true">✓</div>
+      <p class="login-confirm-eyebrow">CONFIRM LOGIN</p>
+      <h2 id="loginConfirmTitle">Open your Home Dashboard?</h2>
+      <p class="login-confirm-account">Account: <strong id="loginConfirmAccount">—</strong></p>
+      <p class="login-confirm-note">Your password has not been submitted yet. Confirm to sign in and open Home Dashboard first, then use <b>View My Role</b>.</p>
+      <div class="login-confirm-actions">
+        <button id="cancelLoginButton" type="button" class="login-confirm-secondary">Go back</button>
+        <button id="confirmLoginButton" type="button" class="primary">Confirm Login</button>
+      </div>
+    </div>
+  </dialog>
+  <script src="/customer-app.js?v=680-home-confirm-login"></script>
 </body>
 </html>

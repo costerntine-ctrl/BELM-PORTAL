@@ -7,14 +7,14 @@
    ========================================================================== */
 
 :root {
-  --cwm-side-navy: #0a111e;
-  --cwm-side-navy-soft: #101a2c;
+  --cwm-side-navy: #111a2d;
+  --cwm-side-navy-soft: #1b2943;
   --cwm-side-border: rgba(255, 255, 255, .08);
-  --cwm-side-text: #c3cddc;
-  --cwm-side-text-strong: #f3f6fb;
-  --cwm-side-text-muted: #7c879b;
-  --cwm-side-accent: #f0b429;
-  --cwm-side-green: #1ea866;
+  --cwm-side-text: #aebacc;
+  --cwm-side-text-strong: #ffffff;
+  --cwm-side-text-muted: #78889c;
+  --cwm-side-accent: #f2ce00;
+  --cwm-side-green: #00a958;
 }
 
 .cwm-machine-side {
@@ -82,14 +82,15 @@
   position: relative;
   color: var(--cwm-side-text-strong);
   font-weight: 700;
-  background: rgba(255, 255, 255, .055);
+  border-color: rgba(242, 206, 0, .35);
+  background: linear-gradient(90deg, rgba(0, 169, 88, .28), rgba(255, 255, 255, .07));
 }
 .cwm-machine-side a.is-active::before {
   position: absolute;
   inset: 8px auto 8px -1px;
-  width: 3px;
+  width: 4px;
   content: "";
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 6px 6px 0;
   background: var(--cwm-side-accent);
 }
 .cwm-machine-side a[hidden] { display: none; }

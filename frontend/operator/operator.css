@@ -132,6 +132,9 @@ main { max-width:520px; margin:0 auto; padding:20px 16px 60px; }
 .op-checkup-grid { display:grid; grid-template-columns:1fr 1fr; gap:11px; }
 .op-checkup-grid label,.op-checkup-comment { display:grid; gap:6px; color:#394d60; font-size:11px; font-weight:900; }
 .op-checkup-grid select,.op-checkup-comment textarea { width:100%; padding:11px 12px; border:1px solid #cfd9e4; border-radius:10px; background:#fff; color:#172033; font:inherit; font-size:13px; }
+.op-checkup-grid select.field-status-ok { border-color:#00a651; box-shadow:0 0 0 1px rgba(0,166,81,.18); color:#00713a; font-weight:700; }
+.op-checkup-grid select.field-status-warn { border-color:#ffd400; box-shadow:0 0 0 1px rgba(255,212,0,.22); color:#8a6d00; font-weight:700; }
+.op-checkup-grid select.field-status-critical { border-color:#e5484d; box-shadow:0 0 0 1px rgba(229,72,77,.2); color:#b3262b; font-weight:700; }
 .op-checkup-comment textarea { min-height:116px; resize:vertical; line-height:1.45; }
 .op-checkup-comment small { color:#7b8ca0; font-size:9px; font-weight:700; }
 .op-checkup-actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }

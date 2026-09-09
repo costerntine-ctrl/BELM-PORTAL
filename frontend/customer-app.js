@@ -69,11 +69,11 @@
       if(!data.token)return false;
       localStorage.setItem(key,data.token);
       localStorage.setItem(`belm_session_refreshed_${key}`,String(Date.now()));
-      if(active==='technician'||active==='admin'){location.replace('/belm-workshop/');return true}
+      if(active==='technician'||active==='admin'){location.replace('/portal-v2/');return true}
       if(active==='customer'){
         // Every customer-company user starts at the shared Company Home.
         // The Home's Enter My Role button performs the role-specific routing.
-        location.replace('/portal-cwm/');return true;
+        location.replace('/portal-v2/');return true;
       }
     }catch(_){/* transient connectivity is not logout */}
     return false;
@@ -127,7 +127,7 @@
         localStorage.setItem('belm_admin_token',data.token);
         localStorage.setItem('belm_admin_user',JSON.stringify(data.user||{})); setActiveAccount('admin');
       }
-      const homeDestination=data.accountType==='customer'?'/portal-cwm/':'/belm-workshop/';
+      const homeDestination='/portal-v2/';
       location.replace(homeDestination);
     }catch(err){
       const timedOut=err&&err.name==='AbortError';
@@ -145,7 +145,7 @@
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=680').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=701').catch(()=>{}))}
 
   (async()=>{
     await loadContext();

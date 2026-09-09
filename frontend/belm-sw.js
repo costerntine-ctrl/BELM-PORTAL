@@ -1,13 +1,16 @@
-// BELM portal service worker — V680 confirmed login and Home-first routing.
+// BELM portal service worker — V701 unified role workspace and Home-first routing.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v680-home-confirm-login';
+const CACHE='belm-portal-v701-unified-role-workspace';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
-  '/customer-app.js?v=680-home-confirm-login',
+  '/customer-app.js?v=701-unified-role-workspace',
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
-  '/belm-watermark.jpg'
+  '/belm-watermark.jpg',
+  '/portal-v2/index.html?v=701',
+  '/portal-v2/portal.css?v=701',
+  '/portal-v2/portal.js?v=701'
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

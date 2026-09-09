@@ -1,9 +1,9 @@
 :root {
   --belm-sidebar-width: 281px;
-  --belm-sidebar-navy: #111a2d;
-  --belm-sidebar-navy-soft: #1b2943;
+  --belm-sidebar-navy: #04101f;
+  --belm-sidebar-navy-soft: #0a2540;
   --belm-sidebar-green: #00a958;
-  --belm-sidebar-yellow: #f2ce00;
+  --belm-sidebar-yellow: #f5c518;
 }
 
 .belm-admin-sidebar {

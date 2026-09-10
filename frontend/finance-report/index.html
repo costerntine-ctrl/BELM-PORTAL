@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="cache-control" content="no-store">
+  <title>Financial Report & Audit — BELM Operations Portal</title>
+  <link rel="stylesheet" href="/finance-report/app.css?v=1">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-block">
+      <strong>BELM OPERATIONS PORTAL</strong>
+      <span>Finance / Accounts</span>
+    </div>
+    <div class="top-actions">
+      <a class="button ghost" href="/concept-dashboards/09-finance-accounts/">← Accounts Dashboard</a>
+      <button class="button" id="refreshButton" type="button">↻ Sync Report</button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">LIVE FINANCIAL CONTROL</p>
+        <h1>Financial Report & Audit Logs</h1>
+        <p>Cash received, real company expenses, petty cash usage, documents and finance audit history in one drill-down report.</p>
+      </div>
+      <div class="sync-box">
+        <span id="syncDot" class="sync-dot"></span>
+        <div><strong id="syncStatus">Preparing finance sync…</strong><small id="syncTime">—</small></div>
+      </div>
+    </section>
+
+    <section class="filter-card">
+      <div class="filter-grid">
+        <label>Period
+          <select id="periodFilter">
+            <option value="month" selected>This month</option>
+            <option value="previous-month">Previous month</option>
+            <option value="today">Today</option>
+            <option value="year">This year</option>
+            <option value="all">All records</option>
+            <option value="custom">Custom dates</option>
+          </select>
+        </label>
+        <label id="fromLabel" class="hidden">From<input id="dateFrom" type="date"></label>
+        <label id="toLabel" class="hidden">To<input id="dateTo" type="date"></label>
+        <label>Customer
+          <select id="customerFilter"><option value="">All customers</option></select>
+        </label>
+        <label>Transaction Type
+          <select id="typeFilter">
+            <option value="">All types</option>
+            <option value="PAYMENT">Customer Payment</option>
+            <option value="EXPENSE">Company Expense</option>
+            <option value="PETTY_EXPENSE">Petty Cash Expense</option>
+            <option value="PETTY_FUND">Petty Cash Funding</option>
+            <option value="BANK_WITHDRAWAL">Bank Withdrawal</option>
+            <option value="INVOICE">Invoice</option>
+            <option value="PROFORMA">Proforma</option>
+          </select>
+        </label>
+        <label>Status
+          <select id="statusFilter"><option value="">All statuses</option></select>
+        </label>
+        <label>Payment Method
+          <select id="methodFilter"><option value="">All methods</option></select>
+        </label>
+      </div>
+      <div class="filter-actions">
+        <button id="clearFilters" class="button ghost" type="button">Reset Filters</button>
+        <span id="filterCount">0 records</span>
+      </div>
+    </section>
+
+    <div id="pageAlert" class="alert hidden"></div>
+
+    <section class="metric-grid">
+      <article class="metric income"><span>Total Income</span><strong id="totalIncome">TZS 0</strong><small id="incomeNote">Confirmed customer payments</small></article>
+      <article class="metric expense"><span>Total Expenses</span><strong id="totalExpenses">TZS 0</strong><small id="expenseNote">Company + posted petty cash expenses</small></article>
+      <article class="metric balance"><span>Net Balance</span><strong id="netBalance">TZS 0</strong><small>Income minus real expenses</small></article>
+      <article class="metric neutral"><span>Transactions</span><strong id="transactionCount">0</strong><small>Filtered finance records</small></article>
+    </section>
+
+    <section class="document-grid">
+      <article><span>Invoices Paid</span><strong id="paidInvoices">0</strong></article>
+      <article><span>Outstanding</span><strong id="outstandingInvoices">0</strong></article>
+      <article><span>Overdue</span><strong id="overdueInvoices">0</strong></article>
+      <article><span>Proforma</span><strong id="proformaCount">0</strong></article>
+      <article><span>Bank View</span><strong id="bankAccess">Syncing…</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div><h2>Financial Transactions</h2><p>Click <b>View Audit Log</b> to inspect the recorded history behind a transaction.</p></div>
+        <button id="openFinanceAudit" class="button ghost" type="button">Full Finance Audit Logs</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Type</th><th>Customer / Source</th><th>Reference</th><th>Method / Account</th><th>Status</th><th class="amount-col">Amount (TZS)</th><th>Audit</th></tr></thead>
+          <tbody id="transactionRows"><tr><td colspan="8" class="empty">Synchronizing finance data…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="auditModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="auditTitle">
+    <div class="modal-card">
+      <div class="modal-head">
+        <div><p class="eyebrow">READ-ONLY HISTORY</p><h2 id="auditTitle">Audit Log</h2><p id="auditSubtitle">Transaction history</p></div>
+        <button id="closeAudit" class="close-button" type="button" aria-label="Close">×</button>
+      </div>
+      <div id="auditSummary" class="audit-summary"></div>
+      <div id="auditEvents" class="audit-events"></div>
+    </div>
+  </div>
+
+  <script src="/finance-report/app.js?v=1"></script>
+</body>
+</html>

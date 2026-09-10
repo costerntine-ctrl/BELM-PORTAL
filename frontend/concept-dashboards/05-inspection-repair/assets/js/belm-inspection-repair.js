@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', function () {
   var sidebarToggle = document.getElementById('sidebarToggle');
   var themeToggle = document.getElementById('themeToggle');
   var searchInput = document.querySelector('.belm-search input');
-  var tableRows = document.querySelectorAll('.belm-table tbody tr');
 
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', function () {
@@ -26,10 +25,15 @@ document.addEventListener('DOMContentLoaded', function () {
   if (searchInput) {
     searchInput.addEventListener('input', function () {
       var q = searchInput.value.trim().toLowerCase();
-      tableRows.forEach(function (row) {
+      document.querySelectorAll('.belm-table tbody tr').forEach(function (row) {
         var text = row.textContent.toLowerCase();
         row.style.display = text.indexOf(q) === -1 ? 'none' : '';
       });
     });
   }
+
+  var liveSync = document.createElement('script');
+  liveSync.src = 'assets/js/jobcard-live-sync.js?v=721-live-jobcards';
+  liveSync.defer = true;
+  document.body.appendChild(liveSync);
 });

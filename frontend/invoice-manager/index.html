@@ -3,19 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>BELM Invoice</title>
+  <title>BELM Invoice List</title>
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
-  <link rel="stylesheet" href="/invoice-manager/invoice.css?v=1">
+  <link rel="stylesheet" href="/invoice-manager/invoice.css?v=3">
 </head>
 <body>
   <header class="invoice-topbar">
     <a class="invoice-brand" href="/concept-dashboards/09-finance-accounts/">
       <span class="invoice-brand-mark">B</span>
-      <span><strong>BELM</strong><small>Invoice</small></span>
+      <span><strong>BELM</strong><small>Invoice List</small></span>
     </a>
     <div class="invoice-top-actions">
       <a class="top-btn" href="/concept-dashboards/09-finance-accounts/">← Finance Dashboard</a>
+      <a class="top-btn" href="/proforma-manager/">Proforma</a>
       <button id="refreshButton" class="top-btn" type="button">Refresh</button>
       <button id="logoutButton" class="top-btn" type="button">Log out</button>
     </div>
@@ -25,105 +26,41 @@
     <section class="invoice-titlebar">
       <div>
         <p>ACCOUNTING &amp; BILLING</p>
-        <h1>Invoice</h1>
-        <span>New Invoice on the left · saved Invoice list on the right.</span>
+        <h1>Invoice List</h1>
+        <span>Invoices are generated automatically from Proforma. No manual Invoice creation.</span>
       </div>
       <div class="invoice-title-actions">
-        <button id="newInvoiceButton" class="primary-btn" type="button">+ New Invoice</button>
+        <a class="primary-btn" href="/proforma-manager/">+ Create Proforma</a>
       </div>
     </section>
 
     <div id="pageAlert" class="page-alert hidden" role="status"></div>
 
-    <section class="invoice-workspace">
-      <aside class="invoice-editor-card">
-        <div class="card-head">
-          <div>
-            <p>INVOICE FORM</p>
-            <h2 id="formTitle">New Invoice</h2>
-          </div>
-          <span id="editBadge" class="edit-badge hidden">EDIT</span>
+    <section class="invoice-list-card invoice-list-only">
+      <div class="list-head">
+        <div><p>GENERATED INVOICES</p><h2>Invoice List</h2></div>
+        <div class="list-tools">
+          <input id="invoiceSearch" type="search" placeholder="Search invoice / customer…">
+          <span id="invoiceCount" class="count-badge">0</span>
         </div>
+      </div>
 
-        <form id="invoiceForm">
-          <input id="invoiceId" type="hidden">
-          <input id="invoiceSourceJobCardId" type="hidden">
-          <input id="invoiceDiscount" type="hidden" value="0">
-          <input id="invoiceVatRate" type="hidden" value="18">
+      <div class="invoice-table-wrap">
+        <table class="invoice-table">
+          <thead><tr><th>#</th><th>Invoice</th><th>Source Proforma</th><th>Customer</th><th>Date</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="invoiceRows"><tr><td colspan="8" class="empty-row">Loading invoices…</td></tr></tbody>
+        </table>
+      </div>
 
-          <label>Customer
-            <select id="invoiceCustomer" required>
-              <option value="">Loading customers…</option>
-            </select>
-          </label>
-
-          <label>Machine
-            <select id="invoiceMachine">
-              <option value="">No machine / general</option>
-            </select>
-          </label>
-
-          <div class="field-grid">
-            <label>Due Date<input id="invoiceDueDate" type="date"></label>
-            <label>Tax (TZS)<input id="invoiceTax" type="number" min="0" step="0.01" value="0"></label>
-          </div>
-
-          <div id="customerInfo" class="customer-info">Choose a customer.</div>
-
-          <div class="items-head">
-            <div><p>ITEMS</p><strong>Invoice lines</strong></div>
-            <button id="addItemButton" class="small-btn" type="button">+ Add Item</button>
-          </div>
-          <div id="invoiceItems" class="invoice-items"></div>
-
-          <div class="form-actions">
-            <button id="cancelEditButton" class="secondary-btn hidden" type="button">Cancel Edit</button>
-            <button id="saveInvoiceButton" class="save-btn" type="submit">Save Invoice</button>
-          </div>
-        </form>
-      </aside>
-
-      <section class="invoice-list-card">
-        <div class="list-head">
-          <div>
-            <p>SAVED RECORDS</p>
-            <h2>Invoice List</h2>
-          </div>
-          <div class="list-tools">
-            <input id="invoiceSearch" type="search" placeholder="Search invoice / customer…">
-            <span id="invoiceCount" class="count-badge">0</span>
-          </div>
-        </div>
-
-        <div class="invoice-table-wrap">
-          <table class="invoice-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Invoice</th>
-                <th>Customer</th>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="invoiceRows">
-              <tr><td colspan="7" class="empty-row">Loading invoices…</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="pagination">
-          <button id="prevPage" class="small-btn" type="button">← Previous</button>
-          <span id="pageLabel">Page 1</span>
-          <button id="nextPage" class="small-btn" type="button">Next →</button>
-        </div>
-      </section>
+      <div class="pagination">
+        <button id="prevPage" class="small-btn" type="button">← Previous</button>
+        <span id="pageLabel">Page 1</span>
+        <button id="nextPage" class="small-btn" type="button">Next →</button>
+      </div>
     </section>
   </main>
 
   <script src="/delete-confirm.js"></script>
-  <script src="/invoice-manager/invoice.js?v=1"></script>
+  <script src="/invoice-manager/invoice.js?v=3"></script>
 </body>
 </html>

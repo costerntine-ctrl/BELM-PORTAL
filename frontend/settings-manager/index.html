@@ -3,76 +3,132 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>System Settings — BELM Workshop Manager Portal</title>
+  <title>System Settings — BELM Operations Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
   <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <link rel="stylesheet" href="/settings-manager/system-settings-dashboard.css?v=718-settings-structure">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body class="management-page">
-  <header class="management-topbar">
-    <div><strong>BELM General Tech</strong><small>Protected system configuration</small></div>
-    <div class="topbar-actions"><a class="button" href="/belm-workshop/">BELM WM Portal</a></div>
+  <header class="settings-topbar">
+    <div class="settings-brand"><img src="/concept-dashboards/10-system-settings/assets/img/belm-logo-v2.png" alt="BELM General Technical Service Ltd"></div>
+    <div class="settings-portal-title"><strong>BELM OPERATIONS PORTAL</strong><span>System Settings</span></div>
+    <div class="settings-header-actions">
+      <button class="settings-icon-button" type="button" aria-label="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="settings-notification-badge">5</span>
+      </button>
+      <button class="settings-icon-button" id="headerThemeToggle" type="button" aria-label="Toggle theme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+      </button>
+      <div class="settings-user-chip"><span class="settings-avatar" id="settingsAvatar">BA</span><span class="settings-user-copy"><strong id="settingsUserName">BELM Admin</strong><small id="settingsUserRole">Super Admin</small></span><span class="chevron">⌄</span></div>
+    </div>
   </header>
 
-  <main class="management-shell">
-    <section class="management-hero">
-      <div>
-        <p class="eyebrow">Company and portal configuration</p>
-        <h1>System Settings</h1>
-        <p>Save company details, document defaults, display theme, communication controls and protected security settings from one System Settings area.</p>
+  <main class="settings-shell">
+    <div class="settings-breadcrumb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9"/></svg>
+      <span>System Settings</span>
+    </div>
+
+    <section class="settings-overview">
+      <div class="settings-overview-title">
+        <div class="settings-overview-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg></div>
+        <div><h1>System Settings</h1><p>Configure and manage your BELM Operations Portal</p></div>
       </div>
+      <div class="settings-clock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg><div><strong id="settingsDate">—</strong><small id="settingsTime">—</small></div></div>
+      <div class="settings-status"><span class="settings-status-icon">✓</span><div><strong>System Online</strong><small>All services running</small></div></div>
     </section>
 
     <div id="pageAlert" class="alert hidden"></div>
-    <section class="settings-grid">
-      <article class="panel">
-        <div class="section-head"><div><h2>Backup</h2><p>Free Render databases have no automatic backups. Download a full copy of your data periodically and keep it somewhere safe.</p></div></div>
-        <div class="settings-form"><button id="downloadBackupButton" class="primary" type="button">Download full backup (JSON)</button></div>
-      </article>
 
-      <article class="panel">
-        <div class="section-head"><div><h2>Security PINs</h2><p>Change the PIN required before confirming edits, or before deleting/clearing records.</p></div></div>
-        <form id="editPinForm" class="settings-form"><label>New Edit PIN (4 digits)<input id="newEditPin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 2026"></label><button type="submit" class="primary">Update Edit PIN</button></form>
-        <form id="deletePinForm" class="settings-form" style="margin-top:14px;"><label>New Delete/Clear PIN (4 digits)<input id="newDeletePin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required placeholder="e.g. 1234"></label><button type="submit" class="primary">Update Delete/Clear PIN</button></form>
-      </article>
+    <section class="settings-card-grid" aria-label="Primary system settings">
+      <a class="settings-card blue" href="#company-settings"><span class="settings-card-icon">🏢</span><h2>Company Settings</h2><p>Manage company profile, logo, contact information and branding.</p><span class="settings-card-button">Configure</span></a>
+      <a class="settings-card green" href="/roles-manager/?module=roles-users"><span class="settings-card-icon">👥</span><h2>Users &amp; Roles</h2><p>Create, edit and manage users, roles and permissions.</p><span class="settings-card-button">Manage Users</span></a>
+      <a class="settings-card amber" href="/customers-manager/?module=customer-overview"><span class="settings-card-icon">🔗</span><h2>Service Providers</h2><p>Switch between BELM service provider and customer self-management.</p><span class="settings-card-button">Manage Providers</span></a>
+      <a class="settings-card slate" href="#system-configuration"><span class="settings-card-icon">⚙</span><h2>System Configuration</h2><p>General system settings, preferences and workflow options.</p><span class="settings-card-button">Configure</span></a>
+      <a class="settings-card blue" href="/coordinator/notifications/"><span class="settings-card-icon">✉</span><h2>Email &amp; Notifications</h2><p>Configure email alerts, templates and notification settings.</p><span class="settings-card-button">Manage Notifications</span></a>
+      <a class="settings-card green" href="/coordinator/whatsapp/"><span class="settings-card-icon">◉</span><h2>WhatsApp Integration</h2><p>Setup WhatsApp API for operator messages and alerts.</p><span class="settings-card-button">Configure WhatsApp</span></a>
+      <a class="settings-card gold" href="#security-access"><span class="settings-card-icon">🛡</span><h2>Security &amp; Access</h2><p>Password policy, OTP settings, login control and protected actions.</p><span class="settings-card-button">Security Settings</span></a>
+      <a class="settings-card slate" href="#database-backup"><span class="settings-card-icon">🗄</span><h2>Database &amp; Backup</h2><p>Database status, backup, restore and maintenance tools.</p><span class="settings-card-button">Database Tools</span></a>
+      <a class="settings-card blue" href="/reports-manager/?view=activity&module=settings"><span class="settings-card-icon">▤</span><h2>Audit Logs</h2><p>View system activities, changes and user logs in detail.</p><span class="settings-card-button">View Audit Logs</span></a>
+    </section>
 
-      <article class="panel wide">
-        <div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Testing/building tool only. Pick one category; the rest stays untouched. Download a backup first.</p></div></div>
-        <form id="resetDbForm" class="settings-form">
-          <label>Category to reset <small>(each one is independent)</small><select id="resetDbCategory"><option value="customers">Customers (pick one)</option><option value="machines">Machines (pick one, or all)</option><option value="machine-log">Machine Log (1 machine) — hours, logs & expenses</option><option value="users">Users & Technicians (pick one, or all)</option><option value="roles">Custom Roles (pick one)</option><option value="checklists">Checklist Templates & Reports</option><option value="spare-parts">Spare Parts & Requests</option><option value="suppliers">Suppliers</option><option value="billing">Billing & Finance</option><option value="service-requests">Job Cards</option><option value="bank">Bank Manager</option><option value="tasks">Tasks</option><option value="activity">Activity Log, Trash & Announcements</option><option value="machine-expenses">Procurement logs</option><option value="petty-cash">Petty Cash deposits</option></select></label>
-          <label id="resetCustomerPickerWrap" class="hidden">Customer to delete <small>(required)</small><select id="resetCustomerPicker"><option value="">Select a customer…</option></select></label>
-          <label id="resetMachineScopeWrap" class="hidden">Scope<select id="resetMachineScope"><option value="single">One machine</option><option value="all">All machines</option></select></label>
-          <label id="resetUserScopeWrap" class="hidden">Scope<select id="resetUserScope"><option value="single">One user</option><option value="all">All users (Super Admins &amp; you stay protected)</option></select></label>
-          <label id="resetUserPickerWrap" class="hidden">User to delete <small>(required)</small><select id="resetUserPicker"><option value="">Select a user…</option></select></label>
-          <label id="resetRolePickerWrap" class="hidden">Role to delete <small>(required)</small><select id="resetRolePicker"><option value="">Select a role…</option></select></label>
-          <label id="resetMachinePickerWrap" class="hidden">Machine <small>(required)</small><select id="resetMachinePicker"><option value="">Select a machine…</option></select></label>
-          <label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><label>Admin password<input id="resetDbPassword" type="password" required></label><label>Reason for this reset<input id="resetDbReason" type="text" maxlength="500" required></label><button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Reset selected category</button>
-        </form>
-      </article>
+    <div class="settings-more-title">Additional settings</div>
+    <section class="settings-card-grid" aria-label="Additional system settings">
+      <a class="settings-card amber" href="/checklist-manager/?module=settings"><span class="settings-card-icon">☑</span><h2>Checklist Templates</h2><p>Create, import, edit and manage machine checklist templates from System Settings.</p><span class="settings-card-button">Manage Templates</span></a>
+      <a class="settings-card slate" href="#document-branding"><span class="settings-card-icon">▧</span><h2>Document &amp; Invoice Defaults</h2><p>Manage VAT, invoice numbering, payment terms, bank details and document branding.</p><span class="settings-card-button">Document Defaults</span></a>
+      <a class="settings-card green" href="#communication"><span class="settings-card-icon">☏</span><h2>Communication &amp; Customer Messages</h2><p>Manage customer announcements and communication channel shortcuts.</p><span class="settings-card-button">Communication</span></a>
+    </section>
 
-      <article class="panel" id="company-profile"><div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div><form id="companyForm" class="settings-form"><label>Company name<input id="companyName" required maxlength="255"></label><label>Business email<input id="companyEmail" type="email" maxlength="255"></label><label>Business phone<input id="companyPhone" maxlength="50"></label><label>Address<textarea id="companyAddress" rows="3" maxlength="500"></textarea></label><div class="two-column"><label>TIN<input id="companyTin" maxlength="50"></label><label>VRN<input id="companyVrn" maxlength="50"></label></div><button id="saveCompanyButton" class="primary" type="submit">Save company settings</button></form></article>
+    <section class="settings-details" id="settingsDetails">
+      <div class="settings-details-heading"><h2>Configuration Details</h2><p>The existing working settings are preserved below and grouped into the same structure as the System Settings dashboard.</p></div>
 
-      <article class="panel wide"><div class="section-head"><div><h2>Invoice &amp; document branding</h2><p>Shared branding and document defaults. Operational Finance remains in the Finance / Accounts workspace.</p></div></div><form id="documentBrandingForm" class="settings-form"><label>Website<input id="companyWebsite" maxlength="255"></label><label>Account name<input id="bankAccountName" maxlength="255"></label><div class="two-column"><label>NMB account number<input id="bankNmbNumber" maxlength="50"></label><label>CRDB account number<input id="bankCrdbNumber" maxlength="50"></label></div><div class="two-column"><label>Default VAT rate (%)<input id="defaultVatRate" type="number" min="0" max="100" step="0.1"></label><label>Default delivery time<input id="defaultDeliveryTime" maxlength="255"></label></div><div class="two-column"><label>Default payment terms<input id="defaultPaymentTerms" maxlength="255"></label><label>Default quote validity<input id="defaultQuoteValidity" maxlength="255"></label></div><label>Why Choose Us<textarea id="whyChooseUsText" rows="4" maxlength="1000"></textarea></label><label>Footer message<input id="footerMessage" maxlength="255"></label><button id="saveDocumentBrandingButton" class="primary" type="submit">Save document branding</button></form></article>
+      <details class="settings-detail-group" id="database-backup">
+        <summary>Database &amp; Backup</summary>
+        <div class="settings-detail-body"><div class="settings-grid">
+          <article class="panel"><div class="section-head"><div><h2>Backup</h2><p>Download a full copy of portal data and keep it somewhere safe.</p></div></div><div class="settings-form"><button id="downloadBackupButton" class="primary" type="button">Download full backup (JSON)</button></div></article>
+          <article class="panel wide"><div class="section-head"><div><h2 style="color:#a4231b">Danger Zone — Reset Database</h2><p>Testing/building tool only. Pick one category; the rest stays untouched. Download a backup first.</p></div></div><form id="resetDbForm" class="settings-form"><label>Category to reset<select id="resetDbCategory"><option value="customers">Customers (pick one)</option><option value="machines">Machines (pick one, or all)</option><option value="machine-log">Machine Log (1 machine)</option><option value="users">Users &amp; Technicians</option><option value="roles">Custom Roles</option><option value="checklists">Checklist Templates &amp; Reports</option><option value="spare-parts">Spare Parts &amp; Requests</option><option value="suppliers">Suppliers</option><option value="billing">Billing &amp; Finance</option><option value="service-requests">Job Cards</option><option value="bank">Bank Manager</option><option value="tasks">Tasks</option><option value="activity">Activity Log, Trash &amp; Announcements</option><option value="machine-expenses">Procurement logs</option><option value="petty-cash">Petty Cash deposits</option></select></label><label id="resetCustomerPickerWrap" class="hidden">Customer<select id="resetCustomerPicker"><option value="">Select a customer…</option></select></label><label id="resetMachineScopeWrap" class="hidden">Scope<select id="resetMachineScope"><option value="single">One machine</option><option value="all">All machines</option></select></label><label id="resetUserScopeWrap" class="hidden">Scope<select id="resetUserScope"><option value="single">One user</option><option value="all">All users</option></select></label><label id="resetUserPickerWrap" class="hidden">User<select id="resetUserPicker"><option value="">Select a user…</option></select></label><label id="resetRolePickerWrap" class="hidden">Role<select id="resetRolePicker"><option value="">Select a role…</option></select></label><label id="resetMachinePickerWrap" class="hidden">Machine<select id="resetMachinePicker"><option value="">Select a machine…</option></select></label><label>Delete PIN<input id="resetDbPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required></label><label>Admin password<input id="resetDbPassword" type="password" required></label><label>Reason<input id="resetDbReason" type="text" maxlength="500" required></label><button id="resetDbButton" class="secondary" type="submit" style="border-color:#e6a7a1;color:#a4231b">Reset selected category</button></form></article>
+        </div></div>
+      </details>
 
-      <article class="panel"><div class="section-head"><div><h2>Business defaults</h2><p>Finance display and document numbering preferences.</p></div></div><form id="businessForm" class="settings-form"><div class="two-column"><label>Currency<select id="currency"><option value="TZS">TZS — Tanzanian shilling</option><option value="USD">USD — US dollar</option></select></label><label>Time zone<input id="timezone" value="Africa/Dar_es_Salaam"></label></div><div class="two-column"><label>Invoice prefix<input id="invoicePrefix" maxlength="20" value="INV"></label><label>Proforma prefix<input id="proformaPrefix" maxlength="20" value="PF"></label></div><label>Default VAT (%)<input id="defaultVat" type="number" min="0" max="100" step="0.01" value="18"></label><button id="saveBusinessButton" class="primary" type="submit">Save business defaults</button></form></article>
+      <details class="settings-detail-group" id="company-settings">
+        <summary>Company Settings</summary>
+        <div class="settings-detail-body"><div class="settings-grid">
+          <article class="panel"><div class="section-head"><div><h2>Company profile</h2><p>Used across the management portal and business documents.</p></div></div><form id="companyForm" class="settings-form"><label>Company name<input id="companyName" required maxlength="255"></label><label>Business email<input id="companyEmail" type="email" maxlength="255"></label><label>Business phone<input id="companyPhone" maxlength="50"></label><label>Address<textarea id="companyAddress" rows="3" maxlength="500"></textarea></label><div class="two-column"><label>TIN<input id="companyTin" maxlength="50"></label><label>VRN<input id="companyVrn" maxlength="50"></label></div><button id="saveCompanyButton" class="primary" type="submit">Save company settings</button></form></article>
+          <article class="panel" id="document-branding"><div class="section-head"><div><h2>Invoice &amp; document branding</h2><p>Shared branding and document defaults.</p></div></div><form id="documentBrandingForm" class="settings-form"><label>Website<input id="companyWebsite" maxlength="255"></label><label>Account name<input id="bankAccountName" maxlength="255"></label><div class="two-column"><label>NMB account number<input id="bankNmbNumber" maxlength="50"></label><label>CRDB account number<input id="bankCrdbNumber" maxlength="50"></label></div><div class="two-column"><label>Default VAT rate (%)<input id="defaultVatRate" type="number" min="0" max="100" step="0.1"></label><label>Default delivery time<input id="defaultDeliveryTime" maxlength="255"></label></div><div class="two-column"><label>Default payment terms<input id="defaultPaymentTerms" maxlength="255"></label><label>Default quote validity<input id="defaultQuoteValidity" maxlength="255"></label></div><label>Why Choose Us<textarea id="whyChooseUsText" rows="4" maxlength="1000"></textarea></label><label>Footer message<input id="footerMessage" maxlength="255"></label><button id="saveDocumentBrandingButton" class="primary" type="submit">Save document branding</button></form></article>
+        </div></div>
+      </details>
 
-      <article class="panel"><div class="section-head"><div><h2>Display theme</h2><p>Your personal light/dark preference follows your login and does not affect other users.</p></div></div><div class="theme-picker"><button id="lightTheme" class="theme-choice" data-theme-choice="light" type="button">☀<br>Light mode</button><button id="darkTheme" class="theme-choice" data-theme-choice="dark" type="button">☾<br>Dark mode</button></div></article>
+      <details class="settings-detail-group" id="system-configuration">
+        <summary>System Configuration</summary>
+        <div class="settings-detail-body"><div class="settings-grid">
+          <article class="panel"><div class="section-head"><div><h2>Business defaults</h2><p>Finance display and document numbering preferences.</p></div></div><form id="businessForm" class="settings-form"><div class="two-column"><label>Currency<select id="currency"><option value="TZS">TZS — Tanzanian shilling</option><option value="USD">USD — US dollar</option></select></label><label>Time zone<input id="timezone" value="Africa/Dar_es_Salaam"></label></div><div class="two-column"><label>Invoice prefix<input id="invoicePrefix" maxlength="20" value="INV"></label><label>Proforma prefix<input id="proformaPrefix" maxlength="20" value="PF"></label></div><label>Default VAT (%)<input id="defaultVat" type="number" min="0" max="100" step="0.01" value="18"></label><button id="saveBusinessButton" class="primary" type="submit">Save business defaults</button></form></article>
+          <article class="panel" id="display-theme"><div class="section-head"><div><h2>Display theme</h2><p>Your personal light/dark preference follows your login.</p></div></div><div class="theme-picker"><button id="lightTheme" class="theme-choice" data-theme-choice="light" type="button">☀<br>Light mode</button><button id="darkTheme" class="theme-choice" data-theme-choice="dark" type="button">☾<br>Dark mode</button></div></article>
+        </div></div>
+      </details>
 
-      <article class="panel"><div class="section-head"><div><h2>Change delete PIN</h2><p>Super Admin protection for permanent deletion actions.</p></div></div><form id="pinForm" class="settings-form"><label>Current 4-digit PIN<input id="currentPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>New 4-digit PIN<input id="newPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>Confirm new PIN<input id="confirmPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><button id="changePinButton" class="secondary" type="submit">Change protected PIN</button></form></article>
+      <details class="settings-detail-group" id="security-access">
+        <summary>Security &amp; Access</summary>
+        <div class="settings-detail-body"><div class="settings-grid">
+          <article class="panel"><div class="section-head"><div><h2>Security PINs</h2><p>Change the PIN required before confirming edits or deleting/clearing records.</p></div></div><form id="editPinForm" class="settings-form"><label>New Edit PIN (4 digits)<input id="newEditPin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required></label><button type="submit" class="primary">Update Edit PIN</button></form><form id="deletePinForm" class="settings-form" style="margin-top:14px;"><label>New Delete/Clear PIN (4 digits)<input id="newDeletePin" type="password" inputmode="numeric" pattern="\d{4}" maxlength="4" required></label><button type="submit" class="primary">Update Delete/Clear PIN</button></form></article>
+          <article class="panel"><div class="section-head"><div><h2>Change protected delete PIN</h2><p>Super Admin protection for permanent deletion actions.</p></div></div><form id="pinForm" class="settings-form"><label>Current 4-digit PIN<input id="currentPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>New 4-digit PIN<input id="newPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><label>Confirm new PIN<input id="confirmPin" required inputmode="numeric" pattern="[0-9]{4}" maxlength="4" type="password"></label><button id="changePinButton" class="secondary" type="submit">Change protected PIN</button></form></article>
+        </div></div>
+      </details>
 
-
-      <article class="panel wide"><div class="section-head"><div><h2>System communication settings</h2><p>Advanced notification and message-delivery controls managed from one System Settings area.</p></div></div><div class="topbar-actions" style="flex-wrap:wrap"><a class="button" href="/coordinator/notifications/">Notification Configuration</a><a class="button" href="/coordinator/email/">Email Settings</a><a class="button" href="/coordinator/whatsapp/">WhatsApp Settings</a><a class="button" href="/coordinator/sms/">SMS Settings</a><a class="button" href="/coordinator/management-mail/">Management Mail</a></div></article>
-      <article class="panel"><div class="section-head"><div><h2>Alerts</h2><p>Basic alert toggles. Advanced channel routing is available under System communication settings below.</p></div></div><div class="settings-form"><label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label><label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label><label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp service alerts enabled</label></div></article>
-
-      <article class="panel"><div class="section-head"><div><h2>Messages to customers</h2><p>Posted messages appear on every customer's dashboard. Management Mail and delivery channels are managed under System communication settings.</p></div></div><form id="announcementForm" class="settings-form"><label class="wide">New message<textarea id="announcementMessage" rows="3" maxlength="1000" required></textarea></label><button id="postAnnouncementButton" class="primary" type="submit">Post message</button></form><div id="announcementList" class="announcement-list"></div></article>
+      <details class="settings-detail-group" id="communication">
+        <summary>Email, Notifications &amp; Communication</summary>
+        <div class="settings-detail-body"><div class="settings-grid">
+          <article class="panel wide"><div class="section-head"><div><h2>System communication settings</h2><p>Advanced notification and message-delivery controls.</p></div></div><div class="topbar-actions" style="flex-wrap:wrap"><a class="button" href="/coordinator/notifications/">Notification Configuration</a><a class="button" href="/coordinator/email/">Email Settings</a><a class="button" href="/coordinator/whatsapp/">WhatsApp Settings</a><a class="button" href="/coordinator/sms/">SMS Settings</a><a class="button" href="/coordinator/management-mail/">Management Mail</a></div></article>
+          <article class="panel"><div class="section-head"><div><h2>Alerts</h2><p>Basic alert toggles.</p></div></div><div class="settings-form"><label class="toggle-row"><input id="adminAlertsToggle" type="checkbox"> Admin alerts enabled</label><label class="toggle-row"><input id="technicianAlertsToggle" type="checkbox"> Technician alerts enabled</label><label class="toggle-row"><input id="whatsappAlertsToggle" type="checkbox"> WhatsApp service alerts enabled</label></div></article>
+          <article class="panel"><div class="section-head"><div><h2>Messages to customers</h2><p>Posted messages appear on customer dashboards.</p></div></div><form id="announcementForm" class="settings-form"><label class="wide">New message<textarea id="announcementMessage" rows="3" maxlength="1000" required></textarea></label><button id="postAnnouncementButton" class="primary" type="submit">Post message</button></form><div id="announcementList" class="announcement-list"></div></article>
+        </div></div>
+      </details>
     </section>
   </main>
+
+  <script>
+    (function(){
+      const user = JSON.parse(localStorage.getItem('belm_admin_user') || 'null');
+      if(user){
+        const name = user.name || 'BELM Admin';
+        const role = (user.roleName || user.role || 'Super Admin').replace(/Engineer/ig,'Workshop Manager');
+        document.getElementById('settingsUserName').textContent = name;
+        document.getElementById('settingsUserRole').textContent = role;
+        const parts = name.trim().split(/\s+/); document.getElementById('settingsAvatar').textContent = ((parts[0]||'B')[0] + (parts[1]||parts[0]||'A')[0]).toUpperCase();
+      }
+      function tick(){ const now = new Date(); document.getElementById('settingsDate').textContent = now.toLocaleDateString('en-GB',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}); document.getElementById('settingsTime').textContent = now.toLocaleTimeString('en-GB',{hour12:false}); }
+      tick(); setInterval(tick,1000);
+      document.getElementById('headerThemeToggle').addEventListener('click', function(){ const current = window.BELMTheme?.get?.() || (document.documentElement.dataset.theme==='dark'?'dark':'light'); if(window.BELMTheme) window.BELMTheme.set(current==='dark'?'light':'dark'); });
+      function openHash(){ if(!location.hash) return; const el=document.querySelector(location.hash); if(!el) return; const details=el.matches('details')?el:el.closest('details'); if(details) details.open=true; setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),50); }
+      window.addEventListener('hashchange',openHash); openHash();
+    })();
+  </script>
   <script src="/admin-access.js?v=706-wm-clean"></script>
   <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
   <script src="/settings-manager/app.js?v=706-wm-clean"></script>

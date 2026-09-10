@@ -887,3 +887,6 @@ body.belm-module-finance .billing-section-sidebar{display:none!important;}
 body.belm-module-finance .billing-workspace{grid-template-columns:minmax(0,1fr)!important;}
 /* V708 nested registration submenu is retired; V709 uses the whole sidebar as Registration Menu. */
 .belm-sidebar-registration-submenu{display:none!important;}
+
+/* V710 — function-page bridge palette follows the supplied dashboard palette. */
+:root{--belm-sidebar-navy:#04101f;--belm-sidebar-navy-soft:#071c33;--belm-sidebar-yellow:#f5c518;--belm-sidebar-blue:#2f86d6;--belm-sidebar-green:#21b06b;}

@@ -58,6 +58,8 @@ switch($resource){
     case 'activity-log': dispatch('activity_log.php');
     case 'backup': dispatch('backup.php');
     case 'applications': dispatch('applications.php',['id'=>$segments[1]??null,'action'=>$segments[2]??'']);
+    case 'contracts': dispatch('contracts.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
+    case 'workshops': dispatch('workshops.php',['resource'=>$segments[1]??($_GET['resource']??'orders'),'id'=>$segments[2]??($_GET['id']??null),'action'=>$segments[3]??($_GET['action']??'')]);
     case 'customer-checkup':
     case 'customer_checkup':
     case 'customer_checkup.php': dispatch('customer_checkup.php');

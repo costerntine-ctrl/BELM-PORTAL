@@ -8,6 +8,14 @@ $action = trim((string)($_GET['action'] ?? ''));
 
 function contract_row(array $r): array {
     $r['customer'] = ['id'=>$r['customer_id'], 'name'=>$r['customer_name'] ?? null];
+    $r['contractNumber'] = $r['contract_number'] ?? null;
+    $r['contractType'] = $r['contract_type'] ?? null;
+    $r['startDate'] = $r['start_date'] ?? null;
+    $r['endDate'] = $r['end_date'] ?? null;
+    $r['slaResponseHours'] = isset($r['sla_response_hours']) ? (int)$r['sla_response_hours'] : null;
+    $r['preventiveMaintenanceIncluded'] = !empty($r['preventive_maintenance_included']);
+    $r['labourIncluded'] = !empty($r['labour_included']);
+    $r['partsIncluded'] = !empty($r['parts_included']);
     $r['daysRemaining'] = isset($r['end_date']) ? max(0, (int)floor((strtotime($r['end_date']) - time()) / 86400)) : null;
     unset($r['customer_name']);
     return $r;
@@ -19,8 +27,12 @@ if ($method === 'GET' && $action === 'summary') {
             FROM customer_contracts cc";
     $stats = db()->query($sql)->fetch();
     $sla = db()->query("SELECT COUNT(*) FROM workshop_work_orders wo JOIN customer_contracts cc ON cc.id=wo.contract_id WHERE wo.status NOT IN ('COMPLETED','CANCELLED') AND wo.created_at + (cc.sla_response_hours || ' hours')::interval < NOW()") ->fetchColumn();
-    $stats['slaAtRisk'] = (int)$sla;
-    json_out($stats);
+    json_out([
+        'activeContracts' => (int)($stats['active_contracts'] ?? 0),
+        'renewalsDue' => (int)($stats['renewals_due'] ?? 0),
+        'coveredMachines' => (int)($stats['covered_machines'] ?? 0),
+        'slaAtRisk' => (int)$sla,
+    ]);
 }
 if ($method === 'GET') {
     $customerId = trim((string)($_GET['customerId'] ?? ''));

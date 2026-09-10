@@ -110,7 +110,7 @@
   const ROLE_CONFIG = {
     "super-admin": {
       title: "BELM Workshop Manager Portal", initials: "WM", eyebrow: "BELM WORKSHOP MANAGEMENT", description: "Workshop management with full BELM administrative control, approvals, finance visibility and secure settings.", primary: "/concept-dashboards/01-admin-home/",
-      menu: [item("Dashboard","home","#dashboard"),item("Customer Registration","customer","/admin-applications/?module=registration"),item("Customer Overview","machine","/customers-manager/?module=customer-overview"),item("Roles & Users","user","/roles-manager/?module=roles-users"),item("Workshop & Job Cards","job","/concept-dashboards/05-inspection-repair/"),item("Spare Parts Inventory","stock","/concept-dashboards/06-storekeeper/"),item("Procurement","buy","/concept-dashboards/03-procurement/"),item("Finance & Accounts","money","/billing-manager/?module=finance"),item("Bank Control","bank","/bank-controller/?module=bank"),item("Reports & Analysis","report","/reports-manager/?module=reports"),item("System Settings","settings","/settings-manager/?module=settings")],
+      menu: [item("Dashboard","home","#dashboard"),item("Customer Registration","customer","/concept-dashboards/04-customer-registration/"),item("Customer Overview","machine","/customers-manager/?module=customer-overview"),item("Roles & Users","user","/roles-manager/?module=roles-users"),item("Workshop & Job Cards","job","/concept-dashboards/05-inspection-repair/"),item("Spare Parts Inventory","stock","/concept-dashboards/06-storekeeper/"),item("Procurement","buy","/concept-dashboards/03-procurement/"),item("Finance & Accounts","money","/billing-manager/?module=finance"),item("Bank Control","bank","/bank-controller/?module=bank"),item("Reports & Analysis","report","/reports-manager/?module=reports"),item("System Settings","settings","/settings-manager/?module=settings")],
       process: ["Register & approve","Assign role","Run operations","Review reports","Audit & control"]
     },
     "workshop-manager": {
@@ -463,5 +463,5 @@
   setTheme(savedTheme==="light"?"light":"dark");
   $("themeButton").addEventListener("click",()=>setTheme(document.documentElement.dataset.theme==="dark"?"light":"dark"));
 
-  loadData().then(()=>{ if(location.hash==="#role") showView("role"); });
+  loadData().then(()=>{ if(location.hash==="#role") openRoleDashboard(); });
 })();

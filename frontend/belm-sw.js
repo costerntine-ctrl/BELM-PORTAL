@@ -1,6 +1,6 @@
-// BELM portal service worker — V709 contextual module sidebars.
+// BELM portal service worker — V710 supplied dashboards live.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v709-context-sidebars';
+const CACHE='belm-portal-v710-supplied-dashboards-live';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
@@ -8,9 +8,10 @@ const SHELL=[
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg',
-  '/portal-v2/index.html?v=709-context-sidebars',
-  '/portal-v2/portal.css?v=709-context-sidebars',
-  '/portal-v2/portal.js?v=709-context-sidebars'
+  '/portal-v2/index.html?v=710-supplied-dashboards-live',
+  '/portal-v2/portal.css?v=710-supplied-dashboards-live',
+  '/portal-v2/portal.js?v=710-supplied-dashboards-live',
+  '/dashboard-live-v710.js?v=710-supplied-live'
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

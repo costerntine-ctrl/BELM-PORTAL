@@ -1,0 +1,21 @@
+BELM PORTAL V710 — SUPPLIED DASHBOARDS LIVE
+
+Principle: the dashboards supplied in DASHBOARDS(3).rar are the visual source of truth.
+Their CSS/color files are preserved byte-for-byte. Existing portal modules are used only as live functional destinations.
+
+Key fixes:
+- /portal-v2/#role opens the supplied role dashboard instead of the old generated role dashboard.
+- BELM Super Admin visual identity is BELM Workshop Manager Portal.
+- CWM is not used as a visible dashboard label.
+- Customer Registration, Workshop, Procurement, Store, Technician, Operator and Daily Checklist use supplied dashboards.
+- Registration form POSTs to /api/customers and loads live customers/stats.
+- Daily checklist Save/Unsafe/PDF/CSV actions are live.
+- Contract/workshop API router cases restored.
+- Contextual module sidebars do not repeat the WM main menu.
+
+FINAL LIVE FIXES
+- Registration Pending Approval now reads the real applications API response.
+- Unlimited user limit is functional (stored as 9999 and displayed as Unlimited).
+- Optional contract dates create a real service/maintenance contract after customer registration.
+- Contracts summary/list responses normalized for the live UI.
+- Workshop work-order responses normalized for the live UI.

@@ -831,7 +831,7 @@ if ($method === 'POST' && !$action) {
     $newId = uuid();
     $portalLink = customer_portal_slug($details['name']);
     $registration = belm_customer_registration_profile($b['registrationMode'] ?? null);
-    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, is_machinery_admin, workshop_module_active, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())')
+    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, is_machinery_admin, workshop_module_active, user_limit, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?,NOW())')
         ->execute([
             $newId,
             $details['name'],
@@ -845,6 +845,7 @@ if ($method === 'POST' && !$action) {
             password_hash($recoveryCode, PASSWORD_BCRYPT),
             $registration['isMachineryAdmin'],
             $registration['workshopModuleActive'],
+            array_key_exists('userLimit', $b) && $b['userLimit'] !== null ? max(1, (int)$b['userLimit']) : null,
         ]);
 
     log_activity($user, 'customer-created', 'customer', $newId, [

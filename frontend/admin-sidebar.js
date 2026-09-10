@@ -116,7 +116,7 @@
   }
 
 
-  // V709: WM ROLE MENU is only the parent menu. Every row owns a contextual
+  // V710: supplied dashboards are the canonical parent/module dashboards. Every row owns a contextual
   // module sidebar; the full main menu must never repeat inside a module.
   // Where the user supplied a dashboard, that dashboard remains the canonical
   // landing page and its visual files are not modified.
@@ -144,14 +144,20 @@
 
   const M = {
     registration: {
-      title: "Registration", caption: "REGISTRATION MENU", icon: "customer",
+      title: "Customer Registration", caption: "REGISTRATION MENU", icon: "customer",
       items: [
-        { label:"Register Customer", short:"RC", targetId:"registerCustomerButton", href:"/admin-applications/?module=registration" },
-        { label:"Register Technician", short:"RT", targetId:"registerTechnicianButton", href:"/admin-applications/?module=registration" },
-        { label:"Add Machine", short:"AM", targetId:"addMachineButton", href:"/admin-applications/?module=registration" },
-        { label:"Add Role", short:"AR", href:"/roles-manager/?open=addRole&module=registration", paths:["/roles-manager/"], open:"addRole" },
-        { label:"Add System User", short:"AU", href:"/roles-manager/?open=addUser&module=registration", paths:["/roles-manager/"], open:"addUser" },
-        { label:"Refresh", short:"RF", targetId:"refreshButton", href:"/admin-applications/?module=registration", refresh:true },
+        { label:"Registration Dashboard", short:"DB", href:"/concept-dashboards/04-customer-registration/" },
+        { label:"Register Customer", short:"RC", href:"/concept-dashboards/04-customer-registration/" },
+        { label:"All Customers", short:"AC", href:"/customers-manager/?module=registration", paths:["/customers-manager/"], noView:true },
+        { label:"Pending Approvals", short:"PA", href:"/admin-applications/?module=registration", paths:["/admin-applications/"] },
+        { label:"Portal Access", short:"PO", href:"/customers-manager/?module=registration", paths:["/customers-manager/"] },
+        { label:"Customer Users", short:"CU", href:"/roles-manager/?module=registration", paths:["/roles-manager/"] },
+        { label:"Contracts & Service", short:"CS", href:"/contracts-workshops/?module=registration", paths:["/contracts-workshops/"] },
+        { label:"Customer Machines", short:"CM", href:"/customers-manager/?view=machines&module=registration", paths:["/customers-manager/"], view:"machines" },
+        { label:"Communication", short:"CO", href:"/customers-manager/?module=registration#communication", paths:["/customers-manager/"], hash:"#communication" },
+        { label:"Customer Reports", short:"RP", href:"/reports-manager/?module=registration", paths:["/reports-manager/"] },
+        { label:"Activity Log", short:"AL", href:"/reports-manager/?view=activity&module=registration", paths:["/reports-manager/"], view:"activity" },
+        { label:"My Profile", short:"ME", href:"/settings-manager/?module=settings#profile" },
       ]
     },
     "customer-overview": {
@@ -272,7 +278,7 @@
 
   const fallback = {
     title:"BELM Workshop Manager", caption:"MODULE MENU", icon:"overview",
-    items:[{label:"Return to WM Role Menu",short:"WM",href:"/portal-v2/#role"}]
+    items:[{label:"Return to WM Role Menu",short:"WM",href:"/concept-dashboards/01-admin-home/"}]
   };
   const moduleConfig = M[moduleKey] || fallback;
   const visiblePages = moduleConfig.items;
@@ -283,7 +289,7 @@
 
   const brand = document.createElement("a");
   brand.className = "belm-sidebar-brand";
-  brand.href = "/portal-v2/#role";
+  brand.href = "/concept-dashboards/01-admin-home/";
   brand.setAttribute("aria-label", "Back to WM Role Menu");
   brand.innerHTML = `
     <span class="belm-sidebar-brand-mark" aria-hidden="true"><span>B</span></span>
@@ -316,7 +322,7 @@
 
   const moduleHeader = document.createElement("div");
   moduleHeader.className = "belm-sidebar-module-head";
-  moduleHeader.innerHTML = `<a href="/portal-v2/#role" class="belm-sidebar-back-main">← WM ROLE MENU</a><small>${moduleConfig.caption}</small><strong>${moduleConfig.title}</strong>`;
+  moduleHeader.innerHTML = `<a href="/concept-dashboards/01-admin-home/" class="belm-sidebar-back-main">← WM ROLE MENU</a><small>${moduleConfig.caption}</small><strong>${moduleConfig.title}</strong>`;
   document.body.classList.add(`belm-module-${moduleKey || "fallback"}`);
 
   const nav = document.createElement("nav");

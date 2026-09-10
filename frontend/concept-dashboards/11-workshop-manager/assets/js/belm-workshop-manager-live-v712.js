@@ -47,37 +47,32 @@
 
   function updateClock(){const now=new Date(),d=document.getElementById('liveDate'),t=document.getElementById('liveTime');if(d)d.textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});if(t)t.textContent=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
   updateClock();setInterval(updateClock,30000);
-
-  function statusBucket(row){const c=String(row.processCode||'').toUpperCase();if(c==='COMPLETED')return'completed';if(c==='TESTING')return'testing';if(c==='WAITING_FOR_SPARE')return'waiting';if(c==='DIAGNOSIS_REPORT'||c==='OPENED')return'progress';return'open';}
   function applyStat(label,value){document.querySelectorAll('.wm-stat-card').forEach(card=>{const l=card.querySelector('.wm-stat-label'),v=card.querySelector('.wm-stat-value');if(l&&v&&l.textContent.trim().toUpperCase()===label.toUpperCase())v.textContent=String(value);});}
-  function isThisMonth(value){if(!value)return false;const d=new Date(value),n=new Date();return !Number.isNaN(d.getTime())&&d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth();}
 
   async function load(){
     if(preview)return;
-    const results=await Promise.allSettled([api('/engineering?action=job-process'),api('/belm-workshop-home.php')]);
-    const rows=results[0].status==='fulfilled'&&Array.isArray(results[0].value)?results[0].value:[];
+    const results=await Promise.allSettled([api('/workshop-dashboard-metrics.php'),api('/belm-workshop-home.php')]);
+    const metrics=results[0].status==='fulfilled'?results[0].value:null;
     const home=results[1].status==='fulfilled'?results[1].value:null;
-    const counts={open:0,progress:0,waiting:0,testing:0,completed:0,completedMonth:0,overdue:0};
-    rows.forEach(r=>{const bucket=statusBucket(r);counts[bucket]++;if(bucket==='completed'&&isThisMonth(r.completed_at||r.completedAt))counts.completedMonth++;if((r.due_date||r.dueDate)&&new Date(r.due_date||r.dueDate)<new Date()&&bucket!=='completed')counts.overdue++;});
-    applyStat('Open Job Cards',counts.open);
-    applyStat('In Progress',counts.progress);
-    applyStat('Waiting for Spare',counts.waiting);
-    applyStat('Completed (This Month)',counts.completedMonth);
-    applyStat('Overdue',counts.overdue);
-
-    const legend=[...document.querySelectorAll('.wm-donut-legend-row')];
-    const vals=[counts.open,counts.progress,counts.waiting,counts.testing,counts.completed,counts.overdue];
-    const total=Math.max(1,counts.open+counts.progress+counts.waiting+counts.testing+counts.completed);
-    legend.forEach((r,i)=>{const s=r.querySelector('strong');if(s)s.textContent=(vals[i]||0)+' ('+Math.round((vals[i]||0)/total*100)+'%)';});
-    const totalText=document.querySelector('.wm-donut-wrap svg text');if(totalText)totalText.textContent=String(total);
-
-    if(home&&Array.isArray(home.machines)){
-      const machines=home.machines;
-      const alertRows=[...document.querySelectorAll('.alert-row2')];
-      const service=machines.filter(m=>/DUE|OVERDUE|REQUIRED/i.test(String(m.serviceKit||''))).length;
-      const values=[counts.overdue+' Job Cards Overdue',counts.waiting+' Waiting for Spare',service?service+' Service Due Soon':'No Service Due','Checklist Monitoring'];
-      alertRows.forEach((r,i)=>{const x=r.querySelector('.alert-row2-title');if(x&&values[i])x.textContent=values[i];});
+    if(metrics&&metrics.jobCards){
+      const j=metrics.jobCards;
+      applyStat('Open Job Cards',Number(j.open||0));
+      applyStat('In Progress',Number(j.inProgress||0));
+      applyStat('Waiting for Spare',Number(j.waitingForSpare||0));
+      applyStat('Completed (This Month)',Number(j.completedThisMonth||0));
+      applyStat('Overdue',Number(j.overdue||0));
+      const vals=[Number(j.open||0),Number(j.inProgress||0),Number(j.waitingForSpare||0),Number(j.testing||0),Number(j.completed||0),Number(j.overdue||0)];
+      const total=Math.max(1,Number(j.open||0)+Number(j.inProgress||0)+Number(j.waitingForSpare||0)+Number(j.testing||0)+Number(j.completed||0));
+      [...document.querySelectorAll('.wm-donut-legend-row')].forEach((r,i)=>{const s=r.querySelector('strong');if(s)s.textContent=(vals[i]||0)+' ('+Math.round((vals[i]||0)/total*100)+'%)';});
+      const totalText=document.querySelector('.wm-donut-wrap svg text');if(totalText)totalText.textContent=String(total);
     }
+    const alertRows=[...document.querySelectorAll('.alert-row2')];
+    const overdue=Number(metrics&&metrics.jobCards&&metrics.jobCards.overdue||0);
+    const waiting=Number(metrics&&metrics.jobCards&&metrics.jobCards.waitingForSpare||0);
+    const service=Number(metrics&&metrics.alerts&&metrics.alerts.serviceDue||0);
+    const values=[overdue+' Job Cards Overdue',waiting+' Waiting for Spare',service?service+' Service Due Soon':'No Service Due','Checklist Monitoring'];
+    alertRows.forEach((r,i)=>{const x=r.querySelector('.alert-row2-title');if(x&&values[i])x.textContent=values[i];});
+    if(home&&Array.isArray(home.machines))document.documentElement.setAttribute('data-belm-workshop-machines',String(home.machines.length));
   }
   bindHeader();
   load().catch(e=>console.warn('Workshop Manager live sync:',e));

@@ -94,13 +94,6 @@
       permissions:['customers'],
       url:()=>'/customers-manager/?embed=1&from=belm-workshop'
     },
-    'checklist-template':{
-      title:'Checklist Template',
-      subtitle:'Create, edit and maintain machine inspection Checklist Templates inside the BELM Workshop Manager Portal.',
-      hash:'#checklist-template',
-      permissions:['checklist-templates'],
-      url:()=>'/checklist-manager/?embed=1&from=belm-workshop'
-    },
     'general-report':{
       title:'General Report',
       subtitle:'BELM workshop and customer service reports inside the Workshop workspace.',
@@ -140,7 +133,7 @@
   }
   function keyFromHash(hash){
     const h=String(hash||'').replace(/^#/,'').toLowerCase();
-    const map={'job-cards':'job-cards','workshop-analysis':'analysis','procurement':'procurement','suppliers':'suppliers','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','delivery-notes':'delivery-notes','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings','customer-overview':'customer-overview','checklist-template':'checklist-template'};
+    const map={'job-cards':'job-cards','workshop-analysis':'analysis','procurement':'procurement','suppliers':'suppliers','store-spares':'store','tool-issue-documents':'tools','manage-technicians':'technicians','delivery-notes':'delivery-notes','assigned-work':'assigned','general-report':'general-report','petty-cash':'petty-cash','general-analysis':'general-analysis','settings':'settings','customer-overview':'customer-overview'};
     return map[h]||'';
   }
   function openModule(key,{pushHash=true,machineId=''}={}){

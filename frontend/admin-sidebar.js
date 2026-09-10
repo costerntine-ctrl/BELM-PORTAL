@@ -126,18 +126,20 @@
   const pathIs = (...prefixes) => prefixes.some((prefix) => pathname === prefix || pathname.startsWith(prefix));
 
   function resolveModule() {
+    // Checklist Template management is a System Settings responsibility, even for old bookmarked URLs.
+    if (pathIs("/checklist-manager/")) return "settings";
     if (moduleOverride) return moduleOverride;
     if (pathIs("/admin-applications/", "/contracts-workshops/")) return "registration";
     if (pathIs("/customers-manager/")) return "customer-overview";
     if (pathIs("/roles-manager/")) return "roles-users";
-    if (pathIs("/belm-workshop/", "/checklist-manager/", "/workshop-analysis/") || sharedBreakdownAdmin) return "workshop";
+    if (pathIs("/belm-workshop/", "/workshop-analysis/") || sharedBreakdownAdmin) return "workshop";
     if (pathIs("/spare-parts-manager/", "/controller-pinouts-manager/")) return "inventory";
     if (pathIs("/belm-procurement/")) return "procurement";
     if (pathIs("/suppliers-manager/")) return "procurement";
     if (pathIs("/billing-manager/")) return "finance";
     if (pathIs("/bank-controller/")) return "bank";
     if (pathIs("/reports-manager/")) return "reports";
-    if (pathIs("/settings-manager/", "/coordinator/", "/recycle-bin/")) return "settings";
+    if (pathIs("/settings-manager/", "/coordinator/", "/recycle-bin/", "/checklist-manager/")) return "settings";
     return "";
   }
   const moduleKey = resolveModule();
@@ -186,7 +188,6 @@
       items:[
         {label:"Inspection & Repair Dashboard",short:"DB",href:"/concept-dashboards/05-inspection-repair/"},
         {label:"Job Cards",short:"JC",href:"/breakdown-workflow/?actor=admin&view=job-cards&module=workshop",paths:["/breakdown-workflow/"],view:"job-cards"},
-        {label:"Inspection Checklists",short:"CK",href:"/checklist-manager/?module=workshop",paths:["/checklist-manager/"]},
         {label:"Diagnosis",short:"DG",href:"/breakdown-workflow/?actor=admin&module=workshop",paths:["/breakdown-workflow/"],noView:true},
         {label:"Waiting for Spares",short:"WS",href:"/spare-parts-manager/?view=requests&module=workshop",paths:["/spare-parts-manager/"],view:"requests"},
         {label:"Testing & Completion",short:"TC",href:"/breakdown-workflow/?actor=admin&view=testing&module=workshop",paths:["/breakdown-workflow/"],view:"testing"},
@@ -265,6 +266,7 @@
       title:"System Settings", caption:"SYSTEM SETTINGS MENU", icon:"settings",
       items:[
         {label:"System Settings",short:"SE",href:"/settings-manager/?module=settings",paths:["/settings-manager/"]},
+        {label:"Checklist Templates",short:"CK",href:"/checklist-manager/?module=settings",paths:["/checklist-manager/"]},
         {label:"Departments & Categories",short:"DP",href:"/coordinator/departments/?module=settings",paths:["/coordinator/departments/"]},
         {label:"Notification Configuration",short:"NT",href:"/coordinator/notifications/?module=settings",paths:["/coordinator/notifications/"]},
         {label:"Email Settings",short:"EM",href:"/coordinator/email/?module=settings",paths:["/coordinator/email/"]},
@@ -277,25 +279,25 @@
   };
 
   const fallback = {
-    title:"BELM Workshop Manager", caption:"MODULE MENU", icon:"overview",
-    items:[{label:"Return to WM Role Menu",short:"WM",href:"/concept-dashboards/01-admin-home/"}]
+    title:"BELM Main Dashboard", caption:"MODULE MENU", icon:"overview",
+    items:[{label:"Return to Main Dashboard",short:"HM",href:"/concept-dashboards/01-admin-home/"}]
   };
   const moduleConfig = M[moduleKey] || fallback;
   const visiblePages = moduleConfig.items;
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";
   sidebar.className = "belm-admin-sidebar";
-  sidebar.setAttribute("aria-label", "BELM Workshop Manager Portal sidebar");
+  sidebar.setAttribute("aria-label", "BELM Operations Portal sidebar");
 
   const brand = document.createElement("a");
   brand.className = "belm-sidebar-brand";
   brand.href = "/concept-dashboards/01-admin-home/";
-  brand.setAttribute("aria-label", "Back to WM Role Menu");
+  brand.setAttribute("aria-label", "Back to Main Dashboard");
   brand.innerHTML = `
     <span class="belm-sidebar-brand-mark" aria-hidden="true"><span>B</span></span>
     <span class="belm-sidebar-brand-copy">
       <strong>BELM GENERAL TECH</strong>
-      <small>BELM Workshop Manager Portal</small>
+      <small>BELM Operations Portal</small>
       <span class="belm-sidebar-brand-palette" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
     </span>`;
 
@@ -322,7 +324,7 @@
 
   const moduleHeader = document.createElement("div");
   moduleHeader.className = "belm-sidebar-module-head";
-  moduleHeader.innerHTML = `<a href="/concept-dashboards/01-admin-home/" class="belm-sidebar-back-main">← WM ROLE MENU</a><small>${moduleConfig.caption}</small><strong>${moduleConfig.title}</strong>`;
+  moduleHeader.innerHTML = `<a href="/concept-dashboards/01-admin-home/" class="belm-sidebar-back-main">← MAIN DASHBOARD</a><small>${moduleConfig.caption}</small><strong>${moduleConfig.title}</strong>`;
   document.body.classList.add(`belm-module-${moduleKey || "fallback"}`);
 
   const nav = document.createElement("nav");

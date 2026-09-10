@@ -1,6 +1,6 @@
 // BELM portal service worker — V710 supplied dashboards live.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v711-final-dashboards-live';
+const CACHE='belm-portal-v712-workshop-manager-role';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
@@ -9,9 +9,11 @@ const SHELL=[
   '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg',
   '/portal-v2/index.html?v=710-supplied-dashboards-live',
-  '/portal-v2/portal.css?v=710-supplied-dashboards-live',
-  '/portal-v2/portal.js?v=710-supplied-dashboards-live',
-  '/dashboard-live-v710.js?v=710-supplied-live',
+  '/portal-v2/portal.css?v=712-workshop-manager-role',
+  '/portal-v2/portal.js?v=712-workshop-manager-role',
+  '/dashboard-live-v710.js?v=712-workshop-manager-role',
+  '/concept-dashboards/11-workshop-manager/index.html',
+  '/concept-dashboards/10-system-settings/index.html',
   '/concept-dashboards/09-finance-accounts/index.html',
   '/concept-dashboards/10-system-settings/index.html'
 ];

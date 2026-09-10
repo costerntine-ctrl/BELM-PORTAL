@@ -27,7 +27,7 @@
     const role = String(user.role || user.roleName || "").trim();
     if (name) document.querySelectorAll(".belm-user__name").forEach(el => el.textContent = name);
     if (role) document.querySelectorAll(".belm-user__role").forEach(el => {
-      if (/super\s*admin/i.test(role) && dashboard === "01-admin-home") el.textContent = "WORKSHOP MANAGER PORTAL";
+      if (/super\s*admin/i.test(role) && dashboard === "01-admin-home") el.textContent = "MAIN DASHBOARD";
       else if (/system\s*coordinator/i.test(role)) el.textContent = "SYSTEM SETTINGS";
       else el.textContent = role.replace(/Engineer/ig, "Workshop Manager");
     });
@@ -60,12 +60,12 @@
       "VIEW DETAILS": "/belm-procurement/?view=delivery&module=procurement"
     },
     "05-inspection-repair": {
-      "NEW INSPECTION": "/checklist-manager/?module=workshop",
+      "NEW INSPECTION": "/breakdown-workflow/?actor=admin&module=workshop",
       "REVIEW DIAGNOSIS": "/breakdown-workflow/?actor=admin&module=workshop",
       "CHECK SPARE": "/spare-parts-manager/?view=requests&module=workshop",
       "START TESTING": "/breakdown-workflow/?actor=admin&view=testing&module=workshop",
       "VIEW ALL": "/belm-workshop/?module=workshop",
-      "OPEN CHECKLIST": "/checklist-manager/?module=workshop",
+      "OPEN CHECKLIST": "/reports-manager/?view=checklists&module=workshop",
       "ADD FINDINGS": "/breakdown-workflow/?actor=admin&module=workshop",
       "ASSIGN TECHNICIAN": "/roles-manager/?module=workshop",
       "GENERATE REPORT": "/workshop-analysis/?actor=admin&module=workshop"

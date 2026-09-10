@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>BELM Proforma</title>
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/invoice-manager/invoice.css?v=2">
+  <link rel="stylesheet" href="/proforma-manager/proforma.css?v=1">
+</head>
+<body>
+  <header class="invoice-topbar">
+    <a class="invoice-brand" href="/concept-dashboards/09-finance-accounts/">
+      <span class="invoice-brand-mark">B</span>
+      <span><strong>BELM</strong><small>Proforma</small></span>
+    </a>
+    <div class="invoice-top-actions">
+      <a class="top-btn" href="/concept-dashboards/09-finance-accounts/">← Finance Dashboard</a>
+      <a class="top-btn" href="/invoice-manager/">Invoice List</a>
+      <button id="refreshButton" class="top-btn" type="button">Refresh</button>
+      <button id="logoutButton" class="top-btn" type="button">Log out</button>
+    </div>
+  </header>
+
+  <main class="invoice-page">
+    <section class="invoice-titlebar">
+      <div>
+        <p>ACCOUNTING &amp; BILLING</p>
+        <h1>Proforma</h1>
+        <span>Create Proforma on the left · Proforma list on the right · Generate Invoice from an approved Proforma.</span>
+      </div>
+      <div class="invoice-title-actions">
+        <button id="newProformaButton" class="primary-btn" type="button">+ New Proforma</button>
+      </div>
+    </section>
+
+    <div id="pageAlert" class="page-alert hidden" role="status"></div>
+
+    <section class="invoice-workspace proforma-workspace">
+      <aside class="invoice-editor-card proforma-editor-card">
+        <div class="card-head">
+          <div><p>PROFORMA FORM</p><h2 id="formTitle">New Proforma</h2></div>
+          <span id="editBadge" class="edit-badge hidden">EDIT</span>
+        </div>
+
+        <form id="proformaForm">
+          <input id="proformaId" type="hidden">
+          <input id="proformaSourceJobCardId" type="hidden">
+          <input id="proformaSourceSpareRequestId" type="hidden">
+          <input id="proformaSourceSpareRequestIds" type="hidden">
+
+          <label>Customer<select id="proformaCustomer" required><option value="">Loading customers…</option></select></label>
+          <label>Machine<select id="proformaMachine"><option value="">No machine / general</option></select></label>
+
+          <div class="field-grid">
+            <label>Date<input id="proformaDate" type="date" required></label>
+            <label>VAT Mode<select id="proformaVatMode"><option value="VAT">VAT</option><option value="NO_VAT">No VAT</option></select></label>
+          </div>
+          <div class="field-grid">
+            <label>VAT Rate (%)<input id="proformaVatRate" type="number" min="0" max="100" step="0.1" value="18"></label>
+            <label>Discount Type<select id="proformaDiscountType"><option value="FIXED">Fixed TZS</option><option value="PERCENT">Percentage %</option></select></label>
+          </div>
+          <label>Discount Value<input id="proformaDiscount" type="number" min="0" step="0.01" value="0"></label>
+
+          <div id="customerInfo" class="customer-info">Choose a customer.</div>
+
+          <div class="items-head">
+            <div><p>ITEMS</p><strong>Proforma lines</strong></div>
+            <button id="addItemButton" class="small-btn" type="button">+ Add Item</button>
+          </div>
+          <div id="proformaItems" class="invoice-items"></div>
+
+          <label>Payment Terms<input id="proformaPaymentTerms" maxlength="255" placeholder="100% Paid before delivery"></label>
+          <label>Delivery Time<input id="proformaDeliveryTime" maxlength="255" placeholder="7-14 working days"></label>
+          <label>Quote Validity<input id="proformaQuoteValidity" maxlength="255" placeholder="Valid for 7 days"></label>
+          <label>Important Notice<textarea id="proformaNotice" rows="3" maxlength="1000"></textarea></label>
+
+          <div class="form-actions">
+            <button id="cancelEditButton" class="secondary-btn hidden" type="button">Cancel Edit</button>
+            <button id="saveProformaButton" class="save-btn" type="submit">Save Proforma</button>
+          </div>
+        </form>
+      </aside>
+
+      <section class="invoice-list-card">
+        <div class="list-head">
+          <div><p>SAVED RECORDS</p><h2>Proforma List</h2></div>
+          <div class="list-tools">
+            <input id="proformaSearch" type="search" placeholder="Search PI / customer…">
+            <span id="proformaCount" class="count-badge">0</span>
+          </div>
+        </div>
+
+        <div class="invoice-table-wrap">
+          <table class="invoice-table">
+            <thead><tr><th>#</th><th>Proforma</th><th>Customer</th><th>Date</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="proformaRows"><tr><td colspan="7" class="empty-row">Loading Proformas…</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="pagination">
+          <button id="prevPage" class="small-btn" type="button">← Previous</button>
+          <span id="pageLabel">Page 1</span>
+          <button id="nextPage" class="small-btn" type="button">Next →</button>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/delete-confirm.js"></script>
+  <script src="/proforma-manager/proforma.js?v=1"></script>
+</body>
+</html>

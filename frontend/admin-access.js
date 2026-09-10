@@ -10,6 +10,38 @@
     return;
   }
 
+  // Finance module: the contextual sidebar lives outside Billing Manager's
+  // native tab bar. Keep the user on the same page and switch the real panel
+  // directly so Payments -> Proforma -> Receipts etc. always changes content.
+  // This is registered before the Super Admin early return below, because the
+  // Finance sidebar must work identically for Super Admin and restricted roles.
+  if (/^\/billing-manager(?:\/|$)/.test(window.location.pathname)) {
+    document.addEventListener("click", (event) => {
+      const link = event.target.closest?.("a.belm-sidebar-link[href]");
+      if (!link) return;
+      let targetUrl;
+      try { targetUrl = new URL(link.href, window.location.origin); } catch (_) { return; }
+      if (!/^\/billing-manager\/?$/.test(targetUrl.pathname)) return;
+      const tab = String(targetUrl.searchParams.get("tab") || "").trim();
+      if (!["invoices", "payments", "expenses", "proformas", "receipts"].includes(tab)) return;
+      const nativeTab = document.querySelector(`[data-tab="${CSS.escape(tab)}"]`);
+      if (!nativeTab) return;
+
+      event.preventDefault();
+      nativeTab.click();
+
+      document.querySelectorAll("#belmAdminSidebar .belm-sidebar-link").forEach((item) => {
+        item.classList.remove("active");
+        item.removeAttribute("aria-current");
+      });
+      link.classList.add("active");
+      link.setAttribute("aria-current", "page");
+
+      const panel = document.querySelector(`[data-billing-panel="${CSS.escape(tab)}"]`);
+      if (panel) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   // V680: the exact BELM Workshop root is the common authenticated Home
   // Dashboard for every staff role. Nested Workshop modules remain guarded.
   if (/^\/belm-workshop\/?$/.test(window.location.pathname)) return;

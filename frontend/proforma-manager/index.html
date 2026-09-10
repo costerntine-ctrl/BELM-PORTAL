@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/invoice-manager/invoice.css?v=2">
-  <link rel="stylesheet" href="/proforma-manager/proforma.css?v=1">
+  <link rel="stylesheet" href="/proforma-manager/proforma.css?v=2">
 </head>
 <body>
   <header class="invoice-topbar">
@@ -28,7 +28,7 @@
       <div>
         <p>ACCOUNTING &amp; BILLING</p>
         <h1>Proforma</h1>
-        <span>Create Proforma on the left · Proforma list on the right · Generate Invoice from an approved Proforma.</span>
+        <span>Create Proforma on the left · Proforma list on the right · Generate Invoice and confirm payment only when money has actually been received.</span>
       </div>
       <div class="invoice-title-actions">
         <button id="newProformaButton" class="primary-btn" type="button">+ New Proforma</button>
@@ -108,7 +108,29 @@
     </section>
   </main>
 
+  <dialog id="generateInvoiceDialog" class="generate-dialog">
+    <form id="generateInvoiceForm" method="dialog" class="generate-card">
+      <div class="generate-head">
+        <div><p>PROFORMA → INVOICE</p><h2>Generate Invoice</h2></div>
+        <button id="closeGenerateDialog" class="dialog-close" type="button">×</button>
+      </div>
+      <input id="generateProformaId" type="hidden">
+      <div id="generateSummary" class="generate-summary"></div>
+      <label class="payment-check"><input id="paymentReceived" type="checkbox"> <span><strong>Payment already received?</strong><small>Tick only after BELM has actually received money.</small></span></label>
+      <div id="paymentFields" class="payment-fields hidden">
+        <label>Payment Method<select id="paymentMethod"><option value="BANK">Bank</option><option value="CASH">Cash</option><option value="MOBILE_MONEY">Mobile Money</option><option value="CHEQUE">Cheque</option><option value="OTHER">Other</option></select></label>
+        <label>Amount Received (TZS)<input id="paymentAmount" type="number" min="0.01" step="0.01"></label>
+        <label>Reference / Transaction No.<input id="paymentReference" maxlength="120" placeholder="Optional for cash"></label>
+        <div class="receipt-note">Official receipt is optional. This payment record will still be stored in Payment history.</div>
+      </div>
+      <div class="generate-actions">
+        <button id="cancelGenerateButton" class="secondary-btn" type="button">Cancel</button>
+        <button id="confirmGenerateButton" class="save-btn" type="submit">Generate Invoice</button>
+      </div>
+    </form>
+  </dialog>
+
   <script src="/delete-confirm.js"></script>
-  <script src="/proforma-manager/proforma.js?v=1"></script>
+  <script src="/proforma-manager/proforma.js?v=2"></script>
 </body>
 </html>

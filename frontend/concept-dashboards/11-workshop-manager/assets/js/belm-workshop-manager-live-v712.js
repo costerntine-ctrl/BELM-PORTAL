@@ -45,6 +45,15 @@
   };
   document.querySelectorAll('a[href]').forEach(a=>{const raw=a.getAttribute('href')||'';const base=raw.split('?')[0].split('#')[0];if(routeMap[base])a.href=routeMap[base];});
 
+  function bindTechnicianDispatch(){
+    const action=document.querySelector('.wm-qa-grid .wm-qa-btn--green');
+    if(!action)return;
+    action.href='/belm-workshop/#job-cards';
+    action.setAttribute('aria-label','Technician Dispatch');
+    const textNode=[...action.childNodes].find(node=>node.nodeType===Node.TEXT_NODE&&node.nodeValue.trim());
+    if(textNode)textNode.nodeValue='Technician Dispatch';
+  }
+
   function updateClock(){const now=new Date(),d=document.getElementById('liveDate'),t=document.getElementById('liveTime');if(d)d.textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});if(t)t.textContent=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
   updateClock();setInterval(updateClock,30000);
   function applyStat(label,value){document.querySelectorAll('.wm-stat-card').forEach(card=>{const l=card.querySelector('.wm-stat-label'),v=card.querySelector('.wm-stat-value');if(l&&v&&l.textContent.trim().toUpperCase()===label.toUpperCase())v.textContent=String(value);});}
@@ -75,6 +84,7 @@
     if(home&&Array.isArray(home.machines))document.documentElement.setAttribute('data-belm-workshop-machines',String(home.machines.length));
   }
   bindHeader();
+  bindTechnicianDispatch();
   load().catch(e=>console.warn('Workshop Manager live sync:',e));
   setInterval(()=>load().catch(()=>{}),60000);
 })();

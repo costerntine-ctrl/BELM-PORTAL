@@ -3,22 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bank Controller — BELM Workshop Manager Portal</title>
+  <title>Bank Controller — BELM Operations Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
   <link rel="stylesheet" href="/bank-controller/app.css?v=395-bank-edit-audit">
+  <link rel="stylesheet" href="/bank-controller/compact.css?v=1-left-compact-no-sidebar">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
-<body class="management-page">
+<body class="management-page bank-compact-page">
   <header class="management-topbar">
-    <div><strong>BELM General Tech</strong><small>Bank accounts and withdrawals</small></div>
-    <div class="topbar-actions"><a class="button" href="/portal-v2/#role">← WM Role Menu</a></div>
+    <div><strong>BELM General Tech</strong><small>Bank accounts, payments and withdrawals</small></div>
+    <div class="topbar-actions"><a class="button" href="/concept-dashboards/09-finance-accounts/">← Finance Dashboard</a></div>
   </header>
 
   <main class="management-shell">
@@ -26,11 +26,10 @@
       <div>
         <p class="eyebrow">Bank Controller</p>
         <h1>Bank Accounts</h1>
-        <p>Select a bank account to view its balance, or add a new account and record withdrawals.</p>
+        <p>Compact bank control, records and account analysis.</p>
       </div>
       <div class="topbar-actions">
         <button id="clearTestBankButton" class="secondary hidden" type="button">Clear TEST BANK Data</button>
-        <button id="addAccountButton" class="primary" type="button">+ Add bank account</button>
       </div>
     </section>
 
@@ -38,18 +37,48 @@
 
     <section class="metrics-grid" id="companyMetrics" aria-label="Company-wide finance summary"></section>
 
-    <section class="panel">
-      <div class="section-head">
-        <div><h2>Select bank account</h2><p>Choose which account's balance and withdrawals to view.</p></div>
-        <select id="accountSelect"><option value="">Loading accounts…</option></select>
-      </div>
-      <p id="bankStorageStatus" class="muted" style="margin:8px 0 0;font-size:12px;font-weight:700">Loading bank accounts from PostgreSQL…</p>
-      <div id="accountDetail" class="account-detail hidden">
-        <div class="metrics-grid" id="accountMetrics"></div>
-        <div class="account-detail-actions">
-          <button id="editAccountButton" class="secondary" type="button">Edit this account</button>
-          <button id="addWithdrawalButton" class="primary" type="button">+ Record withdrawal</button>
+    <section class="bank-control-row" aria-label="Bank selection and bank account action">
+      <div class="panel bank-select-panel">
+        <div class="section-head">
+          <div><h2>Select bank account</h2><p>Choose the bank account you want to view and manage.</p></div>
+          <select id="accountSelect"><option value="">Loading accounts…</option></select>
         </div>
+        <p id="bankStorageStatus" class="muted" style="margin:8px 0 0;font-size:10px;font-weight:700">Loading bank accounts from PostgreSQL…</p>
+      </div>
+
+      <div class="panel bank-action-panel">
+        <h2 style="margin:0">Bank Account</h2>
+        <button id="addAccountButton" class="primary" type="button">+ Add Bank</button>
+        <p class="mini-note">Add a new bank account. Edit and withdrawal actions appear after selecting an account.</p>
+      </div>
+    </section>
+
+    <section class="bank-workspace">
+      <section class="panel bank-records-panel">
+        <div class="section-head">
+          <div><h2>Records</h2><p>Latest bank withdrawal records, newest first.</p></div>
+          <button id="refreshButton" class="secondary compact" type="button">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th>Bank / Account</th><th>Cheque / Ref.</th><th>Description</th><th>Amount</th><th>By</th></tr></thead>
+            <tbody id="withdrawalRows"><tr><td colspan="6" class="empty">Loading records…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="bank-side-stack">
+        <section class="panel bank-analysis-panel">
+          <div class="panel-title-row"><h2>Account Analysis</h2><span class="muted">Live</span></div>
+          <div id="accountDetail" class="account-detail hidden">
+            <div class="metrics-grid" id="accountMetrics"></div>
+            <div class="account-detail-actions">
+              <button id="addWithdrawalButton" class="primary" type="button">Withdraw</button>
+              <button id="editAccountButton" class="secondary" type="button">Edit Bank</button>
+            </div>
+          </div>
+          <p class="muted" style="margin:0;font-size:10px">Select a bank account to display its opening balance, payments in, expenses out, withdrawals and current balance.</p>
+        </section>
       </div>
     </section>
 
@@ -58,24 +87,11 @@
         <div><h2>Bank account edit log</h2><p>Who edited a bank account, when, and why.</p></div>
         <button id="refreshBankEditAuditButton" class="secondary compact" type="button">Refresh log</button>
       </div>
-      <p class="system-sender-note">System sender: <strong id="systemSenderEmail">info@belmgeneral.co.tz</strong> — reserved for portal/customer messages. Bank edits are attributed to the signed-in human Admin account.</p>
+      <p class="system-sender-note">System sender: <strong id="systemSenderEmail">info@belmgeneral.co.tz</strong> — bank edits are attributed to the signed-in human Admin account.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Date / time</th><th>Admin</th><th>Bank / account</th><th>Reason</th></tr></thead>
           <tbody id="bankEditAuditRows"><tr><td colspan="4" class="empty">Loading bank edit history…</td></tr></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="section-head">
-        <div><h2>Recent withdrawals</h2><p>Latest 100 withdrawals across all accounts, newest first.</p></div>
-        <button id="refreshButton" class="secondary compact" type="button">Refresh</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Date</th><th>Bank / Account</th><th>Cheque / Ref.</th><th>Description</th><th>Amount</th><th>By</th></tr></thead>
-          <tbody id="withdrawalRows"><tr><td colspan="6" class="empty">Loading withdrawals…</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -96,12 +112,12 @@
       <section id="bankEditAuthorization" class="bank-edit-authorization hidden" aria-label="Bank account edit authorization">
         <div class="bank-edit-auth-head">
           <strong>EDIT AUTHORIZATION</strong>
-          <small id="bankEditActor">Signed-in BELM Workshop Manager Portal</small>
+          <small id="bankEditActor">Signed-in BELM Admin</small>
         </div>
-        <label>BELM Workshop Manager Portal password<input id="bankEditAdminPassword" type="password" autocomplete="current-password" disabled></label>
+        <label>BELM Admin password<input id="bankEditAdminPassword" type="password" autocomplete="current-password" disabled></label>
         <label>Edit PIN<input id="bankEditPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" disabled></label>
         <label>Reason for edit<textarea id="bankEditReason" maxlength="500" rows="3" placeholder="Why is this bank account being changed?" disabled></textarea></label>
-        <p class="bank-edit-auth-note">Every edit is saved to the audit log with the signed-in admin, date/time, reason and before/after values.</p>
+        <p class="bank-edit-auth-note">Every edit is saved to the audit log with admin, date/time, reason and before/after values.</p>
       </section>
       <div class="dialog-actions">
         <button class="ghost" data-close="accountDialog" type="button">Cancel</button>
@@ -137,7 +153,6 @@
   </dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
   <script src="/bank-controller/app.js?v=395-bank-edit-audit"></script>
 </body>
 </html>

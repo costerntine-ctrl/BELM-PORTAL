@@ -8,12 +8,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 $action = $_GET['action'] ?? '';
 
-
-// V347: Company expense records are permanent accounting data.  Keep this
-// endpoint self-healing so an older production database cannot make saved
-// expenses disappear from Billing simply because one additive schema change
-// was not present yet.  Render deploys keep the PostgreSQL database; this only
-// creates/extends the table when required and never truncates existing rows.
+// Company expense records are permanent accounting data. Keep this endpoint
+// self-healing so older production databases receive additive columns safely.
 function belm_ensure_company_expense_schema(): void {
     static $done = false;
     if ($done) return;
@@ -37,6 +33,9 @@ function belm_ensure_company_expense_schema(): void {
     $pdo->exec('ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_data TEXT NULL');
     $pdo->exec('ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_mime VARCHAR(50) NULL');
     $pdo->exec('ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS receipt_photo_name VARCHAR(255) NULL');
+    $pdo->exec('ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS quantity NUMERIC(12,2) NOT NULL DEFAULT 1');
+    $pdo->exec('ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS unit_price NUMERIC(12,2) NULL');
+    $pdo->exec("ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS payment_method VARCHAR(30) NOT NULL DEFAULT 'CASH'");
     $pdo->exec('ALTER TABLE company_expenses ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NULL');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_company_expenses_bank_account ON company_expenses(bank_account_id)');
     $pdo->exec('CREATE INDEX IF NOT EXISTS idx_company_expenses_date ON company_expenses(date DESC)');
@@ -47,7 +46,7 @@ belm_ensure_company_expense_schema();
 
 if ($method === 'GET' && $action === 'export') {
     $stmt = db()->query(
-        'SELECT e.date, e.category, e.description, e.amount, b.bank_name, b.account_name
+        'SELECT e.date, e.category, e.description, e.quantity, e.unit_price, e.amount, e.payment_method, b.bank_name, b.account_name
          FROM company_expenses e
          LEFT JOIN bank_accounts b ON b.id = e.bank_account_id
          WHERE e.deleted_at IS NULL
@@ -59,13 +58,16 @@ if ($method === 'GET' && $action === 'export') {
             display_date_billing((string)$row['date']),
             strtoupper((string)$row['category']),
             (string)$row['description'],
+            (string)($row['quantity'] ?? 1),
+            'TZS ' . number_format((float)($row['unit_price'] ?? $row['amount']), 2),
             'TZS ' . number_format((float)$row['amount'], 2),
+            strtoupper((string)($row['payment_method'] ?? 'CASH')),
             $row['bank_name'] ? "{$row['bank_name']} ({$row['account_name']})" : '—',
         ];
     }
     output_table_pdf(
         'BELM-expenses-' . date('Ymd-His') . '.pdf',
-        'BELM General Tech Service Limited — Company Expenses Report',
+        'BELM General Tech Service Limited — Company Payments / Expenses Report',
         ['Generated: ' . date('d/m/Y H:i'), 'Total records: ' . count($rows)],
         $rows
     );
@@ -81,6 +83,34 @@ function validated_expense_bank_id(array $payload): ?string {
     $stmt->execute([$bankAccountId]);
     if (!$stmt->fetch()) json_error('Selected bank account is not active.', 422);
     return $bankAccountId;
+}
+
+function validated_expense_fields(array $b): array {
+    $date = trim((string)($b['date'] ?? ''));
+    $category = strtoupper(trim((string)($b['category'] ?? 'OTHER')));
+    $description = trim((string)($b['description'] ?? ''));
+    $quantity = (float)($b['quantity'] ?? 1);
+    $unitPrice = array_key_exists('unitPrice', $b) ? (float)$b['unitPrice'] : 0.0;
+    $amount = (float)($b['amount'] ?? 0);
+    $paymentMethod = strtoupper(trim((string)($b['paymentMethod'] ?? 'CASH')));
+
+    $allowedCategories = [
+        'OIL_LUBS', 'TIRES', 'TRANSPORT', 'FUEL', 'SPARE', 'OTHERS',
+        'SALARIES', 'RENT', 'UTILITIES', 'SUPPLIES', 'MAINTENANCE', 'OTHER'
+    ];
+    $allowedMethods = ['CASH', 'BANK', 'MOBILE_MONEY', 'CHEQUE', 'OTHER'];
+
+    if ($date === '') json_error('Expense date is required.');
+    if (!in_array($category, $allowedCategories, true)) json_error('Invalid expense category.');
+    if ($description === '') json_error('Expense description is required.');
+    if ($quantity <= 0) json_error('Quantity must be greater than zero.');
+    if ($unitPrice < 0) json_error('Price cannot be negative.');
+    if ($amount <= 0 && $unitPrice > 0) $amount = $quantity * $unitPrice;
+    if ($unitPrice <= 0 && $amount > 0) $unitPrice = $amount / $quantity;
+    if ($amount <= 0) json_error('Expense amount must be greater than zero.');
+    if (!in_array($paymentMethod, $allowedMethods, true)) json_error('Invalid payment method.');
+
+    return [$date, $category, $description, $quantity, $unitPrice, $amount, $paymentMethod];
 }
 
 if ($method === 'GET' && ($_GET['action'] ?? '') === 'receipt') {
@@ -109,12 +139,10 @@ if ($method === 'GET' && ($_GET['action'] ?? '') === 'receipt') {
 }
 
 if ($method === 'GET') {
-    // Never ship the large base64 receipt blob with the list.  The explicit
-    // CASE keeps the response small while still proving whether a receipt is
-    // attached.  This query is the single source of truth for Billing > Expenses.
     $rows = db()->query(
         "SELECT e.id, e.bank_account_id, e.date, e.category, e.description,
-                e.amount, e.recorded_by, e.receipt_url, e.created_at, e.updated_at,
+                e.quantity, e.unit_price, e.amount, e.payment_method,
+                e.recorded_by, e.receipt_url, e.created_at, e.updated_at,
                 CASE WHEN NULLIF(e.receipt_photo_data,'') IS NULL THEN 0 ELSE 1 END AS has_receipt,
                 b.bank_name, b.account_name
          FROM company_expenses e
@@ -129,15 +157,7 @@ if ($method === 'GET') {
 
 if ($method === 'POST') {
     $b = body();
-    $date = trim((string)($b['date'] ?? ''));
-    $category = strtoupper(trim((string)($b['category'] ?? 'OTHER')));
-    $description = trim((string)($b['description'] ?? ''));
-    $amount = (float)($b['amount'] ?? 0);
-    $allowedCategories = ['SALARIES', 'RENT', 'FUEL', 'UTILITIES', 'SUPPLIES', 'MAINTENANCE', 'OTHER'];
-    if ($date === '') json_error('Expense date is required.');
-    if (!in_array($category, $allowedCategories, true)) json_error('Invalid expense category.');
-    if ($description === '') json_error('Expense description is required.');
-    if ($amount <= 0) json_error('Expense amount must be greater than zero.');
+    [$date, $category, $description, $quantity, $unitPrice, $amount, $paymentMethod] = validated_expense_fields($b);
     $bankAccountId = validated_expense_bank_id($b);
     $newId = uuid();
     $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
@@ -147,11 +167,11 @@ if ($method === 'POST') {
     }
     $recordedBy = trim((string)($b['recordedBy'] ?? ''));
     if ($recordedBy === '') $recordedBy = trim((string)($user['name'] ?? $user['email'] ?? 'BELM'));
-    db()->prepare('INSERT INTO company_expenses (id, bank_account_id, date, category, description, amount, recorded_by, receipt_url, receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())')
-        ->execute([$newId, $bankAccountId, $date, $category, $description, $amount, $recordedBy, $b['receiptUrl'] ?? null, $receiptData, $receiptMime, $receiptName]);
-    log_activity($user, 'company-expense-created', 'companyExpense', $newId, ['amount' => $amount, 'category' => $category]);
+    db()->prepare('INSERT INTO company_expenses (id, bank_account_id, date, category, description, quantity, unit_price, amount, payment_method, recorded_by, receipt_url, receipt_photo_data, receipt_photo_mime, receipt_photo_name, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())')
+        ->execute([$newId, $bankAccountId, $date, $category, $description, $quantity, $unitPrice, $amount, $paymentMethod, $recordedBy, $b['receiptUrl'] ?? null, $receiptData, $receiptMime, $receiptName]);
+    log_activity($user, 'company-expense-created', 'companyExpense', $newId, ['amount' => $amount, 'category' => $category, 'paymentMethod' => $paymentMethod]);
     $saved = db()->prepare(
-        "SELECT e.id,e.bank_account_id,e.date,e.category,e.description,e.amount,e.recorded_by,e.receipt_url,e.created_at,e.updated_at,
+        "SELECT e.id,e.bank_account_id,e.date,e.category,e.description,e.quantity,e.unit_price,e.amount,e.payment_method,e.recorded_by,e.receipt_url,e.created_at,e.updated_at,
                 CASE WHEN NULLIF(e.receipt_photo_data,'') IS NULL THEN 0 ELSE 1 END AS has_receipt,
                 b.bank_name,b.account_name
          FROM company_expenses e LEFT JOIN bank_accounts b ON b.id=e.bank_account_id
@@ -166,31 +186,23 @@ if ($method === 'POST') {
 if ($method === 'PUT') {
     $b = body();
     require_edit_confirmation($user, $b);
-    $date = trim((string)($b['date'] ?? ''));
-    $category = strtoupper(trim((string)($b['category'] ?? 'OTHER')));
-    $description = trim((string)($b['description'] ?? ''));
-    $amount = (float)($b['amount'] ?? 0);
-    $allowedCategories = ['SALARIES', 'RENT', 'FUEL', 'UTILITIES', 'SUPPLIES', 'MAINTENANCE', 'OTHER'];
-    if ($date === '') json_error('Expense date is required.');
-    if (!in_array($category, $allowedCategories, true)) json_error('Invalid expense category.');
-    if ($description === '') json_error('Expense description is required.');
-    if ($amount <= 0) json_error('Expense amount must be greater than zero.');
+    [$date, $category, $description, $quantity, $unitPrice, $amount, $paymentMethod] = validated_expense_fields($b);
     $bankAccountId = validated_expense_bank_id($b);
     $recordedBy = trim((string)($b['recordedBy'] ?? ''));
     if ($recordedBy === '') $recordedBy = trim((string)($user['name'] ?? $user['email'] ?? 'BELM'));
     $receiptPhoto = trim((string)($b['receiptPhoto'] ?? ''));
     if ($receiptPhoto !== '') {
         [$receiptData, $receiptMime, $receiptName] = validate_receipt_upload($receiptPhoto, trim((string)($b['receiptName'] ?? '')));
-        $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, amount=?, recorded_by=?, receipt_url=?, receipt_photo_data=?, receipt_photo_mime=?, receipt_photo_name=?, updated_at=NOW() WHERE id=? AND deleted_at IS NULL');
-        $stmt->execute([$bankAccountId, $date, $category, $description, $amount, $recordedBy, $b['receiptUrl'] ?? null, $receiptData, $receiptMime, $receiptName, $id]);
+        $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, quantity=?, unit_price=?, amount=?, payment_method=?, recorded_by=?, receipt_url=?, receipt_photo_data=?, receipt_photo_mime=?, receipt_photo_name=?, updated_at=NOW() WHERE id=? AND deleted_at IS NULL');
+        $stmt->execute([$bankAccountId, $date, $category, $description, $quantity, $unitPrice, $amount, $paymentMethod, $recordedBy, $b['receiptUrl'] ?? null, $receiptData, $receiptMime, $receiptName, $id]);
     } else {
-        $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, amount=?, recorded_by=?, receipt_url=?, updated_at=NOW() WHERE id=? AND deleted_at IS NULL');
-        $stmt->execute([$bankAccountId, $date, $category, $description, $amount, $recordedBy, $b['receiptUrl'] ?? null, $id]);
+        $stmt = db()->prepare('UPDATE company_expenses SET bank_account_id=?, date=?, category=?, description=?, quantity=?, unit_price=?, amount=?, payment_method=?, recorded_by=?, receipt_url=?, updated_at=NOW() WHERE id=? AND deleted_at IS NULL');
+        $stmt->execute([$bankAccountId, $date, $category, $description, $quantity, $unitPrice, $amount, $paymentMethod, $recordedBy, $b['receiptUrl'] ?? null, $id]);
     }
     if ($stmt->rowCount() === 0) json_error('Expense not found.', 404);
-    log_activity($user, 'company-expense-edited', 'companyExpense', $id, ['amount' => $amount]);
+    log_activity($user, 'company-expense-edited', 'companyExpense', $id, ['amount' => $amount, 'paymentMethod' => $paymentMethod]);
     $saved = db()->prepare(
-        "SELECT e.id,e.bank_account_id,e.date,e.category,e.description,e.amount,e.recorded_by,e.receipt_url,e.created_at,e.updated_at,
+        "SELECT e.id,e.bank_account_id,e.date,e.category,e.description,e.quantity,e.unit_price,e.amount,e.payment_method,e.recorded_by,e.receipt_url,e.created_at,e.updated_at,
                 CASE WHEN NULLIF(e.receipt_photo_data,'') IS NULL THEN 0 ELSE 1 END AS has_receipt,
                 b.bank_name,b.account_name
          FROM company_expenses e LEFT JOIN bank_accounts b ON b.id=e.bank_account_id
@@ -201,8 +213,6 @@ if ($method === 'PUT') {
     if ($savedRow) $savedRow['has_receipt'] = (int)$savedRow['has_receipt'] === 1;
     json_out(['ok' => true, 'expense' => $savedRow, 'persisted' => true, 'storage' => 'PostgreSQL / company_expenses']);
 }
-
-
 
 if ($method === 'DELETE') {
     $stmt = db()->prepare('SELECT description, category FROM company_expenses WHERE id = ?');

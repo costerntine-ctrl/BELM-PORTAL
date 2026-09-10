@@ -1,6 +1,6 @@
-// BELM portal service worker — V710 supplied dashboards live.
-// Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v712-workshop-manager-role';
+// BELM portal service worker — V716 dashboard-led structure.
+// Keep API requests network-only; cache only the login shell and current dashboard structure assets.
+const CACHE='belm-portal-v716-dashboard-led-structure';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
@@ -11,11 +11,11 @@ const SHELL=[
   '/portal-v2/index.html?v=710-supplied-dashboards-live',
   '/portal-v2/portal.css?v=712-workshop-manager-role',
   '/portal-v2/portal.js?v=712-workshop-manager-role',
-  '/dashboard-live-v710.js?v=712-workshop-manager-role',
+  '/dashboard-live-v710.js?v=716-dashboard-led-structure',
+  '/concept-dashboards/01-admin-home/index.html',
   '/concept-dashboards/11-workshop-manager/index.html',
   '/concept-dashboards/10-system-settings/index.html',
-  '/concept-dashboards/09-finance-accounts/index.html',
-  '/concept-dashboards/10-system-settings/index.html'
+  '/concept-dashboards/09-finance-accounts/index.html'
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

@@ -10,6 +10,120 @@
     return;
   }
 
+  // V718: universal context-aware Back navigation.
+  // Every authenticated management sub-page must give the user a visible way
+  // back to the page/module they came from. System Settings children always
+  // return to the active /settings-manager/ dashboard instead of an old
+  // concept dashboard or the generic main dashboard.
+  function installContextBackButton() {
+    const params = new URLSearchParams(window.location.search);
+    const moduleName = String(params.get("module") || "").toLowerCase().trim();
+    const cleanPath = window.location.pathname.replace(/\/+$/, "") || "/";
+
+    // Parent dashboards do not need another Back control unless a module
+    // explicitly opened them as a child page.
+    const parentDashboards = new Set([
+      "/belm-workshop",
+      "/settings-manager",
+      "/concept-dashboards/01-admin-home",
+      "/concept-dashboards/04-customer-registration",
+      "/concept-dashboards/09-finance-accounts",
+      "/concept-dashboards/10-system-settings"
+    ]);
+    if (!moduleName && parentDashboards.has(cleanPath)) return;
+
+    let target = "";
+    let label = "← Back";
+
+    if (moduleName === "settings" && cleanPath !== "/settings-manager") {
+      target = "/settings-manager/";
+      label = "← System Settings";
+    } else if (moduleName === "registration" && cleanPath !== "/concept-dashboards/04-customer-registration") {
+      target = "/concept-dashboards/04-customer-registration/";
+      label = "← Registration Dashboard";
+    } else if (moduleName === "finance" && cleanPath !== "/concept-dashboards/09-finance-accounts") {
+      target = "/concept-dashboards/09-finance-accounts/";
+      label = "← Finance Dashboard";
+    } else if (moduleName === "workshop" && cleanPath !== "/belm-workshop") {
+      target = "/belm-workshop/";
+      label = "← Workshop Dashboard";
+    } else {
+      try {
+        const referrer = document.referrer ? new URL(document.referrer) : null;
+        if (referrer && referrer.origin === window.location.origin && referrer.pathname !== window.location.pathname) {
+          target = referrer.href;
+        }
+      } catch (_) {}
+    }
+
+    const install = () => {
+      if (!document.body || document.getElementById("belmContextBackButton")) return;
+
+      // Prefer an existing Back/Main Dashboard control in the page header. This
+      // prevents duplicate buttons and fixes its destination when the page was
+      // opened from another module (for example Settings -> Users & Roles).
+      const header = document.querySelector("header") || document.body;
+      const existing = Array.from(header.querySelectorAll("a[href],button")).find((el) => {
+        const text = String(el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        return text.includes("←") || text === "back" || text.includes("main dashboard") || text.includes("role menu") || text.includes("system settings");
+      });
+
+      if (existing && existing.tagName === "A") {
+        existing.id = "belmContextBackButton";
+        existing.classList.add("belm-context-back");
+        if (target) existing.href = target;
+        existing.textContent = label;
+        if (!target) {
+          existing.href = "/concept-dashboards/01-admin-home/";
+          existing.addEventListener("click", (event) => {
+            if (window.history.length > 1) {
+              event.preventDefault();
+              window.history.back();
+            }
+          });
+        }
+        return;
+      }
+
+      const back = document.createElement("a");
+      back.id = "belmContextBackButton";
+      back.className = "belm-context-back";
+      back.href = target || "/concept-dashboards/01-admin-home/";
+      back.textContent = label;
+      back.setAttribute("aria-label", label.replace(/^←\s*/, "Back to "));
+      if (!target) {
+        back.addEventListener("click", (event) => {
+          if (window.history.length > 1) {
+            event.preventDefault();
+            window.history.back();
+          }
+        });
+      }
+
+      const host = document.querySelector(".top-actions,.topbar-actions,header nav,.header-actions,.toolbar-actions");
+      if (host) {
+        host.prepend(back);
+      } else {
+        back.classList.add("belm-context-back-floating");
+        document.body.appendChild(back);
+      }
+
+      if (!document.getElementById("belmContextBackStyle")) {
+        const style = document.createElement("style");
+        style.id = "belmContextBackStyle";
+        style.textContent = ".belm-context-back{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:38px;padding:8px 13px;border:1px solid #d6dee8;border-radius:9px;background:#fff;color:#20344d;text-decoration:none;font:700 12px Arial,Inter,sans-serif;white-space:nowrap;cursor:pointer}.belm-context-back:hover{background:#f2f6fa}.belm-context-back-floating{position:fixed;left:18px;top:18px;z-index:99998;box-shadow:0 5px 18px rgba(18,38,63,.16)}html[data-theme='dark'] .belm-context-back,html.dark .belm-context-back{background:#172334;color:#eef4fb;border-color:#34465b}@media(max-width:640px){.belm-context-back{min-height:36px;padding:7px 10px;font-size:11px}.belm-context-back-floating{left:10px;top:10px}}";
+        document.head.appendChild(style);
+      }
+    };
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true });
+    else install();
+    // Some React/legacy shells replace their header shortly after first paint.
+    setTimeout(install, 250);
+  }
+
+  installContextBackButton();
+
   // Finance module: the contextual sidebar lives outside Billing Manager's
   // native tab bar. Keep the user on the same page and switch the real panel
   // directly so Payments -> Proforma -> Receipts etc. always changes content.

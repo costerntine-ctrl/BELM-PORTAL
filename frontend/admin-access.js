@@ -16,6 +16,48 @@
   // This is registered before the Super Admin early return below, because the
   // Finance sidebar must work identically for Super Admin and restricted roles.
   if (/^\/billing-manager(?:\/|$)/.test(window.location.pathname)) {
+    const billingQuery = new URLSearchParams(window.location.search);
+    const billingFocus = billingQuery.get("focus") === "1";
+    const billingFocusTab = String(billingQuery.get("tab") || "invoices").toLowerCase();
+
+    if (billingFocus) {
+      const focusCopy = {
+        invoices: ["Invoice", "Invoice records and invoice creation only."],
+        payments: ["Payment", "Customer payment records only."],
+        expenses: ["Expense", "Company expense records only."],
+        proformas: ["Proforma", "Proforma records and proforma creation only."],
+        receipts: ["Receipt", "Official receipt records only."]
+      };
+      const applyBillingFocus = () => {
+        document.body.classList.add("belm-billing-focus");
+        document.body.classList.remove("belm-sidebar-ready", "belm-sidebar-open");
+        document.querySelectorAll("#belmAdminSidebar,.belm-sidebar-toggle,.belm-sidebar-scrim").forEach((el) => el.remove());
+        document.querySelector(".billing-section-sidebar")?.setAttribute("hidden", "hidden");
+        document.querySelector(".metrics")?.setAttribute("hidden", "hidden");
+        document.querySelector(".hero-actions")?.setAttribute("hidden", "hidden");
+        const copy = focusCopy[billingFocusTab] || focusCopy.invoices;
+        const heading = document.querySelector(".hero h1");
+        const note = document.querySelector(".hero p:last-child");
+        if (heading) heading.textContent = copy[0];
+        if (note) note.textContent = copy[1];
+        const back = document.getElementById("mainMenuButton");
+        if (back) {
+          back.href = "/concept-dashboards/09-finance-accounts/";
+          back.textContent = "← Finance Dashboard";
+        }
+        if (!document.getElementById("belmBillingFocusStyle")) {
+          const style = document.createElement("style");
+          style.id = "belmBillingFocusStyle";
+          style.textContent = "body.belm-billing-focus .billing-section-sidebar,body.belm-billing-focus .metrics,body.belm-billing-focus .hero-actions{display:none!important}body.belm-billing-focus .billing-workspace{display:block!important}body.belm-billing-focus main{width:min(1220px,calc(100% - 44px))!important;margin-left:auto!important;margin-right:auto!important}body.belm-billing-focus .hero{justify-content:flex-start!important}";
+          document.head.appendChild(style);
+        }
+      };
+      if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", applyBillingFocus, { once: true });
+      else applyBillingFocus();
+      setTimeout(applyBillingFocus, 0);
+      setTimeout(applyBillingFocus, 300);
+    }
+
     document.addEventListener("click", (event) => {
       const link = event.target.closest?.("a.belm-sidebar-link[href]");
       if (!link) return;

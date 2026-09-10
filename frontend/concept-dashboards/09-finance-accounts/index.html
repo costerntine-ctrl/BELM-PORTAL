@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BELM Operations Portal — Accounts Dashboard</title>
+<link rel="stylesheet" href="assets/css/belm-finance-accounts.css" />
+</head>
+<body>
+
+<div class="shell" id="shell">
+
+  <!-- ============================= SIDEBAR ============================= -->
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <a href="index.html" class="nav-item is-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+        Dashboard
+      </a>
+      <a href="invoices-proforma.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Invoices &amp; Proforma
+      </a>
+      <a href="payments-receipts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="7" cy="14.5" r="1.2"/></svg>
+        Payments &amp; Receipts
+      </a>
+      <a href="expenses.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>
+        Expenses
+      </a>
+      <a href="petty-cash.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5a3 2 0 013-1c1.7 0 3 .8 3 2s-1.3 2-3 2-3 .8-3 2 1.3 2 3 2a3 2 0 003-1"/></svg>
+        Petty Cash
+      </a>
+      <a href="bank-accounts.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg>
+        Bank Accounts
+      </a>
+      <a href="customers.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2 17c0-2.8 2-4.7 4.5-4.7s4.5 1.9 4.5 4.7M11.5 17c0-2.3 1.7-4 4-4s4 1.7 4 4"/></svg>
+        Customers
+      </a>
+      <a href="suppliers.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5a2 2 0 002 1.5h8.4a2 2 0 002-1.6L21 7H6"/></svg>
+        Suppliers
+      </a>
+      <a href="reports.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Reports
+      </a>
+      <a href="financial-analysis.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
+        Financial Analysis
+      </a>
+      <a href="vat-tra.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 9h.01M15 15h.01M15 9l-6 6"/></svg>
+        VAT (TRA)
+      </a>
+      <a href="audit-logs.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 7h6M9 11h6M9 15h3"/></svg>
+        Audit Logs
+      </a>
+      <a href="settings.html" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+        Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="my-role.html" class="btn-role">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
+        View My Role
+      </a>
+      <a href="logout.html" class="btn-logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Logout
+      </a>
+    </div>
+  </aside>
+
+  <!-- ============================== MAIN ============================== -->
+  <div class="main">
+
+    <header class="topheader">
+      <div class="brand">
+        <img src="assets/img/belm-logo-v2.png" alt="BELM General Technical Service Ltd" />
+      </div>
+      <div class="portal-title">
+        <h1>BELM OPERATIONS PORTAL</h1>
+        <p>Finance / Accounts</p>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>
+          <span class="icon-badge">5</span>
+        </button>
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg>
+        </button>
+        <div class="user-chip">
+          <span class="user-avatar initials">FA</span>
+          <span class="user-copy">
+            <strong>Finance Account</strong>
+            <small>Accountant</small>
+          </span>
+          <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- Page head -->
+      <section class="page-head">
+        <div class="page-head-left">
+          <div class="page-head-icon" style="background:var(--blue-bg);color:var(--blue);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V9M9 17V3M15 17v-6"/></svg>
+          </div>
+          <div>
+            <h2>Accounts Dashboard</h2>
+            <p>Manage invoices, payments, expenses and financial records</p>
+          </div>
+        </div>
+        <div class="page-head-right">
+          <div class="datetime-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
+            <span>
+              <strong id="liveDate">Tuesday, 9 September 2026</strong>
+              <span id="liveTime">00:42</span>
+            </span>
+          </div>
+          <a href="invoices-proforma.html?new=1" class="page-head-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M12 5v14M5 12h14"/></svg>
+            New Transaction
+          </a>
+        </div>
+      </section>
+
+      <!-- Stat cards -->
+      <section class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></div>
+          <div class="stat-body">
+            <div class="stat-label">Total Invoices</div>
+            <div class="stat-value">TZS 125,480,000</div>
+            <div class="stat-foot"><span class="sub">32 Invoices</span><span class="stat-delta stat-delta--up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6"/></svg>+12%</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></div>
+          <div class="stat-body">
+            <div class="stat-label">Total Payments</div>
+            <div class="stat-value">TZS 98,250,000</div>
+            <div class="stat-foot"><span class="sub">26 Payments</span><span class="stat-delta stat-delta--up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6"/></svg>+18%</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg></div>
+          <div class="stat-body">
+            <div class="stat-label">Outstanding</div>
+            <div class="stat-value">TZS 27,230,000</div>
+            <div class="stat-foot"><span class="sub">6 Invoices</span><span class="stat-delta stat-delta--down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M6 13l6 6 6-6"/></svg>-8%</span></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon stat-icon--gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg></div>
+          <div class="stat-body">
+            <div class="stat-label">Total Expenses</div>
+            <div class="stat-value">TZS 14,680,000</div>
+            <div class="stat-foot"><span class="sub">18 Expenses</span><span class="stat-delta stat-delta--up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6"/></svg>+5%</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chart + Donut + Quick Actions -->
+      <section class="mid-grid">
+        <div class="panel">
+          <div class="panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17V9M9 17V3M15 17v-6"/></svg>
+            Income vs Expenses (Last 6 Months)
+          </div>
+          <div class="chart-legend">
+            <span><i style="background:#1ea45a;"></i>Income</span>
+            <span><i style="background:#2f6fd6;"></i>Expenses</span>
+          </div>
+          <div class="bar-chart">
+            <div class="bar-chart-yaxis"><span>80M</span><span>60M</span><span>40M</span><span>20M</span><span>0</span></div>
+            <div class="bar-group"><div class="bar-pair"><div class="bar bar--income" style="height:140px;"></div><div class="bar bar--expense" style="height:100px;"></div></div><span class="bar-month-label">Apr 2026</span></div>
+            <div class="bar-group"><div class="bar-pair"><div class="bar bar--income" style="height:158px;"></div><div class="bar bar--expense" style="height:108px;"></div></div><span class="bar-month-label">May 2026</span></div>
+            <div class="bar-group"><div class="bar-pair"><div class="bar bar--income" style="height:150px;"></div><div class="bar bar--expense" style="height:118px;"></div></div><span class="bar-month-label">Jun 2026</span></div>
+            <div class="bar-group"><div class="bar-pair"><div class="bar bar--income" style="height:222px;"></div><div class="bar bar--expense" style="height:118px;"></div></div><span class="bar-month-label">Jul 2026</span></div>
+            <div class="bar-group"><div class="bar-pair"><div class="bar bar--income" style="height:248px;"></div><div class="bar bar--expense" style="height:108px;"></div></div><span class="bar-month-label">Aug 2026</span></div>
+            <div class="bar-group"><div class="bar-pair"><div class="bar bar--income" style="height:322px;"></div><div class="bar bar--expense" style="height:138px;"></div></div><span class="bar-month-label">Sep 2026</span></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.2 15a9 9 0 11-5-12.6"/><path d="M12 12l9-3.6A9 9 0 0012 3z"/></svg>
+            Invoice Status
+          </div>
+          <div class="donut-wrap">
+            <svg class="donut-svg" width="150" height="150" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="62" fill="none" stroke="#eef0f2" stroke-width="20"/>
+              <circle cx="80" cy="80" r="62" fill="none" stroke="#1ea45a" stroke-width="20"
+                stroke-dasharray="315.8 389.6" stroke-dashoffset="0" transform="rotate(-90 80 80)" stroke-linecap="butt"/>
+              <circle cx="80" cy="80" r="62" fill="none" stroke="#e8a317" stroke-width="20"
+                stroke-dasharray="50.6 389.6" stroke-dashoffset="-315.8" transform="rotate(-90 80 80)" stroke-linecap="butt"/>
+              <circle cx="80" cy="80" r="62" fill="none" stroke="#d64545" stroke-width="20"
+                stroke-dasharray="23.2 389.6" stroke-dashoffset="-366.4" transform="rotate(-90 80 80)" stroke-linecap="butt"/>
+              <text x="80" y="76" text-anchor="middle" font-size="22" font-weight="800" fill="#16233a">32</text>
+              <text x="80" y="94" text-anchor="middle" font-size="10.5" fill="#7a8798">Invoices</text>
+            </svg>
+            <div class="donut-legend">
+              <div class="donut-legend-row"><span class="donut-legend-dot" style="background:#1ea45a;"></span>Paid<strong>26</strong><small>(81%)</small></div>
+              <div class="donut-legend-row"><span class="donut-legend-dot" style="background:#e8a317;"></span>Outstanding<strong>6</strong><small>(19%)</small></div>
+              <div class="donut-legend-row"><span class="donut-legend-dot" style="background:#d64545;"></span>Overdue<strong>2</strong><small>(6%)</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h7l-1 8 11-14h-8l1-6z"/></svg>
+            Quick Actions
+          </div>
+          <div class="fin-qa-grid">
+            <a href="invoices-proforma.html?new=invoice" class="fin-qa-btn fin-qa-btn--blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Create Invoice</a>
+            <a href="invoices-proforma.html?new=proforma" class="fin-qa-btn fin-qa-btn--green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Create Proforma</a>
+            <a href="payments-receipts.html?new=1" class="fin-qa-btn fin-qa-btn--amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>Record Payment</a>
+            <a href="expenses.html?new=1" class="fin-qa-btn fin-qa-btn--light-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>Add Expense</a>
+            <a href="petty-cash.html" class="fin-qa-btn fin-qa-btn--light-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/></svg>Petty Cash</a>
+            <a href="bank-accounts.html?new=deposit" class="fin-qa-btn fin-qa-btn--light-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M13 8v7"/><path d="M2 17h16"/></svg>Bank Deposit</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent Invoices + Recent Payments -->
+      <section class="tables-grid">
+        <div class="panel">
+          <div class="panel-head-row">
+            <div class="panel-title" style="margin-bottom:0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+              Recent Invoices
+            </div>
+            <a href="invoices-proforma.html" class="panel-link">View All <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Invoice No</th><th>Customer</th><th>Date</th><th>Amount (TZS)</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td><a href="#" class="cell-link">INV-2026-032</a></td><td>ECLS ICD</td><td>09 Sep 2026</td><td class="num">12,500,000</td><td><span class="status-pill status-pill--paid">Paid</span></td><td class="row-action">···</td></tr>
+              <tr><td>2</td><td><a href="#" class="cell-link">INV-2026-031</a></td><td>APM Terminals</td><td>08 Sep 2026</td><td class="num">18,750,000</td><td><span class="status-pill status-pill--outstanding">Outstanding</span></td><td class="row-action">···</td></tr>
+              <tr><td>3</td><td><a href="#" class="cell-link">INV-2026-030</a></td><td>FMJ Ware</td><td>05 Sep 2026</td><td class="num">4,980,000</td><td><span class="status-pill status-pill--paid">Paid</span></td><td class="row-action">···</td></tr>
+              <tr><td>4</td><td><a href="#" class="cell-link">INV-2026-029</a></td><td>Kilimanjaro ICD</td><td>01 Sep 2026</td><td class="num">22,400,000</td><td><span class="status-pill status-pill--overdue">Overdue</span></td><td class="row-action">···</td></tr>
+              <tr><td>5</td><td><a href="#" class="cell-link">INV-2026-028</a></td><td>GALCO ICD</td><td>28 Aug 2026</td><td class="num">15,600,000</td><td><span class="status-pill status-pill--paid">Paid</span></td><td class="row-action">···</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head-row">
+            <div class="panel-title" style="margin-bottom:0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+              Recent Payments
+            </div>
+            <a href="payments-receipts.html" class="panel-link">View All <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+          </div>
+          <table class="data-table">
+            <thead><tr><th>#</th><th>Date</th><th>Customer</th><th>Amount (TZS)</th><th>Method</th><th>Ref No.</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>09 Sep 2026</td><td>ECLS ICD</td><td class="num">12,500,000</td><td>Bank Transfer</td><td>NMB245681</td></tr>
+              <tr><td>2</td><td>08 Sep 2026</td><td>FMJ Ware</td><td class="num">4,980,000</td><td>Mobile Money</td><td>M-PESA9921</td></tr>
+              <tr><td>3</td><td>06 Sep 2026</td><td>APM Terminals</td><td class="num">9,750,000</td><td>Bank Transfer</td><td>CRDB44221</td></tr>
+              <tr><td>4</td><td>03 Sep 2026</td><td>Galco ICD</td><td class="num">6,200,000</td><td>Cash</td><td>PC-0034</td></tr>
+              <tr><td>5</td><td>01 Sep 2026</td><td>Kilimanjaro ICD</td><td class="num">10,000,000</td><td>Bank Transfer</td><td>NMB33877</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Account Balances + Financial Summary -->
+      <section class="bottom-grid">
+        <div class="panel">
+          <div class="panel-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg>
+            Account Balances
+          </div>
+          <div class="balances-row">
+            <a href="bank-accounts.html#nmb" class="balance-card balance-card--blue">
+              <span class="balance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg></span>
+              <span class="balance-body">
+                <span class="balance-name">NMB Bank</span>
+                <span class="balance-value">TZS 42,850,000</span>
+                <span class="balance-sub">A/C: 2011001234</span>
+              </span>
+              <svg class="balance-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <a href="bank-accounts.html#crdb" class="balance-card balance-card--green">
+              <span class="balance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg></span>
+              <span class="balance-body">
+                <span class="balance-name">CRDB Bank</span>
+                <span class="balance-value">TZS 18,240,000</span>
+                <span class="balance-sub">A/C: 0150445566</span>
+              </span>
+              <svg class="balance-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+            <a href="petty-cash.html" class="balance-card balance-card--amber">
+              <span class="balance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/></svg></span>
+              <span class="balance-body">
+                <span class="balance-name">Petty Cash</span>
+                <span class="balance-value">TZS 1,250,000</span>
+                <span class="balance-sub">Float Balance</span>
+              </span>
+              <svg class="balance-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head-row">
+            <div class="panel-title" style="margin-bottom:0;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
+              Financial Summary (This Month)
+            </div>
+            <a href="financial-analysis.html" class="panel-link">View Report <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+          </div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <div class="summary-label">Total Income</div>
+              <div class="summary-value">TZS 45,680,000</div>
+              <span class="stat-delta stat-delta--up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6"/></svg>+18%</span>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Total Expenses</div>
+              <div class="summary-value">TZS 12,340,000</div>
+              <span class="stat-delta stat-delta--down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M6 13l6 6 6-6"/></svg>+6%</span>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Net Balance</div>
+              <div class="summary-value">TZS 33,340,000</div>
+              <span class="stat-delta stat-delta--up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 19V5M6 11l6-6 6 6"/></svg>+22%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer class="page-footer">
+        <span>© 2026 BELM General Technical Service Ltd. All rights reserved.</span>
+        <em>"Reliable Systems. Efficient Operations. A Stronger Tomorrow."</em>
+      </footer>
+
+    </main>
+  </div>
+</div>
+
+<script src="assets/js/belm-finance-accounts.js"></script>
+<script src="assets/js/belm-finance-live-v711.js?v=711"></script>
+</body>
+</html>

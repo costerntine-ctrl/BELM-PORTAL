@@ -40,9 +40,9 @@ function staff_role_destination(string $roleName): string {
     if (str_contains($role, 'procurement')) return '/workshop-management-home/?role=procurement';
     if (str_contains($role, 'store keeper') || str_contains($role, 'storekeeper')) return '/workshop-management-home/?role=store';
     if (str_contains($role, 'registration') || str_contains($role, 'sales')) return '/workshop-management-home/?role=registration';
-    if (str_contains($role, 'finance') || str_contains($role, 'accounts') || str_contains($role, 'accountant')) return '/workshop-management-home/?role=finance';
+    if (str_contains($role, 'finance') || str_contains($role, 'accounts') || str_contains($role, 'accountant')) return '/concept-dashboards/09-finance-accounts/';
     if (str_contains($role, 'bank control')) return '/workshop-management-home/?role=bank';
-    if (str_contains($role, 'coordinator')) return '/settings-manager/';
+    if (str_contains($role, 'coordinator')) return '/concept-dashboards/10-system-settings/';
     if (str_contains($role, 'workshop manager') || str_contains($role, 'engineer') || str_contains($role, 'technical dep')) return '/workshop-management-home/?role=workshop';
     return '/workshop-management-home/';
 }

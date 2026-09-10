@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="cache-control" content="no-store"><title>BELM Portal</title></head><body><script>
+const q=new URLSearchParams(location.search), n=(q.get('new')||'').toLowerCase();
+let u='/billing-manager/?tab=invoices';
+if(n==='proforma')u='/billing-manager/?tab=proformas&action=new-proforma';
+else if(n==='invoice'||n==='1')u='/billing-manager/?tab=invoices&action=new-invoice';
+location.replace(u);
+</script><noscript><a href="/billing-manager/?tab=invoices">Continue</a></noscript></body></html>

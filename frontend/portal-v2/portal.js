@@ -110,7 +110,7 @@
   const ROLE_CONFIG = {
     "super-admin": {
       title: "BELM Workshop Manager Portal", initials: "WM", eyebrow: "BELM WORKSHOP MANAGEMENT", description: "Workshop management with full BELM administrative control, approvals, finance visibility and secure settings.", primary: "/concept-dashboards/01-admin-home/",
-      menu: [item("Dashboard","home","#dashboard"),item("Customer Registration","customer","/concept-dashboards/04-customer-registration/"),item("Customer Overview","machine","/customers-manager/?module=customer-overview"),item("Roles & Users","user","/roles-manager/?module=roles-users"),item("Workshop & Job Cards","job","/concept-dashboards/05-inspection-repair/"),item("Spare Parts Inventory","stock","/concept-dashboards/06-storekeeper/"),item("Procurement","buy","/concept-dashboards/03-procurement/"),item("Finance & Accounts","money","/billing-manager/?module=finance"),item("Bank Control","bank","/bank-controller/?module=bank"),item("Reports & Analysis","report","/reports-manager/?module=reports"),item("System Settings","settings","/settings-manager/?module=settings")],
+      menu: [item("Dashboard","home","#dashboard"),item("Customer Registration","customer","/concept-dashboards/04-customer-registration/"),item("Customer Overview","machine","/customers-manager/?module=customer-overview"),item("Roles & Users","user","/roles-manager/?module=roles-users"),item("Workshop & Job Cards","job","/concept-dashboards/05-inspection-repair/"),item("Spare Parts Inventory","stock","/concept-dashboards/06-storekeeper/"),item("Procurement","buy","/concept-dashboards/03-procurement/"),item("Finance & Accounts","money","/concept-dashboards/09-finance-accounts/"),item("Bank Control","bank","/bank-controller/?module=bank"),item("Reports & Analysis","report","/reports-manager/?module=reports"),item("System Settings","settings","/concept-dashboards/10-system-settings/")],
       process: ["Register & approve","Assign role","Run operations","Review reports","Audit & control"]
     },
     "workshop-manager": {
@@ -139,7 +139,7 @@
       process: ["Capture details","Check duplicates","Approve access","Register machines","Support customer"]
     },
     finance: {
-      title: "Finance & Payments Dashboard", initials: "FN", eyebrow: "ACCOUNTS · BILLING · VAT", description: "Manage Proforma Invoices, invoices, receipts, payments, expenses, VAT and petty cash.", primary: "/billing-manager/",
+      title: "Finance & Payments Dashboard", initials: "FN", eyebrow: "ACCOUNTS · BILLING · VAT", description: "Manage Proforma Invoices, invoices, receipts, payments, expenses, VAT and petty cash.", primary: "/concept-dashboards/09-finance-accounts/",
       menu: [item("Dashboard","home","#dashboard"),item("Proforma Invoices","quote","/billing-manager/?view=proforma"),item("Invoices","money","/billing-manager/?view=invoices"),item("Payments & Receipts","record","/billing-manager/?view=payments"),item("Company Expenses","money","/billing-manager/?view=expenses"),item("VAT Records","report","/billing-manager/?view=vat"),item("Petty Cash","money","/belm-workshop/petty-cash/"),item("Finance Reports","report","/reports-manager/")],
       process: ["Prepare proforma","Approval","Issue invoice","Record payment","Reconcile"]
     },
@@ -149,7 +149,7 @@
       process: ["Request","Verify authority","Approve","Post movement","Reconcile"]
     },
     "system-coordinator": {
-      title: "System Settings", initials: "SE", eyebrow: "SYSTEM CONFIGURATION", description: "Portal and company configuration managed from one System Settings workspace.", primary: "/settings-manager/",
+      title: "System Settings", initials: "SE", eyebrow: "SYSTEM CONFIGURATION", description: "Portal and company configuration managed from one System Settings workspace.", primary: "/concept-dashboards/10-system-settings/",
       menu: [item("Dashboard","home","#dashboard"),item("System Settings","settings","/settings-manager/")],
       process: ["Open settings","Update configuration","Save changes"]
     },

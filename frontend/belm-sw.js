@@ -1,6 +1,6 @@
 // BELM portal service worker — V710 supplied dashboards live.
 // Keep API requests network-only; cache only the login shell for offline recovery.
-const CACHE='belm-portal-v710-supplied-dashboards-live';
+const CACHE='belm-portal-v711-final-dashboards-live';
 const SHELL=[
   '/customer-app.html?v=680-home-confirm-login',
   '/customer-app.css?v=680-home-confirm-login',
@@ -11,7 +11,9 @@ const SHELL=[
   '/portal-v2/index.html?v=710-supplied-dashboards-live',
   '/portal-v2/portal.css?v=710-supplied-dashboards-live',
   '/portal-v2/portal.js?v=710-supplied-dashboards-live',
-  '/dashboard-live-v710.js?v=710-supplied-live'
+  '/dashboard-live-v710.js?v=710-supplied-live',
+  '/concept-dashboards/09-finance-accounts/index.html',
+  '/concept-dashboards/10-system-settings/index.html'
 ];
 self.addEventListener('install',event=>event.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k))))

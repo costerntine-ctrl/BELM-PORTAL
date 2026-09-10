@@ -83,6 +83,28 @@
     try { return new URLSearchParams(window.location.search).get('tab') || ''; } catch (_) { return ''; }
   }
 
+  function requestedBillingAction() {
+    try { return new URLSearchParams(window.location.search).get('action') || ''; } catch (_) { return ''; }
+  }
+
+  async function applyRequestedBillingAction() {
+    const action = requestedBillingAction();
+    if (!action) return;
+    if (action === 'new-proforma') { activateBillingTab('proformas'); await openProforma(); return; }
+    if (action === 'new-expense') { activateBillingTab('expenses'); openExpense(); return; }
+    if (action === 'new-invoice') {
+      activateBillingTab('invoices');
+      document.getElementById('invoicesPanel')?.scrollIntoView({ behavior:'smooth', block:'start' });
+      setTimeout(() => document.getElementById('invoiceProformaNumber')?.focus(), 100);
+      showAlert('Invoice is generated from a Proforma. Enter the PI Number to create the linked Invoice.');
+      return;
+    }
+    if (action === 'new-payment') {
+      activateBillingTab('invoices');
+      showAlert('Select the Invoice that received money, then click Add payment or Create receipt.');
+    }
+  }
+
   function customerOptions(selected = "") {
     return `<option value="">Select customer…</option>${customers.map((customer) =>
       `<option value="${escapeHtml(customer.id)}" ${customer.id === selected ? "selected" : ""}>${escapeHtml(customer.name)}</option>`
@@ -1311,5 +1333,6 @@
     await applyProformaPrefillFromSparePartRequest();
     await applyInvoicePrefillFromJobCard();
     activateBillingTab(requestedBillingTab());
+    await applyRequestedBillingAction();
   });
 })();

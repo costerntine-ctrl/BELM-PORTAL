@@ -1,7 +1,7 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="cache-control" content="no-store"><title>BELM Portal</title></head><body><script>
 const q=new URLSearchParams(location.search), n=(q.get('new')||'').toLowerCase();
-let u='/billing-manager/?tab=invoices&focus=1';
-if(n==='proforma')u='/billing-manager/?tab=proformas&focus=1&action=new-proforma';
-else if(n==='invoice'||n==='1')u='/billing-manager/?tab=invoices&focus=1&action=new-invoice';
+let u='/invoice-manager/';
+if(n==='proforma')u='/proforma-manager/';
+else if(n==='invoice'||n==='1')u='/invoice-manager/';
 location.replace(u);
-</script><noscript><a href="/billing-manager/?tab=invoices&focus=1">Continue</a></noscript></body></html>
+</script><noscript><a href="/invoice-manager/">Continue</a></noscript></body></html>

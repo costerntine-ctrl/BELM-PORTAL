@@ -32,7 +32,9 @@
 
   const routeMap={
     'job-cards.html':'/belm-workshop/#job-cards',
-    'machines.html':'/customers-manager/?view=all-machines&module=customer-overview',
+    // Machines opens the live Customer Overview cards directly. embed=1 suppresses
+    // the global/admin sidebar so Workshop Manager lands straight on customer cards.
+    'machines.html':'/customers-manager/?embed=1&module=customer-overview',
     'technicians.html':'/belm-workshop/#manage-technicians',
     'workshop-schedule.html':'/belm-workshop/#assigned-work',
     'spare-requests.html':'/spare-parts-manager/?view=requests&module=workshop',

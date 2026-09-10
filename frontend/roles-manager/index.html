@@ -3,11 +3,8 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script>(function(){const p=new URLSearchParams(location.search);if(p.get('embed')==='1')document.documentElement.classList.add('embed-mode');if(p.get('technical')==='1'&&p.get('role')==='Technician')document.documentElement.classList.add('technician-focus');})();</script>
+    <script>(function(){const p=new URLSearchParams(location.search);if(p.get('technical')==='1'&&p.get('role')==='Technician')document.documentElement.classList.add('technician-focus');})();</script>
     <style>
-      html.embed-mode body>.topbar,html.embed-mode #belmAdminSidebar,html.embed-mode .belm-admin-sidebar,html.embed-mode .belm-global-theme-toggle,html.embed-mode .belm-sidebar-toggle,html.embed-mode .belm-sidebar-scrim{display:none!important}
-      html.embed-mode body,html.embed-mode body.belm-sidebar-ready{padding-left:0!important}
-      html.embed-mode main.shell{width:100%;max-width:none;margin:0;padding:12px}
       html.technician-focus #addRoleButton,html.technician-focus #rolesSection{display:none!important}
       html:not(.technician-focus) .technician-only-action{display:none!important}
       html.technician-focus .metrics{grid-template-columns:repeat(5,minmax(0,1fr))}
@@ -16,19 +13,18 @@
       button.metric.technician-only-action strong{color:#6f5200;font-size:16px}
       button.metric.technician-only-action:hover{filter:brightness(1.03)}
       @media(max-width:980px){html.technician-focus .metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-      @media(max-width:620px){html.embed-mode main.shell{padding:8px}html.technician-focus .metrics{grid-template-columns:1fr 1fr}}
+      @media(max-width:620px){html.technician-focus .metrics{grid-template-columns:1fr 1fr}}
     </style>
     <title>BELM Staff Access</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/admin-tools.css">
-    <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
     <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
-  <script src="/theme-manager.js?v=485-display-fit"></script>
-  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
-  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-</head>
+    <script src="/theme-manager.js?v=485-display-fit"></script>
+    <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
+    <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+  </head>
   <body>
     <header class="topbar">
       <a class="brand" href="/belm-workshop/">
@@ -36,7 +32,7 @@
         <span>BELM General Tech <small>Access Control</small></span>
       </a>
       <div class="top-actions">
-        <a class="ghost" href="/belm-workshop/">← Main Home</a>
+        <a class="ghost" href="/concept-dashboards/01-admin-home/">← Main Dashboard</a>
         <button id="refreshButton" class="ghost" type="button">Refresh</button>
       </div>
     </header>
@@ -148,17 +144,11 @@
         const b=document.getElementById('assignedWorkMetric');
         if(!b)return;
         b.addEventListener('click',function(){
-          const q=new URLSearchParams(location.search);
-          if(q.get('embed')==='1'){
-            parent.postMessage({type:'belm-workshop-open-module',module:'assigned'},location.origin);
-          }else{
-            location.href='/breakdown-workflow/?actor=admin&view=assigned';
-          }
+          location.href='/breakdown-workflow/?actor=admin&view=assigned';
         });
       })();
     </script>
     <script src="/admin-access.js?v=411-job-card-only"></script>
-    <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
     <script src="/roles-manager/manager.js?v=485-role-cleanup"></script>

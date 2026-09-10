@@ -11,6 +11,14 @@
   RewriteRule ^portal-home\.html$ - [L]
   RewriteRule ^index\.html$ - [L]
   RewriteRule ^admin-menu/?$ /workshop-management-home/ [R=302,L]
+
+  # Workshop Manager's legacy Spare Requests URL now opens the dedicated
+  # Oil / Fuel / Spare request workflow. Keep Inventory's own manager route
+  # unchanged when it is opened for other inventory functions.
+  RewriteCond %{QUERY_STRING} (^|&)view=requests(&|$) [NC]
+  RewriteCond %{QUERY_STRING} (^|&)module=workshop(&|$) [NC]
+  RewriteRule ^spare-parts-manager/?$ /workshop-requests/? [R=302,L,NE]
+
   # V706: canonical Home Dashboard plus BELM Workshop Manager Portal cleanup.
   # Retire old dashboard bookmarks and the blank legacy /admin landing page.
   RewriteRule ^home-dashboard/?$ /portal-v2/ [R=302,L]

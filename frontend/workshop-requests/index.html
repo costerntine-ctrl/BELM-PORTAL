@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="cache-control" content="no-store">
+  <title>Workshop Material Requests — BELM Operations Portal</title>
+  <link rel="stylesheet" href="/workshop-requests/app.css?v=1">
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+</head>
+<body>
+<header class="topbar">
+  <div><strong>BELM OPERATIONS PORTAL</strong><span>Workshop Material Requests</span></div>
+  <div class="top-actions"><a class="btn ghost" href="/concept-dashboards/11-workshop-manager/">← Back</a><button class="btn" id="refreshBtn">↻ Sync / Refresh</button></div>
+</header>
+<main class="shell">
+  <section class="hero">
+    <div><p class="eyebrow">WORKSHOP REQUEST CONTROL</p><h1>Oil, Fuel & Spare Parts Requests</h1><p>Create a request, save it as Draft, edit it, then Submit. Submitted requests synchronize to Workshop, Store and Procurement.</p></div>
+    <div id="syncBox" class="sync-box"><span id="syncDot" class="dot"></span><div><strong id="syncText">Syncing…</strong><small id="syncTime">—</small></div></div>
+  </section>
+
+  <section id="newAlert" class="new-alert hidden"><span class="pulse"></span><strong id="newAlertText">New request pending</strong><a href="#requestList">View requests</a></section>
+
+  <section class="grid">
+    <form id="requestForm" class="panel form-panel">
+      <div class="section-head"><div><h2>New Material Request</h2><p id="formMode">Draft can be edited before submission.</p></div><button type="button" id="newBtn" class="btn ghost">+ New Request</button></div>
+      <input type="hidden" id="requestId">
+      <div id="formAlert" class="alert hidden"></div>
+      <div class="fields">
+        <label>Request Type<select id="category" required><option value="SPARE">Spare Part</option><option value="OIL">Oil</option><option value="FUEL">Fuel</option></select></label>
+        <label>Item / Material Name<input id="itemName" required maxlength="255" placeholder="e.g. Hydraulic oil 68, Diesel, Fuel filter"></label>
+        <label>Part Number <small>(optional)</small><input id="partNumber" maxlength="100" placeholder="Part number"></label>
+        <label>Quantity<input id="quantity" type="number" min="0.01" step="0.01" value="1" required></label>
+        <label>Unit<select id="unit"><option value="pcs">pcs</option><option value="litres">litres</option><option value="kg">kg</option><option value="set">set</option><option value="box">box</option><option value="drum">drum</option></select></label>
+        <label>Customer / Site<input id="customerSite" maxlength="255" placeholder="e.g. ECLS ICD"></label>
+        <label class="full">Machine / Fleet Number<input id="machineRef" maxlength="255" placeholder="e.g. SANY RS45V / RS-03"></label>
+        <label class="full">Purpose / Reason<textarea id="purpose" rows="3" placeholder="Why is this material required?"></textarea></label>
+      </div>
+      <div class="form-actions"><button type="submit" class="btn ghost" id="saveBtn">Save Draft</button><button type="button" class="btn submit" id="submitBtn" disabled>Submit Request</button></div>
+    </form>
+
+    <aside class="panel status-panel">
+      <h2>Request Status</h2>
+      <div class="stat-row"><span>New submitted</span><strong id="newCount">0</strong></div>
+      <div class="stat-row"><span>Pending action</span><strong id="pendingCount">0</strong></div>
+      <div class="stat-row"><span>Current user</span><strong id="currentUser">—</strong></div>
+      <div class="legend"><span><i class="draft"></i>Draft</span><span><i class="submitted"></i>Submitted</span><span><i class="ack"></i>Acknowledged</span><span><i class="done"></i>Fulfilled</span></div>
+    </aside>
+  </section>
+
+  <section class="panel" id="requestList">
+    <div class="section-head wrap"><div><h2>Request List</h2><p>All requests are synchronized and kept for monthly reporting.</p></div><div class="filters"><input id="monthFilter" type="month"><select id="typeFilter"><option value="">All Types</option><option value="OIL">Oil</option><option value="FUEL">Fuel</option><option value="SPARE">Spare Part</option></select><select id="statusFilter"><option value="">All Status</option><option>DRAFT</option><option>SUBMITTED</option><option>ACKNOWLEDGED</option><option>FULFILLED</option><option>REJECTED</option><option>CANCELLED</option></select><button class="btn ghost" id="monthlyPdfBtn" type="button">Download Monthly PDF</button></div></div>
+    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Request No.</th><th>Type</th><th>Item</th><th>Qty</th><th>Site / Machine</th><th>Requested By</th><th>Status</th><th>Actions</th></tr></thead><tbody id="rows"><tr><td colspan="9" class="empty">Loading requests…</td></tr></tbody></table></div>
+  </section>
+</main>
+<script src="/workshop-requests/app.js?v=1"></script>
+</body>
+</html>

@@ -15,3 +15,55 @@
 .case-card>.detail-panel.inline-case-detail .section{margin-top:10px}
 .case-card>.detail-panel.inline-case-detail .job,.case-card>.detail-panel.inline-case-detail .spare{margin:5px 0;padding:8px}
 @media(max-width:720px){.case-card>.detail-panel.inline-case-detail .detail{padding:9px}.case-card>.detail-panel.inline-case-detail .status-box{grid-template-columns:1fr 1fr}}
+
+/* V719 - Workshop Manager Job Cards: remove the unused right placeholder.
+   The queue now uses the full workspace width. Opening a card switches the
+   same area to a full-width process view instead of reserving an empty column. */
+html.admin-job-cards-full-view.belm-job-queue-full .grid{
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:0!important;
+}
+html.admin-job-cards-full-view.belm-job-queue-full .grid>.panel:first-child{
+  width:100%!important;
+  min-width:0!important;
+}
+html.admin-job-cards-full-view.belm-job-queue-full .case-list{
+  width:100%!important;
+  max-height:none!important;
+  overflow:visible!important;
+  padding:10px 12px 14px!important;
+}
+html.admin-job-cards-full-view.belm-job-queue-full .case-card{
+  width:100%!important;
+  max-width:none!important;
+  margin:8px 0!important;
+  padding:12px 16px!important;
+}
+html.admin-job-cards-full-view.belm-job-queue-full .grid>.detail-panel{
+  display:none!important;
+  width:100%!important;
+  min-height:0!important;
+}
+html.admin-job-cards-full-view.belm-job-queue-full.belm-job-detail-full .grid>.panel:first-child{
+  display:none!important;
+}
+html.admin-job-cards-full-view.belm-job-queue-full.belm-job-detail-full .grid>.detail-panel{
+  display:block!important;
+}
+html.admin-job-cards-full-view .belm-back-to-job-list{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  margin:0 0 12px;
+  padding:8px 12px;
+  border:1px solid rgba(71,177,255,.55);
+  border-radius:9px;
+  background:rgba(20,111,185,.18);
+  color:inherit;
+  font:800 12px/1.2 Inter,Arial,sans-serif;
+  cursor:pointer;
+}
+html.admin-job-cards-full-view .belm-back-to-job-list:hover{filter:brightness(1.08)}
+@media(max-width:720px){
+  html.admin-job-cards-full-view.belm-job-queue-full .case-card{padding:10px 11px!important}
+}

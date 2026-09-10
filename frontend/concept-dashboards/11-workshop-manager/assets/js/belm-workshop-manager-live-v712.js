@@ -54,6 +54,26 @@
     if(textNode)textNode.nodeValue='Technician Dispatch';
   }
 
+  function bindStatusCards(){
+    const cards=[...document.querySelectorAll('.wm-stat-card')];
+    const byLabel=label=>cards.find(card=>card.querySelector('.wm-stat-label')?.textContent.trim().toLowerCase()===label.toLowerCase());
+    const open=byLabel('Open Job Cards');
+    if(open){
+      open.removeAttribute('href');
+      open.setAttribute('role','status');
+      open.setAttribute('aria-label','Open Job Cards synchronized information');
+      open.style.cursor='default';
+      open.style.pointerEvents='none';
+      const chev=open.querySelector('.wm-stat-chev');if(chev)chev.style.visibility='hidden';
+    }
+    const progress=byLabel('In Progress');
+    if(progress)progress.href='/belm-workshop/job-card-status/?status=progress';
+    const waiting=byLabel('Waiting for Spare');
+    if(waiting)waiting.href='/belm-workshop/job-card-status/?status=waiting';
+    const completed=byLabel('Completed (This Month)');
+    if(completed)completed.href='/belm-workshop/job-card-status/?status=completed';
+  }
+
   function updateClock(){const now=new Date(),d=document.getElementById('liveDate'),t=document.getElementById('liveTime');if(d)d.textContent=now.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});if(t)t.textContent=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
   updateClock();setInterval(updateClock,30000);
   function applyStat(label,value){document.querySelectorAll('.wm-stat-card').forEach(card=>{const l=card.querySelector('.wm-stat-label'),v=card.querySelector('.wm-stat-value');if(l&&v&&l.textContent.trim().toUpperCase()===label.toUpperCase())v.textContent=String(value);});}
@@ -85,6 +105,7 @@
   }
   bindHeader();
   bindTechnicianDispatch();
+  bindStatusCards();
   load().catch(e=>console.warn('Workshop Manager live sync:',e));
   setInterval(()=>load().catch(()=>{}),60000);
 })();

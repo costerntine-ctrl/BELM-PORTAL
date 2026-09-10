@@ -39,25 +39,6 @@
     return u.pathname + u.search + u.hash;
   }
 
-  function exportFirstTableCsv(prefix) {
-    const table = document.querySelector("table");
-    if (!table) { alert("No table data is available to export."); return; }
-    const rows = Array.from(table.querySelectorAll("tr")).map(tr =>
-      Array.from(tr.querySelectorAll("th,td")).map(td =>
-        '"' + String(td.innerText || td.textContent || "").replace(/\s+/g, " ").trim().replace(/"/g, '""') + '"'
-      ).join(",")
-    );
-    const blob = new Blob([rows.join("\r\n")], { type: "text/csv;charset=utf-8" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.download = (prefix || "BELM-export") + "-" + new Date().toISOString().slice(0, 10) + ".csv";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
   // Placeholder action buttons in the supplied static mockups are connected to the existing live modules.
   const actionRoutes = {
     "01-admin-home": {
@@ -96,9 +77,9 @@
       "REVIEW": "/spare-parts-manager/?view=requests&module=inventory",
       "ISSUE PART": "/spare-parts-manager/?view=stock-out&module=inventory",
       "SCAN ITEM": "/spare-parts-manager/?module=inventory",
-      "PRINT ISSUE NOTE": "#belm-print",
+      "PRINT ISSUE NOTE": "/spare-parts-manager/?view=stock-out&module=inventory",
       "START AUDIT": "/spare-parts-manager/?view=audit&module=inventory",
-      "EXPORT CSV": "#belm-table-csv"
+      "EXPORT CSV": "/reports-manager/?view=inventory&module=inventory"
     },
     "07-operator": {
       "ADD COMMENT": "/operator/#report"
@@ -129,7 +110,6 @@
     if (!target) return;
     event.preventDefault();
     if (target === "#belm-print") { window.print(); return; }
-    if (target === "#belm-table-csv") { exportFirstTableCsv("BELM-inventory"); return; }
     if (target === "#belm-checklist-csv") {
       if (typeof window.BELMExportChecklistCSV === "function") window.BELMExportChecklistCSV();
       return;
@@ -141,10 +121,8 @@
   if (dashboard === "01-admin-home") {
     document.querySelectorAll('.belm-alert-row[href="#"]').forEach(function (a) {
       const t = normalizeText(a);
-      if (t.includes("MACHINES DUE FOR SERVICE") || t.includes("SERVICE")) a.href = "/reports-manager/?view=service&module=reports";
-      else if (t.includes("LOW STOCK") || t.includes("SPARE")) a.href = "/concept-dashboards/06-storekeeper/";
-      else if (t.includes("FUEL REFILL")) a.href = "/reports-manager/?view=fuel&module=reports";
-      else if (t.includes("EXPIRED DOCUMENT")) a.href = "/reports-manager/?view=documents&module=reports";
+      if (t.includes("SERVICE")) a.href = "/reports-manager/?module=reports";
+      else if (t.includes("SPARE")) a.href = "/concept-dashboards/06-storekeeper/";
       else if (t.includes("APPROVAL")) a.href = "/concept-dashboards/04-customer-registration/";
       else if (t.includes("INVOICE") || t.includes("PAYMENT")) a.href = "/billing-manager/?module=finance";
       else a.href = "/reports-manager/?module=reports";

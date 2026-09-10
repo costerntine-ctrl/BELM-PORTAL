@@ -12,7 +12,7 @@
 
   function readUser() {
     try { return JSON.parse(localStorage.getItem("belm_admin_user") || "null"); }
-    catch (_) { return null; }
+    catch (err) { console.warn('Workshop Manager dashboard: could not parse stored user record.', err); return null; }
   }
 
   const user = readUser();

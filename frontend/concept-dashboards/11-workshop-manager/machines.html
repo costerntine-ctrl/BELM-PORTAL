@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title></head><body><script>
 (function(){
-  var target="/customers-manager/?module=customer-overview";
+  var target="/customers-manager/?view=all-machines";
   var out=new URL(target, window.location.origin);
   var incoming=new URLSearchParams(window.location.search);
   incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });

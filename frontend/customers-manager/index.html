@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="/customers-manager/manager.css?v=505-no-white-customer-overview">
     <link rel="stylesheet" href="/customers-manager/belm-brand-card.css?v=619-restored-full-overview">
     <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
+    <link rel="stylesheet" href="/customers-manager/no-sidebar.css?v=724-customer-overview-clean">
     <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -229,175 +230,39 @@
           <label>Customer portal link<input id="credentialLink" readonly></label>
         </div>
         <div class="dialog-actions">
-          <button id="copyCredentialsButton" class="secondary" type="button">Copy all</button>
-          <button id="copyCredentialLinkButton" class="secondary" type="button">Copy link</button>
-          <button id="copyCredentialPasswordButton" class="secondary" type="button">Copy password</button>
-          <a id="openCredentialLink" class="primary" target="_blank" rel="noopener">Open customer link</a>
+          <button id="copyCredentialsButton" class="primary" type="button">Copy credentials</button>
+          <button class="ghost" data-close="credentialsDialog" type="button">Close</button>
         </div>
       </div>
     </dialog>
 
-    <dialog id="customerMessagesDialog">
-      <div class="dialog-card">
+    <dialog id="forgetCustomerDialog">
+      <form id="forgetCustomerForm" class="dialog-card">
         <div class="dialog-head">
-          <div><p class="eyebrow">Customer Fleet</p><h2 id="customerMessagesTitle">Customer Messages</h2></div>
-          <button class="icon-close" data-close="customerMessagesDialog" type="button" aria-label="Close">×</button>
+          <div><p class="eyebrow">Permanent Removal</p><h2>Forget customer</h2></div>
+          <button class="icon-close" data-close="forgetCustomerDialog" type="button" aria-label="Close">×</button>
         </div>
-        <div id="customerMessagesBody"></div>
-      </div>
-    </dialog>
-
-    <dialog id="sendCustomerMessageDialog">
-      <form id="sendCustomerMessageForm" class="dialog-card">
-        <div class="dialog-head">
-          <div><p class="eyebrow">BELM → Customer</p><h2 id="sendCustomerMessageTitle">Message Customer</h2></div>
-          <button class="icon-close" data-close="sendCustomerMessageDialog" type="button" aria-label="Close">×</button>
-        </div>
-        <input id="sendCustomerMessageCustomerId" type="hidden">
-        <div class="form-grid">
-          <label>Related machine <small>(optional)</small>
-            <select id="sendCustomerMessageMachine"><option value="">General / customer account</option></select>
-          </label>
-          <label>Subject
-            <input id="sendCustomerMessageSubject" maxlength="160" value="Message from BELM" required>
-          </label>
-          <div class="message-checkup-jump">
-            <button type="button" id="sendCustomerMessageCheckup" class="ghost" disabled>Check Up → Fill checklist</button>
-          </div>
-          <label class="span-2">Message
-            <textarea id="sendCustomerMessageBody" rows="6" maxlength="2000" placeholder="Write the message the customer should see in the portal…" required></textarea>
-          </label>
-          <label class="span-2 message-email-option">
-            <input id="sendCustomerMessageEmailGroup" type="checkbox">
-            <span><strong>Send Email to Customer Group for Action</strong><small>Customer account owner + all active customer users.</small></span>
-          </label>
-        </div>
-        <p class="muted">Every message is saved in Communication History. Email is optional here; only Service Overdue alerts are emailed automatically to the customer group.</p>
+        <p>This permanently deletes <strong id="forgetCustomerName">this customer</strong> and the related portal data. This cannot be recovered.</p>
+        <label>Type <strong>FORGET</strong> to confirm<input id="forgetCustomerConfirmation" autocomplete="off" required></label>
         <div class="dialog-actions">
-          <button class="ghost" data-close="sendCustomerMessageDialog" type="button">Cancel</button>
-          <button id="sendCustomerMessageButton" class="primary" type="submit">Save / Send Message</button>
+          <button class="ghost" data-close="forgetCustomerDialog" type="button">Cancel</button>
+          <button id="confirmForgetCustomerButton" class="danger" type="submit">Forget permanently</button>
         </div>
       </form>
     </dialog>
 
-    <dialog id="machineListDialog">
-      <div class="dialog-card">
+    <dialog id="communicationDialog">
+      <div class="dialog-card communication-dialog-card">
         <div class="dialog-head">
-          <div><p class="eyebrow">Customer Fleet</p><h2 id="machineListTitle">Machines</h2></div>
-          <button class="icon-close" data-close="machineListDialog" type="button" aria-label="Close">×</button>
+          <div><p class="eyebrow">Communication History</p><h2 id="communicationDialogTitle">Customer communication</h2></div>
+          <button class="icon-close" data-close="communicationDialog" type="button" aria-label="Close">×</button>
         </div>
-        <div class="dialog-actions" style="justify-content: flex-start; border-top: 0; padding-top: 0; margin-bottom: 12px;">
-          <button id="machineListAddButton" class="primary" type="button">+ Add machine</button>
-        </div>
-        <div id="machineListBody"></div>
+        <div id="communicationDialogBody" class="communication-dialog-body"></div>
       </div>
     </dialog>
 
-    <dialog id="reportsDialog">
-      <div class="dialog-card report-center-dialog-card">
-        <div class="dialog-head">
-          <div><p class="eyebrow">Machine Report Center</p><h2 id="reportsDialogTitle">Reports</h2></div>
-          <button class="icon-close" data-close="reportsDialog" type="button" aria-label="Close">×</button>
-        </div>
-        <nav class="machine-report-tabs" aria-label="Report type">
-          <button type="button" class="active" data-report-tab="checklist">Checklist Report</button>
-          <button type="button" data-report-tab="jobcard">Job Card Report</button>
-          <button type="button" data-report-tab="daily">Daily Report</button>
-          <button type="button" data-report-tab="operator">Operator Reported</button>
-          <button type="button" data-report-tab="analysis">Machine Analysis</button>
-        </nav>
-        <div class="machine-report-filter">
-          <label>Filter
-            <select id="machineReportFilterMode">
-              <option value="all">All time</option>
-              <option value="day">Date</option>
-              <option value="month">Month</option>
-              <option value="year">Year</option>
-            </select>
-          </label>
-          <label id="machineReportDayField" class="hidden">Date<input id="machineReportDay" type="date"></label>
-          <label id="machineReportMonthField" class="hidden">Month<input id="machineReportMonth" type="month"></label>
-          <label id="machineReportYearField" class="hidden">Year<input id="machineReportYear" type="number" min="2000" max="2100" step="1" placeholder="2026"></label>
-          <button id="machineReportApplyFilter" type="button">View Reports</button>
-          <button id="machineReportDownloadButton" class="primary" type="button">Download Report</button>
-        </div>
-        <p id="machineReportPeriodLabel" class="machine-report-period-label">Showing all saved reports.</p>
-        <div id="reportsList" class="reports-list report-center-list"></div>
-      </div>
-    </dialog>
-
-    <dialog id="expenseReceiptsDialog">
-      <div class="dialog-card">
-        <div class="dialog-head">
-          <div><p class="eyebrow">Bookkeeping</p><h2 id="expenseReceiptsTitle">Procurement receipts</h2></div>
-          <div class="dialog-head-actions">
-            <button class="ghost" id="downloadAllExpenseReceiptsButton" type="button">Download All</button>
-            <button class="icon-close" data-close="expenseReceiptsDialog" type="button" aria-label="Close">×</button>
-          </div>
-        </div>
-        <div id="expenseReceiptsBody" class="dialog-body"></div>
-      </div>
-    </dialog>
-
-    <dialog id="reportViewDialog">
-      <div class="dialog-card">
-        <div class="dialog-head">
-          <div><p class="eyebrow" id="reportViewEyebrow">Checked Report</p><h2 id="reportViewTitle">Report detail</h2></div>
-          <div class="dialog-head-actions">
-            <button id="reportViewPrintButton" type="button" class="ghost">Print</button>
-            <a id="reportViewDownloadLink" href="#" target="_blank" rel="noopener">Download PDF</a>
-            <button class="icon-close" data-close="reportViewDialog" type="button" aria-label="Close">×</button>
-          </div>
-        </div>
-        <div id="reportViewBody" class="report-view-body"></div>
-      </div>
-    </dialog>
-
-    <dialog id="checkupDialog">
-      <form id="checkupForm" class="dialog-card">
-        <div class="dialog-head">
-          <div><p class="eyebrow">Machine Check-up</p><h2 id="checkupDialogTitle">Check-up</h2></div>
-          <button class="icon-close" data-close="checkupDialog" type="button" aria-label="Close">×</button>
-        </div>
-        <input id="checkupMachineId" type="hidden">
-        <div id="checkupFormAlert" class="alert error hidden"></div>
-        <label>Checklist template
-          <select id="checkupTemplate"></select>
-        </label>
-        <label>Running HRS <small id="checkupLastHourMeter">(loading last recorded hours…)</small><input id="checkupHourMeter" type="number" min="0" step="0.1" required placeholder="Enter today's hour meter reading"></label>
-        <label>Technician / Inspector <small>(automatic from login)</small><input id="checkupFilledBy" type="text" placeholder="Automatic from login" readonly></label>
-        <label class="toggle-row"><input id="checkupIsServiceDay" type="checkbox"> Is this a service day?</label>
-        <div id="checkupServiceFields" class="two-column hidden">
-          <label>Service date<input id="checkupServiceDate" type="date"></label>
-          <label>Service type
-            <select id="checkupServiceType">
-              <option value="">Select service type</option>
-              <option value="250_HOUR">250-Hour Service</option>
-              <option value="500_HOUR">500-Hour Service</option>
-              <option value="1000_HOUR">1000-Hour Service</option>
-              <option value="2000_HOUR">2000-Hour Service</option>
-            </select>
-          </label>
-        </div>
-        <label>Display photo <span class="required-mark">*</span> <small>(REQUIRED every check-up — photo of the machine's display screen showing fuel level, fault codes, etc.)</small>
-          <div class="checkup-photo-uploader">
-            <input id="checkupDisplayPhotoFile" type="file" accept="image/*" capture="environment" class="checkup-photo-picker">
-            <img id="checkupDisplayPhotoPreview" class="checkup-photo-preview hidden" alt="Display photo preview">
-            <input id="checkupDisplayPhotoValue" type="hidden">
-          </div>
-        </label>
-        <div id="checkupItems" class="checkup-items"></div>
-        <div class="dialog-actions">
-          <button class="ghost" data-close="checkupDialog" type="button">Cancel</button>
-          <button id="saveCheckupButton" class="primary" type="submit">Save check-up</button>
-        </div>
-      </form>
-    </dialog>
-
-    <script src="/admin-access.js?v=411-job-card-only"></script>
+    <script src="/admin-access.js?v=718-context-back"></script>
     <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
-    <script src="/delete-confirm.js"></script>
-    <script src="/edit-confirm.js"></script>
-    <script src="/customers-manager/manager.js?v=480-workshop-embed-back-fit"></script>
+    <script src="/customers-manager/app.js?v=718-inspection-checklist-flow"></script>
   </body>
 </html>

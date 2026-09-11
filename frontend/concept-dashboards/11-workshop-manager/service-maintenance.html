@@ -1,11 +1,209 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title></head><body><script>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Service & Maintenance — BELM Workshop Manager</title>
+<link rel="stylesheet" href="assets/css/belm-workshop-manager.css">
+<link rel="stylesheet" href="/theme-global.css?v=728-service-maintenance">
+<script src="/theme-manager.js?v=728-service-maintenance"></script>
+<script defer src="/edit-confirm.js?v=728-service-maintenance"></script>
+<style>
+.sm-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap}.sm-head h2{margin:0;font-size:28px}.sm-head p{margin:5px 0 0;color:var(--text-muted)}
+.sm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.sm-card{padding:18px;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:var(--shadow)}.sm-card h3{margin:0 0 6px}.sm-card p{margin:0 0 14px;color:var(--text-muted);font-size:12px;line-height:1.5}.sm-card button{border:0;border-radius:9px;padding:10px 14px;background:var(--blue);color:#fff;font-weight:800}
+.sm-filter{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr auto;gap:10px;align-items:end;padding:15px;border:1px solid var(--border);border-radius:14px;background:#fff}.sm-filter label{display:grid;gap:5px;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase}.sm-filter select,.sm-filter input,.entry-form select,.entry-form input,.entry-form textarea{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-dark)}
+.pc-card{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:18px 20px;border-radius:15px;border:1px solid rgba(60,145,236,.35);background:linear-gradient(135deg,#102a47,#0d355d);color:#fff}.pc-balance span{display:block;font-size:11px;text-transform:uppercase;color:#9fc8ef;font-weight:800}.pc-balance strong{display:block;font-size:30px;margin-top:5px}.pc-balance small{color:#b7d1ea}.pc-actions{display:flex;gap:8px;flex-wrap:wrap}.pc-actions button{padding:10px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.2);font-weight:800}.pc-actions .deposit{background:#1ea45a;color:#fff}.pc-actions .expense{background:#e8a317;color:#1f2b38}.pc-actions .edit{background:#2374d8;color:#fff}.pc-actions .ghost{background:transparent;color:#fff}
+.report-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.report-toolbar .actions{display:flex;gap:8px;flex-wrap:wrap}.report-toolbar button{padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:#fff;font-weight:800;color:var(--text-dark)}.report-toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:13px;background:#fff}.sm-table{width:100%;border-collapse:collapse;min-width:950px}.sm-table th,.sm-table td{padding:10px 11px;border-bottom:1px solid var(--border);text-align:left;font-size:12px;vertical-align:top}.sm-table th{background:#f5f8fc;font-size:10px;text-transform:uppercase;color:var(--text-muted);position:sticky;top:0}.sm-table tr[data-entry]{cursor:pointer}.sm-table tr[data-entry]:hover{background:rgba(47,111,214,.06)}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.pill.permanent{background:#dcf7e7;color:#157440}.pill.non{background:#eef3f7;color:#5f6b78}.pill.open{background:#ffe9e6;color:#a93029}.pill.done{background:#dcf7e7;color:#157440}
+.entry-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.entry-form label{display:grid;gap:5px;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase}.entry-form .wide{grid-column:1/-1}.dialog-card{max-width:760px}.hint{font-size:11px;color:var(--text-muted)}.hidden{display:none!important}
+html[data-theme='dark'] .sm-card,html[data-theme='dark'] .sm-filter,html[data-theme='dark'] .table-wrap,html[data-theme='dark'] .report-toolbar button{background:#111b2e!important;border-color:#2a3950!important;color:#eef4fb!important}html[data-theme='dark'] .sm-table th{background:#0d1728!important;color:#aab9ca!important}html[data-theme='dark'] .sm-table td{border-color:#26354a!important}html[data-theme='dark'] .sm-filter select,html[data-theme='dark'] .sm-filter input,html[data-theme='dark'] .entry-form select,html[data-theme='dark'] .entry-form input,html[data-theme='dark'] .entry-form textarea{background:#0e1828!important;color:#eef4fb!important;border-color:#314158!important}
+@media(max-width:1000px){.sm-grid{grid-template-columns:1fr}.sm-filter{grid-template-columns:1fr 1fr}.pc-card{grid-template-columns:1fr}.entry-form{grid-template-columns:1fr}.entry-form .wide{grid-column:auto}}@media(max-width:620px){.sm-filter{grid-template-columns:1fr}.content{padding:14px}.pc-actions{display:grid;grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<nav class="sidebar-nav">
+<a href="index.html" class="nav-item">Home Dashboard</a>
+<a href="job-cards.html" class="nav-item">Job Cards</a>
+<a href="machines.html" class="nav-item">Machines</a>
+<a href="technicians.html" class="nav-item">Technicians</a>
+<a href="workshop-schedule.html" class="nav-item">Workshop Schedule</a>
+<a href="spare-requests.html" class="nav-item">Workshop Requirements</a>
+<a href="service-maintenance.html" class="nav-item is-active">Service &amp; Maintenance</a>
+<a href="reports-analysis.html" class="nav-item">Reports &amp; Analysis</a>
+<a href="checklist-monitoring.html" class="nav-item">Checklist Monitoring</a>
+<a href="customers.html" class="nav-item">Customers</a>
+<a href="communication.html" class="nav-item">Communication</a>
+<a href="tools-equipment.html" class="nav-item">Tools &amp; Equipment</a>
+<a href="workshop-settings.html" class="nav-item">Workshop Settings</a>
+</nav>
+</aside>
+<div class="main">
+<header class="topheader">
+<div class="brand"><img src="assets/img/belm-logo-v2.png" alt="BELM"></div>
+<div class="portal-title"><h1>BELM OPERATIONS PORTAL</h1><p>| Workshop Manager Dashboard</p><div class="tagline">Service records · Breakdown · Lube · Petty Cash</div></div>
+<div class="header-right"><button id="themeToggle" class="icon-btn" type="button" aria-label="Theme">◐</button></div>
+</header>
+<main class="content">
+<section class="sm-head"><div><h2>Service &amp; Maintenance</h2><p>View each customer or all customers — Permanent and Non-Permanent — from one report centre.</p></div></section>
+
+<section class="sm-grid">
+<article class="sm-card"><h3>Maintenance Report</h3><p>Service history, machine hours, maintenance work completed and who recorded it.</p><button type="button" data-report="maintenance">Open Maintenance Report</button></article>
+<article class="sm-card"><h3>Breakdown Case Report</h3><p>Breakdown cases, current workflow stage, blocker, department and completion status.</p><button type="button" data-report="breakdown">Open Breakdown Report</button></article>
+<article class="sm-card"><h3>Lube Use Report</h3><p>Oil, grease and lubricant usage by customer, machine, quantity and cost.</p><button type="button" data-report="lube">Open Lube Use Report</button></article>
+</section>
+
+<section class="sm-filter">
+<label>Customer<select id="customerFilter"><option value="">All customers</option></select></label>
+<label>Customer Type<select id="customerType"><option value="ALL">All customer types</option><option value="PERMANENT">Permanent customer</option><option value="NON_PERMANENT">Non-Permanent customer</option></select></label>
+<label>From<input id="fromDate" type="date"></label>
+<label>To<input id="toDate" type="date"></label>
+<button id="applyFilter" class="qa-btn qa-btn--blue" type="button">Apply Filter</button>
+</section>
+
+<section class="pc-card">
+<div class="pc-balance"><span>BELM Workshop Petty Cash Account</span><strong id="pettyBalance">TZS 0</strong><small id="pettySummary">Funded TZS 0 · Used TZS 0</small></div>
+<div class="pc-actions"><button type="button" class="deposit" id="depositButton">Deposit</button><button type="button" class="expense" id="expenseButton">Save Expense</button><button type="button" class="edit" id="editButton">Edit</button><button type="button" class="ghost" id="pcPdf">PDF</button><button type="button" class="ghost" id="pcCsv">CSV</button></div>
+</section>
+
+<section class="panel">
+<div class="report-toolbar"><div><h3 id="reportTitle" style="margin:0">Maintenance Report</h3><small id="reportStatus">Loading…</small></div><div class="actions"><button type="button" id="reportPdf">Download PDF</button><button type="button" id="reportCsv">Download CSV</button><button type="button" class="primary" id="refreshReport">Refresh</button></div></div>
+<div id="reportTable" class="table-wrap" style="margin-top:12px"></div>
+</section>
+
+<section class="panel"><div class="section-head"><div><h3>Petty Cash Transactions</h3><p>Record workshop expenses, attach receipts and keep an audit-ready transaction history. Click a row, then Edit, to amend it.</p></div></div><div id="pettyTable" class="table-wrap"></div></section>
+</main>
+</div>
+</div>
+
+<dialog id="entryDialog">
+<form id="entryForm" class="dialog-card">
+<div class="dialog-head"><div><p class="eyebrow">BELM WORKSHOP</p><h2 id="entryTitle">Petty Cash Entry</h2></div><button type="button" class="icon-close" id="closeEntry">×</button></div>
+<input id="entryId" type="hidden"><input id="entryType" type="hidden">
+<div class="entry-form">
+<label>Date<input id="entryDate" type="date" required></label>
+<label>Amount (TZS)<input id="entryAmount" type="number" min="1" step="1" required></label>
+<label>Customer<select id="entryCustomer"><option value="">BELM / General</option></select></label>
+<label>Machine<select id="entryMachine"><option value="">General / no machine</option></select></label>
+<label>Category<input id="entryCategory" placeholder="e.g. Transport, Oil, Workshop material"></label>
+<label>Reference<input id="entryReference" placeholder="Auto generated if blank"></label>
+<label class="wide">Description<textarea id="entryDescription" rows="3" required placeholder="What was the money used for?"></textarea></label>
+<label class="wide">Upload Receipt<input id="entryReceipt" type="file" accept="application/pdf,image/jpeg,image/png,image/webp"><span class="hint">PDF, JPG, PNG or WebP — maximum 8 MB.</span></label>
+</div>
+<div class="dialog-actions"><button type="button" class="ghost" id="cancelEntry">Cancel</button><button type="submit" class="primary">Save</button></div>
+</form>
+</dialog>
+
+<script>
 (function(){
-  var target="/reports-manager/?view=service&module=workshop";
-  var out=new URL(target, window.location.origin);
-  var incoming=new URLSearchParams(window.location.search);
-  incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });
-  if(window.location.hash && !out.hash) out.hash=window.location.hash;
-  window.location.replace(out.pathname + out.search + out.hash);
+  'use strict';
+  const token=localStorage.getItem('belm_admin_token')||'';
+  if(!token){location.href='/login';return;}
+
+  const $=id=>document.getElementById(id);
+  const customerFilter=$('customerFilter'), customerType=$('customerType'), fromDate=$('fromDate'), toDate=$('toDate');
+  const reportTitle=$('reportTitle'), reportStatus=$('reportStatus'), reportTable=$('reportTable');
+  const pettyBalance=$('pettyBalance'), pettySummary=$('pettySummary'), pettyTable=$('pettyTable');
+  const entryDialog=$('entryDialog'), entryForm=$('entryForm'), entryId=$('entryId'), entryType=$('entryType'), entryDate=$('entryDate'), entryAmount=$('entryAmount'), entryCustomer=$('entryCustomer'), entryMachine=$('entryMachine'), entryCategory=$('entryCategory'), entryDescription=$('entryDescription'), entryReference=$('entryReference'), entryReceipt=$('entryReceipt'), entryTitle=$('entryTitle');
+  let reportType='maintenance', customers=[], machines=[], pettyEntries=[], selectedPettyId='';
+
+  const money=v=>'TZS '+Number(v||0).toLocaleString('en-TZ',{maximumFractionDigits:0});
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  async function request(path,opt={}){
+    const response=await fetch('/api/workshop-service-maintenance'+path,{...opt,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,...(opt.headers||{})}});
+    const text=await response.text(); let data={}; try{data=text?JSON.parse(text):{}}catch(_){data={};}
+    if(!response.ok) throw new Error(data.error||'Request failed ('+response.status+').');
+    return data;
+  }
+  function query(section,extra={}){const q=new URLSearchParams({section,...extra});return '?'+q.toString();}
+  function reportQuery(format=''){
+    const payload={reportType,customerId:customerFilter.value,customerType:customerType.value,from:fromDate.value,to:toDate.value};
+    if(format){payload.action='export';payload.format=format;}
+    return query('reports',payload);
+  }
+  function fillCustomers(){
+    const selectedFilter=customerFilter.value, selectedEntry=entryCustomer.value;
+    customerFilter.innerHTML='<option value="">All customers</option>'+customers.map(c=>`<option value="${esc(c.id)}">${esc(c.name)} · ${c.customerType==='PERMANENT'?'Permanent':'Non-Permanent'}</option>`).join('');
+    entryCustomer.innerHTML='<option value="">BELM / General</option>'+customers.map(c=>`<option value="${esc(c.id)}">${esc(c.name)}</option>`).join('');
+    if([...customerFilter.options].some(o=>o.value===selectedFilter)) customerFilter.value=selectedFilter;
+    if([...entryCustomer.options].some(o=>o.value===selectedEntry)) entryCustomer.value=selectedEntry;
+  }
+  function fillMachines(){
+    const customerId=entryCustomer.value, selected=entryMachine.value;
+    entryMachine.innerHTML='<option value="">General / no machine</option>'+machines.filter(m=>!customerId||m.customerId===customerId).map(m=>`<option value="${esc(m.id)}">${esc(m.label)}${m.fleetNumber?' · '+esc(m.fleetNumber):''}</option>`).join('');
+    if([...entryMachine.options].some(o=>o.value===selected)) entryMachine.value=selected;
+  }
+  function renderReport(data){
+    customers=data.customers||customers; fillCustomers();
+    const labels={maintenance:'Maintenance Report',breakdown:'Breakdown Case Report',lube:'Lube Use Report'};
+    reportTitle.textContent=labels[reportType]||'Service & Maintenance Report';
+    reportStatus.textContent=`${data.total||0} record(s) · ${data.customerType==='ALL'?'All customer types':String(data.customerType||'').replaceAll('_',' ')} · ${data.generatedAt?new Date(data.generatedAt).toLocaleString():''}`;
+    const rows=data.rows||[];
+    reportTable.innerHTML=rows.length?`<table class="sm-table"><thead><tr><th>Date</th><th>Customer</th><th>Type</th><th>Machine</th><th>Fleet</th><th>Details</th><th>Status</th><th>Recorded By</th><th>Cost</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.date||'—')}</td><td><strong>${esc(r.customer||'—')}</strong><br><span class="pill ${r.customerType==='PERMANENT'?'permanent':'non'}">${r.customerType==='PERMANENT'?'Permanent':'Non-Permanent'}</span></td><td>${esc(r.serviceType||'—')}</td><td>${esc(r.machine||'—')}</td><td>${esc(r.fleetNumber||'—')}</td><td>${esc(r.details||'—')}</td><td><span class="pill ${String(r.status||'').toUpperCase()==='COMPLETED'?'done':'open'}">${esc(r.status||'—')}</span></td><td>${esc(r.recordedBy||'—')}</td><td>${r.cost!=null?money(r.cost):'—'}</td></tr>`).join('')}</tbody></table>`:'<div style="padding:18px">No records found for this filter.</div>';
+  }
+  async function loadReport(){
+    reportStatus.textContent='Loading…';
+    try{renderReport(await request(reportQuery()));}
+    catch(error){reportStatus.textContent=error.message;reportTable.innerHTML='<div style="padding:18px">'+esc(error.message)+'</div>';}
+  }
+  function renderPetty(data){
+    customers=data.customers||customers; machines=data.machines||[]; pettyEntries=data.entries||[]; fillCustomers(); fillMachines();
+    pettyBalance.textContent=money(data.balance); pettySummary.textContent=`Funded ${money(data.totalFunded)} · Used ${money(data.totalUsed)}`;
+    pettyTable.innerHTML=pettyEntries.length?`<table class="sm-table"><thead><tr><th>Date</th><th>Type</th><th>Reference</th><th>Customer / Machine</th><th>Category</th><th>Description</th><th>Amount</th><th>Receipt</th><th>Handled By</th></tr></thead><tbody>${pettyEntries.map(e=>`<tr data-entry="${esc(e.id)}"><td>${esc(e.transactionDate||String(e.createdAt||'').slice(0,10))}</td><td>${esc(e.type)}</td><td>${esc(e.reference||'—')}</td><td>${esc(e.customer||'BELM / General')}<br>${esc(e.machine||'')}</td><td>${esc(e.category||'—')}</td><td>${esc(e.description||'—')}</td><td>${money(e.amount)}</td><td>${e.hasReceipt?`<button type="button" data-receipt="${esc(e.id)}" data-receipt-name="${esc(e.receiptName||'receipt')}">View Receipt</button>`:'—'}</td><td>${esc(e.createdBy||'—')}</td></tr>`).join('')}</tbody></table>`:'<div style="padding:18px">No Petty Cash transactions yet.</div>';
+  }
+  async function loadPetty(){
+    try{renderPetty(await request(query('petty-cash')));}
+    catch(error){pettyTable.innerHTML='<div style="padding:18px">'+esc(error.message)+'</div>';}
+  }
+  async function fileData(file){
+    if(!file) return '';
+    if(file.size>8*1024*1024) throw new Error('Receipt must be 8 MB or smaller.');
+    return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('Could not read receipt file.'));reader.readAsDataURL(file);});
+  }
+  async function downloadAuthenticated(path,filename,openInstead=false){
+    const response=await fetch('/api/workshop-service-maintenance'+path,{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+    if(!response.ok){let message='Download failed.';try{const data=await response.json();message=data.error||message;}catch(_){}throw new Error(message);}
+    const blob=await response.blob();const url=URL.createObjectURL(blob);
+    if(openInstead){window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),60000);return;}
+    const link=document.createElement('a');link.href=url;link.download=filename;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+  }
+  function openEntry(type,entry=null){
+    entryForm.reset();entryId.value=entry?.id||'';entryType.value=type;entryDate.value=entry?.transactionDate||new Date().toISOString().slice(0,10);entryAmount.value=entry?.amount||'';entryCategory.value=entry?.category||'';entryDescription.value=entry?.description||'';entryReference.value=entry?.reference||'';entryCustomer.value=entry?.customerId||'';fillMachines();entryMachine.value=entry?.machineId||'';entryTitle.textContent=entry?'Edit Petty Cash Entry':(type==='FUND'?'Deposit Petty Cash':'Save Workshop Expense');entryDialog.showModal();
+  }
+
+  entryForm.addEventListener('submit',async function(event){
+    event.preventDefault();
+    const confirmation=window.belmConfirmEdit?await window.belmConfirmEdit({title:entryId.value?'Edit Petty Cash entry?':'Save Petty Cash entry?',message:'Enter Edit PIN to confirm this transaction.'}):null;
+    if(!confirmation) return;
+    try{
+      const file=entryReceipt.files?.[0];
+      const payload={id:entryId.value,type:entryType.value,amount:Number(entryAmount.value),transactionDate:entryDate.value,customerId:entryCustomer.value,machineId:entryMachine.value,category:entryCategory.value.trim(),description:entryDescription.value.trim(),reference:entryReference.value.trim(),editPin:confirmation.editPin,receiptPhoto:file?await fileData(file):'',receiptName:file?.name||''};
+      await request(query('petty-cash',entryId.value?{id:entryId.value}:{}),{method:entryId.value?'PUT':'POST',body:JSON.stringify(payload)});
+      entryDialog.close();selectedPettyId='';await loadPetty();
+    }catch(error){alert(error.message);}
+  });
+
+  document.querySelectorAll('[data-report]').forEach(button=>button.addEventListener('click',()=>{reportType=button.dataset.report;loadReport();reportTitle.scrollIntoView({behavior:'smooth',block:'center'});}));
+  $('applyFilter').addEventListener('click',loadReport);$('refreshReport').addEventListener('click',loadReport);
+  $('reportPdf').addEventListener('click',()=>downloadAuthenticated(reportQuery('pdf'),`BELM-${reportType}-report.pdf`).catch(e=>alert(e.message)));
+  $('reportCsv').addEventListener('click',()=>downloadAuthenticated(reportQuery('csv'),`BELM-${reportType}-report.csv`).catch(e=>alert(e.message)));
+  $('pcPdf').addEventListener('click',()=>downloadAuthenticated('?section=petty-cash&action=export&format=pdf','BELM-Workshop-Petty-Cash.pdf').catch(e=>alert(e.message)));
+  $('pcCsv').addEventListener('click',()=>downloadAuthenticated('?section=petty-cash&action=export&format=csv','BELM-Workshop-Petty-Cash.csv').catch(e=>alert(e.message)));
+  $('depositButton').addEventListener('click',()=>openEntry('FUND'));
+  $('expenseButton').addEventListener('click',()=>openEntry('EXPENSE'));
+  $('editButton').addEventListener('click',()=>{const entry=pettyEntries.find(e=>e.id===selectedPettyId)||pettyEntries[0];if(!entry){alert('No Petty Cash entry is available to edit.');return;}openEntry(entry.type,entry);});
+  pettyTable.addEventListener('click',event=>{
+    const receipt=event.target.closest('[data-receipt]');
+    if(receipt){event.stopPropagation();downloadAuthenticated('?section=petty-cash&action=receipt&id='+encodeURIComponent(receipt.dataset.receipt),'',true).catch(e=>alert(e.message));return;}
+    const row=event.target.closest('[data-entry]');if(!row)return;selectedPettyId=row.dataset.entry;pettyTable.querySelectorAll('tr[data-entry]').forEach(r=>r.style.outline=r===row?'2px solid #2f6fd6':'');
+  });
+  entryCustomer.addEventListener('change',fillMachines);$('closeEntry').addEventListener('click',()=>entryDialog.close());$('cancelEntry').addEventListener('click',()=>entryDialog.close());
+
+  Promise.all([loadReport(),loadPetty()]);
 })();
-</script></body></html>
+</script>
+<script src="assets/js/belm-workshop-manager.js?v=728-service-maintenance"></script>
+</body>
+</html>

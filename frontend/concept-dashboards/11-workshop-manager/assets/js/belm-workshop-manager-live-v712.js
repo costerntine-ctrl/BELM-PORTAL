@@ -27,14 +27,18 @@
     const account=document.querySelector('.header-right .icon-btn[aria-label="Account"]');
     if(account)account.addEventListener('click',()=>{location.href='/settings-manager/?module=profile';});
     const theme=document.getElementById('themeToggle');
-    if(theme)theme.addEventListener('click',()=>{location.href='/concept-dashboards/10-system-settings/';});
+    if(theme)theme.addEventListener('click',(event)=>{
+      event.preventDefault();
+      if(window.BELMTheme&&typeof window.BELMTheme.toggle==='function')window.BELMTheme.toggle();
+    });
   }
 
   const routeMap={
     'job-cards.html':'/belm-workshop/#job-cards',
-    // Machines opens the live Customer Overview cards directly. embed=1 suppresses
-    // the global/admin sidebar so Workshop Manager lands straight on customer cards.
-    'machines.html':'/customers-manager/?embed=1&module=customer-overview',
+    // Keep the Workshop Manager shell and open its dedicated Machines page.
+    // That page renders every registered machine card directly using the live
+    // all-machines customer-manager view; no Customer card is shown first.
+    'machines.html':'/concept-dashboards/11-workshop-manager/machines.html',
     'technicians.html':'/belm-workshop/#manage-technicians',
     'workshop-schedule.html':'/belm-workshop/#assigned-work',
     'spare-requests.html':'/spare-parts-manager/?view=requests&module=workshop',

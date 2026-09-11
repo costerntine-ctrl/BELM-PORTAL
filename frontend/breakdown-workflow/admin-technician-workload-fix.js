@@ -46,3 +46,94 @@
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)load();});
   setInterval(()=>{if(!document.hidden)load();},15000);
 })();
+
+// V731 - Canonical BELM Workshop Manager Job Card dashboard.
+// The Job Card process table is the single source of truth; these cards summarize
+// and filter the same live rows instead of showing the legacy Breakdown summary.
+(()=>{
+  const params=new URLSearchParams(location.search);
+  const actor=String(params.get('actor')||params.get('source')||'').toLowerCase();
+  const isJobCards=params.get('embed')==='1'&&actor==='admin'&&String(params.get('view')||'').toLowerCase()==='job-cards';
+  if(!isJobCards)return;
+
+  const summary=document.getElementById('summaryCards');
+  const body=document.getElementById('jobProcessBody');
+  const panel=document.getElementById('jobProcessPanel');
+  if(!summary||!body||!panel)return;
+
+  document.documentElement.classList.add('belm-jc-dashboard-v731');
+  const style=document.createElement('style');
+  style.textContent=`
+    html.belm-jc-dashboard-v731 .filters{display:none!important}
+    html.belm-jc-dashboard-v731 .summary{grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;margin:2px 0 14px}
+    html.belm-jc-dashboard-v731 .jc-summary-card{appearance:none;width:100%;text-align:left;cursor:pointer;font:inherit;color:var(--ink);transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease}
+    html.belm-jc-dashboard-v731 .jc-summary-card:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(10,30,55,.10)}
+    html.belm-jc-dashboard-v731 .jc-summary-card.active{outline:2px solid var(--blue);outline-offset:1px}
+    html.belm-jc-dashboard-v731 .jc-summary-card b{line-height:1;font-size:25px}
+    html.belm-jc-dashboard-v731 .jc-summary-card span{display:block;margin-top:6px;font-weight:850;letter-spacing:.01em}
+    html.belm-jc-dashboard-v731 #jobProcessPanel{margin-top:12px!important}
+    html.belm-jc-dashboard-v731 #jobProcessPanel>.panel-head h2{font-size:20px}
+    html.belm-jc-dashboard-v731 #jobProcessPanel>.panel-head p{max-width:780px;font-size:12px}
+    html.belm-jc-dashboard-v731 .job-process-table tbody tr[hidden]{display:none!important}
+    @media(max-width:980px){html.belm-jc-dashboard-v731 .summary{grid-template-columns:repeat(2,minmax(140px,1fr))}}
+    @media(max-width:540px){html.belm-jc-dashboard-v731 .summary{grid-template-columns:1fr 1fr}}
+  `;
+  document.head.appendChild(style);
+
+  const head=panel.querySelector('.panel-head h2');
+  const desc=panel.querySelector('.panel-head p');
+  if(head)head.textContent='Job Card Dashboard';
+  if(desc)desc.textContent='One live Job Card workflow from Technician Dispatch through diagnosis, parts, testing, approval and completion.';
+
+  let activeFilter='ALL';
+  const rows=()=>Array.from(body.querySelectorAll('tr')).filter(row=>row.querySelector('.job-process-state'));
+  const code=row=>String(row.querySelector('.job-process-state')?.className||'').replace('job-process-state','').trim().split(/\s+/)[0]||'assigned';
+  const count=(list,predicate)=>list.filter(predicate).length;
+  const isCompleted=row=>code(row)==='completed';
+
+  function matches(row,filter){
+    const c=code(row);
+    if(filter==='ALL')return true;
+    if(filter==='OPEN')return c!=='completed';
+    if(filter==='ASSIGNED')return c==='assigned';
+    if(filter==='OPENED')return c==='opened';
+    if(filter==='DIAGNOSIS')return c==='diagnosis-report';
+    if(filter==='WAITING')return c==='waiting-for-spare';
+    if(filter==='TESTING')return c==='testing';
+    if(filter==='PENDING')return c==='pending-approval';
+    if(filter==='COMPLETED')return c==='completed';
+    return true;
+  }
+
+  function applyFilter(){
+    rows().forEach(row=>{row.hidden=!matches(row,activeFilter)});
+    summary.querySelectorAll('[data-jc-filter]').forEach(button=>button.classList.toggle('active',button.dataset.jcFilter===activeFilter));
+  }
+
+  function render(){
+    const list=rows();
+    const stats=[
+      ['OPEN','Open Jobs',count(list,r=>!isCompleted(r)),''],
+      ['ASSIGNED','Dispatched',count(list,r=>code(r)==='assigned'),''],
+      ['OPENED','Received',count(list,r=>code(r)==='opened'),'green'],
+      ['DIAGNOSIS','Under Diagnosis',count(list,r=>code(r)==='diagnosis-report'),''],
+      ['WAITING','Waiting Spare',count(list,r=>code(r)==='waiting-for-spare'),'yellow'],
+      ['TESTING','Testing',count(list,r=>code(r)==='testing'),'yellow'],
+      ['PENDING','Pending Approval',count(list,r=>code(r)==='pending-approval'),'yellow'],
+      ['COMPLETED','Completed',count(list,r=>isCompleted(r)),'green']
+    ];
+    summary.innerHTML=stats.map(([filter,label,value,tone])=>`<button type="button" class="summary-card jc-summary-card ${tone} ${activeFilter===filter?'active':''}" data-jc-filter="${filter}"><b>${value}</b><span>${label}</span></button>`).join('');
+    applyFilter();
+  }
+
+  summary.addEventListener('click',event=>{
+    const button=event.target.closest('[data-jc-filter]');
+    if(!button)return;
+    const next=button.dataset.jcFilter||'ALL';
+    activeFilter=activeFilter===next?'ALL':next;
+    render();
+  });
+
+  new MutationObserver(render).observe(body,{childList:true,subtree:true,characterData:true});
+  render();
+})();

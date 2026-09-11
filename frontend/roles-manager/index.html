@@ -12,6 +12,8 @@
       button.metric.technician-only-action span{color:#765b00}
       button.metric.technician-only-action strong{color:#6f5200;font-size:16px}
       button.metric.technician-only-action:hover{filter:brightness(1.03)}
+      .tech-row-assign{display:inline-flex!important;align-items:center!important;justify-content:center!important;margin-left:6px!important;padding:3px 8px!important;min-height:24px!important;border:1px solid #e4bb36!important;border-radius:6px!important;background:#fff4c5!important;color:#624900!important;font-size:10px!important;font-weight:900!important;line-height:1!important;cursor:pointer!important;white-space:nowrap!important}
+      .tech-row-assign:hover{background:#ffe98b!important}
       @media(max-width:980px){html.technician-focus .metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
       @media(max-width:620px){html.technician-focus .metrics{grid-template-columns:1fr 1fr}}
     </style>
@@ -152,5 +154,42 @@
     <script src="/delete-confirm.js"></script>
     <script src="/edit-confirm.js"></script>
     <script src="/roles-manager/manager.js?v=485-role-cleanup"></script>
+    <script>
+      (function(){
+        const p=new URLSearchParams(location.search);
+        if(!(p.get('technical')==='1'&&p.get('role')==='Technician'))return;
+        const panel=document.getElementById('usersPanel');
+        if(!panel)return;
+        function enhance(){
+          panel.querySelectorAll('tbody tr').forEach(row=>{
+            if(row.querySelector('.tech-row-assign'))return;
+            const cells=row.querySelectorAll('td');
+            const edit=row.querySelector('[data-edit-user]');
+            if(cells.length<6||!edit)return;
+            const roleText=String(cells[2]?.textContent||'').toLowerCase();
+            if(!roleText.includes('technician'))return;
+            const id=edit.dataset.editUser||'';
+            const name=String(cells[0]?.querySelector('strong')?.textContent||cells[0]?.textContent||'Technician').trim();
+            const button=document.createElement('button');
+            button.type='button';
+            button.className='tech-row-assign';
+            button.textContent='Assign';
+            button.title=`Assign work to ${name}`;
+            button.addEventListener('click',event=>{
+              event.preventDefault();event.stopPropagation();
+              localStorage.setItem('belm_assign_technician',JSON.stringify({id,name,ts:Date.now()}));
+              if(window.parent!==window){
+                window.parent.postMessage({type:'belm-workshop-open-module',module:'job-cards'},location.origin);
+              }else{
+                location.href=`/breakdown-workflow/?actor=admin&view=job-cards&assign=1&technician=${encodeURIComponent(id)}&technicianName=${encodeURIComponent(name)}`;
+              }
+            });
+            cells[4].appendChild(button);
+          });
+        }
+        new MutationObserver(enhance).observe(panel,{childList:true,subtree:true});
+        enhance();
+      })();
+    </script>
   </body>
 </html>

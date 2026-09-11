@@ -21,6 +21,11 @@
   # and Proforma quote-validity expiry into one synchronized alert endpoint.
   RewriteRule ^admin-dashboard-alerts/?$ api/admin_dashboard_alerts.php [L,QSA,NC]
 
+  # Main Admin Dashboard rotating fleet messages. Shows every registered
+  # machine in rotation and inserts service reminders/overdue notices with
+  # higher priority when a service_due_alert exists for the machine.
+  RewriteRule ^admin-machine-messages/?$ api/admin_machine_messages.php [L,QSA,NC]
+
   # Bank Controller VAT summary. VAT is recognized only from actual invoice
   # payments and is treated as money payable to TRA, not BELM income.
   RewriteRule ^bank-vat-summary/?$ api/bank_vat_summary.php [L,QSA,NC]

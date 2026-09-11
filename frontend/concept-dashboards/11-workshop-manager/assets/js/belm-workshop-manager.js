@@ -42,8 +42,6 @@
       document.head.appendChild(style);
     }
 
-    // A hidden sentinel tells the global theme manager that this dashboard
-    // already owns its theme control, preventing a second floating toggle.
     if (!document.querySelector('[data-belm-workshop-theme-sentinel]')) {
       var sentinel = document.createElement('button');
       sentinel.type = 'button';
@@ -102,9 +100,37 @@
     applyFallbackTheme(currentTheme() === 'dark' ? 'light' : 'dark');
   }
 
-  // Capture phase is intentional: an older live-dashboard listener redirected
-  // this same button to System Settings. Stop it before that handler can run.
+  function syncWorkshopRequirementsNav() {
+    document.querySelectorAll('.sidebar-nav a.nav-item, a.nav-item').forEach(function (link) {
+      var text = String(link.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      var href = String(link.getAttribute('href') || '').toLowerCase();
+      if (text === 'spare requests' || text === 'workshop requirements' || href.indexOf('spare-requests.html') >= 0 || href.indexOf('/spare-parts-manager/?view=requests&module=workshop') >= 0) {
+        var svg = link.querySelector('svg');
+        link.innerHTML = '';
+        if (svg) link.appendChild(svg);
+        link.appendChild(document.createTextNode('Workshop Requirements'));
+        link.setAttribute('href', 'spare-requests.html');
+        link.setAttribute('data-workshop-requirements-link', '1');
+      }
+    });
+  }
+
+  // Capture before the older live routing layer can redirect this menu item
+  // straight into the general Spare Parts Inventory. Workshop Manager now has
+  // a dedicated receive -> Procurement workflow.
   document.addEventListener('click', function (event) {
+    var requirements = event.target && event.target.closest ? event.target.closest('[data-workshop-requirements-link],.sidebar-nav a') : null;
+    if (requirements) {
+      var text = String(requirements.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      var href = String(requirements.getAttribute('href') || '').toLowerCase();
+      if (requirements.hasAttribute('data-workshop-requirements-link') || text === 'workshop requirements' || text === 'spare requests' || href.indexOf('spare-requests.html') >= 0 || href.indexOf('/spare-parts-manager/?view=requests&module=workshop') >= 0) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.location.href = 'spare-requests.html';
+        return;
+      }
+    }
+
     var target = event.target && event.target.closest ? event.target.closest('#themeToggle') : null;
     if (!target) return;
     event.preventDefault();
@@ -119,6 +145,12 @@
   document.addEventListener('DOMContentLoaded', function () {
     installThemeAssets();
     syncThemeButton();
+    syncWorkshopRequirementsNav();
+
+    // Live dashboard routing may rewrite hrefs after DOMContentLoaded. Keep the
+    // label and dedicated route synchronized without touching the other menu items.
+    var navObserver = new MutationObserver(function () { syncWorkshopRequirementsNav(); });
+    navObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
 
     function updateClock() {
       var dateEl = document.getElementById('liveDate');

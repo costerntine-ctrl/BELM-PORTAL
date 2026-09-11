@@ -21,6 +21,10 @@
   # and Proforma quote-validity expiry into one synchronized alert endpoint.
   RewriteRule ^admin-dashboard-alerts/?$ api/admin_dashboard_alerts.php [L,QSA,NC]
 
+  # Bank Controller VAT summary. VAT is recognized only from actual invoice
+  # payments and is treated as money payable to TRA, not BELM income.
+  RewriteRule ^bank-vat-summary/?$ api/bank_vat_summary.php [L,QSA,NC]
+
   # Atomic Proforma -> Invoice flow. The handler can optionally record a
   # customer payment in the same database transaction, keeping invoice status
   # and payment history synchronized without requiring an official receipt.

@@ -1,11 +1,148 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title></head><body><script>
-(function(){
-  var target="/customers-manager/?view=all-machines";
-  var out=new URL(target, window.location.origin);
-  var incoming=new URLSearchParams(window.location.search);
-  incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });
-  if(window.location.hash && !out.hash) out.hash=window.location.hash;
-  window.location.replace(out.pathname + out.search + out.hash);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BELM Operations Portal — Registered Machines</title>
+<link rel="stylesheet" href="assets/css/belm-workshop-manager.css" />
+<style>
+  .machines-page-head{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px}
+  .machines-page-head h2{margin:0 0 6px;font-size:30px}
+  .machines-page-head p{margin:0;color:var(--muted,#718096)}
+  .machines-count{min-width:130px;padding:12px 16px;border:1px solid rgba(125,146,178,.22);border-radius:14px;background:rgba(23,58,104,.08);text-align:center}
+  .machines-count strong{display:block;font-size:25px;line-height:1.1}.machines-count span{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+  .machine-frame-shell{width:100%;min-width:0;border:1px solid rgba(125,146,178,.2);border-radius:18px;overflow:hidden;background:rgba(8,24,45,.04)}
+  #machineFrame{display:block;width:100%;min-height:760px;border:0;background:transparent}
+  .frame-status{padding:12px 16px;font-size:13px;color:var(--muted,#718096);border-bottom:1px solid rgba(125,146,178,.16)}
+  @media(max-width:900px){.machines-page-head h2{font-size:25px}.machine-frame-shell{border-radius:12px}.content{padding-left:14px!important;padding-right:14px!important}}
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+  <aside class="sidebar">
+    <nav class="sidebar-nav">
+      <a href="index.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home Dashboard</a>
+      <a href="job-cards.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Job Cards</a>
+      <a href="machines.html" class="nav-item is-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>Machines</a>
+      <a href="technicians.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>Technicians</a>
+      <a href="workshop-schedule.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Workshop Schedule</a>
+      <a href="spare-requests.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>Spare Requests</a>
+      <a href="service-maintenance.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Service &amp; Maintenance</a>
+      <a href="reports-analysis.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>Reports &amp; Analysis</a>
+      <a href="checklist-monitoring.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 10l1.7 1.7L14 8.3M9 16h6"/></svg>Checklist Monitoring</a>
+      <a href="customers.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2 17c0-2.8 2-4.7 4.5-4.7s4.5 1.9 4.5 4.7M11.5 17c0-2.3 1.7-4 4-4s4 1.7 4 4"/></svg>Customers</a>
+      <a href="communication.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>Communication</a>
+      <a href="tools-equipment.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>Tools &amp; Equipment</a>
+      <a href="workshop-settings.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Workshop Settings</a>
+    </nav>
+    <div class="sidebar-footer" style="border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">
+      <a href="my-profile.html" class="nav-item" style="color:#b7c4d6;">My Profile</a>
+      <a href="help-support.html" class="nav-item" style="color:#b7c4d6;">Help &amp; Support</a>
+      <a href="logout.html" class="btn-logout" style="margin-top:6px;">Logout</a>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topheader">
+      <div class="brand"><img src="assets/img/belm-logo-v2.png" alt="BELM General Technical Service Ltd" /></div>
+      <div class="portal-title"><h1>BELM OPERATIONS PORTAL</h1><p>| Workshop Manager Dashboard</p><div class="tagline">Plan &bull; Assign &bull; Monitor &bull; Deliver</div></div>
+      <div class="header-right">
+        <div class="user-chip"><span class="user-avatar initials initials-lg">WM</span><span class="user-copy"><strong>Workshop Manager</strong><small>Technical Department</small></span></div>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="machines-page-head">
+        <div><h2>Registered Machines</h2><p>All machine cards registered in BELM Portal are shown here directly. Customer cards are not used on this Machines page.</p></div>
+        <div class="machines-count"><strong id="machineCardCount">—</strong><span>Machines</span></div>
+      </section>
+
+      <section class="machine-frame-shell">
+        <div class="frame-status" id="frameStatus">Loading registered machine cards…</div>
+        <iframe id="machineFrame" title="BELM registered machine cards" src="/customers-manager/?view=all-machines&embed=1"></iframe>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="assets/js/belm-workshop-manager.js"></script>
+<script>
+(function () {
+  var frame = document.getElementById('machineFrame');
+  var countBox = document.getElementById('machineCardCount');
+  var statusBox = document.getElementById('frameStatus');
+  var resizeTimer = null;
+  var pollTimer = null;
+  var pollCount = 0;
+
+  function resizeFrame(doc) {
+    var list = doc.getElementById('machineListBody');
+    var target = 760;
+    if (list) target = Math.max(760, Math.ceil(list.scrollHeight + 90));
+    frame.style.height = target + 'px';
+  }
+
+  function tuneFrame() {
+    var doc;
+    try { doc = frame.contentDocument || frame.contentWindow.document; } catch (_) { return; }
+    if (!doc || !doc.body) return;
+
+    if (!doc.getElementById('belm-direct-machines-style')) {
+      var style = doc.createElement('style');
+      style.id = 'belm-direct-machines-style';
+      style.textContent = [
+        'html,body{background:transparent!important;overflow:hidden!important;}',
+        'body>header.topbar,main.shell{display:none!important;}',
+        '#machineListDialog{width:100%!important;max-width:none!important;max-height:none!important;height:auto!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;}',
+        '#machineListDialog::backdrop{background:transparent!important;}',
+        '#machineListDialog>.dialog-card{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;}',
+        '#machineListDialog .dialog-head,#machineListAddButton{display:none!important;}',
+        '#machineListBody{padding:0!important;margin:0!important;}',
+        '#machineListBody .machine-list{padding:2px!important;margin:0!important;}',
+        'body>dialog:not(#machineListDialog)[open]{z-index:2147483647!important;}'
+      ].join('');
+      doc.head.appendChild(style);
+    }
+
+    var list = doc.getElementById('machineListBody');
+    var dialog = doc.getElementById('machineListDialog');
+    var cards = list ? list.querySelectorAll('.machine-card').length : 0;
+    var empty = list && list.querySelector('.empty');
+
+    if (cards > 0) {
+      countBox.textContent = String(cards);
+      statusBox.textContent = 'All registered machine cards — select a machine action directly.';
+    } else if (empty) {
+      countBox.textContent = '0';
+      statusBox.textContent = empty.textContent.trim() || 'No registered machines found.';
+    } else {
+      statusBox.textContent = 'Loading registered machine cards…';
+    }
+
+    if (dialog && dialog.open) {
+      resizeFrame(doc);
+      if (!doc.__belmDirectMachineObserver) {
+        var observer = new MutationObserver(function () {
+          clearTimeout(resizeTimer);
+          resizeTimer = setTimeout(function () { tuneFrame(); }, 80);
+        });
+        observer.observe(list || dialog, { childList: true, subtree: true, attributes: true });
+        doc.__belmDirectMachineObserver = observer;
+      }
+    }
+  }
+
+  frame.addEventListener('load', function () {
+    tuneFrame();
+    clearInterval(pollTimer);
+    pollCount = 0;
+    pollTimer = setInterval(function () {
+      pollCount += 1;
+      tuneFrame();
+      if (pollCount >= 30) clearInterval(pollTimer);
+    }, 500);
+  });
 })();
-</script></body></html>
+</script>
+</body>
+</html>

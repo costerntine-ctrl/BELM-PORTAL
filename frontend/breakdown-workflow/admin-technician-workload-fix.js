@@ -8,7 +8,7 @@
   if(!panel||!grid)return;
   panel.classList.remove('hidden');
 
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const availability=t=>{
     const active=Number(t.activeJobs||0);
     if(active>=5)return'FULL';
@@ -136,4 +136,19 @@
 
   new MutationObserver(render).observe(body,{childList:true,subtree:true,characterData:true});
   render();
+})();
+
+// V734 - add the Job Card detail/dispatch component only to the existing
+// Workshop Manager Job Card view. It does not replace the dashboard.
+(()=>{
+  const p=new URLSearchParams(location.search);
+  const actor=String(p.get('actor')||p.get('source')||'').toLowerCase();
+  const isJobCards=p.get('embed')==='1'&&actor==='admin'&&String(p.get('view')||'').toLowerCase()==='job-cards';
+  if(!isJobCards)return;
+  if(!document.querySelector('link[href*="job-card-detail-v734.css"]')){
+    const link=document.createElement('link');link.rel='stylesheet';link.href='/job-card-detail-v734.css?v=734-job-card-detail';document.head.appendChild(link);
+  }
+  if(!document.querySelector('script[src*="job-card-detail-v734.js"]')){
+    const script=document.createElement('script');script.src='/job-card-detail-v734.js?v=734-job-card-detail';script.defer=true;document.body.appendChild(script);
+  }
 })();

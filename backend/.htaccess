@@ -16,6 +16,11 @@
   # receipt uploads and the dedicated petty-cash transaction workflow.
   RewriteRule ^workshop-service-maintenance/?$ api/workshop_service_maintenance.php [L,QSA,NC]
 
+  # Main Admin Dashboard Machine & Stock Alerts. This aggregates the live
+  # machine service state, spare inventory, Operator + Procurement fuel records
+  # and Proforma quote-validity expiry into one synchronized alert endpoint.
+  RewriteRule ^admin-dashboard-alerts/?$ api/admin_dashboard_alerts.php [L,QSA,NC]
+
   # Atomic Proforma -> Invoice flow. The handler can optionally record a
   # customer payment in the same database transaction, keeping invoice status
   # and payment history synchronized without requiring an official receipt.

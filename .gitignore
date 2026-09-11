@@ -1,0 +1,33 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+
+# Temporary release/build artifacts
+.v[0-9]*/
+.v[0-9]*-build/
+.v[0-9]*-overlay/
+.v[0-9]*-materialize-trigger
+*.b64
+*.patch
+*.bak
+*.old
+*.tmp
+
+# Generated packages and logs
+dist/
+export/
+*.zip
+*.log
+
+# Local dependency/cache directories
+node_modules/
+vendor/

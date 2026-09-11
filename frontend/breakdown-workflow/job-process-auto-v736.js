@@ -18,6 +18,38 @@
     table.style.minWidth='1380px';
   }
 
+  function consumeTechnicianAssign(){
+    let saved=null;
+    try{saved=JSON.parse(localStorage.getItem('belm_assign_technician')||'null')}catch(_){saved=null}
+    const p=new URLSearchParams(location.search);
+    const paramId=p.get('technician')||'';
+    const paramName=p.get('technicianName')||'';
+    const id=String(saved?.id||paramId||'').trim();
+    const name=String(saved?.name||paramName||'Technician').trim();
+    if(!id)return;
+    if(saved?.ts && Date.now()-Number(saved.ts)>5*60*1000){localStorage.removeItem('belm_assign_technician');return}
+
+    const panel=document.getElementById('dispatchPanel');
+    const select=document.getElementById('dispatchTechnician');
+    if(!panel||!select){setTimeout(consumeTechnicianAssign,180);return}
+
+    panel.classList.remove('hidden');
+    panel.classList.add('jc-open');
+    const setSelected=()=>{
+      const option=[...select.options].find(o=>String(o.value)===id);
+      if(!option){setTimeout(setSelected,180);return}
+      select.value=id;
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+      const existing=document.querySelector('input[name="jobCardMode"][value="existing"]');
+      if(existing){existing.checked=true;existing.dispatchEvent(new Event('change',{bubbles:true}))}
+      const note=document.getElementById('dispatchNote');
+      if(note)note.textContent=`Assign Job Card to ${name}. Select the Job Card, then confirm assignment.`;
+      localStorage.removeItem('belm_assign_technician');
+      panel.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    setSelected();
+  }
+
   async function load(){
     if(busy||document.hidden)return;
     const body=document.getElementById('jobProcessBody');
@@ -83,4 +115,5 @@
   document.getElementById('refreshButton')?.addEventListener('click',()=>setTimeout(load,250));
   setInterval(load,15000);
   setTimeout(load,300);
+  setTimeout(consumeTechnicianAssign,450);
 })();

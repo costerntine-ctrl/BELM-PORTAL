@@ -11,6 +11,11 @@
   # Keeps /api/belm-workshop-home?section=petty-cash stable for the frontend.
   RewriteRule ^belm-workshop-home/?$ api/belm_workshop_home.php [L,QSA,NC]
 
+  # Workshop Manager Service & Maintenance reporting + BELM Workshop Petty Cash.
+  # Provides customer/permanent-status report filters, PDF/CSV exports, expense
+  # receipt uploads and the dedicated petty-cash transaction workflow.
+  RewriteRule ^workshop-service-maintenance/?$ api/workshop_service_maintenance.php [L,QSA,NC]
+
   # Atomic Proforma -> Invoice flow. The handler can optionally record a
   # customer payment in the same database transaction, keeping invoice status
   # and payment history synchronized without requiring an official receipt.

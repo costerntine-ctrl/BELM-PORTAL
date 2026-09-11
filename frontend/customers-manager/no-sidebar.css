@@ -1,0 +1,10 @@
+/* Customers Overview is a standalone operational page. The global admin sidebar is intentionally hidden here. */
+#belmAdminSidebar,
+.belm-sidebar-toggle,
+.belm-sidebar-scrim {
+  display: none !important;
+}
+
+body.belm-sidebar-ready {
+  padding-left: 0 !important;
+}

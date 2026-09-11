@@ -349,41 +349,127 @@ body.management-page {
   .settings-detail-body .panel.wide { grid-column: auto; }
 }
 
+/* Dark mode — use real dark surfaces and high-contrast text instead of filters. */
 html[data-theme='dark'] body.management-page,
 html.dark body.management-page {
-  --belm-page: #0f1722;
-  --belm-surface: #172130;
-  --belm-ink: #eaf0f6;
-  --belm-muted: #aeb9c5;
-  --belm-line: #2c3948;
-  background: var(--belm-page);
+  --belm-page: #0b1420;
+  --belm-surface: #142132;
+  --belm-ink: #eef4fb;
+  --belm-muted: #aebdcd;
+  --belm-line: #304055;
+  --belm-shadow: 0 12px 32px rgba(0,0,0,.24);
+  background: var(--belm-page) !important;
+  color: var(--belm-ink) !important;
 }
+
 html[data-theme='dark'] .settings-topbar,
-html.dark .settings-topbar,
+html.dark .settings-topbar {
+  background: #111d2b !important;
+  border-color: #304055 !important;
+}
 html[data-theme='dark'] .settings-overview,
 html.dark .settings-overview,
 html[data-theme='dark'] .settings-detail-group,
 html.dark .settings-detail-group,
 html[data-theme='dark'] .settings-detail-body .panel,
-html.dark .settings-detail-body .panel { background: #172130; border-color: #2b3948; }
+html.dark .settings-detail-body .panel {
+  background: #142132 !important;
+  border-color: #304055 !important;
+  color: #eef4fb !important;
+}
+
+html[data-theme='dark'] .settings-portal-title strong,
+html.dark .settings-portal-title strong { color: #69b7f0 !important; }
 html[data-theme='dark'] .settings-portal-title span,
 html.dark .settings-portal-title span,
+html[data-theme='dark'] .settings-breadcrumb,
+html.dark .settings-breadcrumb,
+html[data-theme='dark'] .settings-overview p,
+html.dark .settings-overview p,
+html[data-theme='dark'] .settings-details-heading p,
+html.dark .settings-details-heading p,
+html[data-theme='dark'] .settings-more-title,
+html.dark .settings-more-title { color: #aebdcd !important; }
+
 html[data-theme='dark'] .settings-overview h1,
 html.dark .settings-overview h1,
-html[data-theme='dark'] .settings-card h2,
-html.dark .settings-card h2,
 html[data-theme='dark'] .settings-details-heading h2,
 html.dark .settings-details-heading h2,
 html[data-theme='dark'] .settings-detail-group > summary,
-html.dark .settings-detail-group > summary { color: #e7eef6; }
-html[data-theme='dark'] .settings-detail-group > summary,
-html.dark .settings-detail-group > summary { background: #1b2735; }
+html.dark .settings-detail-group > summary,
+html[data-theme='dark'] .settings-user-copy strong,
+html.dark .settings-user-copy strong { color: #eef4fb !important; }
+
+html[data-theme='dark'] .settings-icon-button,
+html.dark .settings-icon-button,
+html[data-theme='dark'] .settings-user-chip .chevron,
+html.dark .settings-user-chip .chevron { color: #c6d3e1 !important; }
+html[data-theme='dark'] .settings-icon-button:hover,
+html.dark .settings-icon-button:hover,
+html[data-theme='dark'] .settings-user-chip:hover,
+html.dark .settings-user-chip:hover { background: #1a2a3d !important; }
+html[data-theme='dark'] .settings-avatar,
+html.dark .settings-avatar { background: #203247 !important; color: #e9f2fb !important; }
+html[data-theme='dark'] .settings-user-copy small,
+html.dark .settings-user-copy small { color: #9fb0c2 !important; }
+
+html[data-theme='dark'] .settings-overview-icon,
+html.dark .settings-overview-icon { background: #183653 !important; color: #65b9f4 !important; }
+html[data-theme='dark'] .settings-clock,
+html.dark .settings-clock { background: #101c2a !important; border-color: #304055 !important; color: #eef4fb !important; }
+html[data-theme='dark'] .settings-clock strong,
+html.dark .settings-clock strong { color: #eef4fb !important; }
+html[data-theme='dark'] .settings-clock small,
+html.dark .settings-clock small { color: #a6b6c7 !important; }
+html[data-theme='dark'] .settings-status,
+html.dark .settings-status { background: #102b22 !important; color: #8ee6b3 !important; border: 1px solid #245c45 !important; }
+html[data-theme='dark'] .settings-status small,
+html.dark .settings-status small { color: #8fd0aa !important; }
+
 html[data-theme='dark'] .settings-card,
-html.dark .settings-card { filter: brightness(.72) saturate(.75); }
+html.dark .settings-card {
+  filter: none !important;
+  border-color: #304055 !important;
+  box-shadow: 0 8px 22px rgba(0,0,0,.16) !important;
+}
+html[data-theme='dark'] .settings-card.blue,
+html.dark .settings-card.blue { background: #10283c !important; --card-accent: #2f96d9; --icon-bg: #173b58; }
+html[data-theme='dark'] .settings-card.green,
+html.dark .settings-card.green { background: #102b22 !important; --card-accent: #2fba6b; --icon-bg: #174331; }
+html[data-theme='dark'] .settings-card.amber,
+html.dark .settings-card.amber { background: #32270f !important; --card-accent: #d99a20; --icon-bg: #4a3914; }
+html[data-theme='dark'] .settings-card.slate,
+html.dark .settings-card.slate { background: #182433 !important; --card-accent: #7d98ac; --icon-bg: #26384a; }
+html[data-theme='dark'] .settings-card.gold,
+html.dark .settings-card.gold { background: #342912 !important; --card-accent: #d2a13c; --icon-bg: #4b3b18; }
+
 html[data-theme='dark'] .settings-card h2,
-html.dark .settings-card h2,
+html.dark .settings-card h2 {
+  color: #f4f8fc !important;
+  filter: none !important;
+}
 html[data-theme='dark'] .settings-card p,
-html.dark .settings-card p { filter: brightness(1.5); }
+html.dark .settings-card p {
+  color: #c4d0dc !important;
+  filter: none !important;
+}
+html[data-theme='dark'] .settings-card-icon,
+html.dark .settings-card-icon { background: var(--icon-bg) !important; color: var(--card-accent) !important; }
+html[data-theme='dark'] .settings-card-button,
+html.dark .settings-card-button {
+  background: var(--card-accent) !important;
+  color: #ffffff !important;
+  box-shadow: 0 5px 14px rgba(0,0,0,.20) !important;
+}
+html[data-theme='dark'] .settings-card:hover,
+html.dark .settings-card:hover { border-color: #49627e !important; box-shadow: 0 12px 30px rgba(0,0,0,.25) !important; }
+
+html[data-theme='dark'] .settings-detail-group > summary,
+html.dark .settings-detail-group > summary { background: #182638 !important; border-color: #304055 !important; }
+html[data-theme='dark'] .settings-detail-group > summary::after,
+html.dark .settings-detail-group > summary::after { color: #aebdcd !important; }
+html[data-theme='dark'] .settings-section-note,
+html.dark .settings-section-note { background: #101d2c !important; color: #b8c7d6 !important; border-left-color: #3c9bd5 !important; }
 
 /* V723: System Settings already contains its own complete navigation cards.
    Hide the shared admin sidebar on this page so the same settings are not

@@ -75,11 +75,72 @@
   var pollTimer = null;
   var pollCount = 0;
 
+  function machineFromJobCardLink(link) {
+    try {
+      return new URL(link.getAttribute('href') || '', window.location.origin).searchParams.get('machine') || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function openMachineJobCard(machineId) {
+    var target = new URL('job-cards.html', window.location.href);
+    if (machineId) target.searchParams.set('machine', machineId);
+    window.location.href = target.href;
+  }
+
   function resizeFrame(doc) {
     var list = doc.getElementById('machineListBody');
     var target = 760;
-    if (list) target = Math.max(760, Math.ceil(list.scrollHeight + 90));
+    if (list) target = Math.max(target, Math.ceil(list.scrollHeight + 90));
+    var actionDialog = doc.querySelector('body>dialog[open]:not(#machineListDialog)');
+    if (actionDialog) {
+      target = Math.max(target, Math.ceil(actionDialog.scrollHeight + 160), 900);
+    }
     frame.style.height = target + 'px';
+  }
+
+  function installActionSync(doc) {
+    if (doc.__belmMachineActionSyncInstalled) return;
+    doc.__belmMachineActionSyncInstalled = true;
+
+    // The embedded Customer Overview already owns Report, Check Up,
+    // Service Parts, Edit, Delete, Forget and Activity Status handlers.
+    // Keep those canonical handlers intact; only bridge navigation and
+    // make action/dialog state visible to this Workshop Manager shell.
+    doc.addEventListener('click', function (event) {
+      var jobCard = event.target.closest('.belm-maintenance-process-link');
+      if (jobCard) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        statusBox.textContent = 'Opening Job Card for selected machine…';
+        openMachineJobCard(machineFromJobCardLink(jobCard));
+        return;
+      }
+
+      var action = event.target.closest('[data-view-reports],[data-checkup],[data-service-parts],[data-edit-machine],[data-delete-machine],[data-forget-machine]');
+      if (!action) return;
+      if (action.matches('[data-view-reports]')) statusBox.textContent = 'Opening machine reports…';
+      else if (action.matches('[data-checkup]')) statusBox.textContent = 'Opening machine Check Up…';
+      else if (action.matches('[data-service-parts]')) statusBox.textContent = 'Opening Service Parts…';
+      else if (action.matches('[data-edit-machine]')) statusBox.textContent = 'Opening Edit Machine…';
+      else if (action.matches('[data-delete-machine]')) statusBox.textContent = 'Opening Delete Machine confirmation…';
+      else if (action.matches('[data-forget-machine]')) statusBox.textContent = 'Opening Forget Permanently confirmation…';
+      window.setTimeout(function () { tuneFrame(); }, 60);
+    }, true);
+
+    doc.addEventListener('change', function (event) {
+      if (!event.target.closest('[data-operational-status]')) return;
+      statusBox.textContent = 'Saving machine Activity Status…';
+      window.setTimeout(function () { tuneFrame(); }, 120);
+    }, true);
+
+    doc.addEventListener('close', function () {
+      window.setTimeout(function () {
+        statusBox.textContent = 'All registered machine cards — select a machine action directly.';
+        tuneFrame();
+      }, 60);
+    }, true);
   }
 
   function tuneFrame() {
@@ -99,23 +160,25 @@
         '#machineListDialog .dialog-head,#machineListAddButton{display:none!important;}',
         '#machineListBody{padding:0!important;margin:0!important;}',
         '#machineListBody .machine-list{padding:2px!important;margin:0!important;}',
-        'body>dialog:not(#machineListDialog)[open]{z-index:2147483647!important;}'
+        'body>dialog:not(#machineListDialog)[open]{z-index:2147483647!important;max-height:calc(100vh - 24px)!important;overflow:auto!important;}'
       ].join('');
       doc.head.appendChild(style);
     }
+
+    installActionSync(doc);
 
     var list = doc.getElementById('machineListBody');
     var dialog = doc.getElementById('machineListDialog');
     var cards = list ? list.querySelectorAll('.machine-card').length : 0;
     var empty = list && list.querySelector('.empty');
 
-    if (cards > 0) {
+    if (cards > 0 && !doc.querySelector('body>dialog[open]:not(#machineListDialog)')) {
       countBox.textContent = String(cards);
       statusBox.textContent = 'All registered machine cards — select a machine action directly.';
     } else if (empty) {
       countBox.textContent = '0';
       statusBox.textContent = empty.textContent.trim() || 'No registered machines found.';
-    } else {
+    } else if (!cards) {
       statusBox.textContent = 'Loading registered machine cards…';
     }
 
@@ -126,11 +189,22 @@
           clearTimeout(resizeTimer);
           resizeTimer = setTimeout(function () { tuneFrame(); }, 80);
         });
-        observer.observe(list || dialog, { childList: true, subtree: true, attributes: true });
+        observer.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open','class','disabled'] });
         doc.__belmDirectMachineObserver = observer;
       }
     }
   }
+
+  // manager.js uses postMessage for embedded Job Card navigation. This page
+  // now receives that message as a second, safe bridge so the Job Card button
+  // can never become a dead link inside the iframe.
+  window.addEventListener('message', function (event) {
+    if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
+    var data = event.data || {};
+    if (data.type === 'belm-workshop-open-module' && data.module === 'job-cards') {
+      openMachineJobCard(String(data.machine || ''));
+    }
+  });
 
   frame.addEventListener('load', function () {
     tuneFrame();

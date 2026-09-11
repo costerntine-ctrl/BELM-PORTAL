@@ -97,24 +97,30 @@
     applyFallbackTheme(currentTheme() === 'dark' ? 'light' : 'dark');
   }
 
+  function setAttributeIfChanged(node, name, value) {
+    if (String(node.getAttribute(name) || '') !== String(value)) node.setAttribute(name, value);
+  }
+
   function syncWorkshopNavigation() {
     document.querySelectorAll('.sidebar-nav a.nav-item, a.nav-item').forEach(function (link) {
       var text = String(link.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
       var href = String(link.getAttribute('href') || '').toLowerCase();
 
       if (text === 'spare requests' || text === 'workshop requirements' || href.indexOf('spare-requests.html') >= 0 || href.indexOf('/spare-parts-manager/?view=requests&module=workshop') >= 0) {
-        var svg = link.querySelector('svg');
-        link.innerHTML = '';
-        if (svg) link.appendChild(svg);
-        link.appendChild(document.createTextNode('Workshop Requirements'));
-        link.setAttribute('href', 'spare-requests.html');
-        link.setAttribute('data-workshop-requirements-link', '1');
+        if (text !== 'workshop requirements') {
+          var svg = link.querySelector('svg');
+          link.innerHTML = '';
+          if (svg) link.appendChild(svg);
+          link.appendChild(document.createTextNode('Workshop Requirements'));
+        }
+        setAttributeIfChanged(link, 'href', 'spare-requests.html');
+        setAttributeIfChanged(link, 'data-workshop-requirements-link', '1');
         return;
       }
 
       if (text === 'service & maintenance' || href.indexOf('service-maintenance.html') >= 0 || href.indexOf('/reports-manager/?view=service&module=workshop') >= 0) {
-        link.setAttribute('href', 'service-maintenance.html');
-        link.setAttribute('data-service-maintenance-link', '1');
+        setAttributeIfChanged(link, 'href', 'service-maintenance.html');
+        setAttributeIfChanged(link, 'data-service-maintenance-link', '1');
       }
     });
   }
@@ -155,8 +161,14 @@
     syncThemeButton();
     syncWorkshopNavigation();
 
-    var navObserver = new MutationObserver(function () { syncWorkshopNavigation(); });
-    navObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
+    // IMPORTANT: do not observe href mutations here. The previous MutationObserver
+    // called syncWorkshopNavigation(), which wrote href attributes again and could
+    // create a self-triggering mutation loop that froze Chrome with Page Unresponsive.
+    // A few bounded passes are enough to run after the live routing script without
+    // keeping a permanent observer on the whole document.
+    [100, 500, 1500, 3000].forEach(function (delay) {
+      window.setTimeout(syncWorkshopNavigation, delay);
+    });
 
     function updateClock() {
       var dateEl = document.getElementById('liveDate');

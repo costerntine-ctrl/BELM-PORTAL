@@ -29,5 +29,15 @@
     else disableStoreEditPin();
   }
 
+  // V732: component-only refresh. This file updates Job Cards, Machine Cards and
+  // the canonical BELM logo without changing any dashboard/sidebar structure.
+  if(!document.querySelector('script[data-component-refresh-v732]')){
+    const c=document.createElement('script');
+    c.src='/component-refresh-v732.js?v=732-job-machine-logo';
+    c.defer=true;
+    c.dataset.componentRefreshV732='1';
+    document.head.appendChild(c);
+  }
+
   if(!document.querySelector('script[data-v520-upgrades]')){const s=document.createElement('script');s.src='/v520-upgrades.js?v=520-latest';s.defer=true;s.dataset.v520Upgrades='1';document.head.appendChild(s);}
 })();

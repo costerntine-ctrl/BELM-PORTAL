@@ -29,7 +29,6 @@
 .detail-panel select,.detail-panel input,.detail-panel textarea{background:#031b36!important;color:#fff!important;border-color:#3b79aa!important}
 .detail-panel .actions .blue,.detail-panel button.blue{background:#0b67c2!important;color:#fff!important;border-color:#1684ff!important}.detail-panel .actions .approve,.detail-panel button.approve{background:#09834a!important;color:#fff!important}.detail-panel .actions .yellow,.detail-panel button.yellow{background:#f2c318!important;color:#07182d!important}
 .detail-panel .detail-title-row h2,.detail-panel .job-process-main-title,.detail-panel .main-job-card-title{color:#ffc400!important}.detail-panel .section h3,.detail-panel .section-head h3{border-bottom-color:#27699e!important}.detail-panel .workflow-primary-actions{border-color:#27699e!important}
-.detail-panel .workflow-focus:not(.delayed):not(.complete){background:linear-gradient(135deg,#0b3154,#073263)!important;border-color:#1684ff!important;border-left-color:#1684ff!important}.detail-panel .workflow-focus.delayed{background:linear-gradient(135deg,#5a1e24,#7b2a2a)!important;border-color:#c72f2f!important;border-left-color:#c72f2f!important}.detail-panel .workflow-focus.complete{background:linear-gradient(135deg,#06472d,#087443)!important;border-color:#09834a!important;border-left-color:#09834a!important}
 /* Requested state: KEEP Breakdown Time / Current Stage / Department / Waiting Here. REMOVE the four bottom overview tiles. */
 .detail-panel .status-box{display:grid!important}
 .detail-panel .workflow-overview-grid{display:none!important}
@@ -65,4 +64,20 @@
   .case-card{overflow-x:auto}
   .case-card .case-origin-row,
   .case-card .case-meta{white-space:nowrap}
+}
+
+/* V730 - Workshop Manager Job Cards no longer use the legacy large Breakdown Queue
+   card format. The canonical Job Cards view is the process table + dispatch workflow.
+   Breakdown cards remain available in the dedicated breakdown/analysis views. */
+html.admin-job-cards-full-view .grid{
+  display:none!important;
+}
+html.admin-job-cards-full-view #jobProcessPanel{
+  display:block!important;
+}
+html.admin-job-cards-full-view #jobProcessPanel.hidden{
+  display:block!important;
+}
+html.admin-job-cards-full-view .job-process-panel{
+  margin-top:16px!important;
 }

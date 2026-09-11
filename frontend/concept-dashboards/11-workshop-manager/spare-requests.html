@@ -1,11 +1,123 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title></head><body><script>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BELM Workshop Manager — Workshop Requirements</title>
+  <style>
+    :root{color-scheme:dark}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:#08172a;color:#eef5ff;font-family:Arial,Calibri,sans-serif}
+    body{padding:18px}
+    .top{max-width:1380px;margin:0 auto 14px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+    .top h1{margin:0;font-size:28px}.top p{margin:5px 0 0;color:#a9bbcf;font-size:13px}
+    .back{display:inline-flex;align-items:center;gap:8px;padding:11px 15px;border:1px solid #2e608e;border-radius:10px;color:#eaf5ff;text-decoration:none;background:#102b47;font-weight:800}
+    .flow{max-width:1380px;margin:0 auto 14px;display:grid;grid-template-columns:1fr 54px 1fr;gap:12px;align-items:center}
+    .step{min-height:86px;padding:15px 17px;border:1px solid #31506f;border-radius:14px;background:#10233a}
+    .step span{display:block;color:#59b8ff;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}.step strong{display:block;margin-top:7px;font-size:16px}.step small{display:block;margin-top:5px;color:#9fb2c8;line-height:1.4}
+    .arrow{text-align:center;font-size:28px;color:#f3bd2f;font-weight:900}
+    .frame-shell{max-width:1380px;margin:0 auto;border:1px solid #294765;border-radius:16px;overflow:hidden;background:#0c1b2f}
+    #requirementsFrame{display:block;width:100%;min-height:720px;border:0;background:#0c1b2f}
+    .status{padding:11px 15px;border-bottom:1px solid #294765;color:#a9bbcf;font-size:12px}
+    @media(max-width:720px){body{padding:10px}.flow{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.top h1{font-size:23px}}
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Workshop Requirements</h1>
+      <p>Central request flow for Workshop Manager.</p>
+    </div>
+    <a class="back" href="index.html">← Home Dashboard</a>
+  </header>
+
+  <section class="flow" aria-label="Workshop requirements workflow">
+    <div class="step"><span>Step 1 — Receive</span><strong>Receive Workshop Requirement</strong><small>Receive request from Store Keeper or Customer and verify the required spare / workshop item.</small></div>
+    <div class="arrow">→</div>
+    <div class="step"><span>Step 2 — Purchasing</span><strong>Send Request to Procurement</strong><small>If purchasing is required, send the approved requirement to Procurement for sourcing and purchase.</small></div>
+  </section>
+
+  <section class="frame-shell">
+    <div id="workflowStatus" class="status">Loading workshop requirements…</div>
+    <iframe id="requirementsFrame" title="BELM Workshop Requirements" src="/spare-parts-manager/?view=requests&module=workshop&embed=1"></iframe>
+  </section>
+
+<script>
 (function(){
-  var target="/spare-parts-manager/?view=requests&module=workshop";
-  var out=new URL(target, window.location.origin);
-  var incoming=new URLSearchParams(window.location.search);
-  incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });
-  if(window.location.hash && !out.hash) out.hash=window.location.hash;
-  window.location.replace(out.pathname + out.search + out.hash);
+  var frame=document.getElementById('requirementsFrame');
+  var status=document.getElementById('workflowStatus');
+  var timer=null;
+
+  function resize(doc){
+    var panel=doc.querySelector('.request-panel');
+    if(!panel)return;
+    frame.style.height=Math.max(720,Math.ceil(panel.scrollHeight+60))+'px';
+  }
+
+  function relabel(doc){
+    var panel=doc.querySelector('.request-panel');
+    if(!panel)return false;
+
+    var heading=panel.querySelector('.panel-head h2');
+    var description=panel.querySelector('.panel-head .muted');
+    if(heading)heading.textContent='Workshop Requirements';
+    if(description)description.textContent='Receive requests from Store Keeper or Customer. Verify the requirement, then send items that need purchasing to Procurement.';
+
+    panel.querySelectorAll('[data-purchase-request]').forEach(function(button){
+      var current=String(button.textContent||'').trim().toLowerCase();
+      if(current.indexOf('ordered')>=0) button.textContent='Procurement Ordered · Waiting Store';
+      else if(button.disabled||current.indexOf('awaiting')>=0) button.textContent='Sent to Procurement · Awaiting Action';
+      else button.textContent='Send Request to Procurement';
+    });
+
+    panel.querySelectorAll('.request-card .badge').forEach(function(badge){
+      var text=String(badge.textContent||'').trim().toUpperCase();
+      if(text==='PURCHASE REQUIRED') badge.textContent='SENT TO PROCUREMENT';
+      if(text==='TECHNICIAN REQUEST') badge.textContent='INTERNAL / STORE REQUEST';
+    });
+
+    status.textContent='Workshop Requirements live — receive request, verify, then send purchasing requirement to Procurement.';
+    resize(doc);
+    return true;
+  }
+
+  function tune(){
+    var doc;
+    try{doc=frame.contentDocument||frame.contentWindow.document}catch(_){return}
+    if(!doc||!doc.body)return;
+
+    if(!doc.getElementById('belmWorkshopRequirementsStyle')){
+      var style=doc.createElement('style');
+      style.id='belmWorkshopRequirementsStyle';
+      style.textContent=[
+        'html,body{background:#0c1b2f!important;overflow:hidden!important}',
+        'main.shell{width:100%!important;max-width:none!important;margin:0!important;padding:12px!important}',
+        'main.shell>.hero,main.shell>.store-audit-card,main.shell>.metrics,main.shell>.panel:not(.request-panel),#pageAlert{display:none!important}',
+        '.request-panel{margin:0!important;background:#10233a!important;border-color:#31506f!important}',
+        '.request-panel .panel-head{border-bottom-color:#31506f!important}',
+        '.request-card{background:#0d1d31!important;border-color:#31506f!important}',
+        '.request-card h3,.request-card dt,.request-card dd{color:#eef5ff!important}',
+        '.request-card dt,.muted{color:#9fb2c8!important}',
+        '[data-purchase-request]{background:#f0b526!important;border-color:#f0b526!important;color:#152033!important;font-weight:900!important}',
+        '[data-purchase-request]:disabled{background:#294766!important;border-color:#3c5f80!important;color:#d5e2ef!important;opacity:1!important}'
+      ].join('');
+      doc.head.appendChild(style);
+    }
+
+    relabel(doc);
+    if(!doc.__belmWorkshopRequirementsObserver){
+      var observer=new MutationObserver(function(){clearTimeout(timer);timer=setTimeout(function(){relabel(doc)},60)});
+      observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['disabled','class']});
+      doc.__belmWorkshopRequirementsObserver=observer;
+    }
+  }
+
+  frame.addEventListener('load',function(){
+    tune();
+    var tries=0;
+    var poll=setInterval(function(){tries++;tune();if(tries>=30)clearInterval(poll)},400);
+  });
 })();
-</script></body></html>
+</script>
+</body>
+</html>

@@ -22,7 +22,7 @@
     const text = await response.text();
     let data = null;
     try { data = text ? JSON.parse(text) : null; } catch (_) {}
-    if (!response.ok) throw new Error(data && data.error || 'Could not sync VAT payable.');
+    if (!response.ok) throw new Error(data && data.error || 'Could not sync Bank Controller finance summary.');
     return data || {};
   }
 
@@ -36,6 +36,22 @@
       const value = card.querySelector('strong');
       if (!label || !value) return;
       const name = normalize(label.textContent);
+
+      if (name === 'COMPANY EXPENSES') {
+        const breakdown = summary.companyExpenseBreakdown || {};
+        value.textContent = money.format(Number(summary.companyExpenses || 0));
+        card.classList.remove('green');
+        card.classList.add('yellow');
+        card.title = [
+          'Synced company expenses',
+          'Finance: ' + money.format(Number(breakdown.finance || 0)),
+          'Procurement: ' + money.format(Number(breakdown.procurement || 0)),
+          'Workshop Manager: ' + money.format(Number(breakdown.workshopManager || 0))
+        ].join('\n');
+        card.dataset.financeExpenses = String(Number(breakdown.finance || 0));
+        card.dataset.procurementExpenses = String(Number(breakdown.procurement || 0));
+        card.dataset.workshopExpenses = String(Number(breakdown.workshopManager || 0));
+      }
 
       if (name.includes('VAT DEBT') || name.includes('VAT PAYABLE')) {
         label.textContent = 'VAT Payable to TRA (18%)';
@@ -68,12 +84,10 @@
       const summary = await fetchVatSummary();
       applySummary(summary);
     } catch (error) {
-      console.warn('BELM paid-invoice VAT sync:', error);
+      console.warn('BELM Bank Controller summary sync:', error);
     }
   }
 
-  // app.js renders the finance cards first. Run after it, and repeat because
-  // Refresh rebuilds the cards from the main bank endpoint.
   window.addEventListener('load', function () {
     setTimeout(sync, 250);
     setInterval(sync, 60000);

@@ -1,166 +1,239 @@
-/* Compact Bank Controller layout — follows BELM finance sketch while preserving live IDs/functions. */
+/* Professional Bank Controller layout — clearer hierarchy, preserved live IDs/functions. */
 body.management-page.bank-compact-page {
   overflow-x: hidden;
 }
 
 .bank-compact-page .management-topbar {
-  min-height: 58px;
-  padding: 10px 22px;
+  min-height: 64px;
+  padding: 12px 24px;
+}
+
+.bank-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.bank-brand-block {
+  display: grid;
+  gap: 2px;
+}
+
+.bank-brand-block strong {
+  font-size: 18px;
+}
+
+.bank-brand-block small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.bank-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+.bank-live-badge i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #2fca72;
+  box-shadow: 0 0 0 4px rgba(47, 202, 114, .12);
+}
+
+.bank-live-badge.compact {
+  padding: 5px 9px;
 }
 
 .bank-compact-page .management-shell {
-  width: min(1180px, calc(100% - 36px));
-  margin: 0 0 0 22px;
-  padding: 18px 0 46px;
+  width: min(1240px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 22px 0 54px;
 }
 
 .bank-compact-page .management-hero {
-  max-width: 930px;
-  margin-bottom: 14px;
-  padding: 17px 20px;
-  border-radius: 14px;
+  margin-bottom: 18px;
+  padding: 24px 26px;
+  border-radius: 18px;
   align-items: center;
 }
 
+.bank-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
 .bank-compact-page .management-hero h1 {
-  font-size: clamp(24px, 3vw, 34px);
+  margin-top: 3px;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1;
 }
 
 .bank-compact-page .management-hero p:last-child {
-  margin-top: 6px;
-  font-size: 11px;
+  max-width: 720px;
+  margin-top: 9px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.dashboard-section {
+  margin-top: 18px;
+}
+
+.dashboard-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 10px;
+}
+
+.dashboard-section-head h2 {
+  margin: 2px 0 0;
+  font-size: 20px;
+}
+
+.section-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.section-hint {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .bank-compact-page #companyMetrics {
-  max-width: 930px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
-  margin-bottom: 12px;
+  gap: 11px;
+  margin: 0;
 }
 
 .bank-compact-page #companyMetrics .metric-card {
-  min-height: 76px;
-  padding: 10px 11px;
-  border-radius: 11px;
+  min-height: 92px;
+  padding: 13px 14px;
+  border-radius: 14px;
   border-top-width: 3px;
 }
 
 .bank-compact-page #companyMetrics .metric-card span {
   font-size: 9px;
+  letter-spacing: .04em;
 }
 
 .bank-compact-page #companyMetrics .metric-card strong {
-  margin-top: 6px;
-  font-size: clamp(15px, 1.8vw, 22px);
+  margin-top: 8px;
+  font-size: clamp(18px, 2vw, 25px);
+  line-height: 1.15;
 }
 
-.bank-control-row {
+.bank-management-section {
   display: grid;
-  grid-template-columns: minmax(0, 680px) 230px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(320px, .85fr);
   gap: 12px;
-  max-width: 930px;
-  margin-bottom: 12px;
+  align-items: start;
 }
 
-.bank-control-row .panel {
+.bank-management-section > .dashboard-section-head {
+  grid-column: 1 / -1;
+}
+
+.add-bank-main {
+  min-height: 40px;
+  padding-inline: 17px;
+}
+
+.bank-select-panel,
+.bank-analysis-panel,
+.bank-records-panel,
+#bankEditAuditPanel {
   margin: 0;
-  padding: 14px;
-  border-radius: 12px;
+  padding: 17px;
+  border-radius: 14px;
 }
 
-.bank-select-panel .section-head {
+.bank-select-panel {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 9px;
-  margin-bottom: 0;
+  grid-template-columns: minmax(210px, .7fr) minmax(0, 1.3fr);
+  gap: 18px;
+  align-items: center;
+  min-height: 142px;
 }
 
-.bank-select-panel .section-head h2,
-.bank-action-panel h2,
-.bank-records-panel .section-head h2,
-.bank-analysis-panel h2,
-#bankEditAuditPanel .section-head h2 {
-  font-size: 17px;
+.bank-select-copy label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 18px;
+  font-weight: 800;
 }
 
-.bank-select-panel .section-head p,
-.bank-records-panel .section-head p,
-#bankEditAuditPanel .section-head p {
-  font-size: 9px;
+.bank-select-copy p,
+.account-empty-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.bank-select-control {
+  display: grid;
+  gap: 7px;
 }
 
 .bank-select-panel #accountSelect {
   width: 100%;
   min-width: 0;
-  min-height: 38px;
-  font-size: 11px;
+  min-height: 46px;
+  padding-inline: 13px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
-.bank-action-panel {
-  display: grid;
-  align-content: center;
-  gap: 8px;
-}
-
-.bank-action-panel #addAccountButton {
-  width: 100%;
-  min-height: 44px;
-}
-
-.bank-action-panel .mini-note {
+.bank-storage-status {
   margin: 0;
   color: var(--muted);
   font-size: 9px;
-  line-height: 1.45;
-}
-
-.bank-workspace {
-  display: grid;
-  grid-template-columns: minmax(0, 700px) 300px;
-  gap: 12px;
-  max-width: 1012px;
-  align-items: start;
-}
-
-.bank-workspace .panel {
-  margin-bottom: 0;
-  padding: 14px;
-  border-radius: 12px;
-}
-
-.bank-records-panel .table-wrap {
-  max-height: 520px;
-  overflow: auto;
-}
-
-.bank-records-panel .table-wrap table {
-  font-size: 11px;
-}
-
-.bank-records-panel .table-wrap th,
-.bank-records-panel .table-wrap td {
-  padding: 8px 9px;
-}
-
-.bank-side-stack {
-  display: grid;
-  gap: 12px;
+  font-weight: 700;
 }
 
 .bank-analysis-panel {
-  min-height: 220px;
+  min-height: 142px;
 }
 
 .bank-analysis-panel .panel-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 10px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .bank-analysis-panel .panel-title-row h2 {
-  margin: 0;
+  margin: 2px 0 0;
+  font-size: 18px;
 }
 
 .bank-analysis-panel #accountDetail {
@@ -170,25 +243,33 @@ body.management-page.bank-compact-page {
 }
 
 .bank-analysis-panel #accountMetrics {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-bottom: 10px;
+  margin: 0 0 10px;
 }
 
 .bank-analysis-panel #accountMetrics .metric-card {
-  min-height: 64px;
-  padding: 9px 10px;
-  border-radius: 10px;
+  min-height: 72px;
+  padding: 10px 11px;
+  border-radius: 11px;
+}
+
+.bank-analysis-panel #accountMetrics .metric-card:last-child {
+  grid-column: 1 / -1;
+}
+
+.bank-analysis-panel #accountMetrics .metric-card span {
+  font-size: 8px;
 }
 
 .bank-analysis-panel #accountMetrics .metric-card strong {
-  margin-top: 4px;
+  margin-top: 5px;
   font-size: 17px;
 }
 
 .bank-analysis-panel .account-detail-actions {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
   margin-top: 8px;
 }
@@ -198,19 +279,52 @@ body.management-page.bank-compact-page {
   min-height: 40px;
 }
 
-#bankEditAuditPanel {
-  max-width: 1012px;
-  margin: 12px 0 0;
-  padding: 14px;
-  border-radius: 12px;
+.records-section,
+.audit-section {
+  margin-top: 14px;
+}
+
+.bank-records-panel .section-head,
+#bankEditAuditPanel .section-head {
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.bank-records-panel .section-head h2,
+#bankEditAuditPanel .section-head h2 {
+  margin: 2px 0 3px;
+  font-size: 18px;
+}
+
+.bank-records-panel .section-head p,
+#bankEditAuditPanel .section-head p {
+  font-size: 9px;
+}
+
+.bank-records-panel .table-wrap {
+  max-height: 460px;
+  overflow: auto;
+}
+
+.bank-records-panel .table-wrap table,
+#bankEditAuditPanel .table-wrap table {
+  font-size: 11px;
+}
+
+.bank-records-panel .table-wrap th,
+.bank-records-panel .table-wrap td,
+#bankEditAuditPanel .table-wrap th,
+#bankEditAuditPanel .table-wrap td {
+  padding: 9px 10px;
 }
 
 #bankEditAuditPanel .system-sender-note {
+  margin-bottom: 10px;
   font-size: 9px;
 }
 
 #bankEditAuditPanel .table-wrap {
-  max-height: 260px;
+  max-height: 300px;
   overflow: auto;
 }
 
@@ -218,7 +332,7 @@ body.management-page.bank-compact-page {
   display: none !important;
 }
 
-/* No side navigation on this focused bank page, even if an old cached script inserts it. */
+/* Focused bank page: no duplicate sidebar. */
 .bank-compact-page #belmAdminSidebar,
 .bank-compact-page .belm-sidebar-toggle,
 .bank-compact-page .belm-sidebar-scrim,
@@ -233,39 +347,77 @@ body.management-page.bank-compact-page {
   margin-left: 0 !important;
 }
 
-@media (max-width: 980px) {
-  .bank-compact-page .management-shell {
-    width: calc(100% - 24px);
-    margin-left: 12px;
-  }
-  .bank-control-row,
-  .bank-workspace {
-    grid-template-columns: 1fr;
-    max-width: 100%;
-  }
+@media (max-width: 1050px) {
   .bank-compact-page #companyMetrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-width: 100%;
   }
-  .bank-compact-page .management-hero {
-    max-width: 100%;
+
+  .bank-management-section {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-select-panel {
+    grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 720px) {
+  .bank-compact-page .management-shell {
+    width: calc(100% - 24px);
+  }
+
+  .bank-topbar,
+  .bank-hero,
+  .dashboard-section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bank-topbar .topbar-actions {
+    justify-content: space-between;
+  }
+
+  .bank-analysis-panel #accountMetrics,
+  .bank-analysis-panel .account-detail-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-analysis-panel #accountMetrics .metric-card:last-child {
+    grid-column: auto;
+  }
+
+  .section-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 520px) {
   .bank-compact-page #companyMetrics {
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
   }
+
+  .bank-compact-page #companyMetrics .metric-card {
+    min-height: 82px;
+    padding: 11px;
+  }
+
+  .bank-compact-page #companyMetrics .metric-card strong {
+    font-size: 17px;
+  }
+
   .bank-compact-page .management-topbar {
-    padding: 9px 12px;
+    padding: 10px 12px;
   }
+
   .bank-compact-page .management-hero {
-    display: block;
+    padding: 19px 17px;
   }
-  .bank-compact-page .management-hero .topbar-actions {
-    margin-top: 10px;
-  }
-  .bank-records-panel .table-wrap {
-    max-height: none;
+
+  .bank-select-panel,
+  .bank-analysis-panel,
+  .bank-records-panel,
+  #bankEditAuditPanel {
+    padding: 13px;
   }
 }

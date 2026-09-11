@@ -29,7 +29,6 @@
     finally{clearTimeout(timer);if(slowTimer)clearTimeout(slowTimer)}
   }
 
-
   async function readJsonResponse(res){
     const text=await res.text();
     try{return JSON.parse(text)}
@@ -42,46 +41,9 @@
   function clearRoleSessions(){['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token'].forEach(k=>localStorage.removeItem(k))}
   function setActiveAccount(type){localStorage.setItem('belm_active_account_type',type)}
 
-  function decodeToken(token){
-    try{
-      const raw=token.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
-      const padded=raw+'='.repeat((4-raw.length%4)%4);
-      return JSON.parse(decodeURIComponent(Array.from(atob(padded)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')));
-    }catch(_){return null}
-  }
-
-  async function resumeActiveSession(){
-    // Only resume the account type that was explicitly active. Logout removes
-    // its token, so this never prevents a deliberate account switch.
-    const active=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
-    const key=active==='customer'?'belm_customer_token':active==='technician'?'belm_tech_token':active==='admin'?'belm_admin_token':'';
-    const token=key?localStorage.getItem(key):'';
-    if(!token)return false;
-    try{
-      const res=await fetchWithTimeout('/api/auth/refresh',{method:'POST',cache:'no-store',headers:{Authorization:`Bearer ${token}`}},12000);
-      if(!res.ok){
-        // Only a definite 401 means the stored login is no longer valid. A
-        // network/Render problem leaves the session untouched.
-        if(res.status===401){localStorage.removeItem(key);localStorage.removeItem(`belm_session_refreshed_${key}`)}
-        return false;
-      }
-      const data=await readJsonResponse(res);
-      if(!data.token)return false;
-      localStorage.setItem(key,data.token);
-      localStorage.setItem(`belm_session_refreshed_${key}`,String(Date.now()));
-      if(active==='technician'||active==='admin'){location.replace('/portal-v2/');return true}
-      if(active==='customer'){
-        // Every customer-company user starts at the shared Company Home.
-        // The Home's Enter My Role button performs the role-specific routing.
-        location.replace('/portal-v2/');return true;
-      }
-    }catch(_){/* transient connectivity is not logout */}
-    return false;
-  }
-
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
-    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account details, tap Continue, then confirm before the password is submitted.';return}
+    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account details, tap Continue, then confirm before the password is submitted. Saved passwords never sign in automatically.';return}
     try{
       const res=await fetchWithTimeout('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'},70000);
       if(!res.ok)throw new Error('Customer app link was not found.');
@@ -127,8 +89,9 @@
         localStorage.setItem('belm_admin_token',data.token);
         localStorage.setItem('belm_admin_user',JSON.stringify(data.user||{})); setActiveAccount('admin');
       }
-      const homeDestination='/portal-v2/';
-      location.replace(homeDestination);
+      // Every account type opens the same shared Home Dashboard first.
+      // View My Role on that dashboard performs role-specific routing.
+      location.replace('/portal-v2/');
     }catch(err){
       const timedOut=err&&err.name==='AbortError';
       showError(timedOut?'Server did not respond in time. Tap Continue and confirm again.':(err.message||'Login failed.'));
@@ -136,8 +99,10 @@
       if(confirmLoginButton){confirmLoginButton.disabled=false;confirmLoginButton.textContent='Confirm Login';}
     }
   }
-  // V680: Continue only opens the review step. Credentials are sent to the
-  // backend after the user explicitly chooses Confirm Login.
+  // V718: Continue only opens the review step. Credentials are sent to the
+  // backend after the user explicitly chooses Confirm Login. A browser-saved
+  // password may autofill the fields, but it must never submit or resume an
+  // existing portal session automatically from the login page.
   form.addEventListener('submit',event=>{event.preventDefault();requestLoginConfirmation()});
   confirmLoginButton?.addEventListener('click',login);
   cancelLoginButton?.addEventListener('click',()=>{confirmDialog?.close();password.focus()});
@@ -145,12 +110,11 @@
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=707-dashboard-lock').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=718-manual-login-confirm').catch(()=>{}))}
 
   (async()=>{
-    // Re-open an explicitly active valid session before showing the login form.
-    // Logout clears the active token, so deliberate account switches are not trapped.
-    if(await resumeActiveSession())return;
+    // Always show the login page, even when a valid token or saved password
+    // already exists. The user decides which account to use on every login.
     await loadContext();
   })();
 })();

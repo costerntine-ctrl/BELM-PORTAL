@@ -31,9 +31,4 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   }
-
-  var liveSync = document.createElement('script');
-  liveSync.src = 'assets/js/jobcard-live-sync.js?v=721-live-jobcards';
-  liveSync.defer = true;
-  document.body.appendChild(liveSync);
 });

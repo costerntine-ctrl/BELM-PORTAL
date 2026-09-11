@@ -12,7 +12,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 $rows = db()->query(
-    "SELECT j.id,j.job_card_no,j.status,j.started_at,j.completed_at,j.diagnosis,j.work_done,j.test_result,
+    "SELECT j.id,j.job_card_no,j.status,j.priority,j.title,j.fault_description,j.created_at,
+            j.started_at,j.completed_at,j.diagnosis,j.work_done,j.test_result,
             j.completion_note,j.repeat_issue,j.updated_at,j.case_id,
             j.technician_id,COALESCE(NULLIF(TRIM(j.technician_name),''),u.name,'Unassigned') AS technician_name,
             bc.status AS case_status,bc.current_stage,bc.blocker_reason,
@@ -106,22 +107,51 @@ foreach ($rows as $row) {
         $detail = 'Ready for diagnosis';
     }
 
+    $reportedProblem = trim((string)($row['fault_description'] ?? ''));
+    if ($reportedProblem === '') $reportedProblem = trim((string)($row['title'] ?? ''));
+    if ($reportedProblem === '') $reportedProblem = trim((string)($row['blocker_reason'] ?? ''));
+    if ($reportedProblem === '') $reportedProblem = '—';
+
+    $priority = strtoupper(trim((string)($row['priority'] ?? 'NORMAL')));
+    if ($priority === '') $priority = 'NORMAL';
+
+    $traffic = 'YELLOW';
+    $statusLabel = 'In Progress';
+    if ($code === 'COMPLETE') {
+        $traffic = 'GREEN';
+        $statusLabel = 'Complete';
+    } elseif (in_array($code, ['WAITING_SPARE'], true) || in_array($priority, ['URGENT','BREAKDOWN'], true)) {
+        $traffic = 'RED';
+        $statusLabel = $code === 'WAITING_SPARE' ? 'Waiting' : 'Urgent';
+    } elseif ($code === 'ASSIGNED') {
+        $statusLabel = 'Assigned';
+    } elseif ($code === 'RECEIVED') {
+        $statusLabel = 'Received';
+    } elseif ($code === 'PENDING_APPROVAL') {
+        $statusLabel = 'Pending Approval';
+    }
+
     $out[] = [
         'id' => (string)$row['id'],
         'caseId' => (string)$row['case_id'],
         'jobCardNo' => (string)$row['job_card_no'],
-        'technicianName' => (string)$row['technician_name'],
-        'fleetNumber' => trim((string)($row['fleet_number'] ?? '')) ?: '—',
         'companyName' => (string)$row['company_name'],
-        'address' => (string)$row['job_address'],
         'machineLabel' => trim((string)($row['brand'] ?? '') . ' ' . (string)($row['model'] ?? '')) ?: (string)($row['machine_type'] ?? 'Machine'),
+        'fleetNumber' => trim((string)($row['fleet_number'] ?? '')) ?: '—',
+        'technicianName' => (string)$row['technician_name'],
+        'reportedProblem' => $reportedProblem,
+        'priority' => $priority,
         'processCode' => $code,
         'processLabel' => $label,
         'processDetail' => $detail,
         'processAction' => $action,
-        'status' => $jobStatus,
-        'stage' => $stage,
+        'createdAt' => $row['created_at'],
         'updatedAt' => $row['updated_at'],
+        'status' => $jobStatus,
+        'statusLabel' => $statusLabel,
+        'trafficColor' => $traffic,
+        'stage' => $stage,
+        'address' => (string)$row['job_address'],
     ];
 }
 

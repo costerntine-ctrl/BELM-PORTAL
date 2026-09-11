@@ -12,9 +12,9 @@
   RewriteRule ^belm-workshop-home/?$ api/belm_workshop_home.php [L,QSA,NC]
 
   # Workshop Manager Service & Maintenance reporting + BELM Workshop Petty Cash.
-  # Provides customer/permanent-status report filters, PDF/CSV exports, expense
-  # receipt uploads and the dedicated petty-cash transaction workflow.
-  RewriteRule ^workshop-service-maintenance/?$ api/workshop_service_maintenance.php [L,QSA,NC]
+  # V737 keeps the existing report/petty-cash module and additionally reads
+  # completed Digital Job Cards with fulfilled spare parts into Maintenance Report.
+  RewriteRule ^workshop-service-maintenance/?$ workshop-service-maintenance-v737.php [L,QSA,NC]
 
   # Main Admin Dashboard Machine & Stock Alerts. This aggregates the live
   # machine service state, spare inventory, Operator + Procurement fuel records

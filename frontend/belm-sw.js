@@ -1,10 +1,10 @@
-// BELM portal service worker — V717 dashboard-led structure.
+// BELM portal service worker — V718 manual-login confirmation.
 // Keep API requests network-only; cache only the login shell and approved dashboard structure assets.
-const CACHE='belm-portal-v717-dashboard-led-structure';
+const CACHE='belm-portal-v718-manual-login-confirm';
 const SHELL=[
-  '/customer-app.html?v=680-home-confirm-login',
+  '/customer-app.html?v=718-manual-login-confirm',
   '/customer-app.css?v=680-home-confirm-login',
-  '/customer-app.js?v=707-dashboard-lock',
+  '/customer-app.js?v=718-manual-login-confirm',
   '/password-visibility.css?v=209-eye-toggle',
   '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg',

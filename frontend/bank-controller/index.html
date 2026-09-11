@@ -9,55 +9,97 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=211-bug-audit">
   <link rel="stylesheet" href="/bank-controller/app.css?v=395-bank-edit-audit">
-  <link rel="stylesheet" href="/bank-controller/compact.css?v=1-left-compact-no-sidebar">
+  <link rel="stylesheet" href="/bank-controller/compact.css?v=2-professional-bank-dashboard">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 </head>
 <body class="management-page bank-compact-page">
-  <header class="management-topbar">
-    <div><strong>BELM General Tech</strong><small>Bank accounts, payments and withdrawals</small></div>
-    <div class="topbar-actions"><a class="button" href="/concept-dashboards/09-finance-accounts/">← Finance Dashboard</a></div>
+  <header class="management-topbar bank-topbar">
+    <div class="bank-brand-block">
+      <strong>BELM General Tech</strong>
+      <small>Bank control · payments · withdrawals · account reconciliation</small>
+    </div>
+    <div class="topbar-actions">
+      <span class="bank-live-badge"><i></i> Live database</span>
+      <a class="button" href="/concept-dashboards/09-finance-accounts/">← Finance Dashboard</a>
+    </div>
   </header>
 
   <main class="management-shell">
-    <section class="management-hero">
+    <section class="management-hero bank-hero">
       <div>
-        <p class="eyebrow">Bank Controller</p>
+        <p class="eyebrow">BANK CONTROLLER</p>
         <h1>Bank Accounts</h1>
-        <p>Compact bank control, records and account analysis.</p>
+        <p>Monitor company cash position, manage bank accounts and keep every withdrawal traceable.</p>
       </div>
-      <div class="topbar-actions">
+      <div class="hero-actions">
         <button id="clearTestBankButton" class="secondary hidden" type="button">Clear TEST BANK Data</button>
       </div>
     </section>
 
     <div id="pageAlert" class="alert hidden"></div>
 
-    <section class="metrics-grid" id="companyMetrics" aria-label="Company-wide finance summary"></section>
-
-    <section class="bank-control-row" aria-label="Bank selection and bank account action">
-      <div class="panel bank-select-panel">
-        <div class="section-head">
-          <div><h2>Select bank account</h2><p>Choose the bank account you want to view and manage.</p></div>
-          <select id="accountSelect"><option value="">Loading accounts…</option></select>
+    <section class="dashboard-section" aria-labelledby="financeSnapshotTitle">
+      <div class="dashboard-section-head">
+        <div>
+          <p class="section-kicker">COMPANY FINANCE</p>
+          <h2 id="financeSnapshotTitle">Financial Snapshot</h2>
         </div>
-        <p id="bankStorageStatus" class="muted" style="margin:8px 0 0;font-size:10px;font-weight:700">Loading bank accounts from PostgreSQL…</p>
+        <span class="section-hint">Synced from live finance records</span>
       </div>
-
-      <div class="panel bank-action-panel">
-        <h2 style="margin:0">Bank Account</h2>
-        <button id="addAccountButton" class="primary" type="button">+ Add Bank</button>
-        <p class="mini-note">Add a new bank account. Edit and withdrawal actions appear after selecting an account.</p>
-      </div>
+      <section class="metrics-grid" id="companyMetrics" aria-label="Company-wide finance summary"></section>
     </section>
 
-    <section class="bank-workspace">
+    <section class="dashboard-section bank-management-section" aria-labelledby="bankManagementTitle">
+      <div class="dashboard-section-head">
+        <div>
+          <p class="section-kicker">BANK MANAGEMENT</p>
+          <h2 id="bankManagementTitle">Select &amp; Manage Account</h2>
+        </div>
+        <button id="addAccountButton" class="primary add-bank-main" type="button">+ Add Bank Account</button>
+      </div>
+
+      <div class="panel bank-select-panel">
+        <div class="bank-select-copy">
+          <label for="accountSelect">Bank account</label>
+          <p>Choose an account to view balance movement, edit details or record a withdrawal.</p>
+        </div>
+        <div class="bank-select-control">
+          <select id="accountSelect"><option value="">Loading accounts…</option></select>
+          <p id="bankStorageStatus" class="bank-storage-status">Loading bank accounts from PostgreSQL…</p>
+        </div>
+      </div>
+
+      <section class="panel bank-analysis-panel">
+        <div class="panel-title-row">
+          <div>
+            <p class="section-kicker">SELECTED ACCOUNT</p>
+            <h2>Account Analysis</h2>
+          </div>
+          <span class="bank-live-badge compact"><i></i> Live</span>
+        </div>
+        <div id="accountDetail" class="account-detail hidden">
+          <div class="metrics-grid" id="accountMetrics"></div>
+          <div class="account-detail-actions">
+            <button id="addWithdrawalButton" class="primary" type="button">Record Withdrawal</button>
+            <button id="editAccountButton" class="secondary" type="button">Edit Bank Account</button>
+          </div>
+        </div>
+        <p class="account-empty-note">Select a bank account above to display opening balance, payments in, expenses out, withdrawals and current balance.</p>
+      </section>
+    </section>
+
+    <section class="dashboard-section records-section" aria-labelledby="withdrawalRecordsTitle">
       <section class="panel bank-records-panel">
         <div class="section-head">
-          <div><h2>Records</h2><p>Latest bank withdrawal records, newest first.</p></div>
-          <button id="refreshButton" class="secondary compact" type="button">Refresh</button>
+          <div>
+            <p class="section-kicker">TRANSACTION HISTORY</p>
+            <h2 id="withdrawalRecordsTitle">Withdrawal Records</h2>
+            <p>Latest bank withdrawal records, newest first.</p>
+          </div>
+          <button id="refreshButton" class="secondary compact" type="button">Refresh Records</button>
         </div>
         <div class="table-wrap">
           <table>
@@ -66,34 +108,26 @@
           </table>
         </div>
       </section>
-
-      <div class="bank-side-stack">
-        <section class="panel bank-analysis-panel">
-          <div class="panel-title-row"><h2>Account Analysis</h2><span class="muted">Live</span></div>
-          <div id="accountDetail" class="account-detail hidden">
-            <div class="metrics-grid" id="accountMetrics"></div>
-            <div class="account-detail-actions">
-              <button id="addWithdrawalButton" class="primary" type="button">Withdraw</button>
-              <button id="editAccountButton" class="secondary" type="button">Edit Bank</button>
-            </div>
-          </div>
-          <p class="muted" style="margin:0;font-size:10px">Select a bank account to display its opening balance, payments in, expenses out, withdrawals and current balance.</p>
-        </section>
-      </div>
     </section>
 
-    <section class="panel" id="bankEditAuditPanel">
-      <div class="section-head">
-        <div><h2>Bank account edit log</h2><p>Who edited a bank account, when, and why.</p></div>
-        <button id="refreshBankEditAuditButton" class="secondary compact" type="button">Refresh log</button>
-      </div>
-      <p class="system-sender-note">System sender: <strong id="systemSenderEmail">info@belmgeneral.co.tz</strong> — bank edits are attributed to the signed-in human Admin account.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Date / time</th><th>Admin</th><th>Bank / account</th><th>Reason</th></tr></thead>
-          <tbody id="bankEditAuditRows"><tr><td colspan="4" class="empty">Loading bank edit history…</td></tr></tbody>
-        </table>
-      </div>
+    <section class="dashboard-section audit-section" aria-labelledby="bankAuditTitle">
+      <section class="panel" id="bankEditAuditPanel">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">SECURITY &amp; AUDIT</p>
+            <h2 id="bankAuditTitle">Bank Account Edit Log</h2>
+            <p>Protected history showing who edited a bank account, when and why.</p>
+          </div>
+          <button id="refreshBankEditAuditButton" class="secondary compact" type="button">Refresh Log</button>
+        </div>
+        <p class="system-sender-note">System sender: <strong id="systemSenderEmail">info@belmgeneral.co.tz</strong> · bank edits are attributed to the signed-in human Admin account.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date / time</th><th>Admin</th><th>Bank / account</th><th>Reason</th></tr></thead>
+            <tbody id="bankEditAuditRows"><tr><td colspan="4" class="empty">Loading bank edit history…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
     </section>
   </main>
 

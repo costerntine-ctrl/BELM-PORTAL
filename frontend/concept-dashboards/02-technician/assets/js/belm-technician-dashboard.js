@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function esc(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
-      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c];
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'})[c];
     });
   }
 
@@ -86,14 +86,14 @@ document.addEventListener('DOMContentLoaded', function () {
       '<div class="belm-tech-workflow__steps">',
       ['Received','Inspection / Diagnosis','Diagnosis Report','Waiting for Spare','Repair','Testing','Completion Report','Completed'].map(function (label, index) {
         var optional = label === 'Waiting for Spare' ? '<em>IF REQUIRED</em>' : '';
-        return '<div class="belm-tech-workflow__step"><span>' + (index + 1) + '</span><b>' + label + '</b>' + optional + '</div>';
+        return '<div class="belm-tech-workflow__step" data-workflow-step="' + label + '"><span>' + (index + 1) + '</span><b>' + label + '</b>' + optional + '</div>';
       }).join(''),
       '</div>'
     ].join('');
     stats.insertAdjacentElement('afterend', section);
 
     var style = document.createElement('style');
-    style.textContent = '.belm-tech-workflow{margin:18px 0 24px;padding:20px;border:1px solid rgba(61,140,230,.45);border-radius:16px;background:linear-gradient(135deg,rgba(8,34,67,.96),rgba(13,53,94,.9));box-shadow:0 12px 30px rgba(0,0,0,.16)}.belm-tech-workflow__head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.belm-tech-workflow__head small{color:#f4c51c;font-size:10px;font-weight:900;letter-spacing:.1em}.belm-tech-workflow__head h2{margin:4px 0 3px;color:#fff;font-size:20px}.belm-tech-workflow__head p{margin:0;color:#afc7e1;font-size:12px}.belm-tech-workflow__checklist{flex:0 0 auto;padding:10px 14px;border-radius:9px;background:#f4c51c;color:#17263b;text-decoration:none;font-size:11px;font-weight:900}.belm-tech-workflow__steps{display:grid;grid-template-columns:repeat(8,minmax(90px,1fr));gap:8px;overflow-x:auto;padding-bottom:4px}.belm-tech-workflow__step{position:relative;min-width:108px;padding:12px 8px;border:1px solid rgba(109,173,236,.35);border-radius:11px;background:rgba(5,20,39,.5);text-align:center}.belm-tech-workflow__step span{display:grid;place-items:center;width:28px;height:28px;margin:0 auto 8px;border:2px solid #29a5f5;border-radius:50%;color:#fff;font-size:11px;font-weight:900}.belm-tech-workflow__step b{display:block;color:#fff;font-size:10px;line-height:1.25}.belm-tech-workflow__step em{display:block;margin-top:5px;color:#f4c51c;font-size:8px;font-style:normal;font-weight:900;letter-spacing:.05em}@media(max-width:760px){.belm-tech-workflow__head{align-items:stretch;flex-direction:column}.belm-tech-workflow__checklist{text-align:center}.belm-tech-workflow__steps{grid-template-columns:repeat(8,118px)}}';
+    style.textContent = '.belm-tech-workflow{margin:18px 0 24px;padding:20px;border:1px solid rgba(61,140,230,.45);border-radius:16px;background:linear-gradient(135deg,rgba(8,34,67,.96),rgba(13,53,94,.9));box-shadow:0 12px 30px rgba(0,0,0,.16)}.belm-tech-workflow__head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.belm-tech-workflow__head small{color:#f4c51c;font-size:10px;font-weight:900;letter-spacing:.1em}.belm-tech-workflow__head h2{margin:4px 0 3px;color:#fff;font-size:20px}.belm-tech-workflow__head p{margin:0;color:#afc7e1;font-size:12px}.belm-tech-workflow__checklist{flex:0 0 auto;padding:10px 14px;border-radius:9px;background:#f4c51c;color:#17263b;text-decoration:none;font-size:11px;font-weight:900}.belm-tech-workflow__steps{display:grid;grid-template-columns:repeat(8,minmax(90px,1fr));gap:8px;overflow-x:auto;padding-bottom:4px}.belm-tech-workflow__step{position:relative;min-width:108px;padding:12px 8px;border:1px solid rgba(109,173,236,.35);border-radius:11px;background:rgba(5,20,39,.5);text-align:center}.belm-tech-workflow__step span{display:grid;place-items:center;width:28px;height:28px;margin:0 auto 8px;border:2px solid #29a5f5;border-radius:50%;color:#fff;font-size:11px;font-weight:900}.belm-tech-workflow__step b{display:block;color:#fff;font-size:10px;line-height:1.25}.belm-tech-workflow__step em{display:block;margin-top:5px;color:#f4c51c;font-size:8px;font-style:normal;font-weight:900;letter-spacing:.05em}.belm-live-blink{animation:belmLiveSyncBlink 1.15s ease-in-out infinite;will-change:filter,box-shadow,transform}.belm-tech-workflow__step.belm-live-blink{z-index:2;border-color:rgba(70,195,255,.95)}@keyframes belmLiveSyncBlink{0%,100%{filter:brightness(1);box-shadow:0 0 0 rgba(39,169,255,0);transform:translateY(0)}50%{filter:brightness(1.34);box-shadow:0 0 0 2px rgba(255,255,255,.18),0 0 22px rgba(39,169,255,.72);transform:translateY(-2px)}}@media(prefers-reduced-motion:reduce){.belm-live-blink{animation:none!important;filter:brightness(1.18);box-shadow:0 0 0 2px rgba(39,169,255,.35)}}@media(max-width:760px){.belm-tech-workflow__head{align-items:stretch;flex-direction:column}.belm-tech-workflow__checklist{text-align:center}.belm-tech-workflow__steps{grid-template-columns:repeat(8,118px)}}';
     document.head.appendChild(style);
   }
 
@@ -104,6 +104,37 @@ document.addEventListener('DOMContentLoaded', function () {
         var nodes = Array.from(link.childNodes).filter(function (node) { return node.nodeType === Node.TEXT_NODE; });
         if (nodes.length) nodes[nodes.length - 1].textContent = ' Inspection / Diagnosis & Report';
       }
+    });
+  }
+
+  function syncBlinkIndicators(stages, cardValues) {
+    var blinkLabels = ['In Progress', 'Waiting for Spares', 'Ready for Testing'];
+    document.querySelectorAll('.belm-stat-card').forEach(function (card) {
+      var labelEl = card.querySelector('.belm-stat-card__label');
+      var label = labelEl ? labelEl.textContent.trim() : '';
+      var shouldBlink = blinkLabels.includes(label) && Number(cardValues[label] || 0) > 0;
+      card.classList.toggle('belm-live-blink', shouldBlink);
+      if (shouldBlink) card.setAttribute('aria-label', label + ': live active status');
+      else card.removeAttribute('aria-label');
+    });
+
+    var counts = {
+      'Received': stages.filter(function (s) { return s === 'Assigned / Receive'; }).length,
+      'Inspection / Diagnosis': stages.filter(function (s) { return s === 'Inspection / Diagnosis'; }).length,
+      'Diagnosis Report': stages.filter(function (s) { return s === 'Diagnosis Report'; }).length,
+      'Waiting for Spare': stages.filter(function (s) { return s === 'Waiting for Spare'; }).length,
+      'Repair': stages.filter(function (s) { return s === 'Repair'; }).length,
+      'Testing': stages.filter(function (s) { return s === 'Testing'; }).length,
+      'Completion Report': stages.filter(function (s) { return s === 'Completion Report'; }).length,
+      'Completed': 0
+    };
+
+    document.querySelectorAll('.belm-tech-workflow__step').forEach(function (step) {
+      var label = step.getAttribute('data-workflow-step') || '';
+      var count = Number(counts[label] || 0);
+      step.classList.toggle('belm-live-blink', count > 0);
+      if (count > 0) step.setAttribute('aria-label', label + ': ' + count + ' active job' + (count === 1 ? '' : 's'));
+      else step.removeAttribute('aria-label');
     });
   }
 
@@ -131,6 +162,8 @@ document.addEventListener('DOMContentLoaded', function () {
       var label = labelEl ? labelEl.textContent.trim() : '';
       if (valueEl && Object.prototype.hasOwnProperty.call(cardValues, label)) valueEl.textContent = String(cardValues[label]);
     });
+
+    syncBlinkIndicators(stages, cardValues);
 
     var body = document.querySelector('.belm-table tbody');
     if (!body) return;

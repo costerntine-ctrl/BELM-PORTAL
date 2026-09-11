@@ -23,6 +23,9 @@
     // V658 bypasses the legacy portal-tools bundle for Technician pages so
     // a stale/invalid legacy bundle cannot leave raw machine buttons visible.
     await loadScript('/technician-dashboard-v658.js?v=666-report-period');
+    // V735: keep the existing Reports modal, only align each report control
+    // row left-to-right: Report -> From -> To -> View -> PDF -> CSV.
+    await loadScript('/technician-report-row-v735.js?v=735-single-row');
   }
 
   async function bootNonCritical(){

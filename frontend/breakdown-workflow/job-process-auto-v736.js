@@ -62,10 +62,11 @@
       const rows=Array.isArray(data)?data:[];
       ensureHead();
       body.innerHTML=rows.length?rows.map(row=>{
+        const t=traffic(row.trafficColor);
         const processButton=row.processAction==='VIEW_REPORT'
-          ? `<button type="button" class="job-process-auto-button ${cls(row.processCode)}" data-process-action="VIEW_REPORT" data-job-id="${esc(row.id)}">${esc(row.processLabel||'View Report')}</button>`
-          : `<span class="job-process-auto-button ${cls(row.processCode)}">${esc(row.processLabel||'Assigned')}</span>`;
-        return `<tr data-auto-jc="${esc(row.id)}">
+          ? `<button type="button" class="job-process-auto-button ${cls(row.processCode)} traffic-${t}" data-process-action="VIEW_REPORT" data-job-id="${esc(row.id)}">${esc(row.processLabel||'View Report')}</button>`
+          : `<span class="job-process-auto-button ${cls(row.processCode)} traffic-${t}">${esc(row.processLabel||'Assigned')}</span>`;
+        return `<tr data-auto-jc="${esc(row.id)}" data-traffic="${esc(t)}">
           <td><b>${esc(row.jobCardNo||'Job Card')}</b></td>
           <td>${esc(row.companyName||'Customer')}</td>
           <td>${esc(row.machineLabel||'Machine')}</td>
@@ -76,7 +77,7 @@
           <td>${processButton}${row.processDetail?`<small class="job-process-detail">${esc(row.processDetail)}</small>`:''}</td>
           <td>${esc(fmt(row.createdAt))}</td>
           <td>${esc(fmt(row.updatedAt))}</td>
-          <td><span class="job-process-status status-${traffic(row.trafficColor)}">${esc(row.statusLabel||row.status||'In Progress')}</span></td>
+          <td><span class="job-process-status status-${t} traffic-${t}">${esc(row.statusLabel||row.status||'In Progress')}</span></td>
         </tr>`;
       }).join(''):'<tr><td colspan="11" class="job-process-empty">No assigned Job Card process yet.</td></tr>';
     }catch(e){
@@ -104,7 +105,20 @@
     .job-process-priority,.job-process-status{display:inline-flex;align-items:center;border-radius:999px;padding:6px 9px;font:900 10px/1 Inter,Arial,sans-serif;text-transform:uppercase;white-space:nowrap}
     .job-process-priority.pri-normal{background:#e9f0fb;color:#1f5fb7}.job-process-priority.pri-low{background:#edf4ee;color:#3c6b48}.job-process-priority.pri-high{background:#fff0bf;color:#8a6100}.job-process-priority.pri-urgent,.job-process-priority.pri-breakdown{background:#ffe0dd;color:#b42318}
     .job-process-status.status-red{background:#ffe0dd;color:#b42318;border:1px solid #ffc4bf}.job-process-status.status-yellow{background:#fff0bf;color:#8a6100;border:1px solid #f2d675}.job-process-status.status-green{background:#d9f7e5;color:#11743d;border:1px solid #a9e5bf}
+    .job-process-auto-button.traffic-red{background:#b42318!important;color:#fff!important;animation:belmProcessRed 1.05s ease-in-out infinite}
+    .job-process-auto-button.traffic-yellow{background:#d49b00!important;color:#182033!important;animation:belmProcessYellow 1.2s ease-in-out infinite}
+    .job-process-auto-button.traffic-green{background:#138447!important;color:#fff!important;animation:belmProcessGreen 1.35s ease-in-out infinite}
+    .job-process-status.traffic-red{animation:belmStatusRed 1.05s ease-in-out infinite}
+    .job-process-status.traffic-yellow{animation:belmStatusYellow 1.2s ease-in-out infinite}
+    .job-process-status.traffic-green{animation:belmStatusGreen 1.35s ease-in-out infinite}
+    @keyframes belmProcessRed{0%,100%{box-shadow:0 0 0 rgba(180,35,24,0)}50%{box-shadow:0 0 15px rgba(180,35,24,.72)}}
+    @keyframes belmProcessYellow{0%,100%{box-shadow:0 0 0 rgba(212,155,0,0)}50%{box-shadow:0 0 14px rgba(212,155,0,.58)}}
+    @keyframes belmProcessGreen{0%,100%{box-shadow:0 0 0 rgba(19,132,71,0)}50%{box-shadow:0 0 13px rgba(19,132,71,.50)}}
+    @keyframes belmStatusRed{0%,100%{opacity:1}50%{opacity:.48;box-shadow:0 0 12px rgba(180,35,24,.45)}}
+    @keyframes belmStatusYellow{0%,100%{opacity:1}50%{opacity:.55;box-shadow:0 0 11px rgba(212,155,0,.38)}}
+    @keyframes belmStatusGreen{0%,100%{opacity:1}50%{opacity:.62;box-shadow:0 0 10px rgba(19,132,71,.34)}}
     .job-process-detail{display:block;margin-top:4px;color:#70849a;font-size:9px;white-space:normal;max-width:220px}
+    @media(prefers-reduced-motion:reduce){.job-process-auto-button[class*="traffic-"],.job-process-status[class*="traffic-"]{animation:none!important}}
   `;
   document.head.appendChild(style);
 

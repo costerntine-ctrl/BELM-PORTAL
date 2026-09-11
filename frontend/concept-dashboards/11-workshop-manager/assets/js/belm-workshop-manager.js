@@ -1,9 +1,6 @@
 (function () {
   "use strict";
 
-  // Workshop Manager must use the same personal Light/Dark preference as the
-  // rest of BELM Portal. The live dashboard previously treated the moon icon
-  // as a link to System Settings, so clicking it never changed the theme.
   function installThemeAssets() {
     if (!document.querySelector('link[data-belm-workshop-theme]')) {
       var link = document.createElement('link');
@@ -100,10 +97,11 @@
     applyFallbackTheme(currentTheme() === 'dark' ? 'light' : 'dark');
   }
 
-  function syncWorkshopRequirementsNav() {
+  function syncWorkshopNavigation() {
     document.querySelectorAll('.sidebar-nav a.nav-item, a.nav-item').forEach(function (link) {
       var text = String(link.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
       var href = String(link.getAttribute('href') || '').toLowerCase();
+
       if (text === 'spare requests' || text === 'workshop requirements' || href.indexOf('spare-requests.html') >= 0 || href.indexOf('/spare-parts-manager/?view=requests&module=workshop') >= 0) {
         var svg = link.querySelector('svg');
         link.innerHTML = '';
@@ -111,22 +109,33 @@
         link.appendChild(document.createTextNode('Workshop Requirements'));
         link.setAttribute('href', 'spare-requests.html');
         link.setAttribute('data-workshop-requirements-link', '1');
+        return;
+      }
+
+      if (text === 'service & maintenance' || href.indexOf('service-maintenance.html') >= 0 || href.indexOf('/reports-manager/?view=service&module=workshop') >= 0) {
+        link.setAttribute('href', 'service-maintenance.html');
+        link.setAttribute('data-service-maintenance-link', '1');
       }
     });
   }
 
-  // Capture before the older live routing layer can redirect this menu item
-  // straight into the general Spare Parts Inventory. Workshop Manager now has
-  // a dedicated receive -> Procurement workflow.
   document.addEventListener('click', function (event) {
-    var requirements = event.target && event.target.closest ? event.target.closest('[data-workshop-requirements-link],.sidebar-nav a') : null;
-    if (requirements) {
-      var text = String(requirements.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
-      var href = String(requirements.getAttribute('href') || '').toLowerCase();
-      if (requirements.hasAttribute('data-workshop-requirements-link') || text === 'workshop requirements' || text === 'spare requests' || href.indexOf('spare-requests.html') >= 0 || href.indexOf('/spare-parts-manager/?view=requests&module=workshop') >= 0) {
+    var navLink = event.target && event.target.closest ? event.target.closest('[data-workshop-requirements-link],[data-service-maintenance-link],.sidebar-nav a') : null;
+    if (navLink) {
+      var text = String(navLink.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+      var href = String(navLink.getAttribute('href') || '').toLowerCase();
+
+      if (navLink.hasAttribute('data-workshop-requirements-link') || text === 'workshop requirements' || text === 'spare requests' || href.indexOf('spare-requests.html') >= 0 || href.indexOf('/spare-parts-manager/?view=requests&module=workshop') >= 0) {
         event.preventDefault();
         event.stopImmediatePropagation();
         window.location.href = 'spare-requests.html';
+        return;
+      }
+
+      if (navLink.hasAttribute('data-service-maintenance-link') || text === 'service & maintenance' || href.indexOf('/reports-manager/?view=service&module=workshop') >= 0) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.location.href = 'service-maintenance.html';
         return;
       }
     }
@@ -139,17 +148,14 @@
   }, true);
 
   window.addEventListener('belm-theme-change', syncThemeButton);
-
   installThemeAssets();
 
   document.addEventListener('DOMContentLoaded', function () {
     installThemeAssets();
     syncThemeButton();
-    syncWorkshopRequirementsNav();
+    syncWorkshopNavigation();
 
-    // Live dashboard routing may rewrite hrefs after DOMContentLoaded. Keep the
-    // label and dedicated route synchronized without touching the other menu items.
-    var navObserver = new MutationObserver(function () { syncWorkshopRequirementsNav(); });
+    var navObserver = new MutationObserver(function () { syncWorkshopNavigation(); });
     navObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['href'] });
 
     function updateClock() {

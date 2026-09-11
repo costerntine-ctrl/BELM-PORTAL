@@ -100,9 +100,11 @@ document.addEventListener('DOMContentLoaded', function () {
   function updateStaticNavigation() {
     document.querySelectorAll('.belm-nav__item').forEach(function (link) {
       var text = String(link.textContent || '').replace(/\s+/g, ' ').trim();
-      if (text === 'Diagnosis & Repair') {
+      if (text === 'Diagnosis & Repair' || text === 'Inspection / Diagnosis & Report') {
         var nodes = Array.from(link.childNodes).filter(function (node) { return node.nodeType === Node.TEXT_NODE; });
-        if (nodes.length) nodes[nodes.length - 1].textContent = ' Inspection / Diagnosis & Report';
+        if (nodes.length) nodes[nodes.length - 1].textContent = ' Diagnosis Report';
+        link.setAttribute('aria-label', 'Diagnosis Report');
+        link.setAttribute('title', 'Diagnosis Report');
       }
     });
   }

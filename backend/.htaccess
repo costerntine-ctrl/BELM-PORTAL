@@ -35,6 +35,9 @@
   # and payment history synchronized without requiring an official receipt.
   RewriteRule ^proforma-generate-invoice/?$ proforma-generate-invoice.php [L,QSA,NC]
 
+  # Shared Job Card detail modal API used by Technician and Workshop Manager.
+  RewriteRule ^job-card-detail/?$ job-card-detail.php [L,QSA,NC]
+
   # Customer Check Up is a customer-authenticated checklist workflow with its
   # own GET/POST handler. Keep it explicit so it cannot fall through to the
   # generic front controller and become a read-only checklist preview.

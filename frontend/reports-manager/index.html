@@ -3,22 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Reports & Comparisons — BELM Workshop Manager Portal</title>
+  <title>Reports & Analysis — All Departments — BELM Operations Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/management-analytics.css?v=221-finance-sync">
-  <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+  <style>
+    body.management-page{padding-left:0!important}
+    .management-topbar{position:sticky;top:0;z-index:30}
+    .department-hub{margin:0 0 22px}
+    .department-head{display:flex;align-items:end;justify-content:space-between;gap:14px;margin-bottom:12px}
+    .department-head h2{margin:0 0 4px;font-size:21px}
+    .department-head p{margin:0;color:var(--muted,#718096);font-size:13px}
+    .department-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    .department-card{display:flex;flex-direction:column;min-height:146px;padding:16px;border:1px solid rgba(44,119,190,.28);border-radius:14px;background:var(--panel,#fff);text-decoration:none;color:inherit;box-shadow:0 8px 22px rgba(7,26,45,.06);transition:transform .15s ease,border-color .15s ease,box-shadow .15s ease}
+    .department-card:hover{transform:translateY(-2px);border-color:#2489d8;box-shadow:0 12px 28px rgba(7,26,45,.1)}
+    .department-card__icon{display:grid;place-items:center;width:39px;height:39px;border-radius:11px;background:rgba(36,137,216,.12);font-size:19px;margin-bottom:11px}
+    .department-card h3{margin:0 0 5px;font-size:14px}
+    .department-card p{margin:0 0 12px;color:var(--muted,#718096);font-size:11.5px;line-height:1.45;flex:1}
+    .department-card strong{font-size:10.5px;color:#2383cf;text-transform:uppercase;letter-spacing:.05em}
+    .hub-divider{height:1px;background:rgba(81,116,145,.18);margin:8px 0 22px}
+    @media(max-width:1050px){.department-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:760px){.department-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.management-topbar{align-items:flex-start}.topbar-actions{flex-wrap:wrap}}
+    @media(max-width:500px){.department-grid{grid-template-columns:1fr}.department-head{align-items:flex-start;flex-direction:column}}
+  </style>
 </head>
 <body class="management-page">
   <header class="management-topbar">
-    <div><strong>BELM General Tech</strong><small>Reports, analysis and comparisons</small></div>
+    <div><strong>BELM General Tech</strong><small>All Departments Reports & Analysis</small></div>
     <div class="topbar-actions no-print">
-      <a class="button" href="/portal-v2/#role">← WM Role Menu</a>
+      <a class="button" href="/concept-dashboards/01-admin-home/">← Main Dashboard</a>
       <button id="csvButton" type="button">Export CSV</button>
       <button id="printButton" class="secondary" type="button">Print / Save PDF</button>
     </div>
@@ -27,12 +45,31 @@
   <main class="management-shell">
     <section class="management-hero">
       <div>
-        <p class="eyebrow">Decision-ready management reporting</p>
-        <h1>Reports & Comparisons</h1>
-        <p>Finance, expenses, sales, employee attendance, role activity, tasks and service performance in one report centre.</p>
+        <p class="eyebrow">BELM management intelligence</p>
+        <h1>Reports & Analysis — All Departments</h1>
+        <p>One organised report centre for Technical Department, Procurement, Store, Finance, Bank, Registration & Sales, Customers, workforce and system activity.</p>
       </div>
-      <a class="button secondary" href="/portal-v2/#role">WM Role Menu</a>
     </section>
+
+    <section class="department-hub">
+      <div class="department-head">
+        <div><h2>Department Analysis</h2><p>Select a department for its detailed operational analysis. The consolidated management report continues below.</p></div>
+      </div>
+      <div class="department-grid">
+        <a class="department-card" href="/workshop-analysis/?actor=admin&module=reports"><span class="department-card__icon">🔧</span><h3>Technical Department / Workshop</h3><p>Job Cards, diagnosis, repair, testing, completion, technician workload and workshop performance.</p><strong>Open Workshop Analysis →</strong></a>
+        <a class="department-card" href="/belm-procurement/?module=reports"><span class="department-card__icon">🛒</span><h3>Procurement</h3><p>Spare purchasing, pending proformas, suppliers, purchase activity and procurement status.</p><strong>Open Procurement Analysis →</strong></a>
+        <a class="department-card" href="/spare-parts-manager/?module=reports"><span class="department-card__icon">📦</span><h3>Store & Inventory</h3><p>Stock balance, stock in/out, shortage alerts, spare usage and inventory activity.</p><strong>Open Store Analysis →</strong></a>
+        <a class="department-card" href="#financeMetrics"><span class="department-card__icon">💰</span><h3>Finance & Accounts</h3><p>Sales invoiced, received revenue, expenses, outstanding balances and profit/loss comparisons.</p><strong>View Finance Analysis ↓</strong></a>
+        <a class="department-card" href="/bank-controller/?module=reports"><span class="department-card__icon">🏦</span><h3>Bank Control</h3><p>Bank balances, deposits, withdrawals, approvals and transaction audit trail.</p><strong>Open Bank Analysis →</strong></a>
+        <a class="department-card" href="/concept-dashboards/04-customer-registration/"><span class="department-card__icon">🧾</span><h3>Registration & Sales</h3><p>Customer registration, service onboarding, sales activity, approvals and customer growth.</p><strong>Open Registration & Sales →</strong></a>
+        <a class="department-card" href="/customers-manager/?module=reports"><span class="department-card__icon">🏢</span><h3>Customers & Machines</h3><p>Customer companies, registered machines, service activity and operational status.</p><strong>Open Customer Analysis →</strong></a>
+        <a class="department-card" href="#employee-activity"><span class="department-card__icon">👥</span><h3>Employees & Roles</h3><p>Attendance, recorded activity, assigned tasks and performance grouped by role.</p><strong>View Workforce Analysis ↓</strong></a>
+        <a class="department-card" href="/reports-manager/?view=operator&module=reports"><span class="department-card__icon">🚜</span><h3>Machine Operator</h3><p>Operator reports, machine condition reports, checkups and operational issues.</p><strong>Open Operator Reports →</strong></a>
+        <a class="department-card" href="/reports-manager/?view=activity&module=reports"><span class="department-card__icon">📋</span><h3>System & Audit</h3><p>Audit logs, user activity, changes, approvals and system accountability records.</p><strong>Open Audit Analysis →</strong></a>
+      </div>
+    </section>
+
+    <div class="hub-divider"></div>
 
     <section class="filter-panel no-print">
       <div class="filters">
@@ -49,7 +86,7 @@
         <label id="dateToLabel" class="hidden">To<input id="dateTo" type="date"></label>
         <button id="applyButton" class="primary" type="button">Sync report</button>
         <span id="periodLabel" class="period-note">Loading report…</span>
-        <span id="syncStatus" class="sync-status">Billing sync pending…</span>
+        <span id="syncStatus" class="sync-status">Data sync pending…</span>
       </div>
     </section>
 
@@ -57,53 +94,33 @@
     <section id="financeMetrics" class="metrics-grid"></section>
 
     <section class="panel">
-      <div class="section-head">
-        <div><h2>Financial comparison</h2><p>Current period compared with the immediately preceding equivalent period.</p></div>
-      </div>
+      <div class="section-head"><div><h2>Financial comparison</h2><p>Current period compared with the immediately preceding equivalent period.</p></div></div>
       <div id="comparisonTable" class="data-table-wrap"></div>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div><h2>12-month sales, revenue and expenses</h2><p>Visual movement over time. Profit/loss equals received revenue minus expenses.</p></div>
-        <div class="legend">
-          <span><i style="background:#2374d8"></i>Sales</span>
-          <span><i style="background:#00a958"></i>Revenue</span>
-          <span><i style="background:#dc3e4d"></i>Expenses</span>
-        </div>
+        <div class="legend"><span><i style="background:#2374d8"></i>Sales</span><span><i style="background:#00a958"></i>Revenue</span><span><i style="background:#dc3e4d"></i>Expenses</span></div>
       </div>
       <div id="trendGrid" class="trend-grid"></div>
     </section>
 
     <section class="three-column">
-      <article class="panel">
-        <div class="section-head"><div><h2>Attendance</h2><p>Period totals by status</p></div></div>
-        <div id="attendanceBars" class="bar-list"></div>
-      </article>
-      <article class="panel">
-        <div class="section-head"><div><h2>Employee tasks</h2><p>Pending vs completed</p></div></div>
-        <div id="taskBars" class="bar-list"></div>
-      </article>
-      <article class="panel">
-        <div class="section-head"><div><h2>Service work</h2><p>Request status comparison</p></div></div>
-        <div id="serviceBars" class="bar-list"></div>
-      </article>
+      <article class="panel"><div class="section-head"><div><h2>Attendance</h2><p>Period totals by status</p></div></div><div id="attendanceBars" class="bar-list"></div></article>
+      <article class="panel"><div class="section-head"><div><h2>Employee tasks</h2><p>Pending vs completed</p></div></div><div id="taskBars" class="bar-list"></div></article>
+      <article class="panel"><div class="section-head"><div><h2>Service work</h2><p>Request status comparison</p></div></div><div id="serviceBars" class="bar-list"></div></article>
     </section>
 
     <section id="employee-activity" class="panel">
-      <div class="section-head">
-        <div><h2>Employee and role activity</h2><p>Activities and assigned tasks grouped by role.</p></div>
-      </div>
+      <div class="section-head"><div><h2>Employee and role activity</h2><p>Activities and assigned tasks grouped by role.</p></div></div>
       <div id="roleTable" class="data-table-wrap"></div>
     </section>
 
     <section class="panel">
       <div class="section-head">
         <div><h2>Daily employee attendance</h2><p>Record each active employee's presence, time and notes.</p></div>
-        <div class="inline-actions no-print">
-          <input id="attendanceDate" type="date" aria-label="Attendance date">
-          <button id="attendanceRefreshButton" type="button">Load date</button>
-        </div>
+        <div class="inline-actions no-print"><input id="attendanceDate" type="date" aria-label="Attendance date"><button id="attendanceRefreshButton" type="button">Load date</button></div>
       </div>
       <div id="attendanceMessage" class="alert success hidden"></div>
       <div id="attendanceTable" class="data-table-wrap"></div>
@@ -111,7 +128,6 @@
   </main>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
-  <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
   <script src="/reports-manager/app.js?v=667-coordinator-finance-range"></script>
 </body>
 </html>

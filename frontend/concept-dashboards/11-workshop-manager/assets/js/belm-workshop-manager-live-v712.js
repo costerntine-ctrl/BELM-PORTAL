@@ -49,6 +49,97 @@
   };
   document.querySelectorAll('a[href]').forEach(a=>{const raw=a.getAttribute('href')||'';const base=raw.split('?')[0].split('#')[0];if(routeMap[base])a.href=routeMap[base];});
 
+  const scheduleTargets={
+    'Team Briefing':'/belm-workshop/#assigned-work',
+    'Job Card Assignment':'/belm-workshop/#job-cards',
+    'Progress Review':'/belm-workshop/job-card-status/?status=progress',
+    'End of Day Report':'/workshop-analysis/?actor=admin&module=workshop'
+  };
+
+  function scheduleLabel(row){
+    if(row.dataset.scheduleLabel)return row.dataset.scheduleLabel;
+    const label=String(row.querySelector('.schedule-text')?.textContent||'').trim();
+    row.dataset.scheduleLabel=label;
+    return label;
+  }
+
+  function bindScheduleLinks(){
+    const viewAll=[...document.querySelectorAll('.wm-bottom-grid2 .panel-link')].find(a=>String(a.textContent||'').trim().toLowerCase()==='view all'&&a.closest('.panel')?.querySelector('.panel-title')?.textContent.includes("Today's Schedule"));
+    if(viewAll){viewAll.href='/belm-workshop/#assigned-work';viewAll.setAttribute('aria-label','View full Workshop schedule and assigned work');}
+    document.querySelectorAll('.schedule-list .schedule-row').forEach(row=>{
+      const label=scheduleLabel(row),href=scheduleTargets[label];
+      if(!href)return;
+      row.dataset.scheduleHref=href;
+      row.setAttribute('role','link');
+      row.setAttribute('tabindex','0');
+      row.setAttribute('aria-label',label+' - open linked Workshop module');
+      row.style.cursor='pointer';
+      row.style.borderRadius='7px';
+      row.style.paddingLeft='6px';
+      row.style.paddingRight='6px';
+      if(row.dataset.scheduleBound==='1')return;
+      row.dataset.scheduleBound='1';
+      row.addEventListener('mouseenter',()=>{row.style.background='rgba(47,111,214,.08)';});
+      row.addEventListener('mouseleave',()=>{row.style.background='';});
+      row.addEventListener('click',()=>{location.href=row.dataset.scheduleHref;});
+      row.addEventListener('keydown',event=>{
+        if(event.key!=='Enter'&&event.key!==' ')return;
+        event.preventDefault();
+        location.href=row.dataset.scheduleHref;
+      });
+    });
+  }
+
+  function syncSchedule(metrics){
+    bindScheduleLinks();
+    const j=metrics&&metrics.jobCards?metrics.jobCards:{};
+    const meta={
+      'Team Briefing':'Daily',
+      'Job Card Assignment':Number(j.open||0)+' open',
+      'Progress Review':(Number(j.inProgress||0)+Number(j.testing||0))+' active',
+      'End of Day Report':Number(j.overdue||0)>0?Number(j.overdue||0)+' overdue':'Daily report'
+    };
+    const now=new Date();
+    const nowMinutes=now.getHours()*60+now.getMinutes();
+    document.querySelectorAll('.schedule-list .schedule-row').forEach(row=>{
+      const label=scheduleLabel(row);
+      const text=row.querySelector('.schedule-text');
+      if(!text)return;
+      let badge=row.querySelector('.schedule-live-meta');
+      if(!badge){
+        badge=document.createElement('span');
+        badge.className='schedule-live-meta';
+        badge.style.marginLeft='auto';
+        badge.style.fontSize='10px';
+        badge.style.fontWeight='800';
+        badge.style.padding='3px 7px';
+        badge.style.borderRadius='999px';
+        badge.style.background='rgba(47,111,214,.11)';
+        badge.style.color='#2f6fd6';
+        badge.style.whiteSpace='nowrap';
+        row.appendChild(badge);
+      }
+      badge.textContent=meta[label]||'Live';
+      const time=String(row.querySelector('.schedule-time')?.textContent||'').trim().match(/^(\d{1,2}):(\d{2})/);
+      if(time){
+        const eventMinutes=Number(time[1])*60+Number(time[2]);
+        const delta=nowMinutes-eventMinutes;
+        row.dataset.scheduleState=delta>=60?'done':delta>=-30?'current':'upcoming';
+        if(delta>=-30&&delta<60){
+          row.setAttribute('aria-current','true');
+          badge.style.background='rgba(30,164,90,.14)';
+          badge.style.color='#168148';
+        }else{
+          row.removeAttribute('aria-current');
+          badge.style.background='rgba(47,111,214,.11)';
+          badge.style.color='#2f6fd6';
+        }
+      }
+      const operational=meta[label]||'Live Workshop schedule';
+      row.title=label+' · '+operational+' · Click to open';
+    });
+  }
+
   function bindTechnicianDispatch(){
     const action=document.querySelector('.wm-qa-grid .wm-qa-btn--green');
     if(!action)return;
@@ -102,7 +193,7 @@
   }
 
   async function load(){
-    if(preview)return;
+    if(preview){syncSchedule(null);return;}
     const results=await Promise.allSettled([api('/workshop-dashboard-metrics.php'),api('/belm-workshop-home.php')]);
     const metrics=results[0].status==='fulfilled'?results[0].value:null;
     const home=results[1].status==='fulfilled'?results[1].value:null;
@@ -120,6 +211,7 @@
       renderRecentJobCards(metrics.recentJobCards||[]);
       renderTechnicians(metrics.technicians||[]);
     }
+    syncSchedule(metrics);
     const alertRows=[...document.querySelectorAll('.alert-row2')];
     const overdue=Number(metrics&&metrics.jobCards&&metrics.jobCards.overdue||0);
     const waiting=Number(metrics&&metrics.jobCards&&metrics.jobCards.waitingForSpare||0);
@@ -128,7 +220,7 @@
     alertRows.forEach((r,i)=>{const x=r.querySelector('.alert-row2-title');if(x&&values[i])x.textContent=values[i];});
     if(home&&Array.isArray(home.machines))document.documentElement.setAttribute('data-belm-workshop-machines',String(home.machines.length));
   }
-  bindHeader();bindTechnicianDispatch();bindStatusCards();
+  bindHeader();bindTechnicianDispatch();bindStatusCards();bindScheduleLinks();
   load().catch(e=>console.warn('Workshop Manager live sync:',e));
   setInterval(()=>load().catch(()=>{}),60000);
 })();

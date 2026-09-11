@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded', function () {
   var sidebarToggle = document.getElementById('sidebarToggle');
   var themeToggle = document.getElementById('themeToggle');
   var searchInput = document.querySelector('.belm-search input');
+  var tableBody = document.querySelector('.belm-table tbody');
+
+  if (tableBody) {
+    tableBody.innerHTML = '<tr><td colspan="7">Loading live Job Cards…</td></tr>';
+  }
 
   if (sidebarToggle) {
     sidebarToggle.addEventListener('click', function () {
@@ -33,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   var liveSync = document.createElement('script');
-  liveSync.src = 'assets/js/jobcard-live-sync.js?v=721-live-jobcards';
+  liveSync.src = 'assets/js/jobcard-live-sync.js?v=722-real-records';
   liveSync.defer = true;
   document.body.appendChild(liveSync);
 });

@@ -18,13 +18,15 @@ SELECT
   j.created_at,
   j.updated_at,
   j.due_date,
+  c.id AS customer_id,
   c.name AS customer_name,
+  m.id AS machine_id,
   m.brand,
   m.model,
   m.machine_type,
   m.fleet_number,
   COALESCE(j.technician_id, sr.assigned_to_id) AS technician_id,
-  COALESCE(NULLIF(TRIM(j.technician_name),''), assigned_user.name) AS technician_name,
+  COALESCE(NULLIF(TRIM(assigned_user.name),''), NULLIF(TRIM(j.technician_name),'')) AS technician_name,
   UPPER(COALESCE(bc.current_stage,'WORKSHOP_REVIEW')) AS current_stage,
   bc.current_department,
   UPPER(COALESCE(bc.status,'OPEN')) AS case_status,
@@ -81,22 +83,7 @@ function ir_stage_label(string $stage): string {
 }
 
 function ir_next_action(string $stage): string {
-    return match ($stage) {
-        'WORKSHOP_REVIEW' => 'Review Job Card',
-        'TECHNICIAN_ASSIGNMENT' => 'Dispatch Technician',
-        'JOB_CARD_ASSIGNED' => 'Technician Receive',
-        'DIAGNOSIS' => 'Review Diagnosis',
-        'BOSS_APPROVAL' => 'Review Approval',
-        'STORE_CHECK' => 'Check Spare',
-        'PROCUREMENT' => 'Procurement Follow-up',
-        'ACCOUNTS' => 'Accounts Follow-up',
-        'PARTS_READY' => 'Start Repair',
-        'REPAIR' => 'Continue Repair',
-        'TESTING' => 'Review Testing',
-        'PENDING_APPROVAL' => 'Approve Completion',
-        'COMPLETED' => 'View Job Card',
-        default => 'Open Job Card',
-    };
+    return 'Open Job Card';
 }
 
 foreach ($rows as $row) {
@@ -122,13 +109,24 @@ foreach ($rows as $row) {
     if (!in_array($priority, ['URGENT','HIGH','NORMAL','LOW'], true)) $priority = 'NORMAL';
 
     $active[] = [
-        'id'=>(string)$row['id'], 'caseId'=>(string)$row['case_id'], 'jobCardNo'=>(string)($row['job_card_no'] ?? ''),
-        'machine'=>$machine, 'customer'=>(string)($row['customer_name'] ?? ''),
+        'id'=>(string)$row['id'],
+        'caseId'=>(string)$row['case_id'],
+        'customerId'=>(string)($row['customer_id'] ?? ''),
+        'machineId'=>(string)($row['machine_id'] ?? ''),
+        'technicianId'=>(string)($row['technician_id'] ?? ''),
+        'jobCardNo'=>(string)($row['job_card_no'] ?? ''),
+        'machine'=>$machine,
+        'customer'=>(string)($row['customer_name'] ?? ''),
         'technician'=>trim((string)($row['technician_name'] ?? '')) ?: 'Unassigned',
-        'stage'=>$stage, 'stageLabel'=>ir_stage_label($stage), 'stageGroup'=>$group,
-        'department'=>(string)($row['current_department'] ?? ''), 'priority'=>$priority,
-        'issue'=>(string)($row['issue'] ?? 'Job Card'), 'nextAction'=>ir_next_action($stage),
-        'stageHours'=>round((float)($row['stage_hours'] ?? 0),1), 'dueDate'=>$row['due_date'] ?? null,
+        'stage'=>$stage,
+        'stageLabel'=>ir_stage_label($stage),
+        'stageGroup'=>$group,
+        'department'=>(string)($row['current_department'] ?? ''),
+        'priority'=>$priority,
+        'issue'=>(string)($row['issue'] ?? 'Job Card'),
+        'nextAction'=>ir_next_action($stage),
+        'stageHours'=>round((float)($row['stage_hours'] ?? 0),1),
+        'dueDate'=>$row['due_date'] ?? null,
         'updatedAt'=>$row['updated_at'] ?: $row['created_at'],
     ];
 }

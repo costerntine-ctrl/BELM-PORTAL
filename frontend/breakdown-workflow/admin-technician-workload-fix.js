@@ -149,6 +149,9 @@
     const link=document.createElement('link');link.rel='stylesheet';link.href='/job-card-detail-v734.css?v=734-job-card-detail';document.head.appendChild(link);
   }
   if(!document.querySelector('script[src*="job-card-detail-v734.js"]')){
-    const script=document.createElement('script');script.src='/job-card-detail-v734.js?v=734-job-card-detail';script.defer=true;document.body.appendChild(script);
+    const script=document.createElement('script');script.src='/job-card-detail-v734.js?v=738-job-card-detail-fit';script.defer=true;document.body.appendChild(script);
+  }
+  if(!document.querySelector('script[src*="job-card-approval-v739.js"]')){
+    const approval=document.createElement('script');approval.src='/job-card-approval-v739.js?v=739-job-card-approval';approval.defer=true;document.body.appendChild(approval);
   }
 })();

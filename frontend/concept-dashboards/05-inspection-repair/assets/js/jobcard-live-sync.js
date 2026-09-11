@@ -24,16 +24,15 @@
     const group=String(j&&j.stageGroup||'').toUpperCase();
     const stage=String(j&&j.stage||'').toUpperCase();
     const label=String(j&&j.stageLabel||'').toUpperCase();
-    const action=String(j&&j.nextAction||'').toUpperCase();
     const all=[group,stage,label].join(' ');
     if(/COMPLETED|CLOSED/.test(all))return 'Completed';
-    if(/PENDING_APPROVAL|COMPLETION REPORT|AWAITING APPROVAL/.test(all)||/APPROVAL/.test(action))return 'Completion Report';
+    if(/PENDING_APPROVAL|COMPLETION REPORT|AWAITING APPROVAL/.test(all))return 'Completion Report';
     if(/TEST/.test(all))return 'Testing';
     if(/REPAIR/.test(all))return 'Repair';
-    if(/WAITING.*SPARE|WAITING.*PART|PROCUREMENT|STORE_CHECK|BOSS_APPROVAL/.test(all))return 'Waiting for Spare';
-    if(/DIAGNOSIS REPORT/.test(all)||/REVIEW DIAGNOSIS|VIEW DIAGNOSIS/.test(action))return 'Diagnosis Report';
-    if(/DIAGNOS/.test(all))return 'Inspection / Diagnosis';
-    if(/INSPECT/.test(all))return 'Inspection / Diagnosis';
+    if(/WAITING.*SPARE|WAITING.*PART|PROCUREMENT|STORE_CHECK|BOSS_APPROVAL|PARTS_READY/.test(all))return 'Waiting for Spare';
+    if(/DIAGNOSIS REPORT/.test(all))return 'Diagnosis Report';
+    if(/DIAGNOS/.test(all))return 'Diagnosis';
+    if(/INSPECT|WORKSHOP_REVIEW|TECHNICIAN_ASSIGNMENT|JOB_CARD_ASSIGNED/.test(all))return 'Inspection';
     return 'Opened';
   }
 
@@ -53,12 +52,13 @@
     return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0"><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>';
   }
 
-  function normalizedAction(j,stage){
-    const action=String(j&&j.nextAction||'').trim();
-    if(stage==='Diagnosis Report'&&/review diagnosis/i.test(action))return 'Review Diagnosis Report';
-    if(stage==='Completion Report')return 'Review Completion Report';
-    if(stage==='Inspection / Diagnosis'&&!action)return 'Open Inspection / Diagnosis';
-    return action||'Open Job Card';
+  function jobHref(j){
+    const q=new URLSearchParams();
+    if(j.machineId)q.set('machine',String(j.machineId));
+    if(j.caseId)q.set('case',String(j.caseId));
+    if(j.id)q.set('job',String(j.id));
+    q.set('action','checking');
+    return '/belm-workshop/?'+q.toString()+'#job-cards';
   }
 
   function renderRows(rows){
@@ -66,16 +66,16 @@
     if(!body)return;
     if(!Array.isArray(rows)||!rows.length){body.innerHTML='<tr><td colspan="7">No active Job Cards.</td></tr>';return;}
     body.innerHTML=rows.map(j=>{
-      const href='/belm-workshop/#job-cards';
+      const href=jobHref(j);
       const stage=normalizeStage(j);
-      return '<tr data-job-card="'+esc(j.id)+'">'+
-        '<td><a href="'+href+'" class="cell-link">'+esc(j.jobCardNo||'—')+'</a></td>'+
-        '<td>'+esc(j.machine||'—')+'</td>'+
+      return '<tr data-job-card="'+esc(j.id)+'" data-machine="'+esc(j.machineId)+'" data-case="'+esc(j.caseId)+'">'+
+        '<td><a href="'+esc(href)+'" class="cell-link">'+esc(j.jobCardNo||'—')+'</a></td>'+
+        '<td><a href="'+esc(href)+'" class="cell-link">'+esc(j.machine||'—')+'</a></td>'+
         '<td>'+esc(j.customer||'—')+'</td>'+
         '<td>'+esc(j.technician||'Unassigned')+'</td>'+
         '<td><span class="belm-stage-badge belm-stage-badge--'+stageClass(stage)+'">'+esc(stage)+'</span></td>'+
         '<td><span class="belm-priority-badge belm-priority-badge--'+priorityClass(j.priority)+'">'+priorityIcon(j.priority)+esc(j.priority||'NORMAL')+'</span></td>'+
-        '<td><a href="'+href+'" class="belm-btn-next">'+esc(normalizedAction(j,stage))+'</a></td>'+
+        '<td><a href="'+esc(href)+'" class="belm-btn-next">Open Job Card</a></td>'+
       '</tr>';
     }).join('');
   }
@@ -85,8 +85,8 @@
     if(!host)return;
     const steps=[
       ['Opened','blue'],
-      ['Inspection / Diagnosis','blue'],
-      ['Diagnosis Report','gold'],
+      ['Inspection','blue'],
+      ['Diagnosis','gold'],
       ['Waiting for Spare','gold'],
       ['Repair','blue'],
       ['Testing','green'],
@@ -102,22 +102,8 @@
   }
 
   function syncWorkflowCounts(counts,rows){
-    const derived={
-      'Opened':Number(counts.pendingInspection||0),
-      'Inspection / Diagnosis':0,
-      'Diagnosis Report':0,
-      'Waiting for Spare':Number(counts.waitingSpare||0),
-      'Repair':Number(counts.repair||0),
-      'Testing':Number(counts.testing||0),
-      'Completion Report':0,
-      'Completed':Number(counts.completed||0)
-    };
-    (Array.isArray(rows)?rows:[]).forEach(j=>{
-      const stage=normalizeStage(j);
-      if(stage==='Inspection / Diagnosis')derived[stage]+=1;
-      else if(stage==='Diagnosis Report')derived[stage]+=1;
-      else if(stage==='Completion Report')derived[stage]+=1;
-    });
+    const derived={'Opened':0,'Inspection':0,'Diagnosis':0,'Waiting for Spare':0,'Repair':0,'Testing':0,'Completion Report':0,'Completed':Number(counts.completed||0)};
+    (Array.isArray(rows)?rows:[]).forEach(j=>{const stage=normalizeStage(j);if(Object.prototype.hasOwnProperty.call(derived,stage))derived[stage]+=1;});
     document.querySelectorAll('.belm-workflow__step').forEach(step=>{
       const label=step.querySelector('.belm-workflow__label');
       if(!label)return;
@@ -129,10 +115,10 @@
   function apply(data){
     const c=data&&data.counts||{};
     const rows=data&&Array.isArray(data.activeJobCards)?data.activeJobCards:[];
-    setStat('Pending Inspection',Number(c.pendingInspection||0));
-    setStat('Under Diagnosis',rows.filter(j=>['Inspection / Diagnosis','Diagnosis Report'].includes(normalizeStage(j))).length||Number(c.diagnosis||0));
-    setStat('Repair in Progress',Number(c.repair||0));
-    setStat('Ready for Testing',Number(c.testing||0));
+    setStat('Pending Inspection',rows.filter(j=>['Opened','Inspection'].includes(normalizeStage(j))).length);
+    setStat('Under Diagnosis',rows.filter(j=>['Diagnosis','Diagnosis Report'].includes(normalizeStage(j))).length||Number(c.diagnosis||0));
+    setStat('Repair in Progress',rows.filter(j=>normalizeStage(j)==='Repair').length||Number(c.repair||0));
+    setStat('Ready for Testing',rows.filter(j=>normalizeStage(j)==='Testing').length||Number(c.testing||0));
     rebuildWorkflow();
     syncWorkflowCounts(c,rows);
     renderRows(rows);
@@ -142,7 +128,11 @@
   async function load(){if(preview){rebuildWorkflow();return;}apply(await api());}
   document.addEventListener('DOMContentLoaded',()=>{
     rebuildWorkflow();
-    load().catch(e=>console.warn('Inspection/Repair Job Card sync:',e));
+    load().catch(e=>{
+      const body=document.querySelector('.belm-table tbody');
+      if(body)body.innerHTML='<tr><td colspan="7">Could not load live Job Cards. Use refresh after checking the connection.</td></tr>';
+      console.warn('Inspection/Repair Job Card sync:',e);
+    });
     setInterval(()=>load().catch(()=>{}),30000);
   });
 })();

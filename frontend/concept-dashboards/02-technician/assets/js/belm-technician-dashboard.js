@@ -106,6 +106,12 @@ document.addEventListener('DOMContentLoaded', function () {
         link.setAttribute('aria-label', 'Diagnosis Report');
         link.setAttribute('title', 'Diagnosis Report');
       }
+      if (text === 'Customer Machines') {
+        link.setAttribute('href', '/concept-dashboards/02-technician/customer-machines.php');
+      }
+      if (text === 'Daily Checklists') {
+        link.setAttribute('href', '/concept-dashboards/02-technician/daily-checklists.php');
+      }
     });
   }
 
@@ -187,6 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   ensureWorkflowPanel();
   updateStaticNavigation();
+  window.setTimeout(updateStaticNavigation, 250);
   loadTechnicianJobs().catch(function (error) { console.warn('BELM technician dashboard live sync:', error); });
   window.setInterval(function () { if (!document.hidden) loadTechnicianJobs().catch(function () {}); }, 30000);
 });

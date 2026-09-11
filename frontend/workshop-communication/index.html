@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Workshop Communication — BELM Operations Platform</title>
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <style>
+    :root{--bg:#061525;--panel:#0d2742;--panel2:#102f50;--line:#234b6d;--text:#f4f8fc;--muted:#9fb4c9;--blue:#2f86d6;--green:#22c07f;--gold:#f5c518;--red:#e45d5d}
+    *{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#061525,#081b2e);color:var(--text);font-family:Inter,"Segoe UI",Arial,sans-serif;min-height:100vh}.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 20px;background:#102a56;border-bottom:1px solid rgba(255,255,255,.08)}.topbar p{margin:0 0 3px;color:#55e48e;font-size:10px;font-weight:900;letter-spacing:.12em}.topbar h1{margin:0;font-size:20px}.top-actions{display:flex;gap:8px}.top-actions a,.top-actions button{border:1px solid rgba(255,255,255,.3);background:#0b3a63;color:#fff;border-radius:9px;padding:9px 12px;text-decoration:none;font-weight:800;cursor:pointer}main{width:min(1280px,calc(100% - 24px));margin:0 auto;padding:22px 0 42px}.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:18px}.hero h2{margin:0 0 5px;font-size:28px}.hero p{margin:0;color:var(--muted)}.sync{font-size:11px;color:var(--muted)}.summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}.card{padding:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);box-shadow:0 8px 22px rgba(0,0,0,.18)}.card b{display:block;font-size:28px}.card span{display:block;margin-top:3px;color:var(--muted);font-size:12px}.card.job{border-color:#2f86d6}.card.operator{border-color:#22c07f}.card.spare{border-color:#f5c518}.card.email{border-color:#6ea8fe}.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}.tabs{display:flex;flex-wrap:wrap;gap:8px}.tabs button{border:1px solid var(--line);background:#102943;color:#c9d7e5;border-radius:999px;padding:9px 14px;font-weight:800;cursor:pointer}.tabs button.active{background:var(--blue);border-color:var(--blue);color:#fff}.search{min-width:280px;border:1px solid var(--line);border-radius:9px;background:#081a2c;color:#fff;padding:10px 12px}.inbox{display:grid;gap:10px}.item{display:grid;grid-template-columns:42px 1fr auto;gap:12px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:13px;background:var(--panel)}.icon{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;background:#12395f;font-size:19px}.item-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.type{font-size:10px;font-weight:900;letter-spacing:.08em;padding:4px 7px;border-radius:999px;background:#12395f;color:#9dc9ff}.type.operator{background:#0f3c2c;color:#75e3aa}.type.spare{background:#403710;color:#ffe56e}.type.email{background:#1d3152;color:#b8d1ff}.item h3{margin:5px 0 4px;font-size:15px}.item p{margin:0;color:#c3d2e0;font-size:12.5px;white-space:pre-line}.meta{margin-top:7px;color:var(--muted);font-size:10.5px}.item-actions{display:flex;flex-direction:column;gap:7px;align-items:flex-end}.item-actions a{border:1px solid #2e6796;border-radius:8px;background:#0c3152;color:#fff;padding:8px 10px;text-decoration:none;font-size:11px;font-weight:800;white-space:nowrap}.status{font-size:9.5px;font-weight:900;padding:5px 7px;border-radius:999px;background:#183c2d;color:#70dfa5}.empty{padding:38px;border:1px dashed var(--line);border-radius:14px;background:var(--panel);text-align:center;color:var(--muted)}.alert{margin-bottom:14px;padding:11px 13px;border:1px solid #8f3d3d;border-radius:10px;background:#351b1b;color:#ffc3c3}.hidden{display:none!important}@media(max-width:800px){.summary{grid-template-columns:1fr 1fr}.toolbar{align-items:stretch;flex-direction:column}.search{min-width:0;width:100%}.item{grid-template-columns:38px 1fr}.item-actions{grid-column:2;align-items:flex-start;flex-direction:row;flex-wrap:wrap}.hero{align-items:flex-start;flex-direction:column}}@media(max-width:480px){.summary{grid-template-columns:1fr}.topbar{align-items:flex-start}.top-actions{flex-direction:column}.hero h2{font-size:23px}}
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <div><p>TECHNICAL DEPARTMENT</p><h1>Workshop Communication</h1></div>
+  <div class="top-actions"><a href="/concept-dashboards/05-inspection-repair/">← Inspection & Repair</a><button id="refresh" type="button">Refresh</button></div>
+</header>
+<main>
+  <section class="hero"><div><h2>Communication Inbox</h2><p>Receive operational communication in one place: Job Cards, Operator machine reports, Spare requests and Email records.</p></div><div class="sync" id="syncTime">Waiting for sync…</div></section>
+  <div id="alert" class="alert hidden"></div>
+  <section class="summary">
+    <div class="card job"><b id="jobCount">0</b><span>Job Cards</span></div>
+    <div class="card operator"><b id="operatorCount">0</b><span>Operator Reports</span></div>
+    <div class="card spare"><b id="spareCount">0</b><span>Spare Requests</span></div>
+    <div class="card email"><b id="emailCount">0</b><span>Emails</span></div>
+  </section>
+  <section class="toolbar">
+    <div class="tabs" id="tabs"><button class="active" data-type="all">All</button><button data-type="job_card">Job Cards</button><button data-type="operator_report">Operator Reports</button><button data-type="spare_request">Spare Requests</button><button data-type="email">Emails</button></div>
+    <input id="search" class="search" type="search" placeholder="Search customer, machine, job card, message…">
+  </section>
+  <section id="inbox" class="inbox"><div class="empty">Loading communication…</div></section>
+</main>
+<script>
+(function(){
+  const token=localStorage.getItem('belm_admin_token')||localStorage.getItem('belm_tech_token')||'';
+  const inbox=document.getElementById('inbox');const alertBox=document.getElementById('alert');const search=document.getElementById('search');const tabs=document.getElementById('tabs');const syncTime=document.getElementById('syncTime');
+  let items=[];let filter='all';
+  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=v=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});};
+  const icons={job_card:'📋',operator_report:'⚠',spare_request:'📦',email:'✉'};
+  const labels={job_card:'JOB CARD',operator_report:'OPERATOR REPORT',spare_request:'SPARE REQUEST',email:'EMAIL'};
+  const actions={job_card:'/belm-workshop/#job-cards',operator_report:'/reports-manager/?view=operator&module=workshop',spare_request:'/spare-parts-manager/?view=requests&module=workshop',email:'/customers-manager/?module=workshop'};
+  function render(){
+    const q=search.value.trim().toLowerCase();
+    const visible=items.filter(i=>(filter==='all'||i.type===filter)&&(!q||[i.title,i.message,i.customer,i.machine,i.reference,i.sender].join(' ').toLowerCase().includes(q)));
+    if(!visible.length){inbox.innerHTML='<div class="empty">No communication found for this filter.</div>';return;}
+    inbox.innerHTML=visible.map(i=>'<article class="item"><div class="icon">'+(icons[i.type]||'•')+'</div><div><div class="item-head"><span class="type '+esc(i.type.replace('_report','').replace('_request',''))+'">'+esc(labels[i.type]||i.type)+'</span><span class="status">'+esc(i.status||'RECEIVED')+'</span></div><h3>'+esc(i.title||labels[i.type]||'Communication')+'</h3><p>'+esc(i.message||'')+'</p><div class="meta">'+esc([i.customer,i.machine,i.reference,i.sender,fmt(i.createdAt)].filter(Boolean).join(' · '))+'</div></div><div class="item-actions"><a href="'+esc(i.actionUrl||actions[i.type]||'#')+'">Open details</a></div></article>').join('');
+  }
+  function counts(data){document.getElementById('jobCount').textContent=Number(data.counts?.jobCards||0);document.getElementById('operatorCount').textContent=Number(data.counts?.operatorReports||0);document.getElementById('spareCount').textContent=Number(data.counts?.spareRequests||0);document.getElementById('emailCount').textContent=Number(data.counts?.emails||0);}
+  async function load(){
+    if(!token){location.replace('/login');return;}
+    try{const r=await fetch('/api/workshop-communication.php',{cache:'no-store',headers:{Authorization:'Bearer '+token}});const t=await r.text();let d=null;try{d=t?JSON.parse(t):null}catch(_){}if(!r.ok)throw new Error(d?.error||('Request failed ('+r.status+')'));items=Array.isArray(d.items)?d.items:[];counts(d);syncTime.textContent='Synced '+fmt(d.generatedAt||new Date().toISOString());alertBox.classList.add('hidden');render();}catch(e){alertBox.textContent=e.message||'Communication sync failed.';alertBox.classList.remove('hidden');}
+  }
+  tabs.addEventListener('click',e=>{const b=e.target.closest('button[data-type]');if(!b)return;filter=b.dataset.type;tabs.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));render();});search.addEventListener('input',render);document.getElementById('refresh').addEventListener('click',load);load();setInterval(()=>{if(!document.hidden)load();},30000);
+})();
+</script>
+</body>
+</html>

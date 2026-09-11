@@ -64,8 +64,8 @@
       panel.querySelectorAll('button').forEach(b=>b.disabled=true);
       const id=await resolveJobId();
       if(!id)throw new Error('Job Card ID was not found. Close and open the Job Card again.');
-      const response=await fetch(`/api/breakdown-workflow/job-cards/${encodeURIComponent(id)}/review`,{
-        method:'POST',cache:'no-store',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token()}`},body:JSON.stringify({approve:Boolean(approve),note})
+      const response=await fetch(`/api/breakdown-workflow/job-approval/${encodeURIComponent(id)}`,{
+        method:'PUT',cache:'no-store',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token()}`},body:JSON.stringify({approve:Boolean(approve),note})
       });
       const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch{}
       if(!response.ok)throw new Error(data?.error||`Review failed (${response.status}).`);

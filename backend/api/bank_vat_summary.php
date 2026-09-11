@@ -64,6 +64,10 @@ $totalWithdrawals = vat_finance_amount(
     $pdo,
     'SELECT COALESCE(SUM(amount),0) FROM bank_withdrawals WHERE deleted_at IS NULL'
 );
+
+// COGS remains an accounting expense for profit/loss. It is separate from
+// Inventory Value, which is an asset and must not be deducted from profit merely
+// because it is still sitting in the store.
 $costOfGoodsSold = vat_finance_amount(
     $pdo,
     "SELECT COALESCE(SUM(ii.quantity * sp.purchase_price),0)
@@ -72,6 +76,31 @@ $costOfGoodsSold = vat_finance_amount(
      JOIN spare_parts sp ON sp.id=ii.spare_part_id
      WHERE i.deleted_at IS NULL AND i.status <> 'CANCELLED'"
 );
+
+// Live inventory asset value: current physical stock x purchase cost.
+// Any Store Keeper stock-in, stock-out, issue or sale that changes stock_qty
+// automatically changes this value on the next dashboard refresh.
+$inventoryValue = vat_table_exists($pdo, 'spare_parts')
+    ? vat_finance_amount(
+        $pdo,
+        "SELECT COALESCE(SUM(
+            GREATEST(COALESCE(stock_qty,0),0) *
+            GREATEST(COALESCE(purchase_price,0),0)
+         ),0)
+         FROM spare_parts
+         WHERE deleted_at IS NULL"
+      )
+    : 0.0;
+
+$inventoryItems = vat_table_exists($pdo, 'spare_parts')
+    ? (int)vat_finance_amount(
+        $pdo,
+        "SELECT COUNT(*)
+         FROM spare_parts
+         WHERE deleted_at IS NULL
+           AND COALESCE(stock_qty,0) > 0"
+      )
+    : 0;
 
 $netAfterVat = $paymentsReceived - $companyExpenses - $totalWithdrawals - $vatPayable - $costOfGoodsSold;
 
@@ -85,6 +114,10 @@ json_out([
         'procurement' => $procurementExpenses,
         'workshopManager' => $workshopExpenses,
     ],
+    'inventoryValue' => $inventoryValue,
+    'inventoryItems' => $inventoryItems,
+    'inventoryRule' => 'Inventory Value = current stock quantity x purchase price for active spare parts.',
+    'costOfGoodsSold' => $costOfGoodsSold,
     'belmProfit' => max(0, $netAfterVat),
     'loss' => max(0, -$netAfterVat),
     'rule' => 'VAT is recognized from actual invoice payments and deducted from BELM net funds as money payable to TRA.',

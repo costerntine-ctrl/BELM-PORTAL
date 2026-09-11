@@ -11,6 +11,101 @@
   const isTechPage=location.pathname.startsWith('/technician-job-cards');
   const isAdminJobCards=location.pathname.startsWith('/breakdown-workflow')&&String(new URLSearchParams(location.search).get('actor')||'').toLowerCase()==='admin';
 
+  function ensureFitStyle(){
+    if(document.getElementById('belm-jc-detail-fit-v738'))return;
+    const s=document.createElement('style');
+    s.id='belm-jc-detail-fit-v738';
+    s.textContent=`
+      /* V738: widen the existing Job Card detail modal only and remove bottom horizontal scrolling. */
+      dialog.belm-jc-detail-dialog{
+        width:min(1040px,96vw)!important;
+        max-width:1040px!important;
+        max-height:92vh!important;
+        padding:0!important;
+        overflow:hidden!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog #belmJcDetailContent{
+        width:100%!important;
+        max-width:100%!important;
+        min-width:0!important;
+        overflow:hidden!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-detail-head,
+      dialog.belm-jc-detail-dialog .belm-jc-detail-actions{
+        width:100%!important;
+        max-width:100%!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-detail-scroll{
+        width:100%!important;
+        max-width:100%!important;
+        min-width:0!important;
+        max-height:calc(92vh - 150px)!important;
+        overflow-y:auto!important;
+        overflow-x:hidden!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-detail-grid{
+        display:grid!important;
+        grid-template-columns:minmax(280px,.82fr) minmax(0,1.18fr)!important;
+        gap:24px!important;
+        width:100%!important;
+        max-width:100%!important;
+        min-width:0!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-detail-section,
+      dialog.belm-jc-detail-dialog .belm-jc-detail-job,
+      dialog.belm-jc-detail-dialog .belm-jc-activity,
+      dialog.belm-jc-detail-dialog .belm-jc-timeline{
+        min-width:0!important;
+        max-width:100%!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-job-facts{
+        display:grid!important;
+        grid-template-columns:repeat(4,minmax(0,1fr))!important;
+        gap:14px 18px!important;
+        width:100%!important;
+        max-width:100%!important;
+        min-width:0!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-job-fact{
+        min-width:0!important;
+        max-width:100%!important;
+        overflow-wrap:anywhere!important;
+        word-break:break-word!important;
+        box-sizing:border-box!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-job-fact b,
+      dialog.belm-jc-detail-dialog .belm-jc-activity-item,
+      dialog.belm-jc-detail-dialog .belm-jc-activity-item p{
+        white-space:normal!important;
+        overflow-wrap:anywhere!important;
+        word-break:break-word!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-detail-actions{
+        display:flex!important;
+        flex-wrap:wrap!important;
+        gap:10px!important;
+      }
+      @media(max-width:900px){
+        dialog.belm-jc-detail-dialog{width:min(94vw,860px)!important}
+        dialog.belm-jc-detail-dialog .belm-jc-detail-grid{grid-template-columns:1fr!important;gap:18px!important}
+        dialog.belm-jc-detail-dialog .belm-jc-job-facts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+      }
+      @media(max-width:560px){
+        dialog.belm-jc-detail-dialog{width:96vw!important;max-height:94vh!important}
+        dialog.belm-jc-detail-dialog .belm-jc-detail-scroll{max-height:calc(94vh - 150px)!important}
+        dialog.belm-jc-detail-dialog .belm-jc-job-facts{grid-template-columns:1fr!important}
+      }
+    `;
+    document.head.appendChild(s);
+  }
+
   function parseToken(t){if(!t)return null;try{const x=t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(decodeURIComponent(Array.from(atob(x)).map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,'0')}`).join('')))}catch{return null}}
   function token(){
     if(isAdminJobCards&&adminToken)return adminToken;
@@ -28,6 +123,7 @@
   }
 
   function ensureDialog(){
+    ensureFitStyle();
     let d=document.getElementById('belmJobCardDetailDialog');
     if(d)return d;
     d=document.createElement('dialog');d.id='belmJobCardDetailDialog';d.className='belm-jc-detail-dialog';

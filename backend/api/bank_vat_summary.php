@@ -11,11 +11,12 @@ function vat_finance_amount(PDO $pdo, string $sql, array $params = []): float {
     return (float)$stmt->fetchColumn();
 }
 
-// BELM VAT rule:
-// VAT belongs to TRA, not BELM. Liability is recognized only when invoice
-// money has actually been received. For partial payments, recognize the same
-// proportion of the invoice VAT; for a fully paid invoice, recognize 100% of
-// its VAT. This also respects NO-VAT invoices because their stored tax is zero.
+function vat_table_exists(PDO $pdo, string $table): bool {
+    $stmt = $pdo->prepare('SELECT to_regclass(?) IS NOT NULL');
+    $stmt->execute(['public.' . $table]);
+    return (bool)$stmt->fetchColumn();
+}
+
 $vatPayable = vat_finance_amount(
     $pdo,
     "SELECT COALESCE(SUM(
@@ -44,10 +45,21 @@ $paymentsReceived = vat_finance_amount(
     $pdo,
     'SELECT COALESCE(SUM(amount),0) FROM payments WHERE bank_account_id IS NOT NULL'
 );
-$companyExpenses = vat_finance_amount(
-    $pdo,
-    'SELECT COALESCE(SUM(amount),0) FROM company_expenses WHERE bank_account_id IS NOT NULL AND deleted_at IS NULL'
-);
+
+$financeExpenses = vat_table_exists($pdo, 'company_expenses')
+    ? vat_finance_amount($pdo, 'SELECT COALESCE(SUM(amount),0) FROM company_expenses WHERE deleted_at IS NULL')
+    : 0.0;
+
+$procurementExpenses = vat_table_exists($pdo, 'belm_procurement_consumables')
+    ? vat_finance_amount($pdo, 'SELECT COALESCE(SUM(total_cost),0) FROM belm_procurement_consumables')
+    : 0.0;
+
+$workshopExpenses = vat_table_exists($pdo, 'belm_workshop_petty_cash_entries')
+    ? vat_finance_amount($pdo, "SELECT COALESCE(SUM(amount),0) FROM belm_workshop_petty_cash_entries WHERE entry_type='EXPENSE'")
+    : 0.0;
+
+$companyExpenses = $financeExpenses + $procurementExpenses + $workshopExpenses;
+
 $totalWithdrawals = vat_finance_amount(
     $pdo,
     'SELECT COALESCE(SUM(amount),0) FROM bank_withdrawals WHERE deleted_at IS NULL'
@@ -67,8 +79,15 @@ json_out([
     'ok' => true,
     'vatRate' => 18,
     'vatPayable' => $vatPayable,
+    'companyExpenses' => $companyExpenses,
+    'companyExpenseBreakdown' => [
+        'finance' => $financeExpenses,
+        'procurement' => $procurementExpenses,
+        'workshopManager' => $workshopExpenses,
+    ],
     'belmProfit' => max(0, $netAfterVat),
     'loss' => max(0, -$netAfterVat),
     'rule' => 'VAT is recognized from actual invoice payments and deducted from BELM net funds as money payable to TRA.',
+    'expenseRule' => 'Company Expenses = Finance expenses + Procurement consumable costs + Workshop Manager petty cash expenses.',
     'syncedAt' => gmdate('c'),
 ]);

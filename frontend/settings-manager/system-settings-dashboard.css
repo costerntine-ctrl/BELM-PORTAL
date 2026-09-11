@@ -384,3 +384,25 @@ html[data-theme='dark'] .settings-card h2,
 html.dark .settings-card h2,
 html[data-theme='dark'] .settings-card p,
 html.dark .settings-card p { filter: brightness(1.5); }
+
+/* V723: System Settings already contains its own complete navigation cards.
+   Hide the shared admin sidebar on this page so the same settings are not
+   duplicated in the left navigation. Keep all settings functions intact. */
+body.management-page .belm-admin-sidebar,
+body.management-page .belm-sidebar-toggle,
+body.management-page .belm-sidebar-scrim {
+  display: none !important;
+}
+
+@media (min-width: 981px) {
+  body.management-page.belm-sidebar-ready {
+    padding-left: 0 !important;
+  }
+}
+
+@media (max-width: 980px) {
+  body.management-page.belm-sidebar-ready .settings-topbar,
+  body.management-page.belm-sidebar-ready > header.settings-topbar {
+    padding-left: 14px !important;
+  }
+}

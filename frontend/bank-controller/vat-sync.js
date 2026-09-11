@@ -31,6 +31,8 @@
     if (!container) return;
 
     let vatFound = false;
+    let inventoryFound = false;
+
     container.querySelectorAll('.metric-card').forEach((card) => {
       const label = card.querySelector('span');
       const value = card.querySelector('strong');
@@ -48,9 +50,15 @@
           'Procurement: ' + money.format(Number(breakdown.procurement || 0)),
           'Workshop Manager: ' + money.format(Number(breakdown.workshopManager || 0))
         ].join('\n');
-        card.dataset.financeExpenses = String(Number(breakdown.finance || 0));
-        card.dataset.procurementExpenses = String(Number(breakdown.procurement || 0));
-        card.dataset.workshopExpenses = String(Number(breakdown.workshopManager || 0));
+      }
+
+      if (name === 'COST OF GOODS SOLD' || name === 'INVENTORY VALUE') {
+        label.textContent = 'Inventory Value';
+        value.textContent = money.format(Number(summary.inventoryValue || 0));
+        card.classList.remove('yellow', 'red');
+        card.classList.add('blue');
+        card.title = 'Live spare inventory value = current stock quantity × purchase price. In-stock items: ' + Number(summary.inventoryItems || 0) + '.';
+        inventoryFound = true;
       }
 
       if (name.includes('VAT DEBT') || name.includes('VAT PAYABLE')) {
@@ -62,13 +70,17 @@
         vatFound = true;
       }
 
-      if (name === 'BELM PROFIT') {
-        value.textContent = money.format(Number(summary.belmProfit || 0));
-      }
-      if (name === 'LOSS') {
-        value.textContent = money.format(Number(summary.loss || 0));
-      }
+      if (name === 'BELM PROFIT') value.textContent = money.format(Number(summary.belmProfit || 0));
+      if (name === 'LOSS') value.textContent = money.format(Number(summary.loss || 0));
     });
+
+    if (!inventoryFound) {
+      const card = document.createElement('article');
+      card.className = 'metric-card blue';
+      card.title = 'Live spare inventory value = current stock quantity × purchase price.';
+      card.innerHTML = '<span>Inventory Value</span><strong>' + money.format(Number(summary.inventoryValue || 0)) + '</strong>';
+      container.appendChild(card);
+    }
 
     if (!vatFound) {
       const card = document.createElement('article');

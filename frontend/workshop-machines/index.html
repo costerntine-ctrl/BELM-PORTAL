@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>All Registered Machines — BELM Operations Portal</title>
+  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
+  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#071827;color:#eef6ff;font-family:Inter,"Segoe UI",Arial,sans-serif;min-height:100vh}.topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;background:#102a56;border-bottom:1px solid rgba(255,255,255,.08)}.topbar small{display:block;color:#62e698;font-size:10px;font-weight:900;letter-spacing:.12em}.topbar h1{margin:3px 0 0;font-size:20px}.topbar a,.topbar button{border:1px solid rgba(255,255,255,.3);background:#0b3a63;color:#fff;border-radius:9px;padding:9px 12px;text-decoration:none;font-weight:800;cursor:pointer}.actions{display:flex;gap:8px}.wrap{width:min(1320px,calc(100% - 24px));margin:0 auto;padding:22px 0 40px}.hero{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:16px}.hero h2{margin:0 0 4px;font-size:30px}.hero p{margin:0;color:#9fb4c9}.count{font-size:13px;color:#b9caDA}.toolbar{display:grid;grid-template-columns:1fr 220px;gap:10px;margin-bottom:16px}.toolbar input,.toolbar select{width:100%;border:1px solid #285173;border-radius:10px;background:#0b2238;color:#fff;padding:11px 12px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.machine{border:1px solid #285173;border-radius:16px;background:linear-gradient(160deg,#0e2b47,#0a2035);padding:16px;box-shadow:0 9px 24px rgba(0,0,0,.2)}.machine.green{border-color:#1f9d67}.machine.yellow{border-color:#d9ad22}.machine.red{border-color:#d45353}.head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.customer{display:inline-block;margin-bottom:7px;padding:4px 7px;border-radius:999px;background:#143a5d;color:#9dceff;font-size:10px;font-weight:900}.machine h3{margin:0;font-size:18px}.fleet{text-align:right}.fleet small{display:block;color:#8ca9bf;font-size:9px;text-transform:uppercase}.fleet strong{font-size:15px}.details{margin:12px 0;display:grid;grid-template-columns:1fr 1fr;gap:8px}.details div{padding:9px;border-radius:9px;background:#091c2d}.details small{display:block;color:#7f9cb3;font-size:9px;text-transform:uppercase}.details b{display:block;margin-top:2px;font-size:12px;overflow-wrap:anywhere}.status{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:10px 0;padding:10px;border-radius:10px;background:#081b2c}.status span{font-size:10px;color:#9fb4c9}.status strong{font-size:11px}.operator{min-height:62px;padding:10px;border:1px solid #1f4565;border-radius:10px;color:#c9d8e5;font-size:11px}.operator b{display:block;color:#7ec8ff;margin-bottom:4px}.card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.card-actions a{padding:8px 10px;border-radius:8px;text-decoration:none;font-size:10px;font-weight:900;background:#1a5f96;color:#fff}.card-actions a.job{background:#e0b11a;color:#17243a}.empty{grid-column:1/-1;padding:42px;text-align:center;border:1px dashed #285173;border-radius:14px;color:#9fb4c9}.alert{margin-bottom:14px;padding:11px 13px;border:1px solid #8d4040;border-radius:10px;background:#351c1c;color:#ffd0d0;display:none}@media(max-width:980px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:650px){.grid{grid-template-columns:1fr}.toolbar{grid-template-columns:1fr}.hero{align-items:flex-start;flex-direction:column}.topbar{align-items:flex-start}.actions{flex-direction:column}}
+  </style>
+</head>
+<body>
+<header class="topbar"><div><small>WORKSHOP MANAGER · TECHNICAL DEPARTMENT</small><h1>Registered Machines</h1></div><div class="actions"><a href="/concept-dashboards/11-workshop-manager/">← Workshop Manager</a><button id="refresh" type="button">Refresh</button></div></header>
+<main class="wrap">
+  <section class="hero"><div><h2>All Registered Machine Cards</h2><p>Every machine registered under every active BELM customer, shown in one place.</p></div><div id="count" class="count">Loading…</div></section>
+  <div id="alert" class="alert"></div>
+  <section class="toolbar"><input id="search" type="search" placeholder="Search machine, fleet, serial, registration or customer"><select id="status"><option value="">All machine status</option><option value="GREEN">Green / Normal</option><option value="YELLOW">Yellow / Attention</option><option value="RED">Red / Critical</option></select></section>
+  <section id="grid" class="grid"><div class="empty">Loading registered machines…</div></section>
+</main>
+<script>
+(function(){
+  const token=localStorage.getItem('belm_admin_token')||localStorage.getItem('belm_tech_token')||'';
+  const grid=document.getElementById('grid'),count=document.getElementById('count'),alertBox=document.getElementById('alert'),search=document.getElementById('search'),status=document.getElementById('status');
+  let rows=[];
+  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function level(v){v=String(v||'').toUpperCase();if(['RED','CRITICAL'].includes(v))return'red';if(['YELLOW','ATTENTION'].includes(v))return'yellow';if(['GREEN','OK'].includes(v))return'green';return''}
+  function label(v){v=String(v||'NOT_CHECKED').toUpperCase();return({GREEN:'Normal',OK:'Normal',YELLOW:'Needs attention',ATTENTION:'Needs attention',RED:"Don't operate",CRITICAL:"Don't operate",NOT_CHECKED:'Not checked',UNKNOWN:'Unknown'})[v]||v.replaceAll('_',' ')}
+  function render(){
+    const q=search.value.trim().toLowerCase(),f=status.value;
+    const list=rows.filter(r=>{const text=[r.customer,r.machine.machineType,r.machine.brand,r.machine.model,r.machine.fleetNumber,r.machine.fleet_number,r.machine.serialNumber,r.machine.serial_number,r.machine.regNumber,r.machine.reg_number].join(' ').toLowerCase();const lv=level(r.machine.status).toUpperCase();return(!q||text.includes(q))&&(!f||lv===f)});
+    count.textContent=`${list.length} of ${rows.length} registered machine${rows.length===1?'':'s'}`;
+    if(!list.length){grid.innerHTML='<div class="empty">No registered machines match this search/filter.</div>';return;}
+    grid.innerHTML=list.map(({customer,customerId,machine})=>{const name=[machine.brand,machine.model].filter(Boolean).join(' ')||machine.machineType||'Machine';const fleet=machine.fleetNumber||machine.fleet_number||'—';const serial=machine.serialNumber||machine.serial_number||'—';const reg=machine.regNumber||machine.reg_number||'—';const op=String(machine.operationalStatus||machine.operational_status||'NORMAL').replaceAll('_',' ');const report=machine.latestOperatorMessage||machine.latest_operator_message;const reportText=report&&report.message?report.message:'No operator message reported yet.';const lv=level(machine.status);return `<article class="machine ${lv}"><div class="head"><div><span class="customer">${esc(customer)}</span><h3>${esc(name)}</h3></div><div class="fleet"><small>Fleet No.</small><strong>${esc(fleet)}</strong></div></div><div class="details"><div><small>Machine type</small><b>${esc(machine.machineType||machine.machine_type||'—')}</b></div><div><small>Serial No.</small><b>${esc(serial)}</b></div><div><small>Registration</small><b>${esc(reg)}</b></div><div><small>Customer</small><b>${esc(customer)}</b></div></div><div class="status"><span>Condition</span><strong>${esc(label(machine.status))}</strong><span>Activity</span><strong>${esc(op)}</strong></div><div class="operator"><b>Operator report</b>${esc(reportText)}</div><div class="card-actions"><a class="job" href="/belm-workshop/?machine=${encodeURIComponent(machine.id)}#job-cards">Open Job Card</a><a href="/customers-manager/?module=customer-overview&machine=${encodeURIComponent(machine.id)}">Customer Record</a></div></article>`}).join('');
+  }
+  async function load(){
+    if(!token){location.replace('/login');return}
+    alertBox.style.display='none';
+    try{const res=await fetch('/api/customers',{cache:'no-store',headers:{Authorization:'Bearer '+token}});const data=await res.json().catch(()=>null);if(!res.ok)throw new Error(data?.error||`Request failed (${res.status})`);const customers=Array.isArray(data)?data:(Array.isArray(data?.customers)?data.customers:[]);rows=customers.flatMap(c=>(c.machines||[]).map(m=>({customer:c.name||'Customer',customerId:c.id,machine:m})));render();}catch(e){alertBox.textContent=e.message||'Could not load registered machines.';alertBox.style.display='block';grid.innerHTML='<div class="empty">Machine data could not be loaded.</div>';count.textContent='Sync failed';}
+  }
+  search.addEventListener('input',render);status.addEventListener('change',render);document.getElementById('refresh').addEventListener('click',load);load();setInterval(()=>{if(!document.hidden)load()},30000);
+})();
+</script>
+</body>
+</html>

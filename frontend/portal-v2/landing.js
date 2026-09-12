@@ -90,13 +90,24 @@
     ? (customerRoutes[role] || [rawRole.toUpperCase(), "Open your assigned dashboard", "/portal-cwm/"])
     : (staffRoutes[role] || [rawRole.toUpperCase(), "Open your assigned BELM workspace", "/belm-workshop/"]);
 
+  function go(url) {
+    const curtain = $("navCurtain");
+    if (curtain) {
+      curtain.classList.add("show");
+      curtain.setAttribute("aria-hidden", "false");
+    }
+    document.documentElement.style.background = "#03284f";
+    document.body.style.pointerEvents = "none";
+    requestAnimationFrame(() => location.assign(url));
+  }
+
   $("roleLabel").textContent = roleInfo[0];
   $("roleSubtitle").textContent = roleInfo[1];
-  $("viewRoleButton").addEventListener("click", () => { location.href = roleInfo[2]; });
+  $("viewRoleButton").addEventListener("click", () => go(roleInfo[2]));
 
   $("logoutButton").addEventListener("click", () => {
     ["belm_customer_token", "belm_tech_token", "belm_tech_user", "belm_admin_token", "belm_admin_user", "belm_operator_token", "belm_active_account_type"].forEach((key) => localStorage.removeItem(key));
-    location.replace("/login");
+    go("/login");
   });
 
   const alerts = [];
@@ -222,6 +233,15 @@
     renderAlert();
     restartTimer();
   }
+
+  window.addEventListener("pageshow", () => {
+    const curtain = $("navCurtain");
+    if (curtain) {
+      curtain.classList.remove("show");
+      curtain.setAttribute("aria-hidden", "true");
+    }
+    document.body.style.pointerEvents = "";
+  });
 
   loadAlerts();
 })();

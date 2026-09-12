@@ -1,11 +1,136 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title></head><body><script>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Communication | BELM Workshop Manager</title>
+<link rel="stylesheet" href="assets/css/belm-workshop-manager.css">
+<style>
+.comm-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.comm-button{border:0;border-radius:9px;padding:10px 14px;font-weight:800;font-size:12.5px;background:#2f6fd6;color:#fff}.comm-button.secondary{background:#eef3fb;color:#24456e;border:1px solid #d8e2f0}.comm-button:disabled{opacity:.55;cursor:not-allowed}.comm-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.comm-stat{background:#fff;border:1px solid var(--border);border-radius:13px;padding:14px 16px;box-shadow:var(--shadow)}.comm-stat span{display:block;color:var(--text-muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}.comm-stat strong{display:block;font-size:24px;margin-top:5px;color:var(--text-dark)}.comm-stat small{color:var(--text-muted);font-size:11.5px}.comm-workspace{display:grid;grid-template-columns:280px minmax(0,1fr) 330px;gap:14px;min-height:620px}.comm-panel{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow);min-width:0;overflow:hidden}.comm-panel-head{padding:15px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:10px}.comm-panel-head h3{margin:0;font-size:14px;color:var(--text-dark)}.comm-panel-head small{color:var(--text-muted)}.comm-search{padding:12px;border-bottom:1px solid var(--border)}.comm-search input,.compose-form input,.compose-form select,.compose-form textarea{width:100%;border:1px solid #dbe3ee;border-radius:9px;padding:10px 11px;background:#fff;color:#16233a;font:inherit;outline:none}.comm-search input:focus,.compose-form input:focus,.compose-form select:focus,.compose-form textarea:focus{border-color:#2f6fd6;box-shadow:0 0 0 3px rgba(47,111,214,.10)}.customer-list{max-height:560px;overflow:auto}.customer-row{width:100%;text-align:left;border:0;border-bottom:1px solid #edf1f6;background:#fff;padding:13px 14px;display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:start}.customer-row:hover,.customer-row.active{background:#edf4ff}.customer-avatar{width:36px;height:36px;border-radius:10px;background:#dceaff;color:#2457a7;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px}.customer-row strong{display:block;font-size:12.8px;color:#17263b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.customer-row small{display:block;color:#7a8798;font-size:10.8px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.unread-badge{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:#d64545;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900}.thread-head{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px}.thread-head h3{margin:0;font-size:15px}.thread-head p{margin:3px 0 0;color:var(--text-muted);font-size:11.5px}.thread{height:490px;overflow:auto;padding:18px;background:#f7f9fc;display:flex;flex-direction:column;gap:11px}.message{max-width:78%;border-radius:14px;padding:11px 13px;border:1px solid #e1e7f0;background:#fff;box-shadow:0 1px 2px rgba(15,35,65,.04)}.message.out{align-self:flex-end;background:#e6f0ff;border-color:#c6d9fb}.message.in{align-self:flex-start}.message.new{box-shadow:0 0 0 2px rgba(214,69,69,.13)}.message .subject{font-weight:850;font-size:12.5px;color:#17263b}.message p{margin:6px 0 8px;font-size:12.5px;line-height:1.45;color:#3e4b5b;white-space:pre-wrap}.message footer{font-size:10.5px;color:#7a8798;display:flex;gap:6px;flex-wrap:wrap}.message .tag{display:inline-flex;border-radius:999px;padding:2px 7px;font-weight:800;background:#eef2f7;color:#4b5c70}.thread-empty{margin:auto;text-align:center;color:#7a8798;max-width:300px}.thread-empty strong{display:block;color:#33465e;margin-bottom:5px}.compose{padding:16px}.compose-form{display:flex;flex-direction:column;gap:11px}.compose-form label{display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:#526276;font-weight:750}.compose-form textarea{resize:vertical;min-height:135px}.check-line{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:8px!important;font-weight:600!important}.check-line input{width:auto!important;margin-top:2px}.send-status{min-height:18px;font-size:11.5px}.send-status.ok{color:#148443}.send-status.error{color:#bf3131}.announcement-list{padding:0 16px 16px;max-height:170px;overflow:auto}.announcement{border-left:3px solid #e8a317;background:#fff8e6;border-radius:8px;padding:9px 10px;margin-top:9px}.announcement p{margin:0;font-size:11.8px;line-height:1.4;color:#51441f}.announcement small{display:block;margin-top:5px;color:#8a7440}.connection-dot{width:8px;height:8px;border-radius:50%;background:#1ea45a;display:inline-block;margin-right:5px}.connection-dot.off{background:#d64545}.loading-line{height:3px;background:linear-gradient(90deg,#2f6fd6,#1ea45a,#e8a317);animation:loadPulse 1.2s infinite alternate;display:none}.loading-line.show{display:block}@keyframes loadPulse{from{opacity:.35}to{opacity:1}}.mobile-menu{display:none}.comm-notice{padding:10px 12px;border-radius:9px;background:#fff7dc;border:1px solid #f2d98b;color:#67521b;font-size:12px}.hidden{display:none!important}
+@media(max-width:1250px){.comm-workspace{grid-template-columns:250px minmax(0,1fr)}.compose-panel{grid-column:1/-1}.comm-stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){.comm-workspace{grid-template-columns:1fr}.customer-list{max-height:260px}.thread{height:430px}.comm-stats{grid-template-columns:1fr 1fr}.mobile-menu{display:inline-flex}.message{max-width:90%}}
+@media(max-width:560px){.comm-stats{grid-template-columns:1fr}.thread{height:390px}.page-head-right{width:100%}.comm-toolbar{width:100%}.comm-button{flex:1}.header-right .user-copy{display:none}}
+</style>
+</head>
+<body>
+<div class="shell" id="shell">
+<aside class="sidebar">
+  <nav class="sidebar-nav">
+    <a href="index.html" class="nav-item">⌂ <span>Home Dashboard</span></a>
+    <a href="job-cards.html" class="nav-item">▤ <span>Job Cards</span></a>
+    <a href="machines.html" class="nav-item">▰ <span>Machines</span></a>
+    <a href="technicians.html" class="nav-item">♙ <span>Technicians</span></a>
+    <a href="workshop-schedule.html" class="nav-item">▣ <span>Workshop Schedule</span></a>
+    <a href="spare-requests.html" class="nav-item">◇ <span>Spare Requests</span></a>
+    <a href="service-maintenance.html" class="nav-item">⊙ <span>Service &amp; Maintenance</span></a>
+    <a href="reports-analysis.html" class="nav-item">▥ <span>Reports &amp; Analysis</span></a>
+    <a href="checklist-monitoring.html" class="nav-item">☑ <span>Checklist Monitoring</span></a>
+    <a href="customers.html" class="nav-item">♧ <span>Customers</span></a>
+    <a href="communication.html" class="nav-item is-active">✉ <span>Communication</span></a>
+    <a href="tools-equipment.html" class="nav-item">⚒ <span>Tools &amp; Equipment</span></a>
+    <a href="workshop-settings.html" class="nav-item">⚙ <span>Workshop Settings</span></a>
+  </nav>
+  <div class="sidebar-footer" style="border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">
+    <a href="my-profile.html" class="nav-item">♙ <span>My Profile</span></a>
+    <a href="help-support.html" class="nav-item">? <span>Help &amp; Support</span></a>
+    <a href="logout.html" class="btn-logout">↪ <span>Logout</span></a>
+  </div>
+</aside>
+<div class="main">
+<header class="topheader">
+  <button class="icon-btn mobile-menu" id="mobileMenu" type="button" aria-label="Open menu">☰</button>
+  <div class="brand"><img src="assets/img/belm-logo-v2.png" alt="BELM General Technical Service Ltd"></div>
+  <div class="portal-title"><h1>BELM OPERATIONS PORTAL</h1><p>| Workshop Manager — Communication</p><div class="tagline">Customer • Operator • Machine Communication History</div></div>
+  <div class="header-right">
+    <button class="icon-btn" id="refreshTop" type="button" aria-label="Refresh">↻</button>
+    <button class="icon-btn" type="button" aria-label="Notifications">✉<span class="icon-badge" id="topUnread">0</span></button>
+    <div class="user-chip"><span class="user-avatar initials initials-lg" id="userInitials">WM</span><span class="user-copy"><strong id="userName">Workshop Manager</strong><small id="userRole">Technical Department</small></span></div>
+  </div>
+</header>
+<div class="loading-line" id="loadingLine"></div>
+<main class="content">
+  <div class="breadcrumb"><a href="index.html">Workshop Manager</a><span>›</span><span>Communication</span></div>
+  <section class="page-head">
+    <div class="page-head-left"><div class="page-head-icon">✉</div><div><h2>Communication Center</h2><p>One place for BELM ↔ customer communication, machine-linked messages and announcements.</p></div></div>
+    <div class="page-head-right"><div class="comm-toolbar"><button class="comm-button secondary" id="refreshButton" type="button">Refresh</button><button class="comm-button" id="focusCompose" type="button">+ New Message</button></div></div>
+  </section>
+  <div id="pageNotice" class="comm-notice hidden"></div>
+  <section class="comm-stats">
+    <article class="comm-stat"><span>Customers</span><strong id="customerCount">0</strong><small>Registered companies</small></article>
+    <article class="comm-stat"><span>New Messages</span><strong id="unreadCount">0</strong><small>Unread communication</small></article>
+    <article class="comm-stat"><span>Active Threads</span><strong id="activeThreadCount">0</strong><small>Customers with new items</small></article>
+    <article class="comm-stat"><span>Connection</span><strong style="font-size:17px;margin-top:9px"><i class="connection-dot" id="connectionDot"></i><span id="connectionText" style="display:inline;text-transform:none;letter-spacing:0;font-size:17px;color:inherit">Synced</span></strong><small id="lastSync">Waiting…</small></article>
+  </section>
+  <section class="comm-workspace">
+    <aside class="comm-panel">
+      <div class="comm-panel-head"><div><h3>Customers</h3><small>Select a company</small></div><span class="unread-badge" id="customerUnreadTotal">0</span></div>
+      <div class="comm-search"><input id="customerSearch" type="search" placeholder="Search customer…"></div>
+      <div class="customer-list" id="customerList"><div class="thread-empty" style="padding:35px 15px">Loading customers…</div></div>
+    </aside>
+    <section class="comm-panel">
+      <div class="thread-head"><div><h3 id="threadTitle">Communication History</h3><p id="threadSubtitle">Select a customer to open the conversation.</p></div><button class="comm-button secondary" id="openCustomerButton" type="button" disabled>Customer Details</button></div>
+      <div class="thread" id="thread"><div class="thread-empty"><strong>No customer selected</strong>Select a company on the left to view its complete communication history.</div></div>
+    </section>
+    <aside class="comm-panel compose-panel">
+      <div class="comm-panel-head"><div><h3>Send Message</h3><small id="composeCustomerLabel">Select customer first</small></div></div>
+      <div class="compose">
+        <form class="compose-form" id="composeForm">
+          <label>Customer<select id="composeCustomer" required><option value="">Select customer…</option></select></label>
+          <label>Machine<select id="composeMachine"><option value="">General / customer account</option></select></label>
+          <label>Subject<input id="composeSubject" maxlength="160" value="Message from BELM" required></label>
+          <label>Message<textarea id="composeMessage" maxlength="1500" placeholder="Write the message for the customer…" required></textarea></label>
+          <label class="check-line"><input id="composeEmail" type="checkbox"> Also send email alert to the customer group</label>
+          <div class="send-status" id="sendStatus"></div>
+          <button class="comm-button" id="sendButton" type="submit">Send Message</button>
+        </form>
+      </div>
+      <div class="comm-panel-head" style="border-top:1px solid var(--border)"><div><h3>Active Announcements</h3><small>BELM portal notices</small></div></div>
+      <div class="announcement-list" id="announcementList"><div class="thread-empty" style="padding:18px">Loading announcements…</div></div>
+    </aside>
+  </section>
+</main>
+</div>
+</div>
+<script>
 (function(){
-  var target="/customers-manager/";
-  var out=new URL(target, window.location.origin);
-  var incoming=new URLSearchParams(window.location.search);
-  incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });
-  if(window.location.hash && !out.hash) out.hash=window.location.hash;
-  window.location.replace(out.pathname + out.search + out.hash);
+  const token=localStorage.getItem('belm_admin_token');
+  if(!token){location.href='/login';return;}
+  const state={customers:[],feed:{},selectedId:'',announcements:[]};
+  const $=id=>document.getElementById(id);
+  const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const initials=name=>String(name||'WM').trim().split(/\s+/).slice(0,2).map(x=>x[0]||'').join('').toUpperCase()||'WM';
+  const fmt=value=>{if(!value)return '—';const d=new Date(value);return Number.isNaN(d.getTime())?'—':d.toLocaleString([], {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});};
+  async function api(path,options={}){
+    const response=await fetch('/api'+path,{...options,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token,...(options.headers||{})}});
+    const text=await response.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){data=null}
+    if(!response.ok)throw new Error(data?.error||('Request failed ('+response.status+').'));
+    return data;
+  }
+  function busy(on){$('loadingLine').classList.toggle('show',!!on);}
+  function notice(message,error=false){const box=$('pageNotice');if(!message){box.classList.add('hidden');return;}box.textContent=message;box.classList.remove('hidden');box.style.background=error?'#fff0f0':'#fff7dc';box.style.borderColor=error?'#efbcbc':'#f2d98b';box.style.color=error?'#8d2828':'#67521b';}
+  function applyUser(){try{const u=JSON.parse(localStorage.getItem('belm_admin_user')||'null');if(!u)return;$('userName').textContent=u.name||u.role||'Workshop Manager';$('userRole').textContent=u.role||'Technical Department';$('userInitials').textContent=initials(u.name||u.role);}catch(_){}}
+  function customerMachines(customer){return Array.isArray(customer?.machines)?customer.machines:[];}
+  function machineLabel(machine){return [machine?.brand,machine?.model,machine?.machineType].filter(Boolean).join(' ')||'Machine';}
+  function directionLabel(item,customer){return item?.direction==='CUSTOMER_TO_BELM'?(customer?.name||'Customer')+' → BELM':'BELM → '+(customer?.name||'Customer');}
+  function updateStats(){const feeds=Object.values(state.feed||{});const unread=feeds.flat().filter(x=>!x.isRead);$('customerCount').textContent=state.customers.length.toLocaleString();$('unreadCount').textContent=unread.length.toLocaleString();$('topUnread').textContent=unread.length.toLocaleString();$('customerUnreadTotal').textContent=unread.length.toLocaleString();$('activeThreadCount').textContent=feeds.filter(items=>items.some(x=>!x.isRead)).length.toLocaleString();}
+  function renderCustomers(){const q=$('customerSearch').value.trim().toLowerCase();const filtered=state.customers.filter(c=>[c.name,c.email,c.phone].some(v=>String(v||'').toLowerCase().includes(q)));$('customerList').innerHTML=filtered.length?filtered.map(c=>{const items=Array.isArray(state.feed[c.id])?state.feed[c.id]:[];const unread=items.filter(x=>!x.isRead).length;const latest=items[0];return `<button type="button" class="customer-row${state.selectedId===c.id?' active':''}" data-customer="${esc(c.id)}"><span class="customer-avatar">${esc(initials(c.name))}</span><span><strong>${esc(c.name||'Customer')}</strong><small>${latest?esc(latest.subject||latest.message||'New communication'):esc(c.email||c.phone||'No new communication')}</small></span>${unread?`<span class="unread-badge">${unread}</span>`:'<span></span>'}</button>`;}).join(''):'<div class="thread-empty" style="padding:35px 15px"><strong>No customer found</strong>Try another search.</div>';}
+  function populateComposer(customer){$('composeCustomer').value=customer?.id||'';$('composeCustomerLabel').textContent=customer?('To: '+customer.name):'Select customer first';const machines=customerMachines(customer);$('composeMachine').innerHTML='<option value="">General / customer account</option>'+machines.map(m=>`<option value="${esc(m.id)}">${esc(machineLabel(m))}${m.fleetNumber?` · Fleet ${esc(m.fleetNumber)}`:''}</option>`).join('');}
+  async function markRead(customerId,items){const unread=items.filter(x=>x?.id&&!x.isRead);if(!unread.length)return;await Promise.allSettled(unread.map(x=>api(`/customers/${encodeURIComponent(customerId)}/communications/${encodeURIComponent(x.id)}/read`,{method:'PUT'})));if(state.feed[customerId])state.feed[customerId]=state.feed[customerId].map(x=>({...x,isRead:true}));updateStats();renderCustomers();}
+  async function openCustomer(customerId){const customer=state.customers.find(c=>c.id===customerId);if(!customer)return;state.selectedId=customerId;renderCustomers();populateComposer(customer);$('threadTitle').textContent=customer.name+' — Communication';$('threadSubtitle').textContent=[customer.email,customer.phone].filter(Boolean).join(' · ')||'Communication history';$('openCustomerButton').disabled=false;$('thread').innerHTML='<div class="thread-empty">Loading communication history…</div>';busy(true);try{const items=await api(`/customers/${encodeURIComponent(customerId)}/communications`);const ordered=(Array.isArray(items)?items:[]).slice().reverse();$('thread').innerHTML=ordered.length?ordered.map(item=>{const outbound=item.direction!=='CUSTOMER_TO_BELM';return `<article class="message ${outbound?'out':'in'}${item.isRead?'':' new'}"><div class="subject">${esc(item.subject||'Communication')}</div><p>${esc(item.message||'—')}</p><footer><span class="tag">${esc(directionLabel(item,customer))}</span>${item.machineLabel?`<span>${esc(item.machineLabel)}</span>`:''}${item.createdByName?`<span>${esc(item.createdByName)}</span>`:''}<span>${esc(fmt(item.createdAt))}</span>${item.actionable?`<span class="tag">${esc(item.actionStatus||'OPEN')}</span>`:''}</footer></article>`;}).join(''):'<div class="thread-empty"><strong>No communication history yet</strong>Use Send Message to start the conversation.</div>';$('thread').scrollTop=$('thread').scrollHeight;await markRead(customerId,Array.isArray(items)?items:[]);}catch(error){$('thread').innerHTML=`<div class="thread-empty"><strong>Could not load communication</strong>${esc(error.message)}</div>`;}finally{busy(false);}}
+  async function loadFeeds(){const ids=state.customers.map(c=>c.id);const grouped={};for(let i=0;i<ids.length;i+=75){const part=ids.slice(i,i+75);if(!part.length)continue;const result=await api('/customers/communication-feed?ids='+encodeURIComponent(part.join(',')));Object.assign(grouped,result||{});}state.feed=grouped;updateStats();renderCustomers();}
+  function renderAnnouncements(){const list=state.announcements;$('announcementList').innerHTML=list.length?list.map(a=>`<article class="announcement"><p>${esc(a.message||'')}</p><small>${esc(a.created_by_name||a.createdByName||'BELM')} · ${esc(fmt(a.created_at||a.createdAt))}</small></article>`).join(''):'<div class="thread-empty" style="padding:18px">No active announcements.</div>';}
+  async function loadAnnouncements(){try{const result=await api('/announcements');state.announcements=Array.isArray(result?.messages)?result.messages:[];renderAnnouncements();}catch(_){$('announcementList').innerHTML='<div class="thread-empty" style="padding:18px">Announcements unavailable.</div>';}}
+  async function loadAll(preserveSelection=true){busy(true);notice('');try{const selected=preserveSelection?state.selectedId:'';state.customers=await api('/customers');if(!Array.isArray(state.customers))state.customers=[];$('composeCustomer').innerHTML='<option value="">Select customer…</option>'+state.customers.map(c=>`<option value="${esc(c.id)}">${esc(c.name||'Customer')}</option>`).join('');await Promise.all([loadFeeds(),loadAnnouncements()]);$('connectionDot').classList.remove('off');$('connectionText').textContent='Synced';$('lastSync').textContent='Updated '+new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});if(selected&&state.customers.some(c=>c.id===selected))await openCustomer(selected);else if(state.customers.length)await openCustomer(state.customers[0].id);else{renderCustomers();updateStats();}}catch(error){$('connectionDot').classList.add('off');$('connectionText').textContent='Offline';$('lastSync').textContent='Sync failed';notice(error.message||'Could not load communication data.',true);}finally{busy(false);}}
+  $('customerList').addEventListener('click',e=>{const row=e.target.closest('[data-customer]');if(row)openCustomer(row.dataset.customer);});
+  $('customerSearch').addEventListener('input',renderCustomers);
+  $('composeCustomer').addEventListener('change',e=>{if(e.target.value)openCustomer(e.target.value);else populateComposer(null);});
+  $('openCustomerButton').addEventListener('click',()=>{if(state.selectedId)location.href='customers.html?customer='+encodeURIComponent(state.selectedId);});
+  $('focusCompose').addEventListener('click',()=>{$('composeMessage').focus();$('composeMessage').scrollIntoView({behavior:'smooth',block:'center'});});
+  $('refreshButton').addEventListener('click',()=>loadAll(true));$('refreshTop').addEventListener('click',()=>loadAll(true));
+  $('mobileMenu').addEventListener('click',()=>document.getElementById('shell').classList.toggle('is-open'));
+  $('composeForm').addEventListener('submit',async e=>{e.preventDefault();const customerId=$('composeCustomer').value;if(!customerId){$('sendStatus').textContent='Select a customer first.';$('sendStatus').className='send-status error';return;}const message=$('composeMessage').value.trim();if(!message)return;const btn=$('sendButton');btn.disabled=true;$('sendStatus').textContent='Sending…';$('sendStatus').className='send-status';try{const result=await api(`/customers/${encodeURIComponent(customerId)}/message`,{method:'POST',body:JSON.stringify({machineId:$('composeMachine').value,subject:$('composeSubject').value.trim()||'Message from BELM',message,sendEmail:$('composeEmail').checked})});$('composeMessage').value='';$('composeEmail').checked=false;$('sendStatus').textContent=result?.emailSent===false?'Message saved. Email was not sent.':'Message sent successfully.';$('sendStatus').className='send-status ok';await loadFeeds();await openCustomer(customerId);}catch(error){$('sendStatus').textContent=error.message;$('sendStatus').className='send-status error';}finally{btn.disabled=false;}});
+  applyUser();loadAll(false);
 })();
-</script></body></html>
+</script>
+</body>
+</html>

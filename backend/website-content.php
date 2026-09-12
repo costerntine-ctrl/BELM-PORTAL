@@ -86,9 +86,10 @@ if ($method === 'GET' && $action === 'gallery-image') wc_image_response('website
 if ($method === 'GET' && $action === 'promotion-image') wc_image_response('website_machine_promotions', trim((string)($_GET['id'] ?? '')));
 
 if ($method === 'GET' && $action === 'public') {
-    $gallery = db()->query("SELECT id,caption,display_style,movement,created_at FROM website_gallery_photos WHERE is_published=TRUE ORDER BY created_at DESC LIMIT 24")->fetchAll();
+    // Repair/service gallery is intentionally not exposed to the public website.
+    // Keep the records available in Web Admin, but return no gallery items publicly.
+    $gallery = [];
     $promos = db()->query("SELECT id,title,description,price,machine_condition,location,display_style,movement,created_at FROM website_machine_promotions WHERE is_published=TRUE ORDER BY created_at DESC LIMIT 18")->fetchAll();
-    foreach ($gallery as &$g) $g['image_url'] = $base . '?action=gallery-image&id=' . rawurlencode((string)$g['id']);
     foreach ($promos as &$p) $p['image_url'] = $base . '?action=promotion-image&id=' . rawurlencode((string)$p['id']);
     json_out(['ok'=>true,'gallery'=>$gallery,'promotions'=>$promos]);
 }

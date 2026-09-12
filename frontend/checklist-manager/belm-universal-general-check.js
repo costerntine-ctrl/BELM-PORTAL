@@ -89,46 +89,57 @@
     return Array.from(document.querySelectorAll('#itemList .item-card'));
   }
 
+  function updateOption(card, optionIndex, pairText) {
+    const pair = pairText.split(':');
+    const option = card.querySelectorAll('.dropdown-option')[optionIndex];
+    if (!option) return;
+    const valueInput = option.querySelector('[data-option-field="value"]');
+    const levelSelect = option.querySelector('[data-option-field="safetyLevel"]');
+    if (valueInput) {
+      valueInput.value = pair[0];
+      valueInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (levelSelect) {
+      levelSelect.value = pair[1] || 'GREEN';
+      levelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }
+
   function addItemAndFill(row) {
-    const add = document.getElementById('addItemButton');
-    add.click();
-    const cards = findItemCards();
-    const card = cards[cards.length - 1];
+    document.getElementById('addItemButton').click();
+    let card = findItemCards().slice(-1)[0];
     if (!card) return;
     const label = card.querySelector('[data-field="label"]');
     const type = card.querySelector('[data-field="inputType"]');
-    const safety = card.querySelector('[data-field="safetyLevel"]');
-    const required = card.querySelector('[data-field="isRequired"]');
-    if (label) { label.value = row[0]; label.dispatchEvent(new Event('input', { bubbles: true })); }
-    if (type) { type.value = row[1]; type.dispatchEvent(new Event('change', { bubbles: true })); }
-    const refreshed = findItemCards().slice(-1)[0];
-    if (!refreshed) return;
-    const safety2 = refreshed.querySelector('[data-field="safetyLevel"]');
-    if (safety2) { safety2.value = row[2]; safety2.dispatchEvent(new Event('change', { bubbles: true })); }
-    const required2 = refreshed.querySelector('[data-field="isRequired"]');
-    if (required2) { required2.checked = row[3]; required2.dispatchEvent(new Event('change', { bubbles: true })); }
-    if (row[1] === 'DROPDOWN' && row[4].length) {
-      const currentCard = findItemCards().slice(-1)[0];
-      const addOption = currentCard.querySelector('[data-add-option]');
-      const existingOptions = currentCard.querySelectorAll('.dropdown-option');
-      const firstPair = row[4][0].split(':');
-      if (existingOptions[0]) {
-        const valueInput = existingOptions[0].querySelector('[data-option-field="value"]');
-        const levelSelect = existingOptions[0].querySelector('[data-option-field="safetyLevel"]');
-        if (valueInput) { valueInput.value = firstPair[0]; valueInput.dispatchEvent(new Event('input', { bubbles: true })); }
-        if (levelSelect) { levelSelect.value = firstPair[1] || 'GREEN'; levelSelect.dispatchEvent(new Event('change', { bubbles: true })); }
-      }
-      for (let i = 1; i < row[4].length; i++) {
-        addOption.click();
-        const latestCard = findItemCards().slice(-1)[0];
-        const options = latestCard.querySelectorAll('.dropdown-option');
-        const pair = row[4][i].split(':');
-        const option = options[options.length - 1];
-        const valueInput = option?.querySelector('[data-option-field="value"]');
-        const levelSelect = option?.querySelector('[data-option-field="safetyLevel"]');
-        if (valueInput) { valueInput.value = pair[0]; valueInput.dispatchEvent(new Event('input', { bubbles: true })); }
-        if (levelSelect) { levelSelect.value = pair[1] || 'GREEN'; levelSelect.dispatchEvent(new Event('change', { bubbles: true })); }
-      }
+    if (label) {
+      label.value = row[0];
+      label.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (type) {
+      type.value = row[1];
+      type.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    card = findItemCards().slice(-1)[0];
+    const safety = card?.querySelector('[data-field="safetyLevel"]');
+    const required = card?.querySelector('[data-field="isRequired"]');
+    if (safety) {
+      safety.value = row[2];
+      safety.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (required) {
+      required.checked = row[3];
+      required.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    if (row[1] !== 'DROPDOWN' || !row[4].length) return;
+    card = findItemCards().slice(-1)[0];
+    updateOption(card, 0, row[4][0]);
+    for (let i = 1; i < row[4].length; i++) {
+      card = findItemCards().slice(-1)[0];
+      card?.querySelector('[data-add-option]')?.click();
+      card = findItemCards().slice(-1)[0];
+      updateOption(card, i, row[4][i]);
     }
   }
 
@@ -138,13 +149,9 @@
     setValue('machineType', 'Universal');
     setValue('serviceType', 'GENERAL CHECK');
     const first = findItemCards()[0];
-    if (first) {
-      const remove = first.querySelector('[data-remove]');
-      if (remove) remove.click();
-    }
+    first?.querySelector('[data-remove]')?.click();
     rows.forEach(addItemAndFill);
-    const parts = document.querySelectorAll('#servicePartList [data-remove-service-part]');
-    parts.forEach((node) => node.click());
+    Array.from(document.querySelectorAll('#servicePartList [data-remove-service-part]')).forEach((node) => node.click());
     const title = document.getElementById('dialogTitle');
     if (title) title.textContent = 'BELM Universal General Machine Check';
   });

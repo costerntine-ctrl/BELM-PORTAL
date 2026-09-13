@@ -1,0 +1,174 @@
+name: Patch technician customer scope
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-technician-customer-scope.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Scope Technician customer visibility to active Job Cards
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/api/customers.php')
+          text = path.read_text()
+
+          old_access = '''function require_customer_read_access(array $user, ?string $customerId = null): void {
+              if (($user['roleName'] ?? '') !== 'Technician') {
+                  require_page_access($user, 'customers');
+                  return;
+              }
+
+              $assigned = $user['assignedCustomerId'] ?? null;
+              if (!$assigned) {
+                  json_error('This Technician account has not been assigned to a customer.', 403);
+              }
+              if ($customerId && $assigned !== $customerId) {
+                  json_error('You are not assigned to this customer.', 403);
+              }
+          }
+          '''
+          new_access = '''// Technician customer visibility follows live Job Card dispatch, not a permanent
+          // customer binding. BELM Technicians may work for different customers over time;
+          // Customer-managed Technicians remain scoped to their own registered company.
+          function technician_visible_customer_ids(array $user): array {
+              if (($user['roleName'] ?? '') !== 'Technician') return [];
+
+              if (!empty($user['isCustomerManaged'])) {
+                  $customerId = trim((string)($user['assignedCustomerId'] ?? ''));
+                  return $customerId !== '' ? [$customerId] : [];
+              }
+
+              $stmt = db()->prepare(
+                  "SELECT DISTINCT j.customer_id
+                   FROM digital_job_cards j
+                   LEFT JOIN breakdown_cases bc ON bc.id = j.case_id
+                   WHERE j.technician_id = ?
+                     AND j.customer_id IS NOT NULL
+                     AND UPPER(COALESCE(j.status,'')) <> 'CANCELLED'
+                     AND UPPER(COALESCE(bc.status,'')) <> 'COMPLETED'
+                   ORDER BY j.customer_id"
+              );
+              $stmt->execute([(string)($user['id'] ?? '')]);
+              return array_values(array_filter(array_map('strval', $stmt->fetchAll(PDO::FETCH_COLUMN))));
+          }
+
+          function require_customer_read_access(array $user, ?string $customerId = null): void {
+              if (($user['roleName'] ?? '') !== 'Technician') {
+                  require_page_access($user, 'customers');
+                  return;
+              }
+
+              // Listing with no active assignment should render an empty Technician view.
+              // Direct access to a customer is denied unless a current Job Card grants it.
+              if ($customerId === null) return;
+              $visibleCustomerIds = technician_visible_customer_ids($user);
+              if (!in_array((string)$customerId, $visibleCustomerIds, true)) {
+                  json_error('This customer is not assigned to your active Technician Job Cards.', 403);
+              }
+          }
+          '''
+          if text.count(old_access) != 1:
+              raise SystemExit('Expected require_customer_read_access block was not found exactly once.')
+          text = text.replace(old_access, new_access, 1)
+
+          old_list = '''    $assigned = ($user['roleName'] ?? '') === 'Technician'
+              ? ($user['assignedCustomerId'] ?? null)
+              : null;
+          if (($user['roleName'] ?? '') === 'Technician') {
+              $stmt = db()->prepare(
+                  'SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin, privacy_preferences
+                   FROM customers
+                   WHERE id = ? AND deleted_at IS NULL AND is_active = 1'
+              );
+              $stmt->execute([$assigned]);
+          } elseif ($q) {
+          '''
+          new_list = '''    $assignedCustomerIds = ($user['roleName'] ?? '') === 'Technician'
+              ? technician_visible_customer_ids($user)
+              : [];
+          if (($user['roleName'] ?? '') === 'Technician') {
+              if (!$assignedCustomerIds) json_out([]);
+              $inAssignedCustomers = belm_in_clause($assignedCustomerIds);
+              $stmt = db()->prepare(
+                  "SELECT id, name, email, phone, address, tin_number, vrn, is_active, is_machinery_admin, privacy_preferences
+                   FROM customers
+                   WHERE id IN ($inAssignedCustomers) AND deleted_at IS NULL AND is_active = 1
+                   ORDER BY name ASC"
+              );
+              $stmt->execute($assignedCustomerIds);
+          } elseif ($q) {
+          '''
+          if text.count(old_list) != 1:
+              raise SystemExit('Expected Technician customer-list block was not found exactly once.')
+          text = text.replace(old_list, new_list, 1)
+
+          old_feed = '''if ($method === 'GET' && $action === 'communication-feed') {
+              require_page_access($user, 'customers');
+
+              $requestedIds = array_values(array_filter(array_unique(array_map(
+          '''
+          new_feed = '''if ($method === 'GET' && $action === 'communication-feed') {
+              require_page_access($user, 'customers');
+
+              $requestedIds = array_values(array_filter(array_unique(array_map(
+          '''
+          if old_feed not in text:
+              raise SystemExit('Communication feed anchor was not found.')
+          # Keep the anchor unchanged; filter requested customer IDs after parsing them.
+
+          feed_anchor = '''    if (count($requestedIds) > 250) $requestedIds = array_slice($requestedIds, 0, 250);
+              if (!$requestedIds) json_out([]);
+          '''
+          feed_replacement = '''    if (count($requestedIds) > 250) $requestedIds = array_slice($requestedIds, 0, 250);
+              if (($user['roleName'] ?? '') === 'Technician') {
+                  $visibleCustomerIds = technician_visible_customer_ids($user);
+                  $requestedIds = array_values(array_intersect($requestedIds, $visibleCustomerIds));
+              }
+              if (!$requestedIds) json_out([]);
+          '''
+          if text.count(feed_anchor) != 1:
+              raise SystemExit('Communication feed customer filter anchor was not found exactly once.')
+          text = text.replace(feed_anchor, feed_replacement, 1)
+
+          read_anchor = '''if (($method === 'PUT' || $method === 'POST') && $action === 'communication-read') {
+              require_page_access($user, 'customers');
+              $communicationId = trim((string)($_GET['communicationId'] ?? ''));
+          '''
+          read_replacement = '''if (($method === 'PUT' || $method === 'POST') && $action === 'communication-read') {
+              if (($user['roleName'] ?? '') === 'Technician') require_customer_read_access($user, $id);
+              else require_page_access($user, 'customers');
+              $communicationId = trim((string)($_GET['communicationId'] ?? ''));
+          '''
+          if text.count(read_anchor) != 1:
+              raise SystemExit('Communication read access anchor was not found exactly once.')
+          text = text.replace(read_anchor, read_replacement, 1)
+
+          path.write_text(text)
+          PY
+
+          php -l backend/api/customers.php
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- backend/api/customers.php; then
+            echo "No patch needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/api/customers.php
+          git commit -m "Scope technicians to active assigned customers"
+          git push origin HEAD:main

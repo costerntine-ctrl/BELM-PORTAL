@@ -44,12 +44,13 @@
     <input type="hidden" id="spareJobId"><input type="hidden" id="spareCaseId">
     <label>Spare name<input id="spareName" required></label>
     <label>Part / reference number<input id="sparePart"></label>
-    <div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<input id="spareUnit" value="pcs"></label></div>
+    <div class="split"><label>Quantity<input id="spareQty" type="number" min="0.01" step="0.01" value="1" required></label><label>Unit<select id="spareUnit"><option value="pcs">pcs</option><option value="set">sets</option><option value="pair">pairs</option><option value="liter">liters</option><option value="ml">ml</option><option value="kg">kg</option><option value="g">grams</option><option value="meter">meters</option><option value="cm">cm</option><option value="mm">mm</option><option value="box">boxes</option><option value="roll">rolls</option><option value="bottle">bottles</option><option value="bag">bags</option><option value="drum">drums</option><option value="gallon">gallons</option></select></label></div>
     <label>Why required<textarea id="spareReason" rows="3"></textarea></label>
     <div class="dialog-actions"><button type="button" data-close="spareDialog">Cancel</button><button class="primary" type="submit">Send Spare Request</button></div>
   </form></dialog>
 
-  <script src="/technician-job-cards/job-cards.js?v=485-role-cleanup"></script>
+  <script src="/spare-request-ui-v741.js?v=741-spare-acceptance"></script>
+  <script src="/technician-job-cards/job-cards.js?v=741-spare-acceptance"></script>
   <script src="/job-card-detail-v734.js?v=734-job-card-detail"></script>
 </body>
 </html>

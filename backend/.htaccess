@@ -11,6 +11,11 @@
   # Keeps /api/belm-workshop-home?section=petty-cash stable for the frontend.
   RewriteRule ^belm-workshop-home/?$ api/belm_workshop_home.php [L,QSA,NC]
 
+  # Technician dashboard live feed. The page already reads live Job Cards from
+  # Breakdown Workflow; this endpoint supplies the same Technician with only the
+  # real customer/machine communications scoped to Job Cards assigned to them.
+  RewriteRule ^technician-dashboard/?$ api/technician_dashboard.php [L,QSA,NC]
+
   # Workshop Manager Service & Maintenance reporting + BELM Workshop Petty Cash.
   # V737 keeps the existing report/petty-cash module and additionally reads
   # completed Digital Job Cards with fulfilled spare parts into Maintenance Report.

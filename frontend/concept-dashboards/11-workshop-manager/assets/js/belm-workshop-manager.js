@@ -125,6 +125,16 @@
     });
   }
 
+  function installBreakdownReportViewer() {
+    if (!/service-maintenance\.html(?:$|[?#])/i.test(window.location.href)) return;
+    if (document.querySelector('script[data-belm-breakdown-report-v746]')) return;
+    var script = document.createElement('script');
+    script.src = '/workshop-breakdown-report-v746.js?v=746';
+    script.defer = true;
+    script.setAttribute('data-belm-breakdown-report-v746', '1');
+    document.body.appendChild(script);
+  }
+
   document.addEventListener('click', function (event) {
     var navLink = event.target && event.target.closest ? event.target.closest('[data-workshop-requirements-link],[data-service-maintenance-link],.sidebar-nav a') : null;
     if (navLink) {
@@ -160,12 +170,8 @@
     installThemeAssets();
     syncThemeButton();
     syncWorkshopNavigation();
+    installBreakdownReportViewer();
 
-    // IMPORTANT: do not observe href mutations here. The previous MutationObserver
-    // called syncWorkshopNavigation(), which wrote href attributes again and could
-    // create a self-triggering mutation loop that froze Chrome with Page Unresponsive.
-    // A few bounded passes are enough to run after the live routing script without
-    // keeping a permanent observer on the whole document.
     [100, 500, 1500, 3000].forEach(function (delay) {
       window.setTimeout(syncWorkshopNavigation, delay);
     });

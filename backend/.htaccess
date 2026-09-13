@@ -20,9 +20,9 @@
   RewriteRule ^spare-acceptance/([^/]+)/?$ api/spare_acceptance.php?id=$1 [L,QSA,NC]
 
   # Workshop Manager Service & Maintenance reporting + BELM Workshop Petty Cash.
-  # V737 keeps the existing report/petty-cash module and additionally reads
-  # completed Digital Job Cards with fulfilled spare parts into Maintenance Report.
-  RewriteRule ^workshop-service-maintenance/?$ workshop-service-maintenance-v737.php [L,QSA,NC]
+  # V746 adds machine/Job-Card scoped Breakdown daily snapshots and detailed
+  # View Report PDF/CSV exports; all other sections delegate to V737.
+  RewriteRule ^workshop-service-maintenance/?$ workshop-service-maintenance-v746.php [L,QSA,NC]
 
   # Main Admin Dashboard Machine & Stock Alerts. This aggregates the live
   # machine service state, spare inventory, Operator + Procurement fuel records

@@ -39,6 +39,21 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
+  function fmtDate(value) {
+    if (!value) return '—';
+    var d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    var now = new Date();
+    var sameDay = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+    var yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    var wasYesterday = d.getFullYear() === yesterday.getFullYear() && d.getMonth() === yesterday.getMonth() && d.getDate() === yesterday.getDate();
+    var time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    if (sameDay) return 'Today ' + time;
+    if (wasYesterday) return 'Yesterday ' + time;
+    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + time;
+  }
+
   var techToken = localStorage.getItem('belm_tech_token');
   var customerToken = localStorage.getItem('belm_customer_token');
   var techPayload = parseToken(techToken);
@@ -152,9 +167,9 @@ document.addEventListener('DOMContentLoaded', function () {
       cache: 'no-store',
       headers: { Authorization: 'Bearer ' + token }
     });
-    if (!response.ok) return;
+    if (!response.ok) throw new Error('Job Card sync failed (' + response.status + ')');
     var jobs = await response.json();
-    if (!Array.isArray(jobs)) return;
+    if (!Array.isArray(jobs)) throw new Error('Invalid Job Card response');
 
     var active = jobs.filter(function (j) { return !['COMPLETED','CANCELLED'].includes(String(j.status || '').toUpperCase()); });
     var stages = active.map(stageFor);
@@ -191,9 +206,55 @@ document.addEventListener('DOMContentLoaded', function () {
     }).join('') : '<tr><td colspan="5">No active Job Cards assigned to this technician.</td></tr>';
   }
 
+  async function loadTechnicianCommunications() {
+    if (!token) return;
+    var response = await fetch('/api/technician-dashboard', {
+      cache: 'no-store',
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!response.ok) throw new Error('Communication sync failed (' + response.status + ')');
+    var data = await response.json();
+    var items = data && Array.isArray(data.communications) ? data.communications : [];
+    var list = document.querySelector('.belm-comm-list');
+    if (!list) return;
+
+    list.innerHTML = items.length ? items.slice(0, 5).map(function (row) {
+      var direction = String(row.direction || '').toUpperCase();
+      var iconClass = direction === 'CUSTOMER_TO_BELM' ? 'belm-comm-row__icon--green' : 'belm-comm-row__icon--blue';
+      var name = row.customer_name || row.created_by_name || 'BELM';
+      var subject = String(row.subject || '').trim();
+      var message = String(row.message || '').trim();
+      var text = subject && message ? subject + ': ' + message : (message || subject || 'Communication update');
+      return '<div class="belm-comm-row">' +
+        '<span class="belm-comm-row__icon ' + iconClass + '">' +
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M4 4h16v12H8l-4 4V4z"/></svg>' +
+        '</span>' +
+        '<div class="belm-comm-row__body">' +
+          '<div class="belm-comm-row__top"><span class="belm-comm-row__name">' + esc(name) + '</span><span class="belm-comm-row__time">' + esc(fmtDate(row.created_at)) + '</span></div>' +
+          '<div class="belm-comm-row__msg">' + esc(text) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('') : '<div class="belm-comm-row"><div class="belm-comm-row__body"><div class="belm-comm-row__msg">No live communication recorded for your assigned Job Cards yet.</div></div></div>';
+  }
+
+  function loadLiveDashboard() {
+    return Promise.all([loadTechnicianJobs(), loadTechnicianCommunications()]);
+  }
+
   ensureWorkflowPanel();
   updateStaticNavigation();
   window.setTimeout(updateStaticNavigation, 250);
-  loadTechnicianJobs().catch(function (error) { console.warn('BELM technician dashboard live sync:', error); });
-  window.setInterval(function () { if (!document.hidden) loadTechnicianJobs().catch(function () {}); }, 30000);
+
+  if (token) {
+    var initialCommList = document.querySelector('.belm-comm-list');
+    if (initialCommList) initialCommList.innerHTML = '<div class="belm-comm-row"><div class="belm-comm-row__body"><div class="belm-comm-row__msg">Synchronizing live communication…</div></div></div>';
+    var initialJobBody = document.querySelector('.belm-table tbody');
+    if (initialJobBody) initialJobBody.innerHTML = '<tr><td colspan="5">Synchronizing live Job Cards…</td></tr>';
+  }
+
+  loadLiveDashboard().catch(function (error) { console.warn('BELM technician dashboard live sync:', error); });
+  window.setInterval(function () { if (!document.hidden) loadLiveDashboard().catch(function () {}); }, 30000);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) loadLiveDashboard().catch(function () {});
+  });
 });

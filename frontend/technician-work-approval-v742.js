@@ -9,6 +9,8 @@
 
   const normalize=text=>String(text||'').replace(/\s+/g,' ').trim().toUpperCase();
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=v=>{if(!v)return'';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString([],{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})};
+
   function parseToken(token){
     if(!token)return null;
     try{
@@ -17,14 +19,26 @@
       return JSON.parse(decodeURIComponent(Array.from(atob(padded)).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('')));
     }catch(_){return null}
   }
+
+  function activeToken(){
+    const p=new URLSearchParams(location.search);
+    const actor=String(p.get('actor')||p.get('source')||'').toLowerCase();
+    const admin=localStorage.getItem('belm_admin_token')||'';
+    const customer=localStorage.getItem('belm_customer_token')||'';
+    const tech=localStorage.getItem('belm_tech_token')||'';
+    if(actor==='admin'&&admin)return admin;
+    if(actor==='customer'&&customer)return customer;
+    if((actor==='tech'||actor==='technician')&&tech)return tech;
+    return admin||customer||tech;
+  }
   const adminToken=()=>localStorage.getItem('belm_admin_token')||'';
   function actorRole(){const p=parseToken(adminToken())||{};return String(p.roleName||p.role||'').trim().toLowerCase().replace(/[_-]+/g,' ')}
   const isBelmReviewer=()=>['workshop manager','super admin','engineer'].includes(actorRole());
 
   function ensureStyle(){
-    if(document.getElementById('belm-tech-work-approval-v744-style'))return;
+    if(document.getElementById('belm-tech-work-approval-v745-style'))return;
     const style=document.createElement('style');
-    style.id='belm-tech-work-approval-v744-style';
+    style.id='belm-tech-work-approval-v745-style';
     style.textContent=`
       .belm-tech-work-approval-note{margin:6px 0 10px;color:var(--muted,#75869b);font-size:11px;line-height:1.45}
       #approveJobCard.belm-tech-approve-action{background:#159447!important;color:#fff!important}
@@ -33,12 +47,13 @@
       dialog.belm-jc-detail-dialog .belm-jc-detail-scroll{min-height:0!important;max-height:calc(94vh - 154px)!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain!important;touch-action:pan-y!important;-webkit-overflow-scrolling:touch!important;scrollbar-gutter:stable!important;position:relative!important}
       dialog.belm-jc-detail-dialog .belm-jc-detail-scroll::-webkit-scrollbar{width:11px}
       dialog.belm-jc-detail-dialog .belm-jc-detail-scroll::-webkit-scrollbar-thumb{background:#7890aa;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+      .belm-jc-machine-scope{display:inline-flex;margin-left:8px;padding:4px 8px;border-radius:999px;background:rgba(21,148,71,.15);color:#8fe7b3;font-size:9px;font-weight:900;vertical-align:middle;white-space:nowrap}
       .belm-shared-tech-approval{margin-top:18px;padding:16px 18px;border:1px solid #dcc25b;border-radius:13px;background:rgba(242,195,24,.08)}
       .belm-shared-tech-approval h3{margin:0 0 5px!important;color:#fff!important;font-size:15px!important}.belm-shared-tech-approval p{margin:0 0 12px;color:#b9c9dc;font-size:11px;line-height:1.45}
       .belm-shared-tech-approval .belm-approval-status{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}.belm-shared-tech-approval .belm-approval-status span{display:inline-flex;padding:5px 8px;border-radius:999px;background:#102a47;color:#d9e8f7;font-size:10px;font-weight:900}
       .belm-shared-tech-approval .belm-approval-actions{display:flex;flex-wrap:wrap;gap:9px}.belm-shared-tech-approval button{border:0;border-radius:9px;padding:10px 14px;font-weight:900;cursor:pointer}.belm-shared-tech-approval .approve-tech{background:#159447;color:#fff}.belm-shared-tech-approval .return-tech{background:#fee8e8;color:#9a2222}.belm-shared-tech-approval button:disabled{opacity:.55;cursor:not-allowed}
       [data-theme="light"] .belm-shared-tech-approval h3{color:#24364a!important}[data-theme="light"] .belm-shared-tech-approval p{color:#65758c}
-      @media(max-width:700px){dialog.belm-jc-detail-dialog .belm-jc-detail-scroll{max-height:calc(96vh - 148px)!important}}
+      @media(max-width:700px){dialog.belm-jc-detail-dialog .belm-jc-detail-scroll{max-height:calc(96vh - 148px)!important}.belm-jc-machine-scope{display:block;margin:5px 0 0;width:max-content}}
     `;
     document.head.appendChild(style);
   }
@@ -48,8 +63,8 @@
     const scroll=dialog?.querySelector('.belm-jc-detail-scroll');
     if(!dialog||!scroll)return;
     scroll.tabIndex=0;
-    if(scroll.dataset.belmScrollV744)return;
-    scroll.dataset.belmScrollV744='1';
+    if(scroll.dataset.belmScrollV745)return;
+    scroll.dataset.belmScrollV745='1';
     scroll.addEventListener('wheel',event=>{
       if(!dialog.open)return;
       const max=Math.max(0,scroll.scrollHeight-scroll.clientHeight);
@@ -93,19 +108,58 @@
   async function loadModalJob(jobCardNo){
     if(cache.has(jobCardNo))return cache.get(jobCardNo);
     if(pendingLoads.has(jobCardNo))return pendingLoads.get(jobCardNo);
-    const token=adminToken();
+    const token=activeToken();
     if(!token)return null;
     const promise=(async()=>{
       try{
         const r=await fetch('/api/job-card-detail?jobCardNo='+encodeURIComponent(jobCardNo),{cache:'no-store',headers:{Authorization:'Bearer '+token}});
         const text=await r.text();let data=null;try{data=text?JSON.parse(text):null}catch(_){data=null}
-        if(!r.ok)throw new Error(data?.error||'Could not load Job Card approval data.');
+        if(!r.ok)throw new Error(data?.error||'Could not load Job Card data.');
         cache.set(jobCardNo,data);return data;
       }catch(_){return null}
       finally{pendingLoads.delete(jobCardNo)}
     })();
     pendingLoads.set(jobCardNo,promise);
     return promise;
+  }
+
+  function eventBelongsToJob(event,job){
+    const action=normalize(event.action);
+    const dept=normalize(event.department);
+    const note=normalize(event.note);
+    const actor=normalize(event.actor_name);
+    const hay=[action,dept,note,actor].join(' ');
+    if(/\b(ACCOUNTS|FINANCE|BANK|INVOICE|PAYMENT|PETTY CASH)\b/.test(hay))return false;
+
+    const created=Date.parse(event.created_at||'');
+    const start=Date.parse(job.issued_at||job.created_at||job.case_opened_at||'');
+    if(Number.isFinite(created)&&Number.isFinite(start)&&created<start-60000)return false;
+
+    const jobNo=normalize(job.jobCardNo||job.job_card_no||'');
+    const refs=(hay.match(/JC[-\s:]?[A-Z0-9-]+/g)||[]).map(normalize);
+    if(refs.length&&jobNo&&!refs.some(ref=>ref.includes(jobNo)||jobNo.includes(ref)))return false;
+
+    const technician=normalize(job.technicianName||job.technician_name||'');
+    if(dept.includes('TECHNICIAN')&&technician&&actor&&actor!=='TECHNICIAN'&&!actor.includes(technician)&&!technician.includes(actor))return false;
+
+    return /(JOB.?CARD|ASSIGN|DISPATCH|RECEIV|DIAGNOS|REPAIR|WORK DONE|SPARE|PART|TEST|APPROV|COMPLET|RETURN|CANCEL|TECHNICIAN)/.test(hay);
+  }
+
+  function scopeActivityHistory(dialog,data){
+    const job=data?.job||{};
+    const activity=dialog.querySelector('.belm-jc-activity');
+    const section=activity?.closest('.belm-jc-detail-section');
+    const heading=section?.querySelector('h3');
+    if(!activity||!heading)return;
+
+    const machine=[job.machineLabel,job.fleetNumber?`Fleet ${job.fleetNumber}`:null,job.serialNumber?`S/N ${job.serialNumber}`:null].filter(Boolean).join(' · ');
+    heading.innerHTML=`COMMUNICATION / ACTIVITY HISTORY <span class="belm-jc-machine-scope">${esc(machine||'THIS MACHINE ONLY')}</span>`;
+
+    const events=(Array.isArray(data.events)?data.events:[]).filter(e=>eventBelongsToJob(e,job));
+    const key=[job.id,events.length,events.at(-1)?.created_at||'',events.at(-1)?.action||''].join('|');
+    if(activity.dataset.scopeKey===key)return;
+    activity.dataset.scopeKey=key;
+    activity.innerHTML=events.length?[...events].reverse().map(e=>`<div class="belm-jc-activity-item"><b>${esc(String(e.action||'Activity').replaceAll('_',' '))}</b>${e.note?`<p>${esc(e.note)}</p>`:''}<small>${esc(e.actor_name||e.department||'System')} · ${esc(fmt(e.created_at))}</small></div>`).join(''):'<div class="belm-jc-activity-item"><b>No activity for this Job Card yet</b><p>Only communication and work history for this machine / Job Card will appear here.</p></div>';
   }
 
   async function patchSharedModal(){
@@ -116,20 +170,23 @@
     if(!title)return;
     const data=await loadModalJob(title);
     if(!data?.job||!dialog.open)return;
+
+    scopeActivityHistory(dialog,data);
+
+    if(!isBelmReviewer())return;
     const job=data.job;
     const status=normalize(job.status||job.current_stage||'OPEN');
-    const reviewer=isBelmReviewer();
     const pending=status==='PENDING_APPROVAL';
     const technician=job.technicianName||job.technician_name||'Assigned Technician';
     const jobNo=job.jobCardNo||job.job_card_no||title;
-    const renderKey=[job.id,status,reviewer?'1':'0',pending?'1':'0',technician].join('|');
+    const renderKey=[job.id,status,pending?'1':'0',technician].join('|');
     const scroll=dialog.querySelector('.belm-jc-detail-scroll');
     if(!scroll)return;
     let block=scroll.querySelector('.belm-shared-tech-approval');
     if(block?.dataset.renderKey===renderKey)return;
     if(!block){block=document.createElement('section');block.className='belm-shared-tech-approval';scroll.appendChild(block)}
     block.dataset.renderKey=renderKey;
-    block.innerHTML=`<h3>WORKSHOP MANAGER APPROVAL</h3><p>Review the Technician Report, then approve the Technician's work or return it for correction.</p><div class="belm-approval-status"><span>${esc(jobNo)}</span><span>Technician: ${esc(technician)}</span><span>Status: ${esc(status.replaceAll('_',' '))}</span></div><div class="belm-approval-actions"><button type="button" class="approve-tech" data-workshop-approve ${(!reviewer||!pending)?'disabled':''}>Approve Technician Work & Complete</button><button type="button" class="return-tech" data-workshop-return ${(!reviewer||!pending)?'disabled':''}>Return Work to Technician</button></div>${reviewer&&!pending?'<p style="margin-top:10px">Approval becomes active when the Technician submits the Job Card to <b>Pending Approval</b>.</p>':''}${!reviewer?'<p style="margin-top:10px">Only BELM Workshop Manager / Super Admin / Engineer can approve this Technician work.</p>':''}`;
+    block.innerHTML=`<h3>WORKSHOP MANAGER APPROVAL</h3><p>Review the Technician Report, then approve the Technician's work or return it for correction.</p><div class="belm-approval-status"><span>${esc(jobNo)}</span><span>Technician: ${esc(technician)}</span><span>Status: ${esc(status.replaceAll('_',' '))}</span></div><div class="belm-approval-actions"><button type="button" class="approve-tech" data-workshop-approve ${!pending?'disabled':''}>Approve Technician Work & Complete</button><button type="button" class="return-tech" data-workshop-return ${!pending?'disabled':''}>Return Work to Technician</button></div>${!pending?'<p style="margin-top:10px">Approval becomes active when the Technician submits this Job Card to <b>Pending Approval</b>.</p>':''}`;
     block.querySelector('[data-workshop-approve]')?.addEventListener('click',()=>reviewJob(job,true,block));
     block.querySelector('[data-workshop-return]')?.addEventListener('click',()=>reviewJob(job,false,block));
   }
@@ -156,10 +213,7 @@
     patchBusy=true;
     try{ensureStyle();patchCaseDetail();ensureModalScroll();await patchSharedModal()}finally{patchBusy=false}
   }
-  function schedulePatch(delay=70){
-    clearTimeout(patchTimer);
-    patchTimer=setTimeout(runPatch,delay);
-  }
+  function schedulePatch(delay=70){clearTimeout(patchTimer);patchTimer=setTimeout(runPatch,delay)}
 
   ensureStyle();
   const observer=new MutationObserver(mutations=>{

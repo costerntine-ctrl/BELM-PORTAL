@@ -16,6 +16,9 @@
   # real customer/machine communications scoped to Job Cards assigned to them.
   RewriteRule ^technician-dashboard/?$ api/technician_dashboard.php [L,QSA,NC]
 
+  # Administration / Workshop Manager spare acceptance action.
+  RewriteRule ^spare-acceptance/([^/]+)/?$ api/spare_acceptance.php?id=$1 [L,QSA,NC]
+
   # Workshop Manager Service & Maintenance reporting + BELM Workshop Petty Cash.
   # V737 keeps the existing report/petty-cash module and additionally reads
   # completed Digital Job Cards with fulfilled spare parts into Maintenance Report.

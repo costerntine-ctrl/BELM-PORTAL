@@ -40,8 +40,97 @@
       .belm-shared-tech-approval .approve-tech{background:#159447;color:#fff}.belm-shared-tech-approval .return-tech{background:#fee8e8;color:#9a2222}
       .belm-shared-tech-approval button:disabled{opacity:.55;cursor:not-allowed}
       [data-theme="light"] .belm-shared-tech-approval h3{color:#24364a!important}[data-theme="light"] .belm-shared-tech-approval p{color:#65758c}
+
+      /* V743: Job Card modal must always have one real vertical scroll owner. */
+      dialog.belm-jc-detail-dialog{overflow:hidden!important;max-height:94vh!important}
+      dialog.belm-jc-detail-dialog .belm-jc-detail-scroll{
+        display:block!important;
+        min-height:0!important;
+        max-height:calc(94vh - 154px)!important;
+        overflow-y:scroll!important;
+        overflow-x:hidden!important;
+        overscroll-behavior:contain!important;
+        touch-action:pan-y!important;
+        -webkit-overflow-scrolling:touch!important;
+        scrollbar-gutter:stable!important;
+        position:relative!important;
+      }
+      dialog.belm-jc-detail-dialog .belm-jc-detail-scroll::-webkit-scrollbar{width:11px}
+      dialog.belm-jc-detail-dialog .belm-jc-detail-scroll::-webkit-scrollbar-thumb{background:#7890aa;border-radius:10px;border:2px solid transparent;background-clip:padding-box}
+      dialog.belm-jc-detail-dialog .belm-jc-detail-scroll::-webkit-scrollbar-track{background:rgba(255,255,255,.05)}
+      @media(max-width:700px){dialog.belm-jc-detail-dialog .belm-jc-detail-scroll{max-height:calc(96vh - 148px)!important}}
     `;
     document.head.appendChild(style);
+  }
+
+  function ensureModalScroll(){
+    const dialog=document.getElementById('belmJobCardDetailDialog');
+    const scroll=dialog?.querySelector('.belm-jc-detail-scroll');
+    if(!dialog||!scroll)return;
+
+    // Keep injected approval/report content inside the scrollable body, never below
+    // the clipped dialog viewport.
+    const approval=dialog.querySelector('.belm-shared-tech-approval');
+    if(approval&&!scroll.contains(approval))scroll.appendChild(approval);
+
+    scroll.tabIndex=0;
+    scroll.style.overflowY='scroll';
+    scroll.style.overflowX='hidden';
+    scroll.style.minHeight='0';
+    scroll.style.maxHeight='calc(94vh - 154px)';
+    scroll.style.touchAction='pan-y';
+    scroll.style.webkitOverflowScrolling='touch';
+    scroll.style.overscrollBehavior='contain';
+
+    if(!scroll.dataset.belmScrollV743){
+      scroll.dataset.belmScrollV743='1';
+
+      // Embedded Workshop iframe + nested <dialog> can lose the browser's default
+      // wheel target. Make this panel the explicit scroll owner.
+      scroll.addEventListener('wheel',event=>{
+        if(!dialog.open)return;
+        const max=Math.max(0,scroll.scrollHeight-scroll.clientHeight);
+        if(max<=0)return;
+        const before=scroll.scrollTop;
+        scroll.scrollTop=Math.max(0,Math.min(max,before+event.deltaY));
+        if(scroll.scrollTop!==before)event.preventDefault();
+      },{passive:false});
+
+      let touchY=null;
+      let moved=false;
+      scroll.addEventListener('touchstart',event=>{
+        if(!event.touches?.length)return;
+        touchY=event.touches[0].clientY;
+        moved=false;
+      },{passive:true});
+      scroll.addEventListener('touchmove',event=>{
+        if(touchY===null||!event.touches?.length)return;
+        const next=event.touches[0].clientY;
+        const delta=touchY-next;
+        if(Math.abs(delta)<1)return;
+        touchY=next;
+        const max=Math.max(0,scroll.scrollHeight-scroll.clientHeight);
+        const before=scroll.scrollTop;
+        scroll.scrollTop=Math.max(0,Math.min(max,before+delta));
+        moved=moved||scroll.scrollTop!==before;
+        if(moved)event.preventDefault();
+      },{passive:false});
+      const endTouch=()=>{touchY=null;moved=false};
+      scroll.addEventListener('touchend',endTouch,{passive:true});
+      scroll.addEventListener('touchcancel',endTouch,{passive:true});
+
+      scroll.addEventListener('keydown',event=>{
+        const page=Math.max(120,scroll.clientHeight*.82);
+        let delta=0;
+        if(event.key==='ArrowDown')delta=48;
+        else if(event.key==='ArrowUp')delta=-48;
+        else if(event.key==='PageDown'||event.key===' ')delta=page;
+        else if(event.key==='PageUp')delta=-page;
+        else if(event.key==='Home'){scroll.scrollTop=0;event.preventDefault();return}
+        else if(event.key==='End'){scroll.scrollTop=scroll.scrollHeight;event.preventDefault();return}
+        if(delta){scroll.scrollBy({top:delta,behavior:'smooth'});event.preventDefault()}
+      });
+    }
   }
 
   function patchCaseDetail(){
@@ -85,17 +174,19 @@
   function locateApprovalHost(dialog){
     const headings=[...dialog.querySelectorAll('h1,h2,h3,h4')];
     const workHeading=headings.find(h=>['WORK APPROVAL','TECHNICIAN WORK APPROVAL','WORK APPROVAL OF TECHNICIAN'].includes(normalize(h.textContent)));
+    const scroll=dialog.querySelector('.belm-jc-detail-scroll');
     if(workHeading){
       workHeading.textContent='TECHNICIAN WORK APPROVAL';
       const host=workHeading.closest('section,.section,.belm-jc-detail-job,div')||workHeading.parentElement;
-      if(host)return host;
+      if(host&&scroll?.contains(host))return host;
     }
-    return dialog.querySelector('.belm-jc-detail-scroll');
+    return scroll;
   }
 
   async function patchSharedModal(){
     const dialog=document.getElementById('belmJobCardDetailDialog');
     if(!dialog||!dialog.open)return;
+    ensureModalScroll();
     const title=String(dialog.querySelector('.belm-jc-detail-head h2')?.textContent||'').trim();
     if(!title)return;
 
@@ -110,6 +201,8 @@
     if(!block){
       block=document.createElement('section');
       block.className='belm-shared-tech-approval';
+      host.appendChild(block);
+    }else if(!host.contains(block)){
       host.appendChild(block);
     }
 
@@ -129,6 +222,7 @@
 
     block.querySelector('[data-workshop-approve]')?.addEventListener('click',()=>reviewJob(job,true,block));
     block.querySelector('[data-workshop-return]')?.addEventListener('click',()=>reviewJob(job,false,block));
+    ensureModalScroll();
   }
 
   async function reviewJob(job,approve,block){
@@ -168,11 +262,12 @@
     }
   }
 
-  function patch(){ensureStyle();patchCaseDetail();patchSharedModal()}
+  function patch(){ensureStyle();ensureModalScroll();patchCaseDetail();patchSharedModal()}
 
   ensureStyle();
   const observer=new MutationObserver(()=>queueMicrotask(patch));
   observer.observe(document.body,{childList:true,subtree:true});
   document.addEventListener('click',()=>window.setTimeout(patch,60),true);
+  window.addEventListener('resize',ensureModalScroll);
   patch();
 })();

@@ -38,6 +38,107 @@ if ($action === 'change-pin' && $method === 'PUT') {
 $user = require_auth();
 require_page_access($user, 'settings');
 
+// Management Mail routing directory. This is intentionally under System
+// Settings permission rather than Customers/Users permissions because the
+// System Coordinator/Super Admin needs one safe directory for company mail
+// routing without exposing passwords or unrelated customer data.
+if ($method === 'GET' && $action === 'management-mail-directory') {
+    $companies = db()->query(
+        "SELECT id, name, email
+         FROM customers
+         WHERE deleted_at IS NULL AND is_active = 1
+         ORDER BY name ASC"
+    )->fetchAll();
+
+    $byId = [];
+    foreach ($companies as $company) {
+        $companyId = (string)$company['id'];
+        $byId[$companyId] = [
+            'id' => $companyId,
+            'name' => (string)$company['name'],
+            'email' => (string)($company['email'] ?? ''),
+            'recipients' => [],
+        ];
+        if (filter_var($company['email'] ?? '', FILTER_VALIDATE_EMAIL)) {
+            $byId[$companyId]['recipients'][] = [
+                'name' => (string)$company['name'],
+                'email' => strtolower((string)$company['email']),
+                'role' => 'Customer Admin',
+                'source' => 'customer-account',
+            ];
+        }
+    }
+
+    $customerUsers = db()->query(
+        "SELECT customer_id, name, email, role
+         FROM customer_users
+         WHERE is_active = 1
+         ORDER BY created_at ASC"
+    )->fetchAll();
+    foreach ($customerUsers as $mailUser) {
+        $companyId = (string)($mailUser['customer_id'] ?? '');
+        if (!isset($byId[$companyId]) || !filter_var($mailUser['email'] ?? '', FILTER_VALIDATE_EMAIL)) continue;
+        $byId[$companyId]['recipients'][] = [
+            'name' => (string)($mailUser['name'] ?? ''),
+            'email' => strtolower((string)$mailUser['email']),
+            'role' => (string)($mailUser['role'] ?? 'Company User'),
+            'source' => 'customer-user',
+        ];
+    }
+
+    $staffUsers = db()->query(
+        "SELECT u.assigned_customer_id AS customer_id, u.name, u.email, r.name AS role
+         FROM users u
+         JOIN roles r ON r.id = u.role_id
+         WHERE u.assigned_customer_id IS NOT NULL
+           AND u.deleted_at IS NULL AND u.is_active = 1
+         UNION ALL
+         SELECT u.assigned_customer_id AS customer_id, u.name, u.email, r.name AS role
+         FROM users u
+         JOIN user_roles ur ON ur.user_id = u.id
+         JOIN roles r ON r.id = ur.role_id
+         WHERE u.assigned_customer_id IS NOT NULL
+           AND u.deleted_at IS NULL AND u.is_active = 1"
+    )->fetchAll();
+    foreach ($staffUsers as $mailUser) {
+        $companyId = (string)($mailUser['customer_id'] ?? '');
+        if (!isset($byId[$companyId]) || !filter_var($mailUser['email'] ?? '', FILTER_VALIDATE_EMAIL)) continue;
+        $byId[$companyId]['recipients'][] = [
+            'name' => (string)($mailUser['name'] ?? ''),
+            'email' => strtolower((string)$mailUser['email']),
+            'role' => (string)($mailUser['role'] ?? 'Company User'),
+            'source' => 'assigned-user',
+        ];
+    }
+
+    foreach ($byId as &$company) {
+        $seen = [];
+        $unique = [];
+        foreach ($company['recipients'] as $recipient) {
+            $key = strtolower(trim((string)$recipient['email'])) . '|' . strtolower(trim((string)$recipient['role']));
+            if ($key === '|' || isset($seen[$key])) continue;
+            $seen[$key] = true;
+            $unique[] = $recipient;
+        }
+        $company['recipients'] = $unique;
+    }
+    unset($company);
+
+    json_out([
+        'companies' => array_values($byId),
+        'defaultRoles' => [
+            'Customer Admin',
+            'Boss / Administration',
+            'Workshop Manager',
+            'Technician',
+            'Operator',
+            'Store Keeper',
+            'Procurement',
+            'Finance / Accountant',
+        ],
+    ]);
+}
+
 if ($method === 'GET') {
     $rows = db()->query("SELECT * FROM system_settings WHERE \"key\" NOT IN ('adminEditPin','adminDeletePin')")->fetchAll();
     $out = [];

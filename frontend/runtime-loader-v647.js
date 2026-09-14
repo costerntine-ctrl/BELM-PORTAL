@@ -26,6 +26,9 @@
     // V735: keep the existing Reports modal, only align each report control
     // row left-to-right: Report -> From -> To -> View -> PDF -> CSV.
     await loadScript('/technician-report-row-v735.js?v=735-single-row');
+    // V749: Daily Checklists -> machine action now exposes one Machine General
+    // Report dashboard with arranged report cards and real View/PDF/CSV period actions.
+    await loadScript('/technician-machine-general-report-v749.js?v=749-machine-general-report');
   }
 
   async function bootNonCritical(){

@@ -60,6 +60,7 @@ switch($resource){
     case 'applications': dispatch('applications.php',['id'=>$segments[1]??null,'action'=>$segments[2]??'']);
     case 'contracts': dispatch('contracts.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$segments[2]??($_GET['action']??'')]);
     case 'workshops': dispatch('workshops.php',['resource'=>$segments[1]??($_GET['resource']??'orders'),'id'=>$segments[2]??($_GET['id']??null),'action'=>$segments[3]??($_GET['action']??'')]);
+    case 'machine-card-photo': dispatch('machine_card_photo.php',['machineId'=>$segments[1]??($_GET['machineId']??'')]);
     case 'customer-checkup':
     case 'customer_checkup':
     case 'customer_checkup.php': dispatch('customer_checkup.php');
@@ -135,28 +136,14 @@ switch($resource){
         }
         dispatch('billing.php',['action'=>$_GET['action']??'','id'=>$_GET['id']??null]);
     case 'company-expenses': dispatch('company_expenses.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
-    case 'proforma-invoices': dispatch('proforma_invoices.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
-    case 'receipts': dispatch('receipts.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
-    case 'reports': dispatch('reports.php',['action'=>$segments[1]??($_GET['action']??'')]);
-    case 'suppliers': dispatch('suppliers.php',['id'=>$segments[1]??null]);
-    case 'engineering': dispatch('engineering.php');
-    case 'operator': dispatch('operator.php',['action'=>$segments[1]??($_GET['action']??'')]);
-    case 'job-cards': dispatch('service_requests.php');
-    case 'service-requests': dispatch('service_requests.php');
-    case 'spare-parts':
-        // /spare-parts/requests is the Technician/Inventory Request workflow.
-        if(($segments[1]??'')==='requests')dispatch('spare_part_requests.php',['id'=>$segments[2]??null]);
-        dispatch('spare_parts.php',['id'=>$segments[1]??null]);
-    case 'spare-recommendations': dispatch('spare_recommendations.php',['id'=>$segments[1]??'']);
-    case 'announcements': dispatch('announcements.php',['id'=>$segments[1]??'']);
+    case 'engineering': dispatch('engineering.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
+    case 'petty-cash': dispatch('petty_cash.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
     case 'preferences': dispatch('preferences.php');
-    case 'notification-config': if(($segments[1]??'')==='status')dispatch('notification_config.php');json_error('Unknown notification configuration request',404);
-    case 'settings': if(isset($segments[1]))dispatch('settings.php',['key'=>$segments[1]]);dispatch('settings.php');
-    case 'trash': if(isset($segments[1]))dispatch('trash.php',['id'=>$segments[1]]);dispatch('trash.php');
-    case 'delivery-notes': if(($segments[1]??'')==='meta')dispatch('delivery_notes.php',['action'=>'meta']);if(isset($segments[1]))dispatch('delivery_notes.php',['id'=>$segments[1]]);dispatch('delivery_notes.php');
-    case 'tasks':
-        if(($segments[1]??'')==='user'&&isset($segments[2]))dispatch('tasks.php',['userId'=>$segments[2]]);
-        if(isset($segments[1]))dispatch('tasks.php',['id'=>$segments[1]]);
-        dispatch('tasks.php');
-    default: json_error('Not found',404);
+    default:
+        $candidate = __DIR__ . '/api/' . preg_replace('/[^a-zA-Z0-9_-]/', '', $resource) . '.php';
+        if ($resource !== '' && is_file($candidate)) {
+            require $candidate;
+            exit;
+        }
+        json_error('API route not found.', 404);
 }

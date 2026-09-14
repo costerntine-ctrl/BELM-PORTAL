@@ -3,8 +3,11 @@
   const states=new WeakMap();
   const params=new URLSearchParams(location.search);
   const workshopSummary=params.get('view')==='all-machines'&&params.get('embed')==='1';
+  const adminToken=localStorage.getItem('belm_admin_token')||'';
   const text=(el)=>String(el?.textContent||'').replace(/\s+/g,' ').trim();
   const setText=(el,value)=>{if(el&&el.textContent!==value)el.textContent=value};
+  let directJobContext=null;
+  let directJobOptions=null;
 
   function levelFor(card,message){
     const v=String(card.dataset.machineEffectiveRange||card.dataset.machineConditionLevel||'').toUpperCase();
@@ -63,6 +66,117 @@
     return {title,fleet,meta,customer,condition,service,reason,operator,activity:activity(card)};
   }
 
+  function machineIdFromCard(card){
+    const op=card.querySelector('[data-operational-status]')?.getAttribute('data-operational-status');
+    if(op)return String(op);
+    const service=card.querySelector('[data-service-due-badge]')?.getAttribute('data-service-due-badge');
+    if(service)return String(service);
+    const link=card.querySelector('.belm-maintenance-process-link');
+    try{return new URL(link?.href||'',location.origin).searchParams.get('machine')||''}catch{return''}
+  }
+
+  async function engineeringApi(path,opt={}){
+    const r=await fetch(`/api${path}`,{...opt,cache:'no-store',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${adminToken}`,...(opt.headers||{})}});
+    const raw=await r.text();let data=null;try{data=raw?JSON.parse(raw):null}catch{}
+    if(!r.ok)throw new Error(data?.error||`Request failed (${r.status}).`);
+    return data;
+  }
+
+  function ensureDirectJobDialog(){
+    let dialog=document.getElementById('belmDirectJobCardDialog');
+    if(dialog)return dialog;
+    dialog=document.createElement('dialog');
+    dialog.id='belmDirectJobCardDialog';
+    dialog.innerHTML=`<form id="belmDirectJobCardForm" class="belm-direct-job-card" method="dialog">
+      <div class="belm-direct-job-head"><div><small>DIRECT JOB CARD</small><h2>Create Job Card</h2><p id="belmDirectJobMachine">Machine</p></div><button type="button" id="belmDirectJobClose" aria-label="Close">×</button></div>
+      <div id="belmDirectJobAlert" class="belm-direct-job-alert" hidden></div>
+      <label>Technician<select id="belmDirectJobTechnician" required><option value="">Loading technicians...</option></select></label>
+      <label>Job description<textarea id="belmDirectJobDescription" rows="5" maxlength="1500" placeholder="Describe the work to be done..." required></textarea></label>
+      <div class="belm-direct-job-actions"><button type="button" id="belmDirectJobCancel">Cancel</button><button type="submit" id="belmDirectJobSubmit">Create & Assign Job Card</button></div>
+    </form>`;
+    document.body.appendChild(dialog);
+    const close=()=>dialog.open&&dialog.close();
+    dialog.querySelector('#belmDirectJobClose').addEventListener('click',close);
+    dialog.querySelector('#belmDirectJobCancel').addEventListener('click',close);
+    dialog.querySelector('#belmDirectJobCardForm').addEventListener('submit',submitDirectJobCard);
+    dialog.addEventListener('close',()=>{
+      dialog.querySelector('#belmDirectJobDescription').value='';
+      const alert=dialog.querySelector('#belmDirectJobAlert');alert.hidden=true;alert.textContent='';alert.className='belm-direct-job-alert';
+      directJobContext=null;
+    });
+    return dialog;
+  }
+
+  function directJobAlert(message,error=false){
+    const box=document.getElementById('belmDirectJobAlert');if(!box)return;
+    box.hidden=false;box.textContent=message;box.className=`belm-direct-job-alert${error?' is-error':' is-success'}`;
+  }
+
+  async function openDirectJobCard(card){
+    const machineId=machineIdFromCard(card);
+    if(!machineId){alert('Machine reference not found. Refresh the Machines page and try again.');return}
+    if(!adminToken){window.top.location.replace('/login');return}
+    const d=summaryData(card);
+    const dialog=ensureDirectJobDialog();
+    directJobContext={card,machineId,data:d};
+    dialog.querySelector('#belmDirectJobMachine').textContent=`${d.fleet} · ${d.title} · ${d.customer}`;
+    const select=dialog.querySelector('#belmDirectJobTechnician');
+    select.disabled=true;select.innerHTML='<option value="">Loading technicians...</option>';
+    directJobAlert('Loading available technicians...');
+    if(!dialog.open)dialog.showModal();
+    try{
+      directJobOptions=await engineeringApi('/engineering?action=dispatch-options&skipSync=1');
+      const techs=Array.isArray(directJobOptions?.technicians)?directJobOptions.technicians:[];
+      select.innerHTML='<option value="">Select Technician...</option>'+techs.map(tech=>`<option value="${String(tech.id).replace(/["&<>]/g,'')}">${String(tech.name||'Technician').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}${tech.assignedCustomerName?` · Home: ${String(tech.assignedCustomerName).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}`:''}</option>`).join('');
+      select.disabled=false;
+      const box=dialog.querySelector('#belmDirectJobAlert');box.hidden=true;box.textContent='';
+      dialog.querySelector('#belmDirectJobDescription').focus();
+    }catch(error){
+      select.innerHTML='<option value="">Could not load technicians</option>';
+      directJobAlert(error.message||'Could not load technicians.',true);
+    }
+  }
+
+  async function submitDirectJobCard(event){
+    event.preventDefault();
+    const dialog=document.getElementById('belmDirectJobCardDialog');
+    if(!dialog||!directJobContext)return;
+    const select=dialog.querySelector('#belmDirectJobTechnician');
+    const description=dialog.querySelector('#belmDirectJobDescription').value.trim();
+    const technicianId=select.value;
+    if(!technicianId){directJobAlert('Select Technician.',true);return}
+    if(!description){directJobAlert('Enter Job description.',true);return}
+    const machines=Array.isArray(directJobOptions?.machines)?directJobOptions.machines:[];
+    const customers=Array.isArray(directJobOptions?.customers)?directJobOptions.customers:[];
+    const techs=Array.isArray(directJobOptions?.technicians)?directJobOptions.technicians:[];
+    const machine=machines.find(row=>String(row.id)===String(directJobContext.machineId));
+    const customerId=String(machine?.customerId??machine?.customer_id??'');
+    if(!customerId){directJobAlert('Registered customer for this machine was not found. Refresh Machines and try again.',true);return}
+    const customer=customers.find(row=>String(row.id)===customerId);
+    const tech=techs.find(row=>String(row.id)===String(technicianId));
+    const temporary=Boolean(tech?.assignedCustomerId&&String(tech.assignedCustomerId)!==customerId);
+    if(temporary&&!confirm(`${tech?.name||'This Technician'} is attached to ${tech?.assignedCustomerName||'another customer'}. Assign this Job Card to ${customer?.name||directJobContext.data.customer} as a Temporary Override?`))return;
+    const submit=dialog.querySelector('#belmDirectJobSubmit');
+    submit.disabled=true;submit.textContent='Creating Job Card...';
+    directJobAlert('Creating and assigning Job Card...');
+    try{
+      const title=description.split(/\n|\.|;/)[0].trim().slice(0,120)||`Job for ${directJobContext.data.fleet}`;
+      const result=await engineeringApi('/engineering?action=dispatch',{method:'POST',body:JSON.stringify({
+        jobCardMode:'create',jobCardId:'',jobCardNo:'',technicianId,customerId,machineId:directJobContext.machineId,
+        title,description,priority:'NORMAL',dueDate:null,jobLocation:String(customer?.address||customer?.customerAddress||'').trim(),temporaryOverride:temporary
+      })});
+      directJobAlert(`✓ ${result?.jobCardNo||'Job Card'} created and assigned to ${tech?.name||'Technician'}.`);
+      const cardButton=directJobContext.card.querySelector('.belm-machine-summary-report');
+      if(cardButton){cardButton.textContent=`✓ ${result?.jobCardNo||'Created'}`;setTimeout(()=>{cardButton.textContent='Create Job Card'},2200)}
+      dialog.querySelector('#belmDirectJobDescription').value='';
+      setTimeout(()=>{if(dialog.open)dialog.close()},1100);
+    }catch(error){
+      directJobAlert(error.message||'Could not create Job Card.',true);
+    }finally{
+      submit.disabled=false;submit.textContent='Create & Assign Job Card';
+    }
+  }
+
   function injectWorkshopStyle(){
     if(!workshopSummary||document.getElementById('belm-wm-machine-summary-style'))return;
     document.documentElement.classList.add('belm-wm-machine-summary');
@@ -101,6 +215,13 @@
       .belm-machine-summary-report{border:1px solid #30445c;background:#07111d;color:#f2f5f8}.belm-machine-summary-report:disabled{opacity:.45;cursor:not-allowed}
       .belm-machine-summary-view{border:1px solid #ffda00;background:#ffdf00;color:#07111d}.belm-machine-summary-view:hover{filter:brightness(1.04)}
       .belm-machine-back{display:none;align-items:center;justify-content:center;margin:0 0 12px;padding:8px 12px;border:1px solid #2d7bc2;border-radius:9px;background:#0b3358;color:#fff;font-weight:900;cursor:pointer}
+      #belmDirectJobCardDialog{width:min(560px,calc(100vw - 28px));padding:0;border:1px solid #2e5279;border-radius:18px;background:#0a1728;color:#eef5ff;box-shadow:0 24px 80px rgba(0,0,0,.55)}
+      #belmDirectJobCardDialog::backdrop{background:rgba(1,8,18,.75);backdrop-filter:blur(4px)}
+      .belm-direct-job-card{padding:0;margin:0}.belm-direct-job-head{display:flex;justify-content:space-between;gap:16px;padding:20px 22px;border-bottom:1px solid #213b5a;background:linear-gradient(135deg,#123965,#0a2039)}
+      .belm-direct-job-head small{color:#58e38e;font-weight:900;letter-spacing:.08em}.belm-direct-job-head h2{margin:5px 0 4px;font-size:24px}.belm-direct-job-head p{margin:0;color:#a9bfd8;font-size:13px}.belm-direct-job-head button{border:0;background:transparent;color:#fff;font-size:28px;cursor:pointer}
+      .belm-direct-job-card>label{display:block;margin:18px 22px 0;color:#c6d5e7;font-weight:800;font-size:13px}.belm-direct-job-card select,.belm-direct-job-card textarea{display:block;width:100%;box-sizing:border-box;margin-top:7px;padding:12px;border:1px solid #355575;border-radius:10px;background:#071221;color:#fff;font:600 14px Inter,Arial,sans-serif}.belm-direct-job-card textarea{resize:vertical;min-height:120px}
+      .belm-direct-job-alert{margin:16px 22px 0;padding:11px 12px;border-radius:10px;background:#12314e;color:#d7eaff;font-weight:700;font-size:13px}.belm-direct-job-alert.is-error{background:#481b25;color:#ffc5ce;border:1px solid #8c3447}.belm-direct-job-alert.is-success{background:#123b29;color:#baf3d0;border:1px solid #27754c}
+      .belm-direct-job-actions{display:flex;justify-content:flex-end;gap:10px;padding:20px 22px}.belm-direct-job-actions button{min-height:42px;padding:0 16px;border-radius:10px;border:1px solid #3a5672;background:#13253a;color:#fff;font-weight:900;cursor:pointer}.belm-direct-job-actions #belmDirectJobSubmit{background:#20b85d;border-color:#20b85d;color:#04160b}.belm-direct-job-actions button:disabled{opacity:.55;cursor:wait}
       @media(max-width:720px){html.belm-wm-machine-summary #machineListBody .machine-list{grid-template-columns:1fr!important}.belm-machine-summary-visual{min-height:125px}.belm-machine-summary h3{font-size:20px}}
     `;
     document.head.appendChild(style);
@@ -126,7 +247,7 @@
         </div>
         <div class="belm-machine-summary-service" data-summary-service>Service due: not available</div>
         <div class="belm-machine-summary-bar"><i></i></div>
-        <div class="belm-machine-summary-actions"><button type="button" class="belm-machine-summary-report">Report Issue</button><button type="button" class="belm-machine-summary-view">View Details</button></div>`;
+        <div class="belm-machine-summary-actions"><button type="button" class="belm-machine-summary-report">Create Job Card</button><button type="button" class="belm-machine-summary-view">View Details</button></div>`;
       const back=document.createElement('button');
       back.type='button';back.className='belm-machine-back';back.textContent='← Back to Machine Card';
       card.prepend(back);card.prepend(summary);card.classList.add('belm-summary-mode');
@@ -136,10 +257,7 @@
       back.addEventListener('click',()=>{
         card.classList.remove('belm-detail-open');card.classList.add('belm-summary-mode');card.scrollIntoView({behavior:'smooth',block:'nearest'});
       });
-      summary.querySelector('.belm-machine-summary-report').addEventListener('click',()=>{
-        const link=card.querySelector('.belm-maintenance-process-link');
-        if(link)link.click();
-      });
+      summary.querySelector('.belm-machine-summary-report').addEventListener('click',()=>openDirectJobCard(card));
     }
     const d=summaryData(card);const level=levelFor(card,d.condition+' '+d.reason);
     summary.classList.remove('level-green','level-yellow','level-red','level-unknown');summary.classList.add('level-'+level);
@@ -154,7 +272,7 @@
     setText(summary.querySelector('[data-summary-service]'),d.service);
     const activityEl=summary.querySelector('[data-summary-activity]');
     setText(activityEl,d.activity.label);activityEl.classList.toggle('is-grounded',d.activity.value==='GROUNDED');activityEl.classList.toggle('is-progress',d.activity.value!=='NORMAL'&&d.activity.value!=='GROUNDED');
-    const report=summary.querySelector('.belm-machine-summary-report');report.disabled=!card.querySelector('.belm-maintenance-process-link');
+    const report=summary.querySelector('.belm-machine-summary-report');report.disabled=!adminToken||!machineIdFromCard(card);
   }
 
   function scan(){

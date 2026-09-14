@@ -8,7 +8,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Assigned Customer Machines — BELM Technician</title>
   <link rel="stylesheet" href="assets/css/belm-technician-dashboard.css">
-  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=3">
+  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=4">
   <style>
     @keyframes belmJobCardAlertBlink{
       0%,100%{background:rgba(255,255,255,.07);box-shadow:0 0 0 rgba(255,193,7,0);filter:brightness(1)}
@@ -16,6 +16,16 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     }
     .belm-nav__item.job-card-alert-blink{animation:belmJobCardAlertBlink 1s ease-in-out infinite;border:1px solid rgba(246,197,30,.85)}
     .belm-nav__item.job-card-alert-blink span{font-weight:950}
+
+    /* Keep the customer card compact: only one communication alert is visible at a time. */
+    .technician-customer-card{min-height:0!important}
+    .technician-customer-feed{flex:0 0 auto!important;min-height:0!important;margin-top:12px!important;margin-bottom:12px!important;padding:14px!important}
+    .technician-customer-feed-head{margin-bottom:10px!important}
+    .technician-customer-feed-body{display:block!important;min-height:0!important;overflow:hidden!important}
+    .technician-customer-feed-row{min-height:118px;max-height:145px;overflow:hidden;padding:12px 13px!important}
+    .technician-customer-feed-row p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin:6px 0!important;line-height:1.35!important}
+    .technician-customer-feed-row small{display:block;margin-top:4px}
+
     @media(prefers-reduced-motion:reduce){.belm-nav__item.job-card-alert-blink{animation:none;background:#f6c51e;color:#14243a;box-shadow:0 0 0 2px rgba(246,197,30,.3)}}
   </style>
 </head>
@@ -74,17 +84,22 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     if(!item)return `<article class="technician-customer-feed-row is-placeholder feed-${slot.key}"><b>${esc(slot.title)}</b><p>${esc(slot.empty)}</p><small>Standing alert slot</small></article>`;
     return `<article class="technician-customer-feed-row feed-${slot.key}"><b>${esc(slot.title)}</b><p>${esc(item.message||item.body||item.description||item.subject||item.title||'New message available.')}</p><small>${esc(fmt(item.createdAt||item.created_at||item.updatedAt||item.updated_at))}</small></article>`;
   }
-  function communicationSnapshot(items){
-    const slots=[...communicationSlots];
-    for(let i=slots.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[slots[i],slots[j]]=[slots[j],slots[i]]}
-    return slots.map(slot=>communicationCard(slot,items)).join('');
+  let communicationOrder=[];
+  let communicationIndex=0;
+  function nextCommunicationSlot(){
+    if(communicationIndex>=communicationOrder.length){
+      communicationOrder=[...communicationSlots];
+      for(let i=communicationOrder.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[communicationOrder[i],communicationOrder[j]]=[communicationOrder[j],communicationOrder[i]]}
+      communicationIndex=0;
+    }
+    return communicationOrder[communicationIndex++];
   }
   function startCommunicationRotation(items){
     const body=document.getElementById('communicationFeedBody');
     if(!body)return;
-    const render=()=>{body.innerHTML=communicationSnapshot(items)};
+    const render=()=>{body.innerHTML=communicationCard(nextCommunicationSlot(),items)};
     render();
-    window.setInterval(render,12000);
+    window.setInterval(render,9000);
   }
 
   function jobNeedsAttention(job){

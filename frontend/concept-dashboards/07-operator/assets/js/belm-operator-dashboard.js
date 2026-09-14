@@ -9,17 +9,50 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   }
 
-  if (themeToggle) {
-    if (localStorage.getItem('belm-theme') === 'light') {
-      document.body.classList.add('belm-light');
-      themeToggle.lastChild.textContent = ' Dark mode';
+  // Operator used to keep a separate global `belm-theme` value. Load the same
+  // per-account Theme Manager used by the rest of BELM so Light/Dark follows
+  // the signed-in user and does not overwrite another person's preference.
+  function ensureSharedTheme() {
+    if (!document.querySelector('link[data-operator-shared-theme]')) {
+      var css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = '/theme-global.css?v=754-settings-audit';
+      css.dataset.operatorSharedTheme = '1';
+      document.head.appendChild(css);
     }
-    themeToggle.addEventListener('click', function () {
-      var isLight = document.body.classList.toggle('belm-light');
-      localStorage.setItem('belm-theme', isLight ? 'light' : 'dark');
-      themeToggle.lastChild.textContent = isLight ? ' Dark mode' : ' Light mode';
+    return new Promise(function (resolve) {
+      if (window.BELMTheme) { resolve(); return; }
+      var existing = document.querySelector('script[data-operator-shared-theme]');
+      if (existing) { existing.addEventListener('load', resolve, { once:true }); setTimeout(resolve, 1000); return; }
+      var script = document.createElement('script');
+      script.src = '/theme-manager.js?v=754-settings-audit';
+      script.dataset.operatorSharedTheme = '1';
+      script.onload = resolve;
+      script.onerror = resolve;
+      document.head.appendChild(script);
     });
   }
+
+  function paintThemeLabel() {
+    if (!themeToggle) return;
+    var dark = window.BELMTheme?.get?.() === 'dark' || document.documentElement.dataset.theme === 'dark';
+    themeToggle.lastChild.textContent = dark ? ' Light mode' : ' Dark mode';
+  }
+
+  ensureSharedTheme().then(function () {
+    paintThemeLabel();
+    window.addEventListener('belm-theme-change', paintThemeLabel);
+    if (themeToggle) {
+      themeToggle.addEventListener('click', function () {
+        if (window.BELMTheme?.toggle) window.BELMTheme.toggle();
+        else {
+          var dark = document.documentElement.dataset.theme === 'dark';
+          document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+          paintThemeLabel();
+        }
+      });
+    }
+  });
 
   function updateClock() {
     var dateEl = document.getElementById('liveDate');

@@ -8,7 +8,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Assigned Customer Machines — BELM Technician</title>
   <link rel="stylesheet" href="assets/css/belm-technician-dashboard.css">
-  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=6">
+  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=7">
   <style>
     @keyframes belmJobCardAlertBlink{
       0%,100%{background:rgba(255,255,255,.07);box-shadow:0 0 0 rgba(255,193,7,0);filter:brightness(1)}
@@ -23,18 +23,19 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     .technician-customer-feed-row{min-height:118px;max-height:145px;overflow:hidden;padding:12px 13px!important}
     .technician-customer-feed-row p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin:6px 0!important;line-height:1.35!important}
     .technician-customer-feed-row small{display:block;margin-top:4px}
-    .selected-machine-shell{width:min(860px,100%);margin:8px auto 0}
+    .selected-machine-shell,.machine-selector-shell{width:min(940px,100%);margin:8px auto 0}
     .selected-machine-shell .assigned-machine-card{width:100%;margin:0}
     .selected-machine-shell .machine-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
     .selected-machine-customer{margin:0;color:#8eb2cf;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
     .selected-machine-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:10px 12px;border:1px solid rgba(82,157,217,.35);border-radius:12px;background:rgba(5,33,61,.75)}
     .selected-machine-toolbar__left{display:flex;align-items:center;gap:10px;min-width:0}
-    .selected-machine-toolbar__back,.selected-machine-pager button{border:1px solid #2b87ca;border-radius:9px;background:#0b4d80;color:#fff;padding:9px 12px;font-weight:900;cursor:pointer}
-    .selected-machine-pager{display:flex;align-items:center;gap:8px}
-    .selected-machine-pager span{color:#c6d8e8;font-size:11px;font-weight:900;white-space:nowrap}
-    .selected-machine-pager button:disabled{opacity:.35;cursor:not-allowed}
+    .selected-machine-toolbar__back,.selected-machine-pager button,.machine-selector-back{border:1px solid #2b87ca;border-radius:9px;background:#0b4d80;color:#fff;padding:9px 12px;font-weight:900;cursor:pointer}
+    .selected-machine-pager{display:flex;align-items:center;gap:8px}.selected-machine-pager span{color:#c6d8e8;font-size:11px;font-weight:900;white-space:nowrap}.selected-machine-pager button:disabled{opacity:.35;cursor:not-allowed}
     .selected-machine-empty{padding:28px;border:1px solid rgba(82,157,217,.35);border-radius:14px;background:#071d34;color:#bfd1e2;text-align:center;font-weight:800}
-    @media(max-width:620px){.selected-machine-shell .machine-actions{grid-template-columns:1fr}.selected-machine-toolbar{align-items:stretch;flex-direction:column}.selected-machine-pager{justify-content:space-between}.selected-machine-pager button{flex:1}}
+    .machine-selector-head{display:grid;grid-template-columns:1fr minmax(260px,360px);gap:16px;align-items:end;margin-bottom:14px;padding:15px 16px;border:1px solid rgba(82,157,217,.35);border-radius:14px;background:#071d34}
+    .machine-selector-head small{display:block;color:#58d99c;font-size:9px;font-weight:950;letter-spacing:.08em}.machine-selector-head h2{margin:4px 0 3px;font-size:22px;color:#fff}.machine-selector-head p{margin:0;color:#8faac3;font-size:11px}.machine-selector-search label{display:block;margin-bottom:6px;color:#9fb8cf;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}.machine-selector-search input{width:100%;padding:11px 12px;border:1px solid #2d638c;border-radius:10px;background:#041426;color:#fff;font:700 13px Inter,Arial,sans-serif;outline:none}.machine-selector-search input:focus{border-color:#32a6f2;box-shadow:0 0 0 3px rgba(50,166,242,.12)}
+    .machine-selector-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.machine-select-card{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px;border:1px solid #245477;border-radius:14px;background:linear-gradient(180deg,#0b2947,#071d34)}.machine-select-card.status-red{border-color:#e85e6b}.machine-select-card.status-yellow{border-color:#d8b33a}.machine-select-card.status-green{border-color:#29b76d}.machine-select-main{min-width:0}.machine-select-main small{display:block;color:#83a3c0;font-size:9px;font-weight:900}.machine-select-main h3{margin:4px 0 6px;color:#fff;font-size:16px;line-height:1.15}.machine-select-meta{display:flex;flex-wrap:wrap;gap:5px 10px;color:#b5c7d8;font-size:10px}.machine-select-status{display:inline-flex;margin-top:8px;padding:5px 8px;border:1px solid currentColor;border-radius:999px;font-size:9px;font-weight:950}.status-red .machine-select-status{color:#ff7f8a}.status-yellow .machine-select-status{color:#f0cc52}.status-green .machine-select-status{color:#5ee39a}.status-neutral .machine-select-status{color:#9fb4c8}.machine-select-open{min-width:92px;padding:10px 12px;border:1px solid #22a8f5;border-radius:9px;background:#0a75ba;color:#fff;font-weight:950;cursor:pointer}.machine-selector-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}.machine-selector-count{color:#9db5ca;font-size:11px;font-weight:850}
+    @media(max-width:720px){.machine-selector-grid{grid-template-columns:1fr}.machine-selector-head{grid-template-columns:1fr}.selected-machine-shell .machine-actions{grid-template-columns:1fr}.selected-machine-toolbar{align-items:stretch;flex-direction:column}.selected-machine-pager{justify-content:space-between}.selected-machine-pager button{flex:1}.machine-selector-footer{align-items:stretch;flex-direction:column}.machine-selector-back{width:100%}}
     @media(prefers-reduced-motion:reduce){.belm-nav__item.job-card-alert-blink{animation:none;background:#f6c51e;color:#14243a;box-shadow:0 0 0 2px rgba(246,197,30,.3)}}
   </style>
 </head>
@@ -78,11 +79,22 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   const fmt=v=>{if(!v)return'';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})};
   async function api(url){const r=await fetch(url,{cache:'no-store',headers:{Authorization:'Bearer '+token}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not load assigned customer.');return d}
 
+  function machineLabel(m){return val(m,'label')||[val(m,'brand'),val(m,'model')].filter(Boolean).join(' ')||val(m,'machineType','machine_type')||'Machine'}
+  function machineSearchText(m){return [machineLabel(m),val(m,'machineType','machine_type'),val(m,'brand'),val(m,'model'),val(m,'fleetNumber','fleet_number'),val(m,'serialNumber','serial_number'),val(m,'regNumber','reg_number')].filter(Boolean).join(' ').toLowerCase()}
+  function machineSelectorCard(m,index){
+    const s=status(m),label=machineLabel(m),fleet=val(m,'fleetNumber','fleet_number')||'—',serial=val(m,'serialNumber','serial_number')||'—',reg=val(m,'regNumber','reg_number')||'—';
+    return `<article class="machine-select-card status-${s[0]}"><div class="machine-select-main"><small>ASSIGNED MACHINE</small><h3>${esc(label)}</h3><div class="machine-select-meta"><span>Fleet: <b>${esc(fleet)}</b></span><span>Serial: <b>${esc(serial)}</b></span><span>Reg: <b>${esc(reg)}</b></span></div><span class="machine-select-status">${esc(s[1])}</span></div><button type="button" class="machine-select-open" data-select-machine="${index}">Open</button></article>`;
+  }
+  function machineSelector(customer,machines,query=''){
+    const q=String(query||'').trim().toLowerCase();
+    const rows=machines.map((m,index)=>({m,index})).filter(row=>!q||machineSearchText(row.m).includes(q));
+    return `<section class="machine-selector-shell"><div class="machine-selector-head"><div><small>MACHINE SELECTOR</small><h2>${esc(customer.name)} Machines</h2><p>Select the required machine instead of opening machine cards one by one.</p></div><div class="machine-selector-search"><label>Search machine</label><input type="search" value="${esc(query)}" placeholder="Fleet, serial, registration, model..." data-machine-search autocomplete="off"></div></div><div class="machine-selector-grid">${rows.length?rows.map(row=>machineSelectorCard(row.m,row.index)).join(''):'<div class="selected-machine-empty">No machine matches this search.</div>'}</div><div class="machine-selector-footer"><span class="machine-selector-count">Showing ${rows.length} of ${machines.length} machines</span><button type="button" class="machine-selector-back" data-back-customer>← Back to Customer</button></div></section>`;
+  }
   function selectedMachineCard(m,customer,index,total){
-    const s=status(m),id=val(m,'id'),label=val(m,'label')||[val(m,'brand'),val(m,'model')].filter(Boolean).join(' ')||val(m,'machineType','machine_type')||'Machine';
+    const s=status(m),id=val(m,'id'),label=machineLabel(m);
     const type=val(m,'machineType','machine_type')||'Machine',brand=val(m,'brand')||'—',model=val(m,'model')||'—',fleet=val(m,'fleetNumber','fleet_number')||'—',serial=val(m,'serialNumber','serial_number')||'—',reg=val(m,'regNumber','reg_number')||'—';
-    const pager=total>1?`<div class="selected-machine-pager"><button type="button" data-machine-prev ${index===0?'disabled':''}>← Previous</button><span>Machine ${index+1} of ${total}</span><button type="button" data-machine-next ${index===total-1?'disabled':''}>Next →</button></div>`:`<div class="selected-machine-pager"><span>1 Machine</span></div>`;
-    return `<section class="selected-machine-shell"><div class="selected-machine-toolbar"><div class="selected-machine-toolbar__left"><button type="button" class="selected-machine-toolbar__back" data-back-customer>← Back to Customer</button><p class="selected-machine-customer">${esc(customer.name)} · Technician Machine Card</p></div>${pager}</div><article class="assigned-machine-card status-${s[0]}"><div class="machine-card-top"><div><small>${esc(type)}</small><h3>${esc(label)}</h3><p>${esc(brand)} ${esc(model)}</p></div><span class="machine-status-pill">${esc(s[1])}</span></div><div class="machine-card-info"><div><span>Fleet No.</span><b>${esc(fleet)}</b></div><div><span>Serial No.</span><b>${esc(serial)}</b></div><div><span>Registration</span><b>${esc(reg)}</b></div></div><div class="machine-actions"><a class="primary" href="daily-checklists.php?machine=${encodeURIComponent(id)}">Check Up</a><a href="/technician-job-cards/?machine=${encodeURIComponent(id)}">Job Card</a><a href="/tech-report/?machineId=${encodeURIComponent(id)}&category=checklists">Checked Report</a></div></article></section>`;
+    const pager=total>1?`<div class="selected-machine-pager"><button type="button" data-back-machines>☰ Machines</button><span>${index+1} / ${total}</span><button type="button" data-machine-next ${index===total-1?'disabled':''}>Next →</button></div>`:`<div class="selected-machine-pager"><button type="button" data-back-machines>☰ Machines</button><span>1 Machine</span></div>`;
+    return `<section class="selected-machine-shell"><div class="selected-machine-toolbar"><div class="selected-machine-toolbar__left"><button type="button" class="selected-machine-toolbar__back" data-back-customer>← Customer</button><p class="selected-machine-customer">${esc(customer.name)} · Technician Machine Card</p></div>${pager}</div><article class="assigned-machine-card status-${s[0]}"><div class="machine-card-top"><div><small>${esc(type)}</small><h3>${esc(label)}</h3><p>${esc(brand)} ${esc(model)}</p></div><span class="machine-status-pill">${esc(s[1])}</span></div><div class="machine-card-info"><div><span>Fleet No.</span><b>${esc(fleet)}</b></div><div><span>Serial No.</span><b>${esc(serial)}</b></div><div><span>Registration</span><b>${esc(reg)}</b></div></div><div class="machine-actions"><a class="primary" href="daily-checklists.php?machine=${encodeURIComponent(id)}">Check Up</a><a href="/technician-job-cards/?machine=${encodeURIComponent(id)}">Job Card</a><a href="/tech-report/?machineId=${encodeURIComponent(id)}&category=checklists">Checked Report</a></div></article></section>`;
   }
 
   function readonlyToggle(label,on,stateOn,stateOff){return `<div class="tech-readonly-toggle ${on?'on':'off'}"><span class="toggle-label">${esc(label)}</span><span class="tech-toggle-track" aria-hidden="true"></span><span class="toggle-state">${esc(on?stateOn:stateOff)}</span></div>`}
@@ -109,35 +121,23 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     const selected=document.getElementById('selectedMachinePanel');
     const customerCard=document.querySelector('.technician-customer-card');
     if(!view||!panel||!selected||!customerCard)return;
-    let current=0;
+    let current=0,searchValue='';
     const requested=new URLSearchParams(location.search).get('machine')||'';
     if(requested){const i=machines.findIndex(m=>String(val(m,'id'))===String(requested));if(i>=0)current=i}
-    const renderSelected=()=>{
-      if(!machines.length){selected.innerHTML='<div class="selected-machine-empty">No registered machines found for this assigned customer.</div>';return}
-      selected.innerHTML=selectedMachineCard(machines[current],customer,current,machines.length);
-    };
-    const openViewer=()=>{
-      renderSelected();
-      customerCard.hidden=true;
-      panel.hidden=false;
-      panel.scrollIntoView({behavior:'smooth',block:'start'});
-    };
-    const closeViewer=()=>{
-      panel.hidden=true;
-      selected.innerHTML='';
-      customerCard.hidden=false;
-      customerCard.scrollIntoView({behavior:'smooth',block:'start'});
-    };
-    view.addEventListener('click',e=>{e.preventDefault();openViewer()});
+    const renderSelector=()=>{selected.innerHTML=machineSelector(customer,machines,searchValue);const input=selected.querySelector('[data-machine-search]');if(input){input.focus();input.setSelectionRange(input.value.length,input.value.length)}};
+    const renderSelected=()=>{if(!machines.length){selected.innerHTML='<div class="selected-machine-empty">No registered machines found for this assigned customer.</div>';return}selected.innerHTML=selectedMachineCard(machines[current],customer,current,machines.length)};
+    const openPanel=()=>{customerCard.hidden=true;panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'start'})};
+    const openSelector=()=>{openPanel();if(machines.length===1){current=0;renderSelected()}else renderSelector()};
+    const closeViewer=()=>{panel.hidden=true;selected.innerHTML='';customerCard.hidden=false;customerCard.scrollIntoView({behavior:'smooth',block:'start'})};
+    view.addEventListener('click',e=>{e.preventDefault();openSelector()});
+    panel.addEventListener('input',e=>{const input=e.target.closest('[data-machine-search]');if(!input)return;searchValue=input.value;const pos=input.selectionStart||searchValue.length;selected.innerHTML=machineSelector(customer,machines,searchValue);const nextInput=selected.querySelector('[data-machine-search]');if(nextInput){nextInput.focus();try{nextInput.setSelectionRange(pos,pos)}catch(_){}}});
     panel.addEventListener('click',e=>{
-      const back=e.target.closest('[data-back-customer]');
-      if(back){e.preventDefault();closeViewer();return}
-      const prev=e.target.closest('[data-machine-prev]');
-      if(prev&&current>0){e.preventDefault();current-=1;renderSelected();return}
-      const next=e.target.closest('[data-machine-next]');
-      if(next&&current<machines.length-1){e.preventDefault();current+=1;renderSelected();return}
+      const back=e.target.closest('[data-back-customer]');if(back){e.preventDefault();closeViewer();return}
+      const backMachines=e.target.closest('[data-back-machines]');if(backMachines){e.preventDefault();renderSelector();return}
+      const choose=e.target.closest('[data-select-machine]');if(choose){e.preventDefault();const i=Number(choose.getAttribute('data-select-machine'));if(Number.isInteger(i)&&machines[i]){current=i;renderSelected()}return}
+      const next=e.target.closest('[data-machine-next]');if(next&&current<machines.length-1){e.preventDefault();current+=1;renderSelected();return}
     });
-    if(requested&&machines.length)openViewer();
+    if(requested&&machines.length){openPanel();renderSelected()}
   }
 
   async function load(){
@@ -164,7 +164,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
           </div>
           <section class="technician-customer-feed"><div class="technician-customer-feed-head"><strong>Communication<br>history</strong><a href="communication.php">View all</a></div><div class="technician-customer-feed-body" id="communicationFeedBody" aria-live="polite"></div></section>
           <div class="technician-customer-note">Customer management switches are read-only for Technician.</div>
-          <nav class="technician-customer-actions"><a href="#customerMachinePanel" id="viewAssignedMachines">View Machine</a></nav>
+          <nav class="technician-customer-actions"><a href="#customerMachinePanel" id="viewAssignedMachines">View Machine${machines.length>1?` (${machines.length})`:''}</a></nav>
         </section>
         <div id="customerMachinePanel" hidden><div id="selectedMachinePanel"></div></div>`;
       bindMachineView(machines,customer);

@@ -8,7 +8,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Assigned Customer Machines — BELM Technician</title>
   <link rel="stylesheet" href="assets/css/belm-technician-dashboard.css">
-  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=2">
+  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=3">
 </head>
 <body class="belm-admin belm-assigned-page" data-assigned-page="machines">
 <div class="belm-shell" id="belmShell">
@@ -51,7 +51,33 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   async function api(url){const r=await fetch(url,{cache:'no-store',headers:{Authorization:'Bearer '+token}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not load assigned customer.');return d}
   function machineCard(m){const s=status(m),id=val(m,'id'),label=val(m,'label')||[val(m,'brand'),val(m,'model')].filter(Boolean).join(' ')||val(m,'machineType','machine_type')||'Machine';const fleet=val(m,'fleetNumber','fleet_number')||'—',serial=val(m,'serialNumber','serial_number')||'—',reg=val(m,'regNumber','reg_number')||'—';return `<article class="assigned-machine-card status-${s[0]}"><div class="machine-card-top"><div><small>ASSIGNED CUSTOMER MACHINE</small><h3>${esc(label)}</h3><p>Fleet ${esc(fleet)}</p></div><span class="machine-status-pill">${esc(s[1])}</span></div><div class="machine-card-info"><div><span>Fleet No.</span><b>${esc(fleet)}</b></div><div><span>Serial No.</span><b>${esc(serial)}</b></div><div><span>Registration</span><b>${esc(reg)}</b></div></div><div class="machine-actions"><a class="primary" href="/tech?view=machines&machine=${encodeURIComponent(id)}">Open Machine</a><a href="/technician-job-cards/?machine=${encodeURIComponent(id)}">Job Cards</a><a href="/tech-report/?machineId=${encodeURIComponent(id)}&category=checklists">Reports</a></div></article>`}
   function readonlyToggle(label,on,stateOn,stateOff){return `<div class="tech-readonly-toggle ${on?'on':'off'}"><span class="toggle-label">${esc(label)}</span><span class="tech-toggle-track" aria-hidden="true"></span><span class="toggle-state">${esc(on?stateOn:stateOff)}</span></div>`}
-  function recentCommunication(items){if(!Array.isArray(items)||!items.length)return '<p class="technician-customer-feed-empty">No new communication. Use View all for history.</p>';return items.slice(0,5).map(item=>`<article class="technician-customer-feed-row"><b>${esc(item.subject||'Communication')}</b><p>${esc(item.message||item.body||item.description||'')}</p><small>${esc(fmt(item.createdAt||item.created_at))}</small></article>`).join('')}
+
+  const communicationSlots=[
+    {key:'service',title:'Service Reminder',empty:'No new service reminder.',match:/service reminder|service due|maintenance due|service overdue|next service|scheduled service/i},
+    {key:'operator',title:'Operator Report',empty:'No new operator report.',match:/operator report|operator|operation report|daily check|daily checklist/i},
+    {key:'job',title:'Job Card Alert',empty:'No new job card alert.',match:/job card|jobcard|technician dispatch|assigned job|diagnosis report|waiting for spare|testing|completed/i}
+  ];
+  const communicationText=item=>[item?.subject,item?.title,item?.message,item?.body,item?.description,item?.type,item?.category].filter(Boolean).join(' ');
+  const randomItem=items=>items[Math.floor(Math.random()*items.length)];
+  function communicationCard(slot,items){
+    const matches=(Array.isArray(items)?items:[]).filter(item=>slot.match.test(communicationText(item)));
+    const item=matches.length?randomItem(matches):null;
+    if(!item)return `<article class="technician-customer-feed-row is-placeholder feed-${slot.key}"><b>${esc(slot.title)}</b><p>${esc(slot.empty)}</p><small>Standing alert slot</small></article>`;
+    return `<article class="technician-customer-feed-row feed-${slot.key}"><b>${esc(slot.title)}</b><p>${esc(item.message||item.body||item.description||item.subject||item.title||'New message available.')}</p><small>${esc(fmt(item.createdAt||item.created_at||item.updatedAt||item.updated_at))}</small></article>`;
+  }
+  function communicationSnapshot(items){
+    const slots=[...communicationSlots];
+    for(let i=slots.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[slots[i],slots[j]]=[slots[j],slots[i]]}
+    return slots.map(slot=>communicationCard(slot,items)).join('');
+  }
+  function startCommunicationRotation(items){
+    const body=document.getElementById('communicationFeedBody');
+    if(!body)return;
+    const render=()=>{body.innerHTML=communicationSnapshot(items)};
+    render();
+    window.setInterval(render,12000);
+  }
+
   function bindMachineView(){
     const view=document.getElementById('viewAssignedMachines');
     const panel=document.getElementById('customerMachinePanel');
@@ -92,7 +118,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
           </div>
           <section class="technician-customer-feed">
             <div class="technician-customer-feed-head"><strong>Communication<br>history</strong><a href="communication.php">View all</a></div>
-            <div class="technician-customer-feed-body">${recentCommunication(comm)}</div>
+            <div class="technician-customer-feed-body" id="communicationFeedBody" aria-live="polite"></div>
           </section>
           <div class="technician-customer-note">Customer management switches are read-only for Technician.</div>
           <nav class="technician-customer-actions"><a href="#customerMachinePanel" id="viewAssignedMachines">View Machine</a></nav>
@@ -103,6 +129,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
           <nav class="technician-customer-actions"><a href="#" id="backToAssignedCustomer">← Back to Customer</a></nav>
         </div>`;
       bindMachineView();
+      startCommunicationRotation(comm);
     }catch(e){root.className='assigned-error';root.textContent=e.message}}
   document.getElementById('sidebarToggle')?.addEventListener('click',()=>document.getElementById('belmShell')?.classList.toggle('is-sidebar-open'));
   load();

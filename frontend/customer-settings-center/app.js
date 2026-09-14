@@ -13,8 +13,18 @@
     if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);
     return d;
   }
+  async function testApi(channel){
+    const r=await fetch('/api/customer_notification_test.php',{method:'POST',cache:'no-store',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({channel})});
+    const d=await r.json().catch(()=>({}));
+    if(r.status===401){location.replace('/login');throw new Error('Session expired.')}
+    if(!r.ok)throw new Error(d.error||`Test failed (${r.status})`);
+    return d;
+  }
   function setText(id,value){const el=$(id);if(el)el.textContent=value}
-  function provider(id,info,label){const el=$(id);if(!el)return;const ready=!!info?.configured;el.classList.toggle('ready',ready);el.innerHTML=`<span class="dot"></span><span>${label}: ${ready?'CONNECTED':'NOT CONNECTED'} · provider credentials are controlled by BELM.</span>`}
+  function provider(id,info,label){
+    const el=$(id);if(!el)return;const ready=!!info?.configured;el.classList.toggle('ready',ready);
+    el.innerHTML=`<span class="dot"></span><span>${label}: ${ready?'CONNECTED':'NOT CONNECTED'} · provider credentials are controlled by BELM.</span><button class="provider-test" type="button" data-test-channel="${label}" ${(!ready||!state.canEdit)?'disabled':''}>SEND TEST</button>`;
+  }
   function paint(){
     Object.entries(switches).forEach(([key,button])=>{const on=key==='whatsapp'?state.whatsapp.enabled:key==='email'?state.email.enabled:!!state.alerts[key];button.classList.toggle('on',on);button.setAttribute('aria-pressed',on?'true':'false');button.disabled=!state.canEdit});
     $('waNumber').value=state.whatsapp.number||'';$('waGroup').value=state.whatsapp.groupName||'';$('emailFrom').value=state.email.fromName||'';$('replyTo').value=state.email.replyTo||'';$('managementEmails').value=(state.managementGroupEmails||[]).join('\n');
@@ -35,6 +45,7 @@
   function syncTheme(){const theme=window.BELMTheme?.get?.()||(document.documentElement.dataset.theme==='dark'?'dark':'light');document.querySelectorAll('[data-theme-choice]').forEach(b=>b.classList.toggle('active',b.dataset.themeChoice===theme));$('themeToggle').textContent=theme==='dark'?'☀ Light mode':'☾ Dark mode'}
   async function setTheme(theme){if(window.BELMTheme?.set)await window.BELMTheme.set(theme);else{document.documentElement.dataset.theme=theme;localStorage.setItem('belm-theme',theme)}syncTheme()}
   async function load(){try{const d=await api();Object.assign(state,d);Object.assign(state.alerts,d.alerts||{});Object.assign(state.whatsapp,d.whatsapp||{});Object.assign(state.email,d.email||{});state.managementGroupEmails=d.managementGroupEmails||[];paint()}catch(e){$('status').textContent=e.message}}
-  async function save(){if(!state.canEdit)return;state.whatsapp.number=$('waNumber').value.trim();state.whatsapp.groupName=$('waGroup').value.trim();state.email.fromName=$('emailFrom').value.trim();state.email.replyTo=$('replyTo').value.trim();state.managementGroupEmails=$('managementEmails').value.split(/[\n,;]+/).map(v=>v.trim()).filter(Boolean);$('saveButton').disabled=true;$('status').textContent='Saving company settings…';try{const d=await api('POST',state);Object.assign(state,d.settings||{});$('status').textContent='Saved. Customer routing preferences updated; BELM provider controls were not changed.';paint()}catch(e){$('status').textContent=e.message}finally{$('saveButton').disabled=!state.canEdit}}
-  bindSwitches();$('saveButton').addEventListener('click',save);$('themeToggle').addEventListener('click',()=>setTheme((window.BELMTheme?.get?.()||document.documentElement.dataset.theme)==='dark'?'light':'dark'));document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>setTheme(b.dataset.themeChoice)));window.addEventListener('belm-theme-change',syncTheme);syncTheme();load();
+  async function save(){if(!state.canEdit)return;state.whatsapp.number=$('waNumber').value.trim();state.whatsapp.groupName=$('waGroup').value.trim();state.email.fromName=$('emailFrom').value.trim();state.email.replyTo=$('replyTo').value.trim();state.managementGroupEmails=$('managementEmails').value.split(/[\n,;]+/).map(v=>v.trim()).filter(Boolean);$('saveButton').disabled=true;$('status').textContent='Saving company settings…';try{const d=await api('POST',state);Object.assign(state,d.settings||{});paint();$('status').textContent='Saved. Customer routing preferences updated; BELM provider controls were not changed.'}catch(e){$('status').textContent=e.message}finally{$('saveButton').disabled=!state.canEdit}}
+  async function testChannel(channel,button){if(!state.canEdit)return;button.disabled=true;const old=button.textContent;button.textContent='TESTING…';$('status').textContent=`Testing ${channel} delivery…`;try{const d=await testApi(channel);$('status').textContent=d.message||`${channel} test sent.`}catch(e){$('status').textContent=e.message}finally{button.textContent=old;button.disabled=false}}
+  bindSwitches();$('saveButton').addEventListener('click',save);$('themeToggle').addEventListener('click',()=>setTheme((window.BELMTheme?.get?.()||document.documentElement.dataset.theme)==='dark'?'light':'dark'));document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>setTheme(b.dataset.themeChoice)));document.addEventListener('click',e=>{const b=e.target.closest('[data-test-channel]');if(b)testChannel(b.dataset.testChannel,b)});window.addEventListener('belm-theme-change',syncTheme);syncTheme();load();
 })();

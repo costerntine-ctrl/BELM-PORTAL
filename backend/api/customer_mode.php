@@ -39,7 +39,7 @@ $roles = [
         'key' => 'customer_admin',
         'label' => 'Customer Admin',
         'enabled' => $departmentEnabled('administration'),
-        'dashboard' => '/customer-workshop/?actor=customer',
+        'dashboard' => '/customer-admin-dashboard/',
         'scope' => 'Company administration, users, permissions, machines and customer-level settings',
     ],
     [
@@ -69,21 +69,21 @@ $roles = [
         'key' => 'procurement',
         'label' => 'Procurement',
         'enabled' => $departmentEnabled('procurement'),
-        'dashboard' => '/customer-procurement-home/',
+        'dashboard' => '/customer-procurement-dashboard/',
         'scope' => 'Internal purchasing, spare/material requests and procurement records',
     ],
     [
         'key' => 'store_keeper',
         'label' => 'Store Keeper',
         'enabled' => $departmentEnabled('store') && $workshopModuleActive,
-        'dashboard' => '/customer-store/',
+        'dashboard' => '/customer-store-dashboard/',
         'scope' => 'Own-company stock, tools, issue/receive and store audit',
     ],
     [
         'key' => 'accounts',
         'label' => 'Finance / Accounts',
         'enabled' => $departmentEnabled('finance'),
-        'dashboard' => '/customer-billing/',
+        'dashboard' => '/customer-finance/',
         'scope' => 'Own-company invoices/proforma when enabled, expenses, petty cash and finance reports',
     ],
 ];
@@ -95,8 +95,6 @@ json_out([
         'customerIndependent' => $independent,
         'belmServiceProvider' => !$independent,
         'customerTechnicianEnabled' => $customerTechnicianEnabled,
-        // Existing service-provider ownership rule remains authoritative: BELM
-        // controls machine master-data changes while it is the active provider.
         'customerMachineManagementEnabled' => $independent,
     ],
     'roles' => $roles,

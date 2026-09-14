@@ -1,0 +1,110 @@
+name: Patch machine maintenance Job Cards
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-machine-maintenance-jobcards.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Keep completed Job Card reports on the machine maintenance account
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/api/workshop_service_maintenance.php')
+          text = path.read_text()
+
+          anchor = """        usort($rows, static fn(array $a,array $b): int => strcmp((string)$b['date'], (string)$a['date']));
+    }
+
+    if ($reportType === 'breakdown') {
+"""
+
+          addition = """        // Completed Digital Job Cards are machine-owned maintenance history. A BELM
+        // Technician may be permanently assigned to Customer A and temporarily dispatched
+        // to Customer B, but the resulting work report must remain with Customer B's
+        // machine account. Never derive report ownership from the Technician's permanent
+        // assigned_customer_id; use the Job Card's customer_id + machine_id instead.
+        if (wsm_table_exists($pdo, 'digital_job_cards')) {
+            $jobParams = [];
+            $jobSql = \"SELECT j.id,j.job_card_no,j.customer_id,j.machine_id,j.status,j.title,j.diagnosis,j.work_done,
+                              j.test_result,j.completion_note,j.technician_name,j.completed_at,j.updated_at,j.created_at,
+                              c.name AS customer_name,m.brand,m.model,m.machine_type,m.fleet_number,m.serial_number,m.reg_number
+                       FROM digital_job_cards j
+                       JOIN customers c ON c.id=j.customer_id
+                       JOIN machines m ON m.id=j.machine_id
+                       WHERE c.deleted_at IS NULL AND m.deleted_at IS NULL
+                         AND UPPER(COALESCE(j.status,''))='COMPLETED'\";
+            $jobSql .= wsm_in_clause($customerIds, $jobParams, 'j.customer_id');
+            if ($from !== null) { $jobSql .= ' AND COALESCE(j.completed_at,j.updated_at,j.created_at)::date >= ?'; $jobParams[] = $from; }
+            if ($to !== null) { $jobSql .= ' AND COALESCE(j.completed_at,j.updated_at,j.created_at)::date <= ?'; $jobParams[] = $to; }
+            $jobSql .= ' ORDER BY COALESCE(j.completed_at,j.updated_at,j.created_at) DESC';
+            $jobStmt = $pdo->prepare($jobSql); $jobStmt->execute($jobParams);
+            foreach ($jobStmt->fetchAll() as $job) {
+                $customer = $customerMap[(string)$job['customer_id']] ?? ['name'=>$job['customer_name'],'customerType'=>'NON_PERMANENT'];
+                $date = substr((string)($job['completed_at'] ?: $job['updated_at'] ?: $job['created_at']),0,10);
+                $detailParts = [];
+                if (trim((string)($job['diagnosis'] ?? '')) !== '') $detailParts[] = 'Diagnosis: ' . trim((string)$job['diagnosis']);
+                if (trim((string)($job['work_done'] ?? '')) !== '') $detailParts[] = 'Work done: ' . trim((string)$job['work_done']);
+                if (trim((string)($job['test_result'] ?? '')) !== '') $detailParts[] = 'Test: ' . trim((string)$job['test_result']);
+                if (trim((string)($job['completion_note'] ?? '')) !== '') $detailParts[] = 'Completion: ' . trim((string)$job['completion_note']);
+                $jobNo = trim((string)($job['job_card_no'] ?? ''));
+                $title = trim((string)($job['title'] ?? ''));
+                $rows[] = [
+                    'id' => 'JC-' . (string)$job['id'],
+                    'date' => $date,
+                    'customerId' => (string)$job['customer_id'],
+                    'customer' => (string)$customer['name'],
+                    'customerType' => (string)$customer['customerType'],
+                    'machineId' => (string)$job['machine_id'],
+                    'machine' => wsm_machine_label($job),
+                    'fleetNumber' => (string)($job['fleet_number'] ?? ''),
+                    'serialNumber' => (string)($job['serial_number'] ?? ''),
+                    'serviceType' => trim('Job Card ' . $jobNo . ($title !== '' ? ' · ' . $title : '')),
+                    'hourMeter' => null,
+                    'recordedBy' => trim((string)($job['technician_name'] ?? '')) ?: 'BELM Technician',
+                    'details' => implode(' · ', $detailParts),
+                    'status' => 'COMPLETED',
+                    'jobCardId' => (string)$job['id'],
+                    'jobCardNo' => $jobNo,
+                    'source' => 'JOB_CARD',
+                ];
+            }
+        }
+
+        usort($rows, static fn(array $a,array $b): int => strcmp((string)$b['date'], (string)$a['date']));
+    }
+
+    if ($reportType === 'breakdown') {
+"""
+
+          if text.count(anchor) != 1:
+              raise SystemExit('Maintenance report insertion anchor was not found exactly once.')
+          text = text.replace(anchor, addition, 1)
+          path.write_text(text)
+          PY
+
+          php -l backend/api/workshop_service_maintenance.php
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- backend/api/workshop_service_maintenance.php; then
+            echo "No patch needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/api/workshop_service_maintenance.php
+          git commit -m "Keep completed Job Cards with machine maintenance history"
+          git push origin HEAD:main

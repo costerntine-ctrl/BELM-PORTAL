@@ -41,10 +41,10 @@
     };
     const wanted = aliases[role] || 'customer_admin';
     const entry = roles.find((item) => item.key === wanted);
-    if (!entry) return { href: '/customer-workshop/?actor=customer', label: 'CUSTOMER PORTAL', enabled: true };
+    if (!entry) return { href: '/customer-admin-dashboard/', label: 'CUSTOMER PORTAL', enabled: true };
     if (!entry.enabled) {
       return {
-        href: '/customer-workshop/?actor=customer',
+        href: '/portal-cwm/',
         label: `${entry.label} · LOCKED`,
         enabled: false,
         scope: entry.scope
@@ -66,9 +66,51 @@
       .belm-customer-mode-card-v752{margin:0 0 18px;padding:14px 16px;border:1px solid #2d5877;border-radius:14px;background:#09223a;color:#eef7ff}
       .belm-customer-mode-card-v752 strong{display:block;font-size:15px;margin-bottom:4px}.belm-customer-mode-card-v752 p{margin:0;color:#a8bfd2;font-size:11px;line-height:1.5}
       .belm-customer-mode-card-v752.provider{border-color:#84691e;background:#2c260f}.belm-customer-mode-card-v752.independent{border-color:#277850;background:#0e3024}
-      .cwm-enter-role-v672[data-role-locked="1"]{opacity:.78}
+      .cwm-enter-role-v672[data-role-locked="1"]{opacity:.62;filter:saturate(.55)}
+      .customer-quick-locked-v752{position:relative!important;opacity:.48!important;filter:saturate(.4)!important;cursor:not-allowed!important}
+      .customer-quick-locked-v752::after{content:'🔒';position:absolute;right:12px;top:10px;font-size:13px}
     `;
     document.head.appendChild(style);
+  }
+
+  function quickRoleAccess(mode) {
+    const aliases = { owner:'customer_admin', admin:'customer_admin', customer_admin:'customer_admin', workshop_manager:'workshop_manager', technician:'technician', operator:'operator', procurement:'procurement', store_keeper:'store_keeper', accounts:'accounts', finance:'accounts', accountant:'accounts' };
+    const current = aliases[role] || 'customer_admin';
+    const grants = {
+      customer_admin: new Set(['machines','jobcards','procurement','store','reports','users','settings']),
+      workshop_manager: new Set(['machines','jobcards','procurement','store','reports']),
+      technician: new Set(['machines','jobcards','reports']),
+      operator: new Set(['machines','reports']),
+      procurement: new Set(['procurement','reports']),
+      store_keeper: new Set(['store','procurement','reports']),
+      accounts: new Set(['reports']),
+    };
+    const enabled = new Map((mode.roles || []).map((item) => [item.key, !!item.enabled]));
+    const roleRequirement = { procurement:'procurement', store:'store_keeper', jobcards:'workshop_manager', machines:null, reports:null, users:'customer_admin', settings:'customer_admin' };
+    document.querySelectorAll('.cwm-quick-grid-v556 a').forEach((link) => {
+      const href = link.getAttribute('href') || '';
+      let key = '';
+      if (href.includes('view=machines')) key='machines';
+      else if (href.includes('customer-job-card')) key='jobcards';
+      else if (href.includes('procurement')) key='procurement';
+      else if (href.includes('customer-store')) key='store';
+      else if (href.includes('general-report')) key='reports';
+      else if (href.includes('customer-users')) key='users';
+      else if (href.includes('customer-settings')) key='settings';
+      if (!key) return;
+      const requirement = roleRequirement[key];
+      const modeAllowed = requirement ? (enabled.has(requirement) ? enabled.get(requirement) : true) : true;
+      const roleAllowed = grants[current]?.has(key) || false;
+      if (!modeAllowed || !roleAllowed) {
+        link.classList.add('customer-quick-locked-v752');
+        link.setAttribute('aria-disabled','true');
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          alert(!modeAllowed ? 'This function is unavailable in the current customer service mode.' : 'This function is locked for your assigned customer role.');
+        }, true);
+      }
+    });
   }
 
   function applyPortalHome(mode) {
@@ -81,6 +123,7 @@
       const note = link.querySelector('em');
       if (small) small.textContent = action.label.toUpperCase();
       if (note) note.textContent = action.enabled ? (action.scope || 'Open assigned role dashboard') : (action.scope || 'Role unavailable in this service mode');
+      if (!action.enabled) link.onclick = (event) => { event.preventDefault(); alert(action.scope || 'This role is locked in the current service mode.'); };
     }
 
     const hero = document.querySelector('.cwm-home-hero-v556');
@@ -100,6 +143,7 @@
       settings.innerHTML = '<i>⚙</i><b>SYSTEM SETTINGS</b><small>Customer-level setup & access</small><span>›</span>';
       quick.appendChild(settings);
     }
+    quickRoleAccess(mode);
   }
 
   function applySettings(mode) {

@@ -60,14 +60,26 @@ function settings_payload(?array $row): array {
   ];
 }
 
+function customer_can_edit_company_settings(array $customer): bool {
+  $actorType = strtolower(trim((string)($customer['actorType'] ?? 'owner')));
+  if ($actorType === 'owner') return true;
+  $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+  return in_array($role, ['admin', 'customer_admin'], true);
+}
+
 if ($method === 'GET') {
   $stmt = $pdo->prepare('SELECT * FROM customer_notification_settings WHERE customer_id=? LIMIT 1');
   $stmt->execute([$customerId]);
   $row = $stmt->fetch() ?: null;
-  json_out(settings_payload($row));
+  $payload = settings_payload($row);
+  $payload['canEdit'] = customer_can_edit_company_settings($customer);
+  json_out($payload);
 }
 
 if ($method !== 'POST' && $method !== 'PUT') json_error('Method not allowed.', 405);
+if (!customer_can_edit_company_settings($customer)) {
+  json_error('Only Customer Owner / Company Admin can change company-level System Settings.', 403);
+}
 $body = json_decode(file_get_contents('php://input'), true);
 if (!is_array($body)) json_error('Invalid request body.');
 
@@ -123,4 +135,6 @@ $stmt->execute(array_merge([$customerId], $values));
 
 $stmt = $pdo->prepare('SELECT * FROM customer_notification_settings WHERE customer_id=? LIMIT 1');
 $stmt->execute([$customerId]);
-json_out(['ok'=>true,'settings'=>settings_payload($stmt->fetch() ?: null)]);
+$result = settings_payload($stmt->fetch() ?: null);
+$result['canEdit'] = true;
+json_out(['ok'=>true,'settings'=>$result]);

@@ -8,7 +8,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Assigned Customer Machines — BELM Technician</title>
   <link rel="stylesheet" href="assets/css/belm-technician-dashboard.css">
-  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=5">
+  <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=6">
   <style>
     @keyframes belmJobCardAlertBlink{
       0%,100%{background:rgba(255,255,255,.07);box-shadow:0 0 0 rgba(255,193,7,0);filter:brightness(1)}
@@ -23,12 +23,18 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     .technician-customer-feed-row{min-height:118px;max-height:145px;overflow:hidden;padding:12px 13px!important}
     .technician-customer-feed-row p{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;margin:6px 0!important;line-height:1.35!important}
     .technician-customer-feed-row small{display:block;margin-top:4px}
-    .selected-machine-shell{width:min(760px,100%);margin:24px auto 0}
+    .selected-machine-shell{width:min(860px,100%);margin:8px auto 0}
     .selected-machine-shell .assigned-machine-card{width:100%;margin:0}
     .selected-machine-shell .machine-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
-    .selected-machine-customer{margin:0 0 10px;color:#8eb2cf;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
-    .selected-machine-back{margin-top:14px}
-    @media(max-width:620px){.selected-machine-shell .machine-actions{grid-template-columns:1fr}}
+    .selected-machine-customer{margin:0;color:#8eb2cf;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+    .selected-machine-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px;padding:10px 12px;border:1px solid rgba(82,157,217,.35);border-radius:12px;background:rgba(5,33,61,.75)}
+    .selected-machine-toolbar__left{display:flex;align-items:center;gap:10px;min-width:0}
+    .selected-machine-toolbar__back,.selected-machine-pager button{border:1px solid #2b87ca;border-radius:9px;background:#0b4d80;color:#fff;padding:9px 12px;font-weight:900;cursor:pointer}
+    .selected-machine-pager{display:flex;align-items:center;gap:8px}
+    .selected-machine-pager span{color:#c6d8e8;font-size:11px;font-weight:900;white-space:nowrap}
+    .selected-machine-pager button:disabled{opacity:.35;cursor:not-allowed}
+    .selected-machine-empty{padding:28px;border:1px solid rgba(82,157,217,.35);border-radius:14px;background:#071d34;color:#bfd1e2;text-align:center;font-weight:800}
+    @media(max-width:620px){.selected-machine-shell .machine-actions{grid-template-columns:1fr}.selected-machine-toolbar{align-items:stretch;flex-direction:column}.selected-machine-pager{justify-content:space-between}.selected-machine-pager button{flex:1}}
     @media(prefers-reduced-motion:reduce){.belm-nav__item.job-card-alert-blink{animation:none;background:#f6c51e;color:#14243a;box-shadow:0 0 0 2px rgba(246,197,30,.3)}}
   </style>
 </head>
@@ -72,16 +78,11 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   const fmt=v=>{if(!v)return'';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})};
   async function api(url){const r=await fetch(url,{cache:'no-store',headers:{Authorization:'Bearer '+token}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not load assigned customer.');return d}
 
-  function machineCard(m){
-    const s=status(m),id=val(m,'id'),label=val(m,'label')||[val(m,'brand'),val(m,'model')].filter(Boolean).join(' ')||val(m,'machineType','machine_type')||'Machine';
-    const fleet=val(m,'fleetNumber','fleet_number')||'—',serial=val(m,'serialNumber','serial_number')||'—',reg=val(m,'regNumber','reg_number')||'—';
-    return `<article class="assigned-machine-card status-${s[0]}"><div class="machine-card-top"><div><small>ASSIGNED CUSTOMER MACHINE</small><h3>${esc(label)}</h3><p>Fleet ${esc(fleet)}</p></div><span class="machine-status-pill">${esc(s[1])}</span></div><div class="machine-card-info"><div><span>Fleet No.</span><b>${esc(fleet)}</b></div><div><span>Serial No.</span><b>${esc(serial)}</b></div><div><span>Registration</span><b>${esc(reg)}</b></div></div><div class="machine-actions"><a class="primary" href="#" data-open-machine="${esc(id)}">Open Machine</a><a href="/technician-job-cards/?machine=${encodeURIComponent(id)}">Job Cards</a><a href="/tech-report/?machineId=${encodeURIComponent(id)}&category=checklists">Reports</a></div></article>`;
-  }
-
-  function selectedMachineCard(m,customer){
+  function selectedMachineCard(m,customer,index,total){
     const s=status(m),id=val(m,'id'),label=val(m,'label')||[val(m,'brand'),val(m,'model')].filter(Boolean).join(' ')||val(m,'machineType','machine_type')||'Machine';
     const type=val(m,'machineType','machine_type')||'Machine',brand=val(m,'brand')||'—',model=val(m,'model')||'—',fleet=val(m,'fleetNumber','fleet_number')||'—',serial=val(m,'serialNumber','serial_number')||'—',reg=val(m,'regNumber','reg_number')||'—';
-    return `<section class="selected-machine-shell"><p class="selected-machine-customer">${esc(customer.name)} · Technician Machine Card</p><article class="assigned-machine-card status-${s[0]}"><div class="machine-card-top"><div><small>${esc(type)}</small><h3>${esc(label)}</h3><p>${esc(brand)} ${esc(model)}</p></div><span class="machine-status-pill">${esc(s[1])}</span></div><div class="machine-card-info"><div><span>Fleet No.</span><b>${esc(fleet)}</b></div><div><span>Serial No.</span><b>${esc(serial)}</b></div><div><span>Registration</span><b>${esc(reg)}</b></div></div><div class="machine-actions"><a class="primary" href="daily-checklists.php?machine=${encodeURIComponent(id)}">Check Up</a><a href="/technician-job-cards/?machine=${encodeURIComponent(id)}">Job Card</a><a href="/tech-report/?machineId=${encodeURIComponent(id)}&category=checklists">Checked Report</a></div></article><nav class="technician-customer-actions selected-machine-back"><a href="#" id="backToMachineList">← Back to Machines</a></nav></section>`;
+    const pager=total>1?`<div class="selected-machine-pager"><button type="button" data-machine-prev ${index===0?'disabled':''}>← Previous</button><span>Machine ${index+1} of ${total}</span><button type="button" data-machine-next ${index===total-1?'disabled':''}>Next →</button></div>`:`<div class="selected-machine-pager"><span>1 Machine</span></div>`;
+    return `<section class="selected-machine-shell"><div class="selected-machine-toolbar"><div class="selected-machine-toolbar__left"><button type="button" class="selected-machine-toolbar__back" data-back-customer>← Back to Customer</button><p class="selected-machine-customer">${esc(customer.name)} · Technician Machine Card</p></div>${pager}</div><article class="assigned-machine-card status-${s[0]}"><div class="machine-card-top"><div><small>${esc(type)}</small><h3>${esc(label)}</h3><p>${esc(brand)} ${esc(model)}</p></div><span class="machine-status-pill">${esc(s[1])}</span></div><div class="machine-card-info"><div><span>Fleet No.</span><b>${esc(fleet)}</b></div><div><span>Serial No.</span><b>${esc(serial)}</b></div><div><span>Registration</span><b>${esc(reg)}</b></div></div><div class="machine-actions"><a class="primary" href="daily-checklists.php?machine=${encodeURIComponent(id)}">Check Up</a><a href="/technician-job-cards/?machine=${encodeURIComponent(id)}">Job Card</a><a href="/tech-report/?machineId=${encodeURIComponent(id)}&category=checklists">Checked Report</a></div></article></section>`;
   }
 
   function readonlyToggle(label,on,stateOn,stateOff){return `<div class="tech-readonly-toggle ${on?'on':'off'}"><span class="toggle-label">${esc(label)}</span><span class="tech-toggle-track" aria-hidden="true"></span><span class="toggle-state">${esc(on?stateOn:stateOff)}</span></div>`}
@@ -105,28 +106,38 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   function bindMachineView(machines,customer){
     const view=document.getElementById('viewAssignedMachines');
     const panel=document.getElementById('customerMachinePanel');
-    const list=document.getElementById('machineListPanel');
     const selected=document.getElementById('selectedMachinePanel');
-    const backCustomer=document.getElementById('backToAssignedCustomer');
-    if(!view||!panel||!list||!selected)return;
-    view.addEventListener('click',e=>{e.preventDefault();selected.hidden=true;list.hidden=false;panel.hidden=false;panel.scrollIntoView({behavior:'smooth',block:'start'})});
-    backCustomer?.addEventListener('click',e=>{e.preventDefault();selected.hidden=true;list.hidden=false;panel.hidden=true;document.querySelector('.technician-customer-card')?.scrollIntoView({behavior:'smooth',block:'start'})});
+    const customerCard=document.querySelector('.technician-customer-card');
+    if(!view||!panel||!selected||!customerCard)return;
+    let current=0;
+    const requested=new URLSearchParams(location.search).get('machine')||'';
+    if(requested){const i=machines.findIndex(m=>String(val(m,'id'))===String(requested));if(i>=0)current=i}
+    const renderSelected=()=>{
+      if(!machines.length){selected.innerHTML='<div class="selected-machine-empty">No registered machines found for this assigned customer.</div>';return}
+      selected.innerHTML=selectedMachineCard(machines[current],customer,current,machines.length);
+    };
+    const openViewer=()=>{
+      renderSelected();
+      customerCard.hidden=true;
+      panel.hidden=false;
+      panel.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    const closeViewer=()=>{
+      panel.hidden=true;
+      selected.innerHTML='';
+      customerCard.hidden=false;
+      customerCard.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    view.addEventListener('click',e=>{e.preventDefault();openViewer()});
     panel.addEventListener('click',e=>{
-      const open=e.target.closest('[data-open-machine]');
-      if(open){
-        e.preventDefault();
-        const id=open.getAttribute('data-open-machine')||'';
-        const machine=machines.find(m=>String(val(m,'id'))===String(id));
-        if(!machine)return;
-        list.hidden=true;
-        selected.innerHTML=selectedMachineCard(machine,customer);
-        selected.hidden=false;
-        selected.scrollIntoView({behavior:'smooth',block:'start'});
-        return;
-      }
-      const back=e.target.closest('#backToMachineList');
-      if(back){e.preventDefault();selected.hidden=true;selected.innerHTML='';list.hidden=false;list.scrollIntoView({behavior:'smooth',block:'start'})}
+      const back=e.target.closest('[data-back-customer]');
+      if(back){e.preventDefault();closeViewer();return}
+      const prev=e.target.closest('[data-machine-prev]');
+      if(prev&&current>0){e.preventDefault();current-=1;renderSelected();return}
+      const next=e.target.closest('[data-machine-next]');
+      if(next&&current<machines.length-1){e.preventDefault();current+=1;renderSelected();return}
     });
+    if(requested&&machines.length)openViewer();
   }
 
   async function load(){
@@ -155,10 +166,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
           <div class="technician-customer-note">Customer management switches are read-only for Technician.</div>
           <nav class="technician-customer-actions"><a href="#customerMachinePanel" id="viewAssignedMachines">View Machine</a></nav>
         </section>
-        <div id="customerMachinePanel" hidden>
-          <div id="machineListPanel"><div class="machine-section-head" id="customerMachinesSection"><div><small>AUTHORIZED MACHINE SCOPE</small><h2>${esc(customer.name)} Machines</h2></div><span>${machines.length} machine${machines.length===1?'':'s'}</span></div><section class="assigned-machine-grid">${machines.length?machines.map(machineCard).join(''):'<div class="assigned-empty">No registered machines found for this assigned customer.</div>'}</section><nav class="technician-customer-actions"><a href="#" id="backToAssignedCustomer">← Back to Customer</a></nav></div>
-          <div id="selectedMachinePanel" hidden></div>
-        </div>`;
+        <div id="customerMachinePanel" hidden><div id="selectedMachinePanel"></div></div>`;
       bindMachineView(machines,customer);
       startCommunicationRotation(comm);
       startJobCardAlertWatch();

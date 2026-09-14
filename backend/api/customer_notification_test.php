@@ -44,7 +44,10 @@ function test_log(string $channel, string $recipient, string $subject, string $m
 }
 
 if ($channel === 'EMAIL') {
-    if (empty($row['email_enabled'])) json_error('Customer email notifications are disabled in System Settings.', 409);
+    // No settings row yet means the documented default (Email ON), not OFF.
+    if ($row['email_enabled'] !== null && empty($row['email_enabled'])) {
+        json_error('Customer email notifications are disabled in System Settings.', 409);
+    }
     $recipients = [];
     $main = strtolower(trim((string)($row['email'] ?? '')));
     if (filter_var($main, FILTER_VALIDATE_EMAIL)) $recipients[$main] = $main;

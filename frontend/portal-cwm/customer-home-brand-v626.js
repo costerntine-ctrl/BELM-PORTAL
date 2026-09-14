@@ -13,17 +13,20 @@
 
   function apply(customer){
     const name=String(customer.name||'Customer').trim()||'Customer';
-    document.title=`${name} Workshop Portal — Customer Workshop Portal`;
+    const company=name.toUpperCase();
+    document.title=`Welcome to ${name} — Customer Workshop Portal`;
 
     const brand=document.querySelector('.topbar .brand');
     if(brand){
       brand.setAttribute('href','/portal-cwm/');
       const text=brand.querySelector('span:last-child');
-      if(text)text.innerHTML=`${esc(name.toUpperCase())} <small>CUSTOMER WORKSHOP PORTAL</small>`;
+      if(text)text.innerHTML=`${esc(company)} <small>CUSTOMER WORKSHOP PORTAL</small>`;
     }
 
+    const kicker=document.querySelector('.cwm-home-kicker-v556');
+    if(kicker)kicker.innerHTML='<span></span>WELCOME TO<span></span>';
     const hero=document.querySelector('.cwm-home-hero-v556 h1');
-    if(hero)hero.innerHTML=`${esc(name.toUpperCase())} <em>WORKSHOP</em> PORTAL`;
+    if(hero)hero.innerHTML=`WELCOME TO <em>${esc(company)}</em>`;
 
     const details=[
       ['ADDRESS',customer.address||'Not recorded'],
@@ -38,7 +41,7 @@
     });
 
     const footer=document.querySelector('.cwm-home-footer-v556>div:first-child p');
-    if(footer)footer.innerHTML=`<b>${esc(name.toUpperCase())}</b><small>CUSTOMER WORKSHOP PORTAL</small>`;
+    if(footer)footer.innerHTML=`<b>${esc(company)}</b><small>CUSTOMER WORKSHOP PORTAL</small>`;
   }
 
   async function sync(){

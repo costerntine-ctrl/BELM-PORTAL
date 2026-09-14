@@ -34,7 +34,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     <header class="belm-topbar"><div class="belm-topbar__left"><button class="belm-topbar__menu" id="sidebarToggle" type="button">☰</button><span class="belm-topbar__kicker">ASSIGNED CUSTOMER SCOPE</span></div><div class="belm-user"><div><div class="belm-user__name">TECHNICIAN</div><div class="belm-user__role">TECHNICAL DEPARTMENT</div></div></div></header>
     <main class="belm-content">
       <section class="assigned-page-head"><div><small>TECHNICIAN · CUSTOMER ASSIGNMENT</small><h1>My Assigned Customer</h1><p>The approved customer card is shown exactly for the company assigned to this technician. Access switches are view-only here.</p></div><span class="scope-pill">LIVE ASSIGNMENT</span></section>
-      <div id="assignedCustomerRoot" class="assigned-loading">Loading assigned customer and machines…</div>
+      <div id="assignedCustomerRoot" class="assigned-loading">Loading assigned customer…</div>
     </main>
   </div>
 </div>
@@ -52,6 +52,22 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   function machineCard(m){const s=status(m),id=val(m,'id'),label=val(m,'label')||[val(m,'brand'),val(m,'model')].filter(Boolean).join(' ')||val(m,'machineType','machine_type')||'Machine';const fleet=val(m,'fleetNumber','fleet_number')||'—',serial=val(m,'serialNumber','serial_number')||'—',reg=val(m,'regNumber','reg_number')||'—';return `<article class="assigned-machine-card status-${s[0]}"><div class="machine-card-top"><div><small>ASSIGNED CUSTOMER MACHINE</small><h3>${esc(label)}</h3><p>Fleet ${esc(fleet)}</p></div><span class="machine-status-pill">${esc(s[1])}</span></div><div class="machine-card-info"><div><span>Fleet No.</span><b>${esc(fleet)}</b></div><div><span>Serial No.</span><b>${esc(serial)}</b></div><div><span>Registration</span><b>${esc(reg)}</b></div></div><div class="machine-actions"><a class="primary" href="/tech?view=machines&machine=${encodeURIComponent(id)}">Open Machine</a><a href="/technician-job-cards/?machine=${encodeURIComponent(id)}">Job Cards</a><a href="/tech-report/?machineId=${encodeURIComponent(id)}&category=checklists">Reports</a></div></article>`}
   function readonlyToggle(label,on,stateOn,stateOff){return `<div class="tech-readonly-toggle ${on?'on':'off'}"><span class="toggle-label">${esc(label)}</span><span class="tech-toggle-track" aria-hidden="true"></span><span class="toggle-state">${esc(on?stateOn:stateOff)}</span></div>`}
   function recentCommunication(items){if(!Array.isArray(items)||!items.length)return '<p class="technician-customer-feed-empty">No new communication. Use View all for history.</p>';return items.slice(0,5).map(item=>`<article class="technician-customer-feed-row"><b>${esc(item.subject||'Communication')}</b><p>${esc(item.message||item.body||item.description||'')}</p><small>${esc(fmt(item.createdAt||item.created_at))}</small></article>`).join('')}
+  function bindMachineView(){
+    const view=document.getElementById('viewAssignedMachines');
+    const panel=document.getElementById('customerMachinePanel');
+    const back=document.getElementById('backToAssignedCustomer');
+    if(!view||!panel)return;
+    view.addEventListener('click',e=>{
+      e.preventDefault();
+      panel.hidden=false;
+      panel.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+    back?.addEventListener('click',e=>{
+      e.preventDefault();
+      panel.hidden=true;
+      document.querySelector('.technician-customer-card')?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  }
   async function load(){if(!token){location.replace('/login');return}try{const report=await api('/api/checklist-reports/technician-general');let customer={id:report.customer?.id||'',name:report.customer?.name||'Assigned Customer'},machines=Array.isArray(report.machines)?report.machines:[];try{const richer=await api('/api/customers/'+encodeURIComponent(customer.id));if(richer&&richer.id){customer={...customer,...richer};if(Array.isArray(richer.machines))machines=richer.machines}}catch(_){}
       let comm=[];try{comm=await api('/api/customers/'+encodeURIComponent(customer.id)+'/communications')}catch(_){}
       const active=Number(val(customer,'isActive','is_active')||1)===1;
@@ -79,10 +95,14 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
             <div class="technician-customer-feed-body">${recentCommunication(comm)}</div>
           </section>
           <div class="technician-customer-note">Customer management switches are read-only for Technician.</div>
-          <nav class="technician-customer-actions"><a href="#customerMachinesSection">View Customer Machine</a></nav>
+          <nav class="technician-customer-actions"><a href="#customerMachinePanel" id="viewAssignedMachines">View Machine</a></nav>
         </section>
-        <div class="machine-section-head" id="customerMachinesSection"><div><small>AUTHORIZED MACHINE SCOPE</small><h2>Customer Machines</h2></div><span>${machines.length} machine${machines.length===1?'':'s'}</span></div>
-        <section class="assigned-machine-grid">${machines.length?machines.map(machineCard).join(''):'<div class="assigned-empty">No registered machines found for this assigned customer.</div>'}</section>`
+        <div id="customerMachinePanel" hidden>
+          <div class="machine-section-head" id="customerMachinesSection"><div><small>AUTHORIZED MACHINE SCOPE</small><h2>${esc(customer.name)} Machines</h2></div><span>${machines.length} machine${machines.length===1?'':'s'}</span></div>
+          <section class="assigned-machine-grid">${machines.length?machines.map(machineCard).join(''):'<div class="assigned-empty">No registered machines found for this assigned customer.</div>'}</section>
+          <nav class="technician-customer-actions"><a href="#" id="backToAssignedCustomer">← Back to Customer</a></nav>
+        </div>`;
+      bindMachineView();
     }catch(e){root.className='assigned-error';root.textContent=e.message}}
   document.getElementById('sidebarToggle')?.addEventListener('click',()=>document.getElementById('belmShell')?.classList.toggle('is-sidebar-open'));
   load();

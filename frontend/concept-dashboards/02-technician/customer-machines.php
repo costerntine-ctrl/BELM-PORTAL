@@ -9,6 +9,15 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   <title>Assigned Customer Machines — BELM Technician</title>
   <link rel="stylesheet" href="assets/css/belm-technician-dashboard.css">
   <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=3">
+  <style>
+    @keyframes belmJobCardAlertBlink{
+      0%,100%{background:rgba(255,255,255,.07);box-shadow:0 0 0 rgba(255,193,7,0);filter:brightness(1)}
+      50%{background:linear-gradient(135deg,#f6c51e,#ff9f1a);color:#14243a;box-shadow:0 0 0 2px rgba(255,255,255,.18),0 0 24px rgba(246,197,30,.85);filter:brightness(1.15)}
+    }
+    .belm-nav__item.job-card-alert-blink{animation:belmJobCardAlertBlink 1s ease-in-out infinite;border:1px solid rgba(246,197,30,.85)}
+    .belm-nav__item.job-card-alert-blink span{font-weight:950}
+    @media(prefers-reduced-motion:reduce){.belm-nav__item.job-card-alert-blink{animation:none;background:#f6c51e;color:#14243a;box-shadow:0 0 0 2px rgba(246,197,30,.3)}}
+  </style>
 </head>
 <body class="belm-admin belm-assigned-page" data-assigned-page="machines">
 <div class="belm-shell" id="belmShell">
@@ -16,7 +25,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     <div class="belm-brand"><div class="belm-brand__name">BELM<span class="belm-brand__slash">/</span></div><div class="belm-brand__tag">OPERATIONS PLATFORM</div></div>
     <nav class="belm-nav">
       <a href="index.html" class="belm-nav__item" data-nav="home">⌂ <span>Home</span></a>
-      <a href="my-job-cards.php" class="belm-nav__item">▤ <span>My Job Cards</span></a>
+      <a href="my-job-cards.php" class="belm-nav__item" id="myJobCardsNav">▤ <span>My Job Cards</span></a>
       <a href="customer-machines.php" class="belm-nav__item is-active" data-nav="machines">🚜 <span>Customer Machines</span></a>
       <a href="diagnosis-repair.php" class="belm-nav__item">🔧 <span>Diagnosis Report</span></a>
       <a href="spare-requests.php" class="belm-nav__item">⬡ <span>Spare Requests</span></a>
@@ -78,6 +87,37 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     window.setInterval(render,12000);
   }
 
+  function jobNeedsAttention(job){
+    const s=String(job?.status||'').toUpperCase();
+    const stage=String(job?.current_stage||job?.currentStage||'').toUpperCase();
+    if(['COMPLETED','CANCELLED'].includes(s)||stage==='COMPLETED')return false;
+    const explicitNew=['ASSIGNED','OPEN','OPENED','NEW','DISPATCHED','PENDING_RECEIVE'].includes(s)||['ASSIGNED','OPENED','DISPATCHED','PENDING_RECEIVE'].includes(stage);
+    if(explicitNew)return true;
+    const started=Boolean(job?.started_at||job?.startedAt);
+    const hasProgress=Boolean(String(job?.diagnosis||'').trim()||String(job?.work_done||job?.workDone||'').trim()||String(job?.test_result||job?.testResult||'').trim());
+    return !started&&!hasProgress&&s!=='RECEIVED'&&stage!=='RECEIVED';
+  }
+  async function syncJobCardAlert(){
+    const nav=document.getElementById('myJobCardsNav');
+    if(!nav||!token)return;
+    try{
+      const jobs=await api('/api/breakdown-workflow/technician-jobs');
+      const count=Array.isArray(jobs)?jobs.filter(jobNeedsAttention).length:0;
+      nav.classList.toggle('job-card-alert-blink',count>0);
+      if(count>0){
+        nav.setAttribute('title',`${count} new Job Card alert${count===1?'':'s'}`);
+        nav.setAttribute('aria-label',`My Job Cards: ${count} new alert${count===1?'':'s'}`);
+      }else{
+        nav.removeAttribute('title');
+        nav.removeAttribute('aria-label');
+      }
+    }catch(_){nav.classList.remove('job-card-alert-blink')}
+  }
+  function startJobCardAlertWatch(){
+    syncJobCardAlert();
+    window.setInterval(syncJobCardAlert,15000);
+  }
+
   function bindMachineView(){
     const view=document.getElementById('viewAssignedMachines');
     const panel=document.getElementById('customerMachinePanel');
@@ -130,6 +170,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
         </div>`;
       bindMachineView();
       startCommunicationRotation(comm);
+      startJobCardAlertWatch();
     }catch(e){root.className='assigned-error';root.textContent=e.message}}
   document.getElementById('sidebarToggle')?.addEventListener('click',()=>document.getElementById('belmShell')?.classList.toggle('is-sidebar-open'));
   load();

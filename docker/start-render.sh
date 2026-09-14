@@ -19,6 +19,7 @@ run_safe_migration() {
 
         if [ "$code" -eq 0 ]; then
             php /var/www/html/api/scripts/migrate_checklist_master.php || echo "BELM checklist master migration deferred; web service remains online." >&2
+            php /var/www/html/api/scripts/normalize_roles.php || echo "BELM role normalization deferred; web service remains online and existing role data was left unchanged." >&2
             echo "BELM background database check completed successfully."
             return 0
         fi

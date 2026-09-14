@@ -1,6 +1,30 @@
 (function () {
   "use strict";
 
+  // V748: these Workshop Manager concept pages are authenticated staff pages.
+  // Do not leave the static shell visible while an embedded module redirects to
+  // /login, because that creates the confusing "second login" inside the page.
+  // If the BELM staff session is missing, move the WHOLE browser to the one
+  // canonical login screen before any module/iframe is allowed to render it.
+  function ensureWorkshopSession() {
+    var token = "";
+    var user = null;
+    try {
+      token = localStorage.getItem("belm_admin_token") || "";
+      user = JSON.parse(localStorage.getItem("belm_admin_user") || "null");
+    } catch (_) {}
+    if (token && user) return true;
+    try {
+      if (window.top && window.top !== window) window.top.location.replace("/login");
+      else window.location.replace("/login");
+    } catch (_) {
+      window.location.replace("/login");
+    }
+    return false;
+  }
+
+  if (!ensureWorkshopSession()) return;
+
   function installThemeAssets() {
     if (!document.querySelector('link[data-belm-workshop-theme]')) {
       var link = document.createElement('link');
@@ -135,6 +159,22 @@
     document.body.appendChild(script);
   }
 
+  function installMachineFrameLoginGuard() {
+    var frame = document.getElementById('machineFrame');
+    if (!frame || frame.dataset.belmLoginGuard === '1') return;
+    frame.dataset.belmLoginGuard = '1';
+    frame.addEventListener('load', function () {
+      try {
+        var path = String(frame.contentWindow.location.pathname || '');
+        if (/^\/login\/?$/.test(path) || path === '/customer-app.html') {
+          // Never render a login form inside Machines. There is only one
+          // authenticated entry point for the portal.
+          window.location.replace('/login');
+        }
+      } catch (_) {}
+    });
+  }
+
   document.addEventListener('click', function (event) {
     var navLink = event.target && event.target.closest ? event.target.closest('[data-workshop-requirements-link],[data-service-maintenance-link],.sidebar-nav a') : null;
     if (navLink) {
@@ -165,15 +205,20 @@
 
   window.addEventListener('belm-theme-change', syncThemeButton);
   installThemeAssets();
+  installMachineFrameLoginGuard();
 
   document.addEventListener('DOMContentLoaded', function () {
     installThemeAssets();
+    installMachineFrameLoginGuard();
     syncThemeButton();
     syncWorkshopNavigation();
     installBreakdownReportViewer();
 
     [100, 500, 1500, 3000].forEach(function (delay) {
-      window.setTimeout(syncWorkshopNavigation, delay);
+      window.setTimeout(function () {
+        syncWorkshopNavigation();
+        installMachineFrameLoginGuard();
+      }, delay);
     });
 
     function updateClock() {

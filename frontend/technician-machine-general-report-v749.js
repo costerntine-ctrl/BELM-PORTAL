@@ -6,7 +6,7 @@
   const user=()=>{try{return JSON.parse(localStorage.getItem('belm_tech_user')||'{}')}catch(_){return{}}};
   const payload=()=>{try{const part=token().split('.')[1];if(!part)return{};const x=part.replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(atob(x+'='.repeat((4-x.length%4)%4)))}catch(_){return{}}};
   const customerId=()=>user().assignedCustomerId||user().assigned_customer_id||payload().assignedCustomerId||payload().assigned_customer_id||'';
-  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[c]));
   const api=async(url,opts={})=>{const r=await fetch(url,{cache:'no-store',...opts,headers:{...(opts.headers||{}),Authorization:`Bearer ${token()}`}});const d=await r.json().catch(()=>null);if(!r.ok)throw new Error(d?.error||d?.message||`Request failed (${r.status})`);return d};
   let customerCache=null;
 
@@ -56,7 +56,7 @@
       .mgr749-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.mgr749-card{border:1px solid #315170;border-radius:16px;padding:18px;background:linear-gradient(180deg,#10243b,#091727);box-shadow:0 10px 25px rgba(0,0,0,.18)}
       .mgr749-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.mgr749-card h3{margin:0;font-size:18px;color:#fff}.mgr749-card p{margin:6px 0 0;color:#93aac1;font-size:11px;line-height:1.45}.mgr749-count{min-width:56px;padding:7px 9px;border:1px solid #426685;border-radius:999px;text-align:center;color:#bcd2e7;font-size:10px;font-weight:900}
       .mgr749-period{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:17px 0 13px}.mgr749-period label{display:grid;gap:5px;color:#a7bdd2;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.mgr749-period input{width:100%;box-sizing:border-box;padding:10px;border:1px solid #395b7b;border-radius:9px;background:#06111f;color:#fff;color-scheme:dark;font:700 12px Inter,Arial,sans-serif}
-      .mgr749-actions{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px}.mgr749-actions button{min-height:40px;border-radius:9px;border:1px solid #3d617f;background:#142d48;color:#fff;font-weight:900;font-size:11px;cursor:pointer}.mgr749-actions [data-view]{background:#1976d2;border-color:#1976d2}.mgr749-actions [data-pdf]{background:#0f8b4c;border-color:#0f8b4c}.mgr749-actions [data-csv]{background:#c99b00;border-color:#c99b00;color:#101820}.mgr749-actions button:disabled{opacity:.55;cursor:wait}
+      .mgr749-actions{display:grid;grid-template-columns:1fr 1.15fr 1.15fr;gap:8px}.mgr749-actions button{min-height:40px;border-radius:9px;border:1px solid #3d617f;background:#142d48;color:#fff;font-weight:900;font-size:11px;cursor:pointer}.mgr749-actions [data-view]{background:#1976d2;border-color:#1976d2}.mgr749-actions [data-pdf]{background:#0f8b4c;border-color:#0f8b4c}.mgr749-actions [data-csv]{background:#c99b00;border-color:#c99b00;color:#101820}.mgr749-actions button:disabled{opacity:.38;filter:saturate(.4);cursor:not-allowed}.mgr749-download-note{margin-top:9px!important;color:#8da6bf!important;font-size:10px!important}
       @media(max-width:760px){.mgr749-grid{grid-template-columns:1fr}.mgr749-head{padding:17px}.mgr749-body{padding:15px}.mgr749-actions{grid-template-columns:1fr 1fr 1fr}}
       @media(max-width:430px){.mgr749-actions{grid-template-columns:1fr}.mgr749-period{grid-template-columns:1fr 1fr}}
     `;document.head.appendChild(style);
@@ -67,8 +67,9 @@
     try{const r=await fetch(url,{cache:'no-store',headers:{Authorization:`Bearer ${token()}`}});if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.error||`Download failed (${r.status})`)}const blob=await r.blob();const href=URL.createObjectURL(blob);const a=document.createElement('a');a.href=href;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),60000)}finally{button.disabled=false;button.textContent=old}
   }
 
-  function periodParams(card,category,machineId){
+  function periodParams(card,category,machineId,requireDates=false){
     const from=card.querySelector('[data-from]').value||'',to=card.querySelector('[data-to]').value||'';
+    if(requireDates&&(!from||!to))throw new Error('Select both From and To dates before downloading the report.');
     if(from&&to&&from>to)throw new Error('From date cannot be after To date.');
     const p=new URLSearchParams({category,machineId:String(machineId)});if(from)p.set('from',from);if(to)p.set('to',to);return p;
   }
@@ -77,18 +78,21 @@
     injectStyle();document.getElementById('belmMachineGeneralReport749')?.remove();
     const d=document.createElement('dialog');d.id='belmMachineGeneralReport749';
     const fleet=machineValue(machine,'fleetNumber','fleet_number'),model=machineValue(machine,'model','machineModel')||machineValue(machine,'machineType','machine_type')||'Machine';
-    d.innerHTML=`<div class="mgr749-head"><div><small>MACHINE GENERAL REPORT</small><h2>${esc(model)}</h2><p>${fleet?`Fleet ${esc(fleet)} · `:''}Select report period, then View, PDF or CSV.</p></div><button class="mgr749-close" type="button">×</button></div><div class="mgr749-body"><div class="mgr749-loading">Loading machine report summary...</div></div>`;
+    d.innerHTML=`<div class="mgr749-head"><div><small>MACHINE GENERAL REPORT</small><h2>${esc(model)}</h2><p>${fleet?`Fleet ${esc(fleet)} · `:''}Choose From and To dates to enable PDF/CSV download.</p></div><button class="mgr749-close" type="button">×</button></div><div class="mgr749-body"><div class="mgr749-loading">Loading machine report summary...</div></div>`;
     document.body.appendChild(d);d.querySelector('.mgr749-close').onclick=()=>d.close();d.addEventListener('close',()=>d.remove(),{once:true});d.showModal();
     try{
       const data=await api(`/api/checklist-reports/technician-general?machineId=${encodeURIComponent(machine.id)}`);
       const counts={checklists:data?.counts?.checklists??data?.checklists?.length??0,operator:data?.counts?.operatorReports??data?.operatorReports?.length??0,fuel:data?.counts?.fuelReports??data?.fuelReports?.length??0,'job-cards':data?.counts?.jobCards??data?.jobCards?.length??0,maintenance:data?.counts?.maintenanceReports??data?.maintenanceReports?.length??0};
       const body=d.querySelector('.mgr749-body');
-      body.innerHTML=`<div class="mgr749-grid">${reportCategories.map(([key,title,note])=>`<article class="mgr749-card" data-category="${key}"><div class="mgr749-card-top"><div><h3>${esc(title)}</h3><p>${esc(note)}</p></div><span class="mgr749-count">${Number(counts[key]||0)} REPORT${Number(counts[key]||0)===1?'':'S'}</span></div><div class="mgr749-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div><div class="mgr749-actions"><button type="button" data-view>VIEW</button><button type="button" data-pdf>PDF</button><button type="button" data-csv>CSV</button></div></article>`).join('')}</div>`;
+      body.innerHTML=`<div class="mgr749-grid">${reportCategories.map(([key,title,note])=>`<article class="mgr749-card" data-category="${key}"><div class="mgr749-card-top"><div><h3>${esc(title)}</h3><p>${esc(note)}</p></div><span class="mgr749-count">${Number(counts[key]||0)} REPORT${Number(counts[key]||0)===1?'':'S'}</span></div><div class="mgr749-period"><label>From<input type="date" data-from></label><label>To<input type="date" data-to></label></div><div class="mgr749-actions"><button type="button" data-view>VIEW</button><button type="button" data-pdf disabled>DOWNLOAD PDF</button><button type="button" data-csv disabled>DOWNLOAD CSV</button></div><p class="mgr749-download-note">Select both dates to activate PDF and CSV download.</p></article>`).join('')}</div>`;
       body.querySelectorAll('.mgr749-card').forEach(card=>{
         const category=card.dataset.category;
-        card.querySelector('[data-view]').onclick=()=>{try{const p=periodParams(card,category,machine.id);p.set('v','749');location.href=`/tech-report/?${p.toString()}`}catch(e){alert(e.message)}};
-        card.querySelector('[data-pdf]').onclick=e=>{try{const p=periodParams(card,category,machine.id);download(`/api/checklist-reports/technician-general/pdf?${p.toString()}`,`BELM-${model}-${category}-report.pdf`,e.currentTarget).catch(err=>alert(err.message))}catch(err){alert(err.message)}};
-        card.querySelector('[data-csv]').onclick=e=>{try{const p=periodParams(card,category,machine.id);download(`/api/checklist-reports/technician-general/csv?${p.toString()}`,`BELM-${model}-${category}-report.csv`,e.currentTarget).catch(err=>alert(err.message))}catch(err){alert(err.message)}};
+        const fromInput=card.querySelector('[data-from]'),toInput=card.querySelector('[data-to]'),pdfButton=card.querySelector('[data-pdf]'),csvButton=card.querySelector('[data-csv]'),note=card.querySelector('.mgr749-download-note');
+        const updateDownloadState=()=>{const ready=Boolean(fromInput.value&&toInput.value);pdfButton.disabled=!ready;csvButton.disabled=!ready;if(note)note.textContent=ready?'Date range selected — PDF and CSV are ready to download.':'Select both dates to activate PDF and CSV download.'};
+        fromInput.addEventListener('change',updateDownloadState);toInput.addEventListener('change',updateDownloadState);updateDownloadState();
+        card.querySelector('[data-view]').onclick=()=>{try{const p=periodParams(card,category,machine.id,false);p.set('v','749');location.href=`/tech-report/?${p.toString()}`}catch(e){alert(e.message)}};
+        pdfButton.onclick=e=>{try{const p=periodParams(card,category,machine.id,true);download(`/api/checklist-reports/technician-general/pdf?${p.toString()}`,`BELM-${model}-${category}-${fromInput.value}-to-${toInput.value}.pdf`,e.currentTarget).catch(err=>alert(err.message))}catch(err){alert(err.message)}};
+        csvButton.onclick=e=>{try{const p=periodParams(card,category,machine.id,true);download(`/api/checklist-reports/technician-general/csv?${p.toString()}`,`BELM-${model}-${category}-${fromInput.value}-to-${toInput.value}.csv`,e.currentTarget).catch(err=>alert(err.message))}catch(err){alert(err.message)}};
       });
     }catch(e){d.querySelector('.mgr749-body').innerHTML=`<div class="mgr749-error">${esc(e.message||'Could not load Machine General Report.')}</div>`}
   }

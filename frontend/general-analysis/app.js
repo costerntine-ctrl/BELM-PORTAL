@@ -16,6 +16,26 @@
 
   const session = decodeToken(token);
   const role = String(session.actorType === "owner" ? "owner" : (session.customerRole || "assistant")).trim().toLowerCase();
+  const requestedModule = new URLSearchParams(location.search).get("module") || "overview";
+  const legacyRoleLanding = {
+    owner: { module: "overview", href: "/customer-admin-dashboard/" },
+    admin: { module: "overview", href: "/customer-admin-dashboard/" },
+    customer_admin: { module: "overview", href: "/customer-admin-dashboard/" },
+    workshop_manager: { module: "workshop", href: "/customer-workshop/?actor=customer" },
+    procurement: { module: "procurement", href: "/customer-procurement-dashboard/" },
+    store_keeper: { module: "store", href: "/customer-store-dashboard/" },
+    accounts: { module: "finance", href: "/customer-finance/" },
+    finance: { module: "finance", href: "/customer-finance/" },
+    accountant: { module: "finance", href: "/customer-finance/" },
+    operator: { module: "operator", href: "/concept-dashboards/07-operator/" },
+    technician: { module: "technician", href: "/concept-dashboards/02-technician/" },
+  };
+  const landing = legacyRoleLanding[role];
+  if (landing && requestedModule === landing.module && !new URLSearchParams(location.search).has("analysisOnly")) {
+    location.replace(landing.href);
+    return;
+  }
+
   const roleLabels = {
     owner: "Customer Owner",
     admin: "Customer Admin",

@@ -6,7 +6,6 @@
   let users = [];
   let roles = [];
   let customers = [];
-  let workflowCapabilityRegistry = [];
 
   const pageOptions = [
     ["customers", "Customers"],
@@ -102,18 +101,6 @@
     ).join("");
   }
 
-  function renderUserCapabilityCheckboxes(selectedKeys = []) {
-    const container = document.getElementById("userCapabilities");
-    if (!container) return;
-    container.innerHTML = workflowCapabilityRegistry.map((cap) =>
-      `<label class="check-option" title="${escapeHtml(cap.description || "")}"><input type="checkbox" value="${escapeHtml(cap.key)}" ${selectedKeys.includes(cap.key) ? "checked" : ""}> ${escapeHtml(cap.label)}</label>`
-    ).join("") || "<small>No delegated capabilities are configured.</small>";
-  }
-
-  function selectedUserCapabilityKeys() {
-    return [...document.querySelectorAll("#userCapabilities input:checked")].map((input) => input.value);
-  }
-
   function selectedUserRoleIds() {
     return [...document.querySelectorAll("#userRoles input:checked")].map((input) => input.value);
   }
@@ -206,7 +193,6 @@
         api("/users/roles"),
         api("/customers"),
       ]);
-      try { workflowCapabilityRegistry = await api("/users?action=workflow-capabilities"); } catch (_) { workflowCapabilityRegistry = []; }
       updateMetrics();
       const pageParams = new URLSearchParams(window.location.search);
       const roleParam = pageParams.get("role");
@@ -234,8 +220,6 @@
     document.getElementById("customerField").classList.toggle("hidden", !technician);
     document.getElementById("assignedCustomer").required = technician;
     if (!technician) document.getElementById("assignedCustomer").value = "";
-    const capabilitiesField = document.getElementById("capabilitiesField");
-    if (capabilitiesField) capabilitiesField.classList.toggle("hidden", !technician);
   }
 
   function openUser(user = null) {
@@ -247,7 +231,6 @@
     document.getElementById("userEmail").value = user?.email || "";
     document.getElementById("userRoles").innerHTML = "";
     renderUserRoleCheckboxes(user?.roleIds || (user?.role?.id ? [user.role.id] : []));
-    renderUserCapabilityCheckboxes(user?.workflowCapabilities || []);
     document.getElementById("assignedCustomer").innerHTML = renderCustomerOptions(user?.assignedCustomer?.id || "");
     document.getElementById("userActive").checked = user ? Number(user.isActive) === 1 : true;
     document.getElementById("emailField").classList.toggle("hidden", Boolean(user));
@@ -286,7 +269,6 @@
       roleIds: selectedUserRoleIds(),
       assignedCustomerId: document.getElementById("assignedCustomer").value || null,
       isActive: document.getElementById("userActive").checked,
-      workflowCapabilities: selectedUserCapabilityKeys(),
     };
     if (payload.roleIds.length === 0) {
       formError("userFormAlert", "Select at least one role.");

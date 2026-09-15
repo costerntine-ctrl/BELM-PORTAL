@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Access Applications — BELM Workshop Manager Portal</title>
+  <title>Access Applications — BELM Operations Portal</title>
   <link rel="stylesheet" href="/admin-applications/admin.css?v=708-registration-sidebar">
   <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-</head>
+<script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
 <body>
   <header>
-    <div class="brand"><span>B</span><div><b>BELM Workshop Manager Portal</b><small>Access Applications</small></div></div>
-    <nav><a href="/portal-v2/#role">← WM Role Menu</a></nav>
+    <div class="brand"><span>B</span><div><b>BELM Operations Portal</b><small>Access Applications</small></div></div>
+    <nav><a href="/portal-v2/#role">← WM Role Menu</a><button id="logoutButton">Log out</button></nav>
   </header>
 
   <main>
@@ -326,7 +326,7 @@
     <div class="assignment-head">
       <p class="eyebrow" id="registeredUserActionEyebrow">ACCOUNT SECURITY</p>
       <h2 id="registeredUserActionTitle">Confirm account action</h2>
-      <p id="registeredUserActionMessage">Enter your current BELM Workshop Manager Portal password to continue.</p>
+      <p id="registeredUserActionMessage">Enter your current BELM Operations Portal password to continue.</p>
     </div>
     <form id="registeredUserActionForm" class="assignment-form">
       <label>Your current admin password

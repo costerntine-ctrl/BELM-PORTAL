@@ -36,15 +36,15 @@ function verify_portal_password(string $plainPassword, ?string $storedHash, stri
 function staff_role_destination(string $roleName): string {
     $role = strtolower(trim($roleName));
     if (preg_match('/super admin|belm admin|administrator|^admin$/', $role)) return '/concept-dashboards/01-admin-home/';
-    if (str_contains($role, 'technician')) return '/tech';
-    if (str_contains($role, 'procurement')) return '/workshop-management-home/?role=procurement';
-    if (str_contains($role, 'store keeper') || str_contains($role, 'storekeeper')) return '/workshop-management-home/?role=store';
-    if (str_contains($role, 'registration') || str_contains($role, 'sales')) return '/workshop-management-home/?role=registration';
+    if (str_contains($role, 'technician')) return '/concept-dashboards/02-technician/';
+    if (str_contains($role, 'procurement')) return '/concept-dashboards/03-procurement/';
+    if (str_contains($role, 'store keeper') || str_contains($role, 'storekeeper')) return '/concept-dashboards/06-storekeeper/';
+    if (str_contains($role, 'registration') || str_contains($role, 'sales')) return '/concept-dashboards/04-customer-registration/';
     if (str_contains($role, 'finance') || str_contains($role, 'accounts') || str_contains($role, 'accountant')) return '/concept-dashboards/09-finance-accounts/';
-    if (str_contains($role, 'bank control')) return '/workshop-management-home/?role=bank';
-    if (str_contains($role, 'coordinator')) return '/concept-dashboards/10-system-settings/';
+    if (str_contains($role, 'bank control')) return '/bank-controller/';
+    if (str_contains($role, 'coordinator')) return '/settings-manager/';
     if (str_contains($role, 'workshop manager') || str_contains($role, 'engineer') || str_contains($role, 'technical dep')) return '/concept-dashboards/11-workshop-manager/';
-    return '/workshop-management-home/';
+    return '/portal-v2/';
 }
 
 $action = $_GET['action'] ?? '';
@@ -780,7 +780,7 @@ if ($action === 'login' && $method === 'POST') {
     $roleDestination = staff_role_destination((string)$user['role_name']);
     json_out([
         'token' => $token,
-        'destination' => '/belm-workshop/',
+        'destination' => '/portal-v2/',
         'roleDestination' => $roleDestination,
         'user' => [
             'id' => $user['id'], 'name' => $user['name'], 'email' => $user['email'],

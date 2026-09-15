@@ -42,7 +42,7 @@
     visible('cwmSettingsLink',ownerAdmin||r==='workshop_manager');
     const meta={owner:['CUSTOMER OWNER / ADMIN','Managing Company Workshop','OWNER'],admin:['CUSTOMER ADMIN','Managing Company Workshop','ADMIN'],workshop_manager:['WORKSHOP MANAGER','Managing Workshop','CONTROL'],store_keeper:['STORE KEEPER','Store & Spare Control','STORE'],procurement:['PROCUREMENT','Workshop Procurement','PROCUREMENT'],accounts:['ACCOUNTS / FINANCE','Workshop Finance','FINANCE'],operator:['OPERATOR','Machine Operations','OPERATOR'],assistant:['CUSTOMER USER','Customer Workshop','ACCESS']}[r]||['CUSTOMER USER','Customer Workshop','ACCESS'];
     if($('cwmRoleLabel'))$('cwmRoleLabel').textContent=meta[0];if($('cwmRoleTitle'))$('cwmRoleTitle').textContent=meta[1];if($('cwmRoleStatus'))$('cwmRoleStatus').textContent=meta[2];
-    if($('cwmRoleDescription'))$('cwmRoleDescription').textContent=`${meta[1]} — same BELM Workshop Manager Portal operating card, scoped to this customer company and signed-in role.`;
+    if($('cwmRoleDescription'))$('cwmRoleDescription').textContent=`${meta[1]} — same BELM Operations Portal operating card, scoped to this customer company and signed-in role.`;
   }
 
   async function loadCustomer(){

@@ -45,7 +45,7 @@ SQL;
             'sender'=>(string)($row['technician_name'] ?? ''),
             'status'=>strtoupper((string)($row['status'] ?? 'OPEN')),
             'createdAt'=>$row['updated_at'] ?: $row['created_at'],
-            'actionUrl'=>'/belm-workshop/#job-cards',
+            'actionUrl'=>'/concept-dashboards/11-workshop-manager/job-cards.html',
         ]);
     }
     $counts['jobCards'] = count($rows);

@@ -861,7 +861,7 @@
       const adminPayload = tokenPayload("belm_admin_token");
       const adminRole = String(adminPayload?.roleName || "").toLowerCase();
       const managementRoles = ["super admin", "belm admin", "admin", "administrator"];
-      window.location.replace(managementRoles.includes(adminRole) ? "/workshop-management-home/" : "/belm-workshop/");
+      window.location.replace(managementRoles.includes(adminRole) ? "/portal-v2/" : "/concept-dashboards/11-workshop-manager/");
       return true;
     }
     if (pathname === "/portal/login" && isValid("belm_customer_token")) {
@@ -5814,7 +5814,7 @@
 
   function redirectServiceRequestManager() {
     if (["/admin/job-cards", "/admin/service-requests"].includes(window.location.pathname)) {
-      window.location.replace("/belm-workshop/#job-cards");
+      window.location.replace("/concept-dashboards/11-workshop-manager/job-cards.html");
     }
   }
 

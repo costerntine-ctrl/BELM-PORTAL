@@ -58,7 +58,7 @@
     if(j.caseId)q.set('case',String(j.caseId));
     if(j.id)q.set('job',String(j.id));
     q.set('action','checking');
-    return '/belm-workshop/?'+q.toString()+'#job-cards';
+    return '/concept-dashboards/11-workshop-manager/job-cards.html?'+q.toString();
   }
 
   function renderRows(rows){

@@ -29,19 +29,19 @@
   }
 
   const routeMap={
-    'job-cards.html':'/belm-workshop/#job-cards',
+    'job-cards.html':'/concept-dashboards/11-workshop-manager/job-cards.html',
     'machines.html':'/concept-dashboards/11-workshop-manager/machines.html',
-    'technicians.html':'/belm-workshop/#manage-technicians',
-    'workshop-schedule.html':'/belm-workshop/#assigned-work',
+    'technicians.html':'/concept-dashboards/11-workshop-manager/technicians.html',
+    'workshop-schedule.html':'/concept-dashboards/11-workshop-manager/#workshop-schedule',
     // These two pages are now first-class Workshop Manager modules. Do not
     // redirect them back into the old generic Inventory/Reports destinations.
     'spare-requests.html':'/concept-dashboards/11-workshop-manager/spare-requests.html',
     'service-maintenance.html':'/concept-dashboards/11-workshop-manager/service-maintenance.html',
-    'reports-analysis.html':'/workshop-analysis/?actor=admin&module=workshop',
+    'reports-analysis.html':'/role-reports/',
     'checklist-monitoring.html':'/reports-manager/?view=checklists&module=workshop',
     'customers.html':'/customers-manager/?module=customer-overview',
-    'communication.html':'/customers-manager/?module=customer-overview',
-    'tools-equipment.html':'/belm-workshop/#tool-issue-documents',
+    'communication.html':'/role-communications/',
+    'tools-equipment.html':'/belm-workshop/tool-issues/',
     'workshop-settings.html':'/concept-dashboards/10-system-settings/',
     'my-profile.html':'/settings-manager/?module=profile',
     'help-support.html':'/settings-manager/?module=support',
@@ -50,8 +50,8 @@
   document.querySelectorAll('a[href]').forEach(a=>{const raw=a.getAttribute('href')||'';const base=raw.split('?')[0].split('#')[0];if(routeMap[base])a.href=routeMap[base];});
 
   const scheduleTargets={
-    'Team Briefing':'/belm-workshop/#assigned-work',
-    'Job Card Assignment':'/belm-workshop/#job-cards',
+    'Team Briefing':'/concept-dashboards/11-workshop-manager/#workshop-schedule',
+    'Job Card Assignment':'/concept-dashboards/11-workshop-manager/job-cards.html',
     'Progress Review':'/belm-workshop/job-card-status/?status=progress',
     'End of Day Report':'/workshop-analysis/?actor=admin&module=workshop'
   };
@@ -65,7 +65,7 @@
 
   function bindScheduleLinks(){
     const viewAll=[...document.querySelectorAll('.wm-bottom-grid2 .panel-link')].find(a=>String(a.textContent||'').trim().toLowerCase()==='view all'&&a.closest('.panel')?.querySelector('.panel-title')?.textContent.includes("Today's Schedule"));
-    if(viewAll){viewAll.href='/belm-workshop/#assigned-work';viewAll.setAttribute('aria-label','View full Workshop schedule and assigned work');}
+    if(viewAll){viewAll.href='/concept-dashboards/11-workshop-manager/#workshop-schedule';viewAll.setAttribute('aria-label','View full Workshop schedule and assigned work');}
     document.querySelectorAll('.schedule-list .schedule-row').forEach(row=>{
       const label=scheduleLabel(row),href=scheduleTargets[label];
       if(!href)return;
@@ -143,7 +143,7 @@
   function bindTechnicianDispatch(){
     const action=document.querySelector('.wm-qa-grid .wm-qa-btn--green');
     if(!action)return;
-    action.href='/belm-workshop/#job-cards';
+    action.href='/concept-dashboards/11-workshop-manager/job-cards.html';
     action.setAttribute('aria-label','Technician Dispatch');
     const textNode=[...action.childNodes].find(node=>node.nodeType===Node.TEXT_NODE&&node.nodeValue.trim());
     if(textNode)textNode.nodeValue='Technician Dispatch';
@@ -177,7 +177,7 @@
     if(!Array.isArray(rows)||!rows.length){tbody.innerHTML='<tr><td colspan="9">No Job Cards found.</td></tr>';return;}
     tbody.innerHTML=rows.slice(0,6).map((j,i)=>{
       const assigned=String(j.technicianName||'').trim()||'Unassigned';
-      return '<tr><td>'+(i+1)+'</td><td><a href="/belm-workshop/#job-cards" class="cell-link">'+esc(j.jobCardNo||'—')+'</a></td><td>'+esc(j.machine||'—')+'</td><td>'+esc(j.customer||'—')+'</td><td>'+esc(j.issue||'—')+'</td><td><span class="jc-pill jc-pill--'+statusClass(j.status)+'">'+esc(statusLabel(j.status))+'</span></td><td>'+esc(assigned)+'</td><td>'+esc(fmtDate(j.date))+'</td><td class="row-action">···</td></tr>';
+      return '<tr><td>'+(i+1)+'</td><td><a href="/concept-dashboards/11-workshop-manager/job-cards.html" class="cell-link">'+esc(j.jobCardNo||'—')+'</a></td><td>'+esc(j.machine||'—')+'</td><td>'+esc(j.customer||'—')+'</td><td>'+esc(j.issue||'—')+'</td><td><span class="jc-pill jc-pill--'+statusClass(j.status)+'">'+esc(statusLabel(j.status))+'</span></td><td>'+esc(assigned)+'</td><td>'+esc(fmtDate(j.date))+'</td><td class="row-action">···</td></tr>';
     }).join('');
   }
 
@@ -194,7 +194,7 @@
 
   async function load(){
     if(preview){syncSchedule(null);return;}
-    const results=await Promise.allSettled([api('/workshop-dashboard-metrics.php'),api('/belm-workshop-home.php')]);
+    const results=await Promise.allSettled([api('/workshop-dashboard-metrics'),api('/belm-workshop-home')]);
     const metrics=results[0].status==='fulfilled'?results[0].value:null;
     const home=results[1].status==='fulfilled'?results[1].value:null;
     if(metrics&&metrics.jobCards){
@@ -216,6 +216,11 @@
     const overdue=Number(metrics&&metrics.jobCards&&metrics.jobCards.overdue||0);
     const waiting=Number(metrics&&metrics.jobCards&&metrics.jobCards.waitingForSpare||0);
     const service=Number(metrics&&metrics.alerts&&metrics.alerts.serviceDue||0);
+    const attention=overdue+waiting+service;
+    const badge=document.querySelector('.header-right .icon-btn[aria-label="Notifications"] .icon-badge');
+    if(badge)badge.textContent=String(attention);
+    const statusBox=document.querySelector('.status-box');
+    if(statusBox){const strong=statusBox.querySelector('strong'),sub=strong&&strong.parentElement?strong.parentElement.querySelector('span'):null;if(strong)strong.textContent=attention?'Workshop Attention':'Workshop Running';if(sub)sub.textContent=attention?(attention+' item'+(attention===1?'':'s')+' need attention'):'Live workflow synchronized';}
     const values=[overdue+' Job Cards Overdue',waiting+' Waiting for Spare',service?service+' Service Due Soon':'No Service Due','Checklist Monitoring'];
     alertRows.forEach((r,i)=>{const x=r.querySelector('.alert-row2-title');if(x&&values[i])x.textContent=values[i];});
     if(home&&Array.isArray(home.machines))document.documentElement.setAttribute('data-belm-workshop-machines',String(home.machines.length));

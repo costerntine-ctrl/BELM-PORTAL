@@ -209,16 +209,9 @@ if ($method === 'GET' && !$action) {
         $extraRoles = $extraStmt->fetchAll();
         $row['roleIds'] = array_merge([$row['role_id']], array_column($extraRoles, 'id'));
         $row['roleNames'] = array_merge([$row['role_name']], array_column($extraRoles, 'name'));
-        $row['workflowCapabilities'] = user_workflow_capabilities($row);
-        unset($row['role_name'], $row['assigned_customer_name'], $row['workflow_capabilities']);
+        unset($row['role_name'], $row['assigned_customer_name']);
     }
     json_out($users);
-}
-
-// V763: additive read-only lookup so any settings UI (BELM or Customer side)
-// can render the delegated-capability toggle list without hardcoding it.
-if ($method === 'GET' && $action === 'workflow-capabilities') {
-    json_out(workflow_capabilities_registry());
 }
 
 function role_ids_from_body(array $body): array {
@@ -307,19 +300,16 @@ if ($method === 'PUT' && !$action) {
     if ($name === '') json_error('User name is required.');
     $isActive = !isset($b['isActive']) || filter_var($b['isActive'], FILTER_VALIDATE_BOOL);
     protect_last_super_admin($id, $roleId, $isActive);
-    $existingUserStmt = db()->prepare('SELECT assigned_customer_id, workflow_capabilities FROM users WHERE id = ?');
+    $existingUserStmt = db()->prepare('SELECT assigned_customer_id FROM users WHERE id = ?');
     $existingUserStmt->execute([$id]);
-    $existingUserRow = $existingUserStmt->fetch() ?: [];
-    $currentAssignedCustomerId = $existingUserRow['assigned_customer_id'] ?? null;
+    $currentAssignedCustomerId = $existingUserStmt->fetchColumn() ?: null;
     $assignedCustomerId = assigned_customer_for_role(
         $roleId,
         $b['assignedCustomerId'] ?? null,
         $currentAssignedCustomerId
     );
-    $workflowCapabilitiesJson = workflow_capabilities_from_body($b);
-    if ($workflowCapabilitiesJson === null) $workflowCapabilitiesJson = $existingUserRow['workflow_capabilities'] ?? null;
-    db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=?, workflow_capabilities=? WHERE id=?')
-        ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $workflowCapabilitiesJson, $id]);
+    db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
+        ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
     sync_extra_user_roles($id, $roleId, $roleIds);
     log_activity($user, 'system-user-edited', 'user', $id, ['name' => $name]);
     json_out(['ok' => true, 'message' => 'User role and access updated successfully.']);

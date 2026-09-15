@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/helpers.php';
 
 $user = require_auth();
-// V510: Bank Manager is reserved for the primary Super Admin role only.
+// V510: Bank Controller is reserved for the primary Super Admin role only.
 require_super_admin($user);
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';

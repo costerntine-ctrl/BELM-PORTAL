@@ -59,12 +59,12 @@
     });
   })();
 
-  // V480 - when Customer Overview is opened inside BELM Workshop Manager Portal, keep
+  // V480 - when Customer Overview is opened inside BELM Operations Portal, keep
   // Job Card navigation in the parent Workshop shell instead of nesting a
   // second Workshop page inside this iframe.
   if (embeddedInBelmWorkshop) {
     document.addEventListener("click", (event) => {
-      const link = event.target.closest('a[href^="/belm-workshop/"]');
+      const link = event.target.closest('a[href^="/concept-dashboards/11-workshop-manager/"]');
       if (!link) return;
       event.preventDefault();
       let machine = "";
@@ -301,7 +301,7 @@
         ${privacyButton("Service Parts", canParts, `data-service-parts="${escapeHtml(machine.id)}" data-machine-name="${escapeHtml([machine.brand, machine.model].filter(Boolean).join(" ") || machine.machineType)}"`)}
         <!-- V453: "Job Card" quick-action restored, now pointing to the
              new standalone BELM WORKSHOP page. -->
-        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/belm-workshop/?machine=${encodeURIComponent(machine.id)}#job-cards">Job Card</a>` : ""}
+        ${belmServiceProviderActive ? `<a class="belm-maintenance-process-link" href="/concept-dashboards/11-workshop-manager/job-cards.html?machine=${encodeURIComponent(machine.id)}">Job Card</a>` : ""}
       </div>
       <div class="machine-admin-actions" aria-label="BELM Workshop Manager machine management">
         ${!isTechnicianRole ? `<button type="button" class="machine-admin-edit" data-edit-machine="${escapeHtml(machine.id)}" data-customer="${escapeHtml(customerId)}">Edit Machine</button>` : ""}
@@ -379,7 +379,7 @@
       const machines = customer.machines || [];
       const searchable = [
         customer.name, customer.email, customer.phone, customer.address,
-        customer.tinNumber, customer.vrn,
+        customer.tinNumber, customer.vrn, customer.customerCode,
         ...machines.flatMap((machine) => [machine.machineType, machine.brand, machine.model, machine.regNumber, machine.serialNumber]),
       ];
       const matchesQuery = searchable.some((value) => String(value || "").toLowerCase().includes(query));
@@ -423,6 +423,7 @@
               <div class="customer-card-contact-row"><span>Phone</span><b title="${escapeHtml(customer.phone || 'Not recorded')}">${escapeHtml(customer.phone || 'Not recorded')}</b></div>
               <div class="customer-card-contact-row"><span>Email</span><b title="${escapeHtml(customer.email || 'Not recorded')}">${escapeHtml(customer.email || 'Not recorded')}</b></div>
               <div class="customer-card-contact-row"><span>Address</span><b title="${escapeHtml(customer.address || 'Not recorded')}">${escapeHtml(customer.address || 'Not recorded')}</b></div>
+              <div class="customer-card-contact-row"><span>Customer Code</span><b title="Technician site access code">${escapeHtml(customer.customerCode || 'Not generated')} ${customer.customerCode ? `<button type="button" class="customer-code-copy" data-copy-customer-code="${escapeHtml(customer.customerCode)}" title="Copy Customer Code">Copy</button>` : ''}</b></div>
             </div>
           </div>
           <div class="customer-card-head-controls">
@@ -704,14 +705,20 @@
       const deepLinkParams = new URLSearchParams(window.location.search);
       const requestedCustomerId = String(deepLinkParams.get("customer") || "").trim();
       const requestedView = String(deepLinkParams.get("view") || "").trim().toLowerCase();
+      const requestedAction = String(deepLinkParams.get("action") || "").trim().toLowerCase();
       // Explicit customer machine deep link. Keep the older customer-only link
       // compatible; when view=machines is present, open only that selected
       // customer's machine dialog. No other customer's machines are rendered
       // because openMachineList receives only requestedCustomer.
-      if (requestedCustomerId && (!requestedView || requestedView === "machines")) {
+      if (requestedCustomerId) {
         const requestedCustomer = customers.find((customer) => String(customer.id) === requestedCustomerId);
         if (requestedCustomer) {
-          window.setTimeout(() => openMachineList(requestedCustomer), 0);
+          window.setTimeout(() => {
+            if (requestedAction === "edit") openCustomer(requestedCustomer);
+            else if (requestedAction === "manage") openManageCustomer(requestedCustomer);
+            else if (requestedAction === "reset") resetCustomerLogin(requestedCustomer.id);
+            else if (!requestedView || requestedView === "machines") openMachineList(requestedCustomer);
+          }, 0);
         }
       }
       if (!requestedCustomerId && requestedView === "all-machines") {
@@ -2343,6 +2350,18 @@
   });
 
   document.getElementById("customerGrid").addEventListener("click", async (event) => {
+    const copyCustomerCode = event.target.closest("[data-copy-customer-code]");
+    if (copyCustomerCode) {
+      const code = copyCustomerCode.dataset.copyCustomerCode || "";
+      if (!code) return;
+      try {
+        await navigator.clipboard.writeText(code);
+        showAlert(`Customer Code ${code} copied. Give it only to the Technician assigned to this customer/site.`, false);
+      } catch (_) {
+        window.prompt("Copy Customer Code", code);
+      }
+      return;
+    }
     if (event.target.closest("[data-clear-customer-filters]")) {
       document.getElementById("searchInput").value = "";
       document.getElementById("statusFilter").value = "";

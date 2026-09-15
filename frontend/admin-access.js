@@ -16,6 +16,7 @@
   // return to the active /settings-manager/ dashboard instead of an old
   // concept dashboard or the generic main dashboard.
   function installContextBackButton() {
+    if (window.__belmNavigationContext763) return;
     const params = new URLSearchParams(window.location.search);
     const moduleName = String(params.get("module") || "").toLowerCase().trim();
     const cleanPath = window.location.pathname.replace(/\/+$/, "") || "/";
@@ -45,7 +46,7 @@
       target = "/concept-dashboards/09-finance-accounts/";
       label = "← Finance Dashboard";
     } else if (moduleName === "workshop" && cleanPath !== "/belm-workshop") {
-      target = "/belm-workshop/";
+      target = "/concept-dashboards/11-workshop-manager/";
       label = "← Workshop Dashboard";
     } else {
       try {
@@ -209,8 +210,8 @@
     customers: "/customers-manager/",
     overview: "/overview-manager/",
     roles: "/roles-manager/",
-    "job-cards": "/belm-workshop/#job-cards",
-    "service-requests": "/belm-workshop/#job-cards",
+    "job-cards": "/concept-dashboards/11-workshop-manager/job-cards.html",
+    "service-requests": "/concept-dashboards/11-workshop-manager/job-cards.html",
     "spare-parts": "/spare-parts-manager/",
     billing: "/billing-manager/",
     reports: "/reports-manager/",

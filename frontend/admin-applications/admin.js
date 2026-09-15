@@ -84,7 +84,7 @@ function confirmRegisteredUserAction(options = {}) {
   registeredUserActionNeedsReason = Boolean(options.requireReason);
   document.getElementById("registeredUserActionEyebrow").textContent = options.destructive ? "CONFIRM DELETION" : "ACCOUNT SECURITY";
   document.getElementById("registeredUserActionTitle").textContent = options.title || "Confirm account action";
-  document.getElementById("registeredUserActionMessage").textContent = options.message || "Enter your current BELM Workshop Manager Portal password to continue.";
+  document.getElementById("registeredUserActionMessage").textContent = options.message || "Enter your current BELM Operations Portal password to continue.";
   password.value = "";
   reason.value = "";
   reasonWrap.classList.toggle("hidden", !registeredUserActionNeedsReason);
@@ -829,6 +829,11 @@ tabs.forEach(tab => tab.addEventListener("click", () => {
 
 document.getElementById("refreshButton").addEventListener("click", async () => {
   await Promise.all([loadApplications(), loadRegisteredUsers(), loadRegisteredCustomers()]);
+});
+document.getElementById("logoutButton").addEventListener("click", () => {
+  localStorage.removeItem("belm_admin_token");
+  localStorage.removeItem("belm_admin_user");
+  location.href = "/login";
 });
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 document.querySelector(".assignment-close").addEventListener("click", () => assignmentDialog.close());

@@ -5,9 +5,9 @@
 
   // V494: if this page is opened inside the WM iframe, any Workshop back link
   // closes the outer workspace instead of navigating the iframe into another
-  // copy of BELM Workshop Manager Portal.
+  // copy of BELM Operations Portal.
   if(new URLSearchParams(location.search).get('embed')==='1' && window.parent!==window){
-    document.querySelectorAll('a[href="/belm-workshop/"],a[href="/belm-workshop"]').forEach(link=>{
+    document.querySelectorAll('a[href="/concept-dashboards/11-workshop-manager/"]').forEach(link=>{
       link.addEventListener('click',event=>{
         event.preventDefault();
         window.parent.postMessage({type:'belm-workshop-back-home'},location.origin);

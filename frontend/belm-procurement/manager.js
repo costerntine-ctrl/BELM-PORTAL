@@ -4,7 +4,7 @@
   const canManageSuppliers=adminUser?.role==='Super Admin'||adminUser?.allowedPages===null||(Array.isArray(adminUser?.allowedPages)&&adminUser.allowedPages.includes('suppliers'));
   const embedded=new URLSearchParams(location.search).get('embed')==='1'&&window.parent!==window;
   if(!token){location.replace('/login');return}
-  if(!embedded){location.replace('/belm-workshop/#procurement');return}
+  if(!embedded){location.replace('/concept-dashboards/03-procurement/');return}
   let data={jobCardRequests:[],inventoryRequests:[],suppliers:[],metrics:{}};
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
   const fmt=v=>{if(!v)return '—';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString([], {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})};

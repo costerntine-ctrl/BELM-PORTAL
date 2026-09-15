@@ -22,9 +22,9 @@ $departmentRouteMap = [
     'administration' => ['users','technicians','privacy','company-logo','saved-emails','activity-logs'],
     'technical' => ['service-options','tool-issues','service-requests','belm-support'],
     'operator' => ['machine-operators','operator-reports','fuel-usage'],
-    'procurement' => ['procurement-belm-supply','procurement-requests','machine-expenses'],
-    'store' => ['store','spare-search','spare-store-check','spare-workspace','store-issue-requests','spare-parts'],
-    'finance' => ['sales-documents','workshop-account','petty-cash-account','petty-cash','invoices','proformas'],
+    'procurement' => ['procurement-belm-supply','procurement-requests','procurement-summary','procurement-suppliers','machine-expenses'],
+    'store' => ['store','store-technicians','tool-issues','spare-search','spare-store-check','spare-workspace','store-issue-requests','spare-parts'],
+    'finance' => ['sales-documents','sales-payments','finance-summary','finance-expenses','finance-audit','finance-suppliers','workshop-account','petty-cash-account','petty-cash','invoices','proformas'],
     'generalReport' => ['analysis','machine-analysis','reports','email-report'],
 ];
 foreach ($departmentRouteMap as $departmentKey => $routes) {
@@ -39,6 +39,9 @@ if ($method === 'GET' && $sub === 'coordinator-features') {
     $stmt = db()->prepare('SELECT coordinator_features FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1');
     $stmt->execute([$customer['id']]);
     $features = json_decode((string)($stmt->fetchColumn() ?: '{}'), true) ?: [];
+    // V762: Invoice/Proforma are core Customer Finance functions. Bank control and BELM spare sales remain excluded.
+    $features['invoiceSystem'] = true;
+    $features['proformaSystem'] = true;
     // Operator and Technician dashboards are core workshop roles unless Coordinator explicitly disables them.
     if (!array_key_exists('operatorDashboard', $features)) $features['operatorDashboard'] = true;
     if (!array_key_exists('technicianDashboard', $features)) $features['technicianDashboard'] = true;
@@ -47,9 +50,11 @@ if ($method === 'GET' && $sub === 'coordinator-features') {
 
 if ($sub === 'sales-documents') {
     $features = $customer['coordinatorFeatures'] ?? [];
-    $invoiceEnabled = !empty($features['invoiceSystem']);
-    $proformaEnabled = !empty($features['proformaSystem']);
-    if (!$invoiceEnabled && !$proformaEnabled) json_error('Customer Invoice / Proforma System is not enabled for this account.', 403);
+    // V762 parity: customer Invoice + Proforma are Finance core functions.
+    $features['invoiceSystem'] = true;
+    $features['proformaSystem'] = true;
+    $invoiceEnabled = true;
+    $proformaEnabled = true;
 
     if ($method === 'GET') {
         $stmt = db()->prepare('SELECT id,document_type,document_no,client_name,client_email,client_phone,client_address,description,amount,vat_rate,status,due_date,created_by_name,created_at,updated_at FROM customer_sales_documents WHERE customer_id=? ORDER BY created_at DESC');
@@ -75,6 +80,173 @@ if ($sub === 'sales-documents') {
         log_customer_activity($customer, 'Created private customer ' . $type . ' ' . $documentNo);
         json_out(['ok'=>true,'id'=>$id,'documentNo'=>$documentNo],201);
     }
+}
+
+
+// ---- V761 Customer Finance parity ------------------------------------------
+// Customer finance is company-owned and remains isolated from BELM Bank
+// Controller / bank-account tables. It mirrors operational finance functions
+// without granting any bank access.
+if ($sub === 'finance-summary' && $method === 'GET') {
+    require_customer_finance_access($customer);
+    $docStmt = db()->prepare(
+        "SELECT d.id,d.document_type,d.document_no,d.client_name,d.description,d.amount,d.vat_rate,d.status,d.due_date,d.created_at,
+                COALESCE((SELECT SUM(p.amount) FROM customer_sales_payments p WHERE p.document_id=d.id AND p.customer_id=d.customer_id),0) AS paid_amount
+         FROM customer_sales_documents d
+         WHERE d.customer_id=? ORDER BY d.created_at DESC LIMIT 250"
+    );
+    $docStmt->execute([$customer['id']]);
+    $documents = $docStmt->fetchAll();
+    $invoiceGross = 0.0; $vatTotal = 0.0; $paidTotal = 0.0; $outstanding = 0.0;
+    foreach ($documents as &$doc) {
+        $net = (float)$doc['amount'];
+        $vat = round($net * ((float)$doc['vat_rate']) / 100, 2);
+        $gross = round($net + $vat, 2);
+        $paid = round((float)$doc['paid_amount'], 2);
+        $balance = max(0.0, round($gross - $paid, 2));
+        $doc['vat_amount'] = $vat;
+        $doc['gross_total'] = $gross;
+        $doc['balance'] = $balance;
+        if (strtoupper((string)$doc['document_type']) === 'INVOICE') {
+            $invoiceGross += $gross; $vatTotal += $vat; $paidTotal += $paid; $outstanding += $balance;
+        }
+    }
+    unset($doc);
+    $expenseStmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM customer_finance_expenses WHERE customer_id=? AND deleted_at IS NULL');
+    $expenseStmt->execute([$customer['id']]);
+    $companyExpenses = (float)$expenseStmt->fetchColumn();
+    $opsStmt = db()->prepare('SELECT COALESCE(SUM(cost),0) FROM usage_logs WHERE customer_id=?');
+    $opsStmt->execute([$customer['id']]);
+    $operationalExpenses = (float)$opsStmt->fetchColumn();
+    $topupStmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM petty_cash_topups WHERE customer_id=?');
+    $topupStmt->execute([$customer['id']]);
+    $pettyTopups = (float)$topupStmt->fetchColumn();
+    $pettySpendStmt = db()->prepare("SELECT COALESCE(SUM(cost),0) FROM usage_logs WHERE customer_id=? AND category='PETTY_CASH'");
+    $pettySpendStmt->execute([$customer['id']]);
+    $pettySpend = (float)$pettySpendStmt->fetchColumn();
+    json_out([
+        'documents' => $documents,
+        'summary' => [
+            'invoiceGross' => round($invoiceGross,2), 'vatTotal' => round($vatTotal,2),
+            'payments' => round($paidTotal,2), 'outstanding' => round($outstanding,2),
+            'companyExpenses' => round($companyExpenses,2), 'operationalExpenses' => round($operationalExpenses,2),
+            'pettyCashFunded' => round($pettyTopups,2), 'pettyCashSpent' => round($pettySpend,2),
+        ],
+        'restrictions' => ['bankController'=>false, 'belmSpareSales'=>false],
+    ]);
+}
+
+if ($sub === 'sales-payments') {
+    require_customer_finance_access($customer);
+    if ($method === 'GET') {
+        $stmt = db()->prepare(
+            "SELECT p.id,p.document_id,p.amount,p.payment_method,p.reference,p.paid_at,p.received_by_name,p.note,p.created_at,
+                    d.document_no,d.client_name,d.document_type
+             FROM customer_sales_payments p
+             JOIN customer_sales_documents d ON d.id=p.document_id AND d.customer_id=p.customer_id
+             WHERE p.customer_id=? ORDER BY p.paid_at DESC,p.created_at DESC LIMIT 300"
+        );
+        $stmt->execute([$customer['id']]);
+        json_out(['items'=>$stmt->fetchAll()]);
+    }
+    if ($method === 'POST') {
+        require_customer_write_access($customer);
+        $b = body();
+        $documentId = trim((string)($b['documentId'] ?? ''));
+        $amount = round((float)($b['amount'] ?? 0), 2);
+        $methodName = strtoupper(trim((string)($b['paymentMethod'] ?? 'CASH')));
+        $reference = trim((string)($b['reference'] ?? ''));
+        $paidAt = trim((string)($b['paidAt'] ?? date('Y-m-d')));
+        $note = trim((string)($b['note'] ?? ''));
+        if ($documentId === '' || $amount <= 0) json_error('Choose an invoice and enter a payment amount above zero.');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $paidAt)) json_error('Payment date is invalid.');
+        if (strlen($reference) > 120 || strlen($note) > 500 || strlen($methodName) > 40) json_error('Payment details are too long.');
+        $stmt = db()->prepare("SELECT id,document_type,document_no,amount,vat_rate FROM customer_sales_documents WHERE id=? AND customer_id=? LIMIT 1");
+        $stmt->execute([$documentId,$customer['id']]);
+        $doc = $stmt->fetch();
+        if (!$doc || strtoupper((string)$doc['document_type']) !== 'INVOICE') json_error('Select a valid customer-owned invoice.',404);
+        $gross = round((float)$doc['amount'] * (1 + ((float)$doc['vat_rate']/100)),2);
+        $paidStmt = db()->prepare('SELECT COALESCE(SUM(amount),0) FROM customer_sales_payments WHERE document_id=? AND customer_id=?');
+        $paidStmt->execute([$documentId,$customer['id']]);
+        $already = round((float)$paidStmt->fetchColumn(),2);
+        $balance = max(0, round($gross-$already,2));
+        if ($amount > $balance + 0.01) json_error('Payment exceeds the current invoice balance of TZS ' . number_format($balance,2,'.',',') . '.');
+        $actor = trim((string)($customer['actorName'] ?? $customer['name'] ?? 'Finance')) ?: 'Finance';
+        $id = uuid();
+        $pdo = db(); $pdo->beginTransaction();
+        try {
+            $pdo->prepare('INSERT INTO customer_sales_payments (id,customer_id,document_id,amount,payment_method,reference,paid_at,received_by_name,note,created_at) VALUES (?,?,?,?,?,?,?,?,?,NOW())')
+                ->execute([$id,$customer['id'],$documentId,$amount,$methodName,$reference!==''?$reference:null,$paidAt,$actor,$note!==''?$note:null]);
+            $newPaid = $already + $amount;
+            $newStatus = $newPaid + 0.01 >= $gross ? 'PAID' : 'PART_PAID';
+            $pdo->prepare('UPDATE customer_sales_documents SET status=?,updated_at=NOW() WHERE id=? AND customer_id=?')->execute([$newStatus,$documentId,$customer['id']]);
+            $pdo->commit();
+        } catch (Throwable $error) { if ($pdo->inTransaction()) $pdo->rollBack(); throw $error; }
+        log_customer_activity($customer, 'Finance recorded payment for invoice ' . $doc['document_no'] . '.');
+        json_out(['ok'=>true,'id'=>$id,'balance'=>max(0,round($gross-($already+$amount),2))],201);
+    }
+    json_error('Method not allowed.',405);
+}
+
+if ($sub === 'finance-expenses') {
+    require_customer_finance_access($customer);
+    if ($sub2 && $sub3 === 'receipt' && $method === 'GET') {
+        $stmt = db()->prepare('SELECT receipt_photo_data,receipt_photo_mime,receipt_photo_name FROM customer_finance_expenses WHERE id=? AND customer_id=? AND deleted_at IS NULL');
+        $stmt->execute([$sub2,$customer['id']]);
+        $row = $stmt->fetch();
+        if (!$row || !$row['receipt_photo_data']) json_error('Receipt was not found.',404);
+        $binary = base64_decode((string)$row['receipt_photo_data'],true);
+        if ($binary === false) json_error('Receipt data is invalid.',500);
+        header('Content-Type: ' . ((string)$row['receipt_photo_mime'] ?: 'application/octet-stream'));
+        header('Content-Disposition: inline; filename="' . preg_replace('/[^A-Za-z0-9._-]/','_',((string)$row['receipt_photo_name'] ?: 'receipt')) . '"');
+        echo $binary; exit;
+    }
+    if (!$sub2 && $method === 'GET') {
+        $stmt = db()->prepare("SELECT id,expense_date,category,description,amount,supplier_name,reference,recorded_by_name,created_at,updated_at,CASE WHEN receipt_photo_data IS NOT NULL AND receipt_photo_data<>'' THEN 1 ELSE 0 END AS has_receipt FROM customer_finance_expenses WHERE customer_id=? AND deleted_at IS NULL ORDER BY expense_date DESC,created_at DESC LIMIT 300");
+        $stmt->execute([$customer['id']]);
+        json_out(['items'=>$stmt->fetchAll()]);
+    }
+    if (!$sub2 && $method === 'POST') {
+        require_customer_write_access($customer);
+        $b=body(); $date=trim((string)($b['date']??date('Y-m-d'))); $category=strtoupper(trim((string)($b['category']??'OTHER'))); $description=trim((string)($b['description']??'')); $amount=round((float)($b['amount']??0),2); $supplier=trim((string)($b['supplierName']??'')); $reference=trim((string)($b['reference']??''));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)) json_error('Expense date is invalid.');
+        if ($description==='' || $amount<=0) json_error('Expense description and a valid amount are required.');
+        if (strlen($description)>500 || strlen($category)>60 || strlen($supplier)>255 || strlen($reference)>120) json_error('Expense details are too long.');
+        $receiptData=$receiptMime=$receiptName=null; $photo=trim((string)($b['receiptPhoto']??''));
+        if ($photo!=='') [$receiptData,$receiptMime,$receiptName]=validate_receipt_upload($photo,trim((string)($b['receiptName']??'')));
+        $actor=trim((string)($customer['actorName']??$customer['name']??'Finance'))?:'Finance'; $id=uuid();
+        db()->prepare('INSERT INTO customer_finance_expenses (id,customer_id,expense_date,category,description,amount,supplier_name,reference,receipt_photo_data,receipt_photo_mime,receipt_photo_name,recorded_by_name,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())')
+            ->execute([$id,$customer['id'],$date,$category?:'OTHER',$description,$amount,$supplier!==''?$supplier:null,$reference!==''?$reference:null,$receiptData,$receiptMime,$receiptName,$actor]);
+        log_customer_activity($customer,'Finance recorded expense: '.$description.'.');
+        json_out(['ok'=>true,'id'=>$id],201);
+    }
+    if ($sub2 && $method === 'PUT') {
+        require_customer_write_access($customer); $b=body();
+        $stmt=db()->prepare('SELECT * FROM customer_finance_expenses WHERE id=? AND customer_id=? AND deleted_at IS NULL');$stmt->execute([$sub2,$customer['id']]);$old=$stmt->fetch();if(!$old)json_error('Expense not found.',404);
+        $date=trim((string)($b['date']??$old['expense_date']));$category=strtoupper(trim((string)($b['category']??$old['category'])));$description=trim((string)($b['description']??$old['description']));$amount=round((float)($b['amount']??$old['amount']),2);$supplier=trim((string)($b['supplierName']??($old['supplier_name']??'')));$reference=trim((string)($b['reference']??($old['reference']??'')));
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/',$date)||$description===''||$amount<=0) json_error('Enter valid expense details.');
+        $receiptData=$old['receipt_photo_data'];$receiptMime=$old['receipt_photo_mime'];$receiptName=$old['receipt_photo_name'];$photo=trim((string)($b['receiptPhoto']??''));if($photo!=='')[$receiptData,$receiptMime,$receiptName]=validate_receipt_upload($photo,trim((string)($b['receiptName']??'')));
+        db()->prepare('UPDATE customer_finance_expenses SET expense_date=?,category=?,description=?,amount=?,supplier_name=?,reference=?,receipt_photo_data=?,receipt_photo_mime=?,receipt_photo_name=?,updated_at=NOW() WHERE id=? AND customer_id=?')
+            ->execute([$date,$category?:'OTHER',$description,$amount,$supplier!==''?$supplier:null,$reference!==''?$reference:null,$receiptData,$receiptMime,$receiptName,$sub2,$customer['id']]);
+        log_customer_activity($customer,'Finance updated expense: '.$description.'.');json_out(['ok'=>true]);
+    }
+    if ($sub2 && $method === 'DELETE') {
+        require_customer_write_access($customer);db()->prepare('UPDATE customer_finance_expenses SET deleted_at=NOW(),updated_at=NOW() WHERE id=? AND customer_id=? AND deleted_at IS NULL')->execute([$sub2,$customer['id']]);log_customer_activity($customer,'Finance archived an expense record.');json_out(['ok'=>true]);
+    }
+    json_error('Method not allowed.',405);
+}
+
+if ($sub === 'finance-suppliers' && $method === 'GET') {
+    require_customer_finance_access($customer);
+    $stmt=db()->prepare('SELECT id,name,contact_person,phone,email,address,notes,is_active,created_at,updated_at FROM customer_suppliers WHERE customer_id=? ORDER BY is_active DESC,name ASC');
+    $stmt->execute([$customer['id']]);
+    json_out(['items'=>$stmt->fetchAll()]);
+}
+
+if ($sub === 'finance-audit' && $method === 'GET') {
+    require_customer_finance_access($customer);
+    $stmt=db()->prepare("SELECT id,actor_name,action,created_at FROM customer_activity_logs WHERE customer_id=? AND LOWER(action) ~ '(invoice|proforma|payment|expense|petty|finance|vat|receipt)' ORDER BY created_at DESC LIMIT 100");
+    $stmt->execute([$customer['id']]);$rows=$stmt->fetchAll();foreach($rows as &$row){$row['actorName']=$row['actor_name'];$row['createdAt']=$row['created_at'];unset($row['actor_name'],$row['created_at']);}unset($row);json_out(['items'=>$rows]);
 }
 
 // V273 - turns a day/month/year (or explicit date) filter from the
@@ -449,6 +621,18 @@ function customer_store_issue_request_rows(string $customerId, string $machineId
 
 // V297 - unified Procurement queue. Every spare requirement enters this
 // queue first; Procurement decides Store issue vs external purchase.
+function customer_can_manage_finance(array $customer): bool {
+    if (($customer['actorType'] ?? '') === 'owner') return true;
+    $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
+    return in_array($role, ['accounts', 'admin', 'customer_admin'], true);
+}
+
+function require_customer_finance_access(array $customer): void {
+    if (!customer_can_manage_finance($customer)) {
+        json_error('Only Customer Finance / Accounts, Company Admin or Owner can use this finance function.', 403);
+    }
+}
+
 function customer_can_manage_procurement(array $customer): bool {
     if (($customer['actorType'] ?? '') === 'owner') return true;
     if (!customer_has_feature_access($customer, 'machine-expenses')) return false;
@@ -460,7 +644,7 @@ function customer_procurement_request_rows(string $customerId, string $machineId
     $stmt = db()->prepare(
         "SELECT cpr.*, csi.id AS current_store_item_id, csi.qty_on_hand AS current_store_balance,
                 csi.average_unit_cost AS current_store_unit_cost,
-                bsr.status AS maintenance_spare_status
+                bsr.status AS maintenance_spare_status, cs.name AS supplier_name
          FROM customer_procurement_requests cpr
          LEFT JOIN LATERAL (
              SELECT si.id,si.qty_on_hand,si.average_unit_cost
@@ -478,6 +662,7 @@ function customer_procurement_request_rows(string $customerId, string $machineId
              LIMIT 1
          ) csi ON TRUE
          LEFT JOIN breakdown_spare_requests bsr ON bsr.procurement_request_id = cpr.id
+         LEFT JOIN customer_suppliers cs ON cs.id = cpr.supplier_id AND cs.customer_id = cpr.customer_id
          WHERE cpr.customer_id = ? AND cpr.machine_id = ?
          ORDER BY CASE cpr.status
                     WHEN 'PENDING_PROCUREMENT' THEN 0
@@ -1822,6 +2007,23 @@ if ($sub === 'service-options' && $sub2 && $method === 'GET') {
 }
 
 
+// V761 - Safe Store Keeper technician lookup for customer-owned Tool Issues.
+// This exposes only active technician identity fields for the same customer.
+if ($sub === 'store-technicians' && $method === 'GET') {
+    require_customer_workshop_module($customer, 'Store Keeper Tools Register');
+    require_customer_feature_access($customer, 'store', 'Store Keeper Tools Register');
+    require_customer_technician_management_access($customer);
+    $stmt = db()->prepare(
+        "SELECT u.id,u.name,u.email,u.phone
+         FROM users u JOIN roles r ON r.id=u.role_id
+         WHERE u.assigned_customer_id=? AND u.is_customer_managed=1
+           AND u.is_active=1 AND u.deleted_at IS NULL AND LOWER(r.name)='technician'
+         ORDER BY u.name ASC"
+    );
+    $stmt->execute([$customer['id']]);
+    json_out(['items'=>$stmt->fetchAll()]);
+}
+
 // ---- V443 Workshop Store Keeper Tool Issue / Return Documents ---------------
 // These documents are customer-owned workshop records. A tool remains OUT WITH
 // TECHNICIAN until the Store Keeper records its return.
@@ -2208,6 +2410,45 @@ if ($sub === 'procurement-belm-supply' && $sub2 && $method === 'POST') {
     ], $created ? 201 : 200);
 }
 
+
+// ---- V761 Customer Procurement parity --------------------------------------
+// Supplier, proforma, order and delivery data is customer-owned. This does not
+// expose BELM supplier pricing, BELM Inventory or BELM spare sales.
+if ($sub === 'procurement-summary' && $method === 'GET') {
+    if (!customer_can_manage_procurement($customer)) json_error('Only Customer Procurement, Admin or Owner can view the Procurement workspace.',403);
+    $stmt=db()->prepare(
+        "SELECT cpr.*,m.brand AS machine_brand,m.model AS machine_model,m.machine_type,m.fleet_number,
+                cs.name AS supplier_name
+         FROM customer_procurement_requests cpr
+         JOIN machines m ON m.id=cpr.machine_id AND m.customer_id=cpr.customer_id
+         LEFT JOIN customer_suppliers cs ON cs.id=cpr.supplier_id AND cs.customer_id=cpr.customer_id
+         WHERE cpr.customer_id=?
+         ORDER BY CASE cpr.status WHEN 'PENDING_PROCUREMENT' THEN 0 WHEN 'PURCHASE_REQUIRED' THEN 1 WHEN 'ORDERED' THEN 2 WHEN 'BELM_REQUESTED' THEN 3 ELSE 4 END,cpr.requested_at DESC LIMIT 500"
+    );
+    $stmt->execute([$customer['id']]);$rows=$stmt->fetchAll();
+    $counts=['pending'=>0,'purchaseRequired'=>0,'ordered'=>0,'partsReady'=>0,'belmRequested'=>0];
+    foreach($rows as $row){$s=strtoupper((string)$row['status']);if($s==='PENDING_PROCUREMENT')$counts['pending']++;elseif($s==='PURCHASE_REQUIRED')$counts['purchaseRequired']++;elseif($s==='ORDERED')$counts['ordered']++;elseif($s==='PARTS_READY')$counts['partsReady']++;elseif($s==='BELM_REQUESTED')$counts['belmRequested']++;}
+    json_out(['items'=>$rows,'counts'=>$counts,'restrictions'=>['belmSpareSales'=>false,'belmInventory'=>false]]);
+}
+
+if ($sub === 'procurement-suppliers') {
+    if (!customer_can_manage_procurement($customer)) json_error('Only Customer Procurement, Admin or Owner can manage suppliers.',403);
+    if (!$sub2 && $method === 'GET') {
+        $stmt=db()->prepare('SELECT id,name,contact_person,phone,email,address,notes,is_active,created_at,updated_at FROM customer_suppliers WHERE customer_id=? ORDER BY is_active DESC,name ASC');$stmt->execute([$customer['id']]);json_out(['items'=>$stmt->fetchAll()]);
+    }
+    if (!$sub2 && $method === 'POST') {
+        require_customer_write_access($customer);$b=body();$name=trim((string)($b['name']??''));if($name==='')json_error('Supplier name is required.');if(strlen($name)>255)json_error('Supplier name is too long.');$id=uuid();
+        try{db()->prepare('INSERT INTO customer_suppliers (id,customer_id,name,contact_person,phone,email,address,notes,is_active,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,1,NOW(),NOW())')->execute([$id,$customer['id'],$name,trim((string)($b['contactPerson']??''))?:null,trim((string)($b['phone']??''))?:null,trim((string)($b['email']??''))?:null,trim((string)($b['address']??''))?:null,trim((string)($b['notes']??''))?:null]);}catch(PDOException $e){if((string)$e->getCode()==='23505')json_error('This supplier already exists for your company.',409);throw $e;}
+        log_customer_activity($customer,'Procurement added supplier '.$name.'.');json_out(['ok'=>true,'id'=>$id],201);
+    }
+    if ($sub2 && $method === 'PUT') {
+        require_customer_write_access($customer);$b=body();$stmt=db()->prepare('SELECT * FROM customer_suppliers WHERE id=? AND customer_id=?');$stmt->execute([$sub2,$customer['id']]);$old=$stmt->fetch();if(!$old)json_error('Supplier not found.',404);$name=trim((string)($b['name']??$old['name']));if($name==='')json_error('Supplier name is required.');$active=array_key_exists('isActive',$b)?(!empty($b['isActive'])?1:0):(int)$old['is_active'];
+        db()->prepare('UPDATE customer_suppliers SET name=?,contact_person=?,phone=?,email=?,address=?,notes=?,is_active=?,updated_at=NOW() WHERE id=? AND customer_id=?')->execute([$name,trim((string)($b['contactPerson']??($old['contact_person']??'')))?:null,trim((string)($b['phone']??($old['phone']??'')))?:null,trim((string)($b['email']??($old['email']??'')))?:null,trim((string)($b['address']??($old['address']??'')))?:null,trim((string)($b['notes']??($old['notes']??'')))?:null,$active,$sub2,$customer['id']]);
+        log_customer_activity($customer,'Procurement updated supplier '.$name.'.');json_out(['ok'=>true]);
+    }
+    json_error('Method not allowed.',405);
+}
+
 if ($sub === 'procurement-requests' && $sub2) {
     if ($method === 'GET') {
         require_customer_any_feature_access($customer, ['machine-expenses', 'service-request'], 'Procurement requests');
@@ -2366,6 +2607,12 @@ if ($sub === 'procurement-requests' && $sub2) {
         $b = body();
         $action = strtoupper(trim((string)($b['action'] ?? '')));
         $note = trim((string)($b['note'] ?? ''));
+        $supplierId = trim((string)($b['supplierId'] ?? ''));
+        $supplierReference = trim((string)($b['supplierReference'] ?? ''));
+        $proformaReference = trim((string)($b['proformaReference'] ?? ''));
+        $expectedDeliveryAt = trim((string)($b['expectedDeliveryAt'] ?? ''));
+        if ($expectedDeliveryAt !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expectedDeliveryAt)) json_error('Expected delivery date is invalid.');
+        if (strlen($supplierReference) > 120 || strlen($proformaReference) > 120) json_error('Supplier reference is too long.');
         if (!in_array($action, ['ISSUE_STORE','PURCHASE_REQUIRED','ORDERED','PARTS_READY','REJECT'], true)) {
             json_error('Choose a valid Procurement action.');
         }
@@ -2382,6 +2629,11 @@ if ($sub === 'procurement-requests' && $sub2) {
             if (!$req) {
                 $pdo->rollBack();
                 json_error('Procurement request not found.', 404);
+            }
+            if ($supplierId !== '') {
+                $supplierCheck = $pdo->prepare('SELECT id FROM customer_suppliers WHERE id=? AND customer_id=? AND is_active=1');
+                $supplierCheck->execute([$supplierId,$customer['id']]);
+                if (!$supplierCheck->fetchColumn()) { $pdo->rollBack(); json_error('Selected supplier is not available for this customer.',409); }
             }
             if (in_array($req['status'], ['PARTS_READY','REJECTED'], true)) {
                 $pdo->rollBack();
@@ -2459,9 +2711,16 @@ if ($sub === 'procurement-requests' && $sub2) {
                 $newStatus = 'PARTS_READY';
                 $spareStatus = 'PARTS_READY';
             }
+            $newSupplierId = array_key_exists('supplierId',$b) ? ($supplierId !== '' ? $supplierId : null) : ($req['supplier_id'] ?? null);
+            $newSupplierReference = array_key_exists('supplierReference',$b) ? ($supplierReference !== '' ? $supplierReference : null) : ($req['supplier_reference'] ?? null);
+            $newProformaReference = array_key_exists('proformaReference',$b) ? ($proformaReference !== '' ? $proformaReference : null) : ($req['supplier_proforma_reference'] ?? null);
+            $newExpectedDelivery = array_key_exists('expectedDeliveryAt',$b) ? ($expectedDeliveryAt !== '' ? $expectedDeliveryAt : null) : ($req['expected_delivery_at'] ?? null);
+            $newOrderedAt = $req['ordered_at'] ?? null;
+            $newOrderedBy = $req['ordered_by_name'] ?? null;
+            if ($action === 'ORDERED') { if (!$newOrderedAt) $newOrderedAt = date('c'); $newOrderedBy = $actor; }
             $pdo->prepare(
-                'UPDATE customer_procurement_requests SET status=?, handled_by_name=?, handled_at=NOW(), decision_note=?, expense_id=COALESCE(?,expense_id), updated_at=NOW() WHERE id=?'
-            )->execute([$newStatus,$actor,$note !== '' ? $note : null,$expenseId,$sub2]);
+                'UPDATE customer_procurement_requests SET status=?, handled_by_name=?, handled_at=NOW(), decision_note=?, expense_id=COALESCE(?,expense_id), supplier_id=?, supplier_reference=?, supplier_proforma_reference=?, expected_delivery_at=?, ordered_at=?, ordered_by_name=?, updated_at=NOW() WHERE id=?'
+            )->execute([$newStatus,$actor,$note !== '' ? $note : null,$expenseId,$newSupplierId,$newSupplierReference,$newProformaReference,$newExpectedDelivery,$newOrderedAt,$newOrderedBy,$sub2]);
             if ($spareStatus === 'PARTS_READY') {
                 $pdo->prepare(
                     "UPDATE breakdown_spare_requests SET status='PARTS_READY', fulfilled_by_name=?, fulfilled_at=NOW(), approval_note=?, updated_at=NOW() WHERE procurement_request_id=?"
@@ -2480,6 +2739,8 @@ if ($sub === 'procurement-requests' && $sub2) {
         if ($caseId !== '') customer_refresh_procurement_case($caseId, $customer, 'Procurement: ' . str_replace('_',' ',$newStatus), $note);
         if ($newStatus === 'PARTS_READY') {
             try { customer_send_team_alert((string)$customer['id'], ['workflow','service-request'], 'PARTS READY - MAINTENANCE CAN CONTINUE', 'Procurement has made the requested spare ready for the machine. Open Maintenance Process for status.', true); } catch (Throwable $ignored) {}
+            belm_role_communication_insert((string)$customer['id'],'CUSTOMER','system:procurement:' . $sub2,$actor,'procurement','CUSTOMER','workshop_manager','PARTS READY - MAINTENANCE CAN CONTINUE','Procurement has made the requested spare ready. Open Maintenance Process / Job Card and continue the work.','ATTENTION','procurement_request',$sub2,(string)($req['machine_id'] ?? ''),'/customer-workshop/?actor=customer');
+            belm_role_communication_insert((string)$customer['id'],'CUSTOMER','system:procurement:' . $sub2,$actor,'procurement','CUSTOMER','store_keeper','PARTS READY / STORE UPDATE','Procurement request is now PARTS READY. Confirm issue/receipt records in Customer Store where applicable.','NORMAL','procurement_request',$sub2,(string)($req['machine_id'] ?? ''),'/customer-store-dashboard/');
         }
         log_customer_activity($customer, 'Procurement request ' . $sub2 . ' changed to ' . $newStatus . '.');
         json_out([
@@ -5007,6 +5268,7 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
                 true
             );
         } catch (Throwable $ignored) {}
+        belm_role_communication_insert((string)$customer['id'],'CUSTOMER','system:operator-report:' . $newId,$operatorName,'operator','CUSTOMER','workshop_manager','MACHINE HANDOVER - ' . $machineLabel,$message,'NORMAL','operator_report',$newId,$machineId,'/general-report/?machine=' . rawurlencode($machineId));
         log_customer_activity($customer, "Machine handover note by $operatorName: $message");
         json_out([
             'id' => $newId,
@@ -5014,6 +5276,11 @@ if ($sub === 'operator-reports' && $sub2 && $method === 'POST') {
             'belmAlertSent' => false,
             'internalOnly' => true,
         ], 201);
+    }
+
+    belm_role_communication_insert((string)$customer['id'],'CUSTOMER','system:operator-report:' . $newId,$operatorName,'operator','CUSTOMER','workshop_manager','MACHINE PROBLEM - ' . $machineLabel,$message,'URGENT','operator_report',$newId,$machineId,'/general-report/?machine=' . rawurlencode($machineId));
+    if ($notifyBelm) {
+        belm_role_communication_insert((string)$customer['id'],'CUSTOMER','system:operator-report:' . $newId,$operatorName,'operator','BELM','workshop_manager','CUSTOMER MACHINE PROBLEM - ' . $machineLabel,$message,'URGENT','operator_report',$newId,$machineId,'/breakdown-workflow/?actor=admin');
     }
 
     $jobCardNo = null;
@@ -5195,7 +5462,7 @@ if ($sub === 'users' && !$sub2 && $method === 'GET') {
 if ($sub === 'technicians' && $method === 'GET') {
     require_customer_owner_or_admin($customer);
     $stmt = db()->prepare(
-        "SELECT u.id, u.name, u.email, u.phone, u.is_active, u.customer_permissions, u.workflow_capabilities, u.created_at
+        "SELECT u.id, u.name, u.email, u.phone, u.is_active, u.customer_permissions, u.created_at
          FROM users u JOIN roles r ON r.id = u.role_id
          WHERE r.name = 'Technician' AND u.assigned_customer_id = ?
            AND u.is_customer_managed = 1 AND u.deleted_at IS NULL
@@ -5211,19 +5478,10 @@ if ($sub === 'technicians' && $method === 'GET') {
             $decoded = json_decode((string)($row['customer_permissions'] ?? '[]'), true);
             $row['permissions'] = is_array($decoded) ? $decoded : [];
         }
-        $row['workflowCapabilities'] = user_workflow_capabilities($row);
-        unset($row['is_active'], $row['customer_permissions'], $row['workflow_capabilities']);
+        unset($row['is_active'], $row['customer_permissions']);
     }
     unset($row);
     json_out($rows);
-}
-
-// V763: same delegated-capability registry BELM's Roles & Users manager
-// reads, so a Customer Admin/Owner sees the identical toggle list when
-// granting authority to their own Technicians.
-if ($sub === 'workflow-capabilities-registry' && $method === 'GET') {
-    require_customer_owner_or_admin($customer);
-    json_out(workflow_capabilities_registry());
 }
 
 // POST /technicians — a Customer Self-Service account adds
@@ -5370,8 +5628,6 @@ if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'PUT') {
     $permissionsJson = array_key_exists('permissions', $b)
         ? technician_permissions_from_body($b)
         : $existing['customer_permissions'];
-    $workflowCapabilitiesJson = workflow_capabilities_from_body($b);
-    if ($workflowCapabilitiesJson === null) $workflowCapabilitiesJson = $existing['workflow_capabilities'] ?? null;
 
     if ($name === '') json_error('Technician name is required.');
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid Technician email address.');
@@ -5385,11 +5641,11 @@ if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'PUT') {
     if ($emailCheck->fetch()) json_error('This email address is already used by another portal account.', 409);
 
     db()->prepare(
-        'UPDATE users SET name=?, email=?, phone=?, is_active=?, customer_permissions=?, workflow_capabilities=?
+        'UPDATE users SET name=?, email=?, phone=?, is_active=?, customer_permissions=?
          WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1'
     )->execute([
         $name, $email, $phone !== '' ? $phone : null, $isActive,
-        $permissionsJson, $workflowCapabilitiesJson, $sub2, $customer['id'],
+        $permissionsJson, $sub2, $customer['id'],
     ]);
     log_customer_activity($customer, "Updated Technician access for \"$name\".");
     json_out(['ok' => true]);

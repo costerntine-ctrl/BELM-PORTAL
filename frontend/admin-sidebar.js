@@ -50,7 +50,7 @@
     "/settings-manager/",
     "/bank-controller/",
     "/recycle-bin/",
-    "/belm-workshop/",
+    "/concept-dashboards/11-workshop-manager/",
     "/belm-procurement/",
     "/contracts-workshops/",
     "/workshop-analysis/",
@@ -132,7 +132,7 @@
     if (pathIs("/admin-applications/", "/contracts-workshops/")) return "registration";
     if (pathIs("/customers-manager/")) return "customer-overview";
     if (pathIs("/roles-manager/")) return "roles-users";
-    if (pathIs("/belm-workshop/", "/workshop-analysis/") || sharedBreakdownAdmin) return "workshop";
+    if (pathIs("/concept-dashboards/11-workshop-manager/", "/workshop-analysis/") || sharedBreakdownAdmin) return "workshop";
     if (pathIs("/spare-parts-manager/", "/controller-pinouts-manager/")) return "inventory";
     if (pathIs("/belm-procurement/")) return "procurement";
     if (pathIs("/suppliers-manager/")) return "procurement";
@@ -191,9 +191,9 @@
         {label:"Diagnosis",short:"DG",href:"/breakdown-workflow/?actor=admin&module=workshop",paths:["/breakdown-workflow/"],noView:true},
         {label:"Waiting for Spares",short:"WS",href:"/spare-parts-manager/?view=requests&module=workshop",paths:["/spare-parts-manager/"],view:"requests"},
         {label:"Testing & Completion",short:"TC",href:"/breakdown-workflow/?actor=admin&view=testing&module=workshop",paths:["/breakdown-workflow/"],view:"testing"},
-        {label:"Workshop Reports",short:"RP",href:"/role-reports/",paths:["/role-reports/","/workshop-analysis/"]},
+        {label:"Workshop Reports",short:"RP",href:"/workshop-analysis/?actor=admin&module=workshop",paths:["/workshop-analysis/"]},
         {label:"Machine History",short:"MH",href:"/reports-manager/?module=workshop",paths:["/reports-manager/"]},
-        {label:"Communication",short:"CM",href:"/role-communications/",paths:["/role-communications/"]},
+        {label:"Communication",short:"CM",href:"/customers-manager/?module=workshop",paths:["/customers-manager/"]},
       ]
     },
     inventory: {
@@ -268,7 +268,11 @@
         {label:"System Settings",short:"SE",href:"/settings-manager/?module=settings",paths:["/settings-manager/"]},
         {label:"Checklist Templates",short:"CK",href:"/checklist-manager/?module=settings",paths:["/checklist-manager/"]},
         {label:"Departments & Categories",short:"DP",href:"/coordinator/departments/?module=settings",paths:["/coordinator/departments/"]},
-        {label:"Communications & Notifications",short:"CM",href:"/coordinator/communications/?module=settings",paths:["/coordinator/communications/","/coordinator/notifications/","/coordinator/email/","/coordinator/whatsapp/","/coordinator/sms/","/coordinator/management-mail/"]},
+        {label:"Notification Configuration",short:"NT",href:"/coordinator/notifications/?module=settings",paths:["/coordinator/notifications/"]},
+        {label:"Email Settings",short:"EM",href:"/coordinator/email/?module=settings",paths:["/coordinator/email/"]},
+        {label:"WhatsApp Settings",short:"WA",href:"/coordinator/whatsapp/?module=settings",paths:["/coordinator/whatsapp/"]},
+        {label:"SMS Settings",short:"SM",href:"/coordinator/sms/?module=settings",paths:["/coordinator/sms/"]},
+        {label:"Management Mail",short:"MM",href:"/coordinator/management-mail/?module=settings",paths:["/coordinator/management-mail/"]},
         {label:"Recycle Bin",short:"RB",href:"/recycle-bin/?module=settings",paths:["/recycle-bin/"]},
       ]
     }
@@ -279,6 +283,10 @@
     items:[{label:"Return to Main Dashboard",short:"HM",href:"/concept-dashboards/01-admin-home/"}]
   };
   const moduleConfig = M[moduleKey] || fallback;
+  if (moduleKey && moduleConfig !== fallback) {
+    if (!moduleConfig.items.some((item) => item.href === '/role-communications/')) moduleConfig.items.push({label:'Role Communication',short:'CM',href:'/role-communications/'});
+    if (!moduleConfig.items.some((item) => item.href === '/role-reports/')) moduleConfig.items.push({label:'My Role Reports',short:'RP',href:'/role-reports/'});
+  }
   const visiblePages = moduleConfig.items;
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";
@@ -328,7 +336,7 @@
   const currentPath = pathname;
   const currentHash = window.location.hash || "";
 
-  // V706: no extra Back/Home row here; the BELM Workshop Manager Portal
+  // V706: no extra Back/Home row here; the BELM Operations Portal
   // entry itself is the single home destination, avoiding duplicate navigation.
 
 
@@ -443,7 +451,8 @@
   logout.type = "button";
   logout.textContent = "Log out securely";
   logout.addEventListener("click", () => {
-    ["belm_admin_token", "belm_admin_user", "belm_tech_token", "belm_tech_user", "belm_active_account_type"].forEach((key) => localStorage.removeItem(key));
+    localStorage.removeItem("belm_admin_token");
+    localStorage.removeItem("belm_admin_user");
     window.location.href = "/login";
   });
   footer.append(themeToggle, logout);

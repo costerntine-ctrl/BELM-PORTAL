@@ -43,6 +43,17 @@
 .belm-customer-machine-card.status-yellow .belm-customer-condition-copy-v422,.belm-customer-machine-card.belm-range-yellow .belm-customer-condition-copy-v422,
 .belm-technician-machine-card.status-yellow .belm-technician-operator-message,.belm-technician-machine-card.belm-range-yellow .belm-technician-operator-message{border:2px solid #ffd126!important;animation:belmAlertZoneYellowBlink 1.2s ease-in-out infinite!important}
 
+/* V767 safety-priority override: RED + YELLOW = RED.
+   Kept after the YELLOW rules so a critical source can never be visually downgraded. */
+.belm-customer-machine-card.status-red.belm-range-yellow .belm-customer-operator-message-v422,
+.belm-customer-machine-card.status-red.belm-range-yellow .belm-customer-condition-copy-v422,
+.belm-customer-machine-card.status-yellow.belm-range-red .belm-customer-operator-message-v422,
+.belm-customer-machine-card.status-yellow.belm-range-red .belm-customer-condition-copy-v422,
+.belm-technician-machine-card.status-red.belm-range-yellow .belm-technician-operator-message,
+.belm-technician-machine-card.status-yellow.belm-range-red .belm-technician-operator-message{border:2px solid #ff3f52!important;animation:belmAlertZoneRedBlink 1.05s ease-in-out infinite!important}
+.belm-customer-machine-card.status-red.belm-range-yellow .belm-customer-condition-copy-v422>strong,
+.belm-customer-machine-card.status-yellow.belm-range-red .belm-customer-condition-copy-v422>strong{color:#ff6672!important}
+
 /* Service strip. */
 .belm-service-due-panel{background:linear-gradient(180deg,#fff,#eaf3fb)!important;color:#10233b!important;border:2px solid #1684ff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(0,0,0,.16)!important;animation:none!important}.belm-service-due-panel *{color:#10233b!important}.belm-service-due-panel.status-red{border-color:#ff3f52!important}.belm-service-due-panel.status-yellow{border-color:#ffd126!important}.belm-service-due-panel.status-green{border-color:#12d879!important}
 

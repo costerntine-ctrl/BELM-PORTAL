@@ -76,6 +76,15 @@ CREATE TABLE IF NOT EXISTS customer_users (
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS is_active SMALLINT NOT NULL DEFAULT 1;
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS permissions TEXT NULL;
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
+-- V765: Technician customer-site access code. This is a human-entered site/customer
+-- identifier, not a substitute for role/assignment authorization. BELM Technician
+-- access still requires the logged-in Technician to be assigned to this customer.
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS customer_code VARCHAR(32) NULL;
+UPDATE customers
+SET customer_code = 'CUS-' || UPPER(SUBSTRING(MD5(id || COALESCE(name,'')) FROM 1 FOR 10))
+WHERE customer_code IS NULL OR BTRIM(customer_code) = '';
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_customer_code_unique
+  ON customers(UPPER(customer_code)) WHERE customer_code IS NOT NULL;
 -- Caps how many portal users (assistants) a customer can add for
 -- themselves before they must contact BELM Admin for more. NULL means
 -- "use the system default" (see DEFAULT_CUSTOMER_USER_LIMIT in helpers.php).
@@ -103,8 +112,8 @@ ALTER TABLE customers ADD COLUMN IF NOT EXISTS privacy_preferences JSONB NOT NUL
 -- what permissions the customer has assigned internally.
 ALTER TABLE customers ADD COLUMN IF NOT EXISTS workshop_module_active SMALLINT NOT NULL DEFAULT 0;
 -- V_COORDINATOR: BELM-controlled optional customer modules. Customer-owned data remains isolated by customer_id.
-ALTER TABLE customers ADD COLUMN IF NOT EXISTS coordinator_features JSONB NOT NULL DEFAULT '{"invoiceSystem":false,"proformaSystem":false,"operatorDashboard":true,"technicianDashboard":false}'::jsonb;
-ALTER TABLE customers ALTER COLUMN coordinator_features SET DEFAULT '{"invoiceSystem":false,"proformaSystem":false,"operatorDashboard":true,"technicianDashboard":false}'::jsonb;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS coordinator_features JSONB NOT NULL DEFAULT '{"invoiceSystem":true,"proformaSystem":true,"operatorDashboard":true,"technicianDashboard":false}'::jsonb;
+ALTER TABLE customers ALTER COLUMN coordinator_features SET DEFAULT '{"invoiceSystem":true,"proformaSystem":true,"operatorDashboard":true,"technicianDashboard":false}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS customer_sales_documents (
   id VARCHAR(36) PRIMARY KEY,
@@ -156,14 +165,6 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS is_customer_managed SMALLINT NOT NULL
 -- Dashboard permissions granted by the customer's Administration to a customer-managed Technician.
 -- NULL means full customer-dashboard control; JSON [] means Technician workspace only.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS customer_permissions TEXT NULL;
--- V763 WORKFLOW CAPABILITY DELEGATION: Administration (BELM Super Admin /
--- Workshop Manager for BELM Technicians; Customer Admin / Workshop Manager
--- for their own customer-managed Technicians) can grant specific in-workflow
--- authorities to an individual Technician - starting with spare-request
--- self-approval - without changing that Technician's role or dashboard page
--- access. JSON array of capability keys from WORKFLOW_CAPABILITIES in
--- config/helpers.php. NULL/empty = no delegated capability (default).
-ALTER TABLE users ADD COLUMN IF NOT EXISTS workflow_capabilities TEXT NULL;
 -- V350 DATA SAFETY: legacy customer-managed Technician backfills are no longer
 -- executed from schema.sql on every deploy. Existing business rows are preserved.
 ALTER TABLE customer_users ADD COLUMN IF NOT EXISTS recovery_code_hash VARCHAR(255);
@@ -1641,3 +1642,132 @@ CREATE INDEX IF NOT EXISTS idx_belm_procurement_receipts_request
   ON belm_procurement_receipts(source_type, request_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_belm_procurement_receipts_date
   ON belm_procurement_receipts(receipt_date DESC, created_at DESC);
+
+
+-- V761 - Customer role parity. These tables belong to the customer's own
+-- company operations. They deliberately do not reference BELM Bank Accounts
+-- or BELM commercial spare-parts inventory/selling.
+CREATE TABLE IF NOT EXISTS customer_suppliers (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  contact_person VARCHAR(255) NULL,
+  phone VARCHAR(80) NULL,
+  email VARCHAR(255) NULL,
+  address VARCHAR(500) NULL,
+  notes VARCHAR(500) NULL,
+  is_active SMALLINT NOT NULL DEFAULT 1,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(customer_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_customer_suppliers_customer
+  ON customer_suppliers(customer_id, is_active, name);
+
+ALTER TABLE customer_procurement_requests ADD COLUMN IF NOT EXISTS supplier_id VARCHAR(36) NULL REFERENCES customer_suppliers(id) ON DELETE SET NULL;
+ALTER TABLE customer_procurement_requests ADD COLUMN IF NOT EXISTS supplier_reference VARCHAR(120) NULL;
+ALTER TABLE customer_procurement_requests ADD COLUMN IF NOT EXISTS supplier_proforma_reference VARCHAR(120) NULL;
+ALTER TABLE customer_procurement_requests ADD COLUMN IF NOT EXISTS expected_delivery_at DATE NULL;
+ALTER TABLE customer_procurement_requests ADD COLUMN IF NOT EXISTS ordered_at TIMESTAMPTZ NULL;
+ALTER TABLE customer_procurement_requests ADD COLUMN IF NOT EXISTS ordered_by_name VARCHAR(255) NULL;
+CREATE INDEX IF NOT EXISTS idx_customer_procurement_supplier
+  ON customer_procurement_requests(customer_id, supplier_id, status, requested_at DESC);
+
+CREATE TABLE IF NOT EXISTS customer_sales_payments (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  document_id VARCHAR(36) NOT NULL REFERENCES customer_sales_documents(id) ON DELETE CASCADE,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  payment_method VARCHAR(40) NOT NULL DEFAULT 'CASH',
+  reference VARCHAR(120) NULL,
+  paid_at DATE NOT NULL DEFAULT CURRENT_DATE,
+  received_by_name VARCHAR(255) NOT NULL,
+  note VARCHAR(500) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_customer_sales_payments_customer
+  ON customer_sales_payments(customer_id, paid_at DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_sales_payments_document
+  ON customer_sales_payments(document_id, paid_at DESC, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS customer_finance_expenses (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  expense_date DATE NOT NULL DEFAULT CURRENT_DATE,
+  category VARCHAR(60) NOT NULL DEFAULT 'OTHER',
+  description VARCHAR(500) NOT NULL,
+  amount NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+  supplier_name VARCHAR(255) NULL,
+  reference VARCHAR(120) NULL,
+  receipt_photo_data TEXT NULL,
+  receipt_photo_mime VARCHAR(50) NULL,
+  receipt_photo_name VARCHAR(255) NULL,
+  recorded_by_name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  deleted_at TIMESTAMPTZ NULL
+);
+CREATE INDEX IF NOT EXISTS idx_customer_finance_expenses_customer
+  ON customer_finance_expenses(customer_id, expense_date DESC, created_at DESC);
+
+
+-- V762 - managed customer service contracts use the canonical Job Card workflow.
+CREATE TABLE IF NOT EXISTS customer_contracts (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  contract_number VARCHAR(100) NOT NULL UNIQUE,
+  title VARCHAR(255) NOT NULL DEFAULT 'Service & Maintenance Contract',
+  contract_type VARCHAR(60) NOT NULL DEFAULT 'SERVICE_MAINTENANCE',
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+  sla_response_hours INTEGER NOT NULL DEFAULT 24,
+  preventive_maintenance_included SMALLINT NOT NULL DEFAULT 1,
+  labour_included SMALLINT NOT NULL DEFAULT 1,
+  parts_included SMALLINT NOT NULL DEFAULT 0,
+  notes TEXT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CHECK (end_date >= start_date),
+  CHECK (sla_response_hours > 0)
+);
+CREATE INDEX IF NOT EXISTS idx_customer_contracts_customer ON customer_contracts(customer_id,status,end_date);
+CREATE INDEX IF NOT EXISTS idx_customer_contracts_active ON customer_contracts(status,start_date,end_date);
+
+-- V763 - Role-to-role operational communication.
+-- This is deliberately separate from customer_communications: that table keeps
+-- the official BELM <-> customer-company history, while this table routes
+-- day-to-day messages to operational roles without exposing unrelated data.
+CREATE TABLE IF NOT EXISTS role_communications (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NULL REFERENCES customers(id) ON DELETE CASCADE,
+  sender_scope VARCHAR(20) NOT NULL CHECK (sender_scope IN ('BELM','CUSTOMER')),
+  sender_actor_key VARCHAR(100) NOT NULL,
+  sender_name VARCHAR(255) NOT NULL,
+  sender_role VARCHAR(60) NOT NULL,
+  recipient_scope VARCHAR(20) NOT NULL CHECK (recipient_scope IN ('BELM','CUSTOMER')),
+  recipient_role VARCHAR(60) NOT NULL,
+  subject VARCHAR(180) NOT NULL,
+  message TEXT NOT NULL,
+  priority VARCHAR(20) NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('NORMAL','ATTENTION','URGENT')),
+  related_type VARCHAR(50) NULL,
+  related_id VARCHAR(80) NULL,
+  machine_id VARCHAR(36) NULL REFERENCES machines(id) ON DELETE SET NULL,
+  action_url VARCHAR(500) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_role_communications_belm_inbox
+  ON role_communications(recipient_scope, recipient_role, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_role_communications_customer_inbox
+  ON role_communications(customer_id, recipient_scope, recipient_role, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_role_communications_sender
+  ON role_communications(sender_actor_key, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS role_communication_reads (
+  communication_id VARCHAR(36) NOT NULL REFERENCES role_communications(id) ON DELETE CASCADE,
+  reader_key VARCHAR(100) NOT NULL,
+  read_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (communication_id, reader_key)
+);
+CREATE INDEX IF NOT EXISTS idx_role_communication_reads_reader
+  ON role_communication_reads(reader_key, read_at DESC);

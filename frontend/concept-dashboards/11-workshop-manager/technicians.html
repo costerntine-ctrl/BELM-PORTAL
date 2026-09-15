@@ -1,11 +1,1 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title></head><body><script>
-(function(){
-  var target="/belm-workshop/#manage-technicians";
-  var out=new URL(target, window.location.origin);
-  var incoming=new URLSearchParams(window.location.search);
-  incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });
-  if(window.location.hash && !out.hash) out.hash=window.location.hash;
-  window.location.replace(out.pathname + out.search + out.hash);
-})();
-</script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="cache-control" content="no-store"><title>BELM Workshop Manager — Technicians</title><script>(function(){var q=new URLSearchParams(location.search);var u=new URL('/roles-manager/',location.origin);u.searchParams.set('role','Technician');u.searchParams.set('technical','1');u.searchParams.set('from','workshop-manager');q.forEach(function(v,k){if(!u.searchParams.has(k))u.searchParams.set(k,v)});location.replace(u.pathname+u.search);})();</script></head><body><p>Opening Technician management…</p></body></html>

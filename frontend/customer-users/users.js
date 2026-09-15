@@ -77,7 +77,7 @@
     store_keeper: ["machine-expenses", "store", "workflow"],
     accounts: ["machine-expenses", "fuel-usage", "email", "workflow"],
     procurement: ["machine-expenses", "store", "service-request", "workflow"],
-    operator: ["fuel-usage", "operator-reports", "report-problem"],
+    operator: ["fuel-usage", "operator-reports", "report-problem", "check-up"],
     technician: ["operator-reports", "report-problem", "check-up", "workflow"],
     admin: "all",
     assistant: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store"],
@@ -235,7 +235,7 @@
       const addButton = document.getElementById("addButton");
       if (addButton) addButton.disabled = used >= limit;
       if (used >= limit) {
-        info.textContent += " Contact BELM Workshop Manager Portal to request additional users.";
+        info.textContent += " Contact BELM Operations Portal to request additional users.";
       }
     } catch (_) {
       info.textContent = "";

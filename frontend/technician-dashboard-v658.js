@@ -34,6 +34,15 @@
     return 'Machine condition has not been checked yet.';
   }
   function opValue(machine){return String(machine?.operationalStatus||machine?.operational_status||'NORMAL').toUpperCase()}
+  const safetyRank={UNKNOWN:0,GREEN:1,YELLOW:2,RED:3};
+  function safetyLevel(value){
+    const raw=String(value||'UNKNOWN').toUpperCase();
+    if(raw.includes('RED')||raw.includes('CRITICAL')||raw.includes('OVERDUE'))return'RED';
+    if(raw.includes('YELLOW')||raw.includes('WARNING')||raw.includes('ATTENTION')||raw.includes('DUE SOON'))return'YELLOW';
+    if(raw.includes('GREEN')||raw.includes('NORMAL')||raw.includes('OK')||raw.includes('ON SCHEDULE'))return'GREEN';
+    return'UNKNOWN';
+  }
+  function highestSafety(...values){return values.map(safetyLevel).reduce((best,level)=>safetyRank[level]>safetyRank[best]?level:best,'UNKNOWN')}
   const opLabels={NORMAL:'Normal',SERVICE_IN_PROGRESS:'Service in progress',CHECKUP_IN_PROGRESS:'Check-up in progress',MAINTENANCE_IN_PROGRESS:'Maintenance in progress',GROUNDED:'Grounded'};
 
   function modal(title,html){
@@ -69,8 +78,10 @@
 
   function card(machine,nativeButton){
     const c=condition(machine),op=operator(machine),model=machine.model||machine.machineModel||'Machine',type=machine.machineType||machine.machine_type||'Machine',serial=machine.serialNumber||machine.serial_number||machine.regNumber||machine.reg_number||'—',fleet=machine.fleetNumber||machine.fleet_number||'—',status=opValue(machine);
+    // V767: RED + YELLOW = RED. Use the highest active safety source for the card shell.
+    const overallSafety=highestSafety(c.status,machine.serviceStatus?.level,machine.service_status?.level,machine.serviceRange,machine.service_range,status==='GROUNDED'?'RED':'UNKNOWN');
     const el=document.createElement('article');
-    el.className=`belm-tech658-card status-${c.status.toLowerCase()}`;el.dataset.machineId=machine.id||'';
+    el.className=`belm-tech658-card status-${overallSafety.toLowerCase()}`;el.dataset.machineId=machine.id||'';el.dataset.alertPriority=overallSafety;
     el.innerHTML=`
       <div class="top"><div><h2>${esc(model)}</h2><div class="identity">${esc(type)} · ${esc(serial)}</div></div><div class="fleet"><small>FLEET NO.</small><b>${esc(fleet)}</b></div></div>
       <div class="stripe"></div>
@@ -78,7 +89,7 @@
       <section class="alerts"><div class="operator"><small>OPERATOR MESSAGE</small><strong>${esc(op.text)}</strong><p>${esc(op.meta)}</p></div><div class="machine-alert"><small>MACHINE ALERT</small><strong>${esc(reasons(machine,c))}</strong><p>Service range: ${esc(machine.serviceRange||machine.service_range||'checking…')}</p></div></section>
       <details><summary><b>MACHINE DETAILS</b><span>Type, registration, serial & service kit</span></summary><div class="detail-grid"><div><small>Brand</small><b>${esc(machine.brand||'Not recorded')}</b></div><div><small>Machine Type</small><b>${esc(type)}</b></div><div><small>Serial No.</small><b>${esc(machine.serialNumber||machine.serial_number||'Not recorded')}</b></div><div><small>Registration</small><b>${esc(machine.regNumber||machine.reg_number||'Not recorded')}</b></div><div><small>Service Kit</small><b>${esc(machine.serviceKit||machine.service_kit||'Not recorded')}</b></div><div><small>Last Checked</small><b>${esc(machine.lastCheckedAt||machine.last_checked_at||'Never checked')}</b></div></div></details>
       <section class="activity"><div><b>ACTIVITY STATUS</b><small>Synced live to Customer and BELM</small></div><select aria-label="Activity Status">${Object.entries(opLabels).map(([v,l])=>`<option value="${v}" ${v===status?'selected':''}>${esc(l)}</option>`).join('')}</select></section>
-      <div class="actions"><button class="report" type="button">▤ <span>Report</span></button><button class="check" type="button">▣ <span>Check Up</span>${c.status==='RED'||c.status==='YELLOW'?'<i>!</i>':''}</button><button class="parts" type="button">⚙ <span>Service Parts</span></button><button class="jobs" type="button">▰ <span>Machine Job Cards</span></button></div>`;
+      <div class="actions"><button class="report" type="button">▤ <span>Report</span></button><button class="check" type="button">▣ <span>Check Up</span>${overallSafety==='RED'||overallSafety==='YELLOW'?'<i>!</i>':''}</button><button class="parts" type="button">⚙ <span>Service Parts</span></button><button class="jobs" type="button">▰ <span>Machine Job Cards</span></button></div>`;
     el.querySelector('.report').onclick=e=>{e.stopPropagation();openReports(machine)};
     el.querySelector('.parts').onclick=e=>{e.stopPropagation();openServiceParts(machine)};
     el.querySelector('.jobs').onclick=e=>{e.stopPropagation();location.href=`/technician-job-cards/?machine=${encodeURIComponent(machine.id)}`};

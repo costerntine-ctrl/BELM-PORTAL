@@ -62,8 +62,8 @@
     "accounts": ["FINANCE / ACCOUNTS", "Open the Finance & Accounts dashboard", "/concept-dashboards/09-finance-accounts/"],
     "finance / accounts": ["FINANCE / ACCOUNTS", "Open the Finance & Accounts dashboard", "/concept-dashboards/09-finance-accounts/"],
     "bank controller": ["BANK CONTROLLER", "Open the Bank Controller dashboard", "/bank-controller/"],
-    "system coordinator": ["SYSTEM COORDINATOR", "Open System Settings", "/concept-dashboards/10-system-settings/"],
-    "coordinator": ["SYSTEM COORDINATOR", "Open System Settings", "/concept-dashboards/10-system-settings/"],
+    "system coordinator": ["SYSTEM COORDINATOR", "Open System Settings", "/settings-manager/"],
+    "coordinator": ["SYSTEM COORDINATOR", "Open System Settings", "/settings-manager/"],
     "operator": ["MACHINE OPERATOR", "Open the Machine Operator dashboard", "/concept-dashboards/07-operator/"],
     "machine operator": ["MACHINE OPERATOR", "Open the Machine Operator dashboard", "/concept-dashboards/07-operator/"],
     "general analysis": ["GENERAL ANALYSIS", "Open the General Analysis dashboard", "/general-analysis/"],
@@ -75,20 +75,20 @@
     "administration": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
     "customer admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
     "workshop admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
-    "procurement": ["PROCUREMENT", "Open your company Procurement dashboard", "/customer-procurement-home/"],
-    "store keeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store/"],
-    "storekeeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store/"],
-    "finance": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-billing/"],
-    "accounts": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-billing/"],
+    "procurement": ["PROCUREMENT", "Open your company Procurement dashboard", "/customer-procurement-dashboard/"],
+    "store keeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store-dashboard/"],
+    "storekeeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store-dashboard/"],
+    "finance": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-finance/"],
+    "accounts": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-finance/"],
     "technician": ["TECHNICIAN", "Open your company Technician workspace", "/customer-workshop/"],
     "workshop manager": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop/"],
     "workshop supervisor": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop/"],
-    "operator": ["MACHINE OPERATOR", "Open your Machine Operator dashboard", "/concept-dashboards/07-operator/"]
+    "operator": ["MACHINE OPERATOR", "Open your Machine Operator dashboard", "/customer-operator-dashboard/"]
   };
 
   const roleInfo = session.type === "customer"
     ? (customerRoutes[role] || [rawRole.toUpperCase(), "Open your assigned dashboard", "/portal-cwm/"])
-    : (staffRoutes[role] || [rawRole.toUpperCase(), "Open your assigned BELM workspace", "/belm-workshop/"]);
+    : (staffRoutes[role] || [rawRole.toUpperCase(), "Open your assigned BELM workspace", "/concept-dashboards/11-workshop-manager/"]);
 
   function go(url) {
     const curtain = $("navCurtain");

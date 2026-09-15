@@ -27,7 +27,7 @@ $categories = [
     'suppliers' => ['label' => 'Suppliers', 'tables' => ['suppliers']],
     'billing' => ['label' => 'Billing & Finance', 'tables' => ['invoice_items', 'payments', 'receipts', 'invoices', 'proforma_invoice_items', 'proforma_invoices', 'company_expenses']],
     'service-requests' => ['label' => 'Job Cards', 'tables' => []],
-    'bank' => ['label' => 'Bank Manager', 'tables' => []],
+    'bank' => ['label' => 'Bank Controller', 'tables' => []],
     'tasks' => ['label' => 'Tasks', 'tables' => ['tasks']],
     'activity' => ['label' => 'Activity Log, Trash & Announcements', 'tables' => ['activity_logs', 'trash_entries', 'admin_announcements']],
     'machine-expenses' => ['label' => 'Procurement logs', 'tables' => []],
@@ -551,7 +551,7 @@ try {
         }
         json_out([
             'ok' => true,
-            'message' => 'Bank Manager cleared successfully. Billing & Finance and everything else is untouched.',
+            'message' => 'Bank Controller cleared successfully. Billing & Finance and everything else is untouched.',
         ]);
     }
 

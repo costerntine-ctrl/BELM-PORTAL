@@ -1,11 +1,1 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title></head><body><script>
-(function(){
-  var target="/belm-workshop/#assigned-work";
-  var out=new URL(target, window.location.origin);
-  var incoming=new URLSearchParams(window.location.search);
-  incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });
-  if(window.location.hash && !out.hash) out.hash=window.location.hash;
-  window.location.replace(out.pathname + out.search + out.hash);
-})();
-</script></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="cache-control" content="no-store"><title>BELM Workshop Manager — Schedule</title><script>location.replace('/concept-dashboards/11-workshop-manager/#workshop-schedule');</script></head><body><p>Opening Workshop schedule…</p></body></html>

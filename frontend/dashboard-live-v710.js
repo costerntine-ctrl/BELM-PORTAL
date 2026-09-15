@@ -16,6 +16,20 @@
   function currentUser() {
     return parseJSON("belm_admin_user") || parseJSON("belm_tech_user") || parseJSON("belm_operator_user") || parseJSON("belm_customer_user") || null;
   }
+  function parseTokenPayload(token) {
+    if (!token) return null;
+    try {
+      let raw = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      raw += "=".repeat((4 - raw.length % 4) % 4);
+      return JSON.parse(decodeURIComponent(Array.from(atob(raw)).map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")));
+    } catch (_) { return null; }
+  }
+  const technicianPayload = parseTokenPayload(localStorage.getItem("belm_tech_token"));
+  const customerPayload = parseTokenPayload(localStorage.getItem("belm_customer_token"));
+  const customerTokenRole = String(customerPayload && (customerPayload.roleName || customerPayload.customerRole || customerPayload.role) || "").toLowerCase();
+  const customerScopedTechnician = dashboard === "02-technician" && Boolean(
+    (technicianPayload && technicianPayload.isCustomerManaged) || customerTokenRole.includes("technician")
+  );
   function hasSession() { return Boolean(activeToken); }
   function normalizeText(el) { return String(el && el.textContent || "").replace(/\s+/g, " ").trim().toUpperCase(); }
   function go(target) { if (target) location.href = target; }
@@ -61,6 +75,15 @@
       account && (account.role || account.roleName || account.customerRole) ||
       localStorage.getItem("belm_active_account_type") || ""
     ).trim().toLowerCase().replace(/[_-]+/g, " ");
+    if (localStorage.getItem("belm_customer_token")) {
+      if (role.includes("workshop manager") || role.includes("workshop supervisor")) return "/customer-workshop/?actor=customer";
+      if (role.includes("technician")) return "/customer-workshop/?actor=customer";
+      if (role.includes("procurement")) return "/customer-procurement-dashboard/";
+      if (role.includes("store keeper") || role.includes("storekeeper")) return "/customer-store-dashboard/";
+      if (role.includes("operator")) return "/customer-operator-dashboard/";
+      if (role.includes("finance") || role.includes("accounts") || role.includes("accountant")) return "/customer-finance/";
+      return "/customer-admin-dashboard/";
+    }
     if (role.includes("workshop manager") || role === "engineer" || role.includes("technical dep")) return "/concept-dashboards/11-workshop-manager/";
     if (role.includes("technician")) return "/concept-dashboards/02-technician/";
     if (role.includes("procurement")) return "/concept-dashboards/03-procurement/";
@@ -68,7 +91,7 @@
     if (role.includes("store keeper") || role.includes("storekeeper")) return "/concept-dashboards/06-storekeeper/";
     if (role.includes("operator")) return "/concept-dashboards/07-operator/";
     if (role.includes("finance") || role.includes("accounts") || role.includes("accountant")) return "/concept-dashboards/09-finance-accounts/";
-    if (role.includes("system coordinator") || role === "coordinator") return "/concept-dashboards/10-system-settings/";
+    if (role.includes("system coordinator") || role === "coordinator") return "/settings-manager/";
     if (role.includes("bank controller")) return "/bank-controller/";
     if (role.includes("super admin") || role === "admin" || role.includes("belm admin")) return "/concept-dashboards/01-admin-home/";
     if (localStorage.getItem("belm_customer_token")) return "/portal-v2/#role";
@@ -118,10 +141,10 @@
     "05-inspection-repair": {
       "dashboard.php":"/concept-dashboards/11-workshop-manager/",
       "inspection-checklists.php":"/reports-manager/?view=checklists&module=workshop",
-      "diagnosis.php":"/belm-workshop/#job-cards",
-      "repair-jobs.php":"/belm-workshop/#job-cards",
+      "diagnosis.php":"/concept-dashboards/11-workshop-manager/job-cards.html",
+      "repair-jobs.php":"/concept-dashboards/11-workshop-manager/job-cards.html",
       "waiting-for-spares.php":"/spare-parts-manager/?view=requests&module=workshop",
-      "testing-completion.php":"/belm-workshop/#job-cards",
+      "testing-completion.php":"/concept-dashboards/11-workshop-manager/job-cards.html",
       "service-reports.php":"/workshop-analysis/?actor=admin&module=workshop",
       "machine-history.php":"/customers-manager/?view=all-machines&module=customer-overview",
       "communication.php":"/customers-manager/?module=customer-overview",
@@ -134,7 +157,7 @@
       "stock-out-issues.php":"/spare-parts-manager/?view=stock-out&module=inventory",
       "spare-requests.php":"/spare-parts-manager/?view=requests&module=inventory",
       "low-stock-shortages.php":"/spare-parts-manager/?view=low-stock&module=inventory",
-      "tools-register.php":"/belm-workshop/#tool-issue-documents",
+      "tools-register.php":"/belm-workshop/tool-issues/",
       "stock-audit.php":"/spare-parts-manager/?view=audit&module=inventory",
       "inventory-reports.php":"/reports-manager/?view=inventory&module=inventory",
       "department-analysis.php":"/reports-manager/?view=inventory&module=inventory",
@@ -152,6 +175,10 @@
       "my-profile.php":"/operator/#profile"
     }
   };
+
+  if (customerScopedTechnician) {
+    fileRouteMaps["02-technician"]["spare-requests.php"] = "/technician-job-cards/";
+  }
 
   const routeMap = fileRouteMaps[dashboard] || {};
   document.querySelectorAll("a[href]").forEach(a => {
@@ -182,14 +209,14 @@
       "VIEW DETAILS": "/belm-procurement/?view=delivery&module=procurement"
     },
     "05-inspection-repair": {
-      "NEW INSPECTION": "/belm-workshop/#job-cards",
-      "REVIEW DIAGNOSIS": "/belm-workshop/#job-cards",
+      "NEW INSPECTION": "/concept-dashboards/11-workshop-manager/job-cards.html",
+      "REVIEW DIAGNOSIS": "/concept-dashboards/11-workshop-manager/job-cards.html",
       "CHECK SPARE": "/spare-parts-manager/?view=requests&module=workshop",
-      "START TESTING": "/belm-workshop/#job-cards",
-      "VIEW ALL": "/belm-workshop/#job-cards",
+      "START TESTING": "/concept-dashboards/11-workshop-manager/job-cards.html",
+      "VIEW ALL": "/concept-dashboards/11-workshop-manager/job-cards.html",
       "OPEN CHECKLIST": "/reports-manager/?view=checklists&module=workshop",
-      "ADD FINDINGS": "/belm-workshop/#job-cards",
-      "ASSIGN TECHNICIAN": "/belm-workshop/#manage-technicians",
+      "ADD FINDINGS": "/concept-dashboards/11-workshop-manager/job-cards.html",
+      "ASSIGN TECHNICIAN": "/concept-dashboards/11-workshop-manager/technicians.html",
       "GENERATE REPORT": "/workshop-analysis/?actor=admin&module=workshop"
     },
     "06-storekeeper": {
@@ -206,6 +233,10 @@
     "07-operator": { "ADD COMMENT": "/operator/#report" },
     "08-daily-checklist": { "DOWNLOAD PDF": "#belm-print", "EXPORT CSV": "#belm-checklist-csv" }
   };
+
+  if (customerScopedTechnician) {
+    actionRoutes["02-technician"]["REQUEST SPARE"] = "/technician-job-cards/";
+  }
 
   function contextTitle(el) {
     const panel = el.closest(".belm-panel, .panel, section");
@@ -321,7 +352,7 @@
     const mainCardRoutes = {
       "ACTIVE CUSTOMERS": "/customers-manager/?module=customer-overview",
       "REGISTERED MACHINES": "/customers-manager/?view=all-machines&module=customer-overview",
-      "OPEN JOB CARDS": "/belm-workshop/#job-cards",
+      "OPEN JOB CARDS": "/concept-dashboards/11-workshop-manager/job-cards.html",
       "PENDING APPROVALS": "/concept-dashboards/04-customer-registration/?view=pending"
     };
     document.querySelectorAll(".belm-stat-card").forEach(card => {

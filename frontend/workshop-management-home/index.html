@@ -1,116 +1,19 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#071a31">
-  <title>BELM Role Activity & Analysis</title>
-  <link rel="icon" href="/app-icon-192.png">
-  <link rel="apple-touch-icon" href="/app-icon-192.png">
-  <link rel="manifest" href="/belm-app.webmanifest">
-  <link rel="stylesheet" href="/theme-global.css?v=671-multi-role-dashboard">
-  <script src="/theme-manager.js?v=671-multi-role-dashboard"></script>
-  <link rel="stylesheet" href="/workshop-management-home/home.css?v=679-role-activity-menu">
-</head>
-<body>
-  <button id="menuButton" class="mobile-menu-button" type="button" aria-label="Open dashboard menu" aria-controls="dashboardSidebar" aria-expanded="false">☰</button>
-  <div id="menuScrim" class="menu-scrim" hidden></div>
-
-  <aside id="dashboardSidebar" class="dashboard-sidebar" aria-label="Selected BELM role activity menu">
-    <a class="sidebar-brand" href="/workshop-management-home/" aria-label="BELM dashboard home">
-      <span class="sidebar-logo"><img src="/app-icon-192.png" alt=""></span>
-      <span><strong>BELM</strong><small>OPERATIONS PLATFORM</small></span>
-    </a>
-
-    <div class="signed-user">
-      <span id="userInitials" class="signed-avatar">BU</span>
-      <span class="signed-copy"><strong id="signedUserName">BELM User</strong><small id="signedUserPrimaryRole">Assigned role</small></span>
-    </div>
-
-    <div class="sidebar-heading"><span id="sidebarRoleTitle">ROLE ACTIVITY</span><b id="visibleModuleCount">0</b></div>
-    <nav id="roleNavigation" class="role-navigation" aria-label="Role activity menu">
-      <div class="sidebar-nav-loading">Preparing role menu…</div>
-    </nav>
-
-    <details class="portal-switcher">
-      <summary>Portal switcher <span>+</span></summary>
-      <div>
-        <a href="/belm-workshop/"><b>BELM WORKSHOP MANAGER PORTAL</b><small>BELM workshop operations</small></a>
-        <a id="settingsLink" href="/settings-manager/"><b>System Settings</b><small>Portal and company configuration</small></a>
-      </div>
-    </details>
-
-    <div class="sidebar-actions">
-      <button id="themeButton" type="button">☾ Dark mode</button>
-      <button id="logoutButton" type="button">Log out securely</button>
-    </div>
-  </aside>
-
-  <main class="dashboard-main">
-    <header class="company-header">
-      <div class="company-title">
-        <span class="company-mark" aria-hidden="true">B</span>
-        <div><p>BELM COMPANY WORKSPACE</p><h1>BELM GENERAL TECH SERVICE LTD</h1></div>
-      </div>
-      <dl class="company-details">
-        <div><dt>Location</dt><dd>Temeke, Dar es Salaam</dd></div>
-        <div><dt>Contact mail</dt><dd><a href="mailto:info@belmgeneral.co.tz">info@belmgeneral.co.tz</a></dd></div>
-        <div><dt>Phone</dt><dd><a href="tel:+255713309529">+255 713 309 529</a></dd></div>
-        <div><dt>Your role</dt><dd id="headerRole">Assigned role</dd></div>
-        <div><dt>Date</dt><dd id="headerDate">—</dd></div>
-      </dl>
-    </header>
-
-    <section class="analysis-toolbar" aria-labelledby="moduleTitle">
-      <div>
-        <p id="moduleEyebrow" class="eyebrow">BELM SUPER ADMIN</p>
-        <h2 id="moduleTitle">Super Admin Operations Analysis</h2>
-        <p id="moduleDescription">Company-wide approvals, users, operations and performance under Super Admin control.</p>
-      </div>
-      <div class="toolbar-actions">
-        <label id="roleSelectWrap" hidden>Role activity
-          <select id="roleSelect" aria-label="Choose BELM role activity"></select>
-        </label>
-        <label>Analysis period
-          <select id="periodSelect">
-            <option value="today">Today</option>
-            <option value="week">This week</option>
-            <option value="month" selected>This month</option>
-            <option value="year">This year</option>
-          </select>
-        </label>
-        <button id="refreshButton" type="button">↻ Refresh</button>
-        <a id="openWorkspaceButton" class="primary-action" href="/overview-manager/">Open detailed analysis →</a>
-      </div>
-    </section>
-
-    <div id="dashboardAlert" class="dashboard-alert" hidden role="status" aria-live="polite"></div>
-    <p id="syncLine" class="sync-line">Preparing live analysis…</p>
-
-    <section id="metricGrid" class="metric-grid" aria-label="Selected module summary">
-      <article class="metric skeleton"></article><article class="metric skeleton"></article><article class="metric skeleton"></article><article class="metric skeleton"></article>
-    </section>
-
-    <section class="analysis-layout">
-      <article class="analysis-panel primary-panel">
-        <div class="panel-heading"><div><p id="primaryPanelEyebrow">ROLE PERFORMANCE</p><h3 id="primaryPanelTitle">Responsibilities by role</h3></div><span id="primaryPanelBadge" class="panel-badge">LIVE</span></div>
-        <div id="primaryPanelBody" class="panel-body"><div class="loading-state">Loading operational data…</div></div>
-      </article>
-
-      <aside class="analysis-panel attention-panel">
-        <div class="panel-heading"><div><p>ACTION CENTRE</p><h3>Needs attention</h3></div><span class="live-dot" title="Live data"></span></div>
-        <div id="attentionList" class="attention-list"><div class="loading-state">Checking priorities…</div></div>
-      </aside>
-    </section>
-
-    <section class="analysis-panel activity-panel">
-      <div class="panel-heading"><div><p>LATEST MOVEMENT</p><h3 id="activityTitle">Recent BELM activity</h3></div><a id="secondaryWorkspaceLink" href="/reports-manager/">View reports →</a></div>
-      <div id="activityBody" class="activity-body"><div class="loading-state">Loading latest records…</div></div>
-    </section>
-
-    <footer class="dashboard-footer"><span>© BELM General Tech Service Ltd</span><span>Role Operations & Analysis</span></footer>
-  </main>
-
-  <script src="/workshop-management-home/home.js?v=706-wm-clean"></script>
-</body>
-</html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="cache-control" content="no-store"><title>BELM Operations Portal — Redirecting</title>
+<script>
+(function(){
+  var role=String(new URLSearchParams(location.search).get('role')||'').toLowerCase();
+  var map={
+    workshop:'/concept-dashboards/11-workshop-manager/',
+    'workshop-manager':'/concept-dashboards/11-workshop-manager/',
+    technician:'/concept-dashboards/02-technician/',
+    procurement:'/concept-dashboards/03-procurement/',
+    store:'/concept-dashboards/06-storekeeper/',
+    registration:'/concept-dashboards/04-customer-registration/',
+    finance:'/concept-dashboards/09-finance-accounts/',
+    bank:'/bank-controller/',
+    coordinator:'/settings-manager/'
+  };
+  location.replace(map[role]||'/portal-v2/');
+})();
+</script></head><body><p>Opening BELM Home Dashboard…</p></body></html>

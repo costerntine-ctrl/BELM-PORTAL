@@ -38,10 +38,10 @@
     if(session.type==='customer'||session.type==='operator'){
       return ({customer_admin:'/customer-admin-dashboard/',workshop_manager:'/customer-workshop/?actor=customer',technician:'/concept-dashboards/02-technician/',operator:'/customer-operator-dashboard/',procurement:'/customer-procurement-dashboard/',store_keeper:'/customer-store-dashboard/',accounts:'/customer-finance/'})[r]||'/portal-cwm/';
     }
-    return ({super_admin:'/concept-dashboards/01-admin-home/',workshop_manager:'/belm-workshop/',technician:'/tech',procurement:'/belm-procurement/',store_keeper:'/concept-dashboards/06-storekeeper/',registration_sales:'/concept-dashboards/04-customer-registration/',finance_accounts:'/concept-dashboards/09-finance-accounts/',bank_controller:'/bank-controller/',system_coordinator:'/settings-manager/'})[r]||'/concept-dashboards/01-admin-home/';
+    return ({super_admin:'/concept-dashboards/01-admin-home/',workshop_manager:'/concept-dashboards/11-workshop-manager/',technician:'/concept-dashboards/02-technician/',procurement:'/concept-dashboards/03-procurement/',store_keeper:'/concept-dashboards/06-storekeeper/',registration_sales:'/concept-dashboards/04-customer-registration/',finance_accounts:'/concept-dashboards/09-finance-accounts/',bank_controller:'/bank-controller/',system_coordinator:'/settings-manager/'})[r]||'/concept-dashboards/01-admin-home/';
   }
 
-  const moduleParents={settings:'/settings-manager/',registration:'/concept-dashboards/04-customer-registration/',finance:'/concept-dashboards/09-finance-accounts/',workshop:'/belm-workshop/',inventory:'/concept-dashboards/06-storekeeper/',procurement:'/belm-procurement/',bank:'/bank-controller/',reports:'/role-reports/','customer-overview':'/customers-manager/','roles-users':'/roles-manager/'};
+  const moduleParents={settings:'/settings-manager/',registration:'/concept-dashboards/04-customer-registration/',finance:'/concept-dashboards/09-finance-accounts/',workshop:'/concept-dashboards/11-workshop-manager/',inventory:'/concept-dashboards/06-storekeeper/',procurement:'/concept-dashboards/03-procurement/',bank:'/bank-controller/',reports:'/role-reports/','customer-overview':'/customers-manager/','roles-users':'/roles-manager/'};
   const prefixes=[
     ['/general-report/report','/general-report/'],['/general-report/record','/general-report/'],
     ['/tech-checked-report','/tech'],['/tech-record-detail','/tech'],['/tech-report','/tech'],['/technician-job-cards','/tech'],['/technician-tasks','/tech'],
@@ -49,7 +49,7 @@
     ['/customer-finance-workspace','/customer-finance/'],['/customer-sales-documents','/customer-finance/'],['/customer-petty-cash','/customer-finance/'],
     ['/customer-store-audit','/customer-store-dashboard/'],['/customer-tools-register','/customer-store-dashboard/'],['/customer-store','/customer-store-dashboard/'],
     ['/customer-checkup','/portal/dashboard?view=machines'],['/customer-fuel-usage','/customer-operator-dashboard/'],['/customer-job-card','/customer-workshop/?actor=customer'],
-    ['/workshop-analysis','/belm-workshop/'],['/workshop-communication','/belm-workshop/'],['/workshop-requests','/belm-workshop/'],
+    ['/workshop-analysis','/concept-dashboards/11-workshop-manager/'],['/workshop-communication','/concept-dashboards/11-workshop-manager/'],['/workshop-requests','/concept-dashboards/11-workshop-manager/'],
     ['/billing-manager','/concept-dashboards/09-finance-accounts/'],['/suppliers-manager','/belm-procurement/'],['/spare-parts-manager','/concept-dashboards/06-storekeeper/'],
     ['/checklist-manager','/settings-manager/'],['/recycle-bin','/settings-manager/'],['/coordinator/','/settings-manager/'],
     ['/role-communications',null],['/role-reports',null],['/general-report','/role-reports/']

@@ -71,10 +71,10 @@
   };
 
   const customerRoutes = {
-    "owner": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
-    "administration": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
-    "customer admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
-    "workshop admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
+    "owner": ["CUSTOMER ADMIN", "Open your company dashboard", "/customer-admin-dashboard/"],
+    "administration": ["CUSTOMER ADMIN", "Open your company dashboard", "/customer-admin-dashboard/"],
+    "customer admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/customer-admin-dashboard/"],
+    "workshop admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/customer-admin-dashboard/"],
     "procurement": ["PROCUREMENT", "Open your company Procurement dashboard", "/customer-procurement-dashboard/"],
     "store keeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store-dashboard/"],
     "storekeeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store-dashboard/"],
@@ -87,7 +87,7 @@
   };
 
   const roleInfo = session.type === "customer"
-    ? (customerRoutes[role] || [rawRole.toUpperCase(), "Open your assigned dashboard", "/portal-cwm/"])
+    ? (customerRoutes[role] || [rawRole.toUpperCase(), "Open your assigned dashboard", "/customer-admin-dashboard/"])
     : (staffRoutes[role] || [rawRole.toUpperCase(), "Open your assigned BELM workspace", "/concept-dashboards/11-workshop-manager/"]);
 
   function go(url) {

@@ -327,7 +327,6 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             $portalLink = customer_portal_slug($application['company_name']);
             $temporaryPassword = secure_account_secret();
             $recoveryCode = account_recovery_code();
-            $customerCode = belm_generate_customer_code($pdo);
             // V447: PORTAL-CWM applicants start already Self-Service +
             // Workshop Module ON (independent from day one); TECHNICAL_DEP
             // applicants start with BELM as Service Provider, both OFF, as
@@ -338,9 +337,9 @@ if ($method === 'PUT' && $id && $action === 'approve') {
             $pdo->prepare(
                 'INSERT INTO customers
                  (id, name, tin_number, vrn, email, phone, address, portal_link,
-                  password, recovery_code_hash, customer_code, is_active, is_machinery_admin,
+                  password, recovery_code_hash, is_active, is_machinery_admin,
                   workshop_module_active, created_at)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())'
+                 VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,NOW())'
             )->execute([
                 $customerId,
                 $application['company_name'],
@@ -352,7 +351,6 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 $portalLink,
                 password_hash($temporaryPassword, PASSWORD_BCRYPT),
                 password_hash($recoveryCode, PASSWORD_BCRYPT),
-                $customerCode,
                 $registration['isMachineryAdmin'],
                 $registration['workshopModuleActive'],
             ]);
@@ -375,7 +373,7 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'APPROVE_CUSTOMER_APPLICATION',
                 'customerApplication',
                 $id,
-                json_encode(['customerId' => $customerId, 'machineCreated' => false, 'registrationMode' => $registration['mode'], 'customerCode' => $customerCode]),
+                json_encode(['customerId' => $customerId, 'machineCreated' => false, 'registrationMode' => $registration['mode']]),
             ]);
 
             $pdo->commit();
@@ -390,7 +388,6 @@ if ($method === 'PUT' && $id && $action === 'approve') {
                 'loginEmail' => $application['email'],
                 'temporaryPassword' => $temporaryPassword,
                 'recoveryCode' => $recoveryCode,
-                'customerCode' => $customerCode,
                 'portalLink' => $portalLink,
                 'loginUrl' => customer_portal_url($portalLink, $application['email']),
                 'registrationMode' => $registration['mode'],

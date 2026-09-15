@@ -77,7 +77,7 @@
     store_keeper: ["machine-expenses", "store", "workflow"],
     accounts: ["machine-expenses", "fuel-usage", "email", "workflow"],
     procurement: ["machine-expenses", "store", "service-request", "workflow"],
-    operator: ["fuel-usage", "operator-reports", "report-problem", "check-up"],
+    operator: ["fuel-usage", "operator-reports", "report-problem"],
     technician: ["operator-reports", "report-problem", "check-up", "workflow"],
     admin: "all",
     assistant: ["machine-expenses", "fuel-usage", "operator-reports", "service-request", "report-problem", "check-up", "store"],

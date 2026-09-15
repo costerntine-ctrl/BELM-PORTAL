@@ -387,23 +387,6 @@ function document_number(string $prefix): string {
     return $prefix . '-' . date('Ymd-His') . '-' . $suffix;
 }
 
-function belm_generate_customer_code(?PDO $pdo = null): string {
-    // Human-readable field code used by BELM Technician site verification.
-    // It is an identifier/second gate only; customer assignment is still the
-    // authorization boundary enforced by backend APIs.
-    $pdo = $pdo ?: db();
-    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    for ($attempt = 0; $attempt < 20; $attempt++) {
-        $suffix = '';
-        for ($i = 0; $i < 8; $i++) $suffix .= $alphabet[random_int(0, strlen($alphabet) - 1)];
-        $code = 'CUS-' . $suffix;
-        $stmt = $pdo->prepare('SELECT 1 FROM customers WHERE UPPER(customer_code)=UPPER(?) LIMIT 1');
-        $stmt->execute([$code]);
-        if (!$stmt->fetchColumn()) return $code;
-    }
-    return 'CUS-' . strtoupper(substr(str_replace('-', '', uuid()), 0, 12));
-}
-
 function secure_account_secret(int $length = 14): string {
     $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
     $secret = '';
@@ -2805,40 +2788,51 @@ function belm_recompute_job_billing_status(string $jobId): string {
     return $status;
 }
 
-// V763: best-effort portal Role Communication. Operational writes must never
-// fail merely because a rolling deployment has not created the new table yet.
-function belm_role_communication_insert(
-    ?string $customerId,
-    string $senderScope,
-    string $senderActorKey,
-    string $senderName,
-    string $senderRole,
-    string $recipientScope,
-    string $recipientRole,
-    string $subject,
-    string $message,
-    string $priority = 'NORMAL',
-    ?string $relatedType = null,
-    ?string $relatedId = null,
-    ?string $machineId = null,
-    ?string $actionUrl = null
-): ?string {
-    try {
-        $priority = strtoupper(trim($priority));
-        if (!in_array($priority, ['NORMAL','ATTENTION','URGENT'], true)) $priority = 'NORMAL';
-        $id = uuid();
-        db()->prepare(
-            'INSERT INTO role_communications
-             (id,customer_id,sender_scope,sender_actor_key,sender_name,sender_role,recipient_scope,recipient_role,subject,message,priority,related_type,related_id,machine_id,action_url,created_at)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
-        )->execute([
-            $id,$customerId,strtoupper($senderScope),$senderActorKey,$senderName,$senderRole,
-            strtoupper($recipientScope),$recipientRole,mb_substr($subject,0,180),mb_substr($message,0,2500),$priority,
-            $relatedType,$relatedId,$machineId,$actionUrl
-        ]);
-        return $id;
-    } catch (Throwable $error) {
-        error_log('BELM role communication insert skipped: ' . $error->getMessage());
-        return null;
+// V763 WORKFLOW CAPABILITY DELEGATION
+// Central, extensible registry of in-workflow authorities that Administration
+// (BELM Super Admin / Workshop Manager for BELM Technicians; Customer Admin /
+// Workshop Manager for their own customer-managed Technicians) can grant to
+// an individual Technician without changing that Technician's role or
+// dashboard page access. Add new capabilities here only - every settings UI
+// and permission check reads this single list.
+const WORKFLOW_CAPABILITIES = [
+    'spare_self_approve' => [
+        'label' => 'Self-Approve Spare Requests',
+        'description' => 'Skip Administration/Owner approval (BOSS_APPROVAL) for spare requests this Technician raises. The request moves straight to Store Check instead of waiting for a manual approval.',
+    ],
+];
+
+function workflow_capabilities_registry(): array {
+    $out = [];
+    foreach (WORKFLOW_CAPABILITIES as $key => $meta) {
+        $out[] = ['key' => $key, 'label' => $meta['label'], 'description' => $meta['description']];
     }
+    return $out;
+}
+
+// Returns a JSON string ready for the workflow_capabilities column, or null
+// when the request body did not include workflowCapabilities at all (so the
+// caller can leave the existing value untouched instead of wiping it).
+function workflow_capabilities_from_body(array $body): ?string {
+    if (!array_key_exists('workflowCapabilities', $body)) return null;
+    $raw = $body['workflowCapabilities'];
+    if (!is_array($raw)) return json_encode([]);
+    $valid = array_keys(WORKFLOW_CAPABILITIES);
+    $clean = array_values(array_unique(array_filter(
+        array_map('strval', $raw),
+        static fn($k) => in_array($k, $valid, true)
+    )));
+    return json_encode($clean);
+}
+
+function user_workflow_capabilities(array $userRow): array {
+    $raw = $userRow['workflow_capabilities'] ?? null;
+    if (!$raw) return [];
+    $decoded = json_decode((string)$raw, true);
+    if (!is_array($decoded)) return [];
+    return array_values(array_intersect($decoded, array_keys(WORKFLOW_CAPABILITIES)));
+}
+
+function user_has_workflow_capability(array $userRow, string $key): bool {
+    return in_array($key, user_workflow_capabilities($userRow), true);
 }

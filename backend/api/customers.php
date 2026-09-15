@@ -142,7 +142,6 @@ function belm_forget_customer_permanently(PDO $pdo, string $customerId): void {
     $pdo->prepare('DELETE FROM customers WHERE id=?')->execute([$customerId]);
 }
 
-
 function validate_customer_details(array $body, ?string $excludeCustomerId = null): array {
     $name = trim((string)($body['name'] ?? ''));
     $email = strtolower(trim((string)($body['email'] ?? '')));
@@ -467,9 +466,8 @@ if ($method === 'GET' && !$action) {
             $c['users'] = $teamVisible ? ($usersByCustomer[$customerId] ?? []) : [];
             $c['portalUserCount'] = $portalUserCountsByCustomer[$customerId] ?? 0;
             $c['userLimit'] = isset($c['user_limit']) ? (int)$c['user_limit'] : null;
-            $c['customerCode'] = (string)($c['customer_code'] ?? '');
         }
-        unset($c['privacy_preferences'], $c['password'], $c['recovery_code_hash'], $c['customer_code']);
+        unset($c['privacy_preferences'], $c['password'], $c['recovery_code_hash']);
     }
     unset($c);
     json_out($customers);
@@ -523,9 +521,8 @@ if ($method === 'GET' && $action === 'one') {
     ];
     if (($user['roleName'] ?? '') !== 'Technician') {
         $customer['users'] = !empty($prefs['teamDirectory']) ? fetch_customer_users($customer['id']) : [];
-        $customer['customerCode'] = (string)($customer['customer_code'] ?? '');
     }
-    unset($customer['privacy_preferences'], $customer['password'], $customer['recovery_code_hash'], $customer['customer_code']);
+    unset($customer['privacy_preferences'], $customer['password'], $customer['recovery_code_hash']);
     json_out($customer);
 }
 
@@ -833,9 +830,8 @@ if ($method === 'POST' && !$action) {
     $recoveryCode = account_recovery_code();
     $newId = uuid();
     $portalLink = customer_portal_slug($details['name']);
-    $customerCode = belm_generate_customer_code();
     $registration = belm_customer_registration_profile($b['registrationMode'] ?? null);
-    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, customer_code, is_active, is_machinery_admin, workshop_module_active, user_limit, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,1,?,?,?,NOW())')
+    db()->prepare('INSERT INTO customers (id, name, tin_number, vrn, email, phone, address, portal_link, password, recovery_code_hash, is_active, is_machinery_admin, workshop_module_active, user_limit, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?,?,NOW())')
         ->execute([
             $newId,
             $details['name'],
@@ -847,7 +843,6 @@ if ($method === 'POST' && !$action) {
             $portalLink,
             password_hash($tempPassword, PASSWORD_BCRYPT),
             password_hash($recoveryCode, PASSWORD_BCRYPT),
-            $customerCode,
             $registration['isMachineryAdmin'],
             $registration['workshopModuleActive'],
             array_key_exists('userLimit', $b) && $b['userLimit'] !== null ? max(1, (int)$b['userLimit']) : null,
@@ -857,12 +852,10 @@ if ($method === 'POST' && !$action) {
         'name' => $details['name'],
         'registrationMode' => $registration['mode'],
         'belmServiceProviderActive' => $registration['belmServiceProviderActive'],
-        'customerCode' => $customerCode,
         'workshopModuleActive' => (bool)$registration['workshopModuleActive'],
     ]);
     json_out([
         'id' => $newId,
-        'customerCode' => $customerCode,
         'registrationMode' => $registration['mode'],
         'registrationModeLabel' => $registration['label'],
         'portalLoginInfo' => [

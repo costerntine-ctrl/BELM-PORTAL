@@ -21,32 +21,16 @@ function contract_row(array $r): array {
     return $r;
 }
 if ($method === 'GET' && $action === 'summary') {
-    $stats = db()->query(
-        "SELECT COUNT(*) FILTER (WHERE status='ACTIVE' AND CURRENT_DATE BETWEEN start_date AND end_date) AS active_contracts,
-                COUNT(*) FILTER (WHERE status='ACTIVE' AND end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days') AS renewals_due
-           FROM customer_contracts"
-    )->fetch();
-    $coveredMachines = db()->query(
-        "SELECT COUNT(DISTINCT m.id)
-           FROM machines m
-           JOIN customer_contracts cc ON cc.customer_id=m.customer_id
-          WHERE m.deleted_at IS NULL
-            AND cc.status='ACTIVE'
-            AND CURRENT_DATE BETWEEN cc.start_date AND cc.end_date"
-    )->fetchColumn();
-    $sla = db()->query(
-        "SELECT COUNT(DISTINCT dj.id)
-           FROM digital_job_cards dj
-           JOIN customer_contracts cc ON cc.customer_id=dj.customer_id
-          WHERE cc.status='ACTIVE'
-            AND CURRENT_DATE BETWEEN cc.start_date AND cc.end_date
-            AND UPPER(COALESCE(dj.status,'')) NOT IN ('COMPLETED','CANCELLED')
-            AND dj.created_at + (cc.sla_response_hours || ' hours')::interval < NOW()"
-    )->fetchColumn();
+    $sql = "SELECT COUNT(*) FILTER (WHERE status='ACTIVE' AND end_date >= CURRENT_DATE) active_contracts,
+                   COUNT(*) FILTER (WHERE status='ACTIVE' AND end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '60 days') renewals_due,
+                   COALESCE(SUM((SELECT COUNT(*) FROM contract_machine_coverage cmc WHERE cmc.contract_id=cc.id)),0) covered_machines
+            FROM customer_contracts cc";
+    $stats = db()->query($sql)->fetch();
+    $sla = db()->query("SELECT COUNT(*) FROM workshop_work_orders wo JOIN customer_contracts cc ON cc.id=wo.contract_id WHERE wo.status NOT IN ('COMPLETED','CANCELLED') AND wo.created_at + (cc.sla_response_hours || ' hours')::interval < NOW()") ->fetchColumn();
     json_out([
         'activeContracts' => (int)($stats['active_contracts'] ?? 0),
         'renewalsDue' => (int)($stats['renewals_due'] ?? 0),
-        'coveredMachines' => (int)$coveredMachines,
+        'coveredMachines' => (int)($stats['covered_machines'] ?? 0),
         'slaAtRisk' => (int)$sla,
     ]);
 }

@@ -268,11 +268,7 @@
         {label:"System Settings",short:"SE",href:"/settings-manager/?module=settings",paths:["/settings-manager/"]},
         {label:"Checklist Templates",short:"CK",href:"/checklist-manager/?module=settings",paths:["/checklist-manager/"]},
         {label:"Departments & Categories",short:"DP",href:"/coordinator/departments/?module=settings",paths:["/coordinator/departments/"]},
-        {label:"Notification Configuration",short:"NT",href:"/coordinator/notifications/?module=settings",paths:["/coordinator/notifications/"]},
-        {label:"Email Settings",short:"EM",href:"/coordinator/email/?module=settings",paths:["/coordinator/email/"]},
-        {label:"WhatsApp Settings",short:"WA",href:"/coordinator/whatsapp/?module=settings",paths:["/coordinator/whatsapp/"]},
-        {label:"SMS Settings",short:"SM",href:"/coordinator/sms/?module=settings",paths:["/coordinator/sms/"]},
-        {label:"Management Mail",short:"MM",href:"/coordinator/management-mail/?module=settings",paths:["/coordinator/management-mail/"]},
+        {label:"Communications & Notifications",short:"CM",href:"/coordinator/communications/?module=settings",paths:["/coordinator/communications/","/coordinator/notifications/","/coordinator/email/","/coordinator/whatsapp/","/coordinator/sms/","/coordinator/management-mail/"]},
         {label:"Recycle Bin",short:"RB",href:"/recycle-bin/?module=settings",paths:["/recycle-bin/"]},
       ]
     }
@@ -283,10 +279,6 @@
     items:[{label:"Return to Main Dashboard",short:"HM",href:"/concept-dashboards/01-admin-home/"}]
   };
   const moduleConfig = M[moduleKey] || fallback;
-  if (moduleKey && moduleConfig !== fallback) {
-    if (!moduleConfig.items.some((item) => item.href === '/role-communications/')) moduleConfig.items.push({label:'Role Communication',short:'CM',href:'/role-communications/'});
-    if (!moduleConfig.items.some((item) => item.href === '/role-reports/')) moduleConfig.items.push({label:'My Role Reports',short:'RP',href:'/role-reports/'});
-  }
   const visiblePages = moduleConfig.items;
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";

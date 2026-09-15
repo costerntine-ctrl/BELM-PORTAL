@@ -75,15 +75,15 @@
     "administration": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
     "customer admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
     "workshop admin": ["CUSTOMER ADMIN", "Open your company dashboard", "/portal-cwm/"],
-    "procurement": ["PROCUREMENT", "Open your company Procurement dashboard", "/customer-procurement-dashboard/"],
-    "store keeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store-dashboard/"],
-    "storekeeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store-dashboard/"],
-    "finance": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-finance/"],
-    "accounts": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-finance/"],
+    "procurement": ["PROCUREMENT", "Open your company Procurement dashboard", "/customer-procurement-home/"],
+    "store keeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store/"],
+    "storekeeper": ["STORE KEEPER", "Open your company Store dashboard", "/customer-store/"],
+    "finance": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-billing/"],
+    "accounts": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-billing/"],
     "technician": ["TECHNICIAN", "Open your company Technician workspace", "/customer-workshop/"],
     "workshop manager": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop/"],
     "workshop supervisor": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop/"],
-    "operator": ["MACHINE OPERATOR", "Open your Machine Operator dashboard", "/customer-operator-dashboard/"]
+    "operator": ["MACHINE OPERATOR", "Open your Machine Operator dashboard", "/concept-dashboards/07-operator/"]
   };
 
   const roleInfo = session.type === "customer"

@@ -34,7 +34,7 @@
   const allowedPages = Array.isArray(tokenUser.allowedPages)
     ? tokenUser.allowedPages
     : Array.isArray(currentUser.allowedPages) ? currentUser.allowedPages : [];
-  // Bank Controller is intentionally stricter than merged page permissions: the
+  // Bank Manager is intentionally stricter than merged page permissions: the
   // backend permits it only when Super Admin is the primary role.
   const isSuperAdmin = primaryRole.toLowerCase() === "super admin";
 
@@ -71,7 +71,7 @@
       title: "Bank Control Analysis",
       description: "Protected company balances, money received, expenses and withdrawals.",
       href: "/bank-controller/",
-      action: "Open Bank Controller →",
+      action: "Open Bank Manager →",
       secondary: "/billing-manager/",
       secondaryLabel: "Billing & finance →",
     },
@@ -549,7 +549,7 @@
       { code: "PL", label: Number(summary.loss) > 0 ? "Recorded loss" : "BELM profit", note: "Current synchronized company position", value: m(Number(summary.loss) > 0 ? summary.loss : summary.belmProfit), tone: Number(summary.loss) > 0 ? "danger" : "", href: "/bank-controller/" },
     ]);
     setActivity("Bank & finance workspaces", workspaceCards([
-      { title: "Bank Controller", note: "Accounts, withdrawals, customer debt and audit.", href: "/bank-controller/" },
+      { title: "Bank Manager", note: "Accounts, withdrawals, customer debt and audit.", href: "/bank-controller/" },
       { title: "Billing & Finance", note: "Invoices, payments, receipts and expenses.", href: "/billing-manager/" },
       { title: "Reports & Comparisons", note: "Compare the current and previous periods.", href: "/reports-manager/" },
       { title: "Petty Cash", note: "BELM internal workshop cash records.", href: "/belm-workshop/petty-cash/" },
@@ -598,7 +598,7 @@
     ]);
     setActivity("Finance workspaces", workspaceCards([
       { title: "Billing & Finance", note: "Invoices, payments, receipts and expenses.", href: "/billing-manager/" },
-      { title: "Bank Controller", note: "Protected banking position for Super Admin.", href: "/bank-controller/" },
+      { title: "Bank Manager", note: "Protected banking position for Super Admin.", href: "/bank-controller/" },
       { title: "Reports & Comparisons", note: "Current versus previous period.", href: "/reports-manager/" },
       { title: "BELM Petty Cash", note: "Workshop internal cash flow.", href: "/belm-workshop/petty-cash/" },
     ]));

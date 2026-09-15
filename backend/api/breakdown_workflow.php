@@ -118,50 +118,6 @@ function bw_is_technician_actor(array $ctx): bool {
         || ($ctx['kind'] === 'customer' && strtolower((string)($ctx['role'] ?? '')) === 'technician');
 }
 
-// V763: translate Maintenance Process movement into the shared Role Communication
-// inbox. This is best-effort only; the Job Card/Spare write remains authoritative.
-function bw_role_key(array $ctx): string {
-    if (($ctx['kind'] ?? '') === 'belm') {
-        $role = strtolower(trim((string)($ctx['role'] ?? '')));
-        return match ($role) {
-            'super admin' => 'super_admin',
-            'workshop manager', 'engineer' => 'workshop_manager',
-            'technician' => 'technician',
-            'procurement' => 'procurement',
-            'store keeper' => 'store_keeper',
-            'registration & sales' => 'registration_sales',
-            'finance / accounts' => 'finance_accounts',
-            'bank controller' => 'bank_controller',
-            'system coordinator' => 'system_coordinator',
-            default => preg_replace('/[^a-z0-9]+/', '_', $role) ?: 'staff',
-        };
-    }
-    if (($ctx['kind'] ?? '') === 'customer-tech') return 'technician';
-    $role = strtolower(trim((string)($ctx['role'] ?? '')));
-    return match ($role) {
-        'owner', 'admin', 'customer_admin' => 'customer_admin',
-        'workshop manager', 'workshop_manager' => 'workshop_manager',
-        'store keeper', 'store_keeper' => 'store_keeper',
-        'finance', 'accounts', 'accountant' => 'accounts',
-        default => preg_replace('/[^a-z0-9]+/', '_', $role) ?: 'customer_admin',
-    };
-}
-
-function bw_role_message(array $ctx, array $case, string $recipientScope, string $recipientRole, string $subject, string $message, string $priority='NORMAL', ?string $relatedType=null, ?string $relatedId=null): void {
-    $senderScope = ($ctx['kind'] ?? '') === 'belm' ? 'BELM' : 'CUSTOMER';
-    $actorId = trim((string)($ctx['actorId'] ?? ''));
-    $actorKey = strtolower($senderScope) . '-workflow:' . ($actorId !== '' ? $actorId : 'system');
-    $actor = $recipientScope === 'BELM' ? 'admin' : 'customer';
-    $caseId = trim((string)($case['id'] ?? $case['case_id'] ?? ''));
-    $url = '/breakdown-workflow/?actor=' . $actor . ($caseId !== '' ? '&case=' . rawurlencode($caseId) : '');
-    belm_role_communication_insert(
-        trim((string)($case['customer_id'] ?? '')) ?: null,
-        $senderScope, $actorKey, (string)($ctx['actorName'] ?? 'Portal User'), bw_role_key($ctx),
-        strtoupper($recipientScope), $recipientRole, $subject, $message, $priority,
-        $relatedType, $relatedId, trim((string)($case['machine_id'] ?? '')) ?: null, $url
-    );
-}
-
 function bw_require_assigned_job(array $ctx, array $job): void {
     if (!bw_is_technician_actor($ctx)) return;
     $actorId = trim((string)($ctx['actorId'] ?? ''));
@@ -196,6 +152,18 @@ function bw_require_assigned_job(array $ctx, array $job): void {
         }
     }
     json_error('This Job Card is not assigned to this Technician.', 403);
+}
+
+function bw_actor_has_workflow_capability(array $ctx, string $key): bool {
+    if (empty($ctx['actorId'])) return false;
+    if (!in_array($ctx['kind'] ?? '', ['belm', 'customer-tech'], true)) return false;
+    static $cache = [];
+    $cacheKey = $ctx['actorId'] . '|' . $key;
+    if (array_key_exists($cacheKey, $cache)) return $cache[$cacheKey];
+    $stmt = db()->prepare('SELECT workflow_capabilities FROM users WHERE id = ?');
+    $stmt->execute([$ctx['actorId']]);
+    $row = $stmt->fetch() ?: [];
+    return $cache[$cacheKey] = user_has_workflow_capability($row, $key);
 }
 
 function bw_log(string $caseId, string $stage, string $department, string $action, ?string $note, array $ctx): void {
@@ -1397,10 +1365,16 @@ if ($method === 'POST' && $action === 'spare') {
         bw_require_assigned_job($ctx,$jobForSpare);
     }
     $name=trim((string)($b['spareName']??'')); $qty=(float)($b['quantity']??1); if($name===''||$qty<=0)json_error('Spare name and quantity are required.');
-    $spareId=uuid(); db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'WAITING_BOSS_APPROVAL',?,NOW(),NOW())")->execute([$spareId,$caseId,$jobCardId!==''?$jobCardId:null,$name,trim((string)($b['partNumber']??''))?:null,$qty,trim((string)($b['unit']??'pcs'))?:'pcs',trim((string)($b['reason']??''))?:null,$ctx['actorName']]);
+    $spareId=uuid();
+    $selfApprove=bw_is_technician_actor($ctx) && bw_actor_has_workflow_capability($ctx,'spare_self_approve');
+    if ($selfApprove) {
+        db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,approved_by_name,approved_at,approval_note,updated_at) VALUES(?,?,?,?,?,?,?,?, 'APPROVED',?,NOW(),?,NOW(),?,NOW())")->execute([$spareId,$caseId,$jobCardId!==''?$jobCardId:null,$name,trim((string)($b['partNumber']??''))?:null,$qty,trim((string)($b['unit']??'pcs'))?:'pcs',trim((string)($b['reason']??''))?:null,$ctx['actorName'],$ctx['actorName'],'Self-approved - Technician holds delegated Spare Self-Approval capability']);
+        bw_set_stage($caseId,'STORE_CHECK',null,$ctx,'Spare self-approved by Technician (delegated capability) - waiting Store check');
+        try { customer_send_team_alert((string)$case['customer_id'],['store'],'SPARE SELF-APPROVED - STORE ACTION REQUIRED',"Technician {$ctx['actorName']} self-approved spare: {$name} x {$qty} using delegated capability. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {}
+        json_out(['id'=>$spareId,'status'=>'APPROVED','selfApproved'=>true],201);
+    }
+    db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'WAITING_BOSS_APPROVAL',?,NOW(),NOW())")->execute([$spareId,$caseId,$jobCardId!==''?$jobCardId:null,$name,trim((string)($b['partNumber']??''))?:null,$qty,trim((string)($b['unit']??'pcs'))?:'pcs',trim((string)($b['reason']??''))?:null,$ctx['actorName']]);
     bw_set_stage($caseId,'BOSS_APPROVAL','Waiting for Administration approval of spare request',$ctx,'Spare requested - waiting Administration approval');
-    bw_role_message($ctx,$case,'CUSTOMER','customer_admin','SPARE APPROVAL REQUIRED - '.$case['model'],
-        'Spare '.$name.' x '.$qty.' requires Administration approval before Store / Procurement continues.','ATTENTION','spare_request',$spareId);
     try {
         $owner = db()->prepare('SELECT email FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
         $owner->execute([(string)$case['customer_id']]);
@@ -1410,30 +1384,22 @@ if ($method === 'POST' && $action === 'spare') {
                 "Administration approval required\nMachine: ".$case['brand'].' '.$case['model']."\nSpare: $name\nQty: $qty\nRequested by: ".$ctx['actorName']."\nOpen Breakdown Workflow to approve or reject.");
         }
     } catch(Throwable $e) {}
-    json_out(['id'=>$spareId],201);
+    json_out(['id'=>$spareId,'status'=>'WAITING_BOSS_APPROVAL','selfApproved'=>false],201);
 }
 
 if ($method === 'PUT' && $action === 'approve-spare' && $id !== '') {
     if($ctx['kind']!=='customer'||!$ctx['isOwner']) json_error('Only the main Customer Administration/Owner can approve spare requests.',403);
     $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?'); $stmt->execute([$id]); $s=$stmt->fetch(); if(!$s||$s['customer_id']!==$ctx['customerId'])json_error('Spare request not found.',404);
-    $case=bw_case_access($ctx,(string)$s['case_id']);
     $b=body(); $approve=!empty($b['approve']); $status=$approve?'APPROVED':'REJECTED';
     db()->prepare('UPDATE breakdown_spare_requests SET status=?,approved_by_name=?,approved_at=NOW(),approval_note=?,updated_at=NOW() WHERE id=?')->execute([$status,$ctx['actorName'],trim((string)($b['note']??''))?:null,$id]);
     bw_set_stage($s['case_id'],$approve?'STORE_CHECK':'DIAGNOSIS',$approve?null:'Spare rejected by Administration',$ctx,$approve?'Spare approved by Administration':'Spare rejected by Administration');
-    if ($approve) {
-        bw_role_message($ctx,$case,'CUSTOMER','store_keeper','SPARE APPROVED - STORE ACTION REQUIRED',
-            "Administration approved {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable route the shortage to Procurement.",'ATTENTION','spare_request',$id);
-        try { customer_send_team_alert($ctx['customerId'],['store'],'SPARE APPROVED - STORE ACTION REQUIRED',"Administration approved spare: {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {}
-    } else {
-        bw_role_message($ctx,$case,'CUSTOMER','workshop_manager','SPARE REQUEST REJECTED',
-            "Administration rejected {$s['spare_name']} x {$s['quantity']}. Review the diagnosis / Job Card before continuing.",'ATTENTION','spare_request',$id);
-    }
+    if ($approve) { try { customer_send_team_alert($ctx['customerId'],['store'],'SPARE APPROVED - STORE ACTION REQUIRED',"Administration approved spare: {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {} }
     json_out(['ok'=>true,'status'=>$status]);
 }
 
 if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
     if (bw_is_technician_actor($ctx)) json_error('Technicians request spares from Job Cards; Store/Procurement status is managed by authorized departments.',403);
-    $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?'); $stmt->execute([$id]); $s=$stmt->fetch(); if(!$s)json_error('Spare request not found.',404); $case=bw_case_access($ctx,(string)$s['case_id']);
+    $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?'); $stmt->execute([$id]); $s=$stmt->fetch(); if(!$s)json_error('Spare request not found.',404); bw_case_access($ctx,$s['case_id']);
     $b=body(); $status=strtoupper(trim((string)($b['status']??''))); $allowed=['STORE_AVAILABLE','PROCUREMENT_REQUIRED','PI_WAITING_ACCOUNTS','ORDERED','PARTS_READY']; if(!in_array($status,$allowed,true))json_error('Invalid spare process status.');
     if ($ctx['kind']==='customer' && !$ctx['isOwner']) {
         $role=$ctx['role'];
@@ -1446,12 +1412,6 @@ if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
         db()->prepare("UPDATE digital_job_cards SET status='IN_PROGRESS',updated_at=NOW() WHERE id=? AND status='WAITING_FOR_PARTS'")->execute([(string)$s['job_card_id']]);
     }
     bw_set_stage($s['case_id'],$stage,trim((string)($b['note']??''))?:null,$ctx,$status==='PARTS_READY'?'Parts ready - Technician can continue repair':'Spare process: '.$status);
-    if ($status==='PROCUREMENT_REQUIRED') bw_role_message($ctx,$case,'CUSTOMER','procurement','PROCUREMENT ACTION REQUIRED',
-        "Approved spare {$s['spare_name']} x {$s['quantity']} is not available in Store. Procurement action is required.",'ATTENTION','spare_request',$id);
-    if ($status==='PI_WAITING_ACCOUNTS') bw_role_message($ctx,$case,'CUSTOMER','accounts','ACCOUNTS / PI ACTION REQUIRED',
-        "Procurement has routed {$s['spare_name']} x {$s['quantity']} to Accounts for PI / finance action.",'ATTENTION','spare_request',$id);
-    if ($status==='PARTS_READY') bw_role_message($ctx,$case,'CUSTOMER','workshop_manager','PARTS READY - REPAIR CAN CONTINUE',
-        "Required spare {$s['spare_name']} x {$s['quantity']} is ready. Workshop can return the Job Card to repair / testing.",'ATTENTION','spare_request',$id);
     try {
         if ($status==='PROCUREMENT_REQUIRED') customer_send_team_alert((string)$s['customer_id'],['service-request','store'],'PROCUREMENT ACTION REQUIRED','Approved spare is not available in Store. Procurement action is required. Open Breakdown Workflow.',true);
         if ($status==='PI_WAITING_ACCOUNTS') customer_send_team_alert((string)$s['customer_id'],['email'],'ACCOUNTS / PI ACTION REQUIRED','Procurement has sent a breakdown spare requirement to Accounts. Open Breakdown Workflow.',true);
@@ -1539,25 +1499,36 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
     db()->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,diagnosis=?,work_done=?,test_result=?,completion_note=?,repeat_issue=?,status=?,started_at=COALESCE(started_at,NOW()),technician_submitted_at=CASE WHEN ? THEN NOW() ELSE technician_submitted_at END,completed_at=NULL,reviewed_at=CASE WHEN ? THEN NULL ELSE reviewed_at END,reviewed_by_name=CASE WHEN ? THEN NULL ELSE reviewed_by_name END,review_note=CASE WHEN ? THEN NULL ELSE review_note END,updated_at=NOW() WHERE id=?")
         ->execute([$ctx['actorId'],$ctx['actorName'],$diagnosis,$work?:null,trim((string)($b['testResult']??''))?:null,trim((string)($b['completionNote']??''))?:null,$repeat?1:0,$nextJobStatus,$complete?1:0,$complete?1:0,$complete?1:0,$complete?1:0,$id]);
     $spareCreated=false;
+    $spareSelfApprove=bw_is_technician_actor($ctx) && bw_actor_has_workflow_capability($ctx,'spare_self_approve');
     if($requiredSpare!==''){
         $existingSpare=db()->prepare("SELECT id FROM breakdown_spare_requests WHERE job_card_id=? AND LOWER(TRIM(spare_name))=LOWER(TRIM(?)) AND UPPER(COALESCE(status,'')) NOT IN ('REJECTED','PARTS_READY') LIMIT 1");
         $existingSpare->execute([$id,$requiredSpare]);
         if(!$existingSpare->fetchColumn()){
-            db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,'pcs','Required from Technician Diagnosis Report','WAITING_BOSS_APPROVAL',?,NOW(),NOW())")
-                ->execute([uuid(),$job['case_id'],$id,$requiredSpare,$requiredSpareQty,$ctx['actorName']]);
+            if($spareSelfApprove){
+                db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,quantity,unit,reason,status,requested_by_name,requested_at,approved_by_name,approved_at,approval_note,updated_at) VALUES(?,?,?,?,?,'pcs','Required from Technician Diagnosis Report','APPROVED',?,NOW(),?,NOW(),?,NOW())")
+                    ->execute([uuid(),$job['case_id'],$id,$requiredSpare,$requiredSpareQty,$ctx['actorName'],$ctx['actorName'],'Self-approved - Technician holds delegated Spare Self-Approval capability']);
+            }else{
+                db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,'pcs','Required from Technician Diagnosis Report','WAITING_BOSS_APPROVAL',?,NOW(),NOW())")
+                    ->execute([uuid(),$job['case_id'],$id,$requiredSpare,$requiredSpareQty,$ctx['actorName']]);
+            }
             $spareCreated=true;
-            try{
-                $owner=db()->prepare('SELECT email FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
-                $owner->execute([(string)$job['customer_id']]);
-                $ownerEmail=trim((string)$owner->fetchColumn());
-                if(filter_var($ownerEmail,FILTER_VALIDATE_EMAIL)) send_email($ownerEmail,'SPARE APPROVAL REQUIRED - JOB CARD '.$job['job_card_no'],"Required spare from Technician Diagnosis Report
+            if(!$spareSelfApprove){
+                try{
+                    $owner=db()->prepare('SELECT email FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
+                    $owner->execute([(string)$job['customer_id']]);
+                    $ownerEmail=trim((string)$owner->fetchColumn());
+                    if(filter_var($ownerEmail,FILTER_VALIDATE_EMAIL)) send_email($ownerEmail,'SPARE APPROVAL REQUIRED - JOB CARD '.$job['job_card_no'],"Required spare from Technician Diagnosis Report
 Job Card: {$job['job_card_no']}
 Spare: $requiredSpare x $requiredSpareQty
 Technician: {$ctx['actorName']}
 Open Breakdown Workflow to approve or reject.");
-            }catch(Throwable $e){}
+                }catch(Throwable $e){}
+            }
         }
-        bw_set_stage($job['case_id'],'BOSS_APPROVAL','Required spare: '.$requiredSpare,$ctx,'Diagnosis saved - waiting required spare');
+        bw_set_stage($job['case_id'],$spareSelfApprove?'STORE_CHECK':'BOSS_APPROVAL',$spareSelfApprove?null:('Required spare: '.$requiredSpare),$ctx,$spareSelfApprove?'Diagnosis saved - spare self-approved by Technician, waiting Store check':'Diagnosis saved - waiting required spare');
+        if($spareSelfApprove){
+            try { customer_send_team_alert((string)$job['customer_id'],['store'],'SPARE SELF-APPROVED - STORE ACTION REQUIRED',"Technician {$ctx['actorName']} self-approved required spare: {$requiredSpare} x {$requiredSpareQty} using delegated capability. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {}
+        }
     }elseif($activeSpareCount>0){
         bw_set_stage($job['case_id'],'BOSS_APPROVAL','Required spare: '.($activeSpareNames?:'Waiting for spare'),$ctx,'Diagnosis updated - required spare still waiting');
     }else{
@@ -1585,13 +1556,6 @@ Open Breakdown Workflow to approve or reject.");
     $customerSubject='TECHNICIAN JOB CARD UPDATE - '.$job['job_card_no'];
     $jobReportStatus=($requiredSpare!==''||$activeSpareCount>0)?'Waiting for Parts':($complete?'Pending Approval':'Diagnosis Report / In progress');
     $customerBody="Job Card: {$job['job_card_no']}\nTechnician: {$ctx['actorName']}\nDiagnosis: $diagnosis\nWork done: $work\nStatus: $jobReportStatus".(($requiredSpare!==''||$activeSpareNames!=='')?"\nRequired spare: ".($requiredSpare?:$activeSpareNames):'').($repeat?'\nRepeat/Rework: YES':'');
-    $managerScope = ($ctx['kind'] ?? '') === 'belm' ? 'BELM' : 'CUSTOMER';
-    bw_role_message($ctx,$case,$managerScope,'workshop_manager',$customerSubject,$customerBody,
-        ($requiredSpare!==''||$activeSpareCount>0||$complete)?'ATTENTION':'NORMAL','job_card',(string)$job['id']);
-    if ($requiredSpare!=='' && $spareCreated) {
-        bw_role_message($ctx,$case,'CUSTOMER','customer_admin','SPARE APPROVAL REQUIRED - JOB CARD '.$job['job_card_no'],
-            "Required spare from Technician diagnosis: $requiredSpare x $requiredSpareQty. Approve/reject it in Maintenance Process.",'ATTENTION','job_card',(string)$job['id']);
-    }
     try {
         $customerDelivery=customer_send_team_alert((string)$case['customer_id'],['workflow','check-up'],$customerSubject,$customerBody,true);
     } catch(Throwable $e) {}

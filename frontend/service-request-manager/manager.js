@@ -109,7 +109,7 @@
         ? '<div class="empty">Nothing hidden. Activated Job Cards and manually hidden history appear here.</div>'
         : activeStatus
           ? '<div class="empty">No service requests in this status.</div>'
-          : '<div class="empty">No active service requests waiting in this inbox. Activated work continues in Technical Department → Job Cards.</div>';
+          : '<div class="empty">No active service requests waiting in this inbox. Activated work continues in Engineering → Job Cards.</div>';
       return;
     }
     requestList.innerHTML = visible.map((request) => {
@@ -298,7 +298,7 @@
       const result = await api(`/service-requests/${requestId}/activate-job-card`, { method: "PUT" });
       setActivateState(button, "is-success", `✓ ${result.jobCard?.jobCardNo || "Activated"}`);
       card?.classList.add("activation-complete");
-      showAlert(`✓ ${result.jobCard?.jobCardNo || "Job Card"} activated. Service Request moved out of the active inbox; continue in Technical Department → Job Cards.`, false);
+      showAlert(`✓ ${result.jobCard?.jobCardNo || "Job Card"} activated. Service Request moved out of the active inbox; continue in Engineering → Job Cards.`, false);
       window.setTimeout(load, 550);
     } catch (error) {
       button.disabled = false;

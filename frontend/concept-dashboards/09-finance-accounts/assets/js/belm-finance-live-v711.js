@@ -10,18 +10,6 @@ document.addEventListener('DOMContentLoaded', function () {
   function date(v){if(!v)return '—';var d=new Date(v);if(isNaN(d))return String(v);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
   async function api(path){var r=await fetch('/api'+path,{cache:'no-store',headers:{Authorization:'Bearer '+token}});var t=await r.text();var d=null;try{d=t?JSON.parse(t):null}catch(_){ }if(!r.ok)throw new Error(d&&d.error||'Request failed');return d;}
 
-  function currentRole(){
-    try{var u=JSON.parse(localStorage.getItem('belm_admin_user')||'null')||{};return String(u.roleName||u.role||'').trim().toLowerCase();}catch(_){return '';}
-  }
-  function hasBankControl(){var r=currentRole();return /super admin|bank controller/.test(r);}
-  function enforceBankBoundary(){
-    var allowed=hasBankControl();
-    document.querySelectorAll('[data-bank-control]').forEach(function(el){el.hidden=!allowed;});
-    var title=document.querySelector('[data-bank-balance-title]');
-    if(title&&!allowed)title.textContent='Petty Cash Balance';
-  }
-  enforceBankBoundary();
-
   // Identity only; visual design remains supplied dashboard design.
   try {
     var u=JSON.parse(localStorage.getItem('belm_admin_user')||'null');
@@ -97,11 +85,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   async function load(){
     try{
-      var requests=[api('/billing'),api('/company-expenses')];if(hasBankControl())requests.push(api('/bank-manager'));var results=await Promise.allSettled(requests);
+      var results=await Promise.allSettled([api('/billing'),api('/company-expenses'),api('/bank-manager')]);
       var invoices=results[0].status==='fulfilled'&&Array.isArray(results[0].value)?results[0].value:[];
       var expenses=results[1].status==='fulfilled'&&Array.isArray(results[1].value)?results[1].value:[];
-      var bank=hasBankControl()&&results[2]&&results[2].status==='fulfilled'?results[2].value:null;
-      updateStats(invoices,expenses);renderRecent(invoices);updateCharts(invoices,expenses);if(hasBankControl())updateBalances(bank);updateSummary(invoices,expenses);
+      var bank=results[2].status==='fulfilled'?results[2].value:null;
+      updateStats(invoices,expenses);renderRecent(invoices);updateCharts(invoices,expenses);updateBalances(bank);updateSummary(invoices,expenses);
     }catch(e){console.warn('Finance dashboard live sync:',e);}
   }
   load();

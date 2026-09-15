@@ -1876,7 +1876,3 @@ html.belm-embedded body,html.belm-embedded .shell{
   background:#0b1728!important;
   color:#e7eef8!important;
 }
-
-/* V765 - Customer Code shown only in BELM customer management. */
-.customer-code-copy{margin-left:8px;border:1px solid rgba(72,161,222,.55);border-radius:6px;background:#0a4f82;color:#fff;padding:3px 8px;font:800 9px Inter,Arial,sans-serif;cursor:pointer}
-.customer-code-copy:hover{filter:brightness(1.12)}

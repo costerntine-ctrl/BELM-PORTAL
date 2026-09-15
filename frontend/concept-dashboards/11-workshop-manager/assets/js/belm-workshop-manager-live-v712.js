@@ -37,10 +37,10 @@
     // redirect them back into the old generic Inventory/Reports destinations.
     'spare-requests.html':'/concept-dashboards/11-workshop-manager/spare-requests.html',
     'service-maintenance.html':'/concept-dashboards/11-workshop-manager/service-maintenance.html',
-    'reports-analysis.html':'/role-reports/',
+    'reports-analysis.html':'/workshop-analysis/?actor=admin&module=workshop',
     'checklist-monitoring.html':'/reports-manager/?view=checklists&module=workshop',
     'customers.html':'/customers-manager/?module=customer-overview',
-    'communication.html':'/role-communications/',
+    'communication.html':'/customers-manager/?module=customer-overview',
     'tools-equipment.html':'/belm-workshop/#tool-issue-documents',
     'workshop-settings.html':'/concept-dashboards/10-system-settings/',
     'my-profile.html':'/settings-manager/?module=profile',
@@ -216,11 +216,6 @@
     const overdue=Number(metrics&&metrics.jobCards&&metrics.jobCards.overdue||0);
     const waiting=Number(metrics&&metrics.jobCards&&metrics.jobCards.waitingForSpare||0);
     const service=Number(metrics&&metrics.alerts&&metrics.alerts.serviceDue||0);
-    const attention=overdue+waiting+service;
-    const badge=document.querySelector('.header-right .icon-btn[aria-label="Notifications"] .icon-badge');
-    if(badge)badge.textContent=String(attention);
-    const statusBox=document.querySelector('.status-box');
-    if(statusBox){const strong=statusBox.querySelector('strong'),sub=strong&&strong.parentElement?strong.parentElement.querySelector('span'):null;if(strong)strong.textContent=attention?'Workshop Attention':'Workshop Running';if(sub)sub.textContent=attention?(attention+' item'+(attention===1?'':'s')+' need attention'):'Live workflow synchronized';}
     const values=[overdue+' Job Cards Overdue',waiting+' Waiting for Spare',service?service+' Service Due Soon':'No Service Due','Checklist Monitoring'];
     alertRows.forEach((r,i)=>{const x=r.querySelector('.alert-row2-title');if(x&&values[i])x.textContent=values[i];});
     if(home&&Array.isArray(home.machines))document.documentElement.setAttribute('data-belm-workshop-machines',String(home.machines.length));

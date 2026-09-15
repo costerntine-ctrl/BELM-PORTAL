@@ -16,7 +16,6 @@
   // return to the active /settings-manager/ dashboard instead of an old
   // concept dashboard or the generic main dashboard.
   function installContextBackButton() {
-    if (window.__belmNavigationContext763) return;
     const params = new URLSearchParams(window.location.search);
     const moduleName = String(params.get("module") || "").toLowerCase().trim();
     const cleanPath = window.location.pathname.replace(/\/+$/, "") || "/";

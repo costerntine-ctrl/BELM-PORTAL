@@ -62,9 +62,6 @@ document.addEventListener('DOMContentLoaded', function () {
   var token = techPayload && String(techPayload.roleName || techPayload.role || '').toLowerCase().includes('technician')
     ? techToken
     : customerRole.includes('technician') ? customerToken : '';
-  var customerScopedTechnician = Boolean(
-    (techPayload && techPayload.isCustomerManaged) || customerRole.includes('technician')
-  );
 
   function stageFor(job) {
     var stage = String(job.current_stage || '').toUpperCase();
@@ -85,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (stage === 'Assigned / Receive') return ['Receive Job Card', '/technician-job-cards/'];
     if (stage === 'Inspection / Diagnosis') return ['Save Diagnosis Report', '/technician-job-cards/'];
     if (stage === 'Diagnosis Report') return ['Continue to Repair', '/technician-job-cards/'];
-    if (stage === 'Waiting for Spare') return ['View Spare Status', customerScopedTechnician ? '/technician-job-cards/' : '/spare-parts-manager/?view=requests&source=technician'];
+    if (stage === 'Waiting for Spare') return ['View Spare Status', '/spare-parts-manager/?view=requests&source=technician'];
     if (stage === 'Repair') return ['Update Repair', '/technician-job-cards/'];
     if (stage === 'Testing') return ['Complete Test Report', '/technician-job-cards/?view=testing'];
     if (stage === 'Completion Report') return ['Awaiting Approval', '/technician-job-cards/'];
@@ -129,10 +126,6 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       if (text === 'Daily Checklists') {
         link.setAttribute('href', '/concept-dashboards/02-technician/daily-checklists.php');
-      }
-      if (text === 'Spare Requests' && customerScopedTechnician) {
-        link.setAttribute('href', '/technician-job-cards/');
-        link.setAttribute('title', 'Spare status through Customer Job Card workflow');
       }
     });
   }

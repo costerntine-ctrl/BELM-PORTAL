@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>BELM Operations Portal — Accounts Dashboard</title>
 <link rel="stylesheet" href="assets/css/belm-finance-accounts.css" />
-<script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
+</head>
 <body>
 
 <div class="shell" id="shell">
@@ -33,7 +33,7 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5a3 2 0 013-1c1.7 0 3 .8 3 2s-1.3 2-3 2-3 .8-3 2 1.3 2 3 2a3 2 0 003-1"/></svg>
         Petty Cash
       </a>
-      <a href="bank-accounts.html" class="nav-item" data-bank-control>
+      <a href="bank-accounts.html" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg>
         Bank Accounts
       </a>
@@ -126,7 +126,7 @@
           <div class="datetime-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>
             <span>
-              <strong id="liveDate">Loading date…</strong>
+              <strong id="liveDate">Tuesday, 9 September 2026</strong>
               <span id="liveTime">00:42</span>
             </span>
           </div>
@@ -231,7 +231,7 @@
             <a href="payments-receipts.html?new=1" class="fin-qa-btn fin-qa-btn--amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>Record Payment</a>
             <a href="expenses.html?new=1" class="fin-qa-btn fin-qa-btn--light-gray"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>Add Expense</a>
             <a href="petty-cash.html" class="fin-qa-btn fin-qa-btn--light-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10"/></svg>Petty Cash</a>
-            <a href="bank-accounts.html?new=deposit" class="fin-qa-btn fin-qa-btn--light-green" data-bank-control><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M13 8v7"/><path d="M2 17h16"/></svg>Bank Deposit</a>
+            <a href="bank-accounts.html?new=deposit" class="fin-qa-btn fin-qa-btn--light-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M13 8v7"/><path d="M2 17h16"/></svg>Bank Deposit</a>
           </div>
         </div>
       </section>
@@ -282,12 +282,12 @@
       <!-- Account Balances + Financial Summary -->
       <section class="bottom-grid">
         <div class="panel">
-          <div class="panel-title" data-bank-balance-title>
+          <div class="panel-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg>
             Account Balances
           </div>
           <div class="balances-row">
-            <a href="bank-accounts.html#nmb" class="balance-card balance-card--blue" data-bank-control>
+            <a href="bank-accounts.html#nmb" class="balance-card balance-card--blue">
               <span class="balance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg></span>
               <span class="balance-body">
                 <span class="balance-name">NMB Bank</span>
@@ -296,7 +296,7 @@
               </span>
               <svg class="balance-chev" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg>
             </a>
-            <a href="bank-accounts.html#crdb" class="balance-card balance-card--green" data-bank-control>
+            <a href="bank-accounts.html#crdb" class="balance-card balance-card--green">
               <span class="balance-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2 2 6.5h16z"/><path d="M3.5 8v7M7 8v7M13 8v7M16.5 8v7"/><path d="M2 17h16"/></svg></span>
               <span class="balance-body">
                 <span class="balance-name">CRDB Bank</span>

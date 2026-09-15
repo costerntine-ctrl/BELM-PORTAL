@@ -47,10 +47,6 @@
   async function sync(){
     try{
       const customer=await loadCustomer();
-      // Apply once now, then once more after the asynchronous Home card has
-      // been inserted. A MutationObserver previously changed the same subtree
-      // it was observing, creating a render feedback loop that could freeze
-      // the browser and trigger "This page isn't responding".
       apply(customer);
       if(!document.querySelector('.cwm-home-v556')){
         let attempts=0;
@@ -67,5 +63,27 @@
     }catch(_){}
   }
 
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',sync,{once:true});else sync();
+  // V772: manager.js on this same page already fetches
+  // /api/customer-portal/dashboard and now shares the result via this event,
+  // so this script no longer makes a second, redundant request for the same
+  // data on every page load. Falls back to fetching it directly only if that
+  // event does not arrive (e.g. manager.js failed or was removed later).
+  let gotDashboardEvent=false;
+  window.addEventListener('belm:cwm-dashboard-ready',e=>{
+    gotDashboardEvent=true;
+    apply(e.detail&&e.detail.customer||{});
+    if(!document.querySelector('.cwm-home-v556')){
+      let attempts=0;
+      const timer=setInterval(()=>{
+        attempts+=1;
+        if(document.querySelector('.cwm-home-v556')){
+          clearInterval(timer);
+          apply(e.detail&&e.detail.customer||{});
+        }else if(attempts>=50){
+          clearInterval(timer);
+        }
+      },100);
+    }
+  });
+  setTimeout(()=>{ if(!gotDashboardEvent) sync(); },1500);
 })();

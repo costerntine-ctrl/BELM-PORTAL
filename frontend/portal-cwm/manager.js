@@ -210,6 +210,10 @@
         customers = [{ id: customer.id || "self", name: customer.name || "Customer", address: customer.address || "", email: customer.email || "", phone: customer.phone || "" }];
         setCustomerHomeChrome();
         renderCards();
+        // V772: customer-home-brand-v626.js applies the same customer record
+        // to the topbar/hero/footer. It used to fetch /api/customer-portal/dashboard
+        // a second time for that - this reuses the one we already have instead.
+        window.dispatchEvent(new CustomEvent("belm:cwm-dashboard-ready", { detail: { customer } }));
         if (fromRefresh) showAlert('Customer Workshop Portal refreshed successfully.', false);
         return;
       }

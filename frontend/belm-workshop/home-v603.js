@@ -41,7 +41,6 @@
   // Home is now the first signed-in screen, so it does not show a shortcut
   // back into any role workspace.
   if(mainMenuBack){mainMenuBack.hidden=true;mainMenuBack.style.display='none';}
-  document.getElementById('bwLogoutButton')?.addEventListener('click',()=>{['belm_admin_token','belm_admin_user','belm_tech_token','belm_tech_user','belm_active_account_type'].forEach(key=>localStorage.removeItem(key));location.replace('/login');});
 
   const registrationCard=document.getElementById('registrationQuickCard');
   const registrationBadge=document.getElementById('registrationQuickBadge');

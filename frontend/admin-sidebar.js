@@ -443,8 +443,7 @@
   logout.type = "button";
   logout.textContent = "Log out securely";
   logout.addEventListener("click", () => {
-    localStorage.removeItem("belm_admin_token");
-    localStorage.removeItem("belm_admin_user");
+    ["belm_admin_token", "belm_admin_user", "belm_tech_token", "belm_tech_user", "belm_active_account_type"].forEach((key) => localStorage.removeItem(key));
     window.location.href = "/login";
   });
   footer.append(themeToggle, logout);

@@ -640,7 +640,7 @@
     setTimeout(() => document.getElementById("sendCustomerMessageBody").focus(), 0);
   }
 
-  document.getElementById("customerMessagesBody").addEventListener("click", async (event) => {
+  document.getElementById("customerMessagesBody")?.addEventListener("click", async (event) => {
     const button = event.target.closest("[data-resolve-message]");
     if (!button) return;
     const row = button.closest("[data-message-id]");
@@ -1227,7 +1227,7 @@
     }
   }
 
-  document.getElementById("downloadAllExpenseReceiptsButton").addEventListener("click", async () => {
+  document.getElementById("downloadAllExpenseReceiptsButton")?.addEventListener("click", async () => {
     const button = document.getElementById("downloadAllExpenseReceiptsButton");
     if (!currentExpenseReceipts.length) {
       showAlert("No receipts to download for this machine.", true);
@@ -1264,7 +1264,7 @@
     }
   });
 
-  document.getElementById("expenseReceiptsBody").addEventListener("click", async (event) => {
+  document.getElementById("expenseReceiptsBody")?.addEventListener("click", async (event) => {
     const viewButton = event.target.closest("[data-view-single-receipt]");
     const downloadButton = event.target.closest("[data-download-single-receipt]");
     const expenseId = viewButton?.dataset.viewSingleReceipt || downloadButton?.dataset.downloadSingleReceipt;
@@ -2037,7 +2037,7 @@
   document.getElementById("machineReportApplyFilter")?.addEventListener("click", renderMachineReportCenter);
   document.getElementById("machineReportDownloadButton")?.addEventListener("click", downloadMachineReportPeriod);
 
-  document.getElementById("logoutButton").addEventListener("click", () => {
+  document.getElementById("logoutButton")?.addEventListener("click", () => {
     localStorage.removeItem("belm_admin_token");
     localStorage.removeItem("belm_admin_user");
     window.location.href = "/login";
@@ -2146,15 +2146,15 @@
   document.getElementById("machineForm").addEventListener("submit", saveMachine);
   document.querySelectorAll("[data-close]").forEach((button) =>
     button.addEventListener("click", () => document.getElementById(button.dataset.close).close()));
-  document.getElementById("reportViewPrintButton").addEventListener("click", () => window.print());
+  document.getElementById("reportViewPrintButton")?.addEventListener("click", () => window.print());
   document.getElementById("copyCredentialsButton").addEventListener("click", () => {
     const text = `Email: ${document.getElementById("credentialEmail").value}\nTemporary password: ${document.getElementById("credentialPassword").value}\nRecovery code: ${document.getElementById("credentialRecovery").value}\nPortal link: ${document.getElementById("credentialLink").value}`;
     copyText(text, "Customer login information copied.");
   });
-  document.getElementById("copyCredentialLinkButton").addEventListener("click", () => {
+  document.getElementById("copyCredentialLinkButton")?.addEventListener("click", () => {
     copyText(document.getElementById("credentialLink").value, "Customer portal link copied.");
   });
-  document.getElementById("copyCredentialPasswordButton").addEventListener("click", () => {
+  document.getElementById("copyCredentialPasswordButton")?.addEventListener("click", () => {
     copyText(document.getElementById("credentialPassword").value, "Temporary password copied.");
   });
 
@@ -2430,11 +2430,11 @@
     }
   });
 
-  document.getElementById("machineListAddButton").addEventListener("click", (event) => {
+  document.getElementById("machineListAddButton")?.addEventListener("click", (event) => {
     openMachine(customers.find((customer) => customer.id === event.currentTarget.dataset.addMachine));
   });
 
-  document.getElementById("machineListBody").addEventListener("click", (event) => {
+  document.getElementById("machineListBody")?.addEventListener("click", (event) => {
     const addMachine = event.target.closest("[data-add-machine]");
     const editMachine = event.target.closest("[data-edit-machine]");
     const deleteMachine = event.target.closest("[data-delete-machine]");
@@ -2456,7 +2456,7 @@
     if (deleteMachine) removeMachine(deleteMachine.dataset.deleteMachine);
     if (forgetMachineButton) forgetMachine(forgetMachineButton.dataset.forgetMachine);
   });
-  document.getElementById("machineListBody").addEventListener("change", async (event) => {
+  document.getElementById("machineListBody")?.addEventListener("change", async (event) => {
     const select = event.target.closest("[data-operational-status]");
     if (!select) return;
     const machineId = select.dataset.operationalStatus;

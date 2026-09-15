@@ -191,9 +191,9 @@
         {label:"Diagnosis",short:"DG",href:"/breakdown-workflow/?actor=admin&module=workshop",paths:["/breakdown-workflow/"],noView:true},
         {label:"Waiting for Spares",short:"WS",href:"/spare-parts-manager/?view=requests&module=workshop",paths:["/spare-parts-manager/"],view:"requests"},
         {label:"Testing & Completion",short:"TC",href:"/breakdown-workflow/?actor=admin&view=testing&module=workshop",paths:["/breakdown-workflow/"],view:"testing"},
-        {label:"Workshop Reports",short:"RP",href:"/workshop-analysis/?actor=admin&module=workshop",paths:["/workshop-analysis/"]},
+        {label:"Workshop Reports",short:"RP",href:"/role-reports/",paths:["/role-reports/","/workshop-analysis/"]},
         {label:"Machine History",short:"MH",href:"/reports-manager/?module=workshop",paths:["/reports-manager/"]},
-        {label:"Communication",short:"CM",href:"/customers-manager/?module=workshop",paths:["/customers-manager/"]},
+        {label:"Communication",short:"CM",href:"/role-communications/",paths:["/role-communications/"]},
       ]
     },
     inventory: {

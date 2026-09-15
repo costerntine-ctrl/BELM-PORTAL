@@ -26,6 +26,8 @@
     body.belm-tech-machines-page .belm-tech-approved-card.status-red,body.belm-tech-machines-page .belm-tech-approved-card.belm-range-red{--tech-status:#ff2638;--tech-status-rgb:255,38,56}
     body.belm-tech-machines-page .belm-tech-approved-card.status-yellow,body.belm-tech-machines-page .belm-tech-approved-card.belm-range-yellow{--tech-status:#f8b600;--tech-status-rgb:248,182,0}
     body.belm-tech-machines-page .belm-tech-approved-card.status-green,body.belm-tech-machines-page .belm-tech-approved-card.belm-range-green{--tech-status:#12c24a;--tech-status-rgb:18,194,74}
+    /* V767: RED + YELLOW = RED, regardless of legacy class order. */
+    body.belm-tech-machines-page .belm-tech-approved-card.status-red.belm-range-yellow,body.belm-tech-machines-page .belm-tech-approved-card.status-yellow.belm-range-red,body.belm-tech-machines-page .belm-tech-approved-card.status-red.belm-range-green,body.belm-tech-machines-page .belm-tech-approved-card.status-green.belm-range-red{--tech-status:#ff2638;--tech-status-rgb:255,38,56}
     body.belm-tech-machines-page .belm-tech-approved-card>*{flex:0 0 auto!important;box-sizing:border-box!important}
     body.belm-tech-machines-page .belm-tech-approved-card::before{display:none!important}
     body.belm-tech-machines-page .belm-tech-approved-card::after{display:none!important}

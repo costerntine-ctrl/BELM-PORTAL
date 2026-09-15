@@ -871,6 +871,44 @@ if ($method === 'POST' && $action === 'submit') {
     json_out($savedReport, 201);
 }
 
+// V765 - Customer Code gate for BELM Technician > Customer Machines.
+// This is an additional field-work confirmation layer. The code NEVER grants
+// access by itself: the authenticated Technician must still be permanently
+// assigned to that customer. Customer-managed Technicians remain scoped to
+// their own company and do not need this BELM field-site code.
+if (($action === 'technician-customer-access') && in_array($method, ['GET','POST'], true)) {
+    if (($user['roleName'] ?? '') !== 'Technician') json_error('Technician login required.', 403);
+    $customerId = trim((string)($user['assignedCustomerId'] ?? ''));
+    if ($customerId === '') json_error('This Technician is not assigned to a customer.', 403);
+
+    $isCustomerManaged = !empty($user['isCustomerManaged']);
+    if ($method === 'GET') {
+        json_out([
+            'requiresCode' => !$isCustomerManaged,
+            'verified' => $isCustomerManaged,
+            'mode' => $isCustomerManaged ? 'CUSTOMER_TECHNICIAN' : 'BELM_TECHNICIAN',
+        ]);
+    }
+
+    if ($isCustomerManaged) {
+        json_out(['ok' => true, 'verified' => true, 'requiresCode' => false]);
+    }
+
+    $b = body();
+    $submitted = strtoupper(trim((string)($b['customerCode'] ?? '')));
+    if ($submitted === '') json_error('Enter the Customer Code.', 422);
+    $stmt = db()->prepare(
+        'SELECT id FROM customers
+         WHERE id=? AND deleted_at IS NULL AND is_active=1
+           AND customer_code IS NOT NULL AND UPPER(customer_code)=? LIMIT 1'
+    );
+    $stmt->execute([$customerId, $submitted]);
+    if (!$stmt->fetchColumn()) {
+        json_error('Customer Code is not valid for your assigned site. Contact Workshop Manager if your assignment has changed.', 403);
+    }
+    json_out(['ok' => true, 'verified' => true, 'requiresCode' => true]);
+}
+
 // V418 - Technician General Report Center. One Technician can review the
 // reporting record for every machine under the customer currently assigned to
 // that Technician. Job Card rows remain limited to Job Cards actually assigned

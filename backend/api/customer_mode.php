@@ -62,7 +62,7 @@ $roles = [
         'key' => 'operator',
         'label' => 'Operator',
         'enabled' => $departmentEnabled('operator') && !empty($features['operatorDashboard']),
-        'dashboard' => '/concept-dashboards/07-operator/',
+        'dashboard' => '/customer-operator-dashboard/',
         'scope' => 'Daily checklist, machine operation, fuel and problem reporting',
     ],
     [

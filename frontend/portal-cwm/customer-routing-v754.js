@@ -15,7 +15,7 @@
 
   async function getMode(){const r=await fetch('/api/customer_mode.php',{cache:'no-store',headers:{Authorization:'Bearer '+token}}),d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Could not load customer role mode.');return d}
   function roleEntry(){return (Array.isArray(mode?.roles)?mode.roles:[]).find(x=>x.key===roleKey)||null}
-  function fallback(){const map={customer_admin:'/customer-admin-dashboard/',workshop_manager:'/customer-workshop/?actor=customer',technician:'/concept-dashboards/02-technician/',operator:'/concept-dashboards/07-operator/',procurement:'/customer-procurement-dashboard/',store_keeper:'/customer-store-dashboard/',accounts:'/customer-finance/'};return map[roleKey]||'/customer-admin-dashboard/'}
+  function fallback(){const map={customer_admin:'/customer-admin-dashboard/',workshop_manager:'/customer-workshop/?actor=customer',technician:'/concept-dashboards/02-technician/',operator:'/customer-operator-dashboard/',procurement:'/customer-procurement-dashboard/',store_keeper:'/customer-store-dashboard/',accounts:'/customer-finance/'};return map[roleKey]||'/customer-admin-dashboard/'}
   function target(){const e=roleEntry();return e?.dashboard||fallback()}
   function enabled(){const e=roleEntry();return e?e.enabled!==false:true}
 

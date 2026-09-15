@@ -40,6 +40,7 @@
     if (!response.ok) {
       if (response.status === 401) {
         localStorage.removeItem("belm_operator_token");
+        if (localStorage.getItem("belm_active_account_type") === "operator") localStorage.removeItem("belm_active_account_type");
         token = null;
       }
       throw new Error(data?.error || "Something went wrong.");
@@ -156,6 +157,22 @@
     const serviceState = !serviceStatus ? "CHECKING"
       : String(serviceStatus.level || "GREEN").toUpperCase() === "RED" ? (overdue ? `OVERDUE BY ${overdue} HRS` : "DUE NOW")
       : String(serviceStatus.level || "GREEN").toUpperCase() === "YELLOW" ? "DUE SOON" : "ON SCHEDULE";
+    // V767 safety priority: RED overrides YELLOW, YELLOW overrides GREEN.
+    // The machine condition remains displayed in its own field, while the card
+    // shell reflects the highest active safety alert across condition/service/activity.
+    const safetyRank = { UNKNOWN: 0, GREEN: 1, YELLOW: 2, RED: 3 };
+    const normalizeSafety = value => {
+      const raw = String(value || "UNKNOWN").toUpperCase();
+      if (raw.includes("RED") || raw.includes("CRITICAL") || raw.includes("OVERDUE")) return "RED";
+      if (raw.includes("YELLOW") || raw.includes("WARNING") || raw.includes("ATTENTION") || raw.includes("DUE SOON")) return "YELLOW";
+      if (raw.includes("GREEN") || raw.includes("NORMAL") || raw.includes("OK") || raw.includes("ON SCHEDULE")) return "GREEN";
+      return "UNKNOWN";
+    };
+    const overallSafety = [
+      normalizeSafety(condition.status),
+      normalizeSafety(serviceStatus?.level),
+      String(machine.operationalStatus || "").toUpperCase() === "GROUNDED" ? "RED" : "UNKNOWN",
+    ].reduce((best, level) => safetyRank[level] > safetyRank[best] ? level : best, "UNKNOWN");
 
     dashboardRoot.innerHTML = `
       <section class="op-dashboard-overview">
@@ -177,7 +194,7 @@
           ${actionButton("operationCard", "operation-card", "job", "Operation Card", "Request action / Job Card")}
         </div>
       </section>
-      <article class="op-machine-card status-${esc(condition.status.toLowerCase())}" data-operator-machine-id="${esc(machine.id)}">
+      <article class="op-machine-card status-${esc(overallSafety.toLowerCase())}" data-operator-machine-id="${esc(machine.id)}" data-alert-priority="${esc(overallSafety)}">
         <header class="op-machine-head">
           <div><span class="op-dashboard-kicker">MACHINE OPERATOR DASHBOARD</span><h2>${esc(machine.model || machine.brand || "Machine")}</h2></div>
           <span class="op-fleet-badge"><small>Fleet No.</small><b>${esc(machine.fleetNumber || "—")}</b></span>
@@ -294,6 +311,7 @@
       operatorName = result.operator.name;
       machineName = result.operator.machineName;
       localStorage.setItem("belm_operator_token", token);
+      localStorage.setItem("belm_active_account_type", "operator");
       localStorage.setItem("belm_operator_name", operatorName);
       localStorage.setItem("belm_operator_machine_name", machineName);
       await startShift();
@@ -526,6 +544,7 @@
   document.getElementById("logoutButton").addEventListener("click", () => {
     clearInterval(dashboardRefreshTimer);
     localStorage.removeItem("belm_operator_token");
+    if (localStorage.getItem("belm_active_account_type") === "operator") localStorage.removeItem("belm_active_account_type");
     localStorage.removeItem("belm_operator_name");
     localStorage.removeItem("belm_operator_machine_name");
     token = null;

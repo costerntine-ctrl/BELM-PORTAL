@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-const BELM_RELEASE = 'coordinator-communication-db-safety-v12';
+const BELM_RELEASE = 'navigation-role-communication-reports-v763';
 const BELM_DATA_SAFETY_EXIT = 78;
 
 function belm_env_true(string $name): bool {
@@ -52,14 +52,14 @@ if ($schema === false) {
 $schemaHash = hash('sha256', $schema);
 
 $protectedTables = [
-    'roles', 'users', 'customers', 'customer_users', 'customer_branding', 'machines',
+    'roles', 'users', 'customers', 'customer_users', 'customer_branding', 'machines', 'customer_contracts',
     'checklist_templates', 'checklist_reports', 'service_requests', 'service_request_history', 'service_notes',
     'spare_parts', 'spare_part_requests', 'suppliers',
     'bank_accounts', 'bank_withdrawals', 'company_expenses',
     'proforma_invoices', 'proforma_invoice_items', 'invoices', 'invoice_items', 'payments', 'receipts',
-    'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests', 'customer_department_settings', 'customer_sales_documents',
+    'usage_logs', 'customer_store_items', 'customer_store_movements', 'customer_procurement_requests', 'customer_suppliers', 'customer_department_settings', 'customer_sales_documents', 'customer_sales_payments', 'customer_finance_expenses',
     'breakdown_cases', 'breakdown_case_events', 'breakdown_spare_requests', 'digital_job_cards',
-    'customer_communications', 'notification_logs', 'system_settings', 'machine_service_owner_notifications',
+    'customer_communications', 'role_communications', 'role_communication_reads', 'notification_logs', 'system_settings', 'machine_service_owner_notifications',
     'customer_tool_issues', 'belm_workshop_tool_issues', 'delivery_notes', 'delivery_note_items', 'tasks', 'activity_logs', 'trash_entries',
 ];
 
@@ -259,7 +259,7 @@ try {
     ]);
 
     $pdo->commit();
-    fwrite(STDOUT, 'BELM Coordinator Communication DB V12 safe background database check completed. Installation ' . $installationId . '; protected records preserved; schema ' . ($schemaApplied ? 'applied' : 'already current') . ".\n");
+    fwrite(STDOUT, 'BELM Customer Role Parity V762 safe background database check completed. Installation ' . $installationId . '; protected records preserved; schema ' . ($schemaApplied ? 'applied' : 'already current') . ".\n");
 } catch (Throwable $error) {
     try {
         if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) $pdo->rollBack();

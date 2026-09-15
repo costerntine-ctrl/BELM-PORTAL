@@ -387,6 +387,23 @@ function document_number(string $prefix): string {
     return $prefix . '-' . date('Ymd-His') . '-' . $suffix;
 }
 
+function belm_generate_customer_code(?PDO $pdo = null): string {
+    // Human-readable field code used by BELM Technician site verification.
+    // It is an identifier/second gate only; customer assignment is still the
+    // authorization boundary enforced by backend APIs.
+    $pdo = $pdo ?: db();
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    for ($attempt = 0; $attempt < 20; $attempt++) {
+        $suffix = '';
+        for ($i = 0; $i < 8; $i++) $suffix .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        $code = 'CUS-' . $suffix;
+        $stmt = $pdo->prepare('SELECT 1 FROM customers WHERE UPPER(customer_code)=UPPER(?) LIMIT 1');
+        $stmt->execute([$code]);
+        if (!$stmt->fetchColumn()) return $code;
+    }
+    return 'CUS-' . strtoupper(substr(str_replace('-', '', uuid()), 0, 12));
+}
+
 function secure_account_secret(int $length = 14): string {
     $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$';
     $secret = '';
@@ -2786,4 +2803,42 @@ function belm_recompute_job_billing_status(string $jobId): string {
     db()->prepare('UPDATE digital_job_cards SET billing_status=?,updated_at=NOW() WHERE id=?')
         ->execute([$status, $jobId]);
     return $status;
+}
+
+// V763: best-effort portal Role Communication. Operational writes must never
+// fail merely because a rolling deployment has not created the new table yet.
+function belm_role_communication_insert(
+    ?string $customerId,
+    string $senderScope,
+    string $senderActorKey,
+    string $senderName,
+    string $senderRole,
+    string $recipientScope,
+    string $recipientRole,
+    string $subject,
+    string $message,
+    string $priority = 'NORMAL',
+    ?string $relatedType = null,
+    ?string $relatedId = null,
+    ?string $machineId = null,
+    ?string $actionUrl = null
+): ?string {
+    try {
+        $priority = strtoupper(trim($priority));
+        if (!in_array($priority, ['NORMAL','ATTENTION','URGENT'], true)) $priority = 'NORMAL';
+        $id = uuid();
+        db()->prepare(
+            'INSERT INTO role_communications
+             (id,customer_id,sender_scope,sender_actor_key,sender_name,sender_role,recipient_scope,recipient_role,subject,message,priority,related_type,related_id,machine_id,action_url,created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())'
+        )->execute([
+            $id,$customerId,strtoupper($senderScope),$senderActorKey,$senderName,$senderRole,
+            strtoupper($recipientScope),$recipientRole,mb_substr($subject,0,180),mb_substr($message,0,2500),$priority,
+            $relatedType,$relatedId,$machineId,$actionUrl
+        ]);
+        return $id;
+    } catch (Throwable $error) {
+        error_log('BELM role communication insert skipped: ' . $error->getMessage());
+        return null;
+    }
 }

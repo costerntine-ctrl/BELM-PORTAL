@@ -54,12 +54,13 @@ document.addEventListener('DOMContentLoaded', function () {
     var limit = c && c.userLimit != null ? Number(c.userLimit) : 3;
     return used + ' / ' + (limit >= 9999 ? 'Unlimited' : (limit > 0 ? limit : 3));
   }
-  function actionButtons() {
+  function actionButtons(customer) {
+    var id = encodeURIComponent(customer && customer.id || "");
     return '<div class="belm-action-group">' +
-      '<a href="#" class="belm-btn-xs belm-btn-xs--view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>View</a>' +
-      '<a href="#" class="belm-btn-xs belm-btn-xs--edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>Edit</a>' +
-      '<a href="#" class="belm-btn-xs belm-btn-xs--reset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M5.5 9A7 7 0 0119 8.5M18.5 15A7 7 0 015 15.5"/></svg>Reset Access</a>' +
-      '<a href="#" class="belm-btn-xs belm-btn-xs--manage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9M4.6 9a1.7 1.7 0 00-.3-1.9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Manage</a>' +
+      '<a href="/customers-manager/?customer=' + id + '&view=machines" class="belm-btn-xs belm-btn-xs--view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>View</a>' +
+      '<a href="/customers-manager/?customer=' + id + '&action=edit" class="belm-btn-xs belm-btn-xs--edit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>Edit</a>' +
+      '<a href="/customers-manager/?customer=' + id + '&action=reset" class="belm-btn-xs belm-btn-xs--reset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 4v6h6"/><path d="M20 20v-6h-6"/><path d="M5.5 9A7 7 0 0119 8.5M18.5 15A7 7 0 015 15.5"/></svg>Reset Access</a>' +
+      '<a href="/customers-manager/?customer=' + id + '&action=manage" class="belm-btn-xs belm-btn-xs--manage"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9M4.6 9a1.7 1.7 0 00-.3-1.9"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/></svg>Manage</a>' +
       '</div>';
   }
   function renderRows(list) {
@@ -78,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function () {
         '<td>' + esc(limitLabel(c)) + '</td>' +
         '<td>' + esc(providerLabel(c)) + '</td>' +
         '<td>' + esc(machines) + '</td>' +
-        '<td>' + actionButtons() + '</td>' +
+        '<td>' + actionButtons(c) + '</td>' +
       '</tr>';
     }).join('');
   }

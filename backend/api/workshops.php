@@ -1,31 +1,121 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
-$user=require_auth(); require_page_access($user,'customers');
-$method=$_SERVER['REQUEST_METHOD']; $resource=$_GET['resource']??'orders'; $id=trim((string)($_GET['id']??'')); $action=$_GET['action']??'';
+
+$user = require_auth();
+require_page_access($user, 'customers');
+$method = $_SERVER['REQUEST_METHOD'];
+$resource = trim((string)($_GET['resource'] ?? 'orders'));
+$id = trim((string)($_GET['id'] ?? ''));
+$action = trim((string)($_GET['action'] ?? ''));
+$pdo = db();
+
 function workshop_order_row(array $r): array {
-    $r['workOrderNumber']=$r['work_order_number']??null;
-    $r['customerName']=$r['customer_name']??null;
-    $r['machineModel']=$r['machine_model']??null;
-    $r['siteName']=$r['site_name']??null;
-    $r['assignedCustomerStaffName']=$r['assigned_customer_staff_name']??null;
-    $r['contractNumber']=$r['contract_number']??null;
-    $r['jobType']=$r['job_type']??null;
-    $r['belmServiceRequestId']=$r['belm_service_request_id']??null;
-    $r['createdAt']=$r['created_at']??null;
-    $r['updatedAt']=$r['updated_at']??null;
-    return $r;
+    return [
+        'id' => (string)($r['job_card_id'] ?? ''),
+        'caseId' => (string)($r['case_id'] ?? ''),
+        'jobCardId' => (string)($r['job_card_id'] ?? ''),
+        'workOrderNumber' => (string)($r['job_card_no'] ?? ''),
+        'customerName' => (string)($r['customer_name'] ?? ''),
+        'machineModel' => trim((string)($r['brand'] ?? '') . ' ' . (string)($r['model'] ?? '')) ?: (string)($r['machine_type'] ?? ''),
+        'machineType' => (string)($r['machine_type'] ?? ''),
+        'title' => (string)($r['title'] ?? 'Machine Job Card'),
+        'jobType' => (string)($r['source_type'] ?? 'WORKSHOP'),
+        'status' => (string)($r['job_status'] ?? 'OPEN'),
+        'currentStage' => (string)($r['current_stage'] ?? ''),
+        'currentDepartment' => (string)($r['current_department'] ?? ''),
+        'technicianName' => (string)($r['technician_name'] ?? ''),
+        'contractNumber' => $r['contract_number'] ?? null,
+        'supportMode' => strtoupper((string)($r['source_type'] ?? '')) === 'SERVICE_REQUEST' ? 'BELM_SUPPORT' : 'CUSTOMER_WORKSHOP',
+        'createdAt' => $r['created_at'] ?? null,
+        'updatedAt' => $r['updated_at'] ?? null,
+    ];
 }
-if($resource==='sites'){
- if($method==='GET'){ $cid=trim((string)($_GET['customerId']??'')); $s=db()->prepare('SELECT * FROM customer_sites WHERE (? = \'\' OR customer_id=?) ORDER BY name');$s->execute([$cid,$cid]);json_out($s->fetchAll()); }
- if($method==='POST'){ $b=body();$cid=trim((string)($b['customerId']??''));$name=trim((string)($b['name']??''));if(!$cid||!$name)json_error('Customer and site name are required.');$n=uuid();db()->prepare('INSERT INTO customer_sites(id,customer_id,name,location,site_type) VALUES(?,?,?,?,?)')->execute([$n,$cid,$name,$b['location']??null,$b['siteType']??'WORKSHOP']);json_out(['id'=>$n],201); }
+
+if ($resource === 'orders') {
+    if ($method === 'GET') {
+        $customerId = trim((string)($_GET['customerId'] ?? ''));
+        $sql = "SELECT dj.id AS job_card_id,dj.job_card_no,dj.status AS job_status,dj.technician_name,dj.created_at,dj.updated_at,
+                       bc.id AS case_id,bc.title,bc.source_type,bc.current_stage,bc.current_department,
+                       c.name AS customer_name,m.brand,m.model,m.machine_type,
+                       (SELECT cc.contract_number
+                          FROM customer_contracts cc
+                         WHERE cc.customer_id=dj.customer_id
+                           AND cc.status='ACTIVE'
+                           AND CURRENT_DATE BETWEEN cc.start_date AND cc.end_date
+                         ORDER BY cc.end_date ASC
+                         LIMIT 1) AS contract_number
+                  FROM digital_job_cards dj
+                  JOIN breakdown_cases bc ON bc.id=dj.case_id
+                  JOIN customers c ON c.id=dj.customer_id AND c.deleted_at IS NULL
+                  JOIN machines m ON m.id=dj.machine_id AND m.deleted_at IS NULL
+                 WHERE (?='' OR dj.customer_id=?)
+                 ORDER BY CASE WHEN UPPER(COALESCE(dj.status,'')) IN ('COMPLETED','CANCELLED') THEN 1 ELSE 0 END,
+                          dj.updated_at DESC";
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([$customerId, $customerId]);
+        json_out(array_map('workshop_order_row', $stmt->fetchAll()));
+    }
+
+    // Job Card status is intentionally controlled by the canonical Breakdown / Job Card workflow.
+    if (($method === 'PUT' && $id !== '' && $action === 'status') || ($method === 'POST' && $id !== '' && $action === 'escalate')) {
+        json_error('Use the canonical Job Card / Breakdown Workflow for status changes. Customer escalation to BELM must be created as an official Service Request.', 409);
+    }
 }
-if($resource==='staff'){
- if($method==='GET'){ $cid=trim((string)($_GET['customerId']??''));$s=db()->prepare('SELECT ws.*,cs.name site_name FROM customer_workshop_staff ws LEFT JOIN customer_sites cs ON cs.id=ws.site_id WHERE (?=\'\' OR ws.customer_id=?) ORDER BY ws.name');$s->execute([$cid,$cid]);json_out($s->fetchAll()); }
- if($method==='POST'){ $b=body();$cid=trim((string)($b['customerId']??''));$name=trim((string)($b['name']??''));if(!$cid||!$name)json_error('Customer and staff name are required.');$n=uuid();db()->prepare('INSERT INTO customer_workshop_staff(id,customer_id,site_id,name,phone,email,role,specialty) VALUES(?,?,?,?,?,?,?,?)')->execute([$n,$cid,$b['siteId']??null,$name,$b['phone']??null,$b['email']??null,$b['role']??'TECHNICIAN',$b['specialty']??null]);json_out(['id'=>$n],201); }
+
+if ($resource === 'staff' && $method === 'GET') {
+    $customerId = trim((string)($_GET['customerId'] ?? ''));
+    $staff = [];
+    $stmt = $pdo->prepare(
+        "SELECT u.id,u.name,u.email,u.phone,r.name AS role,u.assigned_customer_id AS customer_id
+           FROM users u
+           JOIN roles r ON r.id=u.role_id
+          WHERE u.deleted_at IS NULL AND u.is_active=1 AND u.is_customer_managed=1
+            AND (?='' OR u.assigned_customer_id=?)
+          ORDER BY u.name"
+    );
+    $stmt->execute([$customerId, $customerId]);
+    foreach ($stmt->fetchAll() as $row) {
+        $row['account_type'] = 'field_technician';
+        $staff[] = $row;
+    }
+    $sub = $pdo->prepare(
+        "SELECT cu.id,cu.name,cu.email,cu.phone,cu.role,cu.customer_id
+           FROM customer_users cu
+          WHERE cu.is_active=1 AND LOWER(cu.role) IN ('technician','operator','workshop_manager')
+            AND (?='' OR cu.customer_id=?)
+          ORDER BY cu.name"
+    );
+    $sub->execute([$customerId, $customerId]);
+    foreach ($sub->fetchAll() as $row) {
+        $row['account_type'] = 'customer_user';
+        $staff[] = $row;
+    }
+    json_out($staff);
 }
-if($resource==='orders'){
- if($method==='GET'){ $cid=trim((string)($_GET['customerId']??''));$s=db()->prepare("SELECT wo.*,c.name customer_name,m.model machine_model,cs.name site_name,ws.name assigned_customer_staff_name,cc.contract_number FROM workshop_work_orders wo JOIN customers c ON c.id=wo.customer_id LEFT JOIN machines m ON m.id=wo.machine_id LEFT JOIN customer_sites cs ON cs.id=wo.site_id LEFT JOIN customer_workshop_staff ws ON ws.id=wo.assigned_customer_staff_id LEFT JOIN customer_contracts cc ON cc.id=wo.contract_id WHERE (?='' OR wo.customer_id=?) ORDER BY CASE WHEN wo.status IN ('OPEN','DIAGNOSING','IN_PROGRESS','ESCALATED_TO_BELM') THEN 0 ELSE 1 END, wo.created_at DESC");$s->execute([$cid,$cid]);json_out(array_map('workshop_order_row',$s->fetchAll())); }
- if($method==='PUT' && $id && $action==='status'){ $b=body();$status=strtoupper(trim((string)($b['status']??'')));$allowed=['OPEN','ASSIGNED','DIAGNOSING','WAITING_PARTS','IN_PROGRESS','ESCALATED_TO_BELM','TESTING','COMPLETED','CANCELLED'];if(!in_array($status,$allowed,true))json_error('Invalid work order status.');$old=db()->prepare('SELECT status FROM workshop_work_orders WHERE id=?');$old->execute([$id]);$from=$old->fetchColumn();if($from===false)json_error('Work order not found.',404);db()->prepare("UPDATE workshop_work_orders SET status=?, diagnosis=COALESCE(?,diagnosis), work_done=COALESCE(?,work_done), completed_at=CASE WHEN ?='COMPLETED' THEN NOW() ELSE completed_at END, updated_at=NOW() WHERE id=?")->execute([$status,$b['diagnosis']??null,$b['workDone']??null,$status,$id]);db()->prepare('INSERT INTO workshop_work_order_history(id,work_order_id,event_type,from_value,to_value,actor_name,note) VALUES(?,?,?,?,?,?,?)')->execute([uuid(),$id,'STATUS',$from,$status,$user['name'],$b['note']??null]);json_out(['ok'=>true]); }
- if($method==='POST' && $id && $action==='escalate'){ $o=db()->prepare('SELECT * FROM workshop_work_orders WHERE id=?');$o->execute([$id]);$wo=$o->fetch();if(!$wo)json_error('Work order not found.',404);if($wo['belm_service_request_id'])json_error('This work order is already escalated to BELM.');$sr=uuid();db()->beginTransaction();try{db()->prepare("INSERT INTO service_requests(id,customer_id,machine_id,service_type,description,status,priority,origin,created_at,updated_at) VALUES(?,?,?,?,?,'OPEN',?,'CUSTOMER_WORKSHOP',NOW(),NOW())")->execute([$sr,$wo['customer_id'],$wo['machine_id'],$wo['job_type'],'Escalated from customer workshop '.$wo['work_order_number'].': '.$wo['description'],$wo['priority']]);db()->prepare("UPDATE workshop_work_orders SET status='ESCALATED_TO_BELM',belm_service_request_id=?,updated_at=NOW() WHERE id=?")->execute([$sr,$id]);db()->prepare('INSERT INTO workshop_work_order_history(id,work_order_id,event_type,from_value,to_value,actor_name,note) VALUES(?,?,?,?,?,?,?)')->execute([uuid(),$id,'ESCALATED',$wo['status'],'ESCALATED_TO_BELM',$user['name'],'Escalated to BELM service team']);db()->commit();}catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}json_out(['ok'=>true,'serviceRequestId'=>$sr]); }
+
+if ($resource === 'sites' && $method === 'GET') {
+    $customerId = trim((string)($_GET['customerId'] ?? ''));
+    $stmt = $pdo->prepare(
+        "SELECT id AS customer_id,name,address AS location
+           FROM customers
+          WHERE deleted_at IS NULL AND is_active=1 AND (?='' OR id=?)
+          ORDER BY name"
+    );
+    $stmt->execute([$customerId, $customerId]);
+    $sites = array_map(static function(array $row): array {
+        return [
+            'id' => (string)$row['customer_id'] . '-main',
+            'customer_id' => (string)$row['customer_id'],
+            'name' => (string)$row['name'] . ' Main Site',
+            'location' => (string)($row['location'] ?? ''),
+            'site_type' => 'CUSTOMER_MAIN',
+        ];
+    }, $stmt->fetchAll());
+    json_out($sites);
 }
-json_error('Unsupported workshop operation.',405);
+
+if (in_array($resource, ['sites','staff'], true) && $method === 'POST') {
+    json_error('Create customer users and workshop staff through Roles & Users. Site identity is managed from the Customer profile.', 409);
+}
+
+json_error('Unsupported workshop operation.', 405);

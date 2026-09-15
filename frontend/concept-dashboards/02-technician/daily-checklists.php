@@ -9,7 +9,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   <title>Daily Checklists — BELM Technician</title>
   <link rel="stylesheet" href="assets/css/belm-technician-dashboard.css">
   <link rel="stylesheet" href="assets/css/belm-technician-assigned-scope.css?v=2-daily-scroll-dedupe">
-</head>
+<script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
 <body class="belm-admin belm-assigned-page" data-assigned-page="daily">
 <div class="belm-shell" id="belmShell">
   <aside class="belm-sidebar">

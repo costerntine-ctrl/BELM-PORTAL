@@ -264,6 +264,11 @@ if ($method === 'POST') {
             $inventoryText
         );
     } catch (Throwable $ignored) {}
+    belm_role_communication_insert(
+        (string)($machine['customer_id'] ?? ''), 'BELM', 'staff:' . (string)($user['id'] ?? ''), $technicianName, 'technician',
+        'BELM', 'store_keeper', 'TECHNICIAN SPARE REQUEST - ' . $request['partNumber'], $inventoryText, 'ATTENTION',
+        'spare_request', $requestId, (string)$machine['id'], '/spare-parts-manager/?view=requests&module=inventory'
+    );
     log_activity($user, 'created', 'sparePartRequest', $requestId, [
         'partNumber' => $request['partNumber'],
         'machineId' => $machine['id'],
@@ -495,6 +500,15 @@ if ($method === 'PUT') {
                 . "Current selling price: TZS " . number_format((float)$part['selling_price'], 2) . "\n"
                 . "Request ID: $id\n\nOpen Billing and prepare/review the Proforma."
             );
+            belm_role_communication_insert(
+                !empty($detail['customer_id']) ? (string)$detail['customer_id'] : null,
+                'BELM', 'staff:' . (string)($user['id'] ?? ''), (string)($user['name'] ?? 'BELM Store'),
+                ($user['roleName'] ?? '') === 'Store Keeper' ? 'store_keeper' : 'super_admin',
+                'BELM', 'finance_accounts', 'SPARE SELECTED - PROFORMA REQUIRED',
+                'Store identified the spare for ' . ($detail['customer_name'] ?? 'the customer') . ': ' . $part['part_number'] . ' - ' . $part['name'] . '. Prepare/review the Proforma for Request ' . $id . '.',
+                'ATTENTION', 'spare_request', $id, !empty($detail['machine_id']) ? (string)$detail['machine_id'] : null,
+                '/billing-manager/?module=finance'
+            );
             if (!empty($detail['customer_id'])) {
                 belm_log_customer_communication(
                     (string)$detail['customer_id'],
@@ -520,6 +534,15 @@ if ($method === 'PUT') {
              SET status = 'PURCHASE_REQUIRED', resolved_at = NULL
              WHERE id = ?"
         )->execute([$id]);
+        belm_role_communication_insert(
+            !empty($request['customer_id']) ? (string)$request['customer_id'] : null,
+            'BELM', 'staff:' . (string)($user['id'] ?? ''), (string)($user['name'] ?? 'BELM Store'),
+            ($user['roleName'] ?? '') === 'Store Keeper' ? 'store_keeper' : 'super_admin',
+            'BELM', 'procurement', 'SPARE PURCHASE REQUIRED',
+            'Store marked Spare Request ' . $id . ' for purchasing/sourcing. Open Procurement and continue supplier/order processing.',
+            'ATTENTION', 'spare_request', $id, !empty($request['machine_id']) ? (string)$request['machine_id'] : null,
+            '/belm-procurement/?view=orders&module=procurement'
+        );
         if (!empty($request['customer_id'])) {
             belm_log_customer_communication(
                 (string)$request['customer_id'], $request['machine_id'] ?: null,
@@ -545,6 +568,15 @@ if ($method === 'PUT') {
         if (!empty($request['procurement_request_id'])) {
             sync_customer_procurement_from_belm((string)$request['procurement_request_id'], (string)($user['name'] ?? 'BELM Spare Parts'));
         }
+        belm_role_communication_insert(
+            !empty($request['customer_id']) ? (string)$request['customer_id'] : null,
+            'BELM', 'staff:' . (string)($user['id'] ?? ''), (string)($user['name'] ?? 'BELM Store'),
+            ($user['roleName'] ?? '') === 'Store Keeper' ? 'store_keeper' : 'super_admin',
+            'BELM', 'workshop_manager', 'SPARE READY - WORK CAN CONTINUE',
+            'Spare Request ' . $id . ' is fulfilled/ready. Workshop can continue the related repair and testing process.',
+            'ATTENTION', 'spare_request', $id, !empty($request['machine_id']) ? (string)$request['machine_id'] : null,
+            '/belm-workshop/#job-cards'
+        );
         if (!empty($request['customer_id'])) {
             belm_log_customer_communication(
                 (string)$request['customer_id'], $request['machine_id'] ?: null,

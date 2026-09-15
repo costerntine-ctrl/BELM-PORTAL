@@ -283,6 +283,10 @@
     items:[{label:"Return to Main Dashboard",short:"HM",href:"/concept-dashboards/01-admin-home/"}]
   };
   const moduleConfig = M[moduleKey] || fallback;
+  if (moduleKey && moduleConfig !== fallback) {
+    if (!moduleConfig.items.some((item) => item.href === '/role-communications/')) moduleConfig.items.push({label:'Role Communication',short:'CM',href:'/role-communications/'});
+    if (!moduleConfig.items.some((item) => item.href === '/role-reports/')) moduleConfig.items.push({label:'My Role Reports',short:'RP',href:'/role-reports/'});
+  }
   const visiblePages = moduleConfig.items;
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";

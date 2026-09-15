@@ -16,6 +16,20 @@
   function currentUser() {
     return parseJSON("belm_admin_user") || parseJSON("belm_tech_user") || parseJSON("belm_operator_user") || parseJSON("belm_customer_user") || null;
   }
+  function parseTokenPayload(token) {
+    if (!token) return null;
+    try {
+      let raw = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      raw += "=".repeat((4 - raw.length % 4) % 4);
+      return JSON.parse(decodeURIComponent(Array.from(atob(raw)).map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")));
+    } catch (_) { return null; }
+  }
+  const technicianPayload = parseTokenPayload(localStorage.getItem("belm_tech_token"));
+  const customerPayload = parseTokenPayload(localStorage.getItem("belm_customer_token"));
+  const customerTokenRole = String(customerPayload && (customerPayload.roleName || customerPayload.customerRole || customerPayload.role) || "").toLowerCase();
+  const customerScopedTechnician = dashboard === "02-technician" && Boolean(
+    (technicianPayload && technicianPayload.isCustomerManaged) || customerTokenRole.includes("technician")
+  );
   function hasSession() { return Boolean(activeToken); }
   function normalizeText(el) { return String(el && el.textContent || "").replace(/\s+/g, " ").trim().toUpperCase(); }
   function go(target) { if (target) location.href = target; }
@@ -61,6 +75,15 @@
       account && (account.role || account.roleName || account.customerRole) ||
       localStorage.getItem("belm_active_account_type") || ""
     ).trim().toLowerCase().replace(/[_-]+/g, " ");
+    if (localStorage.getItem("belm_customer_token")) {
+      if (role.includes("workshop manager") || role.includes("workshop supervisor")) return "/customer-workshop/?actor=customer";
+      if (role.includes("technician")) return "/customer-workshop/?actor=customer";
+      if (role.includes("procurement")) return "/customer-procurement-dashboard/";
+      if (role.includes("store keeper") || role.includes("storekeeper")) return "/customer-store-dashboard/";
+      if (role.includes("operator")) return "/customer-operator-dashboard/";
+      if (role.includes("finance") || role.includes("accounts") || role.includes("accountant")) return "/customer-finance/";
+      return "/customer-admin-dashboard/";
+    }
     if (role.includes("workshop manager") || role === "engineer" || role.includes("technical dep")) return "/concept-dashboards/11-workshop-manager/";
     if (role.includes("technician")) return "/concept-dashboards/02-technician/";
     if (role.includes("procurement")) return "/concept-dashboards/03-procurement/";
@@ -153,6 +176,10 @@
     }
   };
 
+  if (customerScopedTechnician) {
+    fileRouteMaps["02-technician"]["spare-requests.php"] = "/technician-job-cards/";
+  }
+
   const routeMap = fileRouteMaps[dashboard] || {};
   document.querySelectorAll("a[href]").forEach(a => {
     const raw = a.getAttribute("href") || "";
@@ -206,6 +233,10 @@
     "07-operator": { "ADD COMMENT": "/operator/#report" },
     "08-daily-checklist": { "DOWNLOAD PDF": "#belm-print", "EXPORT CSV": "#belm-checklist-csv" }
   };
+
+  if (customerScopedTechnician) {
+    actionRoutes["02-technician"]["REQUEST SPARE"] = "/technician-job-cards/";
+  }
 
   function contextTitle(el) {
     const panel = el.closest(".belm-panel, .panel, section");

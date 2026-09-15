@@ -313,6 +313,18 @@ if ($method === 'GET' && $action === 'job-process') {
     if (!belm_can_override_technician_customer($user)) {
         json_error('Only BELM Super Admin or Workshop Manager can view the Job Card process board.', 403);
     }
+    // V768: Control Center reads digital_job_cards directly, but a new
+    // Service Request / RED checklist / open Operator Report is not turned
+    // into a Job Card until the same reconciliation Technician Dispatch
+    // already runs. Without this, Control Center could show fewer active
+    // cases than actually exist until someone separately opened Breakdown
+    // Workflow. Sync once per page load (skipSync=1 on the 15s poll refreshes)
+    // so the board stays correct without re-scanning every source on every poll.
+    if ((string)($_GET['skipSync'] ?? '') !== '1') {
+        try { belm_sync_breakdown_sources(null); } catch (Throwable $error) {
+            error_log('Job Card process board source sync failed: ' . $error->getMessage());
+        }
+    }
     $rows = db()->query(
         "SELECT j.id,j.job_card_no,j.status,j.started_at,j.completed_at,j.diagnosis,j.repeat_issue,j.updated_at,
                 j.technician_id,COALESCE(NULLIF(TRIM(j.technician_name),''),u.name,'Unassigned') AS technician_name,

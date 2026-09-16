@@ -36,7 +36,7 @@
   function roleHome(){
     const r=roleKey();
     if(session.type==='customer'||session.type==='operator'){
-      return ({customer_admin:'/customer-admin-dashboard/',workshop_manager:'/customer-workshop/?actor=customer',technician:'/customer-technician-dashboard/',operator:'/customer-operator-dashboard/',procurement:'/customer-procurement-dashboard/',store_keeper:'/customer-store-dashboard/',accounts:'/customer-finance/'})[r]||'/portal-cwm/';
+      return ({customer_admin:'/customer-admin-dashboard/',workshop_manager:'/customer-workshop-manager/',technician:'/customer-technician-dashboard/',operator:'/customer-operator-dashboard/',procurement:'/customer-procurement-dashboard/',store_keeper:'/customer-store-dashboard/',accounts:'/customer-finance/'})[r]||'/portal-cwm/';
     }
     return ({super_admin:'/concept-dashboards/01-admin-home/',workshop_manager:'/concept-dashboards/11-workshop-manager/',technician:'/concept-dashboards/02-technician/',procurement:'/concept-dashboards/03-procurement/',store_keeper:'/concept-dashboards/06-storekeeper/',registration_sales:'/concept-dashboards/04-customer-registration/',finance_accounts:'/concept-dashboards/09-finance-accounts/',bank_controller:'/bank-controller/',system_coordinator:'/settings-manager/'})[r]||'/concept-dashboards/01-admin-home/';
   }
@@ -54,7 +54,7 @@
     ['/checklist-manager','/settings-manager/'],['/recycle-bin','/settings-manager/'],['/coordinator/','/settings-manager/'],
     ['/role-communications',null],['/role-reports',null],['/general-report','/role-reports/']
   ];
-  const roots=new Set(['/','/login','/portal-cwm','/customer-admin-dashboard','/customer-operator-dashboard','/customer-technician-dashboard','/customer-procurement-dashboard','/customer-store-dashboard','/customer-finance','/customer-workshop','/belm-workshop','/belm-procurement','/bank-controller','/settings-manager','/customers-manager','/roles-manager','/reports-manager','/concept-dashboards/01-admin-home','/concept-dashboards/02-technician','/concept-dashboards/03-procurement','/concept-dashboards/04-customer-registration','/concept-dashboards/05-inspection-repair','/concept-dashboards/06-storekeeper','/concept-dashboards/07-operator','/concept-dashboards/08-daily-checklist','/concept-dashboards/09-finance-accounts','/concept-dashboards/10-system-settings','/concept-dashboards/11-workshop-manager','/tech']);
+  const roots=new Set(['/','/login','/portal-cwm','/customer-admin-dashboard','/customer-operator-dashboard','/customer-technician-dashboard','/customer-workshop-manager','/customer-procurement-dashboard','/customer-store-dashboard','/customer-finance','/customer-workshop','/belm-workshop','/belm-procurement','/bank-controller','/settings-manager','/customers-manager','/roles-manager','/reports-manager','/concept-dashboards/01-admin-home','/concept-dashboards/02-technician','/concept-dashboards/03-procurement','/concept-dashboards/04-customer-registration','/concept-dashboards/05-inspection-repair','/concept-dashboards/06-storekeeper','/concept-dashboards/07-operator','/concept-dashboards/08-daily-checklist','/concept-dashboards/09-finance-accounts','/concept-dashboards/10-system-settings','/concept-dashboards/11-workshop-manager','/tech']);
 
   function safeLocal(url){try{const u=new URL(url,location.origin);return u.origin===location.origin&&u.pathname!==location.pathname?u.pathname+u.search+u.hash:''}catch(_){return ''}}
   const requestedBack=safeLocal(query.get('returnTo')||query.get('back')||'');

@@ -5,32 +5,33 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta http-equiv="cache-control" content="no-store">
   <title>Customer System Settings — BELM Operations Portal</title>
-  <link rel="stylesheet" href="/theme-global.css?v=754-settings-audit">
-  <link rel="stylesheet" href="/customer-settings-center/app.css?v=754-settings-audit">
-  <script src="/theme-manager.js?v=754-settings-audit"></script>
-  <script defer src="/customer-settings-center/app.js?v=754-settings-audit"></script>
-<script src="/navigation-context-v763.js?v=763-role-flow"></script><script defer src="/customer-belm-shell-v770.js?v=770-belm-shell-parity"></script></head>
-<body>
-<div class="shell">
-  <aside class="side">
-    <div class="brand"><span class="mark">B</span><div><b id="companyNameSide">CUSTOMER</b><small>OPERATIONS PORTAL</small></div></div>
-    <div class="company"><span>CUSTOMER SYSTEM SETTINGS</span><b id="companyName">Customer</b></div>
-    <nav class="nav">
-      <a class="active" href="#control">System Control</a>
-      <a href="#alerts">Alerts</a>
-      <a href="#email">Email</a>
-      <a href="#whatsapp">WhatsApp</a>
-      <a href="#management">Management Group</a>
-      <a href="#access">Roles & Access</a>
-      <a href="#appearance">Appearance</a>
-      <a href="#data">Data & Audit</a>
-    </nav>
-    <div class="side-foot"><nav class="nav"><a href="/customer-admin-dashboard/">← Customer Dashboard</a><a href="/portal-cwm/">Company Home</a></nav></div>
-  </aside>
-
+  <link rel="stylesheet" href="/theme-global.css?v=783-settings-nav-cleanup">
+  <link rel="stylesheet" href="/customer-settings-center/app.css?v=783-settings-nav-cleanup">
+  <script src="/theme-manager.js?v=783-settings-nav-cleanup"></script>
+  <script defer src="/customer-settings-center/app.js?v=783-settings-nav-cleanup"></script>
+  <script src="/navigation-context-v763.js?v=783-settings-nav-cleanup"></script>
+  <script defer src="/customer-belm-shell-v770.js?v=783-settings-nav-cleanup"></script>
+</head>
+<body class="customer-settings-page">
+<div class="shell settings-shell">
   <main class="main">
-    <header class="top"><div><b>CUSTOMER SYSTEM SETTINGS</b><small>BELM-style controls · company scope only</small></div><div class="top-actions"><button id="themeToggle" class="theme-btn" type="button">☾ Dark mode</button><a class="back-btn" href="/customer-admin-dashboard/">Dashboard</a></div></header>
+    <header class="top">
+      <div><b>CUSTOMER SYSTEM SETTINGS</b><small>BELM-style controls · company scope only</small></div>
+      <div class="top-actions"><button id="themeToggle" class="theme-btn" type="button">☾ Dark mode</button><a class="back-btn" href="/customer-admin-dashboard/">Dashboard</a></div>
+    </header>
+
     <section class="content">
+      <nav class="settings-tabs" aria-label="Customer settings sections">
+        <a class="active" href="#control">System Control</a>
+        <a href="#alerts">Alerts</a>
+        <a href="#email">Email</a>
+        <a href="#whatsapp">WhatsApp</a>
+        <a href="#management">Management Group</a>
+        <a href="#access">Roles &amp; Access</a>
+        <a href="#appearance">Appearance</a>
+        <a href="#data">Data &amp; Audit</a>
+      </nav>
+
       <section class="hero" id="control"><div><small>WELCOME TO CUSTOMER CONTROL CENTER</small><h1>System Settings</h1><p>Control your company alerts, recipients, users, operational modules and personal appearance. BELM infrastructure credentials and mandatory Service Provider escalation remain protected.</p></div><span class="mode provider" id="serviceMode">LOADING MODE…</span></section>
 
       <section class="summary">

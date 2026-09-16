@@ -81,8 +81,8 @@
     "finance": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-finance/"],
     "accounts": ["FINANCE / ACCOUNTS", "Open your company Finance dashboard", "/customer-finance/"],
     "technician": ["TECHNICIAN", "Open your company Technician workspace", "/customer-workshop/"],
-    "workshop manager": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop/"],
-    "workshop supervisor": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop/"],
+    "workshop manager": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop-manager/"],
+    "workshop supervisor": ["WORKSHOP MANAGER", "Open your company Workshop dashboard", "/customer-workshop-manager/"],
     "operator": ["MACHINE OPERATOR", "Open your Machine Operator dashboard", "/customer-operator-dashboard/"]
   };
 

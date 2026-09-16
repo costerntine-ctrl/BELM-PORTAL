@@ -160,7 +160,7 @@
     },
     "customer-admin": {
       title: `${companyName} Dashboard`, initials: "CA", eyebrow: "CUSTOMER OPERATIONS", description: "Company machines, Job Cards, store, procurement, users, finance and service communication.", primary: "/portal-cwm/",
-      menu: [item("Dashboard","home","#dashboard"),item("Company Machines","machine","/portal/dashboard?view=machines"),item("Service Requests","job","/customer-service-request/"),item("Workshop & Job Cards","inspect","/customer-workshop/"),item("Store & Spares","stock","/customer-store/"),item("Procurement","buy","/customer-procurement-dashboard/"),item("Finance & Payments","money","/customer-finance/"),item("Roles & Users","user","/customer-users/"),item("Reports","report","/general-report/"),item("Settings","settings","/customer-settings-center/")],
+      menu: [item("Dashboard","home","#dashboard"),item("Company Machines","machine","/portal/dashboard?view=machines"),item("Service Requests","job","/customer-service-request/"),item("Workshop & Job Cards","inspect","/customer-workshop-manager/"),item("Store & Spares","stock","/customer-store/"),item("Procurement","buy","/customer-procurement-dashboard/"),item("Finance & Payments","money","/customer-finance/"),item("Roles & Users","user","/customer-users/"),item("Reports","report","/general-report/"),item("Settings","settings","/customer-settings-center/")],
       process: ["Machine report","Service request","BELM action","Customer approval","Completion"]
     },
     "customer-procurement": {
@@ -189,8 +189,8 @@
       process: ["Assigned","Inspect","Diagnose","Repair","Test & close"]
     },
     "customer-workshop": {
-      title: `${companyName} Workshop Manager`, initials: "CW", eyebrow: "CUSTOMER WORKSHOP CONTROL", description: "Manage company Job Cards, technicians, inspections, spares, testing and workshop analysis.", primary: "/customer-workshop/",
-      menu: [item("Dashboard","home","#dashboard"),item("Company Machines","machine","/portal/dashboard?view=machines"),item("Open Job Cards","job","/customer-workshop/"),item("Inspection & Repair","inspect","/customer-workshop/"),item("Manage Technicians","user","/customer-technicians/"),item("Store & Spares","stock","/customer-store/"),item("Checklists","checklist","/portal/dashboard?view=machines"),item("Workshop Analysis","report","/workshop-analysis/")],
+      title: `${companyName} Workshop Manager`, initials: "CW", eyebrow: "CUSTOMER WORKSHOP CONTROL", description: "Manage company Job Cards, technicians, inspections, spares, testing and workshop analysis.", primary: "/customer-workshop-manager/",
+      menu: [item("Dashboard","home","#dashboard"),item("Company Machines","machine","/portal/dashboard?view=machines"),item("Open Job Cards","job","/breakdown-workflow/?actor=customer"),item("Inspection & Repair","inspect","/customer-inspection-repair/"),item("Manage Technicians","user","/customer-technicians/"),item("Store & Spares","stock","/customer-store/"),item("Checklists","checklist","/portal/dashboard?view=machines"),item("Workshop Analysis","report","/workshop-analysis/")],
       process: ["Open Job Card","Assign","Inspect & repair","Test","Approve completion"]
     },
     analysis: {

@@ -24,7 +24,7 @@
   var NAV = [
     { label: 'Dashboard', href: '/customer-admin-dashboard/', match: '/customer-admin-dashboard/', icon: 'home' },
     { label: 'Customer Machines', href: '/portal/dashboard?view=machines', match: '/portal/dashboard', icon: 'machine' },
-    { label: 'Workshop Manager', href: '/customer-workshop/?actor=customer', match: '/customer-workshop/', icon: 'workshop' },
+    { label: 'Workshop Manager', href: '/customer-workshop-manager/', match: '/customer-workshop-manager/', icon: 'workshop' },
     { label: 'Roles & Users', href: '/customer-users/', match: '/customer-users/', icon: 'users' },
     { label: 'Procurement', href: '/customer-procurement-dashboard/', match: '/customer-procurement-dashboard/', icon: 'cart' },
     { label: 'Store Keeper', href: '/customer-store-dashboard/', match: '/customer-store-dashboard/', icon: 'box' },

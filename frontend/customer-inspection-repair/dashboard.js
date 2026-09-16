@@ -25,6 +25,27 @@
     return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
   }
 
+  const SLA_HOURS = {
+    WORKSHOP_REVIEW: 4, TECHNICIAN_ASSIGNMENT: 4, JOB_CARD_ASSIGNED: 4,
+    DIAGNOSIS: 8, BOSS_APPROVAL: 4, STORE_CHECK: 6, PROCUREMENT: 24,
+    ACCOUNTS: 8, PARTS_READY: 4, REPAIR: 24, PENDING_APPROVAL: 8,
+  };
+  const IN_PROGRESS_STAGES = ['STORE_CHECK', 'PROCUREMENT', 'ACCOUNTS', 'PARTS_READY', 'REPAIR', 'PENDING_APPROVAL'];
+
+  function isOverdue(c) {
+    if (!c.stageStartedAt) return false;
+    const started = new Date(c.stageStartedAt).getTime();
+    if (isNaN(started)) return false;
+    const sla = SLA_HOURS[c.stage] ?? 8;
+    return (Date.now() - started) / 3600000 > sla;
+  }
+
+  const FILTERS = {
+    in_progress: { title: 'In Progress', test: (c) => IN_PROGRESS_STAGES.includes(c.stage) },
+    waiting_spare: { title: 'Waiting for Spare Approval', test: (c) => c.stage === 'BOSS_APPROVAL' },
+    overdue: { title: 'Overdue (Past Stage SLA)', test: isOverdue },
+  };
+
   async function load() {
     try {
       const [dash, board] = await Promise.all([api('/dashboard'), api('/inspection-repair')]);
@@ -37,7 +58,21 @@
       document.getElementById('statDiagnosis').textContent = counts.UNDER_DIAGNOSIS || 0;
       document.getElementById('statRepair').textContent = counts.REPAIR_IN_PROGRESS || 0;
 
-      const cases = Array.isArray(board?.cases) ? board.cases : [];
+      let cases = Array.isArray(board?.cases) ? board.cases : [];
+
+      const filterKey = new URLSearchParams(location.search).get('filter');
+      const filter = filterKey && FILTERS[filterKey];
+      const titleEl = document.getElementById('casesTitle');
+      const clearLink = document.getElementById('clearFilterLink');
+      if (filter) {
+        cases = cases.filter(filter.test);
+        titleEl.textContent = `Active Cases — ${filter.title}`;
+        clearLink.hidden = false;
+      } else {
+        titleEl.textContent = 'Active Cases';
+        clearLink.hidden = true;
+      }
+
       const body = document.getElementById('casesBody');
       body.innerHTML = cases.length
         ? cases.map((c) => `
@@ -48,7 +83,7 @@
               <td>${esc(c.nextAction || '—')}</td>
               <td>${esc(fmtDate(c.stageStartedAt))}</td>
             </tr>`).join('')
-        : '<tr><td colspan="5">No active breakdown cases right now.</td></tr>';
+        : `<tr><td colspan="5">${filter ? 'No cases match this filter right now.' : 'No active breakdown cases right now.'}</td></tr>`;
     } catch (e) {
       document.getElementById('casesBody').innerHTML = `<tr><td colspan="5">Could not load: ${esc(e.message)}</td></tr>`;
     }

@@ -1,28 +1,151 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Manage Technicians — Customer Workshop Portal</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
-  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/theme-global.css?v=791-technician-fit">
+  <script src="/theme-manager.js?v=791-technician-fit"></script>
   <style>
-    *{box-sizing:border-box}body{margin:0;background:#f4f7fb;color:#14243a;font-family:Inter,sans-serif}.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;background:#102a56;color:#fff;border-bottom:4px solid #f5c522}.topbar a,.topbar button{color:#fff;text-decoration:none}.topbar button{background:transparent;border:1px solid rgba(255,255,255,.4);padding:9px 12px;border-radius:10px}.shell{max-width:1180px;margin:0 auto;padding:22px}.hero{display:flex;justify-content:space-between;gap:16px;align-items:center;background:linear-gradient(135deg,#0d4fa3,#1677e8);color:#fff;padding:22px;border-radius:18px;margin-bottom:16px;border-bottom:5px solid #16b866}.hero h1{margin:4px 0}.hero p{margin:4px 0}.primary{background:#1677e8;color:#fff;border:0;border-radius:11px;padding:12px 16px;font-weight:800;cursor:pointer}.panel{background:#fff;border-radius:18px;padding:18px;box-shadow:0 10px 28px rgba(17,42,86,.08);margin-bottom:16px}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}.summary article{background:#fff;border-radius:15px;padding:16px;border:1px solid #dbe5f1}.summary article:nth-child(1){border-top:4px solid #1677e8}.summary article:nth-child(2){border-top:4px solid #16b866}.summary article:nth-child(3){border-top:4px solid #f5c522}.summary strong{font-size:26px;display:block;color:#14243a}.summary span{color:#64758b}.tech-list{display:grid;gap:12px}.tech-card{border:1px solid #dbe5f1;border-radius:15px;padding:16px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}.tech-card h3{margin:0 0 5px}.tech-meta{display:flex;gap:8px;flex-wrap:wrap;color:#62758c;font-size:13px}.badge{display:inline-block;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800}.active{background:#dcf8e8;color:#137143}.inactive{background:#ffe5e5;color:#a32626}.access{background:#e8f1ff;color:#275c9b}.actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.actions button{border:1px solid #cbd8e8;background:#fff;border-radius:9px;padding:8px 10px;font-weight:700}.actions .danger{color:#a32626}.alert{padding:12px 14px;border-radius:10px;background:#e9f4ff;color:#225686;margin-bottom:14px}.alert.error{background:#ffe8e8;color:#9d2020}.hidden{display:none!important}.lock-note{background:#fff2d6;color:#805c00;border:1px solid #f0d18c;padding:13px;border-radius:12px;margin-bottom:14px}dialog{border:0;border-radius:16px;max-width:640px;width:calc(100% - 24px);padding:0;box-shadow:0 24px 60px rgba(0,0,0,.25)}dialog::backdrop{background:rgba(8,20,38,.55)}form{padding:20px}.dialog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.dialog-head h2{margin:0}.dialog-head button{border:0;background:transparent;font-size:24px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid .wide{grid-column:1/-1}label{display:grid;gap:6px;font-size:13px;font-weight:700}input,select{width:100%;padding:11px;border:1px solid #cfdbea;border-radius:9px;font:inherit}.checks{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}.checks label{display:flex;align-items:center;gap:8px;background:#f5f8fc;padding:9px;border-radius:9px;font-weight:600}.checks input{width:auto}.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}.secondary{border:1px solid #cbd8e8;background:#fff;border-radius:9px;padding:10px 14px;font-weight:700}.credentials{font-family:monospace;background:#f5f8fc;padding:12px;border-radius:10px;white-space:pre-wrap}
-    html[data-theme="dark"] body{background:#061525;color:#f4f8fc}.summary article{transition:.2s ease}.summary article:nth-child(1),html[data-theme="dark"] .summary article:nth-child(1){background:linear-gradient(145deg,#0b1d31,#0d2740);border-color:#244b69;border-top-color:#1677e8}.summary article:nth-child(2),html[data-theme="dark"] .summary article:nth-child(2){background:linear-gradient(145deg,#0b1d31,#0d2740);border-color:#244b69;border-top-color:#16b866}.summary article:nth-child(3),html[data-theme="dark"] .summary article:nth-child(3){background:linear-gradient(145deg,#0b1d31,#0d2740);border-color:#244b69;border-top-color:#f5c522}.summary article strong,html[data-theme="dark"] .summary article strong{color:#fff!important;text-shadow:none}.summary article span,html[data-theme="dark"] .summary article span{color:#b8c8d8!important;font-weight:700}.summary article:nth-child(2) strong,html[data-theme="dark"] .summary article:nth-child(2) strong{color:#5be49a!important}.summary article:nth-child(3) strong,html[data-theme="dark"] .summary article:nth-child(3) strong{color:#f5c522!important}.panel,html[data-theme="dark"] .panel{background:#0b1d31!important;color:#f4f8fc;border:1px solid #244b69}.panel h2,html[data-theme="dark"] .panel h2{color:#fff}.panel p,html[data-theme="dark"] .panel p{color:#a8bacb!important}.tech-card,html[data-theme="dark"] .tech-card{background:#0d2740;border-color:#31566f;color:#f4f8fc}.tech-card h3,html[data-theme="dark"] .tech-card h3{color:#fff}.tech-meta,html[data-theme="dark"] .tech-meta{color:#b7c9d9}.actions button,html[data-theme="dark"] .actions button,.secondary,html[data-theme="dark"] .secondary{background:#0a2942;color:#fff;border-color:#31566f}.actions .danger,html[data-theme="dark"] .actions .danger{color:#ff8080}.access,html[data-theme="dark"] .access{background:#12395e;color:#b9dcff}.active,html[data-theme="dark"] .active{background:#073a27;color:#79e8a7}.inactive,html[data-theme="dark"] .inactive{background:#3a1619;color:#ff9da4}dialog,html[data-theme="dark"] dialog{background:#0b1d31;color:#f4f8fc}input,select,html[data-theme="dark"] input,html[data-theme="dark"] select{background:#071827;color:#fff;border-color:#31566f}.checks label,html[data-theme="dark"] .checks label,.credentials,html[data-theme="dark"] .credentials{background:#0d2740;color:#f4f8fc}.primary{background:linear-gradient(135deg,#0d4fa3,#1677e8)}
-    @media(max-width:700px){.hero{align-items:flex-start;flex-direction:column}.summary{grid-template-columns:1fr}.tech-card{grid-template-columns:1fr}.actions{justify-content:flex-start}.grid,.checks{grid-template-columns:1fr}}
+    *{box-sizing:border-box}
+    html,body{max-width:100%;overflow-x:hidden}
+    body{margin:0;background:#f4f7fb;color:#14243a;font-family:Inter,sans-serif}
+
+    /* Shared BELM shell already provides the visible portal topbar. */
+    .topbar{display:none!important}
+
+    .shell{width:100%;max-width:none;margin:0;padding:0;min-width:0}
+    .hero{display:flex;justify-content:space-between;gap:16px;align-items:center;min-height:108px;background:linear-gradient(135deg,#0d4fa3,#1677e8);color:#fff;padding:16px 18px;border-radius:14px;margin:0 0 12px;border-bottom:4px solid #16b866;overflow:hidden}
+    .hero>div{min-width:0}
+    .hero h1{margin:3px 0;font-family:"Space Grotesk",Inter,sans-serif;font-size:clamp(24px,2.4vw,34px);line-height:1.05}
+    .hero p{margin:3px 0;font-size:12px;line-height:1.45}
+    .hero .primary{flex:0 0 auto;white-space:nowrap}
+
+    .primary{background:#1677e8;color:#fff;border:0;border-radius:9px;padding:10px 13px;font-weight:800;font-size:12px;cursor:pointer}
+    .primary:disabled{opacity:.5;cursor:not-allowed}
+    .secondary{border:1px solid #cbd8e8;background:#fff;border-radius:8px;padding:8px 11px;font-weight:700;font-size:11px;cursor:pointer}
+
+    .summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0 0 12px}
+    .summary article{min-width:0;background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #dbe5f1}
+    .summary article:nth-child(1){border-top:4px solid #1677e8}
+    .summary article:nth-child(2){border-top:4px solid #16b866}
+    .summary article:nth-child(3){border-top:4px solid #f5c522}
+    .summary strong{display:block;color:#14243a;font-size:23px;line-height:1;margin-bottom:5px}
+    .summary span{color:#64758b;font-size:11px;font-weight:700}
+
+    .panel{min-width:0;background:#fff;border-radius:14px;padding:14px;box-shadow:0 8px 24px rgba(17,42,86,.08);margin:0 0 12px}
+    .panel-head-fit{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:10px}
+    .panel-head-fit>div{min-width:0}
+    .panel-head-fit h2{margin:0;font:700 18px "Space Grotesk",Inter,sans-serif}
+    .panel-head-fit p{margin:3px 0 0;color:#64758b;font-size:11px;line-height:1.4}
+
+    .tech-list{display:grid;gap:8px;min-width:0}
+    .tech-card{min-width:0;border:1px solid #dbe5f1;border-radius:11px;padding:11px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
+    .tech-card>div:first-child{min-width:0}
+    .tech-card h3{margin:0 0 5px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tech-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;color:#62758c;font-size:10.5px}
+    .tech-meta>span:not(.badge){max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 7px;font-size:9px;font-weight:800;line-height:1.2}
+    .active{background:#dcf8e8;color:#137143}
+    .inactive{background:#ffe5e5;color:#a32626}
+    .access{background:#e8f1ff;color:#275c9b}
+    .actions{display:flex;gap:5px;flex-wrap:nowrap;justify-content:flex-end;align-items:center}
+    .actions button{white-space:nowrap;border:1px solid #cbd8e8;background:#fff;border-radius:7px;padding:6px 8px;font-size:10px;font-weight:700;cursor:pointer}
+    .actions .danger{color:#a32626}
+
+    .alert{padding:9px 11px;border-radius:9px;background:#e9f4ff;color:#225686;margin:0 0 10px;font-size:11px}
+    .alert.error{background:#ffe8e8;color:#9d2020}
+    .hidden{display:none!important}
+    .lock-note{background:#fff2d6;color:#805c00;border:1px solid #f0d18c;padding:10px 11px;border-radius:9px;margin:0 0 10px;font-size:11px}
+
+    dialog{border:0;border-radius:14px;max-width:620px;width:min(620px,calc(100vw - 24px));max-height:calc(100vh - 28px);padding:0;overflow:auto;box-shadow:0 24px 60px rgba(0,0,0,.25)}
+    dialog::backdrop{background:rgba(8,20,38,.55)}
+    form{padding:17px}
+    .dialog-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+    .dialog-head h2{margin:0;font:700 20px "Space Grotesk",Inter,sans-serif}
+    .dialog-head button{border:0;background:transparent;font-size:24px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid .wide{grid-column:1/-1}
+    label{display:grid;gap:5px;font-size:11px;font-weight:700}
+    input,select{width:100%;min-width:0;padding:9px;border:1px solid #cfdbea;border-radius:8px;font:inherit}
+    .checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:9px}
+    .checks label{display:flex;align-items:center;gap:7px;background:#f5f8fc;padding:7px 8px;border-radius:8px;font-weight:600}
+    .checks input{width:auto}
+    .dialog-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:13px}
+    .credentials{font-family:monospace;background:#f5f8fc;padding:10px;border-radius:9px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:11px}
+
+    /* Fit inside customer BELM shell without a second oversized canvas. */
+    .belm-content{min-width:0!important;padding:18px 20px 28px!important;gap:0!important}
+    .belm-content>.shell{width:100%!important;max-width:none!important;margin:0!important;padding:0!important}
+    .belm-content>dialog{align-self:center}
+
+    html[data-theme="dark"] body{background:#061525;color:#f4f8fc}
+    .summary article{transition:.2s ease}
+    .summary article:nth-child(1),html[data-theme="dark"] .summary article:nth-child(1){background:linear-gradient(145deg,#0b1d31,#0d2740);border-color:#244b69;border-top-color:#1677e8}
+    .summary article:nth-child(2),html[data-theme="dark"] .summary article:nth-child(2){background:linear-gradient(145deg,#0b1d31,#0d2740);border-color:#244b69;border-top-color:#16b866}
+    .summary article:nth-child(3),html[data-theme="dark"] .summary article:nth-child(3){background:linear-gradient(145deg,#0b1d31,#0d2740);border-color:#244b69;border-top-color:#f5c522}
+    .summary article strong,html[data-theme="dark"] .summary article strong{color:#fff!important;text-shadow:none}
+    .summary article span,html[data-theme="dark"] .summary article span{color:#b8c8d8!important;font-weight:700}
+    .summary article:nth-child(2) strong,html[data-theme="dark"] .summary article:nth-child(2) strong{color:#5be49a!important}
+    .summary article:nth-child(3) strong,html[data-theme="dark"] .summary article:nth-child(3) strong{color:#f5c522!important}
+    .panel,html[data-theme="dark"] .panel{background:#0b1d31!important;color:#f4f8fc;border:1px solid #244b69}
+    .panel h2,html[data-theme="dark"] .panel h2{color:#fff}
+    .panel p,html[data-theme="dark"] .panel p{color:#a8bacb!important}
+    .tech-card,html[data-theme="dark"] .tech-card{background:#0d2740;border-color:#31566f;color:#f4f8fc}
+    .tech-card h3,html[data-theme="dark"] .tech-card h3{color:#fff}
+    .tech-meta,html[data-theme="dark"] .tech-meta{color:#b7c9d9}
+    .actions button,html[data-theme="dark"] .actions button,.secondary,html[data-theme="dark"] .secondary{background:#0a2942;color:#fff;border-color:#31566f}
+    .actions .danger,html[data-theme="dark"] .actions .danger{color:#ff8080}
+    .access,html[data-theme="dark"] .access{background:#12395e;color:#b9dcff}
+    .active,html[data-theme="dark"] .active{background:#073a27;color:#79e8a7}
+    .inactive,html[data-theme="dark"] .inactive{background:#3a1619;color:#ff9da4}
+    dialog,html[data-theme="dark"] dialog{background:#0b1d31;color:#f4f8fc}
+    input,select,html[data-theme="dark"] input,html[data-theme="dark"] select{background:#071827;color:#fff;border-color:#31566f}
+    .checks label,html[data-theme="dark"] .checks label,.credentials,html[data-theme="dark"] .credentials{background:#0d2740;color:#f4f8fc}
+    .primary{background:linear-gradient(135deg,#0d4fa3,#1677e8)}
+
+    @media(max-width:1180px){
+      .belm-content{padding:16px!important}
+      .hero{min-height:96px;padding:14px 15px}
+      .tech-meta>span:not(.badge){max-width:200px}
+      .actions{flex-wrap:wrap}
+    }
+    @media(max-width:850px){
+      .summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+      .tech-card{grid-template-columns:1fr}
+      .actions{justify-content:flex-start}
+      .tech-meta>span:not(.badge){max-width:100%}
+    }
+    @media(max-width:700px){
+      .belm-content{padding:12px!important}
+      .hero{align-items:flex-start;flex-direction:column;min-height:0}
+      .hero .primary{width:100%}
+      .summary{grid-template-columns:1fr}
+      .panel-head-fit{align-items:flex-start;flex-direction:column}
+      .panel-head-fit .secondary{width:100%}
+      .grid,.checks{grid-template-columns:1fr}
+      .actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+      .actions button{width:100%}
+      .actions .danger{grid-column:1/-1}
+    }
   </style>
-<script src="/navigation-context-v763.js?v=763-role-flow"></script><script defer src="/customer-belm-shell-v770.js?v=770-belm-shell-parity"></script></head>
+  <script src="/navigation-context-v763.js?v=763-role-flow"></script>
+  <script defer src="/customer-belm-shell-v770.js?v=791-technician-fit"></script>
+</head>
 <body>
 <header class="topbar"><a href="/customer-workshop/?actor=customer">← Workshop Main</a><strong>Customer Workshop Portal · TECHNICIANS</strong><button id="logoutButton" type="button">Log out</button></header>
 <main class="shell">
-  <section class="hero"><div><p style="font-size:11px;font-weight:800;letter-spacing:.12em">CUSTOMER WORKSHOP TEAM</p><h1>Manage Technicians</h1><p>Add and maintain this company's own Technicians only.</p></div><button class="primary" id="addTechButton" type="button">+ ADD TECHNICIAN</button></section>
-  <div id="alertBox" class="alert hidden"></div><div id="lockNotice" class="lock-note hidden">BELM Service is ON. Customer Technician management is locked while BELM handles maintenance.</div>
+  <section class="hero"><div><p style="font-size:10px;font-weight:800;letter-spacing:.12em">CUSTOMER WORKSHOP TEAM</p><h1>Manage Technicians</h1><p>Add and maintain this company's own Technicians only.</p></div><button class="primary" id="addTechButton" type="button">+ ADD TECHNICIAN</button></section>
+  <div id="alertBox" class="alert hidden"></div>
+  <div id="lockNotice" class="lock-note hidden">BELM Service is ON. Customer Technician management is locked while BELM handles maintenance.</div>
   <section class="summary"><article><strong id="totalTech">0</strong><span>Total Technicians</span></article><article><strong id="activeTech">0</strong><span>Active</span></article><article><strong id="inactiveTech">0</strong><span>Inactive</span></article></section>
-  <section class="panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px"><div><h2 style="margin:0">Technician Accounts</h2><p style="margin:4px 0;color:#64758b">Technician login, status and customer-dashboard access.</p></div><button class="secondary" id="refreshButton" type="button">Refresh</button></div><div id="techList" class="tech-list"><p>Loading Technicians…</p></div></section>
+  <section class="panel"><div class="panel-head-fit"><div><h2>Technician Accounts</h2><p>Technician login, status and customer-dashboard access.</p></div><button class="secondary" id="refreshButton" type="button">Refresh</button></div><div id="techList" class="tech-list"><p>Loading Technicians…</p></div></section>
 </main>
-<dialog id="techDialog"><form id="techForm"><div class="dialog-head"><h2 id="dialogTitle">Add Technician</h2><button type="button" data-close>×</button></div><input id="techId" type="hidden"><div class="grid"><label class="wide">Full name<input id="name" required maxlength="255"></label><label>Email<input id="email" type="email" required maxlength="255"></label><label>Phone<input id="phone" maxlength="50"></label><label id="passwordWrap">Initial password<input id="password" type="password" minlength="8"></label><label id="statusWrap" class="hidden">Status<select id="isActive"><option value="1">Active</option><option value="0">Inactive</option></select></label></div><div style="margin-top:14px"><b>Technician Dashboard Access</b><p style="font-size:12px;color:#64758b">Technician Workspace remains their main work area. Select only extra customer functions they need.</p><label style="display:flex;align-items:center;gap:8px"><input id="accessAll" type="checkbox" style="width:auto"> Full Customer Dashboard Access</label><div id="checks" class="checks"><label><input type="checkbox" value="check-up"> Check Up</label><label><input type="checkbox" value="workflow"> Job Cards / Maintenance</label><label><input type="checkbox" value="report-problem"> Report Problem</label><label><input type="checkbox" value="operator-reports"> Operator Reports</label><label><input type="checkbox" value="store"> Store</label><label><input type="checkbox" value="machine-expenses"> Procurement</label></div></div><div id="formError" class="alert error hidden"></div><div class="dialog-actions"><button class="secondary" type="button" data-close>Cancel</button><button class="primary" id="saveButton" type="submit">Save Technician</button></div></form></dialog>
-<dialog id="resetDialog"><div style="padding:20px"><div class="dialog-head"><h2>Password Reset</h2><button type="button" data-reset-close>×</button></div><p>Share these temporary credentials securely.</p><div id="credentials" class="credentials"></div><div class="dialog-actions"><button class="primary" type="button" data-reset-close>Done</button></div></div></dialog>
+<dialog id="techDialog"><form id="techForm"><div class="dialog-head"><h2 id="dialogTitle">Add Technician</h2><button type="button" data-close>×</button></div><input id="techId" type="hidden"><div class="grid"><label class="wide">Full name<input id="name" required maxlength="255"></label><label>Email<input id="email" type="email" required maxlength="255"></label><label>Phone<input id="phone" maxlength="50"></label><label id="passwordWrap">Initial password<input id="password" type="password" minlength="8"></label><label id="statusWrap" class="hidden">Status<select id="isActive"><option value="1">Active</option><option value="0">Inactive</option></select></label></div><div style="margin-top:12px"><b style="font-size:12px">Technician Dashboard Access</b><p style="font-size:10.5px;color:#64758b;margin:4px 0 8px">Technician Workspace remains their main work area. Select only extra customer functions they need.</p><label style="display:flex;align-items:center;gap:8px"><input id="accessAll" type="checkbox" style="width:auto"> Full Customer Dashboard Access</label><div id="checks" class="checks"><label><input type="checkbox" value="check-up"> Check Up</label><label><input type="checkbox" value="workflow"> Job Cards / Maintenance</label><label><input type="checkbox" value="report-problem"> Report Problem</label><label><input type="checkbox" value="operator-reports"> Operator Reports</label><label><input type="checkbox" value="store"> Store</label><label><input type="checkbox" value="machine-expenses"> Procurement</label></div></div><div id="formError" class="alert error hidden"></div><div class="dialog-actions"><button class="secondary" type="button" data-close>Cancel</button><button class="primary" id="saveButton" type="submit">Save Technician</button></div></form></dialog>
+<dialog id="resetDialog"><div style="padding:17px"><div class="dialog-head"><h2>Password Reset</h2><button type="button" data-reset-close>×</button></div><p style="font-size:11px">Share these temporary credentials securely.</p><div id="credentials" class="credentials"></div><div class="dialog-actions"><button class="primary" type="button" data-reset-close>Done</button></div></div></dialog>
 <script>
 (function(){
  const token=localStorage.getItem('belm_customer_token')||''; if(!token){location.replace('/login');return;} let technicians=[],locked=false;

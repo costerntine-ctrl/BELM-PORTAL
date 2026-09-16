@@ -1,1 +1,227 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Customer Administration Dashboard</title><link rel="stylesheet" href="/customer-role-mirror-v753.css"><link rel="stylesheet" href="/customer-belm-shell-v770.css"><script src="/theme-manager.js?v=753-customer-mirror"></script><script defer src="/customer-mirror-runtime-v753.js?v=761-parity"></script><script src="/navigation-context-v763.js?v=763-role-flow"></script><style id="belmShellV770Supplement">.belm-shell{background:var(--belm-navy-900)}.belm-sidebar .belm-topbar__menu{display:none}</style><script>document.getElementById("belmSidebarToggle")?.addEventListener("click",()=>document.getElementById("belmShell")?.classList.toggle("is-sidebar-open"));</script></head><body class="customer-mirror" data-customer-role-dashboard="customer_admin"><div class="belm-shell" id="belmShell"><aside class="belm-sidebar"><div class="belm-brand"><svg class="belm-brand__mark" viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/></svg><div class="belm-brand__text"><div class="belm-brand__name" data-company-name-upper>COMPANY</div><div class="belm-brand__tag">OPERATIONS PORTAL</div></div></div><nav class="belm-nav"><a class="belm-nav__item is-active" href="/customer-admin-dashboard/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Dashboard</a><a class="belm-nav__item" href="/portal/dashboard?view=machines"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>Customer Machines</a><a class="belm-nav__item" href="/customer-workshop/?actor=customer" data-customer-role="workshop_manager"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0116 0"/><path d="M2 14h20"/><path d="M12 14V9"/><circle cx="12" cy="7" r="1.4" fill="currentColor" stroke="none"/></svg>Workshop Manager</a><a class="belm-nav__item" href="/customer-users/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>Roles & Users</a><a class="belm-nav__item" href="/customer-procurement-dashboard/" data-customer-role="procurement"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5a2 2 0 002 1.5h8.4a2 2 0 002-1.6L21 7H6"/></svg>Procurement</a><a class="belm-nav__item" href="/customer-store-dashboard/" data-customer-role="store_keeper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>Store Keeper</a><a class="belm-nav__item" href="/customer-finance/" data-customer-role="accounts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>Finance / Accounts</a><a class="belm-nav__item" href="/general-report/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>Reports & Analysis</a><a class="belm-nav__item" href="/customer-settings-center/" data-customer-role="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>System Settings</a></nav><div class="belm-nav__divider"></div><div class="belm-sidebar__foot"><button class="belm-topbar__menu" id="sidebarToggle" type="button" aria-label="Toggle menu" style="display:none"></button><a class="belm-nav__item" href="/login" id="logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>Log out</a></div></aside><main class="cm-main belm-main"><header class="belm-topbar"><button class="belm-topbar__menu" id="belmSidebarToggle" type="button" aria-label="Toggle menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button><div class="belm-topbar__right"><div class="belm-user"><div class="belm-user__avatar"><svg viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/></svg></div><div><div class="belm-user__name" data-company-name-upper>COMPANY</div><div class="belm-user__role">CUSTOMER PORTAL</div></div></div></div></header><header class="cm-top"><div><b>CUSTOMER ADMINISTRATION</b><small><span data-company-name>Customer</span> · Company control</small></div><div><span data-live-date></span> · <span data-live-time></span></div></header><section class="cm-content"><section class="cm-hero"><div><small>WELCOME TO</small><h1 data-company-name-upper>COMPANY</h1><p>Independent company operations dashboard with BELM-style workflow and company-scoped data.</p></div><span data-customer-mode-chip>LOADING MODE…</span></section><section class="cm-stats"><article class="cm-stat"><span>MACHINES</span><strong id="machineCount">—</strong></article><article class="cm-stat"><span>PORTAL USERS</span><strong id="userCount">—</strong></article><article class="cm-stat"><span>ACTIVE WORKSHOP</span><strong id="workshopState">—</strong></article><article class="cm-stat"><span>SERVICE MODE</span><strong id="modeState">—</strong></article></section><section class="cm-panel"><h2>Role Dashboards</h2><p>Same operational structure as BELM, but every dashboard is restricted to this company.</p><div class="cm-role-card"><a class="cm-action" href="/customer-workshop/?actor=customer" data-customer-role="workshop_manager"><span><span class="cm-role-title">TECHNICAL</span><b class="cm-role-name">Workshop Manager</b><small class="cm-role-desc">Job Cards, technicians and maintenance</small></span></a><a class="cm-action" href="/concept-dashboards/02-technician/" data-customer-role="technician"><span><span class="cm-role-title">TECHNICAL</span><b class="cm-role-name">Technician</b><small class="cm-role-desc">Diagnosis, repair and testing</small></span></a><a class="cm-action" href="/customer-operator-dashboard/" data-customer-role="operator"><span><span class="cm-role-title">OPERATIONS</span><b class="cm-role-name">Operator</b><small class="cm-role-desc">Daily checks, fuel and reporting</small></span></a><a class="cm-action yellow" href="/customer-procurement-dashboard/" data-customer-role="procurement"><span><span class="cm-role-title">PURCHASING</span><b class="cm-role-name">Procurement</b><small class="cm-role-desc">Requests, sourcing and purchasing</small></span></a><a class="cm-action green" href="/customer-store-dashboard/" data-customer-role="store_keeper"><span><span class="cm-role-title">INVENTORY</span><b class="cm-role-name">Store Keeper</b><small class="cm-role-desc">Stock, tools and shortages</small></span></a><a class="cm-action" href="/customer-finance/" data-customer-role="accounts"><span><span class="cm-role-title">FINANCE</span><b class="cm-role-name">Finance / Accounts</b><small class="cm-role-desc">Invoices, expenses and petty cash</small></span></a></div></section><section class="cm-panel"><h2>Company Control</h2><div class="cm-actions"><a class="cm-action" href="/portal/dashboard?view=machines">Machines</a><a class="cm-action" href="/customer-users/">Roles & Users</a><a class="cm-action" href="/general-report/">General Report</a><a class="cm-action" href="/customer-settings-center/" data-customer-role="settings">Customer System Settings</a></div></section></section></main></div><script>window.addEventListener('belm:customer-mirror-ready',e=>{const d=e.detail.dashboard||{},m=e.detail.mode||{};machineCount.textContent=(d.machines||[]).length;userCount.textContent=Number(d.customer?.userCount||d.customer?.usersCount||0)||'—';workshopState.textContent=d.customer?.workshopModuleActive===false?'OFF':'ON';modeState.textContent=m.mode?.customerIndependent?'INDEPENDENT':'BELM';});document.querySelectorAll('.cm-lock').forEach(a=>a.onclick=e=>{e.preventDefault();alert('This BELM-only function is not available in the customer system.')});logout.onclick=e=>{e.preventDefault();localStorage.removeItem('belm_customer_token');location.replace('/login')};</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="cache-control" content="no-store">
+<title>Customer Admin Dashboard — BELM Portal</title>
+<link rel="stylesheet" href="/customer-belm-shell-v770.css" />
+</head>
+<body class="belm-admin">
+
+<div class="belm-shell" id="belmShell">
+
+  <aside class="belm-sidebar">
+    <div class="belm-brand">
+      <svg class="belm-brand__mark" viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/>
+      </svg>
+      <div class="belm-brand__text">
+        <div class="belm-brand__name" data-company-name-upper>COMPANY</div>
+        <div class="belm-brand__tag">OPERATIONS PORTAL</div>
+      </div>
+    </div>
+
+    <nav class="belm-nav">
+      <a href="/customer-admin-dashboard/" class="belm-nav__item is-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+        Dashboard
+      </a>
+      <a href="/portal/dashboard?view=machines" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2.5 20c0-3.3 2.5-5.6 5.5-5.6s5.5 2.3 5.5 5.6M14.5 20c0-2.4-1-4.3-2.6-5.3.7-.5 1.6-.7 2.6-.7 2.7 0 5 2.1 5 4.9"/></svg>
+        Customer Machines
+      </a>
+      <a href="/customer-workshop/?actor=customer" class="belm-nav__item" data-customer-role="workshop_manager">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+        Workshop Manager
+      </a>
+      <a href="/customer-users/" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
+        Roles &amp; Users
+      </a>
+      <a href="/customer-procurement-dashboard/" class="belm-nav__item" data-customer-role="procurement">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="20" r="1.4"/><circle cx="17" cy="20" r="1.4"/><path d="M2 3h3l2.6 12.5a2 2 0 002 1.5h8.4a2 2 0 002-1.6L21 7H6"/></svg>
+        Procurement
+      </a>
+      <a href="/customer-store-dashboard/" class="belm-nav__item" data-customer-role="store_keeper">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        Store Keeper
+      </a>
+      <a href="/customer-finance/" class="belm-nav__item" data-customer-role="accounts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+        Finance / Accounts
+      </a>
+      <a href="/customer-settings-center/" class="belm-nav__item" data-customer-role="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+        System Settings
+      </a>
+    </nav>
+
+    <div class="belm-nav__divider"></div>
+
+    <div class="belm-sidebar__foot">
+      <a href="/login" class="belm-nav__item" id="logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Log out
+      </a>
+    </div>
+  </aside>
+
+  <div class="belm-main">
+
+    <header class="belm-topbar">
+      <button class="belm-topbar__menu" id="sidebarToggle" type="button" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+
+      <div class="belm-topbar__right">
+        <div class="belm-user">
+          <div class="belm-user__avatar">
+            <svg viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/></svg>
+          </div>
+          <div>
+            <div class="belm-user__name" data-company-name-upper>COMPANY</div>
+            <div class="belm-user__role">CUSTOMER PORTAL</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="belm-content">
+
+      <section class="belm-hero">
+        <svg class="belm-hero__silhouette" viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="0,220 40,150 90,220" fill="#0f2a48"/>
+          <polygon points="70,220 140,110 220,220" fill="#123055"/>
+          <polygon points="180,220 260,90 340,220" fill="#0f2a48"/>
+          <rect x="230" y="150" width="16" height="70" fill="#0a2540"/>
+          <rect x="240" y="110" width="90" height="10" fill="#f5c518" transform="rotate(-18 240 110)"/>
+          <rect x="150" y="180" width="150" height="40" rx="4" fill="#0a2540"/>
+          <circle cx="180" cy="222" r="16" fill="#04101f"/>
+          <circle cx="260" cy="222" r="16" fill="#04101f"/>
+        </svg>
+        <div class="belm-hero__body">
+          <h1 class="belm-hero__title">Home Dashboard</h1>
+          <p class="belm-hero__subtitle" data-company-name>Your Company</p>
+        </div>
+        <div class="belm-hero__aside">
+          <div class="belm-hero__kicker">RELIABLE · STRONGER<br/>KEEP TANZANIA MOVING</div>
+        </div>
+      </section>
+
+      <section class="belm-stats">
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Registered Machines</div>
+            <div class="belm-stat-card__value" id="statMachines">–</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--gold">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Machines Needing Attention</div>
+            <div class="belm-stat-card__value" id="statAttention">–</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Open Job Cards</div>
+            <div class="belm-stat-card__value" id="statJobCards">–</div>
+          </div>
+        </div>
+
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--navy">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#f5c518" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>
+          </div>
+          <div>
+            <div class="belm-stat-card__label">Pending Approvals</div>
+            <div class="belm-stat-card__value" id="statApprovals">–</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="belm-grid-2">
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title belm-panel__title--tool">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+              Fleet Status
+            </div>
+          </div>
+          <div id="fleetStatusBars" class="belm-alert-list"><div class="belm-alert-row"><span class="belm-alert-row__label">Loading…</span></div></div>
+        </div>
+
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title belm-panel__title--alert">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg>
+              Machines Needing Attention
+            </div>
+            <a href="/portal/dashboard?view=machines" class="belm-panel__link">View All
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+          </div>
+          <div class="belm-alert-list" id="alertList"><div class="belm-alert-row"><span class="belm-alert-row__label">Loading…</span></div></div>
+        </div>
+      </section>
+
+      <section class="belm-grid-bottom">
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title belm-panel__title--doc">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+              Recent Activity
+            </div>
+          </div>
+          <div class="belm-table-wrap">
+            <table class="belm-table">
+              <thead>
+                <tr><th>Date &amp; Time</th><th>Activity</th><th>Status</th></tr>
+              </thead>
+              <tbody id="activityBody">
+                <tr><td colspan="3">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="belm-promo">
+          <div>
+            <div class="belm-promo__title">SERVICE SUPPORT PARTNERSHIP — A STRONGER TANZANIA</div>
+            <div class="belm-promo__rule"></div>
+          </div>
+          <div class="belm-promo__stats">
+            <div class="belm-promo__stat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M2.5 20c0-3.6 2.9-6.2 6.5-6.2s6.5 2.6 6.5 6.2"/><circle cx="18" cy="9" r="2.2"/></svg>
+              PEOPLE
+            </div>
+            <div class="belm-promo__stat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3 6 6 .9-4.5 4.3 1 6.3L12 16.7 6.5 19.5l1-6.3L3 9.9 9 9l3-7z"/></svg>
+              PERFORMANCE
+            </div>
+            <div class="belm-promo__stat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg>
+              PROGRESS
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<script src="/customer-admin-dashboard/dashboard.js"></script>
+</body>
+</html>

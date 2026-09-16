@@ -1628,6 +1628,54 @@ if ($sub === 'dashboard') {
     json_out(['customer' => $profile, 'machines' => $machines]);
 }
 
+// V774: one small, safe, read-only endpoint bundling the counters the new
+// Customer Admin Home dashboard needs (Open Job Cards, Pending Approvals,
+// Active Technicians) - kept separate from the main /dashboard payload above
+// so existing pages that already call /dashboard are unaffected.
+if ($sub === 'dashboard-stats') {
+    $stmt = db()->prepare(
+        "SELECT COUNT(*) FROM service_requests WHERE customer_id=? AND completed_at IS NULL AND cancelled_at IS NULL"
+    );
+    $stmt->execute([$customer['id']]);
+    $openJobCards = (int)$stmt->fetchColumn();
+
+    $stmt = db()->prepare(
+        "SELECT COUNT(*) FROM breakdown_spare_requests bsr
+         JOIN breakdown_cases bc ON bc.id = bsr.case_id
+         WHERE bc.customer_id = ? AND UPPER(COALESCE(bsr.status,''))='WAITING_BOSS_APPROVAL'"
+    );
+    $stmt->execute([$customer['id']]);
+    $pendingApprovals = (int)$stmt->fetchColumn();
+
+    $stmt = db()->prepare(
+        "SELECT COUNT(*) FROM users WHERE assigned_customer_id=? AND is_customer_managed=1 AND is_active=1"
+    );
+    $stmt->execute([$customer['id']]);
+    $activeTechnicians = (int)$stmt->fetchColumn();
+
+    $stmt = db()->prepare(
+        "SELECT sr.id, sr.service_type, sr.status, sr.created_at, sr.updated_at, m.model AS machine_model
+         FROM service_requests sr LEFT JOIN machines m ON m.id = sr.machine_id
+         WHERE sr.customer_id = ? ORDER BY sr.updated_at DESC LIMIT 6"
+    );
+    $stmt->execute([$customer['id']]);
+    $recentActivity = array_map(static function ($row) {
+        return [
+            'id' => $row['id'],
+            'label' => trim(($row['service_type'] ?: 'Job Card') . ($row['machine_model'] ? ' - ' . $row['machine_model'] : '')),
+            'status' => $row['status'],
+            'at' => $row['updated_at'] ?: $row['created_at'],
+        ];
+    }, $stmt->fetchAll());
+
+    json_out([
+        'openJobCards' => $openJobCards,
+        'pendingApprovals' => $pendingApprovals,
+        'activeTechnicians' => $activeTechnicians,
+        'recentActivity' => $recentActivity,
+    ]);
+}
+
 // ---- Analysis summary for the dashboard's right-side card -------------------
 // ---- Analysis for ONE specific machine (Procurement page sidebar) -----
 if ($sub === 'machine-analysis' && $sub2) {

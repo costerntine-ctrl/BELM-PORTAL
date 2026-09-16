@@ -5964,8 +5964,11 @@ if ($sub === 'belm-support' && $method === 'POST') {
 if ($sub === 'service-requests' && $method === 'GET') {
     require_customer_feature_access($customer, 'service-request', 'Job Card');
     $showHidden = !empty($_GET['hidden']);
-    $stmt = db()->prepare(
-        'SELECT sr.*, m.model AS machine_model, m.machine_type,
+    // V774: Technician Dashboard shows only the Job Cards assigned to the
+    // logged-in Technician - additive, existing callers that don't pass
+    // ?mine=1 are unaffected.
+    $onlyMine = !empty($_GET['mine']) && !empty($customer['actorId']);
+    $sql = 'SELECT sr.*, m.model AS machine_model, m.machine_type,
                 cu.name AS completed_by_name, xu.name AS cancelled_by_name,
                 au.name AS assigned_to_name
          FROM service_requests sr
@@ -5973,10 +5976,12 @@ if ($sub === 'service-requests' && $method === 'GET') {
          LEFT JOIN users cu ON cu.id = sr.completed_by_id
          LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
          LEFT JOIN users au ON au.id = sr.assigned_to_id
-         WHERE sr.customer_id = ? AND sr.hidden_at IS ' . ($showHidden ? 'NOT NULL' : 'NULL') . '
-         ORDER BY sr.created_at DESC'
-    );
-    $stmt->execute([$customer['id']]);
+         WHERE sr.customer_id = ? AND sr.hidden_at IS ' . ($showHidden ? 'NOT NULL' : 'NULL') .
+         ($onlyMine ? ' AND sr.assigned_to_id = ?' : '') . '
+         ORDER BY sr.created_at DESC';
+    $params = $onlyMine ? [$customer['id'], $customer['actorId']] : [$customer['id']];
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
     $requests = $stmt->fetchAll();
     foreach ($requests as &$request) {
         $request['machine'] = $request['machine_id']

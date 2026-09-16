@@ -1676,6 +1676,44 @@ if ($sub === 'dashboard-stats') {
     ]);
 }
 
+// V777: Inspection & Repair board - all of this customer's Breakdown Cases,
+// grouped into the same three buckets the design uses (Pending Inspection,
+// Under Diagnosis, Repair in Progress), reusing the real workflow stage
+// already tracked on breakdown_cases. Read-only, strictly scoped to this
+// customer_id like every other endpoint in this file.
+if ($sub === 'inspection-repair') {
+    $stmt = db()->prepare(
+        "SELECT bc.id, bc.current_stage, bc.status, bc.blocker_reason, bc.stage_started_at, bc.opened_at,
+                m.brand AS machine_brand, m.model AS machine_model, m.fleet_number,
+                (SELECT djc.technician_name FROM digital_job_cards djc WHERE djc.case_id = bc.id ORDER BY djc.created_at DESC LIMIT 1) AS technician_name
+         FROM breakdown_cases bc
+         JOIN machines m ON m.id = bc.machine_id
+         WHERE bc.customer_id = ? AND bc.status <> 'COMPLETED'
+         ORDER BY bc.stage_started_at ASC"
+    );
+    $stmt->execute([$customer['id']]);
+    $stageBucket = [
+        'WORKSHOP_REVIEW' => 'PENDING_INSPECTION', 'TECHNICIAN_ASSIGNMENT' => 'PENDING_INSPECTION', 'JOB_CARD_ASSIGNED' => 'PENDING_INSPECTION',
+        'DIAGNOSIS' => 'UNDER_DIAGNOSIS', 'BOSS_APPROVAL' => 'UNDER_DIAGNOSIS',
+        'STORE_CHECK' => 'REPAIR_IN_PROGRESS', 'PROCUREMENT' => 'REPAIR_IN_PROGRESS', 'ACCOUNTS' => 'REPAIR_IN_PROGRESS',
+        'PARTS_READY' => 'REPAIR_IN_PROGRESS', 'REPAIR' => 'REPAIR_IN_PROGRESS', 'PENDING_APPROVAL' => 'REPAIR_IN_PROGRESS',
+    ];
+    $rows = array_map(static function ($row) use ($stageBucket) {
+        return [
+            'id' => $row['id'],
+            'machine' => trim(($row['machine_brand'] ?: '') . ' ' . ($row['machine_model'] ?: '')) ?: ($row['fleet_number'] ?: 'Machine'),
+            'stage' => $row['current_stage'],
+            'bucket' => $stageBucket[$row['current_stage']] ?? 'REPAIR_IN_PROGRESS',
+            'technician' => $row['technician_name'] ?: null,
+            'nextAction' => $row['blocker_reason'] ?: null,
+            'stageStartedAt' => $row['stage_started_at'],
+        ];
+    }, $stmt->fetchAll());
+    $counts = ['PENDING_INSPECTION' => 0, 'UNDER_DIAGNOSIS' => 0, 'REPAIR_IN_PROGRESS' => 0];
+    foreach ($rows as $r) { $counts[$r['bucket']]++; }
+    json_out(['cases' => $rows, 'counts' => $counts]);
+}
+
 // ---- Analysis summary for the dashboard's right-side card -------------------
 // ---- Analysis for ONE specific machine (Procurement page sidebar) -----
 if ($sub === 'machine-analysis' && $sub2) {

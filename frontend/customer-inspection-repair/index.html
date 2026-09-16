@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="cache-control" content="no-store">
+<title>Inspection &amp; Repair — BELM Portal</title>
+<link rel="stylesheet" href="/customer-belm-shell-v770.css" />
+</head>
+<body class="belm-admin">
+
+<div class="belm-shell" id="belmShell">
+  <aside class="belm-sidebar">
+    <div class="belm-brand">
+      <svg class="belm-brand__mark" viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/>
+      </svg>
+      <div class="belm-brand__text">
+        <div class="belm-brand__name" data-company-name-upper>COMPANY</div>
+        <div class="belm-brand__tag">OPERATIONS PORTAL</div>
+      </div>
+    </div>
+    <nav class="belm-nav">
+      <a href="/customer-admin-dashboard/" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+        Dashboard
+      </a>
+      <a href="/customer-workshop/?actor=customer" class="belm-nav__item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+        Workshop Manager
+      </a>
+      <a href="/customer-inspection-repair/" class="belm-nav__item is-active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
+        Inspection &amp; Repair
+      </a>
+    </nav>
+    <div class="belm-nav__divider"></div>
+    <div class="belm-sidebar__foot">
+      <a href="/login" class="belm-nav__item" id="logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+        Log out
+      </a>
+    </div>
+  </aside>
+
+  <div class="belm-main">
+    <header class="belm-topbar">
+      <button class="belm-topbar__menu" id="sidebarToggle" type="button" aria-label="Toggle menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+      <div class="belm-topbar__right">
+        <div class="belm-user">
+          <div class="belm-user__avatar">
+            <svg viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/></svg>
+          </div>
+          <div>
+            <div class="belm-user__name" data-company-name-upper>COMPANY</div>
+            <div class="belm-user__role">CUSTOMER PORTAL</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="belm-content">
+      <section class="belm-hero">
+        <svg class="belm-hero__silhouette" viewBox="0 0 400 220" preserveAspectRatio="xMaxYMid slice" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="0,220 40,150 90,220" fill="#0f2a48"/>
+          <polygon points="70,220 140,110 220,220" fill="#123055"/>
+          <polygon points="180,220 260,90 340,220" fill="#0f2a48"/>
+        </svg>
+        <div class="belm-hero__body">
+          <h1 class="belm-hero__title">Inspection &amp; Repair</h1>
+          <p class="belm-hero__subtitle" data-company-name>Your Company</p>
+        </div>
+      </section>
+
+      <section class="belm-stats">
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--gold">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></svg>
+          </div>
+          <div><div class="belm-stat-card__label">Pending Inspection</div><div class="belm-stat-card__value" id="statPending">–</div></div>
+        </div>
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+          </div>
+          <div><div class="belm-stat-card__label">Under Diagnosis</div><div class="belm-stat-card__value" id="statDiagnosis">–</div></div>
+        </div>
+        <div class="belm-stat-card">
+          <div class="belm-stat-card__icon belm-stat-card__icon--green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#04101f" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+          </div>
+          <div><div class="belm-stat-card__label">Repair in Progress</div><div class="belm-stat-card__value" id="statRepair">–</div></div>
+        </div>
+      </section>
+
+      <section class="belm-grid-bottom" style="grid-template-columns:1fr">
+        <div class="belm-panel">
+          <div class="belm-panel__head">
+            <div class="belm-panel__title belm-panel__title--tool">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+              Active Cases
+            </div>
+          </div>
+          <div class="belm-table-wrap">
+            <table class="belm-table">
+              <thead><tr><th>Machine</th><th>Current Stage</th><th>Technician</th><th>Next Action</th><th>Since</th></tr></thead>
+              <tbody id="casesBody"><tr><td colspan="5">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<script src="/customer-inspection-repair/dashboard.js"></script>
+</body>
+</html>

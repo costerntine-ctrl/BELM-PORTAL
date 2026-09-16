@@ -84,6 +84,53 @@
   }
   const target=destination();
 
+  function installMobileSidebarPull(){
+    if(cleanPath!=='/concept-dashboards/01-admin-home')return;
+    const shell=document.getElementById('belmShell');
+    const sidebar=shell&&shell.querySelector('.belm-sidebar');
+    if(!shell||!sidebar)return;
+    if(document.getElementById('belmMobileSidebarPullV773'))return;
+
+    if(!document.getElementById('belmMobileSidebarPullV773Style')){
+      const style=document.createElement('style');
+      style.id='belmMobileSidebarPullV773Style';
+      style.textContent='.belm-mobile-sidebar-pull-v773,.belm-mobile-sidebar-scrim-v773{display:none}@media(max-width:900px){#sidebarToggle{display:none!important}.belm-sidebar{width:min(264px,86vw)!important;max-width:86vw!important}.belm-mobile-sidebar-pull-v773{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:99996;width:46px;height:62px;border:1px solid rgba(4,16,31,.35);border-left:0;border-radius:0 15px 15px 0;background:#f5c518;color:#04101f;display:flex;align-items:center;justify-content:center;font:900 24px/1 Arial,sans-serif;box-shadow:0 10px 28px rgba(0,0,0,.34);transition:left .2s ease,background .2s ease,color .2s ease;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.belm-mobile-sidebar-pull-v773:active{transform:translateY(-50%) scale(.96)}.belm-mobile-sidebar-pull-v773.is-open{left:min(264px,86vw);background:#0d2742;color:#fff;border-color:#49657d}.belm-mobile-sidebar-scrim-v773{position:fixed;inset:0;z-index:39;background:rgba(1,9,18,.55);backdrop-filter:blur(2px);display:block}.belm-mobile-sidebar-scrim-v773[hidden]{display:none!important}body.belm-mobile-sidebar-open-v773{overflow:hidden}}';
+      document.head.appendChild(style);
+    }
+
+    const scrim=document.createElement('div');
+    scrim.id='belmMobileSidebarScrimV773';
+    scrim.className='belm-mobile-sidebar-scrim-v773';
+    scrim.hidden=true;
+    document.body.appendChild(scrim);
+
+    const button=document.createElement('button');
+    button.id='belmMobileSidebarPullV773';
+    button.className='belm-mobile-sidebar-pull-v773';
+    button.type='button';
+    button.setAttribute('aria-label','Open sidebar menu');
+    button.setAttribute('aria-controls','belmShell');
+    button.setAttribute('aria-expanded','false');
+    button.textContent='☰';
+    document.body.appendChild(button);
+
+    function setOpen(open){
+      shell.classList.toggle('is-sidebar-open',open);
+      button.classList.toggle('is-open',open);
+      button.setAttribute('aria-expanded',String(open));
+      button.setAttribute('aria-label',open?'Close sidebar menu':'Open sidebar menu');
+      button.textContent=open?'‹':'☰';
+      scrim.hidden=!open;
+      document.body.classList.toggle('belm-mobile-sidebar-open-v773',open);
+    }
+
+    button.addEventListener('click',()=>setOpen(!shell.classList.contains('is-sidebar-open')));
+    scrim.addEventListener('click',()=>setOpen(false));
+    sidebar.addEventListener('click',e=>{if(e.target.closest('a[href]')&&window.innerWidth<=900)setOpen(false)});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&shell.classList.contains('is-sidebar-open'))setOpen(false)});
+    window.addEventListener('resize',()=>{if(window.innerWidth>900&&shell.classList.contains('is-sidebar-open'))setOpen(false)});
+  }
+
   function go(e){if(e){e.preventDefault();e.stopImmediatePropagation();}location.assign(target)}
   function install(){
     if(!document.body)return;
@@ -109,6 +156,7 @@
     const a=document.createElement('a');a.id='belmContextBackV763';a.href=target;a.textContent=labelFor(target);a.className='belm-context-back-v763';a.addEventListener('click',go,true);document.body.appendChild(a);
     if(!document.getElementById('belmContextBackV763Style')){const s=document.createElement('style');s.id='belmContextBackV763Style';s.textContent='.belm-context-back-v763{position:fixed;left:12px;top:12px;z-index:99997;display:inline-flex;align-items:center;min-height:38px;padding:8px 12px;border:1px solid #49657d;border-radius:10px;background:#0d2742;color:#fff;text-decoration:none;font:800 12px Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.18)}.belm-context-back-v763:hover{background:#123859}@media(max-width:600px){.belm-context-back-v763{left:8px;top:8px;min-height:34px;padding:6px 9px;font-size:11px}}';document.head.appendChild(s)}
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-  setTimeout(install,250);
+  function boot(){installMobileSidebarPull();install()}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+  setTimeout(()=>{installMobileSidebarPull();install()},250);
 })();

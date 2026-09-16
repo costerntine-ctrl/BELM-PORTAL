@@ -1688,7 +1688,7 @@ if ($sub === 'inspection-repair') {
                 (SELECT djc.technician_name FROM digital_job_cards djc WHERE djc.case_id = bc.id ORDER BY djc.created_at DESC LIMIT 1) AS technician_name
          FROM breakdown_cases bc
          JOIN machines m ON m.id = bc.machine_id
-         WHERE bc.customer_id = ? AND bc.status <> 'COMPLETED'
+         WHERE bc.customer_id = ? AND bc.status NOT IN ('COMPLETED','CANCELLED')
          ORDER BY bc.stage_started_at ASC"
     );
     $stmt->execute([$customer['id']]);
@@ -1732,8 +1732,8 @@ if ($sub === 'workshop-manager-stats') {
     $now = new DateTime('now');
     foreach ($stmt->fetchAll() as $c) {
         $stage = (string)$c['current_stage'];
-        if ($c['status'] === 'COMPLETED') {
-            if ($c['closed_at']) {
+        if (in_array($c['status'], ['COMPLETED', 'CANCELLED'], true)) {
+            if ($c['status'] === 'COMPLETED' && $c['closed_at']) {
                 $closed = new DateTime($c['closed_at']);
                 if ((int)$closed->format('Y') === (int)$now->format('Y') && (int)$closed->format('n') === (int)$now->format('n')) {
                     $completedThisMonth++;

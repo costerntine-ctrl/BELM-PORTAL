@@ -4,73 +4,60 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071a31">
-  <title>Role Activity — Customer Workshop Portal</title>
+  <title>Reports & Analysis — Customer Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/theme-global.css?v=785-role-layout">
-  <link rel="stylesheet" href="/general-analysis/app.css?v=785-role-layout">
-  <script src="/theme-manager.js?v=785-role-layout"></script>
-  <script src="/navigation-context-v763.js?v=785-role-layout"></script>
+  <link rel="stylesheet" href="/theme-global.css?v=786-belm-mirror">
+  <link rel="stylesheet" href="/general-analysis/belm-mirror-v786.css?v=786-belm-mirror">
+  <script src="/theme-manager.js?v=786-belm-mirror"></script>
+  <script src="/navigation-context-v763.js?v=786-belm-mirror"></script>
+  <script defer src="/customer-belm-shell-v770.js?v=786-belm-mirror"></script>
 </head>
 <body>
-  <button id="roleMenuButton" class="role-menu-button" type="button" aria-label="Open Role Activity menu" aria-controls="roleSidebar" aria-expanded="false">☰</button>
-  <div id="roleMenuScrim" class="role-menu-scrim" hidden></div>
+  <button id="roleMenuButton" type="button" hidden aria-expanded="false"></button>
+  <div id="roleMenuScrim" hidden></div>
+  <button id="themeButton" type="button" hidden></button>
+  <button id="logoutButton" type="button" hidden></button>
 
-  <aside id="roleSidebar" class="role-sidebar" aria-label="Role Activity navigation">
-    <a class="role-brand" href="/customer-admin-dashboard/">
-      <span class="role-brand-mark">B</span>
-      <span><b id="sidebarCompany">CUSTOMER</b><small>ROLE ACTIVITY</small></span>
-    </a>
-
-    <div class="role-user">
-      <span id="roleInitials">CU</span>
-      <div><b id="roleActor">Customer User</b><small id="roleName">Assigned role</small></div>
-    </div>
-
-    <div class="role-nav-title"><span>ROLE ACTIVITIES</span><b id="roleNavCount">0</b></div>
-    <nav id="roleNavigation">
-      <div class="role-nav-group">MAIN</div>
-      <a href="#overview" data-role-item="overview" data-roles="all"><i class="blue">OV</i><span><b>Overview</b><small>Company position</small></span><strong>›</strong></a>
-
-      <div class="role-nav-group">WORKSHOP OPERATIONS</div>
-      <a href="#workshop-analysis" data-role-item="workshop" data-roles="owner,admin,workshop_manager"><i class="yellow">WM</i><span><b>Workshop Activity</b><small>Jobs & technicians</small></span><strong>›</strong></a>
-      <a href="#operator-analysis" data-role-item="operator" data-roles="owner,admin,workshop_manager,operator"><i class="purple">OP</i><span><b>Operator & Machines</b><small>Fleet activity</small></span><strong>›</strong></a>
-
-      <div class="role-nav-group">SUPPORT DEPARTMENTS</div>
-      <a href="#store-analysis" data-role-item="store" data-roles="owner,admin,workshop_manager,store_keeper,procurement"><i class="green">SK</i><span><b>Store Keeper</b><small>Stock & issue control</small></span><strong>›</strong></a>
-      <a href="#procurement-analysis" data-role-item="procurement" data-roles="owner,admin,workshop_manager,store_keeper,procurement"><i class="yellow">PR</i><span><b>Procurement</b><small>Requests & purchasing</small></span><strong>›</strong></a>
-      <a href="#finance-analysis" data-role-item="finance" data-roles="owner,admin,accounts"><i class="cyan">FN</i><span><b>Finance / Accounts</b><small>Funds & spending</small></span><strong>›</strong></a>
-
-      <div class="role-nav-group">MANAGEMENT</div>
-      <a href="#team-analysis" data-role-item="roles" data-roles="owner,admin"><i class="blue">RL</i><span><b>Users & Roles</b><small>Access & attendance</small></span><strong>›</strong></a>
-      <a href="#general-reports" data-role-item="reports" data-roles="all"><i class="green">GR</i><span><b>General Reports</b><small>All report records</small></span><strong>›</strong></a>
-    </nav>
-
-    <div class="role-sidebar-actions">
-      <a href="/customer-admin-dashboard/">Customer Dashboard</a>
-      <button id="themeButton" type="button">☾ Light / Dark</button>
-      <button id="logoutButton" type="button">Log out securely</button>
-    </div>
-  </aside>
-
-  <main class="role-main">
-    <header class="role-header">
+  <main class="analysis-page">
+    <section class="analysis-hero">
       <div>
-        <p>CUSTOMER WORKSHOP PORTAL</p>
+        <p class="analysis-hero__eyebrow">CUSTOMER REPORTS & ANALYSIS</p>
         <h1 id="companyTitle">Role Activity</h1>
-        <span id="roleSummary">Live activity for your assigned role.</span>
+        <p id="roleSummary" class="analysis-hero__copy">Live company activity arranged using the same BELM operational structure.</p>
       </div>
-      <div class="role-header-actions">
-        <a href="/customer-admin-dashboard/">Customer Dashboard</a>
-        <button id="refreshButton" type="button">↻ Refresh</button>
+      <div class="analysis-identity">
+        <span>ACTIVE USER</span>
+        <b id="roleActor">Customer User</b>
+        <small id="roleName">Assigned role</small>
+        <span id="sidebarCompany" hidden>CUSTOMER</span>
+        <span id="roleInitials" hidden>CU</span>
       </div>
-    </header>
+    </section>
 
     <div id="alertBox" class="role-alert" hidden role="status"></div>
-    <p id="syncLine" class="sync-line">Preparing Role Activity…</p>
 
-    <section id="overview" class="role-section">
+    <div class="analysis-toolbar">
+      <div class="analysis-toolbar__meta"><span class="analysis-live">LIVE</span><p id="syncLine" class="sync-line">Preparing Role Activity…</p></div>
+      <button id="refreshButton" class="analysis-refresh" type="button">↻ Refresh</button>
+    </div>
+
+    <section class="analysis-tabs-wrap">
+      <div class="analysis-tabs-title"><span>ROLE ACTIVITY MODULES</span><b id="roleNavCount">0</b></div>
+      <nav id="roleNavigation" class="analysis-tabs" aria-label="Role activity modules">
+        <a href="#overview" data-role-item="overview" data-roles="all"><i class="blue">OV</i><span>Overview</span></a>
+        <a href="#workshop-analysis" data-role-item="workshop" data-roles="owner,admin,workshop_manager"><i class="yellow">WM</i><span>Workshop</span></a>
+        <a href="#operator-analysis" data-role-item="operator" data-roles="owner,admin,workshop_manager,operator"><i class="purple">OP</i><span>Operator & Machines</span></a>
+        <a href="#store-analysis" data-role-item="store" data-roles="owner,admin,workshop_manager,store_keeper,procurement"><i class="green">SK</i><span>Store Keeper</span></a>
+        <a href="#procurement-analysis" data-role-item="procurement" data-roles="owner,admin,workshop_manager,store_keeper,procurement"><i class="yellow">PR</i><span>Procurement</span></a>
+        <a href="#finance-analysis" data-role-item="finance" data-roles="owner,admin,accounts"><i class="cyan">FN</i><span>Finance / Accounts</span></a>
+        <a href="#team-analysis" data-role-item="roles" data-roles="owner,admin"><i class="blue">RL</i><span>Users & Roles</span></a>
+        <a href="#general-reports" data-role-item="reports" data-roles="all"><i class="green">GR</i><span>General Reports</span></a>
+      </nav>
+    </section>
+
+    <section id="overview" class="overview-card">
       <div class="section-heading"><div><p>LIVE COMPANY POSITION</p><h2>Role Activity Overview</h2></div><span>LIVE</span></div>
       <div class="kpi-grid">
         <article><span>REGISTERED MACHINES</span><strong id="machineCount">0</strong><small>Customer fleet records</small></article>
@@ -85,21 +72,13 @@
 
       <article id="workshop-analysis" class="analysis-card" data-section-roles="owner,admin,workshop_manager">
         <div class="card-heading"><div><p>WORKSHOP MANAGER</p><h2>Workshop Activity</h2></div><i class="yellow">WM</i></div>
-        <div class="metric-rows">
-          <div><span>Machines registered</span><b id="machinesRegistered">0</b></div>
-          <div><span>Technicians</span><b id="techniciansTotal">0</b></div>
-          <div><span>Active technicians</span><b id="techniciansActive">0</b></div>
-        </div>
+        <div class="metric-rows"><div><span>Machines registered</span><b id="machinesRegistered">0</b></div><div><span>Technicians</span><b id="techniciansTotal">0</b></div><div><span>Active technicians</span><b id="techniciansActive">0</b></div></div>
         <div class="card-actions"><a href="/customer-workshop-manager/">Open Workshop Control</a><a href="/workshop-analysis/">Detailed Analysis</a></div>
       </article>
 
       <article id="operator-analysis" class="analysis-card" data-section-roles="owner,admin,workshop_manager,operator">
         <div class="card-heading"><div><p>OPERATOR ACTIVITY</p><h2>Machines & Check Up</h2></div><i class="purple">OP</i></div>
-        <div class="metric-rows">
-          <div><span>Fleet machines</span><b id="operatorMachines">0</b></div>
-          <div><span>Active / working</span><b id="operatorActive">0</b></div>
-          <div><span>Needs attention</span><b id="operatorAttention">0</b></div>
-        </div>
+        <div class="metric-rows"><div><span>Fleet machines</span><b id="operatorMachines">0</b></div><div><span>Active / working</span><b id="operatorActive">0</b></div><div><span>Needs attention</span><b id="operatorAttention">0</b></div></div>
         <div class="card-actions"><a href="/customer-operator-dashboard/">Open Operator Dashboard</a><a href="/general-report/report/?type=operator">Operator Reports</a></div>
       </article>
 
@@ -107,33 +86,20 @@
 
       <article id="store-analysis" class="analysis-card" data-section-roles="owner,admin,workshop_manager,store_keeper,procurement">
         <div class="card-heading"><div><p>STORE KEEPER</p><h2>Store & Spare Parts</h2></div><i class="green">SK</i></div>
-        <div class="metric-rows">
-          <div><span>Store items</span><b id="storeItems">0</b></div>
-          <div><span>Quantity on hand</span><b id="storeQty">0</b></div>
-          <div><span>Out of stock</span><b id="storeOut">0</b></div>
-        </div>
+        <div class="metric-rows"><div><span>Store items</span><b id="storeItems">0</b></div><div><span>Quantity on hand</span><b id="storeQty">0</b></div><div><span>Out of stock</span><b id="storeOut">0</b></div></div>
         <div class="card-actions"><a href="/customer-store-dashboard/">Open Customer Store</a><a href="/customer-procurement-dashboard/">Send Shortage to Procurement</a></div>
       </article>
 
-      <article id="procurement-analysis" class="analysis-card featured-procurement" data-section-roles="owner,admin,workshop_manager,store_keeper,procurement">
+      <article id="procurement-analysis" class="analysis-card" data-section-roles="owner,admin,workshop_manager,store_keeper,procurement">
         <div class="card-heading"><div><p>PROCUREMENT</p><h2>Purchasing & Shortage</h2></div><i class="yellow">PR</i></div>
-        <div class="metric-rows procurement-metrics">
-          <div><span>Open requests</span><b id="procurementOpen">0</b></div>
-          <div><span>Store shortage</span><b id="procurementShortage">0</b></div>
-          <div><span>Ordered</span><b id="procurementOrdered">0</b></div>
-          <div><span>Parts ready</span><b id="procurementReady">0</b></div>
-        </div>
+        <div class="metric-rows procurement-metrics"><div><span>Open requests</span><b id="procurementOpen">0</b></div><div><span>Store shortage</span><b id="procurementShortage">0</b></div><div><span>Ordered</span><b id="procurementOrdered">0</b></div><div><span>Parts ready</span><b id="procurementReady">0</b></div></div>
         <p id="procurementNote" class="card-note">Reading machine-linked Procurement requests…</p>
         <div class="card-actions"><a href="/customer-procurement-dashboard/">Open Procurement</a><a href="/general-report/report/?type=procurement">Procurement Report</a></div>
       </article>
 
       <article id="finance-analysis" class="analysis-card" data-section-roles="owner,admin,accounts">
         <div class="card-heading"><div><p>FINANCE / ACCOUNTS</p><h2>Workshop Funds</h2></div><i class="cyan">FN</i></div>
-        <div class="metric-rows">
-          <div><span>Current balance</span><b id="pettyBalance">TZS 0</b></div>
-          <div><span>Total funded</span><b id="pettyFunded">TZS 0</b></div>
-          <div><span>Total spent</span><b id="pettySpent">TZS 0</b></div>
-        </div>
+        <div class="metric-rows"><div><span>Current balance</span><b id="pettyBalance">TZS 0</b></div><div><span>Total funded</span><b id="pettyFunded">TZS 0</b></div><div><span>Total spent</span><b id="pettySpent">TZS 0</b></div></div>
         <div class="card-actions"><a href="/customer-finance/">Open Finance</a><a href="/general-report/">Finance Reports</a></div>
       </article>
 
@@ -141,29 +107,34 @@
 
       <article id="team-analysis" class="analysis-card" data-section-roles="owner,admin">
         <div class="card-heading"><div><p>USERS & ACCESS</p><h2>Team Role Activity</h2></div><i class="blue">RL</i></div>
-        <div class="metric-rows">
-          <div><span>Total portal users</span><b id="userTotal">0</b></div>
-          <div><span>Active users</span><b id="userActive">0</b></div>
-          <div><span>Departments / roles</span><b id="departmentCount">0</b></div>
-        </div>
+        <div class="metric-rows"><div><span>Total portal users</span><b id="userTotal">0</b></div><div><span>Active users</span><b id="userActive">0</b></div><div><span>Departments / roles</span><b id="departmentCount">0</b></div></div>
         <div class="card-actions"><a href="/customer-users/">Manage Users & Roles</a></div>
       </article>
     </section>
 
-    <section id="general-reports" class="role-section reports-section">
+    <section id="general-reports" class="reports-section">
       <div class="section-heading"><div><p>GENERAL REPORTS</p><h2>Reports & Attendance</h2></div><a href="/general-report/">Open Report Centre →</a></div>
-      <div class="attendance-summary">
-        <span class="present">Present <b id="attendancePresent">0</b></span>
-        <span class="absent">No login <b id="attendanceNoLogin">0</b></span>
-        <span>Total <b id="attendanceTotal">0</b></span>
-        <span id="attendanceDate">Today</span>
-      </div>
-      <div class="table-wrap">
-        <table><thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>First login</th><th>Last login</th></tr></thead>
-        <tbody id="attendanceRows"><tr><td colspan="5">Loading role activity…</td></tr></tbody></table>
-      </div>
+      <div class="attendance-summary"><span class="present">Present <b id="attendancePresent">0</b></span><span class="absent">No login <b id="attendanceNoLogin">0</b></span><span>Total <b id="attendanceTotal">0</b></span><span id="attendanceDate">Today</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>First login</th><th>Last login</th></tr></thead><tbody id="attendanceRows"><tr><td colspan="5">Loading role activity…</td></tr></tbody></table></div>
     </section>
   </main>
-  <script src="/general-analysis/app.js?v=785-role-layout"></script>
+
+  <script src="/general-analysis/app.js?v=786-belm-mirror"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        var nav = document.querySelector('.belm-nav');
+        if (!nav || nav.querySelector('[data-customer-analysis-link]')) return;
+        var settings = Array.from(nav.querySelectorAll('.belm-nav__item')).find(function (a) { return a.getAttribute('href') === '/customer-settings-center/'; });
+        var a = document.createElement('a');
+        a.className = 'belm-nav__item is-active';
+        a.href = '/general-analysis/?module=overview&analysisOnly=1';
+        a.setAttribute('data-customer-analysis-link','1');
+        a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>Reports & Analysis';
+        nav.querySelectorAll('.belm-nav__item').forEach(function (item) { item.classList.remove('is-active'); });
+        if (settings) nav.insertBefore(a, settings); else nav.appendChild(a);
+      }, 0);
+    });
+  </script>
 </body>
 </html>

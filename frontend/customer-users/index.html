@@ -4,71 +4,55 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Customer Roles & Users — BELM Operations Portal</title>
-  <link rel="stylesheet" href="/customer-users/users.css?v=787-roles-users">
-  <link rel="stylesheet" href="/customer-users/roles-users-v787.css?v=787-roles-users">
-  <link rel="stylesheet" href="/theme-global.css?v=787-roles-users">
-  <script src="/theme-manager.js?v=787-roles-users"></script>
-  <link rel="stylesheet" href="/password-visibility.css?v=787-roles-users">
-  <script defer src="/password-visibility.js?v=787-roles-users"></script>
-  <script src="/navigation-context-v763.js?v=787-roles-users"></script>
-  <script defer src="/customer-belm-shell-v770.js?v=787-roles-users"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/admin-tools.css?v=788-customer-access-mirror">
+  <link rel="stylesheet" href="/customer-users/users.css?v=788-customer-access-mirror">
+  <link rel="stylesheet" href="/customer-users/roles-users-belm-v788.css?v=788-customer-access-mirror">
+  <link rel="stylesheet" href="/theme-global.css?v=788-customer-access-mirror">
+  <script src="/theme-manager.js?v=788-customer-access-mirror"></script>
+  <link rel="stylesheet" href="/password-visibility.css?v=788-customer-access-mirror">
+  <script defer src="/password-visibility.js?v=788-customer-access-mirror"></script>
+  <script src="/navigation-context-v763.js?v=788-customer-access-mirror"></script>
+  <script defer src="/customer-belm-shell-v770.js?v=788-customer-access-mirror"></script>
 </head>
 <body class="roles-users-page">
-<main>
-  <section class="heading">
+<main class="shell customer-access-shell">
+  <section class="hero">
     <div>
-      <p class="eyebrow">CUSTOMER TEAM & ACCESS CONTROL</p>
-      <h1>Roles &amp; Users</h1>
-      <p class="lead">Manage the customer company team, operational roles, account status and dashboard permissions from one place.</p>
+      <p class="eyebrow">Security &amp; Access</p>
+      <h1>Customer Staff Access</h1>
+      <p>Manage customer staff roles, account status and dashboard access. This follows the same access-control layout used by BELM, while keeping customer data and permissions separate.</p>
+      <span class="customer-owner-note"><b>Customer Owner / Company Admin</b> · system owner</span>
     </div>
-    <button class="primary compact" id="addButton" type="button">+ ADD USER</button>
+    <div class="actions">
+      <button id="addButton" class="primary" type="button">+ Add system user</button>
+    </div>
   </section>
 
-  <div class="roles-intro"><b>Roles &amp; Users:</b> Add employees, assign their operational role, activate or deactivate accounts, reset passwords and control dashboard access. System-wide customer settings remain under <b>System Settings</b>.</div>
-
-  <section class="owner-card">
-    <div><b>Customer Owner / Company Admin</b><small>Main registered customer account · System owner · Full Customer Portal authority. This account is separate from ordinary employee roles.</small></div>
-    <span class="owner-badge">SYSTEM OWNER</span>
+  <section class="metrics" id="role-management">
+    <article class="metric"><span>System users</span><strong id="totalCount">0</strong></article>
+    <article class="metric"><span>Active users</span><strong id="activeCount">0</strong></article>
   </section>
 
   <p id="userLimitInfo" class="user-limit-info"></p>
-  <div id="alertBox" class="alert hidden" role="alert"></div>
+  <div id="alertBox" class="alert hidden" role="status"></div>
 
-  <section class="summary-grid" id="role-management">
-    <article><strong id="totalCount">0</strong><span>Employee portal users</span></article>
-    <article><strong id="activeCount">0</strong><span>Active employee accounts</span></article>
-    <article><strong>7</strong><span>Owner + 6 operational roles</span></article>
+  <section class="portal-access-bar">
+    <div><strong>Customer portal login</strong><small>Each team member uses their own email and password. Forgot Password + OTP remains available.</small></div>
+    <code id="customerPortalUrl">Loading link…</code>
+    <button class="secondary" id="copyLinkButton" type="button">Copy link</button>
   </section>
 
-  <div class="share-link-row">
-    <section class="share-link">
-      <div><strong>Customer portal login</strong><span>Each team member signs in with their own email and password. Forgot Password + OTP remains available.</span></div>
-      <code id="customerPortalUrl">Loading link…</code>
-      <button class="secondary" id="copyLinkButton" type="button">Copy link</button>
-    </section>
-    <aside class="access-legend">
-      <strong>Dashboard Access</strong>
-      <ul>
-        <li><b>Procurement</b> — spare/material purchasing and cost records</li>
-        <li><b>Fuel Usage</b> — fuel top-ups and consumption</li>
-        <li><b>Operator Reports</b> — operator reports and alerts</li>
-        <li><b>Job Card &amp; Service Parts</b> — work/service-part flow</li>
-        <li><b>Report Problem</b> — machine problem reporting</li>
-        <li><b>Check Up</b> — daily checklist and checked reports</li>
-        <li><b>Maintenance Process</b> — Job Cards and maintenance workflow</li>
-        <li><b>Store Keeper</b> — customer store, materials, balance and audit</li>
-      </ul>
-    </aside>
-  </div>
-
-  <section class="panel">
-    <div class="panel-head"><div><h2>Operational Roles</h2><p>Employees grouped by workshop responsibility. Customer Owner is shown separately above.</p></div></div>
-    <div id="roleCards" class="role-cards"></div>
+  <section id="rolesSection">
+    <div class="roles-heading"><div><h2>Roles &amp; permissions</h2><small>Customer operational roles and current members.</small></div></div>
+    <div id="roleCards" class="role-grid"></div>
   </section>
 
   <section class="panel" id="portalUserAccounts">
-    <div class="panel-head"><div><h2>Portal User Accounts</h2><p>Edit role, dashboard access, account status, password or delete an employee account.</p></div><button class="secondary" id="refreshButton" type="button">Refresh</button></div>
-    <div id="userList" class="user-list"><div class="loading">Loading users…</div></div>
+    <div class="panel-head"><div><h2>System users</h2><p>Change role, dashboard access, account status or password.</p></div><button class="ghost" id="refreshButton" type="button">Refresh</button></div>
+    <div id="userList" class="loading">Loading users…</div>
   </section>
 
   <section id="belmProviderNotice" class="panel hidden">
@@ -94,13 +78,14 @@
   </section>
 </main>
 
-<dialog id="userDialog"><form id="userForm"><div class="dialog-head"><div><p class="eyebrow">ROLES &amp; USERS · ACCOUNT MANAGER</p><h2 id="dialogTitle">Add user</h2></div><button class="icon-button" id="closeDialogButton" type="button">×</button></div><input id="userId" type="hidden"><input id="accountKind" type="hidden" value="new"><div class="form-grid"><label class="wide">Full name<input id="name" maxlength="255" required autocomplete="name"></label><label>Email address<input id="email" type="email" maxlength="255" required autocomplete="email"></label><label>Phone number<input id="phone" maxlength="50" autocomplete="tel"></label><label>Role<select id="role" required><option value="workshop_manager">Workshop Manager</option><option value="technician">Technician</option><option value="operator">Machine Operator</option><option value="store_keeper">Store Keeper</option><option value="procurement">Procurement</option><option value="accounts">Finance / Accounts</option></select></label><label id="statusWrap" class="switch-row hidden"><span>Account active</span><input id="isActive" type="checkbox" checked></label><label id="passwordWrap">Initial password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">Set the first password and give it to the user securely.</small></label><label id="confirmPasswordWrap">Confirm initial password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label></div>
-<div class="field-block" id="accessRoleWrap"><div class="dashboard-access-title"><b>Dashboard Access</b><small>Role preset is applied automatically, then access can be adjusted.</small></div><label class="check-option access-all"><input type="checkbox" id="accessAll"> <b id="accessAllLabelText">Access All Dashboard Functions</b></label><div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator sees machine-card functions only according to access granted here.</span></div><div id="technicianAccessNote" class="operator-card-only-note hidden"><b>Technician Access</b><span>Technician Workspace remains the main work area; optional Customer Dashboard access can be added here.</span></div><div id="accessOptions" class="access-options"><label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Procurement</label><label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label><label class="check-option"><input type="checkbox" class="access-item" value="operator-reports"> Operator Reports</label><label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Job Card &amp; Service Parts</label><label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report Problem</label><label class="check-option"><input type="checkbox" class="access-item" value="check-up"> Check Up</label><label class="check-option"><input type="checkbox" class="access-item" value="store"> Store Keeper / Materials</label><label class="check-option"><input type="checkbox" class="access-item" value="workflow"> Maintenance Process / Job Cards</label></div><div class="secondary-access"><label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label><label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Manage Users</label></div></div><div id="formError" class="alert error hidden"></div><div class="dialog-actions"><button class="secondary" id="cancelButton" type="button">Cancel</button><button class="primary" id="saveButton" type="submit">Save user</button></div></form></dialog>
+<dialog id="userDialog"><form id="userForm" class="dialog-card"><div class="dialog-head"><div><p class="eyebrow">System Access</p><h2 id="dialogTitle">Add system user</h2></div><button class="icon-button" id="closeDialogButton" type="button">×</button></div><input id="userId" type="hidden"><input id="accountKind" type="hidden" value="new"><div class="form-grid"><label class="full">Name<input id="name" maxlength="255" required autocomplete="name"></label><label>Phone<input id="phone" maxlength="50" autocomplete="tel"></label><label>Email<input id="email" type="email" maxlength="255" required autocomplete="email"></label><label>Role<select id="role" required><option value="workshop_manager">Workshop Manager</option><option value="technician">Technician</option><option value="operator">Machine Operator</option><option value="store_keeper">Store Keeper</option><option value="procurement">Procurement</option><option value="accounts">Finance / Accounts</option></select></label><label id="statusWrap" class="full check-option hidden"><input id="isActive" type="checkbox" checked> User account is active</label><label id="passwordWrap">Temporary password<input id="password" type="password" minlength="8" autocomplete="new-password"><small id="passwordHint">Set the first password and give it to the user securely.</small></label><label id="confirmPasswordWrap">Confirm password<input id="confirmPassword" type="password" minlength="8" autocomplete="new-password"></label></div>
+<div class="field-block" id="accessRoleWrap"><div class="dashboard-access-title"><b>Dashboard Access</b><small>Role preset is applied automatically, then access can be adjusted.</small></div><label class="check-option access-all"><input type="checkbox" id="accessAll"> <b id="accessAllLabelText">Access All Dashboard Functions</b></label><div id="operatorCardOnlyNote" class="operator-card-only-note hidden"><b>Operator Card-Only Mode</b><span>Operator sees machine-card functions only according to access granted here.</span></div><div id="technicianAccessNote" class="operator-card-only-note hidden"><b>Technician Access</b><span>Technician Workspace remains the main work area; optional Customer Dashboard access can be added here.</span></div><div id="accessOptions" class="access-options"><label class="check-option"><input type="checkbox" class="access-item" value="machine-expenses"> Procurement</label><label class="check-option"><input type="checkbox" class="access-item" value="fuel-usage"> Fuel Usage</label><label class="check-option"><input type="checkbox" class="access-item" value="operator-reports"> Operator Reports</label><label class="check-option"><input type="checkbox" class="access-item" value="service-request"> Job Card &amp; Service Parts</label><label class="check-option"><input type="checkbox" class="access-item" value="report-problem"> Report Problem</label><label class="check-option"><input type="checkbox" class="access-item" value="check-up"> Check Up</label><label class="check-option"><input type="checkbox" class="access-item" value="store"> Store Keeper / Materials</label><label class="check-option"><input type="checkbox" class="access-item" value="workflow"> Maintenance Process / Job Cards</label></div><div class="secondary-access"><label class="check-option"><input type="checkbox" class="access-item" value="email"> Management Email</label><label class="check-option"><input type="checkbox" class="access-item" value="assign-users"> Manage Users</label></div></div><div id="formError" class="alert error hidden"></div><div class="dialog-actions"><button class="ghost" id="cancelButton" type="button">Cancel</button><button class="primary" id="saveButton" type="submit">Save user</button></div></form></dialog>
 
-<dialog id="passwordResetDialog" class="password-reset-dialog"><div class="dialog-head"><div><p class="eyebrow">ACCOUNT SECURITY</p><h2>Password reset complete</h2></div><button class="icon-button" id="closePasswordResetDialog" type="button">×</button></div><div class="reset-credentials"><p><strong id="resetAccountName">Portal user</strong> now has a new temporary password.</p><label>Temporary password<input id="resetTemporaryPassword" type="text" readonly></label><label>Recovery code<input id="resetRecoveryCode" type="text" readonly></label><label>Login URL<input id="resetLoginUrl" type="text" readonly></label><small>The temporary password and recovery code are shown here only after this reset.</small></div><div class="dialog-actions reset-dialog-actions"><button class="secondary" id="donePasswordResetDialog" type="button">Done</button><button class="primary" id="copyResetCredentials" type="button">Copy Credentials</button></div></dialog>
+<dialog id="passwordResetDialog" class="password-reset-dialog"><div class="dialog-card"><div class="dialog-head"><div><p class="eyebrow">LOGIN GENERATED</p><h2>Password reset complete</h2></div><button class="icon-button" id="closePasswordResetDialog" type="button">×</button></div><div class="reset-credentials"><p><strong id="resetAccountName">Portal user</strong> now has a new temporary password.</p><label>Temporary password<input id="resetTemporaryPassword" type="text" readonly></label><label>Recovery code<input id="resetRecoveryCode" type="text" readonly></label><label>Login URL<input id="resetLoginUrl" type="text" readonly></label><small>The temporary password and recovery code are shown here only after this reset.</small></div><div class="dialog-actions reset-dialog-actions"><button class="ghost" id="donePasswordResetDialog" type="button">Done</button><button class="secondary" id="copyResetCredentials" type="button">Copy Credentials</button></div></div></dialog>
 
-<script src="/customer-users/users.js?v=787-roles-users"></script>
-<script src="/customer-users/settings-cleanup.js?v=787-roles-users"></script>
-<script src="/customer-users/password-security.js?v=787-roles-users"></script>
+<script src="/customer-users/users.js?v=788-customer-access-mirror"></script>
+<script src="/customer-users/settings-cleanup.js?v=788-customer-access-mirror"></script>
+<script src="/customer-users/password-security.js?v=788-customer-access-mirror"></script>
+<script src="/customer-users/roles-users-belm-v788.js?v=788-customer-access-mirror"></script>
 </body>
 </html>

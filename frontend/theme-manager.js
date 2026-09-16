@@ -320,6 +320,11 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
   function injectPersonalToggle() {
     if (!activeIdentity) return;
     if (document.querySelector("[data-belm-theme-toggle]")) return;
+    // Some pages (customer-settings-center, workshop-manager's
+    // service-maintenance) already ship their own toggle wired to
+    // window.BELMTheme under this exact id, without the data attribute
+    // above. Recognise it too, or the floating control duplicates it.
+    if (document.getElementById("themeToggle")) return;
     // Admin pages already have a natural location in the sidebar. Give the
     // sidebar a moment to render before using the universal floating control.
     if (document.getElementById("belmAdminSidebar")) return;

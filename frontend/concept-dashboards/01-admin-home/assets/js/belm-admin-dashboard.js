@@ -239,3 +239,26 @@ document.addEventListener('DOMContentLoaded', function () {
   setTimeout(syncFleetMessages, 900);
   setInterval(syncFleetMessages, 120000);
 });
+
+// V734 — Main Dashboard Machine Update: keep the card shell BELM blue/navy.
+// Only the message/alert box carries the live safety colour state.
+document.addEventListener('DOMContentLoaded', function () {
+  if (document.getElementById('belmFleetAlertZoneV734')) return;
+  var style = document.createElement('style');
+  style.id = 'belmFleetAlertZoneV734';
+  style.textContent = [
+    '@keyframes belmFleetAlertRedPulse{0%,100%{box-shadow:0 0 0 1px rgba(255,63,82,.30),0 0 10px rgba(255,63,82,.22)}50%{box-shadow:0 0 0 2px rgba(255,63,82,.84),0 0 26px rgba(255,63,82,.58)}}',
+    '@keyframes belmFleetAlertYellowPulse{0%,100%{box-shadow:0 0 0 1px rgba(255,209,38,.30),0 0 10px rgba(255,209,38,.20)}50%{box-shadow:0 0 0 2px rgba(255,209,38,.82),0 0 25px rgba(255,209,38,.52)}}',
+    '.belm-promo.fleet-message-reminder,.belm-promo.fleet-message-due,.belm-promo.fleet-message-overdue{border-color:rgba(83,174,255,.30)!important;background:linear-gradient(150deg,#0d3155 0%,#08243f 48%,#041525 100%)!important;box-shadow:0 18px 44px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.05)!important}',
+    '.belm-promo.fleet-message-reminder .belm-fleet-message__kicker,.belm-promo.fleet-message-due .belm-fleet-message__kicker,.belm-promo.fleet-message-overdue .belm-fleet-message__kicker{background:rgba(245,197,24,.14)!important;border-color:rgba(245,197,24,.38)!important;color:#ffd84d!important}',
+    '.belm-fleet-message__body{border:2px solid #12d879!important;border-left-width:5px!important;background:rgba(8,84,50,.28)!important;color:#effff7!important;box-shadow:0 0 0 1px rgba(18,216,121,.22),0 0 15px rgba(18,216,121,.24)!important;animation:none!important}',
+    '.belm-promo.fleet-message-reminder .belm-fleet-message__body,.belm-promo.fleet-message-due .belm-fleet-message__body{border-color:#ffd126!important;background:rgba(92,70,8,.34)!important;color:#fff6c7!important;animation:belmFleetAlertYellowPulse 1.25s ease-in-out infinite!important}',
+    '.belm-promo.fleet-message-overdue .belm-fleet-message__body{border-color:#ff3f52!important;background:rgba(96,24,38,.42)!important;color:#fff0f2!important;animation:belmFleetAlertRedPulse 1.05s ease-in-out infinite!important}',
+    'body.belm-light .belm-promo.fleet-message-reminder,body.belm-light .belm-promo.fleet-message-due,body.belm-light .belm-promo.fleet-message-overdue{background:linear-gradient(145deg,#eaf5ff 0%,#dcecff 55%,#cfe3f8 100%)!important;border-color:#8ab9df!important;box-shadow:0 12px 28px rgba(36,78,118,.16)!important}',
+    'body.belm-light .belm-promo .belm-fleet-message__body{border-color:#12a763!important;background:#e6f8ef!important;color:#123e2c!important}',
+    'body.belm-light .belm-promo.fleet-message-reminder .belm-fleet-message__body,body.belm-light .belm-promo.fleet-message-due .belm-fleet-message__body{border-color:#d4a600!important;background:#fff7d1!important;color:#4d3b00!important}',
+    'body.belm-light .belm-promo.fleet-message-overdue .belm-fleet-message__body{border-color:#d93c4c!important;background:#ffe9ec!important;color:#5e1720!important}',
+    '@media(prefers-reduced-motion:reduce){.belm-promo.fleet-message-reminder .belm-fleet-message__body,.belm-promo.fleet-message-due .belm-fleet-message__body,.belm-promo.fleet-message-overdue .belm-fleet-message__body{animation:none!important}}'
+  ].join('');
+  document.head.appendChild(style);
+});

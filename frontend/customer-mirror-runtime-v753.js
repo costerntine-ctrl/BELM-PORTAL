@@ -46,7 +46,36 @@
 
   function updateClock(){const now=new Date();document.querySelectorAll('[data-live-date]').forEach(el=>el.textContent=now.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}));document.querySelectorAll('[data-live-time]').forEach(el=>el.textContent=now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}))}
 
-  async function boot(){ensureLockStyle();installRoleTools();updateClock();setInterval(updateClock,30000);try{const [dash,mode]=await Promise.all([api('/api/customer-portal/dashboard'),api('/api/customer_mode.php')]);const customer=dash.customer||{},name=String(customer.name||'Customer').trim()||'Customer';window.BELMCustomerMirror={token,session,role,rawRole,customer,dashboard:dash,mode,api};document.querySelectorAll('[data-company-name]').forEach(el=>el.textContent=name);document.querySelectorAll('[data-company-name-upper]').forEach(el=>el.textContent=name.toUpperCase());document.querySelectorAll('[data-company-email]').forEach(el=>el.textContent=customer.email||'Not recorded');document.querySelectorAll('[data-company-phone]').forEach(el=>el.textContent=customer.phone||'Not recorded');document.querySelectorAll('[data-company-address]').forEach(el=>el.textContent=customer.address||'Not recorded');document.querySelectorAll('[data-customer-role-label]').forEach(el=>el.textContent=rawRole.replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase()));document.title=document.title.replace(/Customer|COMPANY/g,name);const modeChip=document.querySelector('[data-customer-mode-chip]');if(modeChip){const independent=!!mode.mode?.customerIndependent;modeChip.textContent=independent?'CUSTOMER INDEPENDENT WORKSHOP':'BELM SERVICE PROVIDER';modeChip.classList.add('customer-mode-chip-v753',independent?'independent':'provider')}applyRoleLocks(mode);window.dispatchEvent(new CustomEvent('belm:customer-mirror-ready',{detail:{customer,dashboard:dash,mode,role,rawRole,api}}))}catch(e){console.error(e)}}
+  async function boot(){
+    ensureLockStyle();installRoleTools();updateClock();setInterval(updateClock,30000);
+    const [dashResult,modeResult]=await Promise.allSettled([api('/api/customer-portal/dashboard'),api('/api/customer_mode.php')]);
+    const dash=dashResult.status==='fulfilled'?dashResult.value:{};
+    const mode=modeResult.status==='fulfilled'?modeResult.value:{};
+    if(dashResult.status==='rejected')console.error('customer-portal/dashboard failed:',dashResult.reason);
+    if(modeResult.status==='rejected')console.error('customer_mode.php failed:',modeResult.reason);
+    const customer=dash.customer||{},name=String(customer.name||'Customer').trim()||'Customer';
+    window.BELMCustomerMirror={token,session,role,rawRole,customer,dashboard:dash,mode,api};
+    document.querySelectorAll('[data-company-name]').forEach(el=>el.textContent=name);
+    document.querySelectorAll('[data-company-name-upper]').forEach(el=>el.textContent=name.toUpperCase());
+    document.querySelectorAll('[data-company-email]').forEach(el=>el.textContent=customer.email||'Not recorded');
+    document.querySelectorAll('[data-company-phone]').forEach(el=>el.textContent=customer.phone||'Not recorded');
+    document.querySelectorAll('[data-company-address]').forEach(el=>el.textContent=customer.address||'Not recorded');
+    document.querySelectorAll('[data-customer-role-label]').forEach(el=>el.textContent=rawRole.replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase()));
+    document.title=document.title.replace(/Customer|COMPANY/g,name);
+    const modeChip=document.querySelector('[data-customer-mode-chip]');
+    if(modeChip){
+      if(modeResult.status==='fulfilled'){
+        const independent=!!mode.mode?.customerIndependent;
+        modeChip.textContent=independent?'CUSTOMER INDEPENDENT WORKSHOP':'BELM SERVICE PROVIDER';
+        modeChip.classList.add('customer-mode-chip-v753',independent?'independent':'provider');
+      }else{
+        modeChip.textContent='MODE UNAVAILABLE';
+        modeChip.classList.add('customer-mode-chip-v753');
+      }
+    }
+    if(modeResult.status==='fulfilled')applyRoleLocks(mode);
+    window.dispatchEvent(new CustomEvent('belm:customer-mirror-ready',{detail:{customer,dashboard:dash,mode,role,rawRole,api}}));
+  }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

@@ -38,8 +38,34 @@
     }
   }
 
+  const roleTokenKeys=['belm_customer_token','belm_tech_token','belm_admin_token','belm_operator_token'];
   function clearRoleSessions(){['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token'].forEach(k=>localStorage.removeItem(k))}
   function setActiveAccount(type){localStorage.setItem('belm_active_account_type',type)}
+  function hasValidPortalSession(){
+    for(const key of roleTokenKeys){
+      const value=localStorage.getItem(key)||'';
+      if(!value)continue;
+      try{
+        let raw=value.split('.')[1]||'';
+        raw=raw.replace(/-/g,'+').replace(/_/g,'/');
+        raw+='='.repeat((4-raw.length%4)%4);
+        const payload=JSON.parse(decodeURIComponent(Array.from(atob(raw)).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('')));
+        if(payload.exp&&payload.exp*1000<=Date.now()){
+          localStorage.removeItem(key);
+          continue;
+        }
+        return true;
+      }catch(_){
+        return true;
+      }
+    }
+    return false;
+  }
+  function resumeExistingSession(){
+    if(!hasValidPortalSession())return false;
+    location.replace('/portal-v2/');
+    return true;
+  }
 
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
@@ -89,8 +115,6 @@
         localStorage.setItem('belm_admin_token',data.token);
         localStorage.setItem('belm_admin_user',JSON.stringify(data.user||{})); setActiveAccount('admin');
       }
-      // Every account type opens the same shared Home Dashboard first.
-      // View My Role on that dashboard performs role-specific routing.
       location.replace('/portal-v2/');
     }catch(err){
       const timedOut=err&&err.name==='AbortError';
@@ -99,10 +123,7 @@
       if(confirmLoginButton){confirmLoginButton.disabled=false;confirmLoginButton.textContent='Confirm Login';}
     }
   }
-  // V718: Continue only opens the review step. Credentials are sent to the
-  // backend after the user explicitly chooses Confirm Login. A browser-saved
-  // password may autofill the fields, but it must never submit or resume an
-  // existing portal session automatically from the login page.
+
   form.addEventListener('submit',event=>{event.preventDefault();requestLoginConfirmation()});
   confirmLoginButton?.addEventListener('click',login);
   cancelLoginButton?.addEventListener('click',()=>{confirmDialog?.close();password.focus()});
@@ -110,11 +131,15 @@
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=718-manual-login-confirm').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=782-session-back-guard').catch(()=>{}))}
+
+  // V782: browser/system Back must never be treated as Log out. If a valid
+  // portal token still exists, returning to /login immediately resumes Home.
+  // Only an explicit Log out action clears the token and allows login to show.
+  window.addEventListener('pageshow',()=>{if(!loginPending)resumeExistingSession()});
 
   (async()=>{
-    // Always show the login page, even when a valid token or saved password
-    // already exists. The user decides which account to use on every login.
+    if(resumeExistingSession())return;
     await loadContext();
   })();
 })();

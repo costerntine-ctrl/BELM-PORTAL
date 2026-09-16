@@ -1278,11 +1278,6 @@
     }
     if (removeButton) remove(`/proforma-invoices/${removeButton.dataset.deleteProforma}`, "Delete this proforma? It will move to the Recycle Bin.");
   });
-  document.getElementById("logoutButton").addEventListener("click", () => {
-    localStorage.removeItem("belm_admin_token");
-    localStorage.removeItem("belm_admin_user");
-    window.location.href = "/login";
-  });
 
   async function applyProformaPrefillFromSparePartRequest() {
     const raw = sessionStorage.getItem("belm_prefill_proforma");

@@ -523,11 +523,6 @@
   });
   document.getElementById("closeButton").addEventListener("click", () => dialog.close());
   document.getElementById("cancelButton").addEventListener("click", () => dialog.close());
-  document.getElementById("logoutButton").addEventListener("click", () => {
-    localStorage.removeItem("belm_admin_token");
-    localStorage.removeItem("belm_admin_user");
-    window.location.href = "/admin/login";
-  });
   document.getElementById("itemList").addEventListener("input", (event) => {
     const card = event.target.closest("[data-key]");
     const optionField = event.target.dataset.optionField;

@@ -830,11 +830,6 @@ tabs.forEach(tab => tab.addEventListener("click", () => {
 document.getElementById("refreshButton").addEventListener("click", async () => {
   await Promise.all([loadApplications(), loadRegisteredUsers(), loadRegisteredCustomers()]);
 });
-document.getElementById("logoutButton").addEventListener("click", () => {
-  localStorage.removeItem("belm_admin_token");
-  localStorage.removeItem("belm_admin_user");
-  location.href = "/login";
-});
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 document.querySelector(".assignment-close").addEventListener("click", () => assignmentDialog.close());
 document.getElementById("assignmentRole").addEventListener("change", updateAssignmentCustomer);

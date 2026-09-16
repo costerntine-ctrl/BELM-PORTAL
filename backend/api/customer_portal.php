@@ -1714,6 +1714,52 @@ if ($sub === 'inspection-repair') {
     json_out(['cases' => $rows, 'counts' => $counts]);
 }
 
+// V778: Workshop Manager overview - reuses the same stage bucketing as
+// inspection-repair above, plus completed-this-month and overdue (using the
+// same per-stage SLA hours the Breakdown Workflow engine already enforces).
+if ($sub === 'workshop-manager-stats') {
+    $stmt = db()->prepare(
+        "SELECT bc.current_stage, bc.stage_started_at, bc.status, bc.closed_at
+         FROM breakdown_cases bc WHERE bc.customer_id = ?"
+    );
+    $stmt->execute([$customer['id']]);
+    $slaHours = [
+        'WORKSHOP_REVIEW' => 4, 'TECHNICIAN_ASSIGNMENT' => 4, 'JOB_CARD_ASSIGNED' => 4,
+        'DIAGNOSIS' => 8, 'BOSS_APPROVAL' => 4, 'STORE_CHECK' => 6, 'PROCUREMENT' => 24,
+        'ACCOUNTS' => 8, 'PARTS_READY' => 4, 'REPAIR' => 24, 'PENDING_APPROVAL' => 8,
+    ];
+    $open = 0; $inProgress = 0; $waitingSpare = 0; $completedThisMonth = 0; $overdue = 0;
+    $now = new DateTime('now');
+    foreach ($stmt->fetchAll() as $c) {
+        $stage = (string)$c['current_stage'];
+        if ($c['status'] === 'COMPLETED') {
+            if ($c['closed_at']) {
+                $closed = new DateTime($c['closed_at']);
+                if ((int)$closed->format('Y') === (int)$now->format('Y') && (int)$closed->format('n') === (int)$now->format('n')) {
+                    $completedThisMonth++;
+                }
+            }
+            continue;
+        }
+        $open++;
+        if (in_array($stage, ['STORE_CHECK', 'PROCUREMENT', 'ACCOUNTS', 'PARTS_READY', 'REPAIR', 'PENDING_APPROVAL'], true)) $inProgress++;
+        if ($stage === 'BOSS_APPROVAL') $waitingSpare++;
+        $sla = $slaHours[$stage] ?? 8;
+        $started = $c['stage_started_at'] ? new DateTime($c['stage_started_at']) : null;
+        if ($started) {
+            $hoursIn = ($now->getTimestamp() - $started->getTimestamp()) / 3600;
+            if ($hoursIn > $sla) $overdue++;
+        }
+    }
+    json_out([
+        'openJobCards' => $open,
+        'inProgress' => $inProgress,
+        'waitingForSpare' => $waitingSpare,
+        'completedThisMonth' => $completedThisMonth,
+        'overdue' => $overdue,
+    ]);
+}
+
 // ---- Analysis summary for the dashboard's right-side card -------------------
 // ---- Analysis for ONE specific machine (Procurement page sidebar) -----
 if ($sub === 'machine-analysis' && $sub2) {

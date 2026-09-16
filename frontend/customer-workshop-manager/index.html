@@ -3,13 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta http-equiv="cache-control" content="no-store">
-<title>Workshop Manager Dashboard — BELM Portal</title>
-<link rel="stylesheet" href="/customer-workshop-manager-v778.css" />
-</head>
+<title>Customer Workshop Manager Dashboard — BELM Portal</title>
+<link rel="stylesheet" href="/customer-workshop-manager-v778.css?v=780-customer-belm-mirror" />
+<script src="/theme-manager.js?v=780-customer-belm-mirror"></script>
+<script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
 <body>
 
 <div class="shell" id="shell">
+
+  <!-- ============================= SIDEBAR ============================= -->
   <aside class="sidebar">
     <nav class="sidebar-nav">
       <a href="/customer-workshop-manager/" class="nav-item is-active">
@@ -22,71 +24,121 @@
       </a>
       <a href="/portal/dashboard?view=machines" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>
-        Machine Condition View
+        Machines
       </a>
-      <a href="/customer-technicians/" class="nav-item">
+      <a href="/customer-workshop-manager/#technicians-on-duty" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
         Technicians
       </a>
+      <a href="/customer-workshop-manager/#workshop-schedule" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        Workshop Schedule
+      </a>
+      <a href="/customer-procurement-workspace/?view=queue" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+        Spare Requests
+      </a>
       <a href="/customer-inspection-repair/" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6"/></svg>
+        Service &amp; Maintenance
+      </a>
+      <a href="/role-reports/" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>
-        Inspection &amp; Repair
+        My Reports
       </a>
       <a href="/customer-workshop-checklists/" class="nav-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 3v2h6V3M9 10l1.7 1.7L14 8.3M9 16h6"/></svg>
         Checklist Monitoring
       </a>
+      <a href="/customer-users/" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="8" r="3"/><circle cx="16" cy="9" r="2.6"/><path d="M2 17c0-2.8 2-4.7 4.5-4.7s4.5 1.9 4.5 4.7M11.5 17c0-2.3 1.7-4 4-4s4 1.7 4 4"/></svg>
+        Roles &amp; Users
+      </a>
+      <a href="/role-communications/" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>
+        Communication
+      </a>
+      <a href="/customer-tools-register/" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg>
+        Tools &amp; Equipment
+      </a>
+      <a href="/customer-settings-center/" class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1-1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6"/></svg>
+        Workshop Settings
+      </a>
     </nav>
+
     <div class="sidebar-footer" style="border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">
-      <a href="/login" class="btn-logout" id="logout" style="margin-top:6px;">
+      <a href="/portal-v2/" class="nav-item" style="color:#b7c4d6;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg>
+        My Profile
+      </a>
+      <a href="/role-communications/" class="nav-item" style="color:#b7c4d6;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 0c0 1.7-2.5 2-2.5 3.5M12 17h.01"/></svg>
+        Help &amp; Support
+      </a>
+      <a href="/login" id="logout" class="btn-logout" style="margin-top:6px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-        Log out
+        Logout
       </a>
     </div>
   </aside>
 
+  <!-- ============================== MAIN ============================== -->
   <div class="main">
+
     <header class="topheader">
       <div class="brand">
-        <svg width="40" height="40" viewBox="0 0 716 716" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M508.749 317.399C516.777 287.314 508.991 253.884 485.389 230.282C461.788 206.681 428.36 198.895 398.273 206.923C376.231 184.928 343.39 174.956 311.148 183.596C278.906 192.234 255.45 217.292 247.36 247.361C217.291 255.451 192.233 278.91 183.595 311.149C174.957 343.391 184.927 376.232 206.924 398.274C198.896 428.359 206.683 461.789 230.284 485.391C253.885 508.992 287.313 516.779 317.401 508.75C339.442 530.745 372.286 540.717 404.525 532.079C436.767 523.441 460.223 498.384 468.313 468.315C498.383 460.224 523.44 436.766 532.078 404.526C540.716 372.285 530.747 339.443 508.749 317.402V317.399Z" fill="#F5C518"/></svg>
+        <img src="/concept-dashboards/11-workshop-manager/assets/img/belm-logo-v2.png" alt="BELM General Technical Service Ltd" />
       </div>
       <div class="portal-title">
         <h1 data-company-name-upper>COMPANY</h1>
-        <p>| Workshop Manager Dashboard</p>
+        <p>| Customer Workshop Manager Dashboard</p>
         <div class="tagline">Plan &bull; Assign &bull; Monitor &bull; Deliver</div>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" aria-label="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg><span class="icon-badge">0</span></button>
+        <button class="icon-btn" id="themeToggle" aria-label="Toggle theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg></button>
+        <button class="icon-btn" aria-label="Account"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-4.1 3.3-7 7.5-7s7.5 2.9 7.5 7"/></svg></button>
+        <div class="user-chip"><span class="user-avatar initials initials-lg">WM</span><span class="user-copy"><strong data-actor-name>Workshop Manager</strong><small>Customer Workshop</small></span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
       </div>
     </header>
 
-    <section class="wm-stats">
-      <a href="/breakdown-workflow/?actor=customer" class="wm-stat-card wm-stat-card--blue">
-        <span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>
-        <span><span class="wm-stat-label">Open Job Cards</span><br/><span class="wm-stat-value" id="statOpen">–</span><br/><span class="wm-stat-sub">Awaiting action</span></span>
-        <svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg>
-      </a>
-      <a href="/customer-inspection-repair/?filter=in_progress" class="wm-stat-card wm-stat-card--green">
-        <span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a3 3 0 00-4.2 4.2L4 17v3h3l6.5-6.5a3 3 0 004.2-4.2l-2.4 2.4-2-2z"/></svg></span>
-        <span><span class="wm-stat-label">In Progress</span><br/><span class="wm-stat-value" id="statProgress">–</span><br/><span class="wm-stat-sub">Active repairs</span></span>
-        <svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg>
-      </a>
-      <a href="/customer-inspection-repair/?filter=waiting_spare" class="wm-stat-card wm-stat-card--amber">
-        <span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span>
-        <span><span class="wm-stat-label">Waiting for Spare Approval</span><br/><span class="wm-stat-value" id="statSpare">–</span><br/><span class="wm-stat-sub">Parts pending</span></span>
-        <svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg>
-      </a>
-      <a href="/breakdown-workflow/?actor=customer" class="wm-stat-card wm-stat-card--blue">
-        <span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span>
-        <span><span class="wm-stat-label">Completed (This Month)</span><br/><span class="wm-stat-value" id="statCompleted">–</span><br/><span class="wm-stat-sub">Jobs closed</span></span>
-        <svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg>
-      </a>
-      <a href="/customer-inspection-repair/?filter=overdue" class="wm-stat-card wm-stat-card--amber">
-        <span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/></svg></span>
-        <span><span class="wm-stat-label">Overdue</span><br/><span class="wm-stat-value" id="statOverdue">–</span><br/><span class="wm-stat-sub">Past stage SLA</span></span>
-        <svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg>
-      </a>
-    </section>
+    <main class="content">
+      <section class="welcome-head">
+        <div class="welcome-left"><div class="welcome-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0116 0"/><path d="M2 14h20"/><path d="M12 14V9"/><circle cx="12" cy="7" r="1.4" fill="currentColor" stroke="none"/></svg></div><div><h2>Welcome, <span data-actor-first-name>Workshop Manager</span></h2><p>Oversee your company workshop, assign jobs, monitor progress and ensure timely completion.</p></div></div>
+        <div class="welcome-right"><div class="datetime-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><span><strong id="liveDate">Loading date…</strong><span id="liveTime">--:--</span></span></div><div class="status-box"><span class="dot-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span><span><strong>Workshop Status</strong><span>Syncing live status…</span></span></div></div>
+      </section>
+
+      <section class="wm-stats">
+        <a href="/breakdown-workflow/?actor=customer&status=open" class="wm-stat-card wm-stat-card--blue"><span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span><span><span class="wm-stat-label">Open Job Cards</span><br/><span class="wm-stat-value">0</span><br/><span class="wm-stat-sub">Awaiting action</span></span><svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+        <a href="/customer-inspection-repair/?filter=in_progress" class="wm-stat-card wm-stat-card--green"><span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1-1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6"/></svg></span><span><span class="wm-stat-label">In Progress</span><br/><span class="wm-stat-value">0</span><br/><span class="wm-stat-sub">Active repairs</span></span><svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+        <a href="/customer-inspection-repair/?filter=waiting_spare" class="wm-stat-card wm-stat-card--amber"><span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg></span><span><span class="wm-stat-label">Waiting for Spare</span><br/><span class="wm-stat-value">0</span><br/><span class="wm-stat-sub">Parts pending</span></span><svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+        <a href="/breakdown-workflow/?actor=customer&status=completed" class="wm-stat-card wm-stat-card--blue"><span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span><span><span class="wm-stat-label">Completed (This Month)</span><br/><span class="wm-stat-value">0</span><br/><span class="wm-stat-sub">Jobs closed</span></span><svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+        <a href="/customer-inspection-repair/?filter=overdue" class="wm-stat-card wm-stat-card--red"><span class="wm-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 17h.01"/></svg></span><span><span class="wm-stat-label">Overdue</span><br/><span class="wm-stat-value">0</span><br/><span class="wm-stat-sub">Needs attention</span></span><svg class="wm-stat-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M9 6l6 6-6 6"/></svg></a>
+      </section>
+
+      <section class="wm-mid-grid">
+        <div class="panel"><div class="panel-head-row"><div class="panel-title" style="margin-bottom:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Job Card Status</div><a href="/breakdown-workflow/?actor=customer" class="panel-link">View Details</a></div><div class="wm-donut-wrap"><svg width="148" height="148" viewBox="0 0 148 148"><circle cx="74" cy="74" r="52" fill="none" stroke="#e9edf3" stroke-width="22"/><circle cx="74" cy="74" r="52" fill="none" stroke="#1ea45a" stroke-width="22" stroke-dasharray="155 172" transform="rotate(-90 74 74)"/><text x="74" y="70" text-anchor="middle" font-size="23" font-weight="800">0</text><text x="74" y="89" text-anchor="middle" font-size="11">Total Jobs</text></svg><div class="wm-donut-legend"><div class="wm-donut-legend-row"><span>Open</span><strong>0 (0%)</strong></div><div class="wm-donut-legend-row"><span>In Progress</span><strong>0 (0%)</strong></div><div class="wm-donut-legend-row"><span>Waiting</span><strong>0 (0%)</strong></div><div class="wm-donut-legend-row"><span>Testing</span><strong>0 (0%)</strong></div><div class="wm-donut-legend-row"><span>Completed</span><strong>0</strong></div><div class="wm-donut-legend-row"><span>Overdue</span><strong>0</strong></div></div></div></div>
+
+        <div class="panel"><div class="panel-head-row"><div class="panel-title" style="margin-bottom:0;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Workshop Workload</div><a href="/customer-workshop-manager/#workshop-schedule" class="panel-link">This Week</a></div><div class="wl-chart"><div class="wl-yaxis"><span>10</span><span>8</span><span>6</span><span>4</span><span>2</span><span>0</span></div><div class="wl-group"><div class="wl-pair"><div class="wl-bar wl-bar--assigned" style="height:98px;"></div><div class="wl-bar wl-bar--completed" style="height:66px;"></div></div><span class="wl-day-label">Mon</span></div><div class="wl-group"><div class="wl-pair"><div class="wl-bar wl-bar--assigned" style="height:66px;"></div><div class="wl-bar wl-bar--completed" style="height:50px;"></div></div><span class="wl-day-label">Tue</span></div><div class="wl-group"><div class="wl-pair"><div class="wl-bar wl-bar--assigned" style="height:130px;"></div><div class="wl-bar wl-bar--completed" style="height:82px;"></div></div><span class="wl-day-label">Wed</span></div><div class="wl-group"><div class="wl-pair"><div class="wl-bar wl-bar--assigned" style="height:82px;"></div><div class="wl-bar wl-bar--completed" style="height:66px;"></div></div><span class="wl-day-label">Thu</span></div><div class="wl-group"><div class="wl-pair"><div class="wl-bar wl-bar--assigned" style="height:98px;"></div><div class="wl-bar wl-bar--completed" style="height:82px;"></div></div><span class="wl-day-label">Fri</span></div><div class="wl-group"><div class="wl-pair"><div class="wl-bar wl-bar--assigned" style="height:162px;"></div><div class="wl-bar wl-bar--completed" style="height:50px;"></div></div><span class="wl-day-label">Sat</span></div><div class="wl-group"><div class="wl-pair"><div class="wl-bar wl-bar--assigned" style="height:34px;"></div><div class="wl-bar wl-bar--completed" style="height:18px;"></div></div><span class="wl-day-label">Sun</span></div></div><div class="chart-legend" style="margin-top:12px;margin-bottom:0;"><span><i style="background:#2f6fd6;"></i>Jobs Assigned</span><span><i style="background:#1ea45a;"></i>Jobs Completed</span></div></div>
+
+        <div class="panel"><div class="panel-head-row"><div class="panel-title" style="margin-bottom:0;">Quick Actions</div></div><div class="wm-qa-grid"><a href="/breakdown-workflow/?actor=customer" class="wm-qa-btn wm-qa-btn--green">Technician Dispatch</a><a href="/portal/dashboard?view=machines" class="wm-qa-btn wm-qa-btn--blue">View Machines</a><a href="/customer-workshop-manager/#technicians-on-duty" class="wm-qa-btn wm-qa-btn--amber">Technicians</a><a href="/customer-procurement-workspace/?view=queue" class="wm-qa-btn wm-qa-btn--red">Spare Requests</a></div></div>
+      </section>
+
+      <section class="wm-bottom-grid1"><div class="panel"><div class="panel-head-row"><div class="panel-title" style="margin-bottom:0;">Recent / Active Job Cards</div><a href="/breakdown-workflow/?actor=customer" class="panel-link">View All</a></div><div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>JOB NO.</th><th>MACHINE (FLEET NO.)</th><th>COMPANY</th><th>ISSUE / DESCRIPTION</th><th>STATUS</th><th>ASSIGNED TO</th><th>DATE</th><th></th></tr></thead><tbody><tr><td colspan="9">Loading live Job Cards…</td></tr></tbody></table></div></div></section>
+
+      <section class="wm-bottom-grid2">
+        <div class="panel" id="technicians-on-duty"><div class="panel-head-row"><div class="panel-title" style="margin-bottom:0;">Technicians On Duty</div><a href="/customer-workshop-manager/#technicians-on-duty" class="panel-link">Live Count</a></div><div class="tech-row"><div class="tech-chip"><span class="tech-name">Loading live technicians…</span></div></div></div>
+        <div class="panel"><div class="panel-head-row"><div class="panel-title" style="margin-bottom:0;">Workshop Tools &amp; Equipment</div><a href="/customer-tools-register/" class="panel-link">View Details</a></div><div class="tools-grid"><div class="tool-mini-card"><div class="tool-mini-name">Tools</div><div class="tool-mini-pct">—</div><div class="tool-mini-sub">Open Tools Register</div></div><div class="tool-mini-card"><div class="tool-mini-name">Diagnostic Tools</div><div class="tool-mini-pct">—</div><div class="tool-mini-sub">Open Tools Register</div></div><div class="tool-mini-card"><div class="tool-mini-name">Lifting Equipment</div><div class="tool-mini-pct">—</div><div class="tool-mini-sub">Open Tools Register</div></div></div></div>
+        <div class="panel" id="workshop-schedule"><div class="panel-head-row"><div class="panel-title" style="margin-bottom:0;">Today's Schedule</div><a href="/customer-workshop-manager/#workshop-schedule" class="panel-link">View All</a></div><div class="schedule-list"><div class="schedule-row"><span class="schedule-time">08:00</span><span class="schedule-text">Team Briefing</span></div><div class="schedule-row"><span class="schedule-time">09:00</span><span class="schedule-text">Job Card Assignment</span></div><div class="schedule-row"><span class="schedule-time">13:00</span><span class="schedule-text">Progress Review</span></div><div class="schedule-row"><span class="schedule-time">16:00</span><span class="schedule-text">End of Day Report</span></div></div></div>
+      </section>
+
+      <footer class="page-footer"><span>Customer Operations Portal · Powered by BELM General Technical Service Ltd.</span><em>"Reliable Systems. Efficient Operations. A Stronger Tomorrow."</em></footer>
+    </main>
   </div>
 </div>
 
-<script src="/customer-workshop-manager-v778.js"></script>
+<script src="/customer-workshop-manager-v780.js?v=780-customer-belm-mirror"></script>
 </body>
 </html>

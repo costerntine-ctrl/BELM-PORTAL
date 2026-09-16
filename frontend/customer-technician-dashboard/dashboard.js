@@ -1,1 +1,1 @@
-(function(){'use strict';import('/customer-role-mirror-nav-v773.js?v=773').catch(()=>null).finally(()=>import('/customer-technician-dashboard/dashboard-core-v772.js?v=773'));})();
+(function(){'use strict';Promise.allSettled([import('/customer-belm-role-parity-v781.js?v=781'),import('/customer-role-mirror-nav-v773.js?v=781')]).finally(()=>import('/customer-technician-dashboard/dashboard-core-v772.js?v=781'));})();

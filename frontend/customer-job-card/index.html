@@ -6,13 +6,29 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Job Card &amp; Service Parts — BELM Customer Portal</title>
-  <link rel="stylesheet" href="/customer-job-card/request.css?v=315-job-card-received-confirmation">
-  <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
-  <script src="/theme-manager.js?v=485-display-fit"></script>
+  <link rel="stylesheet" href="/customer-job-card/request.css?v=811-job-card-full-width">
+  <link rel="stylesheet" href="/theme-global.css?v=811-job-card-full-width">
+  <script src="/theme-manager.js?v=811-job-card-full-width"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-<script src="/navigation-context-v763.js?v=763-role-flow"></script><script defer src="/customer-belm-shell-v770.js?v=770-belm-shell-parity"></script></head>
-<body>
+  <script src="/navigation-context-v763.js?v=811-job-card-full-width"></script>
+  <style>
+    /* V811: task page is intentionally standalone: no Customer dashboard sidebar. */
+    html,body{width:100%;min-height:100%;overflow-x:hidden}
+    body{margin:0!important}
+    body>.belm-sidebar,body>.customer-sidebar,body>.sidebar,.belm-mobile-sidebar-backdrop{display:none!important}
+    body>.belm-main,body>.belm-shell,body>.customer-shell{margin-left:0!important;padding-left:0!important;width:100%!important;max-width:none!important}
+    header{width:100%;padding-left:clamp(16px,3.2vw,52px)!important;padding-right:clamp(16px,3.2vw,52px)!important}
+    main{width:min(1320px,calc(100% - 40px))!important;max-width:none!important;margin:28px auto 56px!important;padding:0!important}
+    .panel,.heading,#alertBox,#supportModeNotice{width:100%}
+    @media(max-width:720px){
+      header{padding:10px 14px!important;gap:12px;align-items:flex-start;flex-wrap:wrap}
+      header nav{margin-left:auto;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+      main{width:calc(100% - 20px)!important;margin:18px auto 40px!important}
+    }
+  </style>
+</head>
+<body data-no-customer-sidebar="1" data-standalone-task-page="customer-job-card">
   <header>
     <a class="brand" href="/portal/dashboard">
       <span class="mark">B</span>
@@ -94,7 +110,6 @@
       </form>
     </section>
 
-
     <section class="panel">
       <div class="panel-head">
         <div><h2 id="historyTitle">Your BELM Job Cards</h2><p>History of machine Job Cards sent to BELM. Completed or cancelled cards show who handled them.</p></div>
@@ -109,6 +124,6 @@
     </section>
   </main>
 
-  <script src="/customer-job-card/request.js?v=472-sync-audit"></script>
+  <script src="/customer-job-card/request.js?v=811-job-card-full-width"></script>
 </body>
 </html>

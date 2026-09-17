@@ -3,6 +3,7 @@
 Thumbs.db
 *.swp
 *.swo
+*~
 .vscode/
 .idea/
 
@@ -21,8 +22,14 @@ Thumbs.db
 *.bak
 *.old
 *.tmp
+*.temp
+*.cache
 
-# Generated packages and logs
+# Generated packages, logs and runtime scratch
+.cache/
+cache/
+tmp/
+temp/
 dist/
 export/
 *.zip

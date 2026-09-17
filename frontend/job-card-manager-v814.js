@@ -19,6 +19,12 @@
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const up=v=>String(v||'').trim().toUpperCase();
   const val=(o,...keys)=>{for(const k of keys){if(o&&o[k]!==undefined&&o[k]!==null)return o[k]}return''};
+  const fmtDateTime=v=>{
+    const text=String(v||'').trim();if(!text)return '—';
+    const d=new Date(text.includes('T')?text:text.replace(' ','T'));
+    if(Number.isNaN(d.getTime()))return text;
+    return new Intl.DateTimeFormat(undefined,{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}).format(d);
+  };
 
   async function request(url,opt={}){
     const r=await fetch(url,{...opt,cache:'no-store',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`,...(opt.headers||{})}});
@@ -45,9 +51,11 @@
       .jcm814-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}.jcm814-toolbar b{font-size:12px}.jcm814-toolbar span{font-size:10px;color:var(--muted)}
       .jcm814-table-wrap{overflow:auto;padding:0 10px 12px}.jcm814-table{width:100%;min-width:1180px;border-collapse:separate;border-spacing:0 7px}.jcm814-table th{padding:4px 8px;text-align:left;color:var(--muted);font-size:9px;text-transform:uppercase}.jcm814-table td{padding:10px 8px;background:var(--bg);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:11px;vertical-align:top}.jcm814-table td:first-child{border-left:1px solid var(--line);border-radius:10px 0 0 10px}.jcm814-table td:last-child{border-right:1px solid var(--line);border-radius:0 10px 10px 0}.jcm814-table small{display:block;margin-top:3px;color:var(--muted);line-height:1.35}.jcm814-badge{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e7f1ff;color:#0b5ca8;font-size:9px;font-weight:900;text-transform:uppercase}.jcm814-badge.pending{background:#fff4c1;color:#6b5600}.jcm814-badge.ok{background:#e4f7ec;color:#08683b}.jcm814-badge.red{background:#fee8e8;color:#9a2222}.jcm814-ground{font-size:15px;font-weight:900}.jcm814-row-actions{display:flex;flex-wrap:wrap;gap:5px}.jcm814-row-actions button{border:1px solid var(--line);border-radius:7px;padding:6px 8px;background:var(--surface);color:var(--ink);font-size:9px;font-weight:850;cursor:pointer}.jcm814-row-actions .approve{background:#09834a;color:#fff;border-color:#09834a}.jcm814-row-actions .return{background:#fee8e8;color:#9a2222;border-color:#efb7b7}
       .jcm814-step-track{display:grid;grid-template-columns:repeat(8,1fr);gap:2px;margin-top:6px}.jcm814-step-track i{height:5px;border-radius:4px;background:#d7e0ea}.jcm814-step-track i.done{background:#09834a}.jcm814-step-track i.current{background:#f2c318}
+      .jcm814-register-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px 8px;border-top:1px solid var(--line);background:color-mix(in srgb,var(--surface) 96%,#0b67c2 4%)}.jcm814-register-toolbar b{font-size:13px}.jcm814-register-toolbar span{font-size:10px;color:var(--muted)}.jcm814-register-scope{padding:5px 9px;border:1px solid var(--line);border-radius:999px;white-space:nowrap}
+      .jcm814-register-wrap{overflow:auto;padding:0 10px 14px;background:color-mix(in srgb,var(--surface) 96%,#0b67c2 4%)}.jcm814-register-table{width:100%;min-width:1540px;border-collapse:collapse;border:1px solid var(--line);border-radius:10px;overflow:hidden}.jcm814-register-table th{padding:9px 8px;text-align:left;color:var(--muted);font-size:9px;text-transform:uppercase;white-space:nowrap;background:var(--bg);border-bottom:1px solid var(--line)}.jcm814-register-table td{padding:10px 8px;font-size:10px;vertical-align:top;border-bottom:1px solid var(--line);white-space:nowrap}.jcm814-register-table tbody tr:last-child td{border-bottom:0}.jcm814-register-table .problem{white-space:normal;min-width:230px;max-width:340px;line-height:1.4}.jcm814-register-table .process{white-space:normal;min-width:150px}.jcm814-register-table small{display:block;margin-top:3px;color:var(--muted);line-height:1.35}.jcm814-register-empty{text-align:center!important;color:var(--muted)!important;padding:18px!important}
       html[data-theme="dark"] .jcm814-badge{background:#143154;color:#a8d0ff}html[data-theme="dark"] .jcm814-badge.pending{background:#403511;color:#f7d96d}html[data-theme="dark"] .jcm814-badge.ok{background:#153b2b;color:#8ee4b6}html[data-theme="dark"] .jcm814-badge.red{background:#401d23;color:#ffaaaa}
       @media(max-width:1000px){.jcm814-flow{grid-template-columns:repeat(4,1fr)}.jcm814-create{grid-template-columns:1fr 1fr}.jcm814-create .wide{grid-column:1/-1}}
-      @media(max-width:620px){.jcm814-flow{grid-template-columns:repeat(2,1fr)}.jcm814-create{grid-template-columns:1fr}.jcm814-create .wide{grid-column:auto}.jcm814-actions{align-items:stretch;flex-direction:column}.jcm814-button{width:100%}}
+      @media(max-width:620px){.jcm814-flow{grid-template-columns:repeat(2,1fr)}.jcm814-create{grid-template-columns:1fr}.jcm814-create .wide{grid-column:auto}.jcm814-actions{align-items:stretch;flex-direction:column}.jcm814-button{width:100%}.jcm814-register-toolbar{align-items:flex-start;flex-direction:column}}
     `;doc.head.appendChild(s);
   }
 
@@ -72,7 +80,9 @@
         <div class="jcm814-actions"><span id="jcm814Note" class="jcm814-note">Select a case and Technician. Existing active Job Card will be assigned/reassigned; otherwise a new Job Card is created.</span><button id="jcm814Assign" class="jcm814-button" type="submit">Create Job Card & Assign Technician</button></div>
       </form>
       <div class="jcm814-toolbar"><div><b>Live Job Card Process</b><span id="jcm814Counts"></span></div><button id="jcm814Refresh" class="jcm814-button green" type="button">Sync / Refresh</button></div>
-      <div class="jcm814-table-wrap"><table class="jcm814-table"><thead><tr><th>Job Card / Machine</th><th>Technician</th><th>Case</th><th>Grounded</th><th>Process</th><th>Pending / Why</th><th>Manager Review</th><th>Report</th></tr></thead><tbody id="jcm814Rows"><tr><td colspan="8">Loading...</td></tr></tbody></table></div>`;
+      <div class="jcm814-table-wrap"><table class="jcm814-table"><thead><tr><th>Job Card / Machine</th><th>Technician</th><th>Case</th><th>Grounded</th><th>Process</th><th>Pending / Why</th><th>Manager Review</th><th>Report</th></tr></thead><tbody id="jcm814Rows"><tr><td colspan="8">Loading...</td></tr></tbody></table></div>
+      <div class="jcm814-register-toolbar"><div><b>Job Card Register</b><span id="jcm814RegisterCount"></span></div><span class="jcm814-register-scope">${actor==='customer'?'Customer Job Cards':'BELM Job Cards'}</span></div>
+      <div class="jcm814-register-wrap"><table class="jcm814-register-table"><thead><tr><th>Job Card No.</th><th>Customer</th><th>Machine</th><th>Fleet No.</th><th>Technician</th><th>Reported Problem</th><th>Priority</th><th>Current Process</th><th>Created</th><th>Updated</th><th>Status</th></tr></thead><tbody id="jcm814RegisterRows"><tr><td colspan="11" class="jcm814-register-empty">Loading...</td></tr></tbody></table></div>`;
     grid.parentNode.insertBefore(root,grid);
     const oldTitle=doc.querySelector('.grid .panel .panel-head h2');if(oldTitle)oldTitle.textContent='Live Job Card / Breakdown Queue';
     const oldCopy=doc.querySelector('.grid .panel .panel-head p');if(oldCopy)oldCopy.textContent='Active machine issues remain here until Final Result = OK. Completed work is removed from the active queue but remains available in Job Card reports and process history.';
@@ -91,7 +101,7 @@
     try{
       const [processData,caseData]=await Promise.all([processApi('list'),workflowApi('')]);
       items=Array.isArray(processData?.items)?processData.items:[];cases=Array.isArray(caseData)?caseData:[];
-      renderCases();renderRows();note(`Synced ${items.filter(x=>up(x.status)!=='COMPLETED').length} active Job Cards. Completed items are removed from the active Breakdown Queue automatically.`,'ok');
+      renderCases();renderRows();renderRegister();note(`Synced ${items.filter(x=>up(x.status)!=='COMPLETED').length} active Job Cards. Completed items are removed from the active Breakdown Queue automatically.`,'ok');
     }catch(e){note(e.message||'Job Card sync failed.','error')}
     finally{busy=false;if(btn)btn.disabled=false}
   }
@@ -137,10 +147,52 @@
     }).join(''):'<tr><td colspan="8">No Job Cards found.</td></tr>';
   }
 
+  function renderRegister(){
+    const body=childDoc?.getElementById('jcm814RegisterRows');if(!body)return;
+    const rows=items.filter(x=>up(x.status)!=='CANCELLED');
+    const count=childDoc.getElementById('jcm814RegisterCount');if(count)count.textContent=` · ${rows.length} record${rows.length===1?'':'s'}`;
+    body.innerHTML=rows.length?rows.map(item=>{
+      const workCase=cases.find(c=>String(c.id)===String(item.caseId));
+      const priority=val(item,'priority')||val(workCase,'priority','severity')||'Normal';
+      const status=up(item.status)||'—';
+      const statusClass=status==='COMPLETED'?'ok':status==='REPORT_REVIEW'||status==='WAITING_FOR_PARTS'?'pending':'';
+      const step=Math.max(1,Math.min(8,Number(item.processStep||1)));
+      return `<tr><td><b>${esc(item.jobCardNo||'—')}</b></td><td>${esc(item.customerName||'—')}</td><td>${esc(item.machineLabel||'—')}</td><td>${esc(item.fleetNumber||'—')}</td><td>${esc(item.technicianName||'Unassigned')}</td><td class="problem">${esc(item.faultDescription||item.title||'—')}</td><td><span class="jcm814-badge">${esc(priority)}</span></td><td class="process"><b>${esc(item.processLabel||processSteps[step-1])}</b><small>Step ${step}/8</small></td><td>${esc(fmtDateTime(item.createdAt||item.openedAt||item.startedAt))}</td><td>${esc(fmtDateTime(item.updatedAt))}</td><td><span class="jcm814-badge ${statusClass}">${esc(status.replaceAll('_',' '))}</span></td></tr>`;
+    }).join(''):'<tr><td colspan="11" class="jcm814-register-empty">No Job Cards found.</td></tr>';
+  }
+
   async function rowAction(event){
     const button=event.target.closest('button');if(!button)return;const row=button.closest('[data-job]');const id=row?.dataset.job;if(!id)return;const item=items.find(x=>String(x.id)===String(id));if(!item)return;
     if(button.hasAttribute('data-report')){await downloadReport(item);return}
-    if(button.hasAttribute('data-view')){childWin.alert(`TECHNICIAN REPORT\n\nCase: ${item.caseType}\n\nDiagnosis / Inspection:\n${item.diagnosis||'—'}\n\nExplanation:\n${item.explanation||'—'}\n\nFindings:\n${item.findings||'—'}\n\nRoot Cause:\n${item.rootCause||'—'}\n\nSolution:\n${item.solution||'—'}\n\nWork Done:\n${item.workDone||'—'}\n\nManager Review:\n${item.managerReview||'—'}\n\nTest: ${item.testDurationMinutes||0} min\nFinal Result: ${item.finalResult||'Pending'}\nPending: ${item.pendingReason||'—'}\nGrounded Days: ${item.groundedDays}`);return}
+    if(button.hasAttribute('data-view')){childWin.alert(`TECHNICIAN REPORT\
+\
+Case: ${item.caseType}\
+\
+Diagnosis / Inspection:\
+${item.diagnosis||'—'}\
+\
+Explanation:\
+${item.explanation||'—'}\
+\
+Findings:\
+${item.findings||'—'}\
+\
+Root Cause:\
+${item.rootCause||'—'}\
+\
+Solution:\
+${item.solution||'—'}\
+\
+Work Done:\
+${item.workDone||'—'}\
+\
+Manager Review:\
+${item.managerReview||'—'}\
+\
+Test: ${item.testDurationMinutes||0} min\
+Final Result: ${item.finalResult||'Pending'}\
+Pending: ${item.pendingReason||'—'}\
+Grounded Days: ${item.groundedDays}`);return}
     const type=button.dataset.review;if(!type)return;
     const approve=type==='approve';let noteText='';
     if(approve){noteText=childWin.prompt(`Review note for ${item.jobCardNo} (optional):`,'')||'';if(!childWin.confirm(`Approve Technician Report and maintenance${item.requiredSpare?' / required spare':''}?`))return}

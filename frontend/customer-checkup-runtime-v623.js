@@ -12,7 +12,7 @@
     const link=document.createElement('link');
     link.id=STYLE_ID;
     link.rel='stylesheet';
-    link.href='/customer-checkup-belm-v799.css?v=799';
+    link.href='/customer-checkup-belm-v799.css?v=800-display-photo';
     document.head.appendChild(link);
   }
 
@@ -129,11 +129,10 @@
           </section>
 
           <section class="cc-infobar">
-            <label class="cc-photo-card" data-photo-card>
-              <input name="displayPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required>
-              <img class="cc-photo-preview" data-photo-preview alt="Machine display photo preview">
-              <span class="cc-photo-placeholder"><svg viewBox="0 0 100 70" fill="none" stroke="currentColor" stroke-width="2"><rect x="10" y="28" width="48" height="24" rx="2"/><polygon points="58,32 75,32 84,44 84,55 58,55"/><circle cx="27" cy="58" r="7"/><circle cx="70" cy="58" r="7"/><line x1="18" y1="24" x2="67" y2="10"/></svg><b>MACHINE DISPLAY PHOTO</b><small data-photo-state>Tap to capture or upload · required</small></span>
-            </label>
+            <div class="cc-photo-card" data-machine-photo-card>
+              <img class="cc-machine-photo-preview" data-machine-photo-preview alt="Machine photo">
+              <span class="cc-photo-placeholder"><svg viewBox="0 0 100 70" fill="none" stroke="currentColor" stroke-width="2"><rect x="10" y="28" width="48" height="24" rx="2"/><polygon points="58,32 75,32 84,44 84,55 58,55"/><circle cx="27" cy="58" r="7"/><circle cx="70" cy="58" r="7"/><line x1="18" y1="24" x2="67" y2="10"/></svg><b>MACHINE PHOTO</b><small data-machine-photo-state>Same photo for BELM &amp; Customer</small></span>
+            </div>
             <div class="cc-meta-card">
               <div class="cc-meta-row"><span class="cc-meta-label">Checklist No.</span><span class="cc-meta-value">${esc(reportNo)}</span></div>
               <div class="cc-meta-row"><span class="cc-meta-label">Machine</span><span class="cc-meta-value">${esc(machineTitle(m))}</span></div>
@@ -145,6 +144,11 @@
               <div class="cc-meta-row"><span class="cc-meta-label">Checked by</span><span class="cc-meta-value">${esc(operator)}</span></div>
               <div class="cc-meta-row"><span class="cc-meta-label">Date & Time</span><span class="cc-meta-value">${esc(nowLabel())}</span></div>
               <div class="cc-meta-row"><span class="cc-meta-label">Engine Hours</span><input class="cc-hours" name="hourMeterReading" type="number" min="0" step="any" value="${esc(data.todayReport?.hour_meter_reading??data.todayReport?.hourMeterReading??data.latestHourMeter??0)}" required></div>
+              <label class="cc-display-photo" data-photo-card>
+                <span class="cc-display-photo-head"><b>Display Photo · Required</b><em>BELM &amp; Customer</em></span>
+                <input name="displayPhoto" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" required>
+                <span class="cc-display-photo-body"><img class="cc-photo-preview" data-photo-preview alt="Machine display photo preview"><span data-photo-state>Upload display showing running hours, fuel level and fault code</span></span>
+              </label>
             </div>
             <div class="cc-guide">
               <div class="cc-guide-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>Checklist Status Guide</div>
@@ -172,6 +176,12 @@
     previousOverflow=document.documentElement.style.overflow;
     document.documentElement.style.overflow='hidden';
     document.body.appendChild(modal);
+
+    api(`/api/machine-card-photo/${encodeURIComponent(machineId)}`).then(photo=>{
+      const card=modal.querySelector('[data-machine-photo-card]'),preview=modal.querySelector('[data-machine-photo-preview]'),state=modal.querySelector('[data-machine-photo-state]');
+      if(photo?.photoData){preview.src=photo.photoData;card.classList.add('has-machine-photo');state.textContent='Machine photo · synced for BELM & Customer'}
+      else state.textContent='No machine photo uploaded yet';
+    }).catch(()=>{const state=modal.querySelector('[data-machine-photo-state]');if(state)state.textContent='Machine photo unavailable'});
 
     const form=modal.querySelector('[data-form]'),itemsBox=modal.querySelector('[data-items]'),serviceBox=modal.querySelector('[data-service]');
     let displayPhotoUrl='';

@@ -190,3 +190,22 @@ body.cwm-machine-sidebar-ready #root {
   }
   .cwm-machine-shade.is-open { display: block; }
 }
+
+/* V800 Daily Checklist main-menu focus */
+.cwm-daily-checklist-target{
+  outline:2px solid var(--cwm-side-accent,#f2ce00)!important;
+  outline-offset:3px!important;
+  box-shadow:0 0 0 4px rgba(242,206,0,.14),0 10px 28px rgba(0,0,0,.18)!important;
+}
+.cwm-daily-checklist-target::after{
+  content:'DAILY CHECKLIST';
+  margin-left:8px;
+  padding:3px 7px;
+  border-radius:999px;
+  background:#f2ce00;
+  color:#16120a;
+  font-size:9px;
+  font-weight:900;
+  letter-spacing:.05em;
+  vertical-align:middle;
+}

@@ -322,3 +322,14 @@ body.belm-admin.belm-light .belm-check-card, body.belm-admin.belm-light .belm-fo
   background: #ffffff; border-color: rgba(10, 30, 55, 0.08);
 }
 body.belm-admin.belm-light .belm-nav__item:hover { background: rgba(10, 30, 55, 0.05); }
+
+/* V813 — Daily Checklist is a standalone operational tool, not the Machine Operator dashboard. */
+.belm-shell { grid-template-columns: 1fr !important; }
+.belm-sidebar { display: none !important; }
+.belm-main { width: 100% !important; max-width: none !important; margin: 0 !important; }
+.belm-topbar__menu { display: none !important; }
+.belm-content { width: min(1600px, 100%); margin: 0 auto; }
+@media (max-width: 900px) {
+  .belm-shell { display: block !important; }
+  .belm-main { width: 100% !important; }
+}

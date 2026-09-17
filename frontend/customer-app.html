@@ -30,7 +30,7 @@
     <section class="login-panel">
       <div class="customer-chip" id="customerChip" hidden></div>
       <h2>Sign in</h2>
-      <p class="subtext" id="loginHint">Use the email and password provided for your account.</p>
+      <p class="subtext" id="loginHint">Saved or autofilled credentials will wait here until you confirm login.</p>
       <form id="loginForm" autocomplete="on">
         <label>Email / Customer Portal ID</label>
         <input id="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="name@company.com or company-id" />
@@ -58,7 +58,7 @@
           <p class="login-legal-note">You can expand or collapse this notice without leaving the sign-in page.</p>
         </div>
       </details>
-      <p class="privacy">After confirmation, you will first open the Home Dashboard. Use View My Role there to enter your assigned workspace.</p>
+      <p class="privacy">If your password is saved by the browser, BELM will still wait for you to press <b>Continue</b> and then <b>Confirm Login</b>.</p>
     </section>
   </main>
   <dialog id="loginConfirmDialog" class="login-confirm-dialog" aria-labelledby="loginConfirmTitle">
@@ -67,13 +67,13 @@
       <p class="login-confirm-eyebrow">CONFIRM LOGIN</p>
       <h2 id="loginConfirmTitle">Open your Home Dashboard?</h2>
       <p class="login-confirm-account">Account: <strong id="loginConfirmAccount">—</strong></p>
-      <p class="login-confirm-note">Your password has not been submitted yet. Confirm to sign in and open Home Dashboard first, then use <b>View My Role</b>.</p>
+      <p class="login-confirm-note">Your password has not been submitted yet. Confirm to sign in and open Home Dashboard.</p>
       <div class="login-confirm-actions">
         <button id="cancelLoginButton" type="button" class="login-confirm-secondary">Go back</button>
         <button id="confirmLoginButton" type="button" class="primary">Confirm Login</button>
       </div>
     </div>
   </dialog>
-  <script src="/customer-app.js?v=718-manual-login-confirm"></script>
+  <script src="/customer-app.js?v=801-manual-saved-password-confirm"></script>
 </body>
 </html>

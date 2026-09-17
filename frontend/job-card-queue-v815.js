@@ -190,6 +190,19 @@
   function cleanDuplicateQueue(doc){
     var root=doc.getElementById('jobCardManagerV814');
     if(!root)return;
+
+    // BELM Job Cards now use Digital Job Card Control as the single source of truth.
+    // The embedded workflow still carries its older Job Card Process/Dashboard table,
+    // which duplicates the Active Job Cards + Job Card Register rendered below.
+    var legacyProcess=doc.getElementById('jobProcessPanel');
+    if(legacyProcess){
+      legacyProcess.hidden=true;
+      legacyProcess.classList.add('hidden');
+      legacyProcess.style.setProperty('display','none','important');
+      legacyProcess.setAttribute('aria-hidden','true');
+      legacyProcess.setAttribute('data-belm-duplicate-removed','1');
+    }
+
     var grid=doc.querySelector('.grid');
     if(grid&&grid!==root&&root.parentNode===grid.parentNode)grid.style.display='none';
     var toolbar=root.querySelector('.jcm814-toolbar b');

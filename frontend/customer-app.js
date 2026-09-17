@@ -19,6 +19,7 @@
   const cancelLoginButton=document.getElementById('cancelLoginButton');
   let installPrompt=null;
   let loginPending=false;
+  let manualLoginIntent=false;
 
   async function fetchWithTimeout(url,options={},timeoutMs=70000,onSlow=null){
     const controller=new AbortController();
@@ -38,38 +39,12 @@
     }
   }
 
-  const roleTokenKeys=['belm_customer_token','belm_tech_token','belm_admin_token','belm_operator_token'];
   function clearRoleSessions(){['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token'].forEach(k=>localStorage.removeItem(k))}
   function setActiveAccount(type){localStorage.setItem('belm_active_account_type',type)}
-  function hasValidPortalSession(){
-    for(const key of roleTokenKeys){
-      const value=localStorage.getItem(key)||'';
-      if(!value)continue;
-      try{
-        let raw=value.split('.')[1]||'';
-        raw=raw.replace(/-/g,'+').replace(/_/g,'/');
-        raw+='='.repeat((4-raw.length%4)%4);
-        const payload=JSON.parse(decodeURIComponent(Array.from(atob(raw)).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('')));
-        if(payload.exp&&payload.exp*1000<=Date.now()){
-          localStorage.removeItem(key);
-          continue;
-        }
-        return true;
-      }catch(_){
-        return true;
-      }
-    }
-    return false;
-  }
-  function resumeExistingSession(){
-    if(!hasValidPortalSession())return false;
-    location.replace('/portal-v2/');
-    return true;
-  }
 
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
-    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Enter your account details, tap Continue, then confirm before the password is submitted. Saved passwords never sign in automatically.';return}
+    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Saved or autofilled credentials will wait here. Press Continue, then Confirm Login before the password is submitted.';return}
     try{
       const res=await fetchWithTimeout('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'},70000);
       if(!res.ok)throw new Error('Customer app link was not found.');
@@ -91,7 +66,7 @@
       setTimeout(()=>confirmLoginButton?.focus(),0);
       return;
     }
-    if(window.confirm('Confirm Login? You will first open your Home Dashboard.'))login();
+    if(window.confirm('Confirm Login? Your saved password will only be submitted after this confirmation.'))login();
   }
   async function login(){
     if(loginPending)return;
@@ -124,22 +99,40 @@
     }
   }
 
-  form.addEventListener('submit',event=>{event.preventDefault();requestLoginConfirmation()});
-  confirmLoginButton?.addEventListener('click',login);
+  const armManualLogin=event=>{if(event?.isTrusted)manualLoginIntent=true};
+  button.addEventListener('pointerdown',armManualLogin);
+  button.addEventListener('click',armManualLogin);
+  [email,password].forEach(input=>input.addEventListener('keydown',event=>{if(event.isTrusted&&event.key==='Enter')manualLoginIntent=true}));
+
+  form.addEventListener('submit',event=>{
+    event.preventDefault();
+    if(!event.isTrusted||!manualLoginIntent){
+      manualLoginIntent=false;
+      showError('Saved credentials are ready. Press Continue, then Confirm Login.');
+      return;
+    }
+    manualLoginIntent=false;
+    requestLoginConfirmation();
+  });
+  confirmLoginButton?.addEventListener('click',event=>{if(event.isTrusted)login()});
   cancelLoginButton?.addEventListener('click',()=>{confirmDialog?.close();password.focus()});
   confirmDialog?.addEventListener('cancel',()=>setTimeout(()=>password.focus(),0));
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=782-session-back-guard').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=801-manual-login-confirm').catch(()=>{}))}
 
-  // V782: browser/system Back must never be treated as Log out. If a valid
-  // portal token still exists, returning to /login immediately resumes Home.
-  // Only an explicit Log out action clears the token and allows login to show.
-  window.addEventListener('pageshow',()=>{if(!loginPending)resumeExistingSession()});
+  // V801: /login never resumes a saved portal session automatically. Browser
+  // password autofill may populate the fields, but sign-in requires a manual
+  // Continue action followed by a manual Confirm Login action.
+  window.addEventListener('pageshow',()=>{
+    loginPending=false;
+    manualLoginIntent=false;
+    button.disabled=false;
+    button.textContent='Continue';
+    if(confirmLoginButton){confirmLoginButton.disabled=false;confirmLoginButton.textContent='Confirm Login';}
+    if(confirmDialog?.open)confirmDialog.close();
+  });
 
-  (async()=>{
-    if(resumeExistingSession())return;
-    await loadContext();
-  })();
+  loadContext();
 })();

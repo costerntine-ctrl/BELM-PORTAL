@@ -46,7 +46,7 @@
 
     if(admin||customer){
       await Promise.all([
-        loadScript('/customer-checkup-runtime-v623.js?v=658-lazy'),
+        loadScript('/customer-checkup-runtime-v623.js?v=800-display-photo'),
         loadScript('/machine-report-center-override.js?v=658-lazy'),
         loadScript('/machine-status-row-v554.js?v=658-lazy'),
         loadScript('/cwm-machine-brand-v619.js?v=658-lazy'),

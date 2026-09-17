@@ -9,7 +9,7 @@
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#071526;font-family:Arial,Helvetica,sans-serif}
     body{display:grid;grid-template-rows:54px 1fr;overflow:hidden}.bar{display:flex;align-items:center;gap:12px;padding:8px 14px;background:#041426;border-bottom:3px solid #f5c518;color:#fff}.bar a{color:#fff;text-decoration:none;border:1px solid #31536f;border-radius:9px;padding:8px 11px;font-size:12px;font-weight:800}.bar b{font-size:13px}.bar span{color:#9db1c4;font-size:11px}.frame{display:block;width:100%;height:100%;border:0;background:#071526}
   </style>
-  <script src="/navigation-context-v763.js?v=803-customer-job-card-mirror"></script>
+  <script src="/navigation-context-v763.js?v=812-job-card-shell-fix"></script>
 </head>
 <body>
   <header class="bar"><a href="/customer-workshop-manager/">← Workshop Manager</a><b>JOB CARDS <span>single live Job Card workflow</span></b></header>
@@ -22,7 +22,10 @@
   out.searchParams.set('actor','customer');
   out.searchParams.set('embed','1');
   out.searchParams.set('view','job-cards');
-  incoming.forEach(function(v,k){if(!out.searchParams.has(k))out.searchParams.set(k,v);});
+  incoming.forEach(function(v,k){
+    if(k==='actor'||k==='source'||k==='embed'||k==='view'||k==='module')return;
+    out.searchParams.append(k,v);
+  });
   document.getElementById('workflowFrame').src=out.pathname+out.search;
 })();
 </script>

@@ -110,5 +110,6 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   load();
 })();
 </script>
+<script src="/machine-card-photo-v760.js?v=808-belm-customer-machine-photo"></script>
 </body>
 </html>

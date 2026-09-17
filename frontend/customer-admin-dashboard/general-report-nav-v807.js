@@ -10,7 +10,7 @@
 
   if(analysisLink){
     const svg=analysisLink.querySelector('svg');
-    analysisLink.innerHTML=(svg?svg.outerHTML:'')+'Analysis';
+    analysisLink.innerHTML=(svg?svg.outerHTML:'')+'General Analysis';
   }
 
   if(!links.some(a=>(a.getAttribute('href')||'').startsWith('/customer-general-report/'))){

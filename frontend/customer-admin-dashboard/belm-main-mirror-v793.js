@@ -34,7 +34,7 @@
     ['/customer-store-dashboard/', 'Spare Parts Inventory', icons.store, 'store_keeper'],
     ['/customer-procurement-dashboard/', 'Procurement', icons.procurement, 'procurement'],
     ['/customer-finance/', 'Finance & Accounts', icons.finance, 'accounts'],
-    ['/general-analysis/?module=overview&analysisOnly=1', 'Reports & Analysis', icons.reports],
+    ['/general-analysis/?module=overview&analysisOnly=1', 'General Analysis', icons.reports],
     ['/customer-settings-center/', 'System Settings', icons.settings, 'settings']
   ];
 

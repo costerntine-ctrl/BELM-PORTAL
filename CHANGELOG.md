@@ -2,6 +2,20 @@
 
 Historical repair/audit notes, consolidated from individual per-version files into one place.
 
+## Main Dashboard reporting navigation update
+
+- Removed `Checklist Monitoring` from the Workshop Manager sidebar.
+- Added `General Analysis` to the BELM Main Dashboard sidebar.
+- Added `General Analysis` to the Customer Main Dashboard sidebar and connected it to customer-owned analysis.
+- Added `General Report` to the BELM Main Dashboard sidebar.
+- Connected `General Report` to the consolidated all-departments report centre.
+- Renamed the consolidated report-centre heading to `General Report — All Departments`.
+- Connected the shared machine-photo component to BELM machine cards and Customer machine cards, using one synchronized photo record per machine.
+- Audited every BELM and Customer role dashboard and connected Light/Dark selectors to one personal theme preference; missing selectors are added automatically.
+- Removed the injected Customer Portal sidebar from Workshop Store and expanded its content to fit the full desktop/mobile display.
+- Added customer-company identity branding across every Customer dashboard, including combined labels such as `J LTD PROCUREMENT` and `J LTD STORE KEEPER`.
+- Added the combined customer company/role label inside the Customer sidebar, for example `J LTD MACHINE OPERATOR`.
+
 
 ---
 

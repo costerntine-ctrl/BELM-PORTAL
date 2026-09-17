@@ -3,6 +3,17 @@
   if(window.__belmNavigationContext763)return;
   window.__belmNavigationContext763=true;
 
+  if(!document.querySelector('script[src^="/role-theme-selector-v809.js"]')){
+    const themeScript=document.createElement('script');
+    themeScript.src='/role-theme-selector-v809.js?v=809-every-role';
+    document.head.appendChild(themeScript);
+  }
+  if(!document.querySelector('script[src^="/customer-company-role-brand-v810.js"]')){
+    const customerBrandScript=document.createElement('script');
+    customerBrandScript.src='/customer-company-role-brand-v810.js?v=810-company-role';
+    document.head.appendChild(customerBrandScript);
+  }
+
   function sessionToken(){
     const active=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
     const activeKey={customer:'belm_customer_token',technician:'belm_tech_token',admin:'belm_admin_token',operator:'belm_operator_token'}[active]||'';

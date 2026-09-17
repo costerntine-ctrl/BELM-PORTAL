@@ -28,7 +28,7 @@
 
   function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
   function machineId(card){
-    const direct=card.getAttribute('data-machine-id')||card.querySelector('[data-machine-id]')?.getAttribute('data-machine-id')||card.querySelector('[data-operational-status]')?.getAttribute('data-operational-status')||card.querySelector('[data-service-due-badge]')?.getAttribute('data-service-due-badge');
+    const direct=card.getAttribute('data-machine-id')||card.getAttribute('data-belm-machine-id')||card.querySelector('[data-machine-id]')?.getAttribute('data-machine-id')||card.querySelector('[data-belm-machine-id]')?.getAttribute('data-belm-machine-id')||card.querySelector('[data-operational-status]')?.getAttribute('data-operational-status')||card.querySelector('[data-service-due-badge]')?.getAttribute('data-service-due-badge');
     if(direct)return direct;
     const links=[...card.querySelectorAll('a[href],button[data-machine-reports]')];
     for(const el of links){
@@ -107,7 +107,7 @@
     }catch(_){card.dataset.belmMachinePhotoReady='error'}
   }
   function scan(){
-    const selectors=['.machine-card','.assigned-machine-card'];
+    const selectors=['.machine-card','.assigned-machine-card','.belm-customer-machine-card','.belm-technician-machine-card'];
     document.querySelectorAll(selectors.join(',')).forEach(enhance);
   }
   scan();

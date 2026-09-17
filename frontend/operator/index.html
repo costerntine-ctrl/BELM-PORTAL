@@ -21,6 +21,22 @@
   <main>
     <div id="alertBox" class="op-alert hidden" role="alert"></div>
 
+    <section id="signupSection" class="op-card hidden">
+      <p class="op-eyebrow">MACHINE OPERATOR SIGN UP</p>
+      <h1>Create your Operator account</h1>
+      <p class="op-hint">This link belongs to one registered machine. Register once, create your PIN, then use the same link to sign in for future shifts.</p>
+      <div id="signupMachineContext" class="op-counter-card" style="margin:18px 0;text-align:left"><span>Loading machine…</span></div>
+      <div id="signupError" class="op-alert error hidden" role="alert"></div>
+      <form id="signupForm">
+        <label>Full name<input id="signupName" required maxlength="255" autocomplete="name" placeholder="e.g. Juma Hassan"></label>
+        <label>Phone / Contact<input id="signupContact" required maxlength="100" autocomplete="tel" placeholder="e.g. +255 7xx xxx xxx"></label>
+        <label>Create PIN<input id="signupPin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" required minlength="4" maxlength="6" placeholder="4–6 digit PIN"></label>
+        <label>Confirm PIN<input id="signupConfirmPin" type="password" inputmode="numeric" pattern="[0-9]{4,6}" required minlength="4" maxlength="6" placeholder="Repeat PIN"></label>
+        <button class="op-primary" id="signupButton" type="submit">Sign up</button>
+      </form>
+      <button class="op-secondary" id="showOperatorLogin" type="button">Already registered? Sign in</button>
+    </section>
+
     <section id="loginSection" class="op-card">
       <p class="op-eyebrow">OPERATOR SIGN IN</p>
       <h1>Start your shift</h1>
@@ -29,7 +45,8 @@
         <label>PIN<input id="loginPin" type="password" inputmode="numeric" required maxlength="6" placeholder="4–6 digit PIN"></label>
         <button class="op-primary" id="loginButton" type="submit">Sign in</button>
       </form>
-      <p class="op-hint">No PIN? Ask your Machine Admin to set one for you on the roster.</p>
+      <p class="op-hint">Use the name and PIN you created when you first signed up from this machine link.</p>
+      <button class="op-secondary" id="showOperatorSignup" type="button">New operator? Sign up</button>
     </section>
 
     <section id="shiftSection" class="op-dashboard-shell hidden">
@@ -137,5 +154,6 @@
   </main>
 
   <script src="/operator/operator.js?v=491-checklist-colors"></script>
+  <script src="/operator/operator-signup.js?v=811-operator-link-signup"></script>
 </body>
 </html>

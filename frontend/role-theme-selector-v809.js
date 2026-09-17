@@ -15,6 +15,13 @@
       const script=document.createElement('script');script.src='/theme-manager.js?v=809-every-role-selector';script.onload=resolve;script.onerror=resolve;document.head.appendChild(script);
     });
   }
+  function loadReportExport(){
+    if(window.__belmReportExport816||document.querySelector('script[src^="/report-export-v816.js"]'))return;
+    const script=document.createElement('script');
+    script.src='/report-export-v816.js?v=816-pdf-csv-print';
+    script.defer=true;
+    document.head.appendChild(script);
+  }
   function update(button){
     const dark=document.documentElement.dataset.theme==='dark';
     document.body?.classList.toggle('belm-light',!dark);
@@ -47,6 +54,6 @@
     host.insertBefore(button,host.firstChild);bind(button);
   }
   function scan(){document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(bind);inject()}
-  async function boot(){if(!hasSession())return;await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
+  async function boot(){if(!hasSession())return;loadReportExport();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

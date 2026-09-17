@@ -169,6 +169,14 @@
               </span>
             </span>
           </div>
+          <div class="belm-display-evidence" data-shared-visibility="belm,customer">
+            <div class="belm-display-evidence__head"><span class="belm-meta-row__label">Display Photo <strong>Required</strong></span><span class="belm-shared-badge">BELM &amp; Customer</span></div>
+            <label class="belm-display-upload" for="displayPhotoInput">
+              <span class="belm-display-preview" id="displayPhotoPreview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/></svg><span>Upload display</span></span>
+              <input type="file" id="displayPhotoInput" name="display_photo" accept="image/*" capture="environment" required />
+            </label>
+            <span class="belm-display-file-name" id="displayPhotoName">Photo must show running hours, fuel level and any fault code.</span>
+          </div>
         </div>
 
         <div class="belm-guide-panel">
@@ -284,7 +292,7 @@
         </div>
       </section>
 
-      <!-- Comment, Photo, Confirm -->
+      <!-- Comment and Confirm -->
       <section class="belm-bottom-grid">
         <div class="belm-form-panel">
           <div class="belm-form-panel__title">
@@ -292,21 +300,6 @@
             Operator Comment
           </div>
           <textarea class="belm-textarea" placeholder="Describe any abnormal condition..."></textarea>
-        </div>
-
-        <div class="belm-form-panel">
-          <div class="belm-form-panel__title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
-            Attach Photo
-          </div>
-          <div class="belm-file-upload">
-            <label class="belm-file-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v12M6 10l6 6 6-6"/><path d="M4 20h16"/></svg>
-              Choose File
-              <input type="file" id="photoInput" accept="image/*" style="display:none;" />
-            </label>
-            <span class="belm-file-hint" id="fileHint">Low-size image</span>
-          </div>
         </div>
 
         <div class="belm-form-panel">

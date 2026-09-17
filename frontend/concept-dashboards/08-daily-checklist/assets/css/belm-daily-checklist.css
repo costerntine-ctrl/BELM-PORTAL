@@ -167,6 +167,18 @@ button { cursor: pointer; }
 .belm-stepper__btns button:first-child { border-radius: 3px 3px 0 0; }
 .belm-stepper__btns button:last-child { border-radius: 0 0 3px 3px; margin-top: 1px; }
 
+.belm-display-evidence { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--belm-navy-border); display: grid; gap: 8px; }
+.belm-display-evidence__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.belm-display-evidence__head strong { color: var(--belm-red-500); font-size: 9px; text-transform: uppercase; margin-left: 3px; }
+.belm-shared-badge { color: var(--belm-green-500); background: rgba(24,198,142,.1); border: 1px solid rgba(24,198,142,.35); border-radius: 999px; padding: 3px 6px; font-size: 8px; font-weight: 800; white-space: nowrap; }
+.belm-display-upload { cursor: pointer; display: block; }
+.belm-display-upload input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.belm-display-preview { min-height: 66px; border: 1px dashed var(--belm-blue-500); border-radius: 7px; background: var(--belm-navy-600); color: var(--belm-blue-500); display: flex; align-items: center; justify-content: center; gap: 7px; overflow: hidden; font-size: 11px; font-weight: 800; }
+.belm-display-preview svg { width: 18px; height: 18px; }
+.belm-display-preview img { width: 100%; height: 96px; object-fit: cover; display: block; }
+.belm-display-file-name { color: var(--belm-text-muted); font-size: 8.5px; line-height: 1.25; }
+.belm-display-file-name.is-selected { color: var(--belm-green-500); font-weight: 700; }
+
 /* Status guide panel */
 .belm-guide-panel {
   background: var(--belm-navy-700); border: 1px solid var(--belm-navy-border); border-radius: var(--belm-radius-lg);
@@ -229,7 +241,7 @@ button { cursor: pointer; }
 .belm-important__item::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--belm-red-500); flex-shrink: 0; margin-top: 5px; }
 
 /* Bottom row: comment, photo, confirm */
-.belm-bottom-grid { display: grid; grid-template-columns: 1.4fr 1fr 1.3fr; gap: 16px; }
+.belm-bottom-grid { display: grid; grid-template-columns: 1.4fr 1.3fr; gap: 16px; }
 .belm-form-panel {
   background: var(--belm-navy-700); border: 1px solid var(--belm-navy-border); border-radius: var(--belm-radius-lg);
   padding: 16px 18px; box-shadow: var(--belm-shadow-card); display: flex; flex-direction: column; gap: 12px;

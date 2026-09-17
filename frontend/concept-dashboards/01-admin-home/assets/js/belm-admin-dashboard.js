@@ -20,7 +20,7 @@
     if(!operatorLink){
       operatorLink=document.createElement('a');
       operatorLink.className='belm-nav__item';
-      operatorLink.href='/operator/';
+      operatorLink.href='/concept-dashboards/07-operator/';
       operatorLink.setAttribute('data-belm-machine-operator','1');
       operatorLink.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="3"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7"/><path d="M8 17h8M12 17v3"/></svg>Machine Operator';
       if(workshop&&workshop.nextSibling)nav.insertBefore(operatorLink,workshop.nextSibling);

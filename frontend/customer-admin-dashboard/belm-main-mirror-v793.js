@@ -11,6 +11,7 @@
   const icons = {
     dashboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>',
     workshop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14a8 8 0 0116 0"/><path d="M2 14h20"/><path d="M12 14V9"/><circle cx="12" cy="7" r="1.4" fill="currentColor" stroke="none"/></svg>',
+    operator: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="3"/><path d="M5 20c0-4 3-7 7-7s7 3 7 7"/><path d="M8 17h8M12 17v3"/></svg>',
     machines: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l3-7h5l2 4h6l2 3"/><circle cx="7" cy="19" r="1.6"/><circle cx="17" cy="19" r="1.6"/></svg>',
     checklist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 3v2h6V3M9 10l1.7 1.7L14 8.3M9 16h6"/></svg>',
     users: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/><path d="M20 4l1.2 1.2M20 8l1.6-.2"/></svg>',
@@ -27,6 +28,7 @@
   const links = [
     ['/customer-admin-dashboard/', 'Dashboard', icons.dashboard, '', true],
     ['/customer-workshop-manager/', 'Workshop Manager', icons.workshop, 'workshop_manager'],
+    ['/customer-operator-dashboard/', 'Machine Operator', icons.operator, 'operator'],
     ['/portal/dashboard?view=machines', 'Customer Machines', icons.machines],
     ['/portal/dashboard?view=machines&focus=daily-checklist', 'Daily Checklist', icons.checklist],
     ['/customer-users/', 'Roles & Users', icons.users],

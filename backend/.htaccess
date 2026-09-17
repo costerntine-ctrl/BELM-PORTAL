@@ -6,6 +6,11 @@
   RewriteRule ^(?:config|scripts)(?:/|$) - [F,L,NC]
   RewriteRule ^(?:schema|repair_admin)\.sql$ - [F,L,NC]
 
+  # Machine-specific Operator invitation / self-registration endpoint.
+  # Customer Admin shares /operator/?machine=<id>; the operator signs up from
+  # that link and creates their own 4-6 digit PIN before entering the workspace.
+  RewriteRule ^operator-signup/?$ api/operator_signup.php [L,QSA,NC]
+
   # BELM WM internal workshop endpoint. This endpoint was added after the
   # front-controller route table and must resolve before the generic router.
   # Keeps /api/belm-workshop-home?section=petty-cash stable for the frontend.

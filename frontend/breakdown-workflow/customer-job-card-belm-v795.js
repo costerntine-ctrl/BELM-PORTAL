@@ -39,6 +39,8 @@
     communication: icon('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>')
   };
 
+  // Exact BELM Workshop & Job Cards menu order. Only routes are translated to
+  // customer-owned workspaces so data and permissions remain customer-scoped.
   const pages = [
     { label: 'Inspection & Repair Dashboard', href: '/customer-inspection-repair/', icon: icons.dashboard },
     { label: 'Job Cards', href: '/breakdown-workflow/?actor=customer&view=job-cards', icon: icons.job, active: !params.has('view') || view === 'job-cards' },
@@ -47,8 +49,7 @@
     { label: 'Testing & Completion', href: '/breakdown-workflow/?actor=customer&view=testing', icon: icons.testing, active: view === 'testing' },
     { label: 'Workshop Reports', href: '/general-analysis/?module=workshop&analysisOnly=1', icon: icons.reports },
     { label: 'Machine History', href: '/portal/dashboard?view=machines', icon: icons.history },
-    { label: 'Communication', href: '/role-communications/', icon: icons.communication },
-    { label: 'My Role Reports', href: '/role-reports/', icon: icons.reports }
+    { label: 'Communication', href: '/role-communications/', icon: icons.communication }
   ];
 
   const sidebar = document.createElement('aside');
@@ -139,6 +140,27 @@
   document.body.prepend(toggle);
   document.body.classList.add('belm-sidebar-ready', 'belm-module-workshop', 'customer-job-card-belm-mirror');
 
+  // Match BELM admin sidebar display-fit behaviour so long menu labels do not
+  // clip or create an oversized canvas.
+  function fitSidebarToText() {
+    const desktop = window.matchMedia('(min-width: 981px)').matches;
+    if (!desktop) {
+      sidebar.style.removeProperty('--belm-sidebar-width');
+      document.documentElement.style.removeProperty('--belm-sidebar-width');
+      return;
+    }
+    const labels = Array.from(sidebar.querySelectorAll('.belm-sidebar-link > span:nth-child(2)'));
+    const labelWidth = labels.reduce((max, label) => Math.max(max, label.scrollWidth || 0), 0);
+    const brandCopy = sidebar.querySelector('.belm-sidebar-brand-copy');
+    const userCopy = sidebar.querySelector('.belm-sidebar-user-copy');
+    const brandWidth = brandCopy ? brandCopy.scrollWidth + 96 : 0;
+    const userWidth = userCopy ? userCopy.scrollWidth + 84 : 0;
+    const width = Math.max(250, Math.min(310, Math.ceil(Math.max(labelWidth + 92, brandWidth, userWidth))));
+    document.documentElement.style.setProperty('--belm-sidebar-width', width + 'px');
+  }
+  requestAnimationFrame(fitSidebarToText);
+  window.addEventListener('resize', fitSidebarToText);
+
   const topbar = document.querySelector('body > .topbar');
   if (topbar) {
     const eyebrow = topbar.querySelector('p');
@@ -174,6 +196,7 @@
       if (company) company.textContent = name.toUpperCase();
       const copy = userCard.querySelector('.belm-sidebar-user-copy span');
       if (copy) copy.textContent = name + ' · Workshop';
+      requestAnimationFrame(fitSidebarToText);
     } catch (_) {}
   }
 

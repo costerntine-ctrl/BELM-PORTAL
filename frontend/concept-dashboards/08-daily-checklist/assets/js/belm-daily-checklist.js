@@ -38,10 +38,13 @@ document.addEventListener('DOMContentLoaded', function () {
   if (hoursUp) hoursUp.addEventListener('click', function(){ setHours(parseHours()+1); });
   if (hoursDown) hoursDown.addEventListener('click', function(){ setHours(Math.max(0,parseHours()-1)); });
 
-  var photoInput = document.getElementById('photoInput'), fileHint = document.getElementById('fileHint');
-  if (photoInput) photoInput.addEventListener('change', function(){
-    if (photoInput.files && photoInput.files[0]) { fileHint.textContent=photoInput.files[0].name; fileHint.classList.add('belm-file-name'); }
-    else { fileHint.textContent='Low-size image'; fileHint.classList.remove('belm-file-name'); }
+  var displayPhotoInput = document.getElementById('displayPhotoInput'), displayPhotoPreview = document.getElementById('displayPhotoPreview'), displayPhotoName = document.getElementById('displayPhotoName'), displayPhotoUrl = null;
+  if (displayPhotoInput) displayPhotoInput.addEventListener('change', function(){
+    var file=displayPhotoInput.files&&displayPhotoInput.files[0];if(!file)return;
+    if(!file.type.match(/^image\//)){displayPhotoInput.value='';alert('Please select an image file.');return;}
+    if(displayPhotoUrl)URL.revokeObjectURL(displayPhotoUrl);displayPhotoUrl=URL.createObjectURL(file);
+    displayPhotoPreview.innerHTML='<img src="'+displayPhotoUrl+'" alt="Machine display evidence preview">';
+    displayPhotoName.textContent=file.name+' · Ready for BELM and Customer';displayPhotoName.classList.add('is-selected');
   });
 
   function rows() {
@@ -79,6 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var saveBtn=document.getElementById('saveChecklistBtn'), confirmBox=document.getElementById('confirmAccurate');
   if (saveBtn) saveBtn.addEventListener('click', async function(){
     if (!confirmBox || !confirmBox.checked) { alert('Confirm that the checklist is accurate before saving.'); return; }
+    if (!displayPhotoInput || !displayPhotoInput.files || !displayPhotoInput.files[0]) { alert('Upload the display photo showing running hours, fuel level and any fault code.'); return; }
     var missing = rows().filter(function(r){ return !r.value; });
     if (missing.length) { alert('Complete all checklist status fields before saving.'); return; }
     saveBtn.disabled=true;

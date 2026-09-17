@@ -80,4 +80,5 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enhance,{once:true});else enhance();
   const obs=new MutationObserver(()=>requestAnimationFrame(enhance));
   obs.observe(document.body,{childList:true,subtree:true});
+  import('/customer-users/operator-invite-v811.js?v=811-operator-signup-link').catch(()=>{});
 })();

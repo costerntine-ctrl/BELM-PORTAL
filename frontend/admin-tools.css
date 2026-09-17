@@ -241,3 +241,60 @@ input:focus, select:focus, textarea:focus { outline: 3px solid rgba(0, 169, 88, 
 .request-proforma-toolbar button{background:#16a34a;color:#fff;border:0;border-radius:10px;padding:9px 14px;font-weight:800}
 .request-proforma-toolbar button:disabled{opacity:.45;cursor:not-allowed}
 .proforma-request-select{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid rgba(56,189,248,.32);border-radius:10px;font-weight:700}
+
+/* V812 - Spare request information cards: portrait, compact and easier to scan. */
+.request-panel .request-grid{
+  grid-template-columns:repeat(auto-fill,minmax(270px,320px));
+  justify-content:start;
+  align-items:start;
+  gap:16px;
+}
+.request-panel .request-proforma-toolbar{
+  grid-column:1/-1;
+  width:100%;
+}
+.request-panel .request-card{
+  min-height:430px;
+  display:flex;
+  flex-direction:column;
+  padding:18px;
+}
+.request-panel .request-card-head{
+  align-items:flex-start;
+  gap:10px;
+}
+.request-panel .request-card h3{
+  line-height:1.35;
+}
+.request-panel .request-card dl{
+  grid-template-columns:1fr;
+  gap:12px;
+  margin:18px 0;
+}
+.request-panel .request-card dl div{
+  padding-bottom:9px;
+  border-bottom:1px solid color-mix(in srgb,var(--line) 78%,transparent);
+}
+.request-panel .request-card dl div:last-child{
+  padding-bottom:0;
+  border-bottom:0;
+}
+.request-panel .request-actions{
+  width:100%;
+  margin-top:auto;
+  display:grid;
+  grid-template-columns:1fr;
+  gap:8px;
+  justify-content:stretch;
+}
+.request-panel .request-actions button,
+.request-panel .proforma-request-select{
+  width:100%;
+  min-height:38px;
+  justify-content:center;
+  text-align:center;
+}
+@media(max-width:700px){
+  .request-panel .request-grid{grid-template-columns:1fr;}
+  .request-panel .request-card{min-height:0;}
+}

@@ -9,24 +9,208 @@
     *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#071526;font-family:Arial,Helvetica,sans-serif}
     body{display:grid;grid-template-rows:54px 1fr;overflow:hidden}.bar{display:flex;align-items:center;gap:12px;padding:8px 14px;background:#041426;border-bottom:3px solid #f5c518;color:#fff}.bar a{color:#fff;text-decoration:none;border:1px solid #31536f;border-radius:9px;padding:8px 11px;font-size:12px;font-weight:800}.bar b{font-size:13px}.bar span{color:#9db1c4;font-size:11px}.frame{display:block;width:100%;height:100%;border:0;background:#071526}
   </style>
-  <script src="/navigation-context-v763.js?v=812-job-card-shell-fix"></script>
+  <script src="/navigation-context-v763.js?v=813-customer-job-card-belm-mirror"></script>
 </head>
 <body>
-  <header class="bar"><a href="/customer-workshop-manager/">← Workshop Manager</a><b>JOB CARDS <span>single live Job Card workflow</span></b></header>
+  <header class="bar"><a href="/customer-workshop-manager/">← Workshop Manager</a><b>JOB CARDS <span>BELM mirror · customer-owned workflow</span></b></header>
   <iframe id="workflowFrame" class="frame" title="Customer Main Job Card Process"></iframe>
 <script>
 (function(){
-  if(!localStorage.getItem('belm_customer_token')){location.replace('/login');return;}
+  'use strict';
+  var token=localStorage.getItem('belm_customer_token')||'';
+  if(!token){location.replace('/login');return;}
+
   var incoming=new URLSearchParams(location.search);
   var out=new URL('/breakdown-workflow/',location.origin);
   out.searchParams.set('actor','customer');
   out.searchParams.set('embed','1');
   out.searchParams.set('view','job-cards');
+  out.searchParams.set('module','workshop');
+  out.searchParams.set('mirror','belm');
   incoming.forEach(function(v,k){
-    if(k==='actor'||k==='source'||k==='embed'||k==='view'||k==='module')return;
+    if(k==='actor'||k==='source'||k==='embed'||k==='view'||k==='module'||k==='mirror')return;
     out.searchParams.append(k,v);
   });
-  document.getElementById('workflowFrame').src=out.pathname+out.search;
+
+  var frame=document.getElementById('workflowFrame');
+  frame.src=out.pathname+out.search;
+
+  function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function val(obj){for(var i=1;i<arguments.length;i++){var k=arguments[i];if(obj&&obj[k]!==undefined&&obj[k]!==null)return obj[k];}return '';}
+  function upper(v){return String(v||'').trim().toUpperCase();}
+  function activeJob(job){return !['COMPLETED','CANCELLED'].includes(upper(job.status));}
+  function jobNo(job){return String(val(job,'jobCardNo','job_card_no')||'Job Card');}
+  function techName(job){return String(val(job,'technicianName','technician_name')||'Unassigned');}
+  function caseId(row){return String(val(row,'id','caseId','case_id')||'');}
+
+  async function api(path,opt){
+    opt=opt||{};
+    var response=await fetch('/api/breakdown-workflow'+path,Object.assign({},opt,{cache:'no-store',headers:Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+token},opt.headers||{})}));
+    var text=await response.text();var data=null;try{data=text?JSON.parse(text):null;}catch(_){data=null;}
+    if(!response.ok)throw new Error((data&&data.error)||('Request failed ('+response.status+').'));
+    return data;
+  }
+
+  function stateFor(job,detail){
+    var c=(detail&&detail.case)||{};
+    var stage=upper(val(c,'currentStage','current_stage'));
+    var status=upper(job.status);
+    var spares=((detail&&detail.spares)||[]).filter(function(s){
+      var linked=String(val(s,'jobCardId','job_card_id')||'');
+      var same=!linked||linked===String(job.id||'');
+      return same&&!['REJECTED','PARTS_READY'].includes(upper(s.status));
+    });
+    if(status==='COMPLETED'||stage==='COMPLETED')return {code:'COMPLETED',label:'Completed',detail:''};
+    if(status==='PENDING_APPROVAL'||stage==='PENDING_APPROVAL')return {code:'PENDING_APPROVAL',label:'Pending Approval',detail:'Waiting Workshop Manager review'};
+    if(stage==='TESTING'||String(val(job,'testResult','test_result')||'').trim())return {code:'TESTING',label:'Testing',detail:String(val(job,'testResult','test_result')||'')};
+    if(status==='WAITING_FOR_PARTS'||spares.length||['BOSS_APPROVAL','STORE_CHECK','PROCUREMENT','ACCOUNTS'].includes(stage)){
+      return {code:'WAITING_FOR_SPARE',label:'Waiting for Parts',detail:spares.map(function(s){return val(s,'spareName','spare_name');}).filter(Boolean).join(', ')};
+    }
+    if(String(job.diagnosis||'').trim())return {code:'DIAGNOSIS_REPORT',label:'Diagnosis Report',detail:String(job.diagnosis||'')};
+    if(val(job,'startedAt','started_at')||status==='RECEIVED'||status==='IN_PROGRESS')return {code:'OPENED',label:'Opened',detail:'Technician work in progress'};
+    return {code:'ASSIGNED',label:'Assigned',detail:'Waiting Technician to receive'};
+  }
+
+  function machineLabel(c){return [c.brand,c.model].filter(Boolean).join(' ')||val(c,'machineType','machine_type')||'Machine';}
+
+  function installMirror(doc,win){
+    if(!doc||doc.getElementById('customerBelmJobMirror'))return;
+    doc.documentElement.classList.add('customer-job-cards-full-view');
+
+    var style=doc.createElement('style');
+    style.id='customerBelmJobMirrorStyle';
+    style.textContent='html.customer-job-cards-full-view main{max-width:none!important;width:100%!important;margin:0!important;padding:4px 4px 18px!important}html.customer-job-cards-full-view .workshop-report-panel,html.customer-job-cards-full-view .performance-panel{display:none!important}html.customer-job-cards-full-view #newCaseButton{display:none!important}.customer-mirror-dispatch{margin:0 0 14px}.customer-mirror-dispatch .workflow-dispatch-form{padding:14px}.customer-mirror-dispatch .mirror-source{grid-column:1/-1}.customer-mirror-dispatch .mirror-actions{grid-column:1/-1;display:flex;justify-content:flex-end}.customer-mirror-dispatch .mirror-actions button{min-height:46px;min-width:240px}.customer-mirror-process{margin:0 0 14px}.customer-mirror-note{grid-column:1/-1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:11px}.customer-mirror-note.ok{border-color:#1d8c58;color:#138052}.customer-mirror-note.error{border-color:#b73b3b;color:#b73b3b}.customer-mirror-process .job-process-panel{display:block!important;margin:0}@media(max-width:760px){.customer-mirror-dispatch .mirror-actions button{width:100%;min-width:0}}';
+    doc.head.appendChild(style);
+
+    var grid=doc.querySelector('.grid');
+    if(!grid)return;
+
+    var wrap=doc.createElement('div');
+    wrap.id='customerBelmJobMirror';
+    wrap.innerHTML='\
+<section class="panel workflow-dispatch customer-mirror-dispatch" aria-label="Customer Technician Dispatch">\
+  <div class="panel-head workflow-dispatch-head"><div><h2>Customer Technician Dispatch</h2><p>Mirrors BELM Job Card dispatch, but technicians and machines remain inside your company only.</p></div><span class="workflow-dispatch-badge">CUSTOMER WORKSHOP</span></div>\
+  <form id="customerMirrorDispatchForm" class="workflow-dispatch-form">\
+    <fieldset class="wide workflow-job-source mirror-source"><legend>Job Card Source</legend><label class="job-source-option job-source-existing"><input type="radio" name="customerMirrorMode" value="existing" checked><span>Select Existing Job Card</span></label><label class="job-source-option job-source-create"><input type="radio" name="customerMirrorMode" value="create"><span>Create Job Card</span></label></fieldset>\
+    <label id="customerMirrorJobField">Customer Job Card<select id="customerMirrorJob"><option value="">Loading Job Cards...</option></select></label>\
+    <label id="customerMirrorCaseField" class="hidden">Breakdown / Work Case<select id="customerMirrorCase"><option value="">Loading cases...</option></select></label>\
+    <label>Technician<select id="customerMirrorTechnician"><option value="">Loading Technicians...</option></select></label>\
+    <label class="wide" id="customerMirrorTitleField">Job title<input id="customerMirrorTitle" placeholder="e.g. Hydraulic pressure diagnosis"></label>\
+    <label class="wide" id="customerMirrorHandoverField">Handover / reassignment reason<textarea id="customerMirrorHandover" rows="2" maxlength="500" placeholder="Required when moving active work to another Technician"></textarea></label>\
+    <div id="customerMirrorNote" class="customer-mirror-note">Loading your Customer Job Cards and Technicians...</div>\
+    <div class="mirror-actions"><button class="primary" id="customerMirrorSubmit" type="submit">Assign Customer Technician</button></div>\
+  </form>\
+</section>\
+<section class="panel customer-mirror-process" aria-label="Customer Job Card Process">\
+  <div class="panel-head"><div><h2>Job Card Process</h2><p>Same process view as BELM: assignment, diagnosis, spare waiting, testing, approval and completion.</p></div><button id="customerMirrorRefresh" type="button">Refresh Process</button></div>\
+  <div class="job-process-table-wrap"><table class="job-process-table"><thead><tr><th>JC Number</th><th>Technician Name</th><th>Machine Fleet No.</th><th>Company Name</th><th>Address</th><th>Process</th></tr></thead><tbody id="customerMirrorProcessBody"><tr><td colspan="6" class="job-process-empty">Loading Customer Job Card process...</td></tr></tbody></table></div>\
+</section>';
+    grid.parentNode.insertBefore(wrap,grid);
+
+    var queueHeading=doc.querySelector('.grid .panel .panel-head h2');
+    var queueCopy=doc.querySelector('.grid .panel .panel-head p');
+    if(queueHeading)queueHeading.textContent='Customer Job Card Queue';
+    if(queueCopy)queueCopy.textContent='Your company Job Cards and machine issues. Select a card to see the full process, communication, spares and technician work history.';
+
+    var details=[];
+    var jobs=[];
+    var technicians=[];
+
+    function setNote(message,type){var el=doc.getElementById('customerMirrorNote');if(!el)return;el.textContent=message;el.className='customer-mirror-note'+(type?' '+type:'');}
+    function mode(){var el=doc.querySelector('input[name="customerMirrorMode"]:checked');return el?el.value:'existing';}
+    function selectedJob(){var id=doc.getElementById('customerMirrorJob').value;return jobs.find(function(x){return String(x.job.id)===String(id);});}
+    function selectedCase(){var id=doc.getElementById('customerMirrorCase').value;return details.find(function(x){return caseId(x.case)===String(id);});}
+
+    function syncMode(){
+      var existing=mode()==='existing';
+      doc.getElementById('customerMirrorJobField').classList.toggle('hidden',!existing);
+      doc.getElementById('customerMirrorCaseField').classList.toggle('hidden',existing);
+      doc.getElementById('customerMirrorHandoverField').classList.toggle('hidden',!existing);
+      var title=doc.getElementById('customerMirrorTitle');
+      var item=existing?selectedJob():selectedCase();
+      if(existing&&item)title.value=item.job.title||'';
+      if(!existing&&item&&!title.value.trim())title.value=val(item.case,'title','description')||machineLabel(item.case)+' repair';
+      setNote(existing?'Select an active Job Card and your Technician to assign or reassign it.':'Select a machine case, enter the Job title and assign your Technician.');
+    }
+
+    function renderProcess(){
+      var body=doc.getElementById('customerMirrorProcessBody');
+      if(!body)return;
+      var rows=jobs.slice().sort(function(a,b){return String(val(b.job,'updatedAt','updated_at','createdAt','created_at')).localeCompare(String(val(a.job,'updatedAt','updated_at','createdAt','created_at')));});
+      body.innerHTML=rows.length?rows.map(function(item){
+        var c=item.detail.case||{};var j=item.job||{};var s=stateFor(j,item.detail);
+        var updated=val(j,'updatedAt','updated_at','createdAt','created_at');
+        var when=updated?new Date(updated).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+        return '<tr><td>'+esc(jobNo(j))+(when?'<span class="job-process-updated">'+esc(when)+'</span>':'')+'</td><td>'+esc(techName(j))+'</td><td><b>'+esc(val(c,'fleetNumber','fleet_number')||'—')+'</b></td><td>'+esc(val(c,'customerName','customer_name')||'Customer')+'</td><td class="job-process-address">'+esc(val(c,'customerAddress','customer_address','address')||'—')+'</td><td><span class="job-process-state '+esc(s.code.toLowerCase().replaceAll('_','-'))+'">'+esc(s.label)+'</span>'+(s.detail?'<small class="job-process-detail">'+esc(s.detail)+'</small>':'')+'</td></tr>';
+      }).join(''):'<tr><td colspan="6" class="job-process-empty">No Customer Job Cards yet.</td></tr>';
+    }
+
+    function renderOptions(){
+      var active=jobs.filter(function(x){return activeJob(x.job)&&upper(x.job.status)!=='PENDING_APPROVAL';});
+      var jobSelect=doc.getElementById('customerMirrorJob');
+      jobSelect.innerHTML='<option value="">Select Job Card...</option>'+active.map(function(x){var c=x.detail.case||{};return '<option value="'+esc(x.job.id)+'">'+esc(jobNo(x.job)+' · '+machineLabel(c)+' · '+upper(x.job.status||'OPEN')+(techName(x.job)!=='Unassigned'?' · '+techName(x.job):''))+'</option>';}).join('');
+      var caseSelect=doc.getElementById('customerMirrorCase');
+      var openDetails=details.filter(function(d){return upper(val(d.case,'status','caseStatus','case_status'))!=='COMPLETED';});
+      caseSelect.innerHTML='<option value="">Select machine case...</option>'+openDetails.map(function(d){var c=d.case||{};return '<option value="'+esc(caseId(c))+'">'+esc(machineLabel(c)+' · '+(val(c,'fleetNumber','fleet_number')||'No Fleet')+' · '+(val(c,'title','description')||'Work case'))+'</option>';}).join('');
+      var techSelect=doc.getElementById('customerMirrorTechnician');
+      techSelect.innerHTML='<option value="">Select Technician...</option>'+technicians.map(function(t){return '<option value="'+esc(t.id)+'">'+esc(t.name||t.email||'Technician')+'</option>';}).join('');
+      renderProcess();syncMode();
+    }
+
+    async function loadMirror(){
+      var refresh=doc.getElementById('customerMirrorRefresh');if(refresh)refresh.disabled=true;
+      try{
+        setNote('Syncing Customer Job Cards and Technicians...');
+        var rows=await api('');
+        rows=Array.isArray(rows)?rows:[];
+        var openRows=rows.filter(function(r){return upper(val(r,'status','caseStatus','case_status'))!=='COMPLETED';}).slice(0,80);
+        details=(await Promise.all(openRows.map(function(r){var id=caseId(r);return id?api('/case/'+encodeURIComponent(id)).catch(function(){return null;}):Promise.resolve(null);}))).filter(Boolean);
+        jobs=[];
+        details.forEach(function(detail){(detail.jobCards||[]).forEach(function(job){jobs.push({job:job,detail:detail});});});
+        var customerId='';
+        for(var i=0;i<details.length&&!customerId;i++)customerId=String(val(details[i].case,'customerId','customer_id')||'');
+        technicians=customerId?(await api('/technicians?customerId='+encodeURIComponent(customerId)+'&_='+Date.now()).catch(function(){return [];})):[];
+        technicians=Array.isArray(technicians)?technicians:[];
+        renderOptions();
+        setNote('Synced: '+jobs.length+' Job Card'+(jobs.length===1?'':'s')+' · '+technicians.length+' Customer Technician'+(technicians.length===1?'':'s')+'.','ok');
+      }catch(error){setNote(error.message||'Could not sync Customer Job Cards.','error');}
+      finally{if(refresh)refresh.disabled=false;}
+    }
+
+    doc.querySelectorAll('input[name="customerMirrorMode"]').forEach(function(input){input.addEventListener('change',syncMode);});
+    doc.getElementById('customerMirrorJob').addEventListener('change',syncMode);
+    doc.getElementById('customerMirrorCase').addEventListener('change',syncMode);
+    doc.getElementById('customerMirrorRefresh').addEventListener('click',loadMirror);
+    doc.getElementById('customerMirrorDispatchForm').addEventListener('submit',async function(event){
+      event.preventDefault();
+      var submit=doc.getElementById('customerMirrorSubmit');
+      var techId=doc.getElementById('customerMirrorTechnician').value;
+      if(!techId){setNote('Select Customer Technician before assigning the Job Card.','error');return;}
+      var existing=mode()==='existing';
+      var item=existing?selectedJob():selectedCase();
+      if(!item){setNote(existing?'Select an active Customer Job Card.':'Select a machine case for the new Job Card.','error');return;}
+      var c=existing?item.detail.case:item.case;
+      var j=existing?item.job:null;
+      var title=doc.getElementById('customerMirrorTitle').value.trim()||(j&&j.title)||val(c,'title','description')||'Machine repair';
+      var body={caseId:caseId(c),title:title,technicianId:techId,jobCardMode:existing?'existing':'create',jobCardId:existing?String(j.id||''):'',handoverReason:doc.getElementById('customerMirrorHandover').value.trim()};
+      submit.disabled=true;submit.textContent=existing?'Assigning...':'Creating...';
+      try{
+        var result=await api('/job-card',{method:'POST',body:JSON.stringify(body)});
+        setNote('Job Card '+(result.jobCardNo||jobNo(j||{}))+' '+(existing?'assignment updated':'created')+' successfully.','ok');
+        doc.getElementById('customerMirrorHandover').value='';
+        await loadMirror();
+        var refreshButton=doc.getElementById('refreshButton');if(refreshButton)refreshButton.click();
+      }catch(error){setNote(error.message||'Customer Job Card assignment failed.','error');}
+      finally{submit.disabled=false;submit.textContent='Assign Customer Technician';}
+    });
+
+    var childRefresh=doc.getElementById('refreshButton');if(childRefresh)childRefresh.addEventListener('click',function(){setTimeout(loadMirror,500);});
+    loadMirror();
+  }
+
+  frame.addEventListener('load',function(){
+    try{installMirror(frame.contentDocument,frame.contentWindow);}catch(error){console.error('Customer Job Card mirror failed',error);}
+  });
 })();
 </script>
 </body></html>

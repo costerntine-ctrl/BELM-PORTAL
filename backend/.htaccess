@@ -48,6 +48,10 @@
   # and payment history synchronized without requiring an official receipt.
   RewriteRule ^proforma-generate-invoice/?$ proforma-generate-invoice.php [L,QSA,NC]
 
+  # V814 unified BELM + Customer Job Card process: Technician report review,
+  # maintenance/spare approval, selected testing time, final result and report.
+  RewriteRule ^job-card-workflow-v814/?$ api/job_card_workflow_v814.php [L,QSA,NC]
+
   # Shared Job Card detail modal API used by Technician and Workshop Manager.
   RewriteRule ^job-card-detail/?$ job-card-detail.php [L,QSA,NC]
 

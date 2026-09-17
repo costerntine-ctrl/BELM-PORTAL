@@ -15,7 +15,15 @@
   <link rel="stylesheet" href="/password-visibility.css?v=788-customer-access-mirror">
   <script defer src="/password-visibility.js?v=788-customer-access-mirror"></script>
   <script src="/navigation-context-v763.js?v=788-customer-access-mirror"></script>
-  <script defer src="/customer-belm-shell-v770.js?v=788-customer-access-mirror"></script>
+  <script defer src="/customer-belm-shell-v770.js?v=805-customer-access-no-sidebar"></script>
+  <style id="rolesUsersNoSidebarV805">
+    /* V805 — Roles & Users is a focused management workspace: no dashboard sidebar. */
+    body.roles-users-page .belm-shell{grid-template-columns:minmax(0,1fr)!important}
+    body.roles-users-page .belm-sidebar{display:none!important}
+    body.roles-users-page .belm-topbar__menu{display:none!important}
+    body.roles-users-page .belm-main{width:100%!important;min-width:0!important}
+    body.roles-users-page .belm-content{width:100%!important}
+  </style>
 </head>
 <body class="roles-users-page">
 <main class="shell customer-access-shell">

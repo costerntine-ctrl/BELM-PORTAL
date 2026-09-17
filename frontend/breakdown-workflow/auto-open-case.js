@@ -3,12 +3,25 @@
   const params=new URLSearchParams(location.search);
   const actor=String(params.get('actor')||'').toLowerCase();
   const embedded=params.get('embed')==='1';
+  const view=String(params.get('view')||'job-cards').toLowerCase();
 
-  // V797: customer Job Cards now use the same BELM Workshop & Job Cards
-  // navigation language as the BELM admin module. Keep the shared workflow
-  // engine/data intact; only add the customer-scoped BELM mirror shell.
+  // V803: mirror Customer Job Cards using the exact BELM Workshop Manager
+  // Job Cards wrapper pattern. The wrapper embeds this shared workflow with
+  // actor=customer&embed=1, so customer data/permissions remain unchanged.
+  if(actor==='customer'&&!embedded&&view==='job-cards'){
+    const out=new URL('/customer-workshop-manager/job-cards.html',location.origin);
+    params.forEach((value,key)=>{
+      if(key==='actor'||key==='embed'||key==='view')return;
+      out.searchParams.set(key,value);
+    });
+    location.replace(out.pathname+out.search);
+    return;
+  }
+
+  // Non-Job-Card customer workflow views keep the customer-scoped BELM
+  // contextual navigation shell already used for Diagnosis/Testing/etc.
   if(actor==='customer'&&!embedded){
-    import('/breakdown-workflow/customer-job-card-belm-v795.js?v=797').catch(function(error){
+    import('/breakdown-workflow/customer-job-card-belm-v795.js?v=803').catch(function(error){
       console.warn('Customer Job Card BELM mirror failed to load:',error);
     });
   }

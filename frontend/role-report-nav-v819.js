@@ -77,6 +77,16 @@
         my=a;
       }
 
+      Array.from(nav.querySelectorAll('a[href]')).forEach(a=>{
+        const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
+        const href=String(a.getAttribute('href')||'');
+        if(/^my profile$/i.test(text)||/(?:^|\/)(?:my-profile\.(?:php|html)|portal-v2\/?(?:$|[?#]))/i.test(href)){
+          a.setAttribute('href','/my-profile/');
+          labelAnchor(a,'My Profile');
+          a.dataset.profileScope='registration';
+        }
+      });
+
       if(isAdmin&&adminHome&&!Array.from(nav.querySelectorAll('a')).some(a=>a.dataset.reportScope==='general-admin'||/^general report$/i.test(String(a.textContent||'').trim()))){
         const a=document.createElement('a');
         a.href='/general-report/';

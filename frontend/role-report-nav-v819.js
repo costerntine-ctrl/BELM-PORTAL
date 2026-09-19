@@ -87,6 +87,23 @@
         }
       });
 
+      // Keep one My Reports and one My Profile only. Some older role pages
+      // already contain these links while shared navigation also injects them.
+      const reportLinks=Array.from(nav.querySelectorAll('a[href]')).filter(a=>{
+        const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
+        const href=String(a.getAttribute('href')||'');
+        return a.dataset.reportScope==='role'||/my reports/i.test(text)||/\/role-reports\/?(?:$|[?#])/.test(href);
+      });
+      reportLinks.slice(1).forEach(a=>a.remove());
+
+      if(role==='technician'&&!isCustomer){
+        Array.from(nav.querySelectorAll('a[href]')).forEach(a=>{
+          const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
+          const href=String(a.getAttribute('href')||'');
+          if(/diagnosis report|diagnosis\s*&\s*repair/i.test(text)||/diagnosis-repair\.php/i.test(href))a.remove();
+        });
+      }
+
       let profile=Array.from(nav.querySelectorAll('a[href]')).find(a=>/^my profile$/i.test(String(a.textContent||'').replace(/\s+/g,' ').trim()));
       if(!profile){
         profile=document.createElement('a');
@@ -98,6 +115,13 @@
         const settings=Array.from(nav.querySelectorAll('a')).find(x=>/settings/i.test(String(x.textContent||'')));
         if(settings)nav.insertBefore(profile,settings);else nav.appendChild(profile);
       }
+
+      const profileLinks=Array.from(nav.querySelectorAll('a[href]')).filter(a=>{
+        const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
+        const href=String(a.getAttribute('href')||'');
+        return a.dataset.profileScope==='registration'||/my profile/i.test(text)||/\/my-profile\/?(?:$|[?#])/.test(href);
+      });
+      profileLinks.slice(1).forEach(a=>a.remove());
 
       if(isAdmin&&adminHome&&!Array.from(nav.querySelectorAll('a')).some(a=>a.dataset.reportScope==='general-admin'||/^general report$/i.test(String(a.textContent||'').trim()))){
         const a=document.createElement('a');

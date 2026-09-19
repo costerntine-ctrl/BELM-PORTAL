@@ -38,7 +38,8 @@
     return '';
   }
   async function request(id,opt={}){
-    const r=await fetch('/api/machine-card-photo/'+encodeURIComponent(id),{...opt,cache:'no-store',headers:{Authorization:'Bearer '+token,...(opt.body?{'Content-Type':'application/json'}:{}),...(opt.headers||{})}});
+    const scope=sessionStorage.getItem('belm_tech_customer_scope')||'';
+    const r=await fetch('/api/machine-card-photo/'+encodeURIComponent(id),{...opt,cache:'no-store',headers:{Authorization:'Bearer '+token,...(scope?{'X-BELM-Customer-Scope':scope}:{}),...(opt.body?{'Content-Type':'application/json'}:{}),...(opt.headers||{})}});
     const t=await r.text();let d={};try{d=t?JSON.parse(t):{}}catch(_){}
     if(!r.ok)throw new Error(d.error||`Machine photo request failed (${r.status}).`);return d;
   }
@@ -69,6 +70,11 @@
     if(photo){const img=document.createElement('img');img.className='belm-machine-summary-photo';img.alt='Machine photo';img.src=photo;visual.prepend(img)}
   }
   function renderBox(card,id,data){
+    if(card.dataset.summaryPhotoOnly==='1'){
+      card.querySelectorAll('.belm-machine-photo-box').forEach(box=>box.remove());
+      updateSummaryVisual(card,data.photoData||'');
+      return;
+    }
     let box=card.querySelector(':scope > .belm-machine-photo-box, .machine-card-top + .belm-machine-photo-box');
     if(!box){
       box=document.createElement('div');box.className='belm-machine-photo-box';box.dataset.machinePhotoFor=id;
@@ -102,7 +108,9 @@
     const id=machineId(card);if(!id)return;
     card.dataset.belmMachinePhotoReady='1';card.dataset.machineId=id;
     try{
-      let temp=card.querySelector('.belm-machine-photo-box');if(!temp){temp=document.createElement('div');temp.className='belm-machine-photo-box is-loading';const top=card.querySelector('.machine-card-top');top?top.insertAdjacentElement('afterend',temp):card.insertBefore(temp,card.firstChild)}
+      if(card.dataset.summaryPhotoOnly!=='1'){
+        let temp=card.querySelector('.belm-machine-photo-box');if(!temp){temp=document.createElement('div');temp.className='belm-machine-photo-box is-loading';const top=card.querySelector('.machine-card-top');top?top.insertAdjacentElement('afterend',temp):card.insertBefore(temp,card.firstChild)}
+      }
       const data=await request(id);renderBox(card,id,data);
     }catch(_){card.dataset.belmMachinePhotoReady='error'}
   }

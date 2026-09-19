@@ -29,6 +29,13 @@
     script.defer=true;
     document.head.appendChild(script);
   }
+  function loadRoleReportNav(){
+    if(window.__belmRoleReportNav819||document.querySelector('script[src^="/role-report-nav-v819.js"]'))return;
+    const script=document.createElement('script');
+    script.src='/role-report-nav-v819.js?v=819-role-report-scope';
+    script.defer=true;
+    document.head.appendChild(script);
+  }
   function update(button){
     const dark=document.documentElement.dataset.theme==='dark';
     document.body?.classList.toggle('belm-light',!dark);
@@ -61,6 +68,6 @@
     host.insertBefore(button,host.firstChild);bind(button);
   }
   function scan(){document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(bind);inject()}
-  async function boot(){if(!hasSession())return;loadReportExport();loadMobileSidebar();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
+  async function boot(){if(!hasSession())return;loadReportExport();loadMobileSidebar();loadRoleReportNav();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

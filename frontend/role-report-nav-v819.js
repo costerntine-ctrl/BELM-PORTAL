@@ -87,6 +87,18 @@
         }
       });
 
+      let profile=Array.from(nav.querySelectorAll('a[href]')).find(a=>/^my profile$/i.test(String(a.textContent||'').replace(/\s+/g,' ').trim()));
+      if(!profile){
+        profile=document.createElement('a');
+        profile.href='/my-profile/';
+        profile.dataset.profileScope='registration';
+        const sample=nav.querySelector('a');
+        profile.className=sample?.classList.contains('nav-item')?'nav-item':'belm-nav__item';
+        profile.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5"/></svg><span>My Profile</span>';
+        const settings=Array.from(nav.querySelectorAll('a')).find(x=>/settings/i.test(String(x.textContent||'')));
+        if(settings)nav.insertBefore(profile,settings);else nav.appendChild(profile);
+      }
+
       if(isAdmin&&adminHome&&!Array.from(nav.querySelectorAll('a')).some(a=>a.dataset.reportScope==='general-admin'||/^general report$/i.test(String(a.textContent||'').trim()))){
         const a=document.createElement('a');
         a.href='/general-report/';

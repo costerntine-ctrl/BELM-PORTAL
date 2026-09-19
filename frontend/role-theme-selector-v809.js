@@ -22,6 +22,13 @@
     script.defer=true;
     document.head.appendChild(script);
   }
+  function loadMobileSidebar(){
+    if(window.__belmMobileSidebar817||document.querySelector('script[src^="/mobile-sidebar-v817.js"]'))return;
+    const script=document.createElement('script');
+    script.src='/mobile-sidebar-v817.js?v=817-every-role-mobile-sidebar';
+    script.defer=true;
+    document.head.appendChild(script);
+  }
   function update(button){
     const dark=document.documentElement.dataset.theme==='dark';
     document.body?.classList.toggle('belm-light',!dark);
@@ -54,6 +61,6 @@
     host.insertBefore(button,host.firstChild);bind(button);
   }
   function scan(){document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(bind);inject()}
-  async function boot(){if(!hasSession())return;loadReportExport();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
+  async function boot(){if(!hasSession())return;loadReportExport();loadMobileSidebar();await loadThemeManager();scan();window.addEventListener('belm-theme-change',()=>document.querySelectorAll(SELECTOR+',#roleThemeToggle').forEach(update));new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});setTimeout(scan,500)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

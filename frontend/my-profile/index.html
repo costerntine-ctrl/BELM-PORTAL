@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="cache-control" content="no-store">
+  <title>My Profile — BELM Operations Portal</title>
+  <link rel="stylesheet" href="/theme-global.css?v=763-role-flow">
+  <script src="/theme-manager.js?v=763-role-flow"></script>
+  <script src="/navigation-context-v763.js?v=820-registration-profile"></script>
+  <style>
+    *{box-sizing:border-box}:root{--bg:#f4f7fb;--panel:#fff;--text:#14243a;--muted:#68798e;--line:#d5e0ec;--blue:#1677e8;--green:#16b866;--navy:#071a2d;--gold:#f4c51d}
+    html[data-theme="dark"]{--bg:#061525;--panel:#0b1d31;--text:#f4f8fc;--muted:#9fb5c9;--line:#294760;--navy:#031222}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,"Segoe UI",Arial,sans-serif}
+    .top{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;background:var(--navy);color:#fff;border-bottom:4px solid var(--gold)}
+    .top a{color:#fff;text-decoration:none;border:1px solid #47647d;border-radius:9px;padding:8px 12px;font-size:11px;font-weight:900}
+    .top strong{font-size:13px}.shell{width:min(1040px,calc(100% - 24px));margin:0 auto;padding:22px 0 44px}
+    .hero{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;padding:20px;border:1px solid var(--line);border-radius:17px;background:linear-gradient(135deg,#0b4e91,#0a7c63);color:#fff;box-shadow:0 12px 30px rgba(4,28,52,.12)}
+    .hero small{color:#d4ffe5;font-size:9px;font-weight:950;letter-spacing:.1em}.hero h1{margin:6px 0 5px;font-size:30px}.hero p{margin:0;color:#e5f2ff;font-size:12px}.sync{padding:8px 11px;border:1px solid rgba(255,255,255,.38);border-radius:999px;font-size:9px;font-weight:950;white-space:nowrap}
+    .card{margin-top:15px;padding:20px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:0 9px 24px rgba(5,34,61,.07)}
+    .identity{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}.identity h2{margin:0 0 5px;font-size:26px}.identity p{margin:0;color:var(--muted);font-size:12px}.status{padding:7px 10px;border-radius:999px;background:#e5f8ee;color:#087343;border:1px solid #91d6b1;font-size:9px;font-weight:950}
+    html[data-theme="dark"] .status{background:#0d3a28;color:#94efbc;border-color:#28724d}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:16px}.field{padding:13px;border:1px solid var(--line);border-radius:11px;background:color-mix(in srgb,var(--panel) 92%,var(--bg))}.field span{display:block;color:var(--muted);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.field b{display:block;margin-top:5px;font-size:13px;overflow-wrap:anywhere}
+    .sub{margin-top:16px;padding:15px;border:1px solid var(--line);border-radius:13px}.sub>small{color:#118255;font-size:9px;font-weight:950;letter-spacing:.08em}.sub h3{margin:5px 0 10px}.sub-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.sub-grid div{padding:10px;border:1px solid var(--line);border-radius:9px}.sub-grid span{display:block;color:var(--muted);font-size:8px;font-weight:900;text-transform:uppercase}.sub-grid b{display:block;margin-top:4px;font-size:11px;overflow-wrap:anywhere}.note{margin-top:14px;padding:12px 13px;border-left:4px solid var(--blue);background:color-mix(in srgb,var(--panel) 85%,var(--blue) 15%);color:var(--muted);font-size:11px;line-height:1.5}.error,.loading{margin-top:15px;padding:18px;border:1px solid var(--line);border-radius:13px;background:var(--panel);color:var(--muted)}
+    @media(max-width:680px){.hero,.identity{flex-direction:column}.grid,.sub-grid{grid-template-columns:1fr}.sync{white-space:normal}.hero h1{font-size:24px}}
+  </style>
+</head>
+<body>
+<header class="top"><a id="back" href="/portal-v2/">← Back</a><strong>MY PROFILE · REGISTRATION INFORMATION</strong></header>
+<main class="shell"><div id="root" class="loading">Loading registration information…</div></main>
+<script>
+(function(){
+  'use strict';
+  const root=document.getElementById('root');
+  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fmt=v=>{if(!v)return'Not recorded';const d=new Date(v);return Number.isNaN(d.getTime())?String(v):d.toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})};
+  const active=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
+  const keys=[{customer:'belm_customer_token',technician:'belm_tech_token',admin:'belm_admin_token',operator:'belm_operator_token'}[active],'belm_admin_token','belm_tech_token','belm_customer_token','belm_operator_token'].filter((v,i,a)=>v&&a.indexOf(v)===i);
+  const token=keys.map(k=>localStorage.getItem(k)||'').find(Boolean)||'';
+  function decode(v){try{let r=(v.split('.')[1]||'').replace(/-/g,'+').replace(/_/g,'/');r+='='.repeat((4-r.length%4)%4);return JSON.parse(decodeURIComponent(Array.from(atob(r)).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join('')))}catch(_){return{}}}
+  const session=decode(token);
+  function home(){
+    if(session.type==='operator')return'/customer-operator-dashboard/';
+    if(session.type==='customer'){
+      const role=String(session.customerRole||(session.actorType==='owner'?'owner':'')).toLowerCase();
+      return ({owner:'/customer-admin-dashboard/',admin:'/customer-admin-dashboard/',customer_admin:'/customer-admin-dashboard/',workshop_manager:'/customer-workshop-manager/',technician:'/customer-technician-dashboard/',operator:'/customer-operator-dashboard/',procurement:'/customer-procurement-dashboard/',store_keeper:'/customer-store-dashboard/',accounts:'/customer-finance/',finance:'/customer-finance/',accountant:'/customer-finance/'})[role]||'/customer-admin-dashboard/';
+    }
+    const role=String(session.roleName||'');
+    return ({'Super Admin':'/concept-dashboards/01-admin-home/','Workshop Manager':'/concept-dashboards/11-workshop-manager/','Engineer':'/concept-dashboards/11-workshop-manager/','Technician':'/concept-dashboards/02-technician/','Procurement':'/concept-dashboards/03-procurement/','Store Keeper':'/concept-dashboards/06-storekeeper/','Registration & Sales':'/concept-dashboards/04-customer-registration/','Finance / Accounts':'/concept-dashboards/09-finance-accounts/','Bank Controller':'/bank-controller/','System Coordinator':'/settings-manager/'})[role]||'/portal-v2/';
+  }
+  document.getElementById('back').href=home();
+  const field=(label,value)=>'<div class="field"><span>'+esc(label)+'</span><b>'+esc(value||'Not recorded')+'</b></div>';
+  const subfield=(label,value)=>'<div><span>'+esc(label)+'</span><b>'+esc(value||'Not recorded')+'</b></div>';
+  async function load(){
+    if(!token){location.replace('/login');return}
+    try{
+      const r=await fetch('/api/my-profile',{cache:'no-store',headers:{Authorization:'Bearer '+token}});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(d.error||'Could not load registration information.');
+      const p=d.profile||{},company=p.company||null,customer=p.assignedCustomer||null,machine=p.machine||null;
+      root.className='';
+      root.innerHTML='<section class="hero"><div><small>MY PROFILE · READ ONLY</small><h1>Registration Information</h1><p>This page reads your current registered user/account record. It is not a second profile form.</p></div><span class="sync">LIVE REGISTRATION SYNC</span></section>'+
+        '<section class="card"><div class="identity"><div><h2>'+esc(p.name||'User')+'</h2><p>'+esc(p.role||'User')+' · '+esc(p.accountType||'Account')+'</p></div><span class="status">'+esc(p.status||'Active')+'</span></div>'+
+        '<div class="grid">'+field('Full Name',p.name)+field('Email',p.email)+field('Phone / Contact',p.phone)+field('Role',p.role)+field('Account Type',p.accountType)+field('Company',p.companyName)+field('Registered',fmt(p.registeredAt))+field('Account Status',p.status)+'</div>'+
+        (company?'<section class="sub"><small>COMPANY REGISTRATION</small><h3>'+esc(company.name||p.companyName||'Company')+'</h3><div class="sub-grid">'+subfield('Email',company.email)+subfield('Phone',company.phone)+subfield('Address',company.address)+(company.tin!==undefined?subfield('TIN',company.tin):'')+(company.vrn!==undefined?subfield('VRN',company.vrn):'')+'</div></section>':'')+
+        (customer?'<section class="sub"><small>ASSIGNED CUSTOMER</small><h3>'+esc(customer.name||'Customer')+'</h3><div class="sub-grid">'+subfield('Email',customer.email)+subfield('Phone',customer.phone)+subfield('Address',customer.address)+'</div></section>':'')+
+        (machine?'<section class="sub"><small>REGISTERED MACHINE ASSIGNMENT</small><h3>'+esc(machine.label||'Machine')+'</h3><div class="sub-grid">'+subfield('Fleet No.',machine.fleetNumber)+subfield('Serial No.',machine.serialNumber)+'</div></section>':'')+
+        '<div class="note"><b>Source: '+esc(p.source||'Registration')+'.</b> These details are read-only here. Any authorized change to the registration/user record is reflected in My Profile automatically.</div></section>';
+    }catch(e){root.className='error';root.innerHTML='<strong>Profile could not be loaded.</strong><br>'+esc(e.message||'Unknown error')}
+  }
+  load();
+})();
+</script>
+</body>
+</html>

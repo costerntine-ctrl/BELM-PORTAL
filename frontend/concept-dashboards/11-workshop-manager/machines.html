@@ -147,6 +147,21 @@
     try { doc = frame.contentDocument || frame.contentWindow.document; } catch (_) { return; }
     if (!doc || !doc.body) return;
 
+    if (!doc.getElementById('belm-machine-display-v641-style')) {
+      var displayStyle = doc.createElement('link');
+      displayStyle.id = 'belm-machine-display-v641-style';
+      displayStyle.rel = 'stylesheet';
+      displayStyle.href = '/customers-manager/machine-display-v641.css?v=818-uniform-card-alert-blink';
+      doc.head.appendChild(displayStyle);
+    }
+    if (!doc.querySelector('script[data-belm-machine-display-v641]')) {
+      var displayScript = doc.createElement('script');
+      displayScript.src = '/customers-manager/machine-display-v641.js?v=818-uniform-card-alert-blink';
+      displayScript.defer = true;
+      displayScript.setAttribute('data-belm-machine-display-v641', '1');
+      doc.body.appendChild(displayScript);
+    }
+
     if (!doc.getElementById('belm-direct-machines-style')) {
       var style = doc.createElement('style');
       style.id = 'belm-direct-machines-style';

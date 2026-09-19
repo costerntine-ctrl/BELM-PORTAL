@@ -871,11 +871,12 @@ if ($method === 'POST' && $action === 'submit') {
     json_out($savedReport, 201);
 }
 
-// V765 - Customer Code gate for BELM Technician > Customer Machines.
-// This is an additional field-work confirmation layer. The code NEVER grants
-// access by itself: the authenticated Technician must still be permanently
-// assigned to that customer. Customer-managed Technicians remain scoped to
-// their own company and do not need this BELM field-site code.
+// V820 - BELM Technician > Customer Machines site gate.
+// ONLY a BELM Technician uses this gate. The "Customer Code" is the registered
+// Customer / Company Name itself (example: J LTD), matched case-insensitively.
+// The name NEVER grants cross-customer access: the authenticated Technician must
+// still be assigned to that customer. Customer-managed Technicians stay inside
+// their own company and bypass this BELM field-site verification.
 if (($action === 'technician-customer-access') && in_array($method, ['GET','POST'], true)) {
     if (($user['roleName'] ?? '') !== 'Technician') json_error('Technician login required.', 403);
     $customerId = trim((string)($user['assignedCustomerId'] ?? ''));
@@ -887,26 +888,50 @@ if (($action === 'technician-customer-access') && in_array($method, ['GET','POST
             'requiresCode' => !$isCustomerManaged,
             'verified' => $isCustomerManaged,
             'mode' => $isCustomerManaged ? 'CUSTOMER_TECHNICIAN' : 'BELM_TECHNICIAN',
+            'codeType' => $isCustomerManaged ? null : 'CUSTOMER_NAME',
         ]);
     }
 
     if ($isCustomerManaged) {
-        json_out(['ok' => true, 'verified' => true, 'requiresCode' => false]);
+        json_out(['ok' => true, 'verified' => true, 'requiresCode' => false, 'mode' => 'CUSTOMER_TECHNICIAN']);
     }
 
     $b = body();
-    $submitted = strtoupper(trim((string)($b['customerCode'] ?? '')));
-    if ($submitted === '') json_error('Enter the Customer Code.', 422);
+    $submittedRaw = trim((string)($b['customerCode'] ?? ''));
+    if ($submittedRaw === '') json_error('Enter the Customer Name / Customer Code.', 422);
+
+    $normalizeCustomerName = static function (string $value): string {
+        $value = preg_replace('/\\s+/u', ' ', trim($value)) ?? trim($value);
+        return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
+    };
+
+    // Fetch only the Technician's assigned customer first. We intentionally do
+    // not search all customers by name, preventing this gate from becoming a
+    // customer-directory lookup.
     $stmt = db()->prepare(
-        'SELECT id FROM customers
+        'SELECT id,name FROM customers
          WHERE id=? AND deleted_at IS NULL AND is_active=1
-           AND customer_code IS NOT NULL AND UPPER(customer_code)=? LIMIT 1'
+         LIMIT 1'
     );
-    $stmt->execute([$customerId, $submitted]);
-    if (!$stmt->fetchColumn()) {
-        json_error('Customer Code is not valid for your assigned site. Contact Workshop Manager if your assignment has changed.', 403);
+    $stmt->execute([$customerId]);
+    $assignedCustomer = $stmt->fetch();
+    if (!$assignedCustomer) {
+        json_error('Your assigned customer is inactive or no longer available. Contact Workshop Manager.', 403);
     }
-    json_out(['ok' => true, 'verified' => true, 'requiresCode' => true]);
+
+    $submitted = $normalizeCustomerName($submittedRaw);
+    $registeredName = $normalizeCustomerName((string)($assignedCustomer['name'] ?? ''));
+    if ($registeredName === '' || !hash_equals($registeredName, $submitted)) {
+        json_error('Customer Name / Code does not match your assigned customer. Enter the registered company name exactly.', 403);
+    }
+
+    json_out([
+        'ok' => true,
+        'verified' => true,
+        'requiresCode' => true,
+        'mode' => 'BELM_TECHNICIAN',
+        'codeType' => 'CUSTOMER_NAME',
+    ]);
 }
 
 // V418 - Technician General Report Center. One Technician can review the

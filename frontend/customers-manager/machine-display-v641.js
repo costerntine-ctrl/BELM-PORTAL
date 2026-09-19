@@ -183,21 +183,31 @@
     const style=document.createElement('style');
     style.id='belm-wm-machine-summary-style';
     style.textContent=`
-      html.belm-wm-machine-summary #machineListBody .machine-list{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(310px,1fr))!important;gap:16px!important;align-items:start!important}
-      html.belm-wm-machine-summary .machine-card.belm-summary-mode{padding:0!important;border:1px solid #1c3959!important;border-radius:18px!important;background:#071526!important;box-shadow:0 12px 28px rgba(1,12,27,.22)!important;overflow:hidden!important;min-width:0!important}
+      html.belm-wm-machine-summary #machineListBody .machine-list{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(330px,1fr))!important;grid-auto-rows:1fr!important;gap:16px!important;align-items:stretch!important}
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode{padding:0!important;height:100%!important;min-height:690px!important;border:1px solid #1c3959!important;border-radius:18px!important;background:#071526!important;box-shadow:0 12px 28px rgba(1,12,27,.22)!important;overflow:hidden!important;min-width:0!important}
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-red,
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-yellow,
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-green,
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-unknown{border-color:#1c3959!important;background:#071526!important;box-shadow:0 12px 28px rgba(1,12,27,.22)!important}
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-red::after,
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-yellow::after,
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-green::after,
+      html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-unknown::after{content:none!important;display:none!important;animation:none!important;box-shadow:none!important;border:0!important}
       html.belm-wm-machine-summary .machine-card.belm-summary-mode>*:not(.belm-machine-summary){display:none!important}
       html.belm-wm-machine-summary .machine-card.belm-detail-open{grid-column:1/-1!important}
       html.belm-wm-machine-summary .machine-card.belm-detail-open>.belm-machine-summary{display:none!important}
       html.belm-wm-machine-summary .machine-card.belm-detail-open>.belm-machine-back{display:inline-flex!important}
       html.belm-wm-machine-summary .machine-card.belm-summary-mode>.belm-machine-back{display:none!important}
-      .belm-machine-summary{position:relative;display:flex;flex-direction:column;min-height:100%;padding:18px;color:#eef5ff;background:linear-gradient(180deg,#0b213a 0%,#071526 54%,#050d16 100%)}
+      .belm-machine-summary{position:relative;display:flex;flex-direction:column;width:100%;height:100%;min-height:690px;box-sizing:border-box;padding:18px;color:#eef5ff;background:linear-gradient(180deg,#0b213a 0%,#071526 54%,#050d16 100%)}
       .belm-machine-summary-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
       .belm-machine-summary-fleet{display:inline-flex;padding:7px 10px;border-radius:9px;background:#061324;border:1px solid #1a3857;color:#e5f01a;font:900 14px/1.1 Inter,Arial,sans-serif;letter-spacing:.02em}
       .belm-machine-summary-activity{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;background:#182536;border:1px solid #36485e;color:#f4f7fb;font:800 12px/1 Inter,Arial,sans-serif}
       .belm-machine-summary-activity:before{content:'';width:8px;height:8px;border-radius:50%;background:#16c45b;box-shadow:0 0 10px rgba(22,196,91,.65)}
       .belm-machine-summary-activity.is-grounded:before{background:#ef4343;box-shadow:0 0 10px rgba(239,67,67,.65)}
       .belm-machine-summary-activity.is-progress:before{background:#f2c400;box-shadow:0 0 10px rgba(242,196,0,.55)}
-      .belm-machine-summary-visual{display:flex;align-items:center;justify-content:center;min-height:160px;margin:0 0 16px;border:1px solid #1a334e;border-radius:14px;background:radial-gradient(circle at 50% 38%,#173a5f 0,#0c223b 48%,#071526 100%);text-align:center;padding:22px}
+      .belm-machine-summary-visual{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:16/10!important;height:auto!important;min-height:0!important;max-height:240px!important;margin:0 0 16px;border:1px solid #1a334e;border-radius:14px;background:radial-gradient(circle at 50% 38%,#173a5f 0,#0c223b 48%,#071526 100%);text-align:center;padding:22px;overflow:hidden!important}
+      .belm-machine-summary-visual.belm-has-machine-photo{aspect-ratio:16/10!important;height:auto!important;min-height:0!important;max-height:240px!important;padding:0!important;background:#eef2f6!important}
+      .belm-machine-summary-visual .belm-machine-summary-photo{width:100%!important;height:100%!important;min-height:0!important;max-height:240px!important;object-fit:contain!important;object-position:center center!important;background:#eef2f6!important}
       .belm-machine-summary-visual span{font:900 22px/1.15 Inter,Arial,sans-serif;color:#fff;max-width:90%}
       .belm-machine-summary h3{margin:0 0 5px;font-size:22px;line-height:1.15;color:#fff}
       .belm-machine-summary-meta{margin:0;color:#a9bfd8;font-size:13px;line-height:1.45;min-height:38px}
@@ -206,6 +216,12 @@
       .belm-machine-summary-fact:nth-child(odd){padding-right:10px}.belm-machine-summary-fact:nth-child(even){padding-left:10px}
       .belm-machine-summary-fact span{display:block;margin-bottom:5px;color:#88a5c5;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
       .belm-machine-summary-fact b{display:block;color:#f5f7fa;font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+      .belm-machine-summary-fact:nth-child(4){margin:6px 4px 6px 6px;padding:10px!important;border:1px solid #29425c;border-radius:10px;background:rgba(8,25,42,.72)}
+      .belm-machine-summary.level-red .belm-machine-summary-fact:nth-child(4){border-color:#ef4d43;background:rgba(115,23,27,.24);animation:belmSummaryAlertRed 1.05s ease-in-out infinite}
+      .belm-machine-summary.level-yellow .belm-machine-summary-fact:nth-child(4){border-color:#f0c300;background:rgba(111,87,5,.22);animation:belmSummaryAlertYellow 1.45s ease-in-out infinite}
+      .belm-machine-summary.level-green .belm-machine-summary-fact:nth-child(4){border-color:#20b85d;background:rgba(14,87,48,.18)}
+      @keyframes belmSummaryAlertRed{0%,100%{box-shadow:0 0 0 0 rgba(239,77,67,.12)}50%{box-shadow:0 0 0 3px rgba(239,77,67,.24),0 0 18px rgba(239,77,67,.34)}}
+      @keyframes belmSummaryAlertYellow{0%,100%{box-shadow:0 0 0 0 rgba(240,195,0,.10)}50%{box-shadow:0 0 0 3px rgba(240,195,0,.20),0 0 16px rgba(240,195,0,.28)}}
       .belm-machine-summary-service{margin:14px 0 8px;color:#b6c8dc;font-size:12px;line-height:1.4}
       .belm-machine-summary-bar{height:5px;border-radius:99px;background:#111b28;overflow:hidden;margin-bottom:15px}
       .belm-machine-summary-bar>i{display:block;width:72%;height:100%;background:#24ba64;border-radius:99px}
@@ -222,7 +238,8 @@
       .belm-direct-job-card>label{display:block;margin:18px 22px 0;color:#c6d5e7;font-weight:800;font-size:13px}.belm-direct-job-card select,.belm-direct-job-card textarea{display:block;width:100%;box-sizing:border-box;margin-top:7px;padding:12px;border:1px solid #355575;border-radius:10px;background:#071221;color:#fff;font:600 14px Inter,Arial,sans-serif}.belm-direct-job-card textarea{resize:vertical;min-height:120px}
       .belm-direct-job-alert{margin:16px 22px 0;padding:11px 12px;border-radius:10px;background:#12314e;color:#d7eaff;font-weight:700;font-size:13px}.belm-direct-job-alert.is-error{background:#481b25;color:#ffc5ce;border:1px solid #8c3447}.belm-direct-job-alert.is-success{background:#123b29;color:#baf3d0;border:1px solid #27754c}
       .belm-direct-job-actions{display:flex;justify-content:flex-end;gap:10px;padding:20px 22px}.belm-direct-job-actions button{min-height:42px;padding:0 16px;border-radius:10px;border:1px solid #3a5672;background:#13253a;color:#fff;font-weight:900;cursor:pointer}.belm-direct-job-actions #belmDirectJobSubmit{background:#20b85d;border-color:#20b85d;color:#04160b}.belm-direct-job-actions button:disabled{opacity:.55;cursor:wait}
-      @media(max-width:720px){html.belm-wm-machine-summary #machineListBody .machine-list{grid-template-columns:1fr!important}.belm-machine-summary-visual{min-height:125px}.belm-machine-summary h3{font-size:20px}}
+      @media(prefers-reduced-motion:reduce){.belm-machine-summary.level-red .belm-machine-summary-fact:nth-child(4),.belm-machine-summary.level-yellow .belm-machine-summary-fact:nth-child(4){animation:none!important}}
+      @media(max-width:720px){html.belm-wm-machine-summary #machineListBody .machine-list{grid-template-columns:1fr!important;grid-auto-rows:auto!important}html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode{min-height:0!important}.belm-machine-summary{min-height:0!important}.belm-machine-summary-visual,.belm-machine-summary-visual.belm-has-machine-photo{max-height:210px!important}.belm-machine-summary h3{font-size:20px}}
     `;
     document.head.appendChild(style);
   }

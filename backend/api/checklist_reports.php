@@ -32,24 +32,69 @@ function checklist_staff_report_range(string $from = '', string $to = ''): array
     return [$start->format(DateTimeInterface::ATOM), $endExclusive->format(DateTimeInterface::ATOM), $from === $to ? $from : ($from . ' to ' . $to)];
 }
 
+function technician_customer_scope_token(): string {
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $header = trim((string)($headers['X-BELM-Customer-Scope'] ?? $headers['x-belm-customer-scope'] ?? ''));
+    if ($header !== '') return $header;
+    return trim((string)($_GET['customerScope'] ?? ''));
+}
+
+function technician_customer_scope(array $user): ?array {
+    if (($user['roleName'] ?? '') !== 'Technician' || !empty($user['isCustomerManaged'])) return null;
+    $token = technician_customer_scope_token();
+    if ($token === '') return null;
+    $scope = jwt_decode($token);
+    if (!$scope || ($scope['type'] ?? '') !== 'technician_customer_scope') return null;
+    if ((string)($scope['technicianId'] ?? '') !== (string)($user['id'] ?? '')) return null;
+    $customerId = trim((string)($scope['customerId'] ?? ''));
+    if ($customerId === '') return null;
+    return [
+        'customerId' => $customerId,
+        'customerName' => trim((string)($scope['customerName'] ?? '')),
+    ];
+}
+
 function technician_general_report_context(array $user): array {
     if (($user['roleName'] ?? '') !== 'Technician') {
         json_error('Technician login required.', 403);
     }
     $technicianId = trim((string)($user['id'] ?? ''));
-    $customerId = trim((string)($user['assignedCustomerId'] ?? ''));
-    if ($technicianId === '' || $customerId === '') {
-        json_error('This Technician is not assigned to a customer.', 403);
+    if ($technicianId === '') json_error('Technician identity is missing.', 403);
+
+    $isCustomerManaged = !empty($user['isCustomerManaged']);
+    $scope = technician_customer_scope($user);
+    $customerId = $scope['customerId'] ?? trim((string)($user['assignedCustomerId'] ?? ''));
+
+    if ($customerId === '') {
+        json_error(
+            $isCustomerManaged
+                ? 'This Customer Technician is not assigned to a customer.'
+                : 'Enter the Customer / Company Name before opening Customer Machines.',
+            403
+        );
     }
-    $stmt = db()->prepare('SELECT id,name FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1 LIMIT 1');
+
+    $stmt = db()->prepare(
+        'SELECT id,name,email,phone,address,is_active,is_machinery_admin
+         FROM customers
+         WHERE id=? AND deleted_at IS NULL AND is_active=1
+         LIMIT 1'
+    );
     $stmt->execute([$customerId]);
     $customer = $stmt->fetch();
-    if (!$customer) json_error('Assigned customer is not available.', 404);
+    if (!$customer) json_error('Selected customer is not available.', 404);
+
     return [
         'technicianId' => $technicianId,
         'technicianName' => trim((string)($user['name'] ?? 'Technician')) ?: 'Technician',
-        'customerId' => $customerId,
+        'customerId' => (string)$customer['id'],
         'customerName' => (string)$customer['name'],
+        'customerEmail' => (string)($customer['email'] ?? ''),
+        'customerPhone' => (string)($customer['phone'] ?? ''),
+        'customerAddress' => (string)($customer['address'] ?? ''),
+        'customerActive' => !empty($customer['is_active']),
+        'isMachineryAdmin' => !empty($customer['is_machinery_admin']),
+        'customerScope' => $scope !== null,
     ];
 }
 
@@ -76,9 +121,14 @@ function technician_general_report_payload(array $user): array {
         $machineMap[(string)$machine['id']] = [
             'id' => (string)$machine['id'],
             'label' => $label,
+            'brand' => (string)($machine['brand'] ?? ''),
+            'model' => (string)($machine['model'] ?? ''),
+            'machineType' => (string)($machine['machine_type'] ?? ''),
             'fleetNumber' => (string)($machine['fleet_number'] ?? ''),
             'serialNumber' => (string)($machine['serial_number'] ?? ''),
             'regNumber' => (string)($machine['reg_number'] ?? ''),
+            'status' => (string)($machine['status'] ?? ''),
+            'lastCheckedAt' => $machine['last_checked_at'] ?? null,
         ];
     }
 
@@ -292,7 +342,16 @@ function technician_general_report_payload(array $user): array {
 
     return [
         'technician' => ['id' => $ctx['technicianId'], 'name' => $ctx['technicianName']],
-        'customer' => ['id' => $ctx['customerId'], 'name' => $ctx['customerName']],
+        'customer' => [
+            'id' => $ctx['customerId'],
+            'name' => $ctx['customerName'],
+            'email' => $ctx['customerEmail'] ?? '',
+            'phone' => $ctx['customerPhone'] ?? '',
+            'address' => $ctx['customerAddress'] ?? '',
+            'isActive' => $ctx['customerActive'] ?? true,
+            'isMachineryAdmin' => $ctx['isMachineryAdmin'] ?? false,
+            'scopeVerified' => $ctx['customerScope'] ?? false,
+        ],
         'period' => ['label' => $periodLabel, 'from' => $_GET['from'] ?? '', 'to' => $_GET['to'] ?? ''],
         'machineCount' => count($machines),
         'machines' => array_values($machineMap),
@@ -399,9 +458,19 @@ function require_report_machine_access(array $user, string $machineId, ?string $
     }
 
     if (($user['roleName'] ?? '') === 'Technician') {
-        $assigned = $user['assignedCustomerId'] ?? null;
-        if (!$assigned || $machine['customer_id'] !== $assigned) {
-            json_error('You are not assigned to this machine.', 403);
+        $assigned = trim((string)($user['assignedCustomerId'] ?? ''));
+        $isCustomerManaged = !empty($user['isCustomerManaged']);
+        $scope = technician_customer_scope($user);
+        $scopeCustomerId = trim((string)($scope['customerId'] ?? ''));
+
+        $allowedCustomerId = $isCustomerManaged ? $assigned : ($scopeCustomerId !== '' ? $scopeCustomerId : $assigned);
+        if ($allowedCustomerId === '' || (string)$machine['customer_id'] !== $allowedCustomerId) {
+            json_error(
+                $isCustomerManaged
+                    ? 'You are not assigned to this machine.'
+                    : 'Open Customer Machines and verify the registered Customer / Company Name first.',
+                403
+            );
         }
     } else {
         require_page_access($user, 'customers');
@@ -871,16 +940,12 @@ if ($method === 'POST' && $action === 'submit') {
     json_out($savedReport, 201);
 }
 
-// V820 - BELM Technician > Customer Machines site gate.
-// ONLY a BELM Technician uses this gate. The "Customer Code" is the registered
-// Customer / Company Name itself (example: J LTD), matched case-insensitively.
-// The name NEVER grants cross-customer access: the authenticated Technician must
-// still be assigned to that customer. Customer-managed Technicians stay inside
-// their own company and bypass this BELM field-site verification.
+// V822 - BELM Technician > Customer Machines site gate.
+// Only BELM Technicians use Customer Name as the site code. A successful exact
+// company-name match issues a short-lived signed scope token. Customer-managed
+// Technicians remain locked to their own company and never use this gate.
 if (($action === 'technician-customer-access') && in_array($method, ['GET','POST'], true)) {
     if (($user['roleName'] ?? '') !== 'Technician') json_error('Technician login required.', 403);
-    $customerId = trim((string)($user['assignedCustomerId'] ?? ''));
-    if ($customerId === '') json_error('This Technician is not assigned to a customer.', 403);
 
     $isCustomerManaged = !empty($user['isCustomerManaged']);
     if ($method === 'GET') {
@@ -893,37 +958,42 @@ if (($action === 'technician-customer-access') && in_array($method, ['GET','POST
     }
 
     if ($isCustomerManaged) {
-        json_out(['ok' => true, 'verified' => true, 'requiresCode' => false, 'mode' => 'CUSTOMER_TECHNICIAN']);
+        json_out(['ok'=>true,'verified'=>true,'requiresCode'=>false,'mode'=>'CUSTOMER_TECHNICIAN']);
     }
 
     $b = body();
     $submittedRaw = trim((string)($b['customerCode'] ?? ''));
-    if ($submittedRaw === '') json_error('Enter the Customer Name / Customer Code.', 422);
+    if ($submittedRaw === '') json_error('Enter the registered Customer / Company Name.', 422);
 
-    $normalizeCustomerName = static function (string $value): string {
+    $normalize = static function(string $value): string {
         $value = preg_replace('/\\s+/u', ' ', trim($value)) ?? trim($value);
         return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
     };
+    $submitted = $normalize($submittedRaw);
 
-    // Fetch only the Technician's assigned customer first. We intentionally do
-    // not search all customers by name, preventing this gate from becoming a
-    // customer-directory lookup.
-    $stmt = db()->prepare(
+    $stmt = db()->query(
         'SELECT id,name FROM customers
-         WHERE id=? AND deleted_at IS NULL AND is_active=1
-         LIMIT 1'
+         WHERE deleted_at IS NULL AND is_active=1
+         ORDER BY name'
     );
-    $stmt->execute([$customerId]);
-    $assignedCustomer = $stmt->fetch();
-    if (!$assignedCustomer) {
-        json_error('Your assigned customer is inactive or no longer available. Contact Workshop Manager.', 403);
+    $matches = [];
+    foreach ($stmt->fetchAll() as $row) {
+        if ($normalize((string)($row['name'] ?? '')) === $submitted) $matches[] = $row;
+    }
+    if (!$matches) {
+        json_error('Customer Name / Code was not found. Enter the registered company name exactly.', 403);
+    }
+    if (count($matches) > 1) {
+        json_error('More than one active customer has this company name. Ask Admin to make the customer names unique.', 409);
     }
 
-    $submitted = $normalizeCustomerName($submittedRaw);
-    $registeredName = $normalizeCustomerName((string)($assignedCustomer['name'] ?? ''));
-    if ($registeredName === '' || !hash_equals($registeredName, $submitted)) {
-        json_error('Customer Name / Code does not match your assigned customer. Enter the registered company name exactly.', 403);
-    }
+    $customer = $matches[0];
+    $scopeToken = jwt_encode([
+        'type' => 'technician_customer_scope',
+        'technicianId' => (string)($user['id'] ?? ''),
+        'customerId' => (string)$customer['id'],
+        'customerName' => (string)$customer['name'],
+    ], 12 * 3600);
 
     json_out([
         'ok' => true,
@@ -931,6 +1001,9 @@ if (($action === 'technician-customer-access') && in_array($method, ['GET','POST
         'requiresCode' => true,
         'mode' => 'BELM_TECHNICIAN',
         'codeType' => 'CUSTOMER_NAME',
+        'scopeToken' => $scopeToken,
+        'customer' => ['id'=>(string)$customer['id'],'name'=>(string)$customer['name']],
+        'expiresInSeconds' => 12 * 3600,
     ]);
 }
 

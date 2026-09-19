@@ -80,7 +80,7 @@
       Array.from(nav.querySelectorAll('a[href]')).forEach(a=>{
         const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
         const href=String(a.getAttribute('href')||'');
-        if(/^my profile$/i.test(text)||/(?:^|\/)(?:my-profile\.(?:php|html)|portal-v2\/?(?:$|[?#]))/i.test(href)){
+        if(/^my profile$/i.test(text)||/(?:^|\/)my-profile\.(?:php|html)(?:$|[?#])/i.test(href)){
           a.setAttribute('href','/my-profile/');
           labelAnchor(a,'My Profile');
           a.dataset.profileScope='registration';

@@ -128,7 +128,8 @@ document.addEventListener('DOMContentLoaded', function () {
         link.setAttribute('href', '/concept-dashboards/02-technician/customer-machines.php');
       }
       if (text === 'Daily Checklists') {
-        link.setAttribute('href', '/concept-dashboards/02-technician/daily-checklists.php');
+        link.remove();
+        return;
       }
       if (text === 'Spare Requests' && customerScopedTechnician) {
         link.setAttribute('href', '/technician-job-cards/');

@@ -120,7 +120,7 @@
     },
     technician: {
       title: "Technician Dashboard", initials: "TC", eyebrow: "INSPECTION · DIAGNOSIS · REPAIR", description: "Assigned Job Cards, machine inspection, diagnosis, repairs, testing and technical records.", primary: "/concept-dashboards/02-technician/",
-      menu: [item("Dashboard","home","#dashboard"),item("My Job Cards","job","/technician-job-cards/"),item("Customer Machines","machine","/concept-dashboards/02-technician/customer-machines.php"),item("Diagnosis & Repair","inspect","/breakdown-workflow/?actor=technician"),item("Spare Requests","stock","/spare-parts-manager/"),item("Testing & Completion","test","/technician-job-cards/"),item("Daily Checklists","checklist","/tech-report/"),item("Communication","message","/concept-dashboards/02-technician/communication.php"),item("My Reports","report","/role-reports/")],
+      menu: [item("Dashboard","home","#dashboard"),item("My Job Cards","job","/technician-job-cards/"),item("Customer Machines","machine","/concept-dashboards/02-technician/customer-machines.php"),item("Diagnosis & Repair","inspect","/breakdown-workflow/?actor=technician"),item("Spare Requests","stock","/spare-parts-manager/"),item("Testing & Completion","test","/technician-job-cards/"),item("Communication","message","/concept-dashboards/02-technician/communication.php"),item("My Reports","report","/role-reports/")],
       process: ["Assigned","Inspect","Diagnose","Repair","Test & complete"]
     },
     procurement: {

@@ -122,6 +122,37 @@ jobs:
           print('Canonical frontend API routes validated.')
           PY
 
+      - name: Validate machine-card performance guards
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import sys
+
+          display = Path('frontend/customers-manager/machine-display-v641.js').read_text(encoding='utf-8')
+          machines = Path('frontend/concept-dashboards/11-workshop-manager/machines.html').read_text(encoding='utf-8')
+          engineering = Path('backend/api/engineering.php').read_text(encoding='utf-8')
+          password = Path('frontend/password-visibility.js').read_text(encoding='utf-8')
+
+          required = [
+              ('machine-display singleton', 'window.__belmMachineDisplayV641Booted' in display),
+              ('idempotent display renderer', 'belmDisplayKey' in display),
+              ('observer self-mutation filter', "closest?.('.belm-machine-display')" in display),
+              ('compact dispatch frontend', 'compact=1&machineId=' in display),
+              ('compact dispatch backend', '$compactDispatch' in engineering),
+              ('iframe duplicate-script guard', 'script[data-machine-display],script[data-belm-machine-display-v641]' in machines),
+              ('cache-busted machine display', 'v=819-loading-performance' in password),
+          ]
+          failed = [name for name, ok in required if not ok]
+          if failed:
+              print('Missing performance guard(s): ' + ', '.join(failed))
+              sys.exit(1)
+          if "const observer=new MutationObserver(()=>requestAnimationFrame(scan));" in display:
+              print('Legacy unbounded machine-card MutationObserver loop found.')
+              sys.exit(1)
+          print('Machine-card loading/performance guards validated.')
+          PY
+
       - name: Validate deployment support files
         shell: bash
         run: |

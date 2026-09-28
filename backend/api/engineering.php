@@ -226,6 +226,59 @@ if ($method === 'GET' && $action === 'dispatch-options') {
         unset($tech['assigned_customer_id'],$tech['assigned_customer_name']);
     }
     unset($tech);
+
+    // V819: Machine-card Job Card modal only needs the technician list and the
+    // selected machine/customer. Avoid returning every customer, every machine
+    // and the full active Job Card queue for this lightweight request.
+    $compactDispatch = (string)($_GET['compact'] ?? '') === '1';
+    if ($compactDispatch) {
+        $machineId = trim((string)($_GET['machineId'] ?? ''));
+        if ($machineId === '') {
+            json_error('Machine is required for compact Technician Dispatch options.', 422);
+        }
+        $machineStmt = db()->prepare(
+            "SELECT m.id,m.customer_id,m.brand,m.model,m.machine_type,m.serial_number,m.fleet_number,
+                    c.name AS customer_name,c.address AS customer_address,c.is_machinery_admin
+             FROM machines m
+             JOIN customers c ON c.id=m.customer_id
+             WHERE m.id=? AND m.deleted_at IS NULL AND c.is_active=1 AND c.deleted_at IS NULL
+             LIMIT 1"
+        );
+        $machineStmt->execute([$machineId]);
+        $machine = $machineStmt->fetch();
+        if (!$machine) {
+            json_error('Registered machine was not found or is no longer active.', 404);
+        }
+        $customer = [
+            'id'=>$machine['customer_id'],
+            'name'=>$machine['customer_name'],
+            'address'=>$machine['customer_address'],
+            'is_machinery_admin'=>$machine['is_machinery_admin'],
+        ];
+        unset($machine['customer_address'],$machine['is_machinery_admin']);
+        json_out([
+            'technicians'=>$technicians,
+            'customers'=>[$customer],
+            'machines'=>[$machine],
+            'jobCards'=>[],
+            'receivedJobCards'=>[],
+            'dispatchSync'=>[
+                'serviceRequests'=>(int)($dispatchSync['serviceRequests'] ?? 0),
+                'operatorReports'=>(int)($dispatchSync['operatorReports'] ?? 0),
+                'created'=>(int)($dispatchSync['created'] ?? 0),
+                'failedSources'=>(int)($dispatchSync['failedSources'] ?? 0),
+                'inconsistencies'=>(int)($dispatchSync['inconsistencies'] ?? 0),
+                'receivedJobCards'=>0,
+                'assignedJobCards'=>0,
+                'totalJobCards'=>0,
+                'machines'=>1,
+                'error'=>$dispatchSync['error'] ?? null,
+                'skipped'=>!empty($dispatchSync['skipped']),
+                'compact'=>true,
+            ],
+        ]);
+    }
+
     $customers = db()->query(
         "SELECT id,name,address,is_machinery_admin FROM customers
          WHERE is_active=1 AND deleted_at IS NULL ORDER BY name"

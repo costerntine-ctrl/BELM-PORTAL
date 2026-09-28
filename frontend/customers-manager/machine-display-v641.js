@@ -1,5 +1,7 @@
 (function(){
   if(!location.pathname.startsWith('/customers-manager/'))return;
+  if(window.__belmMachineDisplayV641Booted)return;
+  window.__belmMachineDisplayV641Booted=true;
   const states=new WeakMap();
   const params=new URLSearchParams(location.search);
   const workshopSummary=params.get('view')==='all-machines'&&params.get('embed')==='1';
@@ -8,6 +10,10 @@
   const setText=(el,value)=>{if(el&&el.textContent!==value)el.textContent=value};
   let directJobContext=null;
   let directJobOptions=null;
+  let directJobLoadSeq=0;
+  const directJobCache=new Map();
+  const directJobPending=new Map();
+  const DIRECT_JOB_CACHE_TTL=60000;
 
   function levelFor(card,message){
     const v=String(card.dataset.machineEffectiveRange||card.dataset.machineConditionLevel||'').toUpperCase();
@@ -39,13 +45,18 @@
     const host=card.querySelector('.machine-alert-copy');if(!host)return;
     let display=host.querySelector('.belm-machine-display');
     if(!display){display=document.createElement('div');display.className='belm-machine-display';display.setAttribute('aria-live','polite');host.appendChild(display);}
-    const messages=collect(card);let state=states.get(card)||{index:Math.floor(Math.random()*messages.length)};state.messages=messages;state.index%=messages.length;states.set(card,state);
+    const messages=collect(card);let state=states.get(card)||{index:Math.floor(Math.random()*messages.length),nextRotateAt:Date.now()+4200+Math.floor(Math.random()*1800)};state.messages=messages;state.index%=messages.length;states.set(card,state);
     const item=messages[state.index];const level=levelFor(card,item.message);
-    display.className=`belm-machine-display display-${level}`;
-    display.innerHTML=`<span class="belm-machine-display-kicker">${item.label}</span><span class="belm-machine-display-message">${item.message}<small class="belm-machine-display-meta">${item.meta||''}</small></span>`;
+    const displayClass=`belm-machine-display display-${level}`;
+    const displayKey=[level,item.label,item.message,item.meta||''].join('\u001f');
+    if(display.className!==displayClass)display.className=displayClass;
+    if(display.dataset.belmDisplayKey!==displayKey){
+      display.dataset.belmDisplayKey=displayKey;
+      display.innerHTML=`<span class="belm-machine-display-kicker">${item.label}</span><span class="belm-machine-display-message">${item.message}<small class="belm-machine-display-meta">${item.meta||''}</small></span>`;
+    }
   }
 
-  function rotate(card){const state=states.get(card);if(!state||state.messages.length<2)return;state.index=(state.index+1+Math.floor(Math.random()*(state.messages.length-1)))%state.messages.length;render(card);}
+  function rotate(card){const state=states.get(card);if(!state||state.messages.length<2)return;state.index=(state.index+1+Math.floor(Math.random()*(state.messages.length-1)))%state.messages.length;state.nextRotateAt=Date.now()+4200+Math.floor(Math.random()*1800);render(card);}
 
   function activity(card){
     const sel=card.querySelector('[data-operational-status]');
@@ -76,10 +87,42 @@
   }
 
   async function engineeringApi(path,opt={}){
-    const r=await fetch(`/api${path}`,{...opt,cache:'no-store',headers:{...(opt.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${adminToken}`,...(opt.headers||{})}});
-    const raw=await r.text();let data=null;try{data=raw?JSON.parse(raw):null}catch{}
-    if(!r.ok)throw new Error(data?.error||`Request failed (${r.status}).`);
-    return data;
+    const timeoutMs=Math.max(1500,Number(opt.timeoutMs||8000));
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
+    const fetchOpt={...opt};delete fetchOpt.timeoutMs;
+    if(fetchOpt.signal){
+      if(fetchOpt.signal.aborted)controller.abort();
+      else fetchOpt.signal.addEventListener('abort',()=>controller.abort(),{once:true});
+    }
+    try{
+      const r=await fetch(`/api${path}`,{...fetchOpt,signal:controller.signal,cache:'no-store',headers:{...(fetchOpt.body?{'Content-Type':'application/json'}:{}),Authorization:`Bearer ${adminToken}`,...(fetchOpt.headers||{})}});
+      const raw=await r.text();let data=null;try{data=raw?JSON.parse(raw):null}catch{}
+      if(!r.ok)throw new Error(data?.error||`Request failed (${r.status}).`);
+      return data;
+    }catch(error){
+      if(error?.name==='AbortError')throw new Error('Technician list took too long to load. Please retry.');
+      throw error;
+    }finally{clearTimeout(timer)}
+  }
+
+  async function loadDirectJobOptions(machineId,force=false){
+    const key=String(machineId||'');
+    const cached=directJobCache.get(key);
+    if(!force&&cached&&(Date.now()-cached.at)<DIRECT_JOB_CACHE_TTL)return cached.data;
+    if(!force&&directJobPending.has(key))return directJobPending.get(key);
+    const request=engineeringApi(`/engineering?action=dispatch-options&skipSync=1&compact=1&machineId=${encodeURIComponent(key)}`,{timeoutMs:8000})
+      .then(data=>{directJobCache.set(key,{at:Date.now(),data});return data})
+      .finally(()=>directJobPending.delete(key));
+    directJobPending.set(key,request);
+    return request;
+  }
+
+  function renderTechnicianOptions(select,options){
+    const techs=Array.isArray(options?.technicians)?options.technicians:[];
+    select.innerHTML='<option value="">Select Technician...</option>'+techs.map(tech=>`<option value="${String(tech.id).replace(/["&<>]/g,'')}">${String(tech.name||'Technician').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}${tech.assignedCustomerName?` · Home: ${String(tech.assignedCustomerName).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}`:''}</option>`).join('');
+    select.disabled=techs.length===0;
+    return techs.length;
   }
 
   function ensureDirectJobDialog(){
@@ -118,21 +161,36 @@
     if(!adminToken){window.top.location.replace('/login');return}
     const d=summaryData(card);
     const dialog=ensureDirectJobDialog();
+    const loadSeq=++directJobLoadSeq;
     directJobContext={card,machineId,data:d};
     dialog.querySelector('#belmDirectJobMachine').textContent=`${d.fleet} · ${d.title} · ${d.customer}`;
     const select=dialog.querySelector('#belmDirectJobTechnician');
-    select.disabled=true;select.innerHTML='<option value="">Loading technicians...</option>';
-    directJobAlert('Loading available technicians...');
-    if(!dialog.open)dialog.showModal();
-    try{
-      directJobOptions=await engineeringApi('/engineering?action=dispatch-options&skipSync=1');
-      const techs=Array.isArray(directJobOptions?.technicians)?directJobOptions.technicians:[];
-      select.innerHTML='<option value="">Select Technician...</option>'+techs.map(tech=>`<option value="${String(tech.id).replace(/["&<>]/g,'')}">${String(tech.name||'Technician').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}${tech.assignedCustomerName?` · Home: ${String(tech.assignedCustomerName).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}`:''}</option>`).join('');
-      select.disabled=false;
+    const cached=directJobCache.get(String(machineId));
+    if(cached&&(Date.now()-cached.at)<DIRECT_JOB_CACHE_TTL){
+      directJobOptions=cached.data;
+      renderTechnicianOptions(select,directJobOptions);
       const box=dialog.querySelector('#belmDirectJobAlert');box.hidden=true;box.textContent='';
-      dialog.querySelector('#belmDirectJobDescription').focus();
+    }else{
+      select.disabled=true;select.innerHTML='<option value="">Loading technicians...</option>';
+      directJobAlert('Loading available technicians...');
+    }
+    if(!dialog.open)dialog.showModal();
+    if(cached&&(Date.now()-cached.at)<DIRECT_JOB_CACHE_TTL){
+      dialog.querySelector('#belmDirectJobDescription').focus({preventScroll:true});
+      return;
+    }
+    try{
+      const options=await loadDirectJobOptions(machineId);
+      if(loadSeq!==directJobLoadSeq||!dialog.open||String(directJobContext?.machineId||'')!==String(machineId))return;
+      directJobOptions=options;
+      const count=renderTechnicianOptions(select,directJobOptions);
+      const box=dialog.querySelector('#belmDirectJobAlert');
+      if(count){box.hidden=true;box.textContent='';}
+      else directJobAlert('No active BELM Technicians are available.',true);
+      dialog.querySelector('#belmDirectJobDescription').focus({preventScroll:true});
     }catch(error){
-      select.innerHTML='<option value="">Could not load technicians</option>';
+      if(loadSeq!==directJobLoadSeq||!dialog.open)return;
+      select.disabled=true;select.innerHTML='<option value="">Could not load technicians</option>';
       directJobAlert(error.message||'Could not load technicians.',true);
     }
   }
@@ -274,7 +332,12 @@
       back.addEventListener('click',()=>{
         card.classList.remove('belm-detail-open');card.classList.add('belm-summary-mode');card.scrollIntoView({behavior:'smooth',block:'nearest'});
       });
-      summary.querySelector('.belm-machine-summary-report').addEventListener('click',()=>openDirectJobCard(card));
+      const jobButton=summary.querySelector('.belm-machine-summary-report');
+      jobButton.addEventListener('click',()=>openDirectJobCard(card));
+      jobButton.addEventListener('pointerenter',()=>{
+        const machineId=machineIdFromCard(card);
+        if(adminToken&&machineId)loadDirectJobOptions(machineId).catch(()=>{});
+      },{passive:true});
     }
     const d=summaryData(card);const level=levelFor(card,d.condition+' '+d.reason);
     summary.classList.remove('level-green','level-yellow','level-red','level-unknown');summary.classList.add('level-'+level);
@@ -295,11 +358,29 @@
   function scan(){
     document.querySelectorAll('.machine-card').forEach(card=>{
       render(card);enhanceWorkshopCard(card);
-      if(card.dataset.belmDisplayTimer)return;
-      card.dataset.belmDisplayTimer='1';setInterval(()=>rotate(card),4200+Math.floor(Math.random()*1800));
     });
   }
-  const observer=new MutationObserver(()=>requestAnimationFrame(scan));
-  function boot(){injectWorkshopStyle();scan();observer.observe(document.body,{childList:true,subtree:true,characterData:true});}
+  function rotateDueCards(){
+    const now=Date.now();
+    document.querySelectorAll('.machine-card').forEach(card=>{
+      const state=states.get(card);
+      if(state&&state.messages?.length>1&&now>=Number(state.nextRotateAt||0))rotate(card);
+    });
+  }
+  let scanQueued=false;
+  let rotationTimer=null;
+  function queueScan(){
+    if(scanQueued)return;
+    scanQueued=true;
+    requestAnimationFrame(()=>{scanQueued=false;scan()});
+  }
+  const observer=new MutationObserver(mutations=>{
+    const external=mutations.some(m=>{
+      const node=m.target?.nodeType===1?m.target:m.target?.parentElement;
+      return !node?.closest?.('.belm-machine-display');
+    });
+    if(external)queueScan();
+  });
+  function boot(){injectWorkshopStyle();scan();observer.observe(document.body,{childList:true,subtree:true,characterData:true});if(!rotationTimer)rotationTimer=setInterval(rotateDueCards,1000);}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

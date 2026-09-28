@@ -1,5 +1,16 @@
 # BELM Portal — Change Log
 
+## Workshop Manager loading performance — 28 Sep 2026
+
+- Fixed the Registered Machines page freeze that could trigger Chrome `Page Unresponsive`.
+- Added a singleton guard so `machine-display-v641.js` cannot initialize twice inside the embedded Customer Overview.
+- Made machine-alert rendering idempotent and filtered self-generated MutationObserver changes, preventing the previous DOM feedback loop.
+- Replaced one rotating-message timer per machine card with one shared low-frequency timer.
+- Reduced iframe polling and observer work after machine cards finish loading.
+- Added compact Technician Dispatch options so Create Job Card loads only active BELM technicians plus the selected machine/customer instead of the full machine/customer/Job Card datasets.
+- Added 60-second modal option caching, request de-duplication, hover prefetch and an 8-second API timeout so the Technician selector responds quickly without blocking the page.
+- Added cache-busting asset versions and CI guards for duplicate machine-display loading, MutationObserver regression and heavy dispatch requests.
+
 ## Production cleanup — 28 Sep 2026
 
 - Fixed the `report-export-v816.js` syntax error that could stop Report PDF / CSV / Print tooling from loading.

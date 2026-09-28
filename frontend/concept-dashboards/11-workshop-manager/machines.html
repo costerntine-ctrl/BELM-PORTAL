@@ -147,17 +147,19 @@
     try { doc = frame.contentDocument || frame.contentWindow.document; } catch (_) { return; }
     if (!doc || !doc.body) return;
 
-    if (!doc.getElementById('belm-machine-display-v641-style')) {
+    if (!doc.querySelector('#belm-machine-display-v641-style,link[data-machine-display-style]')) {
       var displayStyle = doc.createElement('link');
       displayStyle.id = 'belm-machine-display-v641-style';
       displayStyle.rel = 'stylesheet';
-      displayStyle.href = '/customers-manager/machine-display-v641.css?v=818-uniform-card-alert-blink';
+      displayStyle.href = '/customers-manager/machine-display-v641.css?v=819-loading-performance';
+      displayStyle.setAttribute('data-machine-display-style', '1');
       doc.head.appendChild(displayStyle);
     }
-    if (!doc.querySelector('script[data-belm-machine-display-v641]')) {
+    if (!doc.querySelector('script[data-machine-display],script[data-belm-machine-display-v641]')) {
       var displayScript = doc.createElement('script');
-      displayScript.src = '/customers-manager/machine-display-v641.js?v=818-uniform-card-alert-blink';
+      displayScript.src = '/customers-manager/machine-display-v641.js?v=819-loading-performance';
       displayScript.defer = true;
+      displayScript.setAttribute('data-machine-display', '1');
       displayScript.setAttribute('data-belm-machine-display-v641', '1');
       doc.body.appendChild(displayScript);
     }
@@ -199,14 +201,20 @@
     if (dialog && dialog.open) {
       resizeFrame(doc);
       if (!doc.__belmDirectMachineObserver) {
-        var observer = new MutationObserver(function () {
+        var observer = new MutationObserver(function (mutations) {
+          var relevant = mutations.some(function (mutation) {
+            var node = mutation.target && mutation.target.nodeType === 1 ? mutation.target : mutation.target && mutation.target.parentElement;
+            return !(node && node.closest && node.closest('.belm-machine-display'));
+          });
+          if (!relevant) return;
           clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(function () { tuneFrame(); }, 80);
+          resizeTimer = setTimeout(function () { tuneFrame(); }, 120);
         });
-        observer.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open','class','disabled'] });
+        observer.observe(doc.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['open'] });
         doc.__belmDirectMachineObserver = observer;
       }
     }
+    return cards > 0 || !!empty;
   }
 
   // manager.js uses postMessage for embedded Job Card navigation. This page
@@ -221,13 +229,12 @@
   });
 
   frame.addEventListener('load', function () {
-    tuneFrame();
     clearInterval(pollTimer);
     pollCount = 0;
+    if (tuneFrame()) return;
     pollTimer = setInterval(function () {
       pollCount += 1;
-      tuneFrame();
-      if (pollCount >= 30) clearInterval(pollTimer);
+      if (tuneFrame() || pollCount >= 16) clearInterval(pollTimer);
     }, 500);
   });
 })();

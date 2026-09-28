@@ -118,7 +118,6 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
       <a href="diagnosis-repair.php" class="belm-nav__item">🔧 <span>Diagnosis Report</span></a>
       <a href="spare-requests.php" class="belm-nav__item">⬡ <span>Spare Requests</span></a>
       <a href="testing-completion.php" class="belm-nav__item">✓ <span>Testing &amp; Completion</span></a>
-      <a href="daily-checklists.php" class="belm-nav__item" data-nav="daily">☑ <span>Daily Checklists</span></a>
       <a href="communication.php" class="belm-nav__item">✉ <span>Communication</span></a>
       <a href="my-reports.php" class="belm-nav__item">▥ <span>My Reports</span></a>
       <a href="my-profile.php" class="belm-nav__item">♙ <span>My Profile</span></a>

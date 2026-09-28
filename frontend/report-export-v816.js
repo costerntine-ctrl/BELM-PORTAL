@@ -43,7 +43,7 @@
   function ascii(v){return String(v??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[^\x20-\x7E]/g,' ').replace(/[ \t]+/g,' ').trim()}
   function wrap(v,max=94){const text=ascii(v);if(!text)return [''];const out=[];let rest=text;while(rest.length>max){let cut=rest.lastIndexOf(' ',max);if(cut<Math.floor(max*.55))cut=max;out.push(rest.slice(0,cut).trim());rest=rest.slice(cut).trim()}if(rest)out.push(rest);return out}
   function pdfLines(root){const clone=cleanClone(root),title=ascii(reportTitle(root)),lines=['BELM GENERAL TECH SERVICE LIMITED',title,`Generated: ${ascii(new Date().toLocaleString())}`,''];let last='';cleanText(clone.innerText).split('\n').map(cleanText).filter(Boolean).forEach(line=>{const safe=ascii(line);if(!safe||safe===last)return;last=safe;wrap(safe).forEach(x=>lines.push(x))});return lines.slice(0,6000)}
-  function pdfEscape(v){return ascii(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)'}
+  function pdfEscape(v){return ascii(v).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')}
   function bytes(v){return new TextEncoder().encode(v).length}
   function buildPdf(lines){
     const perPage=60,pages=[];for(let i=0;i<lines.length;i+=perPage)pages.push(lines.slice(i,i+perPage));if(!pages.length)pages.push(['BELM REPORT']);

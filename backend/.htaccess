@@ -16,6 +16,9 @@
   # Keeps /api/belm-workshop-home?section=petty-cash stable for the frontend.
   RewriteRule ^belm-workshop-home/?$ api/belm_workshop_home.php [L,QSA,NC]
 
+  # Shared read-only My Profile endpoint backed by the original registration record.
+  RewriteRule ^my-profile/?$ api/my_profile.php [L,QSA,NC]
+
   # Technician dashboard live feed. The page already reads live Job Cards from
   # Breakdown Workflow; this endpoint supplies the same Technician with only the
   # real customer/machine communications scoped to Job Cards assigned to them.

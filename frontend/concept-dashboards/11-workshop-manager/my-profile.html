@@ -1,11 +1,1 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM Workshop Manager</title><script src="/navigation-context-v763.js?v=763-role-flow"></script></head><body><script>
-(function(){
-  var target="/settings-manager/?module=settings#profile";
-  var out=new URL(target, window.location.origin);
-  var incoming=new URLSearchParams(window.location.search);
-  incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });
-  if(window.location.hash && !out.hash) out.hash=window.location.hash;
-  window.location.replace(out.pathname + out.search + out.hash);
-})();
-</script></body></html>
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="cache-control" content="no-store"><title>My Profile</title></head><body><script>location.replace('/my-profile/');</script><noscript><a href="/my-profile/">Open My Profile</a></noscript></body></html>

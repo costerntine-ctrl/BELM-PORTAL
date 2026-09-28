@@ -185,7 +185,7 @@
   async function boot() {
     ensureStyle();
     try {
-      const mode = await api('/api/customer_mode.php');
+      const mode = await api('/api/customer-mode');
       const apply = () => {
         if (location.pathname.startsWith('/portal-cwm')) applyPortalHome(mode);
         if (location.pathname.startsWith('/customer-settings-center')) applySettings(mode);

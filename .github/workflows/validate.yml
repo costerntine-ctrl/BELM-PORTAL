@@ -64,3 +64,67 @@ jobs:
               sys.exit(1)
           print('All local HTML JS/CSS assets resolve.')
           PY
+
+      - name: Validate dynamic frontend assets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, re, sys
+          root = 'frontend'
+          pattern = re.compile(r'''["'`](/[^"'`?#]+\.(?:js|css))(?:[?#][^"'`]*)?["'`]''', re.I)
+          missing = []
+          for dirpath, _, files in os.walk(root):
+              for name in files:
+                  if not (name.endswith('.html') or name.endswith('.js')):
+                      continue
+                  path = os.path.join(dirpath, name)
+                  with open(path, encoding='utf-8', errors='ignore') as handle:
+                      text = handle.read()
+                  for ref in pattern.findall(text):
+                      target = os.path.join(root, ref.lstrip('/'))
+                      if not os.path.isfile(target):
+                          missing.append((path, ref))
+          if missing:
+              for path, ref in sorted(set(missing)):
+                  print(f'Missing dynamic asset: {path} -> {ref}')
+              sys.exit(1)
+          print('All quoted local JS/CSS assets resolve.')
+          PY
+
+      - name: Validate canonical frontend API routes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          forbidden = {
+              '/api/customer_mode.php',
+              '/api/customer_notification_test.php',
+              '/api/workshop_material_requests.php',
+              '/api/checklist_reports.php',
+              '/api/customer_settings.php',
+              '/api/customer_checkup.php',
+          }
+          hits = []
+          for dirpath, _, files in os.walk('frontend'):
+              for name in files:
+                  if not (name.endswith('.html') or name.endswith('.js')):
+                      continue
+                  path = os.path.join(dirpath, name)
+                  with open(path, encoding='utf-8', errors='ignore') as handle:
+                      text = handle.read()
+                  for route in forbidden:
+                      if route in text:
+                          hits.append((path, route))
+          if hits:
+              for path, route in sorted(set(hits)):
+                  print(f'Legacy API route: {path} -> {route}')
+              sys.exit(1)
+          print('Canonical frontend API routes validated.')
+          PY
+
+      - name: Validate deployment support files
+        shell: bash
+        run: |
+          set -euo pipefail
+          sh -n docker/start-render.sh
+          (cd backend/templates && sha256sum -c MASTER_TEMPLATES.sha256)

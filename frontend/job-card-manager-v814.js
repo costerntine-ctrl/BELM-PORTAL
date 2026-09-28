@@ -101,7 +101,7 @@
     try{
       const [processData,caseData]=await Promise.all([processApi('list'),workflowApi('')]);
       items=Array.isArray(processData?.items)?processData.items:[];cases=Array.isArray(caseData)?caseData:[];
-      renderCases();renderRows();note(`Synced ${items.filter(x=>up(x.status)!=='COMPLETED'&&up(x.status)!=='CANCELLED').length} active Job Cards. Completed records remain available from the Completed / All filter.`,'ok');
+      renderCases();renderRows();note(`Synced ${items.filter(x=>up(x.status)!=='CANCELLED'&&!hasFinalReport(x)).length} active Job Cards with no final report. Final reports remain under Completed / All.`,'ok');
     }catch(e){note(e.message||'Job Card sync failed.','error')}
     finally{busy=false;if(btn)btn.disabled=false}
   }
@@ -137,6 +137,12 @@
   }
 
   function rowProcess(item){const step=Math.max(1,Math.min(8,Number(item.processStep||1)));return `<b>${esc(item.processLabel||processSteps[step-1])}</b><div class="jcm814-step-track">${processSteps.map((_,i)=>`<i class="${i+1<step?'done':i+1===step?'current':''}"></i>`).join('')}</div><small>Step ${step}/8 · ${esc(item.currentDepartment||'')}</small>`}
+  function hasFinalReport(item){
+    const status=up(item?.status);
+    const final=up(item?.finalResult);
+    const step=Number(item?.processStep||0);
+    return status==='COMPLETED'||final==='OK'||step>=8||!!item?.completedAt;
+  }
   function setListFilter(next){
     const safe=['active','completed','all'].includes(String(next||'').toLowerCase())?String(next).toLowerCase():'active';
     listFilter=safe;
@@ -147,10 +153,10 @@
   function renderRows(){
     const body=childDoc?.getElementById('jcm814Rows');if(!body)return;
     const all=items.filter(x=>up(x.status)!=='CANCELLED');
-    const activeCount=all.filter(x=>up(x.status)!=='COMPLETED').length;
-    const completedCount=all.filter(x=>up(x.status)==='COMPLETED').length;
-    const pendingCount=all.filter(x=>String(x.pendingReason||'').trim()&&up(x.status)!=='COMPLETED').length;
-    const rows=listFilter==='completed'?all.filter(x=>up(x.status)==='COMPLETED'):listFilter==='all'?all:all.filter(x=>up(x.status)!=='COMPLETED');
+    const activeCount=all.filter(x=>!hasFinalReport(x)).length;
+    const completedCount=all.filter(hasFinalReport).length;
+    const pendingCount=all.filter(x=>String(x.pendingReason||'').trim()&&!hasFinalReport(x)).length;
+    const rows=listFilter==='completed'?all.filter(hasFinalReport):listFilter==='all'?all:all.filter(x=>!hasFinalReport(x));
     const counts=childDoc.getElementById('jcm814Counts');
     if(counts)counts.textContent=` · ${activeCount} active · ${pendingCount} pending · ${completedCount} completed · showing ${listFilter.toUpperCase()}`;
     childDoc?.querySelectorAll('[data-jcm-filter]').forEach(button=>button.classList.toggle('active',button.dataset.jcmFilter===listFilter));
@@ -175,7 +181,7 @@
         <td class="jcm814-problem"><b>${esc(problem)}</b><small><span class="jcm814-badge ${badgeClass}">${esc(status==='COMPLETED'?'CLOSED':pendingText==='—'?'ON PROCESS':'PENDING')}</span></small><small>${esc(pendingText)}</small>${item.requiredSpare?`<small>Spare: ${esc(item.requiredSpare)}</small>`:''}</td>
         <td class="jcm814-dates"><small>Created</small><b>${esc(created)}</b><small>Updated: ${esc(updated)}</small><small><span class="jcm814-badge ${status==='COMPLETED'?'ok':review?'pending':''}">${esc(status.replaceAll('_',' '))}</span></small></td>
         <td>${review?`<div class="jcm814-row-actions"><button class="approve" data-review="approve">Approve Maintenance${item.requiredSpare?' + Spare':''}</button><button class="return" data-review="return">Return Report</button></div>`:`<span class="jcm814-badge ${item.maintenanceApproved?'ok':''}">${item.maintenanceApproved?'MAINTENANCE APPROVED':'—'}</span><small>${esc(item.managerReview||'')}</small>`}</td>
-        <td><div class="jcm814-row-actions"><button data-report>Report PDF</button>${item.findings?'<button data-view>View Report</button>':''}</div><small>Final: ${esc(item.finalResult||'Pending')}</small></td>
+        <td><div class="jcm814-row-actions">${hasFinalReport(item)?'<button data-report>Report PDF</button>':'<span class="jcm814-badge pending">FINAL REPORT PENDING</span>'}${item.findings?'<button data-view>View Report</button>':''}</div><small>Final: ${esc(item.finalResult||'Pending')}</small></td>
       </tr>`;
     }).join(''):'<tr><td colspan="9">No Job Cards in this filter.</td></tr>';
   }

@@ -7,14 +7,14 @@
   const switches={};
 
   async function api(method='GET',body){
-    const r=await fetch('/api/customer_settings.php',{method,cache:'no-store',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+    const r=await fetch('/api/customer-settings',{method,cache:'no-store',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
     const d=await r.json().catch(()=>({}));
     if(r.status===401){location.replace('/login');throw new Error('Session expired.')}
     if(!r.ok)throw new Error(d.error||`Request failed (${r.status})`);
     return d;
   }
   async function testApi(channel){
-    const r=await fetch('/api/customer_notification_test.php',{method:'POST',cache:'no-store',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({channel})});
+    const r=await fetch('/api/customer-notification-test',{method:'POST',cache:'no-store',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({channel})});
     const d=await r.json().catch(()=>({}));
     if(r.status===401){location.replace('/login');throw new Error('Session expired.')}
     if(!r.ok)throw new Error(d.error||`Test failed (${r.status})`);

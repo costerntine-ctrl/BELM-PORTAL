@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
   async function syncWorkshopRequests() {
     if (!token) return;
     try {
-      var response = await fetch('/api/workshop_material_requests.php?action=pending', { cache:'no-store', headers:{ Authorization:'Bearer ' + token } });
+      var response = await fetch('/api/workshop-material-requests?action=pending', { cache:'no-store', headers:{ Authorization:'Bearer ' + token } });
       if (!response.ok) return;
       var data = await response.json();
       var count = Number(data.blinkCount || 0);

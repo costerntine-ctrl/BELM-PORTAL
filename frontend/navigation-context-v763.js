@@ -96,7 +96,7 @@
   const target=destination();
 
   function installMobileSidebarPull(){
-    if(cleanPath!=='/concept-dashboards/01-admin-home')return;
+    return; // V817: mobile sidebar is now handled globally by /mobile-sidebar-v817.js
     const shell=document.getElementById('belmShell');
     const sidebar=shell&&shell.querySelector('.belm-sidebar');
     if(!shell||!sidebar)return;

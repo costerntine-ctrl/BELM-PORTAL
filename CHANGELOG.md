@@ -1,5 +1,17 @@
 # BELM Portal — Change Log
 
+## Production cleanup — 28 Sep 2026
+
+- Fixed the `report-export-v816.js` syntax error that could stop Report PDF / CSV / Print tooling from loading.
+- Normalized customer-mode, notification-test, workshop-material-request, checklist-report, customer-settings and customer-checkup calls to canonical `/api/...` routes.
+- Added backward-compatible backend aliases for legacy underscore / `.php` API URLs.
+- Removed unreferenced legacy frontend assets and superseded Technician / Customer dashboard scripts.
+- Simplified Customer Workshop Manager so it loads the approved BELM Workshop Manager stylesheet directly instead of swapping styles at runtime.
+- Extended CI validation to check dynamic JS/CSS references, reject known legacy nested API URLs, validate Render startup shell syntax and verify commercial master template checksums.
+- Re-ran PHP syntax, JavaScript syntax, local/dynamic asset, API route, deployment shell and commercial template integrity checks successfully.
+
+---
+
 Historical repair/audit notes, consolidated from individual per-version files into one place.
 
 ## Main Dashboard reporting navigation update

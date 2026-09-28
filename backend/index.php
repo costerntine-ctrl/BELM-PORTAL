@@ -70,8 +70,18 @@ switch($resource){
     case 'customer-checkup':
     case 'customer_checkup':
     case 'customer_checkup.php': dispatch('customer_checkup.php');
+    case 'customer-settings':
     case 'customer_settings':
     case 'customer_settings.php': dispatch('customer_settings.php');
+    case 'customer-mode':
+    case 'customer_mode':
+    case 'customer_mode.php': dispatch('customer_mode.php');
+    case 'customer-notification-test':
+    case 'customer_notification_test':
+    case 'customer_notification_test.php': dispatch('customer_notification_test.php');
+    case 'workshop-material-requests':
+    case 'workshop_material_requests':
+    case 'workshop_material_requests.php': dispatch('workshop_material_requests.php');
     case 'customer-portal':
         if (($segments[1] ?? '') === 'password-security') dispatch('customer_password_security.php');
         dispatch('customer_portal.php',['sub'=>$segments[1]??'','sub2'=>$segments[2]??'','sub3'=>$segments[3]??'']);
@@ -131,6 +141,7 @@ switch($resource){
         dispatch('proforma_invoices.php');
     case 'checklist-reports':
     case 'checklist_reports':
+    case 'checklist_reports.php':
         // Explicit REST mapping for Technician / Machine Report Center.
         // Query-style actions are still accepted for older frontend modules.
         if(($segments[1]??'')==='technician-customer-access')dispatch('checklist_reports.php',['action'=>'technician-customer-access']);

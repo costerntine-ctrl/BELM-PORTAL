@@ -1,14 +1,8 @@
 (function () {
   'use strict';
 
-  // V795: Customer Workshop Manager uses the BELM Workshop Manager dashboard
-  // as the visual source of truth. Keep customer URLs/data/API scope, but use
-  // the exact BELM Workshop Manager stylesheet so both dashboards stay visually
-  // mirrored instead of drifting into separate designs.
-  const mirrorStyle = document.querySelector('link[href^="/customer-workshop-manager-v778.css"]');
-  if (mirrorStyle) {
-    mirrorStyle.href = '/concept-dashboards/11-workshop-manager/assets/css/belm-workshop-manager.css?v=795-customer-mirror';
-  }
+  // V795: the HTML loads the BELM Workshop Manager stylesheet directly so
+  // Customer and BELM workshop dashboards cannot drift during initial render.
   document.documentElement.classList.add('customer-workshop-belm-mirror');
 
   // Roles & Users remains a Customer Admin / Main Dashboard control. The

@@ -8,7 +8,7 @@
     let body='';try{body=await response.clone().text();}catch(_){}
     if(!/unknown request/i.test(body))return response;
     const original=new URL(typeof input==='string'?input:input.url,location.origin);
-    const fallback=new URL('/api/checklist_reports.php',location.origin);
+    const fallback=new URL('/api/checklist-reports',location.origin);
     original.searchParams.forEach((value,key)=>fallback.searchParams.set(key,value));
     return nativeFetch(fallback.pathname+fallback.search,options);
   };

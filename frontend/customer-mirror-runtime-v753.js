@@ -48,7 +48,7 @@
 
   async function boot(){
     ensureLockStyle();installRoleTools();updateClock();setInterval(updateClock,30000);
-    const [dashResult,modeResult]=await Promise.allSettled([api('/api/customer-portal/dashboard'),api('/api/customer_mode.php')]);
+    const [dashResult,modeResult]=await Promise.allSettled([api('/api/customer-portal/dashboard'),api('/api/customer-mode')]);
     const dash=dashResult.status==='fulfilled'?dashResult.value:{};
     const mode=modeResult.status==='fulfilled'?modeResult.value:{};
     if(dashResult.status==='rejected')console.error('customer-portal/dashboard failed:',dashResult.reason);

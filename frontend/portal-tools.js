@@ -4564,6 +4564,10 @@
       card.dataset.belmMachineExpenseReady = "1";
       card.classList.add("belm-customer-machine-card", "belm-customer-machine-card-v409", "belm-customer-machine-card-v417", "belm-customer-machine-card-v422");
       card.dataset.belmMachineId = String(machine.id || "");
+      card.dataset.belmMachineTitle = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || machine.machineType || machine.machine_type || "Machine";
+      card.dataset.belmMachineMeta = `${machine.machineType || machine.machine_type || "Machine"} · Reg: ${machine.regNumber || machine.reg_number || "—"} · Serial: ${machine.serialNumber || machine.serial_number || "—"}`;
+      card.dataset.belmMachineFleet = String(machine.fleetNumber || machine.fleet_number || "—");
+      card.dataset.belmMachineCustomer = String(profile?.name || customerPortalProfile?.name || roleContextCustomerName() || "Customer");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       card.dataset.belmConditionRange = technicianCondition(machine.status).status;
       applyCustomerMachineRange(card);
@@ -5595,6 +5599,11 @@
       if (!card) return;
 
       card.dataset.belmTechnicianReportsReady = "1";
+      card.dataset.belmMachineId = String(machine.id || "");
+      card.dataset.belmMachineTitle = [machine.brand, machine.model].filter(Boolean).join(" ") || machine.model || machine.machineType || machine.machine_type || "Machine";
+      card.dataset.belmMachineMeta = `${machine.machineType || machine.machine_type || "Machine"} · Reg: ${machine.regNumber || machine.reg_number || "—"} · Serial: ${machine.serialNumber || machine.serial_number || "—"}`;
+      card.dataset.belmMachineFleet = String(machine.fleetNumber || machine.fleet_number || "—");
+      card.dataset.belmMachineCustomer = String(customer?.name || "Customer");
       card.classList.add("belm-technician-machine-card", "belm-customer-machine-card", "belm-technician-machine-card-v390", "belm-technician-machine-card-v391");
       card.classList.add(`status-${technicianCondition(machine.status).status.toLowerCase()}`);
       card.dataset.belmConditionRange = technicianCondition(machine.status).status;

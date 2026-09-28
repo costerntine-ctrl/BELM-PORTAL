@@ -253,6 +253,8 @@
       html.belm-wm-machine-summary #machineListDialog .machine-card.belm-summary-mode.machine-range-unknown::after{content:none!important;display:none!important;animation:none!important;box-shadow:none!important;border:0!important}
       html.belm-wm-machine-summary .machine-card.belm-summary-mode>*:not(.belm-machine-summary){display:none!important}
       html.belm-wm-machine-summary .machine-card.belm-detail-open{grid-column:1/-1!important}
+      html.belm-wm-machine-summary #machineListBody .machine-list.belm-single-detail-open>.machine-card:not(.belm-detail-open){display:none!important}
+      html.belm-wm-machine-summary #machineListBody .machine-list.belm-single-detail-open>.machine-card.belm-detail-open{display:block!important;width:100%!important;max-width:none!important}
       html.belm-wm-machine-summary .machine-card.belm-detail-open>.belm-machine-summary{display:none!important}
       html.belm-wm-machine-summary .machine-card.belm-detail-open>.belm-machine-back{display:inline-flex!important}
       html.belm-wm-machine-summary .machine-card.belm-summary-mode>.belm-machine-back{display:none!important}
@@ -327,10 +329,20 @@
       back.type='button';back.className='belm-machine-back';back.textContent='← Back to Machine Card';
       card.prepend(back);card.prepend(summary);card.classList.add('belm-summary-mode');
       summary.querySelector('.belm-machine-summary-view').addEventListener('click',()=>{
+        const list=card.closest('.machine-list');
+        if(list){
+          list.querySelectorAll('.machine-card.belm-detail-open').forEach(other=>{
+            if(other!==card){other.classList.remove('belm-detail-open');other.classList.add('belm-summary-mode');}
+          });
+          list.classList.add('belm-single-detail-open');
+        }
         card.classList.remove('belm-summary-mode');card.classList.add('belm-detail-open');card.scrollIntoView({behavior:'smooth',block:'start'});
       });
       back.addEventListener('click',()=>{
-        card.classList.remove('belm-detail-open');card.classList.add('belm-summary-mode');card.scrollIntoView({behavior:'smooth',block:'nearest'});
+        const list=card.closest('.machine-list');
+        card.classList.remove('belm-detail-open');card.classList.add('belm-summary-mode');
+        if(list)list.classList.remove('belm-single-detail-open');
+        card.scrollIntoView({behavior:'smooth',block:'nearest'});
       });
       const jobButton=summary.querySelector('.belm-machine-summary-report');
       jobButton.addEventListener('click',()=>openDirectJobCard(card));

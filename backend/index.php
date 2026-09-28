@@ -135,6 +135,18 @@ switch($resource){
         if (isset($segments[1])) dispatch('spare_parts.php',['id'=>$segments[1]]);
         dispatch('spare_parts.php');
     case 'spare-recommendations': dispatch('spare_recommendations.php',['id'=>$segments[1]??($_GET['id']??'')]);
+    case 'delivery-notes':
+        // Delivery Notes use a hyphenated public REST route but an underscored
+        // endpoint filename. Map /delivery-notes/meta separately from
+        // /delivery-notes/{id} so list, detail, save, sign and delete all reach
+        // the same handler on Render.
+        if (($segments[1] ?? '') === 'meta') {
+            dispatch('delivery_notes.php',['action'=>'meta']);
+        }
+        if (isset($segments[1]) && $segments[1] !== '') {
+            dispatch('delivery_notes.php',['id'=>$segments[1]]);
+        }
+        dispatch('delivery_notes.php');
     case 'proforma-invoices':
         if (isset($segments[1]) && isset($segments[2])) dispatch('proforma_invoices.php',['id'=>$segments[1],'action'=>$segments[2]]);
         if (isset($segments[1])) dispatch('proforma_invoices.php',['id'=>$segments[1]]);

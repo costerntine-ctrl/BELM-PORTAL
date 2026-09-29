@@ -905,8 +905,8 @@ if ($method === 'PUT' && $action === 'reset-password') {
          RETURNING email, portal_link'
     );
     $stmt->execute([
-        password_hash($temporaryPassword, PASSWORD_BCRYPT),
-        password_hash($recoveryCode, PASSWORD_BCRYPT),
+        password_hash($temporaryPassword, PASSWORD_BCRYPT, ['cost' => 12]),
+        password_hash($recoveryCode, PASSWORD_BCRYPT, ['cost' => 12]),
         $id,
     ]);
     $resetCustomer = $stmt->fetch();
@@ -1201,7 +1201,7 @@ if ($method === 'PUT' && !$action) {
     require_page_access($user, 'customers');
     $b = body();
     require_edit_confirmation($user, $b);
-    $stmt = db()->prepare('SELECT is_active FROM customers WHERE id = ? AND deleted_at IS NULL');
+    $stmt = db()->prepare('SELECT email, portal_link, is_active FROM customers WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     $existingCustomer = $stmt->fetch();
     if (!$existingCustomer) json_error('Customer not found.', 404);
@@ -1222,7 +1222,13 @@ if ($method === 'PUT' && !$action) {
             $isActive,
             $id,
         ]);
-    log_activity($user, 'customer-edited', 'customer', $id, ['name' => $details['name']]);
+    clear_unified_login_lockout((string)$existingCustomer['email'], (string)$existingCustomer['portal_link']);
+    clear_unified_login_lockout($details['email'], $portalLink);
+    log_activity($user, 'customer-edited', 'customer', $id, [
+        'name' => $details['name'],
+        'previousEmail' => $existingCustomer['email'],
+        'email' => $details['email'],
+    ]);
     json_out([
         'ok' => true,
         'portalLink' => $portalLink,

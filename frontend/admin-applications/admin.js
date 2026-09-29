@@ -624,6 +624,7 @@ async function saveRegisteredUser(event) {
   if (!user) return;
   const payload = {
     name: document.getElementById("editRegisteredUserName").value.trim(),
+    email: document.getElementById("editRegisteredUserEmail").value.trim(),
     phone: document.getElementById("editRegisteredUserPhone").value.trim(),
     roleIds: selectedRegisteredUserRoleIds(),
     assignedCustomerId: document.getElementById("editRegisteredUserCustomer").value || null,
@@ -633,6 +634,11 @@ async function saveRegisteredUser(event) {
   errorBox.classList.add("hidden");
   if (!payload.name) {
     errorBox.textContent = "User name is required.";
+    errorBox.classList.remove("hidden");
+    return;
+  }
+  if (!payload.email || !document.getElementById("editRegisteredUserEmail").checkValidity()) {
+    errorBox.textContent = "Enter a valid login email address.";
     errorBox.classList.remove("hidden");
     return;
   }

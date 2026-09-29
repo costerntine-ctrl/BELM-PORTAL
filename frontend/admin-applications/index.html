@@ -298,12 +298,12 @@
     <div class="assignment-head">
       <p class="eyebrow">REGISTERED USER</p>
       <h2 id="editRegisteredUserTitle">Edit user</h2>
-      <p>Change the user role, assigned customer or account status. Email/login identity is not changed here.</p>
+      <p>Change the login email, role, assigned customer or account status. Use Reset Password to issue a secure new password.</p>
     </div>
     <form id="editRegisteredUserForm" class="assignment-form">
       <input id="editRegisteredUserId" type="hidden">
       <label>Name<input id="editRegisteredUserName" required maxlength="255"></label>
-      <label>Email<input id="editRegisteredUserEmail" type="email" readonly></label>
+      <label>Login email<input id="editRegisteredUserEmail" type="email" required maxlength="255" autocomplete="email"></label>
       <label>Phone<input id="editRegisteredUserPhone" maxlength="50"></label>
       <div class="field-block">
         <span class="field-title">Roles <small>(select one or more)</small></span>
@@ -385,6 +385,6 @@
   <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
   <script src="/edit-confirm.js?v=469-customer-control"></script>
   <script src="/delete-confirm.js?v=469-customer-control"></script>
-  <script src="/admin-applications/admin.js?v=491-customer-registration-sync"></script>
+  <script src="/admin-applications/admin.js?v=820-account-credential-edit"></script>
 </body>
 </html>

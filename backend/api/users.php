@@ -192,7 +192,12 @@ if ($method === 'DELETE' && $action === 'roles') {
 
 // ---- Users --------------------------------------------------------------
 if ($method === 'GET' && !$action) {
-    $stmt = db()->query('SELECT u.*, r.name AS role_name, c.name AS assigned_customer_name
+    // Never send password or recovery hashes to the browser. Account editors
+    // only need profile/access fields; credential material remains server-side.
+    $stmt = db()->query('SELECT u.id, u.name, u.email, u.phone, u.role_id,
+                                 u.is_active, u.assigned_customer_id,
+                                 u.is_customer_managed, u.created_at,
+                                 r.name AS role_name, c.name AS assigned_customer_name
                           FROM users u JOIN roles r ON r.id = u.role_id
                           LEFT JOIN customers c ON c.id = u.assigned_customer_id
                           WHERE u.deleted_at IS NULL');
@@ -300,19 +305,44 @@ if ($method === 'PUT' && !$action) {
     if ($name === '') json_error('User name is required.');
     $isActive = !isset($b['isActive']) || filter_var($b['isActive'], FILTER_VALIDATE_BOOL);
     protect_last_super_admin($id, $roleId, $isActive);
-    $existingUserStmt = db()->prepare('SELECT assigned_customer_id FROM users WHERE id = ?');
+    $existingUserStmt = db()->prepare('SELECT email, assigned_customer_id FROM users WHERE id = ? AND deleted_at IS NULL');
     $existingUserStmt->execute([$id]);
-    $currentAssignedCustomerId = $existingUserStmt->fetchColumn() ?: null;
+    $existingUser = $existingUserStmt->fetch();
+    if (!$existingUser) json_error('User not found.', 404);
+    // Older cached clients did not send email on an access-only edit. Preserve
+    // that credential while allowing current clients to submit a replacement.
+    $email = strtolower(trim((string)($b['email'] ?? $existingUser['email'])));
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) json_error('Enter a valid user email address.');
+
+    // Email is the login identity shared by every portal account type. Keep it
+    // globally unique so an edited staff account can never collide with a
+    // customer owner or customer team member in unified-login.
+    $emailCheck = db()->prepare(
+        'SELECT 1 FROM users WHERE LOWER(email) = ? AND id <> ? AND deleted_at IS NULL
+         UNION ALL SELECT 1 FROM customers WHERE LOWER(email) = ? AND deleted_at IS NULL
+         UNION ALL SELECT 1 FROM customer_users WHERE LOWER(email) = ?
+         LIMIT 1'
+    );
+    $emailCheck->execute([$email, $id, $email, $email]);
+    if ($emailCheck->fetch()) json_error('This email is already used by another portal account.', 409);
+
+    $currentAssignedCustomerId = $existingUser['assigned_customer_id'] ?: null;
     $assignedCustomerId = assigned_customer_for_role(
         $roleId,
         $b['assignedCustomerId'] ?? null,
         $currentAssignedCustomerId
     );
-    db()->prepare('UPDATE users SET name=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
-        ->execute([$name, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
+    db()->prepare('UPDATE users SET name=?, email=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
+        ->execute([$name, $email, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
     sync_extra_user_roles($id, $roleId, $roleIds);
-    log_activity($user, 'system-user-edited', 'user', $id, ['name' => $name]);
-    json_out(['ok' => true, 'message' => 'User role and access updated successfully.']);
+    clear_unified_login_lockout((string)$existingUser['email']);
+    clear_unified_login_lockout($email);
+    log_activity($user, 'system-user-edited', 'user', $id, [
+        'name' => $name,
+        'previousEmail' => $existingUser['email'],
+        'email' => $email,
+    ]);
+    json_out(['ok' => true, 'email' => $email, 'message' => 'User login, role and access updated successfully.']);
 }
 
 if ($method === 'PUT' && $action === 'reset-password') {
@@ -328,8 +358,8 @@ if ($method === 'PUT' && $action === 'reset-password') {
          RETURNING name, email, role_id'
     );
     $stmt->execute([
-        password_hash($newPassword, PASSWORD_BCRYPT),
-        password_hash($recoveryCode, PASSWORD_BCRYPT),
+        password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]),
+        password_hash($recoveryCode, PASSWORD_BCRYPT, ['cost' => 12]),
         $id,
     ]);
     $resetUser = $stmt->fetch();

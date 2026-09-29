@@ -39,6 +39,9 @@ jobs:
             node --check "$file"
           done < <(find frontend -type f -name '*.js' -print0)
 
+      - name: Validate account credential routes
+        run: node tests/account-credentials-route.test.js
+
       - name: Validate local HTML static assets
         shell: bash
         run: |

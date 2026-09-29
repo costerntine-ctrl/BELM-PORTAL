@@ -233,9 +233,9 @@
     renderUserRoleCheckboxes(user?.roleIds || (user?.role?.id ? [user.role.id] : []));
     document.getElementById("assignedCustomer").innerHTML = renderCustomerOptions(user?.assignedCustomer?.id || "");
     document.getElementById("userActive").checked = user ? Number(user.isActive) === 1 : true;
-    document.getElementById("emailField").classList.toggle("hidden", Boolean(user));
+    document.getElementById("emailField").classList.remove("hidden");
     document.getElementById("passwordField").classList.toggle("hidden", Boolean(user));
-    document.getElementById("userEmail").required = !user;
+    document.getElementById("userEmail").required = true;
     document.getElementById("userPassword").required = !user;
     document.getElementById("userFormAlert").className = "alert error hidden";
     updateCustomerField();
@@ -265,6 +265,7 @@
     const id = document.getElementById("userId").value;
     const payload = {
       name: document.getElementById("userName").value.trim(),
+      email: document.getElementById("userEmail").value.trim(),
       phone: document.getElementById("userPhone").value.trim(),
       roleIds: selectedUserRoleIds(),
       assignedCustomerId: document.getElementById("assignedCustomer").value || null,
@@ -275,7 +276,6 @@
       return;
     }
     if (!id) {
-      payload.email = document.getElementById("userEmail").value.trim();
       payload.password = document.getElementById("userPassword").value;
     } else {
       const confirmation = await window.belmConfirmEdit({
@@ -296,7 +296,7 @@
       document.getElementById("userDialog").close();
       await load();
       if (id) {
-        showAlert("User role and access changed successfully.");
+        showAlert("User login, role and access changed successfully.");
       } else {
         showUserCredentials(
           { name: payload.name, email: payload.email },

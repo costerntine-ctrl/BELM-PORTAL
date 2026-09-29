@@ -1597,14 +1597,17 @@ function clear_rate_limit(string $scope, string $identifier): void {
         ->execute([$scope, $identifier]);
 }
 
-// V349: password resets and credential repairs must immediately release any
-// stale unified-login lockout for that identity. Otherwise a user can reset
-// the password successfully and still be told the new password does not work
-// until the previous 15-minute failed-attempt window expires.
+// Password resets and credential repairs must immediately release stale
+// lockouts for both the canonical unified login and the legacy compatibility
+// endpoints. Otherwise a valid edited email/new password can remain blocked
+// by failed attempts made before the credential was repaired.
 function clear_unified_login_lockout(?string $email = null, ?string $portalLink = null): void {
     foreach ([$email, $portalLink] as $identifier) {
         $identifier = mb_strtolower(trim((string)$identifier));
-        if ($identifier !== '') clear_rate_limit('unified-login', $identifier);
+        if ($identifier === '') continue;
+        foreach (['unified-login', 'staff-login', 'customer-login'] as $scope) {
+            clear_rate_limit($scope, $identifier);
+        }
     }
 }
 

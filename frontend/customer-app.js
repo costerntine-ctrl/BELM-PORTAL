@@ -19,7 +19,6 @@
   const cancelLoginButton=document.getElementById('cancelLoginButton');
   let installPrompt=null;
   let loginPending=false;
-  let manualLoginIntent=false;
 
   async function fetchWithTimeout(url,options={},timeoutMs=70000,onSlow=null){
     const controller=new AbortController();
@@ -44,7 +43,7 @@
 
   async function loadContext(){
     if(isBelm){companyName.textContent=isTechBelm?'TECH@BELM':(slug==='belm'?'BELM General Tech':slug.toUpperCase());companyNote.textContent=isTechBelm?'BELM Technician workspace.':'BELM staff operations workspace.';chip.textContent=isTechBelm?'TECH@BELM':'@BELM STAFF';chip.hidden=false;return}
-    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='Saved or autofilled credentials will wait here. Press Continue, then Confirm Login before the password is submitted.';return}
+    if(!slug){companyName.textContent='BELM Portal Login';companyNote.textContent='One secure login for BELM staff, Technicians and customer teams.';hint.textContent='You can edit the email / portal ID and password at any time. Press Continue, then Confirm Login.';return}
     try{
       const res=await fetchWithTimeout('/api/auth/customer-context?customer='+encodeURIComponent(slug),{cache:'no-store'},70000);
       if(!res.ok)throw new Error('Customer app link was not found.');
@@ -99,40 +98,47 @@
     }
   }
 
-  const armManualLogin=event=>{if(event?.isTrusted)manualLoginIntent=true};
-  button.addEventListener('pointerdown',armManualLogin);
-  button.addEventListener('click',armManualLogin);
-  [email,password].forEach(input=>input.addEventListener('keydown',event=>{if(event.isTrusted&&event.key==='Enter')manualLoginIntent=true}));
+  function ensureEditable(){
+    [email,password].forEach(input=>{
+      if(!input)return;
+      input.disabled=false;
+      input.readOnly=false;
+      input.removeAttribute('disabled');
+      input.removeAttribute('readonly');
+      input.removeAttribute('aria-disabled');
+    });
+  }
+
+  ensureEditable();
+  [email,password].forEach(input=>{
+    input.addEventListener('input',clearError);
+    input.addEventListener('focus',ensureEditable);
+  });
 
   form.addEventListener('submit',event=>{
     event.preventDefault();
-    if(!event.isTrusted||!manualLoginIntent){
-      manualLoginIntent=false;
-      showError('Saved credentials are ready. Press Continue, then Confirm Login.');
-      return;
-    }
-    manualLoginIntent=false;
+    ensureEditable();
     requestLoginConfirmation();
   });
-  confirmLoginButton?.addEventListener('click',event=>{if(event.isTrusted)login()});
+  confirmLoginButton?.addEventListener('click',login);
   cancelLoginButton?.addEventListener('click',()=>{confirmDialog?.close();password.focus()});
   confirmDialog?.addEventListener('cancel',()=>setTimeout(()=>password.focus(),0));
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=801-manual-login-confirm').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=830-editable-login').catch(()=>{}))}
 
-  // V801: /login never resumes a saved portal session automatically. Browser
-  // password autofill may populate the fields, but sign-in requires a manual
-  // Continue action followed by a manual Confirm Login action.
+  // V830: login inputs must always remain user-editable, including after
+  // browser password autofill, Back/Forward cache restore and service-worker refresh.
   window.addEventListener('pageshow',()=>{
     loginPending=false;
-    manualLoginIntent=false;
+    ensureEditable();
     button.disabled=false;
     button.textContent='Continue';
     if(confirmLoginButton){confirmLoginButton.disabled=false;confirmLoginButton.textContent='Confirm Login';}
     if(confirmDialog?.open)confirmDialog.close();
   });
 
+  ensureEditable();
   loadContext();
 })();

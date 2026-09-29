@@ -10,7 +10,7 @@
   <title>BELM Portal — Sign in</title>
   <link rel="manifest" href="/belm-app.webmanifest" />
   <link rel="apple-touch-icon" href="/app-icon-192.png" />
-  <link rel="stylesheet" href="/customer-app.css?v=680-home-confirm-login" />
+  <link rel="stylesheet" href="/customer-app.css?v=830-editable-login" />
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
 <script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
@@ -30,7 +30,7 @@
     <section class="login-panel">
       <div class="customer-chip" id="customerChip" hidden></div>
       <h2>Sign in</h2>
-      <p class="subtext" id="loginHint">Saved or autofilled credentials will wait here until you confirm login.</p>
+      <p class="subtext" id="loginHint">You can edit the email / portal ID and password at any time. Press Continue, then Confirm Login.</p>
       <form id="loginForm" autocomplete="on">
         <label>Email / Customer Portal ID</label>
         <input id="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="name@company.com or company-id" />
@@ -58,7 +58,7 @@
           <p class="login-legal-note">You can expand or collapse this notice without leaving the sign-in page.</p>
         </div>
       </details>
-      <p class="privacy">If your password is saved by the browser, BELM will still wait for you to press <b>Continue</b> and then <b>Confirm Login</b>.</p>
+      <p class="privacy">Saved browser credentials may autofill these fields, but you can overwrite them before signing in.</p>
     </section>
   </main>
   <dialog id="loginConfirmDialog" class="login-confirm-dialog" aria-labelledby="loginConfirmTitle">
@@ -74,6 +74,6 @@
       </div>
     </div>
   </dialog>
-  <script src="/customer-app.js?v=801-manual-saved-password-confirm"></script>
+  <script src="/customer-app.js?v=830-editable-login"></script>
 </body>
 </html>

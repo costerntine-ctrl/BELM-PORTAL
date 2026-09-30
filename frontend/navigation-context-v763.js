@@ -26,6 +26,16 @@
     }
     return '';
   }
+  // V838: every Logout control ends the whole session. The sign-in page now
+  // reopens a still-valid session automatically, so a Logout link that only
+  // navigated to /login (without clearing tokens) must clear them here.
+  document.addEventListener('click',function(event){
+    const el=event.target&&event.target.closest&&event.target.closest('#logout,#logoutButton,.btn-logout,[data-customer-logout],[data-logout],a[href="/logout.php"]');
+    if(!el)return;
+    ['belm_customer_token','belm_tech_token','belm_tech_user','belm_admin_token','belm_admin_user','belm_operator_token','belm_active_account_type','belm_preview_token'].forEach(function(k){try{localStorage.removeItem(k)}catch(_){}});
+    if(el.tagName==='A'){event.preventDefault();location.replace('/login?signed_out=1')}
+  },true);
+
   const token=sessionToken();
   if(!token)return;
 

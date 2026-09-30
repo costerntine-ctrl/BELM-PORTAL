@@ -438,7 +438,7 @@
   function logout() {
     ["belm_customer_token","belm_tech_token","belm_tech_user","belm_admin_token","belm_admin_user","belm_operator_token","belm_active_account_type"].forEach((key)=>localStorage.removeItem(key));
     if (navigator.serviceWorker?.controller) navigator.serviceWorker.controller.postMessage({type:"CLEAR_BELM_CACHES"});
-    location.replace("/login");
+    location.replace("/login?signed_out=1");
   }
 
   function updateLiveClock(){

@@ -157,6 +157,38 @@
     if(confirmDialog?.open)confirmDialog.close();
   });
 
+  // V838: keep an active session signed in. Browser Back, reload, the installed
+  // app's start page (/login) or an old "/login" bookmark used to land on the
+  // sign-in form and look like a logout. If the active account still has a
+  // valid session, verify it with the server and reopen Home Dashboard.
+  // ?signed_out=1 (explicit logout) always shows the form.
+  async function resumeSession(){
+    const params=new URLSearchParams(location.search);
+    if(params.has('signed_out')||params.has('switch'))return false;
+    const keys={customer:'belm_customer_token',technician:'belm_tech_token',admin:'belm_admin_token',operator:'belm_operator_token'};
+    const active=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
+    const key=keys[active]||(active?'':['belm_admin_token','belm_tech_token','belm_customer_token','belm_operator_token'].find(k=>localStorage.getItem(k)));
+    const saved=key?localStorage.getItem(key)||'':'';
+    if(!saved)return false;
+    try{let raw=(saved.split('.')[1]||'').replace(/-/g,'+').replace(/_/g,'/');raw+='='.repeat((4-raw.length%4)%4);const p=JSON.parse(atob(raw));if(p.exp&&p.exp*1000<=Date.now()){localStorage.removeItem(key);return false}}catch(_){localStorage.removeItem(key);return false}
+    hint.textContent='Opening your Home Dashboard…';
+    try{
+      const res=await fetchWithTimeout('/api/my-profile',{cache:'no-store',headers:{Authorization:'Bearer '+saved}},15000);
+      if(res.ok){
+        // Loop guard: never bounce more than once in 15 s (e.g. a page that
+        // rejects this role and sends it back to /login).
+        let last=0;try{last=Number(sessionStorage.getItem('belm_login_resume_at')||0)}catch(_){}
+        if(Date.now()-last<15000){hint.textContent='You are still signed in. Sign in again to switch account, or open Home Dashboard.';return false}
+        try{sessionStorage.setItem('belm_login_resume_at',String(Date.now()))}catch(_){}
+        location.replace(key==='belm_operator_token'?'/operator/':'/portal-v2/');return true
+      }
+      if(res.status===401||res.status===403){localStorage.removeItem(key);if(key==='belm_admin_token')localStorage.removeItem('belm_admin_user');if(key==='belm_tech_token')localStorage.removeItem('belm_tech_user')}
+    }catch(_){}
+    hint.textContent='You can edit the email / portal ID and password at any time. Press Continue, then Confirm Login.';
+    return false;
+  }
+
   ensureEditable();
   loadContext();
+  resumeSession();
 })();

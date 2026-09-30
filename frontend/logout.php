@@ -4,6 +4,6 @@
 (function(){
   ["belm_customer_token","belm_tech_token","belm_tech_user","belm_admin_token","belm_admin_user","belm_operator_token","belm_active_account_type","belm_preview_token"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
   try{sessionStorage.clear();}catch(e){}
-  location.replace('/login');
+  location.replace('/login?signed_out=1');
 })();
 </script></body></html>

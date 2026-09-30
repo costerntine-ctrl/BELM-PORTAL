@@ -36,7 +36,11 @@
   </style>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-<script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
+<script src="/navigation-context-v763.js?v=763-role-flow"></script><script>
+// V838: a signed-in user opening the portal root goes straight to Home Dashboard.
+(function(){try{var keys={customer:'belm_customer_token',technician:'belm_tech_token',admin:'belm_admin_token',operator:'belm_operator_token'};var a=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();var k=keys[a];var t=k&&localStorage.getItem(k);if(!t)return;var r=(t.split('.')[1]||'').replace(/-/g,'+').replace(/_/g,'/');r+='='.repeat((4-r.length%4)%4);var p=JSON.parse(atob(r));if(p.exp&&p.exp*1000<=Date.now())return;location.replace('/login')}catch(e){}})();
+</script>
+</head>
 <body>
   <header>
     <div class="mark">B</div>

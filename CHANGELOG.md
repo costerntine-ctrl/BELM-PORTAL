@@ -1,5 +1,11 @@
 # BELM Portal — Change Log
 
+## Back / reload no longer looks like a logout (V838) — 30 Sep 2026
+
+- The sign-in page (and portal root `/`) now checks for a still-valid session, verifies it with the server and reopens Home Dashboard (Operators: their Operator screen). Browser Back, reload, the installed app's start page and old `/login` bookmarks no longer drop you on the sign-in form.
+- Logout is explicit: every Logout control clears all session tokens and opens `/login?signed_out=1`, which always shows the form. Expired or rejected sessions are cleared and the form is shown.
+- Loop guard: the sign-in page never auto-forwards twice within 15 seconds.
+
 ## Customer Overview machine list: stacked card / no scrolling (V837) — 30 Sep 2026
 
 - Each machine in Customer Overview → Machines showed as two stacked cards (older 30px padded, range-tinted frame around the new summary card). The summary is now a single card.

@@ -8,8 +8,8 @@
   const chip=document.getElementById('customerChip');
   const hint=document.getElementById('loginHint');
   const form=document.getElementById('loginForm');
-  let email=document.getElementById('email');
-  let password=document.getElementById('password');
+  const email=document.getElementById('email');
+  const password=document.getElementById('password');
   const passwordToggle=document.getElementById('loginPasswordToggle');
   const button=document.getElementById('loginButton');
   const errorBox=document.getElementById('errorBox');
@@ -110,49 +110,18 @@
     });
   }
 
-  function bindDirectEditing(input,kind){
+  function bindDirectEditing(input){
     if(!input||input.dataset.belmDirectEditBound==='1')return;
     input.dataset.belmDirectEditBound='1';
-    let detachTimer=null;
-    const detachAutofill=()=>{
-      detachTimer=null;
-      if(input.dataset.belmDirectEdit==='1'){ensureEditable();return}
-      if(!input.isConnected)return;
-      const keepFocus=document.activeElement===input;
-      const clone=input.cloneNode(true);
-      clone.value=input.value;
-      clone.defaultValue=input.defaultValue;
-      clone.removeAttribute('data-belm-direct-edit-bound');
-      clone.dataset.belmDirectEdit='1';
-      clone.removeAttribute('disabled');
-      clone.removeAttribute('readonly');
-      clone.removeAttribute('aria-disabled');
-      clone.setAttribute('autocomplete','off');
-      input.replaceWith(clone);
-      if(kind==='email')email=clone;else password=clone;
-      bindDirectEditing(clone,kind);
-      if(keepFocus)queueMicrotask(()=>{
-        clone.focus({preventScroll:true});
-        try{clone.setSelectionRange(clone.value.length,clone.value.length)}catch(_err){}
-      });
-    };
-    const scheduleDetach=()=>{
-      ensureEditable();
-      if(input.dataset.belmDirectEdit==='1'||detachTimer!==null)return;
-      detachTimer=setTimeout(detachAutofill,0);
-    };
-    input.addEventListener('input',()=>{clearError();scheduleDetach()});
-    input.addEventListener('pointerdown',scheduleDetach,{capture:true});
-    input.addEventListener('touchstart',scheduleDetach,{capture:true,passive:true});
-    input.addEventListener('focus',scheduleDetach,{capture:true});
-    ['keydown','beforeinput'].forEach(type=>{
+    input.addEventListener('input',clearError);
+    ['pointerdown','mousedown','touchstart','focus','keydown','beforeinput','animationstart'].forEach(type=>{
       input.addEventListener(type,ensureEditable,{capture:true});
     });
   }
 
   ensureEditable();
-  bindDirectEditing(email,'email');
-  bindDirectEditing(password,'password');
+  bindDirectEditing(email);
+  bindDirectEditing(password);
 
   form.addEventListener('submit',event=>{
     event.preventDefault();
@@ -176,9 +145,9 @@
     navigator.serviceWorker.getRegistrations().then(registrations=>Promise.all(registrations.map(registration=>registration.unregister()))).catch(()=>{});
   })}
 
-  // V833: Chrome/Edge may keep an autofilled control bound to Password Manager.
-  // After the first focus/input task completes, preserve its value in a fresh native
-  // input and detach that editing copy from autofill without losing the active cursor.
+  // V834: credential fields remain the exact native inputs parsed from HTML.
+  // Never clone, re-parent or replace them: Chrome/Edge Password Manager retains a
+  // stable target while each mouse, keyboard and autofill event confirms editability.
   window.addEventListener('pageshow',()=>{
     loginPending=false;
     ensureEditable();

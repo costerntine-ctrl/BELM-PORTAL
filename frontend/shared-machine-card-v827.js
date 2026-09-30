@@ -17,6 +17,12 @@
     .belm-shared-machine-card-v827.belm-shared-summary-open>*:not(.belm-shared-summary-v827){display:none!important}
     .belm-shared-machine-card-v827.belm-shared-detail-open>.belm-shared-summary-v827{display:none!important}
     .belm-shared-machine-card-v827.belm-shared-detail-open{padding:18px!important;min-height:0!important}
+    /* V837: in Customer Overview the older #machineListDialog card rules
+       (30px padding + range-tinted background) wrapped the summary in a
+       second frame, so each machine looked like two stacked cards. The
+       summary is now one card; the range colour stays as the top accent. */
+    html:not(#belm-v837) #machineListDialog .machine-card.belm-shared-machine-card-v827.belm-shared-summary-open{padding:0!important;overflow:hidden!important;border:1px solid #1b3a57!important;background:#071526!important;box-shadow:0 12px 30px rgba(0,0,0,.24)!important;min-height:0!important;height:auto!important}
+    html:not(#belm-v837) #machineListDialog .machine-card.belm-shared-machine-card-v827.belm-shared-summary-open>.belm-shared-summary-v827{min-height:0!important;padding-top:24px!important}
     .belm-shared-summary-v827{display:flex;flex-direction:column;min-height:680px;padding:18px;box-sizing:border-box;background:linear-gradient(180deg,#0b213a 0%,#071526 54%,#050d16 100%);color:#eef5ff}
     .belm-shared-head-v827{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
     .belm-shared-fleet-v827{display:inline-flex;padding:7px 10px;border-radius:9px;background:#061324;border:1px solid #1a3857;color:#e5f01a;font:900 14px/1.1 Inter,Arial,sans-serif;letter-spacing:.02em}

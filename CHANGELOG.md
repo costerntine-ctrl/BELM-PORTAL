@@ -1,5 +1,10 @@
 # BELM Portal — Change Log
 
+## Customer Overview machine list: stacked card / no scrolling (V837) — 30 Sep 2026
+
+- Each machine in Customer Overview → Machines showed as two stacked cards (older 30px padded, range-tinted frame around the new summary card). The summary is now a single card.
+- The machine list can always scroll: `vh` fallbacks added before `dvh`, the dialog scrolls itself if the card is ever taller than the window, and touch/trackpad panning is allowed.
+
 ## General Report opened the login page (V836) — 30 Sep 2026
 
 - BELM Main Dashboard → **General Report** was rewritten by the shared My Reports navigation to `/general-report/`, which is the customer machine-report page. It found no customer session and redirected to `/login`. Super Admin's General Report now opens the BELM report centre `/reports-manager/?module=reports` (General Report — All Departments).

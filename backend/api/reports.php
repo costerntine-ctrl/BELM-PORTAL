@@ -1,5 +1,9 @@
 <?php
+/**
+ * V845: Reports API with Role-Based Access Control
+ */
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/../config/report-access.php';
 
 $user = require_auth();
 $method = $_SERVER['REQUEST_METHOD'];
@@ -7,6 +11,10 @@ $action = $_GET['action'] ?? '';
 
 if ($action === 'all-overview') {
     require_page_access($user, 'overview');
+    // Check if user can access all-overview report
+    if (!can_access_report($user, 'all-overview')) {
+        json_error('Access denied to overview report', 403);
+    }
 } else {
     require_page_access($user, 'reports');
 }
@@ -169,6 +177,7 @@ function grouped_counts(string $sql, array $params = []): array {
 }
 
 if ($action === 'summary' && $method === 'GET') {
+    // Summary is accessible to all authenticated users
     $customers = (int)db()->query('SELECT COUNT(*) FROM customers WHERE deleted_at IS NULL')->fetchColumn();
     $machines = (int)db()->query('SELECT COUNT(*) FROM machines WHERE deleted_at IS NULL')->fetchColumn();
     $openRequests = (int)db()->query("SELECT COUNT(*) FROM service_requests WHERE status IN ('OPEN','ASSIGNED','IN_PROGRESS')")->fetchColumn();
@@ -181,6 +190,11 @@ if ($action === 'summary' && $method === 'GET') {
 }
 
 if ($action === 'company-financials' && $method === 'GET') {
+    // V845: Check role-based access for financial reports
+    if (!can_access_report($user, 'company-financials')) {
+        json_error('Access denied to financial reports', 403);
+    }
+
     $bounds = report_bounds();
     json_out([
         ...financial_slice($bounds['from'], $bounds['to']),
@@ -345,6 +359,11 @@ if ($action === 'all-overview' && $method === 'GET') {
 }
 
 if ($action === 'analytics' && $method === 'GET') {
+    // V845: Check role-based access for analytics reports
+    if (!can_access_report($user, 'analytics')) {
+        json_error('Access denied to analytics reports', 403);
+    }
+
     $bounds = report_bounds();
     $current = financial_slice($bounds['from'], $bounds['to']);
     $previous = financial_slice($bounds['previousFrom'], $bounds['previousTo']);

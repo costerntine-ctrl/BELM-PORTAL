@@ -23,7 +23,28 @@ $format = trim($data['format'] ?? '');
 $dateFrom = trim($data['dateFrom'] ?? '');
 $dateTo = trim($data['dateTo'] ?? '');
 $fileData = $data['fileData'] ?? '';
-$roleName = trim($data['roleName'] ?? '');
+$roleName = trim((string)($data['roleName'] ?? ''));
+$effectiveRole = belm_report_role_key($user);
+$submittedRole = strtolower(trim($roleName));
+$submittedAliases = [
+    'admin' => 'super_admin',
+    'belm_admin' => 'super_admin',
+    'super_admin' => 'super_admin',
+    'customer' => 'customer_admin',
+    'owner' => 'customer_admin',
+    'customer_admin' => 'customer_admin',
+    'finance' => 'finance_accounts',
+    'accounts' => 'finance_accounts',
+];
+$submittedRoleKey = $submittedAliases[$submittedRole] ?? $submittedRole;
+$isGeneralRole = in_array($submittedRole, ['general', 'general_report', 'general report'], true);
+if (!$isGeneralRole && $submittedRoleKey !== strtolower($effectiveRole)) {
+    json_error('You can only save reports belonging to your own role.', 403);
+}
+if ($isGeneralRole) {
+    require_general_report_access($user);
+    $roleName = 'general';
+}
 
 // Validate inputs
 if (!$title) {

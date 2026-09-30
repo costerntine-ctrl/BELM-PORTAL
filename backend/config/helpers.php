@@ -577,6 +577,53 @@ function require_auth(): array {
 // Checks the logged-in user's role allows a given dashboard page — mirrors
 // the static-site / Node backend's allowedPages model. Super Admin (null
 // allowedPages) always passes.
+/**
+ * Report access policy. Report menus are convenience only; every report API
+ * must enforce the same role boundary on the server.
+ *
+ * BELM Admin is represented by the Super Admin role. Customer means the
+ * customer owner/admin account, not a customer assistant/department role.
+ */
+function belm_report_role_key(array $user): string {
+    if (($user['type'] ?? '') === 'customer') {
+        $customerRole = strtolower(trim((string)($user['customerRole'] ?? 'owner')));
+        if (in_array($customerRole, ['owner', 'admin', 'customer_admin'], true)) return 'customer_admin';
+        return preg_replace('/[^a-z0-9]+/', '_', $customerRole) ?: 'customer';
+    }
+
+    $role = trim((string)($user['roleName'] ?? ''));
+    $aliases = [
+        'Super Admin' => 'super_admin',
+        'Workshop Manager' => 'workshop_manager',
+        'Engineer' => 'workshop_manager',
+        'Technician' => 'technician',
+        'Procurement' => 'procurement',
+        'Store Keeper' => 'store_keeper',
+        'Registration & Sales' => 'registration_sales',
+        'Finance / Accounts' => 'finance_accounts',
+        'Bank Controller' => 'bank_controller',
+        'System Coordinator' => 'system_coordinator',
+    ];
+    return $aliases[$role] ?? (preg_replace('/[^a-z0-9]+/i', '_', strtolower($role)) ?: 'unknown');
+}
+
+function belm_can_view_general_report(array $user): bool {
+    return in_array(belm_report_role_key($user), ['super_admin', 'customer_admin'], true);
+}
+
+function require_general_report_access(array $user): void {
+    if (!belm_can_view_general_report($user)) {
+        json_error('General Report is available only to BELM Admin and Customer.', 403);
+    }
+}
+
+function require_role_report_access(array $user, string $roleKey): void {
+    $actual = belm_report_role_key($user);
+    if ($actual !== $roleKey && !($roleKey === 'customer_admin' && $actual === 'customer_admin')) {
+        json_error('This report is not available for your role.', 403);
+    }
+}
+
 function require_page_access(array $user, string $pageKey): void {
     if ($user['roleName'] === 'Super Admin') return;
     $allowed = $user['allowedPages'] ?? [];

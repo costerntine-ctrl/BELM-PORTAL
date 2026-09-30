@@ -11,10 +11,7 @@ $action = $_GET['action'] ?? '';
 
 if ($action === 'all-overview') {
     require_page_access($user, 'overview');
-    // Check if user can access all-overview report
-    if (!can_access_report($user, 'all-overview')) {
-        json_error('Access denied to overview report', 403);
-    }
+    require_general_report_access($user);
 } else {
     require_page_access($user, 'reports');
 }

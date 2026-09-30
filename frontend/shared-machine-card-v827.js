@@ -41,7 +41,7 @@
     .belm-shared-visual-v827.has-photo{padding:0;background:#eef2f6}
     .belm-shared-visual-v827 img{display:block;width:100%;height:100%;max-height:215px;object-fit:contain;object-position:center;background:#eef2f6}
     .belm-shared-visual-v827 span{max-width:90%;font:900 22px/1.15 Inter,Arial,sans-serif;color:#fff}
-    .belm-shared-summary-v827 h3{margin:0 0 6px!important;color:#fff!important;font:900 22px/1.15 Inter,Arial,sans-serif!important;overflow-wrap:anywhere}
+    .belm-shared-summary-v827 h3{margin:0 0 5px!important;color:#fff!important;font:900 22px/1.15 Inter,Arial,sans-serif!important;overflow-wrap:anywhere}
     .belm-shared-meta-v827{min-height:30px;margin:0!important;color:#a9bfd8!important;font-size:12px!important;line-height:1.45!important}
     .belm-shared-facts-v827{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:12px;border-top:1px dashed rgba(164,188,215,.24);border-bottom:1px dashed rgba(164,188,215,.24)}
     .belm-shared-fact-v827{min-width:0;padding:11px 6px}

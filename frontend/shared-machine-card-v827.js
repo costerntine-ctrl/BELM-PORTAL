@@ -15,8 +15,6 @@
     .belm-shared-machine-card-v827.belm-shared-level-green{--belm-shared-level:#20b85d}
     .belm-shared-machine-card-v827.belm-shared-level-neutral{--belm-shared-level:#73879c}
     .belm-shared-machine-card-v827.belm-shared-summary-open>*:not(.belm-shared-summary-v827){display:none!important}
-    .belm-shared-machine-card-v827.belm-shared-detail-open>.belm-shared-summary-v827{display:none!important}
-    .belm-shared-machine-card-v827.belm-shared-detail-open{padding:18px!important;min-height:0!important}
     /* V837: in Customer Overview the older #machineListDialog card rules
        (30px padding + range-tinted background) wrapped the summary in a
        second frame, so each machine looked like two stacked cards. The
@@ -52,11 +50,21 @@
     .belm-shared-primary-v827{border:1px solid #30445c;background:#07111d;color:#f2f5f8}
     .belm-shared-primary-v827:disabled{opacity:.45;cursor:not-allowed}
     .belm-shared-view-v827{border:1px solid #ffda00;background:#ffdf00;color:#07111d}
-    .belm-shared-back-v827{display:none;align-items:center;justify-content:center;width:100%;margin:0 0 12px;padding:9px 12px;border:1px solid #2d7bc2;border-radius:9px;background:#0b3358;color:#fff;font-weight:900;cursor:pointer}
-    .belm-shared-detail-open>.belm-shared-back-v827{display:flex!important}
-    .belm-shared-single-detail-v827>.belm-shared-machine-card-v827:not(.belm-shared-detail-open){display:none!important}
-    .belm-shared-single-detail-v827>.belm-shared-machine-card-v827.belm-shared-detail-open{width:100%!important;max-width:none!important;grid-column:1/-1!important}
-    @media(max-width:760px){.belm-shared-machine-card-v827{min-height:0!important}.belm-shared-summary-v827{min-height:0}.belm-shared-facts-v827{grid-template-columns:1fr 1fr}.belm-shared-actions-v827{grid-template-columns:1fr 1.25fr}}
+    .belm-shared-view-v827[aria-expanded="true"]{filter:brightness(.92);box-shadow:inset 0 0 0 2px rgba(7,17,29,.18)}
+    .belm-shared-action-panel-v838{display:grid;gap:14px;margin-top:15px;padding-top:15px;border-top:1px solid rgba(125,159,193,.24)}
+    .belm-shared-action-panel-v838[hidden]{display:none!important}
+    .belm-shared-action-group-v838{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:10px}
+    .belm-shared-action-panel-v838 button{display:flex;align-items:center;justify-content:center;gap:9px;min-height:54px;padding:10px 12px;border:1px solid #294966;border-radius:12px;background:#10263b;color:#eef5ff;font:900 12px/1.2 Inter,Arial,sans-serif;cursor:pointer;transition:filter .15s ease,transform .15s ease}
+    .belm-shared-action-panel-v838 button:hover{filter:brightness(1.12);transform:translateY(-1px)}
+    .belm-shared-action-panel-v838 button:focus-visible{outline:3px solid rgba(255,223,0,.5);outline-offset:2px}
+    .belm-shared-action-icon-v838{color:#42e36f;font-size:17px;line-height:1}
+    .belm-shared-action-job-v838{border-color:#8c52e8!important;background:linear-gradient(135deg,#7650df,#8a38df)!important}
+    .belm-shared-action-job-v838 .belm-shared-action-icon-v838{color:#fff}
+    .belm-shared-action-edit-v838{border-color:#62aef2!important}
+    .belm-shared-action-delete-v838,.belm-shared-action-forget-v838{border-color:#ff4545!important}
+    @media(max-width:760px){.belm-shared-machine-card-v827{min-height:0!important}.belm-shared-summary-v827{min-height:0}.belm-shared-facts-v827{grid-template-columns:1fr 1fr}.belm-shared-actions-v827{grid-template-columns:1fr 1.25fr}.belm-shared-action-group-v838{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:380px){.belm-shared-action-group-v838{grid-template-columns:1fr}}
+    @media(prefers-reduced-motion:reduce){.belm-shared-action-panel-v838 button{transition:none}.belm-shared-action-panel-v838 button:hover{transform:none}}
   `;
   document.head.appendChild(style);
 
@@ -137,6 +145,67 @@
     return r==='admin'?'Create Job Card':r==='technician'?'Job Card':'Job Card';
   }
 
+  const actionDefinitions=[
+    {key:'report',label:'Report',icon:'▤',group:'workflow',selectors:['[data-view-reports]','[data-customer-report-menu]','[data-operator-report-menu]','.belm-technician-report-link','.report'],pattern:/^Report(?: Issue)?$/i},
+    {key:'checkup',label:'Check Up',icon:'✓',group:'workflow',selectors:['[data-checkup]','[data-customer-checkup]','[data-tech-checkup-machine]','.check'],pattern:/^Check[ -]?Up$/i},
+    {key:'parts',label:'Service Parts',icon:'⚙',group:'workflow',selectors:['[data-service-parts]','[data-tech-service-parts-machine]','.parts'],pattern:/^Service Parts$/i},
+    {key:'job',label:'Job Card',icon:'▣',group:'workflow',selectors:['[data-tech-jobcards-machine]','.belm-maintenance-process-link','.jobs'],pattern:/^(?:Create )?(?:Machine )?Job Cards?$/i},
+    {key:'edit',label:'Edit Machine',icon:'',group:'management',selectors:['[data-edit-machine]','[data-customer-edit-machine]'],pattern:/^Edit Machine$/i},
+    {key:'delete',label:'Delete Machine',icon:'',group:'management',selectors:['[data-delete-machine]','[data-customer-delete-machine]'],pattern:/^Delete Machine$/i},
+    {key:'forget',label:'Forget Permanently',icon:'',group:'management',selectors:['[data-forget-machine]','[data-customer-forget-machine]'],pattern:/^Forget Permanently$/i}
+  ];
+
+  function sourceActions(card){
+    return [...card.querySelectorAll('a,button,[role="button"]')].filter(el=>!el.closest('.belm-shared-summary-v827'));
+  }
+
+  function isAllowedAction(el){
+    if(!el||el.disabled||el.hidden||el.getAttribute('aria-disabled')==='true')return false;
+    if(el.style.display==='none'||el.style.visibility==='hidden')return false;
+    return !el.closest('[hidden]');
+  }
+
+  function findAction(card,definition){
+    const nodes=sourceActions(card);
+    for(const selector of definition.selectors){
+      const match=nodes.find(el=>el.matches(selector)&&isAllowedAction(el));
+      if(match)return match;
+    }
+    return nodes.find(el=>definition.pattern.test(txt(el))&&isAllowedAction(el))||null;
+  }
+
+  function syncActionPanel(card,summary){
+    const panel=summary.querySelector('.belm-shared-action-panel-v838');
+    if(!panel)return;
+    const available=actionDefinitions.map(definition=>({definition,target:findAction(card,definition)})).filter(item=>item.target);
+    const actionKey=available.map(item=>item.definition.key).join(' ');
+    if(panel.dataset.availableActions===actionKey)return;
+    for(const group of ['workflow','management']){
+      const host=panel.querySelector(`[data-shared-action-group="${group}"]`);
+      const items=available.filter(item=>item.definition.group===group);
+      host.hidden=!items.length;
+      host.replaceChildren(...items.map(({definition})=>{
+        const button=document.createElement('button');
+        button.type='button';
+        button.className=`belm-shared-action-${definition.key}-v838`;
+        button.dataset.sharedAction=definition.key;
+        button.innerHTML=(definition.icon?`<span class="belm-shared-action-icon-v838" aria-hidden="true">${definition.icon}</span>`:'')+`<span>${definition.label}</span>`;
+        button.addEventListener('click',event=>{
+          event.preventDefault();event.stopPropagation();
+          const currentTarget=findAction(card,definition);
+          if(currentTarget)currentTarget.click();
+        });
+        return button;
+      }));
+    }
+    panel.dataset.availableActions=actionKey;
+    if(!available.length){
+      panel.hidden=true;
+      const toggle=summary.querySelector('.belm-shared-view-v827');
+      toggle.setAttribute('aria-expanded','false');
+    }
+  }
+
   function sync(card,summary){
     const level=machineLevel(card),a=activity(card);
     card.classList.remove('belm-shared-level-red','belm-shared-level-yellow','belm-shared-level-green','belm-shared-level-neutral');
@@ -155,6 +224,7 @@
     visual.innerHTML=src?'<img src="'+esc(src)+'" alt="Machine photo">':'<span>'+esc(title(card))+'</span>';
     const primary=summary.querySelector('.belm-shared-primary-v827');
     primary.textContent=primaryLabel();primary.disabled=!findPrimary(card);
+    syncActionPanel(card,summary);
   }
 
   function enhance(card){
@@ -164,8 +234,8 @@
     card.dataset.belmSharedCard827='1';
     card.classList.add('belm-shared-machine-card-v827','belm-shared-summary-open');
 
-    const back=document.createElement('button');back.type='button';back.className='belm-shared-back-v827';back.textContent='← Back to Machine Card';
     const summary=document.createElement('section');summary.className='belm-shared-summary-v827';
+    const panelId=`belm-shared-action-panel-${Math.random().toString(36).slice(2,10)}`;
     summary.innerHTML=`
       <div class="belm-shared-head-v827"><span class="belm-shared-fleet-v827" data-shared-fleet>—</span><span class="belm-shared-activity-v827" data-shared-activity>Working</span></div>
       <div class="belm-shared-visual-v827"><span>Machine</span></div>
@@ -179,8 +249,12 @@
       </div>
       <div class="belm-shared-service-v827" data-shared-service>Service due: not available</div>
       <div class="belm-shared-bar-v827"><i></i></div>
-      <div class="belm-shared-actions-v827"><button type="button" class="belm-shared-primary-v827">Job Card</button><button type="button" class="belm-shared-view-v827">View Details</button></div>`;
-    card.prepend(back);card.prepend(summary);
+      <div class="belm-shared-actions-v827"><button type="button" class="belm-shared-primary-v827">Job Card</button><button type="button" class="belm-shared-view-v827" aria-expanded="false" aria-controls="${panelId}">View Details</button></div>
+      <div class="belm-shared-action-panel-v838" id="${panelId}" hidden>
+        <div class="belm-shared-action-group-v838" data-shared-action-group="workflow"></div>
+        <div class="belm-shared-action-group-v838" data-shared-action-group="management"></div>
+      </div>`;
+    card.prepend(summary);
 
     summary.querySelector('.belm-shared-primary-v827').addEventListener('click',e=>{
       e.preventDefault();e.stopPropagation();
@@ -188,13 +262,11 @@
     });
     summary.querySelector('.belm-shared-view-v827').addEventListener('click',e=>{
       e.preventDefault();e.stopPropagation();
-      const list=closestList(card);
-      if(list){list.querySelectorAll('.belm-shared-detail-open').forEach(other=>{if(other!==card){other.classList.remove('belm-shared-detail-open');other.classList.add('belm-shared-summary-open')}});list.classList.add('belm-shared-single-detail-v827')}
-      card.classList.remove('belm-shared-summary-open');card.classList.add('belm-shared-detail-open');card.scrollIntoView({behavior:'smooth',block:'start'});
-    });
-    back.addEventListener('click',e=>{
-      e.preventDefault();e.stopPropagation();
-      const list=closestList(card);card.classList.remove('belm-shared-detail-open');card.classList.add('belm-shared-summary-open');if(list)list.classList.remove('belm-shared-single-detail-v827');card.scrollIntoView({behavior:'smooth',block:'nearest'});
+      const button=e.currentTarget,panel=summary.querySelector('.belm-shared-action-panel-v838');
+      syncActionPanel(card,summary);
+      const open=button.getAttribute('aria-expanded')==='true';
+      button.setAttribute('aria-expanded',String(!open));
+      panel.hidden=open;
     });
     sync(card,summary);
   }
@@ -206,7 +278,7 @@
   let timer=0;
   const queue=()=>{clearTimeout(timer);timer=setTimeout(scan,80)};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',scan,{once:true});else scan();
-  new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','src','value']});
+  new MutationObserver(queue).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','src','value','style','hidden','disabled','aria-disabled']});
   window.addEventListener('belm-customer-activity-status-changed',queue);
   window.addEventListener('belm-technician-data-changed',queue);
   setTimeout(scan,500);setTimeout(scan,1600);

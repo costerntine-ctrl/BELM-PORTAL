@@ -20,8 +20,9 @@ assert.doesNotMatch(html, /<script[^>]+password-visibility\.js/, "login must not
 assert.match(js, /const clone=input\.cloneNode\(true\)/, "first edit must detach the control from a sticky password-manager binding");
 assert.match(js, /clone\.value=input\.value/, "detaching autofill must preserve the browser-filled credential");
 assert.match(js, /clone\.setAttribute\('autocomplete','off'\)/, "the direct-edit copy must not be immediately reclaimed by autofill");
-assert.match(js, /input\.addEventListener\('pointerdown',detachAutofill/, "mouse editing must detach autofill before the click completes");
-assert.match(js, /input\.addEventListener\('focus',detachAutofill/, "keyboard focus editing must detach autofill");
+assert.match(js, /detachTimer=setTimeout\(detachAutofill,0\)/, "detaching must wait until the browser focus/input action completes");
+assert.match(js, /input\.addEventListener\('pointerdown',scheduleDetach/, "mouse editing must schedule autofill detachment");
+assert.match(js, /input\.addEventListener\('focus',scheduleDetach/, "keyboard focus editing must schedule autofill detachment");
 assert.match(js, /getRegistrations\(\)[\s\S]*unregister\(\)/, "login must retire old service workers after loading the network-only build");
 assert.match(js, /form\.addEventListener\('submit'[\s\S]*requestLoginConfirmation\(\)/, "two-step login confirmation must remain in place");
 assert.match(js, /confirmLoginButton\?\.addEventListener\('click',login\)/, "credentials must only be submitted from Confirm Login");

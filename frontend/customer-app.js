@@ -113,9 +113,12 @@
   function bindDirectEditing(input,kind){
     if(!input||input.dataset.belmDirectEditBound==='1')return;
     input.dataset.belmDirectEditBound='1';
-    input.addEventListener('input',clearError);
+    let detachTimer=null;
     const detachAutofill=()=>{
+      detachTimer=null;
       if(input.dataset.belmDirectEdit==='1'){ensureEditable();return}
+      if(!input.isConnected)return;
+      const keepFocus=document.activeElement===input;
       const clone=input.cloneNode(true);
       clone.value=input.value;
       clone.defaultValue=input.defaultValue;
@@ -128,14 +131,20 @@
       input.replaceWith(clone);
       if(kind==='email')email=clone;else password=clone;
       bindDirectEditing(clone,kind);
-      queueMicrotask(()=>{
+      if(keepFocus)queueMicrotask(()=>{
         clone.focus({preventScroll:true});
         try{clone.setSelectionRange(clone.value.length,clone.value.length)}catch(_err){}
       });
     };
-    input.addEventListener('pointerdown',detachAutofill,{capture:true});
-    input.addEventListener('touchstart',detachAutofill,{capture:true,passive:true});
-    input.addEventListener('focus',detachAutofill,{capture:true});
+    const scheduleDetach=()=>{
+      ensureEditable();
+      if(input.dataset.belmDirectEdit==='1'||detachTimer!==null)return;
+      detachTimer=setTimeout(detachAutofill,0);
+    };
+    input.addEventListener('input',()=>{clearError();scheduleDetach()});
+    input.addEventListener('pointerdown',scheduleDetach,{capture:true});
+    input.addEventListener('touchstart',scheduleDetach,{capture:true,passive:true});
+    input.addEventListener('focus',scheduleDetach,{capture:true});
     ['keydown','beforeinput'].forEach(type=>{
       input.addEventListener(type,ensureEditable,{capture:true});
     });
@@ -167,9 +176,9 @@
     navigator.serviceWorker.getRegistrations().then(registrations=>Promise.all(registrations.map(registration=>registration.unregister()))).catch(()=>{});
   })}
 
-  // V832: Chrome/Edge may keep an autofilled control bound to Password Manager.
-  // On the first user focus, preserve its value in a fresh native input and detach
-  // that editing copy from autofill so mouse/keyboard changes cannot be overwritten.
+  // V833: Chrome/Edge may keep an autofilled control bound to Password Manager.
+  // After the first focus/input task completes, preserve its value in a fresh native
+  // input and detach that editing copy from autofill without losing the active cursor.
   window.addEventListener('pageshow',()=>{
     loginPending=false;
     ensureEditable();

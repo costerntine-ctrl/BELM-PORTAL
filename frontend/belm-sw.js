@@ -1,6 +1,6 @@
 // BELM portal service worker — V730 canonical shared Home Dashboard.
 // API and login stay network-only. Cache only the common Home shell.
-const CACHE='belm-portal-v831-native-editable-login';
+const CACHE='belm-portal-v832-chrome-direct-edit';
 const SHELL=[
   '/belm-watermark.jpg',
   '/portal-v2/index.html?v=730-shared-home',

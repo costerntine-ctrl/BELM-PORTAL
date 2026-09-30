@@ -8,8 +8,9 @@
   const chip=document.getElementById('customerChip');
   const hint=document.getElementById('loginHint');
   const form=document.getElementById('loginForm');
-  const email=document.getElementById('email');
-  const password=document.getElementById('password');
+  let email=document.getElementById('email');
+  let password=document.getElementById('password');
+  const passwordToggle=document.getElementById('loginPasswordToggle');
   const button=document.getElementById('loginButton');
   const errorBox=document.getElementById('errorBox');
   const installButton=document.getElementById('installButton');
@@ -109,15 +110,40 @@
     });
   }
 
-  ensureEditable();
-  const editableAttributes=new MutationObserver(ensureEditable);
-  [email,password].forEach(input=>{
-    editableAttributes.observe(input,{attributes:true,attributeFilter:['disabled','readonly','aria-disabled']});
+  function bindDirectEditing(input,kind){
+    if(!input||input.dataset.belmDirectEditBound==='1')return;
+    input.dataset.belmDirectEditBound='1';
     input.addEventListener('input',clearError);
-    ['pointerdown','mousedown','touchstart','focus','keydown','beforeinput'].forEach(type=>{
-      input.addEventListener(type,ensureEditable,{capture:true,passive:type==='touchstart'});
+    const detachAutofill=()=>{
+      if(input.dataset.belmDirectEdit==='1'){ensureEditable();return}
+      const clone=input.cloneNode(true);
+      clone.value=input.value;
+      clone.defaultValue=input.defaultValue;
+      clone.removeAttribute('data-belm-direct-edit-bound');
+      clone.dataset.belmDirectEdit='1';
+      clone.removeAttribute('disabled');
+      clone.removeAttribute('readonly');
+      clone.removeAttribute('aria-disabled');
+      clone.setAttribute('autocomplete','off');
+      input.replaceWith(clone);
+      if(kind==='email')email=clone;else password=clone;
+      bindDirectEditing(clone,kind);
+      queueMicrotask(()=>{
+        clone.focus({preventScroll:true});
+        try{clone.setSelectionRange(clone.value.length,clone.value.length)}catch(_err){}
+      });
+    };
+    input.addEventListener('pointerdown',detachAutofill,{capture:true});
+    input.addEventListener('touchstart',detachAutofill,{capture:true,passive:true});
+    input.addEventListener('focus',detachAutofill,{capture:true});
+    ['keydown','beforeinput'].forEach(type=>{
+      input.addEventListener(type,ensureEditable,{capture:true});
     });
-  });
+  }
+
+  ensureEditable();
+  bindDirectEditing(email,'email');
+  bindDirectEditing(password,'password');
 
   form.addEventListener('submit',event=>{
     event.preventDefault();
@@ -127,13 +153,23 @@
   confirmLoginButton?.addEventListener('click',login);
   cancelLoginButton?.addEventListener('click',()=>{confirmDialog?.close();password.focus()});
   confirmDialog?.addEventListener('cancel',()=>setTimeout(()=>password.focus(),0));
+  passwordToggle?.addEventListener('click',()=>{
+    const show=password.type==='password';
+    password.type=show?'text':'password';
+    passwordToggle.setAttribute('aria-label',show?'Hide password or PIN':'Show password or PIN');
+    password.focus({preventScroll:true});
+  });
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=831-native-editable-login').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>{
+    navigator.serviceWorker.controller?.postMessage({type:'CLEAR_BELM_CACHES'});
+    navigator.serviceWorker.getRegistrations().then(registrations=>Promise.all(registrations.map(registration=>registration.unregister()))).catch(()=>{});
+  })}
 
-  // V831: login inputs remain native, enabled text controls before every mouse,
-  // touch or keyboard edit, including after password-manager autofill and BFCache restore.
+  // V832: Chrome/Edge may keep an autofilled control bound to Password Manager.
+  // On the first user focus, preserve its value in a fresh native input and detach
+  // that editing copy from autofill so mouse/keyboard changes cannot be overwritten.
   window.addEventListener('pageshow',()=>{
     loginPending=false;
     ensureEditable();

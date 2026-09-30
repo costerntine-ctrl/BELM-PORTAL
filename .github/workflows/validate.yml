@@ -45,6 +45,9 @@ jobs:
       - name: Validate dynamically loaded modules
         run: node tests/dynamic-script-readiness.test.js
 
+      - name: Validate reports API routing
+        run: node tests/reports-route.test.js
+
       - name: Validate local HTML static assets
         shell: bash
         run: |

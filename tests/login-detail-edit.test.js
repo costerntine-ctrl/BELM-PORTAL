@@ -59,3 +59,10 @@ assert.match(customerRouting, /function setText\(el,value\)\{if\(el&&el\.textCon
 assert.doesNotMatch(loginHtml, /navigation-context-v763\.js/, "login page must not load dashboard navigation runtime");
 
 console.log("Login detail edit contract passed.");
+
+// V836: BELM Super Admin's General Report must open the BELM report centre,
+// never the customer-only /general-report/ page (which redirected to /login).
+const gr = read("frontend/general-report/index.html");
+assert.match(roleReportNav, /isCustomer\?'\/general-report\/':'\/reports-manager\/\?module=reports'/, "staff General Report must route to the BELM report centre");
+assert.match(gr, /belm_admin_token'\)\?'\/reports-manager\/\?module=reports':'\/login'/, "customer report page must send a BELM session to the BELM report centre, not login");
+console.log("General Report routing contract passed.");

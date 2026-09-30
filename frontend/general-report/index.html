@@ -85,7 +85,7 @@
     const techToken=localStorage.getItem('belm_tech_token')||'';
     const activeType=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();
     const token=activeType==='technician'?(techToken||customerToken):(customerToken||techToken);
-    if(!token){location.replace('/login');return}
+    if(!token){location.replace((localStorage.getItem('belm_admin_token')?'/reports-manager/?module=reports':'/login'));return}
     const $=x=>document.getElementById(x);let machines=[];
     function tokenRole(){try{let raw=(token.split('.')[1]||'').replace(/-/g,'+').replace(/_/g,'/');raw+='='.repeat((4-raw.length%4)%4);const p=JSON.parse(decodeURIComponent(Array.from(atob(raw)).map(c=>'%'+c.charCodeAt(0).toString(16).padStart(2,'0')).join(''))),r=String(p.customerRole||(p.actorType==='owner'?'owner':'')).toLowerCase(),a={owner:'customer_admin',admin:'customer_admin',customer_admin:'customer_admin',workshop_manager:'workshop_manager',technician:'technician',operator:'operator',procurement:'procurement',store_keeper:'store_keeper',accounts:'accounts',finance:'accounts',accountant:'accounts'};return a[r]||'customer_admin'}catch(_){return'customer_admin'}}
     const reportRole=tokenRole(),roleReportTypes={customer_admin:['checklist','fuel','operator','technician','job-card','procurement','store','service','breakdown','operator-checkup'],workshop_manager:['checklist','operator','technician','job-card','procurement','store','service','breakdown','operator-checkup'],technician:['checklist','operator','technician','job-card','service','breakdown'],operator:['fuel','operator','service','operator-checkup'],procurement:['procurement','store'],store_keeper:['store','procurement'],accounts:[]};

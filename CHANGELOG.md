@@ -1,5 +1,11 @@
 # BELM Portal — Change Log
 
+## General Report opened the login page (V836) — 30 Sep 2026
+
+- BELM Main Dashboard → **General Report** was rewritten by the shared My Reports navigation to `/general-report/`, which is the customer machine-report page. It found no customer session and redirected to `/login`. Super Admin's General Report now opens the BELM report centre `/reports-manager/?module=reports` (General Report — All Departments).
+- If a BELM staff session reaches a customer-only report page, it is now sent to the BELM report centre instead of the login page.
+- Customer dashboards no longer show two General Report links.
+
 ## Login details editing repair (V835) — 30 Sep 2026
 
 **Staff / BELM side**

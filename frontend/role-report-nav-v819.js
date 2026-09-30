@@ -28,6 +28,10 @@
   // writes re-triggered this script's own MutationObserver (and other role
   // scripts' observers) every frame, which snowballed until Chrome reported the
   // page unresponsive - e.g. Customer Roles & Users froze while editing logins.
+  // V836: role-correct General Report destinations.
+  function generalReportHref(){
+    return isCustomer?'/general-report/':'/reports-manager/?module=reports';
+  }
   function setAttr(el,name,value){if(el.getAttribute(name)!==value)el.setAttribute(name,value)}
   function setData(el,key,value){if(el.dataset[key]!==value)el.dataset[key]=value}
   function labelAnchor(a,label){
@@ -53,7 +57,10 @@
         const isGeneral=/general-report/i.test(href)||/^general report$/i.test(text);
         if(isGeneral){
           if(isAdmin&&adminHome){
-            setAttr(a,'href','/general-report/');
+            // V836: BELM Super Admin's General Report is the consolidated BELM
+            // report centre. /general-report/ is the CUSTOMER machine-report
+            // page; it has no BELM session, so it sent Super Admin to /login.
+            setAttr(a,'href',generalReportHref());
             labelAnchor(a,'General Report');
             setData(a,'reportScope','general-admin');
           }else{
@@ -102,6 +109,8 @@
         return a.dataset.reportScope==='role'||/my reports/i.test(text)||/\/role-reports\/?(?:$|[?#])/.test(href);
       });
       reportLinks.slice(1).forEach(a=>a.remove());
+      // V836: keep one General Report link (dashboard + shared nav could both add one).
+      Array.from(nav.querySelectorAll('a[href]')).filter(a=>a.dataset.reportScope==='general-admin').slice(1).forEach(a=>a.remove());
 
       if(role==='technician'&&!isCustomer){
         Array.from(nav.querySelectorAll('a[href]')).forEach(a=>{
@@ -132,7 +141,7 @@
 
       if(isAdmin&&adminHome&&!Array.from(nav.querySelectorAll('a')).some(a=>a.dataset.reportScope==='general-admin'||/^general report$/i.test(String(a.textContent||'').trim()))){
         const a=document.createElement('a');
-        a.href='/general-report/';
+        a.href=generalReportHref();
         a.dataset.reportScope='general-admin';
         const sample=nav.querySelector('a');
         a.className=sample?.classList.contains('nav-item')?'nav-item':'belm-nav__item';

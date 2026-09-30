@@ -1,5 +1,5 @@
 (function(){'use strict';
- const token=localStorage.getItem('belm_customer_token')||localStorage.getItem('belm_tech_token')||localStorage.getItem('belm_operator_token')||'';if(!token){location.replace('/login');return}
+ const token=localStorage.getItem('belm_customer_token')||localStorage.getItem('belm_tech_token')||localStorage.getItem('belm_operator_token')||'';if(!token){location.replace((localStorage.getItem('belm_admin_token')?'/reports-manager/?module=reports':'/login'));return}
  const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const c=(tag,title,desc,href)=>({tag,title,desc,href});
  const sections=[

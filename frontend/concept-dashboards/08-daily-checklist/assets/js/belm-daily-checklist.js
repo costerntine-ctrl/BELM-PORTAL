@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+function bootDailyChecklist() {
   var shell = document.getElementById('belmShell');
   var sidebarToggle = document.getElementById('sidebarToggle');
   var themeToggle = document.getElementById('themeToggle');
@@ -124,4 +124,10 @@ document.addEventListener('DOMContentLoaded', function () {
     var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download='BELM-Daily-Checklist-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
   };
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootDailyChecklist, { once: true });
+} else {
+  bootDailyChecklist();
+}

@@ -126,7 +126,7 @@
   }
 
   async function load(){if(preview){rebuildWorkflow();return;}apply(await api());}
-  document.addEventListener('DOMContentLoaded',()=>{
+  function boot(){
     rebuildWorkflow();
     load().catch(e=>{
       const body=document.querySelector('.belm-table tbody');
@@ -134,5 +134,7 @@
       console.warn('Inspection/Repair Job Card sync:',e);
     });
     setInterval(()=>load().catch(()=>{}),30000);
-  });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
 })();

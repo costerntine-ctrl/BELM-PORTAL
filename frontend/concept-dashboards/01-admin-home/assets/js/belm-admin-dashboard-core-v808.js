@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function () {
+function bootAdminDashboardCore() {
   var shell = document.getElementById('belmShell');
   var sidebarToggle = document.getElementById('sidebarToggle');
   var themeToggle = document.getElementById('themeToggle');
@@ -238,4 +238,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   setTimeout(syncFleetMessages, 900);
   setInterval(syncFleetMessages, 120000);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootAdminDashboardCore, { once: true });
+} else {
+  bootAdminDashboardCore();
+}

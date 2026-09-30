@@ -307,31 +307,6 @@ async function api(path, options = {}) {
 
   setDefaultDates();
   const initialParams = new URLSearchParams(window.location.search);
-  async function loadSavedReports() {
-    try {
-      const response = await fetch("/api/saved-reports.php?action=list&limit=100");
-      const data = await response.json();
-      const grid = document.getElementById("savedReportsGrid");
-      if (!grid) return;
-      if (!data.reports || data.reports.length === 0) {
-        grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:var(--muted,#718096)">No saved reports yet. Saved reports from all departments will appear here.</div>';
-        return;
-      }
-      grid.innerHTML = data.reports.map(r => {
-        const date = new Date(r.createdAt).toLocaleDateString();
-        const size = (r.size / 1024).toFixed(1) + "KB";
-        const title = escapeHtml(r.title);
-        const format = r.format.toUpperCase();
-        const role = escapeHtml(r.role);
-        return `<a class="department-card" href="${r.downloadUrl}" download style="text-decoration:none"><span class="department-card__icon">${format === "PDF" ? "📄" : "📊"}</span><h3>${title}</h3><p style="font-size:11px">${format} · ${size}<br>${role} · ${date}</p><strong>Download →</strong></a>`;
-      }).join("");
-    } catch (e) {
-      console.error("Error loading saved reports:", e);
-      const grid = document.getElementById("savedReportsGrid");
-      if (grid) grid.innerHTML = '<div style="grid-column:1/-1;padding:20px;text-align:center;color:#dc3e4d">Error loading saved reports</div>';
-    }
-  }
-
   const initialFrom = initialParams.get("dateFrom") || "";
   const initialTo = initialParams.get("dateTo") || "";
   if (initialFrom || initialTo) {
@@ -343,7 +318,6 @@ async function api(path, options = {}) {
   }
   loadReport();
   loadAttendance();
-  loadSavedReports();
 
   // V221 live reconciliation: refresh when the manager returns to this page
   // and periodically while it stays open. The API remains no-store.

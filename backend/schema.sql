@@ -1771,30 +1771,3 @@ CREATE TABLE IF NOT EXISTS role_communication_reads (
 );
 CREATE INDEX IF NOT EXISTS idx_role_communication_reads_reader
   ON role_communication_reads(reader_key, read_at DESC);
-
--- V841: Saved/archived reports from each role with PDF/CSV export storage
-CREATE TABLE IF NOT EXISTS saved_reports (
-  id VARCHAR(36) PRIMARY KEY,
-  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  customer_id VARCHAR(36) NULL REFERENCES customers(id) ON DELETE CASCADE,
-  report_title VARCHAR(255) NOT NULL,
-  report_type VARCHAR(60) NOT NULL,
-  report_date_from DATE NULL,
-  report_date_to DATE NULL,
-  role_name VARCHAR(100) NOT NULL,
-  file_format VARCHAR(10) NOT NULL CHECK (file_format IN ('pdf','csv')),
-  file_size INTEGER NOT NULL,
-  file_data BYTEA NOT NULL,
-  file_hash VARCHAR(64) NULL,
-  metadata JSONB NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_saved_reports_user_created
-  ON saved_reports(user_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_saved_reports_customer_created
-  ON saved_reports(customer_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_saved_reports_role_created
-  ON saved_reports(role_name, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_saved_reports_type_created
-  ON saved_reports(report_type, created_at DESC);

@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Access Applications — BELM Operations Portal</title>
-  <link rel="stylesheet" href="/admin-applications/admin.css?v=840-no-sidebar">
+  <link rel="stylesheet" href="/admin-applications/admin.css?v=708-registration-sidebar">
+  <link rel="stylesheet" href="/admin-sidebar.css?v=710-supplied-dashboards-live">
   <link rel="stylesheet" href="/theme-global.css?v=485-display-fit">
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
@@ -19,15 +20,16 @@
   <main>
     <div class="heading">
       <div><p>PORTAL ONBOARDING</p><h1>Registration & role approval</h1><span>Customers and users remain blocked until you approve and assign their access.</span></div>
-      <!-- V840: This page no longer injects the global admin sidebar. Keep its
-           registration actions visible here so no workflow is lost. -->
-      <div class="heading-actions registration-page-actions-bridge" aria-label="Registration actions">
-        <button class="secondary" id="registerCustomerButton" type="button">+ Register customer</button>
-        <button class="secondary" id="registerTechnicianButton" type="button">+ Register technician</button>
-        <button class="secondary" id="addMachineButton" type="button">+ Add machine</button>
-        <a class="secondary" href="/roles-manager/?open=addRole">+ Add role</a>
-        <a class="secondary" href="/roles-manager/?open=addUser">+ Add system user</a>
-        <button class="refresh" id="refreshButton" type="button">Refresh</button>
+      <!-- V708: Registration actions moved to the Registration sidebar submenu.
+           Keep these controls in the DOM (hidden) so the existing tested dialog/event
+           handlers remain the single source of truth. -->
+      <div class="heading-actions registration-page-actions-bridge" hidden aria-hidden="true">
+        <button class="secondary" id="registerCustomerButton" type="button" tabindex="-1">+ Register customer</button>
+        <button class="secondary" id="registerTechnicianButton" type="button" tabindex="-1">+ Register technician</button>
+        <button class="secondary" id="addMachineButton" type="button" tabindex="-1">+ Add machine</button>
+        <a class="secondary" href="/roles-manager/?open=addRole" tabindex="-1">+ Add role</a>
+        <a class="secondary" href="/roles-manager/?open=addUser" tabindex="-1">+ Add system user</a>
+        <button class="refresh" id="refreshButton" type="button" tabindex="-1">Refresh</button>
       </div>
     </div>
 
@@ -380,6 +382,7 @@
   </dialog>
 
   <script src="/admin-access.js?v=411-job-card-only"></script>
+  <script src="/admin-sidebar.js?v=712-workshop-manager-role"></script>
   <script src="/edit-confirm.js?v=835-login-detail-edit"></script>
   <script src="/delete-confirm.js?v=469-customer-control"></script>
   <script src="/admin-applications/admin.js?v=820-account-credential-edit"></script>

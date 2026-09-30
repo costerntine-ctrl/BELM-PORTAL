@@ -103,6 +103,14 @@
     if (doc.__belmMachineActionSyncInstalled) return;
     doc.__belmMachineActionSyncInstalled = true;
 
+    // The shared card grows in place when View Details reveals the
+    // role-allowed actions. Resize the same-origin frame immediately so the
+    // parent page remains the single vertical scroll surface.
+    doc.defaultView.addEventListener('belm:machine-card-toggle', function () {
+      window.setTimeout(function () { resizeFrame(doc); }, 40);
+      window.setTimeout(function () { resizeFrame(doc); }, 260);
+    });
+
     // The embedded Customer Overview already owns Report, Check Up,
     // Service Parts, Edit, Delete, Forget and Activity Status handlers.
     // Keep those canonical handlers intact; only bridge navigation and
@@ -168,7 +176,7 @@
       var style = doc.createElement('style');
       style.id = 'belm-direct-machines-style';
       style.textContent = [
-        'html,body{background:transparent!important;overflow:hidden!important;}',
+        'html,body{background:transparent!important;min-height:0!important;height:auto!important;overflow:hidden!important;}',
         'body>header.topbar,main.shell{display:none!important;}',
         '#machineListDialog{width:100%!important;max-width:none!important;max-height:none!important;height:auto!important;margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important;}',
         '#machineListDialog::backdrop{background:transparent!important;}',

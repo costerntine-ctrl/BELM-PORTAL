@@ -110,9 +110,13 @@
   }
 
   ensureEditable();
+  const editableAttributes=new MutationObserver(ensureEditable);
   [email,password].forEach(input=>{
+    editableAttributes.observe(input,{attributes:true,attributeFilter:['disabled','readonly','aria-disabled']});
     input.addEventListener('input',clearError);
-    input.addEventListener('focus',ensureEditable);
+    ['pointerdown','mousedown','touchstart','focus','keydown','beforeinput'].forEach(type=>{
+      input.addEventListener(type,ensureEditable,{capture:true,passive:type==='touchstart'});
+    });
   });
 
   form.addEventListener('submit',event=>{
@@ -126,10 +130,10 @@
 
   window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;installButton.hidden=false});
   installButton.addEventListener('click',async()=>{if(!installPrompt)return;installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;installButton.hidden=true});
-  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=830-editable-login').catch(()=>{}))}
+  if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/belm-sw.js?v=831-native-editable-login').catch(()=>{}))}
 
-  // V830: login inputs must always remain user-editable, including after
-  // browser password autofill, Back/Forward cache restore and service-worker refresh.
+  // V831: login inputs remain native, enabled text controls before every mouse,
+  // touch or keyboard edit, including after password-manager autofill and BFCache restore.
   window.addEventListener('pageshow',()=>{
     loginPending=false;
     ensureEditable();

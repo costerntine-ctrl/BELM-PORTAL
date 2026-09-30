@@ -1,12 +1,7 @@
 // BELM portal service worker — V730 canonical shared Home Dashboard.
-// API stays network-only. Cache only the common login + common Home shell to avoid stale/overlapping role pages.
-const CACHE='belm-portal-v830-editable-login';
+// API and login stay network-only. Cache only the common Home shell.
+const CACHE='belm-portal-v831-native-editable-login';
 const SHELL=[
-  '/customer-app.html?v=830-editable-login',
-  '/customer-app.css?v=830-editable-login',
-  '/customer-app.js?v=830-editable-login',
-  '/password-visibility.css?v=209-eye-toggle',
-  '/password-visibility.js?v=209-eye-toggle',
   '/belm-watermark.jpg',
   '/portal-v2/index.html?v=730-shared-home',
   '/portal-v2/landing.css?v=730-shared-home',
@@ -33,8 +28,14 @@ self.addEventListener('fetch',event=>{
   if(url.pathname.startsWith('/api/'))return;
   const isLoginShell=event.request.mode==='navigate'&&(url.pathname==='/login'||url.pathname==='/login/'||url.pathname==='/customer-app.html');
   const isSharedHome=event.request.mode==='navigate'&&(url.pathname==='/portal-v2'||url.pathname==='/portal-v2/'||url.pathname==='/portal-v2/index.html');
-  if(isLoginShell||isSharedHome){
-    const cacheKey=isLoginShell?'/customer-app.html':'/portal-v2/index.html';
+  if(isLoginShell){
+    // Credential pages are never served from Cache Storage. In particular, an
+    // installed/PWA browser must not keep an older input or autofill handler alive.
+    event.respondWith(fetch(event.request,{cache:'no-store'}).catch(()=>new Response(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>BELM - Connection interrupted</title><body style="margin:0;font-family:Arial,sans-serif;background:#071827;color:#fff;padding:32px"><main style="max-width:520px;margin:12vh auto"><h2>Connection interrupted</h2><p>Reconnect, then reload the sign-in page.</p></main></body>`,{status:503,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}})));
+    return;
+  }
+  if(isSharedHome){
+    const cacheKey='/portal-v2/index.html';
     const refresh=fetch(event.request,{cache:'no-store'}).then(async response=>{
       if(response&&response.ok){const copy=response.clone();await caches.open(CACHE).then(cache=>cache.put(cacheKey,copy));}
       return response;

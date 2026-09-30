@@ -10,9 +10,9 @@
   <title>BELM Portal — Sign in</title>
   <link rel="manifest" href="/belm-app.webmanifest" />
   <link rel="apple-touch-icon" href="/app-icon-192.png" />
-  <link rel="stylesheet" href="/customer-app.css?v=830-editable-login" />
-  <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
-  <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
+  <link rel="stylesheet" href="/customer-app.css?v=831-native-editable-login" />
+  <link rel="stylesheet" href="/password-visibility.css?v=210-stable-input">
+  <script defer src="/password-visibility.js?v=210-stable-input"></script>
 <script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
 <body>
   <main class="app-shell">
@@ -32,10 +32,10 @@
       <h2>Sign in</h2>
       <p class="subtext" id="loginHint">You can edit the email / portal ID and password at any time. Press Continue, then Confirm Login.</p>
       <form id="loginForm" autocomplete="on">
-        <label>Email / Customer Portal ID</label>
+        <label for="email">Email / Customer Portal ID</label>
         <input id="email" type="text" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required placeholder="name@company.com or company-id" />
-        <label>Password</label>
-        <input id="password" type="password" autocomplete="current-password" required placeholder="Password" />
+        <label for="password">Password</label>
+        <span class="belm-secret-field"><input id="password" type="password" autocomplete="current-password" required placeholder="Password" /></span>
         <button id="loginButton" class="primary" type="submit">Continue</button>
       </form>
       <div id="errorBox" class="error" hidden></div>
@@ -74,6 +74,6 @@
       </div>
     </div>
   </dialog>
-  <script src="/customer-app.js?v=830-editable-login"></script>
+  <script src="/customer-app.js?v=831-native-editable-login"></script>
 </body>
 </html>

@@ -2,7 +2,10 @@
   function enhance(input){
     if(!(input instanceof HTMLInputElement)||input.dataset.belmEyeReady==='1'||input.type!=='password')return;
     input.dataset.belmEyeReady='1';
-    const wrap=document.createElement('span');wrap.className='belm-secret-field';input.parentNode.insertBefore(wrap,input);wrap.appendChild(input);
+    let wrap=input.parentElement;
+    if(!wrap?.classList.contains('belm-secret-field')){
+      wrap=document.createElement('span');wrap.className='belm-secret-field';input.parentNode.insertBefore(wrap,input);wrap.appendChild(input);
+    }
     const button=document.createElement('button');button.type='button';button.className='belm-secret-toggle';button.setAttribute('aria-label','Show password or PIN');button.textContent='◉';wrap.appendChild(button);
     button.addEventListener('click',()=>{const show=input.type==='password';input.type=show?'text':'password';button.setAttribute('aria-label',show?'Hide password or PIN':'Show password or PIN');button.title=show?'Hide':'Show';input.focus({preventScroll:true});});
   }

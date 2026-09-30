@@ -30,29 +30,29 @@
     .belm-shared-machine-card-v827.belm-shared-level-green{--belm-shared-level:#20b85d}
     .belm-shared-machine-card-v827.belm-shared-level-neutral{--belm-shared-level:#73879c}
     .belm-shared-native-v838{display:none!important}
-    .belm-shared-summary-v827{display:flex!important;flex-direction:column!important;min-height:680px!important;padding:30px 22px 20px!important;box-sizing:border-box!important;border-radius:20px!important;background:linear-gradient(180deg,#0b213a 0%,#071526 54%,#050d16 100%)!important;color:#eef5ff!important;text-align:left!important}
-    .belm-shared-head-v827{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px}
+    .belm-shared-summary-v827{display:flex!important;flex-direction:column!important;min-height:0!important;padding:22px 18px 16px!important;box-sizing:border-box!important;border-radius:20px!important;background:linear-gradient(180deg,#0b213a 0%,#071526 54%,#050d16 100%)!important;color:#eef5ff!important;text-align:left!important}
+    .belm-shared-head-v827{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
     .belm-shared-fleet-v827{display:inline-flex;padding:8px 12px;border-radius:10px;background:#061324;border:1px solid #1a3857;color:#ecf619;font:900 16px/1.1 Inter,Arial,sans-serif;letter-spacing:.02em}
     .belm-shared-activity-v827{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#182536;border:1px solid #36485e;color:#f4f7fb;font:800 12px/1 Inter,Arial,sans-serif}
     .belm-shared-activity-v827::before{content:'';width:9px;height:9px;border-radius:50%;background:#16c45b;box-shadow:0 0 10px rgba(22,196,91,.65)}
     .belm-shared-activity-v827.is-progress::before{background:#f2c400;box-shadow:0 0 10px rgba(242,196,0,.55)}
     .belm-shared-activity-v827.is-grounded::before{background:#ef4343;box-shadow:0 0 10px rgba(239,67,67,.65)}
-    .belm-shared-visual-v827{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:16/10;min-height:180px;max-height:305px;margin:0 0 20px;padding:22px;overflow:hidden;box-sizing:border-box;border:1px solid #1a334e;border-radius:15px;background:radial-gradient(circle at 50% 38%,#173a5f 0,#0c223b 48%,#071526 100%);text-align:center}
+    .belm-shared-visual-v827{display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:16/7;min-height:135px;max-height:215px;margin:0 0 14px;padding:16px;overflow:hidden;box-sizing:border-box;border:1px solid #1a334e;border-radius:15px;background:radial-gradient(circle at 50% 38%,#173a5f 0,#0c223b 48%,#071526 100%);text-align:center}
     .belm-shared-visual-v827.has-photo{padding:0;background:#eef2f6}
-    .belm-shared-visual-v827 img{display:block;width:100%;height:100%;max-height:305px;object-fit:contain;object-position:center;background:#eef2f6}
+    .belm-shared-visual-v827 img{display:block;width:100%;height:100%;max-height:215px;object-fit:contain;object-position:center;background:#eef2f6}
     .belm-shared-visual-v827 span{max-width:90%;font:900 22px/1.15 Inter,Arial,sans-serif;color:#fff}
-    .belm-shared-summary-v827 h3{margin:0 0 6px!important;color:#fff!important;font:900 25px/1.15 Inter,Arial,sans-serif!important;overflow-wrap:anywhere}
+    .belm-shared-summary-v827 h3{margin:0 0 6px!important;color:#fff!important;font:900 22px/1.15 Inter,Arial,sans-serif!important;overflow-wrap:anywhere}
     .belm-shared-meta-v827{min-height:30px;margin:0!important;color:#a9bfd8!important;font-size:12px!important;line-height:1.45!important}
-    .belm-shared-facts-v827{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:16px;border-top:1px dashed rgba(164,188,215,.24);border-bottom:1px dashed rgba(164,188,215,.24)}
-    .belm-shared-fact-v827{min-width:0;padding:14px 6px}
+    .belm-shared-facts-v827{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:12px;border-top:1px dashed rgba(164,188,215,.24);border-bottom:1px dashed rgba(164,188,215,.24)}
+    .belm-shared-fact-v827{min-width:0;padding:11px 6px}
     .belm-shared-fact-v827:nth-child(odd){padding-right:12px}.belm-shared-fact-v827:nth-child(even){padding-left:12px}
     .belm-shared-fact-v827 span{display:block;margin-bottom:5px;color:#88a5c5;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.04em}
     .belm-shared-fact-v827 b{display:block;color:#f5f7fa;font-size:13px;line-height:1.4;overflow-wrap:anywhere}
     .belm-shared-alert-v827{margin:7px 4px 7px 7px!important;padding:11px!important;border:1px solid #29425c;border-radius:11px;background:rgba(8,25,42,.72)}
     .belm-shared-level-red .belm-shared-alert-v827{border-color:#ef4d43;background:rgba(115,23,27,.24)}
     .belm-shared-level-yellow .belm-shared-alert-v827{border-color:#f0c300;background:rgba(111,87,5,.22)}
-    .belm-shared-service-v827{margin-top:15px;color:#b5c8da;font-size:12px;line-height:1.4}
-    .belm-shared-bar-v827{height:6px;margin:11px 0 20px;border-radius:999px;background:#142439;overflow:hidden}
+    .belm-shared-service-v827{margin-top:11px;color:#b5c8da;font-size:12px;line-height:1.4}
+    .belm-shared-bar-v827{height:6px;margin:9px 0 14px;border-radius:999px;background:#142439;overflow:hidden}
     .belm-shared-bar-v827 i{display:block;width:72%;height:100%;border-radius:inherit;background:var(--belm-shared-level)}
     .belm-shared-actions-v827{display:grid;grid-template-columns:1fr 1.25fr;gap:11px;margin-top:auto}
     .belm-shared-actions-v827 button{min-height:50px;padding:10px 12px;border-radius:11px;font:900 12px Inter,Arial,sans-serif;cursor:pointer}
@@ -77,7 +77,7 @@
     #machineListDialog{height:100dvh!important;max-height:100dvh!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important}
     #machineListDialog>.dialog-card,#machineListDialog .dialog-card{height:auto!important;min-height:100%!important;max-height:none!important;overflow:visible!important}
     dialog:has(.belm-shared-machine-card-v827),.op-checkup-dialog,#techMachineReportsDialog{max-height:calc(100dvh - 24px)!important;overflow-y:auto!important;overscroll-behavior:contain!important}
-    @media(max-width:760px){.belm-shared-summary-v827{min-height:0!important;padding:25px 14px 15px!important}.belm-shared-visual-v827{min-height:150px;max-height:245px}.belm-shared-facts-v827{grid-template-columns:1fr}.belm-shared-fact-v827,.belm-shared-fact-v827:nth-child(odd),.belm-shared-fact-v827:nth-child(even){padding:11px 4px}.belm-shared-alert-v827{margin:0 0 8px!important}.belm-shared-actions-v827{grid-template-columns:1fr 1.2fr}.belm-shared-drawer-v838{padding:0 14px 15px}.belm-shared-action-grid-v838{grid-template-columns:1fr}}
+    @media(max-width:760px){.belm-shared-summary-v827{min-height:0!important;padding:18px 14px 14px!important}.belm-shared-visual-v827{min-height:125px;max-height:190px}.belm-shared-facts-v827{grid-template-columns:1fr}.belm-shared-fact-v827,.belm-shared-fact-v827:nth-child(odd),.belm-shared-fact-v827:nth-child(even){padding:9px 4px}.belm-shared-alert-v827{margin:0 0 8px!important}.belm-shared-actions-v827{grid-template-columns:1fr 1.2fr}.belm-shared-drawer-v838{padding:0 14px 15px}.belm-shared-action-grid-v838{grid-template-columns:1fr}}
   `;
   document.head.appendChild(style);
 
@@ -207,7 +207,7 @@
     }
   }
 
-  function sync(card) {
+  function sync(card) { captureLateNativeChildren(card);
     const summary = card.querySelector(':scope>.belm-shared-summary-v827');
     const drawer = card.querySelector(':scope>.belm-shared-drawer-v838');
     if (!summary || !drawer) return;
@@ -247,9 +247,9 @@
     renderDrawer(card, drawer, actions, primary);
   }
 
-  function enhance(card) {
-    if (!card || card.dataset.belmSharedCard838 === '1' || card.closest('.belm-shared-native-v838')) return;
-    if (card.parentElement?.closest(CARD_SELECTOR)) return;
+  function captureLateNativeChildren(card) { const native = card.querySelector(':scope>.belm-shared-native-v838'); const summary = card.querySelector(':scope>.belm-shared-summary-v827'); const drawer = card.querySelector(':scope>.belm-shared-drawer-v838'); if (!native || !summary || !drawer) return false; Array.from(card.childNodes).forEach((node) => { if (node !== native && node !== summary && node !== drawer) native.appendChild(node); }); return true; } function enhance(card) {
+    if (!card || card.closest('.belm-shared-native-v838')) return;
+    if (card.parentElement?.closest(CARD_SELECTOR)) return; if (card.dataset.belmSharedCard838 === '1') { if (captureLateNativeChildren(card)) return; const staleNative = card.querySelector(':scope>.belm-shared-native-v838'); const staleSummary = card.querySelector(':scope>.belm-shared-summary-v827'); const staleDrawer = card.querySelector(':scope>.belm-shared-drawer-v838'); if (staleNative) { while (staleNative.firstChild) card.insertBefore(staleNative.firstChild, staleNative); staleNative.remove(); } staleSummary?.remove(); staleDrawer?.remove(); delete card.dataset.belmSharedCard838; card.classList.remove('belm-shared-machine-card-v827', 'belm-shared-actions-open'); }
     const native = document.createElement('div');
     native.className = 'belm-shared-native-v838';
     native.hidden = true;

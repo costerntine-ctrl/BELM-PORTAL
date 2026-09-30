@@ -13,16 +13,16 @@
   if(!token)return;
 
   const css=`
-    .belm-machine-photo-box{position:relative;width:100%;height:70px;margin:8px 0 10px;border:1px solid rgba(72,126,178,.38);border-radius:12px;overflow:hidden;background:linear-gradient(145deg,#0b2138,#102f4d);display:grid;place-items:center}
+    .belm-machine-photo-box{position:relative;width:100%;height:118px;margin:10px 0 12px;border:1px solid rgba(72,126,178,.38);border-radius:12px;overflow:hidden;background:linear-gradient(145deg,#0b2138,#102f4d);display:grid;place-items:center}
     .belm-machine-photo-box img{width:100%;height:100%;object-fit:cover;display:block}
-    .belm-machine-photo-placeholder{padding:8px;text-align:center;color:#9fb7ce;font:800 10px/1.3 Inter,Arial,sans-serif;letter-spacing:.03em}
-    .belm-machine-photo-actions{position:absolute;right:6px;bottom:6px;display:flex;gap:5px;z-index:2}
-    .belm-machine-photo-actions button{border:1px solid rgba(255,255,255,.36);border-radius:7px;background:rgba(3,18,33,.88);color:#fff;padding:4px 8px;font:800 8px Inter,Arial,sans-serif;cursor:pointer;backdrop-filter:blur(5px)}
+    .belm-machine-photo-placeholder{padding:12px;text-align:center;color:#9fb7ce;font:800 11px/1.3 Inter,Arial,sans-serif;letter-spacing:.03em}
+    .belm-machine-photo-actions{position:absolute;right:7px;bottom:7px;display:flex;gap:6px;z-index:2}
+    .belm-machine-photo-actions button{border:1px solid rgba(255,255,255,.36);border-radius:8px;background:rgba(3,18,33,.88);color:#fff;padding:6px 9px;font:800 9px Inter,Arial,sans-serif;cursor:pointer;backdrop-filter:blur(5px)}
     .belm-machine-photo-actions button:hover{background:#0c67a3}.belm-machine-photo-actions button:disabled{opacity:.55;cursor:wait}
-    .belm-machine-photo-box.is-loading:after{content:'Loading…';position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,20,35,.72);color:#fff;font:800 9px Inter,Arial,sans-serif}
-    .belm-machine-photo-box.is-saving:after{content:'Saving…';position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,20,35,.78);color:#fff;font:800 9px Inter,Arial,sans-serif}
-    .belm-machine-summary-visual.belm-has-machine-photo{padding:0!important;overflow:hidden!important;min-height:100px!important}.belm-machine-summary-visual.belm-has-machine-photo>span{display:none!important}.belm-machine-summary-visual .belm-machine-summary-photo{width:100%;height:100%;min-height:100px;object-fit:cover;display:block}
-    @media(max-width:600px){.belm-machine-photo-box{height:60px;margin:6px 0 8px}.belm-machine-photo-placeholder{padding:6px;font-size:9px}.belm-machine-photo-actions button{padding:3px 6px;font-size:7px;border-radius:6px}.belm-machine-summary-visual .belm-machine-summary-photo{min-height:80px}}
+    .belm-machine-photo-box.is-loading:after{content:'Loading photo…';position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,20,35,.72);color:#fff;font:800 10px Inter,Arial,sans-serif}
+    .belm-machine-photo-box.is-saving:after{content:'Saving photo…';position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,20,35,.78);color:#fff;font:800 10px Inter,Arial,sans-serif}
+    .belm-machine-summary-visual.belm-has-machine-photo{padding:0!important;overflow:hidden!important;min-height:160px!important}.belm-machine-summary-visual.belm-has-machine-photo>span{display:none!important}.belm-machine-summary-visual .belm-machine-summary-photo{width:100%;height:100%;min-height:160px;object-fit:cover;display:block}
+    @media(max-width:600px){.belm-machine-photo-box{height:104px}.belm-machine-photo-actions button{min-height:34px;padding:6px 8px}.belm-machine-summary-visual .belm-machine-summary-photo{min-height:125px}}
   `;
   const style=document.createElement('style');style.id='belm-machine-photo-style-v760';style.textContent=css;document.head.appendChild(style);
 

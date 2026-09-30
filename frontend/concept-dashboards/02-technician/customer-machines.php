@@ -197,5 +197,6 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   document.getElementById('sidebarToggle')?.addEventListener('click',()=>document.getElementById('belmShell')?.classList.toggle('is-sidebar-open'));bootstrap();
 })();
 </script>
+<script src="/shared-machine-card-v827.js?v=838-unified-actions-scroll"></script>
 </body>
 </html>

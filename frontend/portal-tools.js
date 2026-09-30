@@ -907,28 +907,24 @@
   // Reports" for one machine) without changing the URL away from
   // /portal/dashboard. If the user then navigates elsewhere and presses the
   // browser's Back button, the app can restore that same stuck internal
-  // view instead of the normal dashboard — even though the address bar
-  // correctly shows /portal/dashboard. Forcing a full reload whenever
-  // back/forward navigation lands on this URL guarantees a fresh, correct
-  // dashboard every time.
-  window.addEventListener("popstate", () => {
-    if (window.location.pathname === "/portal/dashboard") {
-      window.location.reload();
+  // V842: Back/Forward navigation should NOT trigger logout or force reload.
+  // The app now preserves authentication state through navigation.
+  // Only reload if absolutely necessary (bfcache restore) and only once per session.
+  let bfcacheReloadDone = false;
+  window.addEventListener("pageshow", (event) => {
+    // Only reload on bfcache restore (event.persisted === true)
+    // This happens when browser restores page from back-forward cache
+    // Not on normal back/forward navigation with full page load
+    if (event.persisted && !bfcacheReloadDone) {
+      bfcacheReloadDone = true;
+      // Delay reload to allow app to initialize first
+      setTimeout(() => window.location.reload(), 100);
     }
   });
 
-  // Broader fix for the same underlying issue across every page this
-  // script manages — mobile browsers often restore a page from their
-  // "back-forward cache" (bfcache) on Back/Forward instead of truly
-  // reloading it, which means all our injected buttons/panels/listeners
-  // are gone (they were only ever attached once, on the original load)
-  // even though the page LOOKS normal. event.persisted === true is the
-  // signal a bfcache restore just happened; forcing one reload then
-  // guarantees everything re-attaches correctly, instead of the page
-  // silently staying "stuck" until the person manually refreshes.
-  window.addEventListener("pageshow", (event) => {
-    if (event.persisted) window.location.reload();
-  });
+  // V842: Removed the aggressive popstate reload that was logging users out.
+  // Back button now properly preserves session and navigates historically
+  // without forcing a full page reload (which can lose auth context).
 
   function handoffTechnicianSession() {
     if (!window.location.pathname.startsWith("/tech")) return false;

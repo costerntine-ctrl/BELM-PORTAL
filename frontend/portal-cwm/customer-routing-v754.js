@@ -19,16 +19,22 @@
   function target(){const e=roleEntry();return e?.dashboard||fallback()}
   function enabled(){const e=roleEntry();return e?e.enabled!==false:true}
 
+  // V835: conditional writes only. apply() runs from a MutationObserver; the old
+  // unconditional textContent writes re-triggered it in an endless microtask loop
+  // that froze the Customer Workshop Portal (Chrome "Page Unresponsive").
+  function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
+  function setHref(el,value){if(el&&el.getAttribute('href')!==value)el.setAttribute('href',value)}
+  function setData(el,key,value){if(el&&el.dataset[key]!==value)el.dataset[key]=value}
   function apply(){
     const link=document.querySelector('.cwm-enter-role-v672');
     if(link){
-      link.href=enabled()?target():'#';
-      link.dataset.customerRole=roleKey;
-      link.dataset.roleLocked=enabled()?'0':'1';
+      setHref(link,enabled()?target():'#');
+      setData(link,'customerRole',roleKey);
+      setData(link,'roleLocked',enabled()?'0':'1');
       const small=link.querySelector('small'),note=link.querySelector('em');
       const e=roleEntry();
-      if(small)small.textContent=(e?.label||rawRole.replaceAll('_',' ')||'CUSTOMER ADMIN').toUpperCase();
-      if(note)note.textContent=enabled()?'OPEN ROLE DASHBOARD':(e?.scope||'ROLE LOCKED IN CURRENT SERVICE MODE');
+      setText(small,(e?.label||rawRole.replaceAll('_',' ')||'CUSTOMER ADMIN').toUpperCase());
+      setText(note,enabled()?'OPEN ROLE DASHBOARD':(e?.scope||'ROLE LOCKED IN CURRENT SERVICE MODE'));
       if(!enabled()&&!link.dataset.lockBound){link.dataset.lockBound='1';link.addEventListener('click',ev=>{ev.preventDefault();alert(e?.scope||'This role is locked in the current service mode.')},true)}
     }
 
@@ -40,8 +46,8 @@
         ['STORE','/customer-store-dashboard/','store_keeper'],
         ['USERS','/customer-admin-dashboard/','customer_admin']
       ];
-      map.forEach(([label,href,key])=>{const a=[...quick.querySelectorAll('a')].find(x=>String(x.querySelector('b')?.textContent||'').trim().toUpperCase()===label);if(!a)return;a.href=href;a.dataset.customerRole=key});
-      const admin=[...quick.querySelectorAll('a')].find(x=>String(x.querySelector('b')?.textContent||'').trim().toUpperCase()==='USERS');if(admin&&roleKey!=='customer_admin'){admin.style.opacity='.55';admin.style.pointerEvents='none';admin.title='Customer Admin only';}
+      map.forEach(([label,href,key])=>{const a=[...quick.querySelectorAll('a')].find(x=>String(x.querySelector('b')?.textContent||'').trim().toUpperCase()===label);if(!a)return;setHref(a,href);setData(a,'customerRole',key)});
+      const admin=[...quick.querySelectorAll('a')].find(x=>String(x.querySelector('b')?.textContent||'').trim().toUpperCase()==='USERS');if(admin&&roleKey!=='customer_admin'&&admin.title!=='Customer Admin only'){admin.style.opacity='.55';admin.style.pointerEvents='none';admin.title='Customer Admin only';}
     }
   }
 

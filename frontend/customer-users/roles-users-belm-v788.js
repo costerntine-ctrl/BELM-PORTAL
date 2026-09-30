@@ -1,4 +1,7 @@
 (function(){'use strict';
+  // V835: write text only when it differs. Unconditional writes re-fired the
+  // body MutationObserver every frame and froze Roles & Users (Page Unresponsive).
+  function setText(el,value){if(el&&el.textContent!==value)el.textContent=value}
   const ROLE_DESCRIPTIONS={
     workshop_manager:'Workshop control, Job Cards, technician assignment and maintenance supervision.',
     technician:'Diagnosis, repair, testing, Job Card progress and technical reports.',
@@ -20,13 +23,13 @@
   function enhanceRoles(){
     const container=document.getElementById('roleCards');
     if(!container)return;
-    container.classList.add('role-grid');
+    if(!container.classList.contains('role-grid'))container.classList.add('role-grid');
     container.querySelectorAll('.role-card').forEach(card=>{
       const key=roleKeyFromCard(card);if(!key)return;
-      const badge=card.querySelector('.badge');if(badge)badge.textContent=ROLE_LABELS[key];
+      const badge=card.querySelector('.badge');setText(badge,ROLE_LABELS[key]);
       let desc=card.querySelector('.role-access-description');
       if(!desc){desc=document.createElement('p');desc.className='role-access-description';const head=card.querySelector('.role-card-head');head?.insertAdjacentElement('afterend',desc)}
-      desc.textContent=ROLE_DESCRIPTIONS[key];
+      setText(desc,ROLE_DESCRIPTIONS[key]);
     });
   }
 
@@ -45,7 +48,7 @@
       const badge=card.querySelector('.badge');
       if(!badge)return;
       const key=Object.keys(ROLE_LABELS).find(k=>badge.classList.contains(k));
-      if(key)badge.textContent=ROLE_LABELS[key];
+      if(key)setText(badge,ROLE_LABELS[key]);
     });
   }
 
@@ -71,7 +74,7 @@
     active.insertAdjacentElement('beforebegin',tech);
     const roles=document.createElement('article');roles.className='metric';roles.innerHTML='<span>Operational roles</span><strong>6</strong>';
     active.insertAdjacentElement('afterend',roles);
-    const update=()=>{document.getElementById('technicianCountV788').textContent=String(document.querySelectorAll('#roleCards .role-card .badge.technician').length?Array.from(document.querySelectorAll('#roleCards .role-card')).find(c=>c.querySelector('.badge.technician'))?.querySelector('.role-card-head strong')?.textContent||'0':'0')};
+    const update=()=>{setText(document.getElementById('technicianCountV788'),String(document.querySelectorAll('#roleCards .role-card .badge.technician').length?Array.from(document.querySelectorAll('#roleCards .role-card')).find(c=>c.querySelector('.badge.technician'))?.querySelector('.role-card-head strong')?.textContent||'0':'0'))};
     update();
     new MutationObserver(update).observe(document.getElementById('roleCards'),{childList:true,subtree:true,characterData:true});
   }
@@ -81,10 +84,10 @@
     if(!section)return;
     const title=section.querySelector('.panel-head h2');
     const note=section.querySelector('.panel-head p');
-    if(title)title.textContent='Machine Operator Invitations';
-    if(note)note.textContent='Select a machine, copy its Operator link and send it to the operator. The operator signs up from that link and creates their own 4–6 digit PIN.';
+    setText(title,'Machine Operator Invitations');
+    setText(note,'Select a machine, copy its Operator link and send it to the operator. The operator signs up from that link and creates their own 4–6 digit PIN.');
     const addRow=document.getElementById('rosterAddRow');
-    if(addRow){addRow.classList.add('hidden');addRow.style.display='none';}
+    if(addRow){if(!addRow.classList.contains('hidden'))addRow.classList.add('hidden');if(addRow.style.display!=='none')addRow.style.display='none';}
     const linkRow=document.getElementById('rosterOperatorLinkRow');
     if(linkRow&&!document.getElementById('operatorInviteHelp')){
       const help=document.createElement('small');
@@ -95,12 +98,15 @@
     }
     document.querySelectorAll('#rosterList [data-set-pin]').forEach(btn=>btn.remove());
     document.querySelectorAll('#rosterList .roster-pin-set,#rosterList .roster-pin-missing').forEach(tag=>{
-      tag.textContent=tag.classList.contains('roster-pin-set')?'Registered':'Invite not completed';
+      setText(tag,tag.classList.contains('roster-pin-set')?'Registered':'Invite not completed');
     });
   }
 
   function enhance(){enhanceRoles();enhanceUsers();addSearch();makeMetricFour();applyOperatorInvites()}
+  // V835: one queued pass per frame (see setText note above).
+  let enhanceQueued=false;
+  function queueEnhance(){if(enhanceQueued)return;enhanceQueued=true;requestAnimationFrame(()=>{enhanceQueued=false;enhance()})}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',enhance,{once:true});else enhance();
-  const obs=new MutationObserver(()=>requestAnimationFrame(enhance));
+  const obs=new MutationObserver(queueEnhance);
   obs.observe(document.body,{childList:true,subtree:true});
 })();

@@ -42,6 +42,9 @@ jobs:
       - name: Validate account credential routes
         run: node tests/account-credentials-route.test.js
 
+      - name: Validate login detail editing
+        run: node tests/login-detail-edit.test.js
+
       - name: Validate dynamically loaded modules
         run: node tests/dynamic-script-readiness.test.js
 

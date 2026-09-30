@@ -36,7 +36,7 @@
   // the canonical BELM logo without changing any dashboard/sidebar structure.
   if(!document.querySelector('script[data-component-refresh-v732]')){
     const c=document.createElement('script');
-    c.src='/component-refresh-v732.js?v=732-job-machine-logo';
+    c.src='/component-refresh-v732.js?v=835-logo-scope';
     c.defer=true;
     c.dataset.componentRefreshV732='1';
     document.head.appendChild(c);

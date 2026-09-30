@@ -216,8 +216,8 @@
   }
 
   loadScript("/delete-confirm.js?v=726-customer-overview-repair", function () {
-    loadScript("/edit-confirm.js?v=726-customer-overview-repair", function () {
-      loadScript("/customers-manager/manager.js?v=726-customer-overview-repair", function () {
+    loadScript("/edit-confirm.js?v=835-login-detail-edit", function () {
+      loadScript("/customers-manager/manager.js?v=835-login-detail-edit", function () {
         loadScript("/customers-manager/report-result-enhancer.js?v=728-context-results", function () {
           window.__belmCustomerOverviewRuntimeReady = true;
         });

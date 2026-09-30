@@ -3,6 +3,7 @@
   const embeddedInBelmWorkshop = new URLSearchParams(location.search).get("embed") === "1" && window.parent !== window;
   let customers = [];
   let pendingEditPin = null;
+  let deepLinkHandled = false;
   let servicePartsState = null;
   let isSuperAdmin = false;
   let isTechnicianRole = false;
@@ -82,11 +83,24 @@
     load().catch(() => {});
   });
 
-  async function confirmThenOpen(title, message, openFn) {
-    const confirmation = await window.belmConfirmEdit({ title, message });
+  // V835: keep the whole confirmation ({ editPin } or { adminPassword }) so the
+  // save request can send whichever the user chose.
+  async function confirmThenOpen(title, message, openFn, options = {}) {
+    const confirmation = await window.belmConfirmEdit({ title, message, ...options });
     if (!confirmation) return;
-    pendingEditPin = confirmation.editPin;
+    pendingEditPin = confirmation;
     openFn();
+  }
+
+  // V835: a dialog opened from a deep link (?action=edit) or re-used after a
+  // failed save has no pending confirmation. Ask for it at Save time instead of
+  // silently ignoring the Save button.
+  async function ensurePendingConfirmation(title, message, options = {}) {
+    if (pendingEditPin) return pendingEditPin;
+    const confirmation = await window.belmConfirmEdit({ title, message, ...options });
+    if (!confirmation) return null;
+    pendingEditPin = confirmation;
+    return confirmation;
   }
 
   // Dark/light mode is handled centrally by admin-sidebar.js (per-admin
@@ -710,14 +724,25 @@
       // compatible; when view=machines is present, open only that selected
       // customer's machine dialog. No other customer's machines are rendered
       // because openMachineList receives only requestedCustomer.
-      if (requestedCustomerId) {
+      if (requestedCustomerId && !deepLinkHandled) {
         const requestedCustomer = customers.find((customer) => String(customer.id) === requestedCustomerId);
         if (requestedCustomer) {
+          // V835: a deep link is handled once per page visit, not on every reload.
+          deepLinkHandled = true;
           window.setTimeout(() => {
             if (requestedAction === "edit") openCustomer(requestedCustomer);
             else if (requestedAction === "manage") openManageCustomer(requestedCustomer);
             else if (requestedAction === "reset") resetCustomerLogin(requestedCustomer.id);
             else if (!requestedView || requestedView === "machines") openMachineList(requestedCustomer);
+            // V835: handle a deep-link action once. Without this, every load()
+            // after Save re-opened the editor/reset dialog from the same URL.
+            if (requestedAction) {
+              try {
+                const cleanUrl = new URL(window.location.href);
+                cleanUrl.searchParams.delete("action");
+                window.history.replaceState(window.history.state, "", cleanUrl.pathname + cleanUrl.search + cleanUrl.hash);
+              } catch (_) {}
+            }
           }, 0);
         }
       }
@@ -801,8 +826,13 @@
       isActive: document.getElementById("customerActive").checked,
     };
     if (id) {
-      if (!pendingEditPin) return;
-      payload.editPin = pendingEditPin;
+      const confirmation = await ensurePendingConfirmation(
+        "Save customer changes?",
+        `Confirm the customer and login email changes for ${payload.name}.`,
+        { allowPassword: true }
+      );
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
     }
     button.disabled = true;
     button.dataset.originalText = "Save customer";
@@ -820,6 +850,8 @@
       if (!id && savedCustomer) showCredentials(savedCustomer, result.portalLoginInfo);
       showAlert(id ? "Customer information and portal link updated." : "Customer registered successfully.");
     } catch (error) {
+      // V835: never re-send a rejected confirmation; the next Save asks again.
+      pendingEditPin = null;
       formError("customerFormAlert", error.message);
     } finally {
       button.disabled = false;
@@ -1069,8 +1101,12 @@
     }
     let targetCustomerId = customerId;
     if (id) {
-      if (!pendingEditPin) return;
-      payload.editPin = pendingEditPin;
+      const confirmation = await ensurePendingConfirmation(
+        "Save machine changes?",
+        "Enter the Edit PIN to confirm these machine changes."
+      );
+      if (!confirmation) return;
+      Object.assign(payload, confirmation);
       const moveSelect = document.getElementById("machineMoveCustomer");
       if (moveSelect.value && moveSelect.value !== customerId) {
         payload.customerId = moveSelect.value;
@@ -1096,6 +1132,7 @@
         ? "Machine moved to the selected customer."
         : id ? "Machine updated successfully." : "Machine added to customer card.");
     } catch (error) {
+      pendingEditPin = null;
       formError("machineFormAlert", error.message);
     } finally {
       button.disabled = false;
@@ -1138,7 +1175,8 @@
     if (!customer) return;
     const confirmation = await window.belmConfirmEdit({
       title: "Reset customer login?",
-      message: `Generate a new password and recovery code for ${customer.name}? The old password and recovery code will stop working.`,
+      message: `Generate a new password and recovery code for ${customer.name}? The old password and recovery code will stop working. Confirm with the Edit PIN or your current admin password.`,
+      allowPassword: true,
     });
     if (!confirmation) return;
     try {
@@ -2174,7 +2212,7 @@
     const customer = managedCustomerFromDialog();
     if (!customer) return;
     document.getElementById("manageCustomerDialog").close();
-    confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer.name}.`, () => openCustomer(customer));
+    confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer.name}.`, () => openCustomer(customer), { allowPassword: true });
   });
 
   document.getElementById("manageResetCustomerButton").addEventListener("click", async () => {
@@ -2426,7 +2464,7 @@
     if (manageCustomer) openManageCustomer(customers.find((customer) => customer.id === manageCustomer.dataset.manageCustomer));
     if (editCustomer) {
       const customer = customers.find((item) => item.id === editCustomer.dataset.editCustomer);
-      confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer));
+      confirmThenOpen("Edit customer?", `Confirm you want to edit ${customer?.name || "this customer"}.`, () => openCustomer(customer), { allowPassword: true });
     }
     if (resetCustomer) resetCustomerLogin(resetCustomer.dataset.resetCustomer);
     if (deleteCustomer) removeCustomer(deleteCustomer.dataset.deleteCustomer);

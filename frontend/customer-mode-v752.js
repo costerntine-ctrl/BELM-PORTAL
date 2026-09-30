@@ -101,7 +101,9 @@
       const requirement = roleRequirement[key];
       const modeAllowed = requirement ? (enabled.has(requirement) ? enabled.get(requirement) : true) : true;
       const roleAllowed = grants[current]?.has(key) || false;
-      if (!modeAllowed || !roleAllowed) {
+      if ((!modeAllowed || !roleAllowed) && link.dataset.customerQuickLocked752 !== '1') {
+        // V835: bind once. This runs from a MutationObserver.
+        link.dataset.customerQuickLocked752 = '1';
         link.classList.add('customer-quick-locked-v752');
         link.setAttribute('aria-disabled','true');
         link.addEventListener('click', (event) => {
@@ -116,14 +118,20 @@
   function applyPortalHome(mode) {
     const action = roleDestination(mode);
     const link = document.querySelector('.cwm-enter-role-v672');
-    if (link) {
-      link.href = action.href;
-      link.dataset.roleLocked = action.enabled ? '0' : '1';
+    // V835: /portal-cwm/customer-routing-v754.js owns the Enter Role card. Both
+    // scripts used to write different labels into it from MutationObservers,
+    // fighting forever and freezing the Customer Workshop Portal.
+    if (link && !window.__belmCustomerRouting754) {
+      if (link.getAttribute('href') !== action.href) link.href = action.href;
+      const locked = action.enabled ? '0' : '1';
+      if (link.dataset.roleLocked !== locked) link.dataset.roleLocked = locked;
       const small = link.querySelector('small');
       const note = link.querySelector('em');
-      if (small) small.textContent = action.label.toUpperCase();
-      if (note) note.textContent = action.enabled ? (action.scope || 'Open assigned role dashboard') : (action.scope || 'Role unavailable in this service mode');
-      if (!action.enabled) link.onclick = (event) => { event.preventDefault(); alert(action.scope || 'This role is locked in the current service mode.'); };
+      const label = action.label.toUpperCase();
+      const noteText = action.enabled ? (action.scope || 'Open assigned role dashboard') : (action.scope || 'Role unavailable in this service mode');
+      if (small && small.textContent !== label) small.textContent = label;
+      if (note && note.textContent !== noteText) note.textContent = noteText;
+      if (!action.enabled && !link.onclick) link.onclick = (event) => { event.preventDefault(); alert(action.scope || 'This role is locked in the current service mode.'); };
     }
 
     const hero = document.querySelector('.cwm-home-hero-v556');
@@ -172,14 +180,17 @@
   function applyUserCenter(mode) {
     const independent = Boolean(mode.mode?.customerIndependent);
     const technicianOption = document.querySelector('#role option[value="technician"]');
+    // V835: conditional writes only (runs from a MutationObserver).
+    const setText = (el, value) => { if (el && el.textContent !== value) el.textContent = value; };
     if (technicianOption) {
-      technicianOption.disabled = !independent || !mode.mode?.customerTechnicianEnabled;
-      technicianOption.textContent = independent && mode.mode?.customerTechnicianEnabled
+      const disabled = !independent || !mode.mode?.customerTechnicianEnabled;
+      if (technicianOption.disabled !== disabled) technicianOption.disabled = disabled;
+      setText(technicianOption, independent && mode.mode?.customerTechnicianEnabled
         ? 'Technician — Customer Workshop'
-        : 'Technician — BELM Service Provider active';
+        : 'Technician — BELM Service Provider active');
     }
-    document.querySelectorAll('option[value="accounts"]').forEach((option) => { option.textContent = 'Finance / Accounts'; });
-    document.querySelectorAll('.badge.accounts').forEach((badge) => { badge.textContent = 'Finance / Accounts'; });
+    document.querySelectorAll('option[value="accounts"]').forEach((option) => setText(option, 'Finance / Accounts'));
+    document.querySelectorAll('.badge.accounts').forEach((badge) => setText(badge, 'Finance / Accounts'));
   }
 
   async function boot() {

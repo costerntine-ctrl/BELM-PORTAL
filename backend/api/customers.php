@@ -895,7 +895,8 @@ if ($method === 'PUT' && $action === 'reset-password') {
     // be reset again) and doesn't touch or delete any business data, so
     // it only needs the lighter Edit PIN confirmation — not the delete
     // PIN + the admin's own account password + a written reason.
-    require_edit_confirmation($user, body());
+    // V835: the Edit PIN OR the admin's own current password is accepted.
+    require_account_edit_confirmation($user, body());
     $temporaryPassword = secure_account_secret();
     $recoveryCode = account_recovery_code();
     $stmt = db()->prepare(
@@ -1200,7 +1201,8 @@ if ($method === 'PUT' && $action === 'portal-access') {
 if ($method === 'PUT' && !$action) {
     require_page_access($user, 'customers');
     $b = body();
-    require_edit_confirmation($user, $b);
+    // V835: customer login email edits accept the Edit PIN OR the admin password.
+    require_account_edit_confirmation($user, $b);
     $stmt = db()->prepare('SELECT email, portal_link, is_active FROM customers WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     $existingCustomer = $stmt->fetch();
@@ -1210,7 +1212,13 @@ if ($method === 'PUT' && !$action) {
     $isActive = array_key_exists('isActive', $b)
         ? ((bool)$b['isActive'] ? 1 : 0)
         : (int)$existingCustomer['is_active'];
-    db()->prepare('UPDATE customers SET name=?, tin_number=?, vrn=?, email=?, phone=?, address=?, portal_link=?, is_active=? WHERE id=?')
+    $deletedOwner = db()->prepare('SELECT 1 FROM customers WHERE LOWER(email) = ? AND id <> ? AND deleted_at IS NOT NULL LIMIT 1');
+    $deletedOwner->execute([$details['email'], $id]);
+    if ($deletedOwner->fetch()) {
+        json_error('This email still belongs to a deleted customer in the Recycle Bin. Permanently remove that customer or use another email.', 409);
+    }
+    try {
+    db()->prepare('UPDATE customers SET name=?, tin_number=?, vrn=?, email=?, phone=?, address=?, portal_link=?, is_active=?, updated_at=NOW() WHERE id=?')
         ->execute([
             $details['name'],
             trim((string)($b['tinNumber'] ?? '')) ?: null,
@@ -1222,6 +1230,10 @@ if ($method === 'PUT' && !$action) {
             $isActive,
             $id,
         ]);
+    } catch (PDOException $error) {
+        if (belm_is_unique_violation($error)) json_error('This email or portal link is already used by another customer account.', 409);
+        throw $error;
+    }
     clear_unified_login_lockout((string)$existingCustomer['email'], (string)$existingCustomer['portal_link']);
     clear_unified_login_lockout($details['email'], $portalLink);
     log_activity($user, 'customer-edited', 'customer', $id, [

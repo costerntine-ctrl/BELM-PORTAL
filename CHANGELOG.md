@@ -1,5 +1,30 @@
 # BELM Portal — Change Log
 
+## Login details editing repair (V835) — 30 Sep 2026
+
+**Staff / BELM side**
+- Roles & System Users and Customer Overview login edits (email, role, status, Reset Login) can now be confirmed with the **Edit PIN or your own admin password**. Previously only the Edit PIN was offered, so a deployment without a configured PIN returned `409 Edit PIN is not configured` and no login details could be changed.
+- Customer Overview **Save** no longer does nothing when the editor was opened from a link (`?action=edit`) or after a failed save — it now asks for confirmation at Save time. A deep-link action is handled once, so the editor no longer re-opens after saving.
+- Email collisions with soft-deleted accounts (database UNIQUE) now return a clear 409 message instead of a server error.
+- Roles list button renamed from "Change role" to "Edit login / role".
+
+**Customer side**
+- Customer Roles & Users page crashed on start-up (missing Logout button), so the user list, **Edit** buttons and **Save** never worked. Fixed.
+- User Password Control was invisible (its old page anchor was removed) — it now appears under System users for the Customer Owner.
+- User Password Control no longer asks for BELM's internal Edit PIN (customers never receive it); Owner password + reason is required and audited.
+- Fixed a database error when changing a team user's password (`customer_users.updated_at` does not exist).
+- Email changes for team users/technicians release old login lockouts immediately.
+
+**Page freezes (Chrome "Page Unresponsive")**
+- Customer Roles & Users and every page using the shared My Reports / My Profile navigation: observer loops made idempotent and coalesced to one pass per frame.
+- Customer Workshop Portal (`/portal-cwm/`): two scripts fought over the role card in an endless loop — fixed.
+
+**Other**
+- Sign-in page no longer loads dashboard runtime scripts (navigation/theme/sidebar/report) when a stale session exists.
+- Billing: QR-scan overlay moved before its script so the page's event bindings complete.
+- Job Card dashboard: fixed `CANONICAL_LOGO is not defined`.
+- New CI contract: `tests/login-detail-edit.test.js`.
+
 ## Workshop Manager loading performance — 28 Sep 2026
 
 - Fixed the Registered Machines page freeze that could trigger Chrome `Page Unresponsive`.

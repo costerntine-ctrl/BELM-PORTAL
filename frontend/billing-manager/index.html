@@ -197,14 +197,15 @@
       </form>
     </dialog>
 
-    <script src="/admin-access.js?v=411-job-card-only"></script>
-    <script src="/delete-confirm.js"></script>
-    <script src="/edit-confirm.js"></script>
-    <script src="/billing-manager/manager.js?v=485-role-cleanup"></script>
+    <!-- V835: overlay must exist before manager.js binds its Cancel button. -->
     <div id="qrScanOverlay" class="qr-scan-overlay hidden">
       <video id="qrScanVideo" autoplay playsinline muted></video>
       <button id="qrScanCancelButton" type="button" class="qr-scan-cancel">Cancel scan</button>
       <p class="qr-scan-caption">Point the camera at the receipt's QR code</p>
     </div>
+    <script src="/admin-access.js?v=411-job-card-only"></script>
+    <script src="/delete-confirm.js"></script>
+    <script src="/edit-confirm.js?v=835-login-detail-edit"></script>
+    <script src="/billing-manager/manager.js?v=835-qr-overlay-order"></script>
   </body>
 </html>

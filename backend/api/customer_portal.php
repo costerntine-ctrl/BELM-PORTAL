@@ -5772,13 +5772,21 @@ if ($sub === 'technicians' && $sub2 && !$sub3 && $method === 'PUT') {
     $emailCheck->execute([$email, $email, $email, $sub2]);
     if ($emailCheck->fetch()) json_error('This email address is already used by another portal account.', 409);
 
-    db()->prepare(
-        'UPDATE users SET name=?, email=?, phone=?, is_active=?, customer_permissions=?
-         WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1'
-    )->execute([
-        $name, $email, $phone !== '' ? $phone : null, $isActive,
-        $permissionsJson, $sub2, $customer['id'],
-    ]);
+    try {
+        db()->prepare(
+            'UPDATE users SET name=?, email=?, phone=?, is_active=?, customer_permissions=?
+             WHERE id=? AND assigned_customer_id=? AND is_customer_managed=1'
+        )->execute([
+            $name, $email, $phone !== '' ? $phone : null, $isActive,
+            $permissionsJson, $sub2, $customer['id'],
+        ]);
+    } catch (PDOException $error) {
+        if (belm_is_unique_violation($error)) json_error('This email address is already used by another portal account (it may belong to a deleted account).', 409);
+        throw $error;
+    }
+    // V835: a changed login email must be usable immediately.
+    clear_unified_login_lockout((string)$existing['email']);
+    clear_unified_login_lockout($email);
     log_customer_activity($customer, "Updated Technician access for \"$name\".");
     json_out(['ok' => true]);
 }
@@ -5950,6 +5958,9 @@ if ($sub === 'users' && $sub2 && !$sub3 && $method === 'PUT') {
         $sub2,
         $customer['id'],
     ]);
+    // V835: a changed login email must be usable immediately.
+    clear_unified_login_lockout((string)$existing['email']);
+    clear_unified_login_lockout($email);
     log_customer_activity($customer, "Updated Role Manager user \"$name\" (role: $role).");
     json_out(['ok' => true]);
 }

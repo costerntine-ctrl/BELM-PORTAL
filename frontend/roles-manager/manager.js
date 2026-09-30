@@ -173,7 +173,7 @@
           <td>${escapeHtml(user.assignedCustomer?.name || (user.role?.name === "Technician" ? "Not assigned" : "All customers"))}</td>
           <td><span class="badge ${Number(user.isActive) === 1 ? "" : "off"}">${Number(user.isActive) === 1 ? "Active" : "Inactive"}</span></td>
           <td><div class="row-actions">
-            <button data-edit-user="${escapeHtml(user.id)}">Change role</button>
+            <button data-edit-user="${escapeHtml(user.id)}">Edit login / role</button>
             <button data-reset-password="${escapeHtml(user.id)}">Reset password</button>
             ${isSelf ? "" : `<button class="delete" data-delete-user="${escapeHtml(user.id)}">Delete</button>`}
           </div></td>
@@ -225,7 +225,7 @@
   function openUser(user = null) {
     document.getElementById("userForm").reset();
     document.getElementById("userId").value = user?.id || "";
-    document.getElementById("userDialogTitle").textContent = user ? `Change role — ${user.name}` : "Add system user";
+    document.getElementById("userDialogTitle").textContent = user ? `Edit login & role — ${user.name}` : "Add system user";
     document.getElementById("userName").value = user?.name || "";
     document.getElementById("userPhone").value = user?.phone || "";
     document.getElementById("userEmail").value = user?.email || "";
@@ -280,7 +280,8 @@
     } else {
       const confirmation = await window.belmConfirmEdit({
         title: "Save user changes?",
-        message: `Confirm changes to ${payload.name}.`,
+        message: `Confirm login, role and access changes for ${payload.name} with the Edit PIN or your current admin password.`,
+        allowPassword: true,
       });
       if (!confirmation) return;
       Object.assign(payload, confirmation);
@@ -371,7 +372,8 @@
     if (!user) return;
     const confirmation = await window.belmConfirmEdit({
       title: "Reset password?",
-      message: `Generate a new password for ${user.name}? The old password will stop working.`,
+      message: `Generate a new password for ${user.name}? The old password will stop working. Confirm with the Edit PIN or your current admin password.`,
+      allowPassword: true,
     });
     if (!confirmation) return;
     try {

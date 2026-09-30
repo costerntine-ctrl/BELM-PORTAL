@@ -24,20 +24,27 @@
   const legacyHref=/(?:^|\/)(?:my-reports|purchase-reports|inventory-reports|customer-reports|operator-reports|reports)\.(?:php|html)(?:$|[?#])/i;
   const adminHome=(role==='super_admin'&&path==='/concept-dashboards/01-admin-home')||(role==='customer_admin'&&path==='/customer-admin-dashboard');
 
+  // V835: every DOM write is conditional. Unconditional textContent/attribute
+  // writes re-triggered this script's own MutationObserver (and other role
+  // scripts' observers) every frame, which snowballed until Chrome reported the
+  // page unresponsive - e.g. Customer Roles & Users froze while editing logins.
+  function setAttr(el,name,value){if(el.getAttribute(name)!==value)el.setAttribute(name,value)}
+  function setData(el,key,value){if(el.dataset[key]!==value)el.dataset[key]=value}
   function labelAnchor(a,label){
     const span=a.querySelector(':scope>span');
-    if(span)span.textContent=label;
+    if(span){if(span.textContent!==label)span.textContent=label;}
     else{
       const texts=Array.from(a.childNodes).filter(n=>n.nodeType===Node.TEXT_NODE);
       const target=texts.find(n=>String(n.nodeValue||'').trim());
-      if(target)target.nodeValue=' '+label;
+      if(target){if(String(target.nodeValue).trim()!==label)target.nodeValue=' '+label;}
       else a.insertAdjacentText('beforeend',' '+label);
     }
   }
 
+  const busyNavs=new WeakSet();
   function normalizeNav(nav){
-    if(!nav||nav.dataset.roleReport819Busy==='1')return;
-    nav.dataset.roleReport819Busy='1';
+    if(!nav||busyNavs.has(nav))return;
+    busyNavs.add(nav);
     try{
       let my=null;
       Array.from(nav.querySelectorAll(':scope a[href],a[href]')).forEach(a=>{
@@ -46,21 +53,21 @@
         const isGeneral=/general-report/i.test(href)||/^general report$/i.test(text);
         if(isGeneral){
           if(isAdmin&&adminHome){
-            a.setAttribute('href','/general-report/');
+            setAttr(a,'href','/general-report/');
             labelAnchor(a,'General Report');
-            a.dataset.reportScope='general-admin';
+            setData(a,'reportScope','general-admin');
           }else{
-            a.setAttribute('href','/role-reports/');
+            setAttr(a,'href','/role-reports/');
             labelAnchor(a,'My Reports');
-            a.dataset.reportScope='role';
+            setData(a,'reportScope','role');
             my=my||a;
           }
           return;
         }
         if(reportText.test(text)||legacyHref.test(href)){
-          a.setAttribute('href','/role-reports/');
+          setAttr(a,'href','/role-reports/');
           labelAnchor(a,'My Reports');
-          a.dataset.reportScope='role';
+          setData(a,'reportScope','role');
           my=my||a;
         }
       });
@@ -81,9 +88,9 @@
         const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
         const href=String(a.getAttribute('href')||'');
         if(/^my profile$/i.test(text)||/(?:^|\/)my-profile\.(?:php|html)(?:$|[?#])/i.test(href)){
-          a.setAttribute('href','/my-profile/');
+          setAttr(a,'href','/my-profile/');
           labelAnchor(a,'My Profile');
-          a.dataset.profileScope='registration';
+          setData(a,'profileScope','registration');
         }
       });
 
@@ -133,7 +140,7 @@
         const settings=Array.from(nav.querySelectorAll('a')).find(x=>/settings/i.test(String(x.textContent||'')));
         if(settings)nav.insertBefore(a,settings);else nav.appendChild(a);
       }
-    }finally{delete nav.dataset.roleReport819Busy}
+    }finally{busyNavs.delete(nav)}
   }
 
   function coordinatorCard(){
@@ -152,6 +159,9 @@
     document.querySelectorAll('.belm-nav,.sidebar-nav,.sidebar nav').forEach(normalizeNav);
     coordinatorCard();
   }
-  function boot(){scan();new MutationObserver(()=>requestAnimationFrame(scan)).observe(document.body,{childList:true,subtree:true});[300,900,1800,3200].forEach(ms=>setTimeout(scan,ms))}
+  // V835: coalesce observer bursts into at most one scan per frame.
+  let scanQueued=false;
+  function queueScan(){if(scanQueued)return;scanQueued=true;requestAnimationFrame(()=>{scanQueued=false;scan()})}
+  function boot(){scan();new MutationObserver(queueScan).observe(document.body,{childList:true,subtree:true});[300,900,1800,3200].forEach(ms=>setTimeout(scan,ms))}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();

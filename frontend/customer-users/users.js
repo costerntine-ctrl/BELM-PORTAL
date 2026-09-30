@@ -547,7 +547,7 @@ Customer Dashboard access follows Role Manager permissions.`);
       await loadUsers();
       showAlert(
         id
-          ? "User account updated. Password changes are self-service through Forgot Password + email OTP."
+          ? "User account updated. To set a new password, use User Password Control (or the user can use Forgot Password + email OTP)."
           : "User created. Give the user the email and initial password you entered; future password recovery uses Forgot Password + email OTP.",
         false
       );
@@ -624,11 +624,15 @@ Customer Dashboard access follows Role Manager permissions.`);
     }
   }
 
-  document.getElementById("addButton").addEventListener("click", openCreate);
-  document.getElementById("refreshButton").addEventListener("click", loadUsers);
-  document.getElementById("closeDialogButton").addEventListener("click", () => dialog.close());
-  document.getElementById("cancelButton").addEventListener("click", () => dialog.close());
-  document.getElementById("logoutButton").addEventListener("click", () => {
+  document.getElementById("addButton")?.addEventListener("click", openCreate);
+  document.getElementById("refreshButton")?.addEventListener("click", loadUsers);
+  document.getElementById("closeDialogButton")?.addEventListener("click", () => dialog.close());
+  document.getElementById("cancelButton")?.addEventListener("click", () => dialog.close());
+  // V835: the page header no longer has its own Logout button (the shared shell
+  // provides it). The unguarded lookup threw here and stopped every binding
+  // below - Edit buttons and the Save handler - so login details could not be
+  // edited. Optional chaining keeps the rest of the page wired.
+  document.getElementById("logoutButton")?.addEventListener("click", () => {
     localStorage.removeItem("belm_customer_token");
     window.location.href = "/login";
   });

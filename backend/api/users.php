@@ -332,8 +332,20 @@ if ($method === 'PUT' && !$action) {
         $b['assignedCustomerId'] ?? null,
         $currentAssignedCustomerId
     );
-    db()->prepare('UPDATE users SET name=?, email=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
-        ->execute([$name, $email, $b['phone'] ?? null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
+    // V835: a soft-deleted account still owns its email at database level.
+    $deletedOwner = db()->prepare('SELECT 1 FROM users WHERE LOWER(email) = ? AND id <> ? AND deleted_at IS NOT NULL LIMIT 1');
+    $deletedOwner->execute([$email, $id]);
+    if ($deletedOwner->fetch()) {
+        json_error('This email still belongs to a deleted account in the Recycle Bin. Permanently remove that account or use another email.', 409);
+    }
+    $phone = trim((string)($b['phone'] ?? ''));
+    try {
+        db()->prepare('UPDATE users SET name=?, email=?, phone=?, role_id=?, is_active=?, assigned_customer_id=? WHERE id=?')
+            ->execute([$name, $email, $phone !== '' ? $phone : null, $roleId, $isActive ? 1 : 0, $assignedCustomerId, $id]);
+    } catch (PDOException $error) {
+        if (belm_is_unique_violation($error)) json_error('This email is already used by another portal account.', 409);
+        throw $error;
+    }
     sync_extra_user_roles($id, $roleId, $roleIds);
     clear_unified_login_lockout((string)$existingUser['email']);
     clear_unified_login_lockout($email);

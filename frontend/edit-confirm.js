@@ -18,9 +18,13 @@
         </div>
         <p id="belmEditConfirmMessage" class="belm-edit-confirm-message"></p>
         <p class="belm-edit-confirm-error" id="belmEditConfirmError" hidden></p>
-        <label>Edit PIN
-          <input id="belmEditConfirmPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" required>
+        <label id="belmEditConfirmPinWrap">Edit PIN
+          <input id="belmEditConfirmPin" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off">
         </label>
+        <label id="belmEditConfirmPasswordWrap" hidden>Your current admin password
+          <input id="belmEditConfirmPassword" type="password" autocomplete="current-password">
+        </label>
+        <button type="button" class="belm-edit-confirm-switch" id="belmEditConfirmSwitch" hidden>Use my admin password instead</button>
         <div class="belm-edit-confirm-actions">
           <button type="button" class="belm-edit-confirm-cancel">Cancel</button>
           <button type="button" class="belm-edit-confirm-submit">Save changes</button>
@@ -51,19 +55,43 @@
       .belm-edit-confirm-cancel { border: 1px solid #dbe4ee; background: #fff; color: #475569; }
       .belm-edit-confirm-submit { border: 1px solid #007c3d; background: #00a651; color: #fff; }
       .belm-edit-confirm-submit:disabled { opacity: .6; cursor: not-allowed; }
+      .belm-edit-confirm-switch { justify-self: start; padding: 0; border: 0; background: transparent; color: #0b5ea8; font-size: 12px; font-weight: 800; cursor: pointer; text-decoration: underline; }
+      #belmEditConfirmDialog label[hidden], .belm-edit-confirm-switch[hidden] { display: none; }
     `;
     document.head.appendChild(style);
   }
 
   // Returns a Promise resolving to { editPin } if confirmed, or null if cancelled.
+  // V835: with { allowPassword: true } (login-detail edits) the user may confirm
+  // with their own current admin password instead, resolving to { adminPassword }.
+  // This keeps login edits possible when the Edit PIN is unknown or not configured.
   window.belmConfirmEdit = function (options = {}) {
     injectStyles();
     const dialog = ensureDialog();
+    const allowPassword = Boolean(options.allowPassword);
+    const pinWrap = document.getElementById("belmEditConfirmPinWrap");
+    const passwordWrap = document.getElementById("belmEditConfirmPasswordWrap");
+    const switchButton = document.getElementById("belmEditConfirmSwitch");
+    let usePassword = false;
+    function applyMode() {
+      pinWrap.hidden = usePassword;
+      passwordWrap.hidden = !usePassword;
+      switchButton.hidden = !allowPassword;
+      switchButton.textContent = usePassword ? "Use the Edit PIN instead" : "Use my admin password instead";
+      document.getElementById("belmEditConfirmError").hidden = true;
+      setTimeout(() => document.getElementById(usePassword ? "belmEditConfirmPassword" : "belmEditConfirmPin").focus(), 0);
+    }
+    function onSwitch() { usePassword = !usePassword; applyMode(); }
     document.getElementById("belmEditConfirmTitle").textContent = options.title || "Save changes?";
     document.getElementById("belmEditConfirmMessage").textContent =
-      options.message || "Enter the edit PIN to confirm these changes.";
+      options.message || (allowPassword
+        ? "Enter the Edit PIN, or use your current admin password, to confirm these changes."
+        : "Enter the edit PIN to confirm these changes.");
     document.getElementById("belmEditConfirmPin").value = "";
+    document.getElementById("belmEditConfirmPassword").value = "";
     document.getElementById("belmEditConfirmError").hidden = true;
+    applyMode();
+    switchButton.addEventListener("click", onSwitch);
     dialog.showModal();
 
     return new Promise((resolve) => {
@@ -72,6 +100,19 @@
         submitButton.removeEventListener("click", onSubmit);
         cancelButton.removeEventListener("click", onCancel);
         closeButton.removeEventListener("click", onCancel);
+        switchButton.removeEventListener("click", onSwitch);
+        dialog.removeEventListener("cancel", onEscape);
+        dialog.removeEventListener("keydown", onKeydown);
+      }
+      function onEscape(event) {
+        event.preventDefault();
+        onCancel();
+      }
+      function onKeydown(event) {
+        if (event.key === "Enter" && event.target && event.target.tagName === "INPUT") {
+          event.preventDefault();
+          onSubmit();
+        }
       }
       function onCancel() {
         cleanup();
@@ -80,6 +121,17 @@
       function onSubmit() {
         const editPin = document.getElementById("belmEditConfirmPin").value.trim();
         const errorBox = document.getElementById("belmEditConfirmError");
+        if (usePassword) {
+          const adminPassword = document.getElementById("belmEditConfirmPassword").value;
+          if (!adminPassword) {
+            errorBox.textContent = "Enter your current admin password.";
+            errorBox.hidden = false;
+            return;
+          }
+          cleanup();
+          resolve({ adminPassword });
+          return;
+        }
         if (!editPin) {
           errorBox.textContent = "Enter the edit PIN.";
           errorBox.hidden = false;
@@ -94,6 +146,8 @@
       submitButton.addEventListener("click", onSubmit);
       cancelButton.addEventListener("click", onCancel);
       closeButton.addEventListener("click", onCancel);
+      dialog.addEventListener("cancel", onEscape);
+      dialog.addEventListener("keydown", onKeydown);
     });
   };
 })();

@@ -107,6 +107,9 @@
 
 // V733 - Workshop Manager Job Card Dashboard matched to the supplied reference image.
 (()=>{
+  // V835: this block is a separate scope; it referenced CANONICAL_LOGO from the
+  // block above and threw a ReferenceError on the Job Card dashboard.
+  const CANONICAL_LOGO='/concept-dashboards/10-system-settings/assets/img/belm-logo-v2.png?v=732-system-logo';
   const p=new URLSearchParams(location.search);
   const actor=String(p.get('actor')||p.get('source')||'').toLowerCase();
   const view=String(p.get('view')||'').toLowerCase();

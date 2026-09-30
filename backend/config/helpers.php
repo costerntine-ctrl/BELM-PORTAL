@@ -1732,6 +1732,41 @@ function require_edit_confirmation(array $user, array $body): void {
     clear_rate_limit('edit-pin', $user['id']);
 }
 
+// V835: login-detail edits (staff email/role/status, customer login email,
+// login resets) are confirmed with EITHER the protected Edit PIN OR the signed-in
+// staff member's own current password. Previously these screens only offered the
+// Edit PIN, so a deployment without a configured PIN (409 "Edit PIN is not
+// configured") made every login detail impossible to change. The PIN path is
+// unchanged; the password path is rate-limited and verified server-side.
+function require_account_edit_confirmation(array $actor, array $body): void {
+    $pin = trim((string)($body['editPin'] ?? ''));
+    $adminPassword = (string)($body['adminPassword'] ?? '');
+    if ($pin !== '') {
+        require_edit_confirmation($actor, $body);
+        return;
+    }
+    if ($adminPassword === '') {
+        json_error('Enter the Edit PIN or your current admin password to confirm.');
+    }
+    $actorId = (string)($actor['id'] ?? '');
+    assert_not_rate_limited('account-edit-password', $actorId, 8, 15);
+    $stmt = db()->prepare('SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL AND is_active = 1');
+    $stmt->execute([$actorId]);
+    $hash = $stmt->fetchColumn();
+    if (!$hash || !password_verify($adminPassword, (string)$hash)) {
+        record_failed_attempt('account-edit-password', $actorId);
+        json_error('Incorrect admin password.', 403);
+    }
+    clear_rate_limit('account-edit-password', $actorId);
+}
+
+// V835: login emails are UNIQUE at database level (including soft-deleted
+// rows). Convert a unique-constraint race/legacy collision into a clear 409
+// instead of a raw 500, so the editor shows why the save was refused.
+function belm_is_unique_violation(Throwable $error): bool {
+    return $error instanceof PDOException && (string)$error->getCode() === '23505';
+}
+
 // ---- Customer portal auth ---------------------------------------------------
 function require_customer_auth(): array {
     $payload = current_token_payload();

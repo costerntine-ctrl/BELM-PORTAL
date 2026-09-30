@@ -48,8 +48,10 @@ function require_customer_password_confirmation(array $customer, array $body): a
     if ($reason === '') json_error('Enter a reason for this password change.');
     if (mb_strlen($reason) > 500) json_error('Reason must be 500 characters or fewer.');
 
-    // Reuse the portal-wide protected Edit PIN. The PIN itself is never exposed.
-    require_edit_confirmation($customer, $body);
+    // V835: the BELM internal Edit PIN is a staff secret that customer companies
+    // never receive, so requiring it here made every customer password edit fail.
+    // The Customer Owner's own current password + a written reason (rate-limited
+    // and audited below) is the confirmation for customer account security.
 
     assert_not_rate_limited('customer-password-security', (string)$customer['id'], 8, 15);
     $stmt = db()->prepare('SELECT name,email,password FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1 LIMIT 1');
@@ -110,8 +112,10 @@ if ($action === 'edit') {
     if ($targetType === 'owner') {
         $pdo->prepare('UPDATE customers SET password=?,updated_at=NOW() WHERE id=?')->execute([$hash, $customerId]);
     } else {
-        $pdo->prepare('UPDATE customer_users SET password=?,updated_at=NOW() WHERE id=? AND customer_id=?')->execute([$hash, $targetId, $customerId]);
+        $pdo->prepare('UPDATE customer_users SET password=? WHERE id=? AND customer_id=?')->execute([$hash, $targetId, $customerId]);
     }
+    // Release any lockout left by failed attempts with the old password.
+    clear_unified_login_lockout((string)$target['email']);
     customer_password_audit($pdo, $customerId, $confirmation['actorName'], 'Password edited', (string)$target['name'], (string)$target['email'], $confirmation['reason']);
     json_out(['ok'=>true,'message'=>'Password updated. The security action has been recorded in the audit log.']);
 }
@@ -120,6 +124,6 @@ if ($action === 'edit') {
 // the account or its historical records. The user can later receive a new
 // password from Customer Admin or use Forgot Password/OTP.
 $invalidHash = password_hash(bin2hex(random_bytes(32)), PASSWORD_BCRYPT, ['cost' => 12]);
-$pdo->prepare('UPDATE customer_users SET password=?,updated_at=NOW() WHERE id=? AND customer_id=?')->execute([$invalidHash, $targetId, $customerId]);
+$pdo->prepare('UPDATE customer_users SET password=? WHERE id=? AND customer_id=?')->execute([$invalidHash, $targetId, $customerId]);
 customer_password_audit($pdo, $customerId, $confirmation['actorName'], 'Password deleted / credential invalidated', (string)$target['name'], (string)$target['email'], $confirmation['reason']);
 json_out(['ok'=>true,'message'=>'Password deleted. The account record and history remain; the old password can no longer sign in.']);

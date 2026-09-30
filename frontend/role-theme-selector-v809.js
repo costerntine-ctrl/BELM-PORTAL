@@ -32,7 +32,7 @@
   function loadRoleReportNav(){
     if(window.__belmRoleReportNav819||document.querySelector('script[src^="/role-report-nav-v819.js"]'))return;
     const script=document.createElement('script');
-    script.src='/role-report-nav-v819.js?v=819-role-report-scope';
+    script.src='/role-report-nav-v819.js?v=835-idempotent-nav';
     script.defer=true;
     document.head.appendChild(script);
   }

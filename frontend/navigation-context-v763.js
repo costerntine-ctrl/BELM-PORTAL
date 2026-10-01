@@ -74,7 +74,7 @@
     ['/billing-manager','/concept-dashboards/09-finance-accounts/'],['/suppliers-manager','/belm-procurement/'],['/spare-parts-manager','/concept-dashboards/06-storekeeper/'],
     ['/checklist-manager','/settings-manager/'],['/recycle-bin','/settings-manager/'],['/coordinator/','/settings-manager/'],
     ['/role-communications',null],['/role-reports',null],['/general-report','/role-reports/']
-  ];
+    const staffAliases={'Super Admin':'super_admin','Workshop Manager':'workshop_manager','Engineer':'workshop_manager','Technician':'technician','Operator':'operator','Machine Operator':'operator','Procurement':'procurement','Store Keeper':'store_keeper','Registration & Sales':'registration_sales','Finance / Accounts':'finance_accounts','Bank Controller':'bank_controller','System Coordinator':'system_coordinator'};
   const roots=new Set(['/','/login','/portal-cwm','/customer-admin-dashboard','/customer-operator-dashboard','/customer-technician-dashboard','/customer-workshop-manager','/customer-procurement-dashboard','/customer-store-dashboard','/customer-finance','/customer-workshop','/belm-workshop','/belm-procurement','/bank-controller','/settings-manager','/customers-manager','/roles-manager','/reports-manager','/concept-dashboards/01-admin-home','/concept-dashboards/02-technician','/concept-dashboards/03-procurement','/concept-dashboards/04-customer-registration','/concept-dashboards/05-inspection-repair','/concept-dashboards/06-storekeeper','/concept-dashboards/07-operator','/concept-dashboards/08-daily-checklist','/concept-dashboards/09-finance-accounts','/concept-dashboards/10-system-settings','/concept-dashboards/11-workshop-manager','/tech']);
 
   function safeLocal(url){try{const u=new URL(url,location.origin);return u.origin===location.origin&&u.pathname!==location.pathname?u.pathname+u.search+u.hash:''}catch(_){return ''}}
@@ -180,4 +180,21 @@
   function boot(){installMobileSidebarPull();install()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
   setTimeout(()=>{installMobileSidebarPull();install()},250);
+  // Refresh the live account role after Role Manager changes the database.
+  if(session.type==='staff'){
+    fetch('/api/auth.php?action=refresh',{method:'POST',headers:{Authorization:'Bearer '+token,Accept:'application/json'}})
+      .then(response=>response.ok?response.json():null)
+      .then(data=>{
+        if(!data?.token)return;
+        const fresh=decode(data.token);
+        const currentRole=String(session.roleName||'').trim().toLowerCase();
+        const freshRole=String(fresh.roleName||'').trim().toLowerCase();
+        if(!freshRole||freshRole===currentRole)return;
+        const key=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase()==='admin'?'belm_admin_token':'belm_tech_token';
+        localStorage.setItem(key,data.token);
+        localStorage.setItem(key.replace('_token','_user'),JSON.stringify({id:fresh.id,name:fresh.name,email:fresh.email,role:fresh.roleName,roleName:fresh.roleName,roleNames:fresh.roleNames||[],allowedPages:fresh.allowedPages||[]}));
+        const oldRoots=['/concept-dashboards/02-technician','/tech'];
+        if(oldRoots.includes(cleanPath))location.replace(({operator:'/concept-dashboards/07-operator/',technician:'/concept-dashboards/02-technician/'}[staffAliases[fresh.roleName]||'']||roleHome()));
+      }).catch(()=>{});
+  }
 })();

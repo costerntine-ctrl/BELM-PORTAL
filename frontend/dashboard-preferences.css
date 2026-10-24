@@ -1,0 +1,30 @@
+/* Match the shared theme to legacy dashboard tokens. Brand accents stay intact. */
+html[data-theme="light"] {
+  --belm-navy-900:#f3f6fa; --belm-navy-800:#fff; --belm-navy-700:#edf2f8;
+  --belm-navy-600:#e1eaf5; --belm-navy-500:#d3e1f0;
+  --belm-text-primary:#14243a; --belm-text-secondary:#42566e; --belm-text-muted:#5c7087;
+  --belm-navy-border:#d8e1ec; --belm-navy-border-strong:#bccbdc;
+  --canvas:#f3f6fa; --bg:#f3f6fa; --panel:#fff; --surface:#fff; --card:#fff;
+  --text:#14243a; --muted:#52667f; --line:#d8e1ec; --border:#d8e1ec;
+  --navy:#edf2f8; --navy2:#e1eaf5;
+}
+html[data-theme="dark"] {
+  --canvas:#09111f; --bg:#09111f; --panel:#101e31; --surface:#101e31; --card:#101e31;
+  --text:#e6edf7; --muted:#a1b2c7; --line:#2a3950; --border:#2a3950;
+  --belm-canvas:#09111f; --belm-ink:#e6edf7; --belm-line:#2a3950;
+}
+html[data-theme="light"] body { background-color:#f3f6fa!important; color:#14243a!important; }
+html[data-theme="light"] :is(.belm-panel,.belm-stat-card,.card,.panel,.stat-card,.modal-content,.modal-card,.table-wrap,.belm-table-wrap) { background:#fff!important; color:#14243a!important; border-color:#d8e1ec!important; }
+html[data-theme="light"] :is(main,.belm-main,.belm-content) :is(h1,h2,h3,h4,th,td,label) { color:#14243a; }
+html[data-theme="light"] :is(input,select,textarea) { background:#fff!important; color:#14243a!important; border-color:#bccbdc!important; }
+.belm-dashboard-preferences { position:fixed; right:16px; bottom:66px; z-index:99998; font:600 13px/1.5 system-ui,sans-serif; color:var(--text,#14243a); }
+.belm-dashboard-preferences summary { cursor:pointer; padding:10px 14px; background:var(--panel,#fff); border:1px solid var(--line,#d8e1ec); border-radius:12px; box-shadow:0 4px 18px #0002; }
+.belm-preferences-panel { position:absolute; bottom:50px; right:0; width:min(370px,calc(100vw - 32px)); max-height:70vh; overflow:auto; padding:16px; background:var(--panel,#fff); border:1px solid var(--line,#d8e1ec); border-radius:14px; box-shadow:0 8px 30px #0004; }
+.belm-preferences-panel h2 { margin:0 0 12px; font-size:16px; color:inherit!important; }
+.belm-preferences-panel button { cursor:pointer; padding:9px; border:1px solid var(--line,#d8e1ec); border-radius:8px; color:inherit; background:transparent; }
+.belm-preferences-theme { display:flex; gap:8px; }
+.belm-preferences-theme .active { outline:2px solid #2184d5; }
+.belm-dashboard-preferences :focus-visible { outline:3px solid #2184d5; outline-offset:3px; }
+html[data-theme="light"] .landing-shell { background:#f3f6fa; }
+html[data-theme="light"] .landing-shell :is(.welcome-line,.contact-item,.hero-subtitle) { color:#26415e; }
+html[data-theme="light"] .landing-shell h1 { color:#12385e; text-shadow:none; }

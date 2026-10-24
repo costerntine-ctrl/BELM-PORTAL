@@ -40,8 +40,13 @@
 // V838: a signed-in user opening the portal root goes straight to Home Dashboard.
 (function(){try{var keys={customer:'belm_customer_token',technician:'belm_tech_token',admin:'belm_admin_token',operator:'belm_operator_token'};var a=String(localStorage.getItem('belm_active_account_type')||'').toLowerCase();var k=keys[a];var t=k&&localStorage.getItem(k);if(!t)return;var r=(t.split('.')[1]||'').replace(/-/g,'+').replace(/_/g,'/');r+='='.repeat((4-r.length%4)%4);var p=JSON.parse(atob(r));if(p.exp&&p.exp*1000<=Date.now())return;location.replace('/login')}catch(e){}})();
 </script>
-<script defer src="/language-preferences.js?v=53"></script>
+<script defer src="/language-preferences.js?v=54"></script>
 <script defer src="/belm-i18n.js?v=53"></script>
+
+<link rel="stylesheet" href="/theme-global.css?v=54">
+<script defer src="/theme-manager.js?v=54"></script>
+<link rel="stylesheet" href="/dashboard-preferences.css?v=54">
+<script defer src="/dashboard-preferences.js?v=54"></script>
 </head>
 <body>
   <header>

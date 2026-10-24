@@ -67,12 +67,11 @@ assert.match(roleReportNav, /isCustomer\?'\/general-report\/':'\/reports-manager
 assert.match(gr, /belm_admin_token'\)\?'\/reports-manager\/\?module=reports':'\/login'/, "customer report page must send a BELM session to the BELM report centre, not login");
 console.log("General Report routing contract passed.");
 
-// V838: a valid session must survive Back/Reload/start page, and Logout must end it.
+// Phase 54: saved sessions never submit or bypass the login form. Logout still ends them.
 const loginJs = read("frontend/customer-app.js");
 const navCtx = read("frontend/navigation-context-v763.js");
-assert.match(loginJs, /async function resumeSession\(\)/, "sign-in page must resume a valid session");
-assert.match(loginJs, /params\.has\('signed_out'\)/, "explicit logout must always show the sign-in form");
-assert.match(loginJs, /belm_login_resume_at/, "session resume must have a redirect-loop guard");
+assert.doesNotMatch(loginJs, /resumeSession|belm_login_resume_at/, "login requires explicit confirmation even with a saved session");
+assert.match(loginJs, /confirmLoginButton\?\.addEventListener\('click',login\)/, "login must retain explicit confirmation");
 assert.match(read("frontend/logout.php"), /\/login\?signed_out=1/, "logout page must mark an explicit sign-out");
 assert.match(navCtx, /#logout,#logoutButton,\.btn-logout/, "logout controls must clear every session token");
-console.log("Session resume contract passed.");
+console.log("Manual sign-in contract passed.");

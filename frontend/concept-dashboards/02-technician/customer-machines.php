@@ -106,7 +106,14 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     @media(prefers-reduced-motion:reduce){.belm-nav__item.job-card-alert-blink{animation:none;background:#f6c51e;color:#14243a;box-shadow:0 0 0 2px rgba(246,197,30,.3)}}
   </style>
 <script src="/navigation-context-v763.js?v=763-role-flow"></script>
-<script src="/machine-card-photo-v760.js?v=825-technician-customer-machine-photo" defer></script></head>
+<script src="/machine-card-photo-v760.js?v=825-technician-customer-machine-photo" defer></script>
+<link rel="stylesheet" href="/theme-global.css?v=54">
+<script defer src="/theme-manager.js?v=54"></script>
+<script defer src="/language-preferences.js?v=54"></script>
+<script defer src="/belm-i18n.js?v=53"></script>
+<link rel="stylesheet" href="/dashboard-preferences.css?v=54">
+<script defer src="/dashboard-preferences.js?v=54"></script>
+</head>
 <body class="belm-admin belm-assigned-page" data-assigned-page="machines">
 <div class="belm-shell" id="belmShell">
   <aside class="belm-sidebar">

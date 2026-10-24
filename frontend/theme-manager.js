@@ -191,17 +191,9 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
   }
 
   function candidateTokenKeys() {
-    const path = location.pathname;
-    if (path.startsWith("/portal") || path.startsWith("/customer-")) {
-      return ["belm_customer_token", "belm_admin_token", "belm_tech_token", "belm_operator_token"];
-    }
-    if (path.startsWith("/tech") || path.startsWith("/technician-")) {
-      return ["belm_tech_token", "belm_admin_token", "belm_customer_token", "belm_operator_token"];
-    }
-    if (path.startsWith("/operator")) {
-      return ["belm_operator_token", "belm_customer_token", "belm_admin_token", "belm_tech_token"];
-    }
-    return ["belm_admin_token", "belm_tech_token", "belm_customer_token", "belm_operator_token"];
+    const active = String(localStorage.getItem('belm_active_account_type') || '').toLowerCase();
+    const key = {admin:'belm_admin_token',technician:'belm_tech_token',customer:'belm_customer_token',operator:'belm_operator_token'}[active];
+    return key ? [key] : [];
   }
 
   function currentSession() {
@@ -266,6 +258,10 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
     root.dataset.theme = safe;
     root.classList.toggle("dark", safe === "dark");
     root.style.colorScheme = safe;
+    document.body?.classList.toggle('belm-light', safe === 'light');
+    root.classList.toggle('customer-parity-light', safe === 'light');
+    localStorage.setItem('belm-theme', safe);
+    localStorage.setItem('belm_theme', safe);
     if (persistLocal && activeIdentity) {
       localStorage.setItem(storageKey(activeIdentity), safe);
     }
@@ -296,6 +292,7 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
   }
 
   async function setTheme(theme) {
+    ++syncGeneration; // A pending remote read must never undo a user click.
     const safe = apply(theme, true);
     await saveRemote(safe);
     return safe;
@@ -375,6 +372,7 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
         return;
       }
       const data = await response.json().catch(() => ({}));
+      if (generation !== syncGeneration) return;
       if (VALID.has(data.theme)) {
         apply(data.theme, true);
       } else {
@@ -385,6 +383,16 @@ try{if(new URLSearchParams(location.search).get('embed')==='1')document.document
 
     injectPersonalToggle();
   }
+
+  // Capture before legacy dashboard handlers: one click must change the theme once.
+  window.addEventListener('click', event => {
+    const control = event.target?.closest?.('#themeToggle,#headerThemeToggle,#customerParityThemeToggle,#themeButton,[data-belm-theme-toggle],[data-theme-choice]');
+    if (!control) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (control.dataset.themeChoice) setTheme(control.dataset.themeChoice);
+    else toggle();
+  }, true);
 
   window.BELMSession = {
     refresh: (tokenKey, force = true) => refreshSessionToken(tokenKey, force),

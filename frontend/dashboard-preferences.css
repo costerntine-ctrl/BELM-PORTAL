@@ -28,3 +28,5 @@ html[data-theme="light"] :is(input,select,textarea) { background:#fff!important;
 html[data-theme="light"] .landing-shell { background:#f3f6fa; }
 html[data-theme="light"] .landing-shell :is(.welcome-line,.contact-item,.hero-subtitle) { color:#26415e; }
 html[data-theme="light"] .landing-shell h1 { color:#12385e; text-shadow:none; }
+
+@media print { #belmDashboardPreferences,.belm-global-theme-toggle { display:none!important; } }

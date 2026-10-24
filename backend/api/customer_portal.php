@@ -5215,10 +5215,13 @@ if ($sub === 'machines' && $sub2) {
         $params = [$machineId];
         if ($fromDate !== null) { $sql .= ' AND created_at >= ?'; $params[] = $fromDate; }
         if ($toDate !== null) { $sql .= ' AND created_at < ?'; $params[] = $toDate; }
+        $reportId = trim((string)($_GET['reportId'] ?? ''));
+        if ($reportId !== '') { $sql .= ' AND id = ?'; $params[] = $reportId; }
         $sql .= ' ORDER BY created_at DESC';
         $stmt = db()->prepare($sql);
         $stmt->execute($params);
         $jobCards = $stmt->fetchAll();
+        if ($reportId !== '' && !$jobCards) json_error('Job Card report not found for this machine.',404);
         $rows = array_map(fn($jc) => [
             $jc['job_card_no'], $jc['title'], $jc['status'],
             $jc['technician_name'] ?: 'Unassigned', display_date_billing($jc['created_at']),

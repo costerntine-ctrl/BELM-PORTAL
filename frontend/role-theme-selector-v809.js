@@ -18,7 +18,7 @@
   function loadReportExport(){
     if(window.__belmReportExport816||document.querySelector('script[src^="/report-export-v816.js"]'))return;
     const script=document.createElement('script');
-    script.src='/report-export-v816.js?v=55-reports-only';
+    script.src='/report-export-v816.js?v=56-loaded-report-only';
     script.defer=true;
     document.head.appendChild(script);
   }

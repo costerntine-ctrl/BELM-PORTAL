@@ -110,7 +110,7 @@
 
   function wrap() {
     if (document.querySelector('.belm-shell')) return; // already has this shell or v753/v760 shell
-    if (document.querySelector('.cm-side') || document.querySelector('.csx-shell')) return; // older shell present, leave it
+    if (document.querySelector('.cm-side,.csx-shell,.sidebar,.belm-sidebar,#belmAdminSidebar,aside[data-sidebar]')) return; // older shell present, leave it
     if (!document.body || !document.body.children.length) return;
 
     var token = localStorage.getItem('belm_customer_token') || '';

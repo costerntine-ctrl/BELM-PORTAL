@@ -5,7 +5,7 @@
 
   if(!document.querySelector('script[src^="/role-theme-selector-v809.js"]')){
     const themeScript=document.createElement('script');
-    themeScript.src='/role-theme-selector-v809.js?v=809-every-role';
+    themeScript.src='/role-theme-selector-v809.js?v=55-sidebar-report-fix';
     document.head.appendChild(themeScript);
   }
   if(!document.querySelector('script[src^="/customer-company-role-brand-v810.js"]')){

@@ -1,6 +1,9 @@
 (function () {
   if (new URLSearchParams(window.location.search).get("embed") === "1") return;
   if (document.getElementById("belmAdminSidebar")) return;
+  // The page's own role sidebar is authoritative; never layer a second menu over it.
+  if (document.querySelector('.belm-sidebar,.sidebar,aside[data-sidebar],.cm-side,.csx-sidebar')) return;
+  if (location.pathname.replace(/\/+$/, '') === '/customers-manager') return;
 
   // SVG icons halisi zilizotolewa kwenye dashibodi (mockups) za BELM — navy/gold
   // design language. Zinatumika badala ya herufi-mbili (short codes) pekee kama

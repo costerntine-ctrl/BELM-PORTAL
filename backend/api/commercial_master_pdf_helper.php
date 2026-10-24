@@ -125,19 +125,19 @@ function belm_master_wrap_lines(string $text, float $maxWidth, float $fontSize =
  * returns an empty string; the human-readable bank data remains correct.
  */
 function belm_master_qr_vector(string $payload, float $x, float $y, float $size): string {
-    if (!function_exists('shell_exec')) return '';
+    if (!function_exists('shell_exec')) throw new RuntimeException('QR generator disabled.');
     $bin = trim((string)@shell_exec('command -v qrencode 2>/dev/null'));
-    if ($bin === '') return '';
-    $cmd = escapeshellcmd($bin) . ' -t XPM -l M -m 0 -o - ' . escapeshellarg($payload) . ' 2>/dev/null';
+    if ($bin === '') throw new RuntimeException('qrencode unavailable.');
+    $cmd = escapeshellcmd($bin) . ' -t XPM -l M -m 4 -o - ' . escapeshellarg($payload) . ' 2>/dev/null';
     $xpm = (string)@shell_exec($cmd);
-    if ($xpm === '') return '';
+    if ($xpm === '') throw new RuntimeException('QR generation failed.');
 
-    if (!preg_match('/"(\d+)\s+(\d+)\s+(\d+)\s+(\d+)"/', $xpm, $header, PREG_OFFSET_CAPTURE)) return '';
+    if (!preg_match('/"(\d+)\s+(\d+)\s+(\d+)\s+(\d+)"/', $xpm, $header, PREG_OFFSET_CAPTURE)) throw new RuntimeException('Invalid QR header.');
     $width = (int)$header[1][0];
     $height = (int)$header[2][0];
     $colors = (int)$header[3][0];
     $cpp = (int)$header[4][0];
-    if ($width <= 0 || $height <= 0 || $cpp !== 1) return '';
+    if ($width <= 0 || $height <= 0 || $cpp !== 1 || $width !== $height) throw new RuntimeException('Invalid QR size.');
 
     preg_match_all('/"([^"\r\n]*)"/', $xpm, $quoted);
     $parts = $quoted[1] ?? [];
@@ -145,10 +145,10 @@ function belm_master_qr_vector(string $payload, float $x, float $y, float $size)
     foreach ($parts as $i => $part) {
         if (preg_match('/^\d+\s+\d+\s+\d+\s+\d+$/', $part)) { $headerIndex = $i; break; }
     }
-    if ($headerIndex < 0) return '';
+    if ($headerIndex < 0) throw new RuntimeException('Invalid QR color map.');
     $colorRows = array_slice($parts, $headerIndex + 1, $colors);
     $pixelRows = array_slice($parts, $headerIndex + 1 + $colors, $height);
-    if (count($pixelRows) !== $height) return '';
+    if (count($pixelRows) !== $height) throw new RuntimeException('Incomplete QR pixels.');
 
     $blackChars = [];
     foreach ($colorRows as $row) {
@@ -430,15 +430,9 @@ function belm_master_proforma_overlay_lower(
     foreach ([['NMB BANK',$nmb,48],['CRDB BANK',$crdb,218]] as [$bankName,$acct,$cardX]) {
         // Preserve the master rounded card border; clear only its interior.
         $c .= belm_master_pdf_box($cardX + 2, $cardY + 2, $cardW - 4, $cardH - 4, [1,1,1]);
-        $payload = BELM_MASTER_ACCOUNT_NAME . "\n" . $bankName . "\nACCOUNT NUMBER: " . $acct . "\nREFERENCE: " . $number . "\n" . BELM_MASTER_WEBSITE;
+        $payload = $accountName . "\n" . $bankName . "\nACCOUNT NUMBER: " . $acct . "\nREFERENCE: " . $number . "\n" . BELM_MASTER_WEBSITE;
         $qr = belm_master_qr_vector($payload, $cardX + 10, $cardY + 10, 44);
-        if ($qr !== '') {
-            $c .= $qr;
-        } else {
-            // Never leave the sample PI-0498 QR on a live document.
-            $c .= belm_master_pdf_box($cardX + 10, $cardY + 10, 44, 44, [1,1,1], BELM_MASTER_LINE);
-            $c .= pdf_text_center($cardX + 32, $cardY + 30, 'QR', 'FB', 8, BELM_MASTER_NAVY);
-        }
+        $c .= $qr;
         $c .= pdf_text($cardX + 64, $cardY + 43, $bankName, 'FB', 8.2, BELM_MASTER_NAVY);
         $c .= pdf_text($cardX + 64, $cardY + 29, 'Account Number', 'F1', 5.8, [0.40,0.48,0.58]);
         $c .= pdf_text($cardX + 64, $cardY + 15, $acct, 'FB', 8.0, BELM_MASTER_NAVY);
@@ -551,14 +545,9 @@ function belm_master_invoice_overlay_lower(
     $cardY = $bankY + 14; $cardH = 64; $cardW = 159;
     foreach ([['NMB BANK',$nmb,48],['CRDB BANK',$crdb,218]] as [$bankName,$acct,$cardX]) {
         $c .= belm_master_pdf_box($cardX + 2, $cardY + 2, $cardW - 4, $cardH - 4, [1,1,1]);
-        $payload = BELM_MASTER_ACCOUNT_NAME . "\n" . $bankName . "\nACCOUNT NUMBER: " . $acct . "\nREFERENCE: " . $number . "\n" . BELM_MASTER_WEBSITE;
+        $payload = $accountName . "\n" . $bankName . "\nACCOUNT NUMBER: " . $acct . "\nREFERENCE: " . $number . "\n" . BELM_MASTER_WEBSITE;
         $qr = belm_master_qr_vector($payload, $cardX + 10, $cardY + 10, 44);
-        if ($qr !== '') {
-            $c .= $qr;
-        } else {
-            $c .= belm_master_pdf_box($cardX + 10, $cardY + 10, 44, 44, [1,1,1], BELM_MASTER_LINE);
-            $c .= pdf_text_center($cardX + 32, $cardY + 30, 'QR', 'FB', 8, BELM_MASTER_NAVY);
-        }
+        $c .= $qr;
         $c .= pdf_text($cardX + 64, $cardY + 43, $bankName, 'FB', 8.2, BELM_MASTER_NAVY);
         $c .= pdf_text($cardX + 64, $cardY + 29, 'Account Number', 'F1', 5.8, [0.40,0.48,0.58]);
         $c .= pdf_text($cardX + 64, $cardY + 15, $acct, 'FB', 8.0, BELM_MASTER_NAVY);
@@ -775,14 +764,9 @@ function belm_master_draw_lower_blocks(
     $cardY = $bankY + 14; $cardH = 64; $cardW = 159;
     foreach ([['NMB BANK',$nmb,48],['CRDB BANK',$crdb,218]] as [$bankName,$acct,$cardX]) {
         $c .= belm_master_pdf_box($cardX, $cardY, $cardW, $cardH, [1,1,1], BELM_MASTER_LINE);
-        $payload = BELM_MASTER_ACCOUNT_NAME . "\n" . $bankName . "\nACCOUNT NUMBER: " . $acct . "\nREFERENCE: " . $number . "\n" . BELM_MASTER_WEBSITE;
+        $payload = $accountName . "\n" . $bankName . "\nACCOUNT NUMBER: " . $acct . "\nREFERENCE: " . $number . "\n" . BELM_MASTER_WEBSITE;
         $qr = belm_master_qr_vector($payload, $cardX + 10, $cardY + 10, 44);
-        if ($qr !== '') {
-            $c .= $qr;
-        } else {
-            $c .= belm_master_pdf_box($cardX + 10, $cardY + 10, 44, 44, [1,1,1], BELM_MASTER_LINE);
-            $c .= pdf_text_center($cardX + 32, $cardY + 30, 'QR', 'FB', 8, BELM_MASTER_NAVY);
-        }
+        $c .= $qr;
         $c .= pdf_text($cardX + 64, $cardY + 43, $bankName, 'FB', 8.2, BELM_MASTER_NAVY);
         $c .= pdf_text($cardX + 64, $cardY + 29, 'Account Number', 'F1', 5.8, [0.40,0.48,0.58]);
         $c .= pdf_text($cardX + 64, $cardY + 15, $acct, 'FB', 8.0, BELM_MASTER_NAVY);

@@ -14,7 +14,9 @@
   <script src="/theme-manager.js?v=485-display-fit"></script>
   <link rel="stylesheet" href="/password-visibility.css?v=209-eye-toggle">
   <script defer src="/password-visibility.js?v=209-eye-toggle"></script>
-<script src="/navigation-context-v763.js?v=763-role-flow"></script></head>
+<script src="/navigation-context-v763.js?v=763-role-flow"></script><script defer src="/language-preferences.js?v=53"></script>
+<script defer src="/belm-i18n.js?v=53"></script>
+</head>
 <body class="management-page bank-compact-page">
   <header class="management-topbar bank-topbar">
     <div class="bank-brand-block">
@@ -50,6 +52,29 @@
         <span class="section-hint">Synced from live finance records</span>
       </div>
       <section class="metrics-grid" id="companyMetrics" aria-label="Company-wide finance summary"></section>
+    </section>
+
+
+    <section class="dashboard-section" aria-labelledby="vatLedgerTitle">
+      <div class="dashboard-section-head"><div><p class="section-kicker">TAX SUPPORTING RECORDS</p><h2 id="vatLedgerTitle">VAT &amp; TRA Ledger</h2></div></div>
+      <div class="panel" style="padding:22px">
+        <p>Record eligible Input VAT, TRA payment evidence or VAT adjustments. These are supporting records, not confirmed TRA returns. TRA payment records do not automatically debit a bank account; reconcile their bank transaction reference separately.</p>
+        <form id="vatLedgerForm" class="vat-ledger-form" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px">
+          <label>Entry type<select id="vatEntryType" required><option value="INPUT_VAT">Input VAT</option><option value="TRA_PAYMENT">TRA payment</option><option value="ADJUSTMENT">Adjustment</option></select></label>
+          <label>Tax month<input type="month" id="vatTaxMonth" required></label>
+          <label>Entry date<input type="date" id="vatEntryDate" required></label>
+          <label>Amount (TZS)<input type="number" id="vatAmount" required min="0.01" step="0.01"></label>
+          <label id="vatDirectionField" hidden>Adjustment direction<select id="vatDirection"><option value="INCREASE">Increase liability</option><option value="DECREASE">Decrease liability</option></select></label>
+          <label id="vatWithdrawalField" hidden>Existing bank withdrawal (optional)<select id="vatBankWithdrawal"><option value="">Unlinked — pending reconciliation</option></select></label>
+          <label>Receipt / payment reference<input id="vatReference" required maxlength="120" placeholder="Unique TRA/bank/invoice reference"></label>
+          <label style="grid-column:1/-1">Description / supporting evidence<textarea id="vatDescription" required maxlength="2000" rows="2" placeholder="What is this entry for? State supplier or TRA reference."></textarea></label>
+          <div style="grid-column:1/-1"><button type="submit" class="primary" id="vatSaveButton">Save VAT ledger entry</button> <button type="button" class="secondary" id="vatRefreshButton">Refresh ledger</button></div>
+        </form>
+        <p id="vatLedgerMessage" role="status" aria-live="polite"></p>
+        <div style="overflow:auto"><table style="width:100%"><thead><tr><th>Tax month</th><th>Output VAT</th><th>Input VAT</th><th>TRA paid</th><th>Adjustments +/-</th><th>Estimated cumulative balance</th></tr></thead><tbody id="vatLedgerRows"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>
+        <p id="vatReconcileCount" aria-live="polite"></p>
+        <p id="vatLedgerWarning" style="font-size:.85rem"></p>
+      </div>
     </section>
 
     <section class="dashboard-section bank-management-section" aria-labelledby="bankManagementTitle">
@@ -88,6 +113,22 @@
           </div>
         </div>
         <p class="account-empty-note">Select a bank account above to display opening balance, payments in, expenses out, withdrawals and current balance.</p>
+      </section>
+    </section>
+
+    <section class="dashboard-section" id="financeReviewPanel" aria-labelledby="financeReviewTitle">
+      <section class="panel">
+        <div class="section-head"><div><p class="section-kicker">SUPER ADMIN · READ ONLY</p><h2 id="financeReviewTitle">Financial Review &amp; Job Contribution</h2><p>Review exceptions before treating provisional estimates as verified profit.</p></div><button id="refreshFinanceReview" class="secondary compact" type="button">Refresh Review</button></div>
+        <p id="financeReviewStatus" role="status">Review not loaded.</p>
+        <div id="financeReviewCounts" class="metrics-grid"></div>
+        <h3>Customer contributions (before labor and overheads)</h3>
+        <div class="table-wrap"><table><thead><tr><th>Customer</th><th>Revenue ex VAT</th><th>Estimated spare cost</th><th>Contribution estimate</th></tr></thead><tbody id="financeReviewCustomers"><tr><td colspan="4">Loading…</td></tr></tbody></table></div>
+        <h3>Invoices linked to Job Cards</h3>
+        <div class="table-wrap"><table><thead><tr><th>Job Card</th><th>Invoice / Customer</th><th>Revenue ex VAT</th><th>Contribution estimate</th></tr></thead><tbody id="financeReviewJobs"><tr><td colspan="4">Loading…</td></tr></tbody></table></div>
+        <h3>Invoices without a Job Card</h3><p id="financeReviewUnlinked">Loading…</p>
+        <h3>Possible expense overlaps</h3>
+        <div class="table-wrap"><table><thead><tr><th>Date</th><th>Finance expense</th><th>Procurement expense</th><th>Amount</th></tr></thead><tbody id="financeReviewDuplicates"><tr><td colspan="4">Loading…</td></tr></tbody></table></div>
+        <p class="bank-storage-status">These are review flags, not confirmed duplicates. Contribution excludes labor, overheads, income taxes and historical inventory cost adjustments. Do not remove records automatically.</p>
       </section>
     </section>
 
@@ -189,5 +230,7 @@
   <script src="/admin-access.js?v=411-job-card-only"></script>
   <script src="/bank-controller/app.js?v=395-bank-edit-audit"></script>
   <script src="/bank-controller/vat-sync.js?v=1-paid-invoice-vat"></script>
+  <script src="/bank-controller/vat-ledger-ui.js?v=20"></script>
+  <script src="/bank-controller/finance-review.js?v=23"></script>
 </body>
 </html>

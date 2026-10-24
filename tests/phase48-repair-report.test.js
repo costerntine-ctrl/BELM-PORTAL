@@ -1,0 +1,10 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const api=fs.readFileSync('backend/api/customer_portal.php','utf8');
+const ui=fs.readFileSync('frontend/repair-confirmations/app.js','utf8');
+const block=api.split("if ($sub3 === 'repair-report' && $method === 'GET')")[1].split('// Phase 45:')[0];
+test('report is scoped by machine and customer and Job Card',()=>{assert.match(block,/WHERE id=\? AND machine_id=\? AND customer_id=\?/);assert.match(block,/WHERE rc.customer_id=\? AND rc.machine_id=\? AND rc.job_card_id=\?/);});
+test('report total includes approved evidence only',()=>{assert.match(block,/if \(\$status === 'APPROVED'\)/);assert.match(block,/approvedTotal/);});
+test('FINAL requires completion, signoff and no pending reviews',()=>{assert.match(block,/\$isFinal=\$completed && \$signed && \$pending===0/);});
+test('report UI uses safe DOM text and print action',()=>{assert.match(ui,/\$\('viewReport'\)\.addEventListener/);assert.match(ui,/textContent=r\.disclaimer/);assert.match(ui,/window\.print\(\)/);});

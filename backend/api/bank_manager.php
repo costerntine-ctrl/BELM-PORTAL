@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../config/helpers.php';
+require_once __DIR__ . '/finance_reconciliation_helper.php';
 
 $user = require_auth();
 // V510: Bank Controller is reserved for the primary Super Admin role only.
@@ -12,6 +13,19 @@ function finance_amount(PDO $pdo, string $sql, array $params = []): float {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     return (float)$stmt->fetchColumn();
+}
+
+// Super Admin only: reconciliation exception counts. This endpoint does not write data.
+if ($method === 'GET' && $action === 'finance-audit') {
+    json_out(['ok' => true, 'audit' => belm_finance_integrity_checks(db())]);
+}
+
+// Phase 22: read-only finance checks and customer/job contribution estimates.
+if ($method === 'GET' && $action === 'expense-overlap-review') {
+    json_out(['ok'=>true, 'review'=>belm_expense_duplicate_candidates(db())]);
+}
+if ($method === 'GET' && $action === 'job-customer-margin') {
+    json_out(['ok'=>true, 'report'=>belm_job_customer_margin(db())]);
 }
 
 // Drill-down behind the "Customer Debt" card: every invoice with money
@@ -243,38 +257,13 @@ if ($method === 'GET' && $action === '') {
          FROM bank_withdrawals
          WHERE deleted_at IS NULL'
     );
-    $customerDebt = finance_amount(
-        $pdo,
-        "SELECT COALESCE(SUM(GREATEST(i.total - COALESCE(p.paid,0),0)),0)
-         FROM invoices i
-         LEFT JOIN (
-           SELECT invoice_id, SUM(amount) AS paid
-           FROM payments
-           GROUP BY invoice_id
-         ) p ON p.invoice_id = i.id
-         WHERE i.deleted_at IS NULL AND i.status <> 'CANCELLED'"
-    );
-    // VAT is government's money, not BELM's revenue — calculated as 18% of
-    // every invoice's subtotal (not the free-typed "Tax" field, which
-    // admins may have used loosely), so this always reflects the true
-    // statutory liability regardless of what was entered per invoice.
-    $vatDebt = finance_amount(
-        $pdo,
-        "SELECT COALESCE(SUM(ROUND(subtotal * 0.18, 2)),0)
-         FROM invoices
-         WHERE deleted_at IS NULL AND status <> 'CANCELLED'"
-    );
-    // Cost of goods sold — the purchase price BELM itself paid for the
-    // spare parts on invoices, so "profit" only counts the markup, not
-    // the full sale price of parts that were bought in first.
-    $costOfGoodsSold = finance_amount(
-        $pdo,
-        "SELECT COALESCE(SUM(ii.quantity * sp.purchase_price),0)
-         FROM invoice_items ii
-         JOIN invoices i ON i.id = ii.invoice_id
-         JOIN spare_parts sp ON sp.id = ii.spare_part_id
-         WHERE i.deleted_at IS NULL AND i.status <> 'CANCELLED'"
-    );
+    // Common invoice ledger: receipts never increase payment totals twice.
+    // VAT comes from each stored invoice tax, not an imposed 18% on every invoice.
+    $invoiceLedger = belm_invoice_reconciliation($pdo);
+    $customerDebt = $invoiceLedger['receivable'];
+    $vatDebt = $invoiceLedger['invoice_output_vat']; // OUTPUT VAT, not TRA net payable.
+    $margin = belm_provisional_margin_bridge($pdo, $invoiceLedger);
+    $costOfGoodsSold = $margin['costOfGoodsSold'];
     $unallocatedPayments = finance_amount(
         $pdo,
         'SELECT COALESCE(SUM(amount),0)
@@ -287,7 +276,8 @@ if ($method === 'GET' && $action === '') {
          FROM company_expenses
          WHERE bank_account_id IS NULL AND deleted_at IS NULL'
     );
-    $netAfterVat = $paymentsReceived - $companyExpenses - $totalWithdrawals - $vatDebt - $costOfGoodsSold;
+    // All dashboard profit estimates now use the same provisional bridge.
+    $netAfterVat = $margin['provisionalOperatingResult'];
 
     json_out([
         'accounts' => $accounts,
@@ -295,10 +285,20 @@ if ($method === 'GET' && $action === '') {
         'summary' => [
             'allBankBalance' => $allBankBalance,
             'paymentsReceived' => $paymentsReceived,
-            'companyExpenses' => $companyExpenses,
+            'companyExpenses' => $margin['companyExpenses'],
+            'companyExpenseBreakdown' => $margin['companyExpenseBreakdown'],
             'totalWithdrawals' => $totalWithdrawals,
             'customerDebt' => $customerDebt,
             'vatDebt' => $vatDebt,
+            'vatMeaning' => 'Invoice output VAT before input VAT credits, payments to TRA or tax adjustments',
+            'vatOnPaidInvoices' => $invoiceLedger['paid_share_vat'],
+            'grossInvoiced' => $invoiceLedger['invoiced_gross'],
+            'salesExVat' => $invoiceLedger['sales_ex_vat'],
+            'allocatedInvoicePayments' => $invoiceLedger['allocated_paid'],
+            'profitMeaning' => $margin['profitMeaning'],
+            'provisionalOperatingResult' => $margin['provisionalOperatingResult'],
+            'reconciliationRequired' => $margin['reconciliationRequired'],
+            'reconciliationWarnings' => $margin['reconciliationWarnings'],
             'costOfGoodsSold' => $costOfGoodsSold,
             'loss' => max(0, -$netAfterVat),
             'belmProfit' => max(0, $netAfterVat),

@@ -508,8 +508,8 @@ if ($method === 'POST' && $action === 'dispatch') {
             $sourceRequestId=(string)($job['source_type']==='SERVICE_REQUEST' ? ($job['source_id']??'') : '');
             $machineLabel=trim(($job['brand']??'').' '.($job['model']??'')) ?: 'Machine';
             $jobLocation=$jobLocationInput!==''?$jobLocationInput:(trim((string)($job['job_location']??'')) ?: trim((string)($job['customer_address']??'')));
-            $pdo->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,status='ASSIGNED',priority=?,due_date=?,job_location=COALESCE(NULLIF(?,''),job_location),billing_status=CASE WHEN billing_status IN ('NOT_READY','') THEN 'PROFORMA_PENDING' ELSE billing_status END,updated_at=NOW() WHERE id=?")
-                ->execute([$technicianId,$tech['name'],$priority,$dueDate?:null,$jobLocation,$jobId]);
+            $pdo->prepare("UPDATE digital_job_cards SET technician_id=?,technician_name=?,status='ASSIGNED',received_at=CASE WHEN technician_id IS DISTINCT FROM ? THEN NULL ELSE received_at END,started_at=CASE WHEN technician_id IS DISTINCT FROM ? THEN NULL ELSE started_at END,priority=?,due_date=?,job_location=COALESCE(NULLIF(?,''),job_location),billing_status=CASE WHEN billing_status IN ('NOT_READY','') THEN 'PROFORMA_PENDING' ELSE billing_status END,updated_at=NOW() WHERE id=?")
+                ->execute([$technicianId,$tech['name'],$technicianId,$technicianId,$priority,$dueDate?:null,$jobLocation,$jobId]);
             $pdo->prepare("UPDATE breakdown_cases SET current_stage='JOB_CARD_ASSIGNED',current_department='Technician',blocker_reason=NULL,stage_started_at=NOW(),updated_at=NOW() WHERE id=? AND status<>'COMPLETED'")
                 ->execute([$caseId]);
             $assignmentAction = $assignmentChanged

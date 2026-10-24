@@ -36,21 +36,26 @@ db()->exec(
         account_type VARCHAR(32) NOT NULL,
         account_id VARCHAR(36) NOT NULL,
         display_theme VARCHAR(10) NOT NULL DEFAULT 'light',
+        preferred_language VARCHAR(5) NOT NULL DEFAULT 'en',
         updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (account_type, account_id)
     )"
 );
 
+// Upgrade existing installations without removing their theme setting.
+db()->exec("ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(5) NOT NULL DEFAULT 'en'");
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $stmt = db()->prepare(
-        'SELECT display_theme, updated_at FROM user_preferences WHERE account_type = ? AND account_id = ?'
+        'SELECT display_theme, preferred_language, updated_at FROM user_preferences WHERE account_type = ? AND account_id = ?'
     );
     $stmt->execute([$accountType, $accountId]);
     $row = $stmt->fetch();
     json_out([
         'theme' => $row ? $row['display_theme'] : null,
+        'language' => $row ? $row['preferred_language'] : 'en',
         'accountType' => $accountType,
         'accountId' => $accountId,
         'updatedAt' => $row ? $row['updated_at'] : null,
@@ -59,6 +64,17 @@ if ($method === 'GET') {
 
 if ($method === 'PUT') {
     $b = body();
+    if (array_key_exists('language', $b)) {
+        $language = strtolower(trim((string)$b['language']));
+        if (!in_array($language, ['en','sw','zh'], true)) json_error('Language must be en, sw or zh.');
+        db()->prepare(
+            'INSERT INTO user_preferences (account_type, account_id, preferred_language, updated_at)
+             VALUES (?,?,?,NOW())
+             ON CONFLICT (account_type, account_id) DO UPDATE
+             SET preferred_language = EXCLUDED.preferred_language, updated_at = NOW()'
+        )->execute([$accountType, $accountId, $language]);
+        json_out(['ok' => true, 'language' => $language]);
+    }
     $theme = strtolower(trim((string)($b['theme'] ?? '')));
     if (!in_array($theme, ['light', 'dark'], true)) {
         json_error('Theme must be light or dark.');

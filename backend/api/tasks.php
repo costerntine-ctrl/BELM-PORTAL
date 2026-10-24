@@ -68,7 +68,7 @@ if ($method === 'GET') {
                 'description' => trim((string)($job['fault_description'] ?? '')) ?: (string)$job['title'],
                 'due_date' => $job['due_date'],
                 'priority' => $job['priority'] ?: 'NORMAL',
-                'status' => in_array($jobStatus, ['COMPLETED','CANCELLED'], true) ? 'DONE' : 'PENDING',
+                'status' => in_array($jobStatus, ['COMPLETED','CANCELLED'], true) ? 'DONE' : (in_array($jobStatus, ['IN_PROGRESS','RECEIVED','WAITING_FOR_PARTS','REPORT_REVIEW','TESTING'], true) ? 'IN_PROGRESS' : 'PENDING'),
                 'created_by' => trim((string)($job['issued_by_name'] ?? '')) ?: 'BELM / Customer',
                 'created_at' => $job['created_at'],
                 'customer_name' => $job['customer_name'],
@@ -89,6 +89,17 @@ if ($method === 'GET') {
             && !empty($row['home_customer_id'])
             && (string)$row['customer_id'] !== (string)$row['home_customer_id'];
         $row['homeCustomerName'] = $row['home_customer_name'] ?? null;
+        // Deadline monitoring is derived at read time; never mark a completed task overdue.
+        // Due dates are calendar dates in the business timezone, not midnight UTC timestamps.
+        $due = trim((string)($row['due_date'] ?? ''));
+        $dueDate = $due !== '' ? substr($due, 0, 10) : '';
+        $validDueDate = $dueDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $dueDate)
+            && date('Y-m-d', strtotime($dueDate) ?: 0) === $dueDate;
+        $isFinished = strtoupper((string)($row['status'] ?? '')) === 'DONE';
+        $row['isOverdue'] = (bool)($validDueDate && !$isFinished && $dueDate < date('Y-m-d'));
+        $row['daysOverdue'] = $row['isOverdue']
+            ? (int)(new DateTimeImmutable($dueDate))->diff(new DateTimeImmutable('today'))->days
+            : 0;
         unset($row['home_customer_id'], $row['home_customer_name']);
     }
     unset($row);

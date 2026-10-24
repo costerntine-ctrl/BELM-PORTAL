@@ -6,7 +6,7 @@ header { min-height:70px; padding:10px clamp(18px,4vw,54px); background:linear-g
 .brand { display:flex; gap:11px; align-items:center; }.brand>span { width:40px; height:40px; border-radius:10px; display:grid; place-items:center; background:var(--green); border:2px solid var(--yellow); font-weight:900; box-shadow:0 7px 18px rgba(0,166,81,.23); }
 .brand b,.brand small { display:block; }.brand small { color:#a9bed2; margin-top:2px; font-size:11px; }
 nav { display:flex; align-items:center; gap:14px; }nav a,nav button { color:#d9e9f8; background:none; border:0; text-decoration:none; font:600 12px inherit; cursor:pointer; }
-main { width:min(1120px,calc(100% - 28px)); margin:38px auto 70px; }
+main { width:min(1400px,calc(100% - 40px)); margin:38px auto 70px; }
 .heading { display:flex; justify-content:space-between; gap:20px; align-items:end; }
 .heading p { color:var(--green2); letter-spacing:1.4px; font-size:10px; font-weight:900; margin:0 0 7px; }
 h1 { margin:0 0 7px; color:var(--navy); font-size:34px; }.heading span { color:var(--muted); font-size:13px; }
@@ -188,8 +188,7 @@ html[data-theme="dark"] .customer-manage-actions button.danger { background:#2a1
 .customer-control-switch input:disabled { opacity:.55; cursor:not-allowed; }
 
 
-/* V708 - visible registration controls moved to the BELM sidebar. */
-.registration-page-actions-bridge,
-.registration-page-actions-bridge[hidden] { display:none !important; }
+/* Keep registration controls accessible on the standalone page. */
+.registration-page-actions-bridge { display:flex; flex-wrap:wrap; }
 .heading { align-items:flex-end; }
 .heading > div:first-child { max-width:760px; }

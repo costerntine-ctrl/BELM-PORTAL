@@ -1,0 +1,12 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const php = fs.readFileSync(path.join(__dirname,'../backend/api/customer_portal.php'),'utf8');
+const js = fs.readFileSync(path.join(__dirname,'../frontend/shared-machine-card-v827.js'),'utf8');
+assert.match(php,/sm.machine_id=\? AND sm.customer_id=\? AND sm.movement_type='ISSUE'/);
+assert.match(php,/si.customer_id=sm.customer_id/);
+assert.match(php,/customer_signed_at/);
+assert.match(php,/issueValue/);
+assert.match(js,/installation not confirmed/);
+assert.match(js,/customer signature not recorded/);
+console.log('Phase44 customer-scoped issue ledger and completion presentation passed');

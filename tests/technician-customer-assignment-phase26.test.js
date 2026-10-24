@@ -1,0 +1,10 @@
+const fs=require('fs');const assert=require('assert');
+const api=fs.readFileSync('backend/api/checklist_reports.php','utf8');
+const page=fs.readFileSync('frontend/concept-dashboards/02-technician/customer-machines.php','utf8');
+assert(api.includes("if ($customerId !== trim((string)($user['assignedCustomerId'] ?? ''))) return null;"));
+assert(api.includes("'requiresCode' => false"));
+assert(api.includes('WHERE id=? AND deleted_at IS NULL AND is_active=1 LIMIT 1'));
+assert(!api.includes("ORDER BY name'\n    );\n    $matches"));
+assert(page.includes("await loadAssignedCustomer()"));
+assert(!page.includes('if(gate.requiresCode)renderCodeGate()'));
+console.log('PASS: technician checkup customer access is assignment-scoped, not customer-name-scoped');

@@ -54,9 +54,9 @@
       const list = Array.isArray(jobs) ? jobs : [];
       const now = new Date();
       const assigned = list.filter((j) => ['OPEN', 'ASSIGNED'].includes(String(j.status).toUpperCase()));
-      const inProgress = list.filter((j) => String(j.status).toUpperCase() === 'IN_PROGRESS');
+      const inProgress = list.filter((j) => ['IN_PROGRESS', 'RECEIVED', 'TESTING', 'REPORT_REVIEW', 'WAITING_FOR_PARTS'].includes(String(j.status).toUpperCase()));
       const completedThisMonth = list.filter((j) => {
-        if (String(j.status).toUpperCase() !== 'COMPLETED' || !j.completedAt) return false;
+        if (!['COMPLETED', 'DONE'].includes(String(j.status).toUpperCase()) || !j.completedAt) return false;
         const d = new Date(j.completedAt);
         return !isNaN(d.getTime()) && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       });
@@ -65,7 +65,7 @@
       document.getElementById('statProgress').textContent = inProgress.length;
       document.getElementById('statCompleted').textContent = completedThisMonth.length;
 
-      const active = list.filter((j) => !['COMPLETED', 'CANCELLED'].includes(String(j.status).toUpperCase()));
+      const active = list.filter((j) => !['COMPLETED', 'DONE', 'CANCELLED'].includes(String(j.status).toUpperCase()));
       const body = document.getElementById('jobsBody');
       body.innerHTML = active.length
         ? active.slice(0, 15).map((j) => `

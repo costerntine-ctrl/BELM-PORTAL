@@ -1205,9 +1205,11 @@ CREATE TABLE IF NOT EXISTS user_preferences (
   account_type VARCHAR(32) NOT NULL,
   account_id VARCHAR(36) NOT NULL,
   display_theme VARCHAR(10) NOT NULL DEFAULT 'light',
+  preferred_language VARCHAR(5) NOT NULL DEFAULT 'en',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (account_type, account_id)
 );
+ALTER TABLE user_preferences ADD COLUMN IF NOT EXISTS preferred_language VARCHAR(5) NOT NULL DEFAULT 'en';
 
 -- =====================================================================
 -- V201 MACHINE OWNER SERVICE NOTIFICATIONS
@@ -1436,6 +1438,7 @@ CREATE TABLE IF NOT EXISTS digital_job_cards (
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE digital_job_cards ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ NULL;
 CREATE INDEX IF NOT EXISTS idx_job_cards_customer ON digital_job_cards(customer_id, status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_job_cards_technician ON digital_job_cards(technician_id, status, created_at DESC);
 
@@ -1771,3 +1774,58 @@ CREATE TABLE IF NOT EXISTS role_communication_reads (
 );
 CREATE INDEX IF NOT EXISTS idx_role_communication_reads_reader
   ON role_communication_reads(reader_key, read_at DESC);
+
+
+-- Phase 18: separate tax evidence ledger; never mix TRA remittances with sales or profit.
+CREATE TABLE IF NOT EXISTS belm_vat_ledger (
+  id VARCHAR(36) PRIMARY KEY,
+  tax_month DATE NOT NULL,
+  entry_date DATE NOT NULL,
+  entry_type VARCHAR(20) NOT NULL CHECK(entry_type IN ('INPUT_VAT','ADJUSTMENT','TRA_PAYMENT')),
+  amount NUMERIC(14,2) NOT NULL CHECK(amount > 0),
+  adjustment_direction VARCHAR(8) NULL CHECK(adjustment_direction IN ('INCREASE','DECREASE')),
+  reference VARCHAR(120) NOT NULL,
+  description TEXT NOT NULL,
+  recorded_by VARCHAR(36) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  voided_at TIMESTAMPTZ NULL,
+  CONSTRAINT vat_adjustment_direction CHECK ((entry_type='ADJUSTMENT' AND adjustment_direction IS NOT NULL) OR (entry_type<>'ADJUSTMENT' AND adjustment_direction IS NULL)),
+  CONSTRAINT vat_tax_month_first_day CHECK (EXTRACT(DAY FROM tax_month)=1)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_belm_vat_ledger_reference ON belm_vat_ledger(entry_type, LOWER(reference)) WHERE voided_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_belm_vat_ledger_month ON belm_vat_ledger(tax_month, entry_type) WHERE voided_at IS NULL;
+-- Phase 20: optional explicit one-to-one bank evidence; never debit twice.
+ALTER TABLE belm_vat_ledger ADD COLUMN IF NOT EXISTS bank_withdrawal_id VARCHAR(36) NULL REFERENCES bank_withdrawals(id);
+CREATE UNIQUE INDEX IF NOT EXISTS ux_belm_vat_tra_bank_withdrawal ON belm_vat_ledger(bank_withdrawal_id) WHERE bank_withdrawal_id IS NOT NULL AND voided_at IS NULL;
+
+
+-- Phase 45: signed-off quantity of parts installed, with labour cost evidence.
+-- Store ISSUE is only a source; confirmed installation is a separate record.
+CREATE TABLE IF NOT EXISTS customer_repair_confirmations (
+  id VARCHAR(36) PRIMARY KEY,
+  customer_id VARCHAR(36) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  machine_id VARCHAR(36) NOT NULL REFERENCES machines(id) ON DELETE CASCADE,
+  job_card_id VARCHAR(36) NOT NULL REFERENCES digital_job_cards(id) ON DELETE CASCADE,
+  store_issue_id VARCHAR(36) NOT NULL REFERENCES customer_store_movements(id) ON DELETE RESTRICT,
+  quantity_installed NUMERIC(14,2) NOT NULL CHECK (quantity_installed > 0),
+  labor_hours NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (labor_hours >= 0),
+  hourly_rate NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (hourly_rate >= 0),
+  unit_cost_snapshot NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (unit_cost_snapshot >= 0),
+  confirmation_note VARCHAR(1000) NOT NULL DEFAULT '',
+  confirmed_by VARCHAR(255) NOT NULL,
+  review_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (review_status IN ('PENDING','APPROVED','REJECTED')),
+  reviewed_by VARCHAR(255),
+  reviewed_at TIMESTAMPTZ,
+  review_note VARCHAR(1000) NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+-- Idempotent rollout for pre-existing Phase 45 tables (staging first).
+ALTER TABLE customer_repair_confirmations ADD COLUMN IF NOT EXISTS review_status VARCHAR(20) NOT NULL DEFAULT 'PENDING';
+ALTER TABLE customer_repair_confirmations ADD COLUMN IF NOT EXISTS reviewed_by VARCHAR(255);
+ALTER TABLE customer_repair_confirmations ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE customer_repair_confirmations ADD COLUMN IF NOT EXISTS review_note VARCHAR(1000) NOT NULL DEFAULT '';
+-- Historic Phase 45 confirmations must be reviewed explicitly, not silently approved.
+CREATE INDEX IF NOT EXISTS idx_customer_repair_review ON customer_repair_confirmations(customer_id,machine_id,review_status);
+
+CREATE INDEX IF NOT EXISTS idx_customer_repair_confirmations_machine ON customer_repair_confirmations(customer_id,machine_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_customer_repair_confirmations_issue ON customer_repair_confirmations(customer_id,store_issue_id);

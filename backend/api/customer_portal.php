@@ -4547,6 +4547,227 @@ if ($sub === 'machines' && $sub2) {
     $stmt->execute([$machineId, $customer['id']]);
     if (!$stmt->fetch()) json_error('Not found', 404);
 
+    // Phase 48: read-only, customer-scoped final repair report by Job Card.
+    // A report is FINAL only when the job is completed, customer signed, and no evidence awaits review.
+    if ($sub3 === 'repair-report' && $method === 'GET') {
+        $jobId = trim((string)($_GET['jobCardId'] ?? ''));
+        if ($jobId === '') json_error('Job Card is required.', 422);
+        $jobStmt = db()->prepare('SELECT id,job_card_no,title,status,technician_name,received_at,completed_at,customer_signed_by_name,customer_signed_at,created_at FROM digital_job_cards WHERE id=? AND machine_id=? AND customer_id=? LIMIT 1');
+        $jobStmt->execute([$jobId,$machineId,$customer['id']]);
+        $job = $jobStmt->fetch();
+        if (!$job) json_error('Job Card not found for this machine.', 404);
+        $machineStmt = db()->prepare('SELECT id,machine_type,brand,model,fleet_number FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL LIMIT 1');
+        $machineStmt->execute([$machineId,$customer['id']]);
+        $machine = $machineStmt->fetch();
+        if (!$machine) json_error('Machine not found for this customer.', 404);
+        $recordsStmt = db()->prepare("SELECT rc.id,rc.quantity_installed,rc.labor_hours,rc.hourly_rate,rc.unit_cost_snapshot,rc.confirmation_note,rc.confirmed_by,rc.review_status,rc.reviewed_by,rc.reviewed_at,rc.review_note,rc.created_at,si.part_number,si.description
+            FROM customer_repair_confirmations rc
+            JOIN customer_store_movements sm ON sm.id=rc.store_issue_id AND sm.customer_id=rc.customer_id AND sm.machine_id=rc.machine_id AND sm.movement_type='ISSUE'
+            JOIN customer_store_items si ON si.id=sm.store_item_id AND si.customer_id=rc.customer_id
+            WHERE rc.customer_id=? AND rc.machine_id=? AND rc.job_card_id=? ORDER BY rc.created_at ASC");
+        $recordsStmt->execute([$customer['id'],$machineId,$jobId]);
+        $partsTotal=0.0; $laborTotal=0.0; $pending=0; $entries=[];
+        foreach ($recordsStmt->fetchAll() as $r) {
+            $status=(string)$r['review_status'];
+            if ($status === 'PENDING') $pending++;
+            $partCost=round((float)$r['quantity_installed']*(float)$r['unit_cost_snapshot'],2);
+            $laborCost=round((float)$r['labor_hours']*(float)$r['hourly_rate'],2);
+            if ($status === 'APPROVED') { $partsTotal+=$partCost; $laborTotal+=$laborCost; }
+            $entries[]=['id'=>$r['id'],'partNumber'=>$r['part_number'],'description'=>$r['description'],
+                'quantity'=>(float)$r['quantity_installed'],'laborHours'=>(float)$r['labor_hours'],
+                'hourlyRate'=>(float)$r['hourly_rate'],'partsCost'=>$partCost,'laborCost'=>$laborCost,
+                'status'=>$status,'recordedBy'=>$r['confirmed_by'],'reviewedBy'=>$r['reviewed_by'],
+                'reviewedAt'=>$r['reviewed_at'],'note'=>$r['confirmation_note'],'reviewNote'=>$r['review_note']];
+        }
+        $completed=strtoupper((string)$job['status']) === 'COMPLETED' && !empty($job['completed_at']);
+        $signed=!empty($job['customer_signed_at']);
+        $isFinal=$completed && $signed && $pending===0;
+        json_out(['machine'=>['id'=>$machine['id'],'type'=>$machine['machine_type'],'label'=>trim((string)$machine['brand'].' '.(string)$machine['model']),'fleetNumber'=>$machine['fleet_number']],
+            'jobCard'=>['id'=>$job['id'],'number'=>$job['job_card_no'],'title'=>$job['title'],'status'=>$job['status'],
+                'technician'=>$job['technician_name'],'receivedAt'=>$job['received_at'],'completedAt'=>$job['completed_at'],
+                'customerSignedBy'=>$job['customer_signed_by_name'],'customerSignedAt'=>$job['customer_signed_at']],
+            'reportStatus'=>$isFinal?'FINAL':'DRAFT','pendingReviewCount'=>$pending,
+            'costs'=>['approvedParts'=>round($partsTotal,2),'approvedLabor'=>round($laborTotal,2),'approvedTotal'=>round($partsTotal+$laborTotal,2),'currency'=>'TZS'],
+            'entries'=>$entries,'disclaimer'=>'Recorded approved repair costs only; not a final financial invoice. Store issues are not proof of installation.']);
+    }
+
+    // Phase 45: manager-confirmed installation against an actual Customer Store issue.
+    // This is a separate factual record: ISSUE alone does not prove installation.
+    if ($sub3 === 'repair-confirmations' && $method === 'POST') {
+        require_customer_write_access($customer);
+        require_customer_machine_management_access($customer);
+        $activeMachine = db()->prepare('SELECT id FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL');
+        $activeMachine->execute([$machineId, $customer['id']]);
+        if (!$activeMachine->fetchColumn()) json_error('Machine not found for this customer.', 404);
+        $b = body();
+        $jobId = trim((string)($b['jobCardId'] ?? ''));
+        $issueId = trim((string)($b['storeIssueId'] ?? ''));
+        $qtyRaw = $b['quantityInstalled'] ?? null;
+        $hoursRaw = $b['laborHours'] ?? null;
+        $rateRaw = $b['hourlyRate'] ?? null;
+        $note = trim((string)($b['note'] ?? ''));
+        if (!$jobId || !$issueId || !is_numeric($qtyRaw) || !is_numeric($hoursRaw) || !is_numeric($rateRaw)) json_error('Job Card, Store Issue, quantity, hours and hourly rate are required.', 422);
+        $qty = (float)$qtyRaw; $hours = (float)$hoursRaw; $rate = (float)$rateRaw;
+        if (!is_finite($qty) || !is_finite($hours) || !is_finite($rate) || $qty <= 0 || $hours < 0 || $rate < 0 || $qty > 1000000 || $hours > 10000 || $rate > 100000000) json_error('Invalid quantity or labour cost.', 422);
+        if (strlen($note) > 1000) json_error('Note must be at most 1000 characters.', 422);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $job = $pdo->prepare('SELECT id,status FROM digital_job_cards WHERE id=? AND machine_id=? AND customer_id=? FOR UPDATE');
+            $job->execute([$jobId,$machineId,$customer['id']]);
+            $jobRow = $job->fetch();
+            if (!$jobRow || in_array(strtoupper((string)$jobRow['status']), ['CANCELLED','CANCELED'],true)) {
+                $pdo->rollBack(); json_error('Active Job Card not found for this machine.', 422);
+            }
+            $issue = $pdo->prepare("SELECT id,quantity,unit_cost FROM customer_store_movements WHERE id=? AND machine_id=? AND customer_id=? AND movement_type='ISSUE' FOR UPDATE");
+            $issue->execute([$issueId,$machineId,$customer['id']]);
+            $issued = $issue->fetch();
+            if (!$issued) { $pdo->rollBack(); json_error('Store issue not found for this machine.', 422); }
+            $total = $pdo->prepare('SELECT COALESCE(SUM(quantity_installed),0) FROM customer_repair_confirmations WHERE customer_id=? AND store_issue_id=?');
+            $total->execute([$customer['id'],$issueId]);
+            if ((float)$total->fetchColumn() + $qty > (float)$issued['quantity'] + 0.000001) {
+                $pdo->rollBack(); json_error('Installed quantity cannot exceed issued quantity.', 422);
+            }
+            $id = uuid();
+            $stmt = $pdo->prepare('INSERT INTO customer_repair_confirmations (id,customer_id,machine_id,job_card_id,store_issue_id,quantity_installed,labor_hours,hourly_rate,unit_cost_snapshot,confirmation_note,confirmed_by) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+            $stmt->execute([$id,$customer['id'],$machineId,$jobId,$issueId,$qty,$hours,$rate,(float)$issued['unit_cost'],$note,(string)($customer['actorName'] ?? 'Customer Manager')]);
+            $pdo->commit();
+            json_out(['ok'=>true,'id'=>$id,'partsCost'=>round($qty*(float)$issued['unit_cost'],2),'laborCost'=>round($hours*$rate,2)],201);
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+    }
+
+    // Phase 47: review of previously recorded installation evidence.
+    // Only the customer owner/company admin in self-managed mode may make a decision.
+    if ($sub3 === 'repair-review' && $method === 'POST') {
+        require_customer_machine_management_access($customer);
+        $b = body();
+        $confirmationId = trim((string)($b['confirmationId'] ?? ''));
+        $decision = strtoupper(trim((string)($b['decision'] ?? '')));
+        $reason = trim((string)($b['reason'] ?? ''));
+        if (!$confirmationId || !in_array($decision, ['APPROVED','REJECTED'], true)) json_error('Confirmation and decision are required.',422);
+        if ($decision === 'REJECTED' && $reason === '') json_error('A rejection reason is required.',422);
+        if (strlen($reason) > 1000) json_error('Review note must be at most 1000 characters.',422);
+        $pdo = db();
+        $pdo->beginTransaction();
+        try {
+            $stmt = $pdo->prepare('SELECT id,review_status FROM customer_repair_confirmations WHERE id=? AND customer_id=? AND machine_id=? FOR UPDATE');
+            $stmt->execute([$confirmationId,$customer['id'],$machineId]);
+            $existing = $stmt->fetch();
+            if (!$existing) { $pdo->rollBack(); json_error('Repair confirmation not found.',404); }
+            if ($existing['review_status'] !== 'PENDING') { $pdo->rollBack(); json_error('This confirmation has already been reviewed.',409); }
+            $update = $pdo->prepare('UPDATE customer_repair_confirmations SET review_status=?, reviewed_by=?, reviewed_at=CURRENT_TIMESTAMP, review_note=? WHERE id=? AND customer_id=? AND machine_id=? AND review_status=\'PENDING\'');
+            $update->execute([$decision, (string)($customer['actorName'] ?? 'Customer Manager'), $reason, $confirmationId,$customer['id'],$machineId]);
+            $pdo->commit();
+            json_out(['ok'=>true,'id'=>$confirmationId,'reviewStatus'=>$decision]);
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            throw $error;
+        }
+    }
+
+    // Phase 42: customer-owned read-only maintenance timeline by Machine ID.
+    // Validate ownership and deletion state independently of the UI's machine card.
+    if ($sub3 === 'maintenance-history' && $method === 'GET') {
+        $owned = db()->prepare('SELECT id,machine_type,brand,model,fleet_number FROM machines WHERE id=? AND customer_id=? AND deleted_at IS NULL LIMIT 1');
+        $owned->execute([$machineId, $customer['id']]);
+        $machine = $owned->fetch();
+        if (!$machine) json_error('Machine not found for this customer.', 404);
+        $checks = db()->prepare('SELECT id,overall_status,hour_meter_reading,filled_by,created_at FROM checklist_reports WHERE machine_id=? ORDER BY created_at DESC LIMIT 40');
+        $checks->execute([$machineId]);
+        $jobs = db()->prepare('SELECT id,job_card_no,title,status,technician_name,received_at,completed_at,customer_signed_by_name,customer_signed_at,created_at FROM digital_job_cards WHERE machine_id=? AND customer_id=? ORDER BY created_at DESC LIMIT 40');
+        $jobs->execute([$machineId, $customer['id']]);
+        // Service requests are not proof of repairs; keep them distinct from completed Job Cards.
+        // All joins remain scoped to this machine AND the authenticated customer.
+        $services = db()->prepare('SELECT id,service_type,description,status,created_at,completed_at FROM service_requests WHERE machine_id=? AND customer_id=? ORDER BY created_at DESC LIMIT 40');
+        $services->execute([$machineId, $customer['id']]);
+        $serviceRows = $services->fetchAll();
+        $serviceIds = array_column($serviceRows, 'id');
+        $partMap = []; $noteMap = [];
+        if ($serviceIds) {
+            $slots = implode(',', array_fill(0, count($serviceIds), '?'));
+            $partStmt = db()->prepare("SELECT srp.request_id,srp.spare_name,srp.part_number,srp.quantity FROM service_request_parts srp JOIN service_requests sr ON sr.id=srp.request_id WHERE srp.request_id IN ($slots) AND sr.machine_id=? AND sr.customer_id=? ORDER BY srp.created_at DESC LIMIT 160");
+            $partStmt->execute(array_merge($serviceIds, [$machineId, $customer['id']]));
+            foreach ($partStmt->fetchAll() as $part) {
+                $partMap[$part['request_id']][] = ['name'=>(string)$part['spare_name'],'partNumber'=>(string)$part['part_number'],'quantity'=>(float)$part['quantity']];
+            }
+            $noteStmt = db()->prepare("SELECT sn.request_id,sn.author,sn.note,sn.created_at FROM service_notes sn JOIN service_requests sr ON sr.id=sn.request_id WHERE sn.request_id IN ($slots) AND sr.machine_id=? AND sr.customer_id=? ORDER BY sn.created_at DESC LIMIT 120");
+            $noteStmt->execute(array_merge($serviceIds, [$machineId, $customer['id']]));
+            foreach ($noteStmt->fetchAll() as $note) {
+                $noteMap[$note['request_id']][] = ['author'=>(string)$note['author'],'note'=>(string)$note['note'],'createdAt'=>$note['created_at']];
+            }
+        }
+        // Store ISSUE = material issued to this machine; not evidence it was installed.
+        // Prices here belong to the authenticated customer's own store ledger.
+        $issues = db()->prepare("SELECT sm.id,sm.quantity,sm.unit_cost,sm.actor_name,sm.received_by,sm.note,sm.created_at,si.part_number,si.description,si.unit
+            FROM customer_store_movements sm JOIN customer_store_items si ON si.id=sm.store_item_id AND si.customer_id=sm.customer_id
+            WHERE sm.machine_id=? AND sm.customer_id=? AND sm.movement_type='ISSUE'
+            ORDER BY sm.created_at DESC LIMIT 40");
+        $issues->execute([$machineId, $customer['id']]);
+        // Confirmed installed parts and labour are separate from store issue value.
+        $confirmedStmt = db()->prepare("SELECT rc.id,rc.quantity_installed,rc.labor_hours,rc.hourly_rate,rc.unit_cost_snapshot,rc.confirmation_note,rc.confirmed_by,rc.review_status,rc.reviewed_by,rc.reviewed_at,rc.review_note,rc.created_at,jc.job_card_no,si.part_number,si.description
+            FROM customer_repair_confirmations rc
+            JOIN digital_job_cards jc ON jc.id=rc.job_card_id AND jc.customer_id=rc.customer_id AND jc.machine_id=rc.machine_id
+            JOIN customer_store_movements sm ON sm.id=rc.store_issue_id AND sm.customer_id=rc.customer_id AND sm.machine_id=rc.machine_id
+            JOIN customer_store_items si ON si.id=sm.store_item_id AND si.customer_id=rc.customer_id
+            WHERE rc.customer_id=? AND rc.machine_id=? ORDER BY rc.created_at DESC LIMIT 40");
+        $confirmedStmt->execute([$customer['id'],$machineId]);
+        $confirmedRows = $confirmedStmt->fetchAll();
+        $confirmedPartsCost = 0.0; $confirmedLaborCost = 0.0;
+        $items = [];
+        foreach ($confirmedRows as $row) {
+            $partCost = round((float)$row['quantity_installed']*(float)$row['unit_cost_snapshot'],2);
+            $laborCost = round((float)$row['labor_hours']*(float)$row['hourly_rate'],2);
+            if ($row['review_status'] === 'APPROVED') {
+                $confirmedPartsCost += $partCost; $confirmedLaborCost += $laborCost;
+            }
+            $items[] = ['kind'=>'REPAIR_CONFIRMED','id'=>(string)$row['id'],
+                'title'=>'Installation and labour recorded (manager review required)','reference'=>(string)$row['job_card_no'],
+                'partNumber'=>(string)$row['part_number'],'description'=>(string)$row['description'],
+                'quantity'=>(float)$row['quantity_installed'],'laborHours'=>(float)$row['labor_hours'],
+                'partsCost'=>$partCost,'laborCost'=>$laborCost,'currency'=>'TZS',
+                'confirmedBy'=>(string)$row['confirmed_by'],'reviewStatus'=>(string)$row['review_status'],'reviewedBy'=>(string)($row['reviewed_by'] ?? ''),'reviewedAt'=>$row['reviewed_at'],'reviewNote'=>(string)$row['review_note'],'note'=>(string)$row['confirmation_note'],
+                'occurredAt'=>$row['created_at']];
+        }
+        foreach ($issues->fetchAll() as $row) {
+            $items[] = ['kind'=>'STORE_ISSUE','id'=>(string)$row['id'],
+                'title'=>'Part issued to machine (installation not confirmed)',
+                'partNumber'=>(string)$row['part_number'], 'description'=>(string)$row['description'],
+                'quantity'=>(float)$row['quantity'], 'unit'=>(string)$row['unit'],
+                'issueValue'=>round((float)$row['quantity'] * (float)$row['unit_cost'], 2),
+                'currency'=>'TZS', 'issuedBy'=>(string)$row['actor_name'],
+                'receivedBy'=>(string)($row['received_by'] ?? ''), 'note'=>(string)($row['note'] ?? ''),
+                'occurredAt'=>$row['created_at']];
+        }
+        foreach ($serviceRows as $row) {
+            $items[] = ['kind'=>'SERVICE_REQUEST','id'=>(string)$row['id'],
+                'title'=>(string)($row['service_type'] ?: 'Service Request'),
+                'description'=>(string)$row['description'],'status'=>(string)$row['status'],
+                'completedAt'=>$row['completed_at'], 'requestedParts'=>$partMap[$row['id']] ?? [],
+                'serviceNotes'=>$noteMap[$row['id']] ?? [], 'occurredAt'=>$row['created_at']];
+        }
+        foreach ($checks->fetchAll() as $row) {
+            $items[] = ['kind'=>'CHECKUP','id'=>(string)$row['id'],'title'=>'Machine Checkup',
+                'status'=>(string)$row['overall_status'],'performedBy'=>(string)$row['filled_by'],
+                'hourMeter'=>$row['hour_meter_reading'],'occurredAt'=>$row['created_at']];
+        }
+        foreach ($jobs->fetchAll() as $row) {
+            $items[] = ['kind'=>'JOB_CARD','id'=>(string)$row['id'],
+                'title'=>(string)$row['title'],'reference'=>(string)$row['job_card_no'],
+                'status'=>(string)$row['status'],'performedBy'=>(string)($row['technician_name'] ?? ''),
+                'receivedAt'=>$row['received_at'],'completedAt'=>$row['completed_at'],
+                'customerSignedAt'=>$row['customer_signed_at'],'customerSignedBy'=>$row['customer_signed_by_name'],
+                'occurredAt'=>$row['created_at']];
+        }
+        usort($items, static function ($a, $b) { return strcmp((string)$b['occurredAt'], (string)$a['occurredAt']); });
+        json_out(['machine'=>['id'=>$machine['id'],'machineType'=>$machine['machine_type'],
+            'label'=>trim((string)$machine['brand'].' '.(string)$machine['model']), 'fleetNumber'=>$machine['fleet_number']],
+            'items'=>array_slice($items, 0, 50), 'hasMore'=>count($items)>50,
+            'confirmedCostSummary'=>['partsCost'=>round($confirmedPartsCost,2),'laborCost'=>round($confirmedLaborCost,2),'total'=>round($confirmedPartsCost+$confirmedLaborCost,2),'currency'=>'TZS']]);
+    }
+
     // V378 - Customer > View Customer Machine can update the same live Activity Status
     // shown to BELM Admin. The customer-scoped endpoint prevents cross-customer edits.
     if ($sub3 === 'activity-status' && $method === 'PUT') {
@@ -6109,6 +6330,7 @@ if ($sub === 'service-requests' && $method === 'GET') {
 // deleting anything (still fully intact, retrievable via ?hidden=1).
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT') {
     require_customer_feature_access($customer, 'service-request', 'Job Card');
+    require_customer_write_access($customer);
     $stmt = db()->prepare(
         "SELECT status FROM service_requests WHERE id = ? AND customer_id = ?"
     );
@@ -6118,13 +6340,14 @@ if ($sub === 'service-requests' && $sub2 && $sub3 === 'hide' && $method === 'PUT
     if (!in_array($status, ['COMPLETED', 'CANCELLED'], true)) {
         json_error('Only completed or cancelled requests can be hidden.', 422);
     }
-    db()->prepare('UPDATE service_requests SET hidden_at = NOW() WHERE id = ?')->execute([$sub2]);
+    db()->prepare("UPDATE service_requests SET hidden_at = NOW() WHERE id = ? AND customer_id = ? AND status IN ('COMPLETED','CANCELLED')")->execute([$sub2, $customer['id']]);
     log_customer_activity($customer, 'Hid a completed/cancelled Job Card from the list.');
     json_out(['ok' => true]);
 }
 
 if ($sub === 'service-requests' && $sub2 && $sub3 === 'unhide' && $method === 'PUT') {
     require_customer_feature_access($customer, 'service-request', 'Job Card');
+    require_customer_write_access($customer);
     $stmt = db()->prepare('UPDATE service_requests SET hidden_at = NULL WHERE id = ? AND customer_id = ?');
     $stmt->execute([$sub2, $customer['id']]);
     if ($stmt->rowCount() === 0) json_error('Job Card not found.', 404);
@@ -6235,7 +6458,7 @@ if ($sub === 'service-requests' && $method === 'POST') {
     if ($machineId !== '') {
         belm_sync_breakdown_case_from_service_request($newId, $actorName);
         $jobReceiptStmt = db()->prepare(
-            "SELECT j.id,j.job_card_no,j.status,COALESCE(j.issued_at,j.created_at) AS received_at
+            "SELECT j.id,j.job_card_no,j.status,j.received_at AS received_at
              FROM breakdown_cases bc
              JOIN digital_job_cards j ON j.case_id=bc.id
              WHERE bc.source_type='SERVICE_REQUEST' AND bc.source_id=?
@@ -6248,7 +6471,7 @@ if ($sub === 'service-requests' && $method === 'POST') {
                 'jobCardNo' => $jobReceiptRow['job_card_no'],
                 'status' => $jobReceiptRow['status'],
                 'receivedAt' => $jobReceiptRow['received_at'],
-                'receivedByBelm' => true,
+                'receivedByBelm' => !empty($jobReceiptRow['received_at']),
             ];
         }
     }

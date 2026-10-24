@@ -48,6 +48,8 @@ function technician_customer_scope(array $user): ?array {
     if ((string)($scope['technicianId'] ?? '') !== (string)($user['id'] ?? '')) return null;
     $customerId = trim((string)($scope['customerId'] ?? ''));
     if ($customerId === '') return null;
+    // A customer-name gate must never override the customer's current technician assignment.
+    if ($customerId !== trim((string)($user['assignedCustomerId'] ?? ''))) return null;
     return [
         'customerId' => $customerId,
         'customerName' => trim((string)($scope['customerName'] ?? '')),
@@ -69,7 +71,7 @@ function technician_general_report_context(array $user): array {
         json_error(
             $isCustomerManaged
                 ? 'This Customer Technician is not assigned to a customer.'
-                : 'Enter the Customer / Company Name before opening Customer Machines.',
+                : 'No customer is assigned to this Technician. Contact Workshop Manager.',
             403
         );
     }
@@ -468,7 +470,7 @@ function require_report_machine_access(array $user, string $machineId, ?string $
             json_error(
                 $isCustomerManaged
                     ? 'You are not assigned to this machine.'
-                    : 'Open Customer Machines and verify the registered Customer / Company Name first.',
+                    : 'You are not assigned to this customer or machine.',
                 403
             );
         }
@@ -940,70 +942,20 @@ if ($method === 'POST' && $action === 'submit') {
     json_out($savedReport, 201);
 }
 
-// V822 - BELM Technician > Customer Machines site gate.
-// Only BELM Technicians use Customer Name as the site code. A successful exact
-// company-name match issues a short-lived signed scope token. Customer-managed
-// Technicians remain locked to their own company and never use this gate.
-if (($action === 'technician-customer-access') && in_array($method, ['GET','POST'], true)) {
+// Phase 26: An authenticated technician uses their current assigned customer.
+// A company name is not a secret and must never grant access to another customer.
+if ($action === 'technician-customer-access' && in_array($method, ['GET','POST'], true)) {
     if (($user['roleName'] ?? '') !== 'Technician') json_error('Technician login required.', 403);
-
-    $isCustomerManaged = !empty($user['isCustomerManaged']);
-    if ($method === 'GET') {
-        json_out([
-            'requiresCode' => !$isCustomerManaged,
-            'verified' => $isCustomerManaged,
-            'mode' => $isCustomerManaged ? 'CUSTOMER_TECHNICIAN' : 'BELM_TECHNICIAN',
-            'codeType' => $isCustomerManaged ? null : 'CUSTOMER_NAME',
-        ]);
-    }
-
-    if ($isCustomerManaged) {
-        json_out(['ok'=>true,'verified'=>true,'requiresCode'=>false,'mode'=>'CUSTOMER_TECHNICIAN']);
-    }
-
-    $b = body();
-    $submittedRaw = trim((string)($b['customerCode'] ?? ''));
-    if ($submittedRaw === '') json_error('Enter the registered Customer / Company Name.', 422);
-
-    $normalize = static function(string $value): string {
-        $value = preg_replace('/\\s+/u', ' ', trim($value)) ?? trim($value);
-        return function_exists('mb_strtoupper') ? mb_strtoupper($value, 'UTF-8') : strtoupper($value);
-    };
-    $submitted = $normalize($submittedRaw);
-
-    $stmt = db()->query(
-        'SELECT id,name FROM customers
-         WHERE deleted_at IS NULL AND is_active=1
-         ORDER BY name'
-    );
-    $matches = [];
-    foreach ($stmt->fetchAll() as $row) {
-        if ($normalize((string)($row['name'] ?? '')) === $submitted) $matches[] = $row;
-    }
-    if (!$matches) {
-        json_error('Customer Name / Code was not found. Enter the registered company name exactly.', 403);
-    }
-    if (count($matches) > 1) {
-        json_error('More than one active customer has this company name. Ask Admin to make the customer names unique.', 409);
-    }
-
-    $customer = $matches[0];
-    $scopeToken = jwt_encode([
-        'type' => 'technician_customer_scope',
-        'technicianId' => (string)($user['id'] ?? ''),
-        'customerId' => (string)$customer['id'],
-        'customerName' => (string)$customer['name'],
-    ], 12 * 3600);
-
+    $assignedId = trim((string)($user['assignedCustomerId'] ?? ''));
+    if ($assignedId === '') json_error('No customer is assigned to this Technician. Contact Workshop Manager.', 403);
+    $stmt = db()->prepare('SELECT id,name FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1 LIMIT 1');
+    $stmt->execute([$assignedId]);
+    $customer = $stmt->fetch();
+    if (!$customer) json_error('Assigned customer is unavailable.', 403);
     json_out([
-        'ok' => true,
-        'verified' => true,
-        'requiresCode' => true,
-        'mode' => 'BELM_TECHNICIAN',
-        'codeType' => 'CUSTOMER_NAME',
-        'scopeToken' => $scopeToken,
-        'customer' => ['id'=>(string)$customer['id'],'name'=>(string)$customer['name']],
-        'expiresInSeconds' => 12 * 3600,
+        'ok' => true, 'verified' => true, 'requiresCode' => false,
+        'mode' => !empty($user['isCustomerManaged']) ? 'CUSTOMER_TECHNICIAN' : 'BELM_TECHNICIAN',
+        'customer' => ['id' => (string)$customer['id'], 'name' => (string)$customer['name']],
     ]);
 }
 

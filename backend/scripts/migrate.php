@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 
-const BELM_RELEASE = 'navigation-role-communication-reports-v763';
+const BELM_RELEASE = 'phase53-language-integration-qr-db06da1';
 const BELM_DATA_SAFETY_EXIT = 78;
 
 function belm_env_true(string $name): bool {

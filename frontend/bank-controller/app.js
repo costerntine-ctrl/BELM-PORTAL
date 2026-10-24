@@ -98,10 +98,10 @@
       metricCard("Company Expenses", money.format(s.companyExpenses || 0), "yellow"),
       metricCard("Total Withdrawals", money.format(s.totalWithdrawals || 0), "yellow"),
       metricCard("Customer Debt", money.format(s.customerDebt || 0), "", true),
-      metricCard("VAT Debt (18%)", money.format(s.vatDebt || 0)),
+      metricCard("Invoice Output VAT (Not TRA Net)", money.format(s.vatDebt || 0)),
       s.costOfGoodsSold > 0 ? metricCard("Cost of Goods Sold", money.format(s.costOfGoodsSold || 0)) : "",
-      s.belmProfit > 0 ? metricCard("BELM Profit", money.format(s.belmProfit || 0), "green") : "",
-      s.loss > 0 ? metricCard("Loss", money.format(s.loss || 0), "red") : "",
+      s.belmProfit > 0 ? metricCard("Provisional Operating Margin", money.format(s.belmProfit || 0), "green") : "",
+      s.loss > 0 ? metricCard("Provisional Operating Loss", money.format(s.loss || 0), "red") : "",
     ].join("");
   }
 

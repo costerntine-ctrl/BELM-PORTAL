@@ -533,7 +533,7 @@ if ($method === 'GET' && !$action) {
             LEFT JOIN users cu ON cu.id = sr.completed_by_id
             LEFT JOIN users xu ON xu.id = sr.cancelled_by_id
             LEFT JOIN LATERAL (
-                SELECT j.id,j.job_card_no,j.status,COALESCE(j.issued_at,j.created_at) AS received_at
+                SELECT j.id,j.job_card_no,j.status,j.received_at AS received_at
                 FROM breakdown_cases bc
                 JOIN digital_job_cards j ON j.case_id=bc.id
                 WHERE bc.source_type=\'SERVICE_REQUEST\' AND bc.source_id=sr.id
@@ -588,7 +588,7 @@ if ($method === 'GET' && !$action) {
             'jobCardNo' => $r['linked_job_card_no'],
             'status' => $r['linked_job_card_status'],
             'receivedAt' => $r['linked_job_card_received_at'],
-            'receivedByBelm' => true,
+            'receivedByBelm' => !empty($r['linked_job_card_received_at']),
         ] : null;
         unset(
             $r['customer_name'],

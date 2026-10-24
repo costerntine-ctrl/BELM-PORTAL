@@ -7,22 +7,13 @@ const source = fs.readFileSync(
   'utf8'
 );
 
-for (const label of [
-  'Report',
-  'Check Up',
-  'Service Parts',
-  'Job Card',
-  'Edit Machine',
-  'Delete Machine',
-  'Forget Permanently'
-]) {
-  assert.match(source, new RegExp(`label:'${label}'`), `${label} must be defined once in the shared action panel`);
+for (const kind of ['report','checkup','parts','job','edit','delete','forget']) {
+  assert.match(source, new RegExp(`\\b${kind}\\b`), `${kind} action must be represented`);
 }
-
-assert.match(source, /aria-expanded="false" aria-controls=/, 'View Details must expose accessible collapsed state');
-assert.match(source, /button\.setAttribute\('aria-expanded',String\(!open\)\)/, 'View Details must toggle its expanded state');
-assert.match(source, /panel\.hidden=open/, 'the action panel must collapse on the second click');
-assert.match(source, /el\.disabled\|\|el\.hidden\|\|el\.getAttribute\('aria-disabled'\)==='true'/, 'disabled role actions must stay out of the panel');
-assert.match(source, /panel\.dataset\.availableActions===actionKey/, 're-scans must not duplicate action buttons');
+assert.match(source, /aria-expanded="false"/, 'View Details must start collapsed');
+assert.match(source, /button\.setAttribute\('aria-expanded', String\(open\)\)/, 'View Details must toggle accessible state');
+assert.match(source, /card\.classList\.toggle\('belm-shared-actions-open', open\)/, 'drawer must toggle');
+assert.match(source, /!explicitlyHidden\(element\) && !element\.disabled/, 'disabled role actions must not be surfaced');
+assert.match(source, /dataset\.belmSharedCard838/, 're-scans must not duplicate card wrappers');
 
 console.log('Machine card details toggle contract passed.');

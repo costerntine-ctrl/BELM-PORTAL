@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+const php=fs.readFileSync(path.join(__dirname,'../backend/api/customer_portal.php'),'utf8');
+const js=fs.readFileSync(path.join(__dirname,'../frontend/shared-machine-card-v827.js'),'utf8');
+assert.match(php,/FROM service_requests WHERE machine_id=\? AND customer_id=\?/);
+assert.match(php,/JOIN service_requests sr ON sr.id=srp.request_id/);
+assert.match(php,/JOIN service_requests sr ON sr.id=sn.request_id/);
+assert.match(php,/sr.machine_id=\? AND sr.customer_id=\?/);
+assert.match(php,/requestedParts/);
+assert.match(js,/Parts requested \(not confirmed used\)/);
+assert.match(js,/entry.kind === 'SERVICE_REQUEST'/);
+console.log('Phase43 customer-scoped service history checks passed');

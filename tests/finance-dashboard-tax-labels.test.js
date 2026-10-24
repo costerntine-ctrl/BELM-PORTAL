@@ -1,0 +1,13 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.join(__dirname, '..');
+const base = fs.readFileSync(path.join(root,'frontend/bank-controller/app.js'),'utf8');
+const sync = fs.readFileSync(path.join(root,'frontend/bank-controller/vat-sync.js'),'utf8');
+assert.match(base, /Invoice Output VAT \(Not TRA Net\)/);
+assert.match(base, /Provisional Operating Margin/);
+assert.match(base, /Cost of Goods Sold/);
+assert.doesNotMatch(sync, /name === 'COST OF GOODS SOLD' \|\| name === 'INVENTORY VALUE'/);
+assert.doesNotMatch(sync, /VAT Payable to TRA \(18%\)/);
+assert.match(sync, /input VAT, credits, adjustments and TRA payments are not reconciled/);
+console.log('Finance dashboard reporting labels verified');

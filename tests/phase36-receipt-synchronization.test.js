@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const a=fs.readFileSync('backend/api/service_requests.php','utf8');
+const b=fs.readFileSync('backend/api/customer_portal.php','utf8');
+const c=fs.readFileSync('frontend/service-request-manager/manager.js','utf8');
+assert.match(a,/j\.received_at AS received_at/);
+assert.match(b,/j\.received_at AS received_at/);
+assert.doesNotMatch(a,/COALESCE\(j\.issued_at,j\.created_at\) AS received_at/);
+assert.doesNotMatch(b,/COALESCE\(j\.issued_at,j\.created_at\) AS received_at/);
+assert.match(c,/request\.jobCard\.receivedByBelm/);
+assert.match(c,/AWAITING TECHNICIAN ACKNOWLEDGEMENT/);
+console.log('Phase36 receipt synchronization checks passed');

@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');
+const php=fs.readFileSync(path.join(__dirname,'../backend/api/customer_portal.php'),'utf8');
+const js=fs.readFileSync(path.join(__dirname,'../frontend/shared-machine-card-v827.js'),'utf8');
+assert.match(php,/\$sub3 === 'maintenance-history' && \$method === 'GET'/);
+assert.match(php,/WHERE id=\? AND customer_id=\? AND deleted_at IS NULL LIMIT 1/);
+assert.match(php,/FROM checklist_reports WHERE machine_id=\?/);
+assert.match(php,/FROM digital_job_cards WHERE machine_id=\? AND customer_id=\?/);
+assert.match(js,/encodeURIComponent\(machineId\)\}\/maintenance-history/);
+assert.match(js,/customerToken && !profile/);
+console.log('Phase42 customer machine timeline guard checks passed');

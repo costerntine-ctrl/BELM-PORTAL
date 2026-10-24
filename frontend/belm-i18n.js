@@ -1,0 +1,37 @@
+/* BELM multilingual interface labels. Does not translate user-entered data or financial values. */
+(function () { 'use strict';
+const catalog = {"Dashboard": {"sw": "Dashibodi", "zh": "控制面板"}, "Overview": {"sw": "Muhtasari", "zh": "概览"}, "Home": {"sw": "Nyumbani", "zh": "首页"}, "Customers": {"sw": "Wateja", "zh": "客户"}, "Customer": {"sw": "Mteja", "zh": "客户"}, "Machines": {"sw": "Mashine", "zh": "设备"}, "Machine": {"sw": "Mashine", "zh": "设备"}, "Machine Type": {"sw": "Aina ya mashine", "zh": "设备类型"}, "Machine Details": {"sw": "Taarifa za mashine", "zh": "设备详情"}, "Machine Profile": {"sw": "Wasifu wa mashine", "zh": "设备档案"}, "Fleet": {"sw": "Mashine zote", "zh": "设备车队"}, "Job Cards": {"sw": "Kadi za kazi", "zh": "工单"}, "Job Card": {"sw": "Kadi ya kazi", "zh": "工单"}, "Work Orders": {"sw": "Maagizo ya kazi", "zh": "工作订单"}, "Checklists": {"sw": "Orodha za ukaguzi", "zh": "检查清单"}, "Checklist": {"sw": "Orodha ya ukaguzi", "zh": "检查清单"}, "Daily Checkup": {"sw": "Ukaguzi wa kila siku", "zh": "每日检查"}, "Reports": {"sw": "Ripoti", "zh": "报告"}, "Report": {"sw": "Ripoti", "zh": "报告"}, "Maintenance History": {"sw": "Historia ya matengenezo", "zh": "维修历史"}, "Maintenance": {"sw": "Matengenezo", "zh": "维修"}, "Service Requests": {"sw": "Maombi ya huduma", "zh": "服务请求"}, "Service Request": {"sw": "Ombi la huduma", "zh": "服务请求"}, "Parts": {"sw": "Vipuri", "zh": "配件"}, "Spare Parts": {"sw": "Vipuri", "zh": "备件"}, "Store": {"sw": "Ghala", "zh": "仓库"}, "Inventory": {"sw": "Stoo ya bidhaa", "zh": "库存"}, "Procurement": {"sw": "Ununuzi", "zh": "采购"}, "Finance": {"sw": "Fedha", "zh": "财务"}, "Accounts": {"sw": "Uhasibu", "zh": "会计"}, "Invoices": {"sw": "Ankara", "zh": "发票"}, "Invoice": {"sw": "Ankara", "zh": "发票"}, "Proforma Invoice": {"sw": "Ankara ya makadirio", "zh": "形式发票"}, "Settings": {"sw": "Mipangilio", "zh": "设置"}, "User Settings": {"sw": "Mipangilio ya mtumiaji", "zh": "用户设置"}, "My Profile": {"sw": "Wasifu wangu", "zh": "我的资料"}, "Profile": {"sw": "Wasifu", "zh": "个人资料"}, "Language": {"sw": "Lugha", "zh": "语言"}, "Preferences": {"sw": "Mapendeleo", "zh": "偏好设置"}, "Notifications": {"sw": "Arifa", "zh": "通知"}, "Users": {"sw": "Watumiaji", "zh": "用户"}, "Roles": {"sw": "Majukumu", "zh": "角色"}, "Technicians": {"sw": "Mafundi", "zh": "技术人员"}, "Technician": {"sw": "Fundi", "zh": "技术人员"}, "Workshop Manager": {"sw": "Msimamizi wa karakana", "zh": "车间经理"}, "Customer Details": {"sw": "Taarifa za mteja", "zh": "客户详情"}, "Add Customer": {"sw": "Ongeza mteja", "zh": "添加客户"}, "Add Machine": {"sw": "Ongeza mashine", "zh": "添加设备"}, "Save": {"sw": "Hifadhi", "zh": "保存"}, "Save Changes": {"sw": "Hifadhi mabadiliko", "zh": "保存更改"}, "Cancel": {"sw": "Ghairi", "zh": "取消"}, "Close": {"sw": "Funga", "zh": "关闭"}, "Back": {"sw": "Rudi", "zh": "返回"}, "Next": {"sw": "Ifuatayo", "zh": "下一步"}, "Search": {"sw": "Tafuta", "zh": "搜索"}, "Filter": {"sw": "Chuja", "zh": "筛选"}, "Refresh": {"sw": "Onyesha upya", "zh": "刷新"}, "View": {"sw": "Tazama", "zh": "查看"}, "View Details": {"sw": "Tazama taarifa", "zh": "查看详情"}, "Edit": {"sw": "Hariri", "zh": "编辑"}, "Delete": {"sw": "Futa", "zh": "删除"}, "Create": {"sw": "Tengeneza", "zh": "创建"}, "Submit": {"sw": "Wasilisha", "zh": "提交"}, "Approve": {"sw": "Idhinisha", "zh": "批准"}, "Reject": {"sw": "Kataa", "zh": "拒绝"}, "Print": {"sw": "Chapisha", "zh": "打印"}, "Download": {"sw": "Pakua", "zh": "下载"}, "Upload": {"sw": "Pakia", "zh": "上传"}, "Status": {"sw": "Hali", "zh": "状态"}, "Date": {"sw": "Tarehe", "zh": "日期"}, "Name": {"sw": "Jina", "zh": "名称"}, "Description": {"sw": "Maelezo", "zh": "描述"}, "Quantity": {"sw": "Idadi", "zh": "数量"}, "Amount": {"sw": "Kiasi", "zh": "金额"}, "Total": {"sw": "Jumla", "zh": "总计"}, "Reference": {"sw": "Kumbukumbu", "zh": "参考编号"}, "Active": {"sw": "Inatumika", "zh": "启用"}, "Inactive": {"sw": "Haitumiki", "zh": "未启用"}, "Pending": {"sw": "Inasubiri", "zh": "待处理"}, "Approved": {"sw": "Imeidhinishwa", "zh": "已批准"}, "Rejected": {"sw": "Imekataliwa", "zh": "已拒绝"}, "Completed": {"sw": "Imekamilika", "zh": "已完成"}, "In Progress": {"sw": "Inaendelea", "zh": "进行中"}, "Sign Out": {"sw": "Toka", "zh": "退出登录"}, "Logout": {"sw": "Toka", "zh": "退出登录"}, "Login": {"sw": "Ingia", "zh": "登录"}, "Password": {"sw": "Nenosiri", "zh": "密码"}, "Email": {"sw": "Barua pepe", "zh": "电子邮件"}, "Phone": {"sw": "Simu", "zh": "电话"}, "Address": {"sw": "Anwani", "zh": "地址"}, "Payment": {"sw": "Malipo", "zh": "付款"}, "Payments": {"sw": "Malipo", "zh": "付款"}, "Receipt": {"sw": "Risiti", "zh": "收据"}, "Receipts": {"sw": "Risiti", "zh": "收据"}, "Activity": {"sw": "Shughuli", "zh": "活动"}, "History": {"sw": "Historia", "zh": "历史"}, "New": {"sw": "Mpya", "zh": "新建"}, "All": {"sw": "Zote", "zh": "全部"}, "Actions": {"sw": "Vitendo", "zh": "操作"}, "Details": {"sw": "Taarifa", "zh": "详情"}, "Documents": {"sw": "Nyaraka", "zh": "文档"}, "Help": {"sw": "Msaada", "zh": "帮助"}, "English": {"sw": "Kiingereza", "zh": "英语"}, "Kiswahili": {"sw": "Kiswahili", "zh": "斯瓦希里语"}, "Confirm": {"sw": "Thibitisha", "zh": "确认"}, "Assigned Technician": {"sw": "Fundi aliyepangiwa", "zh": "指派技术员"}, "Parts Installed": {"sw": "Vipuri vilivyofungwa", "zh": "已安装配件"}, "Labor Hours": {"sw": "Saa za kazi", "zh": "工时"}, "Final Repair Report": {"sw": "Ripoti ya mwisho ya matengenezo", "zh": "最终维修报告"}};
+const originals = new WeakMap();
+const attributeOriginals = new WeakMap();
+let busy = false;
+function current(){ return (window.BelmLanguagePreferences && window.BelmLanguagePreferences.get()) || 'en'; }
+function translate(s, lang) { const phrase = String(s).trim(); return (catalog[phrase] && catalog[phrase][lang]) || phrase; }
+function update(root=document){
+ if (busy) return; busy=true;
+ try {
+   const lang=current(); document.documentElement.lang = lang==='zh' ? 'zh-CN' : lang;
+   const base = root.nodeType === 1 ? root : document.body; if (!base) return;
+   const nodes = [];
+   if (base.matches && base.matches('button,label,h1,h2,h3,h4,nav a,aside a,th,option,[data-i18n]')) nodes.push(base);
+   base.querySelectorAll && nodes.push(...base.querySelectorAll('button,label,h1,h2,h3,h4,nav a,aside a,th,option,[data-i18n]'));
+   for (const el of nodes){
+     if (el.closest('[contenteditable="true"], [data-no-translate]')) continue;
+     for (const n of el.childNodes) {
+       if (n.nodeType !== 3 || !n.textContent.trim()) continue;
+       if (!originals.has(n)) originals.set(n,n.textContent);
+       const source=originals.get(n), m=source.match(/^(\s*)([\s\S]*?)(\s*)$/);
+       const replacement=m[1]+translate(m[2],lang)+m[3]; if(n.textContent!==replacement)n.textContent=replacement;
+     }
+     if (el.hasAttribute('placeholder')){
+       let orig=attributeOriginals.get(el); if(!orig){orig=el.getAttribute('placeholder');attributeOriginals.set(el,orig)}
+       el.setAttribute('placeholder',translate(orig,lang));
+     }
+   }
+ } finally { busy=false; }
+}
+let queued=false;
+function queue(){if(queued)return; queued=true; Promise.resolve().then(()=>{queued=false;update();});}
+document.addEventListener('DOMContentLoaded',()=>{update(); const observer=new MutationObserver(records=>{if(busy)return; if(records.some(r=>r.type==='childList'))queue();});observer.observe(document.body,{childList:true,subtree:true});});
+window.addEventListener('belm:language-changed',queue);
+window.BelmI18n={translate:(text,lang=current())=>translate(text,lang),refresh:queue,locale:current};
+})();

@@ -68,10 +68,68 @@ function jcv814_job(array $ctx, string $id): array {
     return $job;
 }
 
+/** Automatic role coordination: a milestone sends a targeted in-portal notice.
+ * Deliberately independent of a human System Coordinator account.
+ * An unavailable communications table must not interrupt a repair workflow.
+ */
+function jcv814_auto_coordinate(array $job, array $ctx, string $action, ?string $note): void {
+    $routes = [
+        'TECHNICIAN REPORT SUBMITTED' => ['workshop_manager', 'Report waiting for approval', 'ATTENTION'],
+        'TECHNICIAN REPORT RETURNED' => ['technician', 'Report returned for correction', 'ATTENTION'],
+        'WORKSHOP MANAGER APPROVED REPORT / MAINTENANCE / SPARE' => ['store_keeper', 'Approved spare parts require action', 'ATTENTION'],
+        'WORKSHOP MANAGER APPROVED REPORT / MAINTENANCE' => ['technician', 'Maintenance approved; continue repair', 'NORMAL'],
+        'TEST STARTED' => ['workshop_manager', 'Machine testing started', 'NORMAL'],
+        'FINAL RESULT OK - JOB CARD AUTO CLOSED' => ['workshop_manager', 'Job Card completed', 'NORMAL'],
+    ];
+    if (!isset($routes[$action]) && !str_starts_with($action, 'FINAL RESULT NOT_OK')
+        && !str_starts_with($action, 'FINAL RESULT REWORK_REQUIRED')) return;
+    [$role, $subject, $priority] = $routes[$action]
+        ?? ['workshop_manager', 'Testing failed; review/rework required', 'ATTENTION'];
+    $jobId = trim((string)($job['id'] ?? ''));
+    $customerId = trim((string)($job['customer_id'] ?? ''));
+    if ($jobId === '') return;
+
+    // The work owner and the recipient role determine scope, not merely the
+    // account that clicked the last workflow button.  BELM support cases are
+    // coordinated by BELM even when the customer initiated the request.
+    $isCustomerInternal = !empty($job['is_machinery_admin'])
+        && strtoupper(trim((string)($job['source_type'] ?? ''))) !== 'SERVICE_REQUEST';
+    $recipientScope = $isCustomerInternal ? 'CUSTOMER' : 'BELM';
+    if ($role === 'technician' && !empty($job['technician_id'])) {
+        try {
+            $assignee = db()->prepare('SELECT is_customer_managed FROM users WHERE id=? AND deleted_at IS NULL');
+            $assignee->execute([(string)$job['technician_id']]);
+            $isCustomerTech = $assignee->fetchColumn();
+            if ($isCustomerTech !== false) $recipientScope = ((int)$isCustomerTech === 1) ? 'CUSTOMER' : 'BELM';
+        } catch (Throwable $ignored) {
+            error_log('BELM auto coordination: assignee scope lookup failed.');
+        }
+    }
+    $senderScope = $ctx['kind'] === 'customer' ? 'CUSTOMER' : 'BELM';
+    try {
+        db()->prepare('INSERT INTO role_communications
+            (id, customer_id, sender_scope, sender_actor_key, sender_name, sender_role,
+             recipient_scope, recipient_role, subject, message, priority, related_type,
+             related_id, machine_id, action_url, created_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())')->execute([
+            uuid(), $customerId ?: null, $senderScope, 'system:auto-coordination',
+            'BELM Automatic Coordination', 'system', $recipientScope, $role,
+            $subject, 'Job Card ' . (string)($job['job_card_no'] ?? $jobId)
+                . ': ' . $action . ($note ? ' — ' . $note : ''),
+            $priority, 'JOB_CARD', $jobId, $job['machine_id'] ?? null,
+            '/job-cards/?module=job-cards',
+        ]);
+    } catch (Throwable $ignored) {
+        // An unavailable communications table never blocks a repair workflow.
+        error_log('BELM automatic role coordination notice could not be recorded.');
+    }
+}
+
 function jcv814_log(array $job, array $ctx, string $stage, string $department, string $action, ?string $note=null): void {
     db()->prepare(
         'INSERT INTO breakdown_case_events(id,case_id,stage,department,action,note,actor_type,actor_id,actor_name,created_at) VALUES(?,?,?,?,?,?,?,?,?,NOW())'
     )->execute([uuid(),$job['case_id'],$stage,$department,$action,$note,$ctx['kind'],$ctx['actorId'] ?: null,$ctx['actorName']]);
+    jcv814_auto_coordinate($job, $ctx, $action, $note);
 }
 
 function jcv814_set_case(array $job, string $stage, string $department, ?string $blocker, bool $close=false): void {
@@ -113,8 +171,8 @@ function jcv814_parse_report(?string $text): array {
     return $out;
 }
 
-function jcv814_test_text(int $minutes, string $result, string $notes=''): string {
-    $started = date('c');
+function jcv814_test_text(int $minutes, string $result, string $notes='', ?string $startedAt=null): string {
+    $started = $startedAt ?: date('c');
     return "TEST DURATION: {$minutes} MIN\nTEST STARTED: {$started}\nFINAL RESULT: {$result}".($notes!==''?"\nTEST NOTES: {$notes}":'');
 }
 
@@ -198,7 +256,7 @@ if($method==='GET'&&$action==='list'){
             'testDurationMinutes'=>$process['test']['durationMinutes'],'finalResult'=>$process['test']['finalResult'],'testNotes'=>$process['test']['testNotes'],
             'pendingReason'=>$process['pendingReason'],'groundedDays'=>jcv814_grounded_days($row),'processStep'=>$process['step'],'processLabel'=>$process['label'],
             'currentStage'=>$row['current_stage'],'currentDepartment'=>$row['current_department'],'openSpareRequests'=>$openSpares,'requiredSpare'=>trim((string)($row['spare_names']??'')),
-            'startedAt'=>$row['started_at'],'submittedAt'=>$row['technician_submitted_at'],'completedAt'=>$row['completed_at'],'updatedAt'=>$row['updated_at'],'openedAt'=>$row['opened_at'],
+            'receivedAt'=>$row['received_at'],'startedAt'=>$row['started_at'],'submittedAt'=>$row['technician_submitted_at'],'completedAt'=>$row['completed_at'],'updatedAt'=>$row['updated_at'],'openedAt'=>$row['opened_at'],
         ];
     }
     json_out(['items'=>$rows,'actor'=>['kind'=>$ctx['kind'],'role'=>$ctx['role'],'isTechnician'=>$ctx['isTechnician'],'isManager'=>$ctx['isManager']]]);
@@ -208,6 +266,7 @@ if($method==='PUT'&&$action==='submit-report'&&$id!==''){
     if(empty($ctx['isTechnician']))json_error('Technician login required.',403);
     $job=jcv814_job($ctx,$id);$status=strtoupper((string)$job['status']);
     if(in_array($status,['REPORT_REVIEW','COMPLETED','CANCELLED'],true))json_error($status==='REPORT_REVIEW'?'This Technician Report is already waiting for Workshop Manager review.':'This Job Card is closed.',409);
+    if(empty($job['received_at']))json_error('Receive / acknowledge this Job Card before submitting diagnosis.',409);
     $b=body();
     foreach(['diagnosis'=>'Diagnosis / Inspection','explanation'=>'Explanation','findings'=>'Findings','rootCause'=>'Root Cause','solution'=>'Solution'] as $key=>$label){if(trim((string)($b[$key]??''))==='')json_error($label.' is required.',422);}
     $requiredSpare=trim((string)($b['requiredSpare']??''));$qty=(float)($b['requiredSpareQty']??1);
@@ -230,7 +289,15 @@ if($method==='PUT'&&$action==='submit-report'&&$id!==''){
 
 if($method==='PUT'&&$action==='review-report'&&$id!==''){
     if(empty($ctx['isManager']))json_error('Workshop Manager / Administration approval required.',403);
-    $job=jcv814_job($ctx,$id);$status=strtoupper((string)$job['status']);
+    $job=jcv814_job($ctx,$id);
+    // Approval belongs to the workshop responsible for the repair, not merely
+    // any administrator of the customer whose machine is being serviced.
+    $customerWorkshop = !empty($job['is_machinery_admin'])
+        && strtoupper((string)($job['source_type'] ?? '')) !== 'SERVICE_REQUEST';
+    if (($ctx['kind'] === 'customer') !== $customerWorkshop) {
+        json_error('Only the Workshop Manager responsible for this Job Card may review this report.', 403);
+    }
+    $status=strtoupper((string)$job['status']);
     if($status!=='REPORT_REVIEW')json_error('Only a Technician Report waiting for review can be approved or returned.',409);
     $b=body();$approve=!empty($b['approve']);$note=trim((string)($b['note']??''));
     if(!$approve&&$note==='')json_error('Enter why the report is being returned to the Technician.',422);
@@ -263,12 +330,15 @@ if($method==='PUT'&&$action==='review-report'&&$id!==''){
 if($method==='PUT'&&$action==='start-test'&&$id!==''){
     if(empty($ctx['isTechnician']))json_error('Technician login required.',403);
     $job=jcv814_job($ctx,$id);
+    if(empty($job['received_at']))json_error('Receive / acknowledge this Job Card before starting testing.',409);
+    if(strtoupper((string)($job['status'] ?? ''))!=='IN_PROGRESS')json_error('Testing can start only while the approved repair is in progress.',409);
     if(!jcv814_maintenance_approved($job))json_error('Workshop Manager must approve the Technician Report / maintenance before testing.',409);
     $sp=db()->prepare("SELECT COUNT(*) FROM breakdown_spare_requests WHERE job_card_id=? AND UPPER(COALESCE(status,'')) NOT IN ('REJECTED','PARTS_READY')");$sp->execute([$id]);
     if((int)$sp->fetchColumn()>0)json_error('Required spare is still pending. Testing can start only after Parts Ready.',409);
     $b=body();$minutes=(int)($b['durationMinutes']??0);$allowed=[30,60,120,240,480,720,1440];
     if(!in_array($minutes,$allowed,true))json_error('Select a valid test time.',422);
     $work=trim((string)($b['workDone']??''));if($work==='')json_error('Record Work Done / maintenance performed before starting the test.',422);
+    if(strtoupper((string)($job['status'] ?? ''))==='TESTING') json_error('Testing already started. Complete the current test before starting another.',409);
     $test=jcv814_test_text($minutes,'PENDING');
     db()->prepare("UPDATE digital_job_cards SET work_done=?,test_result=?,status='TESTING',completion_note=?,updated_at=NOW() WHERE id=?")
         ->execute([$work,$test,'Testing in progress - final result pending',$id]);
@@ -288,9 +358,17 @@ if($method==='PUT'&&$action==='final-result'&&$id!==''){
     if(!in_array($result,$allowed,true))json_error('Select Final Result: OK, NOT OK or REWORK REQUIRED.',422);
     $pending=trim((string)($b['pendingReason']??''));$notes=trim((string)($b['testNotes']??''));
     if($result!=='OK'&&$pending==='')json_error('Enter why the Job Card is pending / why the test did not pass.',422);
-    $currentTest=jcv814_parse_test($job['test_result']??'');$minutes=(int)($b['durationMinutes']??$currentTest['durationMinutes']);
-    if($minutes<=0)$minutes=60;
-    $test=jcv814_test_text($minutes,$result,$notes);
+    if(strtoupper((string)($job['status'] ?? ''))!=='TESTING') json_error('Start testing before submitting the final result.',409);
+    $currentTest=jcv814_parse_test($job['test_result']??'');
+    $minutes=(int)$currentTest['durationMinutes'];
+    $startedAt=trim((string)$currentTest['testStarted']);
+    $startedTimestamp=$startedAt!==''?strtotime($startedAt):false;
+    if($minutes<=0 || !$startedTimestamp) json_error('Testing start or required duration is missing. Contact the Workshop Manager.',409);
+    // Validate against the server clock; never trust a duration submitted by the browser.
+    if($result==='OK' && time() - $startedTimestamp < $minutes * 60) {
+        json_error('Testing duration has not elapsed. Wait until the required test time is complete.',409);
+    }
+    $test=jcv814_test_text($minutes,$result,$notes,$startedAt);
     if($result==='OK'){
         $grounded=jcv814_grounded_days($job);
         $finalNote='FINAL RESULT OK - machine returned to service. Grounded days: '.$grounded;

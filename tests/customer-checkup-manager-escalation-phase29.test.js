@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const source = fs.readFileSync(require('node:path').join(__dirname, '../backend/api/customer_checkup.php'), 'utf8');
+assert.match(source, /\$previousOverall !== \$overall/);
+assert.match(source, /in_array\(\$overall, \['YELLOW', 'RED'\], true\)/);
+assert.match(source, /'CUSTOMER', 'workshop_manager'/);
+assert.match(source, /'CHECKUP_ALERT', \$reportId, \$machineId/);
+assert.match(source, /'requiresManagerReview'/);
+assert.match(source, /'managerAlertCreated'/);
+assert.match(source, /Do not create a Job Card automatically/);
+console.log('PASS: customer checkup escalation only on new or changed abnormal severity');

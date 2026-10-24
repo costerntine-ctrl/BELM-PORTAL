@@ -80,7 +80,7 @@ if ($action === 'profile' && $_SERVER['REQUEST_METHOD'] === 'GET') {
          FROM users u
          JOIN roles r ON r.id=u.role_id
          LEFT JOIN customers c ON c.id=u.assigned_customer_id AND c.deleted_at IS NULL
-         WHERE u.id=? AND u.deleted_at IS NULL
+         WHERE u.id=? AND u.deleted_at IS NULL AND u.is_active=1
          LIMIT 1"
     );
     $stmt->execute([$actorId]);
@@ -135,13 +135,11 @@ $sql = "SELECT cc.id,cc.customer_id,cc.machine_id,cc.related_type,cc.related_id,
             FROM digital_job_cards j
             WHERE $jobScope
               AND j.customer_id=cc.customer_id
-              AND (
-                    (cc.machine_id IS NOT NULL AND cc.machine_id=j.machine_id)
-                 OR (UPPER(COALESCE(cc.related_type,''))='JOB_CARD' AND cc.related_id=j.id)
-              )
+              AND UPPER(COALESCE(cc.related_type,''))='JOB_CARD'
+              AND cc.related_id=j.id
         )
         ORDER BY cc.created_at DESC,cc.id DESC
-        LIMIT 12";
+        LIMIT 30";
 
 $stmt = db()->prepare($sql);
 $stmt->execute($params);

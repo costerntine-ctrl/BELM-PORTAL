@@ -1,0 +1,13 @@
+const fs=require('fs');const assert=require('assert');const base=__dirname+'/../';
+const api=fs.readFileSync(base+'backend/api/breakdown_workflow.php','utf8');
+const workflow=fs.readFileSync(base+'backend/api/job_card_workflow_v814.php','utf8');
+const schema=fs.readFileSync(base+'backend/schema.sql','utf8');
+const front=fs.readFileSync(base+'frontend/technician-job-cards/job-cards.js','utf8');
+assert(schema.includes('ADD COLUMN IF NOT EXISTS received_at TIMESTAMPTZ'));
+assert(api.includes('AND received_at IS NULL') && api.includes('RETURNING received_at,status'));
+assert(api.includes("if(empty($job['received_at'])) json_error('Receive / acknowledge the Job Card before starting diagnosis."));
+assert(api.includes("if(empty($job['received_at'])) json_error('Receive / acknowledge this Job Card before submitting diagnosis."));
+assert(workflow.includes("if(empty($job['received_at']))json_error('Receive / acknowledge this Job Card before submitting diagnosis."));
+assert(api.includes('received_at=CASE WHEN technician_id IS DISTINCT FROM ? THEN NULL ELSE received_at END'));
+assert(front.includes('fmt(j.received_at)'));
+console.log('Phase 33 source guard tests passed (not integration tests)');

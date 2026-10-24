@@ -8,8 +8,11 @@
   <link rel="stylesheet" href="/theme-global.css?v=798-settings-no-sidebar">
   <link rel="stylesheet" href="/customer-settings-center/app.css?v=798-settings-no-sidebar">
   <script src="/theme-manager.js?v=798-settings-no-sidebar"></script>
+  <script src="/language-preferences.js?v=51"></script>
   <script defer src="/customer-settings-center/app.js?v=798-settings-no-sidebar"></script>
   <script src="/navigation-context-v763.js?v=798-settings-no-sidebar"></script>
+<script defer src="/language-preferences.js?v=53"></script>
+<script defer src="/belm-i18n.js?v=53"></script>
 </head>
 <body class="customer-settings-page customer-settings-standalone">
 <div class="shell settings-shell">
@@ -28,6 +31,7 @@
         <a href="#management">Management Group</a>
         <a href="#access">Roles &amp; Access</a>
         <a href="#appearance">Appearance</a>
+        <a href="#language">Language</a>
         <a href="#data">Data &amp; Audit</a>
       </nav>
 
@@ -60,6 +64,8 @@
 
         <section class="card" id="appearance"><div class="card-head"><div><span class="section-kicker">PERSONAL DISPLAY</span><h2>Light / Dark Appearance</h2><p>Appearance is saved per signed-in user and follows the same person across supported portal pages.</p></div><span class="badge ok">PERSONAL</span></div><div class="theme-row"><button class="theme-choice" data-theme-choice="light" type="button">☀ Light Mode</button><button class="theme-choice" data-theme-choice="dark" type="button">☾ Dark Mode</button></div></section>
 
+        <section class="card" id="language"><div class="card-head"><div><span class="section-kicker">PERSONAL PREFERENCES</span><h2>Language / Lugha / 语言</h2><p>Choose your preferred display language.</p></div></div><div id="personalLanguagePreference"></div></section>
+
         <section class="card wide" id="data"><div class="card-head"><div><span class="section-kicker">DATA SAFETY</span><h2>Data, Audit & Backup Boundaries</h2><p>Customer settings are company-scoped. BELM's full database backup and destructive database tools remain Super Admin-only.</p></div><span class="badge warn">SAFE DATA</span></div><div class="links"><a href="/general-report/">Company Reports</a><a href="/customer-users/">Users & Access Audit</a><a href="/portal/dashboard?view=machines">Machine Records</a><span class="locked">🔒 Full Database Backup · BELM only</span><span class="locked">🔒 Database Reset · BELM only</span><span class="locked">🔒 Provider API Credentials · BELM only</span></div></section>
       </div>
 
@@ -67,5 +73,6 @@
     </section>
   </main>
 </div>
+<script>window.BelmLanguagePreferences?.mount("#personalLanguagePreference");</script>
 </body>
 </html>

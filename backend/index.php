@@ -184,6 +184,7 @@ switch($resource){
     case 'belm-workshop-home': dispatch('belm_workshop_home.php');
     case 'breakdown-workflow': dispatch('breakdown_workflow.php',['action'=>$segments[1]??'','id'=>$segments[2]??'']);
     case 'belm-procurement': dispatch('belm_procurement.php',['id'=>$segments[1]??'']);
+    case 'belm-vat-ledger': dispatch('belm_vat_ledger.php');
     case 'bank-manager':
         $bankResource=$segments[1]??'';
         if($bankResource==='accounts')dispatch('bank_manager.php',['action'=>'account','id'=>$segments[2]??($_GET['id']??null)]);

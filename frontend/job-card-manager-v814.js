@@ -165,7 +165,7 @@
       const status=up(item.status);
       const review=status==='REPORT_REVIEW';
       const final=up(item.finalResult);
-      const pendingText=item.pendingReason||((review)?'Waiting Workshop Manager report review':'—');
+      const pendingText=item.pendingReason||((review)?'Waiting Workshop Manager report review':(!item.receivedAt&&!hasFinalReport(item)?'Waiting technician to receive Job Card':'—'));
       const badgeClass=status==='COMPLETED'?'ok':review||pendingText!=='—'?'pending':final&&final!=='OK'?'red':'';
       const workCase=cases.find(c=>String(c.id)===String(item.caseId));
       const priority=val(item,'priority')||val(workCase,'priority','severity')||'Normal';
@@ -174,7 +174,7 @@
       const updated=fmtDateTime(item.updatedAt);
       return `<tr data-job="${esc(item.id)}">
         <td><b>${esc(item.jobCardNo)}</b><small>${esc(item.machineLabel)} · Fleet ${esc(item.fleetNumber)}<br>${esc(item.customerName)}</small></td>
-        <td><b>${esc(item.technicianName||'Unassigned')}</b><small>${esc(status.replaceAll('_',' '))}</small></td>
+        <td><b>${esc(item.technicianName||'Unassigned')}</b><small>${esc(status.replaceAll('_',' '))}</small><small>${item.receivedAt?'Received: '+esc(fmtDateTime(item.receivedAt)):'Awaiting technician acknowledgement'}</small></td>
         <td><span class="jcm814-badge ${item.repeatIssue?'red':''}">${esc(item.caseType||'NEW CASE')}</span><small>Priority: ${esc(priority)}</small><small>${item.rootCause?`Root cause: ${esc(item.rootCause)}`:'Root cause pending diagnosis'}</small></td>
         <td><span class="jcm814-ground">${Number(item.groundedDays||0).toFixed(1)}</span><small>days grounded</small></td>
         <td>${rowProcess(item)}</td>

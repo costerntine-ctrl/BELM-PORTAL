@@ -1,0 +1,12 @@
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const php=fs.readFileSync('backend/api/technician_dashboard.php','utf8');
+const js=fs.readFileSync('frontend/customer-technician-dashboard/dashboard-core-v772.js','utf8');
+const html=fs.readFileSync('frontend/technician-tasks/index.html','utf8');
+assert.match(php,/cc\.related_id=j\.id/);
+assert.doesNotMatch(php,/cc\.machine_id IS NOT NULL AND cc\.machine_id=j\.machine_id/);
+assert.match(php,/WHERE u\.id=\? AND u\.deleted_at IS NULL AND u\.is_active=1/);
+assert.match(js,/\['COMPLETED', 'DONE'\]/);
+assert.match(js,/\['COMPLETED', 'DONE', 'CANCELLED'\]/);
+assert.match(html,/data-filter="IN_PROGRESS"/);
+console.log('PASS: technician communications scope, active profile and task status UI');

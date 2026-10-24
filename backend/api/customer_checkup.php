@@ -13,9 +13,11 @@ function checkup_json_array($value): array {
 
 function checkup_require_access(array $customer): void {
     if (($customer['actorType'] ?? '') === 'owner') return;
+    // Fail closed: a missing permissions array must not grant a Customer Assistant access.
     $permissions = $customer['permissions'] ?? null;
-    if ($permissions === null) return;
-    if (!is_array($permissions) || !in_array('check-up', $permissions, true)) json_error('Your role does not include Check Up.', 403);
+    if (!is_array($permissions) || !in_array('check-up', $permissions, true)) {
+        json_error('Your role does not include Check Up.', 403);
+    }
 }
 
 function checkup_machine(string $customerId, string $machineId): array {
@@ -54,7 +56,10 @@ function checkup_templates_for_machine(array $machine): array {
     $matched = [];
     foreach ($stmt->fetchAll() as $candidate) {
         $templateKey = checkup_normalized_machine_key((string)($candidate['machine_type'] ?? ''));
-        $score = ($machineTypeKey !== '' && $templateKey === $machineTypeKey) ? 2 : (($modelKey !== '' && $templateKey === $modelKey) ? 1 : 0);
+        // Never use a model-named template for a different known machine type.
+        $score = $machineTypeKey !== ''
+            ? ($templateKey === $machineTypeKey ? 2 : 0)
+            : (($modelKey !== '' && $templateKey === $modelKey) ? 1 : 0);
         if ($score === 0) continue;
         $candidate['_matchScore'] = $score;
         $matched[] = $candidate;
@@ -151,6 +156,7 @@ foreach ($templates as $candidate) if ((string)$candidate['id'] === $templateId)
 if (!$template) json_error('Checklist Template is not active for this machine.', 400);
 
 $existing = checkup_today_report($machineId);
+$previousOverall = strtoupper((string)($existing['overall_status'] ?? ''));
 if (!$existing && $displayPhoto === '') json_error('Display Photo is required for today\'s Check Up.');
 if ($existing && $displayPhoto === '') $displayPhoto = (string)($existing['display_photo_url'] ?? '');
 
@@ -210,6 +216,27 @@ try {
         $pdo->prepare('UPDATE machines SET status=?,last_checked_at=NOW(),updated_at=NOW() WHERE id=?')->execute([$overall,$machineId]);
     }
     $pdo->commit();
+    // Escalate new or changed abnormal checkups to the customer's Workshop Manager.
+    // Do not create a Job Card automatically: the manager must review and assign it.
+    // Edits that keep the same severity do not generate repeated alerts.
+    $alertId = null;
+    if (in_array($overall, ['YELLOW', 'RED'], true) && $previousOverall !== $overall) {
+        $machineLabel = trim((string)($machine['brand'] ?? '') . ' ' . (string)($machine['model'] ?? ''));
+        $machineLabel = $machineLabel !== '' ? $machineLabel : (string)($machine['machine_type'] ?? 'Machine');
+        $findings = [];
+        foreach ($normalized as $entry) {
+            if (in_array($entry['safety'], ['YELLOW', 'RED'], true)) {
+                $findings[] = (string)$entry['item']['label'] . ': ' . (string)($entry['value'] ?: $entry['note'] ?: 'Needs inspection');
+            }
+        }
+        $alertId = belm_role_communication_insert(
+            $customerId, 'CUSTOMER', 'system:checkup:' . $reportId,
+            'Automatic Machine Checkup', 'system', 'CUSTOMER', 'workshop_manager',
+            'Machine Checkup ' . $overall . ' — ' . $machineLabel,
+            'Checkup requires manager review for ' . $machineLabel . '. Findings: ' . implode('; ', array_slice($findings, 0, 12)) . '. Review the checkup before assigning diagnosis or creating a Job Card.',
+            $overall === 'RED' ? 'URGENT' : 'ATTENTION', 'CHECKUP_ALERT', $reportId, $machineId
+        );
+    }
     $tz = new DateTimeZone('Africa/Dar_es_Salaam');
     $expires = (new DateTimeImmutable('tomorrow', $tz))->setTime(0,0,0)->format(DateTimeInterface::ATOM);
     json_out([
@@ -222,6 +249,8 @@ try {
         'editable'=>true,
         'editExpiresAt'=>$expires,
         'historicalReportsPreserved'=>true,
+        'requiresManagerReview'=>in_array($overall, ['YELLOW','RED'], true),
+        'managerAlertCreated'=>$alertId !== null,
         'message'=>$message
     ],$statusCode);
 } catch (Throwable $e) {

@@ -1,0 +1,12 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const src = fs.readFileSync(path.join(__dirname,'../frontend/shared-machine-card-v827.js'), 'utf8');
+assert.match(src,/function renderProfileLinks\(/);
+assert.match(src,/Machine Checkup/);
+assert.match(src,/Job Card/);
+assert.match(src,/Reports \/ History/);
+assert.match(src,/const action = actions\.find/);
+assert.match(src,/invoke\(action\)/);
+assert.match(src,/unavailable/);
+console.log('Phase41 machine profile UI checks passed');

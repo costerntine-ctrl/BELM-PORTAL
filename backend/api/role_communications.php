@@ -28,7 +28,7 @@ function rc_labels(): array {
     return [
         'super_admin'=>'BELM Super Admin','workshop_manager'=>'Workshop Manager','technician'=>'Technician',
         'procurement'=>'Procurement','store_keeper'=>'Store Keeper','registration_sales'=>'Registration & Sales',
-        'finance_accounts'=>'Finance / Accounts','bank_controller'=>'Bank Controller','system_coordinator'=>'System Coordinator',
+        'finance_accounts'=>'Finance / Accounts','bank_controller'=>'Bank Controller','system_coordinator'=>'System Coordinator (legacy)',
         'customer_admin'=>'Customer Administration','operator'=>'Operator','accounts'=>'Finance / Accounts','viewer'=>'Viewer'
     ];
 }
@@ -39,19 +39,28 @@ function rc_actor(array $payload): array {
         $names = is_array($live['roleNames'] ?? null) ? $live['roleNames'] : [(string)($live['roleName'] ?? '')];
         $keys = [];
         foreach ($names as $name) { $k = rc_staff_role_key((string)$name); if ($k !== '') $keys[] = $k; }
-        $keys = array_values(array_unique($keys));
-        return ['scope'=>'BELM','actorKey'=>'staff:' . (string)$live['id'],'name'=>(string)($live['name'] ?? 'BELM User'),'roleKeys'=>$keys ?: ['super_admin'],'primaryRole'=>$keys[0] ?? 'super_admin','customerId'=>null];
+        $keys = array_values(array_unique(array_filter($keys)));
+        // Fail closed: a staff account without an assigned role must not inherit Super Admin communications.
+        if (!$keys) json_error('No active staff role is assigned to this account.', 403);
+        return ['scope'=>'BELM','actorKey'=>'staff:' . (string)$live['id'],'name'=>(string)($live['name'] ?? 'BELM User'),'roleKeys'=>$keys,'primaryRole'=>$keys[0],'customerId'=>null];
     }
     if ($type === 'customer') {
-        $customerId = trim((string)($payload['id'] ?? ''));
+        // Validate the current customer account and live assistant role/permissions.
+        // A signed token alone must not preserve a role that an administrator revoked.
+        $live = require_customer_auth();
+        $customerId = (string)$live['id'];
         $stmt = db()->prepare('SELECT id,name FROM customers WHERE id=? AND deleted_at IS NULL AND is_active=1');
         $stmt->execute([$customerId]);
         $customer = $stmt->fetch();
         if (!$customer) json_error('Customer account is no longer active.', 401);
-        $role = rc_customer_role_key((string)($payload['customerRole'] ?? (($payload['actorType'] ?? '') === 'owner' ? 'owner' : 'viewer')));
-        $actorId = trim((string)($payload['actorId'] ?? ''));
-        $actorKey = ($payload['actorType'] ?? '') === 'assistant' && $actorId !== '' ? 'customer-user:' . $actorId : 'customer-owner:' . $customerId;
-        return ['scope'=>'CUSTOMER','actorKey'=>$actorKey,'name'=>(string)($payload['actorName'] ?? $customer['name']),'roleKeys'=>[$role],'primaryRole'=>$role,'customerId'=>$customerId,'customerName'=>(string)$customer['name']];
+        $role = rc_customer_role_key((string)($live['customerRole'] ?? (($live['actorType'] ?? '') === 'owner' ? 'owner' : 'viewer')));
+        // Communications are unavailable to unknown customer roles until mapped explicitly.
+        if (!in_array($role, ['customer_admin','workshop_manager','technician','operator','procurement','store_keeper','accounts','viewer'], true)) {
+            json_error('This customer role is not enabled for Role Communication.', 403);
+        }
+        $actorId = trim((string)($live['actorId'] ?? ''));
+        $actorKey = ($live['actorType'] ?? '') === 'assistant' && $actorId !== '' ? 'customer-user:' . $actorId : 'customer-owner:' . $customerId;
+        return ['scope'=>'CUSTOMER','actorKey'=>$actorKey,'name'=>(string)($live['actorName'] ?? $customer['name']),'roleKeys'=>[$role],'primaryRole'=>$role,'customerId'=>$customerId,'customerName'=>(string)$customer['name']];
     }
     if ($type === 'operator') {
         $id = trim((string)($payload['id'] ?? '')); $customerId = trim((string)($payload['customerId'] ?? ''));
@@ -64,7 +73,7 @@ function rc_actor(array $payload): array {
 }
 function rc_matrix(array $actor): array {
     $belm = [
-        'super_admin'=>['super_admin','workshop_manager','technician','procurement','store_keeper','registration_sales','finance_accounts','bank_controller','system_coordinator'],
+        'super_admin'=>['super_admin','workshop_manager','technician','procurement','store_keeper','registration_sales','finance_accounts','bank_controller'],
         'workshop_manager'=>['super_admin','technician','procurement','store_keeper','finance_accounts','registration_sales'],
         'technician'=>['workshop_manager','store_keeper'],
         'procurement'=>['super_admin','workshop_manager','store_keeper','finance_accounts'],
@@ -72,7 +81,7 @@ function rc_matrix(array $actor): array {
         'registration_sales'=>['super_admin','workshop_manager','finance_accounts'],
         'finance_accounts'=>['super_admin','registration_sales','procurement','workshop_manager','bank_controller'],
         'bank_controller'=>['super_admin','finance_accounts'],
-        'system_coordinator'=>['super_admin','workshop_manager','technician','procurement','store_keeper','registration_sales','finance_accounts','bank_controller']
+        'system_coordinator'=>[]
     ];
     $customer = [
         'customer_admin'=>['customer_admin','workshop_manager','technician','operator','procurement','store_keeper','accounts'],

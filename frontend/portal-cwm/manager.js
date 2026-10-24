@@ -52,6 +52,47 @@
     return data;
   }
 
+  async function workflowApi(path, options = {}) {
+    const response = await fetch(`/api/breakdown-workflow${path}`, {
+      ...options, cache: "no-store",
+      headers: { Authorization: `Bearer ${customerToken}`, ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) }
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(payload.error || payload.message || `Request failed (${response.status})`);
+    return payload;
+  }
+
+  async function loadCheckupReviews() {
+    const existing = document.getElementById("cwmCheckupReview");
+    existing?.remove();
+    if (!isCustomerHome) return;
+    // Server independently verifies live role, workflow permission and ownership.
+    let result;
+    try { result = await workflowApi("?action=abnormal-checkups"); }
+    catch (error) { if (/Only Customer Admin or Workshop Manager|403/.test(error.message)) return; showAlert(`Check Up review could not load: ${error.message}`); return; }
+    const grid = document.getElementById("cwmCardGrid");
+    if (!grid) return;
+    const panel = document.createElement("section");
+    panel.id = "cwmCheckupReview";
+    panel.className = "panel";
+    panel.style.marginTop = "20px";
+    const items = Array.isArray(result.items) ? result.items : [];
+    panel.innerHTML = `<div class="panel-head"><div><h2>Abnormal Check Up Reviews</h2><p>Workshop Manager approval required before creating a Job Card.</p></div></div><div class="cwm-checkup-review-list">${items.length ? items.map(r => `<article style="padding:12px;border-top:1px solid #ddd"><strong>${escapeHtml([r.brand,r.model,r.fleet_number].filter(Boolean).join(" · ") || "Machine")}</strong> — <b>${escapeHtml(r.overall_status)}</b><p>Checked by ${escapeHtml(r.filled_by || "Technician")} · ${escapeHtml(r.created_at || "")}</p>${r.open_case_id ? `<span>Open case already exists — will reuse it</span>` : ""}<div><button type="button" data-escalate-checkup="${escapeHtml(r.id)}">${r.open_case_id ? "Review existing case / Job Card" : "Create Job Card from Checkup"}</button></div></article>`).join("") : "<p>No abnormal checkups awaiting review in the recent records.</p>"}</div>`;
+    grid.insertAdjacentElement("afterend", panel);
+    panel.addEventListener("click", async event => {
+      const btn = event.target.closest("[data-escalate-checkup]");
+      if (!btn) return;
+      const reportId = btn.dataset.escalateCheckup;
+      if (!window.confirm("Review this abnormal checkup and create or reuse its Job Card?")) return;
+      btn.disabled = true;
+      try {
+        const response = await workflowApi("?action=case-from-checkup", { method:"POST", body: JSON.stringify({checkupReportId:reportId}) });
+        showAlert(`${response.reusedCase ? "Existing case reused" : "Job Card case created"}${response.jobCardNo ? `: ${response.jobCardNo}` : ""}.`, false);
+        await loadCheckupReviews();
+      } catch (error) { showAlert(error.message || "Unable to create Job Card."); btn.disabled = false; }
+    });
+  }
+
   function showAlert(message, isError = true) {
     const box = document.getElementById("pageAlert");
     if (!box) return;
@@ -140,7 +181,7 @@
     }
 
     const first = homeMessages[0] || fallbackMessages[0];
-    return `<article class="cwm-home-v556" data-customer-card="${escapeHtml(customer.id || "self")}"><section class="cwm-home-hero-v556"><p class="cwm-home-kicker-v556"><span></span>WELCOME TO<span></span></p><h1>${escapeHtml(name.toUpperCase())} <em>WORKSHOP</em> PORTAL</h1><div class="cwm-company-details-v556"><div><i>●</i><span>ADDRESS</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><i>✉</i><span>EMAIL</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><i>☎</i><span>PHONE</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div></section><section class="cwm-message-display-v556 cwm-machine-alert-v610" aria-live="polite" data-alert-type="${escapeHtml(first.type || "info")}"><button type="button" data-cwm-message-prev aria-label="Previous machine alert">‹</button><div class="cwm-message-content-v556"><div class="cwm-alert-heading-v610"><span>⚠</span> MACHINE ALERTS</div><strong data-cwm-message-title>${escapeHtml(first.title || "MACHINE ALERT")}</strong><p data-cwm-message-text>${escapeHtml(first.text)}</p><small data-cwm-message-by>— ${escapeHtml(first.by)}</small><div class="cwm-message-dots-v556" data-cwm-message-dots></div></div><button type="button" data-cwm-message-next aria-label="Next machine alert">›</button></section><a class="cwm-open-workshop-v556 cwm-enter-role-v672" href="${escapeHtml(openHref)}" aria-label="View My Role: ${escapeHtml(roleEntry.label)}"><span class="cwm-open-icon-v556">◎</span><span class="cwm-role-action-copy-v672"><small>${escapeHtml(roleEntry.label.toUpperCase())}</small><b>VIEW MY ROLE</b><em>${escapeHtml(roleEntry.note)}</em></span><span class="cwm-open-arrow-v556">→</span></a><section class="cwm-quick-v556"><div class="cwm-quick-title-v556"><span>QUICK ACCESS</span></div><nav class="cwm-quick-grid-v556" aria-label="Workshop quick access"><a href="/portal/dashboard?view=machines"><i>✓</i><b>CHECK UP</b><small>Daily checklist & reports</small><span>›</span></a><a href="/customer-job-card/"><i>🔧</i><b>JOB CARDS</b><small>Create & manage job cards</small><span>›</span></a><a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a><a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a><a href="/general-report/"><i>▥</i><b>REPORTS</b><small>All reports & analysis</small><span>›</span></a><a href="/customer-users/"><i>●●</i><b>USERS</b><small>Manage users & roles</small><span>›</span></a></nav></section><footer class="cwm-home-footer-v556"><div><span class="cwm-footer-mark-v556">B</span><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div><p>Powering Performance.<br>Ensuring Reliability.</p><div class="cwm-footer-values-v556"><span>◈ Safety First</span><span>✓ Quality Work</span><span>⚙ On Time</span></div></footer></article>`;
+    return `<article class="cwm-home-v556" data-customer-card="${escapeHtml(customer.id || "self")}"><section class="cwm-home-hero-v556"><p class="cwm-home-kicker-v556"><span></span>WELCOME TO<span></span></p><h1>${escapeHtml(name.toUpperCase())} <em>WORKSHOP</em> PORTAL</h1><div class="cwm-company-details-v556"><div><i>●</i><span>ADDRESS</span><b>${escapeHtml(customer.address || "Not recorded")}</b></div><div><i>✉</i><span>EMAIL</span><b>${escapeHtml(customer.email || "Not recorded")}</b></div><div><i>☎</i><span>PHONE</span><b>${escapeHtml(customer.phone || "Not recorded")}</b></div></div></section><section class="cwm-message-display-v556 cwm-machine-alert-v610" aria-live="polite" data-alert-type="${escapeHtml(first.type || "info")}"><button type="button" data-cwm-message-prev aria-label="Previous machine alert">‹</button><div class="cwm-message-content-v556"><div class="cwm-alert-heading-v610"><span>⚠</span> MACHINE ALERTS</div><strong data-cwm-message-title>${escapeHtml(first.title || "MACHINE ALERT")}</strong><p data-cwm-message-text>${escapeHtml(first.text)}</p><small data-cwm-message-by>— ${escapeHtml(first.by)}</small><div class="cwm-message-dots-v556" data-cwm-message-dots></div></div><button type="button" data-cwm-message-next aria-label="Next machine alert">›</button></section><a class="cwm-open-workshop-v556 cwm-enter-role-v672" href="${escapeHtml(openHref)}" aria-label="View My Role: ${escapeHtml(roleEntry.label)}"><span class="cwm-open-icon-v556">◎</span><span class="cwm-role-action-copy-v672"><small>${escapeHtml(roleEntry.label.toUpperCase())}</small><b>VIEW MY ROLE</b><em>${escapeHtml(roleEntry.note)}</em></span><span class="cwm-open-arrow-v556">→</span></a><section class="cwm-quick-v556"><div class="cwm-quick-title-v556"><span>QUICK ACCESS</span></div><nav class="cwm-quick-grid-v556" aria-label="Workshop quick access"><a href="/portal/dashboard?view=machines"><i>✓</i><b>CHECK UP</b><small>Daily checklist & reports</small><span>›</span></a><a href="/customer-job-card/"><i>🔧</i><b>JOB CARDS</b><small>Create & manage job cards</small><span>›</span></a><a href="/customer-procurement-home/"><i>▣</i><b>PROCUREMENT</b><small>Spare parts & requests</small><span>›</span></a><a href="/customer-store/"><i>◆</i><b>STORE</b><small>Inventory & stock control</small><span>›</span></a><a href="/repair-confirmations/"><i>🔩</i><b>REPAIR CONFIRMATION</b><small>Installed parts & labor</small><span>›</span></a><a href="/general-report/"><i>▥</i><b>REPORTS</b><small>All reports & analysis</small><span>›</span></a><a href="/customer-users/"><i>●●</i><b>USERS</b><small>Manage users & roles</small><span>›</span></a></nav></section><footer class="cwm-home-footer-v556"><div><span class="cwm-footer-mark-v556">B</span><p><b>BELM</b><small>GENERAL TECH SERVICE</small></p></div><p>Powering Performance.<br>Ensuring Reliability.</p><div class="cwm-footer-values-v556"><span>◈ Safety First</span><span>✓ Quality Work</span><span>⚙ On Time</span></div></footer></article>`;
   }
 
   function setCustomerHomeChrome() {
@@ -210,6 +251,7 @@
         customers = [{ id: customer.id || "self", name: customer.name || "Customer", address: customer.address || "", email: customer.email || "", phone: customer.phone || "" }];
         setCustomerHomeChrome();
         renderCards();
+        await loadCheckupReviews();
         // V772: customer-home-brand-v626.js applies the same customer record
         // to the topbar/hero/footer. It used to fetch /api/customer-portal/dashboard
         // a second time for that - this reuses the one we already have instead.

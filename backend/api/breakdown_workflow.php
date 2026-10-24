@@ -31,7 +31,7 @@ function bw_context(array $payload): array {
         $permissions = $customer['permissions'] ?? null;
         $isOwner = ($customer['actorType'] ?? '') === 'owner';
         $role = strtolower(trim((string)($customer['customerRole'] ?? ($isOwner ? 'owner' : ''))));
-        $allowed = $isOwner || $permissions === null || (is_array($permissions) && in_array('workflow', $permissions, true));
+        $allowed = $isOwner || (is_array($permissions) && in_array('workflow', $permissions, true));
         if (!$allowed) json_error('Your Role Manager access does not include Breakdown Workflow.', 403);
         return [
             'kind' => 'customer', 'customerId' => (string)$customer['id'], 'isOwner' => $isOwner,
@@ -1090,7 +1090,7 @@ if ($method === 'GET' && $action === 'technician-jobs') {
     $stmt=db()->prepare(
         "SELECT j.id,j.case_id,j.customer_id,j.machine_id,j.job_card_no,j.title,j.fault_description,j.status,
                 j.technician_id,j.technician_name,j.priority,j.due_date,j.job_location,j.diagnosis,j.work_done,j.test_result,j.completion_note,j.repeat_issue,
-                j.issued_by_name,j.issued_by_type,j.issued_at,j.started_at,j.technician_submitted_at,j.reviewed_at,j.reviewed_by_name,j.review_note,j.completed_at,j.created_at,j.updated_at,
+                j.issued_by_name,j.issued_by_type,j.issued_at,j.received_at,j.started_at,j.technician_submitted_at,j.reviewed_at,j.reviewed_by_name,j.review_note,j.completed_at,j.created_at,j.updated_at,
                 bc.status AS case_status,bc.current_stage,bc.current_department,bc.blocker_reason,bc.source_type,bc.source_id,
                 c.name AS customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,
                 (SELECT COUNT(*) FROM breakdown_spare_requests sr WHERE sr.job_card_id=j.id AND sr.status NOT IN ('REJECTED','PARTS_READY')) AS open_spare_requests,
@@ -1220,6 +1220,86 @@ if ($method === 'GET' && $action === '') {
     $stmt->execute($params); $out=[]; foreach($stmt->fetchAll() as $r)$out[]=bw_case_view($r); json_out($out);
 }
 
+// Phase 31: read-only manager review inbox; scoped to the authenticated customer.
+if ($method === 'GET' && $action === 'abnormal-checkups') {
+    if ($ctx['kind'] !== 'customer' || (!$ctx['isOwner'] && !in_array($ctx['role'], ['workshop_manager','admin'], true))) {
+        json_error('Only Customer Admin or Workshop Manager can review abnormal Check Ups.', 403);
+    }
+    $stmt = db()->prepare("SELECT cr.id,cr.machine_id,cr.overall_status,cr.filled_by,cr.created_at,
+                                  m.brand,m.model,m.fleet_number,
+                                  (SELECT bc.id FROM breakdown_cases bc WHERE bc.machine_id=m.id AND bc.customer_id=m.customer_id
+                                     AND bc.status NOT IN ('COMPLETED','CANCELLED') ORDER BY bc.opened_at DESC LIMIT 1) AS open_case_id
+                           FROM checklist_reports cr JOIN machines m ON m.id=cr.machine_id
+                           JOIN customers c ON c.id=m.customer_id
+                           WHERE m.customer_id=? AND m.deleted_at IS NULL AND c.deleted_at IS NULL
+                             AND c.is_machinery_admin=1 AND UPPER(cr.overall_status) IN ('YELLOW','RED')
+                           ORDER BY cr.created_at DESC LIMIT 50");
+    $stmt->execute([$ctx['customerId']]);
+    json_out(['items'=>$stmt->fetchAll()]);
+}
+
+// Phase 30: Manager-reviewed escalation from an abnormal daily machine checkup.
+// Reuses an existing open case instead of creating a second Job Card for the same machine.
+if ($method === 'POST' && $action === 'case-from-checkup') {
+    if ($ctx['kind'] !== 'customer' || (!$ctx['isOwner'] && !in_array($ctx['role'], ['workshop_manager','admin'], true))) {
+        json_error('Only Customer Admin or Workshop Manager can escalate a Check Up.', 403);
+    }
+    $b = body();
+    $reportId = trim((string)($b['checkupReportId'] ?? ''));
+    if ($reportId === '') json_error('Check Up report is required.', 422);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $reportStmt = $pdo->prepare(
+            "SELECT r.id,r.machine_id,r.overall_status,r.filled_by,r.created_at,m.customer_id,m.brand,m.model,c.is_machinery_admin
+             FROM checklist_reports r JOIN machines m ON m.id=r.machine_id
+             JOIN customers c ON c.id=m.customer_id
+             WHERE r.id=? AND m.customer_id=? AND m.deleted_at IS NULL AND c.deleted_at IS NULL LIMIT 1"
+        );
+        $reportStmt->execute([$reportId,$ctx['customerId']]);
+        $report = $reportStmt->fetch();
+        if (!$report) json_error('Check Up report not found for this customer.', 404);
+        if (!in_array(strtoupper((string)$report['overall_status']), ['YELLOW','RED'], true)) {
+            json_error('Only YELLOW or RED Check Ups require breakdown escalation.', 409);
+        }
+        if (empty($report['is_machinery_admin'])) json_error('Customer internal workshop is disabled. Request official BELM support instead.', 403);
+        // Serialize concurrent manager actions on the same machine.
+        $lock = $pdo->prepare('SELECT id FROM machines WHERE id=? AND customer_id=? FOR UPDATE');
+        $lock->execute([$report['machine_id'],$ctx['customerId']]);
+        if (!$lock->fetchColumn()) json_error('Machine not available.', 404);
+        $existing = $pdo->prepare(
+            "SELECT id FROM breakdown_cases WHERE customer_id=? AND machine_id=? AND status NOT IN ('COMPLETED','CANCELLED') ORDER BY opened_at DESC LIMIT 1"
+        );
+        $existing->execute([$ctx['customerId'],$report['machine_id']]);
+        $caseId = (string)($existing->fetchColumn() ?: '');
+        $reused = $caseId !== '';
+        if (!$reused) {
+            $caseId = uuid();
+            $label = trim((string)$report['brand'].' '.(string)$report['model']);
+            $title = 'Check Up '.strtoupper((string)$report['overall_status']).' - '.($label ?: 'Machine');
+            $description = 'Manager escalated abnormal Check Up '.$reportId.' ('.strtoupper((string)$report['overall_status']).'). Report by '.$report['filled_by'].'.';
+            $pdo->prepare("INSERT INTO breakdown_cases(id,customer_id,machine_id,source_type,title,description,status,current_stage,current_department,opened_at,stage_started_at,updated_at,created_by_name) VALUES(?,?,?,'BREAKDOWN_CASE',?,?,'OPEN','WORKSHOP_REVIEW','Workshop',NOW(),NOW(),NOW(),?)")
+                ->execute([$caseId,$ctx['customerId'],$report['machine_id'],$title,$description,$ctx['actorName']]);
+        }
+        // Retried requests for this same checkup must not create duplicate history events.
+        // Machine row is already locked, serializing concurrent escalations.
+        $checkupEvent = $pdo->prepare(
+            "SELECT 1 FROM breakdown_case_events WHERE case_id=? AND action IN ('CHECKUP LINKED TO EXISTING CASE','CHECKUP ESCALATED BY MANAGER') AND note LIKE ? LIMIT 1"
+        );
+        $checkupEvent->execute([$caseId, 'Check Up '.$reportId.'; severity %']);
+        if (!$checkupEvent->fetchColumn()) {
+            bw_log($caseId,'WORKSHOP_REVIEW','Workshop',$reused ? 'CHECKUP LINKED TO EXISTING CASE' : 'CHECKUP ESCALATED BY MANAGER','Check Up '.$reportId.'; severity '.strtoupper((string)$report['overall_status']),$ctx);
+        }
+        // The normal helper is idempotent at case level; no duplicate Job Card is issued.
+        $job = belm_ensure_job_card_for_breakdown_case($caseId,$ctx['actorName'],true);
+        $pdo->commit();
+        json_out(['id'=>$caseId,'checkupReportId'=>$reportId,'reusedCase'=>$reused,'jobCardNo'=>$job['jobCardNo']??null],$reused ? 200 : 201);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
+}
+
 if ($method === 'POST' && $action === 'case') {
     if($ctx['kind']!=='customer') json_error('Create the case from the customer workflow or problem report.',403);
     if(!$ctx['isOwner'] && !in_array($ctx['role'],['workshop_manager','admin'],true)) json_error('Only Administration/Customer Admin or Workshop Manager can open a manual Breakdown Case. Operators should use Report Problem.',403);
@@ -1305,12 +1385,14 @@ if ($method === 'POST' && $action === 'job-card') {
         $previousTechnicianName=trim((string)($job['technician_name']??''));
         $reassigned=$previousTechnicianId!=='' && $previousTechnicianId!==$techId;
         $sameAssignment=$previousTechnicianId!=='' && $previousTechnicianId===$techId;
+        $handoverReason=trim((string)($b['handoverReason']??''));
+        if ($reassigned && $handoverReason==='') json_error('Enter the handover reason before reassigning this Job Card.',422);
+        if (mb_strlen($handoverReason)>1000) json_error('Handover reason is too long (max 1000 characters).',422);
         $preservedStatus=in_array($currentStatus,['IN_PROGRESS','WAITING_FOR_PARTS'],true)?$currentStatus:'ASSIGNED';
         db()->prepare("UPDATE digital_job_cards
-                       SET technician_id=?,technician_name=?,status=?,job_location=COALESCE(NULLIF(?,''),job_location),updated_at=NOW()
+                       SET technician_id=?,technician_name=?,status=?,received_at=CASE WHEN technician_id IS DISTINCT FROM ? THEN NULL ELSE received_at END,started_at=CASE WHEN technician_id IS DISTINCT FROM ? THEN NULL ELSE started_at END,job_location=COALESCE(NULLIF(?,''),job_location),updated_at=NOW()
                        WHERE id=?")
-            ->execute([$techId,$techName,$preservedStatus,$jobLocation,$requestedJobId]);
-        $handoverReason=trim((string)($b['handoverReason']??''));
+            ->execute([$techId,$techName,$preservedStatus,$techId,$techId,$jobLocation,$requestedJobId]);
         $action=$reassigned
             ? 'Customer Job Card '.$job['job_card_no'].' reassigned to '.$techName
             : ($sameAssignment ? 'Customer Job Card '.$job['job_card_no'].' assignment confirmed for '.$techName : 'Customer Job Card '.$job['job_card_no'].' assigned to '.$techName);
@@ -1326,6 +1408,17 @@ if ($method === 'POST' && $action === 'job-card') {
         if($workshopInstruction!=='') {
             bw_log($caseId,(string)($case['current_stage']?:'JOB_CARD_ASSIGNED'),'Workshop','WORKSHOP_MANAGER_INSTRUCTION',$workshopInstruction,$ctx);
         }
+        // In-portal coordination survives an email outage and is scoped to the
+        // workshop that owns this card, not the other company's inbox.
+        try {
+            $noticeScope=$ctx['kind']==='belm'?'BELM':'CUSTOMER';
+            bw_role_message($ctx,$case,$noticeScope,'workshop_manager',
+                'JOB CARD '.($reassigned?'REASSIGNED':'ASSIGNED').' - '.$job['job_card_no'],
+                'Technician: '.$techName.'. '.($reassigned?'Previous: '.($previousTechnicianName?:'Unknown').'. ':'').
+                ($handoverReason!==''?'Handover reason: '.$handoverReason.'. ':'').
+                'Review the Job Card and track progress in Breakdown Workflow.',
+                'NORMAL','JOB_CARD',$requestedJobId);
+        } catch(Throwable $e) { error_log('Job Card coordination notice failed: '.$e->getMessage()); }
         try {
             $email=trim((string)($tech['email']??''));
             if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$job['job_card_no'],
@@ -1336,6 +1429,21 @@ if ($method === 'POST' && $action === 'job-card') {
                 "Machine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'').
                 "\nFault: ".$case['description']."\nOpen Technician > My Job Cards. Existing Job Card history remains available.");
         } catch(Throwable $e) {}
+        // Notify the previous technician that the assignment has ended; do not
+        // leave a stale active assignment in their understanding of the work.
+        if ($reassigned) {
+            try {
+                $prior=db()->prepare('SELECT email FROM users WHERE id=? AND is_active=1 AND deleted_at IS NULL LIMIT 1');
+                $prior->execute([$previousTechnicianId]);
+                $priorEmail=trim((string)$prior->fetchColumn());
+                if (filter_var($priorEmail,FILTER_VALIDATE_EMAIL)) {
+                    send_email($priorEmail,'JOB CARD '.$job['job_card_no'].' - REASSIGNED',
+                        'You are no longer assigned to Job Card '.$job['job_card_no'].'.'."\n".
+                        'New technician: '.$techName."\n".'Handover reason: '.$handoverReason."\n".
+                        'The existing Job Card history is preserved. Contact your Workshop Manager if clarification is needed.');
+                }
+            } catch(Throwable $e) { /* Never roll back a valid handover for an email provider outage. */ }
+        }
         json_out(['id'=>$requestedJobId,'jobCardNo'=>$job['job_card_no'],'mode'=>'existing','reassigned'=>$reassigned,'previousTechnicianName'=>$previousTechnicianName?:null,'status'=>$preservedStatus],200);
     }
 
@@ -1381,6 +1489,16 @@ if ($method === 'POST' && $action === 'job-card') {
             'Home customer: '.($techHomeName ?: 'Unassigned').'. Override applies only to Job Card '.$num.'.', $ctx);
     }
     if ($techId!=='') {
+        // Managers can verify dispatch inside the portal even if SMTP is unset.
+        try {
+            $noticeScope=$ctx['kind']==='belm'?'BELM':'CUSTOMER';
+            bw_role_message($ctx,$case,$noticeScope,'workshop_manager',
+                'JOB CARD ASSIGNED - '.$num,
+                'Technician: '.$techName.'. Job Card '.$num.' is assigned. '.
+                ($temporaryOverride?'Temporary customer override is active. ':'').
+                'Follow progress in Breakdown Workflow.',
+                'NORMAL','JOB_CARD',$jobId);
+        } catch(Throwable $e) { error_log('Job Card assignment notice failed: '.$e->getMessage()); }
         try { $email=trim((string)($tech['email']??'')); if(filter_var($email,FILTER_VALIDATE_EMAIL)) send_email($email,'DIGITAL JOB CARD '.$num,"Job Card $num has been assigned to you.".($temporaryOverride?"\nAssignment: TEMPORARY OVERRIDE (your permanent customer has not changed).":'')."\nMachine: ".$case['brand'].' '.$case['model'].($jobLocation!==''?"\nJob location: $jobLocation\nNavigate: https://www.google.com/maps/dir/?api=1&destination=".rawurlencode($jobLocation):'')."\nFault: ".$case['description'].($workshopInstruction!==''?"\nWorkshop Manager Instruction: $workshopInstruction":'')."\nOpen Technician > My Job Cards."); } catch(Throwable $e) {}
     }
     json_out(['id'=>$jobId,'jobCardNo'=>$num,'mode'=>$jobCardMode==='auto'?'create':$jobCardMode,'reassigned'=>false],201);
@@ -1399,33 +1517,49 @@ if ($method === 'POST' && $action === 'spare') {
     $name=trim((string)($b['spareName']??'')); $qty=(float)($b['quantity']??1); if($name===''||$qty<=0)json_error('Spare name and quantity are required.');
     $spareId=uuid(); db()->prepare("INSERT INTO breakdown_spare_requests(id,case_id,job_card_id,spare_name,part_number,quantity,unit,reason,status,requested_by_name,requested_at,updated_at) VALUES(?,?,?,?,?,?,?,?, 'WAITING_BOSS_APPROVAL',?,NOW(),NOW())")->execute([$spareId,$caseId,$jobCardId!==''?$jobCardId:null,$name,trim((string)($b['partNumber']??''))?:null,$qty,trim((string)($b['unit']??'pcs'))?:'pcs',trim((string)($b['reason']??''))?:null,$ctx['actorName']]);
     bw_set_stage($caseId,'BOSS_APPROVAL','Waiting for Administration approval of spare request',$ctx,'Spare requested - waiting Administration approval');
-    bw_role_message($ctx,$case,'CUSTOMER','customer_admin','SPARE APPROVAL REQUIRED - '.$case['model'],
+    // An internal Customer Workshop request belongs to Customer Administration;
+    // an official BELM support job belongs to BELM Administration.
+    $approvalScope = !empty($case['is_machinery_admin']) && strtoupper((string)($case['source_type'] ?? '')) !== 'SERVICE_REQUEST' ? 'CUSTOMER' : 'BELM';
+    $approvalRole = $approvalScope === 'BELM' ? 'super_admin' : 'customer_admin';
+    bw_role_message($ctx,$case,$approvalScope,$approvalRole,'SPARE APPROVAL REQUIRED - '.$case['model'],
         'Spare '.$name.' x '.$qty.' requires Administration approval before Store / Procurement continues.','ATTENTION','spare_request',$spareId);
-    try {
-        $owner = db()->prepare('SELECT email FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
-        $owner->execute([(string)$case['customer_id']]);
-        $ownerEmail = trim((string)$owner->fetchColumn());
-        if (filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)) {
-            send_email($ownerEmail, 'SPARE APPROVAL REQUIRED - '.$case['model'],
-                "Administration approval required\nMachine: ".$case['brand'].' '.$case['model']."\nSpare: $name\nQty: $qty\nRequested by: ".$ctx['actorName']."\nOpen Breakdown Workflow to approve or reject.");
-        }
-    } catch(Throwable $e) {}
+    if ($approvalScope === 'CUSTOMER') {
+        try {
+            $owner = db()->prepare('SELECT email FROM customers WHERE id=? AND is_active=1 AND deleted_at IS NULL');
+            $owner->execute([(string)$case['customer_id']]);
+            $ownerEmail = trim((string)$owner->fetchColumn());
+            if (filter_var($ownerEmail, FILTER_VALIDATE_EMAIL)) {
+                send_email($ownerEmail, 'SPARE APPROVAL REQUIRED - '.$case['model'],
+                    "Administration approval required\nMachine: ".$case['brand'].' '.$case['model']."\nSpare: $name\nQty: $qty\nRequested by: ".$ctx['actorName']."\nOpen Breakdown Workflow to approve or reject.");
+            }
+        } catch(Throwable $e) {}
+    }
     json_out(['id'=>$spareId],201);
 }
 
 if ($method === 'PUT' && $action === 'approve-spare' && $id !== '') {
-    if($ctx['kind']!=='customer'||!$ctx['isOwner']) json_error('Only the main Customer Administration/Owner can approve spare requests.',403);
-    $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?'); $stmt->execute([$id]); $s=$stmt->fetch(); if(!$s||$s['customer_id']!==$ctx['customerId'])json_error('Spare request not found.',404);
+    $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?');
+    $stmt->execute([$id]); $s=$stmt->fetch();
+    if (!$s) json_error('Spare request not found.',404);
     $case=bw_case_access($ctx,(string)$s['case_id']);
+    $customerApproval=$ctx['kind']==='customer' && !empty($ctx['isOwner']);
+    $belmApproval=$ctx['kind']==='belm' && in_array($ctx['role'],['super admin'],true);
+    if (!$customerApproval && !$belmApproval) json_error('Administration approval is required for this spare request.',403);
+    // Customer-owned jobs must not be approved by BELM, nor vice versa.
+    $customerOwned=!empty($case['is_machinery_admin']) && strtoupper((string)($case['source_type']??''))!=='SERVICE_REQUEST';
+    if ($customerOwned && !$customerApproval) json_error('Customer Administration approval required.',403);
+    if (!$customerOwned && !$belmApproval) json_error('BELM Administration approval required.',403);
+    if (strtoupper((string)($s['status']??''))!=='WAITING_BOSS_APPROVAL') json_error('Spare request is not awaiting Administration approval.',409);
+    $notificationScope=$customerOwned?'CUSTOMER':'BELM';
     $b=body(); $approve=!empty($b['approve']); $status=$approve?'APPROVED':'REJECTED';
     db()->prepare('UPDATE breakdown_spare_requests SET status=?,approved_by_name=?,approved_at=NOW(),approval_note=?,updated_at=NOW() WHERE id=?')->execute([$status,$ctx['actorName'],trim((string)($b['note']??''))?:null,$id]);
     bw_set_stage($s['case_id'],$approve?'STORE_CHECK':'DIAGNOSIS',$approve?null:'Spare rejected by Administration',$ctx,$approve?'Spare approved by Administration':'Spare rejected by Administration');
     if ($approve) {
-        bw_role_message($ctx,$case,'CUSTOMER','store_keeper','SPARE APPROVED - STORE ACTION REQUIRED',
+        bw_role_message($ctx,$case,$notificationScope,'store_keeper','SPARE APPROVED - STORE ACTION REQUIRED',
             "Administration approved {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable route the shortage to Procurement.",'ATTENTION','spare_request',$id);
-        try { customer_send_team_alert($ctx['customerId'],['store'],'SPARE APPROVED - STORE ACTION REQUIRED',"Administration approved spare: {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {}
+        try { if ($customerOwned) customer_send_team_alert($ctx['customerId'],['store'],'SPARE APPROVED - STORE ACTION REQUIRED',"Administration approved spare: {$s['spare_name']} x {$s['quantity']}. Check Customer Store; if unavailable send to Procurement.",false); } catch(Throwable $e) {}
     } else {
-        bw_role_message($ctx,$case,'CUSTOMER','workshop_manager','SPARE REQUEST REJECTED',
+        bw_role_message($ctx,$case,$notificationScope,'workshop_manager','SPARE REQUEST REJECTED',
             "Administration rejected {$s['spare_name']} x {$s['quantity']}. Review the diagnosis / Job Card before continuing.",'ATTENTION','spare_request',$id);
     }
     json_out(['ok'=>true,'status'=>$status]);
@@ -1433,6 +1567,9 @@ if ($method === 'PUT' && $action === 'approve-spare' && $id !== '') {
 
 if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
     if (bw_is_technician_actor($ctx)) json_error('Technicians request spares from Job Cards; Store/Procurement status is managed by authorized departments.',403);
+    // Department-specific authorization is enforced on the API, not only the dashboard.
+    // Do not allow generic page access to change financial/procurement milestones.
+
     $stmt=db()->prepare('SELECT bsr.*,bc.customer_id FROM breakdown_spare_requests bsr JOIN breakdown_cases bc ON bc.id=bsr.case_id WHERE bsr.id=?'); $stmt->execute([$id]); $s=$stmt->fetch(); if(!$s)json_error('Spare request not found.',404); $case=bw_case_access($ctx,(string)$s['case_id']);
     $b=body(); $status=strtoupper(trim((string)($b['status']??''))); $allowed=['STORE_AVAILABLE','PROCUREMENT_REQUIRED','PI_WAITING_ACCOUNTS','ORDERED','PARTS_READY']; if(!in_array($status,$allowed,true))json_error('Invalid spare process status.');
     if ($ctx['kind']==='customer' && !$ctx['isOwner']) {
@@ -1440,22 +1577,42 @@ if ($method === 'PUT' && $action === 'spare-status' && $id !== '') {
         if (in_array($status,['STORE_AVAILABLE','PROCUREMENT_REQUIRED','PARTS_READY'],true) && !in_array($role,['store_keeper','workshop_manager','admin'],true)) json_error('Store Keeper or Workshop Manager action required.',403);
         if (in_array($status,['PI_WAITING_ACCOUNTS','ORDERED'],true) && !in_array($role,['procurement','accounts','admin'],true)) json_error('Procurement or Accounts action required.',403);
     }
+    if ($ctx['kind'] === 'belm') {
+        $role = strtolower(trim((string)($ctx['role'] ?? '')));
+        $isAdmin = $role === 'super admin';
+        $storeStatuses = ['STORE_AVAILABLE', 'PROCUREMENT_REQUIRED', 'PARTS_READY'];
+        $financeStatuses = ['PI_WAITING_ACCOUNTS', 'ORDERED'];
+        $storeRoles = ['store keeper', 'workshop manager'];
+        $financeRoles = ['procurement', 'accounts', 'finance / accounts'];
+        if (!$isAdmin && in_array($status, $storeStatuses, true) && !in_array($role, $storeRoles, true)) {
+            json_error('BELM Store Keeper or Workshop Manager permission required for this spare status.', 403);
+        }
+        if (!$isAdmin && in_array($status, $financeStatuses, true) && !in_array($role, $financeRoles, true)) {
+            json_error('BELM Procurement or Accounts permission required for this spare status.', 403);
+        }
+    }
+    // Disallow either company from changing the other company's spare workflow.
+    $customerOwned = !empty($case['is_machinery_admin']) && strtoupper((string)($case['source_type'] ?? '')) !== 'SERVICE_REQUEST';
+    if ($customerOwned && $ctx['kind'] !== 'customer') json_error('Customer workshop controls this spare workflow.', 403);
+    if (!$customerOwned && $ctx['kind'] !== 'belm') json_error('BELM controls this spare workflow.', 403);
+    // Coordination follows the owner of this repair workflow, never a hardcoded CUSTOMER inbox.
+    $spareNoticeScope = ($ctx['kind'] === 'customer') ? 'CUSTOMER' : 'BELM';
     $stage=match($status){'STORE_AVAILABLE'=>'PARTS_READY','PARTS_READY'=>'REPAIR','PROCUREMENT_REQUIRED','ORDERED'=>'PROCUREMENT','PI_WAITING_ACCOUNTS'=>'ACCOUNTS',default=>'STORE_CHECK'};
     db()->prepare("UPDATE breakdown_spare_requests SET status=?,fulfilled_by_name=CASE WHEN ?='PARTS_READY' THEN ? ELSE fulfilled_by_name END,fulfilled_at=CASE WHEN ?='PARTS_READY' THEN NOW() ELSE fulfilled_at END,updated_at=NOW() WHERE id=?")->execute([$status,$status,$ctx['actorName'],$status,$id]);
     if($status==='PARTS_READY' && !empty($s['job_card_id'])) {
         db()->prepare("UPDATE digital_job_cards SET status='IN_PROGRESS',updated_at=NOW() WHERE id=? AND status='WAITING_FOR_PARTS'")->execute([(string)$s['job_card_id']]);
     }
     bw_set_stage($s['case_id'],$stage,trim((string)($b['note']??''))?:null,$ctx,$status==='PARTS_READY'?'Parts ready - Technician can continue repair':'Spare process: '.$status);
-    if ($status==='PROCUREMENT_REQUIRED') bw_role_message($ctx,$case,'CUSTOMER','procurement','PROCUREMENT ACTION REQUIRED',
+    if ($status==='PROCUREMENT_REQUIRED') bw_role_message($ctx,$case,$spareNoticeScope,'procurement','PROCUREMENT ACTION REQUIRED',
         "Approved spare {$s['spare_name']} x {$s['quantity']} is not available in Store. Procurement action is required.",'ATTENTION','spare_request',$id);
-    if ($status==='PI_WAITING_ACCOUNTS') bw_role_message($ctx,$case,'CUSTOMER','accounts','ACCOUNTS / PI ACTION REQUIRED',
+    if ($status==='PI_WAITING_ACCOUNTS') bw_role_message($ctx,$case,$spareNoticeScope,'accounts','ACCOUNTS / PI ACTION REQUIRED',
         "Procurement has routed {$s['spare_name']} x {$s['quantity']} to Accounts for PI / finance action.",'ATTENTION','spare_request',$id);
-    if ($status==='PARTS_READY') bw_role_message($ctx,$case,'CUSTOMER','workshop_manager','PARTS READY - REPAIR CAN CONTINUE',
+    if ($status==='PARTS_READY') bw_role_message($ctx,$case,$spareNoticeScope,'workshop_manager','PARTS READY - REPAIR CAN CONTINUE',
         "Required spare {$s['spare_name']} x {$s['quantity']} is ready. Workshop can return the Job Card to repair / testing.",'ATTENTION','spare_request',$id);
     try {
-        if ($status==='PROCUREMENT_REQUIRED') customer_send_team_alert((string)$s['customer_id'],['service-request','store'],'PROCUREMENT ACTION REQUIRED','Approved spare is not available in Store. Procurement action is required. Open Breakdown Workflow.',true);
-        if ($status==='PI_WAITING_ACCOUNTS') customer_send_team_alert((string)$s['customer_id'],['email'],'ACCOUNTS / PI ACTION REQUIRED','Procurement has sent a breakdown spare requirement to Accounts. Open Breakdown Workflow.',true);
-        if ($status==='PARTS_READY') customer_send_team_alert((string)$s['customer_id'],['workflow'],'PARTS READY - REPAIR CAN CONTINUE','Required spare is ready. Workshop / Technician can continue repair.',true);
+        if ($ctx['kind']==='customer' && $status==='PROCUREMENT_REQUIRED') customer_send_team_alert((string)$s['customer_id'],['service-request','store'],'PROCUREMENT ACTION REQUIRED','Approved spare is not available in Store. Procurement action is required. Open Breakdown Workflow.',true);
+        if ($ctx['kind']==='customer' && $status==='PI_WAITING_ACCOUNTS') customer_send_team_alert((string)$s['customer_id'],['email'],'ACCOUNTS / PI ACTION REQUIRED','Procurement has sent a breakdown spare requirement to Accounts. Open Breakdown Workflow.',true);
+        if ($ctx['kind']==='customer' && $status==='PARTS_READY') customer_send_team_alert((string)$s['customer_id'],['workflow'],'PARTS READY - REPAIR CAN CONTINUE','Required spare is ready. Workshop / Technician can continue repair.',true);
     } catch(Throwable $e) {}
     json_out(['ok'=>true]);
 }
@@ -1471,13 +1628,19 @@ if ($method === 'PUT' && $action === 'job-receive' && $id !== '') {
     if(!bw_is_technician_actor($ctx)) json_error('Only the assigned Technician can receive this Job Card.',403);
     bw_require_assigned_job($ctx,$job);
     $status=strtoupper(trim((string)($job['status']??'')));
-    if(in_array($status,['COMPLETED','CANCELLED','PENDING_APPROVAL'],true)) json_error('This Job Card cannot be received in its current status.',409);
-    $firstReceive=!in_array($status,['RECEIVED','IN_PROGRESS','WAITING_FOR_PARTS'],true);
-    if($firstReceive){
-        db()->prepare("UPDATE digital_job_cards SET status='RECEIVED',updated_at=NOW() WHERE id=?")->execute([$id]);
-        bw_log((string)$job['case_id'],'JOB_CARD_ASSIGNED','Technician','JOB_CARD_RECEIVED','Technician received assigned Job Card', $ctx);
+    if(!in_array($status,['OPEN','ASSIGNED','CREATED','RECEIVED','IN_PROGRESS','WAITING_FOR_PARTS'],true)) json_error('This Job Card cannot be received in its current status.',409);
+    // Atomic and idempotent acknowledgement: duplicate clicks never create another event.
+    // Only the currently assigned technician can reach this action (checked above).
+    $ack=db()->prepare("UPDATE digital_job_cards SET received_at=NOW(),status=CASE WHEN UPPER(status) IN ('OPEN','ASSIGNED','CREATED') THEN 'RECEIVED' ELSE status END,updated_at=NOW() WHERE id=? AND received_at IS NULL AND UPPER(COALESCE(status,'')) IN ('OPEN','ASSIGNED','CREATED','RECEIVED','IN_PROGRESS','WAITING_FOR_PARTS') RETURNING received_at,status");
+    $ack->execute([$id]);
+    $accepted=$ack->fetch();
+    if($accepted){
+        bw_log((string)$job['case_id'],'JOB_CARD_ASSIGNED','Technician','JOB_CARD_RECEIVED','Assigned Technician explicitly accepted Job Card', $ctx);
     }
-    json_out(['ok'=>true,'firstReceive'=>$firstReceive,'status'=>'RECEIVED','process'=>'RECEIVED']);
+    $current=db()->prepare('SELECT received_at,status FROM digital_job_cards WHERE id=?');
+    $current->execute([$id]); $state=$current->fetch();
+    if(empty($state['received_at'])) json_error('Job Card cannot be received in its current state.',409);
+    json_out(['ok'=>true,'firstReceive'=>(bool)$accepted,'receivedAt'=>$state['received_at'],'status'=>$state['status'],'process'=>'RECEIVED']);
 }
 
 // V403 - opening the assigned Job Card is a real process event.
@@ -1490,6 +1653,7 @@ if ($method === 'PUT' && $action === 'job-open' && $id !== '') {
     bw_case_access($ctx,(string)$job['case_id']);
     if(!bw_is_technician_actor($ctx)) json_error('Only the assigned Technician can open this Job Card.',403);
     bw_require_assigned_job($ctx,$job);
+    if(empty($job['received_at'])) json_error('Receive / acknowledge the Job Card before starting diagnosis.',409);
     $firstOpen=empty($job['started_at']);
     if($firstOpen){
         db()->prepare("UPDATE digital_job_cards SET started_at=COALESCE(started_at,NOW()),status=CASE WHEN UPPER(COALESCE(status,'')) IN ('RECEIVED','IN_PROGRESS') THEN 'IN_PROGRESS' ELSE status END,updated_at=NOW() WHERE id=?")
@@ -1510,6 +1674,7 @@ if ($method === 'PUT' && $action === 'job-report' && $id !== '') {
     $isTechActor=!empty($ctx['isTechnician']) || ($ctx['kind']==='customer' && $ctx['role']==='technician');
     if(!$isTechActor) json_error('Only a Technician can save the technical Job Card report.',403);
     bw_require_assigned_job($ctx,$job);
+    if(empty($job['received_at'])) json_error('Receive / acknowledge this Job Card before submitting diagnosis.',409);
     $currentJobStatus=strtoupper(trim((string)($job['status']??'')));
     if(in_array($currentJobStatus,['PENDING_APPROVAL','COMPLETED','CANCELLED'],true)) {
         json_error($currentJobStatus==='PENDING_APPROVAL'?'This Job Card has already been submitted for approval. It can be edited again only if the reviewer returns it to the Technician.':'This Job Card is already closed.',409);

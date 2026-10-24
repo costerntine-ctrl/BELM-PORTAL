@@ -41,6 +41,8 @@
     .belm-shared-visual-v827.has-photo{padding:0;background:#eef2f6}
     .belm-shared-visual-v827 img{display:block;width:100%;height:100%;max-height:215px;object-fit:contain;object-position:center;background:#eef2f6}
     .belm-shared-visual-v827 span{max-width:90%;font:900 22px/1.15 Inter,Arial,sans-serif;color:#fff}
+    .belm-machine-type-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#dbeafa}.belm-machine-type-placeholder span{font-size:58px;line-height:1.1}.belm-machine-type-placeholder small{font-size:13px;font-weight:800}.belm-machine-type-placeholder em{font-size:10px;color:#91afcd;font-style:normal}
+    .belm-shared-type-v840{display:inline-flex;align-self:flex-start;max-width:100%;padding:5px 10px;margin:0 0 9px;border:1px solid #365574;border-radius:999px;background:#112d49;color:#cce5fc;font:800 11px/1.2 Inter,Arial,sans-serif;overflow-wrap:anywhere}
     .belm-shared-summary-v827 h3{margin:0 0 5px!important;color:#fff!important;font:900 22px/1.15 Inter,Arial,sans-serif!important;overflow-wrap:anywhere}
     .belm-shared-meta-v827{min-height:30px;margin:0!important;color:#a9bfd8!important;font-size:12px!important;line-height:1.45!important}
     .belm-shared-facts-v827{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:12px;border-top:1px dashed rgba(164,188,215,.24);border-bottom:1px dashed rgba(164,188,215,.24)}
@@ -70,6 +72,15 @@
     .belm-shared-action-proxy-v838[data-action-kind="job"]{background:#d7a900;border-color:#f3c900;color:#07111d}
     .belm-shared-action-proxy-v838[data-action-kind="delete"],.belm-shared-action-proxy-v838[data-action-kind="forget"]{background:#4a1620;border-color:#df4455}
     .belm-shared-action-proxy-v838:disabled{opacity:.45;cursor:not-allowed}
+    .belm-machine-history-v842{margin-top:12px;padding-top:12px;border-top:1px solid #315170}.belm-machine-history-load-v842{width:100%;padding:12px;border:1px solid #4c7597;border-radius:9px;background:#143e60;color:#fff;font-weight:750;cursor:pointer}.belm-machine-history-entry-v842{display:flex;flex-direction:column;gap:4px;padding:10px 2px;border-bottom:1px solid #284764}.belm-machine-history-entry-v842 strong{color:#edf7ff;font-size:12px}.belm-machine-history-entry-v842 small{color:#a5bbd2;font-size:11px}
+    .belm-machine-profile-v841{margin:0 0 15px;padding:14px;border:1px solid #284764;border-radius:13px;background:#0b1e32}
+    .belm-machine-profile-v841 h4{margin:0 0 6px;color:#f5f8fc;font:800 14px Inter,Arial,sans-serif}
+    .belm-machine-profile-v841 p{margin:0 0 12px;color:#a5bbd2;font:12px/1.5 Inter,Arial,sans-serif}
+    .belm-machine-profile-links-v841{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .belm-machine-profile-links-v841 button,.belm-machine-profile-links-v841 span{display:flex;min-height:48px;align-items:center;justify-content:center;padding:8px;border:1px solid #315170;border-radius:9px;background:#123655;color:#edf7ff;font:750 11px/1.4 Inter,Arial,sans-serif;text-align:center}
+    .belm-machine-profile-links-v841 button{cursor:pointer}.belm-machine-profile-links-v841 button:focus-visible{outline:3px solid #ffdf00;outline-offset:2px}
+    .belm-machine-profile-links-v841 span{opacity:.65;background:#101e30}
+    @media(max-width:450px){.belm-machine-profile-links-v841{grid-template-columns:1fr}}
     .belm-shared-empty-actions-v838{grid-column:1/-1;padding:14px;border:1px dashed #29425c;border-radius:10px;color:#8fa6bd;text-align:center;font-size:11px}
     .belm-shared-status-field-v838{display:grid;grid-column:1/-1;gap:6px;padding:10px;border:1px solid #29425c;border-radius:10px;background:#08192a;color:#9db3c9;font-size:10px;font-weight:800;text-transform:uppercase}
     .belm-shared-status-field-v838 select{width:100%;min-height:42px;padding:8px;border:1px solid #3a5875;border-radius:8px;background:#06111f;color:#fff}
@@ -77,6 +88,8 @@
     #machineListDialog{height:100dvh!important;max-height:100dvh!important;overflow-x:hidden!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important}
     #machineListDialog>.dialog-card,#machineListDialog .dialog-card{height:auto!important;min-height:100%!important;max-height:none!important;overflow:visible!important}
     dialog:has(.belm-shared-machine-card-v827),.op-checkup-dialog,#techMachineReportsDialog{max-height:calc(100dvh - 24px)!important;overflow-y:auto!important;overscroll-behavior:contain!important}
+    @media(min-width:761px) and (max-width:1050px){.belm-shared-actions-v827{grid-template-columns:minmax(0,1fr);gap:8px}.belm-shared-action-grid-v838{grid-template-columns:minmax(0,1fr)}}
+    @media(max-width:420px){.belm-shared-head-v827{flex-wrap:wrap}.belm-shared-fleet-v827{font-size:13px}.belm-shared-summary-v827 h3{font-size:19px!important}.belm-shared-actions-v827{grid-template-columns:minmax(0,1fr);gap:8px}.belm-shared-actions-v827 button{width:100%;min-width:0;min-height:44px}.belm-shared-visual-v827{aspect-ratio:16/9;min-height:115px}.belm-shared-activity-v827{font-size:11px}}
     @media(max-width:760px){.belm-shared-summary-v827{min-height:0!important;padding:18px 14px 14px!important}.belm-shared-visual-v827{min-height:125px;max-height:190px}.belm-shared-facts-v827{grid-template-columns:1fr}.belm-shared-fact-v827,.belm-shared-fact-v827:nth-child(odd),.belm-shared-fact-v827:nth-child(even){padding:9px 4px}.belm-shared-alert-v827{margin:0 0 8px!important}.belm-shared-actions-v827{grid-template-columns:1fr 1.2fr}.belm-shared-drawer-v838{padding:0 14px 15px}.belm-shared-action-grid-v838{grid-template-columns:1fr}}
   `;
   document.head.appendChild(style);
@@ -111,6 +124,29 @@
     const value = String(select?.value || card.dataset.belmActivity || direct || 'NORMAL').toUpperCase();
     const label = { NORMAL: 'Working', SERVICE_IN_PROGRESS: 'Service', CHECKUP_IN_PROGRESS: 'Check-up', MAINTENANCE_IN_PROGRESS: 'Maintenance', GROUNDED: 'Grounded' }[value] || text(select?.selectedOptions?.[0]) || direct || 'Working';
     return { value, label };
+  }
+
+  // A verified machine photo always wins. Without one show a type-labelled
+  // pictogram, never an unrelated photo or a guessed make/model.
+  function machineVisualType(card, info) {
+    const source = [card.dataset.machineType, card.dataset.belmMachineType,
+      card.getAttribute('data-machine-type'), info.meta, info.title].filter(Boolean).join(' ').toLowerCase();
+    const groups = [
+      [/reach.?stacker|container.?handler/, '🚢', 'Reach stacker'],
+      [/fork.?lift/, '🏗️', 'Forklift'],
+      [/excavat|backhoe/, '🚜', 'Excavator'],
+      [/wheel.?loader|front.?loader/, '🚜', 'Wheel loader'],
+      [/grader/, '🚜', 'Motor grader'],
+      [/roller|compactor/, '🚜', 'Road roller'],
+      [/bulldoz|dozer/, '🚜', 'Bulldozer'],
+      [/dump.?truck|tipper/, '🚚', 'Dump truck'],
+      [/truck|lorry|tractor.?unit/, '🚛', 'Truck'],
+      [/crane/, '🏗️', 'Crane'],
+      [/generator|genset/, '⚡', 'Generator'],
+      [/compressor/, '⚙️', 'Air compressor']
+    ];
+    const match = groups.find(([re]) => re.test(source));
+    return match ? { icon: match[1], label: match[2] } : { icon: '⚙️', label: 'Unclassified equipment' };
   }
 
   function details(card) {
@@ -159,7 +195,7 @@
   function collectActions(card) {
     const seen = new Set();
     return [...card.querySelectorAll('.belm-shared-native-v838 button,.belm-shared-native-v838 a[href],.belm-shared-native-v838 [role="button"]')]
-      .filter((element) => !explicitlyHidden(element))
+      .filter((element) => !explicitlyHidden(element) && !element.disabled && element.getAttribute('aria-disabled') !== 'true')
       .map((element) => ({ element, kind: actionKind(element) }))
       .filter((item) => item.kind && !seen.has(item.kind) && seen.add(item.kind))
       .sort((a, b) => ['report', 'checkup', 'parts', 'job', 'edit', 'delete', 'forget', 'procurement'].indexOf(a.kind) - ['report', 'checkup', 'parts', 'job', 'edit', 'delete', 'forget', 'procurement'].indexOf(b.kind));
@@ -174,7 +210,96 @@
     item.element.click();
   }
 
+  function renderProfileLinks(card, drawer, actions) {
+    const profile = drawer.querySelector('.belm-machine-profile-v841');
+    if (!profile) return;
+    const links = profile.querySelector('.belm-machine-profile-links-v841');
+    links.replaceChildren();
+    // Customer-only history: machine ID comes from the original machine card;
+    // never infer identity from a model name, fleet number, or label.
+    const machineId = card.dataset.machineId || card.dataset.belmMachineId || '';
+    const customerToken = window.localStorage.getItem('belm_customer_token');
+    if (machineId && customerToken && !profile.querySelector('.belm-machine-history-v842')) {
+      const history = document.createElement('section');
+      history.className = 'belm-machine-history-v842';
+      history.innerHTML = '<button type="button" class="belm-machine-history-load-v842">Load maintenance timeline</button><div class="belm-machine-history-items-v842" role="status" aria-live="polite"></div>';
+      profile.appendChild(history);
+      const load = history.querySelector('button');
+      load.addEventListener('click', async () => {
+        load.disabled = true;
+        const destination = history.querySelector('.belm-machine-history-items-v842');
+        destination.textContent = 'Loading history…';
+        try {
+          const response = await fetch(`/api/customer-portal/machines/${encodeURIComponent(machineId)}/maintenance-history`, {
+            headers: { Authorization: `Bearer ${window.localStorage.getItem('belm_customer_token') || ''}` }
+          });
+          if (!response.ok) throw new Error(response.status === 403 || response.status === 404 ? 'Machine history is unavailable for this account.' : 'Could not load history.');
+          const payload = await response.json();
+          destination.replaceChildren();
+          const items = Array.isArray(payload.items) ? payload.items : [];
+          if (!items.length) destination.textContent = 'No recorded checkups, Job Cards or service requests for this machine yet.';
+          items.forEach((entry) => {
+            const line = document.createElement('div');
+            line.className = 'belm-machine-history-entry-v842';
+            const heading = document.createElement('strong');
+            heading.textContent = `${entry.kind === 'CHECKUP' ? 'Checkup' : entry.kind === 'SERVICE_REQUEST' ? 'Service Request' : entry.kind === 'STORE_ISSUE' ? 'Store issue' : 'Job Card'} · ${entry.reference || entry.title || 'Record'}`;
+            const detail = document.createElement('small');
+            const date = entry.occurredAt ? new Date(entry.occurredAt).toLocaleString() : 'Date unavailable';
+            detail.textContent = `${entry.status || 'Unknown'} · ${date}`;
+            line.append(heading, detail);
+            if (entry.kind === 'STORE_ISSUE') {
+              const issueDetail = document.createElement('small');
+              issueDetail.textContent = `Issued (installation not confirmed): ${entry.description || ''} (${entry.partNumber || 'no part no.'}) × ${entry.quantity} ${entry.unit || ''} · Ledger value ${entry.currency || 'TZS'} ${Number(entry.issueValue || 0).toLocaleString()}`;
+              line.appendChild(issueDetail);
+            }
+            if (entry.kind === 'JOB_CARD' && entry.status === 'COMPLETED') {
+              const completion = document.createElement('small');
+              completion.textContent = entry.customerSignedAt ? `Completed; customer acknowledgement: ${entry.customerSignedBy || 'signed'} (${entry.customerSignedAt})` : 'Completed; customer signature not recorded';
+              line.appendChild(completion);
+            }
+            if (entry.kind === 'SERVICE_REQUEST') {
+              const parts = Array.isArray(entry.requestedParts) ? entry.requestedParts : [];
+              const notes = Array.isArray(entry.serviceNotes) ? entry.serviceNotes : [];
+              if (parts.length) {
+                const partLine = document.createElement('small');
+                partLine.textContent = `Parts requested (not confirmed used): ${parts.map(p => `${p.name} (${p.partNumber}) × ${p.quantity}`).join(', ')}`;
+                line.appendChild(partLine);
+              }
+              if (notes.length) {
+                const noteLine = document.createElement('small');
+                noteLine.textContent = `Service notes: ${notes.slice(0, 3).map(n => n.note).join(' | ')}`;
+                line.appendChild(noteLine);
+              }
+            }
+            destination.appendChild(line);
+          });
+        } catch (error) { destination.textContent = error.message || 'History is unavailable.'; }
+        finally { load.disabled = false; load.textContent = 'Refresh maintenance timeline'; }
+      });
+    }
+    const sections = [
+      { label: 'Machine Checkup', kinds: ['checkup'] },
+      { label: 'Job Card', kinds: ['job'] },
+      { label: 'Reports / History', kinds: ['report'] }
+    ];
+    sections.forEach(({ label, kinds }) => {
+      const action = actions.find((item) => kinds.includes(item.kind));
+      const element = document.createElement(action ? 'button' : 'span');
+      element.textContent = action ? label : `${label} — unavailable`;
+      if (action) {
+        element.type = 'button';
+        element.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          invoke(action);
+        });
+      }
+      links.appendChild(element);
+    });
+  }
+
   function renderDrawer(card, drawer, actions, primary) {
+    renderProfileLinks(card, drawer, actions);
     const grid = drawer.querySelector('.belm-shared-action-grid-v838');
     grid.replaceChildren();
     actions.filter((item) => item !== primary).forEach((item) => {
@@ -223,6 +348,7 @@
     }
     summary.querySelector('[data-shared-fleet]').textContent = info.fleet;
     summary.querySelector('[data-shared-title]').textContent = info.title;
+    summary.querySelector('[data-shared-type]').textContent = machineVisualType(card, info).label;
     summary.querySelector('[data-shared-meta]').textContent = info.meta;
     summary.querySelector('[data-shared-customer]').textContent = info.customer;
     summary.querySelector('[data-shared-condition]').textContent = conditionLabel(card, level);
@@ -235,10 +361,11 @@
     activityNode.classList.toggle('is-progress', !currentActivity.value.includes('NORMAL') && !currentActivity.value.includes('WORKING') && !currentActivity.value.includes('GROUND'));
     const visual = summary.querySelector('.belm-shared-visual-v827');
     visual.classList.toggle('has-photo', Boolean(info.photo));
-    const visualKey = `${info.photo}|${info.title}`;
+    const visualType = machineVisualType(card, info);
+    const visualKey = `${info.photo}|${info.title}|${visualType.label}`;
     if (visual.dataset.visualKey !== visualKey) {
       visual.dataset.visualKey = visualKey;
-      visual.innerHTML = info.photo ? `<img src="${escapeHtml(info.photo)}" alt="${escapeHtml(info.title)} machine photo">` : `<span>${escapeHtml(info.title)}</span>`;
+      visual.innerHTML = info.photo ? `<img src="${escapeHtml(info.photo)}" alt="${escapeHtml(info.title)} machine photo">` : `<div class="belm-machine-type-placeholder" role="img" aria-label="${escapeHtml(visualType.label)} pictogram"><span aria-hidden="true">${visualType.icon}</span><small>${escapeHtml(visualType.label)}</small><em>Upload actual machine photo</em></div>`;
     }
     const primaryButton = summary.querySelector('.belm-shared-primary-v827');
     primaryButton.textContent = primary ? (primary.kind === 'report' ? 'Report Issue' : actionLabel(primary.element, primary.kind)) : 'No Direct Action';
@@ -261,6 +388,7 @@
     summary.innerHTML = `
       <div class="belm-shared-head-v827"><span class="belm-shared-fleet-v827" data-shared-fleet>—</span><span class="belm-shared-activity-v827" data-shared-activity>Working</span></div>
       <div class="belm-shared-visual-v827"><span>Machine</span></div>
+      <span class="belm-shared-type-v840" data-shared-type>Machine type</span>
       <h3 data-shared-title>Machine</h3>
       <p class="belm-shared-meta-v827" data-shared-meta>Machine details</p>
       <div class="belm-shared-facts-v827">
@@ -274,7 +402,7 @@
       <div class="belm-shared-actions-v827"><button type="button" class="belm-shared-primary-v827">Report Issue</button><button type="button" class="belm-shared-view-v827" aria-expanded="false">View Details</button></div>`;
     const drawer = document.createElement('section');
     drawer.className = 'belm-shared-drawer-v838';
-    drawer.innerHTML = '<div class="belm-shared-drawer-head-v838"><strong>Machine Actions</strong><span>Available for your role</span></div><div class="belm-shared-action-grid-v838"></div>';
+    drawer.innerHTML = '<div class="belm-shared-drawer-head-v838"><strong>Machine Profile</strong><span>Available for your role</span></div><section class="belm-machine-profile-v841" aria-label="Machine workflow"><h4>Maintenance workflow</h4><p>Open the existing checkup, job card or report for this machine. Unavailable sections need an authorized workflow.</p><div class="belm-machine-profile-links-v841"></div></section><div class="belm-shared-action-grid-v838"></div>';
     card.append(summary, drawer, native);
     card.dataset.belmSharedCard838 = '1';
     card.classList.add('belm-shared-machine-card-v827');

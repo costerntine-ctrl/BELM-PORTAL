@@ -682,6 +682,12 @@ function belm_master_draw_table(array $items, float $topY = 586): array {
 }
 
 function belm_master_extract_bank_value(array $bank, string $label, string $fallback): string {
+    // Support both the legacy list-of-pairs format and associative settings.
+    foreach ($bank as $bankKey => $value) {
+        if (is_string($bankKey) && strtoupper(trim($bankKey)) === strtoupper($label) && is_scalar($value)) {
+            return trim((string)$value) ?: $fallback;
+        }
+    }
     foreach ($bank as $row) {
         if (!is_array($row) || count($row) < 2) continue;
         if (strtoupper(trim((string)$row[0])) === strtoupper($label)) return trim((string)$row[1]) ?: $fallback;

@@ -1597,7 +1597,7 @@
         <article class="report-item">
           <div>
             <strong>${escapeHtml(report.templateName || "Checklist Report")}</strong>
-            <span>${formatDateTime(report.createdAt)} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")} · ${escapeHtml(report.filledBy || "Not recorded")}</span>
+            <span>${formatDateTime(report.createdAt)} · Hour meter: ${escapeHtml(report.hourMeterReading ?? "—")} · Submitted by: ${escapeHtml(report.filledBy || report.filled_by || "Not recorded")}</span>
           </div>
           <span class="machine-status ${escapeHtml(String(report.overallStatus || "GREEN").toUpperCase())}">${escapeHtml(statusLabel(report.overallStatus))}</span>
           <div class="report-center-actions">
@@ -1729,7 +1729,7 @@
     body.innerHTML = `
       <div class="report-top-summary">
         <div class="report-top-fact"><span>Hour Meter</span><strong>${escapeHtml(report.hourMeterReading ?? "—")}</strong></div>
-        <div class="report-top-fact"><span>Filled By</span><strong>${escapeHtml(report.filledBy || "—")}</strong></div>
+        <div class="report-top-fact"><span>Submitted By (Technician)</span><strong>${escapeHtml(report.filledBy || report.filled_by || "Not recorded")}</strong></div>
         <div class="report-top-fact"><span>Date</span><strong>${formatDateTime(report.createdAt)}</strong></div>
         ${displayPhotoUrl ? `<div class="report-top-fact report-top-photo"><span>Display Photo</span><img src="${escapeHtml(displayPhotoUrl)}" alt="Display photo" class="report-display-photo" data-view-evidence-photo="${escapeHtml(displayPhotoUrl)}"></div>` : ""}
       </div>

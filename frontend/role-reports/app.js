@@ -57,6 +57,11 @@
    ...belmMaps.workshop_manager,
    ...['procurement','store_keeper','registration_sales','finance_accounts','bank_controller','system_coordinator'].flatMap(key=>belmMaps[key])
  ];
+ source=source.flatMap(group=>group.title==='Technical Department Reports'?[section('Technician Reports','Checklist, diagnosis, Job Card and maintenance reports prepared by technicians.',group.cards.filter(card=>!['OPERATOR','FUEL'].includes(card.tag))),section('Operator Reports','Operator observations, operating and fuel records.',group.cards.filter(card=>['OPERATOR','FUEL'].includes(card.tag)))]:[group]);
+ if(isCustomer&&role==='customer_admin'){
+   const own=customerMaps.customer_admin.flatMap(group=>group.cards);
+   source=[section('Company Reports','Company machines and shared operational records.',own.filter(card=>['GENERAL','MACHINES'].includes(card.tag))),section('Technician Reports','Prepared by technicians; review the original machine reports.',[c('CHECKLIST','Technician Checklist Report','Inspection and safety findings.','/general-report/report/?type=checklist'),c('MAINTENANCE','Technician / Maintenance Report','Diagnosis, maintenance, testing and completion.','/general-report/report/?type=technician'),c('JOB CARDS','Job Card Report / Maintenance Report','Job Card and maintenance records.','/general-report/report/?type=job-card')]),section('Finance Reports','Company financial documents and audit records.',own.filter(card=>['FINANCE','AUDIT'].includes(card.tag))),...customerMaps.procurement,...customerMaps.store_keeper];
+ }
  let groups=source.map(group=>({...group,cards:group.cards.filter(card=>analysisCentre?isAnalysis(card):!isAnalysis(card))})).filter(group=>group.cards.length);
  if(analysisCentre){
    if(isCustomer){groups=[section('Company Analysis','Summary indicators and department performance for this company only.',[c('ANALYSIS','Company Analysis','Department metrics, machine condition and operating performance.','/general-analysis/?analysisOnly=1&module='+({workshop_manager:'workshop',operator:'operator',procurement:'procurement',store_keeper:'store',accounts:'finance'}[role]||'overview'))])];}
@@ -79,6 +84,7 @@
    const header=document.querySelector('header.top');
    if(header){header.querySelector('strong').textContent='BELM · GENERAL REPORT';header.querySelectorAll('a').forEach(a=>a.remove());const tabs=document.createElement('nav');tabs.className='general-centre-tabs';tabs.setAttribute('aria-label','General Report sections');tabs.innerHTML=['reports','analysis'].map(section=>'<a href="/reports-manager/?module=reports&section='+section+'"'+(section===(analysisCentre?'analysis':'reports')?' aria-current="page"':'')+'>'+ (section==='reports'?'Reports':'Analysis')+'</a>').join('');header.insertBefore(tabs,document.getElementById('refresh'));}
  }
+ groups=groups.map(group=>({...group,title:group.title==='Store & Tools Reports'?'Store Reports':group.title==='Bank Control Reports'?'Bank Reports':group.title==='Registration & Sales Reports'?'Registration & Sales Reports':group.title}));
  const kind=analysisCentre?'Analysis':'Reports';
  document.getElementById('title').textContent=administrator?'General Report — '+kind:'My '+kind;
  document.getElementById('scope').textContent=(isCustomer?'CUSTOMER · ':'BELM · ')+(labels[role]||role.replaceAll('_',' '));

@@ -113,7 +113,7 @@
   const p=new URLSearchParams(location.search);
   const actor=String(p.get('actor')||p.get('source')||'').toLowerCase();
   const view=String(p.get('view')||'').toLowerCase();
-  if(!location.pathname.startsWith('/breakdown-workflow')||actor!=='admin'||view!=='job-cards')return;
+  if(!location.pathname.startsWith('/breakdown-workflow')||actor!=='admin'||view!=='job-cards'||p.get('jobControl')==='1')return;
 
   const init=()=>{
     if(window.__belmJobCardReferenceV733)return;

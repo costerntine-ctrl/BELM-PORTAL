@@ -190,7 +190,7 @@
       title:"Workshop & Job Cards", caption:"WORKSHOP MENU", icon:"job-cards",
       items:[
         {label:"Inspection & Repair Dashboard",short:"DB",href:"/concept-dashboards/05-inspection-repair/"},
-        {label:"Job Cards",short:"JC",href:"/breakdown-workflow/?actor=admin&view=job-cards&module=workshop",paths:["/breakdown-workflow/"],view:"job-cards"},
+        {label:"Job Cards",short:"JC",href:"/concept-dashboards/11-workshop-manager/job-cards.html?module=workshop",paths:["/breakdown-workflow/"],view:"job-cards"},
         {label:"Diagnosis",short:"DG",href:"/breakdown-workflow/?actor=admin&module=workshop",paths:["/breakdown-workflow/"],noView:true},
         {label:"Waiting for Spares",short:"WS",href:"/spare-parts-manager/?view=requests&module=workshop",paths:["/spare-parts-manager/"],view:"requests"},
         {label:"Testing & Completion",short:"TC",href:"/breakdown-workflow/?actor=admin&view=testing&module=workshop",paths:["/breakdown-workflow/"],view:"testing"},

@@ -116,8 +116,10 @@ function jcv814_auto_coordinate(array $job, array $ctx, string $action, ?string 
             'BELM Automatic Coordination', 'system', $recipientScope, $role,
             $subject, 'Job Card ' . (string)($job['job_card_no'] ?? $jobId)
                 . ': ' . $action . ($note ? ' — ' . $note : ''),
-            $priority, 'JOB_CARD', $jobId, $job['machine_id'] ?? null,
-            '/job-cards/?module=job-cards',
+            $priority, $role === 'store_keeper' ? 'JOB_CARD_SPARE_REQUEST' : 'JOB_CARD', $jobId, $job['machine_id'] ?? null,
+            $role === 'store_keeper'
+                ? '/breakdown-workflow/?actor=' . ($recipientScope === 'CUSTOMER' ? 'customer' : 'admin') . '&case=' . rawurlencode((string)$job['case_id'])
+                : '/job-cards/?module=job-cards',
         ]);
     } catch (Throwable $ignored) {
         // An unavailable communications table never blocks a repair workflow.

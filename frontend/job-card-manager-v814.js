@@ -41,11 +41,12 @@
   function ensureStyle(doc){
     if(doc.getElementById('jobCardManagerV814Style'))return;
     const s=doc.createElement('style');s.id='jobCardManagerV814Style';s.textContent=`
+      html.belm-single-job-control #summaryCards,html.belm-single-job-control main>.filters,html.belm-single-job-control .jc-ref-head,html.belm-single-job-control #jobProcessPanel,html.belm-single-job-control #dispatchPanel{display:none!important}
       .jcm814{margin:0 0 14px;border:1px solid var(--line);border-radius:15px;background:var(--surface);overflow:hidden;box-shadow:0 7px 24px rgba(10,30,55,.06)}
       .jcm814-head{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:15px 16px;border-bottom:1px solid var(--line)}
       .jcm814-head h2{margin:0 0 3px;font-size:18px}.jcm814-head p{margin:0;color:var(--muted);font-size:11px}.jcm814-head .scope{padding:6px 10px;border-radius:999px;background:#0b3154;color:#fff;font-size:10px;font-weight:900;white-space:nowrap}
       .jcm814-flow{display:grid;grid-template-columns:repeat(8,minmax(86px,1fr));gap:5px;padding:11px 14px;border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--surface) 92%,#0b67c2 8%)}
-      .jcm814-flow span{min-height:46px;display:grid;place-items:center;text-align:center;padding:6px 5px;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:9px;font-weight:900;line-height:1.2;text-transform:uppercase}
+      .jcm814-flow>span{min-height:46px;display:grid;place-items:center;text-align:center;padding:6px 5px;border:1px solid var(--line);border-radius:9px;color:var(--muted);font-size:9px;font-weight:900;line-height:1.2;text-transform:uppercase}
       .jcm814-create{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.2fr;gap:9px;padding:13px 14px;border-bottom:1px solid var(--line)}
       .jcm814-create label{font-size:10px;font-weight:850;color:var(--muted)}.jcm814-create select,.jcm814-create input,.jcm814-create textarea{width:100%;margin-top:5px;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}
       .jcm814-create .wide{grid-column:span 2}.jcm814-actions{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:10px}.jcm814-note{font-size:10px;color:var(--muted);line-height:1.4}.jcm814-note.ok{color:#16834e}.jcm814-note.error{color:#c72f2f}.jcm814-button{border:0;border-radius:9px;padding:10px 14px;background:#0b67c2;color:#fff;font-weight:900;cursor:pointer}.jcm814-button.green{background:#09834a}.jcm814-button:disabled{opacity:.55;cursor:not-allowed}
@@ -65,6 +66,7 @@
     const win=frame?frame.contentWindow:window;
     if(!doc||!doc.body)return;
     childDoc=doc;childWin=win;ensureStyle(doc);
+    doc.documentElement.classList.add('belm-single-job-control');
     if(doc.getElementById('jobCardManagerV814')){refresh();return;}
     const grid=doc.querySelector('.grid');
     if(!grid)return;
@@ -80,11 +82,12 @@
         <label class="wide">Workshop Manager instruction<textarea id="jcm814Instruction" rows="2" placeholder="Scope, safety instruction, location note..."></textarea></label>
         <div class="jcm814-actions"><span id="jcm814Note" class="jcm814-note">Select a case and Technician. Existing active Job Card will be assigned/reassigned; otherwise a new Job Card is created.</span><button id="jcm814Assign" class="jcm814-button" type="submit">Create Job Card & Assign Technician</button></div>
       </form>
-      <div class="jcm814-toolbar"><div><b>Job Cards</b><span id="jcm814Counts"></span></div><div class="jcm814-toolbar-actions"><button class="jcm814-filter active" type="button" data-jcm-filter="active">Active</button><button class="jcm814-filter" type="button" data-jcm-filter="completed">Completed</button><button class="jcm814-filter" type="button" data-jcm-filter="all">All</button><button id="jcm814Refresh" class="jcm814-button green" type="button">Sync / Refresh</button></div></div>
+      <div class="jcm814-toolbar"><div><b>Job Cards</b><span id="jcm814Counts"></span></div><div class="jcm814-toolbar-actions"><input id="jcm814Search" type="search" aria-label="Search Job Cards" placeholder="Search job, machine, customer, technician"><button class="jcm814-filter active" type="button" data-jcm-filter="active">Active</button><button class="jcm814-filter" type="button" data-jcm-filter="completed">Completed</button><button class="jcm814-filter" type="button" data-jcm-filter="all">All</button><button id="jcm814Refresh" class="jcm814-button green" type="button">Sync / Refresh</button></div></div>
       <div class="jcm814-table-wrap"><table class="jcm814-table"><thead><tr><th>Job Card / Machine</th><th>Technician</th><th>Case / Priority</th><th>Grounded</th><th>Process</th><th>Problem / Pending</th><th>Dates / Status</th><th>Manager Review</th><th>Report</th></tr></thead><tbody id="jcm814Rows"><tr><td colspan="9">Loading...</td></tr></tbody></table></div>`;
     grid.parentNode.insertBefore(root,grid);
     const oldTitle=doc.querySelector('.grid .panel .panel-head h2');if(oldTitle)oldTitle.textContent='Live Job Card / Breakdown Queue';
     const oldCopy=doc.querySelector('.grid .panel .panel-head p');if(oldCopy)oldCopy.textContent='Active machine issues remain here until Final Result = OK. Completed work is removed from the active queue but remains available in Job Card reports and process history.';
+    doc.getElementById('jcm814Search').addEventListener('input',renderRows);
     doc.getElementById('jcm814Refresh').addEventListener('click',refresh);
     doc.getElementById('jcm814Case').addEventListener('change',caseChanged);
     doc.getElementById('jcm814Create').addEventListener('submit',assignJob);
@@ -100,7 +103,7 @@
     if(busy)return;busy=true;const btn=childDoc?.getElementById('jcm814Refresh');if(btn)btn.disabled=true;
     try{
       const [processData,caseData]=await Promise.all([processApi('list'),workflowApi('')]);
-      items=Array.isArray(processData?.items)?processData.items:[];cases=Array.isArray(caseData)?caseData:[];
+      items=Array.from(new Map((Array.isArray(processData?.items)?processData.items:[]).map(item=>[String(item.id),item])).values());cases=Array.isArray(caseData)?caseData:[];
       renderCases();renderRows();note(`Synced ${items.filter(x=>up(x.status)!=='CANCELLED'&&!hasFinalReport(x)).length} active Job Cards with no final report. Final reports remain under Completed / All.`,'ok');
     }catch(e){note(e.message||'Job Card sync failed.','error')}
     finally{busy=false;if(btn)btn.disabled=false}
@@ -156,7 +159,9 @@
     const activeCount=all.filter(x=>!hasFinalReport(x)).length;
     const completedCount=all.filter(hasFinalReport).length;
     const pendingCount=all.filter(x=>String(x.pendingReason||'').trim()&&!hasFinalReport(x)).length;
-    const rows=listFilter==='completed'?all.filter(hasFinalReport):listFilter==='all'?all:all.filter(x=>!hasFinalReport(x));
+    const query=String(childDoc.getElementById('jcm814Search')?.value||'').trim().toLowerCase();
+    const scoped=listFilter==='completed'?all.filter(hasFinalReport):listFilter==='all'?all:all.filter(x=>!hasFinalReport(x));
+    const rows=scoped.filter(item=>!query||Object.values(item).filter(value=>typeof value==='string'||typeof value==='number').join(' ').toLowerCase().includes(query));
     const counts=childDoc.getElementById('jcm814Counts');
     if(counts)counts.textContent=` · ${activeCount} active · ${pendingCount} pending · ${completedCount} completed · showing ${listFilter.toUpperCase()}`;
     childDoc?.querySelectorAll('[data-jcm-filter]').forEach(button=>button.classList.toggle('active',button.dataset.jcmFilter===listFilter));

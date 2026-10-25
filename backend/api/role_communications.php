@@ -120,7 +120,22 @@ function rc_matrix(array $actor): array {
     foreach($out as &$r){$prefix=$r['scope']==='BELM'?'BELM · ':'Customer · ';$r['label']=$prefix.($labels[$r['role']]??ucwords(str_replace('_',' ',$r['role'])));} unset($r);
     return array_values($out);
 }
+// Store inbox receives spare requests, never general Job Card milestones or broadcasts.
+// Existing messages remain stored; outgoing history and other assigned roles are preserved.
+function rc_store_notice_allowed(array $actor, array $row): bool {
+    if ((string)($row['sender_actor_key'] ?? '') === $actor['actorKey']) return true;
+    if (!in_array('store_keeper', $actor['roleKeys'], true)) return true;
+    $recipient = (string)($row['recipient_role'] ?? '');
+    if ($recipient !== 'store_keeper' && count($actor['roleKeys']) > 1) return true;
+    $type = strtoupper(trim((string)($row['related_type'] ?? '')));
+    if (in_array($type, ['SPARE_REQUEST','BREAKDOWN_SPARE_REQUEST','JOB_CARD_SPARE_REQUEST'], true)) return true;
+    // Compatibility for the previous automatic coordination message format.
+    return $type === 'JOB_CARD'
+        && (string)($row['sender_actor_key'] ?? '') === 'system:auto-coordination'
+        && (string)($row['subject'] ?? '') === 'Approved spare parts require action';
+}
 function rc_can_see(array $actor, array $row): bool {
+    if (!rc_store_notice_allowed($actor, $row)) return false;
     if ((string)$row['sender_actor_key'] === $actor['actorKey']) return true;
     if ($actor['scope']==='BELM') return (string)$row['recipient_scope']==='BELM' && (in_array((string)$row['recipient_role'],$actor['roleKeys'],true) || (string)$row['recipient_role']==='all_belm');
     return (string)$row['customer_id']===(string)$actor['customerId'] && (string)$row['recipient_scope']==='CUSTOMER' && (in_array((string)$row['recipient_role'],$actor['roleKeys'],true) || (string)$row['recipient_role']==='customer_all');
@@ -141,7 +156,7 @@ if ($method === 'GET') {
         $sql="SELECT rc.*,c.name AS customer_name,rr.read_at FROM role_communications rc LEFT JOIN customers c ON c.id=rc.customer_id LEFT JOIN role_communication_reads rr ON rr.communication_id=rc.id AND rr.reader_key=? WHERE rc.customer_id=? AND ((rc.recipient_scope='CUSTOMER' AND rc.recipient_role IN ($marks)) OR rc.sender_actor_key=?) ORDER BY rc.created_at DESC LIMIT 250";
         $params=array_merge([$actor['actorKey'],$actor['customerId']],$roles,[$actor['actorKey']]);
     }
-    $stmt=db()->prepare($sql);$stmt->execute($params);$rows=$stmt->fetchAll();
+    $stmt=db()->prepare($sql);$stmt->execute($params);$rows=array_values(array_filter($stmt->fetchAll(), fn($row)=>rc_store_notice_allowed($actor,$row)));
     $messages=array_map(function($r)use($actor,$labels){return [
         'id'=>$r['id'],'customerId'=>$r['customer_id'],'customerName'=>$r['customer_name'],'senderName'=>$r['sender_name'],'senderRole'=>$r['sender_role'],
         'recipientScope'=>$r['recipient_scope'],'recipientRole'=>$r['recipient_role'],'recipientLabel'=>($r['recipient_scope']==='BELM'?'BELM · ':'Customer · ').($labels[$r['recipient_role']]??ucwords(str_replace('_',' ',$r['recipient_role']))),

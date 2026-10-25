@@ -53,7 +53,7 @@
   const params=new URLSearchParams(location.search);
   const actor=String(params.get('actor')||params.get('source')||'').toLowerCase();
   const isJobCards=params.get('embed')==='1'&&actor==='admin'&&String(params.get('view')||'').toLowerCase()==='job-cards';
-  if(!isJobCards)return;
+  if(!isJobCards||params.get('jobControl')==='1')return;
 
   const summary=document.getElementById('summaryCards');
   const body=document.getElementById('jobProcessBody');
@@ -199,7 +199,7 @@
   const p=new URLSearchParams(location.search);
   const actor=String(p.get('actor')||p.get('source')||'').toLowerCase();
   const isJobCards=p.get('embed')==='1'&&actor==='admin'&&String(p.get('view')||'').toLowerCase()==='job-cards';
-  if(!isJobCards)return;
+  if(!isJobCards||p.get('jobControl')==='1')return;
   if(!document.querySelector('link[href*="job-card-detail-v734.css"]')){
     const link=document.createElement('link');link.rel='stylesheet';link.href='/job-card-detail-v734.css?v=734-job-card-detail';document.head.appendChild(link);
   }

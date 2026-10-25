@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Store Audit Report — BELM</title>
+<link rel="stylesheet" href="/admin-tools.css?v=60-compact-request-flow"><link rel="stylesheet" href="/theme-global.css?v=54"><link rel="stylesheet" href="/store-audit-report/report.css?v=63">
+<script src="/theme-manager.js?v=54"></script><script src="/navigation-context-v763.js?v=763-role-flow"></script><script defer src="/language-preferences.js?v=54"></script><script defer src="/belm-i18n.js?v=53"></script><link rel="stylesheet" href="/dashboard-preferences.css?v=54"><script defer src="/dashboard-preferences.js?v=54"></script></head>
+<body><header class="topbar"><div><p class="eyebrow">BELM INVENTORY</p><h1>Store Keeper Audit Report</h1></div><a id="auditBack" class="ghost" data-belm-page-back href="/spare-parts-manager/">← Back to Inventory</a></header><main class="shell"><div id="auditNotice" role="status" aria-live="polite"></div><section class="panel"><p>Stock movements and inventory changes, with the staff member who recorded each entry.</p>
+        <form id="auditFilters" class="store-audit-filters">
+          <label>From<input id="storeAuditFrom" type="date"></label><label>To<input id="storeAuditTo" type="date"></label>
+          <label>Movement<select id="storeAuditType"><option value="ALL">All</option><option>STOCK IN</option><option>STOCK OUT</option><option>EDIT</option><option>CREATED</option><option>DELETED</option></select></label>
+          <label>Handled By<input id="storeAuditUser" placeholder="Store Keeper / staff name"></label><label>Search Spare<input id="storeAuditSearch" placeholder="Part number or description"></label>
+        <button type="submit" class="primary">Apply filters</button></form>
+        <div class="store-audit-actions"><button type="button" id="storeAuditCsv" class="secondary">Download CSV</button><button type="button" id="storeAuditPdf" class="secondary">Download PDF</button><button type="button" id="storeAuditPrint" class="ghost">Print</button></div>
+        <div id="storeAuditSummary" class="store-audit-summary"></div>
+        <div class="store-audit-table-wrap"><table class="store-audit-table"><thead><tr><th>Date</th><th>Movement</th><th>Part No.</th><th>Spare Part</th><th>Qty Change</th><th>Balance After</th><th>Current Stock</th><th>Handled By</th><th>Note</th></tr></thead><tbody id="storeAuditRows"><tr><td colspan="9">Open the audit report to load records.</td></tr></tbody></table></div>
+</section></main><script src="/admin-sidebar.js?v=712-workshop-manager-role"></script><script src="/store-audit-report/report.js?v=63"></script></body></html>

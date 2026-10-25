@@ -44,6 +44,8 @@ if (!$isGeneralRole && $submittedRoleKey !== strtolower($effectiveRole)) {
 if ($isGeneralRole) {
     require_general_report_access($user);
     $roleName = 'general';
+} else {
+    $roleName = $effectiveRole;
 }
 
 // Validate inputs
@@ -96,7 +98,7 @@ if (!empty($dateTo)) {
 }
 
 // Get database connection
-$db = get_db();
+$db = db();
 
 // Generate hash for deduplication
 $fileHash = hash('sha256', $binaryData);
@@ -116,11 +118,11 @@ try {
             id, user_id, customer_id, report_title, report_type,
             report_date_from, report_date_to, role_name, file_format,
             file_size, file_data, file_hash, metadata, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, decode(?, 'base64'), ?, ?, NOW(), NOW())
     ")->execute([
         $reportId,
         $user['id'],
-        $user['assigned_customer_id'] ?? null,
+        $user['assignedCustomerId'] ?? $user['assigned_customer_id'] ?? null,
         $title,
         $type,
         $dateFromVal,
@@ -128,7 +130,7 @@ try {
         $roleName,
         $format,
         $fileSize,
-        $binaryData,
+        base64_encode($binaryData),
         $fileHash,
         $metadata
     ]);
@@ -138,21 +140,21 @@ try {
     }
 
     // Log activity
-    activity_log($user['id'], 'save_report', 'saved_reports', $reportId, [
+    log_activity($user, 'save_report', 'saved_reports', $reportId, [
         'title' => $title,
         'type' => $type,
         'format' => $format,
         'size' => $fileSize
     ]);
 
-    json_response([
+    json_out([
         'success' => true,
         'reportId' => $reportId,
         'message' => 'Report saved successfully',
         'timestamp' => date('c')
     ]);
 
-} catch (Exception $e) {
-    json_error('Database error: ' . $e->getMessage(), 500);
+} catch (Throwable $e) {
+    json_error('Database error while saving report.', 500);
 }
 ?>

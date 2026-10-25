@@ -92,7 +92,7 @@ if ($method === 'GET' && $action === 'download') {
     if ($reportId === '') json_error('Report ID is required', 400);
 
     try {
-        $stmt = db()->prepare('SELECT id, file_data, file_format, report_title, user_id, customer_id, role_name FROM saved_reports WHERE id = ? LIMIT 1');
+        $stmt = db()->prepare("SELECT id, encode(file_data, 'base64') AS file_data, file_format, report_title, user_id, customer_id, role_name FROM saved_reports WHERE id = ? LIMIT 1");
         $stmt->execute([$reportId]);
         $report = $stmt->fetch();
         if (!$report) json_error('Report not found', 404);
@@ -109,17 +109,19 @@ if ($method === 'GET' && $action === 'download') {
             if (!$sameRole) json_error('Access denied', 403);
         }
 
-        activity_log($user['id'], 'download_report', 'saved_reports', $reportId, ['title'=>$report['report_title']]);
+        log_activity($user, 'download_report', 'saved_reports', $reportId, ['title'=>$report['report_title']]);
         $ext = strtolower((string)$report['file_format']) === 'pdf' ? 'pdf' : 'csv';
         $filename = preg_replace('/[^a-z0-9-]/i', '-', strtolower((string)$report['report_title'])) ?: 'saved-report';
         $filename = substr($filename, 0, 100) . '.' . $ext;
         header('Content-Type: ' . ($ext === 'pdf' ? 'application/pdf' : 'text/csv'));
-        header('Content-Length: ' . strlen((string)$report['file_data']));
+        $fileBytes = base64_decode((string)$report['file_data'], true);
+        if ($fileBytes === false) json_error('Saved report file could not be decoded.', 500);
+        header('Content-Length: ' . strlen($fileBytes));
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Cache-Control: no-cache, no-store, must-revalidate');
         header('Pragma: no-cache');
         header('Expires: 0');
-        echo $report['file_data'];
+        echo $fileBytes;
         exit;
     } catch (Throwable $e) {
         json_error('Database error while downloading saved report.', 500);
@@ -144,7 +146,7 @@ if ($method === 'DELETE') {
         if ($isCustomer && !$sameCustomer) json_error('Access denied', 403);
 
         db()->prepare('DELETE FROM saved_reports WHERE id = ?')->execute([$reportId]);
-        activity_log($user['id'], 'delete_report', 'saved_reports', $reportId, ['title'=>$report['report_title']]);
+        log_activity($user, 'delete_report', 'saved_reports', $reportId, ['title'=>$report['report_title']]);
         json_out(['success'=>true,'message'=>'Report deleted successfully']);
     } catch (Throwable $e) {
         json_error('Database error while deleting saved report.', 500);

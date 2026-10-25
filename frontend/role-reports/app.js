@@ -55,7 +55,18 @@
  if(!isCustomer&&role==='super_admin')source=[
    section('Customer & Machine Reports','Live customer and machine records.',[c('CUSTOMERS','Customer & Machine Reports','Checklist, operator, fuel, Job Card and maintenance records.','/customers-manager/?module=reports')]),
    ...belmMaps.workshop_manager,
-   ...['procurement','store_keeper','registration_sales','finance_accounts','bank_controller','system_coordinator'].flatMap(key=>belmMaps[key])
+   ...['procurement','store_keeper','registration_sales'].flatMap(key=>belmMaps[key]),
+   section('Bank Account Management','Bank audit and withdrawal records.',[
+     c('BANK AUDIT','Bank Audit','Protected bank account edit and approval trail.','/bank-controller/?module=bank#bankEditAuditPanel'),
+     c('WITHDRAWALS','Withdrawals','Withdrawal records and approvals.','/bank-controller/?module=bank#withdrawalRows')
+   ]),
+   section('Finance','Financial documents and expense records.',[
+     c('PROFORMA','Proforma','Proforma records.','/billing-manager/?tab=proformas&module=finance'),
+     c('INVOICE','Invoice','Invoice records.','/billing-manager/?tab=invoices&module=finance'),
+     c('PAYMENT','Payment','Payment records.','/billing-manager/?tab=payments&module=finance'),
+     c('RECEIPT','Receipt','Official receipt records.','/billing-manager/?tab=receipts&module=finance'),
+     c('EXPENSES','Expenses','BELM company expense records.','/billing-manager/?tab=expenses&module=finance')
+   ])
  ];
  source=source.flatMap(group=>group.title==='Technical Department Reports'?[section('Technician Reports','Checklist, diagnosis, Job Card and maintenance reports prepared by technicians.',group.cards.filter(card=>!['OPERATOR','FUEL'].includes(card.tag))),section('Operator Reports','Operator observations, operating and fuel records.',group.cards.filter(card=>['OPERATOR','FUEL'].includes(card.tag)))]:[group]);
  if(isCustomer&&role==='customer_admin'){

@@ -125,3 +125,15 @@ input,select { width:100%; padding:11px 12px; border:1px solid #cad6d0; border-r
 .reset-dialog-actions { padding-bottom:22px; }
 @media(max-width:850px){ .technician-actions{margin-left:0; justify-content:flex-start;} }
 @media(max-width:620px){ .actions{width:100%; display:grid; grid-template-columns:1fr;}.actions button{width:100%;}.reset-credentials{padding:18px 20px 4px;} }
+
+/* A single compact team summary replaces oversized role cards. */
+.roles-users-page #roleCards.compact-role-summary{display:block!important;padding:0!important;margin:0 0 18px!important;border:1px solid var(--line,#2b455e);border-radius:14px;overflow:hidden;background:var(--panel,var(--paper,#fff));color:var(--text,var(--ink,#14243a))}
+#roleCards.compact-role-summary .role-summary-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 16px;min-height:0;background:transparent;border:0;border-radius:0}
+#roleCards.compact-role-summary .role-summary-row+.role-summary-row{border-top:1px solid var(--line,#2b455e)}
+#roleCards.compact-role-summary .role-summary-label{min-width:0;display:grid;gap:3px}
+#roleCards.compact-role-summary .role-summary-label strong{font-size:14px;line-height:1.4;font-weight:650;color:inherit}
+#roleCards.compact-role-summary .role-summary-members{font-size:12px;line-height:1.5;color:var(--muted,#64748b);overflow-wrap:anywhere}
+#roleCards.compact-role-summary .role-summary-count{flex-shrink:0;min-width:30px;text-align:right;font-size:18px;line-height:1.4;font-variant-numeric:tabular-nums;color:inherit}
+html[data-theme="dark"] .roles-users-page #roleCards.compact-role-summary{background:#0d2035;color:#edf5ff;border-color:#2b455e}
+html[data-theme="light"] .roles-users-page #roleCards.compact-role-summary{background:#fff;color:#14243a;border-color:#d7e1ec}
+@media(max-width:620px){#roleCards.compact-role-summary .role-summary-row{padding:11px 13px}}

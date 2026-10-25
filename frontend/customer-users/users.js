@@ -109,21 +109,20 @@
 
   function renderRoleCards() {
     const container = document.getElementById("roleCards");
-    const roles = ["workshop_manager", "store_keeper", "accounts", "procurement", "operator", "technician"];
+    const roles = ["technician", "operator", "workshop_manager", "store_keeper", "procurement", "accounts"];
+    container.classList.add("compact-role-summary");
+    container.setAttribute("aria-label", "Team roles and members");
     container.innerHTML = roles.map((roleKey) => {
       const members = roleKey === "technician"
         ? technicians.map((tech) => ({ ...tech, isActive: Boolean(tech.is_active ?? tech.isActive) }))
         : users.filter((user) => user.role === roleKey);
-      return `
-        <article class="role-card">
-          <div class="role-card-head">
-            <span class="badge ${roleKey}">${escapeHtml(roleLabels[roleKey])}</span>
-            <strong>${members.length}</strong>
-          </div>
-          ${members.length
-            ? `<ul>${members.map((user) => `<li>${escapeHtml(user.name)} ${user.isActive ? "" : "<small>(inactive)</small>"}</li>`).join("")}</ul>`
-            : '<p class="empty-role">No one in this role yet.</p>'}
-        </article>`;
+      const label = roleKey === "operator" ? "Machine Operator" : roleLabels[roleKey];
+      return `<article class="role-summary-row">
+        <div class="role-summary-label"><strong>${escapeHtml(label)}</strong>${members.length
+          ? `<span class="role-summary-members">${members.map((user) => `${escapeHtml(user.name)}${user.isActive ? "" : " (inactive)"}`).join(", ")}</span>`
+          : ""}</div>
+        <b class="role-summary-count" aria-label="${members.length} members">${members.length}</b>
+      </article>`;
     }).join("");
   }
 

@@ -8,7 +8,7 @@
 <script defer src="/dashboard-preferences.js?v=54"></script>
 </head><body><script>
 (function(){
-  var target="/role-reports/";
+  var target="/role-analysis/";
   var out=new URL(target, window.location.origin);
   var incoming=new URLSearchParams(window.location.search);
   incoming.forEach(function(value,key){ if(!out.searchParams.has(key)) out.searchParams.set(key,value); });

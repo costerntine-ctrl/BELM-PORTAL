@@ -171,7 +171,7 @@ async function api(path, options = {}) {
       reportLoading = false;
       if (syncButton) {
         syncButton.disabled = false;
-        syncButton.textContent = "Sync report";
+        syncButton.textContent = "Sync analysis";
       }
     }
   }
@@ -279,7 +279,7 @@ async function api(path, options = {}) {
   function setDefaultDates() {
     const today = new Date();
     const iso = today.toISOString().slice(0, 10);
-    document.getElementById("attendanceDate").value = iso;
+    if(document.getElementById("attendanceDate"))document.getElementById("attendanceDate").value = iso;
     document.getElementById("dateTo").value = iso;
     document.getElementById("dateFrom").value = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-01`;
   }
@@ -297,13 +297,13 @@ async function api(path, options = {}) {
     if (document.getElementById("periodSelect").value === "custom" && document.getElementById("dateFrom").value) loadReport();
   });
   document.getElementById("applyButton").addEventListener("click", loadReport);
-  document.getElementById("attendanceRefreshButton").addEventListener("click", loadAttendance);
-  document.getElementById("attendanceTable").addEventListener("click", (event) => {
+  document.getElementById("attendanceRefreshButton")?.addEventListener("click", loadAttendance);
+  document.getElementById("attendanceTable")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-save-attendance]");
     if (button) saveAttendance(button);
   });
-  document.getElementById("csvButton").addEventListener("click", exportCsv);
-  document.getElementById("printButton").addEventListener("click", () => window.print());
+  document.getElementById("csvButton")?.addEventListener("click", exportCsv);
+  document.getElementById("printButton")?.addEventListener("click", () => window.print());
 
   setDefaultDates();
   const initialParams = new URLSearchParams(window.location.search);
@@ -317,7 +317,7 @@ async function api(path, options = {}) {
     if (initialTo) document.getElementById("dateTo").value = initialTo;
   }
   loadReport();
-  loadAttendance();
+  if(document.getElementById("attendanceTable"))loadAttendance();
 
   // V221 live reconciliation: refresh when the manager returns to this page
   // and periodically while it stays open. The API remains no-store.

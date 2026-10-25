@@ -36,7 +36,8 @@
     { label: "Procurement", icon: "cart", href: "/belm-procurement/" },
     { label: "Finance & Accounts", icon: "receipt", href: "/billing-manager/" },
     { label: "Bank Control", icon: "bank", href: "/bank-controller/" },
-    { label: "Reports & Analysis", icon: "chart", href: "/reports-manager/" },
+    { label: "Reports", icon: "chart", href: "/reports-manager/" },
+    { label: "Analysis", icon: "chart", href: "/role-analysis/" },
     { label: "System Settings", icon: "gear", href: "/settings-manager/" },
   ];
   const currentPath = window.location.pathname;

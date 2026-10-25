@@ -51,7 +51,8 @@
       item('Store Keeper','/customer-store-dashboard/','box','store_keeper'),
       item('Finance / Accounts','/customer-finance/','money','accounts'),
       section('Management'),
-      item('Reports & Analysis','/general-analysis/?module=overview&analysisOnly=1','chart'),
+      item('Analysis','/general-analysis/?module=overview&analysisOnly=1','chart'),
+      item('Reports','/role-reports/','chart'),
       item('Communication','/role-communications/','message'),
       item('System Settings','/customer-settings-center/','settings')
     ],

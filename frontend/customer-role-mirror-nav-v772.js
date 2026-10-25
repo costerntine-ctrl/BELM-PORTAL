@@ -38,7 +38,8 @@
       item('Store Keeper','/customer-store-dashboard/','box','store_keeper'),
       item('Finance / Accounts','/customer-finance/','money','accounts'),
       item('Communication','/role-communications/','message'),
-      item('Reports & Analysis','/general-analysis/?module=overview&analysisOnly=1','chart'),
+      item('Analysis','/general-analysis/?module=overview&analysisOnly=1','chart'),
+      item('Reports','/role-reports/','chart'),
       item('System Settings','/customer-settings-center/','settings','settings')
     ],
     '/customer-workshop-manager/':[

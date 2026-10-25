@@ -21,7 +21,8 @@
     { label: 'Procurement', href: '/customer-procurement-dashboard/', match: '/customer-procurement-dashboard/', role: 'procurement' },
     { label: 'Store Keeper', href: '/customer-store-dashboard/', match: '/customer-store-dashboard/', role: 'store_keeper' },
     { label: 'Finance / Accounts', href: '/customer-finance/', match: '/customer-finance/', role: 'accounts' },
-    { label: 'Reports & Analysis', href: '/general-report/', match: '/general-report/' },
+    { label: 'Reports', href: '/general-report/', match: '/general-report/' },
+    { label: 'Analysis', href: '/general-analysis/?analysisOnly=1', match: '/general-analysis/' },
     { label: 'System Settings', href: '/customer-settings-center/', match: '/customer-settings-center/', role: 'settings' }
   ];
 

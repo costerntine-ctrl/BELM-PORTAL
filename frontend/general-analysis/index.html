@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#071a31">
-  <title>Reports & Analysis — Customer Portal</title>
+  <title>General Analysis — Customer Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
@@ -58,7 +58,6 @@
         <a href="#procurement-analysis" data-role-item="procurement" data-roles="owner,admin,workshop_manager,store_keeper,procurement"><i class="yellow">PR</i><span>Procurement</span></a>
         <a href="#finance-analysis" data-role-item="finance" data-roles="owner,admin,accounts"><i class="cyan">FN</i><span>Finance / Accounts</span></a>
         <a href="#team-analysis" data-role-item="roles" data-roles="owner,admin"><i class="blue">RL</i><span>Users & Roles</span></a>
-        <a href="#general-reports" data-role-item="reports" data-roles="all"><i class="green">GR</i><span>General Reports</span></a>
       </nav>
     </section>
 
@@ -117,14 +116,10 @@
       </article>
     </section>
 
-    <section id="general-reports" class="reports-section">
-      <div class="section-heading"><div><p>GENERAL REPORTS</p><h2>Reports & Attendance</h2></div><a href="/general-report/">Open Report Centre →</a></div>
-      <div class="attendance-summary"><span class="present">Present <b id="attendancePresent">0</b></span><span class="absent">No login <b id="attendanceNoLogin">0</b></span><span>Total <b id="attendanceTotal">0</b></span><span id="attendanceDate">Today</span></div>
-      <div class="table-wrap"><table><thead><tr><th>Employee</th><th>Role</th><th>Status</th><th>First login</th><th>Last login</th></tr></thead><tbody id="attendanceRows"><tr><td colspan="5">Loading role activity…</td></tr></tbody></table></div>
-    </section>
+
   </main>
 
-  <script src="/general-analysis/app.js?v=786-belm-mirror"></script>
+  <script src="/general-analysis/app.js?v=59-analysis-only"></script>
   <script>
     window.addEventListener('DOMContentLoaded', function () {
       setTimeout(function () {
@@ -135,7 +130,7 @@
         a.className = 'belm-nav__item is-active';
         a.href = '/general-analysis/?module=overview&analysisOnly=1';
         a.setAttribute('data-customer-analysis-link','1');
-        a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>Reports & Analysis';
+        a.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 16v-4M12 16V8M16 16v-6"/></svg>General Analysis';
         nav.querySelectorAll('.belm-nav__item').forEach(function (item) { item.classList.remove('is-active'); });
         if (settings) nav.insertBefore(a, settings); else nav.appendChild(a);
       }, 0);

@@ -17,7 +17,7 @@
   const role=isCustomer?(s.type==='operator'?'operator':customerAliases[String(s.customerRole||(s.actorType==='owner'?'owner':'')).toLowerCase()]||'customer_admin'):(staffAliases[String(s.roleName||'')]||'super_admin');
   const isAdmin=role==='super_admin'||role==='customer_admin';
   const path=(location.pathname.replace(/\/+$/,'')||'/');
-  if(path==='/role-reports')return;
+  if(path==='/role-reports'||path==='/role-analysis')return;
 
   const icon='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>';
   const reportText=/^(my reports|operator reports|purchase reports|inventory reports|customer reports|reports|role reports)$/i;
@@ -54,6 +54,9 @@
       Array.from(nav.querySelectorAll(':scope a[href],a[href]')).forEach(a=>{
         const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
         const href=String(a.getAttribute('href')||'');
+        if(/reports[-_]analysis|department-analysis|general-analysis\.php|^\/general-analysis\//i.test(href)||/^reports?\s*&\s*analysis$/i.test(text)){
+          setAttr(a,'href','/role-analysis/');labelAnchor(a,'My Analysis');setData(a,'analysisScope','role');return;
+        }
         const isGeneral=/general-report/i.test(href)||/^general report$/i.test(text);
         if(isGeneral){
           if(isAdmin&&adminHome){
@@ -79,6 +82,9 @@
         }
       });
 
+      let analysisLinks=Array.from(nav.querySelectorAll('a[href]')).filter(a=>a.getAttribute('href')==='/role-analysis/');
+      if(!analysisLinks.length){const a=document.createElement('a');a.href='/role-analysis/';a.dataset.analysisScope='role';const sample=nav.querySelector('a');a.className=sample?.classList.contains('nav-item')?'nav-item':'belm-nav__item';a.innerHTML=icon+'<span>My Analysis</span>';nav.appendChild(a);}
+      else analysisLinks.slice(1).forEach(a=>a.remove());
       if(!my){
         const a=document.createElement('a');
         a.href='/role-reports/';

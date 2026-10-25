@@ -82,11 +82,12 @@
         <label class="wide">Workshop Manager instruction<textarea id="jcm814Instruction" rows="2" placeholder="Scope, safety instruction, location note..."></textarea></label>
         <div class="jcm814-actions"><span id="jcm814Note" class="jcm814-note">Select a case and Technician. Existing active Job Card will be assigned/reassigned; otherwise a new Job Card is created.</span><button id="jcm814Assign" class="jcm814-button" type="submit">Create Job Card & Assign Technician</button></div>
       </form>
-      <div class="jcm814-toolbar"><div><b>Job Cards</b><span id="jcm814Counts"></span></div><div class="jcm814-toolbar-actions"><input id="jcm814Search" type="search" aria-label="Search Job Cards" placeholder="Search job, machine, customer, technician"><button class="jcm814-filter active" type="button" data-jcm-filter="active">Active</button><button class="jcm814-filter" type="button" data-jcm-filter="completed">Completed</button><button class="jcm814-filter" type="button" data-jcm-filter="all">All</button><button id="jcm814Refresh" class="jcm814-button green" type="button">Sync / Refresh</button></div></div>
+      <div class="jcm814-toolbar"><div><b>Job Cards</b><span id="jcm814Counts"></span></div><div class="jcm814-toolbar-actions"><input id="jcm814Search" type="search" aria-label="Search Job Cards" placeholder="Search job, machine, customer, technician"><button class="jcm814-filter active" type="button" data-jcm-filter="active">Active</button><a class="jcm814-filter" id="jcm814Completed" target="_top" href="/completed-maintenance-reports/">Completed Reports</a><button id="jcm814Refresh" class="jcm814-button green" type="button">Sync / Refresh</button></div></div>
       <div class="jcm814-table-wrap"><table class="jcm814-table"><thead><tr><th>Job Card / Machine</th><th>Technician</th><th>Case / Priority</th><th>Grounded</th><th>Process</th><th>Problem / Pending</th><th>Dates / Status</th><th>Manager Review</th><th>Report</th></tr></thead><tbody id="jcm814Rows"><tr><td colspan="9">Loading...</td></tr></tbody></table></div>`;
     grid.parentNode.insertBefore(root,grid);
     const oldTitle=doc.querySelector('.grid .panel .panel-head h2');if(oldTitle)oldTitle.textContent='Live Job Card / Breakdown Queue';
     const oldCopy=doc.querySelector('.grid .panel .panel-head p');if(oldCopy)oldCopy.textContent='Active machine issues remain here until Final Result = OK. Completed work is removed from the active queue but remains available in Job Card reports and process history.';
+    const completedUrl=new URL('/completed-maintenance-reports/',location.origin);completedUrl.searchParams.set('actor',actor);completedUrl.searchParams.set('returnTo',location.pathname+location.search);doc.getElementById('jcm814Completed').href=completedUrl.pathname+completedUrl.search;
     doc.getElementById('jcm814Search').addEventListener('input',renderRows);
     doc.getElementById('jcm814Refresh').addEventListener('click',refresh);
     doc.getElementById('jcm814Case').addEventListener('change',caseChanged);
@@ -102,9 +103,9 @@
   async function refresh(){
     if(busy)return;busy=true;const btn=childDoc?.getElementById('jcm814Refresh');if(btn)btn.disabled=true;
     try{
-      const [processData,caseData]=await Promise.all([processApi('list'),workflowApi('')]);
-      items=Array.from(new Map((Array.isArray(processData?.items)?processData.items:[]).map(item=>[String(item.id),item])).values());cases=Array.isArray(caseData)?caseData:[];
-      renderCases();renderRows();note(`Synced ${items.filter(x=>up(x.status)!=='CANCELLED'&&!hasFinalReport(x)).length} active Job Cards with no final report. Final reports remain under Completed / All.`,'ok');
+      const [processData,caseData]=await Promise.all([request('/api/job-card-workflow-v814?action=list&state=active'),workflowApi('')]);
+      items=Array.from(new Map((Array.isArray(processData?.items)?processData.items:[]).map(item=>[String(item.id),item])).values());cases=(Array.isArray(caseData)?caseData:[]).filter(item=>!['COMPLETED','CANCELLED'].includes(up(item.status)));
+      renderCases();renderRows();note(`Synced ${items.filter(x=>up(x.status)!=='CANCELLED'&&!hasFinalReport(x)).length} active Job Cards with no final report. Completed reports are available in the report archive.`,'ok');
     }catch(e){note(e.message||'Job Card sync failed.','error')}
     finally{busy=false;if(btn)btn.disabled=false}
   }
@@ -163,7 +164,7 @@
     const scoped=listFilter==='completed'?all.filter(hasFinalReport):listFilter==='all'?all:all.filter(x=>!hasFinalReport(x));
     const rows=scoped.filter(item=>!query||Object.values(item).filter(value=>typeof value==='string'||typeof value==='number').join(' ').toLowerCase().includes(query));
     const counts=childDoc.getElementById('jcm814Counts');
-    if(counts)counts.textContent=` · ${activeCount} active · ${pendingCount} pending · ${completedCount} completed · showing ${listFilter.toUpperCase()}`;
+    if(counts)counts.textContent=` · ${activeCount} active · ${pendingCount} pending · Completed reports are available in the report archive`;
     childDoc?.querySelectorAll('[data-jcm-filter]').forEach(button=>button.classList.toggle('active',button.dataset.jcmFilter===listFilter));
 
     body.innerHTML=rows.length?rows.map(item=>{

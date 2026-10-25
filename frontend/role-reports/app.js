@@ -79,6 +79,10 @@
  }
  // All departments read the original records through their existing authorised APIs.
  // No report copy or manual sync job is needed; a saved record is visible on the next load.
+ if(!analysisCentre&&['super_admin','customer_admin','workshop_manager','technician'].includes(role)){
+   const technical=groups.find(group=>group.cards.some(card=>['CHECKLIST','MAINTENANCE','JOB CARDS','JOB CARD RECORDS','MACHINES'].includes(card.tag)))||groups[0];
+   if(technical)technical.cards.push(c('COMPLETED','Completed Maintenance Reports','Completed Job Card and maintenance reports, searchable in pages of 20.','/completed-maintenance-reports/?actor='+(isCustomer?'customer':'admin')));
+ }
  const seenReports=new Set();
  groups=groups.map(group=>({...group,cards:group.cards.map(card=>{
    if(card.href.includes('/spare-parts-manager/?view=audit'))card={...card,href:withReturn('/store-audit-report/?module=inventory')};

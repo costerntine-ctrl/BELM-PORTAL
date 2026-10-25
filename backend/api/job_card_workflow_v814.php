@@ -235,13 +235,31 @@ if($method==='GET'&&$action==='list'){
     }
     $machineId=trim((string)($_GET['machineId']??''));
     if($machineId!==''){$where[]='j.machine_id=?';$params[]=$machineId;}
+    $state=strtolower(trim((string)($_GET['state']??'all')));
+    if(!in_array($state,['active','completed','all'],true))json_error('Invalid report state.',422);
+    $closed="(UPPER(COALESCE(j.status,''))='COMPLETED' OR UPPER(COALESCE(bc.status,''))='COMPLETED' OR j.completed_at IS NOT NULL OR COALESCE(j.test_result,'') ~* 'FINAL RESULT:[[:space:]]*OK([[:space:]]|$)')";
+    if($state==='completed')$where[]=$closed;
+    elseif($state==='active')$where[]='NOT '.$closed;
+    if($id!==''){$where[]='j.id=?';$params[]=$id;}
+    foreach(['customer'=>'c.name','technician'=>'j.technician_name','machine'=>"CONCAT_WS(' ',m.brand,m.model,m.fleet_number,m.serial_number,m.reg_number)",'search'=>"CONCAT_WS(' ',j.job_card_no,j.title,j.fault_description,c.name,j.technician_name,m.brand,m.model,m.fleet_number)"] as $key=>$column){
+        $value=trim((string)($_GET[$key]??''));
+        if($value!==''){$where[]=$column.' ILIKE ?';$params[]='%'.$value.'%';}
+    }
+    $dateColumn='COALESCE(j.completed_at,bc.closed_at,j.updated_at,j.created_at)';
+    foreach(['from','to'] as $key){$value=trim((string)($_GET[$key]??''));if($value==='')continue;$date=DateTimeImmutable::createFromFormat('!Y-m-d',$value);if(!$date||$date->format('Y-m-d')!==$value)json_error('Invalid report date.',422);$where[]=$dateColumn.($key==='from'?" >= ?::date":" < (?::date + INTERVAL '1 day')");$params[]=$value;}
+    if(!empty($_GET['from'])&&!empty($_GET['to'])&&$_GET['from']>$_GET['to'])json_error('From date must be on or before To date.',422);
+    $paged=isset($_GET['page']);$page=max(1,(int)($_GET['page']??1));$perPage=20;$total=null;
+    $joins=' FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id WHERE '.implode(' AND ',$where);
+    if($paged){$count=db()->prepare('SELECT COUNT(*)'.$joins);$count->execute($params);$total=(int)$count->fetchColumn();$page=min($page,max(1,(int)ceil($total/$perPage)));}
+    $limit=$paged?$perPage:150;$offset=$paged?($page-1)*$perPage:0;
+    $order=$state==='completed'?$dateColumn.' DESC,j.id DESC':"CASE WHEN UPPER(COALESCE(j.status,''))='COMPLETED' THEN 1 ELSE 0 END,COALESCE(j.updated_at,j.created_at) DESC,j.id DESC";
     $stmt=db()->prepare(
         "SELECT j.*,bc.status AS case_status,bc.current_stage,bc.current_department,bc.blocker_reason,bc.opened_at,bc.closed_at,bc.source_type,
                 c.name AS customer_name,c.address AS customer_address,m.brand,m.model,m.machine_type,m.serial_number,m.reg_number,m.fleet_number,
                 (SELECT COUNT(*) FROM breakdown_spare_requests s WHERE s.job_card_id=j.id AND UPPER(COALESCE(s.status,'')) NOT IN ('REJECTED','PARTS_READY')) AS open_spares,
                 (SELECT string_agg(s.spare_name, ', ' ORDER BY s.requested_at) FROM breakdown_spare_requests s WHERE s.job_card_id=j.id AND UPPER(COALESCE(s.status,'')) NOT IN ('REJECTED','PARTS_READY')) AS spare_names
          FROM digital_job_cards j JOIN breakdown_cases bc ON bc.id=j.case_id JOIN customers c ON c.id=j.customer_id JOIN machines m ON m.id=j.machine_id
-         WHERE ".implode(' AND ',$where)." ORDER BY CASE WHEN UPPER(COALESCE(j.status,''))='COMPLETED' THEN 1 ELSE 0 END,COALESCE(j.updated_at,j.created_at) DESC LIMIT 150"
+         WHERE ".implode(' AND ',$where)." ORDER BY ".$order." LIMIT ".$limit." OFFSET ".$offset
     );
     $stmt->execute($params);$rows=[];
     foreach($stmt->fetchAll() as $row){
@@ -258,10 +276,11 @@ if($method==='GET'&&$action==='list'){
             'testDurationMinutes'=>$process['test']['durationMinutes'],'finalResult'=>$process['test']['finalResult'],'testNotes'=>$process['test']['testNotes'],
             'pendingReason'=>$process['pendingReason'],'groundedDays'=>jcv814_grounded_days($row),'processStep'=>$process['step'],'processLabel'=>$process['label'],
             'currentStage'=>$row['current_stage'],'currentDepartment'=>$row['current_department'],'openSpareRequests'=>$openSpares,'requiredSpare'=>trim((string)($row['spare_names']??'')),
+            'reportDate'=>$row['completed_at']??$row['closed_at']??$row['updated_at']??$row['created_at'],'createdAt'=>$row['created_at'],
             'receivedAt'=>$row['received_at'],'startedAt'=>$row['started_at'],'submittedAt'=>$row['technician_submitted_at'],'completedAt'=>$row['completed_at'],'updatedAt'=>$row['updated_at'],'openedAt'=>$row['opened_at'],
         ];
     }
-    json_out(['items'=>$rows,'actor'=>['kind'=>$ctx['kind'],'role'=>$ctx['role'],'isTechnician'=>$ctx['isTechnician'],'isManager'=>$ctx['isManager']]]);
+    json_out(['items'=>$rows,'pagination'=>$paged?['page'=>$page,'perPage'=>$perPage,'total'=>$total,'pages'=>max(1,(int)ceil($total/$perPage))]:null,'actor'=>['kind'=>$ctx['kind'],'role'=>$ctx['role'],'isTechnician'=>$ctx['isTechnician'],'isManager'=>$ctx['isManager']]]);
 }
 
 if($method==='PUT'&&$action==='submit-report'&&$id!==''){

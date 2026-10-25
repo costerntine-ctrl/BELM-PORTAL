@@ -1,0 +1,28 @@
+/* Fixed rail scrolls independently of the page; mobile drawer preserves space. */
+body.belm-persistent-ready{--belm-rail-width:248px;padding-left:var(--belm-rail-width)!important;box-sizing:border-box;overflow-x:clip}
+body.belm-persistent-ready .belm-replaced-sidebar{display:none!important}
+body.belm-persistent-ready .belm-single-content{grid-template-columns:minmax(0,1fr)!important;padding-left:0!important;margin-left:0!important;min-width:0!important}
+body.belm-persistent-ready .belm-single-content>main,body.belm-persistent-ready .belm-single-content>.belm-main,body.belm-persistent-ready .belm-single-content>.main{margin-left:0!important;min-width:0!important;width:auto!important}
+body.belm-persistent-ready #belmContextBackV763{left:calc(var(--belm-rail-width) + 12px)}
+#belmPersistentNav{position:fixed!important;inset:0 auto 0 0!important;width:var(--belm-rail-width)!important;height:100dvh!important;max-height:100dvh!important;box-sizing:border-box!important;display:flex!important;flex-direction:column;gap:16px;padding:20px 12px;background:#0d2742;color:#edf5ff;border-right:1px solid #365471;z-index:2147483000;overflow-y:auto;overscroll-behavior:contain;font:500 14px/1.4 system-ui,sans-serif}
+#belmPersistentNav .belm-persistent-brand{padding:8px 10px;color:#ffdb39;line-height:1.5}
+#belmPersistentNav nav{display:flex;flex-direction:column;gap:5px;flex:1}
+#belmPersistentNav nav a,#belmPersistentNav button{display:block;box-sizing:border-box;width:100%;margin:0;padding:12px;border:1px solid transparent;border-radius:10px;color:inherit;background:transparent;text-align:left;text-decoration:none;font:inherit;white-space:normal}
+#belmPersistentNav nav a:hover,#belmPersistentNav nav a[aria-current=page]{background:#145ea5;color:#fff;border-color:#397caf}
+#belmPersistentNav :focus-visible,#belmPersistentMenu:focus-visible{outline:3px solid #f5c518;outline-offset:2px}
+#belmPersistentNav .belm-persistent-logout{border-color:#93616c;color:#ffc2cb;cursor:pointer}
+#belmPersistentMenu,#belmPersistentScrim{display:none}
+body.belm-persistent-ready .belm-mobile-sidebar817,body.belm-persistent-ready .belm-mobile-sidebar-scrim817,body.belm-persistent-ready .belm-mobile-role-toggle-v817,body.belm-persistent-ready .belm-mobile-role-scrim-v817,body.belm-persistent-ready .belm-sidebar-toggle,body.belm-persistent-ready .belm-sidebar-scrim,body.belm-persistent-ready #sidebarToggle,body.belm-persistent-ready .belm-topbar__menu{display:none!important}
+html[data-theme=light] #belmPersistentNav{background:#edf4fc;color:#173453;border-color:#c4d4e5}
+html[data-theme=light] #belmPersistentNav .belm-persistent-brand{color:#194b78}
+html[data-theme=light] #belmPersistentNav .belm-persistent-logout{color:#9c253d}
+@media(max-width:767px){
+ body.belm-persistent-ready{padding-left:0!important;padding-top:54px!important}
+ body.belm-persistent-ready #belmContextBackV763{left:110px;top:8px}
+ #belmPersistentNav{width:min(280px,85vw)!important;transform:translateX(-105%);padding-top:64px;visibility:hidden}
+ body.belm-persistent-open #belmPersistentNav{transform:none;visibility:visible}
+ body.belm-persistent-open{overflow:hidden!important}
+ #belmPersistentMenu{display:block;position:fixed;top:8px;left:8px;min-height:38px;padding:8px 12px;z-index:2147483002;background:#ffda1a;color:#10253e;border:1px solid #957500;border-radius:9px;font:700 14px system-ui;cursor:pointer}
+ #belmPersistentScrim:not([hidden]){display:block;position:fixed;inset:0;width:100%;height:100dvh;border:0;background:#0008;z-index:2147482999}
+}
+@media print{body.belm-persistent-ready{padding:0!important}#belmPersistentNav,#belmPersistentMenu,#belmPersistentScrim{display:none!important}}

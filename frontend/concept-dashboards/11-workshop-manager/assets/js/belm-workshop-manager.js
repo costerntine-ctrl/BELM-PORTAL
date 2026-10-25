@@ -150,6 +150,7 @@
   }
 
   function installBreakdownReportViewer() {
+    if (!document.getElementById('reportTable')) return;
     if (!/service-maintenance\.html(?:$|[?#])/i.test(window.location.href)) return;
     if (document.querySelector('script[data-belm-breakdown-report-v746]')) return;
     var script = document.createElement('script');

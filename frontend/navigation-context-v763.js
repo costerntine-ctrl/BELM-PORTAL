@@ -154,6 +154,7 @@
 
   function go(e){if(e){e.preventDefault();e.stopImmediatePropagation();}location.assign(target)}
   function install(){
+    if(document.querySelector('[data-belm-page-back]'))return;
     if(!document.body)return;
     // A role/dashboard root keeps its own designed Home/Role back control.
     // Only an explicit returnTo/back context may override a root page.

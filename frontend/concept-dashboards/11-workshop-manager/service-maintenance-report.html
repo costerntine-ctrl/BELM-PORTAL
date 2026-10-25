@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Service & Maintenance — BELM Workshop Manager</title>
+<link rel="stylesheet" href="assets/css/belm-workshop-manager.css">
+<link rel="stylesheet" href="/theme-global.css?v=728-service-maintenance">
+<script src="/theme-manager.js?v=54"></script>
+<script defer src="/edit-confirm.js?v=728-service-maintenance"></script>
+<style>
+.sm-head{display:flex;justify-content:space-between;gap:16px;align-items:flex-end;flex-wrap:wrap}.sm-head h2{margin:0;font-size:28px}.sm-head p{margin:5px 0 0;color:var(--text-muted)}
+.sm-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.sm-card{padding:18px;border:1px solid var(--border);border-radius:14px;background:#fff;box-shadow:var(--shadow)}.sm-card h3{margin:0 0 6px}.sm-card p{margin:0 0 14px;color:var(--text-muted);font-size:12px;line-height:1.5}.sm-card button{border:0;border-radius:9px;padding:10px 14px;background:var(--blue);color:#fff;font-weight:800}
+.sm-filter{display:grid;grid-template-columns:1.35fr 1fr 1fr 1fr auto;gap:10px;align-items:end;padding:15px;border:1px solid var(--border);border-radius:14px;background:#fff}.sm-filter label{display:grid;gap:5px;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase}.sm-filter select,.sm-filter input,.entry-form select,.entry-form input,.entry-form textarea{width:100%;padding:10px 11px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--text-dark)}
+.pc-card{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:18px 20px;border-radius:15px;border:1px solid rgba(60,145,236,.35);background:linear-gradient(135deg,#102a47,#0d355d);color:#fff}.pc-balance span{display:block;font-size:11px;text-transform:uppercase;color:#9fc8ef;font-weight:800}.pc-balance strong{display:block;font-size:30px;margin-top:5px}.pc-balance small{color:#b7d1ea}.pc-actions{display:flex;gap:8px;flex-wrap:wrap}.pc-actions button{padding:10px 14px;border-radius:9px;border:1px solid rgba(255,255,255,.2);font-weight:800}.pc-actions .deposit{background:#1ea45a;color:#fff}.pc-actions .expense{background:#e8a317;color:#1f2b38}.pc-actions .edit{background:#2374d8;color:#fff}.pc-actions .ghost{background:transparent;color:#fff}
+.report-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.report-toolbar .actions{display:flex;gap:8px;flex-wrap:wrap}.report-toolbar button{padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:#fff;font-weight:800;color:var(--text-dark)}.report-toolbar .primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.table-wrap{overflow:auto;border:1px solid var(--border);border-radius:13px;background:#fff}.sm-table{width:100%;border-collapse:collapse;min-width:950px}.sm-table th,.sm-table td{padding:10px 11px;border-bottom:1px solid var(--border);text-align:left;font-size:12px;vertical-align:top}.sm-table th{background:#f5f8fc;font-size:10px;text-transform:uppercase;color:var(--text-muted);position:sticky;top:0}.sm-table tr[data-entry]{cursor:pointer}.sm-table tr[data-entry]:hover{background:rgba(47,111,214,.06)}
+.pill{display:inline-block;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900}.pill.permanent{background:#dcf7e7;color:#157440}.pill.non{background:#eef3f7;color:#5f6b78}.pill.open{background:#ffe9e6;color:#a93029}.pill.done{background:#dcf7e7;color:#157440}
+.entry-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.entry-form label{display:grid;gap:5px;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase}.entry-form .wide{grid-column:1/-1}.dialog-card{max-width:760px}.hint{font-size:11px;color:var(--text-muted)}.hidden{display:none!important}
+html[data-theme='dark'] .sm-card,html[data-theme='dark'] .sm-filter,html[data-theme='dark'] .table-wrap,html[data-theme='dark'] .report-toolbar button{background:#111b2e!important;border-color:#2a3950!important;color:#eef4fb!important}html[data-theme='dark'] .sm-table th{background:#0d1728!important;color:#aab9ca!important}html[data-theme='dark'] .sm-table td{border-color:#26354a!important}html[data-theme='dark'] .sm-filter select,html[data-theme='dark'] .sm-filter input,html[data-theme='dark'] .entry-form select,html[data-theme='dark'] .entry-form input,html[data-theme='dark'] .entry-form textarea{background:#0e1828!important;color:#eef4fb!important;border-color:#314158!important}
+@media(max-width:1000px){.sm-grid{grid-template-columns:1fr}.sm-filter{grid-template-columns:1fr 1fr}.pc-card{grid-template-columns:1fr}.entry-form{grid-template-columns:1fr}.entry-form .wide{grid-column:auto}}@media(max-width:620px){.sm-filter{grid-template-columns:1fr}.content{padding:14px}.pc-actions{display:grid;grid-template-columns:1fr 1fr}}
+</style>
+<script src="/navigation-context-v763.js?v=763-role-flow"></script><script defer src="/language-preferences.js?v=54"></script>
+<script defer src="/belm-i18n.js?v=53"></script>
+
+<link rel="stylesheet" href="/dashboard-preferences.css?v=54">
+<script defer src="/dashboard-preferences.js?v=54"></script>
+<script src="/record-report-files.js?v=57"></script><style>.report-back{display:inline-block;margin-bottom:16px;padding:10px 14px;border:1px solid var(--border);border-radius:9px;color:inherit;text-decoration:none;font-weight:800}</style></head>
+<body>
+<div class="shell">
+<aside class="sidebar">
+<nav class="sidebar-nav">
+<a href="index.html" class="nav-item">Home Dashboard</a>
+<a href="job-cards.html" class="nav-item">Job Cards</a>
+<a href="machines.html" class="nav-item">Machines</a>
+<a href="technicians.html" class="nav-item">Technicians</a>
+<a href="workshop-schedule.html" class="nav-item">Workshop Schedule</a>
+<a href="spare-requests.html" class="nav-item">Workshop Requirements</a>
+<a href="service-maintenance.html" class="nav-item is-active">Service &amp; Maintenance</a>
+<a href="reports-analysis.html" class="nav-item">My Reports</a>
+<a href="customers.html" class="nav-item">Customers</a>
+<a href="communication.html" class="nav-item">Communication</a>
+<a href="tools-equipment.html" class="nav-item">Tools &amp; Equipment</a>
+<a href="workshop-settings.html" class="nav-item">Workshop Settings</a>
+</nav>
+</aside>
+<div class="main">
+<header class="topheader">
+<div class="brand"><img src="assets/img/belm-logo-v2.png" alt="BELM"></div>
+<div class="portal-title"><h1>BELM OPERATIONS PORTAL</h1><p>| Workshop Manager Dashboard</p><div class="tagline">Service records · Breakdown · Lube · Petty Cash</div></div>
+<div class="header-right"><button id="themeToggle" class="icon-btn" type="button" aria-label="Theme">◐</button></div>
+</header>
+<main class="content">
+<section class="sm-head"><div><a href="service-maintenance.html" class="report-back" data-belm-page-back>← Back to Service &amp; Maintenance</a><h2 id="pageReportTitle">Maintenance Report</h2><p>View and export the selected report.</p></div></section>
+<section class="sm-filter">
+<label>Customer<select id="customerFilter"><option value="">All customers</option></select></label>
+<label>Customer Type<select id="customerType"><option value="ALL">All customer types</option><option value="PERMANENT">Permanent customer</option><option value="NON_PERMANENT">Non-Permanent customer</option></select></label>
+<label>From<input id="fromDate" type="date"></label>
+<label>To<input id="toDate" type="date"></label>
+<button id="applyFilter" class="qa-btn qa-btn--blue" type="button">Apply Filter</button>
+</section>
+<section class="panel">
+<div class="report-toolbar"><div><h3 id="reportTitle" style="margin:0">Maintenance Report</h3><small id="reportStatus">Loading…</small></div><div class="actions"><button type="button" id="reportPrint">Print</button><button type="button" id="reportPdf">Download PDF</button><button type="button" id="reportCsv">Download CSV</button><button type="button" class="primary" id="refreshReport">Refresh</button></div></div>
+<div id="reportTable" class="table-wrap" style="margin-top:12px"></div>
+</section>
+</main>
+</div>
+</div>
+
+
+
+<script data-belm-breakdown-report-v746 src="/workshop-breakdown-report-v746.js?v=746"></script>
+<script src="assets/js/service-maintenance.js?v=58-route-pages"></script>
+<script src="assets/js/belm-workshop-manager.js?v=58-route-pages"></script>
+</body>
+</html>

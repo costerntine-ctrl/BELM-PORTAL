@@ -290,6 +290,9 @@
     if (!moduleConfig.items.some((item) => item.href === '/role-communications/')) moduleConfig.items.push({label:'Role Communication',short:'CM',href:'/role-communications/'});
     if (!moduleConfig.items.some((item) => item.href === '/role-reports/')) moduleConfig.items.push({label:'My Role Reports',short:'RP',href:'/role-reports/'});
   }
+  let reportAdmin=false;
+  try{const payload=JSON.parse(atob((localStorage.getItem('belm_admin_token')||'').split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));reportAdmin=payload.roleName==='Super Admin';}catch{}
+  if(reportAdmin){let general=false;moduleConfig.items=moduleConfig.items.filter(item=>{if(/\/(role-reports|role-analysis|reports-manager)(?:[/?]|$)/.test(item.href||'')){if(general)return false;general=true;item.label='General Report';item.href='/reports-manager/?module=reports';}return true;});}
   const visiblePages = moduleConfig.items;
   const sidebar = document.createElement("aside");
   sidebar.id = "belmAdminSidebar";

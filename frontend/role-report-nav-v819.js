@@ -50,6 +50,13 @@
     if(!nav||busyNavs.has(nav))return;
     busyNavs.add(nav);
     try{
+      if(isAdmin){
+        const links=Array.from(nav.querySelectorAll('a[href]')).filter(a=>/\/(role-reports|role-analysis|general-report|general-analysis|reports-manager)(?:[/.?]|$)/i.test(a.getAttribute('href')||'')||/^(my (role )?reports?|my analysis|general reports?|general analysis|reports|analysis)$/i.test(String(a.textContent||'').trim()));
+        let general=links.shift();links.forEach(a=>a.remove());
+        if(!general){general=document.createElement('a');general.className=nav.querySelector('a')?.className||'belm-nav__item';general.innerHTML=icon+'<span>General Report</span>';nav.appendChild(general);}
+        setAttr(general,'href','/reports-manager/?module=reports');labelAnchor(general,'General Report');setData(general,'reportScope','general-admin');
+        return;
+      }
       let my=null;
       Array.from(nav.querySelectorAll(':scope a[href],a[href]')).forEach(a=>{
         const text=String(a.textContent||'').replace(/\s+/g,' ').trim();
@@ -171,7 +178,7 @@
   }
 
   function scan(){
-    document.querySelectorAll('.belm-nav,.sidebar-nav,.sidebar nav').forEach(normalizeNav);
+    document.querySelectorAll('.belm-nav,.sidebar-nav,.sidebar nav,.belm-admin-sidebar nav,.portal-nav').forEach(normalizeNav);
     coordinatorCard();
   }
   // V835: coalesce observer bursts into at most one scan per frame.

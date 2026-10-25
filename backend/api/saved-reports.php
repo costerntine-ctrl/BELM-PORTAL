@@ -11,11 +11,15 @@ $roleKey = belm_report_role_key($user);
 $canGeneral = belm_can_view_general_report($user);
 $isCustomer = ($user['type'] ?? '') === 'customer';
 
-// Saved reports are role-scoped. A report marked as GENERAL is visible only
-// to BELM Admin (Super Admin) and Customer (owner/admin). Other roles can only
-// access reports saved for their own role. Customer assistants are additionally
-// isolated to their own customer's reports.
+// General Report administrators read original saved reports across department roles.
+// Customer administrators remain isolated to their own company. Other roles
+// retain their own-role scope; existing report rows are never copied or rewritten.
 function saved_report_scope_sql(array $user, string $roleKey, bool $canGeneral, bool $isCustomer, array &$params): string {
+    // Administrators read original saved rows across roles; no copies or sync writes.
+    if ($canGeneral) {
+        if ($isCustomer) { $params[] = $user['id']; return 'customer_id = ?'; }
+        return '1 = 1';
+    }
     $clauses = [];
     if ($isCustomer) {
         $clauses[] = 'customer_id = ?';
@@ -48,7 +52,7 @@ if ($method === 'GET' && $action === 'list') {
         $allowedRoleFilter = strtolower($role) === 'general' || strtolower($role) === 'general_report' || strtolower($role) === 'general report';
         if ($allowedRoleFilter && $canGeneral) {
             $query .= " AND LOWER(role_name) IN ('general','general_report','general report')";
-        } elseif ($role === $roleKey) {
+        } elseif ($canGeneral || $role === $roleKey) {
             $query .= ' AND role_name = ?'; $params[] = $role;
         } else {
             json_out(['success'=>true,'reports'=>[],'count'=>0,'limit'=>$limit,'offset'=>$offset]);
@@ -97,9 +101,9 @@ if ($method === 'GET' && $action === 'download') {
         $isGeneral = in_array($reportRole, ['general','general_report','general report'], true);
         $sameCustomer = $isCustomer && (string)$report['customer_id'] === (string)$user['id'];
         $sameRole = $reportRole === strtolower($roleKey);
-        if (!$sameRole && !($isGeneral && $canGeneral)) json_error('Access denied', 403);
+        if (!$canGeneral && !$sameRole) json_error('Access denied', 403);
         if ($isCustomer && !$sameCustomer) json_error('Access denied', 403);
-        if (!$isCustomer && $report['customer_id'] !== null && (string)$report['customer_id'] !== '' && !$sameCustomer) {
+        if (!$canGeneral && !$isCustomer && $report['customer_id'] !== null && (string)$report['customer_id'] !== '' && !$sameCustomer) {
             // BELM users may not download customer-owned saved reports unless
             // the report itself is explicitly assigned to their role.
             if (!$sameRole) json_error('Access denied', 403);

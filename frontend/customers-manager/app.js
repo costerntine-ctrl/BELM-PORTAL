@@ -92,7 +92,7 @@
         </div>
         <nav class="machine-report-tabs" aria-label="Report type">
           <button type="button" class="active" data-report-tab="checklist">Checklist Report</button>
-          <button type="button" data-report-tab="jobcard">Job Card Report</button>
+          <button type="button" data-report-tab="jobcard">Job Card Report / Maintenance Report</button>
           <button type="button" data-report-tab="daily">Daily Report</button>
           <button type="button" data-report-tab="operator">Operator Reported</button>
           <button type="button" data-report-tab="analysis">Machine Analysis</button>

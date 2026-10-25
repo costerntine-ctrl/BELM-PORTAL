@@ -2648,7 +2648,7 @@
       </header>
       <nav class="belm-customer-checkup-tabs belm-machine-report-center-tabs">
         <button type="button" class="active" data-checkup-tab="reports">Checklist Report</button>
-        <button type="button" data-checkup-tab="jobcards">Job Card Report</button>
+        <button type="button" data-checkup-tab="jobcards">Job Card Report / Maintenance Report</button>
         <button type="button" data-checkup-tab="dailyreport">Daily Report</button>
         <button type="button" data-checkup-tab="operator">Operator Reported</button>
         <button type="button" data-checkup-tab="record">Report Record</button>

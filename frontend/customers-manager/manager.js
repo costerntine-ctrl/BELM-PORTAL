@@ -1508,7 +1508,7 @@
     }
     const tabLabels = {
       checklist: "Checklist Reports",
-      jobcard: "Job Card Reports",
+      jobcard: "Job Card Report / Maintenance Report",
       daily: "Daily Reports",
       operator: "Operator Reported",
       analysis: "Machine Analysis",
@@ -1631,9 +1631,9 @@
     const job = cachedMachineJobCards.find((item) => String(item.id) === String(jobCardId));
     const body = document.getElementById("reportViewBody");
     document.getElementById("reportViewDialog").showModal();
-    document.getElementById("reportViewEyebrow").textContent = "Job Card Report";
+    document.getElementById("reportViewEyebrow").textContent = "Job Card Report / Maintenance Report";
     if (!job) {
-      document.getElementById("reportViewTitle").textContent = "Job Card Report";
+      document.getElementById("reportViewTitle").textContent = "Job Card Report / Maintenance Report";
       body.innerHTML = '<p class="muted">Job Card report not found.</p>';
       return;
     }

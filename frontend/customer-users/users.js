@@ -546,7 +546,7 @@ Customer Dashboard access follows Role Manager permissions.`);
       await loadUsers();
       showAlert(
         id
-          ? "User account updated. To set a new password, use User Password Control (or the user can use Forgot Password + email OTP)."
+          ? "User account updated. The user can recover their password on the login page using Forgot Password + email OTP."
           : "User created. Give the user the email and initial password you entered; future password recovery uses Forgot Password + email OTP.",
         false
       );

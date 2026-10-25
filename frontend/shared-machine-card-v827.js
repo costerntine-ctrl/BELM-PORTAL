@@ -174,7 +174,7 @@
       operator: firstText(card, ['.machine-operator-message strong', '.belm-customer-operator-message-v422 strong', '[data-tech-operator-message]', '.tech-machine-summary-fact:nth-child(3) b', '.op-operator-message strong']) || 'No operator message reported yet.',
       alert: firstText(card, ['.machine-alert-reason', '.belm-customer-condition-copy-v422 strong', '[data-tech-machine-condition-message]', '.tech-machine-summary-fact.alert-box b', '.op-condition-message strong']) || '',
       service: firstText(card, ['.service-due-badge', '.belm-service-due-head-v210 strong', '[data-summary-service]', '.tech-machine-summary-service', '.op-service-head strong']) || 'Service due: not available',
-      photo: card.querySelector('.belm-machine-summary-photo,.belm-machine-photo-box img,.tech-machine-summary img,.op-machine-card img,.machine-card img')?.getAttribute('src') || ''
+      photo: window.BELMMachinePhotos?.get(card) ? (window.BELMMachinePhotos.get(card).photoData || '') : card.querySelector('.belm-machine-summary-photo,.belm-machine-photo-box img,.tech-machine-summary img,.op-machine-card img,.machine-card img')?.getAttribute('src') || ''
     };
   }
 
@@ -380,8 +380,9 @@
     const visualKey = `${info.photo}|${info.title}|${visualType.label}`;
     if (visual.dataset.visualKey !== visualKey) {
       visual.dataset.visualKey = visualKey;
-      visual.innerHTML = info.photo ? `<img src="${escapeHtml(info.photo)}" alt="${escapeHtml(info.title)} machine photo">` : `<div class="belm-machine-type-placeholder" role="img" aria-label="${escapeHtml(visualType.label)} pictogram"><span aria-hidden="true">${visualType.icon}</span><small>${escapeHtml(visualType.label)}</small><em>Upload actual machine photo</em></div>`;
+      visual.innerHTML = info.photo ? `<img src="${escapeHtml(info.photo)}" alt="${escapeHtml(info.title)} machine photo">` : `<div class="belm-machine-type-placeholder" role="img" aria-label="${escapeHtml(visualType.label)} pictogram"><span aria-hidden="true">${visualType.icon}</span><small>${escapeHtml(visualType.label)}</small><em>No machine photo uploaded</em></div>`;
     }
+    window.BELMMachinePhotos?.mount(card,visual);
     const primaryButton = summary.querySelector('.belm-shared-primary-v827');
     primaryButton.textContent = primary ? (primary.kind === 'report' ? 'Report Issue' : actionLabel(primary.element, primary.kind)) : 'No Direct Action';
     primaryButton.disabled = !primary || Boolean(primary.element.disabled || primary.element.getAttribute('aria-disabled') === 'true');
@@ -459,6 +460,7 @@
     const internalOnly = mutations.every((mutation) => mutation.target instanceof Element && mutation.target.closest('.belm-shared-summary-v827,.belm-shared-drawer-v838'));
     if (!internalOnly) queue();
   }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'src', 'value', 'disabled', 'aria-disabled'] });
+  window.addEventListener('belm:machine-photo-changed', queue);
   window.addEventListener('belm-customer-activity-status-changed', queue);
   window.addEventListener('belm-technician-data-changed', queue);
   window.addEventListener('resize', queue, { passive: true });

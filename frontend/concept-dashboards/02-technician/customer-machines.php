@@ -106,7 +106,7 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
     @media(prefers-reduced-motion:reduce){.belm-nav__item.job-card-alert-blink{animation:none;background:#f6c51e;color:#14243a;box-shadow:0 0 0 2px rgba(246,197,30,.3)}}
   </style>
 <script src="/navigation-context-v763.js?v=763-role-flow"></script>
-<script src="/machine-card-photo-v760.js?v=825-technician-customer-machine-photo" defer></script>
+<script src="/machine-card-photo-v760.js?v=81-machine-photo-upload" defer></script>
 <link rel="stylesheet" href="/theme-global.css?v=54">
 <script defer src="/theme-manager.js?v=54"></script>
 <script defer src="/language-preferences.js?v=54"></script>
@@ -204,6 +204,6 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   document.getElementById('sidebarToggle')?.addEventListener('click',()=>document.getElementById('belmShell')?.classList.toggle('is-sidebar-open'));bootstrap();
 })();
 </script>
-<script src="/shared-machine-card-v827.js?v=838-unified-actions-scroll"></script>
+<script src="/shared-machine-card-v827.js?v=81-machine-photo-upload"></script>
 </body>
 </html>

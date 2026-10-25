@@ -31,8 +31,8 @@
     await loadScript('/technician-machine-general-report-v749.js?v=749-machine-general-report');
     // V760: small registered machine photo on each machine card. Upload permission
     // is enforced by the API; Technician/customer/admin pages share the same photo.
-    await loadScript('/machine-card-photo-v760.js?v=808-belm-customer-machine-photo');
-    await loadScript('/shared-machine-card-v827.js?v=847-compact-deduplicated');
+    await loadScript('/machine-card-photo-v760.js?v=81-machine-photo-upload');
+    await loadScript('/shared-machine-card-v827.js?v=81-machine-photo-upload');
   }
 
   async function bootNonCritical(){
@@ -51,8 +51,8 @@
         loadScript('/machine-report-center-override.js?v=658-lazy'),
         loadScript('/machine-status-row-v554.js?v=658-lazy'),
         loadScript('/cwm-machine-brand-v619.js?v=658-lazy'),
-        loadScript('/machine-card-photo-v760.js?v=808-belm-customer-machine-photo'),
-        loadScript('/shared-machine-card-v827.js?v=847-compact-deduplicated')
+        loadScript('/machine-card-photo-v760.js?v=81-machine-photo-upload'),
+        loadScript('/shared-machine-card-v827.js?v=81-machine-photo-upload')
       ]);
     }
   }

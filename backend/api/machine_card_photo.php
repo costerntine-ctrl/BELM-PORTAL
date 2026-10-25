@@ -42,8 +42,9 @@ if ($type === 'customer') {
     $actorType = strtolower(trim((string)($customer['actorType'] ?? 'owner')));
     $role = strtolower(trim((string)($customer['customerRole'] ?? '')));
     $isAdmin = $actorType === 'owner' || in_array($role, ['admin','customer_admin','owner'], true);
-    // Customer may change the machine identity/photo only in Independent mode.
-    $canUpload = $isAdmin && !empty($machine['is_machinery_admin']);
+    // Company owners/admins may maintain their own machine photos in either service mode.
+    // Company ownership was verified above; machine/workflow permissions are unchanged.
+    $canUpload = $isAdmin;
     $actorName = trim((string)($customer['actorName'] ?? $customer['name'] ?? $actorName)) ?: $actorName;
 } elseif ($type === 'staff') {
     $user = require_auth();

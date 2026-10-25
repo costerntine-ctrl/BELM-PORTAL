@@ -9,6 +9,9 @@
     : path.startsWith('/concept-dashboards/02-technician')||path.startsWith('/tech')
       ? ['belm_tech_token','belm_customer_token','belm_admin_token']
       : ['belm_customer_token','belm_tech_token','belm_admin_token'];
+  const active=localStorage.getItem('belm_active_account_type')||'';
+  const preferred={admin:'belm_admin_token',technician:'belm_tech_token',customer:'belm_customer_token',operator:'belm_operator_token'}[active];
+  if(preferred)tokenKeys.unshift(preferred);
   const token=tokenKeys.map(k=>localStorage.getItem(k)||'').find(Boolean)||'';
   if(!token)return;
 
@@ -16,8 +19,8 @@
     .belm-machine-photo-box{position:relative;width:100%;height:118px;margin:10px 0 12px;border:1px solid rgba(72,126,178,.38);border-radius:12px;overflow:hidden;background:linear-gradient(145deg,#0b2138,#102f4d);display:grid;place-items:center}
     .belm-machine-photo-box img{width:100%;height:100%;object-fit:contain;display:block;background:#edf2f7}
     .belm-machine-photo-placeholder{padding:12px;text-align:center;color:#9fb7ce;font:800 11px/1.3 Inter,Arial,sans-serif;letter-spacing:.03em}
-    .belm-machine-photo-actions{position:absolute;right:7px;bottom:7px;display:flex;gap:6px;z-index:2}
-    .belm-machine-photo-actions button{border:1px solid rgba(255,255,255,.36);border-radius:8px;background:rgba(3,18,33,.88);color:#fff;padding:6px 9px;font:800 9px Inter,Arial,sans-serif;cursor:pointer;backdrop-filter:blur(5px)}
+    .belm-shared-visual-v827{position:relative}.belm-machine-photo-actions{position:absolute;right:7px;bottom:7px;display:flex;gap:6px;z-index:2}
+    .belm-machine-photo-actions button{border:1px solid rgba(255,255,255,.36);border-radius:8px;background:rgba(3,18,33,.88);color:#fff;padding:6px 9px;font:800 12px Inter,Arial,sans-serif;min-height:38px;cursor:pointer;backdrop-filter:blur(5px)}
     .belm-machine-photo-actions button:hover{background:#0c67a3}.belm-machine-photo-actions button:disabled{opacity:.55;cursor:wait}
     .belm-machine-photo-box.is-loading:after{content:'Loading photo…';position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,20,35,.72);color:#fff;font:800 10px Inter,Arial,sans-serif}
     .belm-machine-photo-box.is-saving:after{content:'Saving photo…';position:absolute;inset:0;display:grid;place-items:center;background:rgba(5,20,35,.78);color:#fff;font:800 10px Inter,Arial,sans-serif}
@@ -69,13 +72,37 @@
     visual.classList.toggle('belm-has-machine-photo',!!photo);
     if(photo){const img=document.createElement('img');img.className='belm-machine-summary-photo';img.alt='Machine photo';img.src=photo;visual.prepend(img)}
   }
+  const photoState=new WeakMap(),actionState=new WeakMap();
+  function renderActions(card,box,id,data){
+    if(actionState.get(box)===data)return;
+    actionState.set(box,data);
+    box.querySelector(':scope > .belm-machine-photo-actions')?.remove();
+    box.classList.remove('is-saving');
+    if(data.canUpload){
+      const actions=document.createElement('div');actions.className='belm-machine-photo-actions';
+      const upload=document.createElement('button');upload.type='button';upload.textContent=data.photoData?'Change Photo':'Upload Photo';
+      const input=document.createElement('input');input.type='file';input.accept='image/*';input.hidden=true;
+      upload.onclick=event=>{event.preventDefault();event.stopPropagation();input.click();};
+      actions.addEventListener('click',event=>event.stopPropagation());
+      input.onchange=async()=>{
+        const file=input.files?.[0];if(!file)return;
+        try{box.classList.add('is-saving');upload.disabled=true;const photoData=await fileToSmallJpeg(file);const saved=await request(id,{method:'PUT',body:JSON.stringify({photoData})});renderBox(card,id,saved)}catch(e){box.classList.remove('is-saving');upload.disabled=false;alert(e.message||'Could not save machine photo.')}
+      };
+      actions.append(upload,input);
+      if(data.photoData){const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.onclick=async event=>{event.preventDefault();event.stopPropagation();if(!confirm('Remove this machine photo?'))return;try{box.classList.add('is-saving');const d=await request(id,{method:'DELETE'});renderBox(card,id,d)}catch(e){box.classList.remove('is-saving');alert(e.message||'Could not remove machine photo.')}};actions.appendChild(remove)}
+      box.appendChild(actions);
+    }
+  }
+  window.BELMMachinePhotos={get:card=>photoState.get(card),mount:(card,host)=>{const data=photoState.get(card);if(data)renderActions(card,host,machineId(card),data)}};
   function renderBox(card,id,data){
+    photoState.set(card,data);
+    window.dispatchEvent(new CustomEvent('belm:machine-photo-changed',{detail:{machineId:id}}));
     if(card.dataset.summaryPhotoOnly==='1'){
       card.querySelectorAll('.belm-machine-photo-box').forEach(box=>box.remove());
       updateSummaryVisual(card,data.photoData||'');
       return;
     }
-    let box=card.querySelector(':scope > .belm-machine-photo-box, .machine-card-top + .belm-machine-photo-box');
+    let box=card.querySelector('.belm-machine-photo-box');
     if(!box){
       box=document.createElement('div');box.className='belm-machine-photo-box';box.dataset.machinePhotoFor=id;
       const top=card.querySelector('.machine-card-top');
@@ -89,20 +116,9 @@
     box.classList.remove('is-loading','is-saving');
     box.innerHTML=data.photoData?`<img src="${esc(data.photoData)}" alt="Machine photo">`:'<div class="belm-machine-photo-placeholder">MACHINE PHOTO<br><small>Open machine card to view type • upload actual photo</small></div>';
     updateSummaryVisual(card,data.photoData||'');
-    if(data.canUpload){
-      const actions=document.createElement('div');actions.className='belm-machine-photo-actions';
-      const upload=document.createElement('button');upload.type='button';upload.textContent=data.photoData?'Change':'Upload photo';
-      const input=document.createElement('input');input.type='file';input.accept='image/*';input.capture='environment';input.hidden=true;
-      upload.onclick=()=>input.click();
-      input.onchange=async()=>{
-        const file=input.files?.[0];if(!file)return;
-        try{box.classList.add('is-saving');upload.disabled=true;const photoData=await fileToSmallJpeg(file);const saved=await request(id,{method:'PUT',body:JSON.stringify({photoData})});renderBox(card,id,saved)}catch(e){box.classList.remove('is-saving');upload.disabled=false;alert(e.message||'Could not save machine photo.')}
-      };
-      actions.append(upload,input);
-      if(data.photoData){const remove=document.createElement('button');remove.type='button';remove.textContent='Remove';remove.onclick=async()=>{if(!confirm('Remove this machine photo?'))return;try{box.classList.add('is-saving');const d=await request(id,{method:'DELETE'});renderBox(card,id,d)}catch(e){box.classList.remove('is-saving');alert(e.message||'Could not remove machine photo.')}};actions.appendChild(remove)}
-      box.appendChild(actions);
-    }
+    renderActions(card,box,id,data);
   }
+
   async function enhance(card){
     if(card.dataset.belmMachinePhotoReady==='1')return;
     const id=machineId(card);if(!id)return;

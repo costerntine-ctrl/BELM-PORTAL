@@ -58,6 +58,7 @@
     .belm-shared-bar-v827 i{display:block;width:72%;height:100%;border-radius:inherit;background:var(--belm-shared-level)}
     .belm-shared-actions-v827{display:grid;grid-template-columns:1fr 1.25fr;gap:11px;margin-top:auto}
     .belm-shared-actions-v827 button{min-height:50px;padding:10px 12px;border-radius:11px;font:900 12px Inter,Arial,sans-serif;cursor:pointer}
+    .belm-shared-actions-v827>a.belm-shared-view-v827{display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-height:50px;padding:10px 12px;border-radius:11px;font:900 12px Inter,Arial,sans-serif;text-decoration:none;text-align:center}
     .belm-shared-primary-v827{border:1px solid #30445c;background:#07111d;color:#f2f5f8}
     .belm-shared-primary-v827:disabled{opacity:.45;cursor:not-allowed}
     .belm-shared-view-v827{border:1px solid #ffda00;background:#ffdf00;color:#07111d}
@@ -385,6 +386,14 @@
     primaryButton.textContent = primary ? (primary.kind === 'report' ? 'Report Issue' : actionLabel(primary.element, primary.kind)) : 'No Direct Action';
     primaryButton.disabled = !primary || Boolean(primary.element.disabled || primary.element.getAttribute('aria-disabled') === 'true');
     primaryButton.onclick = (event) => { event.preventDefault(); event.stopPropagation(); invoke(primary); };
+    const machineId=card.dataset.machineId||card.dataset.belmMachineId||'';
+    const customerContext=localStorage.getItem('belm_customer_token')&&(location.pathname==='/portal/dashboard'||localStorage.getItem('belm_active_account_type')==='customer');
+    if(machineId&&customerContext){
+      const current=summary.querySelector('.belm-shared-view-v827');
+      const url=new URL('/machine-reports/',location.origin);url.searchParams.set('machine',machineId);url.searchParams.set('returnTo',location.pathname+location.search);
+      if(current?.tagName!=='A'){const link=document.createElement('a');link.className='belm-shared-view-v827';link.textContent='View Details';link.href=url.pathname+url.search;link.addEventListener('click',event=>event.stopPropagation());current?.replaceWith(link);}else if(current.getAttribute('href')!==url.pathname+url.search)current.href=url.pathname+url.search;
+      if(card.classList.contains('belm-shared-actions-open'))card.classList.remove('belm-shared-actions-open');
+    }
     renderDrawer(card, drawer, actions, primary);
   }
 
@@ -436,6 +445,9 @@
 
   function scan() {
     document.querySelectorAll(CARD_SELECTOR).forEach(enhance);
+    if(location.pathname==='/portal/dashboard'&&document.querySelector('.belm-customer-machine-card')){
+      Array.from(document.querySelectorAll('h1,h2,h3')).filter(el=>String(el.textContent||'').trim()==='Your Job Cards').forEach(heading=>{heading.hidden=true;heading.style.setProperty('display','none','important');const panel=heading.nextElementSibling;if(panel?.querySelector('table')){panel.hidden=true;panel.style.setProperty('display','none','important');}});
+    }
     document.querySelectorAll('.belm-shared-machine-card-v827').forEach(sync);
   }
 

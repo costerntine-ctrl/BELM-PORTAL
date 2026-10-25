@@ -200,6 +200,10 @@ switch($resource){
     case 'company-expenses': dispatch('company_expenses.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
     case 'engineering': dispatch('engineering.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
     case 'reports': dispatch('reports.php',['action'=>$segments[1]??($_GET['action']??'')]);
+    case 'saved-reports':
+    case 'saved-reports.php': dispatch('saved-reports.php');
+    case 'save-report':
+    case 'save-report.php': dispatch('save-report.php');
     case 'petty-cash': dispatch('petty_cash.php',['id'=>$segments[1]??($_GET['id']??null),'action'=>$_GET['action']??'']);
     case 'role-communications': dispatch('role_communications.php',['id'=>$segments[1]??'','action'=>$segments[2]??'']);
     case 'preferences': dispatch('preferences.php');

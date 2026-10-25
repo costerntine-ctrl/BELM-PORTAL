@@ -114,11 +114,11 @@
       section('Machine Operation'),
       item('Home','/customer-operator-dashboard/','home'),
       item('My Machine','/customer-operator-dashboard/#machineLabel','machine'),
-      item('Daily Check / Shift','/operator/','check'),
-      item('Operation Log','/operator/','report'),
-      item('Fuel Consumption','/operator/','fuel'),
+      item('Daily Checklist','/customer-checkup/','check'),
+      item('Operator Reports','/general-report/report/?type=operator','report'),
+      item('Fuel Consumption','/customer-fuel-usage/','fuel'),
       item('Machine Alerts','/customer-operator-dashboard/#alertList','alert'),
-      item('Report Issue','/operator/','message'),
+      item('Report Issue','/portal/dashboard?view=machines','message'),
       section('Reporting'),
       item('Communication','/role-communications/','message'),
       item('Operator Reports','/role-reports/','report'),
@@ -127,6 +127,7 @@
   };
 
   const cfg=configs[path];
+  if(path==='/customer-operator-dashboard/'&&localStorage.getItem('belm_active_account_type')==='operator'&&localStorage.getItem('belm_operator_token')){for(const x of cfg||[])if(['Daily Checklist','Operator Reports','Fuel Consumption','Report Issue'].includes(x.label)&&!String(x.href).includes('role-reports'))x.href='/operator/';}
   if(!cfg)return;
   const nav=document.querySelector('.belm-nav,.sidebar-nav');
   if(!nav)return;

@@ -4,8 +4,11 @@
   const activeAccount = String(localStorage.getItem('belm_active_account_type') || '').toLowerCase();
   const operatorToken = localStorage.getItem('belm_operator_token') || '';
   const customerToken = localStorage.getItem('belm_customer_token') || '';
-  const adminPreview = !!customerToken && activeAccount === 'customer';
-  const token = adminPreview ? customerToken : operatorToken;
+  let customerSession={};try{customerSession=JSON.parse(atob(customerToken.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));}catch(_){}
+  const employeeOperator=!!customerToken && String(customerSession.customerRole||'').toLowerCase()==='operator' && activeAccount==='customer';
+  const companySession=!!customerToken && activeAccount==='customer';
+  const adminPreview=companySession&&!employeeOperator;
+  const token = companySession ? customerToken : operatorToken;
 
   if (!token) { location.replace('/login'); return; }
 
@@ -113,15 +116,19 @@
     const requestedMachine = new URLSearchParams(location.search).get('machine') || '';
     const m = machines.find((row) => String(row?.id || '') === requestedMachine) || machines[0] || {};
 
-    paintCommon(company, 'Admin Preview', m);
-    document.getElementById('statHours').textContent = 'Admin view';
+    paintCommon(company, employeeOperator?(customerSession.actorName||customerSession.name||'Operator'):'Admin Preview', m);
+    if(employeeOperator){
+      document.querySelectorAll('a[href="/operator/"]').forEach(a=>a.href='/portal/dashboard?view=machines');
+      document.getElementById('statHours').textContent='See machine records';
+    }
+    document.getElementById('statHours').textContent = employeeOperator?'See machine records':'Admin view';
     document.getElementById('statContainers').textContent = '—';
 
     const msg = m?.latestOperatorMessage || m?.latest_operator_message || null;
     const messageList = document.getElementById('messageList');
     messageList.innerHTML = msg
       ? `<div class="belm-alert-row" style="cursor:default"><span class="belm-alert-row__label">${esc(msg.message || '')}</span><span class="belm-alert-row__count" style="font-size:11px">${esc(fmtDateTime(msg.createdAt || msg.created_at))}</span></div>`
-      : '<div class="belm-alert-row"><span class="belm-alert-row__label">Admin preview — no Operator PIN is required to view this dashboard. PIN is required only when an actual operator starts a machine shift.</span></div>';
+      : '<div class="belm-alert-row"><span class="belm-alert-row__label">Use Company Machines to open your daily check, fuel usage or operator report. Sign in with your company email and password; no invitation link or PIN is required.</span></div>';
 
     if (!machines.length) {
       document.getElementById('machineLabel').textContent = 'No registered machine';
@@ -130,7 +137,7 @@
     }
 
     const logout = document.getElementById('logout');
-    if (logout) {
+    if (logout && !employeeOperator) {
       logout.href = '/customer-admin-dashboard/';
       const textNode = Array.from(logout.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
       if (textNode) textNode.textContent = ' Back to Admin';
@@ -161,7 +168,7 @@
 
   async function load() {
     try {
-      if (adminPreview) await loadAdminPreview();
+      if (companySession) await loadAdminPreview();
       else await loadOperator();
     } catch (e) {
       document.getElementById('alertList').innerHTML = `<div class="belm-alert-row"><span class="belm-alert-row__label">Could not load: ${esc(e.message)}</span></div>`;
@@ -178,6 +185,7 @@
       location.replace('/customer-admin-dashboard/');
       return;
     }
+    if(employeeOperator){localStorage.removeItem('belm_customer_token');localStorage.removeItem('belm_active_account_type');location.replace('/login');return;}
     localStorage.removeItem('belm_operator_token');
     if (localStorage.getItem('belm_active_account_type') === 'operator') localStorage.removeItem('belm_active_account_type');
     location.replace('/operator/');

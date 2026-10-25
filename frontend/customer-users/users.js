@@ -624,6 +624,7 @@ Customer Dashboard access follows Role Manager permissions.`);
   }
 
   document.getElementById("addButton")?.addEventListener("click", openCreate);
+  document.getElementById("addOperatorButton")?.addEventListener("click",()=>{openCreate();const role=document.getElementById("role");role.value="operator";role.dispatchEvent(new Event("change",{bubbles:true}));});
   document.getElementById("refreshButton")?.addEventListener("click", loadUsers);
   document.getElementById("closeDialogButton")?.addEventListener("click", () => dialog.close());
   document.getElementById("cancelButton")?.addEventListener("click", () => dialog.close());
@@ -682,7 +683,7 @@ Customer Dashboard access follows Role Manager permissions.`);
   document.getElementById("rosterMachineSelect").addEventListener("change", (event) => {
     const machineId = event.target.value;
     document.getElementById("rosterAddRow").classList.toggle("hidden", !machineId);
-    document.getElementById("rosterOperatorLinkRow").classList.toggle("hidden", !machineId);
+    document.getElementById("rosterOperatorLinkRow").hidden = true;
     if (machineId) {
       document.getElementById("rosterOperatorLink").value = `${window.location.origin}/operator/?machine=${machineId}`;
     }

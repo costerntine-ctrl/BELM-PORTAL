@@ -44,7 +44,7 @@
     .belm-machine-type-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;color:#dbeafa}.belm-machine-type-placeholder span{font-size:58px;line-height:1.1}.belm-machine-type-placeholder small{font-size:13px;font-weight:800}.belm-machine-type-placeholder em{font-size:10px;color:#91afcd;font-style:normal}
     .belm-shared-type-v840{display:inline-flex;align-self:flex-start;max-width:100%;padding:5px 10px;margin:0 0 9px;border:1px solid #365574;border-radius:999px;background:#112d49;color:#cce5fc;font:800 11px/1.2 Inter,Arial,sans-serif;overflow-wrap:anywhere}
     .belm-shared-summary-v827 h3{margin:0 0 5px!important;color:#fff!important;font:900 22px/1.15 Inter,Arial,sans-serif!important;overflow-wrap:anywhere}
-    .belm-shared-meta-v827{min-height:30px;margin:0!important;color:#a9bfd8!important;font-size:12px!important;line-height:1.45!important}
+    .belm-shared-meta-v827{white-space:pre-line;overflow-wrap:anywhere;min-height:30px;margin:0!important;color:#a9bfd8!important;font-size:12px!important;line-height:1.45!important}
     .belm-shared-facts-v827{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:12px;border-top:1px dashed rgba(164,188,215,.24);border-bottom:1px dashed rgba(164,188,215,.24)}
     .belm-shared-fact-v827{min-width:0;padding:11px 6px}
     .belm-shared-fact-v827:nth-child(odd){padding-right:12px}.belm-shared-fact-v827:nth-child(even){padding-left:12px}
@@ -361,10 +361,10 @@
       card.classList.remove('belm-shared-level-red', 'belm-shared-level-yellow', 'belm-shared-level-green', 'belm-shared-level-neutral');
       card.classList.add(levelClass);
     }
-    summary.querySelector('[data-shared-fleet]').textContent = info.fleet;
+    summary.querySelector('[data-shared-fleet]').textContent = String(info.fleet).toUpperCase();
     summary.querySelector('[data-shared-title]').textContent = info.title;
     summary.querySelector('[data-shared-type]').textContent = machineVisualType(card, info).label;
-    summary.querySelector('[data-shared-meta]').textContent = info.meta;
+    summary.querySelector('[data-shared-meta]').textContent = String(info.meta).split(/\s*[·•]\s*/).map(part=>part.trim().toUpperCase()).filter(Boolean).join('\n');
     summary.querySelector('[data-shared-customer]').textContent = info.customer;
     summary.querySelector('[data-shared-condition]').textContent = conditionLabel(card, level);
     summary.querySelector('[data-shared-operator]').textContent = info.operator;

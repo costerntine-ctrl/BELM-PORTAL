@@ -28,11 +28,11 @@ for (const file of [
   "frontend/customer-procurement-home/index.html",
   "frontend/concept-dashboards/02-technician/customer-machines.php",
 ]) {
-  assert.match(read(file), /shared-machine-card-v827\.js\?v=(?:838-unified-actions-scroll|847-compact-deduplicated|81-machine-photo-upload)/, `${file} must load the shared card`);
+  assert.match(read(file), /shared-machine-card-v827\.js\?v=(?:838-unified-actions-scroll|847-compact-deduplicated|81-machine-photo-upload|82-machine-identifiers)/, `${file} must load the shared card`);
 }
 
 const loader = read("frontend/runtime-loader-v647.js");
-assert.match(loader, /shared-machine-card-v827\.js\?v=(?:838-unified-actions-scroll|847-compact-deduplicated|81-machine-photo-upload)/, "BELM Admin, Customer and Technician runtime must load the shared card");
+assert.match(loader, /shared-machine-card-v827\.js\?v=(?:838-unified-actions-scroll|847-compact-deduplicated|81-machine-photo-upload|82-machine-identifiers)/, "BELM Admin, Customer and Technician runtime must load the shared card");
 
 const managerCss = read("frontend/customers-manager/manager.css");
 assert.match(managerCss, /#machineListDialog \.dialog-card[\s\S]*height: auto !important;[\s\S]*max-height: none !important;[\s\S]*overflow-y: visible !important;/, "machine-list modal must use one vertical scroll owner");

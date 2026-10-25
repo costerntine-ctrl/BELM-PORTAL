@@ -1,3 +1,9 @@
+// Shared entry point also covers customer dashboards without navigation-context.
+(function(){
+  if(!['belm_admin_token','belm_tech_token','belm_customer_token','belm_operator_token'].some(k=>localStorage.getItem(k)))return;
+  if(window.top!==window.self||document.querySelector('script[src^="/persistent-role-sidebar.js"]'))return;
+  const script=document.createElement('script');script.src='/persistent-role-sidebar.js?v=77';document.head.appendChild(script);
+})();
 // V485 embedded-module fit: Workshop modules use one outer WM shell.
 try{if(new URLSearchParams(location.search).get('embed')==='1')document.documentElement.classList.add('belm-embedded')}catch(_){}
 (function () {

@@ -204,6 +204,6 @@ header('Cache-Control: no-store, no-cache, must-revalidate');
   document.getElementById('sidebarToggle')?.addEventListener('click',()=>document.getElementById('belmShell')?.classList.toggle('is-sidebar-open'));bootstrap();
 })();
 </script>
-<script src="/shared-machine-card-v827.js?v=82-machine-identifiers"></script>
+<script src="/shared-machine-card-v827.js?v=83-photo-led-card"></script>
 </body>
 </html>

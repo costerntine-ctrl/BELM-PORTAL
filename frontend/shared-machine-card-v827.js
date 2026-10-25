@@ -106,6 +106,29 @@
     :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827>.belm-shared-drawer-v838{border-radius:0 0 28px 28px}
     @keyframes belmMachinePerimeter62{0%,100%{opacity:.45}50%{opacity:1}}
     @media(prefers-reduced-motion:reduce){:is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827::before{animation:none!important;opacity:1}}
+
+    .belm-shared-summary-v827>.belm-shared-bar-v827:not([hidden]){display:block!important;margin:12px 20px!important}
+    .belm-shared-summary-v827>.belm-shared-bar-v827[hidden]{display:none!important}
+    /* Reference layout: photo-led card, corner badges and a two-column fact grid. */
+    :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827>.belm-shared-summary-v827{position:relative;padding:0 0 18px!important;overflow:hidden;background:linear-gradient(155deg,#172e4c,#07121e 70%)!important}
+    .belm-shared-summary-v827 .belm-shared-head-v827{position:absolute;inset:15px 15px auto;z-index:4;pointer-events:none}
+    :is(#machineListDialog,body) .belm-shared-machine-card-v827 .belm-shared-visual-v827{aspect-ratio:4/3;min-height:230px;max-height:380px;margin:0 0 20px;padding:55px 16px 45px;border-radius:0!important;background:radial-gradient(ellipse at center,#28577a,#102a49)!important}
+    .belm-shared-machine-card-v827 .belm-shared-visual-v827.has-photo{padding:0!important;background:#eef2f6!important}
+    .belm-shared-machine-card-v827 .belm-shared-visual-v827 img{height:100%;max-height:380px;object-fit:contain}
+    .belm-shared-summary-v827>[data-shared-title],.belm-shared-summary-v827>.belm-shared-meta-v827,.belm-shared-summary-v827>.belm-shared-facts-v827,.belm-shared-summary-v827>.belm-shared-service-v827,.belm-shared-summary-v827>.belm-shared-actions-v827{margin-left:20px!important;margin-right:20px!important}
+    .belm-shared-summary-v827>[data-shared-title]{font-size:25px;line-height:1.25;margin-top:0;margin-bottom:8px}
+    .belm-shared-summary-v827>.belm-shared-type-v840{display:none}
+    .belm-shared-summary-v827 .belm-shared-meta-v827{line-height:1.7!important;font-size:13px!important}
+    .belm-shared-summary-v827 .belm-shared-facts-v827{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:20px 16px;padding:20px 0;margin-top:18px;border-top:1px dashed #456078}
+    .belm-shared-summary-v827 .belm-shared-fact-v827{min-width:0}
+    .belm-shared-summary-v827 .belm-shared-fact-v827>span{display:block;text-transform:uppercase;font-size:11px;letter-spacing:.04em;margin-bottom:9px;color:#a9bfd8}
+    .belm-shared-summary-v827 .belm-shared-fact-v827>b{display:block;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+    .belm-shared-summary-v827 .belm-shared-fact-v827[hidden]{display:none!important}
+    .belm-shared-summary-v827 .belm-shared-service-v827{border-top:1px dashed #456078;padding-top:14px;line-height:1.6}
+    .belm-shared-summary-v827 .belm-shared-actions-v827{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .belm-shared-summary-v827 .belm-shared-actions-v827>*{min-width:0;min-height:46px}
+    html[data-theme="light"] :is(#machineListDialog,body) .belm-shared-machine-card-v827.belm-shared-machine-card-v827.belm-shared-machine-card-v827>.belm-shared-summary-v827{background:#fff!important;color:#14243a!important}
+    @media(max-width:420px){.belm-shared-summary-v827 .belm-shared-facts-v827{gap:16px 12px}.belm-shared-summary-v827 .belm-shared-fact-v827>b{font-size:13px}}
   `;
   document.head.appendChild(style);
 
@@ -171,6 +194,10 @@
       title: card.dataset.belmMachineTitle || firstText(card, ['.machine-title-row h4', '[data-summary-title]', '.tech-machine-summary h3', '.op-machine-head h2', '.belm-machine-native-head .font-medium', '.belm-machine-native-head h3', '.belm-shared-native-v838>h3', '.belm-shared-native-v838>h2']) || 'Machine',
       meta: card.dataset.belmMachineMeta || firstText(card, ['.machine-title-row+p', '.belm-shared-source-meta', '.tech-machine-summary-meta', '.op-machine-subhead']) || generic || 'Machine details',
       customer: card.dataset.belmMachineCustomer || firstText(card, ['.machine-customer-tag', '[data-summary-customer]', '.tech-machine-summary-fact:first-child b']) || 'Customer',
+      capacity: card.dataset.machineCapacity || firstText(card,['[data-summary-capacity]','[data-machine-capacity]']) || 'Not recorded',
+      hours: card.dataset.machineHours || firstText(card,['[data-summary-hours]','[data-hour-meter]','.op-hour-meter']) || 'Not recorded',
+      location: card.dataset.machineLocation || firstText(card,['[data-summary-location]','[data-machine-location]']) || 'Not recorded',
+      operatorName: card.dataset.machineOperatorName || firstText(card,['[data-summary-operator-name]','[data-machine-operator-name]']) || 'Not assigned',
       operator: firstText(card, ['.machine-operator-message strong', '.belm-customer-operator-message-v422 strong', '[data-tech-operator-message]', '.tech-machine-summary-fact:nth-child(3) b', '.op-operator-message strong']) || 'No operator message reported yet.',
       alert: firstText(card, ['.machine-alert-reason', '.belm-customer-condition-copy-v422 strong', '[data-tech-machine-condition-message]', '.tech-machine-summary-fact.alert-box b', '.op-condition-message strong']) || '',
       service: firstText(card, ['.service-due-badge', '.belm-service-due-head-v210 strong', '[data-summary-service]', '.tech-machine-summary-service', '.op-service-head strong']) || 'Service due: not available',
@@ -362,14 +389,20 @@
       card.classList.add(levelClass);
     }
     summary.querySelector('[data-shared-fleet]').textContent = String(info.fleet).toUpperCase();
-    summary.querySelector('[data-shared-title]').textContent = info.title;
+    summary.querySelector('[data-shared-title]').textContent = machineVisualType(card,info).label;
+    for(const key of ['capacity','hours','location','operatorName'])summary.querySelector('[data-shared-'+key+']').textContent=info[key];
     summary.querySelector('[data-shared-type]').textContent = machineVisualType(card, info).label;
-    summary.querySelector('[data-shared-meta]').textContent = String(info.meta).split(/\s*[·•]\s*/).map(part=>part.trim().toUpperCase()).filter(Boolean).join('\n');
+    summary.querySelector('[data-shared-meta]').textContent = [String(info.title).toUpperCase(),...String(info.meta).split(/\s*[·•]\s*/).slice(1).map(part=>part.trim().toUpperCase())].filter(Boolean).join('\n');
     summary.querySelector('[data-shared-customer]').textContent = info.customer;
     summary.querySelector('[data-shared-condition]').textContent = conditionLabel(card, level);
     summary.querySelector('[data-shared-operator]').textContent = info.operator;
     summary.querySelector('[data-shared-alert]').textContent = info.alert || (level === 'red' ? 'Machine requires immediate attention.' : level === 'yellow' ? 'Machine requires attention.' : level === 'green' ? 'Machine condition normal.' : 'No active machine alert.');
     summary.querySelector('[data-shared-service]').textContent = info.service;
+    summary.querySelector('[data-shared-operator]').parentElement.hidden = info.operator === 'No operator message reported yet.';
+    summary.querySelector('[data-shared-alert]').parentElement.hidden = !['red','yellow'].includes(level) && (!info.alert || /normal|not.*checked|no active/i.test(info.alert));
+    const serviceBar=summary.querySelector('.belm-shared-bar-v827');
+    serviceBar.hidden=!card.dataset.machineServiceProgress;
+    if(!serviceBar.hidden)serviceBar.querySelector('i').style.width=Math.max(0,Math.min(100,Number(card.dataset.machineServiceProgress)))+'%';
     const activityNode = summary.querySelector('[data-shared-activity]');
     activityNode.textContent = currentActivity.label;
     activityNode.classList.toggle('is-grounded', currentActivity.value.includes('GROUND'));
@@ -416,6 +449,10 @@
       <h3 data-shared-title>Machine</h3>
       <p class="belm-shared-meta-v827" data-shared-meta>Machine details</p>
       <div class="belm-shared-facts-v827">
+        <div class="belm-shared-fact-v827"><span>Capacity</span><b data-shared-capacity>Not recorded</b></div>
+        <div class="belm-shared-fact-v827"><span>Hour Meter</span><b data-shared-hours>Not recorded</b></div>
+        <div class="belm-shared-fact-v827"><span>Location</span><b data-shared-location>Not recorded</b></div>
+        <div class="belm-shared-fact-v827"><span>Operator</span><b data-shared-operatorName>Not assigned</b></div>
         <div class="belm-shared-fact-v827"><span>Customer</span><b data-shared-customer>Customer</b></div>
         <div class="belm-shared-fact-v827"><span>Condition</span><b data-shared-condition>Not checked</b></div>
         <div class="belm-shared-fact-v827"><span>Operator / Message</span><b data-shared-operator>No operator message reported yet.</b></div>

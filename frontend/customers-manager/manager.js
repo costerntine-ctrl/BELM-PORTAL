@@ -281,7 +281,7 @@
     const operatorMeta = operatorReport
       ? `Role: Operator · ${operatorName}${operatorContact ? ` · ${operatorContact}` : ""}${operatorCreated ? ` · ${formatDateTime(operatorCreated)}` : ""} · ${operatorStatus}`
       : "Waiting for Operator report";
-    return `<article class="machine-card machine-card-v409 machine-card-v417 ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
+    return `<article class="machine-card machine-card-v409 machine-card-v417 ${escapeHtml(status)} machine-range-${escapeHtml(conditionRange)}" data-machine-condition-level="${escapeHtml(status)}" data-machine-capacity="${escapeHtml(machine.capacity || '')}" data-machine-location="${escapeHtml(machine.location || '')}" data-machine-operator-name="${escapeHtml(operatorReport?.operatorName || operatorReport?.operator_name || '')}" ${reasons.length > 1 ? `data-reasons='${escapeHtml(JSON.stringify(reasons))}'` : ""}>
       <div>
         <div class="machine-title-row">
           <h4>${escapeHtml(machineTitle)}</h4>
@@ -346,6 +346,8 @@
         const card = badge.closest(".machine-card");
         if (card) {
           card.dataset.machineServiceLevel = level;
+          if(Number(status.intervalHours)>0 && status.totalHours!=null && status.dueHour!=null)card.dataset.machineServiceProgress=String(Math.max(0,Math.min(100,(Number(status.totalHours)-Number(status.dueHour)+Number(status.intervalHours))/Number(status.intervalHours)*100)));
+          if(status.totalHours !== null && status.totalHours !== undefined)card.dataset.machineHours = Number(status.totalHours).toLocaleString('en-GB') + ' hrs';
           const serviceCopy = card.querySelector("[data-machine-service-alert-copy]");
           if (serviceCopy) serviceCopy.textContent = `Service range: ${serviceType} · ${state}`;
           applyAdminMachineRange(card);
